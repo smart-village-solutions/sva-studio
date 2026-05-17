@@ -121,6 +121,9 @@ const hydrateSessionUserFromAccessToken = async (
 
 const resolveRefreshAuthConfig = async (session: Session) => {
   if (session.auth?.kind === 'instance') {
+    // Instance refresh should reuse the original studio callback origin.
+    // postLogoutRedirectUri stays as a compatibility fallback for legacy sessions
+    // that were persisted before redirectUri became part of the session context.
     const originSource = session.auth.redirectUri ?? session.auth.postLogoutRedirectUri;
 
     if (!session.auth.redirectUri) {

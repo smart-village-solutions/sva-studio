@@ -58,7 +58,6 @@ export const toToursStatusSearch = (
 });
 
 const resetToursFormState = (controller: WasteToursController) => {
-  controller.setDialogOpen(false);
   controller.setMessage(null);
   controller.setLastOutcome(null);
 };

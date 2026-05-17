@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { useNavigate } from '@tanstack/react-router';
 
@@ -16,6 +16,16 @@ type WasteToursPanelController = {
   readonly setLastOutcome: (outcome: 'create-success' | 'update-success' | null) => void;
 };
 
+const useLatestRef = <T,>(value: T) => {
+  const ref = useRef(value);
+
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+
+  return ref;
+};
+
 export const useWasteToursSuccessRedirect = ({
   controller,
   navigate,
@@ -25,6 +35,12 @@ export const useWasteToursSuccessRedirect = ({
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {
+  const latestSearchRef = useLatestRef(search);
+  const latestControllerRef = useLatestRef({
+    resetTourForm: controller.resetTourForm,
+    setDialogOpen: controller.setDialogOpen,
+    setLastOutcome: controller.setLastOutcome,
+  });
   const toursViewSuccess =
     search.toursView !== 'list' &&
     (controller.lastOutcome === 'create-success' || controller.lastOutcome === 'update-success');
@@ -34,26 +50,22 @@ export const useWasteToursSuccessRedirect = ({
       return;
     }
 
-    controller.setDialogOpen(false);
-    controller.resetTourForm();
-    controller.setLastOutcome(null);
+    const latestSearch = latestSearchRef.current;
+    const latestController = latestControllerRef.current;
+
+    latestController.setDialogOpen(false);
+    latestController.resetTourForm();
+    latestController.setLastOutcome(null);
     void navigate({
       to: '/plugins/waste-management',
       search: {
-        ...search,
+        ...latestSearch,
         toursView: 'list',
         tourId: undefined,
       },
       replace: true,
     });
-  }, [
-    controller.resetTourForm,
-    controller.setDialogOpen,
-    controller.setLastOutcome,
-    navigate,
-    search,
-    toursViewSuccess,
-  ]);
+  }, [latestControllerRef, latestSearchRef, navigate, toursViewSuccess]);
 };
 
 export const useWasteToursEditRouteHydration = ({
@@ -65,17 +77,25 @@ export const useWasteToursEditRouteHydration = ({
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {
+  const latestSearchRef = useLatestRef(search);
+  const latestControllerRef = useLatestRef({
+    setDialogMode: controller.setDialogMode,
+    setTourForm: controller.setTourForm,
+  });
+
   useEffect(() => {
     if (search.toursView !== 'edit') {
       return;
     }
 
     if (!search.tourId) {
+      const latestSearch = latestSearchRef.current;
       void navigate({
         to: '/plugins/waste-management',
         search: {
-          ...search,
+          ...latestSearch,
           toursView: 'list',
+          tourId: undefined,
         },
         replace: true,
       });
@@ -83,18 +103,35 @@ export const useWasteToursEditRouteHydration = ({
     }
 
     const routeTour = controller.overview?.tours.find((tour) => tour.id === search.tourId);
-    if (!routeTour || controller.tourForm.id === routeTour.id) {
+
+    if (!routeTour) {
+      const latestSearch = latestSearchRef.current;
+      void navigate({
+        to: '/plugins/waste-management',
+        search: {
+          ...latestSearch,
+          toursView: 'list',
+          tourId: undefined,
+        },
+        replace: true,
+      });
       return;
     }
 
-    controller.setDialogMode('edit');
-    controller.setTourForm(mapTourToForm(routeTour));
+    if (controller.tourForm.id === routeTour.id) {
+      return;
+    }
+
+    const latestController = latestControllerRef.current;
+    latestController.setDialogMode('edit');
+    latestController.setTourForm(mapTourToForm(routeTour));
   }, [
     controller.overview,
-    controller.setDialogMode,
-    controller.setTourForm,
     controller.tourForm.id,
+    latestControllerRef,
+    latestSearchRef,
     navigate,
-    search,
+    search.tourId,
+    search.toursView,
   ]);
 };

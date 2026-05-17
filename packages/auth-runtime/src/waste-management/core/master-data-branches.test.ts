@@ -1572,4 +1572,99 @@ describe('waste-management master-data branch handlers', () => {
       },
     });
   });
+
+  it('covers tour delete success, not-found, conflict, and fallback errors', async () => {
+    const createTourDeleteDeps = () => ({
+      ...createDeps('waste-management.tours.manage'),
+      loadWasteTourById: vi
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'tour-1',
+          name: 'Restmüll Nord',
+          wasteFractionIds: ['fraction-1'],
+          active: true,
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        })
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          id: 'tour-1',
+          name: 'Restmüll Nord',
+          wasteFractionIds: ['fraction-1'],
+          active: true,
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        })
+        .mockResolvedValueOnce({
+          id: 'tour-1',
+          name: 'Restmüll Nord',
+          wasteFractionIds: ['fraction-1'],
+          active: true,
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        }),
+      deleteWasteTour: vi
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce({ code: '23503' })
+        .mockRejectedValueOnce(new Error('db down')),
+    });
+
+    const deps = createTourDeleteDeps();
+
+    const deleteSucceeded = await wasteManagementTourHandlers.deleteWasteManagementTourInternal(
+      new Request('https://studio.test/api/v1/waste-management/tours/tour-1', {
+        method: 'DELETE',
+        headers: createHeaders(),
+      }),
+      actor,
+      deps
+    );
+    expect(deleteSucceeded.status).toBe(200);
+
+    const deleteNotFound = await wasteManagementTourHandlers.deleteWasteManagementTourInternal(
+      new Request('https://studio.test/api/v1/waste-management/tours/tour-404', {
+        method: 'DELETE',
+        headers: createHeaders(),
+      }),
+      actor,
+      deps
+    );
+    expect(deleteNotFound.status).toBe(404);
+    await expect(deleteNotFound.json()).resolves.toMatchObject({
+      error: {
+        code: 'not_found',
+      },
+    });
+
+    const deleteConflict = await wasteManagementTourHandlers.deleteWasteManagementTourInternal(
+      new Request('https://studio.test/api/v1/waste-management/tours/tour-1', {
+        method: 'DELETE',
+        headers: createHeaders(),
+      }),
+      actor,
+      deps
+    );
+    expect(deleteConflict.status).toBe(409);
+    await expect(deleteConflict.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+      },
+    });
+
+    const deleteFailure = await wasteManagementTourHandlers.deleteWasteManagementTourInternal(
+      new Request('https://studio.test/api/v1/waste-management/tours/tour-1', {
+        method: 'DELETE',
+        headers: createHeaders(),
+      }),
+      actor,
+      deps
+    );
+    expect(deleteFailure.status).toBe(503);
+    await expect(deleteFailure.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+      },
+    });
+  });
 });

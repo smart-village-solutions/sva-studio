@@ -31,6 +31,10 @@ describe('pluginWasteManagement contract', () => {
     expect(pluginWasteManagement.routes[0]?.validateSearch?.({ tab: 'settings', page: '2' })).toEqual({
       tab: 'settings',
       masterDataTab: 'locations',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
       q: '',
       page: 2,
       pageSize: 25,
@@ -46,6 +50,10 @@ describe('pluginWasteManagement contract', () => {
     expect(pluginWasteManagement.routes[0]?.validateSearch?.({})).toEqual({
       tab: 'fractions',
       masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
       q: '',
       page: 1,
       pageSize: 25,

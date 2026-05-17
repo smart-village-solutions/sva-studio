@@ -19,12 +19,13 @@ export const createWasteSchedulingTourSubmitHandlers = ({
   readonly pt: Translate;
   readonly loadOverview: (active?: boolean) => Promise<void>;
 }) => ({
-  onSubmitTourShift: async (event: FormEvent<HTMLFormElement>) => {
+  onSubmitTourShift: async (event: FormEvent<HTMLFormElement>, mode = state.dialogMode) => {
     event.preventDefault();
     state.setSaving(true);
     state.setMessage(null);
+    state.setLastOutcome(null);
     try {
-      if (state.dialogMode === 'create') {
+      if (mode === 'create') {
         await createWasteManagementTourDateShift(toCreateTourDateShiftInput(state.tourShiftForm));
       } else {
         await updateWasteManagementTourDateShift(
@@ -35,10 +36,11 @@ export const createWasteSchedulingTourSubmitHandlers = ({
       await loadOverview(true);
       startTransition(() => {
         state.setDialogOpen(false);
+        state.setLastOutcome(mode === 'create' ? 'create-tour-success' : 'update-tour-success');
         state.setMessage({
           kind: 'success',
           text:
-            state.dialogMode === 'create'
+            mode === 'create'
               ? pt('scheduling.tour.messages.createSuccess')
               : pt('scheduling.tour.messages.updateSuccess'),
         });

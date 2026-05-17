@@ -27,6 +27,7 @@ describe('waste master-data repository contract', () => {
       'listWasteTours',
       'getWasteTourById',
       'upsertWasteTour',
+      'deleteWasteTour',
       'listWasteLocationTourLinks',
       'getWasteLocationTourLinkById',
       'upsertWasteLocationTourLink',

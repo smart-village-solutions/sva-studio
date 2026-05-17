@@ -1,72 +1,84 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   WasteMasterDataActiveTourBanner,
-  WasteMasterDataLocationsEmptyState,
-  WasteMasterDataLocationsHeader,
-  WasteMasterDataLocationsRow,
   WasteMasterDataLocationsTableToolbar,
   createLocationsTableMaps,
   type WasteMasterDataLocationsTableProps,
 } from './waste-management.master-data-locations-table.parts.js';
+import { useLocationsFiltersOpen } from './waste-management.master-data-locations-table.filters-state.js';
+import { WasteMasterDataLocationsTableSection } from './waste-management.master-data-locations-table.section.js';
+import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
 
-export const WasteMasterDataLocationsTable = ({
-  regions,
-  cities,
-  streets,
-  houseNumbers,
-  collectionLocations,
-  locationTourLinks,
-  selectedLocationIds,
-  allFilteredLocationsSelected,
-  selectedCollectionLocationsCount,
-  availableTours,
-  selectedTourId,
-  onTourFilterChange,
-  onToggleSelectAll,
-  onToggleLocation,
-  onOpenBulkAssignments,
-  onOpenEditLocation,
-  getLocationLabel,
-}: WasteMasterDataLocationsTableProps) => {
+type WasteMasterDataLocationsTableContentProps = WasteMasterDataLocationsTableProps & {
+  readonly filtersOpen: boolean;
+  readonly onToggleFiltersOpen: () => void;
+};
+
+const WasteMasterDataLocationsTableContent = ({
+  filtersOpen,
+  onToggleFiltersOpen,
+  ...props
+}: WasteMasterDataLocationsTableContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const maps = createLocationsTableMaps({ regions, cities, streets, houseNumbers, availableTours, locationTourLinks });
-  const selectedTour = selectedTourId ? maps.toursById.get(selectedTourId) : undefined;
+  const maps = createLocationsTableMaps(props);
+  const selectedTour = props.selectedTourId ? maps.toursById.get(props.selectedTourId) : undefined;
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-white shadow-shell">
+    <section className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">
       <WasteMasterDataLocationsTableToolbar
-        selectedCollectionLocationsCount={selectedCollectionLocationsCount}
-        availableTours={availableTours}
-        allFilteredLocationsSelected={allFilteredLocationsSelected}
-        selectedTourId={selectedTourId}
-        onOpenBulkAssignments={onOpenBulkAssignments}
-        onToggleSelectAll={onToggleSelectAll}
-        onTourFilterChange={onTourFilterChange}
+        selectedCollectionLocationsCount={props.selectedCollectionLocationsCount}
+        availableTours={props.availableTours}
+        filtersOpen={filtersOpen}
+        selectedTourId={props.selectedTourId}
+        allFilteredLocationsSelected={props.allFilteredLocationsSelected}
+        onOpenBulkAssignments={props.onOpenBulkAssignments}
+        onTourFilterChange={props.onTourFilterChange}
+        onToggleSelectAll={props.onToggleSelectAll}
+        onToggleFiltersOpen={onToggleFiltersOpen}
       />
-      <WasteMasterDataActiveTourBanner selectedTour={selectedTour} onTourFilterChange={onTourFilterChange} />
-      {collectionLocations.length ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse" aria-label={pt('masterData.collectionLocations.title')}>
-            <caption className="sr-only">{pt('masterData.locationsWorkspace.table.caption')}</caption>
-            <WasteMasterDataLocationsHeader />
-            <tbody>
-              {collectionLocations.map((location) => (
-                <WasteMasterDataLocationsRow
-                  key={location.id}
-                  location={location}
-                  maps={maps}
-                  selectedLocationIds={selectedLocationIds}
-                  onToggleLocation={onToggleLocation}
-                  onOpenEditLocation={onOpenEditLocation}
-                  getLocationLabel={getLocationLabel}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <WasteMasterDataActiveTourBanner selectedTour={selectedTour} onTourFilterChange={props.onTourFilterChange} />
+      {props.collectionLocations.length ? (
+        <>
+          <WasteMasterDataLocationsTableSection
+            collectionLocations={props.collectionLocations}
+            maps={maps}
+            selectedLocationIds={props.selectedLocationIds}
+            onToggleLocation={props.onToggleLocation}
+            onOpenEditLocation={props.onOpenEditLocation}
+            getLocationLabel={props.getLocationLabel}
+          />
+          <WastePanelTableBottomBar
+            pt={pt}
+            page={props.page}
+            pageSize={props.pageSize}
+            pageCount={props.pageCount}
+            totalItems={props.totalItems}
+            onPageChange={props.onPageChange}
+            onPageSizeChange={props.onPageSizeChange}
+          />
+        </>
       ) : (
-        <WasteMasterDataLocationsEmptyState />
+        <WasteMasterDataLocationsTableSection
+          collectionLocations={props.collectionLocations}
+          maps={maps}
+          selectedLocationIds={props.selectedLocationIds}
+          onToggleLocation={props.onToggleLocation}
+          onOpenEditLocation={props.onOpenEditLocation}
+          getLocationLabel={props.getLocationLabel}
+        />
       )}
     </section>
+  );
+};
+
+export const WasteMasterDataLocationsTable = (props: WasteMasterDataLocationsTableProps) => {
+  const { filtersOpen, setFiltersOpen } = useLocationsFiltersOpen(props.selectedTourId);
+
+  return (
+    <WasteMasterDataLocationsTableContent
+      {...props}
+      filtersOpen={filtersOpen}
+      onToggleFiltersOpen={() => setFiltersOpen((current) => !current)}
+    />
   );
 };

@@ -18,6 +18,10 @@ describe('waste-management search params', () => {
     ).toEqual({
       tab: 'fractions',
       masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
       q: '',
       page: 1,
       pageSize: 25,
@@ -29,6 +33,8 @@ describe('waste-management search params', () => {
       cityId: undefined,
       wasteFractionId: undefined,
       tourId: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
     });
   });
 
@@ -48,10 +54,16 @@ describe('waste-management search params', () => {
         cityId: 'city-1',
         wasteFractionId: 'fraction-1',
         tourId: 'tour-1',
+        tourDateShiftId: 'tour-shift-1',
+        globalDateShiftId: 'global-shift-1',
       })
     ).toEqual({
       tab: 'locations',
       masterDataTab: 'locations',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
       q: 'Bio',
       page: 3,
       pageSize: 50,
@@ -63,6 +75,8 @@ describe('waste-management search params', () => {
       cityId: 'city-1',
       wasteFractionId: 'fraction-1',
       tourId: 'tour-1',
+      tourDateShiftId: 'tour-shift-1',
+      globalDateShiftId: 'global-shift-1',
     });
   });
 
@@ -75,6 +89,10 @@ describe('waste-management search params', () => {
     ).toEqual({
       tab: 'fractions',
       masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
       q: '',
       page: 1,
       pageSize: 25,
@@ -86,6 +104,8 @@ describe('waste-management search params', () => {
       cityId: undefined,
       wasteFractionId: undefined,
       tourId: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
     });
   });
 
@@ -98,6 +118,10 @@ describe('waste-management search params', () => {
     ).toEqual({
       tab: 'fractions',
       masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
       q: '',
       page: 1,
       pageSize: 25,
@@ -109,6 +133,37 @@ describe('waste-management search params', () => {
       cityId: undefined,
       wasteFractionId: undefined,
       tourId: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
+    });
+  });
+
+  it('falls back to the default page size when an unsupported page size is used', () => {
+    expect(
+      normalizeWasteManagementSearchParams({
+        page: '3',
+        pageSize: 'all',
+      })
+    ).toEqual({
+      tab: 'fractions',
+      masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
+      q: '',
+      page: 3,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+      fractionsSortBy: 'name',
+      fractionsSortDirection: 'asc',
+      regionId: undefined,
+      cityId: undefined,
+      wasteFractionId: undefined,
+      tourId: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
     });
   });
 });

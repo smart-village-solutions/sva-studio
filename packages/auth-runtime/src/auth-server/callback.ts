@@ -165,6 +165,7 @@ const persistSession = async (input: {
       issuer: input.authConfig.issuer,
       clientId: input.authConfig.clientId,
       authRealm: input.authConfig.authRealm,
+      redirectUri: input.authConfig.redirectUri,
       postLogoutRedirectUri: input.authConfig.postLogoutRedirectUri,
     },
     accessToken: input.accessToken,

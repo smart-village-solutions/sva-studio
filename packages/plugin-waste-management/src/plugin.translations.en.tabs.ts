@@ -4,13 +4,13 @@ export const wasteManagementPluginTranslationsENTabs = createWasteManagementTabs
   ariaLabel: 'Waste management areas',
   fractions: [
     'Waste types',
-    'Manage fractions, colors, and translations as a dedicated waste management workspace.',
+    'Manage fractions, container sizes, colors, and status in a dedicated waste management workspace.',
     'No waste types yet',
     'Create the first fraction to make collection types available for tours and pickup locations.',
   ],
   tours: [
     'Tours',
-    'Tours, assignments and tour-specific maintenance get their own focused work area.',
+    'Management of tours, waste fractions, and dates.',
     'Tours coming next',
     'The first route already preserves shareable tab and filter state for this area.',
   ],

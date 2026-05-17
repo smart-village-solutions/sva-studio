@@ -31,6 +31,7 @@ export const useWasteToursState = () => {
   const [selectedTour, setSelectedTour] = useState<WasteTourRecord | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
+  const [lastOutcome, setLastOutcome] = useState<'create-success' | 'update-success' | null>(null);
   const [saving, setSaving] = useState(false);
 
   return {
@@ -50,6 +51,7 @@ export const useWasteToursState = () => {
     selectedTour,
     calendarOpen,
     message,
+    lastOutcome,
     saving,
     setLoading,
     setOverview,
@@ -67,6 +69,7 @@ export const useWasteToursState = () => {
     setSelectedTour,
     setCalendarOpen,
     setMessage,
+    setLastOutcome,
     setSaving,
   };
 };

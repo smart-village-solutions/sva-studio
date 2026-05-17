@@ -31,10 +31,63 @@ type MasterDataFractionsCopy = Readonly<{
   table: Readonly<Record<string, string>>;
   actions: Readonly<CrudActionsCopy & { delete: string }>;
   fields: Readonly<Record<string, string>>;
+  createView: MasterDataFractionsCreateViewCopy;
   translationBadge: string;
   dialog: CrudDialogCopy;
   deleteDialog: Readonly<Record<string, string>>;
   messages: Readonly<CrudMessagesCopy & { deleteSuccess: string; deleteError: string; deleteForbidden: string; deleteConflict: string }>;
+}>;
+
+type MasterDataFractionsCreateViewCopy = Readonly<{
+  title: string;
+  description: string;
+  colorPickerLabel: string;
+  sections: Readonly<{
+    basics: string;
+    basicsHint: string;
+    presentation: string;
+    presentationHint: string;
+    visibility: string;
+    visibilityHint: string;
+  }>;
+  fieldHints: Readonly<{
+    name: string;
+    description: string;
+    translationDe: string;
+    translationEn: string;
+    containerSize: string;
+    color: string;
+    active: string;
+  }>;
+  statusHints: Readonly<{
+    active: string;
+    inactive: string;
+  }>;
+  validation: Readonly<{
+    nameRequired: string;
+    colorRequired: string;
+  }>;
+  meta: Readonly<{
+    descriptionCounter: string;
+  }>;
+  actions: Readonly<{
+    backToList: string;
+    cancel: string;
+    savePrimary: string;
+  }>;
+  preview: Readonly<{
+    title: string;
+    description: string;
+    placeholderName: string;
+    placeholderDescription: string;
+    placeholderContainerSize: string;
+    tableTitle: string;
+    tableBody: string;
+  }>;
+  help: Readonly<{
+    title: string;
+    body: string;
+  }>;
 }>;
 
 type CollectionLocationsBulkCopy = Readonly<{
@@ -103,6 +156,7 @@ export const createMasterDataFractionsTranslations = <const TCopy extends Master
     table: copy.table,
     actions: copy.actions,
     fields: copy.fields,
+    createView: copy.createView,
     translationBadge: copy.translationBadge,
     dialog: createCrudDialog(copy.dialog),
     deleteDialog: copy.deleteDialog,

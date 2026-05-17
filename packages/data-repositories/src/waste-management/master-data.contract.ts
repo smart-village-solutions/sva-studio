@@ -64,6 +64,7 @@ export const wasteMasterDataRepositoryContract = {
   listWasteTours: defineRepositoryMethod<(filter?: WasteTourListFilter) => Promise<readonly WasteTourRecord[]>>(),
   getWasteTourById: defineRepositoryMethod<(id: string) => Promise<WasteTourRecord | null>>(),
   upsertWasteTour: defineRepositoryMethod<(input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => Promise<void>>(),
+  deleteWasteTour: defineRepositoryMethod<(id: string) => Promise<void>>(),
   listWasteLocationTourLinks: defineRepositoryMethod<
     (filter?: WasteLocationTourLinkListFilter) => Promise<readonly WasteLocationTourLinkRecord[]>
   >(),

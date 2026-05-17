@@ -1,6 +1,6 @@
 import { createSdkLogger } from '@sva/server-runtime';
 
-import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
+import { getAuthConfig, resolveAuthConfigForInstance, resolveAuthConfigFromSessionAuth } from '../config.js';
 import { isTokenErrorLike } from '../error-guards.js';
 import { buildLogContext } from '../log-context.js';
 import { SessionStoreUnavailableError } from '../runtime-errors.js';
@@ -119,10 +119,43 @@ const hydrateSessionUserFromAccessToken = async (
   return hydratedUser;
 };
 
-const refreshSession = async (sessionId: string, session: Session) => {
-  const authConfig = session.auth
+const resolveRefreshAuthConfig = async (session: Session) => {
+  if (session.auth?.kind === 'instance') {
+    // Instance refresh should reuse the original studio callback origin.
+    // postLogoutRedirectUri stays as a compatibility fallback for legacy sessions
+    // that were persisted before redirectUri became part of the session context.
+    const originSource = session.auth.redirectUri ?? session.auth.postLogoutRedirectUri;
+
+    if (!session.auth.redirectUri) {
+      logger.warn('Instance session refresh fell back to post-logout redirect URI because redirect URI is missing', {
+        instance_id: session.auth.instanceId,
+        post_logout_redirect_uri: session.auth.postLogoutRedirectUri,
+      });
+    }
+
+    let origin: string | undefined;
+    try {
+      origin = new URL(originSource).origin;
+    } catch (error) {
+      logger.warn('Instance session refresh ignored invalid redirect URI', {
+        instance_id: session.auth.instanceId,
+        redirect_uri: session.auth.redirectUri,
+        post_logout_redirect_uri: session.auth.postLogoutRedirectUri,
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+      origin = undefined;
+    }
+
+    return resolveAuthConfigForInstance(session.auth.instanceId, origin ? { origin } : {});
+  }
+
+  return session.auth
     ? resolveAuthConfigFromSessionAuth(session.auth)
     : getAuthConfig();
+};
+
+const refreshSession = async (sessionId: string, session: Session) => {
+  const authConfig = await resolveRefreshAuthConfig(session);
   const config = await getOidcConfig(authConfig);
   const refreshed = await client.refreshTokenGrant(config, session.refreshToken ?? '');
   const updatedUser = buildSessionUser({

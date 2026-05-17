@@ -1,18 +1,28 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
+import { useNavigate } from '@tanstack/react-router';
 
-import { WasteSchedulingContent, WasteSchedulingEmptyState } from './waste-management.scheduling-content.js';
 import { useWasteSchedulingController } from './waste-management.scheduling.controller.js';
-import { GlobalDateShiftDialog, TourDateShiftDialog } from './waste-management.scheduling.dialogs.js';
 import {
-  createDefaultGlobalDateShiftForm,
-  createDefaultTourDateShiftForm,
-} from './waste-management.scheduling.shared.js';
+  useWasteGlobalShiftEditRouteHydration,
+  useWasteSchedulingSuccessRedirect,
+  useWasteTourShiftEditRouteHydration,
+} from './waste-management.scheduling-panel.effects.js';
+import {
+  WasteSchedulingDialogs,
+  WasteSchedulingGlobalFormView,
+  WasteSchedulingListView,
+  WasteSchedulingTourFormView,
+} from './waste-management.scheduling-panel.views.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
 export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagementSearchParams }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const navigate = useNavigate();
   const controller = useWasteSchedulingController(pt, search);
+  useWasteSchedulingSuccessRedirect({ controller, navigate, search });
+  useWasteTourShiftEditRouteHydration({ controller, navigate, search });
+  useWasteGlobalShiftEditRouteHydration({ controller, navigate, search });
 
   if (controller.loading) {
     return <StudioLoadingState>{pt('scheduling.messages.loading')}</StudioLoadingState>;
@@ -22,50 +32,21 @@ export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagem
     return <StudioErrorState>{controller.error}</StudioErrorState>;
   }
 
-  const dialogs = (
-    <>
-      <TourDateShiftDialog
-        open={controller.dialogOpen}
-        mode={controller.dialogMode}
-        form={controller.tourShiftForm}
-        tours={controller.availableTours}
-        saving={controller.saving}
-        message={controller.dialogOpen ? controller.message : null}
-        onOpenChange={(open) => {
-          controller.setDialogOpen(open);
-          if (!open) {
-            controller.setTourShiftForm(createDefaultTourDateShiftForm());
-          }
-        }}
-        onChange={(patch) => controller.setTourShiftForm((current) => ({ ...current, ...patch }))}
-        onSubmit={controller.onSubmitTourShift}
-      />
-      <GlobalDateShiftDialog
-        open={controller.globalDialogOpen}
-        mode={controller.globalDialogMode}
-        form={controller.globalShiftForm}
-        tours={controller.availableTours}
-        saving={controller.saving}
-        message={controller.globalDialogOpen ? controller.message : null}
-        onOpenChange={(open) => {
-          controller.setGlobalDialogOpen(open);
-          if (!open) {
-            controller.setGlobalShiftForm(createDefaultGlobalDateShiftForm());
-          }
-        }}
-        onChange={(patch) => controller.setGlobalShiftForm((current) => ({ ...current, ...patch }))}
-        onSubmit={controller.onSubmitGlobalShift}
-      />
-    </>
-  );
+  const dialogs = <WasteSchedulingDialogs controller={controller} />;
 
-  if (!controller.tourDateShifts.length && !controller.globalDateShifts.length) {
+  if (search.schedulingView === 'create-global' || search.schedulingView === 'edit-global') {
     return (
       <>
-        <WasteSchedulingEmptyState
-          onOpenCreateGlobalShiftDialog={controller.openCreateGlobalShiftDialog}
-          onOpenCreateTourShiftDialog={controller.openCreateTourShiftDialog}
-        />
+        <WasteSchedulingGlobalFormView controller={controller} search={search} />
+        {dialogs}
+      </>
+    );
+  }
+
+  if (search.schedulingView === 'create-tour' || search.schedulingView === 'edit-tour') {
+    return (
+      <>
+        <WasteSchedulingTourFormView controller={controller} search={search} />
         {dialogs}
       </>
     );
@@ -73,15 +54,7 @@ export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagem
 
   return (
     <>
-      <WasteSchedulingContent
-        message={controller.message}
-        globalDateShifts={controller.globalDateShifts}
-        tourDateShifts={controller.tourDateShifts}
-        onOpenCreateGlobalShiftDialog={controller.openCreateGlobalShiftDialog}
-        onOpenCreateTourShiftDialog={controller.openCreateTourShiftDialog}
-        onEditGlobalShiftDialog={controller.openEditGlobalShiftDialog}
-        onEditTourShiftDialog={controller.openEditTourShiftDialog}
-      />
+      <WasteSchedulingListView controller={controller} search={search} />
       {dialogs}
     </>
   );

@@ -13,6 +13,7 @@ vi.mock('@sva/plugin-sdk', () => ({
 
 vi.mock('@sva/studio-ui-react', () => ({
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
   StudioConfirmDialog: ({
     open,
     title,
@@ -60,6 +61,7 @@ vi.mock('@sva/studio-ui-react', () => ({
       </div>
     );
   },
+  cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(' '),
 }));
 
 vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
@@ -75,6 +77,8 @@ describe('WasteMasterDataFractionsContent', () => {
     const onOpenCreateFraction = vi.fn();
     const onOpenEditFraction = vi.fn();
     const onOpenDeleteFraction = vi.fn();
+    const onDeleteFractions = vi.fn();
+    const onToggleFractionStatus = vi.fn();
     const onFractionsSortChange = vi.fn();
     const fraction = {
       id: 'fraction-1',
@@ -82,10 +86,6 @@ describe('WasteMasterDataFractionsContent', () => {
       description: 'Baseline-Fraktion für Seed-Daten',
       color: '#16A34A',
       containerSize: '120l',
-      translations: {
-        de: 'Biotonne',
-        en: 'Organic waste',
-      },
       active: true,
     };
 
@@ -97,7 +97,13 @@ describe('WasteMasterDataFractionsContent', () => {
         onOpenCreateFraction={onOpenCreateFraction}
         onOpenEditFraction={onOpenEditFraction}
         onOpenDeleteFraction={onOpenDeleteFraction}
+        onDeleteFractions={onDeleteFractions}
+        onToggleFractionStatus={onToggleFractionStatus}
         onFractionsSortChange={onFractionsSortChange}
+        page={1}
+        pageSize={25}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
       />
     );
 

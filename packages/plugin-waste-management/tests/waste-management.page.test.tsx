@@ -953,7 +953,8 @@ describe('WasteManagementPage', () => {
   it('creates a waste fraction from the master-data dialog and reloads the overview', async () => {
     searchMock.mockImplementation(() => ({
       tab: 'fractions',
-      masterDataTab: 'locations',
+      masterDataTab: 'fractions',
+      fractionsView: 'create',
       q: '',
       page: 1,
       pageSize: 25,
@@ -995,26 +996,22 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.fractions.actions.openCreate' }));
     fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.name'), {
       target: { value: 'Papier' },
     });
-    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.translationDe'), {
-      target: { value: 'Papier' },
+    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.description'), {
+      target: { value: 'Blaue Tonne' },
     });
-    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.translationEn'), {
-      target: { value: 'Paper' },
-    });
-    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.color'), {
+    fireEvent.change(document.getElementById('waste-fraction-color-text') as HTMLInputElement, {
       target: { value: '#123456' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.fractions.actions.create' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.masterData.fractions.createView.actions.savePrimary' })[0]!);
 
     await waitFor(() => {
-        expect(wasteManagementApiMocks.createWasteManagementFraction).toHaveBeenCalledWith(
+      expect(wasteManagementApiMocks.createWasteManagementFraction).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Papier',
-          translations: { de: 'Papier', en: 'Paper' },
+          description: 'Blaue Tonne',
           color: '#123456',
           active: true,
         })
@@ -1273,6 +1270,7 @@ describe('WasteManagementPage', () => {
     searchMock.mockImplementation(() => ({
       tab: 'locations',
       masterDataTab: 'locations',
+      locationsView: 'create',
       q: '',
       page: 1,
       pageSize: 25,
@@ -1326,27 +1324,26 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createLocation' })
-    );
+    const regionSelect = document.getElementById('waste-location-region-id') as HTMLSelectElement | null;
     const citySelect = document.getElementById('waste-location-city-id') as HTMLSelectElement | null;
     const streetSelect = document.getElementById('waste-location-street-id') as HTMLSelectElement | null;
     const houseNumberSelect = document.getElementById('waste-location-house-number-id') as HTMLSelectElement | null;
+    expect(regionSelect).toBeTruthy();
     expect(citySelect).toBeTruthy();
     expect(streetSelect).toBeTruthy();
     expect(houseNumberSelect).toBeTruthy();
-    if (!citySelect || !streetSelect || !houseNumberSelect) {
+    if (!regionSelect || !citySelect || !streetSelect || !houseNumberSelect) {
       throw new Error('missing collection location selects');
     }
+    regionSelect.value = 'region-1';
+    fireEvent.change(regionSelect);
     citySelect.value = 'city-1';
     fireEvent.change(citySelect);
     streetSelect.value = 'street-1';
     fireEvent.change(streetSelect);
     houseNumberSelect.value = 'house-1';
     fireEvent.change(houseNumberSelect);
-    fireEvent.click(
-      screen.getByRole('button', { name: 'wasteManagement.masterData.collectionLocations.actions.create' })
-    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.masterData.collectionLocations.actions.create' })[0]!);
 
     await waitFor(() => {
       expect(wasteManagementApiMocks.createWasteManagementCollectionLocation).toHaveBeenCalledTimes(1);
@@ -1467,9 +1464,9 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    const locationCheckboxes = screen.getAllByRole('checkbox');
-    const firstSelectableLocation = locationCheckboxes[1];
-    const secondSelectableLocation = locationCheckboxes[2];
+    const locationCheckboxes = Array.from(document.querySelectorAll('tbody input[type="checkbox"]'));
+    const firstSelectableLocation = locationCheckboxes[0];
+    const secondSelectableLocation = locationCheckboxes[1];
     expect(firstSelectableLocation).toBeDefined();
     expect(secondSelectableLocation).toBeDefined();
     if (!firstSelectableLocation || !secondSelectableLocation) {
@@ -1553,6 +1550,7 @@ describe('WasteManagementPage', () => {
   it('creates a waste tour from the tours dialog and reloads the overview', async () => {
     searchMock.mockImplementation(() => ({
       tab: 'tours',
+      toursView: 'create',
       q: '',
       page: 1,
       pageSize: 25,
@@ -1637,7 +1635,6 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tours.actions.openCreate' }));
     fireEvent.change(screen.getByLabelText('wasteManagement.tours.fields.name'), {
       target: { value: 'Papier Mitte' },
     });
@@ -1647,8 +1644,8 @@ describe('WasteManagementPage', () => {
     fireEvent.change(screen.getByLabelText('wasteManagement.tours.fields.firstDate'), {
       target: { value: '2026-05-19' },
     });
-    fireEvent.click(screen.getByText('Restmüll'));
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tours.actions.create' }));
+    fireEvent.click(screen.getByLabelText('Restmüll'));
+    fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.tours.actions.create' })[0]!);
 
     await waitFor(() => {
       expect(wasteManagementApiMocks.createWasteManagementTour).toHaveBeenCalledWith(
@@ -1712,6 +1709,7 @@ describe('WasteManagementPage', () => {
   it('creates a tour-related waste date shift from the scheduling dialog', async () => {
     searchMock.mockImplementation(() => ({
       tab: 'scheduling',
+      schedulingView: 'create-tour',
       q: '',
       page: 1,
       pageSize: 25,
@@ -1754,7 +1752,9 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementSchedulingOverview).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.scheduling.tour.actions.openCreate' }));
+    fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.tour.fields.tourId'), {
+      target: { value: 'tour-1' },
+    });
     fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.tour.fields.originalDate'), {
       target: { value: '2026-12-24' },
     });
@@ -1770,7 +1770,7 @@ describe('WasteManagementPage', () => {
     fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.tour.fields.followUpMode'), {
       target: { value: 'propagate-series' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.scheduling.tour.actions.create' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.scheduling.tour.actions.create' })[0]!);
 
     await waitFor(() => {
         expect(wasteManagementApiMocks.createWasteManagementTourDateShift).toHaveBeenCalledWith(
@@ -1790,6 +1790,7 @@ describe('WasteManagementPage', () => {
   it('creates a global waste date shift from the scheduling dialog', async () => {
     searchMock.mockImplementation(() => ({
       tab: 'scheduling',
+      schedulingView: 'create-global',
       q: '',
       page: 1,
       pageSize: 25,
@@ -1832,7 +1833,6 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementSchedulingOverview).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.scheduling.global.actions.openCreate' }));
     fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.global.fields.originalDate'), {
       target: { value: '2026-01-01' },
     });
@@ -1845,8 +1845,8 @@ describe('WasteManagementPage', () => {
     fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.global.fields.reasonKey'), {
       target: { value: 'new-year' },
     });
-    fireEvent.click(screen.getByText('Restmüll Nord'));
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.scheduling.global.actions.create' }));
+    fireEvent.click(screen.getByLabelText('Restmüll Nord'));
+    fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.scheduling.global.actions.create' })[0]!);
 
     await waitFor(() => {
         expect(wasteManagementApiMocks.createWasteManagementGlobalDateShift).toHaveBeenCalledWith(

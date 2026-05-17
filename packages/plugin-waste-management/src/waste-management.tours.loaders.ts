@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef } from 'react';
 
 import {
   getWasteManagementMasterDataOverview,
-  getWasteManagementSchedulingOverview,
   getWasteManagementToursOverview,
 } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
+import { loadWasteToursAssignmentContext, loadWasteToursSchedulingContext } from './waste-management.tours.loaders.parts.js';
 import type { WasteToursState } from './waste-management.tours.state.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
@@ -38,35 +38,16 @@ export const useWasteToursDataLoading = (state: WasteToursState, pt: Translate) 
         setAssignmentContextLoading(true);
         setError(null);
 
-        void (async () => {
-          try {
-            const masterDataResponse = await getWasteManagementMasterDataOverview({ scope: 'locations' });
-            if (isMountedRef.current) {
-              setMasterDataOverview(masterDataResponse);
-            }
-          } catch {
-            if (isMountedRef.current) {
-              setMasterDataOverview(null);
-            }
-          } finally {
-            if (isMountedRef.current) {
-              setAssignmentContextLoading(false);
-            }
-          }
-        })();
+        void loadWasteToursAssignmentContext({
+          isMounted: () => isMountedRef.current,
+          setAssignmentContextLoading,
+          setMasterDataOverview,
+        });
 
-        void (async () => {
-          try {
-            const schedulingResponse = await getWasteManagementSchedulingOverview();
-            if (isMountedRef.current) {
-              setSchedulingOverview(schedulingResponse);
-            }
-          } catch {
-            if (isMountedRef.current) {
-              setSchedulingOverview(null);
-            }
-          }
-        })();
+        void loadWasteToursSchedulingContext({
+          isMounted: () => isMountedRef.current,
+          setSchedulingOverview,
+        });
       } catch (loadError) {
         if (!isMountedRef.current) return;
         const code = resolveApiErrorCode(loadError);

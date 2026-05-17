@@ -1,14 +1,23 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
+import { useNavigate } from '@tanstack/react-router';
 
 import { useWasteToursController } from './waste-management.tours.controller.js';
-import { WasteToursContent, WasteToursEmptyState } from './waste-management.tours.content.js';
 import { WasteToursDialogs } from './waste-management.tours-dialogs-panel.js';
+import {
+  useWasteToursEditRouteHydration,
+  useWasteToursSuccessRedirect,
+} from './waste-management.tours-panel.effects.js';
+import { WasteToursFormView, WasteToursListView } from './waste-management.tours-panel.views.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
 export const WasteToursPanel = ({ search }: { readonly search: WasteManagementSearchParams }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const navigate = useNavigate();
   const controller = useWasteToursController(pt, search);
+
+  useWasteToursSuccessRedirect({ controller, navigate, search });
+  useWasteToursEditRouteHydration({ controller, navigate, search });
 
   if (controller.loading) {
     return <StudioLoadingState>{pt('tours.messages.loading')}</StudioLoadingState>;
@@ -20,10 +29,10 @@ export const WasteToursPanel = ({ search }: { readonly search: WasteManagementSe
 
   const dialogs = <WasteToursDialogs controller={controller} />;
 
-  if (!controller.tours.length) {
+  if (search.toursView !== 'list') {
     return (
       <>
-        <WasteToursEmptyState onOpenCreateDialog={controller.openCreateDialog} />
+        <WasteToursFormView controller={controller} search={search} />
         {dialogs}
       </>
     );
@@ -31,17 +40,7 @@ export const WasteToursPanel = ({ search }: { readonly search: WasteManagementSe
 
   return (
     <>
-      <WasteToursContent
-        assignmentContextLoading={controller.assignmentContextLoading}
-        message={controller.message}
-        tours={controller.tours}
-        masterDataOverview={controller.masterDataOverview}
-        onOpenCreateDialog={controller.openCreateDialog}
-        onOpenEditDialog={controller.openEditDialog}
-        onOpenCreateAssignmentsDialog={controller.openCreateAssignmentsDialog}
-        onOpenEditAssignmentsDialog={controller.openEditAssignmentsDialog}
-        onOpenCalendar={controller.openCalendar}
-      />
+      <WasteToursListView controller={controller} search={search} />
       {dialogs}
     </>
   );

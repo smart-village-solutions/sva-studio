@@ -147,9 +147,17 @@ SET name = EXCLUDED.name,
   ],
 });
 
+const buildTourDeleteStatement = (id: string): SqlStatement => ({
+  text: `
+DELETE FROM waste_tours
+WHERE id = $1::uuid;
+`,
+  values: [id],
+});
+
 export const createWasteTourRepositoryPart = (
   executor: SqlExecutor
-): Pick<WasteMasterDataRepository, 'listWasteTours' | 'getWasteTourById' | 'upsertWasteTour'> => ({
+): Pick<WasteMasterDataRepository, 'listWasteTours' | 'getWasteTourById' | 'upsertWasteTour' | 'deleteWasteTour'> => ({
   async listWasteTours(filter) {
     const result = await executor.execute<WasteTourRow>(buildTourListStatement(filter));
     return result.rows.map(mapWasteTourRow);
@@ -161,10 +169,14 @@ export const createWasteTourRepositoryPart = (
   async upsertWasteTour(input) {
     await executor.execute(buildTourUpsertStatement(input));
   },
+  async deleteWasteTour(id) {
+    await executor.execute(buildTourDeleteStatement(id));
+  },
 });
 
 export const wasteTourStatements = {
   listWasteTours: buildTourListStatement,
   getWasteTourById: buildTourSelectStatement,
   upsertWasteTour: buildTourUpsertStatement,
+  deleteWasteTour: buildTourDeleteStatement,
 } as const;

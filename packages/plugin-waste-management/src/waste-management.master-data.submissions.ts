@@ -19,5 +19,5 @@ export const createWasteMasterDataSubmitHandlers = ({
   selectedCollectionLocationIds: readonly string[];
 }) => ({
   ...createWasteMasterDataEntitySubmissions({ state, pt, search, loadOverview }),
-  ...createWasteMasterDataLocationSubmissions({ state, pt, loadOverview, selectedCollectionLocationIds }),
+  ...createWasteMasterDataLocationSubmissions({ state, pt, search, loadOverview, selectedCollectionLocationIds }),
 });

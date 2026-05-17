@@ -16,6 +16,8 @@ const controllerState = {
   filteredStreets: [{ id: 'street-1', name: 'Hauptstraße', cityId: 'city-1' }],
   filteredHouseNumbers: [{ id: 'house-1', number: '12', streetId: 'street-1' }],
   filteredCollectionLocations: [{ id: 'location-1', cityId: 'city-1', active: true }],
+  overview: null,
+  fractionForm: { id: 'fraction-form-1' },
   selectedLocationIds: [],
   selectedCollectionLocations: [],
   allFilteredLocationsSelected: false,
@@ -36,6 +38,12 @@ const controllerState = {
   openCreateLocationDialog: vi.fn(),
   openBulkAssignmentsDialog: vi.fn(),
   openEditLocationDialog: vi.fn(),
+  setDialogOpen: vi.fn(),
+  resetFractionForm: vi.fn(),
+  setLastOutcome: vi.fn(),
+  setDialogMode: vi.fn(),
+  setFractionForm: vi.fn(),
+  setMessage: vi.fn(),
 };
 
 vi.mock('@tanstack/react-router', () => ({
@@ -109,16 +117,24 @@ describe('WasteMasterDataPanel', () => {
         tab="fractions"
         search={{
           tab: 'fractions',
-          masterDataTab: 'locations',
+          masterDataTab: 'fractions',
+          fractionsView: 'list',
+          toursView: 'list',
+          locationsView: 'list',
+          schedulingView: 'list',
           q: '',
           page: 1,
           pageSize: 25,
           status: 'all',
           shiftContext: 'all',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
           regionId: undefined,
           cityId: undefined,
           wasteFractionId: undefined,
           tourId: undefined,
+          tourDateShiftId: undefined,
+          globalDateShiftId: undefined,
         }}
       />
     );
@@ -134,15 +150,23 @@ describe('WasteMasterDataPanel', () => {
         search={{
           tab: 'locations',
           masterDataTab: 'locations',
+          fractionsView: 'list',
+          toursView: 'list',
+          locationsView: 'list',
+          schedulingView: 'list',
           q: '',
           page: 1,
           pageSize: 25,
           status: 'all',
           shiftContext: 'all',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
           regionId: undefined,
           cityId: undefined,
           wasteFractionId: undefined,
           tourId: undefined,
+          tourDateShiftId: undefined,
+          globalDateShiftId: undefined,
         }}
       />
     );

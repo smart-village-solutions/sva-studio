@@ -3,6 +3,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import type { WasteManagementHistoryOverview } from './waste-management.api.js';
 import { formatUpdatedAt } from './waste-management.page.support.js';
+import { WastePanelTableBottomBar, WastePanelTableTopBar } from './waste-management.table-frame.js';
 
 type TechnicalItem = WasteManagementHistoryOverview['technical']['items'][number];
 type AuditItem = WasteManagementHistoryOverview['audit']['items'][number];
@@ -11,15 +12,31 @@ const renderOutcomeBadge = (pt: ReturnType<typeof usePluginTranslation>, outcome
   <span className="text-sm">{pt(`overview.outcome.${outcome}`)}</span>
 );
 
-const TechnicalHistoryTable = ({ items }: { readonly items: readonly TechnicalItem[] }) => {
+const TechnicalHistoryTable = ({
+  items,
+  total,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  readonly items: readonly TechnicalItem[];
+  readonly total: number;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly onPageChange: (page: number) => void;
+  readonly onPageSizeChange: (pageSize: number) => void;
+}) => {
   const pt = usePluginTranslation('wasteManagement');
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-white shadow-shell">
+    <div className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">
+      <WastePanelTableTopBar />
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse" aria-label={pt('overview.technical.table.ariaLabel')}>
           <caption className="sr-only">{pt('overview.technical.table.caption')}</caption>
-          <thead className="bg-muted/40 text-left text-sm text-foreground">
+          <thead className="bg-muted/20 text-left text-[13px] text-foreground">
             <tr className="border-b border-border/70">
               <th scope="col" className="px-3 py-3">{pt('overview.technical.table.eventType')}</th>
               <th scope="col" className="px-3 py-3">{pt('overview.technical.table.outcome')}</th>
@@ -32,7 +49,7 @@ const TechnicalHistoryTable = ({ items }: { readonly items: readonly TechnicalIt
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id} className="border-b border-border/60 align-top last:border-b-0">
+              <tr key={item.id} className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20 last:border-b-0">
                 <td className="px-3 py-3 text-sm">{item.eventType}</td>
                 <td className="px-3 py-3">{renderOutcomeBadge(pt, item.outcome)}</td>
                 <td className="px-3 py-3 text-sm">{pt('overview.meta.occurredAt', { value: formatUpdatedAt(item.occurredAt) })}</td>
@@ -45,19 +62,44 @@ const TechnicalHistoryTable = ({ items }: { readonly items: readonly TechnicalIt
           </tbody>
         </table>
       </div>
+      <WastePanelTableBottomBar
+        pt={pt}
+        page={page}
+        pageSize={pageSize}
+        pageCount={pageCount}
+        totalItems={total}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
     </div>
   );
 };
 
-const AuditHistoryTable = ({ items }: { readonly items: readonly AuditItem[] }) => {
+const AuditHistoryTable = ({
+  items,
+  total,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  readonly items: readonly AuditItem[];
+  readonly total: number;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly onPageChange: (page: number) => void;
+  readonly onPageSizeChange: (pageSize: number) => void;
+}) => {
   const pt = usePluginTranslation('wasteManagement');
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-white shadow-shell">
+    <div className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">
+      <WastePanelTableTopBar />
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse" aria-label={pt('overview.audit.table.ariaLabel')}>
           <caption className="sr-only">{pt('overview.audit.table.caption')}</caption>
-          <thead className="bg-muted/40 text-left text-sm text-foreground">
+          <thead className="bg-muted/20 text-left text-[13px] text-foreground">
             <tr className="border-b border-border/70">
               <th scope="col" className="px-3 py-3">{pt('overview.audit.table.actionId')}</th>
               <th scope="col" className="px-3 py-3">{pt('overview.audit.table.outcome')}</th>
@@ -69,7 +111,7 @@ const AuditHistoryTable = ({ items }: { readonly items: readonly AuditItem[] }) 
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id} className="border-b border-border/60 align-top last:border-b-0">
+              <tr key={item.id} className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20 last:border-b-0">
                 <td className="px-3 py-3 text-sm">{item.actionId}</td>
                 <td className="px-3 py-3">{renderOutcomeBadge(pt, item.outcome)}</td>
                 <td className="px-3 py-3 text-sm">{pt('overview.meta.occurredAt', { value: formatUpdatedAt(item.occurredAt) })}</td>
@@ -86,6 +128,15 @@ const AuditHistoryTable = ({ items }: { readonly items: readonly AuditItem[] }) 
           </tbody>
         </table>
       </div>
+      <WastePanelTableBottomBar
+        pt={pt}
+        page={page}
+        pageSize={pageSize}
+        pageCount={pageCount}
+        totalItems={total}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
     </div>
   );
 };
@@ -106,7 +157,19 @@ const OverviewSection = ({
     </div>
   ) : null;
 
-export const WasteOverviewContent = ({ overview }: { readonly overview: WasteManagementHistoryOverview | null }) => {
+export const WasteOverviewContent = ({
+  overview,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  readonly overview: WasteManagementHistoryOverview | null;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly onPageChange: (page: number) => void;
+  readonly onPageSizeChange: (pageSize: number) => void;
+}) => {
   const pt = usePluginTranslation('wasteManagement');
   const auditItems = overview?.audit.items ?? [];
   const technicalItems = overview?.technical.items ?? [];
@@ -129,13 +192,27 @@ export const WasteOverviewContent = ({ overview }: { readonly overview: WasteMan
           title={pt('overview.sections.technical')}
           items={technicalItems}
         >
-          <TechnicalHistoryTable items={technicalItems} />
+          <TechnicalHistoryTable
+            items={technicalItems}
+            total={overview?.technical.total ?? technicalItems.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
         </OverviewSection>
         <OverviewSection
           title={pt('overview.sections.audit')}
           items={auditItems}
         >
-          <AuditHistoryTable items={auditItems} />
+          <AuditHistoryTable
+            items={auditItems}
+            total={overview?.audit.total ?? auditItems.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
         </OverviewSection>
       </div>
     </div>

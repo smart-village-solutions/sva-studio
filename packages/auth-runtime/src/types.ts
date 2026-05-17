@@ -26,6 +26,7 @@ export type SessionAuthContext = RuntimeScopeRef & {
   issuer: string;
   clientId: string;
   authRealm?: string;
+  redirectUri?: string;
   postLogoutRedirectUri: string;
 };
 

@@ -27,6 +27,10 @@ vi.mock('../src/waste-management.master-data-fractions-content.js', () => ({
   },
 }));
 
+vi.mock('../src/waste-management.master-data-fraction-create-content.js', () => ({
+  WasteMasterDataFractionCreateContent: () => <div>fraction-form</div>,
+}));
+
 vi.mock('../src/waste-management.master-data-locations-workspace.js', () => ({
   WasteMasterDataLocationsWorkspace: () => <div>locations-workspace</div>,
 }));
@@ -80,11 +84,22 @@ describe('WasteMasterDataTabContent', () => {
       openBulkAssignmentsDialog: vi.fn(),
       openEditLocationDialog: vi.fn(),
       getLocationLabel: vi.fn(),
+      fractionForm: { id: 'fraction-form-1' },
+      setDialogOpen: vi.fn(),
+      resetFractionForm: vi.fn(),
+      setLastOutcome: vi.fn(),
+      setDialogMode: vi.fn(),
+      setFractionForm: vi.fn(),
+      setMessage: vi.fn(),
     } as never;
 
     const search = {
       tab: 'fractions',
       masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
       q: '',
       page: 1,
       pageSize: 25,
@@ -96,6 +111,8 @@ describe('WasteMasterDataTabContent', () => {
       cityId: undefined,
       wasteFractionId: undefined,
       tourId: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
     } as const;
 
     render(<WasteMasterDataTabContent controller={controller} search={search} tab="fractions" />);
@@ -117,5 +134,99 @@ describe('WasteMasterDataTabContent', () => {
         fractionsSortDirection: 'desc',
       },
     });
+  });
+
+  it('hydrates the fraction edit form from the route waste fraction id after a reload', () => {
+    const controller = {
+      filteredFractions: [],
+      filteredRegions: [],
+      filteredCities: [],
+      filteredStreets: [],
+      filteredHouseNumbers: [],
+      filteredCollectionLocations: [],
+      overview: {
+        fractions: [
+          {
+            id: 'fraction-99',
+            name: 'Papier',
+            color: '#123456',
+            description: 'Altpapier',
+            containerSize: '240L',
+            active: true,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        collectionLocations: [],
+        locationTourLinks: [],
+      },
+      fractionForm: { id: 'stale-form-id' },
+      selectedLocationIds: [],
+      allFilteredLocationsSelected: false,
+      selectedCollectionLocations: [],
+      availableTours: [],
+      toggleSelectAllFilteredLocations: vi.fn(),
+      toggleLocationSelection: vi.fn(),
+      openCreateRegionDialog: vi.fn(),
+      openCreateCityDialog: vi.fn(),
+      openCreateStreetDialog: vi.fn(),
+      openCreateHouseNumberDialog: vi.fn(),
+      openCreateLocationDialog: vi.fn(),
+      openEditRegionDialog: vi.fn(),
+      openEditCityDialog: vi.fn(),
+      openEditStreetDialog: vi.fn(),
+      openEditHouseNumberDialog: vi.fn(),
+      openBulkAssignmentsDialog: vi.fn(),
+      openEditLocationDialog: vi.fn(),
+      getLocationLabel: vi.fn(),
+      setDialogOpen: vi.fn(),
+      resetFractionForm: vi.fn(),
+      setLastOutcome: vi.fn(),
+      setDialogMode: vi.fn(),
+      setFractionForm: vi.fn(),
+      setMessage: vi.fn(),
+    } as never;
+
+    render(
+      <WasteMasterDataTabContent
+        controller={controller}
+        search={{
+          tab: 'fractions',
+          masterDataTab: 'fractions',
+          fractionsView: 'edit',
+          toursView: 'list',
+          locationsView: 'list',
+          schedulingView: 'list',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: 'fraction-99',
+          tourId: undefined,
+          tourDateShiftId: undefined,
+          globalDateShiftId: undefined,
+        }}
+        tab="fractions"
+      />
+    );
+
+    expect(controller.setDialogMode).toHaveBeenCalledWith('edit');
+    expect(controller.setFractionForm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'fraction-99',
+        name: 'Papier',
+        color: '#123456',
+        containerSize: '240L',
+      })
+    );
   });
 });

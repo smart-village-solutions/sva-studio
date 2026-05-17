@@ -21,6 +21,10 @@ vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
 }));
 
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+}));
+
 vi.mock('@sva/studio-ui-react', () => ({
   StudioErrorState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="error">{children}</div>,
   StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="loading">{children}</div>,

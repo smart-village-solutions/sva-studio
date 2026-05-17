@@ -3,7 +3,7 @@ import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
 
 import { useWasteMasterDataController } from './waste-management.master-data.controller.js';
 import { WasteMasterDataDialogs } from './waste-management.master-data-dialogs.js';
-import { WasteMasterDataEmptyState } from './waste-management.master-data-empty-state.js';
+import { WasteMasterDataPanelEmptyState } from './waste-management.master-data-panel.empty-state.js';
 import { WasteMasterDataTabContent } from './waste-management.master-data-tab-content.js';
 import { StatusNotice } from './waste-management.page.support.js';
 import type { WasteManagementSearchParams } from './search-params.js';
@@ -27,8 +27,12 @@ export const WasteMasterDataPanel = ({
   }
 
   const dialogs = <WasteMasterDataDialogs controller={controller} />;
+  const showFractionFormView = tab === 'fractions' && search.fractionsView !== 'list';
+  const showLocationFormView = tab === 'locations' && search.locationsView !== 'list';
 
   if (
+    !showFractionFormView &&
+    !showLocationFormView &&
     !controller.filteredFractions.length &&
     !controller.filteredRegions.length &&
     !controller.filteredCities.length &&
@@ -38,10 +42,7 @@ export const WasteMasterDataPanel = ({
   ) {
     return (
       <>
-        <WasteMasterDataEmptyState
-          onOpenCreateFraction={controller.openCreateDialog}
-          onOpenCreateLocation={controller.openCreateLocationDialog}
-        />
+        <WasteMasterDataPanelEmptyState controller={controller} search={search} />
         {dialogs}
       </>
     );

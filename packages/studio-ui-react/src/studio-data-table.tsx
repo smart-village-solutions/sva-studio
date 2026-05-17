@@ -283,7 +283,7 @@ export function StudioDataTable<TData>({
               type="button"
               variant={action.variant ?? 'outline'}
               className="disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground"
-              disabled={(action.disabled ?? false) || selectedRows.length === 0}
+              disabled={action.disabled ?? selectedRows.length === 0}
               onClick={() => void action.onClick({ selectedRows, clearSelection })}
             >
               {action.label}

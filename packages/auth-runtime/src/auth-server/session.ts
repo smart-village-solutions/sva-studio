@@ -121,12 +121,22 @@ const hydrateSessionUserFromAccessToken = async (
 
 const resolveRefreshAuthConfig = async (session: Session) => {
   if (session.auth?.kind === 'instance') {
+    const originSource = session.auth.redirectUri ?? session.auth.postLogoutRedirectUri;
+
+    if (!session.auth.redirectUri) {
+      logger.warn('Instance session refresh fell back to post-logout redirect URI because redirect URI is missing', {
+        instance_id: session.auth.instanceId,
+        post_logout_redirect_uri: session.auth.postLogoutRedirectUri,
+      });
+    }
+
     let origin: string | undefined;
     try {
-      origin = new URL(session.auth.postLogoutRedirectUri).origin;
+      origin = new URL(originSource).origin;
     } catch (error) {
-      logger.warn('Instance session refresh ignored invalid post-logout redirect URI', {
+      logger.warn('Instance session refresh ignored invalid redirect URI', {
         instance_id: session.auth.instanceId,
+        redirect_uri: session.auth.redirectUri,
         post_logout_redirect_uri: session.auth.postLogoutRedirectUri,
         error_message: error instanceof Error ? error.message : String(error),
       });

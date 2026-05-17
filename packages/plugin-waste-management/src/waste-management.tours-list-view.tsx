@@ -1,9 +1,7 @@
-import { useNavigate } from '@tanstack/react-router';
-
 import { useWasteToursController } from './waste-management.tours.controller.js';
 import { WasteToursContent, WasteToursEmptyState } from './waste-management.tours.content.js';
-import { createDefaultTourForm, mapTourToForm } from './waste-management.tours.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+import { useWasteToursListNavigation } from './waste-management.tours-list-view.navigation.js';
 
 type WasteToursController = ReturnType<typeof useWasteToursController>;
 
@@ -14,21 +12,10 @@ export const WasteToursListView = ({
   readonly controller: WasteToursController;
   readonly search: WasteManagementSearchParams;
 }) => {
-  const navigate = useNavigate();
+  const navigation = useWasteToursListNavigation(controller, search);
 
   if (!controller.tours.length) {
-    return (
-      <WasteToursEmptyState
-        onOpenCreateDialog={() => {
-          controller.setDialogMode('create');
-          controller.setDialogOpen(false);
-          controller.setTourForm(createDefaultTourForm());
-          controller.setMessage(null);
-          controller.setLastOutcome(null);
-          void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'create', tourId: undefined } });
-        }}
-      />
-    );
+    return <WasteToursEmptyState onOpenCreateDialog={navigation.openCreate} />;
   }
 
   return (
@@ -39,22 +26,8 @@ export const WasteToursListView = ({
       fractions={controller.availableFractions}
       masterDataOverview={controller.masterDataOverview}
       schedulingOverview={controller.schedulingOverview}
-      onOpenCreateDialog={() => {
-        controller.setDialogMode('create');
-        controller.setDialogOpen(false);
-        controller.setTourForm(createDefaultTourForm());
-        controller.setMessage(null);
-        controller.setLastOutcome(null);
-        void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'create', tourId: undefined } });
-      }}
-      onOpenEditDialog={(tour) => {
-        controller.setDialogMode('edit');
-        controller.setDialogOpen(false);
-        controller.setTourForm(mapTourToForm(tour));
-        controller.setMessage(null);
-        controller.setLastOutcome(null);
-        void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'edit', tourId: tour.id } });
-      }}
+      onOpenCreateDialog={navigation.openCreate}
+      onOpenEditDialog={navigation.openEdit}
       onOpenCreateAssignmentsDialog={controller.openCreateAssignmentsDialog}
       onOpenEditAssignmentsDialog={controller.openEditAssignmentsDialog}
       onOpenCalendar={controller.openCalendar}
@@ -66,18 +39,10 @@ export const WasteToursListView = ({
       pageSize={search.pageSize}
       query={search.q}
       status={search.status}
-      onPageChange={(page) => {
-        void navigate({ to: '/plugins/waste-management', search: { ...search, page } });
-      }}
-      onPageSizeChange={(pageSize) => {
-        void navigate({ to: '/plugins/waste-management', search: { ...search, page: 1, pageSize } });
-      }}
-      onQueryChange={(q) => {
-        void navigate({ to: '/plugins/waste-management', search: { ...search, q, page: 1 } });
-      }}
-      onStatusChange={(status) => {
-        void navigate({ to: '/plugins/waste-management', search: { ...search, status, page: 1 } });
-      }}
+      onPageChange={navigation.setPage}
+      onPageSizeChange={navigation.setPageSize}
+      onQueryChange={navigation.setQuery}
+      onStatusChange={navigation.setStatus}
     />
   );
 };

@@ -5,6 +5,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioPageHeader } from '@sva/studio-ui-react';
 
 import { WasteSchedulingGlobalFields } from './waste-management.scheduling-global-fields.js';
+import { resolveWasteSchedulingFormCopy } from './waste-management.scheduling-form.copy.js';
 import { WasteSchedulingTourFields } from './waste-management.scheduling-tour-fields.js';
 import type {
   GlobalDateShiftFormState,
@@ -35,17 +36,15 @@ type WasteSchedulingFormContentProps =
 
 export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const translationBase = props.variant === 'global' ? 'scheduling.global' : 'scheduling.tour';
+  const copy = resolveWasteSchedulingFormCopy(props.variant, props.mode);
   const saveLabel = props.saving
-    ? pt(`${translationBase}.actions.saving`)
-    : props.mode === 'create'
-      ? pt(`${translationBase}.actions.create`)
-      : pt(`${translationBase}.actions.save`);
+    ? pt(copy.savingKey)
+    : pt(copy.submitKey);
 
   const topActions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
       <Button type="button" variant="outline" onClick={props.onCancel} disabled={props.saving}>
-        {pt(`${translationBase}.actions.cancel`)}
+        {pt(copy.cancelKey)}
       </Button>
       <Button type="submit" form="waste-scheduling-form" disabled={props.saving}>
         {saveLabel}
@@ -56,8 +55,8 @@ export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProp
   return (
     <div className="space-y-6">
       <StudioPageHeader
-        title={pt(`${translationBase}.dialog.${props.mode === 'create' ? 'createTitle' : 'editTitle'}`)}
-        description={pt(`${translationBase}.dialog.${props.mode === 'create' ? 'createDescription' : 'editDescription'}`)}
+        title={pt(copy.titleKey)}
+        description={pt(copy.descriptionKey)}
         actions={topActions}
       />
 
@@ -85,7 +84,7 @@ export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProp
             {saveLabel}
           </Button>
           <Button type="button" variant="outline" onClick={props.onCancel} disabled={props.saving}>
-            {pt(`${translationBase}.actions.cancel`)}
+            {pt(copy.cancelKey)}
           </Button>
         </div>
       </form>

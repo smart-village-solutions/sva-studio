@@ -450,6 +450,35 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getAllByText('a')).toHaveLength(2);
   });
 
+  it('keeps a bulk action enabled without selection when disabled is explicitly false', () => {
+    const onBulk = vi.fn();
+
+    render(
+      <StudioDataTable
+        ariaLabel="News"
+        labels={tableLabels}
+        data={[{ id: 'a', title: 'Alpha' }]}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title }]}
+        emptyState={<p>Keine Daten</p>}
+        bulkActions={[
+          {
+            id: 'import',
+            label: 'Importieren',
+            disabled: false,
+            onClick: ({ selectedRows }) => onBulk(selectedRows),
+          },
+        ]}
+      />
+    );
+
+    const importButton = screen.getByRole('button', { name: 'Importieren' });
+    expect(importButton.hasAttribute('disabled')).toBe(false);
+
+    fireEvent.click(importButton);
+    expect(onBulk).toHaveBeenCalledWith([]);
+  });
+
   it('renders the compact card layout and handles mobile row selection', () => {
     const originalResizeObserver = globalThis.ResizeObserver;
     const disconnect = vi.fn();

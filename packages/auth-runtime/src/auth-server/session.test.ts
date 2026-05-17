@@ -68,6 +68,7 @@ const auth: SessionAuthContext = {
   authRealm: 'tenant-a',
   issuer: 'https://issuer.example/realms/tenant-a',
   clientId: 'tenant-client',
+  redirectUri: 'https://tenant.example/auth/callback',
   postLogoutRedirectUri: 'https://tenant.example/',
 };
 
@@ -245,13 +246,42 @@ describe('auth server session resolution', () => {
     expect(state.resolveAuthConfigFromSessionAuth).not.toHaveBeenCalled();
   });
 
-  it('logs invalid instance redirect uris before falling back to the default tenant config lookup', async () => {
+  it('prefers the redirect uri origin over the post-logout redirect uri during instance refresh', async () => {
     state.getSession
       .mockResolvedValueOnce(
         createSession({
           auth: {
             ...auth,
-            postLogoutRedirectUri: 'not-a-valid-url',
+            redirectUri: 'https://studio.tenant.example/auth/callback',
+            postLogoutRedirectUri: 'https://marketing.example/logout',
+          },
+          expiresAt: 5_100,
+        })
+      )
+      .mockResolvedValueOnce(
+        createSession({
+          user: completeUser,
+          accessToken: 'refreshed-access-token',
+          expiresAt: 9_000,
+        })
+      );
+
+    const { getSessionUser } = await import('./session.js');
+
+    await expect(getSessionUser('session-1')).resolves.toEqual(completeUser);
+    expect(state.resolveAuthConfigForInstance).toHaveBeenCalledWith('tenant-a', {
+      origin: 'https://studio.tenant.example',
+    });
+  });
+
+  it('falls back to the post-logout redirect uri for legacy instance sessions without redirect uri', async () => {
+    state.getSession
+      .mockResolvedValueOnce(
+        createSession({
+          auth: {
+            ...auth,
+            redirectUri: undefined,
+            postLogoutRedirectUri: 'https://legacy-tenant.example/logout',
           },
           expiresAt: 5_100,
         })
@@ -268,13 +298,15 @@ describe('auth server session resolution', () => {
 
     await expect(getSessionUser('session-1')).resolves.toEqual(completeUser);
     expect(state.logger.warn).toHaveBeenCalledWith(
-      'Instance session refresh ignored invalid post-logout redirect URI',
+      'Instance session refresh fell back to post-logout redirect URI because redirect URI is missing',
       expect.objectContaining({
         instance_id: 'tenant-a',
-        post_logout_redirect_uri: 'not-a-valid-url',
+        post_logout_redirect_uri: 'https://legacy-tenant.example/logout',
       })
     );
-    expect(state.resolveAuthConfigForInstance).toHaveBeenCalledWith('tenant-a', {});
+    expect(state.resolveAuthConfigForInstance).toHaveBeenCalledWith('tenant-a', {
+      origin: 'https://legacy-tenant.example',
+    });
   });
 
   it('returns the fallback user and preserves expiry when token refresh fails before expiry', async () => {

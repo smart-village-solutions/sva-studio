@@ -334,11 +334,12 @@ describe('server transport', () => {
     expect(startFetch).toHaveBeenCalledTimes(1);
   });
 
-  it('does not bootstrap the plugin worker when the runtime flag disables it', async () => {
+  it('does not import or register plugin operation handlers when the runtime flag disables the worker', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_ENABLED', 'false');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    registerStudioPluginOperationHandlersMock.mockRejectedValue(new Error('missing runtime requirement'));
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
@@ -350,6 +351,7 @@ describe('server transport', () => {
 
     await expect(response.text()).resolves.toBe('ok');
     expect(ensurePluginOperationWorkerStartedMock).not.toHaveBeenCalled();
+    expect(registerStudioPluginOperationHandlersMock).not.toHaveBeenCalled();
   });
 
   it('retries worker bootstrap after a transient startup failure and logs the failure', async () => {

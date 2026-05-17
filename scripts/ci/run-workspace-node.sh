@@ -15,8 +15,17 @@ find_workspace_node() {
   fi
 
   if [ -f "${workspace_root}/.nvmrc" ] && [ -n "${HOME:-}" ]; then
+    local requested_version
+    requested_version="$(tr -d '[:space:]v' < "${workspace_root}/.nvmrc")"
+    local exact_candidate
+    exact_candidate="${HOME}/.nvm/versions/node/v${requested_version}/bin/node"
+    if [ -x "${exact_candidate}" ]; then
+      printf '%s\n' "${exact_candidate}"
+      return 0
+    fi
+
     local requested_major
-    requested_major="$(tr -d '[:space:]v' < "${workspace_root}/.nvmrc")"
+    requested_major="${requested_version%%.*}"
     local candidate
     for candidate in "${HOME}"/.nvm/versions/node/v"${requested_major}".*/bin/node; do
       if [ -x "${candidate}" ]; then

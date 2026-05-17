@@ -13,12 +13,12 @@ export const wasteManagementAllPageSize = 2_147_483_647;
 
 export type WasteManagementTabId = (typeof wasteManagementTabs)[number];
 export type WasteManagementMasterDataTabId = (typeof wasteManagementMasterDataTabs)[number];
-export type WasteManagementFractionsView = (typeof wasteManagementFractionsViews)[number];
-export type WasteManagementToursView = (typeof wasteManagementToursViews)[number];
-export type WasteManagementLocationsView = (typeof wasteManagementLocationsViews)[number];
-export type WasteManagementSchedulingView = (typeof wasteManagementSchedulingViews)[number];
-export type WasteManagementStatusFilter = (typeof wasteManagementStatusFilters)[number];
-export type WasteManagementShiftContext = (typeof wasteManagementShiftContexts)[number];
+type WasteManagementFractionsView = (typeof wasteManagementFractionsViews)[number];
+type WasteManagementToursView = (typeof wasteManagementToursViews)[number];
+type WasteManagementLocationsView = (typeof wasteManagementLocationsViews)[number];
+type WasteManagementSchedulingView = (typeof wasteManagementSchedulingViews)[number];
+type WasteManagementStatusFilter = (typeof wasteManagementStatusFilters)[number];
+type WasteManagementShiftContext = (typeof wasteManagementShiftContexts)[number];
 export type WasteManagementFractionSortField = (typeof wasteManagementFractionSortFields)[number];
 export type WasteManagementFractionSortDirection = (typeof wasteManagementFractionSortDirections)[number];
 
@@ -136,6 +136,7 @@ export const normalizeWasteManagementSearchParams = (
   search: Record<string, unknown>
 ): WasteManagementSearchParams => {
   const tab = normalizeTab(search.tab);
+  const pageSize = normalizePageSize(search.pageSize);
 
   return {
     tab,
@@ -145,8 +146,8 @@ export const normalizeWasteManagementSearchParams = (
     locationsView: normalizeLocationsView(search.locationsView),
     schedulingView: normalizeSchedulingView(search.schedulingView),
     q: compactOptionalString(search.q) ?? '',
-    page: normalizePositiveInteger(search.page, 1),
-    pageSize: normalizePageSize(search.pageSize),
+    page: pageSize === wasteManagementAllPageSize ? 1 : normalizePositiveInteger(search.page, 1),
+    pageSize,
     status: normalizeStatus(search.status),
     shiftContext: normalizeShiftContext(search.shiftContext),
     fractionsSortBy: normalizeFractionsSortBy(search.fractionsSortBy),

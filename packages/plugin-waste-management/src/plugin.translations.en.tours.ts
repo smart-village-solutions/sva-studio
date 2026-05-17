@@ -96,6 +96,7 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     createSuccess: 'The waste tour was created.',
     updateSuccess: 'The waste tour was updated.',
     deleteSuccess: 'The waste tour was deleted.',
+    deletePartialSuccess: '{{count}} of {{total}} waste tours were deleted.',
     saveError: 'The waste tour could not be saved.',
     saveForbidden: 'Missing permission to save waste tours.',
     deleteError: 'The waste tour could not be deleted.',

@@ -1,10 +1,6 @@
 import { wasteManagementCoreHandlers } from './core.js';
 import { sharedWasteManagementDeps, withAuthenticatedWasteManagementHandler } from './server-context.js';
-import {
-  wasteManagementEntityLoaders,
-  wasteManagementEntitySavers,
-  wasteManagementOverviewLoaders,
-} from './server-loaders.js';
+import { wasteManagementEntityLoaders, wasteManagementEntitySavers, wasteManagementOverviewLoaders } from './server-loaders.js';
 
 const {
   createWasteManagementCityInternal,
@@ -43,27 +39,8 @@ const {
   updateWasteManagementTourInternal,
 } = wasteManagementCoreHandlers;
 
-const {
-  loadMasterDataOverview,
-  loadMasterDataFractionsOverview,
-  loadMasterDataLocationsOverview,
-  loadSchedulingOverview,
-  loadToursOverview,
-  loadWasteHistoryOverview,
-} =
-  wasteManagementOverviewLoaders;
-const {
-  loadWasteCityById,
-  loadWasteCollectionLocationById,
-  loadWasteFractionById,
-  loadWasteGlobalDateShiftById,
-  loadWasteHouseNumberById,
-  loadWasteLocationTourLinkById,
-  loadWasteRegionById,
-  loadWasteStreetById,
-  loadWasteTourById,
-  loadWasteTourDateShiftById,
-} = wasteManagementEntityLoaders;
+const { loadMasterDataOverview, loadMasterDataFractionsOverview, loadMasterDataLocationsOverview, loadSchedulingOverview, loadToursOverview, loadWasteHistoryOverview } = wasteManagementOverviewLoaders;
+const { loadWasteCityById, loadWasteCollectionLocationById, loadWasteFractionById, loadWasteGlobalDateShiftById, loadWasteHouseNumberById, loadWasteLocationTourLinkById, loadWasteRegionById, loadWasteStreetById, loadWasteTourById, loadWasteTourDateShiftById } = wasteManagementEntityLoaders;
 const {
   saveWasteCity,
   saveWasteCollectionLocation,

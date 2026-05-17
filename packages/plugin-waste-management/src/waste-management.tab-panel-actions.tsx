@@ -1,4 +1,4 @@
-import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 const WasteTabPanelActionsContext = createContext<((actions: ReactNode | null) => void) | null>(null);
 
@@ -22,7 +22,7 @@ export const WasteTabPanelActionsProvider = ({
 export const useWasteTabPanelActions = (actions: ReactNode | null) => {
   const setActions = useContext(WasteTabPanelActionsContext);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!setActions) {
       return;
     }

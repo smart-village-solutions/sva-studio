@@ -107,6 +107,7 @@ describe('WasteToursContent', () => {
         onToggleTourStatus={vi.fn(async () => undefined)}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
+        saving={false}
         page={1}
         pageSize={25}
         query=""
@@ -131,7 +132,7 @@ describe('WasteToursContent', () => {
     expect(screen.getByText('Restmüll')).toBeTruthy();
     expect(screen.getByText('Biomüll')).toBeTruthy();
     expect(screen.getByText('tours.table.noShifts')).toBeTruthy();
-    expect(screen.getByText('2')).toBeTruthy();
+    expect(screen.getByRole('cell', { name: '2' })).toBeTruthy();
     expect(screen.queryByText('tours.meta.count:1')).toBeNull();
     expect(screen.getAllByTestId('badge')).toHaveLength(2);
 
@@ -174,6 +175,7 @@ describe('WasteToursContent', () => {
         onToggleTourStatus={vi.fn(async () => undefined)}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
+        saving={false}
         page={1}
         pageSize={25}
         query=""

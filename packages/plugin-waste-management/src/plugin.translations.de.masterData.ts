@@ -135,6 +135,7 @@ export const wasteManagementPluginTranslationsDEMasterData = createWasteManageme
       createSuccess: 'Die Waste-Fraktion wurde angelegt.',
       updateSuccess: 'Die Waste-Fraktion wurde aktualisiert.',
       deleteSuccess: 'Die Waste-Fraktion wurde gelöscht.',
+      deletePartialSuccess: '{{count}} von {{total}} Waste-Fraktionen wurden gelöscht.',
       saveError: 'Die Waste-Fraktion konnte nicht gespeichert werden.',
       saveForbidden: 'Für das Speichern von Waste-Fraktionen fehlt die Berechtigung.',
       deleteError: 'Die Waste-Fraktion konnte nicht gelöscht werden.',

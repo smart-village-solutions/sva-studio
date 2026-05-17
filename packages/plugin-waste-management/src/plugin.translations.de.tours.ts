@@ -150,6 +150,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     createSuccess: 'Die Waste-Tour wurde angelegt.',
     updateSuccess: 'Die Waste-Tour wurde aktualisiert.',
     deleteSuccess: 'Die Waste-Tour wurde gelöscht.',
+    deletePartialSuccess: '{{count}} von {{total}} Waste-Touren wurden gelöscht.',
     saveError: 'Die Waste-Tour konnte nicht gespeichert werden.',
     saveForbidden: 'Für das Speichern von Waste-Touren fehlt die Berechtigung.',
     deleteError: 'Die Waste-Tour konnte nicht gelöscht werden.',

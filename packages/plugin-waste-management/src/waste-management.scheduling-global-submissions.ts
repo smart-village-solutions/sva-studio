@@ -19,12 +19,13 @@ export const createWasteSchedulingGlobalSubmitHandlers = ({
   readonly pt: Translate;
   readonly loadOverview: (active?: boolean) => Promise<void>;
 }) => ({
-  onSubmitGlobalShift: async (event: FormEvent<HTMLFormElement>) => {
+  onSubmitGlobalShift: async (event: FormEvent<HTMLFormElement>, mode = state.globalDialogMode) => {
     event.preventDefault();
     state.setSaving(true);
     state.setMessage(null);
+    state.setLastOutcome(null);
     try {
-      if (state.globalDialogMode === 'create') {
+      if (mode === 'create') {
         await createWasteManagementGlobalDateShift(toCreateGlobalDateShiftInput(state.globalShiftForm));
       } else {
         await updateWasteManagementGlobalDateShift(
@@ -35,10 +36,11 @@ export const createWasteSchedulingGlobalSubmitHandlers = ({
       await loadOverview(true);
       startTransition(() => {
         state.setGlobalDialogOpen(false);
+        state.setLastOutcome(mode === 'create' ? 'create-global-success' : 'update-global-success');
         state.setMessage({
           kind: 'success',
           text:
-            state.globalDialogMode === 'create'
+            mode === 'create'
               ? pt('scheduling.global.messages.createSuccess')
               : pt('scheduling.global.messages.updateSuccess'),
         });

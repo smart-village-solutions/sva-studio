@@ -135,6 +135,7 @@ export const wasteManagementPluginTranslationsENMasterData = createWasteManageme
       createSuccess: 'The waste fraction was created.',
       updateSuccess: 'The waste fraction was updated.',
       deleteSuccess: 'The waste fraction was deleted.',
+      deletePartialSuccess: '{{count}} of {{total}} waste fractions were deleted.',
       saveError: 'The waste fraction could not be saved.',
       saveForbidden: 'Missing permission to save waste fractions.',
       deleteError: 'The waste fraction could not be deleted.',

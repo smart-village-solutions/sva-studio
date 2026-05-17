@@ -25,6 +25,7 @@ export const createWasteMasterDataLocationSubmissions = ({
     event.preventDefault();
     state.setSaving(true);
     state.setMessage(null);
+    state.setLastOutcome(null);
     const formData = new FormData(event.currentTarget);
     const submittedForm: CollectionLocationFormState = {
       ...state.locationForm,
@@ -40,7 +41,14 @@ export const createWasteMasterDataLocationSubmissions = ({
         await updateWasteManagementCollectionLocation(state.locationForm.id, wasteMasterDataInputMappers.toUpdateCollectionLocationInput(submittedForm));
       }
       await loadOverview(true);
-      applySuccess(() => state.setLocationDialogOpen(false), state.setMessage, state.locationDialogMode === 'create' ? pt('masterData.collectionLocations.messages.createSuccess') : pt('masterData.collectionLocations.messages.updateSuccess'));
+      applySuccess(
+        () => state.setLocationDialogOpen(false),
+        state.setMessage,
+        state.locationDialogMode === 'create'
+          ? pt('masterData.collectionLocations.messages.createSuccess')
+          : pt('masterData.collectionLocations.messages.updateSuccess'),
+        () => state.setLastOutcome(state.locationDialogMode === 'create' ? 'location-create-success' : 'location-update-success')
+      );
     } catch (saveError) {
       const code = resolveApiErrorCode(saveError);
       state.setMessage({ kind: 'error', text: code === 'forbidden' ? pt('masterData.collectionLocations.messages.saveForbidden') : pt('masterData.collectionLocations.messages.saveError') });
@@ -52,6 +60,7 @@ export const createWasteMasterDataLocationSubmissions = ({
     event.preventDefault();
     state.setSaving(true);
     state.setMessage(null);
+    state.setLastOutcome(null);
     try {
       await createWasteManagementLocationTourLinksBulk(
         wasteMasterDataInputMappers.toCreateLocationTourLinksBulkInput(state.bulkAssignmentsForm, selectedCollectionLocationIds)

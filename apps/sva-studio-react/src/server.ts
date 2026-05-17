@@ -9,14 +9,11 @@ import {
   readServerFunctionResponseBodyForDiagnostics,
   resolveServerFunctionBranchDecision,
 } from './lib/server-function-request-diagnostics.server';
-import { registerStudioPluginOperationHandlers } from './lib/plugin-operation-runtime.server';
 
 const startFetch = createStartHandler(defaultStreamHandler);
 const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'development';
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
 const pluginOperationWorkerEnabled = process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED !== 'false';
-
-await registerStudioPluginOperationHandlers();
 
 type WorkspaceContext = {
   readonly requestId?: string | null;
@@ -51,6 +48,9 @@ let dispatchAuthRouteRequestPromise: Promise<typeof import('@sva/routing/server'
 let ensurePluginOperationWorkerStartedPromise:
   | Promise<typeof import('@sva/auth-runtime/server')['ensurePluginOperationWorkerStarted']>
   | null = null;
+let registerStudioPluginOperationHandlersPromise:
+  | Promise<typeof import('./lib/plugin-operation-runtime.server')['registerStudioPluginOperationHandlers']>
+  | null = null;
 let dispatchMainserverNewsRequestPromise:
   | Promise<typeof import('./lib/mainserver-news-api.server')['dispatchMainserverNewsRequest']>
   | null = null;
@@ -60,6 +60,7 @@ let dispatchMainserverEventsRequestPromise:
 let dispatchMainserverPoiRequestPromise:
   | Promise<typeof import('./lib/mainserver-poi-api.server')['dispatchMainserverPoiRequest']>
   | null = null;
+let pluginOperationHandlerRegistrationPromise: Promise<void> | null = null;
 let pluginOperationWorkerBootstrapPromise: Promise<void> | null = null;
 const getSdk = async (): Promise<RequestContextSdk> => {
   sdkPromise ??= import('@sva/server-runtime') as Promise<RequestContextSdk>;
@@ -76,6 +77,13 @@ const getEnsurePluginOperationWorkerStarted = async () => {
     (mod) => mod.ensurePluginOperationWorkerStarted
   );
   return ensurePluginOperationWorkerStartedPromise;
+};
+
+const getRegisterStudioPluginOperationHandlers = async () => {
+  registerStudioPluginOperationHandlersPromise ??= import('./lib/plugin-operation-runtime.server').then(
+    (mod) => mod.registerStudioPluginOperationHandlers
+  );
+  return registerStudioPluginOperationHandlersPromise;
 };
 
 const getDispatchMainserverNewsRequest = async () => {
@@ -99,6 +107,19 @@ const getDispatchMainserverPoiRequest = async () => {
   return dispatchMainserverPoiRequestPromise;
 };
 
+const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
+  pluginOperationHandlerRegistrationPromise ??= (async () => {
+    const registerPluginOperationHandlers = await getRegisterStudioPluginOperationHandlers();
+    await registerPluginOperationHandlers();
+  })().catch((error) => {
+    pluginOperationHandlerRegistrationPromise = null;
+    registerStudioPluginOperationHandlersPromise = null;
+    throw error;
+  });
+
+  await pluginOperationHandlerRegistrationPromise;
+};
+
 const startPluginOperationWorkerInBackground = (): void => {
   if (!pluginOperationWorkerEnabled) {
     return;
@@ -110,6 +131,7 @@ const startPluginOperationWorkerInBackground = (): void => {
 
   pluginOperationWorkerBootstrapPromise = (async () => {
     try {
+      await ensurePluginOperationHandlersRegistered();
       const startWorker = await getEnsurePluginOperationWorkerStarted();
       await startWorker();
     } catch (error) {
@@ -185,6 +207,10 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       status: mainserverPoiResponse.status,
     });
     return mainserverPoiResponse;
+  }
+
+  if (pluginOperationWorkerEnabled) {
+    await ensurePluginOperationHandlersRegistered();
   }
 
   const dispatchAuthRouteRequest = await getDispatchAuthRouteRequest();

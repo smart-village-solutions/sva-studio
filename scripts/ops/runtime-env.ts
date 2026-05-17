@@ -2059,6 +2059,17 @@ SELECT json_build_object(
       ON r.instance_id = ar.instance_id
      AND r.id = ar.role_id
     WHERE a.keycloak_subject = ${sqlLiteral(keycloakSubject)}
+  ), '[]'::json),
+  'persisted_organization_ids', COALESCE((
+    SELECT json_agg(DISTINCT ao.organization_id ORDER BY ao.organization_id)
+    FROM iam.accounts a
+    JOIN iam.instance_memberships im
+      ON im.account_id = a.id
+     AND im.instance_id = ${sqlLiteral(instanceId)}
+    JOIN iam.account_organizations ao
+      ON ao.instance_id = im.instance_id
+     AND ao.account_id = im.account_id
+    WHERE a.keycloak_subject = ${sqlLiteral(keycloakSubject)}
   ), '[]'::json)
 )::text;
 `;
@@ -2069,6 +2080,7 @@ SELECT json_build_object(
       account_exists?: boolean;
       instance_account_exists?: boolean;
       membership_exists?: boolean;
+      persisted_organization_ids?: string[];
       persisted_role_keys?: string[];
     };
 
@@ -2096,9 +2108,42 @@ SELECT json_build_object(
       );
     }
 
+    if ((payload.persisted_role_keys ?? []).length === 0) {
+      return toDoctorCheck(
+        'actor-diagnosis',
+        'error',
+        'missing_actor_role_assignments',
+        'Der Actor-Account hat lokal keine persistierten Rollen-Zuweisungen.',
+        {
+          instanceId,
+          keycloakSubject,
+          persistedOrganizationIds: payload.persisted_organization_ids ?? [],
+          persistedRoles: payload.persisted_role_keys ?? [],
+          sessionRoles,
+        }
+      );
+    }
+
+    if ((payload.persisted_organization_ids ?? []).length === 0) {
+      return toDoctorCheck(
+        'actor-diagnosis',
+        'error',
+        'missing_actor_organization_membership',
+        'Der Actor-Account hat lokal keine Organisations-Zuordnungen.',
+        {
+          instanceId,
+          keycloakSubject,
+          persistedOrganizationIds: payload.persisted_organization_ids ?? [],
+          persistedRoles: payload.persisted_role_keys ?? [],
+          sessionRoles,
+        }
+      );
+    }
+
     return toDoctorCheck('actor-diagnosis', 'ok', 'actor_resolved', 'Actor-Account und Instanz-Mitgliedschaft sind vorhanden.', {
       instanceId,
       keycloakSubject,
+      persistedOrganizationIds: payload.persisted_organization_ids ?? [],
       persistedRoles: payload.persisted_role_keys ?? [],
       sessionRoles,
     });

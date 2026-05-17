@@ -76,6 +76,8 @@
     --sidebar-accent-foreground: 16 16 11;
     --sidebar-border: 230 230 223;
     --sidebar-ring: 78 188 65;
+    --waste-panel-surface: 232 232 216;
+    --waste-panel-overlay: 255 255 255;
     --font-weight-normal: 400;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
@@ -104,43 +106,46 @@
 
   html.dark,
   html[data-theme-mode='dark'] {
-    --background: 16 16 11;
-    --foreground: 250 250 243;
-    --card: 26 26 21;
-    --card-foreground: 250 250 243;
-    --popover: 26 26 21;
-    --popover-foreground: 250 250 243;
-    --primary: 78 188 65;
-    --primary-foreground: 16 16 11;
-    --secondary: 19 194 150;
-    --secondary-foreground: 16 16 11;
-    --muted: 31 31 24;
-    --muted-foreground: 153 165 177;
-    --accent: 31 47 30;
-    --accent-foreground: 250 250 243;
-    --destructive: 255 107 107;
-    --destructive-foreground: 16 16 11;
-    --border: 47 47 37;
-    --input: 47 47 37;
-    --ring: 78 188 65;
-    --sidebar: 26 26 21;
-    --sidebar-foreground: 153 165 177;
-    --sidebar-primary: 78 188 65;
-    --sidebar-primary-foreground: 16 16 11;
-    --sidebar-accent: 31 47 30;
-    --sidebar-accent-foreground: 250 250 243;
-    --sidebar-border: 47 47 37;
-    --sidebar-ring: 78 188 65;
+    --background: 18 19 20;
+    --foreground: 191 191 191;
+    --card: 25 26 27;
+    --card-foreground: 191 191 191;
+    --popover: 32 33 34;
+    --popover-foreground: 191 191 191;
+    --primary: 41 122 160;
+    --primary-foreground: 255 255 255;
+    --secondary: 44 45 46;
+    --secondary-foreground: 191 191 191;
+    --muted: 36 37 38;
+    --muted-foreground: 140 140 140;
+    --accent: 39 103 130;
+    --accent-foreground: 237 237 237;
+    --destructive: 244 135 113;
+    --destructive-foreground: 18 19 20;
+    --border: 36 37 38;
+    --input: 42 43 44;
+    --ring: 57 148 188;
+    --sidebar: 25 26 27;
+    --sidebar-foreground: 140 140 140;
+    --sidebar-primary: 41 122 160;
+    --sidebar-primary-foreground: 255 255 255;
+    --sidebar-accent: 36 37 38;
+    --sidebar-accent-foreground: 191 191 191;
+    --sidebar-border: 36 37 38;
+    --sidebar-ring: 57 148 188;
+    --waste-panel-surface: 25 26 27;
+    --waste-panel-overlay: 25 26 27;
+    --elevation-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.22);
   }
 
   html[data-theme='sva-forest'].dark,
   html[data-theme='sva-forest'][data-theme-mode='dark'] {
     --primary: 30 215 166;
     --ring: 30 215 166;
-    --accent: 18 57 48;
+    --accent: 24 59 51;
     --sidebar-primary: 30 215 166;
     --sidebar-ring: 30 215 166;
-    --sidebar-accent: 18 57 48;
+    --sidebar-accent: 24 59 51;
   }
 
   * {

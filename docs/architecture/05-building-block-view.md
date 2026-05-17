@@ -78,6 +78,7 @@ Abhängigkeiten des aktuellen Systems.
    - konsumiert ausschließlich hostgeführte Endpunkte unter `/api/v1/waste-management/*`
    - hält bewusst nur fachliche UI-, Dialog-, Bulk- und lokale View-Model-Logik; keine direkte Datenbank-, Supabase- oder `Newcms`-Runtime-Kopplung
    - nutzt `@sva/plugin-sdk` für Route, Navigation, Audit-, Import- und Job-Verträge sowie `@sva/studio-ui-react` für generische Confirm-, Status- und Job-UI
+   - zeigt für den laufenden CSV-Spezialimport eine fachnahe Live-Fortschrittskarte an, leitet Prozent und Zeilenstand aber weiterhin ausschließlich aus dem generischen Host-Jobvertrag ab
 12. Instanz-Registry (`packages/instance-registry`)
    - Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
    - Registry-Repositories, persistente Provisioning-Runs und Cache-Zugriffe über injizierte Repository-Verträge
@@ -94,6 +95,7 @@ Abhängigkeiten des aktuellen Systems.
    - `@sva/auth-runtime` veröffentlicht die hostgeführten Start- und Status-Endpunkte für generische Plugin-Jobs
    - `@sva/routing` führt diese Endpunkte im typisierten Runtime-Route-Katalog als Single Source of Truth
    - `@sva/data-repositories` hält den kanonischen Jobdatensatz mit Status, Progress, Payload-, Retry- und Fehlerfeldern
+   - strukturierte Progress-Details wie `processedRows` und `totalRows` bleiben Teil desselben generischen Jobdatensatzes und werden nicht in plugin-spezifische Nebenspeicher ausgelagert
    - eine interne Worker-Anbindung wie Graphile Worker bleibt hinter diesem Hostpfad austauschbar und ist kein Teil des öffentlichen Plugin-Vertrags
 14. Waste-Host-Fassade (`packages/auth-runtime`, `packages/server-runtime`, `packages/data-repositories`)
    - `@sva/auth-runtime` publiziert die hostgeführte Waste-Fassade für Settings, Historie, CRUD, Bulk-Flows und technische Tool-Starts

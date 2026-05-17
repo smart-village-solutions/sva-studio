@@ -130,7 +130,7 @@ const renderHeaderCellContent = <TData,>(header: ReturnType<ReturnType<typeof us
   return (
     <Button
       type="button"
-      className="h-auto px-0 py-0 font-semibold hover:bg-transparent"
+      className="h-auto px-0 py-0 font-semibold hover:bg-transparent hover:animate-none"
       variant="ghost"
       onClick={header.column.getToggleSortingHandler()}
     >

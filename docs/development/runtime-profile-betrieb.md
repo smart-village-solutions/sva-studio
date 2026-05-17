@@ -138,6 +138,8 @@ Wichtig für den lokalen `local-keycloak`-Pfad:
 - Die lokale Registry-Reconcile behandelt geschützte Identitätsfelder (`parent_domain`, `primary_hostname`, optional `auth_realm`) standardmäßig non-destructive. Abweichende bestehende Werte werden nur gewarnt und nicht still überschrieben.
 - Für neue lokale Umgebungen oder bewusst autoritative Korrekturen kann `SVA_LOCAL_INSTANCE_IDENTITY_RECONCILE_MODE=authoritative` gesetzt werden. Dann schreibt die Reconcile diese Identitätsfelder gezielt auf das lokale Sollbild.
 - Ob erkannte lokale Identitätsdrift nur gewarnt oder hart geblockt wird, steuert `SVA_LOCAL_INSTANCE_IDENTITY_DRIFT_MODE=warn|fail`. Standard ist `warn`.
+- Wenn ein echter Tenant-Login lokal zwar funktioniert, Plugin- oder Admin-Zugriffe aber trotz sichtbarer Session-Rollen scheitern, liegt häufig Drift zwischen Keycloak-Subject und lokalem `iam.accounts`-Binding vor. `pnpm env:doctor:local-keycloak` meldet das mit `missing_actor_role_assignments` oder `missing_actor_organization_membership`, sobald `SVA_DOCTOR_KEYCLOAK_SUBJECT` und `SVA_DOCTOR_INSTANCE_ID` gesetzt sind.
+- Für gezielte Reparaturen steht `pnpm env:bind:local-user -- --instance-id=<instanz> --keycloak-subject=<subject> --copy-from-keycloak-subject=seed:system_admin` bereit. Alternativ können `--role-keys=...` und `--organization-ids=...` explizit gesetzt werden.
 
 Für zusätzliche lokale Instanzen oder weitere lokale Datenbanken ist `../guides/lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
 

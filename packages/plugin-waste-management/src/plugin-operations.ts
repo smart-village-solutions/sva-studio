@@ -42,12 +42,30 @@ const wasteManagementPluginJobTypes = [
     queue: wasteManagementOperationsContract.queueName,
     displayName: 'Waste-Daten importieren',
     progress: {
-      phaseKeys: ['mapping', 'waste-management.completed'],
-      stepKeys: ['resolve-operation', 'complete-operation'],
+      phaseKeys: [
+        'waste-management.import-preparation',
+        'waste-management.import-running',
+        'waste-management.completed',
+      ],
+      stepKeys: ['prepare-import', 'process-rows', 'complete-operation'],
     },
     result: {
       summaryKeys: ['durationMs'],
-      detailKeys: ['importProfileId', 'sourceFormat', 'dryRun', 'rowCount', 'rows', 'upserts'],
+      detailKeys: [
+        'importProfileId',
+        'sourceFormat',
+        'dryRun',
+        'rowCount',
+        'rows',
+        'upserts',
+        'createdFractions',
+        'createdTours',
+        'createdLocations',
+        'createdAssignments',
+        'skippedRows',
+        'errorCount',
+        'preview',
+      ],
     },
     errors: {
       detailKeys: ['failed-step', 'source-row'],
@@ -120,6 +138,18 @@ const wasteManagementPluginImportProfiles = [
     schemaVersion: '1.0.0',
     schemaStrategy: 'waste-management.ausweichtermine.schema',
     mappingStrategy: 'waste-management.ausweichtermine.mapping',
+    validation: {
+      mode: 'preflight-and-commit',
+    },
+  },
+  {
+    profileId: wasteManagementOperationsContract.importProfileIds.locationTourPickupDates,
+    jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
+    displayName: 'Tourzuordnungen nach Fraktionen',
+    sourceFormats: ['text/csv'],
+    schemaVersion: '1.0.0',
+    schemaStrategy: 'waste-management.ortsbezogene-tourtermine.schema',
+    mappingStrategy: 'waste-management.ortsbezogene-tourtermine.mapping',
     validation: {
       mode: 'preflight-and-commit',
     },

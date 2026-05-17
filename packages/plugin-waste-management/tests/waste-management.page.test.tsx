@@ -20,6 +20,17 @@ vi.mock('@tanstack/react-router', () => ({
   useSearch: () => searchMock(),
 }));
 
+const clickMenuItemContaining = (textFragment: string) => {
+  const menuItem = screen
+    .getAllByRole('menuitem')
+    .find((candidate) => candidate.textContent?.includes(textFragment));
+  expect(menuItem).toBeDefined();
+  if (!menuItem) {
+    throw new Error(`missing menu item containing ${textFragment}`);
+  }
+  fireEvent.click(menuItem);
+};
+
 vi.mock('../src/waste-management.ui-access.js', () => ({
   deriveWasteManagementUiAccess: () => ({
     visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'tools', 'settings'],
@@ -648,9 +659,10 @@ describe('WasteManagementPage', () => {
       expect(tab.querySelector('svg')).toBeTruthy();
       expect(tab.querySelector('[data-icon-library="tabler"]')).toBeTruthy();
     }
-    expect(screen.getByText('wasteManagement.tools.migrations.title')).toBeTruthy();
+    expect(screen.getAllByText('wasteManagement.tools.meta.advancedTitle').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'wasteManagement.actions.openSettings' })).toBeNull();
 
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tools.meta.advancedTitle' }));
     fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tools.actions.startSeed' }));
 
     await waitFor(() => {
@@ -677,13 +689,16 @@ describe('WasteManagementPage', () => {
     vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader);
     render(<WasteManagementPage />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tools.imports.wizard.actions.continue' }));
+
+    const sourceFormatSelect = await screen.findByLabelText('wasteManagement.tools.imports.sourceFormatLabel');
+    fireEvent.change(sourceFormatSelect, {
+      target: { value: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+    });
     const blobRefInput = document.querySelector('input[type="file"]');
     if (!(blobRefInput instanceof HTMLInputElement)) {
       throw new Error('Expected import blobRef input to be rendered');
     }
-    fireEvent.change(screen.getByLabelText('wasteManagement.tools.imports.sourceFormatLabel'), {
-      target: { value: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
-    });
     fireEvent.change(blobRefInput, {
       target: {
         files: [
@@ -693,10 +708,11 @@ describe('WasteManagementPage', () => {
         ],
       },
     });
-    const startImportButton = screen.getByRole('button', { name: 'wasteManagement.tools.actions.startImport' });
-    await waitFor(() => {
-      expect(startImportButton.hasAttribute('disabled')).toBe(false);
+    const continueToConfirmationButton = await screen.findByRole('button', {
+      name: 'wasteManagement.tools.imports.wizard.actions.continueToConfirmation',
     });
+    fireEvent.click(continueToConfirmationButton);
+    const startImportButton = screen.getByRole('button', { name: 'wasteManagement.tools.actions.startImport' });
     fireEvent.click(startImportButton);
 
     await waitFor(() => {
@@ -704,7 +720,7 @@ describe('WasteManagementPage', () => {
         importProfileId: 'waste-management.geografie-abholorte',
         sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         blobRef: 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,ZmFrZQ==',
-        dryRun: true,
+        dryRun: false,
       });
     });
 
@@ -714,6 +730,7 @@ describe('WasteManagementPage', () => {
   it('starts the initialize job through the waste tools facade', async () => {
     render(<WasteManagementPage />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tools.meta.advancedTitle' }));
     fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.audit.dataSourceInitialized' }));
 
     await waitFor(() => {
@@ -726,6 +743,7 @@ describe('WasteManagementPage', () => {
   it('confirms and starts the reset job through the high-risk tools dialog', async () => {
     render(<WasteManagementPage />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tools.meta.advancedTitle' }));
     fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tools.actions.startReset' }));
     fireEvent.change(screen.getByLabelText('wasteManagement.tools.reset.tokenLabel'), {
       target: { value: 'RESET' },
@@ -829,12 +847,12 @@ describe('WasteManagementPage', () => {
 
     const projectUrlInput = await screen.findByLabelText('wasteManagement.settings.fields.projectUrl');
     const schemaNameInput = await screen.findByLabelText('wasteManagement.settings.fields.schemaName');
-    const enabledCheckbox = await screen.findByLabelText('wasteManagement.settings.fields.enabled');
+    const enabledSwitch = await screen.findByRole('switch', { name: 'wasteManagement.settings.fields.enabled' });
 
     await waitFor(() => {
       expect((projectUrlInput as HTMLInputElement).value).toBe('https://tenant-a.supabase.co');
       expect((schemaNameInput as HTMLInputElement).value).toBe('wm');
-      expect((enabledCheckbox as HTMLInputElement).checked).toBe(true);
+      expect(enabledSwitch.getAttribute('aria-checked')).toBe('true');
     });
 
     fireEvent.change(projectUrlInput, {
@@ -1052,7 +1070,8 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.regions.actions.openCreate' }));
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createMenu' }));
+    clickMenuItemContaining('wasteManagement.masterData.locationsWorkspace.actions.createRegion');
     fireEvent.change(screen.getByLabelText('wasteManagement.masterData.regions.fields.name'), {
       target: { value: 'Region West' },
     });
@@ -1124,7 +1143,8 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.cities.actions.openCreate' }));
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createMenu' }));
+    clickMenuItemContaining('wasteManagement.masterData.locationsWorkspace.actions.createCity');
     fireEvent.change(screen.getByLabelText('wasteManagement.masterData.cities.fields.name'), {
       target: { value: 'Musterstadt West' },
     });
@@ -1180,7 +1200,8 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.streets.actions.openCreate' }));
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createMenu' }));
+    clickMenuItemContaining('wasteManagement.masterData.locationsWorkspace.actions.createStreet');
     fireEvent.change(screen.getByLabelText('wasteManagement.masterData.streets.fields.name'), {
       target: { value: 'Bahnhofstraße' },
     });
@@ -1244,7 +1265,8 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.houseNumbers.actions.openCreate' }));
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createMenu' }));
+    clickMenuItemContaining('wasteManagement.masterData.locationsWorkspace.actions.createHouseNumber');
     fireEvent.change(screen.getByLabelText('wasteManagement.masterData.houseNumbers.fields.number'), {
       target: { value: '42a' },
     });
@@ -1475,7 +1497,7 @@ describe('WasteManagementPage', () => {
     fireEvent.click(firstSelectableLocation);
     fireEvent.click(secondSelectableLocation);
     fireEvent.click(
-      screen.getByRole('button', { name: 'wasteManagement.masterData.collectionLocations.bulk.actions.openAssign' })
+      screen.getByRole('button', { name: /wasteManagement\.masterData\.collectionLocations\.bulk\.actions\.openAssign/i })
     );
 
     const bulkTourSelect = document.getElementById('waste-bulk-tour-link-tour-id') as HTMLSelectElement | null;
@@ -1702,7 +1724,7 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementSchedulingOverview).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.getByText('Feiertagsverschiebung')).toBeTruthy();
+    expect(screen.getAllByText('Feiertagsverschiebung').length).toBeGreaterThan(0);
     expect(screen.queryByText('Vorverlegt')).toBeNull();
   });
 

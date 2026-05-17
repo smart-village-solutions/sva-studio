@@ -155,7 +155,21 @@ describe('waste management plugin server handlers', () => {
       {
         jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
         inputPayload: { operation: 'import-data' },
-        expectedDetailKeys: ['importProfileId', 'sourceFormat', 'dryRun', 'rowCount', 'rows', 'upserts'],
+        expectedDetailKeys: [
+          'importProfileId',
+          'sourceFormat',
+          'dryRun',
+          'rowCount',
+          'rows',
+          'upserts',
+          'createdFractions',
+          'createdTours',
+          'createdLocations',
+          'createdAssignments',
+          'skippedRows',
+          'errorCount',
+          'preview',
+        ],
       },
       {
         jobTypeId: wasteManagementOperationsContract.jobTypeIds.seedData,
@@ -179,7 +193,7 @@ describe('waste management plugin server handlers', () => {
       const jobType = jobTypes.find((entry) => entry.jobTypeId === scenario.jobTypeId);
       const pluginPayload = result?.resultPayload.plugin ?? {};
 
-      expect(jobType?.progress.stepKeys).toEqual(['resolve-operation', 'complete-operation']);
+      expect(jobType?.progress.stepKeys.length).toBeGreaterThanOrEqual(2);
       expect(context.progressReporter.reportProgress).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({
@@ -189,8 +203,7 @@ describe('waste management plugin server handlers', () => {
           }),
         })
       );
-      expect(context.progressReporter.reportProgress).toHaveBeenNthCalledWith(
-        2,
+      expect(context.progressReporter.reportProgress).toHaveBeenLastCalledWith(
         expect.objectContaining({
           progress: expect.objectContaining({
             currentPhase: jobType?.progress.phaseKeys.at(-1),
@@ -203,6 +216,84 @@ describe('waste management plugin server handlers', () => {
         ['mode', 'operation', ...scenario.expectedDetailKeys].sort()
       );
     }
+  });
+
+  it('passes runtime-managed live import progress through for location-based csv imports', async () => {
+    const importData = vi.fn(async (_instanceId: string, _input: Record<string, unknown>, progressReporter) => {
+      await progressReporter?.reportProgress({
+        completedSteps: 0,
+        totalSteps: 12,
+        currentPhase: 'waste-management.import-preparation',
+        currentStepKey: 'prepare-import',
+        details: {
+          processedRows: 0,
+          totalRows: 12,
+        },
+      });
+      await progressReporter?.reportProgress({
+        completedSteps: 12,
+        totalSteps: 12,
+        currentPhase: 'waste-management.completed',
+        currentStepKey: 'complete-operation',
+        details: {
+          processedRows: 12,
+          totalRows: 12,
+        },
+      });
+
+      return {
+        durationMs: 8,
+        details: {
+          operation: 'import-data',
+          importProfileId: 'waste-management.ortsbezogene-tourtermine',
+          sourceFormat: 'text/csv',
+          dryRun: false,
+          rowCount: 12,
+          createdAssignments: 12,
+        },
+      };
+    });
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(
+      createRuntime({
+        importData,
+      })
+    );
+    const context = createContext({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
+      inputPayload: {
+        operation: 'import-data',
+        importProfileId: 'waste-management.ortsbezogene-tourtermine',
+        sourceFormat: 'text/csv',
+        dryRun: false,
+      },
+    });
+
+    const result = await handlers['waste-management.import-data']?.(context);
+
+    expect(importData).toHaveBeenCalledWith(
+      'instance-1',
+      expect.objectContaining({
+        importProfileId: 'waste-management.ortsbezogene-tourtermine',
+        sourceFormat: 'text/csv',
+        dryRun: false,
+      }),
+      expect.objectContaining({
+        reportProgress: expect.any(Function),
+      })
+    );
+    expect(context.progressReporter.reportProgress).toHaveBeenCalledTimes(2);
+    expect(result?.progress).toEqual(
+      expect.objectContaining({
+        completedSteps: 12,
+        totalSteps: 12,
+        currentPhase: 'waste-management.completed',
+        currentStepKey: 'complete-operation',
+        details: {
+          processedRows: 12,
+          totalRows: 12,
+        },
+      })
+    );
   });
 
   it('rejects malformed waste job payloads fail-closed', async () => {
@@ -250,6 +341,13 @@ const createRuntime = (
       rowCount: 3,
       rows: 3,
       upserts: 7,
+      createdFractions: 0,
+      createdTours: 0,
+      createdLocations: 2,
+      createdAssignments: 1,
+      skippedRows: 0,
+      errorCount: 0,
+      preview: undefined,
     },
   })),
   seedData: vi.fn(async () => ({

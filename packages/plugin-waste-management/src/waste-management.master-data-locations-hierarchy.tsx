@@ -48,7 +48,7 @@ const HierarchySection = <TRecord,>({
   createLabel,
   editLabel,
 }: HierarchySectionProps<TRecord>) => (
-  <section className="space-y-3 rounded-lg border border-border/70 bg-[rgba(255,255,255,0.32)] p-4">
+  <section className="space-y-3 rounded-lg border border-border/70 bg-[rgb(var(--waste-panel-overlay))] p-4 dark:backdrop-blur-sm">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="space-y-1">
         <h4 className="text-sm font-semibold">{title}</h4>

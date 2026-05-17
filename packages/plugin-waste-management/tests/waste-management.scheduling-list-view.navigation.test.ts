@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { WasteManagementSearchParams } from '../src/search-params.js';
 import {
   resolveSingleTourId,
+  toCreateShiftSearch,
   toCreateGlobalShiftSearch,
   toCreateTourShiftSearch,
   toEditGlobalShiftSearch,
@@ -42,6 +43,13 @@ describe('waste-management.scheduling-list-view.navigation', () => {
 
   it('builds create and edit search states for scheduling views', () => {
     const search = createSearch();
+
+    expect(toCreateShiftSearch(search)).toEqual({
+      ...search,
+      schedulingView: 'create',
+      globalDateShiftId: undefined,
+      tourDateShiftId: undefined,
+    });
 
     expect(toCreateGlobalShiftSearch(search)).toEqual({
       ...search,

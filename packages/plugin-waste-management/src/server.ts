@@ -1,3 +1,4 @@
+import type { StudioJobProgress } from '@sva/core';
 import type { PluginJobExecutionHandler } from '@sva/plugin-sdk';
 import {
   type PluginJobTypeDefinition,
@@ -17,11 +18,13 @@ const createProgress = (input: {
   readonly totalSteps: number;
   readonly currentPhase: string;
   readonly currentStepKey: string;
+  readonly details?: Readonly<Record<string, unknown>>;
 }) => ({
   completedSteps: input.completedSteps,
   totalSteps: input.totalSteps,
   currentPhase: input.currentPhase,
   currentStepKey: input.currentStepKey,
+  details: input.details,
   lastUpdatedAt: new Date().toISOString(),
 });
 
@@ -82,6 +85,29 @@ const getProgressDefinition = (
   };
 };
 
+const createOperationResult = <TJobInput extends WasteManagementJobInput>(input: {
+  readonly jobTypeDefinition: PluginJobTypeDefinition;
+  readonly payload: TJobInput;
+  readonly operationResult: {
+    readonly durationMs: number;
+    readonly details: Record<string, unknown>;
+  };
+  readonly startedAt: number;
+  readonly progress: StudioJobProgress;
+}) => ({
+  progress: input.progress,
+  resultPayload: {
+    summary: {
+      durationMs: Math.max(input.operationResult.durationMs, Math.max(1, Date.now() - input.startedAt)),
+    },
+    plugin: {
+      operation: input.payload.operation,
+      mode: 'executed',
+      ...pickDeclaredDetailKeys(input.operationResult.details, input.jobTypeDefinition.result?.detailKeys ?? []),
+    },
+  },
+});
+
 export type WasteManagementOperationRuntime = {
   readonly initializeDataSource: (
     instanceId: string,
@@ -99,7 +125,10 @@ export type WasteManagementOperationRuntime = {
   }>;
   readonly importData: (
     instanceId: string,
-    payload: WasteManagementImportJobInput
+    payload: WasteManagementImportJobInput,
+    progressReporter?: {
+      readonly reportProgress: (progress: StudioJobProgress) => Promise<void> | void;
+    }
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
@@ -171,20 +200,91 @@ const createOperationHandler = <TJobInput extends WasteManagementJobInput>(input
       progress,
     });
 
-    return {
+    return createOperationResult({
+      jobTypeDefinition,
+      payload,
+      operationResult,
+      startedAt,
       progress,
-      resultPayload: {
-        summary: {
-          durationMs: Math.max(operationResult.durationMs, Math.max(1, Date.now() - startedAt)),
-        },
-        plugin: {
-          operation: payload.operation,
-          mode: 'executed',
-          ...pickDeclaredDetailKeys(operationResult.details, jobTypeDefinition.result?.detailKeys ?? []),
-        },
-      },
-    };
+    });
   };
+
+const createImportDataHandler = (runtime: WasteManagementOperationRuntime): PluginJobExecutionHandler => async (context) => {
+  const jobTypeDefinition = getJobTypeDefinition(wasteManagementOperationsContract.jobTypeIds.importData);
+  const { initialPhaseKey, initialStepKey, completedPhaseKey, completedStepKey } = getProgressDefinition(
+    jobTypeDefinition,
+    'mapping'
+  );
+  const payload = assertWasteJobInput<WasteManagementImportJobInput>(
+    wasteManagementOperationsContract.jobTypeIds.importData,
+    context.job.inputPayload,
+    'import-data'
+  );
+  const startedAt = Date.now();
+  const useRuntimeManagedProgress =
+    payload.importProfileId === wasteManagementOperationsContract.importProfileIds.locationTourPickupDates &&
+    payload.sourceFormat === 'text/csv' &&
+    !payload.dryRun;
+  let latestRuntimeProgress: StudioJobProgress | undefined;
+
+  await context.throwIfCancellationRequested();
+  if (!useRuntimeManagedProgress) {
+    await context.progressReporter.reportProgress({
+      jobId: context.job.id,
+      instanceId: context.job.instanceId,
+      progress: createProgress({
+        completedSteps: 1,
+        totalSteps: 2,
+        currentPhase: initialPhaseKey,
+        currentStepKey: initialStepKey,
+      }),
+    });
+  }
+
+  await context.throwIfCancellationRequested();
+  const operationResult = await runtime.importData(
+    context.job.instanceId,
+    payload,
+    useRuntimeManagedProgress
+      ? {
+          reportProgress: async (progress: StudioJobProgress) => {
+            latestRuntimeProgress = progress;
+            await context.progressReporter.reportProgress({
+              jobId: context.job.id,
+              instanceId: context.job.instanceId,
+              progress,
+            });
+          },
+        }
+      : undefined
+  );
+  await context.throwIfCancellationRequested();
+
+  const finalProgress =
+    latestRuntimeProgress ??
+    createProgress({
+      completedSteps: 2,
+      totalSteps: 2,
+      currentPhase: completedPhaseKey,
+      currentStepKey: completedStepKey,
+    });
+
+  if (!useRuntimeManagedProgress) {
+    await context.progressReporter.reportProgress({
+      jobId: context.job.id,
+      instanceId: context.job.instanceId,
+      progress: finalProgress,
+    });
+  }
+
+  return createOperationResult({
+    jobTypeDefinition,
+    payload,
+    operationResult,
+    startedAt,
+    progress: finalProgress,
+  });
+};
 
 export const createWasteManagementPluginOperationExecutionHandlers = (
   runtime: WasteManagementOperationRuntime
@@ -204,12 +304,7 @@ export const createWasteManagementPluginOperationExecutionHandlers = (
       execute: (runtimeArg, instanceId, payload) => runtimeArg.applyMigrations(instanceId, payload),
     })(runtime),
   [wasteManagementOperationsContract.jobTypeIds.importData]:
-    createOperationHandler<WasteManagementImportJobInput>({
-      jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
-      expectedOperation: 'import-data',
-      phaseKey: 'mapping',
-      execute: (runtimeArg, instanceId, payload) => runtimeArg.importData(instanceId, payload),
-    })(runtime),
+    createImportDataHandler(runtime),
   [wasteManagementOperationsContract.jobTypeIds.seedData]:
     createOperationHandler<WasteManagementSeedJobInput>({
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.seedData,

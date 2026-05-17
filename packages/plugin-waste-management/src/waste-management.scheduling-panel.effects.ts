@@ -26,9 +26,20 @@ export const useWasteSchedulingSuccessRedirect = ({
     controller.setDialogOpen(false);
     controller.setGlobalDialogOpen(false);
     controller.setLastOutcome(null);
-    if (search.schedulingView === 'create-tour' || search.schedulingView === 'edit-tour') {
+    if (
+      search.schedulingView === 'create-tour' ||
+      search.schedulingView === 'edit-tour' ||
+      controller.lastOutcome === 'create-tour-success' ||
+      controller.lastOutcome === 'update-tour-success'
+    ) {
       controller.resetTourShiftForm();
-    } else if (search.schedulingView === 'create-global' || search.schedulingView === 'edit-global') {
+    }
+    if (
+      search.schedulingView === 'create-global' ||
+      search.schedulingView === 'edit-global' ||
+      controller.lastOutcome === 'create-global-success' ||
+      controller.lastOutcome === 'update-global-success'
+    ) {
       controller.resetGlobalShiftForm();
     }
     void navigate({

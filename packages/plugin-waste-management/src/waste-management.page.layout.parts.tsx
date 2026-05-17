@@ -7,7 +7,7 @@ import {
   IconRoute,
   IconSettings,
 } from '@tabler/icons-react';
-import { StudioEmptyState, TabsContent, TabsList, TabsTrigger } from '@sva/studio-ui-react';
+import { Select, StudioEmptyState, TabsContent, TabsList, TabsTrigger } from '@sva/studio-ui-react';
 
 import { WasteMasterDataPanel } from './waste-management.master-data-panel.js';
 import { WasteOverviewPanel } from './waste-management.overview-panel.js';
@@ -56,13 +56,35 @@ export const WasteManagementTabsList = ({
   activeTab,
   visibleTabIds,
   onWarmTab,
+  onTabChange,
 }: {
   readonly pt: Translate;
   readonly activeTab: WasteManagementTabId;
   readonly visibleTabIds: readonly WasteManagementTabId[];
   readonly onWarmTab: (tabId: WasteManagementTabId) => void;
+  readonly onTabChange: (tabId: WasteManagementTabId) => void;
 }) => (
-  <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] gap-10">
+  <>
+    <label className="block md:hidden">
+      <span className="sr-only">{pt('tabs.ariaLabel')}</span>
+        <Select
+          aria-label={pt('tabs.ariaLabel')}
+          className="h-11 rounded-xl border-border/70 bg-card"
+          value={activeTab}
+          onChange={(event) => onTabChange(event.target.value as WasteManagementTabId)}
+        >
+        {visibleTabIds.map((tabId) => {
+          const tabKey = wasteManagementTabTranslationKeyMap[tabId];
+
+          return (
+            <option key={tabId} value={tabId}>
+              {pt(`tabs.${tabKey}.title`)}
+            </option>
+          );
+        })}
+      </Select>
+    </label>
+    <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] hidden gap-10 md:flex">
     {visibleTabIds.map((tabId) => {
       const tabKey = wasteManagementTabTranslationKeyMap[tabId];
       const TabIcon = wasteManagementTabIconMap[tabId];
@@ -82,9 +104,10 @@ export const WasteManagementTabsList = ({
             <span>{pt(`tabs.${tabKey}.title`)}</span>
           </span>
         </TabsTrigger>
-      );
-    })}
-  </TabsList>
+        );
+      })}
+    </TabsList>
+  </>
 );
 
 export const WasteManagementTabContent = ({
@@ -112,7 +135,7 @@ export const WasteManagementTabContent = ({
     >
       <WasteTabPanelActionsProvider
         render={(actions) => (
-          <div className="space-y-4 rounded-2xl border border-border/60 bg-[#E8E8D8] p-5">
+          <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
             <section
               aria-label={pt(`tabs.${tabKey}.title`)}
               className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"

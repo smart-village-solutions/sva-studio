@@ -357,6 +357,13 @@ gleichzeitig beeinflussen.
 - Serverseitig von Node geladene Workspace-Packages verwenden explizite `.js`-Endungen für relative Runtime-Imports und bestehen `check:runtime`.
 - Runtime-Imports auf andere Workspace-Packages stehen im lokalen `package.json` unter `dependencies`.
 
+### Job-Fortschritt und Persistenzlast
+
+- Strukturierter Laufzeitfortschritt bleibt ein generischer Host-Vertrag und wird über `StudioJobProgress` plus optionale `details` transportiert.
+- Fachplugins dürfen zusätzliche Kurzsichtdaten wie `processedRows` und `totalRows` melden, müssen diese aber über denselben zentralen Jobstore und dieselben Host-Endpunkte veröffentlichen.
+- Für zeilenreiche Importpfade werden Progress-Events blockweise persistiert und zusätzlich an fachlichen Phasenwechseln geschrieben; zeilenfeine Persistenz pro Datensatz ist kein Default.
+- UI-Polling darf für explizit laufende Fachfälle enger takten als die generische Historienansicht, solange nur aktive Jobs betroffen sind.
+
 ### UI-Shell, Responsivität und Skeleton UX
 
 - Die Root-Shell trennt die Bereiche Kopfzeile, Seitenleiste und Hauptinhalt explizit

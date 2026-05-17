@@ -1,7 +1,8 @@
 import type { WasteCityRecord, WasteHouseNumberRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Checkbox, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { Button, StudioFieldGroup } from '@sva/studio-ui-react';
 
+import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 import type { CollectionLocationFormState } from './waste-management.master-data.forms.js';
 import { LocationRegionCityFields, LocationStreetHouseNumberFields } from './waste-management.master-data-location-form.select-groups.js';
 
@@ -16,7 +17,7 @@ export const LocationFormActions = ({
   readonly saving: boolean;
   readonly onCancel: () => void;
 }) => (
-  <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background/95 px-5 py-4 shadow-shell backdrop-blur supports-[backdrop-filter]:bg-background/85">
+  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
     <Button type="submit" disabled={saving}>
       {saveLabel}
     </Button>
@@ -65,12 +66,14 @@ export const LocationStatusSection = ({
 
   return (
     <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
-      <StudioField id="waste-location-active" label={pt('masterData.collectionLocations.fields.active')}>
-        <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
-          <Checkbox id="waste-location-active" checked={active} onChange={(event) => onChange({ active: event.currentTarget.checked })} />
-          <span className="text-sm text-muted-foreground">{active ? pt('common.active') : pt('common.inactive')}</span>
-        </div>
-      </StudioField>
+      <div className="flex items-center gap-3">
+        <WasteManagementFormSwitch
+          checked={active}
+          ariaLabel={pt('masterData.collectionLocations.fields.active')}
+          onChange={(nextActive) => onChange({ active: nextActive })}
+        />
+        <span className="text-sm text-muted-foreground">{active ? pt('common.active') : pt('common.inactive')}</span>
+      </div>
     </section>
   );
 };

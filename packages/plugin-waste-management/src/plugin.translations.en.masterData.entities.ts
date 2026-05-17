@@ -109,6 +109,8 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
     actions: {
       openCreate: 'Create collection location',
       edit: 'Edit',
+      copy: 'Copy',
+      delete: 'Delete',
       cancel: 'Cancel',
       create: 'Save collection location',
       save: 'Save changes',
@@ -139,12 +141,17 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
     messages: {
       createSuccess: 'The waste collection location was created.',
       updateSuccess: 'The waste collection location was updated.',
+      deleteSuccess: 'The waste collection location was deleted.',
       saveError: 'The waste collection location could not be saved.',
       saveForbidden: 'Missing permission to save waste collection locations.',
+      deleteError: 'The waste collection location could not be deleted.',
+      deleteForbidden: 'Missing permission to delete waste collection locations.',
+      deleteConflict: 'The waste collection location cannot be deleted because assignments still exist.',
     },
     bulk: {
       actions: {
         openAssign: 'Assign tour to {{value}} selected',
+        deleteSelected: 'Delete selected',
         selectAllFiltered: 'Select all filtered collection locations',
         cancel: 'Cancel',
         assign: 'Assign tour',
@@ -159,6 +166,8 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       dialog: {
         title: 'Bulk assign tour',
         description: 'Assign a tour to {{value}} selected collection locations.',
+        deleteTitle: 'Delete selected collection locations',
+        deleteDescription: '{{value}} selected collection locations will be deleted.',
       },
       selectedTitle: 'Selected collection locations',
       meta: { selectedCount: '{{value}} selected' },
@@ -166,6 +175,10 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
         assignSuccess: 'The waste tour assignments were created in bulk.',
         assignError: 'The waste tour assignments could not be created in bulk.',
         assignForbidden: 'Missing permission to create waste tour assignments in bulk.',
+        deleteSuccess: 'The selected waste collection locations were deleted.',
+        deleteError: 'The selected waste collection locations could not be deleted.',
+        deleteForbidden: 'Missing permission to delete selected waste collection locations.',
+        deleteConflict: 'At least one selected waste collection location cannot be deleted because assignments still exist.',
       },
     },
   },

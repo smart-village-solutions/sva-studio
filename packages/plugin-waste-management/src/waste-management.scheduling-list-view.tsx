@@ -17,8 +17,7 @@ export const WasteSchedulingListView = ({
   if (!controller.tourDateShifts.length && !controller.globalDateShifts.length) {
     return (
       <WasteSchedulingEmptyState
-        onOpenCreateGlobalShiftDialog={navigation.openCreateGlobal}
-        onOpenCreateTourShiftDialog={navigation.openCreateTour}
+        onOpenCreateShiftDialog={navigation.openCreate}
       />
     );
   }
@@ -28,10 +27,12 @@ export const WasteSchedulingListView = ({
       message={controller.message}
       globalDateShifts={controller.globalDateShifts}
       tourDateShifts={controller.tourDateShifts}
-      onOpenCreateGlobalShiftDialog={navigation.openCreateGlobal}
-      onOpenCreateTourShiftDialog={navigation.openCreateTour}
+      availableTours={controller.availableTours}
+      onOpenCreateShiftDialog={navigation.openCreate}
       onEditGlobalShiftDialog={navigation.openEditGlobal}
       onEditTourShiftDialog={navigation.openEditTour}
+      onDeleteSchedulingRows={controller.onDeleteSchedulingRows}
+      saving={controller.saving}
       page={search.page}
       pageSize={search.pageSize}
       onPageChange={navigation.setPage}

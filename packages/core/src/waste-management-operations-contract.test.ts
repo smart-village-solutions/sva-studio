@@ -22,6 +22,7 @@ describe('waste-management-operations-contract', () => {
       geographyCollectionLocations: 'waste-management.geografie-abholorte',
       tours: 'waste-management.touren',
       dateShifts: 'waste-management.ausweichtermine',
+      locationTourPickupDates: 'waste-management.ortsbezogene-tourtermine',
     });
     expect(wasteManagementOperationsContract.isImportProfileId('waste-management.geografie-abholorte')).toBe(true);
     expect(wasteManagementOperationsContract.isImportProfileId('waste-management.foo')).toBe(false);
@@ -39,5 +40,12 @@ describe('waste-management-operations-contract', () => {
       )
     ).toBe(true);
     expect(wasteManagementOperationsContract.isImportSourceFormat('application/json')).toBe(false);
+  });
+
+  it('exposes the supported CSV delimiters for the address pickup-date import', () => {
+    expect(wasteManagementOperationsContract.csvDelimiters).toEqual([';', ',', '\t', '|']);
+    expect(wasteManagementOperationsContract.isCsvDelimiter(';')).toBe(true);
+    expect(wasteManagementOperationsContract.isCsvDelimiter('\t')).toBe(true);
+    expect(wasteManagementOperationsContract.isCsvDelimiter(':')).toBe(false);
   });
 });

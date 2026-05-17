@@ -12,6 +12,7 @@ const wasteManagementImportProfileIds = {
   geographyCollectionLocations: 'waste-management.geografie-abholorte',
   tours: 'waste-management.touren',
   dateShifts: 'waste-management.ausweichtermine',
+  locationTourPickupDates: 'waste-management.ortsbezogene-tourtermine',
 } as const;
 
 const wasteManagementImportSourceFormats = [
@@ -19,11 +20,14 @@ const wasteManagementImportSourceFormats = [
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ] as const;
 
+const wasteManagementCsvDelimiters = [';', ',', '\t', '|'] as const;
+
 type ValueOf<T> = T[keyof T];
 
 export type WasteManagementJobTypeId = ValueOf<typeof wasteManagementJobTypeIds>;
 export type WasteManagementImportProfileId = ValueOf<typeof wasteManagementImportProfileIds>;
 export type WasteManagementImportSourceFormat = (typeof wasteManagementImportSourceFormats)[number];
+export type WasteManagementCsvDelimiter = (typeof wasteManagementCsvDelimiters)[number];
 
 export type WasteManagementInitializeJobInput = {
   readonly operation: 'initialize-data-source';
@@ -42,6 +46,7 @@ export type WasteManagementImportJobInput = {
   readonly sourceFormat: WasteManagementImportSourceFormat;
   readonly dryRun?: boolean;
   readonly blobRef?: string;
+  readonly delimiterOverride?: WasteManagementCsvDelimiter;
 };
 
 export type WasteManagementSeedJobInput = {
@@ -68,10 +73,13 @@ export const wasteManagementOperationsContract = {
   resetConfirmationToken: wasteManagementResetConfirmationToken,
   importProfileIds: wasteManagementImportProfileIds,
   importSourceFormats: wasteManagementImportSourceFormats,
+  csvDelimiters: wasteManagementCsvDelimiters,
   isJobTypeId: (value: string): value is WasteManagementJobTypeId =>
     (Object.values(wasteManagementJobTypeIds) as readonly string[]).includes(value),
   isImportProfileId: (value: string): value is WasteManagementImportProfileId =>
     (Object.values(wasteManagementImportProfileIds) as readonly string[]).includes(value),
   isImportSourceFormat: (value: string): value is WasteManagementImportSourceFormat =>
     (wasteManagementImportSourceFormats as readonly string[]).includes(value),
+  isCsvDelimiter: (value: string): value is WasteManagementCsvDelimiter =>
+    (wasteManagementCsvDelimiters as readonly string[]).includes(value),
 } as const;

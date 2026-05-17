@@ -126,11 +126,19 @@ SET original_date = EXCLUDED.original_date,
   ],
 });
 
+const buildGlobalDateShiftDeleteStatement = (id: string): SqlStatement => ({
+  text: `
+DELETE FROM waste_global_date_shifts
+WHERE id = $1::uuid;
+`,
+  values: [id],
+});
+
 export const createWasteGlobalDateShiftRepositoryPart = (
   executor: SqlExecutor
 ): Pick<
   WasteMasterDataRepository,
-  'listWasteGlobalDateShifts' | 'getWasteGlobalDateShiftById' | 'upsertWasteGlobalDateShift'
+  'listWasteGlobalDateShifts' | 'getWasteGlobalDateShiftById' | 'upsertWasteGlobalDateShift' | 'deleteWasteGlobalDateShift'
 > => ({
   async listWasteGlobalDateShifts(filter) {
     const result = await executor.execute<WasteGlobalDateShiftRow>(buildGlobalDateShiftListStatement(filter));
@@ -143,10 +151,14 @@ export const createWasteGlobalDateShiftRepositoryPart = (
   async upsertWasteGlobalDateShift(input) {
     await executor.execute(buildGlobalDateShiftUpsertStatement(input));
   },
+  async deleteWasteGlobalDateShift(id) {
+    await executor.execute(buildGlobalDateShiftDeleteStatement(id));
+  },
 });
 
 export const wasteGlobalDateShiftStatements = {
   listWasteGlobalDateShifts: buildGlobalDateShiftListStatement,
   getWasteGlobalDateShiftById: buildGlobalDateShiftSelectStatement,
   upsertWasteGlobalDateShift: buildGlobalDateShiftUpsertStatement,
+  deleteWasteGlobalDateShift: buildGlobalDateShiftDeleteStatement,
 } as const;

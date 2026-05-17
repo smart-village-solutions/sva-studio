@@ -138,6 +138,7 @@ const authServerMocks = vi.hoisted(() => {
       createCity: vi.fn(async () => response('createWasteManagementCityHandler')),
       createCollectionLocation: vi.fn(async () => response('createWasteManagementCollectionLocationHandler')),
       createFraction: vi.fn(async () => response('createWasteManagementFractionHandler')),
+      deleteCollectionLocation: vi.fn(async () => response('deleteWasteManagementCollectionLocationHandler')),
       deleteFraction: vi.fn(async () => response('deleteWasteManagementFractionHandler')),
       createHouseNumber: vi.fn(async () => response('createWasteManagementHouseNumberHandler')),
       createGlobalDateShift: vi.fn(async () => response('createWasteManagementGlobalDateShiftHandler')),
@@ -166,6 +167,7 @@ const authServerMocks = vi.hoisted(() => {
       updateTourDateShift: vi.fn(async () => response('updateWasteManagementTourDateShiftHandler')),
       startMigrations: vi.fn(async () => response('startWasteManagementMigrationsHandler')),
       startImport: vi.fn(async () => response('startWasteManagementImportHandler')),
+      previewLocationTourPickupDateImport: vi.fn(async () => response('previewLocationTourPickupDateImportHandler')),
       startSeed: vi.fn(async () => response('startWasteManagementSeedHandler')),
       startReset: vi.fn(async () => response('startWasteManagementResetHandler')),
     },
@@ -223,6 +225,7 @@ const authServerMocks = vi.hoisted(() => {
     listPluginOperationJobsHandler: vi.fn(async () => response('listPluginOperationJobsHandler')),
     startPluginOperationJobHandler: vi.fn(async () => response('startPluginOperationJobHandler')),
     getPluginOperationJobHandler: vi.fn(async () => response('getPluginOperationJobHandler')),
+    deletePluginOperationJobHandler: vi.fn(async () => response('deletePluginOperationJobHandler')),
     cancelPluginOperationJobHandler: vi.fn(async () => response('cancelPluginOperationJobHandler')),
   };
 });
@@ -316,14 +319,16 @@ describe('auth.routes.server', () => {
     expect(createHandlers?.GET).toBeDefined();
     expect(createHandlers?.POST).toBeDefined();
     expect(detailHandlers?.GET).toBeDefined();
+    expect(detailHandlers?.DELETE).toBeDefined();
     expect(cancelHandlers?.POST).toBeDefined();
 
     const list = createHandlers?.GET;
     const post = createHandlers?.POST;
     const get = detailHandlers?.GET;
+    const remove = detailHandlers?.DELETE;
     const cancel = cancelHandlers?.POST;
 
-    if (!list || !post || !get || !cancel) {
+    if (!list || !post || !get || !remove || !cancel) {
       throw new Error('Expected plugin operation handlers to be defined');
     }
 
@@ -336,6 +341,9 @@ describe('auth.routes.server', () => {
     await get({
       request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1', { method: 'GET' }),
     });
+    await remove({
+      request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1', { method: 'DELETE' }),
+    });
     await cancel({
       request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1/cancel', { method: 'POST' }),
     });
@@ -343,6 +351,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.listPluginOperationJobsHandler).toHaveBeenCalled();
     expect(authServerMocks.startPluginOperationJobHandler).toHaveBeenCalled();
     expect(authServerMocks.getPluginOperationJobHandler).toHaveBeenCalled();
+    expect(authServerMocks.deletePluginOperationJobHandler).toHaveBeenCalled();
     expect(authServerMocks.cancelPluginOperationJobHandler).toHaveBeenCalled();
   });
 
@@ -374,6 +383,7 @@ describe('auth.routes.server', () => {
     const initializeHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/initialize');
     const migrationsHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/migrations');
     const importHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/imports');
+    const importPreviewHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/imports/preview');
     const seedHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/seed');
     const resetHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/reset');
 
@@ -419,6 +429,11 @@ describe('auth.routes.server', () => {
     await collectionLocationDetailHandlers.PUT?.({
       request: new Request('http://localhost/api/v1/waste-management/collection-locations/location-1', {
         method: 'PUT',
+      }),
+    });
+    await collectionLocationDetailHandlers.DELETE?.({
+      request: new Request('http://localhost/api/v1/waste-management/collection-locations/location-1', {
+        method: 'DELETE',
       }),
     });
     await streetHandlers.POST?.({
@@ -486,6 +501,9 @@ describe('auth.routes.server', () => {
     await importHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/imports', { method: 'POST' }),
     });
+    await importPreviewHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tools/imports/preview', { method: 'POST' }),
+    });
     await seedHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/seed', { method: 'POST' }),
     });
@@ -496,6 +514,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.getMasterDataOverview).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createFraction).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createCollectionLocation).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.deleteCollectionLocation).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateCollectionLocation).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createStreet).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateStreet).toHaveBeenCalled();
@@ -519,6 +538,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.startInitialize).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startMigrations).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startImport).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.previewLocationTourPickupDateImport).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startSeed).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startReset).toHaveBeenCalled();
   });

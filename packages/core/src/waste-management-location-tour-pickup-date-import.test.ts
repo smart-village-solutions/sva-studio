@@ -1,0 +1,173 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  detectWasteImportCsvDelimiter,
+  parseWasteLocationTourPickupDateCsv,
+} from './waste-management-location-tour-pickup-date-import.js';
+
+describe('waste location tour assignment import parser', () => {
+  it('detects delimiters with semicolon as the stable fallback', () => {
+    expect(detectWasteImportCsvDelimiter('Region;Ort;Straße;Hausnummern;Hausmüll')).toBe(';');
+    expect(detectWasteImportCsvDelimiter('Ort,Straße,Hausmüll,Papier')).toBe(',');
+    expect(detectWasteImportCsvDelimiter('Ort\tStraße\tHausmüll\tPapier')).toBe('\t');
+    expect(detectWasteImportCsvDelimiter('Ort|Straße|Hausmüll|Papier')).toBe('|');
+    expect(detectWasteImportCsvDelimiter('Ort Straße Hausmüll Papier')).toBe(';');
+  });
+
+  it('parses valid rows with optional region and house-number columns and ignores trailing empty headers', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: [
+        'Ort;Straße;Hausmüll;Papier;Gelbe Säcke;;;;',
+        'Perleberg;Ackerstr.;HM.3.3;PPK.7.2;LVP.9.4;;;;',
+        'Bad Wilsnack;;;PPK.1.1;;;;;',
+        'Musterort;;;;;;;;',
+      ].join('\n'),
+    });
+
+    expect(result.detectedDelimiter).toBe(';');
+    expect(result.fractionNames).toEqual(['Hausmüll', 'Papier', 'Gelbe Säcke']);
+    expect(result.validRowCount).toBe(2);
+    expect(result.invalidRowCount).toBe(1);
+    expect(result.rows).toEqual([
+      {
+        rowNumber: 2,
+        region: undefined,
+        city: 'Perleberg',
+        street: 'Ackerstr.',
+        houseNumbers: 'Alle Hausnummern',
+        tourNamesByFractionName: {
+          Hausmüll: 'HM.3.3',
+          Papier: 'PPK.7.2',
+          'Gelbe Säcke': 'LVP.9.4',
+        },
+      },
+      {
+        rowNumber: 3,
+        region: undefined,
+        city: 'Bad Wilsnack',
+        street: 'Alle Straßen',
+        houseNumbers: 'Alle Hausnummern',
+        tourNamesByFractionName: {
+          Papier: 'PPK.1.1',
+        },
+      },
+    ]);
+    expect(result.issues).toEqual([
+      {
+        rowNumber: 4,
+        column: 'Fraktionsspalten',
+        message: 'Die Zeile enthält keine verwertbare Tourzuordnung.',
+      },
+    ]);
+  });
+
+  it('accepts an optional region header and rejects malformed address prefixes', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: 'Straße;Ort;Hausmüll\nHauptstraße;Musterstadt;Tour 1\n',
+    });
+
+    expect(result.validRowCount).toBe(0);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rowNumber: 1,
+          column: 'Ort',
+        }),
+        expect.objectContaining({
+          rowNumber: 1,
+          column: 'Adressspalten',
+        }),
+      ])
+    );
+  });
+
+  it('returns a deterministic issue for empty csv files', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: '',
+    });
+
+    expect(result).toEqual({
+      delimiter: ';',
+      detectedDelimiter: ';',
+      header: [],
+      fractionNames: [],
+      rows: [],
+      validRowCount: 0,
+      invalidRowCount: 0,
+      issues: [
+        {
+          rowNumber: 1,
+          column: 'Datei',
+          message: 'Die CSV-Datei ist leer.',
+        },
+      ],
+    });
+  });
+
+  it('keeps delimiters inside quoted cells and reports duplicate fraction columns', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: [
+        'Ort;Papier;Papier',
+        '"Perleberg; Süd";"PPK;1";PPK.2',
+      ].join('\n'),
+    });
+
+    expect(result.header).toEqual(['Ort', 'Papier', 'Papier']);
+    expect(result.fractionNames).toEqual(['Papier', 'Papier']);
+    expect(result.validRowCount).toBe(1);
+    expect(result.rows).toEqual([
+      {
+        rowNumber: 2,
+        region: undefined,
+        city: 'Perleberg; Süd',
+        street: 'Alle Straßen',
+        houseNumbers: 'Alle Hausnummern',
+        tourNamesByFractionName: {
+          Papier: 'PPK.2',
+        },
+      },
+    ]);
+    expect(result.issues).toEqual([
+      {
+        rowNumber: 1,
+        column: 'Papier',
+        message: 'Fraktionsspaltennamen müssen eindeutig sein.',
+        value: 'Papier',
+      },
+    ]);
+  });
+
+  it('rejects rows with missing city and rows without any named fraction columns', () => {
+    const missingCity = parseWasteLocationTourPickupDateCsv({
+      text: 'Ort;Papier\n;PPK.7.2\n',
+    });
+    const missingFractions = parseWasteLocationTourPickupDateCsv({
+      text: 'Ort\nPerleberg\n',
+    });
+
+    expect(missingCity.validRowCount).toBe(0);
+    expect(missingCity.invalidRowCount).toBe(1);
+    expect(missingCity.issues).toEqual([
+      {
+        rowNumber: 2,
+        column: 'Ort',
+        message: 'Ort ist ein Pflichtfeld.',
+      },
+    ]);
+
+    expect(missingFractions.validRowCount).toBe(0);
+    expect(missingFractions.invalidRowCount).toBe(1);
+    expect(missingFractions.issues).toEqual([
+      {
+        rowNumber: 1,
+        column: 'Fraktionsspalten',
+        message: 'Mindestens eine Fraktionsspalte wird benötigt.',
+      },
+      {
+        rowNumber: 2,
+        column: 'Fraktionsspalten',
+        message: 'Die Zeile enthält keine verwertbare Tourzuordnung.',
+      },
+    ]);
+  });
+});

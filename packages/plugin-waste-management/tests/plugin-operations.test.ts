@@ -29,19 +29,26 @@ describe('waste management plugin operations', () => {
   });
 
   it('keeps waste-specific import profiles inside the waste plugin package', () => {
-    expect(createWasteManagementPluginImportProfiles()).toEqual([
-      expect.objectContaining({
-        profileId: 'waste-management.geografie-abholorte',
-        jobTypeId: 'waste-management.import-data',
-      }),
-      expect.objectContaining({
-        profileId: 'waste-management.touren',
-        jobTypeId: 'waste-management.import-data',
-      }),
-      expect.objectContaining({
-        profileId: 'waste-management.ausweichtermine',
-        jobTypeId: 'waste-management.import-data',
-      }),
-    ]);
+    expect(createWasteManagementPluginImportProfiles()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          profileId: 'waste-management.geografie-abholorte',
+          jobTypeId: 'waste-management.import-data',
+        }),
+        expect.objectContaining({
+          profileId: 'waste-management.touren',
+          jobTypeId: 'waste-management.import-data',
+        }),
+        expect.objectContaining({
+          profileId: 'waste-management.ausweichtermine',
+          jobTypeId: 'waste-management.import-data',
+        }),
+        expect.objectContaining({
+          profileId: 'waste-management.ortsbezogene-tourtermine',
+          jobTypeId: 'waste-management.import-data',
+          sourceFormats: ['text/csv'],
+        }),
+      ])
+    );
   });
 });

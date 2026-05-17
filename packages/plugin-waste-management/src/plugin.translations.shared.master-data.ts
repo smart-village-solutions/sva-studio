@@ -108,11 +108,13 @@ type CollectionLocationsBulkCopy = Readonly<{
 type CollectionLocationsCopy = Readonly<{
   title: string;
   description: string;
-  actions: CrudActionsCopy;
+  actions: Readonly<CrudActionsCopy & { copy: string; delete: string }>;
   fields: Readonly<Record<string, string>>;
   dialog: CrudDialogCopy;
   meta: Readonly<Record<string, string>>;
-  messages: CrudMessagesCopy;
+  messages: Readonly<
+    CrudMessagesCopy & { deleteSuccess: string; deleteError: string; deleteForbidden: string; deleteConflict: string }
+  >;
   bulk: CollectionLocationsBulkCopy;
 }>;
 

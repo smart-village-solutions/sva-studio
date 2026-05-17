@@ -3,6 +3,7 @@ import type { WasteTourRecord } from '@sva/plugin-sdk';
 
 import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
 import { WastePanelTableTopBar } from './waste-management.table-frame.js';
+import type { WasteToursSortDirection, WasteToursSortField } from './waste-management.tours.table.parts.js';
 import { WasteToursTable } from './waste-management.tours.table.js';
 import { WasteToursToolbar } from './waste-management.tours.toolbar.js';
 
@@ -19,6 +20,8 @@ type WasteToursContentBodyProps = {
   readonly allVisibleSelected: boolean;
   readonly someVisibleSelected: boolean;
   readonly saving: boolean;
+  readonly sortField: WasteToursSortField | null;
+  readonly sortDirection: WasteToursSortDirection;
   readonly page: number;
   readonly pageSize: number;
   readonly query: string;
@@ -27,6 +30,7 @@ type WasteToursContentBodyProps = {
   readonly onPageChange: (page: number) => void;
   readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
+  readonly onSortChange: (field: WasteToursSortField) => void;
   readonly onQueryChange: (value: string) => void;
   readonly onStatusChange: (value: 'all' | 'active' | 'inactive') => void;
   readonly toggleSelectAllVisible: (checked: boolean) => void;
@@ -64,11 +68,14 @@ export const WasteToursContentBody = (props: WasteToursContentBodyProps) => (
       allVisibleSelected={props.allVisibleSelected}
       someVisibleSelected={props.someVisibleSelected}
       saving={props.saving}
+      sortField={props.sortField}
+      sortDirection={props.sortDirection}
       page={props.page}
       pageSize={props.pageSize}
       onPageChange={props.onPageChange}
       onSyncPageChange={props.onSyncPageChange}
       onPageSizeChange={props.onPageSizeChange}
+      onSortChange={props.onSortChange}
       onToggleSelectAllVisible={props.toggleSelectAllVisible}
       onToggleSelectedTour={props.toggleSelectedTour}
       onOpenCalendar={props.onOpenCalendar}

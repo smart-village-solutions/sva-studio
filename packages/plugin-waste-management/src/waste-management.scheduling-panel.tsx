@@ -9,6 +9,7 @@ import {
   useWasteTourShiftEditRouteHydration,
 } from './waste-management.scheduling-panel.effects.js';
 import {
+  WasteSchedulingCreateFormView,
   WasteSchedulingDialogs,
   WasteSchedulingGlobalFormView,
   WasteSchedulingListView,
@@ -33,6 +34,15 @@ export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagem
   }
 
   const dialogs = <WasteSchedulingDialogs controller={controller} />;
+
+  if (search.schedulingView === 'create') {
+    return (
+      <>
+        <WasteSchedulingCreateFormView controller={controller} search={search} />
+        {dialogs}
+      </>
+    );
+  }
 
   if (search.schedulingView === 'create-global' || search.schedulingView === 'edit-global') {
     return (

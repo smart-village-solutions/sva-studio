@@ -180,6 +180,40 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
     }
   });
 
+export const deletePluginOperationJobHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedUser(request, async (ctx) => {
+    const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+    if (authorizationError) {
+      return authorizationError;
+    }
+
+    const instanceId = requireActorInstanceId(ctx.user.instanceId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+
+    const csrfError = validateCsrf(request, getRequestId());
+    if (csrfError) {
+      return csrfError;
+    }
+
+    const jobId = readJobId(request);
+    if (jobId instanceof Response) {
+      return jobId;
+    }
+
+    try {
+      const job = await withStudioJobRepository(instanceId, (repository) => repository.deleteJob(instanceId, jobId));
+      if (!job) {
+        return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', getRequestId());
+      }
+
+      return createJsonItemResponse(200, job, getRequestId());
+    } catch {
+      return createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht geloescht werden.', getRequestId());
+    }
+  });
+
 export const listPluginOperationJobsHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
     const authorizationError = requireMonitoringAdminRole(ctx.user.roles);

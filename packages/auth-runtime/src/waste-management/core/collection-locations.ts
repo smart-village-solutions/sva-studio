@@ -2,6 +2,7 @@ import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction, getAuthorizedWasteManagementInstanceId } from './auth.js';
+import { runWasteDeleteMutation } from './mutation-helpers.js';
 import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementMasterDataSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
@@ -126,6 +127,55 @@ export const wasteManagementCollectionLocationHandlers = {
       loadExisting: () => loadCollectionLocation(instanceId, locationId),
       save: () => saveCollectionLocation(instanceId, toCollectionLocationInput(locationId, parsed.data)),
       loadSaved: () => loadCollectionLocation(instanceId, locationId),
+    });
+  },
+  deleteWasteManagementCollectionLocationInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> => {
+    const requestId = getRequestId(deps);
+    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.master-data.manage', deps, requestId);
+    if (authError) {
+      return authError;
+    }
+
+    const instanceId = getAuthorizedWasteManagementInstanceId(ctx);
+    const locationId = readPathSegment(request, 4)?.trim();
+    if (!locationId) {
+      return createApiError(400, 'invalid_request', 'locationId fehlt im Pfad.', requestId);
+    }
+
+    const csrfError = validateCsrf(request, requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    const loadCollectionLocation = requireDeps(
+      deps.loadWasteCollectionLocationById,
+      'loadWasteCollectionLocationById'
+    );
+    const deleteCollectionLocation = requireDeps(
+      deps.deleteWasteCollectionLocation,
+      'deleteWasteCollectionLocation'
+    );
+
+    return runWasteDeleteMutation({
+      deps,
+      ctx,
+      instanceId,
+      requestId,
+      resourceId: locationId,
+      audit: {
+        actionId: 'waste-management.collection-location.deleted',
+        resourceType: 'waste_collection_location',
+      },
+      messages: {
+        notFound: 'Der Waste-Abholort wurde nicht gefunden.',
+        deleteFailed: 'Der Waste-Abholort konnte nicht gelöscht werden.',
+      },
+      loadExisting: () => loadCollectionLocation(instanceId, locationId),
+      remove: () => deleteCollectionLocation(instanceId, locationId),
     });
   },
 };

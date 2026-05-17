@@ -606,6 +606,72 @@ describe('waste master data repository', () => {
     expect(write.statements[0]?.values).toEqual(['link-3', 'location-3', 'tour-3', null, '2026-08-31']);
   });
 
+  it('lists, reads and upserts location-tour pickup dates idempotently by location, tour and pickup date', async () => {
+    const list = createExecutor([
+      {
+        id: 'pickup-1',
+        location_id: 'location-1',
+        tour_id: 'tour-1',
+        pickup_date: '2026-01-10',
+        created_at: '2026-05-09T10:00:00.000Z',
+        updated_at: '2026-05-09T11:00:00.000Z',
+      },
+    ]);
+
+    await expect(
+      createWasteMasterDataRepository(list.executor).listWasteLocationTourPickupDates({
+        locationId: 'location-1',
+        tourId: 'tour-1',
+        pickupDate: '2026-01-10',
+      })
+    ).resolves.toEqual([
+      {
+        id: 'pickup-1',
+        locationId: 'location-1',
+        tourId: 'tour-1',
+        pickupDate: '2026-01-10',
+        createdAt: '2026-05-09T10:00:00.000Z',
+        updatedAt: '2026-05-09T11:00:00.000Z',
+      },
+    ]);
+
+    expect(list.statements[0]?.values).toEqual(['location-1', 'tour-1', '2026-01-10']);
+    expect(list.statements[0]?.text).toContain('FROM waste_location_tour_pickup_dates');
+
+    const single = createExecutor([
+      {
+        id: 'pickup-2',
+        location_id: 'location-2',
+        tour_id: 'tour-2',
+        pickup_date: '2026-02-15',
+        created_at: '2026-05-09T10:00:00.000Z',
+        updated_at: '2026-05-09T11:00:00.000Z',
+      },
+    ]);
+
+    await expect(
+      createWasteMasterDataRepository(single.executor).getWasteLocationTourPickupDateById('pickup-2')
+    ).resolves.toEqual({
+      id: 'pickup-2',
+      locationId: 'location-2',
+      tourId: 'tour-2',
+      pickupDate: '2026-02-15',
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T11:00:00.000Z',
+    });
+
+    const write = createExecutor();
+    await createWasteMasterDataRepository(write.executor).upsertWasteLocationTourPickupDate({
+      id: 'pickup-3',
+      locationId: 'location-3',
+      tourId: 'tour-3',
+      pickupDate: '2026-03-20',
+    });
+
+    expect(write.statements[0]?.values).toEqual(['pickup-3', 'location-3', 'tour-3', '2026-03-20']);
+    expect(write.statements[0]?.text).toContain('ON CONFLICT (location_id, tour_id, pickup_date) DO UPDATE');
+  });
+
   it('lists, reads and upserts tour and global date shifts', async () => {
     const tourShift = createExecutor([
       {

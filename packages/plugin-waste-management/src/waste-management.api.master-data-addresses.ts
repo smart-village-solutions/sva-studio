@@ -94,3 +94,12 @@ export const updateWasteManagementCollectionLocation = async (
     input,
     'PUT'
   );
+
+export const deleteWasteManagementCollectionLocation = async (
+  locationId: string
+): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(
+    `/api/v1/waste-management/collection-locations/${encodeURIComponent(locationId)}`,
+    undefined,
+    'DELETE'
+  );

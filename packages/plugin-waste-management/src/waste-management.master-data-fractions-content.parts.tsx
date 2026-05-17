@@ -80,7 +80,7 @@ export const useFractionBulkActions = ({
       id: 'delete-selected-fractions',
       label: pt('masterData.fractions.actions.deleteSelected'),
       variant: 'outline',
-      disabled: saving,
+      ...(saving ? { disabled: true } : {}),
       onClick: async ({ selectedRows, clearSelection }) => {
         await onDeleteFractions(selectedRows.map((row) => row.id));
         clearSelection();

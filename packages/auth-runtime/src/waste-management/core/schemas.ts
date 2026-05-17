@@ -141,6 +141,14 @@ const startImportSchema = z.object({
   sourceFormat: z.string().trim().min(1),
   blobRef: z.string().trim().min(1),
   dryRun: z.boolean().optional(),
+  delimiterOverride: z.enum(wasteManagementOperationsContract.csvDelimiters).optional(),
+});
+
+const previewLocationTourPickupDateImportSchema = z.object({
+  importProfileId: z.literal(wasteManagementOperationsContract.importProfileIds.locationTourPickupDates),
+  sourceFormat: z.literal('text/csv'),
+  blobRef: z.string().trim().min(1),
+  delimiterOverride: z.enum(wasteManagementOperationsContract.csvDelimiters).optional(),
 });
 
 const startSeedSchema = z.object({
@@ -187,6 +195,7 @@ export const wasteManagementOperationSchemas = {
   startInitializeSchema,
   startMigrationsSchema,
   startImportSchema,
+  previewLocationTourPickupDateImportSchema,
   startSeedSchema,
   startResetSchema,
 } as const;

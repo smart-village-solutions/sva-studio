@@ -133,11 +133,19 @@ SET tour_id = EXCLUDED.tour_id,
   ],
 });
 
+const buildTourDateShiftDeleteStatement = (id: string): SqlStatement => ({
+  text: `
+DELETE FROM waste_tour_date_shifts
+WHERE id = $1::uuid;
+`,
+  values: [id],
+});
+
 export const createWasteTourDateShiftRepositoryPart = (
   executor: SqlExecutor
 ): Pick<
   WasteMasterDataRepository,
-  'listWasteTourDateShifts' | 'getWasteTourDateShiftById' | 'upsertWasteTourDateShift'
+  'listWasteTourDateShifts' | 'getWasteTourDateShiftById' | 'upsertWasteTourDateShift' | 'deleteWasteTourDateShift'
 > => ({
   async listWasteTourDateShifts(filter) {
     const result = await executor.execute<WasteTourDateShiftRow>(buildTourDateShiftListStatement(filter));
@@ -150,10 +158,14 @@ export const createWasteTourDateShiftRepositoryPart = (
   async upsertWasteTourDateShift(input) {
     await executor.execute(buildTourDateShiftUpsertStatement(input));
   },
+  async deleteWasteTourDateShift(id) {
+    await executor.execute(buildTourDateShiftDeleteStatement(id));
+  },
 });
 
 export const wasteTourDateShiftStatements = {
   listWasteTourDateShifts: buildTourDateShiftListStatement,
   getWasteTourDateShiftById: buildTourDateShiftSelectStatement,
   upsertWasteTourDateShift: buildTourDateShiftUpsertStatement,
+  deleteWasteTourDateShift: buildTourDateShiftDeleteStatement,
 } as const;

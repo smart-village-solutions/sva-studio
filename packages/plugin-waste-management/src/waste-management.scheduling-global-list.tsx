@@ -33,7 +33,7 @@ export const WasteSchedulingGlobalShiftList = ({
         <h3 className="text-sm font-semibold">{pt('scheduling.global.title')}</h3>
         <p className="text-sm text-muted-foreground">{pt('scheduling.global.description')}</p>
       </div>
-      <div className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">
+      <div className="overflow-hidden rounded-none border-y border-border bg-card shadow-shell">
         <WastePanelTableTopBar>
           <div className="ml-auto">
             <Button type="button" variant="outline" className="rounded-lg" onClick={onOpenCreate}>

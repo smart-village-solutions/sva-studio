@@ -46,6 +46,24 @@ export const useWasteLocationsTabNavigation = (controller: WasteMasterDataContro
         search: { ...search, locationsView: 'edit', collectionLocationId: location.id },
       });
     },
+    toCopy: (location: Parameters<typeof wasteMasterDataFormMappers.collectionLocationToForm>[0]) => {
+      controller.setLocationDialogMode('create');
+      controller.setLocationDialogOpen(false);
+      controller.setLocationForm({
+        ...wasteMasterDataFormDefaults.createCollectionLocation(),
+        regionId: location.regionId ?? '',
+        cityId: location.cityId,
+        streetId: location.streetId ?? '',
+        houseNumberId: location.houseNumberId ?? '',
+        active: location.active,
+      });
+      controller.setMessage(null);
+      controller.setLastOutcome(null);
+      void navigate({
+        to: '/plugins/waste-management',
+        search: { ...search, locationsView: 'create', collectionLocationId: undefined },
+      });
+    },
     setTourFilter: (tourId: string) => {
       void navigate({ to: '/plugins/waste-management', search: { ...search, tourId: tourId || undefined } });
     },

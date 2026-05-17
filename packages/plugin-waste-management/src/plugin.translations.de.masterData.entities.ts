@@ -109,6 +109,8 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
     actions: {
       openCreate: 'Abholort anlegen',
       edit: 'Bearbeiten',
+      copy: 'Kopieren',
+      delete: 'Löschen',
       cancel: 'Abbrechen',
       create: 'Abholort speichern',
       save: 'Änderungen speichern',
@@ -139,12 +141,17 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
     messages: {
       createSuccess: 'Der Waste-Abholort wurde angelegt.',
       updateSuccess: 'Der Waste-Abholort wurde aktualisiert.',
+      deleteSuccess: 'Der Waste-Abholort wurde gelöscht.',
       saveError: 'Der Waste-Abholort konnte nicht gespeichert werden.',
       saveForbidden: 'Für das Speichern von Waste-Abholorten fehlt die Berechtigung.',
+      deleteError: 'Der Waste-Abholort konnte nicht gelöscht werden.',
+      deleteForbidden: 'Für das Löschen von Waste-Abholorten fehlt die Berechtigung.',
+      deleteConflict: 'Der Waste-Abholort kann wegen bestehender Zuordnungen nicht gelöscht werden.',
     },
     bulk: {
       actions: {
         openAssign: '{{value}} auswählen und Tour zuweisen',
+        deleteSelected: 'Markierte löschen',
         selectAllFiltered: 'Alle gefilterten Abholorte auswählen',
         cancel: 'Abbrechen',
         assign: 'Tour zuweisen',
@@ -159,6 +166,8 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
       dialog: {
         title: 'Tour gesammelt zuweisen',
         description: '{{value}} ausgewählte Abholorte werden einer Tour zugeordnet.',
+        deleteTitle: 'Markierte Abholorte löschen',
+        deleteDescription: '{{value}} ausgewählte Abholorte werden gelöscht.',
       },
       selectedTitle: 'Ausgewählte Abholorte',
       meta: { selectedCount: '{{value}} ausgewählt' },
@@ -166,6 +175,10 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
         assignSuccess: 'Die Waste-Tour-Zuordnungen wurden gesammelt angelegt.',
         assignError: 'Die Waste-Tour-Zuordnungen konnten nicht gesammelt gespeichert werden.',
         assignForbidden: 'Für das Sammelspeichern von Waste-Tour-Zuordnungen fehlt die Berechtigung.',
+        deleteSuccess: 'Die markierten Waste-Abholorte wurden gelöscht.',
+        deleteError: 'Die markierten Waste-Abholorte konnten nicht gelöscht werden.',
+        deleteForbidden: 'Für das Löschen markierter Waste-Abholorte fehlt die Berechtigung.',
+        deleteConflict: 'Mindestens ein markierter Waste-Abholort kann wegen bestehender Zuordnungen nicht gelöscht werden.',
       },
     },
   },

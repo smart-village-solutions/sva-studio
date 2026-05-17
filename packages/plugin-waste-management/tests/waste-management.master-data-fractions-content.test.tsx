@@ -120,7 +120,9 @@ describe('WasteMasterDataFractionsContent', () => {
     expect((tableProps.columns as Array<{ id: string; sortable?: boolean }>).every((column) => column.sortable === true)).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'sort-color' }));
-    expect(onFractionsSortChange).toHaveBeenCalledWith('color', 'desc');
+    const updatedTableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(updatedTableProps.sorting).toEqual([{ id: 'color', desc: true }]);
+    expect(onFractionsSortChange).not.toHaveBeenCalled();
 
     const [nameColumn, colorColumn, descriptionColumn, statusColumn] = tableProps.columns as Array<{
       id: string;

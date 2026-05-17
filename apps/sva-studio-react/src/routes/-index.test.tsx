@@ -310,6 +310,7 @@ describe('HomePage', () => {
     expect(screen.getByRole('link', { name: 'Erneut anmelden' }).getAttribute('href')).toBe(
       '/auth/login?returnTo=%2Fadmin%2Fusers%3Fpage%3D2'
     );
+    expect(window.location.search).toBe('');
   });
 
   it('renders auth diagnostic identifiers when available', () => {

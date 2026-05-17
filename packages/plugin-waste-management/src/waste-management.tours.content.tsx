@@ -1,4 +1,6 @@
+import { useMemo, useState } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
+import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
@@ -9,6 +11,8 @@ import {
   useWasteToursSelectionState,
 } from './waste-management.tours.content.parts.js';
 import { WasteToursEmptyState } from './waste-management.tours.empty-state.js';
+import { formatTourRecurrence } from './waste-management.tours.presentation.js';
+import type { WasteToursSortDirection, WasteToursSortField } from './waste-management.tours.table.parts.js';
 
 export { WasteToursEmptyState };
 
@@ -38,6 +42,41 @@ export const WasteToursContent = ({
   onQueryChange,
   onStatusChange,
 }: WasteToursContentProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const [sortField, setSortField] = useState<WasteToursSortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<WasteToursSortDirection>('asc');
+  const sortedTours = useMemo(() => {
+    if (!sortField) {
+      return tours;
+    }
+
+    const resolveSortValue = (tour: WasteTourRecord): string => {
+      switch (sortField) {
+        case 'name':
+          return tour.name;
+        case 'recurrence': {
+          const recurrenceValue = formatTourRecurrence(pt, tour.recurrence);
+          return recurrenceValue === '—' ? '' : recurrenceValue;
+        }
+        case 'locations':
+          return String(
+            (masterDataOverview?.locationTourLinks ?? []).filter((link) => link.tourId === tour.id).length
+          ).padStart(6, '0');
+        case 'status':
+          return tour.active ? 'active' : 'inactive';
+        default:
+          return '';
+      }
+    };
+
+    return [...tours].sort((left, right) => {
+      const comparison = resolveSortValue(left).localeCompare(resolveSortValue(right), 'de', {
+        numeric: true,
+        sensitivity: 'base',
+      });
+      return sortDirection === 'asc' ? comparison : comparison * -1;
+    });
+  }, [masterDataOverview, pt, sortDirection, sortField, tours]);
   const {
     selectedTourIds,
     setSelectedTourIds,
@@ -51,7 +90,7 @@ export const WasteToursContent = ({
     someVisibleSelected,
     toggleSelectAllVisible,
     toggleSelectedTour,
-  } = useWasteToursSelectionState({ tours, page, pageSize, query, status });
+  } = useWasteToursSelectionState({ tours: sortedTours, page, pageSize, query, status });
 
   useWasteTabPanelActions(null);
 
@@ -62,7 +101,7 @@ export const WasteToursContent = ({
         filtersOpen={filtersOpen}
         setFiltersOpen={setFiltersOpen}
         setBulkDeleteOpen={setBulkDeleteOpen}
-        tours={tours}
+        tours={sortedTours}
         fractions={fractions}
         masterDataOverview={masterDataOverview}
         schedulingOverview={schedulingOverview}
@@ -71,6 +110,8 @@ export const WasteToursContent = ({
         allVisibleSelected={allVisibleSelected}
         someVisibleSelected={someVisibleSelected}
         saving={saving}
+        sortField={sortField}
+        sortDirection={sortDirection}
         page={page}
         pageSize={pageSize}
         query={query}
@@ -79,6 +120,14 @@ export const WasteToursContent = ({
         onPageChange={onPageChange}
         onSyncPageChange={onSyncPageChange}
         onPageSizeChange={onPageSizeChange}
+        onSortChange={(field) => {
+          if (field === sortField) {
+            setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
+            return;
+          }
+          setSortField(field);
+          setSortDirection('asc');
+        }}
         onQueryChange={onQueryChange}
         onStatusChange={onStatusChange}
         toggleSelectAllVisible={toggleSelectAllVisible}

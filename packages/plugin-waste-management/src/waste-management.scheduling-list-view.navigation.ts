@@ -24,6 +24,15 @@ export const toCreateGlobalShiftSearch = (
   tourDateShiftId: undefined,
 });
 
+export const toCreateShiftSearch = (
+  search: WasteManagementSearchParams,
+): WasteManagementSearchParams => ({
+  ...search,
+  schedulingView: 'create',
+  globalDateShiftId: undefined,
+  tourDateShiftId: undefined,
+});
+
 export const toCreateTourShiftSearch = (
   search: WasteManagementSearchParams,
 ): WasteManagementSearchParams => ({
@@ -82,6 +91,19 @@ export const useWasteSchedulingListNavigation = (
   const navigate = useNavigate();
 
   return {
+    openCreate: () => {
+      controller.setDialogMode('create');
+      controller.setGlobalDialogMode('create');
+      controller.setDialogOpen(false);
+      controller.setGlobalDialogOpen(false);
+      controller.setTourShiftForm({
+        ...createDefaultTourDateShiftForm(),
+        tourId: resolveSingleTourId(controller.availableTours),
+      });
+      controller.setGlobalShiftForm(createDefaultGlobalDateShiftForm());
+      resetSchedulingViewState(controller);
+      void navigate({ to: '/plugins/waste-management', search: toCreateShiftSearch(search) });
+    },
     openCreateGlobal: () => {
       controller.setGlobalDialogMode('create');
       controller.setGlobalDialogOpen(false);

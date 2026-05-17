@@ -4,7 +4,7 @@ import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction } from './auth.js';
-import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
+import { runWasteCreateMutation, runWasteDeleteMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, normalizeOptionalString, requireActorInstanceId, requireDeps } from './utils.js';
@@ -137,6 +137,52 @@ export const wasteManagementTourDateShiftHandlers = {
       loadExisting: () => loadTourDateShift(instanceId, shiftId),
       save: () => saveTourDateShift(instanceId, toTourDateShiftInput(shiftId, parsed.data)),
       loadSaved: () => loadTourDateShift(instanceId, shiftId),
+    });
+  },
+  deleteWasteManagementTourDateShiftInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> => {
+    const requestId = getRequestId(deps);
+    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.scheduling.manage', deps, requestId);
+    if (authError) {
+      return authError;
+    }
+
+    const instanceId = requireActorInstanceId(ctx, requestId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+
+    const shiftId = readPathSegment(request, 4)?.trim();
+    if (!shiftId) {
+      return createApiError(400, 'invalid_request', 'shiftId fehlt im Pfad.', requestId);
+    }
+
+    const csrfError = validateCsrf(request, requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    const loadTourDateShift = requireDeps(deps.loadWasteTourDateShiftById, 'loadWasteTourDateShiftById');
+
+    return runWasteDeleteMutation({
+      deps,
+      ctx,
+      instanceId,
+      requestId,
+      resourceId: shiftId,
+      audit: {
+        actionId: 'waste-management.tour-date-shift.deleted',
+        resourceType: 'waste_tour_date_shift',
+      },
+      messages: {
+        notFound: 'Der tourbezogene Waste-Ausweichtermin wurde nicht gefunden.',
+        deleteFailed: 'Der tourbezogene Waste-Ausweichtermin konnte nicht gelöscht werden.',
+      },
+      loadExisting: () => loadTourDateShift(instanceId, shiftId),
+      remove: () => requireDeps(deps.deleteWasteTourDateShift, 'deleteWasteTourDateShift')(instanceId, shiftId),
     });
   },
 };

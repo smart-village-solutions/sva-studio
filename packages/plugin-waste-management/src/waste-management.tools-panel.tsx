@@ -21,6 +21,9 @@ export const WasteToolsPanel = (props: {
     importSourceFormat,
     importBlobRef,
     importDryRun,
+    delimiterOverride,
+    previewResult,
+    previewReady,
     migrationSchema,
     migrationVersion,
     resetToken,
@@ -29,16 +32,19 @@ export const WasteToolsPanel = (props: {
     message,
     lastJob,
     technicalHistory,
+    runDeleteHistoryEntry,
     selectedImportProfile,
     setImportProfileId,
     setImportSourceFormat,
     setImportBlobRef,
     setImportDryRun,
+    setDelimiterOverride,
     setMigrationSchema,
     setMigrationVersion,
     setResetToken,
     setResetConfirmOpen,
     runInitialize,
+    runPreview,
     runImport,
     runMigrations,
     runSeed,
@@ -50,6 +56,7 @@ export const WasteToolsPanel = (props: {
     setImportProfileId,
     setImportSourceFormat,
     setImportBlobRef,
+    setDelimiterOverride,
   });
 
   return (
@@ -61,14 +68,19 @@ export const WasteToolsPanel = (props: {
         message={message}
         lastJob={lastJob}
         technicalHistory={technicalHistory}
+        runDeleteHistoryEntry={runDeleteHistoryEntry}
         importCatalog={importCatalog}
         importProfileId={importProfileId}
         importSourceFormat={importSourceFormat}
         importBlobRef={importBlobRef}
         importDryRun={importDryRun}
+        delimiterOverride={delimiterOverride}
+        previewResult={previewResult}
+        previewReady={previewReady}
         importSelectionHandlers={importSelectionHandlers}
         setImportBlobRef={setImportBlobRef}
-        setImportDryRun={setImportDryRun}
+        setDelimiterOverride={setDelimiterOverride}
+        runPreview={runPreview}
         runImport={runImport}
         runInitialize={runInitialize}
         migrationSchema={migrationSchema}

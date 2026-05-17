@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createDefaultGlobalDateShiftForm,
   createDefaultTourDateShiftForm,
+  combineSchedulingTableRows,
   filterGlobalDateShifts,
   filterTourDateShifts,
   mapGlobalDateShiftToForm,
@@ -302,5 +303,57 @@ describe('waste-management scheduling shared helpers', () => {
         settingsTab: 'source',
       })
     ).toEqual([shifts[1]]);
+  });
+
+  it('combines global and tour shifts into a date-sorted table model with resolved tour labels', () => {
+    const rows = combineSchedulingTableRows({
+      globalDateShifts: [
+        {
+          id: 'global-1',
+          originalDate: '2026-01-01',
+          actualDate: '2026-01-02',
+          hasYear: true,
+          reasonType: 'holiday',
+          reasonKey: 'new-year',
+          description: 'Neujahr',
+          tourIds: ['tour-2', 'tour-1'],
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      ],
+      tourDateShifts: [
+        {
+          id: 'tour-shift-1',
+          tourId: 'tour-1',
+          originalDate: '2026-01-01',
+          actualDate: '2026-01-03',
+          hasYear: true,
+          reasonType: 'weather',
+          reasonKey: 'snow',
+          description: 'Schnee',
+          followUpMode: 'skip-once',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      ],
+      availableTours: [
+        { id: 'tour-1', name: 'Bio Süd' },
+        { id: 'tour-2', name: 'Rest Nord' },
+      ] as never,
+      t: (key: string) => key,
+    });
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        kind: 'global',
+        id: 'global-1',
+        contextLabel: 'Rest Nord, Bio Süd',
+      }),
+      expect.objectContaining({
+        kind: 'tour',
+        id: 'tour-shift-1',
+        contextLabel: 'Bio Süd',
+      }),
+    ]);
   });
 });

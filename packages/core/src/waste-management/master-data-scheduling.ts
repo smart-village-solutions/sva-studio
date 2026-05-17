@@ -19,6 +19,21 @@ export type WasteTourDateShiftListFilter = {
   readonly hasYear?: boolean;
 };
 
+export type WasteLocationTourPickupDateRecord = {
+  readonly id: string;
+  readonly locationId: string;
+  readonly tourId: string;
+  readonly pickupDate: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type WasteLocationTourPickupDateListFilter = {
+  readonly locationId?: string;
+  readonly tourId?: string;
+  readonly pickupDate?: string;
+};
+
 export type WasteGlobalDateShiftRecord = {
   readonly id: string;
   readonly originalDate: string;
@@ -38,6 +53,7 @@ export type WasteGlobalDateShiftListFilter = {
 };
 
 export type WasteManagementSchedulingOverview = {
+  readonly locationTourPickupDates: readonly WasteLocationTourPickupDateRecord[];
   readonly tourDateShifts: readonly WasteTourDateShiftRecord[];
   readonly globalDateShifts: readonly WasteGlobalDateShiftRecord[];
 };

@@ -40,8 +40,13 @@ export const createLocationsTableMaps = ({
   streetsById: new Map(streets.map((street) => [street.id, street] as const)),
   houseNumbersById: new Map(houseNumbers.map((houseNumber) => [houseNumber.id, houseNumber] as const)),
   toursById: new Map(availableTours.map((tour) => [tour.id, tour] as const)),
-  locationTourCountByLocationId: locationTourLinks.reduce<Map<string, number>>((counts, link) => {
-    counts.set(link.locationId, (counts.get(link.locationId) ?? 0) + 1);
-    return counts;
+  locationTourNamesByLocationId: locationTourLinks.reduce<Map<string, readonly string[]>>((namesByLocationId, link) => {
+    const tourName = availableTours.find((tour) => tour.id === link.tourId)?.name;
+    if (!tourName) {
+      return namesByLocationId;
+    }
+    const names = namesByLocationId.get(link.locationId) ?? [];
+    namesByLocationId.set(link.locationId, [...names, tourName].sort((left, right) => left.localeCompare(right)));
+    return namesByLocationId;
   }, new Map()),
 });

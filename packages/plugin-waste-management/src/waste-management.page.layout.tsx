@@ -46,7 +46,13 @@ export const WasteManagementPageTabs = ({
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={(value) => onTabChange(value as WasteManagementTabId)} className="space-y-0">
-        <WasteManagementTabsList pt={pt} activeTab={activeTab} visibleTabIds={visibleTabIds} onWarmTab={warmTab} />
+        <WasteManagementTabsList
+          pt={pt}
+          activeTab={activeTab}
+          visibleTabIds={visibleTabIds}
+          onWarmTab={warmTab}
+          onTabChange={onTabChange}
+        />
         {visibleTabIds.map((tabId) => (
           <WasteManagementTabContent
             key={tabId}

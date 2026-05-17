@@ -22,6 +22,9 @@ type WasteManagementSchedulingScopeCopy = Readonly<{
 type WasteManagementSchedulingCopy = Readonly<{
   global: WasteManagementSchedulingScopeCopy;
   tour: WasteManagementSchedulingScopeCopy;
+  actions: Readonly<Record<string, string>>;
+  create: Readonly<Record<string, string>>;
+  bulkDeleteDialog: Readonly<Record<string, string>>;
   meta: Readonly<Record<string, string>>;
   reasonTypes: Readonly<Record<string, string>>;
   followUpModes: Readonly<Record<string, string>>;
@@ -54,11 +57,23 @@ type WasteManagementToursYearCalendarCopy = Readonly<{
 type WasteManagementToursCopy = Readonly<{
   actions: CrudActionsCopy;
   fields: Readonly<Record<string, string>>;
+  sections?: Readonly<Record<string, string>>;
+  fieldHints?: Readonly<Record<string, string>>;
+  statusHints?: Readonly<Record<string, string>>;
   dialog: CrudDialogCopy;
   meta: Readonly<Record<string, string>>;
   table: Readonly<Record<string, string>>;
   recurrence: Readonly<Record<string, string>>;
-  customDatesTitle: string;
+  customDates: Readonly<{
+    title: string;
+    description: string;
+    empty: string;
+    commentHint: string;
+    actions: Readonly<Record<string, string>>;
+    fields: Readonly<Record<string, string>>;
+    dialog: Readonly<Record<string, string>>;
+    meta: Readonly<Record<string, string>>;
+  }>;
   deleteDialog?: Readonly<Record<string, string>>;
   bulkDeleteDialog?: Readonly<Record<string, string>>;
   messages: Readonly<Record<string, string>>;
@@ -102,6 +117,9 @@ export const createWasteManagementSchedulingTranslations = <const TCopy extends 
     scheduling: {
       global: createSchedulingScopeTranslations(copy.global),
       tour: createSchedulingScopeTranslations(copy.tour),
+      actions: copy.actions,
+      create: copy.create,
+      bulkDeleteDialog: copy.bulkDeleteDialog,
       meta: copy.meta,
       reasonTypes: copy.reasonTypes,
       followUpModes: copy.followUpModes,
@@ -117,11 +135,14 @@ export const createWasteManagementToursTranslations = <const TCopy extends Waste
         {
           actions: createCrudActions(copy.actions),
           fields: copy.fields,
+          sections: copy.sections,
+          fieldHints: copy.fieldHints,
+          statusHints: copy.statusHints,
           dialog: createCrudDialog(copy.dialog),
           meta: copy.meta,
           table: copy.table,
           recurrence: copy.recurrence,
-          customDates: { title: copy.customDatesTitle },
+          customDates: copy.customDates,
           deleteDialog: copy.deleteDialog,
           bulkDeleteDialog: copy.bulkDeleteDialog,
           messages: copy.messages,

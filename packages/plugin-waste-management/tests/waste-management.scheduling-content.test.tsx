@@ -2,11 +2,12 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { WasteSchedulingContent } from '../src/waste-management.scheduling-content.js';
+import { WasteSchedulingContent, WasteSchedulingEmptyState } from '../src/waste-management.scheduling-content.js';
+
+const shiftsTableMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@sva/plugin-sdk', () => ({
-  usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
-    values ? `${key}:${Object.values(values).join('|')}` : key,
+  usePluginTranslation: () => (key: string) => key,
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({
@@ -14,16 +15,15 @@ vi.mock('../src/waste-management.page.support.js', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
-  Badge: ({
-    children,
-    variant,
-  }: {
-    readonly children: React.ReactNode;
-    readonly variant?: string;
-  }) => <span data-testid="badge" data-variant={variant ?? 'default'}>{children}</span>,
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
-  Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
   StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="empty-state">{children}</div>,
+}));
+
+vi.mock('../src/waste-management.scheduling-shifts-table.js', () => ({
+  WasteSchedulingShiftsTable: (props: Record<string, unknown>) => {
+    shiftsTableMock(props);
+    return <div data-testid="shifts-table" />;
+  },
 }));
 
 vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
@@ -32,132 +32,75 @@ vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
 
 afterEach(() => {
   cleanup();
+  shiftsTableMock.mockReset();
 });
 
 describe('WasteSchedulingContent', () => {
-  it('renders global and tour shifts as tables with headers and row actions', () => {
-    const onEditGlobalShiftDialog = vi.fn();
-    const onEditTourShiftDialog = vi.fn();
+  it('passes the scheduling state into the combined shifts table', () => {
+    const globalShift = {
+      id: 'global-1',
+      originalDate: '2026-01-01',
+      actualDate: '2026-01-02',
+      description: 'Neujahr',
+      hasYear: true,
+      reasonType: 'holiday',
+      reasonKey: 'holiday.new-year',
+      tourIds: ['tour-1'],
+    };
+    const tourShift = {
+      id: 'tour-shift-1',
+      tourId: 'tour-1',
+      originalDate: '2026-02-01',
+      actualDate: '2026-02-03',
+      description: 'Baustelle',
+      hasYear: false,
+      reasonType: 'operational-disruption',
+      reasonKey: 'ops.roadwork',
+      followUpMode: 'propagate-series',
+    };
+    const availableTours = [{ id: 'tour-1', name: 'Restmüll Nord' }];
+    const onDeleteSchedulingRows = vi.fn(async () => undefined);
 
     render(
       <WasteSchedulingContent
         message={{ tone: 'info', text: 'shift message' } as never}
-        globalDateShifts={[
-          {
-            id: 'global-1',
-            originalDate: '2026-01-01',
-            actualDate: '2026-01-02',
-            description: 'Neujahr',
-            hasYear: true,
-            reasonType: 'holiday',
-            reasonKey: 'holiday.new-year',
-            tourIds: ['tour-1', 'tour-2'],
-          },
-        ] as never}
-        tourDateShifts={[
-          {
-            id: 'tour-shift-1',
-            tourId: 'tour-1',
-            originalDate: '2026-02-01',
-            actualDate: '2026-02-03',
-            description: 'Baustelle',
-            hasYear: false,
-            reasonType: 'operational-disruption',
-            reasonKey: 'ops.roadwork',
-            followUpMode: 'propagate-series',
-          },
-        ] as never}
-        onOpenCreateGlobalShiftDialog={vi.fn()}
-        onOpenCreateTourShiftDialog={vi.fn()}
-        onEditGlobalShiftDialog={onEditGlobalShiftDialog}
-        onEditTourShiftDialog={onEditTourShiftDialog}
-        page={1}
+        globalDateShifts={[globalShift] as never}
+        tourDateShifts={[tourShift] as never}
+        availableTours={availableTours as never}
+        onOpenCreateShiftDialog={vi.fn()}
+        onEditGlobalShiftDialog={vi.fn()}
+        onEditTourShiftDialog={vi.fn()}
+        onDeleteSchedulingRows={onDeleteSchedulingRows}
+        saving={false}
+        page={2}
         pageSize={25}
         onPageChange={vi.fn()}
+        onSyncPageChange={vi.fn()}
         onPageSizeChange={vi.fn()}
       />
     );
 
     expect(screen.getByText('shift message')).toBeTruthy();
-    expect(screen.getByRole('table', { name: 'scheduling.global.table.ariaLabel' })).toBeTruthy();
-    expect(screen.getByRole('table', { name: 'scheduling.tour.table.ariaLabel' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'scheduling.global.table.originalDate' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'scheduling.global.table.actualDate' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'scheduling.global.table.reason' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'scheduling.tour.table.tourId' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'scheduling.tour.table.followUpMode' })).toBeTruthy();
-    expect(screen.getByText('2026-01-01')).toBeTruthy();
-    expect(screen.getByText('2026-01-02')).toBeTruthy();
-    expect(screen.getByText('2026-02-03')).toBeTruthy();
-    expect(screen.getByText('Neujahr')).toBeTruthy();
-    expect(screen.getByText('Baustelle')).toBeTruthy();
-    expect(screen.getByText('scheduling.reasonTypes.holiday')).toBeTruthy();
-    expect(screen.getByText('scheduling.followUpModes.propagate-series')).toBeTruthy();
-    expect(screen.queryByText('scheduling.meta.globalCount:1')).toBeNull();
-    expect(screen.queryByText('scheduling.meta.tourCount:1')).toBeNull();
-    expect(screen.queryAllByTestId('badge')).toHaveLength(0);
-
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.global.actions.edit' }));
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.tour.actions.edit' }));
-
-    expect(onEditGlobalShiftDialog).toHaveBeenCalledWith(expect.objectContaining({ id: 'global-1' }));
-    expect(onEditTourShiftDialog).toHaveBeenCalledWith(expect.objectContaining({ id: 'tour-shift-1' }));
+    expect(screen.getByTestId('shifts-table')).toBeTruthy();
+    expect(shiftsTableMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        globalDateShifts: [globalShift],
+        tourDateShifts: [tourShift],
+        availableTours,
+        onDeleteSchedulingRows,
+        page: 2,
+        pageSize: 25,
+      })
+    );
   });
 
-  it('does not clamp the shared page from the global list when the tour list still has that page', () => {
-    const onPageChange = vi.fn();
+  it('renders the unified create action in the empty state', () => {
+    const onOpenCreateShiftDialog = vi.fn();
 
-    render(
-      <WasteSchedulingContent
-        message={null}
-        globalDateShifts={[
-          {
-            id: 'global-1',
-            originalDate: '2026-01-01',
-            actualDate: '2026-01-02',
-            description: 'Neujahr',
-            hasYear: true,
-            reasonType: 'holiday',
-            reasonKey: 'holiday.new-year',
-            tourIds: ['tour-1'],
-          },
-        ] as never}
-        tourDateShifts={[
-          {
-            id: 'tour-shift-1',
-            tourId: 'tour-1',
-            originalDate: '2026-02-01',
-            actualDate: '2026-02-03',
-            description: 'Baustelle',
-            hasYear: false,
-            reasonType: 'operational-disruption',
-            reasonKey: 'ops.roadwork',
-            followUpMode: 'propagate-series',
-          },
-          {
-            id: 'tour-shift-2',
-            tourId: 'tour-2',
-            originalDate: '2026-02-04',
-            actualDate: '2026-02-05',
-            description: 'Streik',
-            hasYear: false,
-            reasonType: 'operational-disruption',
-            reasonKey: 'ops.strike',
-            followUpMode: 'propagate-series',
-          },
-        ] as never}
-        onOpenCreateGlobalShiftDialog={vi.fn()}
-        onOpenCreateTourShiftDialog={vi.fn()}
-        onEditGlobalShiftDialog={vi.fn()}
-        onEditTourShiftDialog={vi.fn()}
-        page={2}
-        pageSize={1}
-        onPageChange={onPageChange}
-        onPageSizeChange={vi.fn()}
-      />
-    );
+    render(<WasteSchedulingEmptyState onOpenCreateShiftDialog={onOpenCreateShiftDialog} />);
 
-    expect(onPageChange).not.toHaveBeenCalled();
-    expect(screen.getByText('tour-2')).toBeTruthy();
+    expect(screen.getByTestId('empty-state')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.actions.openCreate' }));
+    expect(onOpenCreateShiftDialog).toHaveBeenCalledTimes(1);
   });
 });

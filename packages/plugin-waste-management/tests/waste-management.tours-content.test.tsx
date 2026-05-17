@@ -124,10 +124,10 @@ describe('WasteToursContent', () => {
 
     expect(screen.getByText('tour message')).toBeTruthy();
     expect(screen.getByRole('table', { name: 'tours.table.caption' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'tours.table.name' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'tours.table.status' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'tours.table.recurrence' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'tours.table.locations' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.name none' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.status none' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.recurrence none' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.locations none' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.actions' })).toBeTruthy();
     expect(screen.getByText('Restmüll Nord')).toBeTruthy();
     expect(screen.getByText('Wöchentliche Abholung')).toBeTruthy();

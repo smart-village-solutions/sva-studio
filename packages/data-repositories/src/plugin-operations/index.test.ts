@@ -307,6 +307,20 @@ describe('studio job repository', () => {
     });
   });
 
+  it('deletes a job together with its event history for the scoped instance', async () => {
+    const { executor, statements } = createQueuedExecutor([[jobRow]]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(repository.deleteJob('tenant-a', 'job-1')).resolves.toMatchObject({
+      id: 'job-1',
+      instanceId: 'tenant-a',
+    });
+
+    expect(statements[0]?.text).toContain('DELETE FROM iam.plugin_operation_job_events');
+    expect(statements[0]?.text).toContain('DELETE FROM iam.plugin_operation_jobs');
+    expect(statements[0]?.values).toEqual(['tenant-a', 'job-1']);
+  });
+
   it('maps sparse event rows, appends minimal events and rejects missing returning rows', async () => {
     const sparseEventRow = {
       ...eventRow,

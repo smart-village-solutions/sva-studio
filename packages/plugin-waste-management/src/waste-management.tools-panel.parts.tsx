@@ -40,6 +40,7 @@ export const createImportSelectionHandlers = ({
   setImportProfileId,
   setImportSourceFormat,
   setImportBlobRef,
+  setDelimiterOverride,
 }: {
   readonly importCatalog: readonly {
     readonly profileId: string;
@@ -54,6 +55,7 @@ export const createImportSelectionHandlers = ({
   readonly setImportProfileId: (value: StartWasteManagementImportInput['importProfileId']) => void;
   readonly setImportSourceFormat: (value: WasteManagementImportSourceFormat) => void;
   readonly setImportBlobRef: (value: string) => void;
+  readonly setDelimiterOverride: (value: StartWasteManagementImportInput['delimiterOverride']) => void;
 }) => ({
   onImportProfileIdChange: (nextProfileId: StartWasteManagementImportInput['importProfileId']) => {
     const matchingProfile = importCatalog.find((profile) => profile.profileId === nextProfileId);
@@ -61,12 +63,14 @@ export const createImportSelectionHandlers = ({
       setImportProfileId(matchingProfile.profileId);
       setImportSourceFormat(matchingProfile.sourceFormats[0] ?? 'text/csv');
       setImportBlobRef('');
+      setDelimiterOverride(undefined);
     }
   },
   onImportSourceFormatChange: (nextSourceFormat: WasteManagementImportSourceFormat) => {
     if (selectedImportProfile?.sourceFormats.includes(nextSourceFormat)) {
       setImportSourceFormat(nextSourceFormat);
       setImportBlobRef('');
+      setDelimiterOverride(undefined);
     }
   },
 });

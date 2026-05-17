@@ -389,7 +389,7 @@ test.describe('waste management plugin', () => {
 
     await expect(page.getByRole('button', { name: 'Fraktion anlegen' })).toBeVisible();
     await expect(
-      page.getByRole('table', { name: 'Tabelle der Waste-Abfallfraktionen' }).getByText('Papier (240l)')
+      page.getByRole('row', { name: /Papier \(240l\).*Papierfraktion für den E2E-Pfad\./ })
     ).toBeVisible();
     expect(harness.requests.createdFractions).toHaveLength(1);
     expect(harness.requests.createdFractions[0]).toMatchObject({

@@ -27,7 +27,10 @@ export const WasteSchedulingTourFormView = ({
         controller.setDialogOpen(false);
         controller.resetTourShiftForm();
         controller.setMessage(null);
-        void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'list' } });
+        void navigate({
+          to: '/plugins/waste-management',
+          search: { ...search, schedulingView: 'list', globalDateShiftId: undefined, tourDateShiftId: undefined },
+        });
       }}
       onSubmit={(event) => controller.onSubmitTourShift(event, search.schedulingView === 'edit-tour' ? 'edit' : 'create')}
     />

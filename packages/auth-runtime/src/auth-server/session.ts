@@ -124,7 +124,12 @@ const resolveRefreshAuthConfig = async (session: Session) => {
     let origin: string | undefined;
     try {
       origin = new URL(session.auth.postLogoutRedirectUri).origin;
-    } catch {
+    } catch (error) {
+      logger.warn('Instance session refresh ignored invalid post-logout redirect URI', {
+        instance_id: session.auth.instanceId,
+        post_logout_redirect_uri: session.auth.postLogoutRedirectUri,
+        error_message: error instanceof Error ? error.message : String(error),
+      });
       origin = undefined;
     }
 

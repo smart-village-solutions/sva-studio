@@ -33,6 +33,8 @@ describe('waste-management search params', () => {
       cityId: undefined,
       wasteFractionId: undefined,
       tourId: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
     });
   });
 
@@ -52,6 +54,8 @@ describe('waste-management search params', () => {
         cityId: 'city-1',
         wasteFractionId: 'fraction-1',
         tourId: 'tour-1',
+        tourDateShiftId: 'tour-shift-1',
+        globalDateShiftId: 'global-shift-1',
       })
     ).toEqual({
       tab: 'locations',
@@ -71,6 +75,8 @@ describe('waste-management search params', () => {
       cityId: 'city-1',
       wasteFractionId: 'fraction-1',
       tourId: 'tour-1',
+      tourDateShiftId: 'tour-shift-1',
+      globalDateShiftId: 'global-shift-1',
     });
   });
 
@@ -98,6 +104,8 @@ describe('waste-management search params', () => {
       cityId: undefined,
       wasteFractionId: undefined,
       tourId: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
     });
   });
 
@@ -125,6 +133,8 @@ describe('waste-management search params', () => {
       cityId: undefined,
       wasteFractionId: undefined,
       tourId: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
     });
   });
 
@@ -152,6 +162,8 @@ describe('waste-management search params', () => {
       cityId: undefined,
       wasteFractionId: undefined,
       tourId: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
     });
   });
 });

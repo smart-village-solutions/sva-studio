@@ -31,7 +31,15 @@ export const WasteSchedulingListView = ({
           controller.setGlobalShiftForm(createDefaultGlobalDateShiftForm());
           controller.setMessage(null);
           controller.setLastOutcome(null);
-          void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'create-global' } });
+          void navigate({
+            to: '/plugins/waste-management',
+            search: {
+              ...search,
+              schedulingView: 'create-global',
+              globalDateShiftId: undefined,
+              tourDateShiftId: undefined,
+            },
+          });
         }}
         onOpenCreateTourShiftDialog={() => {
           controller.setDialogMode('create');
@@ -39,7 +47,15 @@ export const WasteSchedulingListView = ({
           controller.setTourShiftForm({ ...createDefaultTourDateShiftForm(), tourId: resolveSingleTourId(controller) });
           controller.setMessage(null);
           controller.setLastOutcome(null);
-          void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'create-tour' } });
+          void navigate({
+            to: '/plugins/waste-management',
+            search: {
+              ...search,
+              schedulingView: 'create-tour',
+              globalDateShiftId: undefined,
+              tourDateShiftId: undefined,
+            },
+          });
         }}
       />
     );
@@ -56,7 +72,15 @@ export const WasteSchedulingListView = ({
         controller.setGlobalShiftForm(createDefaultGlobalDateShiftForm());
         controller.setMessage(null);
         controller.setLastOutcome(null);
-        void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'create-global' } });
+        void navigate({
+          to: '/plugins/waste-management',
+          search: {
+            ...search,
+            schedulingView: 'create-global',
+            globalDateShiftId: undefined,
+            tourDateShiftId: undefined,
+          },
+        });
       }}
       onOpenCreateTourShiftDialog={() => {
         controller.setDialogMode('create');
@@ -64,19 +88,43 @@ export const WasteSchedulingListView = ({
         controller.setTourShiftForm({ ...createDefaultTourDateShiftForm(), tourId: resolveSingleTourId(controller) });
         controller.setMessage(null);
         controller.setLastOutcome(null);
-        void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'create-tour' } });
+        void navigate({
+          to: '/plugins/waste-management',
+          search: {
+            ...search,
+            schedulingView: 'create-tour',
+            globalDateShiftId: undefined,
+            tourDateShiftId: undefined,
+          },
+        });
       }}
       onEditGlobalShiftDialog={(shift) => {
         controller.openEditGlobalShiftDialog(shift);
         controller.setGlobalDialogOpen(false);
         controller.setLastOutcome(null);
-        void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'edit-global' } });
+        void navigate({
+          to: '/plugins/waste-management',
+          search: {
+            ...search,
+            schedulingView: 'edit-global',
+            globalDateShiftId: shift.id,
+            tourDateShiftId: undefined,
+          },
+        });
       }}
       onEditTourShiftDialog={(shift) => {
         controller.openEditTourShiftDialog(shift);
         controller.setDialogOpen(false);
         controller.setLastOutcome(null);
-        void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'edit-tour' } });
+        void navigate({
+          to: '/plugins/waste-management',
+          search: {
+            ...search,
+            schedulingView: 'edit-tour',
+            globalDateShiftId: undefined,
+            tourDateShiftId: shift.id,
+          },
+        });
       }}
       page={search.page}
       pageSize={search.pageSize}

@@ -567,7 +567,8 @@ describe('waste management helper modules', () => {
     expect(applySuccessSpy).toHaveBeenCalledWith(
       expect.any(Function),
       setMessage,
-      'masterData.fractions.messages.createSuccess'
+      'masterData.fractions.messages.createSuccess',
+      expect.any(Function)
     );
     expect(setDialogOpen).toHaveBeenCalledWith(false);
 

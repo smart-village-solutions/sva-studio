@@ -3,8 +3,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteToursListView } from '../src/waste-management.tours-list-view.js';
+import type { WasteManagementSearchParams } from '../src/search-params.js';
+import type { useWasteToursController } from '../src/waste-management.tours.controller.js';
 
 const navigateMock = vi.fn();
+type WasteToursController = ReturnType<typeof useWasteToursController>;
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
@@ -39,41 +42,62 @@ vi.mock('../src/waste-management.tours.shared.js', () => ({
   mapTourToForm: (tour: { id: string; name: string }) => ({ id: tour.id, name: tour.name }),
 }));
 
+const createSearch = (): WasteManagementSearchParams => ({
+  tab: 'tours',
+  masterDataTab: 'fractions',
+  fractionsView: 'list',
+  toursView: 'list',
+  locationsView: 'list',
+  schedulingView: 'list',
+  q: '',
+  page: 1,
+  pageSize: 25,
+  status: 'all',
+  shiftContext: 'all',
+  fractionsSortBy: 'name',
+  fractionsSortDirection: 'asc',
+  regionId: undefined,
+  cityId: undefined,
+  wasteFractionId: undefined,
+  tourId: undefined,
+  tourDateShiftId: undefined,
+  globalDateShiftId: undefined,
+});
+
+const createController = (
+  overrides: Partial<WasteToursController> = {}
+): WasteToursController =>
+  ({
+    tours: [],
+    assignmentContextLoading: false,
+    message: null,
+    availableFractions: [],
+    masterDataOverview: null,
+    schedulingOverview: null,
+    openCreateAssignmentsDialog: vi.fn(),
+    openEditAssignmentsDialog: vi.fn(),
+    openCalendar: vi.fn(),
+    onToggleTourStatus: vi.fn(),
+    onDeleteTour: vi.fn(),
+    onDeleteTours: vi.fn(),
+    saving: false,
+    setDialogMode: vi.fn(),
+    setDialogOpen: vi.fn(),
+    setTourForm: vi.fn(),
+    setMessage: vi.fn(),
+    setLastOutcome: vi.fn(),
+    ...overrides,
+  }) as WasteToursController;
+
 describe('WasteToursListView', () => {
   beforeEach(() => {
     navigateMock.mockReset();
   });
 
   it('clears stale success state before opening the create form', () => {
-    const controller = {
-      tours: [],
-      setDialogMode: vi.fn(),
-      setDialogOpen: vi.fn(),
-      setTourForm: vi.fn(),
-      setMessage: vi.fn(),
-      setLastOutcome: vi.fn(),
-    } as never;
+    const controller = createController();
 
-    render(
-      <WasteToursListView
-        controller={controller}
-        search={{
-          tab: 'tours',
-          masterDataTab: 'fractions',
-          fractionsView: 'list',
-          toursView: 'list',
-          locationsView: 'list',
-          schedulingView: 'list',
-          q: '',
-          page: 1,
-          pageSize: 25,
-          status: 'all',
-          shiftContext: 'all',
-          fractionsSortBy: 'name',
-          fractionsSortDirection: 'asc',
-        }}
-      />
-    );
+    render(<WasteToursListView controller={controller} search={createSearch()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'empty-create' }));
 
@@ -85,47 +109,11 @@ describe('WasteToursListView', () => {
   });
 
   it('clears stale success state before opening the edit form', () => {
-    const controller = {
+    const controller = createController({
       tours: [{ id: 'tour-1', name: 'Tour 1' }],
-      assignmentContextLoading: false,
-      message: null,
-      availableFractions: [],
-      masterDataOverview: null,
-      schedulingOverview: null,
-      openCreateAssignmentsDialog: vi.fn(),
-      openEditAssignmentsDialog: vi.fn(),
-      openCalendar: vi.fn(),
-      onToggleTourStatus: vi.fn(),
-      onDeleteTour: vi.fn(),
-      onDeleteTours: vi.fn(),
-      saving: false,
-      setDialogMode: vi.fn(),
-      setDialogOpen: vi.fn(),
-      setTourForm: vi.fn(),
-      setMessage: vi.fn(),
-      setLastOutcome: vi.fn(),
-    } as never;
+    });
 
-    render(
-      <WasteToursListView
-        controller={controller}
-        search={{
-          tab: 'tours',
-          masterDataTab: 'fractions',
-          fractionsView: 'list',
-          toursView: 'list',
-          locationsView: 'list',
-          schedulingView: 'list',
-          q: '',
-          page: 1,
-          pageSize: 25,
-          status: 'all',
-          shiftContext: 'all',
-          fractionsSortBy: 'name',
-          fractionsSortDirection: 'asc',
-        }}
-      />
-    );
+    render(<WasteToursListView controller={controller} search={createSearch()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'open-edit' }));
 

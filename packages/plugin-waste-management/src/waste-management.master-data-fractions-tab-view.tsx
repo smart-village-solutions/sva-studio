@@ -29,7 +29,10 @@ export const WasteMasterDataFractionsTabView = ({
           controller.resetFractionForm();
           controller.setMessage(null);
           controller.setLastOutcome(null);
-          void navigate({ to: '/plugins/waste-management', search: { ...search, fractionsView: 'list' } });
+          void navigate({
+            to: '/plugins/waste-management',
+            search: { ...search, fractionsView: 'list', wasteFractionId: undefined },
+          });
         }}
         onSubmit={controller.onSubmitFraction}
       />
@@ -47,7 +50,10 @@ export const WasteMasterDataFractionsTabView = ({
         controller.resetFractionForm();
         controller.setMessage(null);
         controller.setLastOutcome(null);
-        void navigate({ to: '/plugins/waste-management', search: { ...search, fractionsView: 'create' } });
+        void navigate({
+          to: '/plugins/waste-management',
+          search: { ...search, fractionsView: 'create', wasteFractionId: undefined },
+        });
       }}
       onOpenEditFraction={(fraction) => {
         controller.setDialogMode('edit');
@@ -55,7 +61,10 @@ export const WasteMasterDataFractionsTabView = ({
         controller.setFractionForm(wasteMasterDataFormMappers.fractionToForm(fraction));
         controller.setMessage(null);
         controller.setLastOutcome(null);
-        void navigate({ to: '/plugins/waste-management', search: { ...search, fractionsView: 'edit' } });
+        void navigate({
+          to: '/plugins/waste-management',
+          search: { ...search, fractionsView: 'edit', wasteFractionId: fraction.id },
+        });
       }}
       onOpenDeleteFraction={(fraction) => controller.deleteFraction(fraction.id)}
       onDeleteFractions={controller.deleteFractions}

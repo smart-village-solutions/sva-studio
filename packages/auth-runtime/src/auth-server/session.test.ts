@@ -245,6 +245,38 @@ describe('auth server session resolution', () => {
     expect(state.resolveAuthConfigFromSessionAuth).not.toHaveBeenCalled();
   });
 
+  it('logs invalid instance redirect uris before falling back to the default tenant config lookup', async () => {
+    state.getSession
+      .mockResolvedValueOnce(
+        createSession({
+          auth: {
+            ...auth,
+            postLogoutRedirectUri: 'not-a-valid-url',
+          },
+          expiresAt: 5_100,
+        })
+      )
+      .mockResolvedValueOnce(
+        createSession({
+          user: completeUser,
+          accessToken: 'refreshed-access-token',
+          expiresAt: 9_000,
+        })
+      );
+
+    const { getSessionUser } = await import('./session.js');
+
+    await expect(getSessionUser('session-1')).resolves.toEqual(completeUser);
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'Instance session refresh ignored invalid post-logout redirect URI',
+      expect.objectContaining({
+        instance_id: 'tenant-a',
+        post_logout_redirect_uri: 'not-a-valid-url',
+      })
+    );
+    expect(state.resolveAuthConfigForInstance).toHaveBeenCalledWith('tenant-a', {});
+  });
+
   it('returns the fallback user and preserves expiry when token refresh fails before expiry', async () => {
     const session = createSession({ expiresAt: 5_100, user: completeUser });
     state.getSession.mockResolvedValue(session);

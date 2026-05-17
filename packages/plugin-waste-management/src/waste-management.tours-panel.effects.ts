@@ -46,7 +46,32 @@ export const useWasteToursSuccessRedirect = ({
       },
       replace: true,
     });
-  }, [controller, navigate, search, toursViewSuccess]);
+  }, [
+    controller.resetTourForm,
+    controller.setDialogOpen,
+    controller.setLastOutcome,
+    navigate,
+    search.fractionsSortBy,
+    search.fractionsSortDirection,
+    search.fractionsView,
+    search.globalDateShiftId,
+    search.locationsView,
+    search.masterDataTab,
+    search.page,
+    search.pageSize,
+    search.q,
+    search.regionId,
+    search.schedulingView,
+    search.shiftContext,
+    search.status,
+    search.tab,
+    search.tourId,
+    search.tourDateShiftId,
+    search.toursView,
+    search.wasteFractionId,
+    search.cityId,
+    toursViewSuccess,
+  ]);
 };
 
 export const useWasteToursEditRouteHydration = ({
@@ -82,5 +107,30 @@ export const useWasteToursEditRouteHydration = ({
 
     controller.setDialogMode('edit');
     controller.setTourForm(mapTourToForm(routeTour));
-  }, [controller, navigate, search]);
+  }, [
+    controller.overview,
+    controller.setDialogMode,
+    controller.setTourForm,
+    controller.tourForm.id,
+    navigate,
+    search.fractionsSortBy,
+    search.fractionsSortDirection,
+    search.fractionsView,
+    search.globalDateShiftId,
+    search.locationsView,
+    search.masterDataTab,
+    search.page,
+    search.pageSize,
+    search.q,
+    search.regionId,
+    search.schedulingView,
+    search.shiftContext,
+    search.status,
+    search.tab,
+    search.tourId,
+    search.tourDateShiftId,
+    search.toursView,
+    search.wasteFractionId,
+    search.cityId,
+  ]);
 };

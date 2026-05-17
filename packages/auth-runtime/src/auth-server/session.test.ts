@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   },
   getAuthConfig: vi.fn(),
   resolveAuthConfigFromSessionAuth: vi.fn(),
+  resolveAuthConfigForInstance: vi.fn(),
   getOidcConfig: vi.fn(),
   refreshTokenGrant: vi.fn(),
   deleteSession: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock('@sva/server-runtime', () => ({
 vi.mock('../config.js', () => ({
   getAuthConfig: state.getAuthConfig,
   resolveAuthConfigFromSessionAuth: state.resolveAuthConfigFromSessionAuth,
+  resolveAuthConfigForInstance: state.resolveAuthConfigForInstance,
 }));
 
 vi.mock('../log-context.js', () => ({
@@ -115,6 +117,12 @@ describe('auth server session resolution', () => {
     state.resolveAuthConfigFromSessionAuth.mockReturnValue({
       ...state.getAuthConfig.mock.results[0]?.value,
       ...auth,
+    });
+    state.resolveAuthConfigForInstance.mockResolvedValue({
+      ...state.getAuthConfig.mock.results[0]?.value,
+      ...auth,
+      clientSecret: 'tenant-secret',
+      redirectUri: 'https://tenant.example/auth/callback',
     });
     state.getSessionControlState.mockResolvedValue(null);
     state.resolveSessionExpiry.mockReturnValue(9_000);
@@ -210,6 +218,31 @@ describe('auth server session resolution', () => {
         expiresAt: 9_000,
       })
     );
+  });
+
+  it('resolves tenant auth config with the instance secret before refreshing an instance session', async () => {
+    state.getSession
+      .mockResolvedValueOnce(createSession({ expiresAt: 5_100 }))
+      .mockResolvedValueOnce(
+        createSession({
+          user: completeUser,
+          accessToken: 'refreshed-access-token',
+          expiresAt: 9_000,
+        })
+      );
+
+    const { getSessionUser } = await import('./session.js');
+
+    await expect(getSessionUser('session-1')).resolves.toEqual(completeUser);
+    expect(state.resolveAuthConfigForInstance).toHaveBeenCalledWith('tenant-a', {
+      origin: 'https://tenant.example',
+    });
+    expect(state.getOidcConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientSecret: 'tenant-secret',
+      })
+    );
+    expect(state.resolveAuthConfigFromSessionAuth).not.toHaveBeenCalled();
   });
 
   it('returns the fallback user and preserves expiry when token refresh fails before expiry', async () => {

@@ -30,6 +30,9 @@
 - **Komplette CI-Suite:** `pnpm test:ci`
 - **ESLint ausführen:** `pnpm lint`
 - **Shift-left (verbindlich):** Nach jedem abgeschlossenen Änderungsblock sofort die betroffenen Tests ausführen (nicht erst am Ende der Umsetzung)
+- **Ausnahme Schnelliterationsphase:** Bei ausdrücklich angeordneter Schnelliterationsphase dürfen betroffene Tests für einzelne kleinteilige Änderungsblöcke vorübergehend zurückgestellt werden; vor Commit, Push oder PR müssen alle regulären Prüfungen vollständig nachgezogen werden.
+- **Grenzen der Ausnahme:** Nicht anwendbar für Security-, Auth-, Validierungs-, DB-Schema-, Migrations- oder server-runtime-kritische Änderungen; `pnpm check:server-runtime` bleibt für betroffene Packages verpflichtend.
+- **Transparenzpflicht:** Während der Schnelliterationsphase darf kein grüner Teststand behauptet werden; ausgesetzte Prüfungen sind im Arbeitskontext klar zu benennen.
 - **Push-Gate (Mindestanforderung):** Wenn `pnpm test:pr` aus Zeit- oder Ressourcen-Gründen nicht läuft, vor jedem Push mindestens `pnpm nx affected --target=test:unit --base=origin/main` ausführen; bei Typänderungen zusätzlich `pnpm nx affected --target=test:types --base=origin/main`
 - **Arbeitsregel:** Keine weitere Implementierung auf bekannt rotem Teststand
 - **Effizienter, zielgerichteter Test-Workflow:**

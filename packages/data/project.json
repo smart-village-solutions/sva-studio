@@ -42,7 +42,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "packages/data",
-        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts"
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.config.ts"
       }
     },
     "test:integration": {

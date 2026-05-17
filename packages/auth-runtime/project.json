@@ -29,7 +29,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "packages/auth-runtime",
-        "command": "pnpm exec vitest run --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:types": {
@@ -43,7 +43,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "packages/auth-runtime",
-        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     }
   },

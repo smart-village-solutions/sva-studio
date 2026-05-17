@@ -1,6 +1,6 @@
 import { createSdkLogger } from '@sva/server-runtime';
 
-import { getAuthConfig, resolveAuthConfigForInstance, resolveAuthConfigFromSessionAuth } from '../config.js';
+import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
 import { isTokenErrorLike } from '../error-guards.js';
 import { buildLogContext } from '../log-context.js';
 import { SessionStoreUnavailableError } from '../runtime-errors.js';
@@ -119,25 +119,10 @@ const hydrateSessionUserFromAccessToken = async (
   return hydratedUser;
 };
 
-const resolveRefreshAuthConfig = async (session: Session) => {
-  if (session.auth?.kind === 'instance') {
-    let origin: string | undefined;
-    try {
-      origin = new URL(session.auth.postLogoutRedirectUri).origin;
-    } catch {
-      origin = undefined;
-    }
-
-    return resolveAuthConfigForInstance(session.auth.instanceId, origin ? { origin } : {});
-  }
-
-  return session.auth
+const refreshSession = async (sessionId: string, session: Session) => {
+  const authConfig = session.auth
     ? resolveAuthConfigFromSessionAuth(session.auth)
     : getAuthConfig();
-};
-
-const refreshSession = async (sessionId: string, session: Session) => {
-  const authConfig = await resolveRefreshAuthConfig(session);
   const config = await getOidcConfig(authConfig);
   const refreshed = await client.refreshTokenGrant(config, session.refreshToken ?? '');
   const updatedUser = buildSessionUser({

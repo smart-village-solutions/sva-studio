@@ -33,7 +33,10 @@ vi.mock('@sva/studio-ui-react', () => ({
     readonly variant?: string;
   }) => <span data-testid="badge" data-variant={variant ?? 'default'}>{children}</span>,
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
-  Checkbox: (props: React.ComponentProps<'input'>) => <input type="checkbox" {...props} />,
+  Checkbox: ({ indeterminate, ...props }: React.ComponentProps<'input'> & { readonly indeterminate?: boolean }) => {
+    void indeterminate;
+    return <input type="checkbox" {...props} />;
+  },
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
   Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
   StudioConfirmDialog: ({ open }: { readonly open: boolean }) => (open ? <div data-testid="confirm-dialog" /> : null),
@@ -132,7 +135,7 @@ describe('WasteToursContent', () => {
     expect(screen.getByText('Restmüll')).toBeTruthy();
     expect(screen.getByText('Biomüll')).toBeTruthy();
     expect(screen.getByText('tours.table.noShifts')).toBeTruthy();
-    expect(screen.getByRole('cell', { name: '2' })).toBeTruthy();
+    expect(screen.getByTestId('tour-assignment-count-tour-1').textContent).toBe('2');
     expect(screen.queryByText('tours.meta.count:1')).toBeNull();
     expect(screen.getAllByTestId('badge')).toHaveLength(2);
 

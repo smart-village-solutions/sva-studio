@@ -49,7 +49,7 @@ export const FractionFormActions = ({
   readonly saving: boolean;
   readonly onCancel: () => void;
 }) => (
-  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-5 py-4 shadow-shell">
+  <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background/95 px-5 py-4 shadow-shell backdrop-blur supports-[backdrop-filter]:bg-background/85">
     <Button type="submit" disabled={saving}>
       {saveLabel}
     </Button>

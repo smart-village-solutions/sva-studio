@@ -24,6 +24,7 @@ export const WasteToursListView = ({
           controller.setDialogOpen(false);
           controller.setTourForm(createDefaultTourForm());
           controller.setMessage(null);
+          controller.setLastOutcome(null);
           void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'create' } });
         }}
       />
@@ -43,6 +44,7 @@ export const WasteToursListView = ({
         controller.setDialogOpen(false);
         controller.setTourForm(createDefaultTourForm());
         controller.setMessage(null);
+        controller.setLastOutcome(null);
         void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'create' } });
       }}
       onOpenEditDialog={(tour) => {
@@ -50,6 +52,7 @@ export const WasteToursListView = ({
         controller.setDialogOpen(false);
         controller.setTourForm(mapTourToForm(tour));
         controller.setMessage(null);
+        controller.setLastOutcome(null);
         void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'edit' } });
       }}
       onOpenCreateAssignmentsDialog={controller.openCreateAssignmentsDialog}

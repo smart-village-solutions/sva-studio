@@ -127,4 +127,31 @@ describe('waste-management search params', () => {
       tourId: undefined,
     });
   });
+
+  it('forces the page back to 1 when the all-page-size sentinel is used', () => {
+    expect(
+      normalizeWasteManagementSearchParams({
+        page: '3',
+        pageSize: 'all',
+      })
+    ).toEqual({
+      tab: 'fractions',
+      masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
+      q: '',
+      page: 1,
+      pageSize: 2_147_483_647,
+      status: 'all',
+      shiftContext: 'all',
+      fractionsSortBy: 'name',
+      fractionsSortDirection: 'asc',
+      regionId: undefined,
+      cityId: undefined,
+      wasteFractionId: undefined,
+      tourId: undefined,
+    });
+  });
 });

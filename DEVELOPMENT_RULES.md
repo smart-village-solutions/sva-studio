@@ -230,32 +230,6 @@ const invalidCreateAction = 'create';
 
 ---
 
-## 1.6 Ausnahme: Explizit angeordnete Schnelliterationsphase
-
-### ✅ REQUIRED
-- Bei ausdrücklich angeordneter Schnelliterationsphase dürfen betroffene Unit-, Type-, Lint- und E2E-Tests für einzelne kleinteilige Änderungsblöcke vorübergehend zurückgestellt werden.
-- Diese Ausnahme gilt nur für schnelle Feedback-Schleifen während der Umsetzung und nicht für Commit, Push, PR oder Release.
-- Die ausgesetzten Prüfungen müssen vor Commit, Push oder PR vollständig nachgezogen werden.
-- Während einer solchen Phase darf kein grüner Teststand behauptet oder impliziert werden.
-- Die Anweisung zur Schnelliterationsphase muss im Arbeitskontext ausdrücklich vorliegen.
-- Der Verzicht auf Prüfungen muss im Arbeitskontext transparent benannt werden.
-- Pro Änderungsblock ist der Umfang so klein wie möglich zu halten, damit die nachgezogene QS eindeutig bleibt.
-
-### ❌ FORBIDDEN
-- Verwendung dieser Ausnahme für Änderungen mit Sicherheitsbezug
-- Verwendung dieser Ausnahme für Änderungen an Authentifizierung, Autorisierung oder Validierung
-- Verwendung dieser Ausnahme für Änderungen an Datenbank-Schema, Migrationen, RLS, Triggern oder DB-Funktionen
-- Verwendung dieser Ausnahme für Änderungen an serverseitigen Runtime-Pfaden oder Node-ESM-kritischen Workspace-Packages
-- Verwendung dieser Ausnahme, wenn bereits ein bekannter roter Teststand auf denselben betroffenen Bereich hinweist
-- Behauptung oder Implizierung eines grünen Teststands während einer aktiven Schnelliterationsphase
-
-**Weiterhin verbindlich:**
-- Vor Commit, Push oder PR gelten wieder alle regulären Gates.
-- `pnpm check:server-runtime` bleibt für betroffene serverseitige Packages verpflichtend.
-- Dokumentationspflichten, Architekturpflichten und alle übrigen Non-Negotiable-Regeln bleiben unverändert bestehen.
-
----
-
 ## 2. Translation System
 
 ### Process for UI Texts

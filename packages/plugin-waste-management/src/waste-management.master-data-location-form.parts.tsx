@@ -16,7 +16,7 @@ export const LocationFormActions = ({
   readonly saving: boolean;
   readonly onCancel: () => void;
 }) => (
-  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-5 py-4 shadow-shell">
+  <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background/95 px-5 py-4 shadow-shell backdrop-blur supports-[backdrop-filter]:bg-background/85">
     <Button type="submit" disabled={saving}>
       {saveLabel}
     </Button>
@@ -40,23 +40,19 @@ export const LocationSelectSection = ({
   readonly filteredStreets: readonly WasteStreetRecord[];
   readonly filteredHouseNumbers: readonly WasteHouseNumberRecord[];
   readonly onChange: (patch: Partial<CollectionLocationFormState>) => void;
-}) => {
-  const pt = usePluginTranslation('wasteManagement');
-
-  return (
-    <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
-      <StudioFieldGroup columns={2}>
-        <LocationRegionCityFields form={form} regions={regions} filteredCities={filteredCities} onChange={onChange} />
-        <LocationStreetHouseNumberFields
-          form={form}
-          filteredStreets={filteredStreets}
-          filteredHouseNumbers={filteredHouseNumbers}
-          onChange={onChange}
-        />
-      </StudioFieldGroup>
-    </section>
-  );
-};
+}) => (
+  <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
+    <StudioFieldGroup columns={2}>
+      <LocationRegionCityFields form={form} regions={regions} filteredCities={filteredCities} onChange={onChange} />
+      <LocationStreetHouseNumberFields
+        form={form}
+        filteredStreets={filteredStreets}
+        filteredHouseNumbers={filteredHouseNumbers}
+        onChange={onChange}
+      />
+    </StudioFieldGroup>
+  </section>
+);
 
 export const LocationStatusSection = ({
   active,

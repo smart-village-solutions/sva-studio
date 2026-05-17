@@ -30,6 +30,7 @@ export const WasteSchedulingListView = ({
           controller.setGlobalDialogOpen(false);
           controller.setGlobalShiftForm(createDefaultGlobalDateShiftForm());
           controller.setMessage(null);
+          controller.setLastOutcome(null);
           void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'create-global' } });
         }}
         onOpenCreateTourShiftDialog={() => {
@@ -37,6 +38,7 @@ export const WasteSchedulingListView = ({
           controller.setDialogOpen(false);
           controller.setTourShiftForm({ ...createDefaultTourDateShiftForm(), tourId: resolveSingleTourId(controller) });
           controller.setMessage(null);
+          controller.setLastOutcome(null);
           void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'create-tour' } });
         }}
       />
@@ -53,6 +55,7 @@ export const WasteSchedulingListView = ({
         controller.setGlobalDialogOpen(false);
         controller.setGlobalShiftForm(createDefaultGlobalDateShiftForm());
         controller.setMessage(null);
+        controller.setLastOutcome(null);
         void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'create-global' } });
       }}
       onOpenCreateTourShiftDialog={() => {
@@ -60,16 +63,19 @@ export const WasteSchedulingListView = ({
         controller.setDialogOpen(false);
         controller.setTourShiftForm({ ...createDefaultTourDateShiftForm(), tourId: resolveSingleTourId(controller) });
         controller.setMessage(null);
+        controller.setLastOutcome(null);
         void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'create-tour' } });
       }}
       onEditGlobalShiftDialog={(shift) => {
         controller.openEditGlobalShiftDialog(shift);
         controller.setGlobalDialogOpen(false);
+        controller.setLastOutcome(null);
         void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'edit-global' } });
       }}
       onEditTourShiftDialog={(shift) => {
         controller.openEditTourShiftDialog(shift);
         controller.setDialogOpen(false);
+        controller.setLastOutcome(null);
         void navigate({ to: '/plugins/waste-management', search: { ...search, schedulingView: 'edit-tour' } });
       }}
       page={search.page}

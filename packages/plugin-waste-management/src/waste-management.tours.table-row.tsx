@@ -1,6 +1,5 @@
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { cn } from '@sva/studio-ui-react';
 
 import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
 import { resolveTourAssignmentItems } from './waste-management.tours.locations.js';
@@ -81,7 +80,7 @@ export const WasteToursTableRow = ({
         {assignmentContextLoading ? (
           <span className="text-sm text-muted-foreground">{pt('tours.table.loadingAssignments')}</span>
         ) : (
-          <span className="text-sm">{assignmentItems.length}</span>
+          <span data-testid={`tour-assignment-count-${tour.id}`} className="text-sm">{assignmentItems.length}</span>
         )}
       </td>
       <WasteToursRowStatusCell tour={tour} disabled={assignmentContextLoading || saving} onToggleTourStatus={onToggleTourStatus} />

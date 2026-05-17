@@ -14,6 +14,7 @@ export const useWasteLocationsTabNavigation = (controller: WasteMasterDataContro
       controller.setLocationDialogOpen(false);
       controller.resetLocationForm();
       controller.setMessage(null);
+      controller.setLastOutcome(null);
       void navigate({ to: '/plugins/waste-management', search: { ...search, locationsView: 'list' } });
     },
     toCreate: () => {
@@ -25,6 +26,7 @@ export const useWasteLocationsTabNavigation = (controller: WasteMasterDataContro
         cityId: search.cityId ?? '',
       });
       controller.setMessage(null);
+      controller.setLastOutcome(null);
       void navigate({ to: '/plugins/waste-management', search: { ...search, locationsView: 'create' } });
     },
     toEdit: (location: Parameters<typeof wasteMasterDataFormMappers.collectionLocationToForm>[0]) => {
@@ -32,6 +34,7 @@ export const useWasteLocationsTabNavigation = (controller: WasteMasterDataContro
       controller.setLocationDialogOpen(false);
       controller.setLocationForm(wasteMasterDataFormMappers.collectionLocationToForm(location));
       controller.setMessage(null);
+      controller.setLastOutcome(null);
       void navigate({ to: '/plugins/waste-management', search: { ...search, locationsView: 'edit' } });
     },
     setTourFilter: (tourId: string) => {

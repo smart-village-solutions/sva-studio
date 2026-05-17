@@ -7,21 +7,27 @@ import {
 import { wasteMasterDataInputMappers } from './waste-management.master-data.forms.js';
 import { applySuccess, type WasteMasterDataState } from './waste-management.master-data.state.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
+import type { WasteManagementSearchParams } from './search-params.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
 export const createWasteMasterDataLocationSubmissions = ({
   state,
   pt,
+  search,
   loadOverview,
   selectedCollectionLocationIds,
 }: {
   state: WasteMasterDataState;
   pt: Translate;
+  search: WasteManagementSearchParams;
   loadOverview: (active?: boolean) => Promise<void>;
   selectedCollectionLocationIds: readonly string[];
 }) => ({
-  onSubmitLocation: async (event: React.FormEvent<HTMLFormElement>) => {
+  onSubmitLocation: async (
+    event: React.FormEvent<HTMLFormElement>,
+    mode = search.locationsView === 'edit' ? 'edit' : state.locationDialogMode
+  ) => {
     event.preventDefault();
     state.setSaving(true);
     state.setMessage(null);
@@ -35,7 +41,7 @@ export const createWasteMasterDataLocationSubmissions = ({
       houseNumberId: String(formData.get('houseNumberId') ?? state.locationForm.houseNumberId),
     };
     try {
-      if (state.locationDialogMode === 'create') {
+      if (mode === 'create') {
         await createWasteManagementCollectionLocation(wasteMasterDataInputMappers.toCreateCollectionLocationInput(submittedForm));
       } else {
         await updateWasteManagementCollectionLocation(state.locationForm.id, wasteMasterDataInputMappers.toUpdateCollectionLocationInput(submittedForm));
@@ -44,10 +50,10 @@ export const createWasteMasterDataLocationSubmissions = ({
       applySuccess(
         () => state.setLocationDialogOpen(false),
         state.setMessage,
-        state.locationDialogMode === 'create'
+        mode === 'create'
           ? pt('masterData.collectionLocations.messages.createSuccess')
           : pt('masterData.collectionLocations.messages.updateSuccess'),
-        () => state.setLastOutcome(state.locationDialogMode === 'create' ? 'location-create-success' : 'location-update-success')
+        () => state.setLastOutcome(mode === 'create' ? 'location-create-success' : 'location-update-success')
       );
     } catch (saveError) {
       const code = resolveApiErrorCode(saveError);

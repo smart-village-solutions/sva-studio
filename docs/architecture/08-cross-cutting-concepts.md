@@ -193,6 +193,7 @@ gleichzeitig beeinflussen.
 - Der lokale Dev-Auth-Modus ist kein gültiger Ersatznachweis für Realm-Auflösung, Session-Lifecycle, Silent-SSO, Forced-Reauth oder feingranulare IAM-Entscheidungen und darf deshalb nicht in Staging- oder Shared-Dev-Verträgen vorausgesetzt werden
 - Workspace-Context-Warnungen erfolgen über lazy `process.emitWarning` statt `console.warn`
 - Mainserver-Logs enthalten nur `instanceId`/`workspace_id`, `operation_name`, `request_id`, `trace_id`, Status und abstrahierte Fehlercodes; API-Key, Secret, Token und unredactete Variablen werden nie geloggt
+- Die Mainserver-Integration hält dieselbe Fehler- und Logging-Semantik auch intern modular: Credential-, Token-, Transport- und Fachmapping-Module verwenden denselben strukturierten Log-Kontext und denselben Hop-Observability-Vertrag
 - IAM-Request-Spans tragen konsistente Diagnoseattribute wie `iam.endpoint`, `iam.instance_id`, `iam.actor_resolution`, `iam.reason_code`, `iam.feature_flags`, `db.schema_guard_result`, `dependency.redis.status` und `dependency.keycloak.status`
 - Der Runtime-Doctor- und Migrationspfad emittiert eigene OTEL-Ereignisse für Schema-Guard, Actor-Diagnose und verifizierte Migrationsläufe, damit Betriebsfehler mit `request_id` und `trace_id` korrelierbar bleiben
 - Inhalts-Historie nutzt ein eigenes Read-Modell statt Roh-Logs; jede Erstellung, Aktualisierung und jeder Statuswechsel erzeugt zusätzlich Audit-Ereignisse im bestehenden IAM-Auditpfad. Audit-Payloads für Content-Aktionen enthalten additiv fachliche Capability, primitive Action, Ergebnis, Reason-Code und Korrelationsfelder, ohne bestehende Exportformate zu migrieren.
@@ -243,6 +244,7 @@ gleichzeitig beeinflussen.
 - Restore-Sanitization nach Backup-Restore stellt DSGVO-konforme Nachbereinigung sicher
 - Mainserver-Delegation arbeitet fail-closed: ohne lokalen Rollencheck, Instanzkontext, Konfiguration oder gültige Credentials wird kein Upstream-Call ausgeführt
 - Pagination gegen den Mainserver arbeitet ebenfalls fail-closed: ungültige `page`-/`pageSize`-Eingaben werden auf den kanonischen Vertrag normalisiert, und ohne belastbaren Nachweis für weitere sichtbare Einträge wird `hasNextPage` nicht optimistisch gesetzt
+- Technische Entflechtung ist für serverseitige Integrationspfade verbindlich: öffentliche Host-Fassaden bleiben stabil, während Transport-, Cache- und Fachlogik in getrennten internen Modulen liegen und nicht wieder in Sammeldateien zusammengeführt werden
 - Der IAM-Acceptance-Runner arbeitet ebenfalls fail-closed: fehlende Env, fehlende Testbenutzer, nicht bereite Dependencies oder unvollständige Laufzeitnachweise beenden den Lauf mit dokumentierten Fehlercodes
 - Der Gruppen-CRUD arbeitet fail-closed: unbekannte `roleIds`, instanzfremde Gruppen oder fehlerhafte CSRF-/Idempotency-Header erzeugen stabile `invalid_request`-, `forbidden`- oder `csrf_validation_failed`-Antworten
 - Die Rechtstext-Verwaltung arbeitet fail-closed: ungültige Statuswechsel, fehlendes `publishedAt` bei `valid` oder nicht reloadbare Neuanlagen liefern stabile `invalid_request`- bzw. `database_unavailable`-Antworten

@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 const TEST_FILES_FLAG = '--testFiles';
 
@@ -36,7 +37,22 @@ export const normalizeVitestRunArgs = (args: readonly string[]): string[] => {
     passthroughArgs.push(argument);
   }
 
-  return [...passthroughArgs, ...testFileArgs];
+  if (testFileArgs.length === 0) {
+    return passthroughArgs;
+  }
+
+  return [...passthroughArgs, '--', ...testFileArgs];
+};
+
+export const isRunVitestTargetEntrypoint = (
+  scriptUrl: string,
+  entrypointPath: string | undefined
+): boolean => {
+  if (!entrypointPath) {
+    return false;
+  }
+
+  return scriptUrl === pathToFileURL(entrypointPath).href;
 };
 
 export const runVitestTarget = (): never => {
@@ -53,6 +69,6 @@ export const runVitestTarget = (): never => {
   process.exit(result.status ?? 1);
 };
 
-if (import.meta.main) {
+if (isRunVitestTargetEntrypoint(import.meta.url, process.argv[1])) {
   runVitestTarget();
 }

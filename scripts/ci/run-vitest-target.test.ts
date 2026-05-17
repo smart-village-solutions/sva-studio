@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeVitestRunArgs } from './run-vitest-target.ts';
+import { isRunVitestTargetEntrypoint, normalizeVitestRunArgs } from './run-vitest-target.ts';
 
 describe('run-vitest-target', () => {
   it('rewrites --testFiles flags into positional vitest file filters', () => {
@@ -17,6 +17,7 @@ describe('run-vitest-target', () => {
       '--config',
       'vitest.config.ts',
       '--passWithNoTests',
+      '--',
       'src/runtime-health.test.ts',
     ]);
   });
@@ -33,6 +34,7 @@ describe('run-vitest-target', () => {
     ).toEqual([
       '--config',
       'vitest.config.ts',
+      '--',
       'src/runtime-health.test.ts',
       'src/runtime-auth.test.ts',
     ]);
@@ -54,7 +56,40 @@ describe('run-vitest-target', () => {
       '--reporter=verbose',
       '--config',
       'vitest.config.ts',
+      '--',
       'tests/foo.test.ts',
     ]);
+  });
+
+  it('protects test file filters from options with optional values', () => {
+    expect(normalizeVitestRunArgs(['--changed', '--testFiles=src/runtime-health.test.ts'])).toEqual([
+      '--changed',
+      '--',
+      'src/runtime-health.test.ts',
+    ]);
+  });
+});
+
+describe('isRunVitestTargetEntrypoint', () => {
+  it('matches the repo standard ESM main-module guard', () => {
+    expect(
+      isRunVitestTargetEntrypoint(
+        'file:///workspace/scripts/ci/run-vitest-target.ts',
+        '/workspace/scripts/ci/run-vitest-target.ts'
+      )
+    ).toBe(true);
+  });
+
+  it('returns false when there is no entrypoint path', () => {
+    expect(isRunVitestTargetEntrypoint('file:///workspace/scripts/ci/run-vitest-target.ts', undefined)).toBe(false);
+  });
+
+  it('returns false for a different entrypoint file', () => {
+    expect(
+      isRunVitestTargetEntrypoint(
+        'file:///workspace/scripts/ci/run-vitest-target.ts',
+        '/workspace/scripts/ci/other-script.ts'
+      )
+    ).toBe(false);
   });
 });

@@ -538,6 +538,7 @@ describe('waste management helper modules', () => {
 
     const setSaving = vi.fn();
     const setMessage = vi.fn();
+    const setLastOutcome = vi.fn();
     const setDialogOpen = vi.fn();
     const setRegionDialogOpen = vi.fn();
     const loadOverview = vi.fn().mockResolvedValue(undefined);
@@ -548,6 +549,7 @@ describe('waste management helper modules', () => {
       regionForm: { id: 'region-1', name: 'Nord' },
       setSaving,
       setMessage,
+      setLastOutcome,
       setDialogOpen,
       setRegionDialogOpen,
     } as never;

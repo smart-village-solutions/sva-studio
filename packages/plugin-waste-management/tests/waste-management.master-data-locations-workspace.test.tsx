@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteMasterDataLocationsWorkspace } from '../src/waste-management.master-data-locations-workspace.js';
 
@@ -7,6 +7,10 @@ vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, variables?: Record<string, string | number>) =>
     variables ? `${key}:${JSON.stringify(variables)}` : key,
 }));
+
+afterEach(() => {
+  cleanup();
+});
 
 describe('WasteMasterDataLocationsWorkspace', () => {
   it('shows the active tour filter summary and clears it explicitly', () => {
@@ -221,5 +225,65 @@ describe('WasteMasterDataLocationsWorkspace', () => {
     expect(screen.getAllByText('masterData.locationsWorkspace.table.tourCount:{"value":2}').length).toBeGreaterThan(0);
     expect(screen.getAllByText('common.active').length).toBeGreaterThan(0);
     expect(screen.queryAllByTestId('badge')).toHaveLength(0);
+  });
+
+  it('shows the real collection-location count in the overview cards', () => {
+    render(
+      <WasteMasterDataLocationsWorkspace
+        regions={[{ id: 'region-1', name: 'Nord', createdAt: '2026-05-09T10:00:00.000Z', updatedAt: '2026-05-09T10:00:00.000Z' }]}
+        cities={[]}
+        streets={[]}
+        houseNumbers={[]}
+        collectionLocations={[
+          {
+            id: 'location-1',
+            regionId: 'region-1',
+            cityId: 'city-1',
+            streetId: 'street-1',
+            houseNumberId: 'house-1',
+            active: true,
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+          {
+            id: 'location-2',
+            regionId: 'region-1',
+            cityId: 'city-1',
+            streetId: 'street-1',
+            houseNumberId: 'house-2',
+            active: true,
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ]}
+        locationTourLinks={[]}
+        selectedLocationIds={[]}
+        allFilteredLocationsSelected={false}
+        selectedCollectionLocationsCount={0}
+        availableTours={[]}
+        page={1}
+        pageSize={25}
+        selectedTourId={undefined}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+        onTourFilterChange={vi.fn()}
+        onToggleSelectAll={vi.fn()}
+        onToggleLocation={vi.fn()}
+        onOpenCreateRegion={vi.fn()}
+        onOpenCreateCity={vi.fn()}
+        onOpenCreateStreet={vi.fn()}
+        onOpenCreateHouseNumber={vi.fn()}
+        onOpenCreateLocation={vi.fn()}
+        onOpenEditRegion={vi.fn()}
+        onOpenEditCity={vi.fn()}
+        onOpenEditStreet={vi.fn()}
+        onOpenEditHouseNumber={vi.fn()}
+        onOpenEditLocation={vi.fn()}
+        onOpenBulkAssignments={vi.fn()}
+        getLocationLabel={() => 'Nord / Musterstadt / Hauptstraße / 12'}
+      />
+    );
+
+    expect(document.body.textContent).toContain('masterData.locationsWorkspace.overview.collectionLocationCount:{"value":2}');
   });
 });

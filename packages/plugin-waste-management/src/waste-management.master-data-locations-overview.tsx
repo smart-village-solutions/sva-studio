@@ -16,6 +16,13 @@ export const WasteMasterDataLocationsOverview = (props: {
   const { onOpenCreateRegion, onOpenCreateCity, onOpenCreateStreet, onOpenCreateHouseNumber, onOpenCreateLocation } =
     props;
   const pt = usePluginTranslation('wasteManagement');
+  const metrics = [
+    pt('masterData.locationsWorkspace.overview.collectionLocationCount', { value: props.collectionLocationCount }),
+    pt('masterData.locationsWorkspace.overview.regionCount', { value: props.regionCount }),
+    pt('masterData.locationsWorkspace.overview.cityCount', { value: props.cityCount }),
+    pt('masterData.locationsWorkspace.overview.streetCount', { value: props.streetCount }),
+    pt('masterData.locationsWorkspace.overview.houseNumberCount', { value: props.houseNumberCount }),
+  ];
 
   return (
     <>
@@ -41,6 +48,16 @@ export const WasteMasterDataLocationsOverview = (props: {
             },
           ]}
         />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {metrics.map((metric) => (
+          <div
+            key={metric}
+            className="rounded-full border border-border/70 bg-card px-3 py-1.5 text-sm text-muted-foreground"
+          >
+            {metric}
+          </div>
+        ))}
       </div>
     </>
   );

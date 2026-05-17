@@ -27,6 +27,7 @@ export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagem
 
     controller.setDialogOpen(false);
     controller.setGlobalDialogOpen(false);
+    controller.setLastOutcome(null);
     if (search.schedulingView === 'create-tour' || search.schedulingView === 'edit-tour') {
       controller.resetTourShiftForm();
     } else if (search.schedulingView === 'create-global' || search.schedulingView === 'edit-global') {
@@ -45,6 +46,7 @@ export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagem
     controller.resetTourShiftForm,
     controller.setDialogOpen,
     controller.setGlobalDialogOpen,
+    controller.setLastOutcome,
     navigate,
     schedulingViewSuccess,
     search,

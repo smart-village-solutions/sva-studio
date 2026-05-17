@@ -18,6 +18,7 @@ export const WasteMasterDataLocationsOverviewSection = ({
   cities,
   streets,
   houseNumbers,
+  collectionLocations,
   onOpenCreateRegion,
   onOpenCreateCity,
   onOpenCreateStreet,
@@ -28,6 +29,7 @@ export const WasteMasterDataLocationsOverviewSection = ({
   readonly cities: readonly WasteCityRecord[];
   readonly streets: readonly WasteStreetRecord[];
   readonly houseNumbers: readonly WasteHouseNumberRecord[];
+  readonly collectionLocations: readonly WasteCollectionLocationRecord[];
   readonly onOpenCreateRegion: () => void;
   readonly onOpenCreateCity: () => void;
   readonly onOpenCreateStreet: () => void;
@@ -35,7 +37,7 @@ export const WasteMasterDataLocationsOverviewSection = ({
   readonly onOpenCreateLocation: () => void;
 }) => (
   <WasteMasterDataLocationsOverview
-    collectionLocationCount={0}
+    collectionLocationCount={collectionLocations.length}
     regionCount={regions.length}
     cityCount={cities.length}
     streetCount={streets.length}

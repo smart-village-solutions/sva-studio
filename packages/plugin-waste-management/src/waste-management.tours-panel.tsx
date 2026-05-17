@@ -23,6 +23,7 @@ export const WasteToursPanel = ({ search }: { readonly search: WasteManagementSe
 
     controller.setDialogOpen(false);
     controller.resetTourForm();
+    controller.setLastOutcome(null);
     void navigate({
       to: '/plugins/waste-management',
       search: {
@@ -31,7 +32,7 @@ export const WasteToursPanel = ({ search }: { readonly search: WasteManagementSe
       },
       replace: true,
     });
-  }, [controller.resetTourForm, controller.setDialogOpen, navigate, search, toursViewSuccess]);
+  }, [controller.resetTourForm, controller.setDialogOpen, controller.setLastOutcome, navigate, search, toursViewSuccess]);
 
   if (controller.loading) {
     return <StudioLoadingState>{pt('tours.messages.loading')}</StudioLoadingState>;

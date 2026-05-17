@@ -2186,6 +2186,60 @@
       "status": "open",
       "summary": "Kontrollfluss der Content-Route-Helfer in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/content-route-helpers.ts)"
     },
+    "sva-mainserver:packages/sva-mainserver/src/server/service-internals/access-token-provider.ts:functionLines": {
+      "ticketId": "QUAL-SVA-MAINSERVER-INT-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Access-Token-Provider in kleinere Cache-, Request- und Response-Schritte aufteilen (packages/sva-mainserver/src/server/service-internals/access-token-provider.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/service-internals/event-mappers.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-SVA-MAINSERVER-INT-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Event-Mapping in kleinere Normalisierungs- und Feldgruppen-Helfer zerlegen (packages/sva-mainserver/src/server/service-internals/event-mappers.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/service-internals/event-operations.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-SVA-MAINSERVER-INT-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Event-Operationen in kleinere Variablenbuilder und Mutationshilfen aufteilen (packages/sva-mainserver/src/server/service-internals/event-operations.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/service-internals/mappers-shared.ts:fileLines": {
+      "ticketId": "QUAL-SVA-MAINSERVER-INT-004",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Gemeinsame Mainserver-Mapping-Schemas in kleinere thematische Module splitten (packages/sva-mainserver/src/server/service-internals/mappers-shared.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/service-internals/mappers-shared.ts:publicExports": {
+      "ticketId": "QUAL-SVA-MAINSERVER-INT-004",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Gemeinsame Mainserver-Mapping-Exports in kleinere thematische Oberflaechen splitten (packages/sva-mainserver/src/server/service-internals/mappers-shared.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/service-internals/news-mappers.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-SVA-MAINSERVER-INT-005",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "News-Mapping in kleinere Payload-, Metadaten- und Content-Block-Helfer zerlegen (packages/sva-mainserver/src/server/service-internals/news-mappers.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/service-internals/poi-mappers.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-SVA-MAINSERVER-INT-006",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Mapping in kleinere Feldgruppen- und Zertifikats-Helfer zerlegen (packages/sva-mainserver/src/server/service-internals/poi-mappers.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/service-internals/poi-operations.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-SVA-MAINSERVER-INT-007",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Operationen in kleinere Variablenbuilder und Mutationshilfen aufteilen (packages/sva-mainserver/src/server/service-internals/poi-operations.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/service-internals/shared.ts:publicExports": {
+      "ticketId": "QUAL-SVA-MAINSERVER-INT-008",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Gemeinsame Mainserver-Service-Utilities in kleinere Exportsegmente aufteilen (packages/sva-mainserver/src/server/service-internals/shared.ts)"
+    },
     "plugin-sdk:packages/plugin-sdk/src/plugin-platform-resolution.ts:fileLines": {
       "ticketId": "QUAL-PLUGIN-SDK-001",
       "ticketSystem": "backlog",

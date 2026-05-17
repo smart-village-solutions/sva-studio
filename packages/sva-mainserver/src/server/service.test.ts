@@ -1045,6 +1045,24 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('maps transport-style credential errors with code properties to identity_provider_unavailable', async () => {
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => {
+        const error = new Error('connect ECONNREFUSED');
+        (error as Error & { code?: string }).code = 'ECONNREFUSED';
+        throw error;
+      },
+    });
+
+    await expect(
+      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toMatchObject({
+      status: 'error',
+      errorCode: 'identity_provider_unavailable',
+    });
+  });
+
   it('passes the tenant instance id into credential loading', async () => {
     const readCredentials = vi.fn().mockResolvedValue({
       apiKey: 'key-1',

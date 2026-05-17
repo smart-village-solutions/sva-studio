@@ -2,6 +2,7 @@ import type { SvaMainserverConnectionInput } from '../../types.js';
 
 import { readSvaMainserverCredentialsWithStatus } from '@sva/auth-runtime/server';
 
+import { SvaMainserverError } from '../errors.js';
 import { readTimedCacheValue, type TimedCacheEntry, writeTimedCacheValue } from './cache.js';
 import { buildLogContext, logger, withObservedHop } from './observability.js';
 import { type CredentialValue, toSvaMainserverError } from './shared.js';
@@ -78,7 +79,7 @@ export const createCredentialProvider = (input: {
           });
         } catch (error) {
           const normalizedError =
-            error instanceof Error && 'code' in error
+            error instanceof SvaMainserverError
               ? error
               : toSvaMainserverError({
                   code: 'identity_provider_unavailable',
@@ -89,7 +90,7 @@ export const createCredentialProvider = (input: {
           logger.warn('SVA Mainserver identity provider is unavailable', {
             ...buildLogContext(connection, {
               operation: 'load_credentials',
-              error_code: 'code' in normalizedError ? normalizedError.code : 'identity_provider_unavailable',
+              error_code: normalizedError.code,
             }),
           });
           throw normalizedError;

@@ -56,7 +56,8 @@ export type InstanceRegistryHttpDeps<TContext> = {
 export const requireMutationGuards = <TContext>(
   deps: InstanceRegistryHttpDeps<TContext>,
   request: Request,
-  ctx: TContext
+  ctx: TContext,
+  options?: { readonly requireFreshReauth?: boolean }
 ): Response | null => {
   const accessError = deps.ensurePlatformAccess(request, ctx);
   if (accessError) {
@@ -65,6 +66,9 @@ export const requireMutationGuards = <TContext>(
   const csrfError = deps.validateCsrf(request, deps.getRequestId());
   if (csrfError) {
     return csrfError;
+  }
+  if (options?.requireFreshReauth === false) {
+    return null;
   }
   return deps.requireFreshReauth(request, ctx);
 };

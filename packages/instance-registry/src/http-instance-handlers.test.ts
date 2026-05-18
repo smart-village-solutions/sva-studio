@@ -45,7 +45,7 @@ describe('http-instance-handlers', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     deps.getRequestId.mockReturnValue('req-1');
     deps.ensurePlatformAccess.mockReturnValue(null);
     deps.validateCsrf.mockReturnValue(null);
@@ -111,6 +111,31 @@ describe('http-instance-handlers', () => {
     });
   });
 
+  it('creates instances without requiring fresh reauthentication', async () => {
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+      },
+    });
+    deps.requireFreshReauth.mockReturnValueOnce(new Response('reauth', { status: 403 }));
+    const handlers = createInstanceRegistryHttpHandlers(deps);
+
+    const response = await handlers.createInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(201);
+    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
+    expect(service.createProvisioningRequest).toHaveBeenCalledTimes(1);
+  });
+
   it('maps update errors through the injected mapper', async () => {
     const thrown = new Error('tenant_auth_client_secret_missing');
     vi.mocked(service.updateInstance).mockRejectedValueOnce(thrown);
@@ -133,6 +158,30 @@ describe('http-instance-handlers', () => {
 
     expect(response.status).toBe(502);
     expect(deps.mapMutationError).toHaveBeenCalledWith(thrown);
+  });
+
+  it('updates instances without requiring fresh reauthentication', async () => {
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+      },
+    });
+    deps.requireFreshReauth.mockReturnValueOnce(new Response('reauth', { status: 403 }));
+    const handlers = createInstanceRegistryHttpHandlers(deps);
+
+    const response = await handlers.updateInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo', { method: 'PATCH' }),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
+    expect(service.updateInstance).toHaveBeenCalledTimes(1);
   });
 
   it('returns guard failures before reading create payloads', async () => {

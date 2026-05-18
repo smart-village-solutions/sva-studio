@@ -7,7 +7,7 @@ import { readInstanceIdOrError, requireMutationGuards, type InstanceRegistryHttp
 export const createCreateInstanceHandler =
   <TContext>(deps: InstanceRegistryHttpDeps<TContext>) =>
   async (request: Request, ctx: TContext): Promise<Response> => {
-    const guardError = requireMutationGuards(deps, request, ctx);
+    const guardError = requireMutationGuards(deps, request, ctx, { requireFreshReauth: false });
     if (guardError) {
       return guardError;
     }
@@ -47,7 +47,7 @@ export const createCreateInstanceHandler =
 export const createUpdateInstanceHandler =
   <TContext>(deps: InstanceRegistryHttpDeps<TContext>) =>
   async (request: Request, ctx: TContext): Promise<Response> => {
-    const guardError = requireMutationGuards(deps, request, ctx);
+    const guardError = requireMutationGuards(deps, request, ctx, { requireFreshReauth: false });
     if (guardError) {
       return guardError;
     }

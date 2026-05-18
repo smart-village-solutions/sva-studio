@@ -1,6 +1,20 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
+type WasteToolsActionsSectionProps = {
+  readonly canRunMigrations: boolean;
+  readonly canRunSeed: boolean;
+  readonly canRunReset: boolean;
+  readonly migrationSchema: string;
+  readonly migrationVersion: string;
+  readonly runningAction: 'import' | 'migration' | 'seed' | 'reset' | null;
+  readonly onMigrationSchemaChange: (value: string) => void;
+  readonly onMigrationVersionChange: (value: string) => void;
+  readonly onStartMigrations: () => void;
+  readonly onStartSeed: () => void;
+  readonly onOpenReset: () => void;
+};
+
 export const WasteToolsActionsSection = ({
   canRunMigrations,
   canRunSeed,
@@ -13,19 +27,7 @@ export const WasteToolsActionsSection = ({
   onStartMigrations,
   onStartSeed,
   onOpenReset,
-}: {
-  readonly canRunMigrations: boolean;
-  readonly canRunSeed: boolean;
-  readonly canRunReset: boolean;
-  readonly migrationSchema: string;
-  readonly migrationVersion: string;
-  readonly runningAction: 'import' | 'migration' | 'seed' | 'reset' | null;
-  readonly onMigrationSchemaChange: (value: string) => void;
-  readonly onMigrationVersionChange: (value: string) => void;
-  readonly onStartMigrations: () => void;
-  readonly onStartSeed: () => void;
-  readonly onOpenReset: () => void;
-}) => {
+}: WasteToolsActionsSectionProps) => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (

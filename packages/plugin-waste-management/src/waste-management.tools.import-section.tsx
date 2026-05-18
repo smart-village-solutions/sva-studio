@@ -103,7 +103,9 @@ export const WasteToolsImportSection = ({
     hasImportResult: Boolean(lastJob?.id),
   });
   const canContinueFromUpload = importBlobRef.startsWith('data:');
-  const canStartImport = importBlobRef.startsWith('data:') && (!previewRequired || previewReady);
+  const previewHasBlockingErrors = previewRequired && (previewResult?.errors.length ?? 0) > 0;
+  const canStartImport =
+    importBlobRef.startsWith('data:') && (!previewRequired || (previewReady && !previewHasBlockingErrors));
 
   useEffect(() => {
     if (previewReady) {

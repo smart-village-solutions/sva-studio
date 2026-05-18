@@ -329,7 +329,7 @@ describe('WasteToolsImportSection', () => {
     });
 
     const startImportButton = screen.getByRole('button', { name: 'tools.actions.startImport' });
-    expect(startImportButton).toBeDisabled();
+    expect(startImportButton.getAttribute('disabled')).not.toBeNull();
   });
 
   it('returns to validation when the delimiter changes after a successful preview', async () => {

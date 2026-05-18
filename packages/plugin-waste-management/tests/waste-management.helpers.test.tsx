@@ -119,10 +119,11 @@ describe('waste management helper modules', () => {
     const objectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:template');
     const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
     const anchorClick = vi.fn();
+    const createdAnchors: Array<{ href?: string; download?: string }> = [];
     const originalCreateElement = document.createElement.bind(document);
     const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
       if (tagName === 'a') {
-        return {
+        const anchor = {
           click: anchorClick,
           set href(value: string) {
             this._href = value;
@@ -136,7 +137,9 @@ describe('waste management helper modules', () => {
           get download() {
             return this._download;
           },
-        } as unknown as HTMLAnchorElement;
+        } as unknown as HTMLAnchorElement & { _href?: string; _download?: string };
+        createdAnchors.push(anchor);
+        return anchor;
       }
       return originalCreateElement(tagName);
     });
@@ -178,6 +181,7 @@ describe('waste management helper modules', () => {
     expect(anchorClick).toHaveBeenCalledTimes(3);
     expect(objectUrlSpy).toHaveBeenCalledTimes(3);
     expect(revokeSpy).toHaveBeenCalledWith('blob:template');
+    expect(createdAnchors[2]?.download).toBe('waste-import-errors.csv');
 
     const onConfirm = vi.fn();
     const onTokenChange = vi.fn();

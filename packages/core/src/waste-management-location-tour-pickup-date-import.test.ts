@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   detectWasteImportCsvDelimiter,
+  normalizeWasteImportPickupDate,
   parseWasteLocationTourPickupDateCsv,
 } from './waste-management-location-tour-pickup-date-import.js';
 
@@ -235,5 +236,12 @@ describe('waste location tour assignment import parser', () => {
 
   it('detects delimiters correctly when escaped quotes appear inside quoted header cells', () => {
     expect(detectWasteImportCsvDelimiter('"Papier ""Blau""";Ort;Tour')).toBe(';');
+  });
+
+  it('normalizes strict iso pickup dates and rejects invalid values', () => {
+    expect(normalizeWasteImportPickupDate(' 2026-05-18 ')).toBe('2026-05-18');
+    expect(normalizeWasteImportPickupDate('2026-02-30')).toBeNull();
+    expect(normalizeWasteImportPickupDate('18.05.2026')).toBeNull();
+    expect(normalizeWasteImportPickupDate('')).toBeNull();
   });
 });

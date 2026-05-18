@@ -34,19 +34,30 @@ export const createLocationsTableMaps = ({
 }: Pick<
   WasteMasterDataLocationsTableProps,
   'regions' | 'cities' | 'streets' | 'houseNumbers' | 'availableTours' | 'locationTourLinks'
->): WasteMasterDataLocationsTableMaps => ({
-  regionsById: new Map(regions.map((region) => [region.id, region] as const)),
-  citiesById: new Map(cities.map((city) => [city.id, city] as const)),
-  streetsById: new Map(streets.map((street) => [street.id, street] as const)),
-  houseNumbersById: new Map(houseNumbers.map((houseNumber) => [houseNumber.id, houseNumber] as const)),
-  toursById: new Map(availableTours.map((tour) => [tour.id, tour] as const)),
-  locationTourNamesByLocationId: locationTourLinks.reduce<Map<string, readonly string[]>>((namesByLocationId, link) => {
-    const tourName = availableTours.find((tour) => tour.id === link.tourId)?.name;
+>): WasteMasterDataLocationsTableMaps => {
+  const toursById = new Map(availableTours.map((tour) => [tour.id, tour] as const));
+  const locationTourNamesByLocationId = new Map<string, readonly string[]>();
+
+  for (const link of locationTourLinks) {
+    const tourName = toursById.get(link.tourId)?.name;
     if (!tourName) {
-      return namesByLocationId;
+      continue;
     }
-    const names = namesByLocationId.get(link.locationId) ?? [];
-    namesByLocationId.set(link.locationId, [...names, tourName].sort((left, right) => left.localeCompare(right)));
-    return namesByLocationId;
-  }, new Map()),
-});
+
+    const names = locationTourNamesByLocationId.get(link.locationId) ?? [];
+    locationTourNamesByLocationId.set(link.locationId, [...names, tourName]);
+  }
+
+  for (const [locationId, names] of locationTourNamesByLocationId.entries()) {
+    locationTourNamesByLocationId.set(locationId, [...names].sort((left, right) => left.localeCompare(right, 'de')));
+  }
+
+  return {
+    regionsById: new Map(regions.map((region) => [region.id, region] as const)),
+    citiesById: new Map(cities.map((city) => [city.id, city] as const)),
+    streetsById: new Map(streets.map((street) => [street.id, street] as const)),
+    houseNumbersById: new Map(houseNumbers.map((houseNumber) => [houseNumber.id, houseNumber] as const)),
+    toursById,
+    locationTourNamesByLocationId,
+  };
+};

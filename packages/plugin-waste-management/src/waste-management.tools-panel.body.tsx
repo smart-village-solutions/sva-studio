@@ -74,15 +74,6 @@ export const WasteToolsPanelBody = (props: WasteToolsPanelBodyProps) => (
       canRunMigrations={props.access.canRunMigrations}
       canRunSeed={props.access.canRunSeed}
       canRunReset={props.access.canRunReset}
-      runningAction={props.runningAction}
-      migrationSchema={props.migrationSchema}
-      migrationVersion={props.migrationVersion}
-      onMigrationSchemaChange={props.setMigrationSchema}
-      onMigrationVersionChange={props.setMigrationVersion}
-      onStartInitialize={() => void props.runInitialize()}
-      onStartMigrations={() => void props.runMigrations()}
-      onStartSeed={() => void props.runSeed()}
-      onOpenReset={() => props.setResetConfirmOpen(true)}
       initializeSection={
         <WasteToolsInitializeSection
           canRunInitialize={props.access.canRunInitialize}

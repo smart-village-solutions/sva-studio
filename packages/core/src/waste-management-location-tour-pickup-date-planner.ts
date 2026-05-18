@@ -41,6 +41,7 @@ type PlannerState = {
   readonly fractionByKey: Map<string, WasteFractionRecord>;
   readonly regionByKey: Map<string, WasteRegionRecord>;
   readonly cityByKey: Map<string, WasteCityRecord>;
+  readonly citiesByName: Map<string, WasteCityRecord[]>;
   readonly streetByKey: Map<string, WasteStreetRecord>;
   readonly houseNumberByKey: Map<string, WasteHouseNumberRecord>;
   readonly locationByKey: Map<string, WasteCollectionLocationRecord>;
@@ -105,6 +106,12 @@ const createState = (snapshot: WasteLocationTourPickupDateImportPlanningSnapshot
   fractionByKey: new Map(snapshot.fractions.map((fraction) => [normalizeKeyPart(fraction.name), fraction])),
   regionByKey: new Map(snapshot.regions.map((region) => [normalizeKeyPart(region.name), region])),
   cityByKey: new Map(snapshot.cities.map((city) => [`${city.regionId ?? ''}::${normalizeKeyPart(city.name)}`, city])),
+  citiesByName: snapshot.cities.reduce<Map<string, WasteCityRecord[]>>((citiesByName, city) => {
+    const cityKey = normalizeKeyPart(city.name);
+    const existing = citiesByName.get(cityKey) ?? [];
+    citiesByName.set(cityKey, [...existing, city]);
+    return citiesByName;
+  }, new Map()),
   streetByKey: new Map(snapshot.streets.map((street) => [`${street.cityId}::${normalizeKeyPart(street.name)}`, street])),
   houseNumberByKey: new Map(
     snapshot.houseNumbers.map((houseNumber) => [`${houseNumber.streetId}::${normalizeKeyPart(houseNumber.number)}`, houseNumber])
@@ -131,6 +138,12 @@ const createState = (snapshot: WasteLocationTourPickupDateImportPlanningSnapshot
 const registerCreatedRecord = <T extends { readonly id: string }>(bucket: Map<string, T>, record: T): T => {
   bucket.set(record.id, record);
   return record;
+};
+
+const registerCityByName = (bucket: Map<string, WasteCityRecord[]>, city: WasteCityRecord) => {
+  const cityKey = normalizeKeyPart(city.name);
+  const cities = bucket.get(cityKey) ?? [];
+  bucket.set(cityKey, [...cities, city]);
 };
 
 const shouldCountAsExisting = <T extends { readonly id: string }>(bucket: Map<string, T>, id: string): boolean => {
@@ -172,6 +185,20 @@ const ensureCity = (state: PlannerState, regionId: string | undefined, cityName:
     return existingCity;
   }
 
+  if (!regionId) {
+    const regionlessMatches = state.citiesByName.get(normalizeKeyPart(cityName)) ?? [];
+    if (regionlessMatches.length === 1) {
+      const fallbackCity = regionlessMatches[0];
+      if (!fallbackCity) {
+        throw new Error('expected_unique_regionless_city_match');
+      }
+      if (shouldCountAsExisting(state.upserts.cities, fallbackCity.id)) {
+        markExistingUsage(state.summary.cities, fallbackCity.id, state.touchedExisting.cities);
+      }
+      return fallbackCity;
+    }
+  }
+
   const city = registerCreatedRecord(state.upserts.cities, {
     id: state.createId(),
     name: cityName,
@@ -180,6 +207,7 @@ const ensureCity = (state: PlannerState, regionId: string | undefined, cityName:
     updatedAt: '',
   });
   state.cityByKey.set(cityKey, city);
+  registerCityByName(state.citiesByName, city);
   state.summary.cities.created += 1;
   return city;
 };
@@ -351,7 +379,7 @@ const applyRowToPlan = (state: PlannerState, row: WasteLocationTourPickupDateImp
   const street = ensureStreet(state, city.id, row.street);
   const houseNumber = ensureHouseNumber(state, street.id, row.houseNumbers);
   const location = ensureLocation(state, {
-    regionId,
+    regionId: regionId ?? city.regionId,
     cityId: city.id,
     streetId: street.id,
     houseNumberId: houseNumber.id,

@@ -16,15 +16,6 @@ export const WasteToolsAdvancedSection = ({
   readonly canRunMigrations: boolean;
   readonly canRunSeed: boolean;
   readonly canRunReset: boolean;
-  readonly runningAction: 'import' | 'migration' | 'seed' | 'reset' | null;
-  readonly migrationSchema: string;
-  readonly migrationVersion: string;
-  readonly onMigrationSchemaChange: (value: string) => void;
-  readonly onMigrationVersionChange: (value: string) => void;
-  readonly onStartInitialize: () => void;
-  readonly onStartMigrations: () => void;
-  readonly onStartSeed: () => void;
-  readonly onOpenReset: () => void;
   readonly initializeSection: ReactNode;
   readonly actionsSection: ReactNode;
   readonly technicalDetails: ReactNode;

@@ -322,6 +322,9 @@ export const executeImport = async (
     if (!input.parsedLocationTourPickupDates) {
       throw new Error('missing_location_tour_pickup_date_import');
     }
+    if (input.parsedLocationTourPickupDates.issues.length > 0) {
+      throw new Error('location_tour_pickup_date_import_has_issues');
+    }
     const planned = await planLocationTourPickupDateImport(repository, {
       parsed: input.parsedLocationTourPickupDates,
       persist: true,

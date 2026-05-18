@@ -294,4 +294,63 @@ describe('planWasteLocationTourPickupDateImport', () => {
     );
     expect(plan.upserts.cities.some((city) => city.regionId !== undefined)).toBe(true);
   });
+
+  it('reuses an existing city hierarchy when the region column is omitted but the city name is unique', () => {
+    const plan = planWasteLocationTourPickupDateImport(
+      {
+        fractions: [],
+        regions: [{ id: 'region-existing', name: 'Prignitz', createdAt: '', updatedAt: '' }],
+        cities: [{ id: 'city-existing', name: 'Perleberg', regionId: 'region-existing', createdAt: '', updatedAt: '' }],
+        streets: [{ id: 'street-existing', name: 'Alle Straßen', cityId: 'city-existing', createdAt: '', updatedAt: '' }],
+        houseNumbers: [{ id: 'house-existing', number: 'Alle Hausnummern', streetId: 'street-existing', createdAt: '', updatedAt: '' }],
+        locations: [
+          {
+            id: 'location-existing',
+            regionId: 'region-existing',
+            cityId: 'city-existing',
+            streetId: 'street-existing',
+            houseNumberId: 'house-existing',
+            active: true,
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+        tours: [],
+        assignments: [],
+      },
+      {
+        rows: [
+          {
+            rowNumber: 2,
+            region: undefined,
+            city: 'Perleberg',
+            street: 'Alle Straßen',
+            houseNumbers: 'Alle Hausnummern',
+            tourNamesByFractionName: {
+              Papier: 'PPK.7.2',
+            },
+          },
+        ],
+      },
+      {
+        createId: (() => {
+          let counter = 0;
+          return () => `generated-${++counter}`;
+        })(),
+      }
+    );
+
+    expect(plan.summary).toEqual({
+      fractions: { existing: 0, created: 1 },
+      regions: { existing: 0, created: 0 },
+      cities: { existing: 1, created: 0 },
+      streets: { existing: 1, created: 0 },
+      houseNumbers: { existing: 1, created: 0 },
+      locations: { existing: 1, created: 0 },
+      assignments: { existing: 0, created: 1 },
+    });
+    expect(plan.upserts.cities).toEqual([]);
+    expect(plan.upserts.streets).toEqual([]);
+    expect(plan.upserts.locations).toEqual([]);
+  });
 });

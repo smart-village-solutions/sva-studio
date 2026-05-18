@@ -210,7 +210,7 @@ export const deletePluginOperationJobHandler = async (request: Request): Promise
 
       return createJsonItemResponse(200, job, getRequestId());
     } catch {
-      return createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht geloescht werden.', getRequestId());
+      return createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht gelöscht werden.', getRequestId());
     }
   });
 

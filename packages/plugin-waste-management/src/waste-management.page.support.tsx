@@ -118,7 +118,7 @@ export const downloadImportTemplate = (
 
 export const downloadImportPreviewErrors = (preview: WasteLocationTourPickupDateImportPreview) => {
   const rows = [
-    ['Zeile', 'Spalte', 'Meldung', 'Wert'],
+    ['Row', 'Column', 'Message', 'Value'],
     ...preview.errors.map((error) => [
       String(error.rowNumber),
       error.column,
@@ -131,7 +131,7 @@ export const downloadImportPreviewErrors = (preview: WasteLocationTourPickupDate
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = 'waste-import-fehler.csv';
+  anchor.download = 'waste-import-errors.csv';
   anchor.click();
   URL.revokeObjectURL(url);
 };

@@ -174,11 +174,11 @@ WITH target_account AS (
   LIMIT 1
 ),
 target_membership AS (
-  INSERT INTO iam.instance_memberships (instance_id, account_id, membership_type)
+  ${input.dryRun ? 'SELECT NULL::uuid AS account_id WHERE FALSE' : `INSERT INTO iam.instance_memberships (instance_id, account_id, membership_type)
   SELECT ${sqlLiteral(input.instanceId)}, id, 'member'
   FROM target_account
   ON CONFLICT (instance_id, account_id) DO NOTHING
-  RETURNING account_id
+  RETURNING account_id`}
 ),
 resolved_account AS (
   SELECT id AS account_id FROM target_account

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
-import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
+import { StatusNotice } from './waste-management.page.support.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
 import { WasteToursContentBody } from './waste-management.tours.content.body.js';
 import {
@@ -45,6 +45,13 @@ export const WasteToursContent = ({
   const pt = usePluginTranslation('wasteManagement');
   const [sortField, setSortField] = useState<WasteToursSortField | null>(null);
   const [sortDirection, setSortDirection] = useState<WasteToursSortDirection>('asc');
+  const locationCountByTourId = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const link of masterDataOverview?.locationTourLinks ?? []) {
+      counts.set(link.tourId, (counts.get(link.tourId) ?? 0) + 1);
+    }
+    return counts;
+  }, [masterDataOverview?.locationTourLinks]);
   const sortedTours = useMemo(() => {
     if (!sortField) {
       return tours;
@@ -59,9 +66,7 @@ export const WasteToursContent = ({
           return recurrenceValue === '—' ? '' : recurrenceValue;
         }
         case 'locations':
-          return String(
-            (masterDataOverview?.locationTourLinks ?? []).filter((link) => link.tourId === tour.id).length
-          ).padStart(6, '0');
+          return String(locationCountByTourId.get(tour.id) ?? 0).padStart(6, '0');
         case 'status':
           return tour.active ? 'active' : 'inactive';
         default:
@@ -76,7 +81,7 @@ export const WasteToursContent = ({
       });
       return sortDirection === 'asc' ? comparison : comparison * -1;
     });
-  }, [masterDataOverview, pt, sortDirection, sortField, tours]);
+  }, [locationCountByTourId, pt, sortDirection, sortField, tours]);
   const {
     selectedTourIds,
     setSelectedTourIds,

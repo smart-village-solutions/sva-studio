@@ -192,6 +192,7 @@ describe('AuthProvider', () => {
       expect(readSessionAccessSnapshot()).toEqual({
         isResolved: true,
         permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
+        roles: ['editor'],
       });
     });
   });

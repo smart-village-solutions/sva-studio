@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import type {
   WasteCityRecord,
   WasteCollectionLocationRecord,
@@ -61,6 +59,13 @@ type PlannerState = {
 
 const normalizeKeyPart = (value: string | undefined): string => (value ?? '').trim().toLocaleLowerCase('de-DE');
 const createEntitySummary = (): MutableEntitySummary => ({ existing: 0, created: 0 });
+const createRuntimeUuid = (): string => {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `wm-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+};
 
 const createPlanningSummary = () => ({
   fractions: createEntitySummary(),
@@ -368,7 +373,7 @@ export const planWasteLocationTourPickupDateImport = (
   input: { readonly rows: readonly WasteLocationTourPickupDateImportRow[] },
   options?: { readonly createId?: () => string }
 ): WasteLocationTourPickupDateImportPlan => {
-  const state = createState(snapshot, options?.createId ?? (() => randomUUID()));
+  const state = createState(snapshot, options?.createId ?? createRuntimeUuid);
 
   for (const row of input.rows) {
     applyRowToPlan(state, row);

@@ -38,10 +38,18 @@ export const WasteToolsActionsSection = ({
           </div>
           <StudioFieldGroup>
             <StudioField id="waste-tools-migration-schema" label={pt('tools.migrations.schemaLabel')}>
-              <Input value={migrationSchema} onChange={(event) => onMigrationSchemaChange(event.target.value)} />
+              <Input
+                id="waste-tools-migration-schema"
+                value={migrationSchema}
+                onChange={(event) => onMigrationSchemaChange(event.target.value)}
+              />
             </StudioField>
             <StudioField id="waste-tools-migration-version" label={pt('tools.migrations.versionLabel')}>
-              <Input value={migrationVersion} onChange={(event) => onMigrationVersionChange(event.target.value)} />
+              <Input
+                id="waste-tools-migration-version"
+                value={migrationVersion}
+                onChange={(event) => onMigrationVersionChange(event.target.value)}
+              />
             </StudioField>
           </StudioFieldGroup>
           <Button type="button" disabled={runningAction !== null} onClick={onStartMigrations}>

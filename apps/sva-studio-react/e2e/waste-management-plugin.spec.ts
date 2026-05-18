@@ -255,6 +255,36 @@ const mockWasteFacade = async (page: Page, input: {
       return;
     }
 
+    if (method === 'POST' && path === '/api/v1/waste-management/tools/imports/preview') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: createApiItem({
+          profileId: 'waste-management.ortsbezogene-tourtermine',
+          delimiter: ';',
+          detectedDelimiter: ';',
+          fractionNames: ['Hausmüll', 'Papier', 'Gelbe Säcke'],
+          existingFractions: ['Restmüll'],
+          newFractions: ['Hausmüll', 'Papier', 'Gelbe Säcke'],
+          existingTours: [],
+          newTours: ['HM.3.3', 'PPK.7.2', 'LVP.9.4'],
+          validRowCount: 1,
+          invalidRowCount: 0,
+          errors: [],
+          summary: {
+            fractions: { existing: 0, created: 3 },
+            regions: { existing: 0, created: 0 },
+            cities: { existing: 0, created: 1 },
+            streets: { existing: 0, created: 1 },
+            houseNumbers: { existing: 0, created: 1 },
+            locations: { existing: 0, created: 1 },
+            assignments: { existing: 0, created: 3 },
+          },
+        }),
+      });
+      return;
+    }
+
     if (method === 'POST' && path === '/api/v1/waste-management/tools/imports') {
       requests.startedJobTypes.push('waste-management.import-data');
       const job: WasteJobState = {
@@ -399,19 +429,23 @@ test.describe('waste management plugin', () => {
     });
 
     await page.getByRole('tab', { name: 'Datentools' }).click();
-    const toolsPanel = page.getByRole('tabpanel', { name: 'Datentools' });
+    await page.getByRole('button', { name: /Tourzuordnungen nach Fraktionen/ }).click();
+    const toolsPanel = page.getByText('Datei hochladen').locator('xpath=ancestor::div[contains(@class,"rounded-2xl")]').first();
     await toolsPanel.locator('input[type="file"]').setInputFiles({
       name: 'tenant-a.csv',
       mimeType: 'text/csv',
-      buffer: Buffer.from('street,date\nMusterweg,2026-05-10\n'),
+      buffer: Buffer.from('Ort;Straße;Hausmüll;Papier;Gelbe Säcke\nPerleberg;Ackerstr.;HM.3.3;PPK.7.2;LVP.9.4\n'),
     });
+    await page.getByRole('button', { name: 'Vorschau prüfen' }).click();
+    await expect(page.getByRole('button', { name: 'Import starten' })).toBeVisible();
     await page.getByRole('button', { name: 'Import starten' }).click();
-    await toolsPanel.getByRole('textbox').nth(0).fill('waste_ops_v2');
-    await toolsPanel.getByRole('textbox').nth(1).fill('2026.05.10');
+    await page.getByRole('button', { name: 'Erweiterte Systemfunktionen' }).click();
+    await page.getByLabel('Zielschema').fill('waste_ops_v2');
+    await page.getByLabel('Anfordernde Version').fill('2026.05.10');
     await page.getByRole('button', { name: 'Migrationen starten' }).click();
     await page.getByRole('button', { name: 'Seed starten' }).click();
     await page.getByRole('button', { name: 'Reset starten' }).click();
-    await page.locator('input[placeholder="RESET"]').fill('RESET');
+    await page.getByLabel('Bestätigungstoken').fill('RESET');
     await page.getByRole('button', { name: 'Reset bestätigen' }).click();
 
     await expect(page.getByText('Job job-reset-1 wurde gestartet.')).toBeVisible();

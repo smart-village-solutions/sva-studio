@@ -589,6 +589,10 @@ describe('plugin operations handlers', () => {
   it('deletes a plugin operation job for the authenticated instance', async () => {
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
+        getJobDetail: vi.fn(async () => ({
+          id: 'job-1',
+          status: 'failed',
+        })),
         deleteJob: vi.fn(async () => ({
           id: 'job-1',
           instanceId: 'tenant-a',
@@ -622,6 +626,49 @@ describe('plugin operations handlers', () => {
       data: {
         id: 'job-1',
         status: 'failed',
+      },
+    });
+  });
+
+  it('rejects deletion of queued or running plugin operation jobs', async () => {
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobDetail: vi.fn(async () => ({
+          id: 'job-1',
+          instanceId: 'tenant-a',
+          pluginId: 'news',
+          jobTypeId: 'news.import-articles',
+          queueName: 'plugin-operations',
+          status: 'running',
+          inputPayload: { source: 'upload-1' },
+          attempts: 1,
+          maxAttempts: 5,
+          idempotencyKey: 'idem-1',
+          scheduledAt: '2026-05-09T12:00:00.000Z',
+          createdAt: '2026-05-09T12:00:00.000Z',
+          updatedAt: '2026-05-09T12:02:00.000Z',
+        })),
+        deleteJob: vi.fn(async () => {
+          throw new Error('deleteJob should not be called for active jobs');
+        }),
+      })
+    );
+
+    const response = await deletePluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111', {
+        method: 'DELETE',
+        headers: {
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'conflict',
+        message: expect.stringContaining('erst nach Abschluss oder Abbruch gelöscht'),
       },
     });
   });

@@ -30,6 +30,7 @@ import { normalizeStudioJobListItem } from './job-list-read-model.js';
 import { withStudioJobRepository } from './repository.js';
 
 const MONITORING_ADMIN_ROLES = new Set(['system_admin']);
+const TERMINAL_JOB_STATUSES = new Set(['succeeded', 'failed', 'cancelled']);
 
 const startPluginOperationJobSchema = z.object({
   pluginId: z.string().trim().min(1),
@@ -203,13 +204,30 @@ export const deletePluginOperationJobHandler = async (request: Request): Promise
     }
 
     try {
-      const job = await withStudioJobRepository(instanceId, (repository) => repository.deleteJob(instanceId, jobId));
+      const job = await withStudioJobRepository(instanceId, async (repository) => {
+        const existingJob = await repository.getJobDetail(instanceId, jobId);
+        if (!existingJob) {
+          return null;
+        }
+        if (!TERMINAL_JOB_STATUSES.has(existingJob.status)) {
+          throw new Error('job_not_terminal');
+        }
+        return repository.deleteJob(instanceId, jobId);
+      });
       if (!job) {
         return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', getRequestId());
       }
 
       return createJsonItemResponse(200, job, getRequestId());
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === 'job_not_terminal') {
+        return createApiError(
+          409,
+          'conflict',
+          'Der Plugin-Job kann erst nach Abschluss oder Abbruch gelöscht werden.',
+          getRequestId()
+        );
+      }
       return createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht gelöscht werden.', getRequestId());
     }
   });

@@ -167,14 +167,26 @@ const parseFractionNames = (
     });
   }
 
-  const duplicateFractionNames = fractionNames.filter((fractionName, index) => fractionNames.indexOf(fractionName) !== index);
-  for (const fractionName of new Set(duplicateFractionNames)) {
-    issues.push({
-      rowNumber: 1,
-      column: fractionName,
-      message: 'Fraktionsspaltennamen müssen eindeutig sein.',
-      value: fractionName,
-    });
+  const fractionNamesByNormalizedKey = fractionNames.reduce<Map<string, Set<string>>>((groups, fractionName) => {
+    const normalizedKey = fractionName.toLocaleLowerCase('de-DE');
+    const values = groups.get(normalizedKey) ?? new Set<string>();
+    values.add(fractionName);
+    groups.set(normalizedKey, values);
+    return groups;
+  }, new Map());
+
+  for (const fractionNamesForKey of fractionNamesByNormalizedKey.values()) {
+    if (fractionNamesForKey.size < 2 && fractionNames.filter((fractionName) => fractionNamesForKey.has(fractionName)).length < 2) {
+      continue;
+    }
+    for (const fractionName of fractionNamesForKey) {
+      issues.push({
+        rowNumber: 1,
+        column: fractionName,
+        message: 'Fraktionsspaltennamen müssen eindeutig sein.',
+        value: fractionName,
+      });
+    }
   }
 
   return fractionNames;

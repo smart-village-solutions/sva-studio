@@ -138,6 +138,30 @@ describe('waste location tour assignment import parser', () => {
     ]);
   });
 
+  it('rejects duplicate fraction columns case-insensitively', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: [
+        'Ort;Bio;bio',
+        'Perleberg;BIO.1;BIO.2',
+      ].join('\n'),
+    });
+
+    expect(result.issues).toEqual([
+      {
+        rowNumber: 1,
+        column: 'Bio',
+        message: 'Fraktionsspaltennamen müssen eindeutig sein.',
+        value: 'Bio',
+      },
+      {
+        rowNumber: 1,
+        column: 'bio',
+        message: 'Fraktionsspaltennamen müssen eindeutig sein.',
+        value: 'bio',
+      },
+    ]);
+  });
+
   it('rejects rows with missing city and rows without any named fraction columns', () => {
     const missingCity = parseWasteLocationTourPickupDateCsv({
       text: 'Ort;Papier\n;PPK.7.2\n',

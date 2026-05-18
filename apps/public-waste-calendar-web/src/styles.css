@@ -1,0 +1,61 @@
+:root {
+  color-scheme: light;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgb(227 241 228), transparent 32%),
+    linear-gradient(180deg, rgb(248 246 240), rgb(237 242 232));
+  color: rgb(29 42 34);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.page-shell {
+  min-height: 100vh;
+  padding: 2rem 1rem 3rem;
+}
+
+.hero {
+  max-width: 48rem;
+  margin: 0 auto 1.5rem;
+}
+
+.hero__eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(83 113 88);
+}
+
+.hero__title {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1;
+}
+
+.panel {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+  border: 1px solid rgb(201 213 202);
+  border-radius: 1.5rem;
+  background: rgb(255 255 255 / 0.86);
+  box-shadow: 0 1rem 2.5rem rgb(74 92 77 / 0.08);
+}
+
+.body-copy {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+}

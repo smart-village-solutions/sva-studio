@@ -29,6 +29,30 @@ const requirePreview = (deps: WasteManagementHandlerDeps) => {
   return deps.previewWasteLocationTourPickupDateImport;
 };
 
+const isPreviewInputError = (message: string): boolean =>
+  message.startsWith('unsupported_blob_ref:') ||
+  message.startsWith('invalid_blob_ref:') ||
+  message.startsWith('unsupported_import_source_format:') ||
+  message.startsWith('ambiguous_regionless_city_match:');
+
+const toPreviewErrorResponse = (error: unknown, requestId: string | undefined): Response => {
+  const message = error instanceof Error ? error.message : 'Die Importvorschau konnte nicht erstellt werden.';
+  if (isPreviewInputError(message)) {
+    if (message.startsWith('ambiguous_regionless_city_match:')) {
+      const cityName = message.slice('ambiguous_regionless_city_match:'.length) || 'unbekannt';
+      return createApiError(
+        400,
+        'invalid_request',
+        `Die Region muss angegeben werden, weil der Stadtname mehrdeutig ist: ${cityName}.`,
+        requestId
+      );
+    }
+    return createApiError(400, 'invalid_request', message, requestId);
+  }
+
+  return createApiError(503, 'database_unavailable', 'Die Importvorschau konnte nicht erstellt werden.', requestId);
+};
+
 const resolveBoundTargetSchema = async (
   instanceId: string,
   requestId: string | undefined,
@@ -295,8 +319,7 @@ export const wasteManagementOperationHandlers = {
         headers: { 'Content-Type': 'application/json' },
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Die Importvorschau konnte nicht erstellt werden.';
-      return createApiError(400, 'invalid_request', message, requestId);
+      return toPreviewErrorResponse(error, requestId);
     }
   },
   startWasteManagementSeedInternal: async (

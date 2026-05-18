@@ -36,7 +36,7 @@ export const createLocationsTableMaps = ({
   'regions' | 'cities' | 'streets' | 'houseNumbers' | 'availableTours' | 'locationTourLinks'
 >): WasteMasterDataLocationsTableMaps => {
   const toursById = new Map(availableTours.map((tour) => [tour.id, tour] as const));
-  const locationTourNamesByLocationId = new Map<string, readonly string[]>();
+  const locationTourNamesByLocationId = new Map<string, string[]>();
 
   for (const link of locationTourLinks) {
     const tourName = toursById.get(link.tourId)?.name;
@@ -44,12 +44,17 @@ export const createLocationsTableMaps = ({
       continue;
     }
 
-    const names = locationTourNamesByLocationId.get(link.locationId) ?? [];
-    locationTourNamesByLocationId.set(link.locationId, [...names, tourName]);
+    const names = locationTourNamesByLocationId.get(link.locationId);
+    if (names) {
+      names.push(tourName);
+      continue;
+    }
+    locationTourNamesByLocationId.set(link.locationId, [tourName]);
   }
 
   for (const [locationId, names] of locationTourNamesByLocationId.entries()) {
-    locationTourNamesByLocationId.set(locationId, [...names].sort((left, right) => left.localeCompare(right, 'de')));
+    names.sort((left, right) => left.localeCompare(right, 'de'));
+    locationTourNamesByLocationId.set(locationId, names);
   }
 
   return {

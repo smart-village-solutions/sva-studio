@@ -701,6 +701,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     publishSessionAccessSnapshot({
       isResolved: hasResolvedSession,
       permissionActions: user?.permissionActions ?? [],
+      roles: user?.roles ?? [],
     });
   }, [hasResolvedSession, user]);
 

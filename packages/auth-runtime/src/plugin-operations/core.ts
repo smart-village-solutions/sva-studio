@@ -165,6 +165,7 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
 
 export const deletePluginOperationJobHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
+    const requestId = getRequestId();
     const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
     if (authorizationError) {
       return authorizationError;
@@ -175,7 +176,7 @@ export const deletePluginOperationJobHandler = async (request: Request): Promise
       return instanceId;
     }
 
-    const csrfError = validateCsrf(request, getRequestId());
+    const csrfError = validateCsrf(request, requestId);
     if (csrfError) {
       return csrfError;
     }
@@ -197,15 +198,15 @@ export const deletePluginOperationJobHandler = async (request: Request): Promise
         return repository.deleteJob(instanceId, jobId);
       });
       if (!job) {
-        return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', getRequestId());
+        return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', requestId);
       }
 
-      return createJsonItemResponse(200, job, getRequestId());
+      return createJsonItemResponse(200, job, requestId);
     } catch (error) {
       if (error instanceof Error && error.message === 'job_not_terminal') {
-        return createApiError(409, 'conflict', 'Der Plugin-Job kann erst nach Abschluss oder Abbruch gelöscht werden.', getRequestId());
+        return createApiError(409, 'conflict', 'Der Plugin-Job kann erst nach Abschluss oder Abbruch gelöscht werden.', requestId);
       }
-      return createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht gelöscht werden.', getRequestId());
+      return createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht gelöscht werden.', requestId);
     }
   });
 

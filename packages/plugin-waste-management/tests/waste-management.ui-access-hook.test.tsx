@@ -16,6 +16,7 @@ const UiAccessHarness = ({ currentTab = 'fractions' }: { readonly currentTab?: P
     <div>
       <div data-testid="resolved">{access.isResolved ? 'yes' : 'no'}</div>
       <div data-testid="tabs">{access.visibleTabIds.join(',')}</div>
+      <div data-testid="can-delete-history">{access.canDeleteHistoryEntries ? 'yes' : 'no'}</div>
     </div>
   );
 };
@@ -34,10 +35,12 @@ describe('waste-management ui access hook', () => {
 
     expect(screen.getByTestId('resolved').textContent).toBe('no');
     expect(screen.getByTestId('tabs').textContent).toContain('settings');
+    expect(screen.getByTestId('can-delete-history').textContent).toBe('no');
 
     publishSessionAccessSnapshot({
       isResolved: true,
       permissionActions: ['waste-management.read', 'waste-management.settings.manage', 'waste-management.import.execute'],
+      roles: ['system_admin'],
     });
 
     await waitFor(() => {
@@ -45,5 +48,6 @@ describe('waste-management ui access hook', () => {
     });
 
     expect(screen.getByTestId('tabs').textContent).toBe('fractions,tours,locations,scheduling,tools,settings');
+    expect(screen.getByTestId('can-delete-history').textContent).toBe('yes');
   });
 });

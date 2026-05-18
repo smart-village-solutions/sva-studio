@@ -14,6 +14,7 @@ export type WasteManagementUiAccess = Readonly<{
   canRunImport: boolean;
   canRunSeed: boolean;
   canRunReset: boolean;
+  canDeleteHistoryEntries: boolean;
 }>;
 
 export const deriveWasteManagementUiAccess = (
@@ -51,17 +52,21 @@ export const deriveWasteManagementUiAccess = (
     canRunImport,
     canRunSeed,
     canRunReset,
+    canDeleteHistoryEntries: false,
   };
 };
 
 export const useWasteManagementUiAccess = (currentTab?: WasteManagementTabId) => {
   const sessionAccess = useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
+  const sessionRoles = (sessionAccess as { readonly roles?: readonly string[] }).roles ?? [];
+  const canDeleteHistoryEntries = sessionRoles.some((role) => role.trim() === 'system_admin');
 
   return {
-    isResolved: sessionAccess.isResolved,
     ...deriveWasteManagementUiAccess(
       sessionAccess.permissionActions,
       sessionAccess.isResolved ? undefined : currentTab
     ),
+    isResolved: sessionAccess.isResolved,
+    canDeleteHistoryEntries,
   };
 };

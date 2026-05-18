@@ -142,10 +142,12 @@ const WasteToolsActiveImportProgress = ({
 export const WasteToolsHistory = ({
   lastJob,
   technicalHistory,
+  canDeleteHistoryEntries = false,
   onDeleteEntry,
 }: {
   readonly lastJob: StudioJobResponse['data'] | null;
   readonly technicalHistory: readonly WasteManagementHistoryOverview['technical']['items'][number][];
+  readonly canDeleteHistoryEntries?: boolean;
   readonly onDeleteEntry?: (jobId: string) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -179,6 +181,7 @@ export const WasteToolsHistory = ({
           <div className="space-y-2">
             {technicalHistory.slice(0, 5).map((item) => {
               const isOpen = openEntryId === item.id;
+              const jobId = item.jobId ?? undefined;
               return (
                 <div key={item.id} className="rounded-xl border border-border/60 bg-muted/10 p-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -210,11 +213,11 @@ export const WasteToolsHistory = ({
                       >
                         {pt('tools.meta.historyDetailsAction')}
                       </Button>
-                      {item.jobId ? (
+                      {jobId && canDeleteHistoryEntries ? (
                         <Button
                           type="button"
                           variant="ghost"
-                          onClick={() => onDeleteEntry?.(item.jobId!)}
+                          onClick={() => onDeleteEntry?.(jobId)}
                         >
                           {pt('tools.meta.historyDeleteAction')}
                         </Button>
@@ -223,7 +226,7 @@ export const WasteToolsHistory = ({
                   </div>
                   {isOpen ? (
                     <div className="mt-3 space-y-1 border-t border-border/60 pt-3 text-sm text-muted-foreground">
-                      {item.jobId ? <p>{pt('overview.meta.jobId', { value: item.jobId })}</p> : null}
+                      {jobId ? <p>{pt('overview.meta.jobId', { value: jobId })}</p> : null}
                       {item.jobTypeId ? <p>{pt('overview.meta.jobTypeId', { value: item.jobTypeId })}</p> : null}
                       {item.requestId ? <p>{pt('overview.meta.requestId', { value: item.requestId })}</p> : null}
                       {item.errorCode ? <p>{pt('overview.meta.reasonCode', { value: item.errorCode })}</p> : null}

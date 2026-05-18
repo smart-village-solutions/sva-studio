@@ -146,6 +146,9 @@ const registerCityByName = (bucket: Map<string, WasteCityRecord[]>, city: WasteC
   bucket.set(cityKey, [...cities, city]);
 };
 
+const createAmbiguousRegionlessCityMatchError = (cityName: string): Error =>
+  new Error(`ambiguous_regionless_city_match:${cityName}`);
+
 const shouldCountAsExisting = <T extends { readonly id: string }>(bucket: Map<string, T>, id: string): boolean => {
   return !bucket.has(id);
 };
@@ -196,6 +199,9 @@ const ensureCity = (state: PlannerState, regionId: string | undefined, cityName:
         markExistingUsage(state.summary.cities, fallbackCity.id, state.touchedExisting.cities);
       }
       return fallbackCity;
+    }
+    if (regionlessMatches.length > 1) {
+      throw createAmbiguousRegionlessCityMatchError(cityName);
     }
   }
 

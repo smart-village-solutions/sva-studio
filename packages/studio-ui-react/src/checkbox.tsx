@@ -19,6 +19,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(({ className,
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [uncontrolledChecked, setUncontrolledChecked] = React.useState(Boolean(defaultChecked));
   const visualChecked = typeof checked === 'boolean' ? checked : uncontrolledChecked;
+  const controlProps = typeof checked === 'boolean' ? { checked } : { defaultChecked };
 
   React.useEffect(() => {
     if (inputRef.current) {
@@ -33,8 +34,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(({ className,
         setForwardedRef(ref, element);
       }}
       type={type ?? 'checkbox'}
-      checked={checked}
-      defaultChecked={defaultChecked}
+      {...controlProps}
       className={cn(
         [
           'relative h-[1.35rem] w-[1.35rem] appearance-none rounded-full border border-input bg-background bg-center bg-no-repeat',

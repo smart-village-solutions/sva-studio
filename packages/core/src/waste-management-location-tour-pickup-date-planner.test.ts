@@ -353,4 +353,41 @@ describe('planWasteLocationTourPickupDateImport', () => {
     expect(plan.upserts.streets).toEqual([]);
     expect(plan.upserts.locations).toEqual([]);
   });
+
+  it('rejects ambiguous existing city hierarchies when the region column is omitted', () => {
+    expect(() =>
+      planWasteLocationTourPickupDateImport(
+        {
+          fractions: [],
+          regions: [
+            { id: 'region-a', name: 'Nord', createdAt: '', updatedAt: '' },
+            { id: 'region-b', name: 'Süd', createdAt: '', updatedAt: '' },
+          ],
+          cities: [
+            { id: 'city-a', name: 'Perleberg', regionId: 'region-a', createdAt: '', updatedAt: '' },
+            { id: 'city-b', name: 'Perleberg', regionId: 'region-b', createdAt: '', updatedAt: '' },
+          ],
+          streets: [],
+          houseNumbers: [],
+          locations: [],
+          tours: [],
+          assignments: [],
+        },
+        {
+          rows: [
+            {
+              rowNumber: 2,
+              region: undefined,
+              city: 'Perleberg',
+              street: 'Alle Straßen',
+              houseNumbers: 'Alle Hausnummern',
+              tourNamesByFractionName: {
+                Papier: 'PPK.7.2',
+              },
+            },
+          ],
+        }
+      )
+    ).toThrow('ambiguous_regionless_city_match:Perleberg');
+  });
 });

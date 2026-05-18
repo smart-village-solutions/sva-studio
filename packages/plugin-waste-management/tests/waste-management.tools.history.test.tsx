@@ -107,6 +107,7 @@ describe('WasteToolsHistory', () => {
             message: null,
           },
         ] as never}
+        canDeleteHistoryEntries={true}
         onDeleteEntry={onDeleteEntry}
       />
     );
@@ -118,7 +119,13 @@ describe('WasteToolsHistory', () => {
     expect(screen.getByText('tools.meta.jobTypeLabel:waste-management.import-data')).toBeTruthy();
     expect(screen.getByText('tools.meta.jobStatusLabel:failed')).toBeTruthy();
     expect(screen.getByText('overview.meta.occurredAt:formatted:2026-05-10T10:00:00.000Z')).toBeTruthy();
-    fireEvent.click(screen.getAllByRole('button', { name: 'tools.meta.historyDetailsAction' })[0]!);
+    const detailsButtons = screen.getAllByRole('button', { name: 'tools.meta.historyDetailsAction' });
+    const firstDetailsButton = detailsButtons[0];
+    expect(firstDetailsButton).toBeTruthy();
+    if (!firstDetailsButton) {
+      throw new Error('expected first history details button');
+    }
+    fireEvent.click(firstDetailsButton);
     fireEvent.click(screen.getByRole('button', { name: 'tools.meta.historyDeleteAction' }));
     expect(screen.getByText('overview.meta.jobId:job-7')).toBeTruthy();
     expect(screen.getByText('overview.meta.jobTypeId:waste-management.import-data')).toBeTruthy();
@@ -238,5 +245,30 @@ describe('WasteToolsHistory', () => {
     );
 
     expect(screen.queryByRole('progressbar', { name: 'tools.progress.title' })).toBeNull();
+  });
+
+  it('keeps the delete action hidden without monitoring-admin entitlement', () => {
+    render(
+      <WasteToolsHistory
+        lastJob={null}
+        technicalHistory={[
+          {
+            id: 'entry-4',
+            eventType: 'import.failed',
+            outcome: 'failure',
+            occurredAt: '2026-05-10T13:00:00.000Z',
+            jobId: 'job-9',
+            jobTypeId: 'waste-management.import-data',
+            requestId: 'req-9',
+            errorCode: 'forbidden',
+            message: 'Nicht erlaubt',
+          },
+        ] as never}
+        canDeleteHistoryEntries={false}
+        onDeleteEntry={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'tools.meta.historyDeleteAction' })).toBeNull();
   });
 });

@@ -743,7 +743,7 @@ describe('waste-management operation handlers', () => {
     });
   });
 
-  it('fails closed when the preview dependency is missing or the preview runner throws', async () => {
+  it('returns 503 for missing preview dependencies and unexpected preview backend failures', async () => {
     const missingDependencyResponse =
       await wasteManagementOperationHandlers.previewWasteManagementLocationTourPickupDateImportInternal(
         createToolRequest('https://studio.test/api/v1/waste-management/tools/imports/preview', {
@@ -755,11 +755,11 @@ describe('waste-management operation handlers', () => {
         createDeps()
       );
 
-    expect(missingDependencyResponse.status).toBe(400);
+    expect(missingDependencyResponse.status).toBe(503);
     await expect(missingDependencyResponse.json()).resolves.toMatchObject({
       error: {
-        code: 'invalid_request',
-        message: 'missing_preview_waste_location_tour_pickup_date_import',
+        code: 'database_unavailable',
+        message: 'Die Importvorschau konnte nicht erstellt werden.',
       },
     });
 
@@ -779,11 +779,11 @@ describe('waste-management operation handlers', () => {
         }
       );
 
-    expect(throwingResponse.status).toBe(400);
+    expect(throwingResponse.status).toBe(503);
     await expect(throwingResponse.json()).resolves.toMatchObject({
       error: {
-        code: 'invalid_request',
-        message: 'preview kaputt',
+        code: 'database_unavailable',
+        message: 'Die Importvorschau konnte nicht erstellt werden.',
       },
     });
   });

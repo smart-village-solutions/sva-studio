@@ -302,6 +302,36 @@ describe('WasteToolsImportSection', () => {
     expect(downloadImportPreviewErrorsMock).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the final import action disabled when the preview contains errors', async () => {
+    const { callbacks } = renderImportSection();
+
+    fireEvent.click(screen.getByRole('button', { name: 'tools.imports.wizard.actions.continue' }));
+
+    const fileInput = document.querySelector('input[type="file"]');
+    if (!(fileInput instanceof HTMLInputElement)) {
+      throw new Error('Expected file input');
+    }
+
+    fireEvent.change(fileInput, {
+      target: {
+        files: [new File(['csv'], 'termine.csv', { type: 'text/csv' })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'tools.actions.previewImport' }));
+
+    await waitFor(() => {
+      expect(callbacks.onRunPreview).toHaveBeenCalledTimes(1);
+    });
+
+    const startImportButton = screen.getByRole('button', { name: 'tools.actions.startImport' });
+    expect(startImportButton).toBeDisabled();
+  });
+
   it('returns to validation when the delimiter changes after a successful preview', async () => {
     const { callbacks } = renderImportSection();
 

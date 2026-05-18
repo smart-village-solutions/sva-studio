@@ -166,6 +166,19 @@ describe('sendPasswordSetupEmailInternal', () => {
       clientId: 'sva-studio',
       redirectUri: 'https://tenant.example.test/auth/callback',
     });
+    expect(state.emitActivityLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        subjectId: 'user-1',
+        eventType: 'user.password_setup_email_sent',
+        result: 'success',
+        payload: expect.objectContaining({
+          title: 'Einladungs-E-Mail zum Passwort setzen versendet',
+          description: 'Für dieses Konto wurde eine E-Mail zum Setzen des Passworts versendet.',
+          operation: 'send_password_setup_email',
+        }),
+      })
+    );
     expect(state.completeIdempotency).toHaveBeenCalledWith(
       expect.objectContaining({
         endpoint: 'POST:/api/v1/iam/users/$userId/send-password-setup-email',
@@ -388,6 +401,11 @@ describe('sendPasswordSetupEmailInternal', () => {
         subjectId: 'user-1',
         eventType: 'user.password_setup_email_failed',
         result: 'failure',
+        payload: expect.objectContaining({
+          title: 'Versand der Einladungs-E-Mail zum Passwort setzen fehlgeschlagen',
+          description: 'Die E-Mail zum Setzen des Passworts konnte für dieses Konto nicht versendet werden.',
+          operation: 'send_password_setup_email',
+        }),
       })
     );
     expect(state.completeIdempotency).toHaveBeenCalledWith(

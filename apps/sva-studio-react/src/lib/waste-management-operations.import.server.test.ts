@@ -188,6 +188,32 @@ describe('waste-management-operations.import', () => {
     ).rejects.toThrowError('missing_location_tour_pickup_date_import');
   });
 
+  it('rejects persisted location-based imports when preview issues are present', async () => {
+    const repository = createRepositoryMock();
+
+    await expect(
+      executeImport(repository, {
+        profileId: 'waste-management.ortsbezogene-tourtermine',
+        parsedLocationTourPickupDates: {
+          ...parsedLocationTourPickupDates,
+          rows: [],
+          validRowCount: 0,
+          invalidRowCount: 1,
+          issues: [
+            {
+              rowNumber: 3,
+              column: 'Ort',
+              message: 'Pflichtfeld fehlt',
+            },
+          ],
+        },
+      })
+    ).rejects.toThrowError('location_tour_pickup_date_import_has_issues');
+
+    expect(repository.upsertWasteCity).not.toHaveBeenCalled();
+    expect(repository.upsertWasteLocationTourLink).not.toHaveBeenCalled();
+  });
+
   it('persists created location-based pickup date entities and returns summarized counts', async () => {
     const repository = createRepositoryMock();
     const reportProgress = vi.fn();

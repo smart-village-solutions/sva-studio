@@ -58,6 +58,7 @@ describe('resolveUserTimeline', () => {
             created_at: '2026-05-15T10:00:00.000Z',
             payload: { description: 'Profil geändert', action: 'fallback' },
             account_id: 'user-1',
+            subject_id: null,
           },
         ],
       })),
@@ -96,6 +97,7 @@ describe('resolveUserTimeline', () => {
             created_at: '2026-05-15T08:00:00.000Z',
             payload: { action: 'interactive_login' },
             account_id: 'user-1',
+            subject_id: null,
           },
         ],
       })),
@@ -130,5 +132,43 @@ describe('resolveUserTimeline', () => {
       id: 'governance:gov-2',
       perspective: 'target',
     });
+  });
+
+  it('includes IAM events where the user is only the target subject', async () => {
+    const { resolveUserTimeline } = await import('./user-timeline-query.js');
+    const client = {
+      query: vi.fn(async () => ({
+        rows: [
+          {
+            id: 'iam-3',
+            event_type: 'user.password_setup_email_sent',
+            created_at: '2026-05-15T12:00:00.000Z',
+            payload: {
+              title: 'Einladungs-E-Mail zum Passwort setzen versendet',
+              description: 'Für dieses Konto wurde eine E-Mail zum Setzen des Passworts versendet.',
+            },
+            account_id: 'admin-1',
+            subject_id: 'user-1',
+          },
+        ],
+      })),
+    };
+    state.listGovernanceCases.mockResolvedValueOnce({ items: [] });
+    state.listAdminDsrCases.mockResolvedValueOnce({ items: [] });
+
+    const timeline = await resolveUserTimeline(client as never, {
+      instanceId: 'instance-1',
+      userId: 'user-1',
+    });
+
+    expect(timeline).toEqual([
+      expect.objectContaining({
+        id: 'iam-3',
+        eventType: 'user.password_setup_email_sent',
+        title: 'Einladungs-E-Mail zum Passwort setzen versendet',
+        description: 'Für dieses Konto wurde eine E-Mail zum Setzen des Passworts versendet.',
+        perspective: 'target',
+      }),
+    ]);
   });
 });

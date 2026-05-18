@@ -137,6 +137,8 @@ const emitPasswordSetupEmailSuccessAudit = async (input: {
       eventType: 'user.password_setup_email_sent',
       result: 'success',
       payload: {
+        title: 'Einladungs-E-Mail zum Passwort setzen versendet',
+        description: 'Für dieses Konto wurde eine E-Mail zum Setzen des Passworts versendet.',
         operation: 'send_password_setup_email',
         keycloak_subject: input.user.keycloakSubject,
       },

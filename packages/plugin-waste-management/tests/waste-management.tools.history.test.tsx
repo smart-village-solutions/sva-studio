@@ -186,4 +186,57 @@ describe('WasteToolsHistory', () => {
     expect(screen.getByText('tools.progress.percentage:100')).toBeTruthy();
     expect(screen.getByText('tools.progress.rows:5|4')).toBeTruthy();
   });
+
+  it('prefers explicit step labels, hides row metadata when progress details are incomplete, and omits import progress for other job types', () => {
+    const { rerender } = render(
+      <WasteToolsHistory
+        lastJob={{
+          id: 'job-10',
+          jobTypeId: 'waste-management.import-data',
+          status: 'retrying',
+          progress: {
+            currentStepLabel: 'Importiere Zeilenblock 4',
+            completedSteps: 7,
+            totalSteps: 0,
+          },
+        } as never}
+        technicalHistory={[
+          {
+            id: 'entry-3',
+            eventType: 'job.retrying',
+            outcome: 'running',
+            occurredAt: '2026-05-10T12:00:00.000Z',
+            jobId: null,
+            jobTypeId: null,
+            requestId: null,
+            errorCode: null,
+            message: null,
+          },
+        ] as never}
+      />
+    );
+
+    expect(screen.getByText('Importiere Zeilenblock 4')).toBeTruthy();
+    expect(screen.getByText('tools.progress.statuses.retrying')).toBeTruthy();
+    expect(screen.getByText('tools.progress.percentage:0')).toBeTruthy();
+    expect(screen.getByText('tools.progress.rows:7|0')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'tools.meta.historyDeleteAction' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'tools.meta.historyDetailsAction' }));
+    expect(screen.queryByText(/overview.meta.jobId:/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'tools.meta.historyDetailsAction' }));
+
+    rerender(
+      <WasteToolsHistory
+        lastJob={{
+          id: 'job-11',
+          jobTypeId: 'waste-management.initialize',
+          status: 'running',
+        } as never}
+        technicalHistory={[]}
+      />
+    );
+
+    expect(screen.queryByRole('progressbar', { name: 'tools.progress.title' })).toBeNull();
+  });
 });

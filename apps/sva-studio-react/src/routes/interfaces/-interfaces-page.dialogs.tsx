@@ -118,7 +118,7 @@ export const InterfaceForm = ({ draft, isSaving, onChange, onCancel, onSubmit }:
         onCheckedChange={(enabled) => onChange({ ...draft, enabled })}
       />
       <span className="text-sm text-muted-foreground">
-        {draft.enabled ? t('common.active') : t('common.inactive')}
+        {draft.enabled ? t('account.status.active') : t('account.status.inactive')}
       </span>
     </div>
 

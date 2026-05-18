@@ -147,6 +147,8 @@ const useSchedulingColumns = () => {
   );
 };
 
+const noopClearSelection = () => undefined;
+
 export const WasteSchedulingShiftsTable = ({
   globalDateShifts,
   tourDateShifts,
@@ -164,7 +166,7 @@ export const WasteSchedulingShiftsTable = ({
 }: WasteSchedulingShiftsTableProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const [bulkDeleteRows, setBulkDeleteRows] = useState<readonly WasteSchedulingTableRow[]>([]);
-  const clearSelectionRef = useRef<() => void>(() => {});
+  const clearSelectionRef = useRef<() => void>(noopClearSelection);
   const labels = useSchedulingTableLabels();
   const columns = useSchedulingColumns();
   const rows = useMemo(

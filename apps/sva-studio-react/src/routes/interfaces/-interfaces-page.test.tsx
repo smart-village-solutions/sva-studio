@@ -138,7 +138,7 @@ describe('InterfacesPage', () => {
     fireEvent.change(screen.getByLabelText('OAuth Token-URL'), {
       target: { value: 'https://next.example/oauth/token' },
     });
-    fireEvent.click(screen.getAllByRole('checkbox')[0]!);
+    fireEvent.click(screen.getByRole('switch', { name: 'Aktiv' }));
     fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
 
     await waitFor(() => {

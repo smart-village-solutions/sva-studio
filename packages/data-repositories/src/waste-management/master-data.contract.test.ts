@@ -38,9 +38,11 @@ describe('waste master-data repository contract', () => {
       'listWasteTourDateShifts',
       'getWasteTourDateShiftById',
       'upsertWasteTourDateShift',
+      'deleteWasteTourDateShift',
       'listWasteGlobalDateShifts',
       'getWasteGlobalDateShiftById',
       'upsertWasteGlobalDateShift',
+      'deleteWasteGlobalDateShift',
     ]);
     expect(Object.values(wasteMasterDataRepositoryContract)).toSatisfy((values) =>
       values.every((value) => value === undefined)

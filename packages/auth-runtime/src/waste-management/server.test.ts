@@ -21,20 +21,25 @@ const coreHandlerMocks = vi.hoisted(() => ({
   createWasteManagementCityInternal: vi.fn(async () => new Response('create-city')),
   createWasteManagementCollectionLocationInternal: vi.fn(async () => new Response('create-location')),
   createWasteManagementFractionInternal: vi.fn(async () => new Response('create-fraction')),
+  deleteWasteManagementCollectionLocationInternal: vi.fn(async () => new Response('delete-location')),
   deleteWasteManagementFractionInternal: vi.fn(async () => new Response('delete-fraction')),
+  deleteWasteManagementGlobalDateShiftInternal: vi.fn(async () => new Response('delete-global-shift')),
   createWasteManagementGlobalDateShiftInternal: vi.fn(async () => new Response('create-global-shift')),
   createWasteManagementHouseNumberInternal: vi.fn(async () => new Response('create-house-number')),
   createWasteManagementLocationTourLinkInternal: vi.fn(async () => new Response('create-location-tour-link')),
   createWasteManagementLocationTourLinksBulkInternal: vi.fn(async () => new Response('create-location-tour-links-bulk')),
   createWasteManagementRegionInternal: vi.fn(async () => new Response('create-region')),
   createWasteManagementStreetInternal: vi.fn(async () => new Response('create-street')),
+  deleteWasteManagementTourDateShiftInternal: vi.fn(async () => new Response('delete-tour-date-shift')),
   createWasteManagementTourDateShiftInternal: vi.fn(async () => new Response('create-tour-date-shift')),
   createWasteManagementTourInternal: vi.fn(async () => new Response('create-tour')),
+  deleteWasteManagementTourInternal: vi.fn(async () => new Response('delete-tour')),
   getWasteManagementHistoryInternal: vi.fn(async () => new Response('get-history')),
   getWasteManagementMasterDataOverviewInternal: vi.fn(async () => new Response('get-master-data-overview')),
   getWasteManagementSchedulingOverviewInternal: vi.fn(async () => new Response('get-scheduling-overview')),
   getWasteManagementSettingsInternal: vi.fn(async () => new Response('get-settings')),
   getWasteManagementToursOverviewInternal: vi.fn(async () => new Response('get-tours-overview')),
+  previewWasteManagementLocationTourPickupDateImportInternal: vi.fn(async () => new Response('preview-import')),
   startWasteManagementInitializeInternal: vi.fn(async () => new Response('start-initialize')),
   startWasteManagementImportInternal: vi.fn(async () => new Response('start-import')),
   startWasteManagementMigrationsInternal: vi.fn(async () => new Response('start-migrations')),
@@ -55,6 +60,8 @@ const coreHandlerMocks = vi.hoisted(() => ({
 
 const loaderMocks = vi.hoisted(() => ({
   loadMasterDataOverview: vi.fn(async () => null),
+  loadMasterDataFractionsOverview: vi.fn(async () => null),
+  loadMasterDataLocationsOverview: vi.fn(async () => null),
   loadSchedulingOverview: vi.fn(async () => null),
   loadToursOverview: vi.fn(async () => null),
   loadWasteHistoryOverview: vi.fn(async () => null),
@@ -68,13 +75,16 @@ const loaderMocks = vi.hoisted(() => ({
   loadWasteStreetById: vi.fn(async () => null),
   loadWasteTourById: vi.fn(async () => null),
   loadWasteTourDateShiftById: vi.fn(async () => null),
+  previewWasteLocationTourPickupDateImport: vi.fn(async () => null),
 }));
 
 const saverMocks = vi.hoisted(() => ({
   saveWasteCity: vi.fn(async () => null),
   saveWasteCollectionLocation: vi.fn(async () => null),
+  deleteWasteCollectionLocation: vi.fn(async () => null),
   saveWasteFraction: vi.fn(async () => null),
   deleteWasteFraction: vi.fn(async () => null),
+  deleteWasteGlobalDateShift: vi.fn(async () => null),
   saveWasteGlobalDateShift: vi.fn(async () => null),
   saveWasteHouseNumber: vi.fn(async () => null),
   saveWasteLocationTourLink: vi.fn(async () => null),
@@ -82,6 +92,8 @@ const saverMocks = vi.hoisted(() => ({
   saveWasteRegion: vi.fn(async () => null),
   saveWasteStreet: vi.fn(async () => null),
   saveWasteTour: vi.fn(async () => null),
+  deleteWasteTour: vi.fn(async () => null),
+  deleteWasteTourDateShift: vi.fn(async () => null),
   saveWasteTourDateShift: vi.fn(async () => null),
 }));
 
@@ -97,9 +109,12 @@ vi.mock('./core.js', () => ({
 vi.mock('./server-loaders.js', () => ({
   wasteManagementOverviewLoaders: {
     loadMasterDataOverview: loaderMocks.loadMasterDataOverview,
+    loadMasterDataFractionsOverview: loaderMocks.loadMasterDataFractionsOverview,
+    loadMasterDataLocationsOverview: loaderMocks.loadMasterDataLocationsOverview,
     loadSchedulingOverview: loaderMocks.loadSchedulingOverview,
     loadToursOverview: loaderMocks.loadToursOverview,
     loadWasteHistoryOverview: loaderMocks.loadWasteHistoryOverview,
+    previewWasteLocationTourPickupDateImport: loaderMocks.previewWasteLocationTourPickupDateImport,
   },
   wasteManagementEntityLoaders: {
     loadWasteCityById: loaderMocks.loadWasteCityById,
@@ -116,8 +131,10 @@ vi.mock('./server-loaders.js', () => ({
   wasteManagementEntitySavers: {
     saveWasteCity: saverMocks.saveWasteCity,
     saveWasteCollectionLocation: saverMocks.saveWasteCollectionLocation,
+    deleteWasteCollectionLocation: saverMocks.deleteWasteCollectionLocation,
     saveWasteFraction: saverMocks.saveWasteFraction,
     deleteWasteFraction: saverMocks.deleteWasteFraction,
+    deleteWasteGlobalDateShift: saverMocks.deleteWasteGlobalDateShift,
     saveWasteGlobalDateShift: saverMocks.saveWasteGlobalDateShift,
     saveWasteHouseNumber: saverMocks.saveWasteHouseNumber,
     saveWasteLocationTourLink: saverMocks.saveWasteLocationTourLink,
@@ -125,6 +142,8 @@ vi.mock('./server-loaders.js', () => ({
     saveWasteRegion: saverMocks.saveWasteRegion,
     saveWasteStreet: saverMocks.saveWasteStreet,
     saveWasteTour: saverMocks.saveWasteTour,
+    deleteWasteTour: saverMocks.deleteWasteTour,
+    deleteWasteTourDateShift: saverMocks.deleteWasteTourDateShift,
     saveWasteTourDateShift: saverMocks.saveWasteTourDateShift,
   },
 }));
@@ -147,7 +166,12 @@ describe('wasteManagementHandlers', () => {
       {
         handlerKey: 'getMasterDataOverview',
         internal: coreHandlerMocks.getWasteManagementMasterDataOverviewInternal,
-        deps: { ...sharedWasteManagementDepsMock, loadMasterDataOverview: loaderMocks.loadMasterDataOverview },
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          loadMasterDataOverview: loaderMocks.loadMasterDataOverview,
+          loadMasterDataFractionsOverview: loaderMocks.loadMasterDataFractionsOverview,
+          loadMasterDataLocationsOverview: loaderMocks.loadMasterDataLocationsOverview,
+        },
       },
       {
         handlerKey: 'getToursOverview',
@@ -278,6 +302,15 @@ describe('wasteManagementHandlers', () => {
         },
       },
       {
+        handlerKey: 'deleteCollectionLocation',
+        internal: coreHandlerMocks.deleteWasteManagementCollectionLocationInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          deleteWasteCollectionLocation: saverMocks.deleteWasteCollectionLocation,
+          loadWasteCollectionLocationById: loaderMocks.loadWasteCollectionLocationById,
+        },
+      },
+      {
         handlerKey: 'updateCollectionLocation',
         internal: coreHandlerMocks.updateWasteManagementCollectionLocationInternal,
         deps: {
@@ -322,6 +355,15 @@ describe('wasteManagementHandlers', () => {
         },
       },
       {
+        handlerKey: 'deleteTour',
+        internal: coreHandlerMocks.deleteWasteManagementTourInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          deleteWasteTour: saverMocks.deleteWasteTour,
+          loadWasteTourById: loaderMocks.loadWasteTourById,
+        },
+      },
+      {
         handlerKey: 'updateTour',
         internal: coreHandlerMocks.updateWasteManagementTourInternal,
         deps: {
@@ -340,6 +382,15 @@ describe('wasteManagementHandlers', () => {
         },
       },
       {
+        handlerKey: 'deleteTourDateShift',
+        internal: coreHandlerMocks.deleteWasteManagementTourDateShiftInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          deleteWasteTourDateShift: saverMocks.deleteWasteTourDateShift,
+          loadWasteTourDateShiftById: loaderMocks.loadWasteTourDateShiftById,
+        },
+      },
+      {
         handlerKey: 'updateTourDateShift',
         internal: coreHandlerMocks.updateWasteManagementTourDateShiftInternal,
         deps: {
@@ -354,6 +405,15 @@ describe('wasteManagementHandlers', () => {
         deps: {
           ...sharedWasteManagementDepsMock,
           saveWasteGlobalDateShift: saverMocks.saveWasteGlobalDateShift,
+          loadWasteGlobalDateShiftById: loaderMocks.loadWasteGlobalDateShiftById,
+        },
+      },
+      {
+        handlerKey: 'deleteGlobalDateShift',
+        internal: coreHandlerMocks.deleteWasteManagementGlobalDateShiftInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          deleteWasteGlobalDateShift: saverMocks.deleteWasteGlobalDateShift,
           loadWasteGlobalDateShiftById: loaderMocks.loadWasteGlobalDateShiftById,
         },
       },
@@ -377,6 +437,14 @@ describe('wasteManagementHandlers', () => {
       {
         handlerKey: 'startImport',
         internal: coreHandlerMocks.startWasteManagementImportInternal,
+      },
+      {
+        handlerKey: 'previewLocationTourPickupDateImport',
+        internal: coreHandlerMocks.previewWasteManagementLocationTourPickupDateImportInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          previewWasteLocationTourPickupDateImport: loaderMocks.previewWasteLocationTourPickupDateImport,
+        },
       },
       {
         handlerKey: 'startSeed',

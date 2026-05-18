@@ -148,6 +148,8 @@ const authServerMocks = vi.hoisted(() => {
       createStreet: vi.fn(async () => response('createWasteManagementStreetHandler')),
       createTour: vi.fn(async () => response('createWasteManagementTourHandler')),
       createTourDateShift: vi.fn(async () => response('createWasteManagementTourDateShiftHandler')),
+      deleteGlobalDateShift: vi.fn(async () => response('deleteWasteManagementGlobalDateShiftHandler')),
+      deleteTourDateShift: vi.fn(async () => response('deleteWasteManagementTourDateShiftHandler')),
       getMasterDataOverview: vi.fn(async () => response('getWasteManagementMasterDataOverviewHandler')),
       getSchedulingOverview: vi.fn(async () => response('getWasteManagementSchedulingOverviewHandler')),
       getToursOverview: vi.fn(async () => response('getWasteManagementToursOverviewHandler')),
@@ -468,11 +470,21 @@ describe('auth.routes.server', () => {
     await globalDateShiftDetailHandlers.PUT?.({
       request: new Request('http://localhost/api/v1/waste-management/global-date-shifts/shift-1', { method: 'PUT' }),
     });
+    await globalDateShiftDetailHandlers.DELETE?.({
+      request: new Request('http://localhost/api/v1/waste-management/global-date-shifts/shift-1', {
+        method: 'DELETE',
+      }),
+    });
     await tourDateShiftHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tour-date-shifts', { method: 'POST' }),
     });
     await tourDateShiftDetailHandlers.PUT?.({
       request: new Request('http://localhost/api/v1/waste-management/tour-date-shifts/shift-1', { method: 'PUT' }),
+    });
+    await tourDateShiftDetailHandlers.DELETE?.({
+      request: new Request('http://localhost/api/v1/waste-management/tour-date-shifts/shift-1', {
+        method: 'DELETE',
+      }),
     });
     await toursHandlers.GET?.({
       request: new Request('http://localhost/api/v1/waste-management/tours', { method: 'GET' }),
@@ -529,6 +541,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.updateGlobalDateShift).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createTourDateShift).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateTourDateShift).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.deleteGlobalDateShift).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.deleteTourDateShift).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.getToursOverview).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createTour).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateTour).toHaveBeenCalled();
@@ -573,6 +587,7 @@ describe('auth.routes.server', () => {
       }
 
       if (handlers.DELETE) {
+        expect(handlers.DELETE, `Expected DELETE handler for ${path}`).toBeTypeOf('function');
         const response = await handlers.DELETE({ request });
         expect(response.status).toBe(200);
       }

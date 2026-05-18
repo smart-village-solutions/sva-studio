@@ -55,6 +55,24 @@ vi.mock('@sva/studio-ui-react', () => ({
         >
           sort-color
         </button>
+        <button
+          type="button"
+          onClick={() =>
+            (props.onSortingChange as (sorting: Array<{ id: string; desc: boolean }>) => void)([
+              { id: 'description', desc: false },
+            ])
+          }
+        >
+          sort-description
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            (props.onSortingChange as (sorting: Array<{ id: string; desc: boolean }>) => void)([{ id: 'status', desc: true }])
+          }
+        >
+          sort-status
+        </button>
         <button type="button" onClick={() => (props.rowActions as (row: unknown) => React.ReactNode)((props.data as unknown[])[0])}>
           render-row-actions
         </button>
@@ -144,5 +162,62 @@ describe('WasteMasterDataFractionsContent', () => {
     expect(screen.getByText('masterData.fractions.deleteDialog.title')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.deleteDialog.confirm' }));
     expect(onOpenDeleteFraction).toHaveBeenCalledWith(fraction);
+  });
+
+  it('covers additional sort branches and closes the delete dialog on cancel', () => {
+    const fractions = [
+      {
+        id: 'fraction-1',
+        name: 'Biotonne',
+        description: 'Bio',
+        color: '#16A34A',
+        containerSize: '240l',
+        active: true,
+      },
+      {
+        id: 'fraction-2',
+        name: 'Papier',
+        description: undefined,
+        color: '#2563EB',
+        containerSize: undefined,
+        active: false,
+      },
+    ];
+
+    render(
+      <WasteMasterDataFractionsContent
+        fractions={fractions as never}
+        fractionsSortBy="containerSize"
+        fractionsSortDirection="asc"
+        onOpenCreateFraction={vi.fn()}
+        onOpenEditFraction={vi.fn()}
+        onOpenDeleteFraction={vi.fn()}
+        onDeleteFractions={vi.fn()}
+        onToggleFractionStatus={vi.fn()}
+        onFractionsSortChange={vi.fn()}
+        page={1}
+        pageSize={25}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+      />
+    );
+
+    let tableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual(['fraction-2', 'fraction-1']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'sort-description' }));
+    tableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual(['fraction-2', 'fraction-1']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'sort-status' }));
+    tableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual(['fraction-2', 'fraction-1']);
+
+    const rowActions = tableProps.rowActions as (row: (typeof fractions)[number]) => React.ReactNode;
+    render(<div>{rowActions(fractions[0]!)}</div>);
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.delete' }));
+    expect(screen.getByText('masterData.fractions.deleteDialog.title')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.deleteDialog.cancel' }));
+    expect(screen.queryByText('masterData.fractions.deleteDialog.title')).toBeNull();
   });
 });

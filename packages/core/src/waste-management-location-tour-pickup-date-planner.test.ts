@@ -225,4 +225,73 @@ describe('planWasteLocationTourPickupDateImport', () => {
     ]);
     expect(plan.upserts.assignments).toEqual([]);
   });
+
+  it('creates optional regions only when present and keeps regionless locations separate', () => {
+    const plan = planWasteLocationTourPickupDateImport(
+      {
+        fractions: [],
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        locations: [],
+        tours: [],
+        assignments: [],
+      },
+      {
+        rows: [
+          {
+            rowNumber: 2,
+            region: undefined,
+            city: 'Perleberg',
+            street: 'Alle Straßen',
+            houseNumbers: 'Alle Hausnummern',
+            tourNamesByFractionName: {
+              Papier: 'PPK.7.2',
+            },
+          },
+          {
+            rowNumber: 3,
+            region: 'Nord',
+            city: 'Perleberg',
+            street: 'Alle Straßen',
+            houseNumbers: 'Alle Hausnummern',
+            tourNamesByFractionName: {
+              Bio: 'BIO.2.1',
+            },
+          },
+        ],
+      },
+      {
+        createId: (() => {
+          let counter = 0;
+          return () => `generated-${++counter}`;
+        })(),
+      }
+    );
+
+    expect(plan.summary).toEqual({
+      fractions: { existing: 0, created: 2 },
+      regions: { existing: 0, created: 1 },
+      cities: { existing: 0, created: 2 },
+      streets: { existing: 0, created: 2 },
+      houseNumbers: { existing: 0, created: 2 },
+      locations: { existing: 0, created: 2 },
+      assignments: { existing: 0, created: 2 },
+    });
+    expect(plan.newFractions).toEqual(['Bio', 'Papier']);
+    expect(plan.newTours).toEqual(['BIO.2.1', 'PPK.7.2']);
+    expect(plan.upserts.regions).toEqual([
+      expect.objectContaining({
+        name: 'Nord',
+      }),
+    ]);
+    expect(plan.upserts.cities).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ regionId: undefined, name: 'Perleberg' }),
+        expect.objectContaining({ name: 'Perleberg' }),
+      ])
+    );
+    expect(plan.upserts.cities.some((city) => city.regionId !== undefined)).toBe(true);
+  });
 });

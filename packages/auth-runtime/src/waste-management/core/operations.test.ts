@@ -698,4 +698,93 @@ describe('waste-management operation handlers', () => {
       })
     );
   });
+
+  it('creates import previews and returns the preview payload as an api item', async () => {
+    const previewWasteLocationTourPickupDateImport = vi.fn(async () => ({
+      detectedDelimiter: ';',
+      delimiter: ';',
+      validRowCount: 4,
+      invalidRowCount: 1,
+      newTours: ['Tour Nord'],
+      summary: {
+        locations: { created: 2, existing: 1 },
+        assignments: { created: 3, existing: 0 },
+      },
+      errors: [],
+    }));
+
+    const response = await wasteManagementOperationHandlers.previewWasteManagementLocationTourPickupDateImportInternal(
+      createToolRequest('https://studio.test/api/v1/waste-management/tools/imports/preview', {
+        importProfileId: 'waste-management.ortsbezogene-tourtermine',
+        sourceFormat: 'text/csv',
+        blobRef: 'data:text/csv;base64,ZmFrZQ==',
+        delimiterOverride: ';',
+      }),
+      actor,
+      {
+        ...createDeps(),
+        previewWasteLocationTourPickupDateImport,
+      }
+    );
+
+    expect(previewWasteLocationTourPickupDateImport).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      sourceFormat: 'text/csv',
+      blobRef: 'data:text/csv;base64,ZmFrZQ==',
+      delimiterOverride: ';',
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: expect.objectContaining({
+        validRowCount: 4,
+        invalidRowCount: 1,
+      }),
+      requestId: 'req-test',
+    });
+  });
+
+  it('fails closed when the preview dependency is missing or the preview runner throws', async () => {
+    const missingDependencyResponse =
+      await wasteManagementOperationHandlers.previewWasteManagementLocationTourPickupDateImportInternal(
+        createToolRequest('https://studio.test/api/v1/waste-management/tools/imports/preview', {
+          importProfileId: 'waste-management.ortsbezogene-tourtermine',
+          sourceFormat: 'text/csv',
+          blobRef: 'data:text/csv;base64,ZmFrZQ==',
+        }),
+        actor,
+        createDeps()
+      );
+
+    expect(missingDependencyResponse.status).toBe(400);
+    await expect(missingDependencyResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: 'missing_preview_waste_location_tour_pickup_date_import',
+      },
+    });
+
+    const throwingResponse =
+      await wasteManagementOperationHandlers.previewWasteManagementLocationTourPickupDateImportInternal(
+        createToolRequest('https://studio.test/api/v1/waste-management/tools/imports/preview', {
+          importProfileId: 'waste-management.ortsbezogene-tourtermine',
+          sourceFormat: 'text/csv',
+          blobRef: 'data:text/csv;base64,ZmFrZQ==',
+        }),
+        actor,
+        {
+          ...createDeps(),
+          previewWasteLocationTourPickupDateImport: vi.fn(async () => {
+            throw new Error('preview kaputt');
+          }),
+        }
+      );
+
+    expect(throwingResponse.status).toBe(400);
+    await expect(throwingResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: 'preview kaputt',
+      },
+    });
+  });
 });

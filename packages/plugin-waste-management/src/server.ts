@@ -1,4 +1,3 @@
-import type { StudioJobProgress } from '@sva/core';
 import type { PluginJobExecutionHandler } from '@sva/plugin-sdk';
 import {
   type PluginJobTypeDefinition,
@@ -27,6 +26,8 @@ const createProgress = (input: {
   details: input.details,
   lastUpdatedAt: new Date().toISOString(),
 });
+
+type WasteManagementJobProgress = ReturnType<typeof createProgress>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -93,7 +94,7 @@ const createOperationResult = <TJobInput extends WasteManagementJobInput>(input:
     readonly details: Record<string, unknown>;
   };
   readonly startedAt: number;
-  readonly progress: StudioJobProgress;
+  readonly progress: WasteManagementJobProgress;
 }) => ({
   progress: input.progress,
   resultPayload: {
@@ -127,7 +128,7 @@ export type WasteManagementOperationRuntime = {
     instanceId: string,
     payload: WasteManagementImportJobInput,
     progressReporter?: {
-      readonly reportProgress: (progress: StudioJobProgress) => Promise<void> | void;
+      readonly reportProgress: (progress: WasteManagementJobProgress) => Promise<void> | void;
     }
   ) => Promise<{
     readonly durationMs: number;
@@ -225,7 +226,7 @@ const createImportDataHandler = (runtime: WasteManagementOperationRuntime): Plug
     payload.importProfileId === wasteManagementOperationsContract.importProfileIds.locationTourPickupDates &&
     payload.sourceFormat === 'text/csv' &&
     !payload.dryRun;
-  let latestRuntimeProgress: StudioJobProgress | undefined;
+  let latestRuntimeProgress: WasteManagementJobProgress | undefined;
 
   await context.throwIfCancellationRequested();
   if (!useRuntimeManagedProgress) {
@@ -247,7 +248,7 @@ const createImportDataHandler = (runtime: WasteManagementOperationRuntime): Plug
     payload,
     useRuntimeManagedProgress
       ? {
-          reportProgress: async (progress: StudioJobProgress) => {
+          reportProgress: async (progress: WasteManagementJobProgress) => {
             latestRuntimeProgress = progress;
             await context.progressReporter.reportProgress({
               jobId: context.job.id,

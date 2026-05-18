@@ -170,4 +170,70 @@ describe('waste location tour assignment import parser', () => {
       },
     ]);
   });
+
+  it('strips a utf-8 bom and respects an explicit delimiter override', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: '\uFEFFOrt,Restmüll\nPerleberg,HM.1\n',
+      delimiterOverride: ',',
+    });
+
+    expect(result.detectedDelimiter).toBe(',');
+    expect(result.delimiter).toBe(',');
+    expect(result.header).toEqual(['Ort', 'Restmüll']);
+    expect(result.validRowCount).toBe(1);
+    expect(result.rows[0]).toEqual({
+      rowNumber: 2,
+      region: undefined,
+      city: 'Perleberg',
+      street: 'Alle Straßen',
+      houseNumbers: 'Alle Hausnummern',
+      tourNamesByFractionName: {
+        Restmüll: 'HM.1',
+      },
+    });
+  });
+
+  it('reports empty fraction headers between named columns and keeps escaped quotes inside cells', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: [
+        'Ort;Restmüll;;Papier',
+        '"Perleberg ""Nord""";HM.1;;PPK.2',
+      ].join('\n'),
+    });
+
+    expect(result.validRowCount).toBe(1);
+    expect(result.rows[0]?.city).toBe('Perleberg "Nord"');
+    expect(result.fractionNames).toEqual(['Restmüll', 'Papier']);
+    expect(result.issues).toEqual([
+      {
+        rowNumber: 1,
+        column: 'Spalte 3',
+        message: 'Fraktionsspalten dürfen zwischen benannten Spalten nicht leer sein.',
+      },
+    ]);
+  });
+
+  it('handles optional region, street and house number columns while skipping empty rows', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: ['Region;Ort;Straße;Hausnummern;Papier', '', 'Nord;Musterstadt;Hauptstraße;12;PPK.7.2'].join('\n'),
+    });
+
+    expect(result.issues).toEqual([]);
+    expect(result.rows).toEqual([
+      {
+        rowNumber: 3,
+        region: 'Nord',
+        city: 'Musterstadt',
+        street: 'Hauptstraße',
+        houseNumbers: '12',
+        tourNamesByFractionName: {
+          Papier: 'PPK.7.2',
+        },
+      },
+    ]);
+  });
+
+  it('detects delimiters correctly when escaped quotes appear inside quoted header cells', () => {
+    expect(detectWasteImportCsvDelimiter('"Papier ""Blau""";Ort;Tour')).toBe(';');
+  });
 });

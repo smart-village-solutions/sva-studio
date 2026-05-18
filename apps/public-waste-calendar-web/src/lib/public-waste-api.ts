@@ -42,3 +42,16 @@ export const loadResolvedPublicWasteCalendar = async (input: {
     ...projection,
   };
 };
+
+const interpolatePdfTemplate = (urlTemplate: string, locationKey: string, year: number): string =>
+  urlTemplate.replaceAll('{locationKey}', locationKey).replaceAll('{year}', String(year));
+
+export const buildPublicWastePdfLinks = (input: {
+  readonly urlTemplate: string;
+  readonly locationKey: string;
+  readonly year: number;
+}): readonly string[] => [
+  interpolatePdfTemplate(input.urlTemplate, input.locationKey, input.year - 1),
+  interpolatePdfTemplate(input.urlTemplate, input.locationKey, input.year),
+  interpolatePdfTemplate(input.urlTemplate, input.locationKey, input.year + 1),
+];

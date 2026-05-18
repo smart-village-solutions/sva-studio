@@ -15,9 +15,9 @@
 - [ ] 3.4 Öffentliche Read-Endpunkte für nächste Auswahlstufe, finalen Kalender und iCal-Feed spezifizieren
 
 ## 4. Öffentliche UX und Zustandsverhalten
-- [ ] 4.1 Reduzierte iFrame-taugliche UI mit Abschluss-erst-dann-Laden-Verhalten spezifizieren
-- [ ] 4.2 Cookie-basierten Preference Store für genau einen gemerkten Standort spezifizieren
-- [ ] 4.3 Hinweis- und Wiederherstellungsverhalten für automatisch geladene gespeicherte Adressen spezifizieren
+- [x] 4.1 Reduzierte iFrame-taugliche UI mit Abschluss-erst-dann-Laden-Verhalten spezifizieren
+- [x] 4.2 Cookie-basierten Preference Store für genau einen gemerkten Standort spezifizieren
+- [x] 4.3 Hinweis- und Wiederherstellungsverhalten für automatisch geladene gespeicherte Adressen spezifizieren
 - [ ] 4.4 Klickbare Termin-Details im Modal sowie globale PDF- und iCal-Aktionen spezifizieren
 
 ## 5. Qualität, Tests und Dokumentation

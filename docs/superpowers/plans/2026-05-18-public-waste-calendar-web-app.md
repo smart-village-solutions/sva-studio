@@ -352,7 +352,7 @@ Run: `pnpm nx run public-waste-calendar-web:test:types`
 
 Expected: PASS
 
-- [ ] **Step 7: Commit the server-side read layer**
+- [x] **Step 7: Commit the server-side read layer**
 
 ```bash
 git add apps/public-waste-calendar-web/src/lib apps/public-waste-calendar-web/src/server.ts
@@ -375,7 +375,7 @@ git commit -m "feat: add public waste calendar read services"
 - Modify: `apps/public-waste-calendar-web/src/routes/__root.tsx`
 - Modify: `apps/public-waste-calendar-web/src/styles.css`
 
-- [ ] **Step 1: Write failing tests for cookie restore and filter behavior**
+- [x] **Step 1: Write failing tests for cookie restore and filter behavior**
 
 ```ts
 it('restores one valid stored location and exposes a dismissible info message', async () => {
@@ -394,13 +394,13 @@ it('filters visible fractions without clearing the resolved location', () => {
 });
 ```
 
-- [ ] **Step 2: Run the focused app unit tests and verify failure**
+- [x] **Step 2: Run the focused app unit tests and verify failure**
 
 Run: `pnpm nx run public-waste-calendar-web:test:unit --testFiles=src/lib/public-waste-preferences.server.test.ts --testFiles=src/lib/public-waste-view-model.test.ts`
 
 Expected: FAIL with missing preference or view-model implementation.
 
-- [ ] **Step 3: Implement cookie persistence and stable UI state**
+- [x] **Step 3: Implement cookie persistence and stable UI state**
 
 ```ts
 export const PUBLIC_WASTE_PREFERENCE_COOKIE = 'sva_public_waste_location';
@@ -430,7 +430,7 @@ export function PublicWasteApp() {
 }
 ```
 
-- [ ] **Step 4: Add global PDF and iCal actions derived from the resolved location**
+- [x] **Step 4: Add global PDF and iCal actions derived from the resolved location**
 
 ```ts
 export const buildPublicWastePdfLinks = (input: { readonly urlTemplate: string; readonly locationKey: string; readonly year: number }) => [
@@ -440,7 +440,7 @@ export const buildPublicWastePdfLinks = (input: { readonly urlTemplate: string; 
 ];
 ```
 
-- [ ] **Step 5: Re-run app unit tests**
+- [x] **Step 5: Re-run app unit tests**
 
 Run: `pnpm nx run public-waste-calendar-web:test:unit --testFiles=src/lib/public-waste-preferences.server.test.ts --testFiles=src/lib/public-waste-view-model.test.ts --testFiles=src/lib/public-waste-api.test.ts`
 

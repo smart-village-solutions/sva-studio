@@ -81,6 +81,7 @@ const AUTH_KNOWN_SESSION_STORAGE_KEY = 'sva_auth_had_session';
 const isProductionMode = import.meta.env.PROD;
 const isTestRuntime = () =>
   import.meta.env.MODE === 'test' ||
+  import.meta.env.VITE_PLAYWRIGHT_TEST === 'true' ||
   import.meta.env.VITEST === true ||
   import.meta.env.VITEST === 'true';
 const SILENT_SSO_TIMEOUT_MS = isTestRuntime() ? 250 : 8_000;

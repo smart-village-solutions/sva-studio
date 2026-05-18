@@ -185,26 +185,24 @@ export const HomePage = () => {
     isDevAuthAvailable,
     loginWithDevAuth,
   } = useAuth();
-  const [authStateError, setAuthStateError] = React.useState<string | null>(null);
-  const [showDevLoginPrompt, setShowDevLoginPrompt] = React.useState(false);
-  const [routeError, setRouteError] = React.useState<string | null>(null);
-  const [authReturnTo, setAuthReturnTo] = React.useState<string | null>(null);
-  const [shouldStartLoginRedirect, setShouldStartLoginRedirect] = React.useState(false);
+  const initialRouteState = React.useMemo(
+    () => (typeof window === 'undefined' ? null : resolveHomeRouteState()),
+    []
+  );
+  const authStateError = initialRouteState?.authStateError ?? null;
+  const showDevLoginPrompt = initialRouteState?.showDevLoginPrompt ?? false;
+  const routeError = initialRouteState?.routeError ?? null;
+  const authReturnTo = initialRouteState?.authReturnTo ?? null;
+  const shouldStartLoginRedirect = initialRouteState?.shouldStartLoginRedirect ?? false;
   const [authDiagnosticSnapshot, setAuthDiagnosticSnapshot] = React.useState(
     readLatestAuthDiagnosticSnapshot()
   );
 
   React.useEffect(() => {
-    const routeState = resolveHomeRouteState();
-    setAuthReturnTo(routeState.authReturnTo);
-    setShouldStartLoginRedirect(routeState.shouldStartLoginRedirect);
-    setShowDevLoginPrompt(routeState.showDevLoginPrompt);
-    setAuthStateError(routeState.authStateError);
-    setRouteError(routeState.routeError);
-    if (routeState.consumedAuthSearch) {
+    if (initialRouteState?.consumedAuthSearch) {
       clearConsumedHomeAuthSearch();
     }
-  }, []);
+  }, [initialRouteState]);
 
   React.useEffect(() => {
     setAuthDiagnosticSnapshot(readLatestAuthDiagnosticSnapshot());

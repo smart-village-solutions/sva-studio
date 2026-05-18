@@ -49,10 +49,23 @@ const normalizeInternalPath = (value: string, fallbackPath: string): string => {
   return `${url.pathname}${url.search}${url.hash}`;
 };
 
+const normalizeReturnToPath = (value: string): string => {
+  if (isInternalPath(value)) {
+    return value;
+  }
+
+  try {
+    const url = new URL(value);
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return DEFAULT_FALLBACK_PATH;
+  }
+};
+
 const buildLoginHref = (_loginPath: string, returnTo: string) => {
   const url = new URL(DEFAULT_FALLBACK_PATH, INTERNAL_REDIRECT_BASE);
   url.searchParams.set('auth', 'login');
-  url.searchParams.set('returnTo', normalizeInternalPath(returnTo, DEFAULT_FALLBACK_PATH));
+  url.searchParams.set('returnTo', normalizeReturnToPath(returnTo));
   return `${url.pathname}${url.search}`;
 };
 

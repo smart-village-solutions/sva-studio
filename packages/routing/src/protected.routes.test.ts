@@ -47,6 +47,20 @@ describe('protected routes', () => {
     });
   });
 
+  it('keeps returnTo when the router supplies an absolute current URL', async () => {
+    const guard = createProtectedRoute({ route: '/admin/users' });
+
+    try {
+      await invokeGuard(guard, null, 'http://127.0.0.1:4173/admin/users?page=2');
+      expect.fail('Expected redirect');
+    } catch (error) {
+      expect(isRedirect(error)).toBe(true);
+      if (isRedirect(error)) {
+        expect(error.options.href).toBe('/?auth=login&returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
+      }
+    }
+  });
+
   it('redirects authenticated users without required role', async () => {
     const diagnostics = vi.fn();
     const guard = createProtectedRoute({
@@ -143,7 +157,7 @@ describe('protected routes', () => {
     await expect(invokeGuard(guard, { roles: ['system_admin'] }, '/admin/users')).resolves.toBeUndefined();
   });
 
-  it('normalizes external redirect targets back to internal defaults', async () => {
+  it('strips origins from absolute return targets without leaking external hosts', async () => {
     const guard = createProtectedRoute({
       loginPath: 'https://evil.example/login',
       fallbackPath: 'https://evil.example/fallback',
@@ -155,7 +169,7 @@ describe('protected routes', () => {
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
-        expect(error.options.href).toBe('/?auth=login&returnTo=%2F');
+        expect(error.options.href).toBe('/?auth=login&returnTo=%2Fadmin');
       }
     }
   });

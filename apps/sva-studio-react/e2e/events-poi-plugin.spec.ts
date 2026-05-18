@@ -115,13 +115,6 @@ const expectAdminListUrl = async (page: Page, basePath: '/admin/events' | '/admi
   await expect(page).toHaveURL(new RegExp(`${basePath.replace('/', '\\/')}\\?(?:.*&)??page=1(?:&.*)?$`));
 };
 
-const escapeForRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-const expectUnauthenticatedRedirect = async (page: Page, returnToPath: string) => {
-  const encodedReturnToPath = escapeForRegex(encodeURIComponent(returnToPath));
-  await expect(page).toHaveURL(new RegExp(`(?:\\/auth\\/login\\?returnTo=${encodedReturnToPath}|\\/\\?auth=(?:mock-login|dev-login)&returnTo=${encodedReturnToPath})`));
-};
-
 const mockSharedShellRequests = async (page: Page) => {
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) });
@@ -418,19 +411,31 @@ test.describe('events and POI plugins', () => {
     await expect(page.getByText(/Noch keine Events vorhanden|events\.empty\.title/)).toBeVisible();
   });
 
-  test('redirects unauthenticated admin resource access to login', async ({ page }) => {
+  test('redirects unauthenticated event admin access to login', async ({ page }) => {
+    await page.unroute('**/auth/me');
+    await page.route('**/auth/me', async (route) => {
+      await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unauthorized' }) });
+    });
+    const eventsLoginRequest = page.waitForRequest(
+      (request) => request.isNavigationRequest() && request.url().includes('/auth/login?returnTo=')
+    );
+    await page.goto('/');
+    await navigateClientSide(page, '/admin/events');
+    await expect(new URL((await eventsLoginRequest).url()).searchParams.get('returnTo')).toMatch(/^\/admin\/events(?:$|\?)/);
+  });
+
+  test('redirects unauthenticated POI admin access to login', async ({ page }) => {
     await page.unroute('**/auth/me');
     await page.route('**/auth/me', async (route) => {
       await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unauthorized' }) });
     });
 
-    await page.goto('/');
-    await navigateClientSide(page, '/admin/events');
-    await expectUnauthenticatedRedirect(page, '/admin/events?filters=%7B%7D&page=1&pageSize=25');
-
+    const poiLoginRequest = page.waitForRequest(
+      (request) => request.isNavigationRequest() && request.url().includes('/auth/login?returnTo=')
+    );
     await page.goto('/');
     await navigateClientSide(page, '/admin/poi');
-    await expectUnauthenticatedRedirect(page, '/admin/poi?filters=%7B%7D&page=1&pageSize=25');
+    await expect(new URL((await poiLoginRequest).url()).searchParams.get('returnTo')).toMatch(/^\/admin\/poi(?:$|\?)/);
   });
 
   test('keeps central event and POI views free of serious accessibility violations', async ({ page }) => {

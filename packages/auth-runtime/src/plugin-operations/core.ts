@@ -8,28 +8,21 @@ import { getWorkspaceContext } from '@sva/server-runtime';
 import { z } from 'zod';
 
 import {
-  asApiList,
-  asApiItem,
-  createApiError,
-  parseRequestBody,
-  readPage,
-  readPathSegment,
-  requireIdempotencyKey,
+  asApiItem, asApiList, createApiError, parseRequestBody, readPage, readPathSegment, requireIdempotencyKey,
 } from '../shared/request-helpers.js';
 import { withAuthenticatedUser } from '../middleware.js';
 import { isUuid } from '../shared/input-readers.js';
 import { validateCsrf } from '../shared/request-security.js';
 import { createJsonItemResponse } from './core.shared.js';
 import {
-  executeStartPluginOperationJob,
-  reserveStartIdempotency,
-  validateStartRequestData,
+  executeStartPluginOperationJob, reserveStartIdempotency, validateStartRequestData,
 } from './core.start.js';
 import { normalizeStudioJobDetail } from './job-detail-read-model.js';
 import { normalizeStudioJobListItem } from './job-list-read-model.js';
 import { withStudioJobRepository } from './repository.js';
 
 const MONITORING_ADMIN_ROLES = new Set(['system_admin']);
+const TERMINAL_JOB_STATUSES = new Set(['succeeded', 'failed', 'cancelled']);
 
 const startPluginOperationJobSchema = z.object({
   pluginId: z.string().trim().min(1),
@@ -54,13 +47,8 @@ const requireMonitoringAdminRole = (roles: readonly string[]): Response | null =
 
 const readJobId = (request: Request): string | Response => {
   const jobId = readPathSegment(request, 4);
-  if (!jobId) {
-    return createApiError(400, 'invalid_request', 'Job-ID fehlt.', getRequestId());
-  }
-
-  if (!isUuid(jobId)) {
-    return createApiError(400, 'invalid_request', 'Job-ID muss eine UUID sein.', getRequestId());
-  }
+  if (!jobId) return createApiError(400, 'invalid_request', 'Job-ID fehlt.', getRequestId());
+  if (!isUuid(jobId)) return createApiError(400, 'invalid_request', 'Job-ID muss eine UUID sein.', getRequestId());
 
   return jobId;
 };
@@ -171,12 +159,54 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
 
       return createJsonItemResponse(200, normalizeStudioJobDetail(job), getRequestId());
     } catch {
-      return createApiError(
-        503,
-        'database_unavailable',
-        'Der Plugin-Job konnte nicht geladen werden.',
-        getRequestId()
-      );
+      return createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht geladen werden.', getRequestId());
+    }
+  });
+
+export const deletePluginOperationJobHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedUser(request, async (ctx) => {
+    const requestId = getRequestId();
+    const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+    if (authorizationError) {
+      return authorizationError;
+    }
+
+    const instanceId = requireActorInstanceId(ctx.user.instanceId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+
+    const csrfError = validateCsrf(request, requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    const jobId = readJobId(request);
+    if (jobId instanceof Response) {
+      return jobId;
+    }
+
+    try {
+      const job = await withStudioJobRepository(instanceId, async (repository) => {
+        const existingJob = await repository.getJobDetail(instanceId, jobId);
+        if (!existingJob) {
+          return null;
+        }
+        if (!TERMINAL_JOB_STATUSES.has(existingJob.status)) {
+          throw new Error('job_not_terminal');
+        }
+        return repository.deleteJob(instanceId, jobId);
+      });
+      if (!job) {
+        return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', requestId);
+      }
+
+      return createJsonItemResponse(200, job, requestId);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'job_not_terminal') {
+        return createApiError(409, 'conflict', 'Der Plugin-Job kann erst nach Abschluss oder Abbruch gelöscht werden.', requestId);
+      }
+      return createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht gelöscht werden.', requestId);
     }
   });
 
@@ -218,12 +248,7 @@ export const listPluginOperationJobsHandler = async (request: Request): Promise<
         }
       );
     } catch {
-      return createApiError(
-        503,
-        'database_unavailable',
-        'Die Plugin-Jobliste konnte nicht geladen werden.',
-        getRequestId()
-      );
+      return createApiError(503, 'database_unavailable', 'Die Plugin-Jobliste konnte nicht geladen werden.', getRequestId());
     }
   });
 
@@ -266,11 +291,6 @@ export const cancelPluginOperationJobHandler = async (request: Request): Promise
         headers: { 'Content-Type': 'application/json' },
       });
     } catch {
-      return createApiError(
-        503,
-        'database_unavailable',
-        'Die Abbruchanfrage fuer den Plugin-Job konnte nicht gespeichert werden.',
-        getRequestId()
-      );
+      return createApiError(503, 'database_unavailable', 'Die Abbruchanfrage fuer den Plugin-Job konnte nicht gespeichert werden.', getRequestId());
     }
   });

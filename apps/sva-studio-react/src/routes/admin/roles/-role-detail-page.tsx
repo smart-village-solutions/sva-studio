@@ -1,10 +1,16 @@
 import React from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
+import {
+  StudioDataTable,
+  type StudioColumnDef,
+} from '@sva/studio-ui-react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
+import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
+import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Textarea } from '../../../components/ui/textarea';
@@ -100,6 +106,18 @@ const summarizePermission = (permissionKey: string) => {
   };
 };
 
+type RolePermissionTableRow = Readonly<{
+  id: string;
+  permissionKey: string;
+  description: string;
+  resourceLabel: string;
+  actionLabel: string;
+  detailLabel: string;
+  isAssigned: boolean;
+}>;
+
+const normalizePermissionSearch = (value: string) => value.trim().toLowerCase();
+
 export const sortPermissionIdsByCatalog = (
   permissionIds: readonly string[],
   catalog: readonly { id: string; permissionKey: string }[]
@@ -113,30 +131,12 @@ export const sortPermissionIdsByCatalog = (
   });
 };
 
-const groupPermissionsByCatalog = (
-  permissions: readonly { id: string; permissionKey: string; description?: string | null }[]
-): readonly (readonly [string, readonly { id: string; permissionKey: string; description?: string | null }[]])[] => {
-  const buckets = new Map<string, { id: string; permissionKey: string; description?: string | null }[]>();
-  for (const permission of permissions) {
-    const summary = summarizePermission(permission.permissionKey);
-    const existing = buckets.get(summary.resourceLabel) ?? [];
-    existing.push(permission);
-    buckets.set(summary.resourceLabel, existing);
-  }
-
-  return [...buckets.entries()]
-    .map(([resourceLabel, items]) => [
-      resourceLabel,
-      [...items].sort((left, right) => left.permissionKey.localeCompare(right.permissionKey)),
-    ] as const)
-    .sort(([left], [right]) => left.localeCompare(right));
-};
-
 export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   const rolesApi = useRoles();
   const permissionsApi = useRolePermissions();
   const usersApi = useUsers({ page: 1, pageSize: 100 });
   const navigate = useNavigate();
+  const studioDataTableLabels = createStudioDataTableLabels();
   const role = React.useMemo(() => rolesApi.roles.find((entry) => entry.id === roleId) ?? null, [roleId, rolesApi.roles]);
   const isReadOnly = role ? role.isSystemRole || role.managedBy !== 'studio' : true;
   const [editForm, setEditForm] = React.useState({
@@ -149,6 +149,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   const [isSavingPermissions, setIsSavingPermissions] = React.useState(false);
   const [isUpdatingAssignmentsForUserIds, setIsUpdatingAssignmentsForUserIds] = React.useState<string[]>([]);
   const [showTechnicalDetails, setShowTechnicalDetails] = React.useState(false);
+  const [permissionSearch, setPermissionSearch] = React.useState('');
 
   React.useEffect(() => {
     if (!role) {
@@ -163,10 +164,149 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     setPermissionDraft(sortPermissionIdsByCatalog(role.permissions.map((permission) => permission.id), permissionsApi.permissions));
   }, [permissionsApi.permissions, role]);
 
-  const groupedPermissions = React.useMemo(
-    () => groupPermissionsByCatalog(permissionsApi.permissions),
+  const permissionTableRows = React.useMemo<readonly RolePermissionTableRow[]>(
+    () =>
+      permissionsApi.permissions.map((permission) => {
+        const summary = summarizePermission(permission.permissionKey);
+        return {
+          id: permission.id,
+          permissionKey: permission.permissionKey,
+          description:
+            permission.description?.trim() || t('admin.roles.detail.permissions.permissionDescriptionFallback'),
+          resourceLabel: summary.resourceLabel,
+          actionLabel: summary.actionLabel,
+          detailLabel: summary.detailLabel,
+          isAssigned: permissionDraft.includes(permission.id),
+        };
+      }),
+    [permissionDraft, permissionsApi.permissions]
+  );
+
+  const filteredPermissionTableRows = React.useMemo(() => {
+    const normalizedSearch = normalizePermissionSearch(permissionSearch);
+    if (!normalizedSearch) {
+      return permissionTableRows;
+    }
+
+    return permissionTableRows.filter((permission) =>
+      [
+        permission.resourceLabel,
+        permission.actionLabel,
+        permission.detailLabel,
+        permission.permissionKey,
+        permission.description,
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [permissionSearch, permissionTableRows]);
+
+  const permissionTableColumns = React.useMemo<readonly StudioColumnDef<RolePermissionTableRow>[]>(
+    () => [
+      {
+        id: 'assignedToggle',
+        header: t('admin.roles.detail.permissions.table.columns.assignment'),
+        cell: (permission) => (
+          <Label className="flex items-center gap-3">
+            <Checkbox
+              type="checkbox"
+              checked={permission.isAssigned}
+              disabled={isReadOnly}
+              aria-label={t('admin.roles.detail.permissions.toggleAssignment', {
+                permission: permission.detailLabel,
+              })}
+              onChange={() => togglePermissionDraft(permission.id)}
+            />
+            <span className="text-sm text-foreground">
+              {permission.isAssigned
+                ? t('admin.roles.detail.permissions.assigned')
+                : t('admin.roles.detail.permissions.notAssigned')}
+            </span>
+          </Label>
+        ),
+        sortable: true,
+        sortValue: (permission) => (permission.isAssigned ? '0' : '1'),
+        className: 'align-middle',
+      },
+      {
+        id: 'detail',
+        header: t('admin.roles.detail.permissions.table.columns.permission'),
+        cell: (permission) => (
+          <div className="space-y-1">
+            <span className="block font-medium text-foreground">{permission.detailLabel}</span>
+            <span className="block text-xs text-muted-foreground">{permission.description}</span>
+          </div>
+        ),
+        sortable: true,
+        sortValue: (permission) => permission.detailLabel.toLowerCase(),
+      },
+      {
+        id: 'resource',
+        header: t('admin.roles.detail.permissions.table.columns.resource'),
+        cell: (permission) => permission.resourceLabel,
+        sortable: true,
+        sortValue: (permission) => permission.resourceLabel.toLowerCase(),
+      },
+      {
+        id: 'action',
+        header: t('admin.roles.detail.permissions.table.columns.action'),
+        cell: (permission) => permission.actionLabel,
+        sortable: true,
+        sortValue: (permission) => permission.actionLabel.toLowerCase(),
+      },
+      ...(showTechnicalDetails
+        ? ([
+            {
+              id: 'technical',
+              header: t('admin.roles.detail.permissions.table.columns.technicalKey'),
+              cell: (permission) => (
+                <code className="rounded bg-muted px-2 py-1 text-xs text-foreground">{permission.permissionKey}</code>
+              ),
+              sortable: true,
+              sortValue: (permission) => permission.permissionKey.toLowerCase(),
+              className: 'align-middle',
+            },
+          ] satisfies readonly StudioColumnDef<RolePermissionTableRow>[])
+        : []),
+    ],
+    [isReadOnly, showTechnicalDetails]
+  );
+
+  const assignAllPermissions = React.useCallback(() => {
+    setPermissionDraft(sortPermissionIdsByCatalog(permissionsApi.permissions.map((permission) => permission.id), permissionsApi.permissions));
+  }, [permissionsApi.permissions]);
+
+  const removeAllPermissions = React.useCallback(() => {
+    setPermissionDraft([]);
+  }, []);
+
+  const applyPermissionBulkAssignment = React.useCallback(
+    (permissionIds: readonly string[], nextAssigned: boolean) => {
+      setPermissionDraft((current) => {
+        const nextIds = nextAssigned
+          ? [...new Set([...current, ...permissionIds])]
+          : current.filter((permissionId) => !permissionIds.includes(permissionId));
+
+        return sortPermissionIdsByCatalog(nextIds, permissionsApi.permissions);
+      });
+    },
     [permissionsApi.permissions]
   );
+
+  const assignVisiblePermissions = React.useCallback(() => {
+    applyPermissionBulkAssignment(
+      filteredPermissionTableRows.map((permission) => permission.id),
+      true
+    );
+  }, [applyPermissionBulkAssignment, filteredPermissionTableRows]);
+
+  const removeVisiblePermissions = React.useCallback(() => {
+    applyPermissionBulkAssignment(
+      filteredPermissionTableRows.map((permission) => permission.id),
+      false
+    );
+  }, [applyPermissionBulkAssignment, filteredPermissionTableRows]);
 
   const onTabIntent = (tab: RoleDetailTab): void => {
     void Promise.resolve(
@@ -509,56 +649,61 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
         ) : permissionsApi.isLoading ? (
           <p className="text-sm text-muted-foreground">{t('admin.roles.workspace.permissionsLoading')}</p>
         ) : (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {groupedPermissions.map(([resourceLabel, permissions]) => (
-              <div key={resourceLabel} className="space-y-2 rounded-lg border border-border p-3">
-                <h3 className="text-sm font-medium text-foreground">{resourceLabel}</h3>
-                <div className="space-y-2">
-                  {permissions.map((permission) => {
-                    const permissionSummary = summarizePermission(permission.permissionKey);
-                    const isAssigned = permissionDraft.includes(permission.id);
-                    return (
-                      <label key={permission.id} className="flex items-start gap-3 text-sm">
-                        <input
-                          type="checkbox"
-                          className="mt-1"
-                          checked={isAssigned}
-                          disabled={isReadOnly}
-                          onChange={() => togglePermissionDraft(permission.id)}
-                        />
-                        <span className="space-y-1">
-                          <span className="flex flex-wrap items-center gap-2">
-                            <span className="block font-medium text-foreground">{permissionSummary.detailLabel}</span>
-                            <Badge variant={isAssigned ? 'default' : 'outline'}>
-                              {isAssigned
-                                ? t('admin.roles.detail.permissions.assigned')
-                                : t('admin.roles.detail.permissions.notAssigned')}
-                            </Badge>
-                          </span>
-                          <span className="block text-xs text-muted-foreground">
-                            {permission.description ?? permission.permissionKey}
-                          </span>
-                          {showTechnicalDetails ? (
-                            <span className="block rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                              <span className="block">
-                                {t('admin.roles.workspace.technicalKey', { value: permission.permissionKey })}
-                              </span>
-                              <span className="block">
-                                {t('admin.roles.workspace.resourceLabel', { value: permissionSummary.resourceLabel })}
-                              </span>
-                              <span className="block">
-                                {t('admin.roles.detail.permissions.actionLabel', { value: permissionSummary.actionLabel })}
-                              </span>
-                            </span>
-                          ) : null}
-                        </span>
-                      </label>
-                    );
-                  })}
+          <StudioDataTable
+            ariaLabel={t('admin.roles.detail.permissions.table.ariaLabel')}
+            labels={studioDataTableLabels}
+            caption={t('admin.roles.detail.permissions.table.caption')}
+            data={filteredPermissionTableRows}
+            columns={permissionTableColumns}
+            getRowId={(permission) => permission.id}
+            selectionMode="none"
+            emptyState={
+              <Card className="border-none p-0 text-sm text-muted-foreground shadow-none" role="status">
+                {t('admin.roles.detail.permissions.table.empty')}
+              </Card>
+            }
+            toolbarStart={
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex min-w-[16rem] flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                  <Label htmlFor="role-permissions-search">{t('admin.roles.detail.permissions.filters.searchLabel')}</Label>
+                  <Input
+                    id="role-permissions-search"
+                    value={permissionSearch}
+                    onChange={(event) => setPermissionSearch(event.target.value)}
+                    placeholder={t('admin.roles.detail.permissions.filters.searchPlaceholder')}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <Badge variant="outline">
+                    {t('admin.roles.detail.permissions.summary.visibleCount', {
+                      count: String(filteredPermissionTableRows.length),
+                    })}
+                  </Badge>
+                  <Badge variant="outline">
+                    {t('admin.roles.detail.permissions.summary.assignedCount', {
+                      count: String(permissionDraft.length),
+                    })}
+                  </Badge>
                 </div>
               </div>
-            ))}
-          </div>
+            }
+            toolbarEnd={
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" disabled={isReadOnly} onClick={assignVisiblePermissions}>
+                  {t('admin.roles.detail.permissions.bulk.assignVisible')}
+                </Button>
+                <Button type="button" variant="outline" disabled={isReadOnly} onClick={removeVisiblePermissions}>
+                  {t('admin.roles.detail.permissions.bulk.removeVisible')}
+                </Button>
+                <Button type="button" variant="outline" disabled={isReadOnly} onClick={assignAllPermissions}>
+                  {t('admin.roles.detail.permissions.bulk.assignAll')}
+                </Button>
+                <Button type="button" variant="outline" disabled={isReadOnly} onClick={removeAllPermissions}>
+                  {t('admin.roles.detail.permissions.bulk.removeAll')}
+                </Button>
+              </div>
+            }
+          />
         )}
 
         <div className="flex flex-wrap gap-3">

@@ -64,6 +64,9 @@ export const WasteMasterDataLocationsTabView = ({
       onOpenEditStreet={controller.openEditStreetDialog}
       onOpenEditHouseNumber={controller.openEditHouseNumberDialog}
       onOpenBulkAssignments={controller.openBulkAssignmentsDialog}
+      onCopyLocation={navigation.toCopy}
+      onDeleteLocation={controller.onDeleteLocation}
+      onDeleteLocations={controller.onDeleteLocations}
       onOpenEditLocation={navigation.toEdit}
       getLocationLabel={controller.getLocationLabel}
     />

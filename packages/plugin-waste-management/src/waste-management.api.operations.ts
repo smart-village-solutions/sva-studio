@@ -10,6 +10,8 @@ import type {
   CreateWasteManagementGlobalDateShiftInput,
   CreateWasteManagementTourDateShiftInput,
   CreateWasteManagementTourInput,
+  PreviewWasteLocationTourPickupDateImportInput,
+  PreviewWasteLocationTourPickupDateImportResult,
   StartWasteManagementImportInput,
   StartWasteManagementMigrationsInput,
   StartWasteManagementResetInput,
@@ -52,6 +54,9 @@ export const updateWasteManagementTourDateShift = async (
     'PUT'
   );
 
+export const deleteWasteManagementTourDateShift = async (shiftId: string): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(`/api/v1/waste-management/tour-date-shifts/${encodeURIComponent(shiftId)}`, undefined, 'DELETE');
+
 export const createWasteManagementGlobalDateShift = async (
   input: CreateWasteManagementGlobalDateShiftInput
 ): Promise<WasteGlobalDateShiftRecord> =>
@@ -67,6 +72,9 @@ export const updateWasteManagementGlobalDateShift = async (
     'PUT'
   );
 
+export const deleteWasteManagementGlobalDateShift = async (shiftId: string): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(`/api/v1/waste-management/global-date-shifts/${encodeURIComponent(shiftId)}`, undefined, 'DELETE');
+
 export const updateWasteManagementSettings = async (
   input: WasteManagementSettingsInput
 ): Promise<WasteManagementSettingsRecord | null> =>
@@ -81,6 +89,11 @@ export const startWasteManagementMigrations = async (input: StartWasteManagement
 export const startWasteManagementImport = async (input: StartWasteManagementImportInput) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/imports', input);
 
+export const previewWasteLocationTourPickupDateImport = async (
+  input: PreviewWasteLocationTourPickupDateImportInput
+): Promise<PreviewWasteLocationTourPickupDateImportResult> =>
+  requestWasteManagementMutation('/api/v1/waste-management/tools/imports/preview', input);
+
 export const startWasteManagementSeed = async (input: StartWasteManagementSeedInput = {}) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/seed', {
     seedKey: input.seedKey ?? 'baseline',
@@ -88,6 +101,9 @@ export const startWasteManagementSeed = async (input: StartWasteManagementSeedIn
 
 export const startWasteManagementReset = async (input: StartWasteManagementResetInput) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/reset', input);
+
+export const deleteWasteManagementHistoryJob = async (jobId: string): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(`/api/v1/plugin-operations/jobs/${encodeURIComponent(jobId)}`, undefined, 'DELETE');
 
 export const getWasteManagementJobDetail = async (
   jobId: string,

@@ -162,6 +162,51 @@ describe('RoleDetailPage', () => {
     });
   });
 
+  it('resets edited general fields back to the persisted role values', async () => {
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-2',
+          roleKey: 'editor',
+          roleName: 'Editor',
+          externalRoleName: 'editor',
+          managedBy: 'studio',
+          description: 'Editorial role',
+          isSystemRole: false,
+          roleLevel: 20,
+          memberCount: 3,
+          syncState: 'synced',
+          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RoleDetailPage roleId="role-2" activeTab="general" />);
+
+    fireEvent.change(screen.getByLabelText('Anzeigename'), { target: { value: 'Changed name' } });
+    fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Changed description' } });
+    fireEvent.change(screen.getByLabelText('Rollenlevel'), { target: { value: '42' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen zurücksetzen' }));
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Anzeigename') as HTMLInputElement).value).toBe('Editor');
+      expect((screen.getByLabelText('Beschreibung') as HTMLTextAreaElement).value).toBe('Editorial role');
+      expect((screen.getByLabelText('Rollenlevel') as HTMLInputElement).value).toBe('20');
+    });
+  });
+
   it('allows switching to permissions tab and saving permission changes', async () => {
     const updateRole = vi.fn().mockResolvedValue(true);
 
@@ -204,6 +249,64 @@ describe('RoleDetailPage', () => {
     await waitFor(() => {
       expect(updateRole).toHaveBeenCalledWith('role-2', {
         permissionIds: ['perm-1', 'perm-2'],
+      });
+    });
+  });
+
+  it('supports removing visible permissions and falls back to humanized action labels', async () => {
+    const updateRole = vi.fn().mockResolvedValue(true);
+
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-2',
+          roleKey: 'editor',
+          roleName: 'Editor',
+          externalRoleName: 'editor',
+          managedBy: 'studio',
+          description: 'Editorial role',
+          isSystemRole: false,
+          roleLevel: 20,
+          memberCount: 3,
+          syncState: 'synced',
+          permissions: [
+            { id: 'perm-1', permissionKey: 'content.read', description: null },
+            { id: 'perm-5', permissionKey: 'content.custom_action', description: null },
+          ],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole,
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    useRolePermissionsMock.mockReturnValue({
+      permissions: [
+        { id: 'perm-1', instanceId: 'de-musterhausen', permissionKey: 'content.read', description: 'Lesen' },
+        { id: 'perm-5', instanceId: 'de-musterhausen', permissionKey: 'content.custom_action', description: 'Spezial' },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<RoleDetailPage roleId="role-2" activeTab="permissions" />);
+
+    expect(screen.getAllByText('Custom Action').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Sichtbare Rechte entziehen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rechte speichern' }));
+
+    await waitFor(() => {
+      expect(updateRole).toHaveBeenCalledWith('role-2', {
+        permissionIds: [],
       });
     });
   });
@@ -257,16 +360,18 @@ describe('RoleDetailPage', () => {
     expect(cockpitLinks).toHaveLength(2);
     expect(cockpitLinks[0]?.getAttribute('href')).toBe('/admin/iam?tab=rights');
     expect(cockpitLinks[1]?.getAttribute('href')).toBe('/admin/iam?tab=rights');
-    expect(screen.queryByText('Technischer Schlüssel: content.read')).toBeNull();
+    expect(screen.queryByText('content.read')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Technische Details anzeigen' }));
 
-    expect(screen.getByText('Technischer Schlüssel: content.read')).toBeTruthy();
-    expect(screen.getAllByText('Fachbereich: Inhalte').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Fachbereich: News')).toBeTruthy();
-    expect(screen.getAllByText('Aktion: Lesen').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText('Aktion: Payload bearbeiten')).toBeTruthy();
-    expect(screen.getByText('Zugeordnet')).toBeTruthy();
+    expect(screen.getAllByText('content.read').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('content.updatePayload').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('news.read').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Inhalte').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('News').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Lesen').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Payload bearbeiten').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Zugeordnet').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Nicht zugeordnet').length).toBeGreaterThanOrEqual(1);
   });
 
@@ -483,6 +588,8 @@ describe('RoleDetailPage', () => {
   });
 
   it('renders runtime diagnostics on role detail errors', () => {
+    const refetch = vi.fn();
+
     useRolesMock.mockReturnValue({
       roles: [],
       isLoading: false,
@@ -498,7 +605,7 @@ describe('RoleDetailPage', () => {
       },
       mutationError: null,
       reconcileReport: null,
-      refetch: vi.fn(),
+      refetch,
       clearMutationError: vi.fn(),
       createRole: vi.fn(),
       updateRole: vi.fn(),
@@ -517,5 +624,225 @@ describe('RoleDetailPage', () => {
     expect(screen.getByText('Diagnose: Keycloak-Reconcile')).toBeTruthy();
     expect(screen.getByText('Empfohlene Aktion: Rollenabgleich prüfen')).toBeTruthy();
     expect(screen.getByText('Request-ID: req-role-detail-3')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders loading and not-found states before a role becomes available', () => {
+    useRolesMock.mockReturnValueOnce({
+      roles: [],
+      isLoading: true,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    const { rerender } = render(<RoleDetailPage roleId="role-missing" activeTab="general" />);
+    expect(screen.getByText('Rollen werden geladen ...')).toBeTruthy();
+
+    useRolesMock.mockReturnValueOnce({
+      roles: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    rerender(<RoleDetailPage roleId="role-missing" activeTab="general" />);
+    expect(screen.getByText('Die angeforderte Rolle wurde nicht gefunden.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Zur Rollenliste' }).getAttribute('href')).toBe('/admin/roles');
+  });
+
+  it('supports keyboard tab navigation and sync actions', () => {
+    const retryRoleSync = vi.fn();
+    const refetch = vi.fn();
+
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-2',
+          roleKey: 'editor',
+          roleName: 'Editor',
+          externalRoleName: 'editor',
+          managedBy: 'studio',
+          description: 'Editorial role',
+          isSystemRole: false,
+          roleLevel: 20,
+          memberCount: 3,
+          syncState: 'failed',
+          lastSyncedAt: null,
+          syncError: null,
+          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch,
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync,
+      reconcile: vi.fn(),
+    });
+
+    render(<RoleDetailPage roleId="role-2" activeTab="sync" />);
+
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Synchronisierung' }), { key: 'ArrowLeft' });
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/admin/roles/$roleId',
+      params: { roleId: 'role-2' },
+      search: { tab: 'assignments' },
+      replace: true,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut synchronisieren' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(retryRoleSync).toHaveBeenCalledWith('role-2');
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders permission bulk assignment flows', async () => {
+    const updateRole = vi.fn().mockResolvedValue(true);
+
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-2',
+          roleKey: 'editor',
+          roleName: 'Editor',
+          externalRoleName: 'editor',
+          managedBy: 'studio',
+          description: 'Editorial role',
+          isSystemRole: false,
+          roleLevel: 20,
+          memberCount: 1,
+          syncState: 'synced',
+          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole,
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    const { rerender } = render(<RoleDetailPage roleId="role-2" activeTab="permissions" />);
+
+    useRolePermissionsMock.mockReturnValue({
+      permissions: [
+        { id: 'perm-1', instanceId: 'de-musterhausen', permissionKey: 'content.read', description: 'Lesen' },
+        { id: 'perm-2', instanceId: 'de-musterhausen', permissionKey: 'content.updatePayload', description: 'Schreiben' },
+        { id: 'perm-3', instanceId: 'de-musterhausen', permissionKey: 'iam.configure', description: 'Konfigurieren' },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    rerender(<RoleDetailPage roleId="role-2" activeTab="permissions" />);
+    fireEvent.change(screen.getByLabelText('Rechte suchen'), { target: { value: 'content' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sichtbare Rechte vergeben' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rechte speichern' }));
+
+    await waitFor(() => {
+      expect(updateRole).toHaveBeenLastCalledWith('role-2', {
+        permissionIds: ['perm-1', 'perm-2'],
+      });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Alle Rechte entziehen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rechte speichern' }));
+
+    await waitFor(() => {
+      expect(updateRole).toHaveBeenLastCalledWith('role-2', {
+        permissionIds: [],
+      });
+    });
+  });
+
+  it('renders the external read-only hint plus assignment load errors', () => {
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-2',
+          roleKey: 'editor',
+          roleName: 'Editor',
+          externalRoleName: 'realm-editor',
+          managedBy: 'keycloak',
+          description: 'External role',
+          isSystemRole: false,
+          roleLevel: 20,
+          memberCount: 0,
+          syncState: 'failed',
+          syncError: { code: 'MISSING_ROLE' },
+          permissions: [],
+          lastSyncedAt: null,
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: new Error('mutation failed'),
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    useUsersMock.mockReturnValue({
+      users: [],
+      total: 0,
+      page: 1,
+      pageSize: 100,
+      isLoading: false,
+      error: new Error('users unavailable'),
+      filters: { page: 1, pageSize: 100, search: '', status: 'all', role: '' },
+      setSearch: vi.fn(),
+      setStatus: vi.fn(),
+      setRole: vi.fn(),
+      setPage: vi.fn(),
+      refetch: vi.fn(),
+      createUser: vi.fn(),
+      updateUser: vi.fn(),
+      deactivateUser: vi.fn(),
+      bulkDeactivate: vi.fn(),
+      syncUsersFromKeycloak: vi.fn(),
+    });
+
+    render(<RoleDetailPage roleId="role-2" activeTab="assignments" />);
+
+    expect(
+      screen.getByText('Extern verwaltete Rollen bleiben schreibgeschützt und müssen in der führenden Quelle angepasst werden.')
+    ).toBeTruthy();
+    expect(screen.getByText('Rollen konnten nicht geladen werden.')).toBeTruthy();
+    expect(screen.getByText('Die Benutzerzuweisungen konnten nicht geladen werden.')).toBeTruthy();
   });
 });

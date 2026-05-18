@@ -56,17 +56,26 @@ const navigateClientSide = async (page: Page, targetPath: string) => {
   }, targetPath);
 };
 
-const gotoHomeAsAuthenticatedUser = async (page: Page) => {
+const escapeForRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const resolveInitials = (value: string) =>
+  value
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+
+const gotoHomeAsAuthenticatedUser = async (page: Page, expectedUserName = 'Admin One') => {
   const authMeResponse = page.waitForResponse(
     (response) => response.request().method() === 'GET' && response.url().includes('/auth/me') && response.status() === 200
   );
+  const expectedTriggerPattern = new RegExp(`${escapeForRegex(expectedUserName)}|${escapeForRegex(resolveInitials(expectedUserName))}`);
 
   await page.goto('/');
   await authMeResponse;
   await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
-  await expect
-    .poll(async () => (await page.getByRole('button', { name: 'Logout' }).count()) > 0)
-    .toBe(true);
+  await expect(page.getByRole('button', { name: expectedTriggerPattern })).toBeVisible();
 };
 
 test.beforeEach(async ({ page }) => {
@@ -610,7 +619,7 @@ test('admin links are hidden for non-admin user and route guard redirects', asyn
   });
 
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('button', { name: /Editor User/ })).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole('link', { name: 'Benutzer' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Rollen' })).toHaveCount(0);
 

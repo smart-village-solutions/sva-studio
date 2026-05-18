@@ -1,5 +1,6 @@
 import type {
   StudioJobResponse,
+  WasteLocationTourPickupDateImportPreview,
   WasteManagementImportProfileCatalogEntry,
   WasteManagementImportSourceFormat,
   WasteManagementSettingsRecord,
@@ -77,9 +78,12 @@ export const toJobStatusTone = (status: StudioJobResponse['data']['status'] | un
 };
 
 const createImportTemplateCsv = (profile: WasteManagementImportProfileCatalogEntry) => {
-  const headers = [...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.key);
-  const sampleRow = [...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.example ?? '');
-  return `${headers.join(',')}\n${sampleRow.join(',')}\n`;
+  const delimiter = profile.templateDelimiter ?? ',';
+  const headers = profile.templateHeaders ?? [...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.key);
+  const sampleRows =
+    profile.templateSampleRows ??
+    [[...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.example ?? '')];
+  return [headers.join(delimiter), ...sampleRows.map((row) => row.join(delimiter))].join('\n').concat('\n');
 };
 
 const createImportTemplateWorkbook = (profile: WasteManagementImportProfileCatalogEntry) => {
@@ -108,6 +112,26 @@ export const downloadImportTemplate = (
     sourceFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       ? `${profile.profileId}.xlsx`
       : `${profile.profileId}.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+};
+
+export const downloadImportPreviewErrors = (preview: WasteLocationTourPickupDateImportPreview) => {
+  const rows = [
+    ['Row', 'Column', 'Message', 'Value'],
+    ...preview.errors.map((error) => [
+      String(error.rowNumber),
+      error.column,
+      error.message,
+      error.value ?? '',
+    ]),
+  ];
+  const csv = rows.map((row) => row.map((cell) => `"${cell.split('"').join('""')}"`).join(';')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'waste-import-errors.csv';
   anchor.click();
   URL.revokeObjectURL(url);
 };

@@ -63,9 +63,36 @@ type WasteManagementToolsCopy = Readonly<{
     profileLabel: string;
     blobRefLabel: string;
     sourceFormatLabel: string;
+    delimiterLabel: string;
+    delimiterAuto: string;
     sourceFormats: Readonly<Record<string, string>>;
     dryRunLabel: string;
     templateColumns: string;
+    previewTitle: string;
+    previewSummary: string;
+    previewDelimiter: string;
+    previewHintStreet: string;
+    previewHintHouseNumbers: string;
+    previewHintDates: string;
+    wizard: Readonly<{
+      navigationLabel: string;
+      preferredBadge: string;
+      fileReady: string;
+      rulesTitle: string;
+      confirmTitle: string;
+      resultTitle: string;
+      resultDescription: string;
+      newFractionsTitle: string;
+      newToursTitle: string;
+      newLocationsTitle: string;
+      newLocationsSummary: string;
+      errorTitle: string;
+      errorLine: string;
+      noErrors: string;
+      steps: Readonly<Record<string, Readonly<{ title: string; description: string }>>>;
+      actions: Readonly<Record<string, string>>;
+      metrics: Readonly<Record<string, string>>;
+    }>;
   }>;
   migrations: Readonly<{
     title: string;

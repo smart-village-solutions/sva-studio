@@ -1,7 +1,12 @@
 import { getWasteManagementImportCatalogEntry, wasteManagementOperationsContract } from '@sva/core';
 import { runWasteConnectionCheck } from '@sva/server-runtime';
 
-import { executeImport, parseImportRows } from './waste-management-operations.import.js';
+import {
+  executeImport,
+  parseImportRows,
+  parseLocationTourPickupDateImport,
+  previewLocationTourPickupDateImport,
+} from './waste-management-operations.import.js';
 import { baselineIds, seedWasteBaseline } from './waste-management-operations.seed.js';
 import { applySchemaStatements, inspectWasteSchema } from './waste-management-operations.schema.js';
 import {
@@ -79,17 +84,44 @@ export const createWasteManagementOperationRuntime = (
     return buildOperationSummary(startedAt, details);
   },
 
-  async importData(instanceId, input) {
+  async importData(instanceId, input, progressReporter) {
     const startedAt = Date.now();
-    const rows = await parseImportRows(deps, {
-      profileId: input.importProfileId,
-      sourceFormat: input.sourceFormat,
-      blobRef: input.blobRef,
-    });
+    const parsedLocationTourPickupDates =
+      input.importProfileId === wasteManagementOperationsContract.importProfileIds.locationTourPickupDates
+        ? await parseLocationTourPickupDateImport(deps, {
+            sourceFormat: input.sourceFormat,
+            blobRef: input.blobRef,
+            delimiterOverride: input.delimiterOverride,
+          })
+        : undefined;
+    const rows =
+      input.importProfileId === wasteManagementOperationsContract.importProfileIds.locationTourPickupDates
+        ? []
+        : await parseImportRows(deps, {
+            profileId: input.importProfileId,
+            sourceFormat: input.sourceFormat,
+            blobRef: input.blobRef,
+          });
     const details = await withWasteClient(deps, instanceId, async ({ repository }) => {
       const catalogEntry = getWasteManagementImportCatalogEntry(input.importProfileId);
       if (!catalogEntry) {
         throw new Error(`unknown_import_profile:${input.importProfileId}`);
+      }
+      if (parsedLocationTourPickupDates) {
+        const preview = await previewLocationTourPickupDateImport(repository, parsedLocationTourPickupDates);
+        if (input.dryRun) {
+          return {
+            operation: 'import-data',
+            mode: 'executed',
+            importProfileId: input.importProfileId,
+            sourceFormat: input.sourceFormat,
+            dryRun: true,
+            rowCount: preview.validRowCount,
+            skippedRows: preview.invalidRowCount,
+            errorCount: preview.errors.length,
+            preview,
+          };
+        }
       }
       if (input.dryRun) {
         return {
@@ -107,7 +139,12 @@ export const createWasteManagementOperationRuntime = (
         importProfileId: input.importProfileId,
         sourceFormat: input.sourceFormat,
         dryRun: false,
-        ...(await executeImport(repository, { profileId: input.importProfileId, rows })),
+        ...(await executeImport(repository, {
+          profileId: input.importProfileId,
+          rows,
+          parsedLocationTourPickupDates,
+          reportProgress: progressReporter?.reportProgress,
+        })),
       };
     });
     return buildOperationSummary(startedAt, details);
@@ -141,6 +178,7 @@ export const createWasteManagementOperationRuntime = (
     }
     const details = await withWasteClient(deps, instanceId, async ({ client }) => {
       const tableOrder = [
+        'waste_location_tour_pickup_dates',
         'waste_location_tour_links',
         'waste_tour_date_shifts',
         'waste_global_date_shifts',

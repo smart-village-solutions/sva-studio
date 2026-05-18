@@ -39,7 +39,7 @@ export const TourDialog = ({
         </DialogHeader>
         <form className="space-y-4" onSubmit={onSubmit}>
           <StatusNotice message={message} />
-          <WasteToursTourFields form={form} fractions={fractions} pt={pt} onChange={onChange} />
+          <WasteToursTourFields form={form} fractions={fractions} saving={saving} pt={pt} onChange={onChange} />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{pt('tours.actions.cancel')}</Button>
             <Button type="submit" disabled={saving}>{saving ? pt('tours.actions.saving') : mode === 'create' ? pt('tours.actions.create') : pt('tours.actions.save')}</Button>

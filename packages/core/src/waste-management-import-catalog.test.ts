@@ -30,6 +30,11 @@ describe('wasteManagementImportCatalog', () => {
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           ]),
         }),
+        expect.objectContaining({
+          profileId: 'waste-management.ortsbezogene-tourtermine',
+          sourceFormats: ['text/csv'],
+          templateHeaders: ['Ort', 'Straße', 'Hausmüll', 'Papier', 'Gelbe Säcke'],
+        }),
       ])
     );
   });
@@ -54,6 +59,12 @@ describe('wasteManagementImportCatalog', () => {
     expect(getWasteManagementImportCatalogEntry('waste-management.ausweichtermine')).toEqual(
       expect.objectContaining({
         profileId: 'waste-management.ausweichtermine',
+      })
+    );
+    expect(getWasteManagementImportCatalogEntry('waste-management.ortsbezogene-tourtermine')).toEqual(
+      expect.objectContaining({
+        profileId: 'waste-management.ortsbezogene-tourtermine',
+        templateDelimiter: ';',
       })
     );
   });

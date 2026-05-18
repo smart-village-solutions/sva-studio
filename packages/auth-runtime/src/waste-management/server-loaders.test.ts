@@ -152,6 +152,7 @@ const repositoryMocks = vi.hoisted(() => ({
   listWasteHouseNumbers: vi.fn(async () => [{ id: 'house-1' }]),
   listWasteCollectionLocations: vi.fn(async () => [{ id: 'location-1' }]),
   listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1' }]),
+  listWasteLocationTourPickupDates: vi.fn(async () => [{ id: 'pickup-date-1' }]),
   listWasteTours: vi.fn(async () => [{ id: 'tour-1' }]),
   listWasteTourDateShifts: vi.fn(async () => [{ id: 'shift-1' }]),
   listWasteGlobalDateShifts: vi.fn(async () => [{ id: 'global-shift-1' }]),
@@ -273,6 +274,7 @@ describe('waste-management server loaders', () => {
     });
     expect(toursOverview).toEqual({ tours: [{ id: 'tour-1' }] });
     expect(schedulingOverview).toEqual({
+      locationTourPickupDates: [{ id: 'pickup-date-1' }],
       tourDateShifts: [{ id: 'shift-1' }],
       globalDateShifts: [{ id: 'global-shift-1' }],
     });

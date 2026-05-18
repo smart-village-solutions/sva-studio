@@ -6,13 +6,16 @@ const {
   createWasteManagementCityInternal,
   createWasteManagementCollectionLocationInternal,
   createWasteManagementFractionInternal,
+  deleteWasteManagementCollectionLocationInternal,
   deleteWasteManagementFractionInternal,
+  deleteWasteManagementGlobalDateShiftInternal,
   createWasteManagementGlobalDateShiftInternal,
   createWasteManagementHouseNumberInternal,
   createWasteManagementLocationTourLinkInternal,
   createWasteManagementLocationTourLinksBulkInternal,
   createWasteManagementRegionInternal,
   createWasteManagementStreetInternal,
+  deleteWasteManagementTourDateShiftInternal,
   createWasteManagementTourDateShiftInternal,
   createWasteManagementTourInternal,
   deleteWasteManagementTourInternal,
@@ -23,6 +26,7 @@ const {
   getWasteManagementToursOverviewInternal,
   startWasteManagementInitializeInternal,
   startWasteManagementImportInternal,
+  previewWasteManagementLocationTourPickupDateImportInternal,
   startWasteManagementMigrationsInternal,
   startWasteManagementResetInternal,
   startWasteManagementSeedInternal,
@@ -39,13 +43,23 @@ const {
   updateWasteManagementTourInternal,
 } = wasteManagementCoreHandlers;
 
-const { loadMasterDataOverview, loadMasterDataFractionsOverview, loadMasterDataLocationsOverview, loadSchedulingOverview, loadToursOverview, loadWasteHistoryOverview } = wasteManagementOverviewLoaders;
+const {
+  loadMasterDataOverview,
+  loadMasterDataFractionsOverview,
+  loadMasterDataLocationsOverview,
+  loadSchedulingOverview,
+  loadToursOverview,
+  loadWasteHistoryOverview,
+  previewWasteLocationTourPickupDateImport,
+} = wasteManagementOverviewLoaders;
 const { loadWasteCityById, loadWasteCollectionLocationById, loadWasteFractionById, loadWasteGlobalDateShiftById, loadWasteHouseNumberById, loadWasteLocationTourLinkById, loadWasteRegionById, loadWasteStreetById, loadWasteTourById, loadWasteTourDateShiftById } = wasteManagementEntityLoaders;
 const {
   saveWasteCity,
   saveWasteCollectionLocation,
+  deleteWasteCollectionLocation,
   saveWasteFraction,
   deleteWasteFraction,
+  deleteWasteGlobalDateShift,
   saveWasteGlobalDateShift,
   saveWasteHouseNumber,
   saveWasteLocationTourLink,
@@ -54,6 +68,7 @@ const {
   saveWasteStreet,
   saveWasteTour,
   deleteWasteTour,
+  deleteWasteTourDateShift,
   saveWasteTourDateShift,
 } = wasteManagementEntitySavers;
 
@@ -192,6 +207,14 @@ export const wasteManagementHandlers = {
         loadWasteCollectionLocationById,
       })
     ),
+  deleteCollectionLocation: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      deleteWasteManagementCollectionLocationInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        deleteWasteCollectionLocation,
+        loadWasteCollectionLocationById,
+      })
+    ),
   updateCollectionLocation: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementCollectionLocationInternal(nextRequest, ctx, {
@@ -255,6 +278,14 @@ export const wasteManagementHandlers = {
         loadWasteTourDateShiftById,
       })
     ),
+  deleteTourDateShift: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      deleteWasteManagementTourDateShiftInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        deleteWasteTourDateShift,
+        loadWasteTourDateShiftById,
+      })
+    ),
   updateTourDateShift: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementTourDateShiftInternal(nextRequest, ctx, {
@@ -268,6 +299,14 @@ export const wasteManagementHandlers = {
       createWasteManagementGlobalDateShiftInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
         saveWasteGlobalDateShift,
+        loadWasteGlobalDateShiftById,
+      })
+    ),
+  deleteGlobalDateShift: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      deleteWasteManagementGlobalDateShiftInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        deleteWasteGlobalDateShift,
         loadWasteGlobalDateShiftById,
       })
     ),
@@ -290,6 +329,13 @@ export const wasteManagementHandlers = {
   startImport: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       startWasteManagementImportInternal(nextRequest, ctx)
+    ),
+  previewLocationTourPickupDateImport: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      previewWasteManagementLocationTourPickupDateImportInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        previewWasteLocationTourPickupDateImport,
+      })
     ),
   startSeed: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>

@@ -102,6 +102,7 @@ export type AuthRoutePath =
   | '/api/v1/waste-management/settings'
   | '/api/v1/waste-management/tools/initialize'
   | '/api/v1/waste-management/tools/imports'
+  | '/api/v1/waste-management/tools/imports/preview'
   | '/api/v1/waste-management/tools/migrations'
   | '/api/v1/waste-management/tools/seed'
   | '/api/v1/waste-management/tools/reset'
@@ -212,6 +213,7 @@ export const authRoutePaths = [
   '/api/v1/waste-management/settings',
   '/api/v1/waste-management/tools/initialize',
   '/api/v1/waste-management/tools/imports',
+  '/api/v1/waste-management/tools/imports/preview',
   '/api/v1/waste-management/tools/migrations',
   '/api/v1/waste-management/tools/seed',
   '/api/v1/waste-management/tools/reset',

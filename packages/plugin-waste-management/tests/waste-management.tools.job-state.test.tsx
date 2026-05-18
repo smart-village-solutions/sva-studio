@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { wasteManagementOperationsContract } from '@sva/plugin-sdk';
 
 import { useWasteTrackedJob } from '../src/waste-management.tools.job-state.js';
 
@@ -106,5 +107,99 @@ describe('useWasteTrackedJob', () => {
     });
 
     expect(getWasteManagementJobDetailMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('polls active import jobs more frequently for live progress updates', async () => {
+    const refreshTechnicalHistory = vi.fn(async () => undefined);
+    const setLastJob = vi.fn();
+    const setIntervalSpy = vi.spyOn(window, 'setInterval');
+
+    getWasteManagementJobDetailMock.mockResolvedValue({
+      id: 'job-2',
+      instanceId: 'tenant-a',
+      pluginId: 'waste-management',
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
+      queueName: 'plugin-operations',
+      status: 'running',
+      inputPayload: { operation: 'import-data' },
+      attempts: 1,
+      maxAttempts: 5,
+      idempotencyKey: 'idem-2',
+      scheduledAt: '2026-05-10T10:00:00.000Z',
+      createdAt: '2026-05-10T10:00:00.000Z',
+      updatedAt: '2026-05-10T10:00:05.000Z',
+      history: [],
+    });
+
+    renderHook(() =>
+      useWasteTrackedJob({
+        lastJob: {
+          id: 'job-2',
+          jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
+          status: 'running',
+        } as never,
+        refreshTechnicalHistory,
+        setLastJob,
+      })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 3_000);
+  });
+
+  it('ignores failed refresh attempts until a later poll succeeds', async () => {
+    const refreshTechnicalHistory = vi.fn(async () => undefined);
+    const setLastJob = vi.fn();
+
+    getWasteManagementJobDetailMock
+      .mockRejectedValueOnce(new Error('temporary outage'))
+      .mockResolvedValueOnce({
+        id: 'job-3',
+        instanceId: 'tenant-a',
+        pluginId: 'waste-management',
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
+        queueName: 'plugin-operations',
+        status: 'running',
+        inputPayload: { operation: 'import-data' },
+        attempts: 1,
+        maxAttempts: 5,
+        idempotencyKey: 'idem-3',
+        scheduledAt: '2026-05-10T10:00:00.000Z',
+        createdAt: '2026-05-10T10:00:00.000Z',
+        updatedAt: '2026-05-10T10:00:03.000Z',
+        history: [],
+      });
+
+    renderHook(() =>
+      useWasteTrackedJob({
+        lastJob: {
+          id: 'job-3',
+          jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
+          status: 'running',
+        } as never,
+        refreshTechnicalHistory,
+        setLastJob,
+      })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getWasteManagementJobDetailMock).toHaveBeenCalledTimes(1);
+    expect(setLastJob).not.toHaveBeenCalled();
+    expect(refreshTechnicalHistory).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(3_000);
+      await Promise.resolve();
+    });
+
+    expect(getWasteManagementJobDetailMock).toHaveBeenCalledTimes(2);
+    expect(setLastJob).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'job-3', status: 'running' }));
+    expect(refreshTechnicalHistory).toHaveBeenCalledTimes(1);
   });
 });

@@ -136,6 +136,51 @@ describe('WasteToursPanel', () => {
     );
   });
 
+  it('navigates back to the list when an edit route is missing the tour id', () => {
+    controllerMock.lastOutcome = null;
+    controllerMock.overview = {
+      tours: [
+        {
+          id: 'tour-99',
+          name: 'Tour 99',
+          wasteFractionIds: [],
+          active: true,
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        },
+      ],
+    };
+
+    render(
+      <WasteToursPanel
+        search={{
+          tab: 'tours',
+          masterDataTab: 'fractions',
+          fractionsView: 'list',
+          toursView: 'edit',
+          locationsView: 'list',
+          schedulingView: 'list',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
+          tourId: undefined,
+        }}
+      />
+    );
+
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: expect.objectContaining({ toursView: 'list', tourId: undefined }),
+      replace: true,
+    });
+    expect(controllerMock.setDialogMode).not.toHaveBeenCalled();
+    expect(controllerMock.setTourForm).not.toHaveBeenCalled();
+  });
+
   it('keeps the edit mode explicit even when the form already targets the route tour id', () => {
     controllerMock.lastOutcome = null;
     controllerMock.overview = {

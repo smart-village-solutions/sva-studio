@@ -192,6 +192,7 @@ describe('AuthProvider', () => {
       expect(readSessionAccessSnapshot()).toEqual({
         isResolved: true,
         permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
+        roles: ['editor'],
       });
     });
   });
@@ -895,6 +896,11 @@ describe('AuthProvider', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('status').textContent).toBe('ready');
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
+        expect(screen.getByTestId('authenticated').textContent).toBe('yes');
+        expect(screen.getByTestId('user-id').textContent).toBe('user-1');
       });
 
       visibilityState = 'visible';

@@ -114,7 +114,15 @@ export const WasteMasterDataLocationsTableSection = ({
   onTourFilterChange,
   onToggleSelectAll,
   onToggleLocation,
+  onOpenCreateRegion,
+  onOpenCreateCity,
+  onOpenCreateStreet,
+  onOpenCreateHouseNumber,
+  onOpenCreateLocation,
   onOpenBulkAssignments,
+  onCopyLocation,
+  onDeleteLocation,
+  onDeleteLocations,
   onOpenEditLocation,
   getLocationLabel,
 }: Pick<
@@ -135,7 +143,15 @@ export const WasteMasterDataLocationsTableSection = ({
   | 'onTourFilterChange'
   | 'onToggleSelectAll'
   | 'onToggleLocation'
+  | 'onOpenCreateRegion'
+  | 'onOpenCreateCity'
+  | 'onOpenCreateStreet'
+  | 'onOpenCreateHouseNumber'
+  | 'onOpenCreateLocation'
   | 'onOpenBulkAssignments'
+  | 'onCopyLocation'
+  | 'onDeleteLocation'
+  | 'onDeleteLocations'
   | 'onOpenEditLocation'
   | 'getLocationLabel'
 > & {
@@ -165,7 +181,15 @@ export const WasteMasterDataLocationsTableSection = ({
     onTourFilterChange={onTourFilterChange}
     onToggleSelectAll={onToggleSelectAll}
     onToggleLocation={onToggleLocation}
+    onOpenCreateRegion={onOpenCreateRegion}
+    onOpenCreateCity={onOpenCreateCity}
+    onOpenCreateStreet={onOpenCreateStreet}
+    onOpenCreateHouseNumber={onOpenCreateHouseNumber}
+    onOpenCreateLocation={onOpenCreateLocation}
     onOpenBulkAssignments={onOpenBulkAssignments}
+    onCopyLocation={onCopyLocation}
+    onDeleteLocation={onDeleteLocation}
+    onDeleteLocations={onDeleteLocations}
     onOpenEditLocation={onOpenEditLocation}
     getLocationLabel={getLocationLabel}
   />

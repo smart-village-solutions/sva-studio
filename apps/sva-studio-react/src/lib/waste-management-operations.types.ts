@@ -1,4 +1,5 @@
 import type {
+  StudioJobProgress,
   WasteManagementApplyMigrationsJobInput,
   WasteManagementImportJobInput,
   WasteManagementInitializeJobInput,
@@ -33,10 +34,18 @@ export type OperationSummary = {
   readonly details: Record<string, unknown>;
 };
 
+export type WasteImportProgressReporter = {
+  readonly reportProgress: (progress: StudioJobProgress) => Promise<void> | void;
+};
+
 export type WasteManagementOperationRuntime = {
   initializeDataSource: (instanceId: string, input: WasteManagementInitializeJobInput) => Promise<OperationSummary>;
   applyMigrations: (instanceId: string, input: WasteManagementApplyMigrationsJobInput) => Promise<OperationSummary>;
-  importData: (instanceId: string, input: WasteManagementImportJobInput) => Promise<OperationSummary>;
+  importData: (
+    instanceId: string,
+    input: WasteManagementImportJobInput,
+    progressReporter?: WasteImportProgressReporter
+  ) => Promise<OperationSummary>;
   seedData: (instanceId: string, input: WasteManagementSeedJobInput) => Promise<OperationSummary>;
   resetData: (instanceId: string, input: WasteManagementResetJobInput) => Promise<OperationSummary>;
 };

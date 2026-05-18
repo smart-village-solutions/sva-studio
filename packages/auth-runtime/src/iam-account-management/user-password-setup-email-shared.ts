@@ -105,6 +105,8 @@ export const emitPasswordSetupEmailFailureAudit = async (input: {
         eventType: 'user.password_setup_email_failed',
         result: 'failure',
         payload: {
+          title: 'Versand der Einladungs-E-Mail zum Passwort setzen fehlgeschlagen',
+          description: 'Die E-Mail zum Setzen des Passworts konnte für dieses Konto nicht versendet werden.',
           operation: 'send_password_setup_email',
           user_id: input.userId,
           error: input.error instanceof Error ? input.error.message : String(input.error),

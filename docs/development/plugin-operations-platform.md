@@ -69,6 +69,8 @@ Hostseitig stärker normiert sind inzwischen:
 - `errorPayload.details.host` für technische Hostdetails
 - `errorPayload.details.plugin` für pluginfachliche Fehlerzusätze
 
+Für laufende generische Jobs mit besser bekannten Mengenverhältnissen darf `progress.details` zusätzlich strukturierte Kurzsichtdaten wie `processedRows` und `totalRows` transportieren. Der Host hält diese Details im zentralen Jobstore vor, liefert sie unverändert über Listen- und Detailendpunkte aus und erzwingt dafür kein plugin-spezifisches Sondermodell.
+
 ## Führende Persistenz
 
 Der zentrale Jobdatensatz liegt im Studio-Postgres und ist der kanonische Host-Store für:
@@ -190,6 +192,7 @@ Fachchanges wie `add-waste-management-plugin` konsumieren diese Plattform und de
 - die eigentliche Jobpersistenz und Statuswahrheit bleiben im generischen Host-Store
 - technische Settings- und Reconfigure-Pfade der aktiven Waste-Datenquelle bleiben von den Jobpfaden getrennt
 - fachliche Importkataloge und Mapping-Vorlagen dürfen im Plugin sichtbar werden, aber keine zweite Importpersistenz oder eigene Runner-API einführen
+- der CSV-Spezialimport `waste-management.ortsbezogene-tourtermine` nutzt denselben generischen Jobvertrag, meldet während des Commit-Pfads aber blockweise echten Laufzeitfortschritt mit Phasen sowie `processedRows` und `totalRows`
 
 ## Aktuelle Host-UI
 
@@ -199,6 +202,8 @@ Die aktuelle Ausbaustufe liefert eine erste lesende Host-Oberfläche unter `Moni
 - automatische Aktualisierung aktiver Jobs im 10-Sekunden-Takt
 - eigene Detailseite pro Job mit Verlauf, Runtime-Diagnostik, Ergebnis- und Fehlerpayload
 - einfache Filter für Status, Plugin, Jobtyp und freie Suche
+
+Für den laufenden Waste-Spezialimport ergänzt die Plugin-UI zusätzlich eine fachnahe Live-Kurzsicht mit Prozentbalken, Phasenbezug und `verarbeitete Zeilen / Gesamtzeilen`. Die Event-Persistenz bleibt dabei bewusst blockweise statt zeilenfein, um Jobhistorie und Datenbanklast kontrollierbar zu halten.
 
 Bewusst noch nicht enthalten sind:
 

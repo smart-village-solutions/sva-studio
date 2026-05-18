@@ -27,6 +27,7 @@ import { Pool } from 'pg';
 
 import { withInstanceDb } from '../db.js';
 import { revealField } from '../iam-account-management/encryption.js';
+import { previewWasteLocationTourPickupDateImport as buildWasteLocationTourPickupDateImportPreview } from './import-preview.js';
 
 const schemaIdentifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const logger = createSdkLogger({ component: 'waste-management-auth-runtime', level: 'info' });
@@ -580,6 +581,12 @@ const loadToursOverview = (instanceId: string): Promise<WasteManagementToursOver
 const loadSchedulingOverview = (instanceId: string): Promise<WasteManagementSchedulingOverview> =>
   withWasteRepository(instanceId, 'load_scheduling_overview', async (repository) =>
     measureWasteStep('load_scheduling_overview', 'query_overview', { instance_id: instanceId }, async () => {
+      const locationTourPickupDates = await measureWasteRepositoryStep(
+        instanceId,
+        'load_scheduling_overview',
+        'list_waste_location_tour_pickup_dates',
+        () => repository.listWasteLocationTourPickupDates()
+      );
       const tourDateShifts = await measureWasteRepositoryStep(
         instanceId,
         'load_scheduling_overview',
@@ -592,8 +599,28 @@ const loadSchedulingOverview = (instanceId: string): Promise<WasteManagementSche
         'list_waste_global_date_shifts',
         () => repository.listWasteGlobalDateShifts()
       );
-      return { tourDateShifts, globalDateShifts };
+      return { locationTourPickupDates, tourDateShifts, globalDateShifts };
     })
+  );
+
+const previewWasteLocationTourPickupDateImport = (input: {
+  readonly instanceId: string;
+  readonly sourceFormat: 'text/csv' | 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  readonly blobRef: string;
+  readonly delimiterOverride?: ';' | ',' | '\t' | '|';
+}) =>
+  withWasteRepository(input.instanceId, 'preview_location_tour_pickup_date_import', async (repository) =>
+    measureWasteStep(
+      'preview_location_tour_pickup_date_import',
+      'simulate_import',
+      { instance_id: input.instanceId },
+      async () =>
+        buildWasteLocationTourPickupDateImportPreview(repository, {
+          sourceFormat: input.sourceFormat,
+          blobRef: input.blobRef,
+          delimiterOverride: input.delimiterOverride,
+        })
+    )
   );
 
 const loadWasteFractionById = createLoader('load_waste_fraction_by_id', (repository, fractionId: string) =>
@@ -637,6 +664,10 @@ const saveWasteCollectionLocation = createLoader(
   (repository, input: Omit<WasteCollectionLocationRecord, 'createdAt' | 'updatedAt'>) =>
     repository.upsertWasteCollectionLocation(input)
 );
+const deleteWasteCollectionLocation = createLoader(
+  'delete_waste_collection_location',
+  (repository, locationId: string) => repository.deleteWasteCollectionLocation(locationId)
+);
 const loadWasteLocationTourLinkById = createLoader('load_waste_location_tour_link_by_id', (repository, linkId: string) =>
   repository.getWasteLocationTourLinkById(linkId)
 );
@@ -653,12 +684,20 @@ const deleteWasteTour = createLoader('delete_waste_tour', (repository, tourId: s
 const loadWasteTourDateShiftById = createLoader('load_waste_tour_date_shift_by_id', (repository, shiftId: string) =>
   repository.getWasteTourDateShiftById(shiftId)
 );
+const deleteWasteTourDateShift = createLoader(
+  'delete_waste_tour_date_shift',
+  (repository, shiftId: string) => repository.deleteWasteTourDateShift(shiftId)
+);
 const saveWasteTourDateShift = createLoader(
   'save_waste_tour_date_shift',
   (repository, input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>) => repository.upsertWasteTourDateShift(input)
 );
 const loadWasteGlobalDateShiftById = createLoader('load_waste_global_date_shift_by_id', (repository, shiftId: string) =>
   repository.getWasteGlobalDateShiftById(shiftId)
+);
+const deleteWasteGlobalDateShift = createLoader(
+  'delete_waste_global_date_shift',
+  (repository, shiftId: string) => repository.deleteWasteGlobalDateShift(shiftId)
 );
 const saveWasteGlobalDateShift = createLoader(
   'save_waste_global_date_shift',
@@ -706,6 +745,7 @@ export const wasteManagementOverviewLoaders = {
   loadWasteHistoryOverview,
   loadToursOverview,
   loadSchedulingOverview,
+  previewWasteLocationTourPickupDateImport,
 } as const;
 
 export const wasteManagementEntityLoaders = {
@@ -729,11 +769,14 @@ export const wasteManagementEntitySavers = {
   saveWasteStreet,
   saveWasteHouseNumber,
   saveWasteCollectionLocation,
+  deleteWasteCollectionLocation,
   saveWasteLocationTourLink,
   saveWasteLocationTourLinksBulk,
   saveWasteTour,
   deleteWasteTour,
+  deleteWasteTourDateShift,
   saveWasteTourDateShift,
+  deleteWasteGlobalDateShift,
   saveWasteGlobalDateShift,
 } as const;
 

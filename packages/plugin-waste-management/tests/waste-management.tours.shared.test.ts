@@ -36,10 +36,10 @@ describe('waste-management.tours.shared', () => {
       name: '',
       description: '',
       wasteFractionIds: [],
-      recurrence: '',
+      recurrence: 'custom',
       firstDate: '',
       endDate: '',
-      customDatesText: '',
+      customDates: [],
       active: true,
     });
   });
@@ -81,10 +81,13 @@ describe('waste-management.tours.shared', () => {
       name: 'Restmüll',
       description: '',
       wasteFractionIds: ['fraction-1'],
-      recurrence: '',
+      recurrence: 'custom',
       firstDate: '',
       endDate: '',
-      customDatesText: '2026-05-01 | Feiertag\n2026-06-01',
+      customDates: [
+        { date: '2026-05-01', description: 'Feiertag' },
+        { date: '2026-06-01', description: '' },
+      ],
       active: false,
     });
   });
@@ -126,10 +129,13 @@ describe('waste-management.tours.shared', () => {
       name: '  Biomüll Mitte  ',
       description: '  werktags  ',
       wasteFractionIds: ['fraction-1', 'fraction-2'],
-      recurrence: '',
+      recurrence: 'custom',
       firstDate: ' 2026-01-02 ',
       endDate: ' ',
-      customDatesText: '2026-05-01 | Tag der Arbeit\n\n2026-06-01|mit | pipe',
+      customDates: [
+        { date: '2026-05-01', description: 'Tag der Arbeit' },
+        { date: '2026-06-01', description: 'mit | pipe' },
+      ],
       active: true,
     } as const;
 
@@ -138,8 +144,8 @@ describe('waste-management.tours.shared', () => {
       name: 'Biomüll Mitte',
       description: 'werktags',
       wasteFractionIds: ['fraction-1', 'fraction-2'],
-      recurrence: undefined,
-      firstDate: '2026-01-02',
+      recurrence: 'custom',
+      firstDate: undefined,
       endDate: undefined,
       customDates: [
         { date: '2026-05-01', description: 'Tag der Arbeit' },
@@ -152,7 +158,7 @@ describe('waste-management.tours.shared', () => {
       toUpdateTourInput({
         ...form,
         recurrence: 'weekly',
-        customDatesText: '   ',
+        customDates: [],
       })
     ).toEqual({
       name: 'Biomüll Mitte',

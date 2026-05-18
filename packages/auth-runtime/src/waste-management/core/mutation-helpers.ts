@@ -19,6 +19,11 @@ type UpdateMutationMessages = MutationMessages &
     notFound: string;
   }>;
 
+type DeleteMutationMessages = Readonly<{
+  notFound: string;
+  deleteFailed: string;
+}>;
+
 type MutationBaseArgs<TSaved> = Readonly<{
   deps: WasteManagementHandlerDeps;
   ctx: AuthenticatedRequestContext;
@@ -40,6 +45,18 @@ type UpdateMutationArgs<TSaved> = MutationBaseArgs<TSaved> &
     messages: UpdateMutationMessages;
     loadExisting: () => Promise<unknown | null>;
   }>;
+
+type DeleteMutationArgs = Readonly<{
+  deps: WasteManagementHandlerDeps;
+  ctx: AuthenticatedRequestContext;
+  instanceId: string;
+  requestId?: string;
+  resourceId: string;
+  audit: MutationAuditConfig;
+  messages: DeleteMutationMessages;
+  loadExisting: () => Promise<unknown | null>;
+  remove: () => Promise<void>;
+}>;
 
 const isMissingDependencyError = (error: unknown): error is Error =>
   error instanceof Error && error.message.startsWith('missing_dependency:');
@@ -175,5 +192,59 @@ export const runWasteUpdateMutation = async <TSaved>({
     });
     await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(503, 'database_unavailable', messages.persistenceFailed, requestId);
+  }
+};
+
+export const runWasteDeleteMutation = async ({
+  deps,
+  ctx,
+  instanceId,
+  requestId,
+  resourceId,
+  audit,
+  messages,
+  loadExisting,
+  remove,
+}: DeleteMutationArgs): Promise<Response> => {
+  try {
+    const existing = await loadExisting();
+    if (!existing) {
+      return createApiError(404, 'not_found', messages.notFound, requestId);
+    }
+
+    await remove();
+
+    await emitWasteAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: audit.actionId,
+      result: 'success',
+      resourceType: audit.resourceType,
+      resourceId,
+    });
+
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
+    return new Response(JSON.stringify(asApiItem({ id: resourceId }, requestId)), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    if (isMissingDependencyError(error)) {
+      throw error;
+    }
+
+    await emitWasteAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: audit.actionId,
+      result: 'failure',
+      reasonCode: 'database_unavailable',
+      resourceType: audit.resourceType,
+      resourceId,
+    });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+    return createApiError(503, 'database_unavailable', messages.deleteFailed, requestId);
   }
 };

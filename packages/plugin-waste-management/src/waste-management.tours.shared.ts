@@ -25,7 +25,7 @@ export type TourFormState = {
   readonly recurrence: NonNullable<WasteTourRecord['recurrence']> | '';
   readonly firstDate: string;
   readonly endDate: string;
-  readonly customDatesText: string;
+  readonly customDates: readonly WasteCustomTourDate[];
   readonly active: boolean;
 };
 
@@ -44,10 +44,10 @@ export const createDefaultTourForm = (): TourFormState => ({
   name: '',
   description: '',
   wasteFractionIds: [],
-  recurrence: '',
+  recurrence: 'custom',
   firstDate: '',
   endDate: '',
-  customDatesText: '',
+  customDates: [],
   active: true,
 });
 
@@ -64,13 +64,10 @@ export const mapTourToForm = (tour: WasteTourRecord): TourFormState => ({
   name: tour.name,
   description: tour.description ?? '',
   wasteFractionIds: tour.wasteFractionIds,
-  recurrence: tour.recurrence ?? '',
+  recurrence: tour.recurrence ?? 'custom',
   firstDate: tour.firstDate ?? '',
   endDate: tour.endDate ?? '',
-  customDatesText:
-    tour.customDates
-      ?.map((entry: WasteCustomTourDate) => (entry.description ? `${entry.date} | ${entry.description}` : entry.date))
-      .join('\n') ?? '',
+  customDates: [...(tour.customDates ?? [])].sort((left, right) => left.date.localeCompare(right.date)),
   active: tour.active,
 });
 
@@ -89,21 +86,40 @@ export const toUpdateLocationTourLinkInput = (form: LocationTourLinkFormState): 
   endDate: compactOptionalString(form.endDate),
 });
 
-const parseCustomTourDatesText = (value: string): CreateWasteManagementTourInput['customDates'] => {
-  const entries = value
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .map((line) => {
-      const [datePart, ...descriptionParts] = line.split('|');
-      return {
-        date: datePart?.trim() ?? '',
-        description: compactOptionalString(descriptionParts.join('|')),
-      };
-    });
+const normalizeCustomDates = (value: readonly WasteCustomTourDate[]): CreateWasteManagementTourInput['customDates'] => {
+  const entries = [...value]
+    .filter((entry) => entry.date.trim().length > 0)
+    .sort((left, right) => left.date.localeCompare(right.date))
+    .map((entry) => ({
+      date: entry.date.trim(),
+      description: compactOptionalString(entry.description ?? ''),
+    }));
 
   return entries.length > 0 ? entries : undefined;
 };
+
+const recurringTourRecurrences = new Set<NonNullable<WasteTourRecord['recurrence']>>(['weekly', 'biweekly', 'fourweekly', 'yearly']);
+const customDatesRecurrences = new Set<NonNullable<WasteTourRecord['recurrence']>>(['custom']);
+const isRecurringTourRecurrence = (
+  recurrence: TourFormState['recurrence']
+): recurrence is NonNullable<WasteTourRecord['recurrence']> => recurringTourRecurrences.has(recurrence as NonNullable<WasteTourRecord['recurrence']>);
+const isCustomDatesRecurrence = (
+  recurrence: TourFormState['recurrence']
+): recurrence is NonNullable<WasteTourRecord['recurrence']> => customDatesRecurrences.has(recurrence as NonNullable<WasteTourRecord['recurrence']>);
+
+const resolveRecurringDates = (form: TourFormState) =>
+  isRecurringTourRecurrence(form.recurrence)
+    ? {
+        firstDate: compactOptionalString(form.firstDate),
+        endDate: compactOptionalString(form.endDate),
+      }
+    : {
+        firstDate: undefined,
+        endDate: undefined,
+      };
+
+const resolveCustomDates = (form: TourFormState) =>
+  isCustomDatesRecurrence(form.recurrence) ? normalizeCustomDates(form.customDates) : undefined;
 
 export const toCreateTourInput = (form: TourFormState): CreateWasteManagementTourInput => ({
   id: form.id,
@@ -111,9 +127,8 @@ export const toCreateTourInput = (form: TourFormState): CreateWasteManagementTou
   description: compactOptionalString(form.description),
   wasteFractionIds: form.wasteFractionIds,
   recurrence: form.recurrence || undefined,
-  firstDate: compactOptionalString(form.firstDate),
-  endDate: compactOptionalString(form.endDate),
-  customDates: parseCustomTourDatesText(form.customDatesText),
+  ...resolveRecurringDates(form),
+  customDates: resolveCustomDates(form),
   active: form.active,
 });
 
@@ -122,9 +137,8 @@ export const toUpdateTourInput = (form: TourFormState): UpdateWasteManagementTou
   description: compactOptionalString(form.description),
   wasteFractionIds: form.wasteFractionIds,
   recurrence: form.recurrence || undefined,
-  firstDate: compactOptionalString(form.firstDate),
-  endDate: compactOptionalString(form.endDate),
-  customDates: parseCustomTourDatesText(form.customDatesText),
+  ...resolveRecurringDates(form),
+  customDates: resolveCustomDates(form),
   active: form.active,
 });
 

@@ -4,7 +4,7 @@ import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction } from './auth.js';
-import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
+import { runWasteCreateMutation, runWasteDeleteMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, normalizeOptionalString, requireActorInstanceId, requireDeps } from './utils.js';
@@ -135,6 +135,52 @@ export const wasteManagementGlobalDateShiftHandlers = {
       loadExisting: () => loadGlobalDateShift(instanceId, shiftId),
       save: () => saveGlobalDateShift(instanceId, toGlobalDateShiftInput(shiftId, parsed.data)),
       loadSaved: () => loadGlobalDateShift(instanceId, shiftId),
+    });
+  },
+  deleteWasteManagementGlobalDateShiftInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> => {
+    const requestId = getRequestId(deps);
+    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.scheduling.manage', deps, requestId);
+    if (authError) {
+      return authError;
+    }
+
+    const instanceId = requireActorInstanceId(ctx, requestId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+
+    const shiftId = readPathSegment(request, 4)?.trim();
+    if (!shiftId) {
+      return createApiError(400, 'invalid_request', 'shiftId fehlt im Pfad.', requestId);
+    }
+
+    const csrfError = validateCsrf(request, requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    const loadGlobalDateShift = requireDeps(deps.loadWasteGlobalDateShiftById, 'loadWasteGlobalDateShiftById');
+
+    return runWasteDeleteMutation({
+      deps,
+      ctx,
+      instanceId,
+      requestId,
+      resourceId: shiftId,
+      audit: {
+        actionId: 'waste-management.global-date-shift.deleted',
+        resourceType: 'waste_global_date_shift',
+      },
+      messages: {
+        notFound: 'Der globale Waste-Ausweichtermin wurde nicht gefunden.',
+        deleteFailed: 'Der globale Waste-Ausweichtermin konnte nicht gelöscht werden.',
+      },
+      loadExisting: () => loadGlobalDateShift(instanceId, shiftId),
+      remove: () => requireDeps(deps.deleteWasteGlobalDateShift, 'deleteWasteGlobalDateShift')(instanceId, shiftId),
     });
   },
 };

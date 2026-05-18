@@ -242,26 +242,14 @@ describe('HomePage', () => {
       sessionRecoveryFailed: false,
     });
 
+    globalThis.history.replaceState({}, '', '/?auth=login&returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
     const replaceMock = vi.fn();
-    const originalLocation = window.location;
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: {
-        ...originalLocation,
-        pathname: '/',
-        search: '?auth=login&returnTo=%2Fadmin%2Fusers%3Fpage%3D2',
-        replace: replaceMock,
-      },
-    });
+    const replaceSpy = vi.spyOn(window.location, 'replace').mockImplementation(replaceMock);
 
     render(<HomePage />);
 
     expect(replaceMock).toHaveBeenCalledWith('/auth/login?returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
-
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: originalLocation,
-    });
+    replaceSpy.mockRestore();
   });
 
   it('shows generic auth load error from auth provider state', () => {
@@ -310,6 +298,7 @@ describe('HomePage', () => {
     expect(screen.getByRole('link', { name: 'Erneut anmelden' }).getAttribute('href')).toBe(
       '/auth/login?returnTo=%2Fadmin%2Fusers%3Fpage%3D2'
     );
+    expect(window.location.search).toBe('');
   });
 
   it('renders auth diagnostic identifiers when available', () => {

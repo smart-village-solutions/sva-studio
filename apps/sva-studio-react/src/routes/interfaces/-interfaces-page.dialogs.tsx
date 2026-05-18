@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { Switch } from '../../components/ui/switch';
 
 type TypePickerDialogProps = Readonly<{
   open: boolean;
@@ -109,14 +110,17 @@ export const InterfaceForm = ({ draft, isSaving, onChange, onCancel, onSubmit }:
       <SupabaseFields draft={draft} onChange={onChange} />
     )}
 
-    <Label htmlFor="interface-enabled" className="flex items-center gap-3">
-      <Checkbox
+    <div className="flex items-center gap-3">
+      <Switch
         id="interface-enabled"
         checked={draft.enabled}
-        onChange={(event) => onChange({ ...draft, enabled: event.currentTarget.checked })}
+        aria-label={t('interfaces.edit.commonEnabled')}
+        onCheckedChange={(enabled) => onChange({ ...draft, enabled })}
       />
-      <span>{t('interfaces.edit.commonEnabled')}</span>
-    </Label>
+      <span className="text-sm text-muted-foreground">
+        {draft.enabled ? t('account.status.active') : t('account.status.inactive')}
+      </span>
+    </div>
 
     <div className="flex flex-wrap gap-3">
       <Button type="submit" disabled={isSaving}>

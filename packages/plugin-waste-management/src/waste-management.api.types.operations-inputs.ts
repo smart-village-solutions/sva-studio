@@ -1,6 +1,8 @@
 import type {
   WasteCustomTourDate,
   WasteDateShiftReasonType,
+  WasteLocationTourPickupDateImportPreview,
+  WasteManagementCsvDelimiter,
   WasteManagementImportSourceFormat,
   WasteTourDateShiftFollowUpMode,
   WasteTourRecurrence,
@@ -92,7 +94,17 @@ export type StartWasteManagementImportInput = Readonly<{
   sourceFormat: WasteManagementImportSourceFormat;
   blobRef: string;
   dryRun?: boolean;
+  delimiterOverride?: WasteManagementCsvDelimiter;
 }>;
+
+export type PreviewWasteLocationTourPickupDateImportInput = Readonly<{
+  importProfileId: 'waste-management.ortsbezogene-tourtermine';
+  sourceFormat: 'text/csv';
+  blobRef: string;
+  delimiterOverride?: WasteManagementCsvDelimiter;
+}>;
+
+export type PreviewWasteLocationTourPickupDateImportResult = WasteLocationTourPickupDateImportPreview;
 
 export type StartWasteManagementSeedInput = Readonly<{
   seedKey?: 'baseline';

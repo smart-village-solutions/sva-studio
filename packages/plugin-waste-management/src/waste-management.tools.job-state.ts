@@ -1,9 +1,11 @@
 import type { StudioJobResponse } from '@sva/plugin-sdk';
+import { wasteManagementOperationsContract } from '@sva/plugin-sdk';
 import { useEffect, useRef } from 'react';
 
 import { getWasteManagementJobDetail } from './waste-management.api.js';
 
 const activePollingIntervalMs = 10_000;
+const activeImportPollingIntervalMs = 3_000;
 const terminalStatuses = new Set(['succeeded', 'failed', 'cancelled']);
 
 export const useWasteTrackedJob = ({
@@ -21,6 +23,11 @@ export const useWasteTrackedJob = ({
     if (!lastJob?.id || terminalStatuses.has(lastJob.status)) {
       return;
     }
+
+    const pollingIntervalMs =
+      lastJob.jobTypeId === wasteManagementOperationsContract.jobTypeIds.importData
+        ? activeImportPollingIntervalMs
+        : activePollingIntervalMs;
 
     let isDisposed = false;
     let activeController: AbortController | null = null;
@@ -48,7 +55,7 @@ export const useWasteTrackedJob = ({
     void refreshJob();
     const intervalId = window.setInterval(() => {
       void refreshJob();
-    }, activePollingIntervalMs);
+    }, pollingIntervalMs);
 
     return () => {
       isDisposed = true;

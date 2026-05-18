@@ -126,12 +126,20 @@ describe('pluginWasteManagement contract', () => {
         titleKey: 'wasteManagement.audit.tourDateShiftUpdated',
       },
       {
+        eventType: 'waste-management.tour-date-shift.deleted',
+        titleKey: 'wasteManagement.audit.tourDateShiftDeleted',
+      },
+      {
         eventType: 'waste-management.global-date-shift.created',
         titleKey: 'wasteManagement.audit.globalDateShiftCreated',
       },
       {
         eventType: 'waste-management.global-date-shift.updated',
         titleKey: 'wasteManagement.audit.globalDateShiftUpdated',
+      },
+      {
+        eventType: 'waste-management.global-date-shift.deleted',
+        titleKey: 'wasteManagement.audit.globalDateShiftDeleted',
       },
       { eventType: 'waste-management.migrations.started', titleKey: 'wasteManagement.audit.migrationsStarted' },
       { eventType: 'waste-management.import.started', titleKey: 'wasteManagement.audit.importStarted' },

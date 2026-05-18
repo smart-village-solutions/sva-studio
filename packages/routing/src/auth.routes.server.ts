@@ -116,6 +116,7 @@ const governanceAuthHandlerMap = {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createCollectionLocation),
   },
   '/api/v1/waste-management/collection-locations/$locationId': {
+    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteCollectionLocation),
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateCollectionLocation),
   },
   '/api/v1/waste-management/location-tour-links': {
@@ -135,12 +136,14 @@ const governanceAuthHandlerMap = {
   },
   '/api/v1/waste-management/global-date-shifts/$shiftId': {
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateGlobalDateShift),
+    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteGlobalDateShift),
   },
   '/api/v1/waste-management/tour-date-shifts': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createTourDateShift),
   },
   '/api/v1/waste-management/tour-date-shifts/$shiftId': {
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateTourDateShift),
+    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteTourDateShift),
   },
   '/api/v1/waste-management/tours': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createTour),
@@ -160,6 +163,9 @@ const governanceAuthHandlerMap = {
   '/api/v1/waste-management/tools/imports': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startImport),
   },
+  '/api/v1/waste-management/tools/imports/preview': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.previewLocationTourPickupDateImport),
+  },
   '/api/v1/waste-management/tools/migrations': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startMigrations),
   },
@@ -174,6 +180,7 @@ const governanceAuthHandlerMap = {
     POST: routeHandler(authRuntimeRoutes.startPluginOperationJobHandler),
   },
   '/api/v1/plugin-operations/jobs/$jobId': {
+    DELETE: routeHandler(authRuntimeRoutes.deletePluginOperationJobHandler),
     GET: routeHandler(authRuntimeRoutes.getPluginOperationJobHandler),
   },
   '/api/v1/plugin-operations/jobs/$jobId/cancel': {

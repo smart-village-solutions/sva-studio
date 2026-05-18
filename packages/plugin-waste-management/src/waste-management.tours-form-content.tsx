@@ -49,11 +49,9 @@ export const WasteToursFormContent = ({
       />
 
       <form id="waste-tour-form" className="space-y-6" onSubmit={(event) => void onSubmit(event)}>
-        <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
-          <WasteToursTourFields form={form} fractions={fractions} pt={pt} onChange={onChange} />
-        </section>
+        <WasteToursTourFields form={form} fractions={fractions} pt={pt} onChange={onChange} />
 
-        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background/95 px-5 py-4 shadow-shell backdrop-blur supports-[backdrop-filter]:bg-background/85">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
           <Button type="submit" disabled={saving}>
             {saveLabel}
           </Button>

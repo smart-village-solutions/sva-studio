@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { resolveActorInfo } from '../../iam-account-management/shared.js';
 import { validateCsrf } from '../../shared/request-security.js';
-import { createApiError, parseRequestBody, requireIdempotencyKey } from '../../shared/request-helpers.js';
+import { asApiItem, createApiError, parseRequestBody, requireIdempotencyKey } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction, emitWasteAuditEvent, getAuthorizedWasteManagementInstanceId } from './auth.js';
 import { startPluginOperationJobFromFacade } from './operations-support.js';
 import { wasteManagementOperationSchemas } from './schemas.js';
@@ -12,8 +12,46 @@ import { loadConfiguredWasteSettings } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId } from './utils.js';
 
-const { startImportSchema, startInitializeSchema, startMigrationsSchema, startResetSchema, startSeedSchema } =
+const {
+  previewLocationTourPickupDateImportSchema,
+  startImportSchema,
+  startInitializeSchema,
+  startMigrationsSchema,
+  startResetSchema,
+  startSeedSchema,
+} =
   wasteManagementOperationSchemas;
+
+const requirePreview = (deps: WasteManagementHandlerDeps) => {
+  if (!deps.previewWasteLocationTourPickupDateImport) {
+    throw new Error('missing_preview_waste_location_tour_pickup_date_import');
+  }
+  return deps.previewWasteLocationTourPickupDateImport;
+};
+
+const isPreviewInputError = (message: string): boolean =>
+  message.startsWith('unsupported_blob_ref:') ||
+  message.startsWith('invalid_blob_ref:') ||
+  message.startsWith('unsupported_import_source_format:') ||
+  message.startsWith('ambiguous_regionless_city_match:');
+
+const toPreviewErrorResponse = (error: unknown, requestId: string | undefined): Response => {
+  const message = error instanceof Error ? error.message : 'Die Importvorschau konnte nicht erstellt werden.';
+  if (isPreviewInputError(message)) {
+    if (message.startsWith('ambiguous_regionless_city_match:')) {
+      const cityName = message.slice('ambiguous_regionless_city_match:'.length) || 'unbekannt';
+      return createApiError(
+        400,
+        'invalid_request',
+        `Die Region muss angegeben werden, weil der Stadtname mehrdeutig ist: ${cityName}.`,
+        requestId
+      );
+    }
+    return createApiError(400, 'invalid_request', message, requestId);
+  }
+
+  return createApiError(503, 'database_unavailable', 'Die Importvorschau konnte nicht erstellt werden.', requestId);
+};
 
 const resolveBoundTargetSchema = async (
   instanceId: string,
@@ -242,8 +280,48 @@ export const wasteManagementOperationHandlers = {
         sourceFormat: data.sourceFormat,
         dryRun: data.dryRun === true,
         blobRef: data.blobRef,
+        delimiterOverride: typeof data.delimiterOverride === 'string' ? data.delimiterOverride : undefined,
       }),
     }),
+  previewWasteManagementLocationTourPickupDateImportInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> => {
+    const requestId = getRequestId(deps);
+    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.import.execute', deps, requestId);
+    if (authError) {
+      return authError;
+    }
+
+    const csrfError = validateCsrf(request, requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    const instanceId = getAuthorizedWasteManagementInstanceId(ctx);
+    const parsed = await parseRequestBody(request, previewLocationTourPickupDateImportSchema);
+    if (!parsed.ok) {
+      return createApiError(400, 'invalid_request', parsed.message, requestId);
+    }
+
+    try {
+      const preview = await requirePreview(deps)(
+        {
+          instanceId,
+          sourceFormat: parsed.data.sourceFormat,
+          blobRef: parsed.data.blobRef,
+          delimiterOverride: parsed.data.delimiterOverride,
+        }
+      );
+      return new Response(JSON.stringify(asApiItem(preview, requestId)), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      return toPreviewErrorResponse(error, requestId);
+    }
+  },
   startWasteManagementSeedInternal: async (
     request: Request,
     ctx: AuthenticatedRequestContext,

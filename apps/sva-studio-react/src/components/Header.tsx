@@ -4,14 +4,16 @@
  * Die Komponente zeigt abhängig vom Auth-Status Login-/Logout-Aktionen
  * und unterstützt einen optionalen Loading-Zustand für Skeleton-Rendering.
  */
-import { Menu, Moon, Sun } from 'lucide-react';
+import { Bell, ChevronDown, Languages, Menu, MessageCircle, Moon, Search, SendHorizontal, Sun } from 'lucide-react';
 import React from 'react';
-import { Link } from '@tanstack/react-router';
+import { Link, useRouterState } from '@tanstack/react-router';
 
 import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
 import { t } from '../i18n';
 import { createLoginHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
+import { cn } from '../lib/utils';
 import { useAuth } from '../providers/auth-provider';
 import { useLocale } from '../providers/locale-provider';
 import { useTheme } from '../providers/theme-provider';
@@ -21,6 +23,182 @@ type HeaderProps = Readonly<{
   isMobileNavigationOpen?: boolean;
   onOpenMobileNavigation?: () => void;
 }>;
+
+type HeaderDropdownItem = Readonly<{
+  id: string;
+  label: React.ReactNode;
+  description?: React.ReactNode;
+  icon?: React.ReactNode;
+  active?: boolean;
+  disabled?: boolean;
+  onSelect?: () => void;
+  href?: string;
+  render?: React.ReactNode;
+}>;
+
+const iconButtonClassName =
+  'h-9 w-9 rounded-full border-0 bg-transparent px-0 text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground';
+
+const resolveUserDisplayName = (user: { readonly id: string }) => {
+  const candidate = user as { readonly name?: string; readonly displayName?: string };
+  return candidate.displayName?.trim() || candidate.name?.trim() || user.id;
+};
+
+const resolveUserInitials = (value: string) =>
+  value
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || value.slice(0, 2).toUpperCase();
+
+const HeaderDropdownMenu = ({
+  trigger,
+  items,
+  align = 'right',
+  menuLabel,
+  className,
+}: {
+  readonly trigger: (props: { readonly open: boolean; readonly toggle: () => void; readonly menuId: string }) => React.ReactNode;
+  readonly items: readonly HeaderDropdownItem[];
+  readonly align?: 'left' | 'right';
+  readonly menuLabel: string;
+  readonly className?: string;
+}) => {
+  const [open, setOpen] = React.useState(false);
+  const wrapperRef = React.useRef<HTMLDivElement | null>(null);
+  const menuId = React.useId();
+
+  React.useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!wrapperRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrapperRef} className={cn('relative', className)}>
+      {trigger({ open, toggle: () => setOpen((current) => !current), menuId })}
+      {open ? (
+        <div
+          id={menuId}
+          role="menu"
+          aria-label={menuLabel}
+          aria-orientation="vertical"
+          className={cn(
+            'absolute top-full z-50 mt-2 min-w-56 overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-md',
+            align === 'right' ? 'right-0' : 'left-0'
+          )}
+        >
+          {items.map((item) => {
+            if (item.render) {
+              return <React.Fragment key={item.id}>{item.render}</React.Fragment>;
+            }
+
+            const itemClassName = cn(
+              'flex w-full items-start gap-3 rounded-md px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground',
+              item.active && 'bg-accent text-accent-foreground',
+              item.disabled && 'pointer-events-none opacity-50'
+            );
+            const content = (
+              <>
+                {item.icon ? <span className="mt-0.5 text-base leading-none">{item.icon}</span> : null}
+                <span className="space-y-0.5">
+                  <span className="block text-sm font-medium">{item.label}</span>
+                  {item.description ? (
+                    <span className="block text-xs text-muted-foreground">{item.description}</span>
+                  ) : null}
+                </span>
+              </>
+            );
+
+            if (item.href) {
+              return (
+                <Link
+                  key={item.id}
+                  to={item.href}
+                  role="menuitem"
+                  className={itemClassName}
+                  onClick={() => setOpen(false)}
+                >
+                  {content}
+                </Link>
+              );
+            }
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="menuitem"
+                disabled={item.disabled}
+                className={itemClassName}
+                onClick={() => {
+                  setOpen(false);
+                  item.onSelect?.();
+                }}
+              >
+                {content}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const LocaleFlag = ({ locale }: { readonly locale: 'de' | 'en' }) => {
+  if (locale === 'de') {
+    return <span aria-hidden="true">🇩🇪</span>;
+  }
+
+  return <span aria-hidden="true">🇬🇧</span>;
+};
+
+const HeaderPromptField = ({
+  icon,
+  label,
+}: {
+  readonly icon: React.ReactNode;
+  readonly label: string;
+}) => (
+  <div className="relative min-w-0 flex-1">
+    <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted-foreground">
+      {icon}
+    </span>
+    <Input
+      type="text"
+      value={label}
+      readOnly
+      disabled
+      aria-label={label}
+      className="h-11 rounded-full border-border/70 bg-[rgb(var(--waste-panel-surface))] pl-11 pr-11 text-sm text-muted-foreground disabled:bg-[rgb(var(--waste-panel-surface))] disabled:text-muted-foreground disabled:opacity-100"
+    />
+    <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-muted-foreground">
+      <SendHorizontal className="h-4 w-4" />
+    </span>
+  </div>
+);
 
 /**
  * Rendert die Kopfzeile mit globalen Aktionen.
@@ -33,20 +211,20 @@ export default function Header({
   isMobileNavigationOpen = false,
   onOpenMobileNavigation,
 }: HeaderProps) {
-  const {
-    user,
-    isAuthenticated,
-    isLoading: isAuthLoading,
-    isDevAuthAvailable,
-    loginWithDevAuth,
-    logout,
-  } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading, isDevAuthAvailable, loginWithDevAuth, logout } = useAuth();
   const { locale, setLocale } = useLocale();
   const { mode, toggleMode } = useTheme();
+  const currentPathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
   const [isHydrated, setIsHydrated] = React.useState(false);
   const resolvedMode = isHydrated ? mode : 'light';
   const loginHref = isHydrated ? createLoginHref(resolveCurrentReturnTo()) : '/auth/login';
   const showOrganizationContext = isHydrated && isAuthenticated && !isLoading && !isAuthLoading && Boolean(user);
+  const showAuthenticatedHeaderTools = isHydrated && isAuthenticated && !isLoading && !isAuthLoading;
+  const hideAnonymousLoginAction = !isAuthenticated && currentPathname === '/';
+  const displayName = user ? resolveUserDisplayName(user) : '';
+  const initials = displayName ? resolveUserInitials(displayName) : '';
 
   React.useEffect(() => {
     setIsHydrated(true);
@@ -60,50 +238,111 @@ export default function Header({
         <span role="status" aria-live="polite" className="sr-only">
           {t('shell.header.authLoading')}
         </span>
-        <span aria-hidden="true" className="ml-2 h-8 w-20 animate-skeleton rounded-md" />
+        <span aria-hidden="true" className="h-9 w-28 animate-skeleton rounded-full" />
       </>
     );
   } else if (!isAuthenticated) {
-    authAction = isDevAuthAvailable ? (
-      <>
-        <span className="rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-amber-800">
-          {t('shell.header.devAuthBadge')}
-        </span>
-        <Button className="ml-2" type="button" variant="secondary" onClick={() => void loginWithDevAuth()}>
-          {t('shell.header.devLogin')}
-        </Button>
-      </>
-    ) : (
-      <Button asChild className="ml-2" variant="secondary">
-        <a href={loginHref}>{t('shell.header.login')}</a>
-      </Button>
-    );
-  } else if (user) {
-    authAction = (
-      <>
-        {isDevAuthAvailable ? (
-          <span className="rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-amber-800">
-            {t('shell.header.devAuthBadge')}
-          </span>
-        ) : null}
-        <Button asChild className="ml-2" variant="outline">
-          <Link to="/account">{t('shell.sidebar.account')}</Link>
-        </Button>
-        {isDevAuthAvailable ? (
-          <Button className="ml-2" type="button" variant="destructive" onClick={() => void logout()}>
-            {t('shell.header.logout')}
-          </Button>
-        ) : (
-          <form action="/auth/logout" method="post" className="ml-2">
-            <input type="hidden" name="logoutIntent" value="user" />
-            <Button type="submit" variant="destructive">
-              {t('shell.header.logout')}
+    authAction = hideAnonymousLoginAction
+      ? null
+      : isDevAuthAvailable
+        ? (
+            <Button type="button" variant="secondary" onClick={() => void loginWithDevAuth()}>
+              {t('shell.header.login')}
             </Button>
-          </form>
+          )
+        : (
+            <Button asChild variant="secondary">
+              <a href={loginHref}>{t('shell.header.login')}</a>
+            </Button>
+          );
+  } else if (user) {
+    const accountMenuItems: readonly HeaderDropdownItem[] = [
+      { id: 'account', label: t('account.profile.title'), href: '/account' },
+      { id: 'password', label: t('shell.header.changePassword'), disabled: true },
+      { id: 'email', label: t('shell.header.changeEmail'), disabled: true },
+      isDevAuthAvailable
+        ? {
+            id: 'logout',
+            label: t('shell.header.logout'),
+            onSelect: () => {
+              void logout();
+            },
+          }
+        : {
+            id: 'logout',
+            label: t('shell.header.logout'),
+            render: (
+              <form action="/auth/logout" method="post">
+                <input type="hidden" name="logoutIntent" value="user" />
+                <button
+                  type="submit"
+                  role="menuitem"
+                  className="flex w-full items-start gap-3 rounded-md px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
+                >
+                  <span className="space-y-0.5">
+                    <span className="block text-sm font-medium">{t('shell.header.logout')}</span>
+                  </span>
+                </button>
+              </form>
+            ),
+          },
+    ];
+
+    authAction = (
+      <HeaderDropdownMenu
+        align="right"
+        menuLabel={t('shell.header.accountMenu')}
+        items={accountMenuItems}
+        trigger={({ open, toggle, menuId }) => (
+          <button
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={open}
+            aria-controls={menuId}
+            className="flex items-center gap-3 rounded-full px-1 py-1 text-left hover:bg-accent/60"
+            onClick={toggle}
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
+              {initials}
+            </span>
+            <span className="hidden min-w-0 sm:block">
+              <span className="block truncate text-sm font-medium text-foreground">{displayName}</span>
+            </span>
+            <ChevronDown aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+          </button>
         )}
-      </>
+      />
     );
   }
+
+  const languageItems: readonly HeaderDropdownItem[] = [
+    {
+      id: 'de',
+      label: t('shell.header.languageNameDe'),
+      description: t('shell.header.languageOptionDe'),
+      icon: <LocaleFlag locale="de" />,
+      active: locale === 'de',
+      onSelect: () => setLocale('de'),
+    },
+    {
+      id: 'en',
+      label: t('shell.header.languageNameEn'),
+      description: t('shell.header.languageOptionEn'),
+      icon: <LocaleFlag locale="en" />,
+      active: locale === 'en',
+      onSelect: () => setLocale('en'),
+    },
+  ];
+  const notificationItems: readonly HeaderDropdownItem[] = [
+    {
+      id: 'notifications-empty',
+      label: t('shell.header.notificationsEmptyTitle'),
+      description: t('shell.header.notificationsEmptyBody'),
+      disabled: true,
+    },
+  ];
+  const searchPromptLabel = t('shell.header.searchPrompt');
+  const assistantPromptLabel = t('shell.header.assistantPrompt');
 
   return (
     <header className="sticky top-0 z-40 bg-background">
@@ -124,47 +363,71 @@ export default function Header({
             </Button>
           ) : null}
         </div>
-        <div className="min-w-0 flex-1">
-          {showOrganizationContext ? <OrganizationContextSwitcher /> : null}
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          {showOrganizationContext ? (
+            <div className="min-w-0 shrink-0">
+              <OrganizationContextSwitcher />
+            </div>
+          ) : null}
+          {showAuthenticatedHeaderTools ? (
+            <div className="hidden min-w-0 flex-1 items-center gap-3 xl:flex">
+              <HeaderPromptField icon={<Search className="h-4 w-4" />} label={searchPromptLabel} />
+              <HeaderPromptField icon={<MessageCircle className="h-4 w-4" />} label={assistantPromptLabel} />
+            </div>
+          ) : null}
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-3 text-muted-foreground sm:gap-4">
-          <fieldset className="inline-flex items-center overflow-hidden rounded-md border border-border bg-background shadow-sm">
-            <legend className="sr-only">{t('shell.header.languageSwitcher')}</legend>
-            <Button
-              type="button"
-              variant={locale === 'de' ? 'default' : 'ghost'}
-              size="sm"
-              aria-pressed={locale === 'de'}
-              aria-label={t('shell.header.switchToGerman')}
-              className="rounded-none border-0"
-              onClick={() => setLocale('de')}
-            >
-              {t('shell.header.languageOptionDe')}
-            </Button>
-            <Button
-              type="button"
-              variant={locale === 'en' ? 'default' : 'ghost'}
-              size="sm"
-              aria-pressed={locale === 'en'}
-              aria-label={t('shell.header.switchToEnglish')}
-              className="rounded-none border-0 border-l border-border"
-              onClick={() => setLocale('en')}
-            >
-              {t('shell.header.languageOptionEn')}
-            </Button>
-          </fieldset>
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+          {showAuthenticatedHeaderTools ? (
+            <HeaderDropdownMenu
+              align="right"
+              menuLabel={t('shell.header.notifications')}
+              items={notificationItems}
+              trigger={({ open, toggle, menuId }) => (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('shell.header.notifications')}
+                  aria-haspopup="menu"
+                  aria-expanded={open}
+                  aria-controls={menuId}
+                  className={iconButtonClassName}
+                  onClick={toggle}
+                >
+                  <Bell className="h-4 w-4" />
+                </Button>
+              )}
+            />
+          ) : null}
+          <HeaderDropdownMenu
+            align="right"
+            menuLabel={t('shell.header.languageSwitcher')}
+            items={languageItems}
+            trigger={({ open, toggle, menuId }) => (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={t('shell.header.languageSwitcher')}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                aria-controls={menuId}
+                className={iconButtonClassName}
+                onClick={toggle}
+              >
+                <Languages className="h-4 w-4" />
+              </Button>
+            )}
+          />
           <Button
             type="button"
-            aria-label={
-              resolvedMode === 'dark' ? t('shell.header.switchToLightMode') : t('shell.header.switchToDarkMode')
-            }
+            size="icon"
+            aria-label={resolvedMode === 'dark' ? t('shell.header.switchToLightMode') : t('shell.header.switchToDarkMode')}
             onClick={toggleMode}
-            variant="outline"
+            variant="ghost"
+            className={iconButtonClassName}
           >
             {resolvedMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            <span className="hidden sm:inline">
-              {resolvedMode === 'dark' ? t('shell.header.themeModeLight') : t('shell.header.themeModeDark')}
-            </span>
           </Button>
           {authAction}
         </div>

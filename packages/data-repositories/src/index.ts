@@ -77,6 +77,8 @@ export type {
   WasteGlobalDateShiftRecord,
   WasteHouseNumberListFilter,
   WasteHouseNumberRecord,
+  WasteLocationTourPickupDateListFilter,
+  WasteLocationTourPickupDateRecord,
   WasteLocationTourLinkListFilter,
   WasteLocationTourLinkRecord,
   WasteRegionListFilter,

@@ -121,12 +121,31 @@ export {
   getWasteManagementImportCatalogEntry,
   wasteManagementImportCatalog,
 } from './waste-management-import-catalog.js';
+export {
+  detectWasteImportCsvDelimiter,
+  normalizeWasteImportPickupDate,
+  parseWasteLocationTourPickupDateCsv,
+  planWasteLocationTourPickupDateImport,
+  wasteLocationTourPickupDateImportDefaults,
+} from './waste-management-location-tour-pickup-date-import.js';
 export type {
   WasteManagementImportColumnDefinition,
   WasteManagementImportMappingTemplate,
   WasteManagementImportProfileCatalogEntry,
 } from './waste-management-import-catalog.js';
 export type {
+  WasteLocationTourPickupDateImportEntityPreview,
+  WasteLocationTourPickupDateImportIssue,
+  WasteLocationTourPickupDateImportPlan,
+  WasteLocationTourPickupDateImportParseResult,
+  WasteLocationTourPickupDateImportPlanningSnapshot,
+  WasteLocationTourPickupDateImportPreview,
+  WasteLocationTourPickupDateImportRow,
+  WasteLocationTourPickupDateImportSummary,
+  WasteLocationTourPickupDateImportUpserts,
+} from './waste-management-location-tour-pickup-date-import.js';
+export type {
+  WasteManagementCsvDelimiter,
   WasteManagementApplyMigrationsJobInput,
   WasteManagementImportJobInput,
   WasteManagementImportProfileId,
@@ -156,6 +175,8 @@ export type {
   WasteManagementMasterDataOverview,
   WasteManagementSchedulingOverview,
   WasteManagementToursOverview,
+  WasteLocationTourPickupDateListFilter,
+  WasteLocationTourPickupDateRecord,
   WasteLocationTourLinkListFilter,
   WasteLocationTourLinkRecord,
   WasteRegionListFilter,

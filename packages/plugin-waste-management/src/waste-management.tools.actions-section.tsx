@@ -1,6 +1,20 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
+type WasteToolsActionsSectionProps = {
+  readonly canRunMigrations: boolean;
+  readonly canRunSeed: boolean;
+  readonly canRunReset: boolean;
+  readonly migrationSchema: string;
+  readonly migrationVersion: string;
+  readonly runningAction: 'import' | 'migration' | 'seed' | 'reset' | null;
+  readonly onMigrationSchemaChange: (value: string) => void;
+  readonly onMigrationVersionChange: (value: string) => void;
+  readonly onStartMigrations: () => void;
+  readonly onStartSeed: () => void;
+  readonly onOpenReset: () => void;
+};
+
 export const WasteToolsActionsSection = ({
   canRunMigrations,
   canRunSeed,
@@ -13,19 +27,7 @@ export const WasteToolsActionsSection = ({
   onStartMigrations,
   onStartSeed,
   onOpenReset,
-}: {
-  readonly canRunMigrations: boolean;
-  readonly canRunSeed: boolean;
-  readonly canRunReset: boolean;
-  readonly migrationSchema: string;
-  readonly migrationVersion: string;
-  readonly runningAction: 'import' | 'migration' | 'seed' | 'reset' | null;
-  readonly onMigrationSchemaChange: (value: string) => void;
-  readonly onMigrationVersionChange: (value: string) => void;
-  readonly onStartMigrations: () => void;
-  readonly onStartSeed: () => void;
-  readonly onOpenReset: () => void;
-}) => {
+}: WasteToolsActionsSectionProps) => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (
@@ -38,10 +40,18 @@ export const WasteToolsActionsSection = ({
           </div>
           <StudioFieldGroup>
             <StudioField id="waste-tools-migration-schema" label={pt('tools.migrations.schemaLabel')}>
-              <Input value={migrationSchema} onChange={(event) => onMigrationSchemaChange(event.target.value)} />
+              <Input
+                id="waste-tools-migration-schema"
+                value={migrationSchema}
+                onChange={(event) => onMigrationSchemaChange(event.target.value)}
+              />
             </StudioField>
             <StudioField id="waste-tools-migration-version" label={pt('tools.migrations.versionLabel')}>
-              <Input value={migrationVersion} onChange={(event) => onMigrationVersionChange(event.target.value)} />
+              <Input
+                id="waste-tools-migration-version"
+                value={migrationVersion}
+                onChange={(event) => onMigrationVersionChange(event.target.value)}
+              />
             </StudioField>
           </StudioFieldGroup>
           <Button type="button" disabled={runningAction !== null} onClick={onStartMigrations}>

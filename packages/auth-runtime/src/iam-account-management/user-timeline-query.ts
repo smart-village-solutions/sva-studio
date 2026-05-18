@@ -10,6 +10,7 @@ type ActivityLogRow = {
   created_at: string;
   payload: Record<string, unknown> | null;
   account_id: string | null;
+  subject_id: string | null;
 };
 
 const readPerspective = (input: { actorMatch: boolean; targetMatch: boolean }) => {
@@ -29,9 +30,10 @@ export const resolveUserTimeline = async (
   const activityLogs = await client.query<ActivityLogRow>(
     `
 SELECT id, event_type, created_at::text, payload, account_id::text
+  , subject_id::text
 FROM iam.activity_logs
 WHERE instance_id = $1
-  AND account_id = $2::uuid
+  AND (account_id = $2::uuid OR subject_id = $2::uuid)
 ORDER BY created_at DESC
 LIMIT 100;
 `,
@@ -55,10 +57,13 @@ LIMIT 100;
       id: row.id,
       category: 'iam' as const,
       eventType: row.event_type,
-      title: row.event_type,
+      title: readString(row.payload?.title) ?? row.event_type,
       description: readString(row.payload?.description) ?? readString(row.payload?.action) ?? row.event_type,
       occurredAt: row.created_at,
-      perspective: 'actor' as const,
+      perspective: readPerspective({
+        actorMatch: row.account_id === input.userId,
+        targetMatch: row.subject_id === input.userId,
+      }),
       metadata: row.payload ?? {},
     })),
     ...governanceCases.items.map((item) => ({

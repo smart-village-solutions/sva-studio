@@ -28,6 +28,7 @@ vi.mock('@sva/studio-ui-react', () => ({
       onChange={(event) => onChange?.(event)}
     />
   ),
+  cn: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' '),
   Dialog: ({
     open,
     children,

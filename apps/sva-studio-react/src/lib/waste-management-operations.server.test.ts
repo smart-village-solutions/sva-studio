@@ -365,6 +365,144 @@ describe('waste management operations runtime', () => {
     });
   });
 
+  it('imports location-based tour assignments from fraction columns in csv mode', async () => {
+    const repository = createRepositoryMock({
+      listWasteFractions: vi.fn(async () => [
+        {
+          id: 'fraction-paper',
+          name: 'Papier',
+          translations: undefined,
+          containerSize: undefined,
+          color: '#00aaee',
+          description: undefined,
+          active: true,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]),
+      listWasteTours: vi.fn(async () => [
+        {
+          id: 'tour-paper-existing',
+          name: 'PPK.7.2',
+          description: undefined,
+          wasteFractionIds: ['fraction-paper'],
+          recurrence: null,
+          firstDate: undefined,
+          endDate: undefined,
+          customDates: undefined,
+          active: true,
+          locationCount: undefined,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]),
+    });
+    const runtime = await createRuntimeWithRepositoryMock(repository, createFractionAssignmentCsvBytes());
+
+    const result = await runtime.importData('instance-1', {
+      operation: 'import-data',
+      importProfileId: 'waste-management.ortsbezogene-tourtermine',
+      sourceFormat: 'text/csv',
+      dryRun: false,
+      blobRef: 'fixture.csv',
+    });
+
+    expect(repository.upsertWasteFraction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Hausmüll',
+        color: '#808080',
+        active: true,
+      })
+    );
+    expect(repository.upsertWasteTour).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'HM.3.3',
+        wasteFractionIds: expect.any(Array),
+        active: true,
+      })
+    );
+    expect(repository.upsertWasteCollectionLocation).toHaveBeenCalledTimes(2);
+    expect(repository.upsertWasteLocationTourLink).toHaveBeenCalledTimes(4);
+    expect(result.details).toMatchObject({
+      operation: 'import-data',
+      dryRun: false,
+      rowCount: 2,
+      createdFractions: 2,
+      createdTours: 2,
+      createdLocations: 2,
+      createdAssignments: 4,
+      skippedRows: 0,
+      errorCount: 0,
+    });
+  });
+
+  it('reports live block progress for location-based tour assignment imports', async () => {
+    const repository = createRepositoryMock();
+    const reportedProgress: Array<Record<string, unknown>> = [];
+    const runtime = await createRuntimeWithRepositoryMock(repository, createLargeFractionAssignmentCsvBytes());
+
+    const result = await runtime.importData(
+      'instance-1',
+      {
+        operation: 'import-data',
+        importProfileId: 'waste-management.ortsbezogene-tourtermine',
+        sourceFormat: 'text/csv',
+        dryRun: false,
+        blobRef: 'fixture.csv',
+      },
+      {
+        reportProgress: async (progress) => {
+          reportedProgress.push(progress as Record<string, unknown>);
+        },
+      }
+    );
+
+    expect(reportedProgress).toEqual([
+      expect.objectContaining({
+        completedSteps: 0,
+        totalSteps: 30,
+        currentPhase: 'waste-management.import-preparation',
+        currentStepKey: 'prepare-import',
+        details: { processedRows: 0, totalRows: 30 },
+      }),
+      expect.objectContaining({
+        completedSteps: 0,
+        totalSteps: 30,
+        currentPhase: 'waste-management.import-running',
+        currentStepKey: 'process-rows',
+        details: { processedRows: 0, totalRows: 30 },
+      }),
+      expect.objectContaining({
+        completedSteps: 25,
+        totalSteps: 30,
+        currentPhase: 'waste-management.import-running',
+        currentStepKey: 'process-rows',
+        details: { processedRows: 25, totalRows: 30 },
+      }),
+      expect.objectContaining({
+        completedSteps: 30,
+        totalSteps: 30,
+        currentPhase: 'waste-management.import-running',
+        currentStepKey: 'process-rows',
+        details: { processedRows: 30, totalRows: 30 },
+      }),
+      expect.objectContaining({
+        completedSteps: 30,
+        totalSteps: 30,
+        currentPhase: 'waste-management.completed',
+        currentStepKey: 'complete-operation',
+        details: { processedRows: 30, totalRows: 30 },
+      }),
+    ]);
+    expect(result.details).toMatchObject({
+      operation: 'import-data',
+      dryRun: false,
+      rowCount: 30,
+      skippedRows: 0,
+      errorCount: 0,
+    });
+  });
+
   it('rejects invalid schemas, foreign schema targets, and malformed blob references deterministically', async () => {
     const runtime = createWasteManagementOperationRuntime({
       loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
@@ -599,6 +737,7 @@ const requiredTableRows = [
   { table_name: 'waste_global_date_shifts' },
   { table_name: 'waste_house_numbers' },
   { table_name: 'waste_location_tour_links' },
+  { table_name: 'waste_location_tour_pickup_dates' },
   { table_name: 'waste_regions' },
   { table_name: 'waste_streets' },
   { table_name: 'waste_tour_date_shifts' },
@@ -641,6 +780,22 @@ const createExtendedGeographyWorkbookBytes = (): Uint8Array => {
   ]);
 };
 
+const createFractionAssignmentCsvBytes = (): Uint8Array =>
+  new TextEncoder().encode([
+    'Ort;Straße;Hausmüll;Papier;Gelbe Säcke;;;;',
+    'Perleberg;Ackerstraße;HM.3.3;PPK.7.2;LVP.9.4;;;;',
+    'Bad Wilsnack;;;PPK.7.2;;;;;',
+  ].join('\n'));
+
+const createLargeFractionAssignmentCsvBytes = (): Uint8Array =>
+  new TextEncoder().encode([
+    'Ort;Straße;Hausmüll;Papier;;;;;',
+    ...Array.from(
+      { length: 30 },
+      (_, index) => `Ort ${index + 1};Straße ${index + 1};HM.${index + 1};PPK.${index + 1};;;;;`
+    ),
+  ].join('\n'));
+
 const createWorkbookBytes = (rows: readonly (readonly string[])[]): Uint8Array => {
   const workbook = XLSX.utils.book_new();
   const sheet = XLSX.utils.aoa_to_sheet(rows.map((row) => [...row]));
@@ -658,7 +813,22 @@ const createPoolMock = (client: SqlClient): WasteOperationSqlPool => ({
   end: vi.fn(async () => undefined),
 });
 
-const createRepositoryMock = () => ({
+const createRepositoryMock = (
+  overrides: Partial<ReturnType<typeof createRepositoryMockBase>> = {}
+) => ({
+  ...createRepositoryMockBase(),
+  ...overrides,
+});
+
+const createRepositoryMockBase = () => ({
+  listWasteFractions: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteRegions: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteCities: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteStreets: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteHouseNumbers: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteCollectionLocations: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteTours: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteLocationTourLinks: vi.fn(async (): Promise<unknown[]> => []),
   upsertWasteRegion: vi.fn(async () => undefined),
   upsertWasteCity: vi.fn(async () => undefined),
   upsertWasteStreet: vi.fn(async () => undefined),

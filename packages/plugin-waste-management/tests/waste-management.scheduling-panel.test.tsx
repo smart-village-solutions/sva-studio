@@ -68,6 +68,7 @@ vi.mock('../src/waste-management.scheduling.controller.js', () => ({
 }));
 
 vi.mock('../src/waste-management.scheduling-panel.views.js', () => ({
+  WasteSchedulingCreateFormView: () => <div>create-form</div>,
   WasteSchedulingDialogs: () => <div>dialogs</div>,
   WasteSchedulingGlobalFormView: () => <div>global-form</div>,
   WasteSchedulingListView: () => <div>list</div>,
@@ -190,5 +191,79 @@ describe('WasteSchedulingPanel', () => {
         originalDate: '2026-12-24',
       })
     );
+  });
+
+  it('renders the dedicated create form view for the combined scheduling creation route', () => {
+    controllerMock.lastOutcome = null;
+
+    const view = render(
+      <WasteSchedulingPanel
+        search={{
+          tab: 'scheduling',
+          masterDataTab: 'fractions',
+          fractionsView: 'list',
+          toursView: 'list',
+          locationsView: 'list',
+          schedulingView: 'create',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'tour',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: undefined,
+          tourId: undefined,
+          tourDateShiftId: undefined,
+          globalDateShiftId: undefined,
+        }}
+      />
+    );
+
+    expect(view.getByText('create-form')).toBeTruthy();
+  });
+
+  it('navigates back to the list when the global edit route misses the shift id', () => {
+    controllerMock.lastOutcome = null;
+
+    render(
+      <WasteSchedulingPanel
+        search={{
+          tab: 'scheduling',
+          masterDataTab: 'fractions',
+          fractionsView: 'list',
+          toursView: 'list',
+          locationsView: 'list',
+          schedulingView: 'edit-global',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: undefined,
+          tourId: undefined,
+          tourDateShiftId: undefined,
+          globalDateShiftId: undefined,
+        }}
+      />
+    );
+
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: expect.objectContaining({
+        schedulingView: 'list',
+        tourDateShiftId: undefined,
+        globalDateShiftId: undefined,
+      }),
+      replace: true,
+    });
+    expect(controllerMock.setGlobalDialogMode).not.toHaveBeenCalled();
+    expect(controllerMock.setGlobalShiftForm).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,7 @@
 /**
  * Unit-Tests für Header-Auth-Aktionen und Loading-Zustand.
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Header from './Header';
 
@@ -34,6 +34,10 @@ vi.mock('@tanstack/react-router', () => ({
       {children}
     </a>
   ),
+  useRouterState: (options?: { select?: (state: { location: { pathname: string } }) => unknown }) => {
+    const state = { location: { pathname: window.location.pathname } };
+    return options?.select ? options.select(state) : state;
+  },
 }));
 
 vi.mock('./OrganizationContextSwitcher', () => ({
@@ -86,10 +90,9 @@ describe('Header auth actions', () => {
     render(<Header />);
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Als Dev-User anmelden' })).not.toBeNull();
+      expect(screen.queryByRole('button', { name: 'Login' })).not.toBeNull();
     });
 
-    expect(screen.getByText('Dev-Auth aktiv')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
   });
 
@@ -161,12 +164,15 @@ describe('Header auth actions', () => {
 
     render(<Header />);
 
+    const accountTrigger = await screen.findByRole('button', { name: /Test User/ });
+    accountTrigger.click();
+
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Logout' })).not.toBeNull();
+      expect(screen.queryByRole('menuitem', { name: 'Logout' })).not.toBeNull();
     });
 
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
+    expect(screen.getByRole('menuitem', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
     expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
 
@@ -206,8 +212,6 @@ describe('Header auth actions', () => {
       expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' })).toBeTruthy();
     });
 
-    expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }).textContent).toContain('Dunkel');
-
     useThemeMock.mockReturnValue({
       mode: 'dark',
       themeName: 'sva-default',
@@ -221,8 +225,6 @@ describe('Header auth actions', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Hellen Modus aktivieren' })).toBeTruthy();
     });
-
-    expect(screen.getByRole('button', { name: 'Hellen Modus aktivieren' }).textContent).toContain('Hell');
   });
 
   it('setzt cursor-pointer auf alle sichtbaren Header-Aktionen', async () => {
@@ -260,11 +262,9 @@ describe('Header auth actions', () => {
 
     const interactiveElements = [
       screen.getByRole('button', { name: 'Navigation öffnen' }),
-      screen.getByRole('button', { name: 'Auf Deutsch wechseln' }),
-      screen.getByRole('button', { name: 'Auf Englisch wechseln' }),
+      screen.getByRole('button', { name: 'Sprache wechseln' }),
       screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }),
-      screen.getByRole('link', { name: 'Mein Konto' }),
-      screen.getByRole('button', { name: 'Logout' }),
+      screen.getByRole('button', { name: 'Systemmeldungen' }),
     ];
 
     for (const element of interactiveElements) {
@@ -301,8 +301,11 @@ describe('Header auth actions', () => {
 
     render(<Header />);
 
+    const accountTrigger = await screen.findByRole('button', { name: /Admin User/ });
+    accountTrigger.click();
+
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Logout' })).toBeTruthy();
+      expect(screen.getByRole('menuitem', { name: 'Logout' })).toBeTruthy();
     });
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Rollen' })).toBeNull();
@@ -440,11 +443,206 @@ describe('Header auth actions', () => {
     render(<Header />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Auf Englisch wechseln' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Sprache wechseln' })).toBeTruthy();
     });
 
-    screen.getByRole('button', { name: 'Auf Englisch wechseln' }).click();
+    screen.getByRole('button', { name: 'Sprache wechseln' }).click();
+
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: /English/ })).toBeTruthy();
+    });
+
+    screen.getByRole('menuitem', { name: /English/ }).click();
 
     expect(setLocaleMock).toHaveBeenCalledWith('en');
+  });
+
+  it('switches back to German and closes the locale menu on outside click and Escape', async () => {
+    const setLocaleMock = vi.fn();
+
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'en',
+      setLocale: setLocaleMock,
+    });
+
+    render(<Header />);
+
+    const trigger = await screen.findByRole('button', { name: 'Sprache wechseln' });
+    fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(screen.getAllByRole('menuitem').length).toBeGreaterThanOrEqual(2);
+    });
+    fireEvent.click(screen.getAllByRole('menuitem')[0]!);
+    expect(setLocaleMock).toHaveBeenCalledWith('de');
+
+    fireEvent.click(trigger);
+    await screen.findByRole('menuitem', { name: /English/ });
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await waitFor(() => {
+      expect(screen.queryByRole('menuitem', { name: /English/ })).toBeNull();
+    });
+
+    fireEvent.click(trigger);
+    await screen.findByRole('menuitem', { name: /English/ });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('menuitem', { name: /English/ })).toBeNull();
+    });
+  });
+
+  it('triggers dev login directly and uses the dev-auth logout action inside the account menu', async () => {
+    const loginWithDevAuthMock = vi.fn();
+    const logoutMock = vi.fn();
+
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        displayName: 'Dev User',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      isDevAuthAvailable: true,
+      refetch: vi.fn(),
+      loginWithDevAuth: loginWithDevAuthMock,
+      logout: logoutMock,
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
+
+    const { rerender } = render(<Header />);
+
+    const accountTrigger = await screen.findByRole('button', { name: /Dev User/ });
+    accountTrigger.click();
+    await screen.findByRole('menuitem', { name: 'Logout' });
+    screen.getByRole('menuitem', { name: 'Logout' }).click();
+    expect(logoutMock).toHaveBeenCalledTimes(1);
+
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      isDevAuthAvailable: true,
+      refetch: vi.fn(),
+      loginWithDevAuth: loginWithDevAuthMock,
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+
+    rerender(<Header />);
+
+    const loginButton = await screen.findByRole('button', { name: 'Login' });
+    loginButton.click();
+    expect(loginWithDevAuthMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes linked account menus after selecting a navigation entry', async () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
+
+    render(<Header />);
+
+    const accountTrigger = await screen.findByRole('button', { name: /Test User/ });
+    accountTrigger.click();
+    const accountLink = await screen.findByRole('menuitem', { name: 'Mein Konto' });
+    accountLink.click();
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menuitem', { name: 'Mein Konto' })).toBeNull();
+    });
+  });
+
+  it('hides the anonymous login action on the home route and still opens the locale menu', async () => {
+    window.history.replaceState({}, '', '/');
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'en',
+      setLocale: vi.fn(),
+    });
+
+    render(<Header />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Sprache wechseln' })).toBeTruthy();
+    });
+
+    expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
+
+    screen.getByRole('button', { name: 'Sprache wechseln' }).click();
+
+    const englishMenuItem = await screen.findByRole('menuitem', { name: /English/ });
+    const germanMenuItem = screen.getByRole('menuitem', { name: /Deutsch/ });
+    expect(englishMenuItem.textContent).toContain('English');
+    expect(germanMenuItem.textContent).toContain('Deutsch');
   });
 });

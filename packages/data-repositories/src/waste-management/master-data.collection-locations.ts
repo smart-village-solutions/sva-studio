@@ -125,11 +125,22 @@ SET city_id = EXCLUDED.city_id,
   ],
 });
 
+const buildCollectionLocationDeleteStatement = (id: string): SqlStatement => ({
+  text: `
+DELETE FROM waste_collection_locations
+WHERE id = $1::uuid;
+`,
+  values: [id],
+});
+
 export const createWasteCollectionLocationRepositoryPart = (
   executor: SqlExecutor
 ): Pick<
   WasteMasterDataRepository,
-  'listWasteCollectionLocations' | 'getWasteCollectionLocationById' | 'upsertWasteCollectionLocation'
+  | 'listWasteCollectionLocations'
+  | 'getWasteCollectionLocationById'
+  | 'upsertWasteCollectionLocation'
+  | 'deleteWasteCollectionLocation'
 > => ({
   async listWasteCollectionLocations(filter) {
     const result = await executor.execute<WasteCollectionLocationRow>(
@@ -146,10 +157,14 @@ export const createWasteCollectionLocationRepositoryPart = (
   async upsertWasteCollectionLocation(input) {
     await executor.execute(buildCollectionLocationUpsertStatement(input));
   },
+  async deleteWasteCollectionLocation(id) {
+    await executor.execute(buildCollectionLocationDeleteStatement(id));
+  },
 });
 
 export const wasteCollectionLocationStatements = {
   listWasteCollectionLocations: buildCollectionLocationListStatement,
   getWasteCollectionLocationById: buildCollectionLocationSelectStatement,
   upsertWasteCollectionLocation: buildCollectionLocationUpsertStatement,
+  deleteWasteCollectionLocation: buildCollectionLocationDeleteStatement,
 } as const;

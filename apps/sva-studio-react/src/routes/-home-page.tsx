@@ -14,6 +14,7 @@ type HomeRouteState = {
   readonly authReturnTo: string | null;
   readonly shouldStartLoginRedirect: boolean;
   readonly showDevLoginPrompt: boolean;
+  readonly consumedAuthSearch: boolean;
 };
 
 const AUTH_STATE_ERROR_KEYS = {
@@ -38,6 +39,7 @@ const resolveHomeRouteState = (): HomeRouteState => {
   const search = new URLSearchParams(window.location.search);
   const authState = search.get('auth');
   const routeErrorCode = search.get('error');
+  const consumedAuthSearch = search.has('auth') || search.has('error') || search.has('returnTo');
 
   return {
     authReturnTo: sanitizeReturnTo(search.get('returnTo')),
@@ -45,7 +47,18 @@ const resolveHomeRouteState = (): HomeRouteState => {
     showDevLoginPrompt: authState === 'dev-login',
     authStateError: resolveHomeAuthStateError(authState),
     routeError: routeErrorCode === 'auth.insufficientRole' ? t('home.authError.insufficientRole') : null,
+    consumedAuthSearch,
   };
+};
+
+const clearConsumedHomeAuthSearch = (): void => {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('auth');
+  url.searchParams.delete('error');
+  url.searchParams.delete('returnTo');
+  const nextSearch = url.searchParams.toString();
+  const nextHref = `${url.pathname}${nextSearch ? `?${nextSearch}` : ''}${url.hash}`;
+  window.history.replaceState(window.history.state, '', nextHref);
 };
 
 const AuthenticatedHeroActions = () => (
@@ -59,6 +72,18 @@ const AuthenticatedHeroActions = () => (
   </div>
 );
 
+const AnonymousHeroActions = ({
+  loginHref,
+}: {
+  readonly loginHref: string;
+}) => (
+  <div className="flex w-full max-w-xl flex-col items-center gap-3 sm:flex-row sm:justify-center">
+    <Button asChild className="h-12 min-w-48 rounded-full px-8 text-base">
+      <a href={loginHref}>{t('shell.header.login')}</a>
+    </Button>
+  </div>
+);
+
 const DevAuthPrompt = ({
   showDevLoginPrompt,
   loginWithDevAuth,
@@ -66,8 +91,8 @@ const DevAuthPrompt = ({
   readonly showDevLoginPrompt: boolean;
   readonly loginWithDevAuth: () => Promise<void> | void;
 }) => (
-  <div className="flex flex-wrap items-center gap-3">
-    <span className="rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-amber-800">
+  <div className="flex flex-wrap items-center justify-center gap-3">
+    <span className="rounded-full border border-amber-300/70 bg-amber-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-amber-800 dark:border-amber-500/35 dark:bg-amber-500/12 dark:text-amber-200">
       {t('shell.header.devAuthBadge')}
     </span>
     <Button type="button" onClick={() => void loginWithDevAuth()}>
@@ -160,23 +185,24 @@ export const HomePage = () => {
     isDevAuthAvailable,
     loginWithDevAuth,
   } = useAuth();
-  const [authStateError, setAuthStateError] = React.useState<string | null>(null);
-  const [showDevLoginPrompt, setShowDevLoginPrompt] = React.useState(false);
-  const [routeError, setRouteError] = React.useState<string | null>(null);
-  const [authReturnTo, setAuthReturnTo] = React.useState<string | null>(null);
-  const [shouldStartLoginRedirect, setShouldStartLoginRedirect] = React.useState(false);
+  const initialRouteState = React.useMemo(
+    () => (typeof window === 'undefined' ? null : resolveHomeRouteState()),
+    []
+  );
+  const authStateError = initialRouteState?.authStateError ?? null;
+  const showDevLoginPrompt = initialRouteState?.showDevLoginPrompt ?? false;
+  const routeError = initialRouteState?.routeError ?? null;
+  const authReturnTo = initialRouteState?.authReturnTo ?? null;
+  const shouldStartLoginRedirect = initialRouteState?.shouldStartLoginRedirect ?? false;
   const [authDiagnosticSnapshot, setAuthDiagnosticSnapshot] = React.useState(
     readLatestAuthDiagnosticSnapshot()
   );
 
   React.useEffect(() => {
-    const routeState = resolveHomeRouteState();
-    setAuthReturnTo(routeState.authReturnTo);
-    setShouldStartLoginRedirect(routeState.shouldStartLoginRedirect);
-    setShowDevLoginPrompt(routeState.showDevLoginPrompt);
-    setAuthStateError(routeState.authStateError);
-    setRouteError(routeState.routeError);
-  }, []);
+    if (initialRouteState?.consumedAuthSearch) {
+      clearConsumedHomeAuthSearch();
+    }
+  }, [initialRouteState]);
 
   React.useEffect(() => {
     setAuthDiagnosticSnapshot(readLatestAuthDiagnosticSnapshot());
@@ -196,24 +222,45 @@ export const HomePage = () => {
     (sessionRecoveryFailed ? t('home.authError.sessionExpired') : null) ??
     (error ? t('home.authError.sessionLoadFailed') : null);
   const authErrorLoginHref = !isAuthenticated && authError ? createLoginHref(authReturnTo ?? undefined) : null;
+  const heroLoginHref = createLoginHref(authReturnTo ?? undefined);
+  const isAnonymousHome = !isAuthenticated;
 
   return (
     <div className="min-h-full bg-background text-foreground">
-      <section className="bg-gradient-to-b from-muted/40 via-background to-background">
-        <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 pb-12 pt-12">
-          <div className="flex flex-col gap-6 lg:max-w-3xl">
+      <section className="bg-[radial-gradient(circle_at_top,_rgba(168,193,160,0.22),_transparent_34%),linear-gradient(to_bottom,_rgba(245,243,232,0.95),_rgba(255,255,255,0.98)_44%,_rgb(var(--background))_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(88,120,106,0.18),_transparent_28%),linear-gradient(to_bottom,_rgba(14,18,17,1),_rgba(17,21,20,0.98)_38%,_rgb(var(--background))_100%)]">
+        <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 pb-16 pt-16 sm:pb-20 sm:pt-20">
+          <div
+            className={
+              isAuthenticated
+                ? 'flex flex-col gap-6 lg:max-w-3xl'
+                : 'flex flex-col items-center gap-8 rounded-[2rem] border border-border/50 bg-background/75 px-6 py-10 text-center shadow-[0_24px_70px_rgba(70,80,70,0.08)] backdrop-blur-sm dark:border-border/60 dark:bg-card/70 dark:shadow-[0_30px_80px_rgba(0,0,0,0.32)] sm:px-10 sm:py-12'
+            }
+          >
             <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
-              {t('home.hero.eyebrow')}
+              {isAuthenticated ? t('home.hero.eyebrow') : 'Willkommen'}
             </p>
-            <div className="space-y-4">
-              <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+            <div className={isAuthenticated ? 'space-y-4' : 'max-w-3xl space-y-5'}>
+              <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
                 {t('shell.appName')}
               </h1>
-              <p className="max-w-2xl text-lg text-muted-foreground">{t('home.hero.subtitle')}</p>
-              <p className="max-w-2xl text-sm text-muted-foreground">{t('home.hero.body')}</p>
+              {isAuthenticated ? (
+                <>
+                  <p className="max-w-2xl text-lg text-muted-foreground">{t('home.hero.subtitle')}</p>
+                  <p className="max-w-2xl text-sm text-muted-foreground">{t('home.hero.body')}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg text-foreground sm:text-xl dark:text-foreground/95">
+                    Die gemeinsame Oberfläche für Inhalte, Module und Organisationen.
+                  </p>
+                  <p className="mx-auto max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+                    Melden Sie sich an, um Inhalte zu verwalten, Fachmodule zu öffnen und in Ihrem Arbeitskontext direkt weiterzuarbeiten.
+                  </p>
+                </>
+              )}
             </div>
-            {isAuthenticated ? <AuthenticatedHeroActions /> : null}
-            {!isAuthenticated && !isLoading && isDevAuthAvailable ? (
+            {isAuthenticated ? <AuthenticatedHeroActions /> : !isLoading ? <AnonymousHeroActions loginHref={heroLoginHref} /> : null}
+            {isAnonymousHome && !isLoading && isDevAuthAvailable ? (
               <DevAuthPrompt showDevLoginPrompt={showDevLoginPrompt} loginWithDevAuth={loginWithDevAuth} />
             ) : null}
             {authError ? (

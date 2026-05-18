@@ -1,6 +1,8 @@
-import { Button, Checkbox, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
+import { Button, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 import type { FormEvent } from 'react';
+
+import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 
 type SettingsFormState = {
   readonly provider: 'supabase';
@@ -64,15 +66,14 @@ export const WasteSettingsForm = ({
               placeholder="service-role-key"
             />
           </StudioField>
-          <label className="flex items-center gap-3 text-sm font-medium">
-            <Checkbox
-              id="waste-settings-enabled"
+          <div className="flex items-center gap-3">
+            <WasteManagementFormSwitch
               checked={form.enabled}
-              onChange={(event) => onChange((current) => ({ ...current, enabled: event.target.checked }))}
-              aria-label={pt('settings.fields.enabled')}
+              ariaLabel={pt('settings.fields.enabled')}
+              onChange={(enabled) => onChange((current) => ({ ...current, enabled }))}
             />
-            <span>{pt('settings.fields.enabled')}</span>
-          </label>
+            <span className="text-sm text-muted-foreground">{form.enabled ? pt('common.active') : pt('common.inactive')}</span>
+          </div>
         </StudioFieldGroup>
       </div>
       <Button type="submit" disabled={saving}>

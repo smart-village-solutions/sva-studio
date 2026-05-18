@@ -31,7 +31,7 @@ const TechnicalHistoryTable = ({
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">
+    <div className="overflow-hidden rounded-none border-y border-border bg-card shadow-shell">
       <WastePanelTableTopBar />
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse" aria-label={pt('overview.technical.table.ariaLabel')}>
@@ -94,7 +94,7 @@ const AuditHistoryTable = ({
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">
+    <div className="overflow-hidden rounded-none border-y border-border bg-card shadow-shell">
       <WastePanelTableTopBar />
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse" aria-label={pt('overview.audit.table.ariaLabel')}>

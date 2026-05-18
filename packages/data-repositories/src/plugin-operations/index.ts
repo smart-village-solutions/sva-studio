@@ -87,6 +87,7 @@ export type StudioJobRepository = {
   getJobById(instanceId: string, jobId: string): Promise<StudioJobRecord | null>;
   getJobDetail(instanceId: string, jobId: string): Promise<StudioJobDetail | null>;
   listJobs(instanceId: string, query: StudioJobListQuery): Promise<StudioJobListResult>;
+  deleteJob(instanceId: string, jobId: string): Promise<StudioJobRecord | null>;
   updateJobState(input: StudioJobUpdateInput): Promise<StudioJobRecord | null>;
   updateJobProgress(input: StudioJobProgressUpdateInput): Promise<StudioJobRecord | null>;
   touchJobHeartbeat(input: StudioJobHeartbeatInput): Promise<StudioJobRecord | null>;
@@ -384,6 +385,48 @@ ${jobSelectColumns}
   values: [input.cancelRequestedAt, input.instanceId, input.jobId],
 });
 
+const deleteJobStatement = (instanceId: string, jobId: string): SqlStatement => ({
+  text: `
+WITH deleted_events AS (
+  DELETE FROM iam.plugin_operation_job_events
+  WHERE instance_id = $1
+    AND job_id = $2
+)
+DELETE FROM iam.plugin_operation_jobs
+WHERE instance_id = $1
+  AND id = $2
+RETURNING
+  id,
+  instance_id,
+  plugin_id,
+  job_type_id,
+  import_profile_id,
+  queue_name,
+  status,
+  progress,
+  input_payload,
+  result_payload,
+  error_payload,
+  attempts,
+  max_attempts,
+  idempotency_key,
+  request_id,
+  actor_account_id,
+  worker_id,
+  heartbeat_at,
+  last_progress_at,
+  cancel_requested_at,
+  correlation_id,
+  parent_job_id,
+  scheduled_at,
+  started_at,
+  finished_at,
+  created_at,
+  updated_at;
+`,
+  values: [instanceId, jobId],
+});
+
 const createJobEventStatement = (input: StudioJobEventCreateInput): SqlStatement => ({
   text: `
 INSERT INTO iam.plugin_operation_job_events (
@@ -582,6 +625,15 @@ const listJobs = async (
   };
 };
 
+const deleteJob = async (
+  executor: SqlExecutor,
+  instanceId: string,
+  jobId: string
+): Promise<StudioJobRecord | null> => {
+  const rows = await queryRows<StudioJobRow>(executor, deleteJobStatement(instanceId, jobId));
+  return rows[0] ? mapStudioJobRow(rows[0]) : null;
+};
+
 const updateJobState = async (
   executor: SqlExecutor,
   input: StudioJobUpdateInput
@@ -627,6 +679,7 @@ export const createStudioJobRepository = (executor: SqlExecutor): StudioJobRepos
   getJobById: (instanceId, jobId) => getJobById(executor, instanceId, jobId),
   getJobDetail: (instanceId, jobId) => getJobDetail(executor, instanceId, jobId),
   listJobs: (instanceId, query) => listJobs(executor, instanceId, query),
+  deleteJob: (instanceId, jobId) => deleteJob(executor, instanceId, jobId),
   updateJobState: (input) => updateJobState(executor, input),
   updateJobProgress: (input) => updateJobProgress(executor, input),
   touchJobHeartbeat: (input) => touchJobHeartbeat(executor, input),

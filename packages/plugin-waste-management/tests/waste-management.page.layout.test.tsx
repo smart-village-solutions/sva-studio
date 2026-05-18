@@ -25,6 +25,7 @@ const { tabsContentSpy } = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
+  Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
   StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   Tabs: ({
     children,
@@ -240,7 +241,7 @@ describe('WasteManagementPageTabs', () => {
 
     const [tabDescription] = screen.getAllByText('tabs.fractions.body');
     const tabPanelSurface = tabDescription.closest('section')?.parentElement;
-    expect(tabPanelSurface?.className).toContain('bg-[#E8E8D8]');
+    expect(tabPanelSurface?.className).toContain('bg-[rgb(var(--waste-panel-surface))]');
     expect(tabPanelSurface?.className).toContain('border');
     expect(tabPanelSurface?.className).toContain('rounded-2xl');
   });

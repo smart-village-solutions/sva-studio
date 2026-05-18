@@ -28,9 +28,10 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 3. Der Host legt über `@sva/data-repositories` einen führenden Jobdatensatz sowie das technische Initialevent `job.queued` im Studio-Postgres an.
 4. Die interne Worker-Anbindung queued den Job runner-agnostisch und baut für den fachlichen Handler einen Host-Context mit `job`, `progressReporter`, `abortSignal`, `logger` und Request-/Actor-Bezug.
 5. Laufende Worker-Schritte schreiben Progress, Heartbeat und technische Lifecycle-Events gegen denselben zentralen Host-Store zurück.
-6. Der Client liest Status, Progress, Heartbeat und Verlauf über `GET /api/v1/plugin-operations/jobs/:jobId`.
-7. Eine Abbruchanforderung wird über `POST /api/v1/plugin-operations/jobs/:jobId/cancel` zunächst nur als gespeicherter Cancel-Request modelliert; die kooperative Reaktion bleibt Worker-Verantwortung.
-8. Status, Progress, Verlauf, Ergebnis- und Fehlerfelder stammen immer aus derselben zentralen Persistenz.
+6. Falls ein Fachhandler strukturierte Fortschrittsdetails wie `processedRows` und `totalRows` kennt, meldet er diese über denselben generischen Progress-Vertrag und nicht über einen separaten Plugin-Endpunkt.
+7. Der Client liest Status, Progress, Heartbeat und Verlauf über `GET /api/v1/plugin-operations/jobs/:jobId`.
+8. Eine Abbruchanforderung wird über `POST /api/v1/plugin-operations/jobs/:jobId/cancel` zunächst nur als gespeicherter Cancel-Request modelliert; die kooperative Reaktion bleibt Worker-Verantwortung.
+9. Status, Progress, Verlauf, Ergebnis- und Fehlerfelder stammen immer aus derselben zentralen Persistenz.
 
 Fehlerpfad:
 
@@ -48,6 +49,7 @@ Fehlerpfad:
 6. Zentrale Governance-Daten wie Waste-Datenquelle, letzter Connection-Check und Auditspur liegen im Studio-Postgres; die fachlichen Waste-Daten liegen in der instanzbezogenen Waste-Fachdatenbank.
 7. Mutationen gegen Fraktionen, Orte, Abholorte, Touren, Ausweichtermine und Bulk-Zuordnungen laufen immer über dieselbe Host-Fassade und erzeugen zentrale Audit-Events.
 8. Technische Operationen wie Import, Migration, Seed und Reset starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
+9. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.
 
 Fehlerpfad:
 

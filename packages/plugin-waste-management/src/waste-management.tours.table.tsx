@@ -4,7 +4,11 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
 import { WastePanelTableBottomBar, createPagedItems, usePagedRouteSync } from './waste-management.table-frame.js';
-import { WasteToursTableHeader } from './waste-management.tours.table.parts.js';
+import {
+  WasteToursTableHeader,
+  type WasteToursSortDirection,
+  type WasteToursSortField,
+} from './waste-management.tours.table.parts.js';
 import { WasteToursTableRow } from './waste-management.tours.table-row.js';
 
 type WasteToursTableProps = {
@@ -17,11 +21,14 @@ type WasteToursTableProps = {
   readonly allVisibleSelected: boolean;
   readonly someVisibleSelected: boolean;
   readonly saving: boolean;
+  readonly sortField: WasteToursSortField | null;
+  readonly sortDirection: WasteToursSortDirection;
   readonly page: number;
   readonly pageSize: number;
   readonly onPageChange: (page: number) => void;
   readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
+  readonly onSortChange: (field: WasteToursSortField) => void;
   readonly onToggleSelectAllVisible: (checked: boolean) => void;
   readonly onToggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
@@ -42,11 +49,14 @@ export const WasteToursTable = ({
   allVisibleSelected,
   someVisibleSelected,
   saving,
+  sortField,
+  sortDirection,
   page,
   pageSize,
   onPageChange,
   onSyncPageChange,
   onPageSizeChange,
+  onSortChange,
   onToggleSelectAllVisible,
   onToggleSelectedTour,
   onOpenCalendar,
@@ -62,7 +72,7 @@ export const WasteToursTable = ({
   usePagedRouteSync({ page, safePage: pagedTours.safePage, onPageChange, onSyncPageChange });
 
   return (
-    <section className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">
+    <section className="overflow-hidden rounded-none border-y border-border bg-card shadow-shell">
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse">
           <caption className="sr-only">{pt('tours.table.caption')}</caption>
@@ -70,6 +80,9 @@ export const WasteToursTable = ({
             allVisibleSelected={allVisibleSelected}
             someVisibleSelected={someVisibleSelected}
             onToggleSelectAllVisible={onToggleSelectAllVisible}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSortChange={onSortChange}
           />
           <tbody>
             {pagedTours.items.map((tour) => (

@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
@@ -22,6 +22,7 @@ type WasteSchedulingFormContentProps =
       readonly onChange: (patch: Partial<GlobalDateShiftFormState>) => void;
       readonly onCancel: () => void;
       readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+      readonly beforeFields?: ReactNode;
     }
   | {
       readonly variant: 'tour';
@@ -32,6 +33,7 @@ type WasteSchedulingFormContentProps =
       readonly onChange: (patch: Partial<TourDateShiftFormState>) => void;
       readonly onCancel: () => void;
       readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+      readonly beforeFields?: ReactNode;
     };
 
 export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProps) => {
@@ -62,6 +64,7 @@ export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProp
 
       <form id="waste-scheduling-form" className="space-y-6" onSubmit={(event) => void props.onSubmit(event)}>
         <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
+          {props.beforeFields}
           {props.variant === 'global' ? (
             <WasteSchedulingGlobalFields
               form={props.form}
@@ -79,7 +82,7 @@ export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProp
           )}
         </section>
 
-        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background/95 px-5 py-4 shadow-shell backdrop-blur supports-[backdrop-filter]:bg-background/85">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
           <Button type="submit" disabled={props.saving}>
             {saveLabel}
           </Button>

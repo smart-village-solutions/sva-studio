@@ -1,10 +1,11 @@
 import type { WasteCityRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 import type { FormEvent } from 'react';
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import type { CityFormState, FractionFormState, HouseNumberFormState, RegionFormState, StreetFormState } from './waste-management.master-data.forms.js';
+import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 
 type BaseProps<TForm> = {
   readonly open: boolean;
@@ -19,7 +20,74 @@ type BaseProps<TForm> = {
 
 export const FractionDialog = ({ open, mode, form, saving, message, onOpenChange, onChange, onSubmit }: BaseProps<FractionFormState>) => {
   const pt = usePluginTranslation('wasteManagement');
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>{mode === 'create' ? pt('masterData.fractions.dialog.createTitle') : pt('masterData.fractions.dialog.editTitle')}</DialogTitle><DialogDescription>{mode === 'create' ? pt('masterData.fractions.dialog.createDescription') : pt('masterData.fractions.dialog.editDescription')}</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={onSubmit}><StatusNotice message={message} /><StudioFieldGroup><StudioField id="waste-fraction-name" label={pt('masterData.fractions.fields.name')}><Input id="waste-fraction-name" value={form.name} onChange={(event) => onChange({ name: event.target.value })} /></StudioField><StudioField id="waste-fraction-name-de" label={pt('masterData.fractions.fields.translationDe')}><Input id="waste-fraction-name-de" value={form.translations.de ?? ''} onChange={(event) => onChange({ translations: { ...form.translations, de: event.target.value } })} /></StudioField><StudioField id="waste-fraction-name-en" label={pt('masterData.fractions.fields.translationEn')}><Input id="waste-fraction-name-en" value={form.translations.en ?? ''} onChange={(event) => onChange({ translations: { ...form.translations, en: event.target.value } })} /></StudioField><StudioField id="waste-fraction-color" label={pt('masterData.fractions.fields.color')}><Input id="waste-fraction-color" value={form.color} onChange={(event) => onChange({ color: event.target.value })} /></StudioField><StudioField id="waste-fraction-container-size" label={pt('masterData.fractions.fields.containerSize')}><Input id="waste-fraction-container-size" value={form.containerSize} onChange={(event) => onChange({ containerSize: event.target.value })} /></StudioField><StudioField id="waste-fraction-description" label={pt('masterData.fractions.fields.description')}><Input id="waste-fraction-description" value={form.description} onChange={(event) => onChange({ description: event.target.value })} /></StudioField><StudioField id="waste-fraction-active" label={pt('masterData.fractions.fields.active')}><div className="flex items-center gap-3"><Checkbox id="waste-fraction-active" checked={form.active} onChange={(event) => onChange({ active: event.currentTarget.checked })} /><span className="text-sm text-muted-foreground">{form.active ? pt('common.active') : pt('common.inactive')}</span></div></StudioField></StudioFieldGroup><DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{pt('masterData.fractions.actions.cancel')}</Button><Button type="submit" disabled={saving}>{saving ? pt('masterData.fractions.actions.saving') : mode === 'create' ? pt('masterData.fractions.actions.create') : pt('masterData.fractions.actions.save')}</Button></DialogFooter></form></DialogContent></Dialog>;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{mode === 'create' ? pt('masterData.fractions.dialog.createTitle') : pt('masterData.fractions.dialog.editTitle')}</DialogTitle>
+          <DialogDescription>
+            {mode === 'create' ? pt('masterData.fractions.dialog.createDescription') : pt('masterData.fractions.dialog.editDescription')}
+          </DialogDescription>
+        </DialogHeader>
+        <form className="space-y-4" onSubmit={onSubmit}>
+          <StatusNotice message={message} />
+          <StudioFieldGroup>
+            <StudioField id="waste-fraction-name" label={pt('masterData.fractions.fields.name')}>
+              <Input id="waste-fraction-name" value={form.name} onChange={(event) => onChange({ name: event.target.value })} />
+            </StudioField>
+            <StudioField id="waste-fraction-name-de" label={pt('masterData.fractions.fields.translationDe')}>
+              <Input
+                id="waste-fraction-name-de"
+                value={form.translations.de ?? ''}
+                onChange={(event) => onChange({ translations: { ...form.translations, de: event.target.value } })}
+              />
+            </StudioField>
+            <StudioField id="waste-fraction-name-en" label={pt('masterData.fractions.fields.translationEn')}>
+              <Input
+                id="waste-fraction-name-en"
+                value={form.translations.en ?? ''}
+                onChange={(event) => onChange({ translations: { ...form.translations, en: event.target.value } })}
+              />
+            </StudioField>
+            <StudioField id="waste-fraction-color" label={pt('masterData.fractions.fields.color')}>
+              <Input id="waste-fraction-color" value={form.color} onChange={(event) => onChange({ color: event.target.value })} />
+            </StudioField>
+            <StudioField id="waste-fraction-container-size" label={pt('masterData.fractions.fields.containerSize')}>
+              <Input
+                id="waste-fraction-container-size"
+                value={form.containerSize}
+                onChange={(event) => onChange({ containerSize: event.target.value })}
+              />
+            </StudioField>
+            <StudioField id="waste-fraction-description" label={pt('masterData.fractions.fields.description')}>
+              <Input
+                id="waste-fraction-description"
+                value={form.description}
+                onChange={(event) => onChange({ description: event.target.value })}
+              />
+            </StudioField>
+            <div className="flex items-center gap-3">
+              <WasteManagementFormSwitch
+                checked={form.active}
+                ariaLabel={pt('masterData.fractions.fields.active')}
+                onChange={(active) => onChange({ active })}
+              />
+              <span className="text-sm text-muted-foreground">{form.active ? pt('common.active') : pt('common.inactive')}</span>
+            </div>
+          </StudioFieldGroup>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {pt('masterData.fractions.actions.cancel')}
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? pt('masterData.fractions.actions.saving') : mode === 'create' ? pt('masterData.fractions.actions.create') : pt('masterData.fractions.actions.save')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 export const RegionDialog = ({ open, mode, form, saving, message, onOpenChange, onChange, onSubmit }: BaseProps<RegionFormState>) => {

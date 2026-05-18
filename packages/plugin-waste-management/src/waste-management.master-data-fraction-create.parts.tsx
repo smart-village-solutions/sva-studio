@@ -1,7 +1,8 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Checkbox, Input, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
+import { Button, Input, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
 import type { ReactNode } from 'react';
 
+import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 import type { FractionFormState } from './waste-management.master-data.forms.js';
 
 export type FractionFormErrors = {
@@ -49,7 +50,7 @@ export const FractionFormActions = ({
   readonly saving: boolean;
   readonly onCancel: () => void;
 }) => (
-  <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background/95 px-5 py-4 shadow-shell backdrop-blur supports-[backdrop-filter]:bg-background/85">
+  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
     <Button type="submit" disabled={saving}>
       {saveLabel}
     </Button>
@@ -189,13 +190,13 @@ export const FractionVisibilitySection = ({
       title={pt('masterData.fractions.createView.sections.visibility')}
       description={pt('masterData.fractions.createView.sections.visibilityHint')}
     >
-      <StudioField
-        id="waste-fraction-active"
-        label={pt('masterData.fractions.fields.active')}
-        description={pt('masterData.fractions.createView.fieldHints.active')}
-      >
-        <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
-          <Checkbox id="waste-fraction-active" checked={form.active} onChange={(event) => onChange({ active: event.currentTarget.checked })} />
+      <div className="space-y-2">
+        <div className="flex items-center gap-3">
+          <WasteManagementFormSwitch
+            checked={form.active}
+            ariaLabel={pt('masterData.fractions.fields.active')}
+            onChange={(active) => onChange({ active })}
+          />
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">{form.active ? pt('common.active') : pt('common.inactive')}</p>
             <p className="text-xs text-muted-foreground">
@@ -203,7 +204,8 @@ export const FractionVisibilitySection = ({
             </p>
           </div>
         </div>
-      </StudioField>
+        <p className="text-sm text-muted-foreground">{pt('masterData.fractions.createView.fieldHints.active')}</p>
+      </div>
     </FractionSection>
   );
 };

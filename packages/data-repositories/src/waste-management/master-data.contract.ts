@@ -9,6 +9,8 @@ import type {
   WasteGlobalDateShiftRecord,
   WasteHouseNumberListFilter,
   WasteHouseNumberRecord,
+  WasteLocationTourPickupDateListFilter,
+  WasteLocationTourPickupDateRecord,
   WasteLocationTourLinkListFilter,
   WasteLocationTourLinkRecord,
   WasteRegionListFilter,
@@ -61,6 +63,7 @@ export const wasteMasterDataRepositoryContract = {
   upsertWasteCollectionLocation: defineRepositoryMethod<
     (input: Omit<WasteCollectionLocationRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
   >(),
+  deleteWasteCollectionLocation: defineRepositoryMethod<(id: string) => Promise<void>>(),
   listWasteTours: defineRepositoryMethod<(filter?: WasteTourListFilter) => Promise<readonly WasteTourRecord[]>>(),
   getWasteTourById: defineRepositoryMethod<(id: string) => Promise<WasteTourRecord | null>>(),
   upsertWasteTour: defineRepositoryMethod<(input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => Promise<void>>(),
@@ -72,6 +75,15 @@ export const wasteMasterDataRepositoryContract = {
   upsertWasteLocationTourLink: defineRepositoryMethod<
     (input: Omit<WasteLocationTourLinkRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
   >(),
+  listWasteLocationTourPickupDates: defineRepositoryMethod<
+    (filter?: WasteLocationTourPickupDateListFilter) => Promise<readonly WasteLocationTourPickupDateRecord[]>
+  >(),
+  getWasteLocationTourPickupDateById: defineRepositoryMethod<
+    (id: string) => Promise<WasteLocationTourPickupDateRecord | null>
+  >(),
+  upsertWasteLocationTourPickupDate: defineRepositoryMethod<
+    (input: Omit<WasteLocationTourPickupDateRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
+  >(),
   listWasteTourDateShifts: defineRepositoryMethod<
     (filter?: WasteTourDateShiftListFilter) => Promise<readonly WasteTourDateShiftRecord[]>
   >(),
@@ -79,6 +91,7 @@ export const wasteMasterDataRepositoryContract = {
   upsertWasteTourDateShift: defineRepositoryMethod<
     (input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
   >(),
+  deleteWasteTourDateShift: defineRepositoryMethod<(id: string) => Promise<void>>(),
   listWasteGlobalDateShifts: defineRepositoryMethod<
     (filter?: WasteGlobalDateShiftListFilter) => Promise<readonly WasteGlobalDateShiftRecord[]>
   >(),
@@ -86,6 +99,7 @@ export const wasteMasterDataRepositoryContract = {
   upsertWasteGlobalDateShift: defineRepositoryMethod<
     (input: Omit<WasteGlobalDateShiftRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
   >(),
+  deleteWasteGlobalDateShift: defineRepositoryMethod<(id: string) => Promise<void>>(),
 } as const;
 
 export type WasteMasterDataRepository = typeof wasteMasterDataRepositoryContract;

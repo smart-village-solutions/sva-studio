@@ -131,7 +131,33 @@ describe('waste-management translation builders', () => {
         onDemand: 'Bedarf',
         custom: 'Individuell',
       },
-      customDatesTitle: 'Individuelle Termine',
+      customDates: {
+        title: 'Individuelle Termine',
+        description: 'Zusatztermine verwalten',
+        empty: 'Keine individuellen Termine',
+        commentHint: 'Optionaler Hinweis',
+        actions: {
+          openCreate: 'Termin anlegen',
+          edit: 'Termin bearbeiten',
+          cancel: 'Abbrechen',
+          create: 'Termin speichern',
+          save: 'Termin aktualisieren',
+          saving: 'Speichert…',
+        },
+        fields: {
+          date: 'Datum',
+          note: 'Hinweis',
+        },
+        dialog: {
+          createTitle: 'Termin anlegen',
+          createDescription: 'Zusätzlichen Termin erfassen',
+          editTitle: 'Termin bearbeiten',
+          editDescription: 'Zusätzlichen Termin aktualisieren',
+        },
+        meta: {
+          comment: 'Hinweis: {{value}}',
+        },
+      },
       messages: {
         loading: 'Laedt',
         loadError: 'Fehler',

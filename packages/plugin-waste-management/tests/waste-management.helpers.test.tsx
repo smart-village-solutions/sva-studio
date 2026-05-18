@@ -20,6 +20,7 @@ import {
   StatusNotice,
   compactOptionalString,
   downloadImportTemplate,
+  downloadImportPreviewErrors,
   formatUpdatedAt,
   readFileAsDataUrl,
   resolveApiErrorCode,
@@ -98,7 +99,7 @@ describe('waste management helper modules', () => {
     vi.unstubAllGlobals();
   });
 
-  it('covers page support helpers, download templates, and the reset dialog shell', () => {
+  it('covers page support helpers, template/error downloads, and the reset dialog shell', () => {
     expect(compactOptionalString('  ')).toBeUndefined();
     expect(compactOptionalString(' value ')).toBe('value');
     expect(resolveApiErrorCode(new WasteManagementApiError('invalid_input', 'Fehler'))).toBe('invalid_input');
@@ -118,10 +119,11 @@ describe('waste management helper modules', () => {
     const objectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:template');
     const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
     const anchorClick = vi.fn();
+    const createdAnchors: Array<{ href?: string; download?: string }> = [];
     const originalCreateElement = document.createElement.bind(document);
     const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
       if (tagName === 'a') {
-        return {
+        const anchor = {
           click: anchorClick,
           set href(value: string) {
             this._href = value;
@@ -135,7 +137,9 @@ describe('waste management helper modules', () => {
           get download() {
             return this._download;
           },
-        } as unknown as HTMLAnchorElement;
+        } as unknown as HTMLAnchorElement & { _href?: string; _download?: string };
+        createdAnchors.push(anchor);
+        return anchor;
       }
       return originalCreateElement(tagName);
     });
@@ -153,9 +157,31 @@ describe('waste management helper modules', () => {
 
     downloadImportTemplate(profile, 'text/csv');
     downloadImportTemplate(profile, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    expect(anchorClick).toHaveBeenCalledTimes(2);
-    expect(objectUrlSpy).toHaveBeenCalledTimes(2);
+    downloadImportPreviewErrors({
+      detectedDelimiter: ';',
+      delimiter: ';',
+      fractionNames: [],
+      existingFractions: [],
+      validRowCount: 0,
+      invalidRowCount: 1,
+      newFractions: [],
+      existingTours: [],
+      newTours: [],
+      summary: {
+        fractions: { created: 0, existing: 0 },
+        regions: { created: 0, existing: 0 },
+        cities: { created: 0, existing: 0 },
+        streets: { created: 0, existing: 0 },
+        houseNumbers: { created: 0, existing: 0 },
+        locations: { created: 0, existing: 0 },
+        assignments: { created: 0, existing: 0 },
+      },
+      errors: [{ rowNumber: 7, column: 'Ort', message: 'Fehlt', value: '""' }],
+    });
+    expect(anchorClick).toHaveBeenCalledTimes(3);
+    expect(objectUrlSpy).toHaveBeenCalledTimes(3);
     expect(revokeSpy).toHaveBeenCalledWith('blob:template');
+    expect(createdAnchors[2]?.download).toBe('waste-import-errors.csv');
 
     const onConfirm = vi.fn();
     const onTokenChange = vi.fn();
@@ -213,6 +239,29 @@ describe('waste management helper modules', () => {
     const file = new File(['region_id\nregion-1\n'], 'catalog.csv', { type: 'text/csv' });
 
     await expect(readFileAsDataUrl(file)).resolves.toMatch(/^data:text\/csv;base64,/);
+  });
+
+  it('fails closed when the file reader does not return a string result', async () => {
+    const originalFileReader = globalThis.FileReader;
+
+    class InvalidResultFileReader {
+      result: ArrayBuffer | string | null = new ArrayBuffer(8);
+      error: Error | null = null;
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+
+      readAsDataURL() {
+        this.onload?.();
+      }
+    }
+
+    vi.stubGlobal('FileReader', InvalidResultFileReader);
+
+    await expect(readFileAsDataUrl(new File(['x'], 'invalid.csv', { type: 'text/csv' }))).rejects.toThrow(
+      'file_read_failed'
+    );
+
+    vi.stubGlobal('FileReader', originalFileReader);
   });
 
   it('covers form defaults, mappers, and select resolution', () => {

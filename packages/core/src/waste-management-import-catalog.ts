@@ -1,5 +1,6 @@
 import {
   wasteManagementOperationsContract,
+  type WasteManagementCsvDelimiter,
   type WasteManagementImportProfileId,
   type WasteManagementImportSourceFormat,
 } from './waste-management-operations-contract.js';
@@ -26,6 +27,9 @@ export type WasteManagementImportProfileCatalogEntry = {
   readonly optionalColumns: readonly WasteManagementImportColumnDefinition[];
   readonly validationRules: readonly string[];
   readonly mappingTemplates: readonly WasteManagementImportMappingTemplate[];
+  readonly templateDelimiter?: WasteManagementCsvDelimiter;
+  readonly templateHeaders?: readonly string[];
+  readonly templateSampleRows?: readonly (readonly string[])[];
 };
 
 const createTemplates = (
@@ -53,19 +57,29 @@ const importTemplate = (input: {
   readonly description: string;
   readonly requiredColumns: readonly WasteManagementImportColumnDefinition[];
   readonly optionalColumns: readonly WasteManagementImportColumnDefinition[];
+  readonly sourceFormats?: readonly WasteManagementImportSourceFormat[];
+  readonly validationRules?: readonly string[];
+  readonly templateDelimiter?: WasteManagementCsvDelimiter;
+  readonly templateHeaders?: readonly string[];
+  readonly templateSampleRows?: readonly (readonly string[])[];
 }): WasteManagementImportProfileCatalogEntry => ({
   profileId: input.profileId,
   displayName: input.displayName,
   description: input.description,
-  sourceFormats: importSourceFormats,
+  sourceFormats: input.sourceFormats ?? importSourceFormats,
   requiredColumns: input.requiredColumns,
   optionalColumns: input.optionalColumns,
-  validationRules: [
-    'Header rows must match the canonical column keys exactly.',
-    'Required columns must be present on every row.',
-    'Referenced ids must be stable across repeated imports.',
-  ],
+  validationRules:
+    input.validationRules ??
+    [
+      'Header rows must match the canonical column keys exactly.',
+      'Required columns must be present on every row.',
+      'Referenced ids must be stable across repeated imports.',
+    ],
   mappingTemplates: createTemplates(input.profileId),
+  templateDelimiter: input.templateDelimiter,
+  templateHeaders: input.templateHeaders,
+  templateSampleRows: input.templateSampleRows,
 });
 
 export const wasteManagementImportCatalog = [
@@ -124,6 +138,32 @@ export const wasteManagementImportCatalog = [
       { key: 'tour_id', required: false, example: 'tour-restmuell-1' },
       { key: 'description', required: false, example: 'Feiertagsverschiebung' },
       { key: 'tour_ids', required: false, example: 'tour-restmuell-1|tour-bio-2' },
+    ],
+  }),
+  importTemplate({
+    profileId: wasteManagementOperationsContract.importProfileIds.locationTourPickupDates,
+    displayName: 'Tourzuordnungen nach Fraktionen',
+    description:
+      'Importiert Tourzuordnungen je Adresse aus einer CSV mit Fraktionsspalten und Tourbezeichnungen in den Zellen.',
+    sourceFormats: ['text/csv'],
+    requiredColumns: [{ key: 'Ort', required: true, example: 'Musterstadt' }],
+    optionalColumns: [
+      { key: 'Region', required: false, example: 'Nord' },
+      { key: 'Straße', required: false, example: 'Hauptstraße' },
+      { key: 'Hausnummern', required: false, example: '42a' },
+      { key: 'Fraktion...', required: false, example: 'HM.3.3' },
+    ],
+    validationRules: [
+      'A header row is required.',
+      'The address block starts with Ort and may optionally contain Region, Straße and Hausnummern in that order.',
+      'Each additional column header becomes a waste fraction name.',
+      'Each filled fraction cell must contain the name of the assigned waste tour.',
+    ],
+    templateDelimiter: ';',
+    templateHeaders: ['Ort', 'Straße', 'Hausmüll', 'Papier', 'Gelbe Säcke'],
+    templateSampleRows: [
+      ['Perleberg', 'Ackerstraße', 'HM.3.3', 'PPK.7.2', 'LVP.9.4'],
+      ['Bad Wilsnack', '', '', 'PPK.1.1', ''],
     ],
   }),
 ] as const satisfies readonly WasteManagementImportProfileCatalogEntry[];

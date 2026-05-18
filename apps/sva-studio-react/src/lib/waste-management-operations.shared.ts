@@ -37,6 +37,7 @@ export const requiredWasteTables = [
   'waste_fractions',
   'waste_tours',
   'waste_location_tour_links',
+  'waste_location_tour_pickup_dates',
   'waste_tour_date_shifts',
   'waste_global_date_shifts',
 ] as const;

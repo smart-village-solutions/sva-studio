@@ -1,6 +1,7 @@
 import type { CollectionLocationFormState } from './waste-management.master-data.forms.js';
 import {
   createWasteManagementCollectionLocation,
+  deleteWasteManagementCollectionLocation,
   createWasteManagementLocationTourLinksBulk,
   updateWasteManagementCollectionLocation,
 } from './waste-management.api.js';
@@ -58,6 +59,56 @@ export const createWasteMasterDataLocationSubmissions = ({
     } catch (saveError) {
       const code = resolveApiErrorCode(saveError);
       state.setMessage({ kind: 'error', text: code === 'forbidden' ? pt('masterData.collectionLocations.messages.saveForbidden') : pt('masterData.collectionLocations.messages.saveError') });
+    } finally {
+      state.setSaving(false);
+    }
+  },
+  onDeleteLocation: async (location: { readonly id: string }) => {
+    state.setSaving(true);
+    state.setMessage(null);
+    state.setLastOutcome(null);
+    try {
+      await deleteWasteManagementCollectionLocation(location.id);
+      await loadOverview(true);
+      state.setSelectedLocationIds((current) => current.filter((selectedId) => selectedId !== location.id));
+      state.setMessage({ kind: 'success', text: pt('masterData.collectionLocations.messages.deleteSuccess') });
+    } catch (deleteError) {
+      const code = resolveApiErrorCode(deleteError);
+      state.setMessage({
+        kind: 'error',
+        text:
+          code === 'forbidden'
+            ? pt('masterData.collectionLocations.messages.deleteForbidden')
+            : code === 'conflict'
+              ? pt('masterData.collectionLocations.messages.deleteConflict')
+              : pt('masterData.collectionLocations.messages.deleteError'),
+      });
+    } finally {
+      state.setSaving(false);
+    }
+  },
+  onDeleteLocations: async (locationIds: readonly string[]) => {
+    state.setSaving(true);
+    state.setMessage(null);
+    state.setLastOutcome(null);
+    try {
+      for (const locationId of locationIds) {
+        await deleteWasteManagementCollectionLocation(locationId);
+      }
+      await loadOverview(true);
+      state.setSelectedLocationIds([]);
+      state.setMessage({ kind: 'success', text: pt('masterData.collectionLocations.bulk.messages.deleteSuccess') });
+    } catch (deleteError) {
+      const code = resolveApiErrorCode(deleteError);
+      state.setMessage({
+        kind: 'error',
+        text:
+          code === 'forbidden'
+            ? pt('masterData.collectionLocations.bulk.messages.deleteForbidden')
+            : code === 'conflict'
+              ? pt('masterData.collectionLocations.bulk.messages.deleteConflict')
+              : pt('masterData.collectionLocations.bulk.messages.deleteError'),
+      });
     } finally {
       state.setSaving(false);
     }

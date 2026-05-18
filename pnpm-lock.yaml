@@ -712,6 +712,9 @@ importers:
 
   packages/plugin-waste-management:
     dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk

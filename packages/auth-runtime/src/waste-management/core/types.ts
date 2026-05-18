@@ -12,10 +12,13 @@ import type {
   WasteLocationTourLinkRecord,
   WasteManagementAuditOverview,
   WasteManagementAuditQuery,
+  WasteManagementCsvDelimiter,
   WasteManagementHistoryOverview,
+  WasteManagementImportSourceFormat,
   WasteManagementMasterDataOverview,
   WasteManagementSchedulingOverview,
   WasteManagementToursOverview,
+  WasteLocationTourPickupDateImportPreview,
   WasteRegionRecord,
   WasteStreetRecord,
   WasteTourDateShiftRecord,
@@ -82,6 +85,12 @@ export type WasteManagementHandlerDeps = {
   readonly loadMasterDataLocationsOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
   readonly loadToursOverview?: (instanceId: string) => Promise<WasteManagementToursOverview>;
   readonly loadSchedulingOverview?: (instanceId: string) => Promise<WasteManagementSchedulingOverview>;
+  readonly previewWasteLocationTourPickupDateImport?: (input: {
+    readonly instanceId: string;
+    readonly sourceFormat: WasteManagementImportSourceFormat;
+    readonly blobRef: string;
+    readonly delimiterOverride?: WasteManagementCsvDelimiter;
+  }) => Promise<WasteLocationTourPickupDateImportPreview>;
   readonly saveWasteFraction?: (instanceId: string, input: Omit<WasteFractionRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
   readonly loadWasteFractionById?: (instanceId: string, fractionId: string) => Promise<WasteFractionRecord | null>;
   readonly deleteWasteFraction?: (instanceId: string, fractionId: string) => Promise<void>;
@@ -107,6 +116,7 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     locationId: string
   ) => Promise<WasteCollectionLocationRecord | null>;
+  readonly deleteWasteCollectionLocation?: (instanceId: string, locationId: string) => Promise<void>;
   readonly saveWasteLocationTourLink?: (
     instanceId: string,
     input: Omit<WasteLocationTourLinkRecord, 'createdAt' | 'updatedAt'>
@@ -130,6 +140,7 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     shiftId: string
   ) => Promise<WasteTourDateShiftRecord | null>;
+  readonly deleteWasteTourDateShift?: (instanceId: string, shiftId: string) => Promise<void>;
   readonly saveWasteGlobalDateShift?: (
     instanceId: string,
     input: Omit<WasteGlobalDateShiftRecord, 'createdAt' | 'updatedAt'>
@@ -138,4 +149,5 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     shiftId: string
   ) => Promise<WasteGlobalDateShiftRecord | null>;
+  readonly deleteWasteGlobalDateShift?: (instanceId: string, shiftId: string) => Promise<void>;
 };

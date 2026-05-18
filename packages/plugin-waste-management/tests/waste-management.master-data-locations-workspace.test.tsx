@@ -216,18 +216,17 @@ describe('WasteMasterDataLocationsWorkspace', () => {
     expect(screen.getAllByRole('table', { name: 'masterData.collectionLocations.title' }).length).toBeGreaterThan(0);
     expect(screen.getAllByText('masterData.locationsWorkspace.table.region').length).toBeGreaterThan(0);
     expect(screen.getAllByText('masterData.locationsWorkspace.table.city').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('masterData.locationsWorkspace.table.address').length).toBeGreaterThan(0);
     expect(screen.getAllByText('masterData.locationsWorkspace.table.tours').length).toBeGreaterThan(0);
     expect(screen.getAllByText('masterData.locationsWorkspace.table.status').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Nord').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Musterstadt').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Hauptstraße 12').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('masterData.locationsWorkspace.table.tourCount:{"value":2}').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Hauptstraße').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('12').length).toBeGreaterThan(0);
     expect(screen.getAllByText('common.active').length).toBeGreaterThan(0);
     expect(screen.queryAllByTestId('badge')).toHaveLength(0);
   });
 
-  it('shows the real collection-location count in the overview cards', () => {
+  it('shows the real collection-location count in the pagination range', () => {
     render(
       <WasteMasterDataLocationsWorkspace
         regions={[{ id: 'region-1', name: 'Nord', createdAt: '2026-05-09T10:00:00.000Z', updatedAt: '2026-05-09T10:00:00.000Z' }]}
@@ -284,6 +283,112 @@ describe('WasteMasterDataLocationsWorkspace', () => {
       />
     );
 
-    expect(document.body.textContent).toContain('masterData.locationsWorkspace.overview.collectionLocationCount:{"value":2}');
+    expect(document.body.textContent).toContain('meta.pagination.rangeLabel:{"start":1,"end":2,"total":2}');
+  });
+
+  it('syncs an out-of-range page to the safe page and renders only that page of locations', () => {
+    const onSyncPageChange = vi.fn();
+
+    render(
+      <WasteMasterDataLocationsWorkspace
+        regions={[{ id: 'region-1', name: 'Nord', createdAt: '2026-05-09T10:00:00.000Z', updatedAt: '2026-05-09T10:00:00.000Z' }]}
+        cities={[
+          {
+            id: 'city-1',
+            name: 'Musterstadt',
+            regionId: 'region-1',
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ]}
+        streets={[
+          {
+            id: 'street-1',
+            name: 'Hauptstraße',
+            cityId: 'city-1',
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+          {
+            id: 'street-2',
+            name: 'Nebenweg',
+            cityId: 'city-1',
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ]}
+        houseNumbers={[
+          {
+            id: 'house-1',
+            number: '12',
+            streetId: 'street-1',
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+          {
+            id: 'house-2',
+            number: '7',
+            streetId: 'street-2',
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ]}
+        collectionLocations={[
+          {
+            id: 'location-1',
+            regionId: 'region-1',
+            cityId: 'city-1',
+            streetId: 'street-1',
+            houseNumberId: 'house-1',
+            active: true,
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+          {
+            id: 'location-2',
+            regionId: 'region-1',
+            cityId: 'city-1',
+            streetId: 'street-2',
+            houseNumberId: 'house-2',
+            active: true,
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ]}
+        locationTourLinks={[]}
+        selectedLocationIds={[]}
+        allFilteredLocationsSelected={false}
+        selectedCollectionLocationsCount={0}
+        availableTours={[]}
+        page={3}
+        pageSize={1}
+        selectedTourId={undefined}
+        onPageChange={vi.fn()}
+        onSyncPageChange={onSyncPageChange}
+        onPageSizeChange={vi.fn()}
+        onTourFilterChange={vi.fn()}
+        onToggleSelectAll={vi.fn()}
+        onToggleLocation={vi.fn()}
+        onOpenCreateRegion={vi.fn()}
+        onOpenCreateCity={vi.fn()}
+        onOpenCreateStreet={vi.fn()}
+        onOpenCreateHouseNumber={vi.fn()}
+        onOpenCreateLocation={vi.fn()}
+        onOpenEditRegion={vi.fn()}
+        onOpenEditCity={vi.fn()}
+        onOpenEditStreet={vi.fn()}
+        onOpenEditHouseNumber={vi.fn()}
+        onOpenEditLocation={vi.fn()}
+        onOpenBulkAssignments={vi.fn()}
+        getLocationLabel={() => 'Nord / Musterstadt / Adresse'}
+      />
+    );
+
+    expect(onSyncPageChange).toHaveBeenCalledWith(2);
+    expect(screen.getAllByText('Nebenweg').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('7').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Hauptstraße')).toBeNull();
+    expect(screen.queryByText('12')).toBeNull();
+    expect(document.body.textContent).toContain('meta.pagination.rangeLabel:{"start":2,"end":2,"total":2}');
   });
 });

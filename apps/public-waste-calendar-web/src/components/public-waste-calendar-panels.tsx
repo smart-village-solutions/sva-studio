@@ -1,3 +1,4 @@
+import type { PublicWasteCalendarEntry } from '../lib/public-waste-contract.js';
 import type { FilteredPublicWasteCalendarViewModel } from '../lib/public-waste-view-model.js';
 
 export function PublicWasteCalendarPanels(props: Readonly<{
@@ -5,6 +6,7 @@ export function PublicWasteCalendarPanels(props: Readonly<{
   pdfLinks: readonly string[];
   icalUrl: string;
   onToggleFraction: (fractionId: string) => void;
+  onActivateEntry: (entry: PublicWasteCalendarEntry) => void;
 }>) {
   const currentYearPdf = props.pdfLinks[1];
 
@@ -42,8 +44,15 @@ export function PublicWasteCalendarPanels(props: Readonly<{
       <ul className="pickup-list">
         {props.model.listEntries.map((entry) => (
           <li key={entry.id} className="pickup-item">
-            <strong>{entry.fractionLabel}</strong>
-            <span>{entry.date}</span>
+            <button
+              type="button"
+              className="pickup-button"
+              aria-label={`Termin ${entry.fractionLabel} am ${entry.date}`}
+              onClick={() => props.onActivateEntry(entry)}
+            >
+              <strong>{entry.fractionLabel}</strong>
+              <span>{entry.date}</span>
+            </button>
           </li>
         ))}
       </ul>

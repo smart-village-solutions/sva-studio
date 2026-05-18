@@ -446,7 +446,7 @@ Run: `pnpm nx run public-waste-calendar-web:test:unit --testFiles=src/lib/public
 
 Expected: PASS
 
-- [ ] **Step 6: Commit the public UX**
+- [x] **Step 6: Commit the public UX**
 
 ```bash
 git add apps/public-waste-calendar-web/src
@@ -468,7 +468,7 @@ git commit -m "feat: add public waste calendar user flow"
 - Modify: `docs/architecture/10-quality-requirements.md`
 - Modify: `docs/architecture/11-risks-and-technical-debt.md`
 
-- [ ] **Step 1: Write a failing end-to-end test for the complete public flow**
+- [x] **Step 1: Write a failing end-to-end test for the complete public flow**
 
 ```ts
 test('resolves a location, restores it from cookie, and exposes the iCal action', async ({ page }) => {
@@ -483,13 +483,13 @@ test('resolves a location, restores it from cookie, and exposes the iCal action'
 });
 ```
 
-- [ ] **Step 2: Run the E2E target and verify failure**
+- [x] **Step 2: Run the E2E target and verify failure**
 
 Run: `pnpm nx run public-waste-calendar-web:test:e2e`
 
 Expected: FAIL because the full public flow is not wired yet.
 
-- [ ] **Step 3: Implement the missing runtime hooks and accessibility affordances**
+- [x] **Step 3: Implement the missing runtime hooks and accessibility affordances**
 
 ```tsx
 <dialog aria-labelledby="pickup-detail-title" aria-modal="true">
@@ -498,7 +498,7 @@ Expected: FAIL because the full public flow is not wired yet.
 </dialog>
 ```
 
-- [ ] **Step 4: Update OpenSpec task statuses and arc42 documentation**
+- [x] **Step 4: Update OpenSpec task statuses and arc42 documentation**
 
 Run: `pnpm nx run public-waste-calendar-web:test:unit && pnpm nx run public-waste-calendar-web:test:e2e`
 

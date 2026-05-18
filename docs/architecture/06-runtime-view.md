@@ -57,6 +57,21 @@ Fehlerpfad:
 - Fehlt oder driftet die Waste-Datenquelle einer Instanz, antwortet die Fassade mit technischem Fehlervertrag; Secrets werden nie im Plugin oder Browser aufgelöst.
 - Ein `Newcms`-ähnlicher Direktzugriff auf Supabase-Funktionen, direkte DB-Connections oder mitportierte Runtime-Hooks ist kein zulässiger Alternativpfad.
 
+### Öffentlicher Abfallkalender: Auswahl, Restore und Detailansicht
+
+1. Der Browser lädt `apps/public-waste-calendar-web` direkt als öffentliche Oberfläche.
+2. Beim Start liest die App höchstens einen stabilen Standortschlüssel aus genau einem Cookie und versucht daraus die letzte vollständige Auswahl wiederherzustellen.
+3. Ohne gültigen Cookie startet die App im reduzierten Auswahlmodus und zeigt nur die nächste gültige Stufe des Standortflusses an.
+4. Nach vollständiger Auswahl projiziert die App die bekannten Termine in Listenansicht, Fraktionsfilter, PDF-Links und iCal-URL.
+5. Ein Klick auf einen Termin öffnet ein Modal mit Datum, Fraktion und Hinweistext; die globalen Export-Aktionen bleiben außerhalb des Modals sichtbar.
+6. Ein Reload mit gültigem Cookie stellt denselben Standort wieder her und zeigt einen expliziten Hinweis auf die automatisch geladene Adresse.
+
+Fehlerpfad:
+
+- Fehlt die öffentliche Konfiguration, liefert die Bootstrap-Schicht einen deterministischen Fehlerzustand `missing_config`.
+- Ungültige oder unvollständige Konfiguration endet deterministisch in `invalid_config` statt in einer teilweise geladenen Auswahloberfläche.
+- Ungültige oder veraltete Standort-Cookies werden ignoriert; die App fällt ohne Halbzustand auf die erste gültige Auswahlstufe zurück.
+
 ### Szenario 1: App-Start + Route-Komposition
 
 1. App lädt `getRouter()` in `apps/sva-studio-react/src/router.tsx`

@@ -105,4 +105,37 @@ describe('PublicWasteApp', () => {
     expect(screen.getByRole('button', { name: 'Musterstadt' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'iCal abonnieren' })).toBeNull();
   });
+
+  it('opens a pickup detail dialog when an entry is activated and keeps global actions outside the dialog', () => {
+    render(
+      <PublicWasteApp
+        selectionState="complete"
+        selectionSummary="Musterstadt, Hauptstraße 12"
+        calendarModel={{
+          locationKey: 'r-1:c-1:s-1:h-1',
+          nextPickupDate: '2026-05-19',
+          listEntries: [
+            {
+              id: 'pickup-1',
+              date: '2026-05-19',
+              fractionId: 'bio',
+              fractionLabel: 'Bioabfall',
+              note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
+            },
+          ],
+          monthBuckets: [],
+          yearBuckets: [],
+          fractionOptions: [{ id: 'bio', label: 'Bioabfall' }],
+        }}
+        pdfLinks={['https://example.invalid/2025.pdf', 'https://example.invalid/2026.pdf', 'https://example.invalid/2027.pdf']}
+        icalUrl="https://example.invalid/calendar.ics"
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Termin Bioabfall am 2026-05-19' }));
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByText('Bitte Tonne ab 6 Uhr bereitstellen.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'iCal abonnieren' })).toBeTruthy();
+  });
 });

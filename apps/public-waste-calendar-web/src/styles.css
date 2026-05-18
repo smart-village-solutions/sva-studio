@@ -122,12 +122,23 @@ body {
 }
 
 .pickup-item {
+  border-radius: 1rem;
+  background: rgb(246 248 244);
+}
+
+.pickup-button {
+  width: 100%;
   display: flex;
   justify-content: space-between;
   gap: 1rem;
   padding: 0.9rem 1rem;
+  border: 0;
   border-radius: 1rem;
-  background: rgb(246 248 244);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .notice-banner {
@@ -148,4 +159,53 @@ body {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(23 29 24 / 0.45);
+}
+
+.dialog-panel {
+  width: min(100%, 32rem);
+  padding: 1.25rem;
+  border-radius: 1.25rem;
+  background: rgb(255 255 255);
+  box-shadow: 0 1.5rem 3rem rgb(23 29 24 / 0.2);
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.dialog-eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(83 113 88);
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.dialog-close {
+  min-height: 2.5rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgb(104 128 108);
+  border-radius: 999px;
+  background: rgb(244 248 242);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }

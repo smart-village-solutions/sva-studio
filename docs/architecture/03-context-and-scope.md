@@ -21,6 +21,7 @@ Im aktuellen Repo-Ist-Stand sind davon primär die technischen Grundlagen umgese
 ### In Scope (IST)
 
 - Web-App `sva-studio-react` mit TanStack Start
+- Öffentliche Web-App `public-waste-calendar-web` als eigenständige, iFrame-taugliche Bürgeroberfläche für Abfallkalenderdaten
 - Zentrales Routing (`@sva/core`, `@sva/routing`, `@sva/plugin-...`-Routen)
 - Auth-BFF-Endpunkte (`/auth/login`, `/auth/callback`, `/auth/me`, `/auth/logout`)
 - Session-Verwaltung mit Redis (inkl. optionaler Token-Verschlüsselung)
@@ -48,9 +49,11 @@ Konzept-Referenz (Kontext): `concepts/konzeption-cms-v2/01_Einleitung/Einleitung
 ### Verantwortungsgrenzen
 
 - Repo verantwortet App-, Routing-, Auth-, SDK- und Doku-Logik
+- Die öffentliche Abfallkalender-App bleibt fachlich im selben Repo, aber technisch von der Studio-Admin-Oberfläche getrennt und nutzt dafür nur app-lokale Auswahl-, Kalender- und Präferenzlogik.
 - Repo verantwortet die serverseitige Delegation an den externen SVA-Mainserver, aber nicht dessen Betrieb, Schema oder Berechtigungsmodell
 - Browser, React-Hooks und UI-Komponenten sprechen nie direkt mit dem externen Mainserver; alle Aufrufe laufen über serverseitige Studio-Bausteine
 - Browser, Plugins und Fachmodule sprechen nie direkt mit MinIO oder S3-kompatiblen Clients; Medienzugriffe laufen über hostseitige Media-Endpunkte und interne Storage-Ports
+- Browser der öffentlichen Abfallkalender-App sprechen weder das Studio-Plugin noch Supabase direkt an; die öffentliche Runtime kapselt Auswahlfluss, Kalenderprojektion, Präferenz-Cookie und Exportlinks lokal in `apps/public-waste-calendar-web`.
 - Keycloak bleibt autoritative Quelle für per-User hinterlegte Mainserver-Credentials; die Studio-DB hält nur instanzbezogene Endpunktkonfiguration
 - Externe Dienste werden angebunden, aber nicht hier implementiert
 

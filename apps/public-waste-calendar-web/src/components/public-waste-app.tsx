@@ -1,11 +1,15 @@
 import React from 'react';
 
-import type { PublicWasteSelectableEntry } from '../lib/public-waste-contract.js';
+import type {
+  PublicWasteCalendarEntry,
+  PublicWasteSelectableEntry,
+} from '../lib/public-waste-contract.js';
 import {
   filterPublicWasteCalendarFractions,
   type PublicWasteCalendarViewModel,
 } from '../lib/public-waste-view-model.js';
 import { PublicWasteCalendarPanels } from './public-waste-calendar-panels.js';
+import { PublicWasteEventDialog } from './public-waste-event-dialog.js';
 import { PublicWasteSelectionForm } from './public-waste-selection-form.js';
 
 type IncompletePublicWasteAppProps = {
@@ -38,6 +42,7 @@ export function PublicWasteApp(props: Readonly<PublicWasteAppProps>) {
   }
 
   const [selectedFractions, setSelectedFractions] = React.useState<readonly string[]>([]);
+  const [selectedEntry, setSelectedEntry] = React.useState<PublicWasteCalendarEntry | null>(null);
   const deferredFractions = React.useDeferredValue(selectedFractions);
   const filteredModel = filterPublicWasteCalendarFractions(props.calendarModel, deferredFractions);
 
@@ -57,7 +62,9 @@ export function PublicWasteApp(props: Readonly<PublicWasteAppProps>) {
         pdfLinks={props.pdfLinks}
         icalUrl={props.icalUrl}
         onToggleFraction={toggleFraction}
+        onActivateEntry={setSelectedEntry}
       />
+      <PublicWasteEventDialog entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
     </section>
   );
 }

@@ -48,10 +48,6 @@ const guardKeycloakReadRequest = <TContext>(
     if (csrfError) {
       return csrfError;
     }
-    const reauthError = deps.requireFreshReauth(request, ctx);
-    if (reauthError) {
-      return reauthError;
-    }
   }
   return readInstanceIdOrError(deps, request);
 };

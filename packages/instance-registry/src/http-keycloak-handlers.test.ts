@@ -76,13 +76,15 @@ describe('http-keycloak-handlers', () => {
     expect(deps.withRegistryService).not.toHaveBeenCalled();
   });
 
-  it('passes the request context into fresh reauth checks for keycloak plans', async () => {
+  it('plans keycloak provisioning without requiring fresh reauthentication', async () => {
     const handlers = createInstanceRegistryKeycloakHttpHandlers(deps);
     const request = new Request('https://studio.example.org/api/v1/iam/instances/demo/keycloak/plan');
+    deps.requireFreshReauth.mockReturnValueOnce(new Response('reauth', { status: 403 }));
 
-    await handlers.planInstanceKeycloakProvisioning(request, ctx);
+    const response = await handlers.planInstanceKeycloakProvisioning(request, ctx);
 
-    expect(deps.requireFreshReauth).toHaveBeenCalledWith(request, ctx);
+    expect(response.status).toBe(200);
+    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
   });
 
   it('returns not_found when a provisioning run is missing', async () => {

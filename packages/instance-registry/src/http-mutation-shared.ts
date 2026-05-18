@@ -83,10 +83,7 @@ export const requireMutationGuards = <TContext>(
   if (csrfError) {
     return csrfError;
   }
-  if (options?.requireFreshReauth === false) {
-    return null;
-  }
-  return deps.requireFreshReauth(request, ctx);
+  return null;
 };
 
 export const readInstanceIdOrError = <TContext>(

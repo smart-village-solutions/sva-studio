@@ -210,7 +210,7 @@ describe('http mutation handlers', () => {
     });
   });
 
-  it('keeps fresh reauth enforcement for reconcile mutations', async () => {
+  it('reconcileInstanceKeycloak does not require fresh reauthentication', async () => {
     vi.mocked(deps.requireFreshReauth).mockReturnValueOnce(new Response('reauth', { status: 403 }));
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
 
@@ -219,8 +219,21 @@ describe('http mutation handlers', () => {
       { userId: 'u-1' }
     );
 
-    expect(response.status).toBe(403);
-    expect(deps.parseRequestBody).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
+  });
+
+  it('executeInstanceKeycloakProvisioning does not require fresh reauthentication', async () => {
+    vi.mocked(deps.requireFreshReauth).mockReturnValueOnce(new Response('reauth', { status: 403 }));
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.executeInstanceKeycloakProvisioning(
+      new Request('http://localhost/api/instances/inst-1/keycloak/runs'),
+      { userId: 'u-1' }
+    );
+
+    expect(response.status).toBe(200);
+    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
   });
 
   it('assignModule returns idempotency and instance id errors before parsing the payload', async () => {
@@ -291,6 +304,20 @@ describe('http mutation handlers', () => {
     await expect(readBody(notFoundResponse)).resolves.toMatchObject({ code: 'not_found' });
     expect(conflictResponse.status).toBe(409);
     await expect(readBody(conflictResponse)).resolves.toMatchObject({ code: 'conflict' });
+  });
+
+  it('assignModule does not require fresh reauthentication', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleId: 'news' } });
+    vi.mocked(deps.requireFreshReauth).mockReturnValueOnce(new Response('reauth', { status: 403 }));
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.assignModule(
+      new Request('http://localhost/api/instances/inst-1/modules/assign', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+
+    expect(response.status).toBe(200);
+    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
   });
 
   it('revokeModule returns the refreshed instance detail on success', async () => {
@@ -367,6 +394,23 @@ describe('http mutation handlers', () => {
     await expect(readBody(conflictResponse)).resolves.toMatchObject({ code: 'conflict' });
   });
 
+  it('revokeModule does not require fresh reauthentication', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: true,
+      data: { moduleId: 'news', confirmation: 'REVOKE' },
+    });
+    vi.mocked(deps.requireFreshReauth).mockReturnValueOnce(new Response('reauth', { status: 403 }));
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.revokeModule(
+      new Request('http://localhost/api/instances/inst-1/modules/revoke', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+
+    expect(response.status).toBe(200);
+    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
+  });
+
   it('bootstrapAdminStructure passes selected module ids into the registry service', async () => {
     const bootstrapAdminStructure = vi.fn(async () => ({
       ok: true,
@@ -418,6 +462,20 @@ describe('http mutation handlers', () => {
     expect(body.code).toBe('not_found');
   });
 
+  it('seedIamBaseline does not require fresh reauthentication', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: {} });
+    vi.mocked(deps.requireFreshReauth).mockReturnValueOnce(new Response('reauth', { status: 403 }));
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.seedIamBaseline(
+      new Request('http://localhost/api/instances/inst-1/modules/seed-iam-baseline', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+
+    expect(response.status).toBe(200);
+    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
+  });
+
   it('bootstrapAdminStructure returns invalid_request for unknown modules', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleIds: ['unknown'] } });
     vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
@@ -465,6 +523,20 @@ describe('http mutation handlers', () => {
     await expect(readBody(notFoundResponse)).resolves.toMatchObject({ code: 'not_found' });
     expect(conflictResponse.status).toBe(409);
     await expect(readBody(conflictResponse)).resolves.toMatchObject({ code: 'conflict' });
+  });
+
+  it('bootstrapAdminStructure does not require fresh reauthentication', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleIds: ['news'] } });
+    vi.mocked(deps.requireFreshReauth).mockReturnValueOnce(new Response('reauth', { status: 403 }));
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.bootstrapAdminStructure(
+      new Request('http://localhost/api/instances/inst-1/admin-bootstrap', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+
+    expect(response.status).toBe(200);
+    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
   });
 
   it('mutateInstanceStatus rejects mismatched status payloads', async () => {
@@ -556,5 +628,20 @@ describe('http mutation handlers', () => {
     await expect(readBody(notFoundResponse)).resolves.toMatchObject({ code: 'not_found' });
     expect(conflictResponse.status).toBe(409);
     await expect(readBody(conflictResponse)).resolves.toMatchObject({ code: 'conflict' });
+  });
+
+  it('mutateInstanceStatus does not require fresh reauthentication', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { status: 'active' } });
+    vi.mocked(deps.requireFreshReauth).mockReturnValueOnce(new Response('reauth', { status: 403 }));
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.mutateInstanceStatus(
+      new Request('http://localhost/api/instances/inst-1/status'),
+      { userId: 'u-1' },
+      'active'
+    );
+
+    expect(response.status).toBe(200);
+    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
   });
 });

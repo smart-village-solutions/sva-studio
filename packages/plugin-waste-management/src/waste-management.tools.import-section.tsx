@@ -1,5 +1,5 @@
 import type { StudioJobResponse, WasteManagementImportSourceFormat } from '@sva/plugin-sdk';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { usePluginTranslation, wasteManagementOperationsContract } from '@sva/plugin-sdk';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Button } from '@sva/studio-ui-react';
 
@@ -53,13 +53,15 @@ const getReachableStep = ({
 
 const getStepTitleKey = (step: WasteToolsWizardStepId) => `tools.imports.wizard.steps.${step}.title`;
 const getStepDescriptionKey = (step: WasteToolsWizardStepId) => `tools.imports.wizard.steps.${step}.description`;
+const isImportResultJob = (job: StudioJobResponse['data'] | null): job is StudioJobResponse['data'] =>
+  job?.jobTypeId === wasteManagementOperationsContract.jobTypeIds.importData;
 
 export const WasteToolsImportSection = ({
   importCatalog,
   importProfileId,
   importSourceFormat,
   importBlobRef,
-  importDryRun: _importDryRun,
+  importDryRun,
   delimiterOverride,
   previewResult,
   previewReady,
@@ -68,7 +70,7 @@ export const WasteToolsImportSection = ({
   onImportProfileIdChange,
   onImportSourceFormatChange,
   onImportBlobRefChange,
-  onImportDryRunChange: _onImportDryRunChange,
+  onImportDryRunChange,
   onDelimiterOverrideChange,
   onRunPreview,
   onStartImport,
@@ -94,13 +96,16 @@ export const WasteToolsImportSection = ({
   const pt = usePluginTranslation('wasteManagement');
   const fileInputId = useId();
   const [wizardStep, setWizardStep] = useState<WasteToolsWizardStepId>('profile');
+  const [importResultJob, setImportResultJob] = useState<StudioJobResponse['data'] | null>(
+    isImportResultJob(lastJob) ? lastJob : null
+  );
   const selectedImportProfile = resolveSelectedImportProfile(importCatalog, importProfileId);
   const previewRequired = isPreviewRequiredImportProfile(selectedImportProfile);
   const reachableStep = getReachableStep({
     selectedImportProfile,
     importBlobRef,
     previewReady,
-    hasImportResult: Boolean(lastJob?.id),
+    hasImportResult: Boolean(importResultJob?.id),
   });
   const canContinueFromUpload = importBlobRef.startsWith('data:');
   const previewHasBlockingErrors = previewRequired && (previewResult?.errors.length ?? 0) > 0;
@@ -112,6 +117,12 @@ export const WasteToolsImportSection = ({
       setWizardStep('preview');
     }
   }, [previewReady]);
+
+  useEffect(() => {
+    if (isImportResultJob(lastJob)) {
+      setImportResultJob(lastJob);
+    }
+  }, [lastJob]);
 
   const handleProfileSelection = (nextProfileId: StartWasteManagementImportInput['importProfileId']) => {
     onImportProfileIdChange(nextProfileId);
@@ -149,12 +160,14 @@ export const WasteToolsImportSection = ({
 
   const handleStartImport = async () => {
     const job = await onStartImport();
-    if (job) {
+    if (isImportResultJob(job)) {
+      setImportResultJob(job);
       setWizardStep('result');
     }
   };
 
   const handleStartNewImport = () => {
+    setImportResultJob(null);
     onImportBlobRefChange('');
     onDelimiterOverrideChange(undefined);
     setWizardStep('profile');
@@ -191,8 +204,10 @@ export const WasteToolsImportSection = ({
               importSourceFormat={importSourceFormat}
               fileInputId={fileInputId}
               importBlobRef={importBlobRef}
+              importDryRun={importDryRun}
               delimiterOverride={delimiterOverride}
               onImportSourceFormatChange={handleSourceFormatChange}
+              onImportDryRunChange={onImportDryRunChange}
               onDelimiterOverrideChange={handleDelimiterOverrideChange}
               onImportFileChange={handleImportFileChange}
             />
@@ -274,8 +289,8 @@ export const WasteToolsImportSection = ({
       case 'result':
         return (
           <WasteToolsResultSummary
-            jobId={lastJob?.id}
-            status={lastJob?.status}
+            jobId={importResultJob?.id}
+            status={importResultJob?.status}
             onStartNewImport={handleStartNewImport}
           />
         );

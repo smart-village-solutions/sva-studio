@@ -21,6 +21,11 @@ const { downloadImportTemplateMock, downloadImportPreviewErrorsMock } = vi.hoist
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${JSON.stringify(values)}` : key,
+  wasteManagementOperationsContract: {
+    jobTypeIds: {
+      importData: 'waste-management.import-data',
+    },
+  },
 }));
 
 vi.mock('../src/waste-management.page.support.js', async () => {
@@ -94,6 +99,7 @@ const renderImportSection = () => {
       'text/csv'
     );
     const [importBlobRef, setImportBlobRef] = React.useState('');
+    const [importDryRun, setImportDryRun] = React.useState(false);
     const [delimiterOverride, setDelimiterOverride] = React.useState<undefined | ';' | ',' | '\t' | '|'>(
       undefined
     );
@@ -105,7 +111,7 @@ const renderImportSection = () => {
         importProfileId={importProfileId}
         importSourceFormat={importSourceFormat}
         importBlobRef={importBlobRef}
-        importDryRun={false}
+        importDryRun={importDryRun}
         delimiterOverride={delimiterOverride}
         previewResult={previewReady ? previewResult : null}
         previewReady={previewReady}
@@ -113,7 +119,7 @@ const renderImportSection = () => {
         onImportProfileIdChange={(value) => setImportProfileId(value as typeof importProfileId)}
         onImportSourceFormatChange={(value) => setImportSourceFormat(value as typeof importSourceFormat)}
         onImportBlobRefChange={setImportBlobRef}
-        onImportDryRunChange={() => undefined}
+        onImportDryRunChange={setImportDryRun}
         onDelimiterOverrideChange={setDelimiterOverride}
         onRunPreview={() => {
           callbacks.onRunPreview();
@@ -166,6 +172,17 @@ describe('WasteToolsImportSection', () => {
 
     expect(screen.getByText('tools.imports.previewTitle')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'tools.actions.startImport' })).toBeTruthy();
+  });
+
+  it('allows toggling dry-run mode before continuing with the import', () => {
+    renderImportSection();
+
+    fireEvent.click(screen.getByRole('button', { name: 'tools.imports.wizard.actions.continue' }));
+    const dryRunCheckbox = screen.getByRole('checkbox', { name: 'tools.imports.dryRunLabel' }) as HTMLInputElement;
+    expect(dryRunCheckbox.checked).toBe(false);
+
+    fireEvent.click(dryRunCheckbox);
+    expect(dryRunCheckbox.checked).toBe(true);
   });
 
   it('handles failed file reads without triggering the preview callback', async () => {
@@ -226,7 +243,7 @@ describe('WasteToolsImportSection', () => {
           onRunPreview={async () => null}
           onStartImport={async () => {
             callbacks.onStartImport();
-            const job = { id: 'job-77', status: 'queued' };
+            const job = { id: 'job-77', status: 'queued', jobTypeId: 'waste-management.import-data' };
             setLastJob(job);
             return job as never;
           }}
@@ -256,9 +273,21 @@ describe('WasteToolsImportSection', () => {
       expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'tools.imports.wizard.actions.continueToConfirmation' })[0]!);
+    const confirmationButtons = screen.getAllByRole('button', { name: 'tools.imports.wizard.actions.continueToConfirmation' });
+    const confirmationButton = confirmationButtons[0];
+    expect(confirmationButton).toBeTruthy();
+    if (!confirmationButton) {
+      throw new Error('expected confirmation button');
+    }
+    fireEvent.click(confirmationButton);
     expect(screen.getByText('tools.imports.wizard.confirmTitle')).toBeTruthy();
-    fireEvent.click(screen.getAllByRole('button', { name: 'tools.actions.startImport' })[0]!);
+    const startImportButtons = screen.getAllByRole('button', { name: 'tools.actions.startImport' });
+    const startImportButton = startImportButtons[0];
+    expect(startImportButton).toBeTruthy();
+    if (!startImportButton) {
+      throw new Error('expected start import button');
+    }
+    fireEvent.click(startImportButton);
 
     await waitFor(() => {
       expect(callbacks.onStartImport).toHaveBeenCalledTimes(1);
@@ -422,6 +451,77 @@ describe('WasteToolsImportSection', () => {
 
     expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
     expect(screen.queryByText('tools.imports.previewTitle')).toBeNull();
+  });
+
+  it('does not treat non-import jobs as import results', async () => {
+    const Wrapper = () => {
+      const [importBlobRef, setImportBlobRef] = React.useState('');
+      const [lastJob, setLastJob] = React.useState<{ id: string; status: string; jobTypeId: string } | null>(null);
+
+      return (
+        <WasteToolsImportSection
+          importCatalog={importCatalog}
+          importProfileId="waste-management.geografie-abholorte"
+          importSourceFormat="text/csv"
+          importBlobRef={importBlobRef}
+          importDryRun={false}
+          delimiterOverride={undefined}
+          previewResult={null}
+          previewReady={false}
+          running={false}
+          lastJob={lastJob as never}
+          onImportProfileIdChange={() => undefined}
+          onImportSourceFormatChange={() => undefined}
+          onImportBlobRefChange={setImportBlobRef}
+          onImportDryRunChange={() => undefined}
+          onDelimiterOverrideChange={() => undefined}
+          onRunPreview={async () => null}
+          onStartImport={async () => {
+            const job = { id: 'job-migration', status: 'succeeded', jobTypeId: 'waste-management.apply-migrations' };
+            setLastJob(job);
+            return job as never;
+          }}
+        />
+      );
+    };
+
+    render(<Wrapper />);
+    fireEvent.click(screen.getByRole('button', { name: 'tools.imports.wizard.actions.continue' }));
+
+    const fileInput = document.querySelector('input[type="file"]');
+    if (!(fileInput instanceof HTMLInputElement)) {
+      throw new Error('Expected file input');
+    }
+
+    fireEvent.change(fileInput, {
+      target: {
+        files: [new File(['csv'], 'orte.csv', { type: 'text/csv' })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('tools.imports.wizard.steps.validation.title').length).toBeGreaterThan(0);
+    });
+
+    const confirmationButtons = screen.getAllByRole('button', { name: 'tools.imports.wizard.actions.continueToConfirmation' });
+    const confirmationButton = confirmationButtons[0];
+    expect(confirmationButton).toBeTruthy();
+    if (!confirmationButton) {
+      throw new Error('expected confirmation button');
+    }
+    fireEvent.click(confirmationButton);
+    const startImportButtons = screen.getAllByRole('button', { name: 'tools.actions.startImport' });
+    const startImportButton = startImportButtons[0];
+    expect(startImportButton).toBeTruthy();
+    if (!startImportButton) {
+      throw new Error('expected start import button');
+    }
+    fireEvent.click(startImportButton);
+
+    await waitFor(() => {
+      expect(screen.queryByText('tools.imports.wizard.resultTitle')).toBeNull();
+    });
+    expect(screen.getByText('tools.imports.wizard.confirmTitle')).toBeTruthy();
   });
 
   it('covers import helper branches and wizard navigation reachability', async () => {

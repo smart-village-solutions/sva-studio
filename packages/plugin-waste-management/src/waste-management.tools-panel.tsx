@@ -79,6 +79,7 @@ export const WasteToolsPanel = (props: {
         previewReady={previewReady}
         importSelectionHandlers={importSelectionHandlers}
         setImportBlobRef={setImportBlobRef}
+        setImportDryRun={setImportDryRun}
         setDelimiterOverride={setDelimiterOverride}
         runPreview={runPreview}
         runImport={runImport}

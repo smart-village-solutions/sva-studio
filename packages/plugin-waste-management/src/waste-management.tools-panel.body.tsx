@@ -27,6 +27,7 @@ type WasteToolsPanelBodyProps = {
   readonly previewReady: ReturnType<typeof useWasteToolsController>['previewReady'];
   readonly importSelectionHandlers: ReturnType<typeof createImportSelectionHandlers>;
   readonly setImportBlobRef: ReturnType<typeof useWasteToolsController>['setImportBlobRef'];
+  readonly setImportDryRun: ReturnType<typeof useWasteToolsController>['setImportDryRun'];
   readonly setDelimiterOverride: ReturnType<typeof useWasteToolsController>['setDelimiterOverride'];
   readonly runPreview: ReturnType<typeof useWasteToolsController>['runPreview'];
   readonly runImport: ReturnType<typeof useWasteToolsController>['runImport'];
@@ -58,7 +59,7 @@ export const WasteToolsPanelBody = (props: WasteToolsPanelBodyProps) => (
         onImportProfileIdChange={props.importSelectionHandlers.onImportProfileIdChange}
         onImportSourceFormatChange={props.importSelectionHandlers.onImportSourceFormatChange}
         onImportBlobRefChange={props.setImportBlobRef}
-        onImportDryRunChange={() => undefined}
+        onImportDryRunChange={props.setImportDryRun}
         onDelimiterOverrideChange={props.setDelimiterOverride}
         onRunPreview={props.runPreview}
         onStartImport={props.runImport}

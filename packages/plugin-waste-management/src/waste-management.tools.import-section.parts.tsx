@@ -4,6 +4,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Badge,
   Button,
+  Checkbox,
   Input,
   Select,
   StudioEditSurface,
@@ -200,8 +201,10 @@ export const WasteToolsUploadFields = ({
   importSourceFormat,
   fileInputId,
   importBlobRef,
+  importDryRun,
   delimiterOverride,
   onImportSourceFormatChange,
+  onImportDryRunChange,
   onDelimiterOverrideChange,
   onImportFileChange,
 }: {
@@ -209,8 +212,10 @@ export const WasteToolsUploadFields = ({
   readonly importSourceFormat: WasteManagementImportSourceFormat;
   readonly fileInputId: string;
   readonly importBlobRef: string;
+  readonly importDryRun: boolean;
   readonly delimiterOverride?: WasteManagementCsvDelimiter;
   readonly onImportSourceFormatChange: (value: WasteManagementImportSourceFormat) => void;
+  readonly onImportDryRunChange: (value: boolean) => void;
   readonly onDelimiterOverrideChange: (value: WasteManagementCsvDelimiter | undefined) => void;
   readonly onImportFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }) => {
@@ -243,6 +248,16 @@ export const WasteToolsUploadFields = ({
         description={importBlobRef.startsWith('data:') ? pt('tools.imports.wizard.fileReady') : undefined}
       >
         <Input id={fileInputId} type="file" accept={fileAccept} onChange={onImportFileChange} />
+      </StudioField>
+      <StudioField id="waste-tools-import-dry-run" label={pt('tools.imports.dryRunLabel')}>
+        <label className="flex items-center gap-3 text-sm text-foreground">
+          <Checkbox
+            aria-label={pt('tools.imports.dryRunLabel')}
+            checked={importDryRun}
+            onChange={(event) => onImportDryRunChange(event.currentTarget.checked)}
+          />
+          <span>{pt('tools.imports.dryRunLabel')}</span>
+        </label>
       </StudioField>
       {isPreviewRequiredImportProfile(selectedImportProfile) && importSourceFormat === 'text/csv' ? (
         <StudioField id="waste-tools-import-delimiter" label={pt('tools.imports.delimiterLabel')}>

@@ -4,6 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteToolsPanelBody } from '../src/waste-management.tools-panel.body.js';
 
+const { importSectionPropsSpy } = vi.hoisted(() => ({
+  importSectionPropsSpy: vi.fn(),
+}));
+
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
 }));
@@ -14,7 +18,10 @@ vi.mock('../src/waste-management.page.support.js', () => ({
 }));
 
 vi.mock('../src/waste-management.tools.import-section.js', () => ({
-  WasteToolsImportSection: () => <div>import-section</div>,
+  WasteToolsImportSection: (props: unknown) => {
+    importSectionPropsSpy(props);
+    return <div>import-section</div>;
+  },
 }));
 
 vi.mock('../src/waste-management.tools.history.js', () => ({
@@ -33,6 +40,7 @@ vi.mock('../src/waste-management.tools.actions-section.js', () => ({
 describe('WasteToolsPanelBody', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    importSectionPropsSpy.mockReset();
   });
 
   it('keeps advanced system actions collapsed by default', () => {
@@ -44,6 +52,7 @@ describe('WasteToolsPanelBody', () => {
           canRunMigrations: true,
           canRunSeed: true,
           canRunReset: true,
+          canDeleteHistoryEntries: false,
         }}
         overview={<div>overview-section</div>}
         runningAction={null}
@@ -64,6 +73,7 @@ describe('WasteToolsPanelBody', () => {
           onImportSourceFormatChange: vi.fn(),
         }}
         setImportBlobRef={vi.fn()}
+        setImportDryRun={vi.fn()}
         setDelimiterOverride={vi.fn()}
         runPreview={vi.fn()}
         runImport={vi.fn()}
@@ -83,6 +93,11 @@ describe('WasteToolsPanelBody', () => {
     expect(screen.queryByText('actions-section')).toBeNull();
     expect(screen.queryByText('initialize-section')).toBeNull();
     expect(screen.queryByText('overview-section')).toBeNull();
+    expect(importSectionPropsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        onImportDryRunChange: expect.any(Function),
+      })
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'tools.meta.advancedTitle' }));
 

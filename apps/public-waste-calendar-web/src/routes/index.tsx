@@ -121,7 +121,7 @@ const resolveSelectionState = async (
     } & PublicWasteCalendarResponse)
 > => {
   let selection = initialSelection;
-  let selectionPath = [...initialSelectionPath];
+  let selectionPath: readonly PublicWasteSelectionPathItem[] = initialSelectionPath;
 
   for (;;) {
     const response = await requestPublicWasteSelection(selection);

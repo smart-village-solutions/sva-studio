@@ -2,6 +2,34 @@ import React from 'react';
 
 import type { PublicWasteCalendarEntry } from '../lib/public-waste-contract.js';
 
+const findDialogFocusableElements = (dialog: HTMLElement): readonly HTMLElement[] =>
+  Array.from(
+    dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+  ).filter((element) => !element.hasAttribute('disabled') && !element.getAttribute('aria-hidden'));
+
+const trapDialogFocus = (event: React.KeyboardEvent, dialog: HTMLElement): void => {
+  const focusableElements = findDialogFocusableElements(dialog);
+  if (focusableElements.length === 0) {
+    event.preventDefault();
+    return;
+  }
+
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+  const activeElement = document.activeElement;
+
+  if (event.shiftKey && activeElement === firstElement) {
+    event.preventDefault();
+    lastElement?.focus();
+    return;
+  }
+
+  if (!event.shiftKey && activeElement === lastElement) {
+    event.preventDefault();
+    firstElement?.focus();
+  }
+};
+
 export function PublicWasteEventDialog(props: Readonly<{
   entry: PublicWasteCalendarEntry | null;
   onClose: () => void;
@@ -49,31 +77,7 @@ export function PublicWasteEventDialog(props: Readonly<{
             return;
           }
 
-          const focusableElements = Array.from(
-            dialogRef.current.querySelectorAll<HTMLElement>(
-              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-            )
-          ).filter((element) => !element.hasAttribute('disabled') && !element.getAttribute('aria-hidden'));
-
-          if (focusableElements.length === 0) {
-            event.preventDefault();
-            return;
-          }
-
-          const firstElement = focusableElements[0];
-          const lastElement = focusableElements[focusableElements.length - 1];
-          const activeElement = document.activeElement;
-
-          if (event.shiftKey && activeElement === firstElement) {
-            event.preventDefault();
-            lastElement?.focus();
-            return;
-          }
-
-          if (!event.shiftKey && activeElement === lastElement) {
-            event.preventDefault();
-            firstElement?.focus();
-          }
+          trapDialogFocus(event, dialogRef.current);
         }}
         onClick={(event) => event.stopPropagation()}
       >

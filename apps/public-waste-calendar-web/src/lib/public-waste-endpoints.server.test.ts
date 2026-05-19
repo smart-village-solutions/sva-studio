@@ -78,4 +78,19 @@ describe('public waste endpoints', () => {
     expect(response.headers.get('content-type')).toContain('text/calendar');
     await expect(response.text()).resolves.toContain('SUMMARY:Bioabfall');
   });
+
+  it('returns a generic invalid_request payload for malformed selection queries', async () => {
+    const response = await handlePublicWasteSelectionRequest({
+      repository: {
+        listSelectionOptions: vi.fn(),
+      },
+      request: new Request('https://example.invalid/public-waste/selection?regionId=not-a-uuid'),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'Ungueltige Anfrage.',
+    });
+  });
 });

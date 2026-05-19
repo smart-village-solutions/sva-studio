@@ -68,7 +68,7 @@ const publicWasteApiPlugin = (): Plugin => {
     if (url.includes('/api/public-waste/selection')) {
       return handlePublicWasteSelectionRequest({ repository, request });
     }
-    if (url.includes('/api/public-waste/calendar?')) {
+    if (url.includes('/api/public-waste/calendar')) {
       return handlePublicWasteCalendarRequest({
         repository,
         request,
@@ -81,6 +81,9 @@ const publicWasteApiPlugin = (): Plugin => {
   return {
     name: 'public-waste-api',
     configureServer(server) {
+      server.httpServer?.once('close', () => {
+        void pool?.end();
+      });
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ?? '';
         if (
@@ -98,6 +101,9 @@ const publicWasteApiPlugin = (): Plugin => {
       });
     },
     configurePreviewServer(server) {
+      server.httpServer?.once('close', () => {
+        void pool?.end();
+      });
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ?? '';
         if (

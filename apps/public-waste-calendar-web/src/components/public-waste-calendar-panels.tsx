@@ -18,6 +18,8 @@ const weekdayLabels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
 const toDate = (value: string): Date => new Date(`${value}T00:00:00`);
 
 const capitalize = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
+const toDateKey = (value: Date): string =>
+  `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
 
 const toMonthKey = (value: Date): string => {
   const year = value.getFullYear();
@@ -94,7 +96,7 @@ const buildMonthCells = (
   return Array.from({ length: 42 }, (_, index) => {
     const cellDate = new Date(calendarStart);
     cellDate.setDate(calendarStart.getDate() + index);
-    const dateKey = cellDate.toISOString().slice(0, 10);
+    const dateKey = toDateKey(cellDate);
 
     return {
       date: cellDate,
@@ -125,7 +127,7 @@ const buildYearMonthCells = (
   const leadingPlaceholders = getWeekdayOffset(monthStart);
   const dayCells = Array.from({ length: daysInMonth }, (_, index) => {
     const cellDate = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), index + 1);
-    const dateKey = cellDate.toISOString().slice(0, 10);
+    const dateKey = toDateKey(cellDate);
 
     return {
       kind: 'day' as const,
@@ -155,6 +157,7 @@ export function PublicWasteCalendarPanels(props: Readonly<{
   onToggleFraction: (fractionId: string) => void;
   onActivateEntry: (entry: PublicWasteCalendarEntry) => void;
 }>) {
+  const tabs: ReadonlyArray<'list' | 'month' | 'year'> = ['list', 'month', 'year'];
   const today = React.useRef(new Date()).current;
   const minMonth = React.useRef(startOfMonth(addYears(today, -1))).current;
   const maxMonth = React.useRef(startOfMonth(addYears(today, 1))).current;
@@ -178,6 +181,19 @@ export function PublicWasteCalendarPanels(props: Readonly<{
   const canGoToNextMonth = toMonthKey(visibleMonth) < toMonthKey(maxMonth);
   const canGoToPreviousYear = visibleYear > minYear;
   const canGoToNextYear = visibleYear < maxYear;
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tab: 'list' | 'month' | 'year') => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+      return;
+    }
+
+    event.preventDefault();
+    const currentIndex = tabs.indexOf(tab);
+    const nextIndex =
+      event.key === 'ArrowRight'
+        ? (currentIndex + 1) % tabs.length
+        : (currentIndex - 1 + tabs.length) % tabs.length;
+    setActiveTab(tabs[nextIndex]);
+  };
 
   return (
     <section className="calendar-panel" aria-label="Kalenderansicht">
@@ -215,33 +231,50 @@ export function PublicWasteCalendarPanels(props: Readonly<{
         <button
           type="button"
           role="tab"
+          id="public-waste-tab-list"
+          aria-controls="public-waste-panel-list"
           aria-selected={activeTab === 'list'}
+          tabIndex={activeTab === 'list' ? 0 : -1}
           className={`calendar-tab${activeTab === 'list' ? ' is-active' : ''}`}
           onClick={() => setActiveTab('list')}
+          onKeyDown={(event) => handleTabKeyDown(event, 'list')}
         >
           Liste
         </button>
         <button
           type="button"
           role="tab"
+          id="public-waste-tab-month"
+          aria-controls="public-waste-panel-month"
           aria-selected={activeTab === 'month'}
+          tabIndex={activeTab === 'month' ? 0 : -1}
           className={`calendar-tab${activeTab === 'month' ? ' is-active' : ''}`}
           onClick={() => setActiveTab('month')}
+          onKeyDown={(event) => handleTabKeyDown(event, 'month')}
         >
           Monat
         </button>
         <button
           type="button"
           role="tab"
+          id="public-waste-tab-year"
+          aria-controls="public-waste-panel-year"
           aria-selected={activeTab === 'year'}
+          tabIndex={activeTab === 'year' ? 0 : -1}
           className={`calendar-tab${activeTab === 'year' ? ' is-active' : ''}`}
           onClick={() => setActiveTab('year')}
+          onKeyDown={(event) => handleTabKeyDown(event, 'year')}
         >
           Jahr
         </button>
       </div>
       {activeTab === 'list' ? (
-        <div className="pickup-months">
+        <div
+          id="public-waste-panel-list"
+          role="tabpanel"
+          aria-labelledby="public-waste-tab-list"
+          className="pickup-months"
+        >
           {monthGroups.map(([monthKey, monthEntries]) => (
             <section key={monthKey} className="pickup-month-group" aria-labelledby={`month-${monthKey}`}>
               <h3 id={`month-${monthKey}`} className="pickup-month-title">
@@ -284,7 +317,12 @@ export function PublicWasteCalendarPanels(props: Readonly<{
           ))}
         </div>
       ) : activeTab === 'month' ? (
-        <section className="calendar-view">
+        <section
+          id="public-waste-panel-month"
+          role="tabpanel"
+          aria-labelledby="public-waste-tab-month"
+          className="calendar-view"
+        >
           <div className="calendar-view-header">
             <button
               type="button"
@@ -338,7 +376,12 @@ export function PublicWasteCalendarPanels(props: Readonly<{
           </div>
         </section>
       ) : (
-        <section className="calendar-view">
+        <section
+          id="public-waste-panel-year"
+          role="tabpanel"
+          aria-labelledby="public-waste-tab-year"
+          className="calendar-view"
+        >
           <div className="calendar-view-header">
             <button
               type="button"

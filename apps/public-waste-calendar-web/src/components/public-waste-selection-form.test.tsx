@@ -19,10 +19,10 @@ describe('PublicWasteSelectionForm', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Ahrensdorf' })).toBeTruthy();
-    expect(screen.queryByRole('combobox', { name: 'Ort suchen' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Ort suchen' })).toBeNull();
   });
 
-  it('renders a searchable combobox for long selections and filters by partial match', () => {
+  it('renders a searchable textbox for long selections and filters by partial match', () => {
     const onSelectOption = vi.fn();
 
     render(
@@ -43,7 +43,7 @@ describe('PublicWasteSelectionForm', () => {
       />
     );
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Straße suchen' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Straße suchen' }), {
       target: { value: 'hafen' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Am alten Hafen' }));

@@ -124,4 +124,29 @@ describe('PublicWasteCalendarPanels', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nächstes Jahr' }));
     expect(screen.getByRole('heading', { name: '2027' })).toBeTruthy();
   });
+
+  it('supports keyboard navigation between tabs', () => {
+    render(
+      <PublicWasteCalendarPanels
+        model={{
+          locationKey: 'r-1:c-1:s-1:h-1',
+          nextPickupDate: '2026-05-19',
+          listEntries: [],
+          monthBuckets: [],
+          yearBuckets: [],
+          activeFractionIds: ['bio'],
+          fractionOptions: [{ id: 'bio', label: 'Bioabfall', color: '#00AA00' }],
+        }}
+        onToggleFraction={vi.fn()}
+        onActivateEntry={vi.fn()}
+      />
+    );
+
+    const listTab = screen.getByRole('tab', { name: 'Liste' });
+    fireEvent.keyDown(listTab, { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: 'Monat' }).getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Monat' }), { key: 'ArrowLeft' });
+    expect(screen.getByRole('tab', { name: 'Liste' }).getAttribute('aria-selected')).toBe('true');
+  });
 });

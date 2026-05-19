@@ -74,7 +74,6 @@ export function PublicWasteSelectionForm(props: Readonly<{
               id={`selection-search-${props.nextStepLabel}`}
               className="selection-search-input"
               type="text"
-              role="combobox"
               aria-label={`${props.nextStepLabel} suchen`}
               value={searchQuery}
               autoFocus

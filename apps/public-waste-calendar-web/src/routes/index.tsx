@@ -15,7 +15,12 @@ import {
   type PublicWasteResolvedSelection,
   type PublicWasteSelectionState,
 } from '../lib/public-waste-contract.js';
-import { PUBLIC_WASTE_PREFERENCE_COOKIE } from '../lib/public-waste-preferences.server.js';
+import {
+  PUBLIC_WASTE_PREFERENCE_COOKIE,
+  readPublicWasteCookieValue,
+  serializeClearedPublicWastePreferenceCookie,
+  serializePublicWastePreferenceCookie,
+} from '../lib/public-waste-preferences.shared.js';
 
 const REFERENCE_DATE = new Date().toISOString().slice(0, 10);
 
@@ -36,26 +41,18 @@ const selectionStepKeys = {
 type SelectionStepKey = (typeof selectionStepKeys)[keyof typeof selectionStepKeys];
 
 const readStoredLocationSelection = (): PublicWasteResolvedSelection | null => {
-  const cookieName = `${PUBLIC_WASTE_PREFERENCE_COOKIE}=`;
-  const cookie = document.cookie
-    .split(';')
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(cookieName));
-
-  if (!cookie) {
+  const locationKey = readPublicWasteCookieValue(document.cookie, PUBLIC_WASTE_PREFERENCE_COOKIE);
+  if (!locationKey) {
     return null;
   }
 
-  return parsePublicWasteLocationKey(decodeURIComponent(cookie.slice(cookieName.length)));
+  return parsePublicWasteLocationKey(locationKey);
 };
 
 const writeStoredLocationSelection = (selection: PublicWasteResolvedSelection): void => {
-  document.cookie = [
-    `${PUBLIC_WASTE_PREFERENCE_COOKIE}=${encodeURIComponent(buildPublicWasteLocationKey(selection))}`,
-    'Path=/',
-    'Max-Age=31536000',
-    'SameSite=Lax',
-  ].join('; ');
+  document.cookie = serializePublicWastePreferenceCookie({
+    locationKey: buildPublicWasteLocationKey(selection),
+  });
 };
 
 const applySelectionStep = (
@@ -281,7 +278,7 @@ export function PublicWasteIndexPage() {
   };
 
   const handleResetLocation = async () => {
-    document.cookie = `${PUBLIC_WASTE_PREFERENCE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+    document.cookie = serializeClearedPublicWastePreferenceCookie();
     try {
       const nextState = await resolveSelectionState({}, []);
       React.startTransition(() => {

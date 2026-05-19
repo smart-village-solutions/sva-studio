@@ -1,18 +1,9 @@
-export const PUBLIC_WASTE_PREFERENCE_COOKIE = 'sva_public_waste_location';
+import {
+  PUBLIC_WASTE_PREFERENCE_COOKIE,
+  readPublicWasteCookieValue,
+} from './public-waste-preferences.shared.js';
 
-const readCookieValue = (cookieHeader: string, name: string): string | null => {
-  const cookieName = `${name}=`;
-  for (const rawPart of cookieHeader.split(';')) {
-    const part = rawPart.trim();
-    if (!part.startsWith(cookieName)) {
-      continue;
-    }
-
-    return decodeURIComponent(part.slice(cookieName.length));
-  }
-
-  return null;
-};
+export { PUBLIC_WASTE_PREFERENCE_COOKIE } from './public-waste-preferences.shared.js';
 
 export const writePublicWastePreferenceCookie = (input: {
   readonly locationKey: string;
@@ -35,5 +26,5 @@ export const readPublicWastePreferenceCookie = (request: Request): string | null
     return null;
   }
 
-  return readCookieValue(cookieHeader, PUBLIC_WASTE_PREFERENCE_COOKIE);
+  return readPublicWasteCookieValue(cookieHeader, PUBLIC_WASTE_PREFERENCE_COOKIE);
 };

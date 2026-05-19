@@ -11,10 +11,6 @@
   },
   "dependencies": {
     "@tabler/icons-react": "^3.41.1",
-    "@sva/core": "workspace:*",
-    "@sva/data-repositories": "workspace:*",
-    "@tanstack/react-router": "^1.168.24",
-    "@tanstack/react-start": "^1.167.49",
     "pg": "^8.16.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

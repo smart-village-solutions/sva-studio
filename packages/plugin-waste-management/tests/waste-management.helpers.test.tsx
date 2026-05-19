@@ -550,7 +550,13 @@ describe('waste management helper modules', () => {
     expect(state.setAssignmentsDialogMode).toHaveBeenCalledWith('create');
     expect(state.setAssignmentsDialogMode).toHaveBeenCalledWith('edit');
     expect(state.setAssignmentsDialogOpen).toHaveBeenCalledTimes(3);
-    expect(state.setLinkForm).toHaveBeenCalled();
+    expect(state.setLinkForm).toHaveBeenCalledWith({
+      id: 'link-1',
+      locationId: 'location-1',
+      tourId: 'tour-1',
+      startDate: '2026-05-01',
+      endDate: '2026-06-01',
+    });
     expect(state.setCalendarOpen).toHaveBeenCalledWith(true);
   });
 

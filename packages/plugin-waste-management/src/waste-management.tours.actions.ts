@@ -3,6 +3,7 @@ import type { WasteTourRecord } from '@sva/plugin-sdk';
 import {
   createDefaultLocationTourLinkForm,
   createDefaultTourForm,
+  mapLocationTourLinkToForm,
   mapTourToForm,
 } from './waste-management.tours.shared.js';
 import type { WasteToursState } from './waste-management.tours.state.js';
@@ -27,10 +28,15 @@ export const createWasteToursActions = (state: WasteToursState) => ({
     state.setMessage(null);
     state.setAssignmentsDialogOpen(true);
   },
-  openEditAssignmentsDialog: (tour: WasteTourRecord, _linkId: string) => {
+  openEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => {
+    const existingLink = state.masterDataOverview?.locationTourLinks.find((link) => link.id === linkId);
     state.setSelectedTour(tour);
     state.setAssignmentsDialogMode('edit');
-    state.setLinkForm({ ...createDefaultLocationTourLinkForm(), tourId: tour.id });
+    state.setLinkForm(
+      existingLink
+        ? mapLocationTourLinkToForm(existingLink)
+        : { ...createDefaultLocationTourLinkForm(), tourId: tour.id }
+    );
     state.setMessage(null);
     state.setAssignmentsDialogOpen(true);
   },

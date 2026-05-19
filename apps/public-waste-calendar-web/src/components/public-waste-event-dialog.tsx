@@ -1,9 +1,21 @@
+import React from 'react';
+
 import type { PublicWasteCalendarEntry } from '../lib/public-waste-contract.js';
 
 export function PublicWasteEventDialog(props: Readonly<{
   entry: PublicWasteCalendarEntry | null;
   onClose: () => void;
 }>) {
+  const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
+
+  React.useEffect(() => {
+    if (!props.entry) {
+      return;
+    }
+
+    closeButtonRef.current?.focus();
+  }, [props.entry]);
+
   if (!props.entry) {
     return null;
   }
@@ -17,6 +29,12 @@ export function PublicWasteEventDialog(props: Readonly<{
         role="dialog"
         aria-modal="true"
         aria-labelledby={dialogTitleId}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.stopPropagation();
+            props.onClose();
+          }
+        }}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="dialog-header">
@@ -26,7 +44,7 @@ export function PublicWasteEventDialog(props: Readonly<{
               {props.entry.fractionLabel}
             </h3>
           </div>
-          <button type="button" className="dialog-close" onClick={props.onClose}>
+          <button ref={closeButtonRef} type="button" className="dialog-close" onClick={props.onClose}>
             Schließen
           </button>
         </div>

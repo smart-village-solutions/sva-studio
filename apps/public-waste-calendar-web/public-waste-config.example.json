@@ -4,12 +4,6 @@
     "databaseUrl": "${PUBLIC_WASTE_DATABASE_URL}",
     "schemaName": "public"
   },
-  "preferences": {
-    "cookieName": "sva_public_waste_location",
-    "maxAgeSeconds": 31536000,
-    "sameSite": "lax",
-    "secure": false
-  },
   "pdf": {
     "urlTemplate": "https://example.invalid/waste/{locationKey}/{year}.pdf"
   }

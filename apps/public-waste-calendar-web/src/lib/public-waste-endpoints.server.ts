@@ -4,6 +4,8 @@ import { isPublicWasteUuid } from './public-waste-contract.js';
 import { renderPublicWasteIcal } from './public-waste-ical.server.js';
 import type { PublicWasteRepository } from './public-waste-repository.server.js';
 
+const INVALID_REQUEST_MESSAGE = 'Ungueltige Anfrage.';
+
 const jsonResponse = (payload: unknown, status = 200): Response =>
   new Response(JSON.stringify(payload), {
     status,
@@ -53,10 +55,7 @@ export const handlePublicWasteSelectionRequest = async (input: {
 
     return jsonResponse(payload);
   } catch (error) {
-    return jsonResponse(
-      { error: 'invalid_request', message: error instanceof Error ? error.message : 'invalid_request' },
-      400
-    );
+    return jsonResponse({ error: 'invalid_request', message: INVALID_REQUEST_MESSAGE }, 400);
   }
 };
 
@@ -101,10 +100,7 @@ export const handlePublicWasteCalendarRequest = async (input: {
       }).toString()}`,
     });
   } catch (error) {
-    return jsonResponse(
-      { error: 'invalid_request', message: error instanceof Error ? error.message : 'invalid_request' },
-      400
-    );
+    return jsonResponse({ error: 'invalid_request', message: INVALID_REQUEST_MESSAGE }, 400);
   }
 };
 
@@ -144,6 +140,6 @@ export const handlePublicWasteIcalRequest = async (input: {
       },
     });
   } catch (error) {
-    return new Response(error instanceof Error ? error.message : 'invalid_request', { status: 400 });
+    return new Response(INVALID_REQUEST_MESSAGE, { status: 400 });
   }
 };

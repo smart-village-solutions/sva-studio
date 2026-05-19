@@ -110,7 +110,7 @@ export const wasteManagementLocationTourLinkHandlers = {
       requestId,
       resourceId: linkId,
       audit: {
-        actionId: 'waste-management.location-tour-link.deleted',
+        actionId: 'waste-management.location-tour-link.updated',
         resourceType: 'waste_location_tour_link',
       },
       messages: {
@@ -155,7 +155,7 @@ export const wasteManagementLocationTourLinkHandlers = {
       requestId,
       resourceId: linkId,
       audit: {
-        actionId: 'waste-management.location-tour-link.updated',
+        actionId: 'waste-management.location-tour-link.deleted',
         resourceType: 'waste_location_tour_link',
       },
       messages: {

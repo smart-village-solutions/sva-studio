@@ -223,7 +223,7 @@ export const createPublicWasteRepository = (input: {
             AND cl.city_id = $1::uuid
             AND cl.street_id = $2::uuid
             AND ($3::uuid IS NULL OR cl.region_id = $3::uuid)
-            AND ($4::uuid IS NULL OR cl.house_number_id = $4::uuid)
+            AND ($4::uuid IS NULL OR cl.house_number_id IS NULL OR cl.house_number_id = $4::uuid)
           ORDER BY t.name ASC, f.name ASC, ltl.id ASC;
         `,
         values: [

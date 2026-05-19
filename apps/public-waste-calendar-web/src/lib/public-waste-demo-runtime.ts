@@ -5,7 +5,11 @@ import {
   type PublicWasteSelectionStep,
 } from './public-waste-contract.js';
 import { buildPublicWastePdfLinks } from './public-waste-api.js';
-import { PUBLIC_WASTE_PREFERENCE_COOKIE } from './public-waste-preferences.server.js';
+import {
+  PUBLIC_WASTE_PREFERENCE_COOKIE,
+  readPublicWasteCookieValue,
+  serializePublicWastePreferenceCookie,
+} from './public-waste-preferences.shared.js';
 import { projectPublicWasteCalendar } from './public-waste-projection.js';
 import { resolvePublicWasteSelection } from './public-waste-resolver.js';
 
@@ -102,19 +106,7 @@ const selectionStepLabels = {
   houseNumber: 'Hausnummer',
 } as const;
 
-const readCookieValue = (cookieHeader: string, name: string): string | null => {
-  const cookieName = `${name}=`;
-  for (const rawPart of cookieHeader.split(';')) {
-    const part = rawPart.trim();
-    if (!part.startsWith(cookieName)) {
-      continue;
-    }
-
-    return decodeURIComponent(part.slice(cookieName.length));
-  }
-
-  return null;
-};
+const readCookieValue = (cookieHeader: string, name: string): string | null => readPublicWasteCookieValue(cookieHeader, name);
 
 const parseLocationKey = (locationKey: string): Required<PublicWasteSelectionState> | null => {
   const [regionId, cityId, streetId, houseNumberId] = locationKey.split(':');
@@ -259,12 +251,10 @@ export const readDemoPublicWasteSelectionFromCookie = (): Required<PublicWasteSe
 };
 
 export const writeDemoPublicWasteSelectionCookie = (selection: Required<PublicWasteSelectionState>): void => {
-  document.cookie = [
-    `${PUBLIC_WASTE_PREFERENCE_COOKIE}=${encodeURIComponent(buildPublicWasteLocationKey(selection))}`,
-    'Path=/',
-    `Max-Age=${DEMO_COOKIE_MAX_AGE_SECONDS}`,
-    'SameSite=Lax',
-  ].join('; ');
+  document.cookie = serializePublicWastePreferenceCookie({
+    locationKey: buildPublicWasteLocationKey(selection),
+    maxAgeSeconds: DEMO_COOKIE_MAX_AGE_SECONDS,
+  });
 };
 
 export const advanceDemoPublicWasteSelection = (input: {

@@ -162,4 +162,31 @@ describe('public waste repository', () => {
       })
     );
   });
+
+  it('prefers exact street matches over catch-all rows for selection summaries', async () => {
+    const execute = vi.fn().mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ city_label: 'Rathenow', street_label: 'Hauptstraße', house_number_label: null }],
+    });
+
+    const repository = createPublicWasteRepository({
+      schemaName: 'waste',
+      execute,
+    });
+
+    await expect(
+      repository.loadSelectionSummary({
+        selection: {
+          cityId: 'city-1',
+          streetId: 'street-1',
+        },
+      })
+    ).resolves.toBe('Rathenow, Hauptstraße');
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining('CASE WHEN cl.street_id = $3::uuid THEN 0 ELSE 1 END ASC'),
+      })
+    );
+  });
 });

@@ -5,7 +5,7 @@ import type { PublicWasteCalendarEntry } from '../lib/public-waste-contract.js';
 const findDialogFocusableElements = (dialog: HTMLElement): readonly HTMLElement[] =>
   Array.from(
     dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
-  ).filter((element) => !element.hasAttribute('disabled') && !element.getAttribute('aria-hidden'));
+  ).filter((element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true');
 
 const trapDialogFocus = (event: React.KeyboardEvent, dialog: HTMLElement): void => {
   const focusableElements = findDialogFocusableElements(dialog);

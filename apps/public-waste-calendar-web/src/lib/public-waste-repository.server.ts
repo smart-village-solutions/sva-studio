@@ -406,6 +406,9 @@ export const createPublicWasteRepository = (input: {
             ${streetSelectionFilter.text}
             AND ($4::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $4::uuid)
             AND ($5::uuid IS NULL OR cl.house_number_id = $5::uuid)
+          ORDER BY
+            CASE WHEN cl.street_id = $3::uuid THEN 0 ELSE 1 END ASC,
+            CASE WHEN $5::uuid IS NOT NULL AND cl.house_number_id = $5::uuid THEN 0 ELSE 1 END ASC
           LIMIT 1;
         `,
         values: [

@@ -6,14 +6,22 @@ export function PublicWasteEventDialog(props: Readonly<{
   entry: PublicWasteCalendarEntry | null;
   onClose: () => void;
 }>) {
+  const dialogRef = React.useRef<HTMLDivElement | null>(null);
   const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const previousFocusRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
     if (!props.entry) {
       return;
     }
 
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     closeButtonRef.current?.focus();
+
+    return () => {
+      previousFocusRef.current?.focus();
+      previousFocusRef.current = null;
+    };
   }, [props.entry]);
 
   if (!props.entry) {
@@ -25,6 +33,7 @@ export function PublicWasteEventDialog(props: Readonly<{
   return (
     <div className="dialog-backdrop" role="presentation" onClick={props.onClose}>
       <div
+        ref={dialogRef}
         className="dialog-panel"
         role="dialog"
         aria-modal="true"
@@ -33,6 +42,37 @@ export function PublicWasteEventDialog(props: Readonly<{
           if (event.key === 'Escape') {
             event.stopPropagation();
             props.onClose();
+            return;
+          }
+
+          if (event.key !== 'Tab' || !dialogRef.current) {
+            return;
+          }
+
+          const focusableElements = Array.from(
+            dialogRef.current.querySelectorAll<HTMLElement>(
+              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            )
+          ).filter((element) => !element.hasAttribute('disabled') && !element.getAttribute('aria-hidden'));
+
+          if (focusableElements.length === 0) {
+            event.preventDefault();
+            return;
+          }
+
+          const firstElement = focusableElements[0];
+          const lastElement = focusableElements[focusableElements.length - 1];
+          const activeElement = document.activeElement;
+
+          if (event.shiftKey && activeElement === firstElement) {
+            event.preventDefault();
+            lastElement?.focus();
+            return;
+          }
+
+          if (!event.shiftKey && activeElement === lastElement) {
+            event.preventDefault();
+            firstElement?.focus();
           }
         }}
         onClick={(event) => event.stopPropagation()}

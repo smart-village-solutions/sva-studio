@@ -6,6 +6,7 @@ import type {
   PublicWasteSelectionStep,
 } from './public-waste-contract.js';
 import { calculatePublicWasteCalendarEntries } from './public-waste-calendar-occurrences.js';
+import { PUBLIC_WASTE_CATCH_ALL_STREET_ID } from './public-waste-contract.js';
 
 type SqlExecutionResult<TRow> = {
   readonly rowCount: number;
@@ -73,6 +74,19 @@ const mapOptions = (rows: readonly SelectionRow[]): readonly PublicWasteSelectab
     label: row.label,
   }));
 
+const isCatchAllStreetSelection = (streetId: string | undefined): streetId is typeof PUBLIC_WASTE_CATCH_ALL_STREET_ID =>
+  streetId === PUBLIC_WASTE_CATCH_ALL_STREET_ID;
+
+const createStreetSelectionFilter = (streetId: PublicWasteResolvedSelection['streetId']) => ({
+  text: `
+            AND (
+              ($2::text = '${PUBLIC_WASTE_CATCH_ALL_STREET_ID}' AND cl.street_id IS NULL)
+              OR ($2::text <> '${PUBLIC_WASTE_CATCH_ALL_STREET_ID}' AND (cl.street_id IS NULL OR cl.street_id = $3::uuid))
+            )
+  `,
+  values: [streetId, isCatchAllStreetSelection(streetId) ? null : streetId] as const,
+});
+
 const normalizeCustomDates = (
   value: readonly { readonly date?: unknown; readonly description?: unknown }[] | null
 ): readonly { readonly date: string; readonly description?: string }[] => {
@@ -138,7 +152,7 @@ export const createPublicWasteRepository = (input: {
             INNER JOIN ${schemaName}.waste_cities c ON c.id = cl.city_id
             WHERE cl.active = true
               AND t.active = true
-              AND ($1::uuid IS NULL OR cl.region_id = $1::uuid)
+              AND ($1::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $1::uuid)
             ORDER BY label ASC;
           `,
           values: [effectiveRegionId ?? null],
@@ -149,19 +163,36 @@ export const createPublicWasteRepository = (input: {
       if (!query.selection.streetId) {
         const result = await input.execute<SelectionRow>({
           text: `
-            SELECT DISTINCT
-              s.id,
-              s.name AS label,
-              (s.name = 'Alle Straßen') AS is_catch_all,
-              CASE WHEN s.name = 'Alle Straßen' THEN 0 ELSE 1 END AS sort_priority
-            FROM ${schemaName}.waste_collection_locations cl
-            INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
-            INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
-            INNER JOIN ${schemaName}.waste_streets s ON s.id = cl.street_id
-            WHERE cl.active = true
-              AND t.active = true
-              AND cl.city_id = $1::uuid
-              AND ($2::uuid IS NULL OR cl.region_id = $2::uuid)
+            SELECT DISTINCT *
+            FROM (
+              SELECT
+                s.id::text AS id,
+                s.name AS label,
+                false AS is_catch_all,
+                1 AS sort_priority
+              FROM ${schemaName}.waste_collection_locations cl
+              INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
+              INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
+              INNER JOIN ${schemaName}.waste_streets s ON s.id = cl.street_id
+              WHERE cl.active = true
+                AND t.active = true
+                AND cl.city_id = $1::uuid
+                AND ($2::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $2::uuid)
+              UNION
+              SELECT
+                '${PUBLIC_WASTE_CATCH_ALL_STREET_ID}' AS id,
+                'Alle Straßen' AS label,
+                true AS is_catch_all,
+                0 AS sort_priority
+              FROM ${schemaName}.waste_collection_locations cl
+              INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
+              INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
+              WHERE cl.active = true
+                AND t.active = true
+                AND cl.city_id = $1::uuid
+                AND cl.street_id IS NULL
+                AND ($2::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $2::uuid)
+            ) street_options
             ORDER BY
               sort_priority ASC,
               label ASC;
@@ -169,6 +200,10 @@ export const createPublicWasteRepository = (input: {
           values: [query.selection.cityId, effectiveRegionId ?? null],
         });
         return { step: 'street', options: mapOptions(result.rows) };
+      }
+
+      if (isCatchAllStreetSelection(query.selection.streetId)) {
+        return { step: 'houseNumber', options: [] };
       }
 
       if (query.selection.houseNumberId) {
@@ -186,7 +221,7 @@ export const createPublicWasteRepository = (input: {
             AND t.active = true
             AND cl.city_id = $1::uuid
             AND cl.street_id = $2::uuid
-            AND ($3::uuid IS NULL OR cl.region_id = $3::uuid)
+            AND ($3::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $3::uuid)
           ORDER BY label ASC;
         `,
         values: [query.selection.cityId, query.selection.streetId, effectiveRegionId ?? null],
@@ -198,6 +233,7 @@ export const createPublicWasteRepository = (input: {
       readonly selection: PublicWasteResolvedSelection;
       readonly referenceDate: string;
     }): Promise<readonly PublicWasteCalendarEntry[]> {
+      const streetSelectionFilter = createStreetSelectionFilter(query.selection.streetId);
       const linkedToursResult = await input.execute<CalendarEntryRow>({
         text: `
           SELECT
@@ -221,14 +257,14 @@ export const createPublicWasteRepository = (input: {
           WHERE cl.active = true
             AND t.active = true
             AND cl.city_id = $1::uuid
-            AND cl.street_id = $2::uuid
-            AND ($3::uuid IS NULL OR cl.region_id = $3::uuid)
-            AND ($4::uuid IS NULL OR cl.house_number_id IS NULL OR cl.house_number_id = $4::uuid)
+            ${streetSelectionFilter.text}
+            AND ($4::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $4::uuid)
+            AND ($5::uuid IS NULL OR cl.house_number_id IS NULL OR cl.house_number_id = $5::uuid)
           ORDER BY t.name ASC, f.name ASC, ltl.id ASC;
         `,
         values: [
           query.selection.cityId,
-          query.selection.streetId,
+          ...streetSelectionFilter.values,
           query.selection.regionId ?? null,
           query.selection.houseNumberId ?? null,
         ],
@@ -350,6 +386,7 @@ export const createPublicWasteRepository = (input: {
     async loadSelectionSummary(query: {
       readonly selection: PublicWasteResolvedSelection;
     }): Promise<string> {
+      const streetSelectionFilter = createStreetSelectionFilter(query.selection.streetId);
       const result = await input.execute<{
         readonly city_label: string;
         readonly street_label: string | null;
@@ -358,7 +395,7 @@ export const createPublicWasteRepository = (input: {
         text: `
           SELECT
             c.name AS city_label,
-            s.name AS street_label,
+            COALESCE(s.name, 'Alle Straßen') AS street_label,
             hn.number AS house_number_label
           FROM ${schemaName}.waste_collection_locations cl
           INNER JOIN ${schemaName}.waste_cities c ON c.id = cl.city_id
@@ -366,14 +403,14 @@ export const createPublicWasteRepository = (input: {
           LEFT JOIN ${schemaName}.waste_house_numbers hn ON hn.id = cl.house_number_id
           WHERE cl.active = true
             AND cl.city_id = $1::uuid
-            AND cl.street_id = $2::uuid
-            AND ($3::uuid IS NULL OR cl.region_id = $3::uuid)
-            AND ($4::uuid IS NULL OR cl.house_number_id = $4::uuid)
+            ${streetSelectionFilter.text}
+            AND ($4::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $4::uuid)
+            AND ($5::uuid IS NULL OR cl.house_number_id = $5::uuid)
           LIMIT 1;
         `,
         values: [
           query.selection.cityId,
-          query.selection.streetId,
+          ...streetSelectionFilter.values,
           query.selection.regionId ?? null,
           query.selection.houseNumberId ?? null,
         ],
@@ -381,7 +418,15 @@ export const createPublicWasteRepository = (input: {
 
       const row = result.rows[0];
       if (!row) {
-        return [query.selection.cityId, [query.selection.streetId, query.selection.houseNumberId].filter(Boolean).join(' ')]
+        return [
+          query.selection.cityId,
+          [
+            isCatchAllStreetSelection(query.selection.streetId) ? 'Alle Straßen' : query.selection.streetId,
+            query.selection.houseNumberId,
+          ]
+            .filter(Boolean)
+            .join(' '),
+        ]
           .filter(Boolean)
           .join(', ');
       }

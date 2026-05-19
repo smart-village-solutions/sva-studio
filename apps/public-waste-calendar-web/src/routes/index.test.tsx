@@ -157,4 +157,49 @@ describe('PublicWasteIndexPage', () => {
     expect(screen.getByText('12')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'In Kalender übernehmen' })).toBeTruthy();
   });
+
+  it('clears stale stored selections and falls back to the next valid selection step', async () => {
+    document.cookie =
+      'sva_public_waste_location=~%3A22222222-2222-4222-8222-222222222222%3A33333333-3333-4333-8333-333333333333%3A44444444-4444-4444-8444-444444444444; Path=/';
+
+    fetchMock.mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+
+      if (url.includes('/api/public-waste/selection') && url.includes('cityId=22222222-2222-4222-8222-222222222222')) {
+        return new Response(
+          JSON.stringify({
+            status: 'incomplete',
+            step: 'street',
+            options: [{ id: '55555555-5555-4555-8555-555555555555', label: 'Berliner Straße' }],
+          }),
+          { headers: { 'content-type': 'application/json' } }
+        );
+      }
+
+      if (url.includes('/api/public-waste/selection')) {
+        return new Response(JSON.stringify(selectionPayloads.root), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+
+    render(<PublicWasteIndexPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Berliner Straße' })).toBeTruthy();
+    });
+
+    expect(document.cookie).toContain('sva_public_waste_location=');
+    expect(document.cookie).not.toContain(
+      '~%3A22222222-2222-4222-8222-222222222222%3A33333333-3333-4333-8333-333333333333%3A44444444-4444-4444-8444-444444444444'
+    );
+    expect(
+      fetchMock.mock.calls.some(([input]) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        return url.includes('/api/public-waste/calendar');
+      })
+    ).toBe(false);
+  });
 });

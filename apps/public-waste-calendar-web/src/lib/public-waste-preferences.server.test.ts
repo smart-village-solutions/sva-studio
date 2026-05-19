@@ -7,7 +7,7 @@ import {
 } from './public-waste-preferences.server.js';
 
 describe('public waste preferences', () => {
-  it('writes one stable http-only cookie for the resolved location', () => {
+  it('writes one stable cookie header for the resolved location', () => {
     const header = writePublicWastePreferenceCookie({
       locationKey: 'r-1:c-1:s-1:h-1',
       maxAgeSeconds: 3600,
@@ -16,8 +16,8 @@ describe('public waste preferences', () => {
     });
 
     expect(header).toContain(`${PUBLIC_WASTE_PREFERENCE_COOKIE}=r-1%3Ac-1%3As-1%3Ah-1`);
-    expect(header).toContain('HttpOnly');
     expect(header).toContain('SameSite=Lax');
+    expect(header).not.toContain('HttpOnly');
   });
 
   it('reads the stored location key from the request cookie header', () => {

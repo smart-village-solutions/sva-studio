@@ -6,8 +6,11 @@ import { PublicWasteEventDialog } from './public-waste-event-dialog.js';
 describe('PublicWasteEventDialog', () => {
   it('focuses the close button and closes on escape', () => {
     const onClose = vi.fn();
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
 
-    render(
+    const { unmount } = render(
       <PublicWasteEventDialog
         entry={{
           id: 'pickup-1',
@@ -25,5 +28,12 @@ describe('PublicWasteEventDialog', () => {
 
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Tab' });
+    expect(document.activeElement).toBe(closeButton);
+
+    unmount();
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
   });
 });

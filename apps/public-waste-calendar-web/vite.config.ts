@@ -15,7 +15,6 @@ import { createPublicWasteRepository } from './src/lib/public-waste-repository.s
 const publicWasteApiPlugin = (): Plugin => {
   const configPath = [
     resolve(process.cwd(), 'public-waste-config.local.json'),
-    resolve(process.cwd(), 'public-waste-config.example.json'),
   ].find((path) => existsSync(path));
 
   const bootstrapState = readPublicWasteBootstrapStateFromEnvironment({

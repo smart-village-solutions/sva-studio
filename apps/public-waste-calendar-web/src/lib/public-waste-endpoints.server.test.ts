@@ -79,6 +79,31 @@ describe('public waste endpoints', () => {
     await expect(response.text()).resolves.toContain('SUMMARY:Bioabfall');
   });
 
+  it('accepts the catch-all street sentinel for resolved calendar requests', async () => {
+    const loadCalendarEntries = vi.fn().mockResolvedValue([]);
+    const loadSelectionSummary = vi.fn().mockResolvedValue('Musterstadt, Alle Straßen');
+
+    const response = await handlePublicWasteCalendarRequest({
+      repository: {
+        loadCalendarEntries,
+        loadSelectionSummary,
+      },
+      request: new Request(
+        'https://example.invalid/public-waste/calendar?cityId=22222222-2222-4222-8222-222222222222&streetId=all&referenceDate=2026-05-18'
+      ),
+      pdfUrlTemplate: 'https://example.invalid/{locationKey}/{year}.pdf',
+    });
+
+    expect(response.status).toBe(200);
+    expect(loadCalendarEntries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selection: expect.objectContaining({
+          streetId: 'all',
+        }),
+      })
+    );
+  });
+
   it('returns a generic invalid_request payload for malformed selection queries', async () => {
     const response = await handlePublicWasteSelectionRequest({
       repository: {

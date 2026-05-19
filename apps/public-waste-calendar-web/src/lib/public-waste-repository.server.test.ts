@@ -30,6 +30,39 @@ describe('public waste repository', () => {
     });
   });
 
+  it('surfaces the catch-all street option for city-wide collection locations', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ id: 'r-1', label: 'Prignitz' }],
+      })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ id: 'all', label: 'Alle Straßen', is_catch_all: true }],
+      });
+
+    const repository = createPublicWasteRepository({
+      schemaName: 'waste',
+      execute,
+    });
+
+    await expect(
+      repository.listSelectionOptions({
+        selection: { regionId: 'r-1', cityId: 'c-1' },
+      })
+    ).resolves.toMatchObject({
+      step: 'street',
+      options: [{ id: 'all', label: 'Alle Straßen' }],
+    });
+
+    expect(execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining("SELECT DISTINCT *"),
+      })
+    );
+  });
+
   it('includes street-wide collection locations when a specific house number is selected', async () => {
     const execute = vi
       .fn()
@@ -73,7 +106,59 @@ describe('public waste repository', () => {
 
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({
-        text: expect.stringContaining('cl.house_number_id IS NULL OR cl.house_number_id = $4::uuid'),
+        text: expect.stringContaining('cl.house_number_id IS NULL OR cl.house_number_id = $5::uuid'),
+      })
+    );
+  });
+
+  it('includes all-street and all-region collection locations for concrete selections', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            link_id: 'link-1',
+            location_id: 'location-1',
+            link_start_date: '2026-01-01',
+            link_end_date: null,
+            tour_id: 'tour-1',
+            tour_name: 'Restmuell',
+            tour_recurrence: 'weekly',
+            tour_first_date: '2026-01-07',
+            tour_end_date: null,
+            tour_custom_dates: null,
+            fraction_id: 'fraction-1',
+            fraction_label: 'Restmuell',
+            fraction_color: '#111111',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const repository = createPublicWasteRepository({
+      schemaName: 'waste',
+      execute,
+    });
+
+    await repository.loadCalendarEntries({
+      selection: {
+        cityId: 'city-1',
+        streetId: 'street-1',
+        regionId: 'region-1',
+      },
+      referenceDate: '2026-05-19',
+    });
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining("cl.region_id IS NULL OR cl.region_id = $4::uuid"),
+      })
+    );
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining("cl.street_id IS NULL OR cl.street_id = $3::uuid"),
       })
     );
   });

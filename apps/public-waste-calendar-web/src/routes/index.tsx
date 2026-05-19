@@ -40,6 +40,18 @@ const selectionStepKeys = {
 
 type SelectionStepKey = (typeof selectionStepKeys)[keyof typeof selectionStepKeys];
 
+const appendSelectionPathItem = (
+  selectionPath: readonly PublicWasteSelectionPathItem[],
+  response: Pick<PublicWasteSelectionResponse, 'step'>,
+  option: { readonly label: string }
+): readonly PublicWasteSelectionPathItem[] => [
+  ...selectionPath,
+  {
+    step: selectionStepLabels[response.step],
+    label: option.label,
+  },
+];
+
 const readStoredLocationSelection = (): PublicWasteResolvedSelection | null => {
   const locationKey = readPublicWasteCookieValue(document.cookie, PUBLIC_WASTE_PREFERENCE_COOKIE);
   if (!locationKey) {
@@ -91,7 +103,8 @@ type PageState =
 
 const resolveSelectionState = async (
   initialSelection: PublicWasteSelectionState,
-  initialSelectionPath: readonly PublicWasteSelectionPathItem[]
+  initialSelectionPath: readonly PublicWasteSelectionPathItem[],
+  preferredSelection?: PublicWasteResolvedSelection
 ): Promise<
   | {
       readonly status: 'incomplete';
@@ -140,16 +153,14 @@ const resolveSelectionState = async (
       };
     }
 
-    if (response.options.length === 1) {
-      const [singleOption] = response.options;
-      selection = applySelectionStep(selection, response.step, singleOption.id);
-      selectionPath = [
-        ...selectionPath.filter((_, index) => index < selectionPath.length),
-        {
-          step: selectionStepLabels[response.step],
-          label: singleOption.label,
-        },
-      ];
+    const preferredOptionId = preferredSelection?.[selectionStepKeys[response.step]];
+    const selectedOption =
+      response.options.find((option) => option.id === preferredOptionId) ??
+      (response.options.length === 1 ? response.options[0] : undefined);
+
+    if (selectedOption) {
+      selection = applySelectionStep(selection, response.step, selectedOption.id);
+      selectionPath = appendSelectionPathItem(selectionPath, response, selectedOption);
       continue;
     }
 
@@ -188,9 +199,13 @@ export function PublicWasteIndexPage() {
     const load = async () => {
       try {
         const restoredSelection = readStoredLocationSelection();
-        const nextState = await resolveSelectionState(restoredSelection ?? {}, []);
+        const nextState = await resolveSelectionState({}, [], restoredSelection ?? undefined);
         if (cancelled) {
           return;
+        }
+
+        if (restoredSelection && nextState.status !== 'complete') {
+          document.cookie = serializeClearedPublicWastePreferenceCookie();
         }
 
         if (nextState.status === 'complete') {

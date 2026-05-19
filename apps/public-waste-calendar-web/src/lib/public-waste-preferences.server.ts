@@ -15,7 +15,6 @@ export const writePublicWastePreferenceCookie = (input: {
     `${PUBLIC_WASTE_PREFERENCE_COOKIE}=${encodeURIComponent(input.locationKey)}`,
     'Path=/',
     `Max-Age=${input.maxAgeSeconds}`,
-    'HttpOnly',
     `SameSite=${input.sameSite === 'none' ? 'None' : 'Lax'}`,
     ...(input.secure ? ['Secure'] : []),
   ].join('; ');

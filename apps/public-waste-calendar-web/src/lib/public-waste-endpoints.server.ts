@@ -1,6 +1,6 @@
 import { loadNextPublicWasteSelection, loadResolvedPublicWasteCalendar } from './public-waste-api.js';
 import { buildPublicWastePdfLinks } from './public-waste-api.js';
-import { isPublicWasteUuid } from './public-waste-contract.js';
+import { isPublicWasteStreetSelectionId, isPublicWasteUuid } from './public-waste-contract.js';
 import { renderPublicWasteIcal } from './public-waste-ical.server.js';
 import type { PublicWasteRepository } from './public-waste-repository.server.js';
 
@@ -33,6 +33,25 @@ const readOptionalParam = (url: URL, key: string): string | undefined => {
   return value;
 };
 
+const readRequiredStreetParam = (url: URL, key: string): string => {
+  const value = url.searchParams.get(key)?.trim();
+  if (!value || !isPublicWasteStreetSelectionId(value)) {
+    throw new Error(`missing_query_param:${key}`);
+  }
+  return value;
+};
+
+const readOptionalStreetParam = (url: URL, key: string): string | undefined => {
+  const value = url.searchParams.get(key)?.trim();
+  if (!value) {
+    return undefined;
+  }
+  if (!isPublicWasteStreetSelectionId(value)) {
+    throw new Error(`invalid_query_param:${key}`);
+  }
+  return value;
+};
+
 const normalizeDateForIcal = (value: string): string => value.replaceAll('-', '');
 
 export const handlePublicWasteSelectionRequest = async (input: {
@@ -47,7 +66,7 @@ export const handlePublicWasteSelectionRequest = async (input: {
         selection: {
           regionId: readOptionalParam(url, 'regionId'),
           cityId: readOptionalParam(url, 'cityId'),
-          streetId: readOptionalParam(url, 'streetId'),
+          streetId: readOptionalStreetParam(url, 'streetId'),
           houseNumberId: readOptionalParam(url, 'houseNumberId'),
         },
       },
@@ -69,7 +88,7 @@ export const handlePublicWasteCalendarRequest = async (input: {
     const selection = {
       regionId: readOptionalParam(url, 'regionId'),
       cityId: readRequiredParam(url, 'cityId'),
-      streetId: readRequiredParam(url, 'streetId'),
+      streetId: readRequiredStreetParam(url, 'streetId'),
       houseNumberId: readOptionalParam(url, 'houseNumberId'),
     } as const;
     const payload = await loadResolvedPublicWasteCalendar({
@@ -116,7 +135,7 @@ export const handlePublicWasteIcalRequest = async (input: {
         selection: {
           regionId: readOptionalParam(url, 'regionId'),
           cityId: readRequiredParam(url, 'cityId'),
-          streetId: readRequiredParam(url, 'streetId'),
+          streetId: readRequiredStreetParam(url, 'streetId'),
           houseNumberId: readOptionalParam(url, 'houseNumberId'),
         },
         referenceDate: url.searchParams.get('referenceDate') ?? new Date().toISOString().slice(0, 10),

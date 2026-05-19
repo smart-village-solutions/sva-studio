@@ -50,10 +50,13 @@ export type PublicWasteFractionOption = {
 };
 
 const PUBLIC_WASTE_LOCATION_KEY_EMPTY_SEGMENT = '~';
+export const PUBLIC_WASTE_CATCH_ALL_STREET_ID = 'all';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const isPublicWasteUuid = (value: string): boolean => UUID_PATTERN.test(value);
+export const isPublicWasteStreetSelectionId = (value: string): boolean =>
+  value === PUBLIC_WASTE_CATCH_ALL_STREET_ID || isPublicWasteUuid(value);
 
 export const buildPublicWasteLocationKey = (state: PublicWasteResolvedSelection): string =>
   [
@@ -65,7 +68,7 @@ export const buildPublicWasteLocationKey = (state: PublicWasteResolvedSelection)
 
 export const parsePublicWasteLocationKey = (locationKey: string): PublicWasteResolvedSelection | null => {
   const [rawRegionId, cityId, streetId, rawHouseNumberId] = locationKey.split(':');
-  if (!cityId || !streetId || !isPublicWasteUuid(cityId) || !isPublicWasteUuid(streetId)) {
+  if (!cityId || !streetId || !isPublicWasteUuid(cityId) || !isPublicWasteStreetSelectionId(streetId)) {
     return null;
   }
 

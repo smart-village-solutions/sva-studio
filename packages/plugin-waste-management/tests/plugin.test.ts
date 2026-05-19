@@ -112,6 +112,10 @@ describe('pluginWasteManagement contract', () => {
         titleKey: 'wasteManagement.audit.locationTourLinkUpdated',
       },
       {
+        eventType: 'waste-management.location-tour-link.deleted',
+        titleKey: 'wasteManagement.audit.locationTourLinkDeleted',
+      },
+      {
         eventType: 'waste-management.location-tour-link.bulk-created',
         titleKey: 'wasteManagement.audit.locationTourLinkBulkCreated',
       },

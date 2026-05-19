@@ -15,6 +15,7 @@ export const wasteManagementPluginTranslationsDEAudit = {
     "collectionLocationUpdated": "Abholort aktualisiert",
     "locationTourLinkCreated": "Tour-Zuordnung angelegt",
     "locationTourLinkUpdated": "Tour-Zuordnung aktualisiert",
+    "locationTourLinkDeleted": "Tour-Zuordnung gelöscht",
     "locationTourLinkBulkCreated": "Tour-Zuordnungen gesammelt angelegt",
     "tourCreated": "Tour angelegt",
     "tourUpdated": "Tour aktualisiert",

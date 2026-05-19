@@ -97,11 +97,19 @@ SET location_id = EXCLUDED.location_id,
   values: [input.id, input.locationId, input.tourId, input.startDate ?? null, input.endDate ?? null],
 });
 
+const buildLocationTourLinkDeleteStatement = (id: string): SqlStatement => ({
+  text: `
+DELETE FROM waste_location_tour_links
+WHERE id = $1::uuid;
+`,
+  values: [id],
+});
+
 export const createWasteLocationTourLinkRepositoryPart = (
   executor: SqlExecutor
 ): Pick<
   WasteMasterDataRepository,
-  'listWasteLocationTourLinks' | 'getWasteLocationTourLinkById' | 'upsertWasteLocationTourLink'
+  'listWasteLocationTourLinks' | 'getWasteLocationTourLinkById' | 'upsertWasteLocationTourLink' | 'deleteWasteLocationTourLink'
 > => ({
   async listWasteLocationTourLinks(filter) {
     const result = await executor.execute<WasteLocationTourLinkRow>(buildLocationTourLinkListStatement(filter));
@@ -114,10 +122,14 @@ export const createWasteLocationTourLinkRepositoryPart = (
   async upsertWasteLocationTourLink(input) {
     await executor.execute(buildLocationTourLinkUpsertStatement(input));
   },
+  async deleteWasteLocationTourLink(id) {
+    await executor.execute(buildLocationTourLinkDeleteStatement(id));
+  },
 });
 
 export const wasteLocationTourLinkStatements = {
   listWasteLocationTourLinks: buildLocationTourLinkListStatement,
   getWasteLocationTourLinkById: buildLocationTourLinkSelectStatement,
   upsertWasteLocationTourLink: buildLocationTourLinkUpsertStatement,
+  deleteWasteLocationTourLink: buildLocationTourLinkDeleteStatement,
 } as const;

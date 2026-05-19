@@ -43,6 +43,7 @@ type WasteManagementToursAssignmentsCopy = Readonly<{
     descriptionFallback: string;
   }>;
   meta: Readonly<Record<string, string>>;
+  workspace?: Readonly<Record<string, string>>;
   messages: CrudMessagesCopy;
 }>;
 
@@ -100,6 +101,7 @@ export const createToursAssignmentsTranslations = <const TCopy extends WasteMana
     fields: copy.fields,
     dialog: copy.dialog,
     meta: copy.meta,
+    workspace: copy.workspace,
     messages: createCrudMessages(copy.messages),
   }) as const;
 

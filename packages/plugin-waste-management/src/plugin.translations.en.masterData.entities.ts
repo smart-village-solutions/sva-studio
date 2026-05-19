@@ -148,6 +148,23 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       deleteForbidden: 'Missing permission to delete waste collection locations.',
       deleteConflict: 'The waste collection location cannot be deleted because assignments still exist.',
     },
+    assignmentEditor: {
+      title: 'Tour assignments',
+      description: 'Select the tours that should be assigned to this collection location.',
+      empty: 'No tours are currently available.',
+      actions: {
+        save: 'Save assignments',
+        saving: 'Saving…',
+      },
+      meta: {
+        selectedCount: '{{value}} tours assigned',
+      },
+      messages: {
+        saveSuccess: 'The tour assignments were updated.',
+        saveError: 'The tour assignments could not be saved.',
+        saveForbidden: 'Missing permission to save the tour assignments.',
+      },
+    },
     bulk: {
       actions: {
         openAssign: 'Assign tour to {{value}} selected',

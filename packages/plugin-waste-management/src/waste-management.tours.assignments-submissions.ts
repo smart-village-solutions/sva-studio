@@ -1,12 +1,15 @@
 import { startTransition, type FormEvent } from 'react';
 
 import {
+  createWasteManagementLocationTourLinksBulk,
   createWasteManagementLocationTourLink,
+  deleteWasteManagementLocationTourLink,
   updateWasteManagementLocationTourLink,
 } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
 import { toCreateLocationTourLinkInput, toUpdateLocationTourLinkInput } from './waste-management.tours.shared.js';
 import type { WasteToursState } from './waste-management.tours.state.js';
+import { wasteMasterDataInputMappers } from './waste-management.master-data.forms.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
@@ -19,18 +22,72 @@ export const createWasteToursAssignmentSubmitHandlers = ({
   readonly pt: Translate;
   readonly loadOverview: (active?: boolean) => Promise<void>;
 }) => ({
-  onSubmitAssignments: async (event: FormEvent<HTMLFormElement>) => {
+  onSubmitAssignments: async (event: FormEvent<HTMLFormElement>, selectedLocationIds: readonly string[]) => {
     event.preventDefault();
     state.setSaving(true);
     state.setMessage(null);
     try {
-      if (state.assignmentsDialogMode === 'create') {
-        await createWasteManagementLocationTourLink(toCreateLocationTourLinkInput(state.linkForm));
+      const tourId = state.selectedTour?.id ?? state.linkForm.tourId.trim();
+      if (!tourId) {
+        state.setMessage({
+          kind: 'error',
+          text: pt('tours.assignments.messages.saveError'),
+        });
+        return;
+      }
+
+      const currentLinks = (state.masterDataOverview?.locationTourLinks ?? []).filter((link) => link.tourId === tourId);
+      const currentLinkByLocationId = new Map(currentLinks.map((link) => [link.locationId, link] as const));
+      const uniqueSelectedLocationIds = Array.from(
+        new Set(selectedLocationIds.map((locationId) => locationId.trim()).filter((locationId) => locationId.length > 0))
+      );
+      const selectedLocationIdSet = new Set(uniqueSelectedLocationIds);
+      const linksToDelete = currentLinks.filter((link) => !selectedLocationIdSet.has(link.locationId));
+      const locationIdsToCreate = uniqueSelectedLocationIds.filter((locationId) => !currentLinkByLocationId.has(locationId));
+
+      if (state.assignmentsDialogMode === 'create' && uniqueSelectedLocationIds.length <= 1) {
+        const locationId = uniqueSelectedLocationIds[0] ?? state.linkForm.locationId.trim();
+        if (locationId) {
+          await createWasteManagementLocationTourLink(
+            toCreateLocationTourInput({
+              ...state.linkForm,
+              locationId,
+              tourId,
+            })
+          );
+        }
       } else {
-        await updateWasteManagementLocationTourLink(
-          state.linkForm.id,
-          toUpdateLocationTourLinkInput(state.linkForm)
-        );
+        if (locationIdsToCreate.length > 0) {
+          await createWasteManagementLocationTourLinksBulk(
+            wasteMasterDataInputMappers.toCreateLocationTourLinksBulkInput(
+              {
+                tourId,
+                startDate: state.linkForm.startDate,
+                endDate: state.linkForm.endDate,
+              },
+              locationIdsToCreate,
+            )
+          );
+        }
+
+        if (linksToDelete.length > 0) {
+          await Promise.all(linksToDelete.map((link) => deleteWasteManagementLocationTourLink(link.id)));
+        }
+
+        if (
+          locationIdsToCreate.length === 0 &&
+          linksToDelete.length === 0 &&
+          state.assignmentsDialogMode === 'edit' &&
+          state.linkForm.id.trim().length > 0
+        ) {
+          await updateWasteManagementLocationTourLink(
+            state.linkForm.id,
+            toUpdateLocationTourInput({
+              ...state.linkForm,
+              tourId,
+            })
+          );
+        }
       }
       await loadOverview(true);
       startTransition(() => {
@@ -38,7 +95,7 @@ export const createWasteToursAssignmentSubmitHandlers = ({
         state.setMessage({
           kind: 'success',
           text:
-            state.assignmentsDialogMode === 'create'
+            state.assignmentsDialogMode === 'create' && currentLinks.length === 0
               ? pt('tours.assignments.messages.createSuccess')
               : pt('tours.assignments.messages.updateSuccess'),
         });
@@ -57,3 +114,6 @@ export const createWasteToursAssignmentSubmitHandlers = ({
     }
   },
 });
+
+const toCreateLocationTourInput = toCreateLocationTourLinkInput;
+const toUpdateLocationTourInput = toUpdateLocationTourLinkInput;

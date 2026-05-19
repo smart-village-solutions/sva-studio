@@ -13,6 +13,7 @@ import {
   createWasteManagementStreet,
   createWasteManagementTour,
   createWasteManagementTourDateShift,
+  deleteWasteManagementLocationTourLink,
   getWasteManagementHistoryOverview,
   getWasteManagementImportCatalog,
   getWasteManagementJobDetail,
@@ -796,6 +797,24 @@ describe('waste-management api client', () => {
       '/api/v1/waste-management/location-tour-links/link-3',
       expect.objectContaining({
         method: 'PUT',
+      })
+    );
+  });
+
+  it('deletes waste location-tour links through the host facade', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: null }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    await deleteWasteManagementLocationTourLink('link/delete me');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/location-tour-links/link%2Fdelete%20me',
+      expect.objectContaining({
+        method: 'DELETE',
       })
     );
   });

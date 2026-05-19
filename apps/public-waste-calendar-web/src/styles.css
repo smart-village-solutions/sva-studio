@@ -1,0 +1,652 @@
+:root {
+  color-scheme: light;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  color: rgb(28 28 28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: transparent;
+}
+
+#root {
+  min-height: 100%;
+}
+
+.page-shell {
+  min-height: 100%;
+  padding: 0;
+}
+
+.panel {
+  width: 100%;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: clamp(0.75rem, 2vw, 1.5rem);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.body-copy {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.section-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.4rem;
+}
+
+.selection-panel,
+.calendar-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.pickup-months {
+  display: grid;
+  gap: 2rem;
+}
+
+.pickup-month-group {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.pickup-month-title {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.selection-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.selection-path {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.selection-path-item,
+.selection-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 0.9rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.selection-header {
+  display: grid;
+  gap: calc(1rem + 12px) 1.5rem;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.selection-header-main {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.selection-header-actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.selection-summary-block {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.selection-summary-line {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.selection-summary-action-row {
+  display: flex;
+  align-items: center;
+}
+
+.selection-summary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgb(54 54 54);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.selection-summary-link-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.selection-path-step {
+  color: rgb(96 96 96);
+  font-size: 0.9rem;
+}
+
+.selection-path-label {
+  font-size: 1rem;
+}
+
+.selection-combobox,
+.selection-search-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.selection-search-input {
+  min-height: 2.9rem;
+  width: 100%;
+  padding: 0.75rem 0.95rem;
+  border: 1px solid rgb(122 122 122);
+  border-radius: 1rem;
+  background: rgb(255 255 255);
+  color: inherit;
+  font: inherit;
+}
+
+.selection-option,
+.selection-trigger,
+.selection-path-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgb(122 122 122);
+  border-radius: 999px;
+  background: rgb(247 247 247);
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.selection-option:hover,
+.selection-trigger:hover,
+.selection-path-action:hover {
+  background: rgb(239 239 239);
+}
+
+.selection-option:focus-visible,
+.selection-trigger:focus-visible,
+.selection-path-action:focus-visible,
+.selection-summary-link:focus-visible,
+.selection-search-input:focus-visible,
+.pickup-button:focus-visible,
+.dialog-close:focus-visible {
+  outline: 2px solid rgb(64 64 64);
+  outline-offset: 2px;
+}
+
+.filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.calendar-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-bottom: 1px solid rgb(210 210 210);
+}
+
+.calendar-tab,
+.calendar-nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgb(166 166 166);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.calendar-tab {
+  margin-bottom: -1px;
+  border-width: 0 0 2px;
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+}
+
+.calendar-tab.is-active {
+  border-color: rgb(28 28 28);
+  font-weight: 600;
+}
+
+.calendar-tab:focus-visible,
+.calendar-nav-button:focus-visible,
+.month-calendar-entry:focus-visible,
+.year-calendar-entry:focus-visible {
+  outline: 2px solid rgb(64 64 64);
+  outline-offset: 2px;
+}
+
+.calendar-nav-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.calendar-tab:hover {
+  background: rgb(245 245 245);
+}
+
+.calendar-nav-button {
+  border-radius: 999px;
+  background: rgb(247 247 247);
+}
+
+.calendar-view {
+  display: grid;
+  gap: 1rem;
+}
+
+.calendar-view-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.month-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.month-calendar-weekday,
+.year-calendar-weekday {
+  color: rgb(122 122 122);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.month-calendar-cell {
+  min-height: 6.25rem;
+  padding: 0.5rem;
+  border: 1px solid rgb(226 226 226);
+  border-radius: 0;
+  background: rgb(250 250 250);
+  display: grid;
+  align-content: start;
+  gap: 0.4rem;
+}
+
+.month-calendar-cell.is-outside-month {
+  opacity: 0.35;
+}
+
+.month-calendar-cell.has-entries,
+.year-calendar-day-cell.has-entries {
+  border-color: rgb(190 190 190);
+}
+
+.month-calendar-day,
+.year-calendar-day {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.month-calendar-entry-list,
+.year-calendar-entry-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.month-calendar-entry,
+.year-calendar-entry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.year-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.year-calendar-month {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.year-calendar-month-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.year-calendar-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.year-calendar-day-cell {
+  min-height: 2.6rem;
+  padding: 0.2rem;
+  border: 1px solid rgb(232 232 232);
+  border-radius: 0;
+  background: rgb(250 250 250);
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 0.15rem;
+}
+
+.year-calendar-day-cell.is-placeholder {
+  border-color: transparent;
+  background: transparent;
+}
+
+.header-action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 2.9rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgb(122 122 122);
+  border-radius: 999px;
+  background: rgb(247 247 247);
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.header-action-link:hover {
+  background: rgb(239 239 239);
+}
+
+.header-action-link:focus-visible {
+  outline: 2px solid rgb(64 64 64);
+  outline-offset: 2px;
+}
+
+.filter-chip {
+  position: relative;
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgb(220 220 220);
+  background: rgb(248 248 248);
+  cursor: pointer;
+}
+
+.filter-chip-input {
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.filter-chip-input:focus-visible {
+  outline: none;
+}
+
+.filter-indicator {
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid rgb(134 134 134);
+  border-radius: 999px;
+  background: rgb(255 255 255);
+  flex: none;
+}
+
+.filter-chip-text {
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.filter-chip.is-active {
+  border-color: rgb(170 170 170);
+  background: rgb(242 242 242);
+}
+
+.filter-chip.is-active .filter-indicator {
+  position: relative;
+  border-color: currentColor;
+  background: rgb(255 255 255 / 0.18);
+}
+
+.filter-chip.is-active .filter-indicator::after {
+  content: "";
+  position: absolute;
+  left: 0.3rem;
+  top: 0.14rem;
+  width: 0.22rem;
+  height: 0.45rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+@media (max-width: 720px) {
+  .selection-header {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-view-header {
+    grid-template-columns: 1fr;
+  }
+
+  .year-calendar-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.filter-chip:hover {
+  background: rgb(242 242 242);
+}
+
+.filter-chip:focus-within {
+  outline: 2px solid rgb(64 64 64);
+  outline-offset: 2px;
+}
+
+.pickup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.pickup-item {
+  border-bottom: 1px solid rgb(225 225 225);
+  padding: 1.5rem 0;
+}
+
+.pickup-row {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 6rem) 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.pickup-date {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.pickup-weekday {
+  color: rgb(158 158 158);
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.pickup-day {
+  font-size: clamp(1.65rem, 4vw, 2.2rem);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.pickup-entry-group {
+  display: grid;
+  gap: 0.8rem;
+  padding-top: 0.15rem;
+}
+
+.pickup-button {
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pickup-dot {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  flex: none;
+  background: rgb(42 42 42);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
+}
+
+.pickup-label {
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  font-weight: 400;
+}
+
+.notice-banner {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(214 214 214);
+  background: rgb(244 244 244);
+  color: rgb(54 54 54);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(18 18 18 / 0.35);
+}
+
+.dialog-panel {
+  width: min(100%, 32rem);
+  padding: 1.25rem;
+  border-radius: 1.25rem;
+  background: rgb(255 255 255);
+  box-shadow: 0 1.5rem 3rem rgb(0 0 0 / 0.18);
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.dialog-eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(96 96 96);
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.dialog-close {
+  min-height: 2.5rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgb(122 122 122);
+  border-radius: 999px;
+  background: rgb(247 247 247);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .page-shell {
+    padding: 0;
+  }
+
+  .panel {
+    padding: 0.75rem;
+  }
+
+  .pickup-row {
+    grid-template-columns: 4rem 1fr;
+    gap: 0.9rem;
+  }
+
+  .pickup-item {
+    padding: 1.2rem 0;
+  }
+
+  .pickup-label {
+    font-size: 1.05rem;
+  }
+
+  .pickup-dot {
+    width: 1rem;
+    height: 1rem;
+  }
+}

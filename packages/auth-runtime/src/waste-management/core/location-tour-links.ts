@@ -2,7 +2,7 @@ import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction, getAuthorizedWasteManagementInstanceId } from './auth.js';
-import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
+import { runWasteCreateMutation, runWasteDeleteMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, normalizeOptionalString, requireDeps } from './utils.js';
@@ -110,7 +110,7 @@ export const wasteManagementLocationTourLinkHandlers = {
       requestId,
       resourceId: linkId,
       audit: {
-        actionId: 'waste-management.location-tour-link.updated',
+        actionId: 'waste-management.location-tour-link.deleted',
         resourceType: 'waste_location_tour_link',
       },
       messages: {
@@ -121,6 +121,49 @@ export const wasteManagementLocationTourLinkHandlers = {
       loadExisting: () => loadLocationTourLink(instanceId, linkId),
       save: () => saveLocationTourLink(instanceId, toLocationTourLinkInput(linkId, parsed.data)),
       loadSaved: () => loadLocationTourLink(instanceId, linkId),
+    });
+  },
+  deleteWasteManagementLocationTourLinkInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> => {
+    const requestId = getRequestId(deps);
+    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.tours.manage', deps, requestId);
+    if (authError) {
+      return authError;
+    }
+
+    const instanceId = getAuthorizedWasteManagementInstanceId(ctx);
+    const linkId = readPathSegment(request, 4)?.trim();
+    if (!linkId) {
+      return createApiError(400, 'invalid_request', 'linkId fehlt im Pfad.', requestId);
+    }
+
+    const csrfError = validateCsrf(request, requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    const loadLocationTourLink = requireDeps(deps.loadWasteLocationTourLinkById, 'loadWasteLocationTourLinkById');
+    const deleteLocationTourLink = requireDeps(deps.deleteWasteLocationTourLink, 'deleteWasteLocationTourLink');
+
+    return runWasteDeleteMutation({
+      deps,
+      ctx,
+      instanceId,
+      requestId,
+      resourceId: linkId,
+      audit: {
+        actionId: 'waste-management.location-tour-link.updated',
+        resourceType: 'waste_location_tour_link',
+      },
+      messages: {
+        notFound: 'Die Waste-Tour-Zuordnung wurde nicht gefunden.',
+        deleteFailed: 'Die Waste-Tour-Zuordnung konnte nicht gelöscht werden.',
+      },
+      loadExisting: () => loadLocationTourLink(instanceId, linkId),
+      remove: () => deleteLocationTourLink(instanceId, linkId),
     });
   },
 };

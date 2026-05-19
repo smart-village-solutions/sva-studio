@@ -15,6 +15,7 @@ export const wasteManagementPluginTranslationsENAudit = {
     collectionLocationUpdated: 'Updated collection location',
     locationTourLinkCreated: 'Created tour assignment',
     locationTourLinkUpdated: 'Updated tour assignment',
+    locationTourLinkDeleted: 'Deleted tour assignment',
     locationTourLinkBulkCreated: 'Created tour assignments in bulk',
     tourCreated: 'Created tour',
     tourUpdated: 'Updated tour',

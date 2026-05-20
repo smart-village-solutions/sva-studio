@@ -8,6 +8,7 @@ const useNavigateMock = vi.fn();
 const listGovernanceCasesMock = vi.fn();
 const listAdminDsrCasesMock = vi.fn();
 const getAllowedIamCockpitTabsMock = vi.fn();
+const hasGovernanceComplianceExportRoleMock = vi.fn();
 const hasIamCockpitAccessRoleMock = vi.fn();
 const isIamCockpitEnabledMock = vi.fn();
 
@@ -27,6 +28,7 @@ vi.mock('../../lib/iam-api', () => ({
 
 vi.mock('../../lib/iam-viewer-access', () => ({
   getAllowedIamCockpitTabs: (...args: unknown[]) => getAllowedIamCockpitTabsMock(...args),
+  hasGovernanceComplianceExportRole: (...args: unknown[]) => hasGovernanceComplianceExportRoleMock(...args),
   hasIamCockpitAccessRole: (...args: unknown[]) => hasIamCockpitAccessRoleMock(...args),
   isIamCockpitEnabled: () => isIamCockpitEnabledMock(),
 }));
@@ -45,6 +47,7 @@ describe('IamViewerPage', () => {
     listGovernanceCasesMock.mockReset();
     listAdminDsrCasesMock.mockReset();
     getAllowedIamCockpitTabsMock.mockReset();
+    hasGovernanceComplianceExportRoleMock.mockReset();
     hasIamCockpitAccessRoleMock.mockReset();
     isIamCockpitEnabledMock.mockReset();
   });
@@ -63,6 +66,7 @@ describe('IamViewerPage', () => {
       invalidatePermissions: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
     getAllowedIamCockpitTabsMock.mockReturnValue(['rights']);
 
@@ -79,6 +83,7 @@ describe('IamViewerPage', () => {
       invalidatePermissions: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(false);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
     getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
 
@@ -112,6 +117,7 @@ describe('IamViewerPage', () => {
       invalidatePermissions,
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
     getAllowedIamCockpitTabsMock.mockReturnValue(['rights']);
 
@@ -211,6 +217,7 @@ describe('IamViewerPage', () => {
       invalidatePermissions: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
     getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
 
@@ -223,7 +230,7 @@ describe('IamViewerPage', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('renders a governance CSV export link with the active filters', async () => {
+  it('renders a governance CSV export link without list filters', async () => {
     listGovernanceCasesMock.mockResolvedValue({
       data: [
         {
@@ -245,6 +252,7 @@ describe('IamViewerPage', () => {
       invalidatePermissions: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
     getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
 
@@ -270,9 +278,44 @@ describe('IamViewerPage', () => {
     expect(href).toContain('/iam/governance/compliance/export?');
     expect(href).toContain('instanceId=11111111-1111-1111-8111-111111111111');
     expect(href).toContain('format=csv');
-    expect(href).toContain('search=alice');
-    expect(href).toContain('type=permission_change');
-    expect(href).toContain('status=submitted');
+    expect(href).not.toContain('search=');
+    expect(href).not.toContain('type=');
+    expect(href).not.toContain('status=');
+  });
+
+  it('hides the governance CSV export link without the export-specific role', async () => {
+    listGovernanceCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'gov-1',
+          type: 'delegation',
+          status: 'open',
+          title: 'Delegation freigeben',
+          summary: 'Zusätzliche Freigabe für Redaktion',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          metadata: {},
+        },
+      ],
+    });
+
+    useAuthMock.mockReturnValue({
+      user: { ...adminUser, roles: ['support_admin'] },
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(false);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
+
+    render(<IamViewerPage activeTab="governance" />);
+
+    await waitFor(() => {
+      expect(listGovernanceCasesMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.queryByRole('link', { name: 'CSV exportieren' })).toBeNull();
   });
 
   it('shows the requester free text for self-service permission change requests in the detail pane', async () => {
@@ -300,6 +343,7 @@ describe('IamViewerPage', () => {
       invalidatePermissions: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
     getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
 
@@ -363,6 +407,7 @@ describe('IamViewerPage', () => {
       invalidatePermissions: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(false);
     hasIamCockpitAccessRoleMock.mockReturnValue(false);
     getAllowedIamCockpitTabsMock.mockReturnValue([]);
 
@@ -437,6 +482,7 @@ describe('IamViewerPage', () => {
       invalidatePermissions: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
     getAllowedIamCockpitTabsMock.mockReturnValue(['rights']);
 
@@ -621,6 +667,7 @@ describe('IamViewerPage', () => {
       invalidatePermissions: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
     getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
 

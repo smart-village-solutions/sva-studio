@@ -25,6 +25,7 @@ import {
 } from '../../lib/browser-operation-logging';
 import {
   getAllowedIamCockpitTabs,
+  hasGovernanceComplianceExportRole,
   hasIamCockpitAccessRole,
   isIamCockpitEnabled,
   type IamCockpitTabKey,
@@ -75,22 +76,10 @@ const buildPermissionsPath = (query: IamPermissionsQuery) => {
 
 const buildGovernanceComplianceExportPath = (input: {
   instanceId: string;
-  query: GovernanceCasesQuery;
 }) => {
   const searchParams = new URLSearchParams();
   searchParams.set('instanceId', input.instanceId);
   searchParams.set('format', 'csv');
-
-  const search = input.query.search?.trim();
-  if (search) {
-    searchParams.set('search', search);
-  }
-  if (input.query.type) {
-    searchParams.set('type', input.query.type);
-  }
-  if (input.query.status?.trim()) {
-    searchParams.set('status', input.query.status.trim());
-  }
 
   return `/iam/governance/compliance/export?${searchParams.toString()}`;
 };
@@ -398,6 +387,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
 
   const cockpitEnabled = isIamCockpitEnabled();
   const canAccessCockpit = hasIamCockpitAccessRole(user);
+  const canExportGovernanceCompliance = hasGovernanceComplianceExportRole(user);
   const allowedTabs = React.useMemo(() => getAllowedIamCockpitTabs(user), [user]);
   const governanceRequestQuery = React.useMemo(
     () => ({ ...governanceQuery, search: governanceQuery.search?.trim() ?? '' }),
@@ -1010,9 +1000,9 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
             <Card className="grid gap-3 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.exportHint')}</p>
-                {instanceId ? (
+                {instanceId && canExportGovernanceCompliance ? (
                   <Button asChild size="sm" variant="outline">
-                    <a href={buildGovernanceComplianceExportPath({ instanceId, query: governanceRequestQuery })}>
+                    <a href={buildGovernanceComplianceExportPath({ instanceId })}>
                       {t('admin.iam.governance.actions.exportCsv')}
                     </a>
                   </Button>

@@ -338,11 +338,20 @@ describe('iam governance runtime handlers', () => {
       contentType: 'text/csv; charset=utf-8',
     });
     const csv = await governanceComplianceExportHandler(
-      new Request('https://example.test/api/v1/iam/governance/compliance?instanceId=instance-1&format=csv')
+      new Request(
+        'https://example.test/api/v1/iam/governance/compliance?instanceId=instance-1&format=csv&search=alice&type=permission_change&status=submitted'
+      )
     );
     expect(csv.status).toBe(200);
     expect(csv.headers.get('Content-Type')).toBe('text/csv; charset=utf-8');
     await expect(csv.text()).resolves.toBe('col\nvalue');
+    expect(state.buildGovernanceComplianceExport).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        instanceId: 'instance-1',
+        format: 'csv',
+      })
+    );
 
     const json = await governanceComplianceExportHandler(
       new Request('https://example.test/api/v1/iam/governance/compliance?instanceId=instance-1&format=json')

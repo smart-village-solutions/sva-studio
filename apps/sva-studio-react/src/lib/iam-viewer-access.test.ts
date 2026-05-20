@@ -45,7 +45,8 @@ describe('iam-viewer-access', () => {
       isIamAdminEnabled: () => false,
     }));
 
-    const { getAllowedIamCockpitTabs, hasIamCockpitAccessRole } = await import('./iam-viewer-access');
+    const { getAllowedIamCockpitTabs, hasGovernanceComplianceExportRole, hasIamCockpitAccessRole } =
+      await import('./iam-viewer-access');
 
     expect(getAllowedIamCockpitTabs({ roles: ['support_admin'] })).toEqual(['rights', 'governance', 'dsr']);
     expect(getAllowedIamCockpitTabs({ roles: ['admin'] })).toEqual(['rights', 'governance', 'dsr']);
@@ -55,6 +56,9 @@ describe('iam-viewer-access', () => {
     expect(getAllowedIamCockpitTabs({ roles: ['editor'] })).toEqual([]);
     expect(getAllowedIamCockpitTabs({ roles: null })).toEqual([]);
     expect(getAllowedIamCockpitTabs(null)).toEqual([]);
+    expect(hasGovernanceComplianceExportRole({ roles: ['support_admin'] })).toBe(false);
+    expect(hasGovernanceComplianceExportRole({ roles: ['security_admin'] })).toBe(true);
+    expect(hasGovernanceComplianceExportRole({ roles: ['admin'] })).toBe(true);
     expect(hasIamCockpitAccessRole({ roles: ['editor'] })).toBe(false);
     expect(hasIamCockpitAccessRole({ roles: ['iam_admin'] })).toBe(true);
   });

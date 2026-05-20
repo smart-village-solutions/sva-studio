@@ -9,6 +9,7 @@ export type IamCockpitTabKey = 'rights' | 'governance' | 'dsr';
 const RIGHTS_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
 const GOVERNANCE_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin', 'security_admin', 'compliance_officer']);
 const DSR_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
+const GOVERNANCE_EXPORT_ROLES = new Set(['iam_admin', 'system_admin', 'security_admin', 'compliance_officer']);
 const LEGACY_ADMIN_ROLES = new Set(['admin']);
 
 const readFlag = (value: string | undefined, fallback: boolean) => {
@@ -41,6 +42,9 @@ export const getAllowedIamCockpitTabs = (user: UserWithRoles | null | undefined)
 
 export const hasIamCockpitAccessRole = (user: UserWithRoles | null | undefined) =>
   getAllowedIamCockpitTabs(user).length > 0;
+
+export const hasGovernanceComplianceExportRole = (user: UserWithRoles | null | undefined) =>
+  hasRole(user, GOVERNANCE_EXPORT_ROLES);
 
 // Compatibility wrappers for existing imports/tests, including the legacy `admin` role alias.
 export const isIamViewerEnabled = isIamCockpitEnabled;

@@ -110,6 +110,8 @@ describe('deletion-rules/maintenance', () => {
     });
 
     expect(client.query).toHaveBeenCalledTimes(1);
+    expect(client.query.mock.calls[0]?.[0]).toContain('MAX(log.created_at)::text AS last_login_at');
+    expect(client.query.mock.calls[0]?.[0]).toContain("log.event_type = 'login'");
   });
 
   it('marks due accounts as deactivated before pseudonymization when multiple thresholds are already exceeded', async () => {

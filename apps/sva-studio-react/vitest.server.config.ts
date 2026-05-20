@@ -1,6 +1,6 @@
 import { defineConfig, mergeConfig } from 'vitest/config';
 
-import { sharedVitestConfig } from './vitest.shared.ts';
+import { prGateExcludedTestFiles, sharedVitestConfig } from './vitest.shared.ts';
 
 export default mergeConfig(
   sharedVitestConfig,
@@ -11,6 +11,7 @@ export default mergeConfig(
         'src/**/*-server.test.{ts,tsx}',
         'src/server.test.{ts,tsx}',
       ],
+      exclude: [...prGateExcludedTestFiles],
     },
   })
 );

@@ -9,9 +9,17 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 - **WENN** ein berechtigter Tenant-Admin `/admin/iam?tab=deletion-rules` öffnet
 - **DANN** zeigt die UI die aktuellen Werte für `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays` und die tenantweite Default-Inhaltsstrategie
 - **UND** zeigt die UI die Baseline-Defaults/Fallbacks `90 / 180 / 365` getrennt von tenant-spezifischen Werten an
+- **UND** zeigt die UI bei unkonfigurierten Tenants die Baseline-Defaults `90 / 180 / 365` und die geerbte Default-Inhaltsstrategie als wirksamen Zustand
 - **UND** können die Werte in einer validierten Bearbeitungsmaske geändert werden
 - **UND** ist die auswählbare Strategiemenge auf `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln` begrenzt
 - **UND** wird klar angezeigt, dass sich die Regeln nur auf Tenant-Accounts der aktiven `instanceId` beziehen
+
+#### Scenario: Speichern erzeugt oder aktualisiert explizite Tenant-Konfiguration
+
+- **WENN** ein berechtigter Tenant-Admin im Tab `deletion-rules` Werte speichert
+- **DANN** erzeugt das System für zuvor unkonfigurierte Tenants eine explizite Tenant-Konfiguration
+- **UND** aktualisiert das System für bereits konfigurierte Tenants die bestehende Tenant-Konfiguration
+- **UND** zeigt die UI nach dem Speichern die gespeicherten tenant-spezifischen Werte statt nur geerbter Baseline-Defaults
 
 #### Scenario: UI erklärt die fachlichen Lebenszykluszustände
 
@@ -20,7 +28,7 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 - **UND** erläutert, dass `deleted` einen finalen Tombstone-Soft-Delete und keine physische Löschung bedeutet
 - **UND** erläutert, dass `deactivated` nicht automatisch durch Login aufgehoben wird und eine separate Reaktivierung verlangt
 - **UND** macht kenntlich, dass ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterlaufen können
-- **UND** weist darauf hin, dass V1 Inaktivität ausschließlich aus `last_login_at` ableitet
+- **UND** weist darauf hin, dass V1 Inaktivität ausschließlich aus tenantbezogenem `last_login_at` der aktiven `instanceId` ableitet
 
 #### Scenario: Root- oder plattformweite Administration erhält keinen Tenant-Regeltab
 
@@ -37,9 +45,10 @@ Das System MUST in den Account-/Privacy-Oberflächen die tenantweiten Löschrege
 - **WENN** ein authentifizierter Benutzer `/account/privacy` oder die zugehörige Datenschutzfläche seines Accounts öffnet
 - **DANN** sieht er die tenantweiten Fristen für Deaktivierung, Pseudonymisierung und finalen Tombstone-Soft-Delete
 - **UND** sieht er bei nicht konfigurierten Tenants die Baseline-Defaults/Fallbacks `90 / 180 / 365` als wirksame Standardwerte
-- **UND** wird erklärt, dass die Fristen sich auf Inaktivität relativ zu `last_login_at` beziehen
+- **UND** wird erklärt, dass die Fristen sich auf Inaktivität relativ zu tenantbezogenem `last_login_at` der aktiven `instanceId` beziehen
 - **UND** sieht der Benutzer seine aktuell wirksame Inhaltspräferenz für eigene Inhalte im Scope `iam.contents`
 - **UND** werden die zulässigen Strategiewerte `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln` verständlich benannt
+- **UND** werden die Strategiewirkungen verständlich erklärt: unverändert lassen, bei Deaktivierung mitbehandeln, bei Pseudonymisierung mitbehandeln oder erst beim finalen Tombstone-Zustand mitbehandeln
 
 #### Scenario: Benutzer überschreibt die tenantweite Default-Inhaltsstrategie für eigene Inhalte
 

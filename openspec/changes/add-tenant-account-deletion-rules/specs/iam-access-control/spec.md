@@ -25,6 +25,13 @@ Die normative Action-Menge für V1 umfasst `iam.deletionRules.read`, `iam.deleti
 - **THEN** verlangt das System die Action `iam.accountLifecycle.run` im Scope der betroffenen `instanceId`
 - **AND** darf dieselbe Berechtigung nicht stillschweigend aus allgemeinen Plattform- oder Root-Rechten abgeleitet werden
 
+#### Scenario: Geplanter Lifecycle-Lauf nutzt dedizierte tenantgebundene Service-Identität
+
+- **WHEN** ein geplanter Lifecycle-Lauf für eine bestimmte `instanceId` ausgeführt wird
+- **THEN** erfolgt die Ausführung unter einer dedizierten technischen Service-Identität, die explizit `iam.accountLifecycle.run` für genau diese `instanceId` besitzt
+- **AND** reichen Plattform- oder Root-Rechte ohne diese tenantgebundene Zuweisung nicht aus
+- **AND** werden Cross-Tenant-Ausführungen ohne passende Berechtigung abgewiesen
+
 ### Requirement: Löschregeln werden fachlich und autorisierungsseitig validiert
 
 Das System SHALL Änderungen an tenantbezogenen Löschregeln serverseitig validieren, bevor sie wirksam werden.

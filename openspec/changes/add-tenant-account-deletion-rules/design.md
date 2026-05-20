@@ -31,6 +31,7 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
 
 - Decision: Die Inhaltsbehandlung in V1 beschränkt sich auf `iam.contents`, mit tenantweitem Default und per-Account-Override.
   - Rationale: Das reduziert Komplexität und schafft dennoch eine klare Nutzerentscheidung für die einzige unterstützte Inhaltsdomäne.
+  - Normative V1-Strategiemenge: `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln`
 
 - Decision: Für Regelpflege und Lifecycle-Ausführung werden eigene tenantgebundene Actions im `iam`-Namespace benötigt.
   - Rationale: Das Feature darf weder implizit über Plattformrechte noch über allgemeine Admin-Rechte ohne expliziten Tenant-Bezug steuerbar sein.
@@ -55,5 +56,4 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
 
 ## Open Questions
 
-- Welche konkreten Inhaltsstrategiewerte für `iam.contents` werden im Umsetzungsschritt als Enum eingeführt?
 - Ob und wie ein manueller Reaktivierungsprozess aus `deactivated` spezifiziert wird, bleibt einem nachfolgenden Implementierungschange vorbehalten.

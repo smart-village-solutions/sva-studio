@@ -39,4 +39,5 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln serverseitig validi
 
 - **WHEN** ein Benutzer eine Default-Inhaltsstrategie oder einen per-Account-Override speichert
 - **THEN** akzeptiert das System nur Werte für den Scope `iam.contents`
+- **AND** akzeptiert es als Strategiewerte ausschließlich `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln`
 - **AND** werden Strategien für andere Inhaltsdomänen in diesem Change zurückgewiesen

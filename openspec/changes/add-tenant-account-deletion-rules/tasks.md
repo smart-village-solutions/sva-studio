@@ -1,6 +1,6 @@
 ## 1. Fachliches Modell und Persistenz
 
-- [ ] 1.1 Tenantbezogene Löschregeln mit `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays` und Default-Inhaltsstrategie spezifizieren
+- [ ] 1.1 Tenantbezogene Löschregeln mit `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays` und der normativen V1-Strategiemenge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln` spezifizieren
 - [ ] 1.2 Den Lebenszyklus für Tenant-Accounts mit `active`, `deactivated`, `pseudonymized` und `deleted` normieren
 - [ ] 1.3 Festlegen, dass V1 Inaktivität ausschließlich aus `last_login_at` ableitet und kein neues Aktivitäts-Tracking einführt
 - [ ] 1.4 Festlegen, dass `deleted` einen finalen Tombstone-Soft-Delete beschreibt und keine physische Löschung auslöst
@@ -18,7 +18,7 @@
 - [ ] 3.1 Tenantgebundene Permissions für Lesen/Bearbeiten der Löschregeln spezifizieren
 - [ ] 3.2 Eine explizite Permission für das manuelle oder geplante Ausführen des Account-Lifecycles spezifizieren
 - [ ] 3.3 Cross-Tenant-, Root- und Plattform-Scope für dieses Feature normativ ausschließen
-- [ ] 3.4 Validierungsregeln für geordnete Fristen und zulässige Inhaltsstrategien festlegen
+- [ ] 3.4 Validierungsregeln für geordnete Fristen und die zulässigen V1-Inhaltsstrategien `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln` festlegen
 
 ## 4. Audit und Compliance
 

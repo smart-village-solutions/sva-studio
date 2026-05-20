@@ -8,12 +8,14 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 
 - **WHEN** ein berechtigter Tenant-Admin `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays` oder die Default-Inhaltsstrategie ändert
 - **THEN** erzeugt das System ein unveränderbares Audit-Event mit `instance_id`, pseudonymisierter Actor-Referenz, alter und neuer Regelkonfiguration, Ergebnis, `request_id` und `trace_id`
+- **AND** werden Strategiewerte in der Auditspur nur aus der normativen V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln` gespeichert
 - **AND** enthält das Event keine Klartext-PII
 
 #### Scenario: Per-Account-Override für Inhaltspräferenz wird auditiert
 
 - **WHEN** ein Benutzer seine Inhaltspräferenz für eigene Inhalte ändert
 - **THEN** erzeugt das System ein Audit-Event mit `instance_id`, pseudonymisierter Subject-Referenz, betroffenem Scope `iam.contents`, alter und neuer Präferenz sowie Ergebnis
+- **AND** liegen alte und neue Präferenz jeweils in der normativen V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln`
 - **AND** bleibt das Event konsistent zur im Self-Service angezeigten wirksamen Präferenz
 
 #### Scenario: Lifecycle-Übergang wird mit Grund und Ergebnis protokolliert

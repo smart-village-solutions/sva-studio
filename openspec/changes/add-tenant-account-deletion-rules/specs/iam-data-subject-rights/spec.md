@@ -25,12 +25,13 @@ Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebensz
 
 ### Requirement: Inhaltsbehandlung ist tenantweit steuerbar und pro Account überschreibbar
 
-Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsstrategie und einen per-Account-Override für eigene Inhalte unterstützen. In V1 ist `iam.contents` die einzige unterstützte Inhaltsdomäne.
+Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsstrategie und einen per-Account-Override für eigene Inhalte unterstützen. In V1 ist `iam.contents` die einzige unterstützte Inhaltsdomäne. Die normative V1-Strategiemenge lautet `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln`.
 
 #### Scenario: Tenantweite Default-Strategie wirkt ohne individuellen Override
 
 - **WHEN** ein Tenant Löschregeln mit einer Default-Inhaltsstrategie konfiguriert
 - **THEN** gilt diese Strategie für eigene Inhalte eines Accounts, solange kein individueller Override gesetzt ist
+- **AND** stammt die Strategie aus der normativen V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln`
 - **AND** ist die Wirkung auf `iam.contents` begrenzt
 
 #### Scenario: Individueller Override ersetzt nur die Inhaltsstrategie des eigenen Accounts
@@ -38,4 +39,5 @@ Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsst
 - **WHEN** ein Benutzer eine abweichende Inhaltspräferenz für die Behandlung seiner eigenen Inhalte speichert
 - **THEN** überschreibt diese Präferenz nur die tenantweite Default-Inhaltsstrategie für diesen Account
 - **AND** verändert sie keine Fristenwerte des Tenants
+- **AND** bleibt auch der Override auf die normative V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln` begrenzt
 - **AND** erweitert sie den Scope nicht auf andere Inhaltsdomänen als `iam.contents`

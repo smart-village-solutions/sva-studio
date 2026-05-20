@@ -30,6 +30,7 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 - **AND** enthält die Familien-Payload mindestens `previous_rule_config` und `new_rule_config`
 - **AND** enthält ein Erst-Save-Event zusätzlich mindestens `previous_source` oder `previous_config_present`, sodass der zuvor wirksame geerbte Zustand als solcher erkennbar bleibt
 - **AND** behandelt das Audit auch das Entfernen einer expliziten Tenant-Konfiguration zugunsten geerbter Defaults als gültigen Zustandswechsel
+- **AND** enthält ein solches Reset-to-inherited-Event zusätzlich mindestens `new_source` oder `new_config_present`, sodass die Rückkehr zum geerbten Zustand von einem Save mit denselben expliziten Werten unterscheidbar bleibt
 - **AND** werden Strategiewerte in der Auditspur nur aus der normativen V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln` gespeichert
 - **AND** enthält das Event keine Klartext-PII
 
@@ -47,6 +48,7 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 - **AND** enthält die Familien-Payload mindestens `content_scope`, `previous_preference` und `new_preference`
 - **AND** enthält ein Erst-Save-Event zusätzlich mindestens `previous_source` oder `previous_config_present`, sodass der zuvor wirksame geerbte Zustand als solcher erkennbar bleibt
 - **AND** behandelt das Audit auch das Entfernen eines expliziten Overrides zugunsten der tenantweiten Default-Strategie als gültigen Zustandswechsel
+- **AND** enthält ein solches Reset-to-inherited-Event zusätzlich mindestens `new_source` oder `new_config_present`, sodass die Rückkehr zum tenantweiten Default von einem Save mit derselben expliziten Präferenz unterscheidbar bleibt
 - **AND** liegen alte und neue Präferenz jeweils in der normativen V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln`
 - **AND** bleibt das Event konsistent zur im Self-Service angezeigten wirksamen Präferenz
 

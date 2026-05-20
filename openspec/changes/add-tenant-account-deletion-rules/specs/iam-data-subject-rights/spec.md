@@ -51,13 +51,14 @@ Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebensz
 
 Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsstrategie und einen per-Account-Override für eigene Inhalte unterstützen. In V1 ist `iam.contents` die einzige unterstützte Inhaltsdomäne. Die normative V1-Strategiemenge lautet `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln`.
 
-#### Scenario: Strategiebedeutungen sind zustandsbezogen und nicht physisch
+#### Scenario: Strategiebedeutungen sind zustandsbezogen, nicht physisch und labelstabil
 
 - **WHEN** das System die Inhaltsstrategie eines Accounts im Scope `iam.contents` auswertet
 - **THEN** bedeutet `beibehalten`, dass Inhalte über alle Account-Zustandswechsel unverändert bleiben
 - **AND** bedeutet `bei Deaktivierung mitbehandeln`, dass Inhalte beim Übergang des Accounts nach `deactivated` in einen deaktivierten Content-Lifecycle-Zustand markiert werden, während die Zeile persistiert bleibt, und dass diese Inhalte bei fortgesetztem Account-Lifecycle später ebenfalls pseudonymisiert und schließlich in einen Deleted-Tombstone-Zustand überführt werden
-- **AND** bedeutet `bei Pseudonymisierung mitbehandeln`, dass Inhalte bis zum Übergang des Accounts nach `pseudonymized` unverändert bleiben, dann in einen pseudonymisierten Zustand markiert werden und author-facing Ownership-/Namensfelder durch ein stabiles pseudonymisiertes Label ersetzt werden, während die Zeile persistiert bleibt, und dass diese Inhalte bei fortgesetztem Account-Lifecycle später in einen Deleted-Tombstone-Zustand überführt werden, bei dem das Deleted-Label das zuvor gesetzte pseudonymisierte Label für user-facing Ownership-/Namensfelder ersetzt
-- **AND** bedeutet `bei Löschung mitbehandeln`, dass Inhalte erst beim finalen Übergang des Accounts nach `deleted` in einen Deleted-Tombstone-Zustand markiert werden und author-facing Ownership-/Namensfelder durch ein Deleted-Label ersetzt werden, während die Zeile persistiert bleibt
+- **AND** bedeutet `bei Pseudonymisierung mitbehandeln`, dass Inhalte bis zum Übergang des Accounts nach `pseudonymized` unverändert bleiben, dann in einen pseudonymisierten Zustand markiert werden und owner-/author-facing Ownership- und Display-Name-Felder durch ein stabiles pseudonymisiertes Label ersetzt werden, während die Zeile persistiert bleibt, und dass diese Inhalte bei fortgesetztem Account-Lifecycle später in einen Deleted-Tombstone-Zustand überführt werden, bei dem das Deleted-Label das zuvor gesetzte pseudonymisierte Label für dieselben owner-/author-facing Ownership- und Display-Name-Felder ersetzt
+- **AND** bedeutet `bei Löschung mitbehandeln`, dass Inhalte erst beim finalen Übergang des Accounts nach `deleted` in einen Deleted-Tombstone-Zustand markiert werden und owner-/author-facing Ownership- und Display-Name-Felder durch ein Deleted-Label ersetzt werden, während die Zeile persistiert bleibt
+- **AND** sind das pseudonymisierte Label und das Deleted-Label pro Locale über alle betroffenen Entitäten stabil und nicht pro Account oder Inhalt individuell abgeleitet
 - **AND** werden `iam.contents`-Zeilen in V1 nicht physisch gelöscht
 
 #### Scenario: Tenantweite Default-Strategie wirkt ohne individuellen Override

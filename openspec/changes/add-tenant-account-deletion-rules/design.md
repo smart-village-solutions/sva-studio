@@ -28,6 +28,8 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
   - Normative Baseline-Defaults/Fallbacks für neue oder noch nicht konfigurierte Tenants: `deactivateAfterDays=90`, `pseudonymizeAfterDays=180`, `deleteAfterDays=365`
   - Geerbte Default-Inhaltsstrategie für unkonfigurierte Tenants: `beibehalten`
   - UI-Verhalten für unkonfigurierte Tenants: Die Oberfläche zeigt diese Baseline-Defaults und die geerbte Default-Inhaltsstrategie `beibehalten` als wirksamen Zustand; Speichern erzeugt oder aktualisiert eine explizite Tenant-Konfiguration.
+  - Read-vs-Manage-Verhalten: `iam.deletionRules.read` ohne `iam.deletionRules.manage` liefert einen lesbaren, aber nicht bearbeitbaren Zustand mit erklärender Meldung. Nur `iam.deletionRules.manage` aktiviert Bearbeitungs- und Speichervorgänge.
+  - Zustandsanforderungen: Der Admin-Tab benötigt explizite Lade-, Fehler-, Read-only- und Denied-Zustände; ein unkonfigurierter Tenant erzeugt keinen leeren Zustand, sondern zeigt wirksame Baseline-Defaults.
 
 - Decision: Der Lebenszyklus verwendet die Zustände `active`, `deactivated`, `pseudonymized` und `deleted`.
   - Rationale: Diese Zustände bilden die fachlichen Eskalationsstufen verständlich ab und trennen reversible Sperre von irreversibleren Datenschutzschritten.

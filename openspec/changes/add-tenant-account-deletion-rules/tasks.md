@@ -18,10 +18,11 @@
 - [ ] 2.1 Einen neuen Tab `/admin/iam?tab=deletion-rules` für tenantbezogene Regelbearbeitung spezifizieren
 - [ ] 2.1.1 Im Admin-Tab Baseline-Defaults/Fallbacks gegenüber tenant-spezifischen Werten sichtbar machen
 - [ ] 2.1.2 Für unkonfigurierte Tenants normieren, dass die UI geerbte Defaults als wirksamen Zustand zeigt und Speichern eine explizite Tenant-Konfiguration erzeugt
+- [ ] 2.1.3 Read-only-Verhalten für `iam.deletionRules.read` ohne `iam.deletionRules.manage` normieren
 - [ ] 2.2 Transparente Anzeige der tenantweiten Regeln in Account-/Privacy-Oberflächen spezifizieren
 - [ ] 2.3 Einen per-Account-Override für die Behandlung eigener Inhalte im Self-Service spezifizieren
 - [ ] 2.3.1 Festlegen, dass Self-Service-Overrides nur für den eigenen Tenant-Account und ohne Admin-Cross-User-Schreibpfad gespeichert werden dürfen
-- [ ] 2.4 Leer-, Lade-, Fehler- und Zugriffsverweigerungszustände für die neuen UI-Flächen normieren
+- [ ] 2.4 Lade-, Fehler-, Read-only- und Zugriffsverweigerungszustände für die neuen UI-Flächen normieren und Leerstates für unkonfigurierte Tenants durch wirksame Baseline-Defaults ersetzen
 
 ## 3. Governance, Berechtigungen und Lifecycle-Ausführung
 

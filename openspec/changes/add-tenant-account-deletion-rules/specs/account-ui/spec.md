@@ -14,12 +14,20 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 - **UND** ist die auswählbare Strategiemenge auf `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln` begrenzt
 - **UND** wird klar angezeigt, dass sich die Regeln nur auf Tenant-Accounts der aktiven `instanceId` beziehen
 
+#### Scenario: Read-only-Zustand bei Lese- ohne Bearbeitungsrecht
+
+- **WENN** ein Benutzer `iam.deletionRules.read`, aber nicht `iam.deletionRules.manage` für die aktive `instanceId` besitzt
+- **DANN** zeigt die UI die wirksamen tenantbezogenen Regeln in einem lesbaren Read-only-Zustand
+- **UND** sind Bearbeitungs- und Speicherelemente deaktiviert oder nicht vorhanden
+- **UND** erklärt die UI verständlich, dass zum Ändern `iam.deletionRules.manage` erforderlich ist
+
 #### Scenario: Speichern erzeugt oder aktualisiert explizite Tenant-Konfiguration
 
 - **WENN** ein berechtigter Tenant-Admin im Tab `deletion-rules` Werte speichert
 - **DANN** erzeugt das System für zuvor unkonfigurierte Tenants eine explizite Tenant-Konfiguration
 - **UND** aktualisiert das System für bereits konfigurierte Tenants die bestehende Tenant-Konfiguration
 - **UND** zeigt die UI nach dem Speichern die gespeicherten tenant-spezifischen Werte statt nur geerbter Baseline-Defaults
+- **UND** bleibt die Speicheraktion ausschließlich mit `iam.deletionRules.manage` verfügbar
 
 #### Scenario: UI erklärt die fachlichen Lebenszykluszustände
 
@@ -36,6 +44,25 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 - **WENN** ein Benutzer ohne aktiven Tenant-Scope oder nur mit Root-/Plattformrechten `/admin/iam?tab=deletion-rules` aufruft
 - **DANN** zeigt die UI keinen bearbeitbaren Tenant-Regelzustand
 - **UND** erhält der Benutzer einen verweigerten oder nicht verfügbaren Zustand ohne Leckage tenantbezogener Konfigurationsdaten
+
+#### Scenario: Ladezustand zeigt wirksame Regelermittlung an
+
+- **WENN** die UI die wirksamen Regeln, Baseline-Defaults oder tenant-spezifischen Werte für `deletion-rules` lädt
+- **DANN** zeigt sie einen expliziten Ladezustand
+- **UND** vermeidet sie währenddessen irreführende Leer- oder Default-Formulare als vermeintlich bereits geladene Daten
+
+#### Scenario: Fehlerzustand für Laden oder Speichern ist handlungsleitend
+
+- **WENN** das Laden oder Speichern der Löschregeln fehlschlägt
+- **DANN** zeigt die UI einen expliziten Fehlerzustand mit verständlicher, handlungsleitender Meldung
+- **UND** bleibt erkennbar, ob der Fehler beim Laden oder beim Speichern entstanden ist
+- **UND** werden keine unbestätigten Eingaben als erfolgreich übernommen dargestellt
+
+#### Scenario: Unkonfigurierter Tenant erzeugt keinen leeren Admin-Zustand
+
+- **WENN** für einen Tenant noch keine explizite Löschregel-Konfiguration gespeichert ist
+- **DANN** zeigt die UI die Baseline-Defaults `90 / 180 / 365` und die geerbte Strategie `beibehalten` als wirksamen Zustand
+- **UND** verwendet sie keinen leeren oder mehrdeutigen Empty-State anstelle dieser wirksamen Standardwerte
 
 ### Requirement: Self-Service zeigt Löschregeln und Inhaltspräferenz transparent an
 

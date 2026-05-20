@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createSelfServicePermissionChangeRequest } from './self-service-permission-change.js';
 import type { QueryClient } from './query-client.js';
@@ -18,6 +18,10 @@ describe('self-service permission change request', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-20T09:30:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('creates an intake request and emits a governance audit record', async () => {
@@ -56,6 +60,8 @@ describe('self-service permission change request', () => {
         'trace-1',
       ])
     );
+    const payload = JSON.parse(((query.mock.calls[2] ?? [])[1] as unknown[])[3] as string) as Record<string, unknown>;
+    expect(payload).not.toHaveProperty('request_note_preview');
   });
 
   it('returns null when the actor cannot be resolved or the insert yields no workflow id', async () => {

@@ -382,6 +382,16 @@ describe('iam governance runtime handlers', () => {
     );
     expect(invalidPayload.status).toBe(400);
 
+    const overlongPayload = await permissionChangeSelfServiceRequestHandler(
+      new Request('https://example.test/iam/me/permission-change-requests', {
+        method: 'POST',
+        body: JSON.stringify({ requestNote: 'x'.repeat(2001) }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+    expect(overlongPayload.status).toBe(400);
+    await expect(overlongPayload.json()).resolves.toEqual({ error: 'request_note_too_long' });
+
     state.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
       handler({ user: { ...defaultUser, instanceId: undefined } })
     );

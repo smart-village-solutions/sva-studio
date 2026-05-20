@@ -231,7 +231,7 @@ describe('IamViewerPage', () => {
           type: 'permission_change',
           status: 'submitted',
           title: 'Rollenanpassung beantragt',
-          summary: 'Redakteurrolle fuer Benutzerkonto',
+          summary: 'Redakteurrolle für Benutzerkonto',
           createdAt: '2026-03-15T10:00:00.000Z',
           metadata: {},
         },
@@ -282,7 +282,7 @@ describe('IamViewerPage', () => {
           id: 'gov-self-1',
           type: 'permission_change',
           status: 'intake',
-          title: 'Rechteänderung angefragt',
+          title: 'permission_change',
           summary: 'Ich benötige Schreibrechte für die Veranstaltungsredaktion.',
           createdAt: '2026-03-15T10:00:00.000Z',
           metadata: {
@@ -306,14 +306,15 @@ describe('IamViewerPage', () => {
     render(<IamViewerPage activeTab="governance" />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Rechteänderung angefragt/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /Rechteänderung/i })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Rechteänderung angefragt/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Rechteänderung/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Anfragebeschreibung')).toBeTruthy();
-      expect(screen.getAllByText('Ich benötige Schreibrechte für die Veranstaltungsredaktion.').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Ich benötige Schreibrechte für die Veranstaltungsredaktion.')).toHaveLength(1);
+      expect(screen.queryByText('requestOrigin: self_service')).toBeNull();
     });
   });
 

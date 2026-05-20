@@ -2,6 +2,7 @@ import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/s
 import {
   createSelfServicePermissionChangeRequest,
   listGovernanceCases,
+  MAX_SELF_SERVICE_PERMISSION_CHANGE_REQUEST_NOTE_LENGTH,
 } from '@sva/iam-governance';
 import {
   createGovernanceWorkflowExecutor,
@@ -59,23 +60,30 @@ const parseWorkflowRequest = async (request: Request): Promise<GovernanceWorkflo
   return parsed.success ? parsed.data : null;
 };
 
+type SelfServicePermissionChangeBodyParseResult =
+  | { ok: true; value: { requestNote: string } }
+  | { ok: false; error: 'invalid_request' | 'request_note_too_long' };
+
 const parseSelfServicePermissionChangeBody = async (
   request: Request
-): Promise<{ requestNote: string } | null> => {
+): Promise<SelfServicePermissionChangeBodyParseResult> => {
   try {
     const body = await request.json();
     if (!body || typeof body !== 'object') {
-      return null;
+      return { ok: false, error: 'invalid_request' };
     }
 
     const requestNote = readString((body as { requestNote?: unknown }).requestNote)?.trim();
     if (!requestNote) {
-      return null;
+      return { ok: false, error: 'invalid_request' };
+    }
+    if (requestNote.length > MAX_SELF_SERVICE_PERMISSION_CHANGE_REQUEST_NOTE_LENGTH) {
+      return { ok: false, error: 'request_note_too_long' };
     }
 
-    return { requestNote };
+    return { ok: true, value: { requestNote } };
   } catch {
-    return null;
+    return { ok: false, error: 'invalid_request' };
   }
 };
 
@@ -262,8 +270,8 @@ export const permissionChangeSelfServiceRequestHandler = async (request: Request
       }
 
       const parsed = await parseSelfServicePermissionChangeBody(request);
-      if (!parsed) {
-        return jsonResponse(400, { error: 'invalid_request' });
+      if (!parsed.ok) {
+        return jsonResponse(400, { error: parsed.error });
       }
 
       if (!user.instanceId) {
@@ -275,7 +283,7 @@ export const permissionChangeSelfServiceRequestHandler = async (request: Request
           createSelfServicePermissionChangeRequest(client, {
             instanceId: user.instanceId as string,
             actorKeycloakSubject: user.id,
-            requestNote: parsed.requestNote,
+            requestNote: parsed.value.requestNote,
             requestId: getWorkspaceContext().requestId,
             traceId: getWorkspaceContext().traceId,
           })

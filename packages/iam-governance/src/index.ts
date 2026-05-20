@@ -63,7 +63,10 @@ export {
   type GovernanceWorkflowRequest,
   type GovernanceWorkflowResponse,
 } from './governance-workflow-executor.js';
-export { createSelfServicePermissionChangeRequest } from './self-service-permission-change.js';
+export {
+  createSelfServicePermissionChangeRequest,
+  MAX_SELF_SERVICE_PERMISSION_CHANGE_REQUEST_NOTE_LENGTH,
+} from './self-service-permission-change.js';
 export {
   buildGovernanceComplianceExport,
   loadGovernanceComplianceRows,

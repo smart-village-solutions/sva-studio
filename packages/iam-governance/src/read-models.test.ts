@@ -258,7 +258,7 @@ describe('iam-governance/read-models', () => {
       id: 'perm-self-1',
       type: 'permission_change',
       status: 'intake',
-      title: 'Rechteänderung angefragt',
+      title: 'permission_change',
       summary: 'Ich benötige Schreibrechte für die Pflege der Veranstaltungsinhalte.',
       roleId: undefined,
       roleName: undefined,

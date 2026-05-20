@@ -68,7 +68,7 @@ const mapPermissionChangeRow = (row: PermissionChangeRow): IamGovernanceCaseList
     id: row.id,
     type: 'permission_change',
     status: row.status,
-    title: isSelfServiceIntake ? 'Rechteänderung angefragt' : roleName ?? 'Rechteänderung',
+    title: roleName ?? 'permission_change',
     summary: isSelfServiceIntake ? row.request_note : `${actorDisplayName} -> ${targetDisplayName}`,
     actorAccountId: row.requester_account_id,
     actorDisplayName,

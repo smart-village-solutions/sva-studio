@@ -111,10 +111,34 @@ const formatObjectEntries = (value: Readonly<Record<string, unknown>> | undefine
     .join(', ');
 };
 
+const filterMetadataEntries = (
+  metadata: Readonly<Record<string, unknown>> | undefined,
+  excludedKeys: readonly string[]
+) => {
+  if (!metadata) {
+    return undefined;
+  }
+
+  const filtered = Object.fromEntries(Object.entries(metadata).filter(([key]) => !excludedKeys.includes(key)));
+  return Object.keys(filtered).length > 0 ? filtered : undefined;
+};
+
 const readRequestNote = (metadata: Readonly<Record<string, unknown>> | undefined) =>
   typeof metadata?.requestNote === 'string' && metadata.requestNote.trim().length > 0
     ? metadata.requestNote
     : null;
+
+const formatGovernanceTitle = (item: IamGovernanceCaseListItem) => {
+  if (item.title === item.type) {
+    return t(mapGovernanceTypeToTranslationKey(item.type));
+  }
+
+  return item.title;
+};
+
+const isGovernanceCaseItem = (
+  item: IamGovernanceCaseListItem | IamDsrCaseListItem
+): item is IamGovernanceCaseListItem => 'status' in item;
 
 const governanceTypeOptions = [
   'permission_change',
@@ -214,7 +238,9 @@ const CaseList = ({
 }>) => {
   return (
     <div className="grid gap-3">
-      {items.map((item) => (
+      {items.map((item) => {
+        const displayTitle = isGovernanceCaseItem(item) ? formatGovernanceTitle(item) : item.title;
+        return (
         <Button
           key={item.id}
           type="button"
@@ -226,7 +252,7 @@ const CaseList = ({
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">{item.title}</p>
+              <p className="text-sm font-semibold text-foreground">{displayTitle}</p>
               <p className="text-xs text-muted-foreground">{item.summary}</p>
             </div>
             {renderStatus(item)}
@@ -240,7 +266,8 @@ const CaseList = ({
             ) : null}
           </div>
         </Button>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -251,11 +278,12 @@ const GovernanceDetail = ({ item }: Readonly<{ item: IamGovernanceCaseListItem |
   }
 
   const requestNote = readRequestNote(item.metadata);
+  const metadata = filterMetadataEntries(item.metadata, ['requestNote', 'requestOrigin']);
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>{item.title}</CardTitle>
+        <CardTitle>{formatGovernanceTitle(item)}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
       <dl className="grid gap-2 text-sm">
@@ -281,7 +309,7 @@ const GovernanceDetail = ({ item }: Readonly<{ item: IamGovernanceCaseListItem |
         ) : null}
         <div>
           <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.meta')}</dt>
-          <dd className="text-foreground">{formatObjectEntries(item.metadata)}</dd>
+          <dd className="text-foreground">{formatObjectEntries(metadata)}</dd>
         </div>
       </dl>
       </CardContent>

@@ -13,12 +13,21 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 - **AND** bleiben `actor_ref` und `subject_ref` pseudonymisierte Referenzen
 - **AND** gehören Events mindestens zu den Familien `tenant_rule_changed`, `content_preference_override_changed`, `lifecycle_transition_applied` und `lifecycle_transition_blocked`
 
+#### Scenario: `blocked` und `rejected` sind fachlich getrennt
+
+- **WHEN** ein Audit-Event ein `result` trägt
+- **THEN** bedeutet `applied`, dass die autorisierte Aktion eine Regeländerung, einen Override oder einen Lifecycle-Übergang tatsächlich persistiert oder angewendet hat
+- **AND** bedeutet `blocked`, dass die autorisierte Aktion die Fachverarbeitung erreicht hat, dort aber an fachlichen oder datenbezogenen Vorbedingungen scheiterte
+- **AND** bedeutet `rejected`, dass Autorisierung oder Request-Validierung die Aktion vor Beginn der Fachverarbeitung abgelehnt haben
+- **AND** werden Autorisierungsfehler nicht als `lifecycle_transition_blocked`, sondern als `rejected` in der jeweils betroffenen Event-Familie emittiert
+
 #### Scenario: Änderung der Tenant-Löschregeln wird auditiert
 
 - **WHEN** ein berechtigter Tenant-Admin `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays` oder die Default-Inhaltsstrategie ändert
 - **THEN** erzeugt das System ein unveränderbares Audit-Event gemäß dem gemeinsamen Mindestvertrag mit alter und neuer Regelkonfiguration
 - **AND** verwendet das Event die Familie `tenant_rule_changed`
 - **AND** enthält die Familien-Payload mindestens `previous_rule_config` und `new_rule_config`
+- **AND** enthält ein Erst-Save-Event zusätzlich mindestens `previous_source` oder `previous_config_present`, sodass der zuvor wirksame geerbte Zustand als solcher erkennbar bleibt
 - **AND** werden Strategiewerte in der Auditspur nur aus der normativen V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln` gespeichert
 - **AND** enthält das Event keine Klartext-PII
 
@@ -28,6 +37,7 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 - **THEN** erzeugt das System ein Audit-Event gemäß dem gemeinsamen Mindestvertrag mit betroffenem Scope `iam.contents`, alter und neuer Präferenz
 - **AND** verwendet das Event die Familie `content_preference_override_changed`
 - **AND** enthält die Familien-Payload mindestens `content_scope`, `previous_preference` und `new_preference`
+- **AND** enthält ein Erst-Save-Event zusätzlich mindestens `previous_source` oder `previous_config_present`, sodass der zuvor wirksame geerbte Zustand als solcher erkennbar bleibt
 - **AND** liegen alte und neue Präferenz jeweils in der normativen V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln`
 - **AND** bleibt das Event konsistent zur im Self-Service angezeigten wirksamen Präferenz
 
@@ -46,3 +56,9 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 - **AND** verwendet das Event die Familie `lifecycle_transition_blocked`
 - **AND** enthält die Familien-Payload mindestens `attempted_status` und `block_reason`
 - **AND** kann Betrieb oder Compliance den ausbleibenden Übergang ohne Rohdatenzugriff nachvollziehen
+
+#### Scenario: Autorisierungs- oder Request-Ablehnung eines Lifecycle-Laufs wird als `rejected` auditiert
+
+- **WHEN** ein Lifecycle-Lauf wegen fehlender Berechtigung oder ungültiger Request-Form vor Beginn der Fachverarbeitung abgelehnt wird
+- **THEN** erzeugt das System kein Event der Familie `lifecycle_transition_blocked`
+- **AND** wird stattdessen ein Event der betroffenen Aktionsfamilie mit `result=rejected` erzeugt

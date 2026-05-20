@@ -22,6 +22,7 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
   - Kanonische Quelle: V1 verwendet für Online- und Offline-Auswertung ausschließlich das persistierte Feld `last_login_at` des Tenant-Account-Records der betroffenen `instanceId`.
   - Tenant-Scope: Dieser Wert wird nicht als globales Cross-Tenant-Inaktivitätssignal interpretiert.
   - Null-Handling und Schwellwerte: Accounts mit `last_login_at = null` sind in V1 nicht für den automatischen Inaktivitäts-Lifecycle qualifiziert. Ein Schwellwert `N` gilt als erreicht, sobald `last_login_at + N * 24h <= now()`.
+  - Manuelle Läufe: Accounts mit `last_login_at = null` werden auch durch manuelle Läufe dieses Deletion-Rules-Mechanismus nicht verarbeitet; ihre Behandlung bleibt außerhalb dieses V1-Features und erfolgt über separate manuelle Account-Administration.
 
 - Decision: Tenant-Admins verwalten die Regeln in `/admin/iam?tab=deletion-rules`.
   - Rationale: Das Feature gehört in das bestehende IAM-Transparenz- und Governance-Cockpit und bleibt damit für Betreiber auffindbar.
@@ -49,6 +50,12 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
 - Decision: Für Regelpflege und Lifecycle-Ausführung werden eigene tenantgebundene Actions im `iam`-Namespace benötigt.
   - Rationale: Das Feature darf weder implizit über Plattformrechte noch über allgemeine Admin-Rechte ohne expliziten Tenant-Bezug steuerbar sein.
   - Geplante Lifecycle-Läufe verwenden eine dedizierte tenantgebundene technische Service-Identität, der `iam.accountLifecycle.run` explizit für die Ziel-`instanceId` zugewiesen ist; Plattform- oder Root-Rechte allein reichen nicht aus.
+
+- Decision: Audit-Events verwenden eine stabile Ergebnis- und Herkunftssemantik.
+  - Rationale: Betrieb, UI und Compliance müssen unterscheiden können, ob eine Aktion erfolgreich angewendet, fachlich blockiert oder vor der Fachverarbeitung zurückgewiesen wurde.
+  - Ergebnissemantik: `applied` bedeutet, dass eine autorisierte Aktion eine Regeländerung, einen Override oder einen Lifecycle-Übergang tatsächlich persistiert bzw. angewendet hat. `blocked` bedeutet, dass eine autorisierte Aktion die Fachverarbeitung erreicht hat, dort aber an fachlichen oder datenbezogenen Vorbedingungen scheiterte, etwa wegen `last_login_at = null`, Schutzbedingungen oder fehlender Lifecycle-Voraussetzungen. `rejected` bedeutet, dass Autorisierung oder Request-Validierung die Aktion vor der Fachverarbeitung abgelehnt haben.
+  - Autorisierungsfehler und Request-Validierungsfehler werden nicht als `lifecycle_transition_blocked` emittiert, sondern als `rejected` innerhalb der jeweils betroffenen Event-Familie.
+  - Erst-Save-Semantik: Beim ersten Speichern einer Tenant-Regelkonfiguration oder eines Account-Overrides protokolliert das Audit den zuvor wirksamen geerbten Geschäftsstatus als `previous_*`-Wert und markiert zusätzlich, dass vorher keine explizite Konfiguration existierte, etwa über `previous_source='inherited'` oder `previous_config_present=false`.
 
 ## Risks / Trade-offs
 

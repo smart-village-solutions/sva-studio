@@ -10,8 +10,16 @@ Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebensz
 - **THEN** verwendet es in V1 ausschließlich das persistierte Feld `last_login_at` des Tenant-Account-Records der betroffenen `instanceId` als Referenzzeitpunkt
 - **AND** behandelt es diesen Wert nicht als globales Cross-Tenant-Inaktivitätssignal
 - **AND** sind Accounts mit `last_login_at = null` in V1 nicht für den automatischen Inaktivitäts-Lifecycle qualifiziert
+- **AND** sind Accounts mit `last_login_at = null` auch durch manuelle Läufe dieses Deletion-Rules-Mechanismus nicht für Lifecycle-Übergänge qualifiziert
 - **AND** gilt ein Schwellwert `N` als erreicht, sobald `last_login_at + N * 24h <= now()`
 - **AND** verlangt kein neues Aktivitäts-Tracking-System und keine zusätzlichen Aktivitätsquellen
+
+#### Scenario: Accounts ohne `last_login_at` bleiben außerhalb dieses V1-Lifecycles
+
+- **WHEN** ein Tenant-Account kein persistiertes `last_login_at` besitzt
+- **THEN** verarbeitet das System den Account weder in geplanten noch in manuellen Läufen dieses Deletion-Rules-Mechanismus
+- **AND** bleibt die Behandlung dieses Accounts außerhalb des V1-Inaktivitäts-Lifecycles
+- **AND** erfordert sie separate manuelle Account-Administration
 
 #### Scenario: Lebenszyklus durchläuft die fachlichen Stufen geordnet
 

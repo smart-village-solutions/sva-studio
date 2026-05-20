@@ -115,6 +115,13 @@ const expectAdminListUrl = async (page: Page, basePath: '/admin/events' | '/admi
   await expect(page).toHaveURL(new RegExp(`${basePath.replace('/', '\\/')}\\?(?:.*&)??page=1(?:&.*)?$`));
 };
 
+const expectLoginRedirect = async (page: Page, returnToPattern: RegExp) => {
+  await expect(page).toHaveURL(/\/\?auth=login&returnTo=/);
+  const loginUrl = new URL(page.url());
+  expect(loginUrl.searchParams.get('auth')).toBe('login');
+  expect(loginUrl.searchParams.get('returnTo')).toMatch(returnToPattern);
+};
+
 const mockSharedShellRequests = async (page: Page) => {
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) });
@@ -416,12 +423,9 @@ test.describe('events and POI plugins', () => {
     await page.route('**/auth/me', async (route) => {
       await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unauthorized' }) });
     });
-    const eventsLoginRequest = page.waitForRequest(
-      (request) => request.isNavigationRequest() && request.url().includes('/auth/login?returnTo=')
-    );
     await page.goto('/');
     await navigateClientSide(page, '/admin/events');
-    await expect(new URL((await eventsLoginRequest).url()).searchParams.get('returnTo')).toMatch(/^\/admin\/events(?:$|\?)/);
+    await expectLoginRedirect(page, /^\/admin\/events(?:$|\?)/);
   });
 
   test('redirects unauthenticated POI admin access to login', async ({ page }) => {
@@ -430,12 +434,9 @@ test.describe('events and POI plugins', () => {
       await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unauthorized' }) });
     });
 
-    const poiLoginRequest = page.waitForRequest(
-      (request) => request.isNavigationRequest() && request.url().includes('/auth/login?returnTo=')
-    );
     await page.goto('/');
     await navigateClientSide(page, '/admin/poi');
-    await expect(new URL((await poiLoginRequest).url()).searchParams.get('returnTo')).toMatch(/^\/admin\/poi(?:$|\?)/);
+    await expectLoginRedirect(page, /^\/admin\/poi(?:$|\?)/);
   });
 
   test('keeps central event and POI views free of serious accessibility violations', async ({ page }) => {

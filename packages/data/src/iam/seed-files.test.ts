@@ -49,4 +49,14 @@ describe('iam seed sql contracts', () => {
     assert.doesNotMatch(sql, /auth_client_id = EXCLUDED\.auth_client_id,/);
     assert.doesNotMatch(sql, /tenant_admin_client_id = EXCLUDED\.tenant_admin_client_id,/);
   });
+
+  it('expects the deletion-rules seed to create tenant defaults', () => {
+    const sql = readSeed('0003_iam_deletion_rules_defaults.sql');
+
+    assert.match(sql, /INSERT INTO iam\.instance_deletion_rules/);
+    assert.match(sql, /\('de-musterhausen', 90, 180, 365, 'retain'\)/);
+    assert.match(sql, /ON CONFLICT \(instance_id\) DO UPDATE/);
+    assert.match(sql, /default_content_strategy = EXCLUDED\.default_content_strategy/);
+    assert.match(sql, /updated_at = NOW\(\)/);
+  });
 });

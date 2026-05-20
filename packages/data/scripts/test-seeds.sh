@@ -87,7 +87,8 @@ bash packages/data/scripts/run-migrations.sh up
 echo "Reset IAM tables for seed integration test..."
 docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
 TRUNCATE iam.activity_logs, iam.role_permissions, iam.account_roles, iam.account_organizations,
-  iam.instance_memberships, iam.permissions, iam.roles, iam.organizations, iam.accounts, iam.instances
+  iam.account_deletion_content_preferences, iam.instance_memberships, iam.permissions, iam.roles,
+  iam.organizations, iam.instance_deletion_rules, iam.accounts, iam.instances
   RESTART IDENTITY CASCADE;
 SQL
 
@@ -113,6 +114,8 @@ assert_count() {
 }
 
 assert_count "SELECT COUNT(*) FROM iam.instances WHERE id = 'de-musterhausen';" "1" "instance count"
+assert_count "SELECT COUNT(*) FROM iam.instance_deletion_rules WHERE instance_id = 'de-musterhausen';" "1" "deletion rule count"
+assert_count "SELECT COUNT(*) FROM iam.account_deletion_content_preferences;" "0" "content preference count"
 assert_count "SELECT COUNT(*) FROM iam.organizations WHERE instance_id = 'de-musterhausen';" "3" "organization count"
 assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = 'de-musterhausen';" "15" "role count"
 assert_count "SELECT COUNT(*) FROM iam.roles WHERE instance_id = 'de-musterhausen' AND managed_by = 'studio';" "15" "studio role count"

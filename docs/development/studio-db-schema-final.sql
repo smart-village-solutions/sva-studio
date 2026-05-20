@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict girulveFVe7rsELuzhDyELhRkYhBkmE1nk6Z9dY30PCoBJGlHUGEg1F1hq5RX6I
+\restrict JcgUNDli7BV6ns23FpobiSNzgNhs7HNeagxyJldDjaGIFs14Im04PWUxhh8r7yN
 
 -- Dumped from database version 16.13
--- Dumped by pg_dump version 16.13 (Homebrew)
+-- Dumped by pg_dump version 16.13
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -145,6 +145,22 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: account_deletion_content_preferences; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.account_deletion_content_preferences (
+    instance_id text NOT NULL,
+    account_id uuid NOT NULL,
+    content_strategy text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT account_deletion_content_preferences_content_strategy_chk CHECK ((content_strategy = ANY (ARRAY['retain'::text, 'on_deactivation'::text, 'on_pseudonymization'::text, 'on_deletion'::text])))
+);
+
+ALTER TABLE ONLY iam.account_deletion_content_preferences FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: account_groups; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -259,6 +275,12 @@ CREATE TABLE iam.accounts (
     notes text,
     username_ciphertext text,
     instance_id text,
+    last_login_at timestamp with time zone,
+    deletion_lifecycle_state text DEFAULT 'active'::text NOT NULL,
+    deactivated_at timestamp with time zone,
+    pseudonymized_at timestamp with time zone,
+    deletion_marked_at timestamp with time zone,
+    CONSTRAINT accounts_deletion_lifecycle_state_chk CHECK ((deletion_lifecycle_state = ANY (ARRAY['active'::text, 'deactivated'::text, 'pseudonymized'::text, 'deleted'::text]))),
     CONSTRAINT accounts_notes_length_chk CHECK ((char_length(notes) <= 2000)),
     CONSTRAINT accounts_status_chk CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'inactive'::text])))
 );
@@ -351,6 +373,9 @@ CREATE TABLE iam.contents (
     history_ref text NOT NULL,
     current_revision_ref text,
     last_audit_event_ref text,
+    deletion_lifecycle_state text DEFAULT 'active'::text NOT NULL,
+    deletion_lifecycle_changed_at timestamp with time zone,
+    CONSTRAINT contents_deletion_lifecycle_state_chk CHECK ((deletion_lifecycle_state = ANY (ARRAY['active'::text, 'deactivated'::text, 'pseudonymized'::text, 'deleted'::text]))),
     CONSTRAINT contents_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
     CONSTRAINT contents_validation_state_chk CHECK ((validation_state = ANY (ARRAY['valid'::text, 'invalid'::text, 'pending'::text])))
 );
@@ -457,6 +482,27 @@ CREATE TABLE iam.delegations (
     instance_id text NOT NULL,
     CONSTRAINT delegations_duration_chk CHECK ((ends_at > starts_at)),
     CONSTRAINT delegations_status_chk CHECK ((status = ANY (ARRAY['requested'::text, 'active'::text, 'expired'::text, 'revoked'::text])))
+);
+
+
+--
+-- Name: external_interface_types; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.external_interface_types (
+    type_key text NOT NULL,
+    owner_kind text NOT NULL,
+    owner_id text NOT NULL,
+    display_name text NOT NULL,
+    category text NOT NULL,
+    public_schema_json jsonb DEFAULT '{}'::jsonb NOT NULL,
+    secret_schema_json jsonb DEFAULT '{}'::jsonb NOT NULL,
+    status_check_kind text NOT NULL,
+    enabled boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT external_interface_types_category_chk CHECK ((category = ANY (ARRAY['api'::text, 'object_storage'::text, 'database'::text, 'feed'::text]))),
+    CONSTRAINT external_interface_types_owner_kind_chk CHECK ((owner_kind = ANY (ARRAY['host'::text, 'plugin'::text])))
 );
 
 
@@ -606,54 +652,24 @@ CREATE TABLE iam.instance_audit_events (
 
 
 --
--- Name: instance_hostnames; Type: TABLE; Schema: iam; Owner: -
+-- Name: instance_deletion_rules; Type: TABLE; Schema: iam; Owner: -
 --
 
-CREATE TABLE iam.instance_hostnames (
-    hostname text NOT NULL,
+CREATE TABLE iam.instance_deletion_rules (
     instance_id text NOT NULL,
-    is_primary boolean DEFAULT false NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    created_by text
-);
-
-
---
--- Name: instance_integrations; Type: TABLE; Schema: iam; Owner: -
---
-
-CREATE TABLE iam.instance_integrations (
-    instance_id text NOT NULL,
-    provider_key text NOT NULL,
-    graphql_base_url text NOT NULL,
-    oauth_token_url text NOT NULL,
-    enabled boolean DEFAULT true NOT NULL,
-    last_verified_at timestamp with time zone,
-    last_verified_status text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: external_interface_types; Type: TABLE; Schema: iam; Owner: -
---
-
-CREATE TABLE iam.external_interface_types (
-    type_key text NOT NULL,
-    owner_kind text NOT NULL,
-    owner_id text NOT NULL,
-    display_name text NOT NULL,
-    category text NOT NULL,
-    public_schema_json jsonb DEFAULT '{}'::jsonb NOT NULL,
-    secret_schema_json jsonb DEFAULT '{}'::jsonb NOT NULL,
-    status_check_kind text NOT NULL,
-    enabled boolean DEFAULT true NOT NULL,
+    deactivate_after_days integer NOT NULL,
+    pseudonymize_after_days integer NOT NULL,
+    delete_after_days integer NOT NULL,
+    default_content_strategy text DEFAULT 'retain'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT external_interface_types_category_chk CHECK ((category = ANY (ARRAY['api'::text, 'object_storage'::text, 'database'::text, 'feed'::text]))),
-    CONSTRAINT external_interface_types_owner_kind_chk CHECK ((owner_kind = ANY (ARRAY['host'::text, 'plugin'::text])))
+    CONSTRAINT instance_deletion_rules_deactivate_after_days_chk CHECK ((deactivate_after_days > 0)),
+    CONSTRAINT instance_deletion_rules_default_content_strategy_chk CHECK ((default_content_strategy = ANY (ARRAY['retain'::text, 'on_deactivation'::text, 'on_pseudonymization'::text, 'on_deletion'::text]))),
+    CONSTRAINT instance_deletion_rules_delete_after_days_chk CHECK ((delete_after_days > pseudonymize_after_days)),
+    CONSTRAINT instance_deletion_rules_pseudonymize_after_days_chk CHECK ((pseudonymize_after_days > deactivate_after_days))
 );
+
+ALTER TABLE ONLY iam.instance_deletion_rules FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -686,11 +702,40 @@ CREATE TABLE iam.instance_external_interfaces (
     CONSTRAINT instance_external_interfaces_category_chk CHECK ((category = ANY (ARRAY['api'::text, 'object_storage'::text, 'database'::text, 'feed'::text]))),
     CONSTRAINT instance_external_interfaces_last_check_status_chk CHECK (((last_check_status IS NULL) OR (last_check_status = ANY (ARRAY['succeeded'::text, 'failed'::text])))),
     CONSTRAINT instance_external_interfaces_owner_kind_chk CHECK ((owner_kind = ANY (ARRAY['host'::text, 'plugin'::text]))),
-    CONSTRAINT instance_external_interfaces_visible_status_chk CHECK ((visible_status = ANY (ARRAY['not_configured'::text, 'unknown'::text, 'ok'::text, 'error'::text, 'disabled'::text]))),
-    CONSTRAINT instance_external_interfaces_instance_type_alias_key UNIQUE (instance_id, type_key, alias)
+    CONSTRAINT instance_external_interfaces_visible_status_chk CHECK ((visible_status = ANY (ARRAY['not_configured'::text, 'unknown'::text, 'ok'::text, 'error'::text, 'disabled'::text])))
 );
 
 ALTER TABLE ONLY iam.instance_external_interfaces FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: instance_hostnames; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.instance_hostnames (
+    hostname text NOT NULL,
+    instance_id text NOT NULL,
+    is_primary boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by text
+);
+
+
+--
+-- Name: instance_integrations; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.instance_integrations (
+    instance_id text NOT NULL,
+    provider_key text NOT NULL,
+    graphql_base_url text NOT NULL,
+    oauth_token_url text NOT NULL,
+    enabled boolean DEFAULT true NOT NULL,
+    last_verified_at timestamp with time zone,
+    last_verified_status text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
 
 
 --
@@ -1082,6 +1127,64 @@ ALTER TABLE ONLY iam.platform_activity_logs FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: plugin_operation_job_events; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.plugin_operation_job_events (
+    id uuid NOT NULL,
+    job_id uuid NOT NULL,
+    instance_id text NOT NULL,
+    event_type text NOT NULL,
+    status text NOT NULL,
+    progress jsonb,
+    attempts integer DEFAULT 0 NOT NULL,
+    message text,
+    details jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT plugin_operation_job_events_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'retrying'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text]))),
+    CONSTRAINT plugin_operation_job_events_type_check CHECK ((event_type = ANY (ARRAY['job.queued'::text, 'job.started'::text, 'job.progressed'::text, 'job.retrying'::text, 'job.succeeded'::text, 'job.failed'::text, 'job.cancelled'::text])))
+);
+
+
+--
+-- Name: plugin_operation_jobs; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.plugin_operation_jobs (
+    id uuid NOT NULL,
+    instance_id text NOT NULL,
+    plugin_id text NOT NULL,
+    job_type_id text NOT NULL,
+    import_profile_id text,
+    queue_name text NOT NULL,
+    status text NOT NULL,
+    progress jsonb,
+    input_payload jsonb NOT NULL,
+    result_payload jsonb,
+    error_payload jsonb,
+    attempts integer DEFAULT 0 NOT NULL,
+    max_attempts integer DEFAULT 1 NOT NULL,
+    idempotency_key text NOT NULL,
+    request_id text,
+    actor_account_id text,
+    scheduled_at timestamp with time zone NOT NULL,
+    started_at timestamp with time zone,
+    finished_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    worker_id text,
+    heartbeat_at timestamp with time zone,
+    last_progress_at timestamp with time zone,
+    cancel_requested_at timestamp with time zone,
+    correlation_id text,
+    parent_job_id uuid,
+    CONSTRAINT plugin_operation_jobs_attempts_check CHECK ((attempts >= 0)),
+    CONSTRAINT plugin_operation_jobs_max_attempts_check CHECK ((max_attempts >= 1)),
+    CONSTRAINT plugin_operation_jobs_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'retrying'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text])))
+);
+
+
+--
 -- Name: role_permissions; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -1147,6 +1250,14 @@ ALTER TABLE public.goose_db_version ALTER COLUMN id ADD GENERATED BY DEFAULT AS 
     NO MAXVALUE
     CACHE 1
 );
+
+
+--
+-- Name: account_deletion_content_preferences account_deletion_content_preferences_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.account_deletion_content_preferences
+    ADD CONSTRAINT account_deletion_content_preferences_pkey PRIMARY KEY (instance_id, account_id);
 
 
 --
@@ -1286,6 +1397,14 @@ ALTER TABLE ONLY iam.delegations
 
 
 --
+-- Name: external_interface_types external_interface_types_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.external_interface_types
+    ADD CONSTRAINT external_interface_types_pkey PRIMARY KEY (type_key);
+
+
+--
 -- Name: geo_hierarchy geo_hierarchy_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -1374,6 +1493,30 @@ ALTER TABLE ONLY iam.instance_audit_events
 
 
 --
+-- Name: instance_deletion_rules instance_deletion_rules_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_deletion_rules
+    ADD CONSTRAINT instance_deletion_rules_pkey PRIMARY KEY (instance_id);
+
+
+--
+-- Name: instance_external_interfaces instance_external_interfaces_instance_type_alias_key; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_external_interfaces
+    ADD CONSTRAINT instance_external_interfaces_instance_type_alias_key UNIQUE (instance_id, type_key, alias);
+
+
+--
+-- Name: instance_external_interfaces instance_external_interfaces_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_external_interfaces
+    ADD CONSTRAINT instance_external_interfaces_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: instance_hostnames instance_hostnames_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -1387,22 +1530,6 @@ ALTER TABLE ONLY iam.instance_hostnames
 
 ALTER TABLE ONLY iam.instance_integrations
     ADD CONSTRAINT instance_integrations_pkey PRIMARY KEY (instance_id, provider_key);
-
-
---
--- Name: external_interface_types external_interface_types_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.external_interface_types
-    ADD CONSTRAINT external_interface_types_pkey PRIMARY KEY (type_key);
-
-
---
--- Name: instance_external_interfaces instance_external_interfaces_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.instance_external_interfaces
-    ADD CONSTRAINT instance_external_interfaces_pkey PRIMARY KEY (id);
 
 
 --
@@ -1587,6 +1714,22 @@ ALTER TABLE ONLY iam.permissions
 
 ALTER TABLE ONLY iam.platform_activity_logs
     ADD CONSTRAINT platform_activity_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: plugin_operation_job_events plugin_operation_job_events_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.plugin_operation_job_events
+    ADD CONSTRAINT plugin_operation_job_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: plugin_operation_jobs plugin_operation_jobs_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.plugin_operation_jobs
+    ADD CONSTRAINT plugin_operation_jobs_pkey PRIMARY KEY (id);
 
 
 --
@@ -1845,10 +1988,10 @@ CREATE INDEX idx_instance_audit_events_instance_created ON iam.instance_audit_ev
 
 
 --
--- Name: idx_instance_integrations_instance_provider; Type: INDEX; Schema: iam; Owner: -
+-- Name: idx_instance_external_interfaces_default_per_type; Type: INDEX; Schema: iam; Owner: -
 --
 
-CREATE INDEX idx_instance_integrations_instance_provider ON iam.instance_integrations USING btree (instance_id, provider_key);
+CREATE UNIQUE INDEX idx_instance_external_interfaces_default_per_type ON iam.instance_external_interfaces USING btree (instance_id, type_key) WHERE (is_default = true);
 
 
 --
@@ -1859,10 +2002,10 @@ CREATE INDEX idx_instance_external_interfaces_instance_type ON iam.instance_exte
 
 
 --
--- Name: idx_instance_external_interfaces_default_per_type; Type: INDEX; Schema: iam; Owner: -
+-- Name: idx_instance_integrations_instance_provider; Type: INDEX; Schema: iam; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_instance_external_interfaces_default_per_type ON iam.instance_external_interfaces USING btree (instance_id, type_key) WHERE (is_default = true);
+CREATE INDEX idx_instance_integrations_instance_provider ON iam.instance_integrations USING btree (instance_id, provider_key);
 
 
 --
@@ -2048,6 +2191,55 @@ CREATE INDEX idx_platform_activity_logs_request_id ON iam.platform_activity_logs
 
 
 --
+-- Name: idx_plugin_operation_job_events_job_created_at; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_plugin_operation_job_events_job_created_at ON iam.plugin_operation_job_events USING btree (instance_id, job_id, created_at);
+
+
+--
+-- Name: idx_plugin_operation_jobs_id_instance; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_plugin_operation_jobs_id_instance ON iam.plugin_operation_jobs USING btree (id, instance_id);
+
+
+--
+-- Name: idx_plugin_operation_jobs_instance_created_at; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_plugin_operation_jobs_instance_created_at ON iam.plugin_operation_jobs USING btree (instance_id, created_at DESC);
+
+
+--
+-- Name: idx_plugin_operation_jobs_instance_heartbeat_at; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_plugin_operation_jobs_instance_heartbeat_at ON iam.plugin_operation_jobs USING btree (instance_id, heartbeat_at DESC);
+
+
+--
+-- Name: idx_plugin_operation_jobs_instance_idempotency_key; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_plugin_operation_jobs_instance_idempotency_key ON iam.plugin_operation_jobs USING btree (instance_id, idempotency_key);
+
+
+--
+-- Name: idx_plugin_operation_jobs_instance_status_updated_at; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_plugin_operation_jobs_instance_status_updated_at ON iam.plugin_operation_jobs USING btree (instance_id, status, updated_at DESC);
+
+
+--
+-- Name: idx_plugin_operation_jobs_parent_job_id; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_plugin_operation_jobs_parent_job_id ON iam.plugin_operation_jobs USING btree (parent_job_id);
+
+
+--
 -- Name: idx_role_permissions_origin_module; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -2171,6 +2363,22 @@ CREATE TRIGGER trg_immutable_activity_logs BEFORE DELETE OR UPDATE ON iam.activi
 --
 
 CREATE TRIGGER trg_immutable_platform_activity_logs BEFORE DELETE OR UPDATE ON iam.platform_activity_logs FOR EACH ROW EXECUTE FUNCTION iam.prevent_platform_activity_logs_mutation();
+
+
+--
+-- Name: account_deletion_content_preferences account_deletion_content_preferences_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.account_deletion_content_preferences
+    ADD CONSTRAINT account_deletion_content_preferences_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: account_deletion_content_preferences account_deletion_content_preferences_membership_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.account_deletion_content_preferences
+    ADD CONSTRAINT account_deletion_content_preferences_membership_fk FOREIGN KEY (instance_id, account_id) REFERENCES iam.instance_memberships(instance_id, account_id) ON DELETE CASCADE;
 
 
 --
@@ -2614,19 +2822,11 @@ ALTER TABLE ONLY iam.instance_audit_events
 
 
 --
--- Name: instance_hostnames instance_hostnames_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+-- Name: instance_deletion_rules instance_deletion_rules_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
-ALTER TABLE ONLY iam.instance_hostnames
-    ADD CONSTRAINT instance_hostnames_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
-
-
---
--- Name: instance_integrations instance_integrations_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.instance_integrations
-    ADD CONSTRAINT instance_integrations_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+ALTER TABLE ONLY iam.instance_deletion_rules
+    ADD CONSTRAINT instance_deletion_rules_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
 --
@@ -2643,6 +2843,22 @@ ALTER TABLE ONLY iam.instance_external_interfaces
 
 ALTER TABLE ONLY iam.instance_external_interfaces
     ADD CONSTRAINT instance_external_interfaces_type_key_fkey FOREIGN KEY (type_key) REFERENCES iam.external_interface_types(type_key);
+
+
+--
+-- Name: instance_hostnames instance_hostnames_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_hostnames
+    ADD CONSTRAINT instance_hostnames_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: instance_integrations instance_integrations_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_integrations
+    ADD CONSTRAINT instance_integrations_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
 --
@@ -2902,6 +3118,22 @@ ALTER TABLE ONLY iam.platform_activity_logs
 
 
 --
+-- Name: plugin_operation_job_events plugin_operation_job_events_job_instance_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.plugin_operation_job_events
+    ADD CONSTRAINT plugin_operation_job_events_job_instance_fk FOREIGN KEY (job_id, instance_id) REFERENCES iam.plugin_operation_jobs(id, instance_id) ON DELETE CASCADE;
+
+
+--
+-- Name: plugin_operation_jobs plugin_operation_jobs_parent_job_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.plugin_operation_jobs
+    ADD CONSTRAINT plugin_operation_jobs_parent_job_fk FOREIGN KEY (parent_job_id) REFERENCES iam.plugin_operation_jobs(id) ON DELETE SET NULL;
+
+
+--
 -- Name: role_permissions role_permissions_permission_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -2926,6 +3158,19 @@ ALTER TABLE ONLY iam.roles
 
 
 --
+-- Name: account_deletion_content_preferences; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.account_deletion_content_preferences ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: account_deletion_content_preferences account_deletion_content_preferences_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY account_deletion_content_preferences_isolation_policy ON iam.account_deletion_content_preferences USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
 -- Name: account_groups account_groups_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
@@ -2944,12 +3189,6 @@ CREATE POLICY account_organizations_isolation_policy ON iam.account_organization
 --
 
 ALTER TABLE iam.account_permissions ENABLE ROW LEVEL SECURITY;
-
---
--- Name: instance_external_interfaces; Type: ROW SECURITY; Schema: iam; Owner: -
---
-
-ALTER TABLE iam.instance_external_interfaces ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: account_permissions account_permissions_isolation_policy; Type: POLICY; Schema: iam; Owner: -
@@ -3071,17 +3310,36 @@ CREATE POLICY impersonation_sessions_isolation_policy ON iam.impersonation_sessi
 
 
 --
--- Name: instance_integrations instance_integrations_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+-- Name: instance_deletion_rules; Type: ROW SECURITY; Schema: iam; Owner: -
 --
 
-CREATE POLICY instance_integrations_isolation_policy ON iam.instance_integrations USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+ALTER TABLE iam.instance_deletion_rules ENABLE ROW LEVEL SECURITY;
 
+--
+-- Name: instance_deletion_rules instance_deletion_rules_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY instance_deletion_rules_isolation_policy ON iam.instance_deletion_rules USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: instance_external_interfaces; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.instance_external_interfaces ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: instance_external_interfaces instance_external_interfaces_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
 CREATE POLICY instance_external_interfaces_isolation_policy ON iam.instance_external_interfaces USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: instance_integrations instance_integrations_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY instance_integrations_isolation_policy ON iam.instance_integrations USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
 
 
 --
@@ -3171,4 +3429,5 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict girulveFVe7rsELuzhDyELhRkYhBkmE1nk6Z9dY30PCoBJGlHUGEg1F1hq5RX6I
+\unrestrict JcgUNDli7BV6ns23FpobiSNzgNhs7HNeagxyJldDjaGIFs14Im04PWUxhh8r7yN
+

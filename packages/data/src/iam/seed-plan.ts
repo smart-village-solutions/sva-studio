@@ -223,12 +223,19 @@ const personas: readonly PersonaSeed[] = [
   },
 ];
 
-export const iamSeedPlan: IamSeedPlan = {
+const iamSeedFiles = [
+  '0001_iam_personas.sql',
+  '0002_bb_guben_permissions.sql',
+  '0003_iam_deletion_rules_defaults.sql',
+] as const;
+
+export const iamSeedPlan: IamSeedPlan & { readonly seedFiles: typeof iamSeedFiles } = {
   context: {
     instanceId: 'de-musterhausen',
     organizationId: '22222222-2222-2222-2222-222222222222',
     organizationKey: 'seed-org-default',
   },
+  seedFiles: iamSeedFiles,
   organizations: [
     {
       id: '22222222-2222-2222-2222-222222222222',

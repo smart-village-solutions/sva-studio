@@ -38,6 +38,14 @@ const pluginContentPermissions = [
 ] as const;
 
 describe('iamSeedPlan content permissions', () => {
+  it('includes deletion-rules defaults in the seed plan', () => {
+    expect(iamSeedPlan.seedFiles).toEqual([
+      '0001_iam_personas.sql',
+      '0002_bb_guben_permissions.sql',
+      '0003_iam_deletion_rules_defaults.sql',
+    ]);
+  });
+
   it('seeds every granular content and plugin permission without legacy content aliases', () => {
     const permissionKeys = iamSeedPlan.permissions.map((permission) => permission.key);
 

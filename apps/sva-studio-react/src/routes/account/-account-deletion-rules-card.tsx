@@ -33,6 +33,16 @@ const mapLifecycleStateKey = (state: IamMyDeletionRulesOverview['lifecycleState'
   }
 };
 
+const mapContentStrategyKey = (strategy: IamDeletionContentStrategy) => {
+  switch (strategy) {
+    case 'with_owner_lifecycle':
+      return 'account.privacy.deletionRules.strategies.with_owner_lifecycle';
+    case 'retain':
+    default:
+      return 'account.privacy.deletionRules.strategies.retain';
+  }
+};
+
 type AccountDeletionRulesCardProps = {
   readonly deletionRules: IamMyDeletionRulesOverview | null;
   readonly hasDeletionRulesAccess: boolean;
@@ -117,7 +127,7 @@ export const AccountDeletionRulesCard = ({
                   {t('account.privacy.deletionRules.summary.tenantDefaultStrategy')}
                 </dt>
                 <dd className="text-foreground">
-                  {t(`account.privacy.deletionRules.strategies.${deletionRules.rules.defaultContentStrategy}` as const)}
+                  {t(mapContentStrategyKey(deletionRules.rules.defaultContentStrategy))}
                 </dd>
               </div>
             </dl>
@@ -136,7 +146,7 @@ export const AccountDeletionRulesCard = ({
                   >
                     {deletionContentStrategyOptions.map((option) => (
                       <option key={option} value={option}>
-                        {t(`account.privacy.deletionRules.strategies.${option}` as const)}
+                        {t(mapContentStrategyKey(option))}
                       </option>
                     ))}
                   </Select>

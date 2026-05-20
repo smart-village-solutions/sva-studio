@@ -122,6 +122,16 @@ const dsrStatusOptions = [
   'failed',
  ] as const;
 
+const mapDeletionContentStrategyKey = (strategy: IamDeletionContentStrategy) => {
+  switch (strategy) {
+    case 'with_owner_lifecycle':
+      return 'admin.iam.deletionRules.strategies.with_owner_lifecycle';
+    case 'retain':
+    default:
+      return 'admin.iam.deletionRules.strategies.retain';
+  }
+};
+
 const deletionContentStrategyOptions: readonly IamDeletionContentStrategy[] = [
   'retain',
   'with_owner_lifecycle',
@@ -1295,7 +1305,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                     >
                       {deletionContentStrategyOptions.map((option) => (
                         <option key={option} value={option}>
-                          {t(`admin.iam.deletionRules.strategies.${option}` as const)}
+                          {t(mapDeletionContentStrategyKey(option))}
                         </option>
                       ))}
                     </Select>

@@ -115,6 +115,13 @@ const expectAdminListUrl = async (page: Page, basePath: '/admin/events' | '/admi
   await expect(page).toHaveURL(new RegExp(`${basePath.replace('/', '\\/')}\\?(?:.*&)??page=1(?:&.*)?$`));
 };
 
+const waitForLoginNavigationRequest = (page: Page) =>
+  page.waitForRequest(
+    (request) =>
+      request.isNavigationRequest() &&
+      /(\/auth\/login\?returnTo=|\/\?auth=(?:dev-login|mock-login)&returnTo=)/.test(request.url())
+  );
+
 const mockSharedShellRequests = async (page: Page) => {
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) });
@@ -416,9 +423,7 @@ test.describe('events and POI plugins', () => {
     await page.route('**/auth/me', async (route) => {
       await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unauthorized' }) });
     });
-    const eventsLoginRequest = page.waitForRequest(
-      (request) => request.isNavigationRequest() && request.url().includes('/auth/login?returnTo=')
-    );
+    const eventsLoginRequest = waitForLoginNavigationRequest(page);
     await page.goto('/');
     await navigateClientSide(page, '/admin/events');
     await expect(new URL((await eventsLoginRequest).url()).searchParams.get('returnTo')).toMatch(/^\/admin\/events(?:$|\?)/);
@@ -430,9 +435,7 @@ test.describe('events and POI plugins', () => {
       await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unauthorized' }) });
     });
 
-    const poiLoginRequest = page.waitForRequest(
-      (request) => request.isNavigationRequest() && request.url().includes('/auth/login?returnTo=')
-    );
+    const poiLoginRequest = waitForLoginNavigationRequest(page);
     await page.goto('/');
     await navigateClientSide(page, '/admin/poi');
     await expect(new URL((await poiLoginRequest).url()).searchParams.get('returnTo')).toMatch(/^\/admin\/poi(?:$|\?)/);

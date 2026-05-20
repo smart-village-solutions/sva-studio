@@ -41,6 +41,7 @@
 - [ ] 4.3 Revisionssichere Audit-Events für per-Account-Inhaltspräferenz-Overrides spezifizieren
 - [ ] 4.4 Einen gemeinsamen Mindestvertrag für Audit-Events von Regeländerungen, Overrides, Lifecycle-Übergängen und Blockierungen normieren
 - [ ] 4.4.1 Pflichtfelder, zulässige `result`-Werte und normative Event-Familien für den Auditvertrag festlegen
+- [ ] 4.4.1.1 Separate Lifecycle-Event-Familien für `applied`, fachlich `blocked` und vorab `rejected` normieren
 - [ ] 4.4.2 Die Semantik von `applied`, `blocked` und `rejected` einschließlich Erst-Save-Payloads aus geerbtem Wirkszustand normieren
 
 ## 5. Dokumentation und Nachweise

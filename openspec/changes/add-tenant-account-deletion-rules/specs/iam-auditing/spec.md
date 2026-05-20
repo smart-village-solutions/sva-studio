@@ -11,7 +11,7 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 - **AND** ist `result` auf `applied`, `blocked` oder `rejected` begrenzt
 - **AND** dürfen `request_id` und `trace_id` null-sicher als leer oder nicht verfügbar geführt werden, wenn der auslösende Kontext keine Korrelationswerte bereitstellt
 - **AND** bleiben `actor_ref` und `subject_ref` pseudonymisierte Referenzen
-- **AND** gehören Events mindestens zu den Familien `tenant_rule_changed`, `content_preference_override_changed`, `lifecycle_transition_applied` und `lifecycle_transition_blocked`
+- **AND** gehören Events mindestens zu den Familien `tenant_rule_changed`, `content_preference_override_changed`, `lifecycle_transition_applied`, `lifecycle_transition_blocked` und `lifecycle_transition_rejected`
 
 #### Scenario: `blocked` und `rejected` sind fachlich getrennt
 
@@ -19,7 +19,7 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 - **THEN** bedeutet `applied`, dass die autorisierte Aktion eine Regeländerung, einen Override oder einen Lifecycle-Übergang tatsächlich persistiert oder angewendet hat
 - **AND** bedeutet `blocked`, dass die autorisierte Aktion die Fachverarbeitung erreicht hat, dort aber an fachlichen oder datenbezogenen Vorbedingungen scheiterte
 - **AND** bedeutet `rejected`, dass Autorisierung oder Request-Validierung die Aktion vor Beginn der Fachverarbeitung abgelehnt haben
-- **AND** werden Autorisierungsfehler nicht als `lifecycle_transition_blocked`, sondern als `rejected` in der jeweils betroffenen Event-Familie emittiert
+- **AND** werden Autorisierungsfehler nicht als `lifecycle_transition_blocked`, sondern als `lifecycle_transition_rejected` emittiert
 
 #### Scenario: Änderung der Tenant-Löschregeln wird auditiert
 
@@ -51,14 +51,15 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 
 #### Scenario: Blockierte Lifecycle-Verarbeitung bleibt nachvollziehbar
 
-- **WHEN** ein Account wegen Validierungsfehlern, Schutzbedingungen oder fehlender Berechtigung nicht in die nächste Lifecycle-Stufe überführt wird
+- **WHEN** ein autorisierter Lifecycle-Lauf einen Account wegen fachlicher Vorbedingungen oder Schutzbedingungen nicht in die nächste Lifecycle-Stufe überführen kann
 - **THEN** erzeugt das System ein Audit-Event gemäß dem gemeinsamen Mindestvertrag mit Blockierungsgrund und pseudonymisierter Account-Referenz
 - **AND** verwendet das Event die Familie `lifecycle_transition_blocked`
 - **AND** enthält die Familien-Payload mindestens `attempted_status` und `block_reason`
 - **AND** kann Betrieb oder Compliance den ausbleibenden Übergang ohne Rohdatenzugriff nachvollziehen
 
-#### Scenario: Autorisierungs- oder Request-Ablehnung eines Lifecycle-Laufs wird als `rejected` auditiert
+#### Scenario: Autorisierungs- oder Request-Ablehnung eines Lifecycle-Laufs wird als eigene Rejected-Familie auditiert
 
 - **WHEN** ein Lifecycle-Lauf wegen fehlender Berechtigung oder ungültiger Request-Form vor Beginn der Fachverarbeitung abgelehnt wird
 - **THEN** erzeugt das System kein Event der Familie `lifecycle_transition_blocked`
-- **AND** wird stattdessen ein Event der betroffenen Aktionsfamilie mit `result=rejected` erzeugt
+- **AND** wird stattdessen ein Event der Familie `lifecycle_transition_rejected` mit `result=rejected` erzeugt
+- **AND** enthält die Familien-Payload mindestens `requested_status` und `rejection_reason`

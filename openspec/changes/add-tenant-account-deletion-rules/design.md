@@ -54,7 +54,8 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
 - Decision: Audit-Events verwenden eine stabile Ergebnis- und Herkunftssemantik.
   - Rationale: Betrieb, UI und Compliance müssen unterscheiden können, ob eine Aktion erfolgreich angewendet, fachlich blockiert oder vor der Fachverarbeitung zurückgewiesen wurde.
   - Ergebnissemantik: `applied` bedeutet, dass eine autorisierte Aktion eine Regeländerung, einen Override oder einen Lifecycle-Übergang tatsächlich persistiert bzw. angewendet hat. `blocked` bedeutet, dass eine autorisierte Aktion die Fachverarbeitung erreicht hat, dort aber an fachlichen oder datenbezogenen Vorbedingungen scheiterte, etwa wegen `last_login_at = null`, Schutzbedingungen oder fehlender Lifecycle-Voraussetzungen. `rejected` bedeutet, dass Autorisierung oder Request-Validierung die Aktion vor der Fachverarbeitung abgelehnt haben.
-  - Autorisierungsfehler und Request-Validierungsfehler werden nicht als `lifecycle_transition_blocked` emittiert, sondern als `rejected` innerhalb der jeweils betroffenen Event-Familie.
+  - Lifecycle-Familien: erfolgreiche Lifecycle-Übergänge verwenden `lifecycle_transition_applied`, fachlich blockierte autorisierte Läufe `lifecycle_transition_blocked` und vor der Fachverarbeitung abgelehnte Lifecycle-Anfragen `lifecycle_transition_rejected`.
+  - Autorisierungsfehler und Request-Validierungsfehler werden nicht als `lifecycle_transition_blocked`, sondern als `lifecycle_transition_rejected` emittiert.
   - Erst-Save-Semantik: Beim ersten Speichern einer Tenant-Regelkonfiguration oder eines Account-Overrides protokolliert das Audit den zuvor wirksamen geerbten Geschäftsstatus als `previous_*`-Wert und markiert zusätzlich, dass vorher keine explizite Konfiguration existierte, etwa über `previous_source='inherited'` oder `previous_config_present=false`.
 
 ## Risks / Trade-offs

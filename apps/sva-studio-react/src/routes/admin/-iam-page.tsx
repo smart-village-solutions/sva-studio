@@ -73,6 +73,28 @@ const buildPermissionsPath = (query: IamPermissionsQuery) => {
   return `/iam/me/permissions?${searchParams.toString()}`;
 };
 
+const buildGovernanceComplianceExportPath = (input: {
+  instanceId: string;
+  query: GovernanceCasesQuery;
+}) => {
+  const searchParams = new URLSearchParams();
+  searchParams.set('instanceId', input.instanceId);
+  searchParams.set('format', 'csv');
+
+  const search = input.query.search?.trim();
+  if (search) {
+    searchParams.set('search', search);
+  }
+  if (input.query.type) {
+    searchParams.set('type', input.query.type);
+  }
+  if (input.query.status?.trim()) {
+    searchParams.set('status', input.query.status.trim());
+  }
+
+  return `/iam/governance/compliance/export?${searchParams.toString()}`;
+};
+
 const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
@@ -88,6 +110,11 @@ const formatObjectEntries = (value: Readonly<Record<string, unknown>> | undefine
     .map(([key, entry]) => `${key}: ${String(entry)}`)
     .join(', ');
 };
+
+const readRequestNote = (metadata: Readonly<Record<string, unknown>> | undefined) =>
+  typeof metadata?.requestNote === 'string' && metadata.requestNote.trim().length > 0
+    ? metadata.requestNote
+    : null;
 
 const governanceTypeOptions = [
   'permission_change',
@@ -223,6 +250,8 @@ const GovernanceDetail = ({ item }: Readonly<{ item: IamGovernanceCaseListItem |
     return <p className="text-sm text-muted-foreground">{t('admin.iam.shared.selectPrompt')}</p>;
   }
 
+  const requestNote = readRequestNote(item.metadata);
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -242,6 +271,14 @@ const GovernanceDetail = ({ item }: Readonly<{ item: IamGovernanceCaseListItem |
           <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.targetLabel')}</dt>
           <dd className="text-foreground">{item.targetDisplayName ?? '—'}</dd>
         </div>
+        {requestNote ? (
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+              {t('admin.iam.shared.requestNote')}
+            </dt>
+            <dd className="whitespace-pre-wrap text-foreground">{requestNote}</dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.meta')}</dt>
           <dd className="text-foreground">{formatObjectEntries(item.metadata)}</dd>
@@ -942,7 +979,18 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,1fr)]"
         >
           <div className="space-y-4">
-            <Card className="grid gap-3 p-4 md:grid-cols-3">
+            <Card className="grid gap-3 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.exportHint')}</p>
+                {instanceId ? (
+                  <Button asChild size="sm" variant="outline">
+                    <a href={buildGovernanceComplianceExportPath({ instanceId, query: governanceRequestQuery })}>
+                      {t('admin.iam.governance.actions.exportCsv')}
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
               <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
                 <Label htmlFor="iam-governance-search">{t('admin.iam.governance.filters.search')}</Label>
                 <Input
@@ -980,6 +1028,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                   value={governanceQuery.status ?? ''}
                   onChange={(event) => setGovernanceQuery((current) => ({ ...current, page: 1, status: event.target.value || undefined }))}
                 />
+              </div>
               </div>
             </Card>
             {governanceError ? (

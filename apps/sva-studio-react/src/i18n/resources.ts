@@ -875,6 +875,7 @@ export const i18nResources = {
         actions: {
           requestExport: 'Datenexport anfordern',
           requestAccess: 'Auskunft anfordern',
+          requestPermissionChange: 'Rechteänderung beantragen',
           optOut: 'Widerspruch einreichen',
           checkProcessing: 'Verarbeitungsstatus prüfen',
           exportQueued: 'Der Export wurde in die Warteschlange gestellt.',
@@ -888,6 +889,30 @@ export const i18nResources = {
           title: 'Noch keine Datenschutzvorgänge vorhanden',
           body: 'Für dieses Konto liegen derzeit keine Exporte, Anfragen oder rechtlichen Sperren vor.',
           cta: 'Erste Auskunftsanfrage starten',
+        },
+        permissionChange: {
+          actions: {
+            cancel: 'Abbrechen',
+            submit: 'Antrag senden',
+          },
+          dialog: {
+            title: 'Rechteänderung beantragen',
+            description:
+              'Beschreiben Sie den benötigten zusätzlichen Zugriff. Die konkrete Rechtezuordnung erfolgt später im Governance-Prozess.',
+          },
+          fields: {
+            requestNote: 'Gewünschte zusätzliche Rechte',
+            requestNotePlaceholder:
+              'Beschreiben Sie kurz, welchen zusätzlichen Zugriff Sie benötigen und wofür.',
+            requestNoteHint:
+              'Nennen Sie bitte den fachlichen Zweck und den benötigten Zugriff in Freitext.',
+          },
+          messages: {
+            requested: 'Die Anfrage zur Rechteänderung wurde eingereicht.',
+          },
+          validation: {
+            required: 'Bitte beschreiben Sie den gewünschten zusätzlichen Zugriff.',
+          },
         },
         sections: {
           exportJobs: 'Export-Jobs',
@@ -2757,6 +2782,7 @@ export const i18nResources = {
           actor: 'Auslöser',
           targetLabel: 'Zielkonto',
           requester: 'Anfragende Person',
+          requestNote: 'Anfragebeschreibung',
           meta: 'Metadaten',
           selectPrompt: 'Wählen Sie links einen Eintrag aus, um Details anzuzeigen.',
         },
@@ -2833,12 +2859,16 @@ export const i18nResources = {
           },
         },
         governance: {
+          actions: {
+            exportCsv: 'CSV exportieren',
+          },
           filters: {
             search: 'Suche',
             type: 'Typ',
             status: 'Status',
           },
           messages: {
+            exportHint: 'Die aktuelle Governance-Ansicht kann als Compliance-Export heruntergeladen werden.',
             loading: 'Governance-Fälle werden geladen ...',
             empty: 'Keine Governance-Fälle gefunden.',
           },
@@ -3741,6 +3771,7 @@ export const i18nResources = {
         actions: {
           requestExport: 'Request data export',
           requestAccess: 'Request access',
+          requestPermissionChange: 'Request rights change',
           optOut: 'Submit objection',
           checkProcessing: 'Check processing status',
           exportQueued: 'The export job was queued.',
@@ -3754,6 +3785,30 @@ export const i18nResources = {
           title: 'No privacy activity yet',
           body: 'There are currently no exports, requests, or legal holds for this account.',
           cta: 'Start your first access request',
+        },
+        permissionChange: {
+          actions: {
+            cancel: 'Cancel',
+            submit: 'Submit request',
+          },
+          dialog: {
+            title: 'Request rights change',
+            description:
+              'Describe the additional access you need. The concrete role assignment is handled later in the governance workflow.',
+          },
+          fields: {
+            requestNote: 'Requested additional access',
+            requestNotePlaceholder:
+              'Briefly describe which additional access you need and what you need it for.',
+            requestNoteHint:
+              'Please describe the business purpose and the required access in free text.',
+          },
+          messages: {
+            requested: 'The rights change request was submitted.',
+          },
+          validation: {
+            required: 'Please describe the additional access you need.',
+          },
         },
         sections: {
           exportJobs: 'Export jobs',
@@ -5564,6 +5619,7 @@ export const i18nResources = {
           actor: 'Actor',
           targetLabel: 'Target account',
           requester: 'Requester',
+          requestNote: 'Request description',
           meta: 'Metadata',
           selectPrompt: 'Select an entry on the left to inspect details.',
         },
@@ -5640,12 +5696,16 @@ export const i18nResources = {
           },
         },
         governance: {
+          actions: {
+            exportCsv: 'Export CSV',
+          },
           filters: {
             search: 'Search',
             type: 'Type',
             status: 'Status',
           },
           messages: {
+            exportHint: 'Download the current governance view as a compliance export.',
             loading: 'Loading governance cases ...',
             empty: 'No governance cases found.',
           },

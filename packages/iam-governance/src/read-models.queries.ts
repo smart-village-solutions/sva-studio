@@ -13,6 +13,8 @@ const queryPermissionChanges = (client: QueryClient, input: GovernanceFilters) =
 SELECT
   request.id,
   request.status,
+  request.request_note,
+  request.request_origin,
   request.ticket_id,
   request.ticket_system,
   request.ticket_state,
@@ -36,7 +38,7 @@ SELECT
   target.last_name_ciphertext AS target_last_name_ciphertext,
   target.keycloak_subject AS target_keycloak_subject
 FROM iam.permission_change_requests request
-JOIN iam.roles role
+LEFT JOIN iam.roles role
   ON role.instance_id = request.instance_id
  AND role.id = request.role_id
 JOIN iam.accounts requester

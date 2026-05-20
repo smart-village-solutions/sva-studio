@@ -120,6 +120,7 @@ Kernidee:
 
 - Audit-Tabellen sind unveränderlich abgesichert.
 - Governance- und Datenschutzflüsse sind relational nachvollziehbar modelliert.
+- `iam.permission_change_requests` unterstützt zusätzlich einen Self-Service-Intake mit Freitextbegründung und Ursprung (`admin` oder `self_service`).
 
 ### 4. Organisation, Geo und Scope
 

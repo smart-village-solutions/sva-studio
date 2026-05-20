@@ -63,6 +63,7 @@ export type AuthRoutePath =
   | '/api/v1/iam/admin/reconcile'
   | '/iam/governance/workflows'
   | '/iam/governance/compliance/export'
+  | '/iam/me/permission-change-requests'
   | '/iam/me/data-export'
   | '/iam/me/data-export/status'
   | '/iam/me/data-subject-rights/requests'
@@ -174,6 +175,7 @@ export const authRoutePaths = [
   '/api/v1/iam/admin/reconcile',
   '/iam/governance/workflows',
   '/iam/governance/compliance/export',
+  '/iam/me/permission-change-requests',
   '/iam/me/data-export',
   '/iam/me/data-export/status',
   '/iam/me/data-subject-rights/requests',

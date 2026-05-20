@@ -25,6 +25,8 @@ describe('iam-governance/read-models', () => {
           {
             id: 'perm-1',
             status: 'submitted',
+            request_note: 'Need elevated access',
+            request_origin: 'admin',
             ticket_id: 'TICKET-1',
             ticket_system: 'jira',
             ticket_state: 'open',
@@ -202,5 +204,68 @@ describe('iam-governance/read-models', () => {
     });
     expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), ['de-musterhausen', relatedAccountId]);
     expect(client.query).toHaveBeenNthCalledWith(4, expect.any(String), ['de-musterhausen', relatedAccountId]);
+  });
+
+  it('maps self-service intake requests without requiring a role assignment', async () => {
+    const client = buildClient(
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'perm-self-1',
+            status: 'intake',
+            request_note: 'Ich benötige Schreibrechte für die Pflege der Veranstaltungsinhalte.',
+            request_origin: 'self_service',
+            ticket_id: null,
+            ticket_system: null,
+            ticket_state: null,
+            reason_code: null,
+            rejection_reason: null,
+            requested_at: '2026-03-20T10:00:00.000Z',
+            approved_at: null,
+            applied_at: null,
+            updated_at: '2026-03-20T10:00:00.000Z',
+            role_id: null,
+            role_name: null,
+            role_display_name: null,
+            requester_account_id: 'account-1',
+            target_account_id: 'account-1',
+            requester_display_name_ciphertext: 'Max Mustermann',
+            requester_first_name_ciphertext: 'Max',
+            requester_last_name_ciphertext: 'Mustermann',
+            requester_keycloak_subject: 'kc-max',
+            target_display_name_ciphertext: 'Max Mustermann',
+            target_first_name_ciphertext: 'Max',
+            target_last_name_ciphertext: 'Mustermann',
+            target_keycloak_subject: 'kc-max',
+          },
+        ],
+      },
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] }
+    );
+
+    const result = await listGovernanceCases(client as never, {
+      instanceId: 'de-musterhausen',
+      type: 'permission_change',
+      page: 1,
+      pageSize: 10,
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.items[0]).toMatchObject({
+      id: 'perm-self-1',
+      type: 'permission_change',
+      status: 'intake',
+      title: 'Rechteänderung angefragt',
+      summary: 'Ich benötige Schreibrechte für die Pflege der Veranstaltungsinhalte.',
+      roleId: undefined,
+      roleName: undefined,
+      metadata: {
+        requestNote: 'Ich benötige Schreibrechte für die Pflege der Veranstaltungsinhalte.',
+        requestOrigin: 'self_service',
+      },
+    });
   });
 });

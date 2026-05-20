@@ -61,19 +61,20 @@ const mapPermissionChangeRow = (row: PermissionChangeRow): IamGovernanceCaseList
     last_name_ciphertext: row.target_last_name_ciphertext,
     keycloak_subject: row.target_keycloak_subject,
   });
-  const roleName = row.role_display_name ?? row.role_name;
+  const roleName = row.role_display_name ?? row.role_name ?? undefined;
+  const isSelfServiceIntake = row.request_origin === 'self_service' && row.status === 'intake';
 
   return {
     id: row.id,
     type: 'permission_change',
     status: row.status,
-    title: roleName,
-    summary: `${actorDisplayName} -> ${targetDisplayName}`,
+    title: isSelfServiceIntake ? 'Rechteänderung angefragt' : roleName ?? 'Rechteänderung',
+    summary: isSelfServiceIntake ? row.request_note : `${actorDisplayName} -> ${targetDisplayName}`,
     actorAccountId: row.requester_account_id,
     actorDisplayName,
     targetAccountId: row.target_account_id,
     targetDisplayName,
-    roleId: row.role_id,
+    roleId: row.role_id ?? undefined,
     roleName,
     ticketId: row.ticket_id ?? undefined,
     ticketSystem: row.ticket_system ?? undefined,
@@ -83,6 +84,8 @@ const mapPermissionChangeRow = (row: PermissionChangeRow): IamGovernanceCaseList
     approvedAt: row.approved_at ?? undefined,
     resolvedAt: row.applied_at ?? undefined,
     metadata: {
+      requestNote: row.request_note,
+      requestOrigin: row.request_origin,
       ticketState: row.ticket_state ?? undefined,
       rejectionReason: row.rejection_reason ?? undefined,
     },

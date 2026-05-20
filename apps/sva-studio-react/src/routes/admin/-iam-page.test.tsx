@@ -223,6 +223,100 @@ describe('IamViewerPage', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('renders a governance CSV export link with the active filters', async () => {
+    listGovernanceCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'gov-1',
+          type: 'permission_change',
+          status: 'submitted',
+          title: 'Rollenanpassung beantragt',
+          summary: 'Redakteurrolle fuer Benutzerkonto',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          metadata: {},
+        },
+      ],
+    });
+
+    useAuthMock.mockReturnValue({
+      user: { ...adminUser, roles: ['security_admin'] },
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
+
+    render(<IamViewerPage activeTab="governance" />);
+
+    await waitFor(() => {
+      expect(listGovernanceCasesMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText('Suche'), {
+      target: { value: 'alice' },
+    });
+    fireEvent.change(screen.getByLabelText('Typ'), {
+      target: { value: 'permission_change' },
+    });
+    fireEvent.change(screen.getByLabelText('Status'), {
+      target: { value: 'submitted' },
+    });
+
+    const exportLink = screen.getByRole('link', { name: 'CSV exportieren' });
+    const href = exportLink.getAttribute('href');
+
+    expect(href).toContain('/iam/governance/compliance/export?');
+    expect(href).toContain('instanceId=11111111-1111-1111-8111-111111111111');
+    expect(href).toContain('format=csv');
+    expect(href).toContain('search=alice');
+    expect(href).toContain('type=permission_change');
+    expect(href).toContain('status=submitted');
+  });
+
+  it('shows the requester free text for self-service permission change requests in the detail pane', async () => {
+    listGovernanceCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'gov-self-1',
+          type: 'permission_change',
+          status: 'intake',
+          title: 'Rechteänderung angefragt',
+          summary: 'Ich benötige Schreibrechte für die Veranstaltungsredaktion.',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          metadata: {
+            requestNote: 'Ich benötige Schreibrechte für die Veranstaltungsredaktion.',
+            requestOrigin: 'self_service',
+          },
+        },
+      ],
+    });
+
+    useAuthMock.mockReturnValue({
+      user: { ...adminUser, roles: ['security_admin'] },
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
+
+    render(<IamViewerPage activeTab="governance" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Rechteänderung angefragt/i })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Rechteänderung angefragt/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Anfragebeschreibung')).toBeTruthy();
+      expect(screen.getAllByText('Ich benötige Schreibrechte für die Veranstaltungsredaktion.').length).toBeGreaterThan(0);
+    });
+  });
+
   it('loads DSR entries and renders canonical status badges', async () => {
     listAdminDsrCasesMock.mockResolvedValue({
       data: [

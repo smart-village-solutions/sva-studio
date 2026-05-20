@@ -36,6 +36,9 @@ const governanceAuthHandlerMap = {
   '/iam/governance/compliance/export': {
     GET: routeHandler(authRuntimeRoutes.governanceComplianceExportHandler),
   },
+  '/iam/me/permission-change-requests': {
+    POST: routeHandler(authRuntimeRoutes.permissionChangeSelfServiceRequestHandler),
+  },
   '/iam/me/data-export': {
     GET: createMethodNotAllowedHandler('/iam/me/data-export', 'POST'),
     POST: routeHandler(authRuntimeRoutes.dataExportHandler),

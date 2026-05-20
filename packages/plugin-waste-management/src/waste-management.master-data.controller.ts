@@ -32,5 +32,6 @@ export const useWasteMasterDataController = (pt: Translate, search: WasteManagem
     ...selectionActions,
     ...submitHandlers,
     ...resetActions,
+    reloadOverview: loadOverview,
   };
 };

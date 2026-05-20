@@ -105,6 +105,15 @@ type CollectionLocationsBulkCopy = Readonly<{
   messages: Readonly<Record<string, string>>;
 }>;
 
+type CollectionLocationsAssignmentEditorCopy = Readonly<{
+  title: string;
+  description: string;
+  empty: string;
+  actions: Readonly<Record<string, string>>;
+  meta: Readonly<Record<string, string>>;
+  messages: Readonly<Record<string, string>>;
+}>;
+
 type CollectionLocationsCopy = Readonly<{
   title: string;
   description: string;
@@ -115,6 +124,7 @@ type CollectionLocationsCopy = Readonly<{
   messages: Readonly<
     CrudMessagesCopy & { deleteSuccess: string; deleteError: string; deleteForbidden: string; deleteConflict: string }
   >;
+  assignmentEditor: CollectionLocationsAssignmentEditorCopy;
   bulk: CollectionLocationsBulkCopy;
 }>;
 
@@ -175,6 +185,20 @@ export const createCollectionLocationsBulkTranslations = <const TCopy extends Co
     messages: copy.messages,
   }) as const;
 
+export const createCollectionLocationsAssignmentEditorTranslations = <
+  const TCopy extends CollectionLocationsAssignmentEditorCopy,
+>(
+  copy: TCopy,
+) =>
+  ({
+    title: copy.title,
+    description: copy.description,
+    empty: copy.empty,
+    actions: copy.actions,
+    meta: copy.meta,
+    messages: copy.messages,
+  }) as const;
+
 export const createCollectionLocationsTranslations = <const TCopy extends CollectionLocationsCopy>(copy: TCopy) =>
   ({
     title: copy.title,
@@ -184,6 +208,7 @@ export const createCollectionLocationsTranslations = <const TCopy extends Collec
     dialog: createCrudDialog(copy.dialog),
     meta: copy.meta,
     messages: createCrudMessages(copy.messages),
+    assignmentEditor: createCollectionLocationsAssignmentEditorTranslations(copy.assignmentEditor),
     bulk: createCollectionLocationsBulkTranslations(copy.bulk),
   }) as const;
 

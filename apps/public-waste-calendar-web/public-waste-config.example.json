@@ -1,0 +1,10 @@
+{
+  "instanceId": "bb-prignitz",
+  "supabase": {
+    "databaseUrl": "${PUBLIC_WASTE_DATABASE_URL}",
+    "schemaName": "public"
+  },
+  "pdf": {
+    "urlTemplate": "https://example.invalid/waste/{locationKey}/{year}.pdf"
+  }
+}

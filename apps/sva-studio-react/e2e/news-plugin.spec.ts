@@ -91,6 +91,13 @@ const expectNewsListUrl = async (page: Page) => {
   await expect(page).toHaveURL(/\/admin\/news\?(?:.*&)?page=1(?:&.*)?$/);
 };
 
+const expectLoginRedirect = async (page: Page, returnToPattern: RegExp) => {
+  await expect(page).toHaveURL(/\/\?auth=login&returnTo=/);
+  const loginUrl = new URL(page.url());
+  expect(loginUrl.searchParams.get('auth')).toBe('login');
+  expect(loginUrl.searchParams.get('returnTo')).toMatch(returnToPattern);
+};
+
 const gotoShellRoot = async (page: Page, attempts = 5) => {
   let lastError: unknown;
 
@@ -432,13 +439,10 @@ test.describe('news plugin', () => {
         body: JSON.stringify({ error: 'unauthorized' }),
       });
     });
-    const loginRequest = page.waitForRequest(
-      (request) => request.isNavigationRequest() && request.url().includes('/auth/login?returnTo=')
-    );
 
     await gotoShellRoot(page);
     await navigateClientSide(page, '/admin/news');
-    await expect(new URL((await loginRequest).url()).searchParams.get('returnTo')).toMatch(/^\/admin\/news(?:$|\?)/);
+    await expectLoginRedirect(page, /^\/admin\/news(?:$|\?)/);
   });
 
   test('stays free of serious accessibility violations on news views', async ({ page }) => {

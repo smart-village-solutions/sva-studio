@@ -28,8 +28,9 @@ export const WasteToursDialogs = ({ controller }: { readonly controller: Control
       form={controller.linkForm}
       tour={controller.selectedTour}
       tours={controller.overview?.tours ?? []}
-      locations={controller.locationOptions}
+      locations={controller.assignmentLocationOptions}
       saving={controller.saving}
+      loading={controller.assignmentContextLoading}
       message={controller.assignmentsDialogOpen ? controller.message : null}
       onOpenChange={(open) => {
         controller.setAssignmentsDialogOpen(open);

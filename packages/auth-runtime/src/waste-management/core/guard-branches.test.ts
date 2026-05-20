@@ -91,6 +91,16 @@ describe('waste-management guard branches', () => {
             locationId: 'location-1',
             tourId: 'tour-1',
           }),
+      }),
+      deps: () => createDeps('waste-management.read'),
+    },
+    {
+      label: 'location tour link delete returns forbidden when the dedicated permission is missing',
+      handler: wasteManagementLocationTourLinkHandlers.deleteWasteManagementLocationTourLinkInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-guard-delete', {
+          method: 'DELETE',
+          headers: createHeaders(),
         }),
       deps: () => createDeps('waste-management.read'),
     },

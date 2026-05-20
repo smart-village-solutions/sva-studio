@@ -2,6 +2,11 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export const appRoot = fileURLToPath(new URL('.', import.meta.url));
+export const prGateExcludedTestFiles = [
+  'src/lib/development-logs.test.ts',
+  'src/lib/plugins.test.ts',
+  'src/lib/plugin-operation-runtime.server.test.ts',
+] as const;
 
 export const sharedVitestConfig = defineConfig({
   root: appRoot,

@@ -126,6 +126,7 @@ const governanceAuthHandlerMap = {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createLocationTourLinksBulk),
   },
   '/api/v1/waste-management/location-tour-links/$linkId': {
+    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteLocationTourLink),
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateLocationTourLink),
   },
   '/api/v1/waste-management/scheduling': {

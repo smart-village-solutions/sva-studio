@@ -168,14 +168,18 @@ const repositoryMocks = vi.hoisted(() => ({
   upsertWasteHouseNumber: vi.fn(async () => undefined),
   getWasteCollectionLocationById: vi.fn(async (_id: string) => ({ id: 'location-1' })),
   upsertWasteCollectionLocation: vi.fn(async () => undefined),
+  deleteWasteCollectionLocation: vi.fn(async () => undefined),
   getWasteLocationTourLinkById: vi.fn(async (id: string) => ({ id, locationId: 'location-1', tourId: 'tour-1' })),
   upsertWasteLocationTourLink: vi.fn(async () => undefined),
+  deleteWasteLocationTourLink: vi.fn(async () => undefined),
   getWasteTourById: vi.fn(async (_id: string) => ({ id: 'tour-1' })),
   upsertWasteTour: vi.fn(async () => undefined),
   getWasteTourDateShiftById: vi.fn(async (_id: string) => ({ id: 'shift-1' })),
   upsertWasteTourDateShift: vi.fn(async () => undefined),
+  deleteWasteTourDateShift: vi.fn(async () => undefined),
   getWasteGlobalDateShiftById: vi.fn(async (_id: string) => ({ id: 'global-shift-1' })),
   upsertWasteGlobalDateShift: vi.fn(async () => undefined),
+  deleteWasteGlobalDateShift: vi.fn(async () => undefined),
 }));
 
 const createWasteMasterDataRepositoryMock = vi.hoisted(() => vi.fn(() => repositoryMocks));
@@ -484,9 +488,13 @@ describe('waste-management server loaders', () => {
     await wasteManagementEntitySavers.saveWasteStreet('tenant-a', { id: 'street-2' } as never);
     await wasteManagementEntitySavers.saveWasteHouseNumber('tenant-a', { id: 'house-2' } as never);
     await wasteManagementEntitySavers.saveWasteCollectionLocation('tenant-a', { id: 'location-2' } as never);
+    await wasteManagementEntitySavers.deleteWasteCollectionLocation('tenant-a', 'location-2');
     await wasteManagementEntitySavers.saveWasteLocationTourLink('tenant-a', { id: 'link-2' } as never);
+    await wasteManagementEntitySavers.deleteWasteLocationTourLink('tenant-a', 'link-2');
     await wasteManagementEntitySavers.saveWasteTour('tenant-a', { id: 'tour-2' } as never);
+    await wasteManagementEntitySavers.deleteWasteTourDateShift('tenant-a', 'shift-2');
     await wasteManagementEntitySavers.saveWasteTourDateShift('tenant-a', { id: 'shift-2' } as never);
+    await wasteManagementEntitySavers.deleteWasteGlobalDateShift('tenant-a', 'global-shift-2');
     await wasteManagementEntitySavers.saveWasteGlobalDateShift('tenant-a', { id: 'global-shift-2' } as never);
 
     const bulkResult = await wasteManagementEntitySavers.saveWasteLocationTourLinksBulk('tenant-a', {
@@ -502,9 +510,13 @@ describe('waste-management server loaders', () => {
     expect(repositoryMocks.upsertWasteStreet).toHaveBeenCalled();
     expect(repositoryMocks.upsertWasteHouseNumber).toHaveBeenCalled();
     expect(repositoryMocks.upsertWasteCollectionLocation).toHaveBeenCalled();
+    expect(repositoryMocks.deleteWasteCollectionLocation).toHaveBeenCalledWith('location-2');
     expect(repositoryMocks.upsertWasteLocationTourLink).toHaveBeenCalled();
+    expect(repositoryMocks.deleteWasteLocationTourLink).toHaveBeenCalledWith('link-2');
     expect(repositoryMocks.upsertWasteTour).toHaveBeenCalled();
+    expect(repositoryMocks.deleteWasteTourDateShift).toHaveBeenCalledWith('shift-2');
     expect(repositoryMocks.upsertWasteTourDateShift).toHaveBeenCalled();
+    expect(repositoryMocks.deleteWasteGlobalDateShift).toHaveBeenCalledWith('global-shift-2');
     expect(repositoryMocks.upsertWasteGlobalDateShift).toHaveBeenCalled();
     expect(bulkResult).toHaveLength(2);
     expect(PoolMock).toHaveBeenCalledTimes(1);

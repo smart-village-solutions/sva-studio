@@ -2473,6 +2473,132 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Tour-Form-Fields in kleinere Feldgruppen und Hints aufteilen (packages/plugin-waste-management/src/waste-management.tours-tour-fields.tsx)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Calendar-Panels-Zweiglogik in kleinere Status- und Panel-Bausteine zerlegen (apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx:fileLines": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Calendar-Panels-Datei in kleinere Presentational-Module aufteilen (apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx:functionLines": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange Calendar-Panels-Komponente in einzelne Panel-Renderer aufspalten (apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/components/public-waste-selection-form.tsx:functionLines": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Selection-Form in kleinere Feldgruppen und Aktionsbausteine aufteilen (apps/public-waste-calendar-web/src/components/public-waste-selection-form.tsx)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-calendar-occurrences.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Occurrence-Berechnung in kleinere Mapping- und Filter-Schritte zerlegen (apps/public-waste-calendar-web/src/lib/public-waste-calendar-occurrences.ts)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-contract.ts:publicExports": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-004",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Public-Waste-Contract in kleinere Teilvertraege oder Re-Export-Module aufteilen (apps/public-waste-calendar-web/src/lib/public-waste-contract.ts)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-demo-runtime.ts:fileLines": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-005",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Demo-Runtime in Konfiguration, Seed-Daten und Bootstrap aufteilen (apps/public-waste-calendar-web/src/lib/public-waste-demo-runtime.ts)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-006",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Repository-Verzweigungen in kleinere Query- und Mapping-Helfer auslagern (apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts:fileLines": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-006",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Repository-Datei in kleinere Datenzugriffs- und Projektionsmodule splitten (apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts:functionLines": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-006",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange Repository-Funktionen in einzelne Query-Pfade und Loader zerlegen (apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/routes/index.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-007",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Index-Route in kleinere Status-, Loader- und Page-Entscheidungen zerlegen (apps/public-waste-calendar-web/src/routes/index.tsx)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/routes/index.tsx:fileLines": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-007",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Index-Route-Datei in kleinere Screen- und Container-Module aufteilen (apps/public-waste-calendar-web/src/routes/index.tsx)"
+    },
+    "apps-default:apps/public-waste-calendar-web/src/routes/index.tsx:functionLines": {
+      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-007",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange Index-Route-Komponente in Presentational- und Action-Bausteine splitten (apps/public-waste-calendar-web/src/routes/index.tsx)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.master-data-location-assignments.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-WASTE-COMPLEXITY-026",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Location-Assignments-Zweige in kleinere Tabellen-, Dialog- und Statushelfer zerlegen (packages/plugin-waste-management/src/waste-management.master-data-location-assignments.tsx)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.master-data-location-assignments.tsx:functionLines": {
+      "ticketId": "QUAL-WASTE-COMPLEXITY-026",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange Location-Assignments-Komponente in kleinere UI- und Mapping-Bausteine aufteilen (packages/plugin-waste-management/src/waste-management.master-data-location-assignments.tsx)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.master-data-location-form-content.tsx:functionLines": {
+      "ticketId": "QUAL-WASTE-COMPLEXITY-027",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Location-Form-Content in kleinere Feldgruppen und Assignment-Bloecke aufteilen (packages/plugin-waste-management/src/waste-management.master-data-location-form-content.tsx)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-WASTE-COMPLEXITY-028",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Assignments-Dialog-Zweige in kleinere Listen-, Filter- und Footer-Bausteine zerlegen (packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx:fileLines": {
+      "ticketId": "QUAL-WASTE-COMPLEXITY-028",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Assignments-Dialog-Datei in kleinere Module fuer Dialog-Chrome, Tabelle und Aktionen splitten (packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx:functionLines": {
+      "ticketId": "QUAL-WASTE-COMPLEXITY-028",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange Assignments-Dialog-Komponente in einzelne Unterkomponenten und Handler aufteilen (packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.tours.assignments-submissions.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-WASTE-COMPLEXITY-029",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Assignment-Submission-Verzweigungen in kleinere Payload-Builder und Guards zerlegen (packages/plugin-waste-management/src/waste-management.tours.assignments-submissions.ts)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.tours.assignments-submissions.ts:functionLines": {
+      "ticketId": "QUAL-WASTE-COMPLEXITY-029",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange Assignment-Submission-Funktionen in kleinere Mapper und Validatoren aufteilen (packages/plugin-waste-management/src/waste-management.tours.assignments-submissions.ts)"
     }
   }
 }

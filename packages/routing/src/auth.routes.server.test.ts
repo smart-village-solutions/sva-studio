@@ -149,6 +149,7 @@ const authServerMocks = vi.hoisted(() => {
       createTour: vi.fn(async () => response('createWasteManagementTourHandler')),
       createTourDateShift: vi.fn(async () => response('createWasteManagementTourDateShiftHandler')),
       deleteGlobalDateShift: vi.fn(async () => response('deleteWasteManagementGlobalDateShiftHandler')),
+      deleteLocationTourLink: vi.fn(async () => response('deleteWasteManagementLocationTourLinkHandler')),
       deleteTourDateShift: vi.fn(async () => response('deleteWasteManagementTourDateShiftHandler')),
       getMasterDataOverview: vi.fn(async () => response('getWasteManagementMasterDataOverviewHandler')),
       getSchedulingOverview: vi.fn(async () => response('getWasteManagementSchedulingOverviewHandler')),
@@ -400,6 +401,7 @@ describe('auth.routes.server', () => {
     expect(houseNumberDetailHandlers?.PUT).toBeDefined();
     expect(locationTourLinkHandlers?.POST).toBeDefined();
     expect(locationTourLinkBulkHandlers?.POST).toBeDefined();
+    expect(locationTourLinkDetailHandlers?.DELETE).toBeDefined();
     expect(locationTourLinkDetailHandlers?.PUT).toBeDefined();
     expect(schedulingHandlers?.GET).toBeDefined();
     expect(globalDateShiftHandlers?.POST).toBeDefined();
@@ -459,6 +461,11 @@ describe('auth.routes.server', () => {
     await locationTourLinkDetailHandlers.PUT?.({
       request: new Request('http://localhost/api/v1/waste-management/location-tour-links/link-1', {
         method: 'PUT',
+      }),
+    });
+    await locationTourLinkDetailHandlers.DELETE?.({
+      request: new Request('http://localhost/api/v1/waste-management/location-tour-links/link-1', {
+        method: 'DELETE',
       }),
     });
     await schedulingHandlers.GET?.({
@@ -535,6 +542,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.updateHouseNumber).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createLocationTourLink).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createLocationTourLinksBulk).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.deleteLocationTourLink).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateLocationTourLink).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.getSchedulingOverview).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createGlobalDateShift).toHaveBeenCalled();

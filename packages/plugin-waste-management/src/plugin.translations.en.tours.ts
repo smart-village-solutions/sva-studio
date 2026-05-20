@@ -1,10 +1,14 @@
-import { createWasteManagementToursTranslations } from './plugin.translations.shared.scheduling.js';
+import {
+  createToursAssignmentsTranslations,
+  createToursYearCalendarTranslations,
+  createWasteManagementToursTranslations,
+} from './plugin.translations.shared.scheduling.js';
 
 export const wasteManagementPluginTranslationsENTours = createWasteManagementToursTranslations({
   actions: {
     openCreate: 'New tour',
     openCalendar: 'Show annual calendar',
-    openAssignments: 'Show assigned pickup locations',
+    openAssignments: 'Edit assigned pickup locations',
     edit: 'Edit',
     delete: 'Delete',
     activateStatus: 'Activate tour {{value}}',
@@ -133,6 +137,65 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
       selectedSummary: '{{value}} dates stored',
     },
   },
+  assignments: createToursAssignmentsTranslations({
+    title: 'Assignments',
+    actions: {
+      openCreate: 'Create assignment',
+      edit: 'Edit',
+      resetFilters: 'Reset filters',
+      cancel: 'Cancel',
+      create: 'Save assignment',
+      save: 'Save changes',
+      saving: 'Saving…',
+    },
+    fields: {
+      tourId: 'Tour',
+      tourUnset: 'Select tour',
+      locationId: 'Collection location',
+      locationUnset: 'Select collection location',
+      startDate: 'Start date',
+      endDate: 'End date',
+    },
+    dialog: {
+      createTitle: 'Create tour assignment',
+      editTitle: 'Edit tour assignments',
+      description: 'Maintain collection locations and optional validity dates for {{value}}.',
+      descriptionFallback: 'Maintain collection locations and optional validity dates.',
+    },
+    meta: {
+      startDate: 'Start: {{value}}',
+      endDate: 'End: {{value}}',
+    },
+    workspace: {
+      availableTitle: 'Collection locations for this tour',
+      selectedCount: '{{value}} selected',
+      visibleCount: '{{value}} visible',
+      hiddenSelectedCount: '{{value}} selected outside the current filter',
+      noLocations: 'No collection locations match the current filters.',
+      assigned: 'Already assigned',
+    },
+    messages: {
+      createSuccess: 'The waste tour assignment was created.',
+      updateSuccess: 'The waste tour assignments were updated.',
+      saveError: 'The waste tour assignments could not be saved.',
+      saveForbidden: 'Missing permission to save waste tour assignments.',
+    },
+  }),
+  yearCalendar: createToursYearCalendarTranslations({
+    title: 'Annual calendar',
+    description: 'Shows the planned dates for {{value}} including known shifts.',
+    descriptionFallback: 'Shows the planned dates including known shifts.',
+    actions: {
+      open: 'Annual calendar',
+      previousYear: 'Previous year',
+      nextYear: 'Next year',
+    },
+    meta: {
+      year: 'Year {{value}}',
+      dateListTitle: 'Planned dates',
+      noDates: 'No dates could be calculated for this year.',
+    },
+  }),
   messages: {
     loading: 'Loading tours.',
     loadError: 'Waste tours could not be loaded.',

@@ -29,13 +29,14 @@ export const createWasteToursActions = (state: WasteToursState) => ({
     state.setAssignmentsDialogOpen(true);
   },
   openEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => {
-    const link = (state.masterDataOverview?.locationTourLinks ?? []).find((entry) => entry.id === linkId);
-    if (!link) {
-      return;
-    }
+    const existingLink = state.masterDataOverview?.locationTourLinks.find((link) => link.id === linkId);
     state.setSelectedTour(tour);
     state.setAssignmentsDialogMode('edit');
-    state.setLinkForm(mapLocationTourLinkToForm(link));
+    state.setLinkForm(
+      existingLink
+        ? mapLocationTourLinkToForm(existingLink)
+        : { ...createDefaultLocationTourLinkForm(), tourId: tour.id }
+    );
     state.setMessage(null);
     state.setAssignmentsDialogOpen(true);
   },

@@ -102,6 +102,10 @@ export const useWasteToursEditRouteHydration = ({
       return;
     }
 
+    if (!controller.overview) {
+      return;
+    }
+
     const routeTour = controller.overview?.tours.find((tour) => tour.id === search.tourId);
 
     if (!routeTour) {
@@ -126,8 +130,10 @@ export const useWasteToursEditRouteHydration = ({
     }
 
     latestController.setTourForm(mapTourToForm(routeTour));
+    controller.setLastOutcome(null);
   }, [
     controller.overview,
+    controller.setLastOutcome,
     controller.tourForm.id,
     latestControllerRef,
     latestSearchRef,

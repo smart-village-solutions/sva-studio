@@ -22,6 +22,14 @@ export const updateWasteManagementLocationTourLink = async (
     'PUT'
   );
 
+export const deleteWasteManagementLocationTourLink = async (linkId: string): Promise<void> => {
+  await requestWasteManagementMutation(
+    `/api/v1/waste-management/location-tour-links/${encodeURIComponent(linkId)}`,
+    undefined,
+    'DELETE'
+  );
+};
+
 export const createWasteManagementLocationTourLinksBulk = async (
   input: CreateWasteManagementLocationTourLinksBulkInput
 ): Promise<WasteLocationTourLinkBulkCreateResult> =>

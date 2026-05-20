@@ -145,6 +145,7 @@ INSERT INTO iam.roles (
 )
 VALUES
   ('30111111-1111-1111-1111-111111111111', 'de-musterhausen', 'system_admin', 'system_admin', 'system_admin', 'system_admin', 'System administration persona', true, 'studio', 'pending', 100),
+  ('30188888-8888-8888-8888-888888888888', 'de-musterhausen', 'instance_registry_admin', 'instance_registry_admin', 'instance_registry_admin', 'instance_registry_admin', 'Instance registry administration persona', true, 'studio', 'pending', 95),
   ('30222222-2222-2222-2222-222222222222', 'de-musterhausen', 'app_manager', 'app_manager', 'app_manager', 'app_manager', 'Application management persona', true, 'studio', 'pending', 80),
   ('30333333-3333-3333-3333-333333333333', 'de-musterhausen', 'feature-manager', 'feature-manager', 'feature-manager', 'feature-manager', 'Feature management persona', true, 'studio', 'pending', 60),
   ('30444444-4444-4444-4444-444444444444', 'de-musterhausen', 'interface-manager', 'interface-manager', 'interface-manager', 'interface-manager', 'Interface management persona', true, 'studio', 'pending', 50),
@@ -234,6 +235,7 @@ SET
 INSERT INTO iam.accounts (id, instance_id, keycloak_subject, email_ciphertext, display_name_ciphertext)
 VALUES
   ('50111111-1111-1111-1111-111111111111', 'de-musterhausen', 'seed:system_admin', 'enc:v1:seed:2Br4L9r7mA:89azg6De9W2xgh9ZWMDg7Q:6ZkQz-ljCq8', 'enc:v1:seed:r76A9cbcvQ:F6GQjC-KsZdU6kgb4fX6RQ:Wr8vP9mS7hY'),
+  ('50888888-8888-8888-8888-888888888888', 'de-musterhausen', 'seed:instance_registry_admin', 'enc:v1:seed:wF9pQ2kL7A:1mX8vN4qR6tY3cD5uH7jKQ:Z8nV3pQ6kLm', 'enc:v1:seed:B6rT1yU8iO:4qW7eR2tY5uI8oP1aS3dFg:H2jK5lP8qRs'),
   ('50222222-2222-2222-2222-222222222222', 'de-musterhausen', 'seed:app_manager', 'enc:v1:seed:Y2W6W_Q6YA:4IbeUqS5iZgRyj8wud1dnQ:BK4U5GJp2xM', 'enc:v1:seed:8uoN0kRw1A:3FSkP2_Pfc7RK2Y9CB_q5Q:h-ZwYFhN0q8'),
   ('50333333-3333-3333-3333-333333333333', 'de-musterhausen', 'seed:feature_manager', 'enc:v1:seed:4N10D5lGmA:8u6j2qXxmnLr8XHnQw5H7w:G4KfA9iWv0o', 'enc:v1:seed:aXh5YpP9mQ:1d8W5v4u0QvXfBY3M2e0nA:T2hPn6Kx4Rc'),
   ('50444444-4444-4444-4444-444444444444', 'de-musterhausen', 'seed:interface_manager', 'enc:v1:seed:9bH6fVv8xQ:5vxw8QjC2LrYAfj9QJ8R6w:hD6mQs1v9Nk', 'enc:v1:seed:H2n7bLx4kA:6gq3j8G2p8QYk6M8rA1N6g:R7kL0jU2nQw'),
@@ -249,6 +251,7 @@ SET
 INSERT INTO iam.instance_memberships (instance_id, account_id, membership_type)
 VALUES
   ('de-musterhausen', '50111111-1111-1111-1111-111111111111', 'member'),
+  ('de-musterhausen', '50888888-8888-8888-8888-888888888888', 'member'),
   ('de-musterhausen', '50222222-2222-2222-2222-222222222222', 'member'),
   ('de-musterhausen', '50333333-3333-3333-3333-333333333333', 'member'),
   ('de-musterhausen', '50444444-4444-4444-4444-444444444444', 'member'),
@@ -262,6 +265,7 @@ SET
 INSERT INTO iam.account_roles (instance_id, account_id, role_id)
 VALUES
   ('de-musterhausen', '50111111-1111-1111-1111-111111111111', '30111111-1111-1111-1111-111111111111'),
+  ('de-musterhausen', '50888888-8888-8888-8888-888888888888', '30188888-8888-8888-8888-888888888888'),
   ('de-musterhausen', '50222222-2222-2222-2222-222222222222', '30222222-2222-2222-2222-222222222222'),
   ('de-musterhausen', '50333333-3333-3333-3333-333333333333', '30333333-3333-3333-3333-333333333333'),
   ('de-musterhausen', '50444444-4444-4444-4444-444444444444', '30444444-4444-4444-4444-444444444444'),
@@ -311,6 +315,9 @@ FROM (
     ('system_admin', 'integration.manage'),
     ('system_admin', 'feature.toggle'),
     ('system_admin', 'instance.registry.manage'),
+    ('instance_registry_admin', 'integration.manage'),
+    ('instance_registry_admin', 'feature.toggle'),
+    ('instance_registry_admin', 'instance.registry.manage'),
     ('system_admin', 'content.updatePayload'),
     ('system_admin', 'content.changeStatus'),
     ('system_admin', 'content.archive'),

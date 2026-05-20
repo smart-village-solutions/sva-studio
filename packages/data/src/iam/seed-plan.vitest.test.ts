@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { getPersonaSeed, iamSeedPlan } from './seed-plan';
 
@@ -36,6 +38,8 @@ const pluginContentPermissions = [
   'poi.update',
   'poi.delete',
 ] as const;
+
+const personaSeedSql = readFileSync(resolve('seeds/0001_iam_personas.sql'), 'utf8');
 
 describe('iamSeedPlan content permissions', () => {
   it('includes deletion-rules defaults in the seed plan', () => {
@@ -85,5 +89,29 @@ describe('iamSeedPlan content permissions', () => {
       expect.arrayContaining(['news.read', 'events.read', 'poi.read'])
     );
     expect(getPersonaSeed('moderator').permissionKeys).not.toContain('events.update');
+  });
+
+  it('keeps the SQL seed aligned with the canonical instance_registry_admin persona', () => {
+    expect(personaSeedSql).toContain("'instance_registry_admin'");
+    expect(personaSeedSql).toContain("'50888888-8888-8888-8888-888888888888'");
+    expect(personaSeedSql).toContain("'seed:instance_registry_admin'");
+    expect(personaSeedSql).toContain(
+      "('de-musterhausen', '50888888-8888-8888-8888-888888888888', 'member')"
+    );
+    expect(personaSeedSql).toContain(
+      "('30188888-8888-8888-8888-888888888888', 'de-musterhausen', 'instance_registry_admin'"
+    );
+    expect(personaSeedSql).toContain(
+      "('de-musterhausen', '50888888-8888-8888-8888-888888888888', '30188888-8888-8888-8888-888888888888')"
+    );
+    expect(personaSeedSql).toContain(
+      "('instance_registry_admin', 'instance.registry.manage')"
+    );
+    expect(personaSeedSql).toContain(
+      "('instance_registry_admin', 'feature.toggle')"
+    );
+    expect(personaSeedSql).toContain(
+      "('instance_registry_admin', 'integration.manage')"
+    );
   });
 });

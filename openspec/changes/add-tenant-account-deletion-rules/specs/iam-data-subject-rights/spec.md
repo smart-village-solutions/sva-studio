@@ -27,10 +27,12 @@ Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebensz
 - **THEN** wechselt er höchstens in der Reihenfolge `active` → `deactivated` → `pseudonymized` → `deleted`
 - **AND** bewegt ein einzelner geplanter oder manueller Lifecycle-Lauf den Account höchstens um eine benachbarte Stufe weiter
 - **AND** erfolgen weitere Stufen trotz bereits überschrittener späterer Schwellwerte erst in nachfolgenden Läufen
+- **AND** blockiert `deactivated` Login und reguläre Nutzung des Accounts, sodass bestehende Sessions keinen normalen Zugriff mehr vermitteln dürfen
+- **AND** bleibt `pseudonymized` für Login und Nutzung unbenutzbar und entfernt oder pseudonymisiert direkte identifizierende Account-Felder irreversibel, während Account-Referenzen für Audit- und Referenzintegrität erhalten bleiben
 - **AND** hebt ein bloßer Login den Zustand `deactivated` nicht automatisch auf
 - **AND** verlangt eine Rückkehr aus `deactivated` einen separaten Reaktivierungsprozess
 - **AND** dürfen ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterhin greifen
-- **AND** beschreibt `deleted` einen finalen Tombstone-Soft-Delete
+- **AND** beschreibt `deleted` einen finalen Tombstone-Soft-Delete ohne physische Löschung, bei dem die Deleted-/Tombstone-Darstellung eine frühere pseudonymisierte Darstellung übersteuert
 - **AND** werden referenzwahrende Nachweise und Auditspuren weiterhin pseudonymisiert erhalten
 
 #### Scenario: Neue oder unkonfigurierte Tenants verwenden Baseline-Defaults
@@ -78,3 +80,15 @@ Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsst
 - **WHEN** für einen Tenant noch keine explizite Löschregel-Konfiguration gespeichert ist
 - **THEN** gelten die Baseline-Defaults `90 / 180 / 365` und die geerbte Default-Inhaltsstrategie `beibehalten` als wirksamer Tenant-Zustand
 - **AND** bleibt dieser geerbte Zustand wirksam, bis ein Tenant-Admin eine explizite Konfiguration speichert
+
+#### Scenario: Explizite Tenant-Regelkonfiguration kann auf geerbte Defaults zurückgesetzt werden
+
+- **WHEN** ein Tenant-Admin eine bestehende explizite Tenant-Regelkonfiguration entfernt
+- **THEN** kehrt der Tenant zu den wirksamen Baseline-Defaults `90 / 180 / 365` und zur geerbten Strategie `beibehalten` zurück
+- **AND** wird dieser Rückweg als fachlich gültiger Zustandswechsel behandelt
+
+#### Scenario: Expliziter Self-Service-Override kann auf Tenant-Default zurückgesetzt werden
+
+- **WHEN** ein Benutzer seinen bestehenden Inhaltsstrategie-Override entfernt
+- **THEN** gilt wieder die tenantweite Default-Inhaltsstrategie für diesen Account
+- **AND** wird dieser Rückweg als fachlich gültiger Zustandswechsel behandelt

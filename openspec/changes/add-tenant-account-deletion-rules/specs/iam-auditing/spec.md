@@ -19,6 +19,7 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 - **THEN** bedeutet `applied`, dass die autorisierte Aktion eine Regeländerung, einen Override oder einen Lifecycle-Übergang tatsächlich persistiert oder angewendet hat
 - **AND** bedeutet `blocked`, dass die autorisierte Aktion die Fachverarbeitung erreicht hat, dort aber an fachlichen oder datenbezogenen Vorbedingungen scheiterte
 - **AND** bedeutet `rejected`, dass Autorisierung oder Request-Validierung die Aktion vor Beginn der Fachverarbeitung abgelehnt haben
+- **AND** werden Accounts mit `last_login_at = null` in diesem V1-Mechanismus übersprungen und nicht als `lifecycle_transition_blocked` auditiert
 - **AND** werden Autorisierungsfehler nicht als `lifecycle_transition_blocked`, sondern als `lifecycle_transition_rejected` emittiert
 
 #### Scenario: Änderung der Tenant-Löschregeln wird auditiert
@@ -28,6 +29,7 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 - **AND** verwendet das Event die Familie `tenant_rule_change_applied`
 - **AND** enthält die Familien-Payload mindestens `previous_rule_config` und `new_rule_config`
 - **AND** enthält ein Erst-Save-Event zusätzlich mindestens `previous_source` oder `previous_config_present`, sodass der zuvor wirksame geerbte Zustand als solcher erkennbar bleibt
+- **AND** behandelt das Audit auch das Entfernen einer expliziten Tenant-Konfiguration zugunsten geerbter Defaults als gültigen Zustandswechsel
 - **AND** werden Strategiewerte in der Auditspur nur aus der normativen V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln` gespeichert
 - **AND** enthält das Event keine Klartext-PII
 
@@ -44,6 +46,7 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 - **AND** verwendet das Event die Familie `content_preference_override_applied`
 - **AND** enthält die Familien-Payload mindestens `content_scope`, `previous_preference` und `new_preference`
 - **AND** enthält ein Erst-Save-Event zusätzlich mindestens `previous_source` oder `previous_config_present`, sodass der zuvor wirksame geerbte Zustand als solcher erkennbar bleibt
+- **AND** behandelt das Audit auch das Entfernen eines expliziten Overrides zugunsten der tenantweiten Default-Strategie als gültigen Zustandswechsel
 - **AND** liegen alte und neue Präferenz jeweils in der normativen V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln`
 - **AND** bleibt das Event konsistent zur im Self-Service angezeigten wirksamen Präferenz
 
@@ -75,3 +78,9 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 - **THEN** erzeugt das System kein Event der Familie `lifecycle_transition_blocked`
 - **AND** wird stattdessen ein Event der Familie `lifecycle_transition_rejected` mit `result=rejected` erzeugt
 - **AND** enthält die Familien-Payload mindestens `run_mode`, `instance_id` und `rejection_reason`
+
+#### Scenario: Accounts mit `last_login_at = null` werden ohne Blocked-Event übersprungen
+
+- **WHEN** ein geplanter oder manueller tenantweiter Lifecycle-Lauf auf einen Account mit `last_login_at = null` trifft
+- **THEN** wird der Account in V1 übersprungen
+- **AND** entsteht dafür kein Event der Familie `lifecycle_transition_blocked`

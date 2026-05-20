@@ -13,6 +13,8 @@ export type GovernanceFilters = {
 export type PermissionChangeRow = {
   id: string;
   status: string;
+  request_note: string;
+  request_origin: string;
   ticket_id: string | null;
   ticket_system: string | null;
   ticket_state: string | null;
@@ -22,8 +24,8 @@ export type PermissionChangeRow = {
   approved_at: string | null;
   applied_at: string | null;
   updated_at: string;
-  role_id: string;
-  role_name: string;
+  role_id: string | null;
+  role_name: string | null;
   role_display_name: string | null;
   requester_account_id: string;
   target_account_id: string;

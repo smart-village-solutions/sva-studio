@@ -64,6 +64,10 @@ export {
   type GovernanceWorkflowResponse,
 } from './governance-workflow-executor.js';
 export {
+  createSelfServicePermissionChangeRequest,
+  MAX_SELF_SERVICE_PERMISSION_CHANGE_REQUEST_NOTE_LENGTH,
+} from './self-service-permission-change.js';
+export {
   buildGovernanceComplianceExport,
   loadGovernanceComplianceRows,
   serializeGovernanceComplianceCsv,

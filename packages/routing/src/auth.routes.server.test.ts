@@ -212,6 +212,7 @@ const authServerMocks = vi.hoisted(() => {
     listGovernanceCasesHandler: vi.fn(async () => response('listGovernanceCasesHandler')),
     governanceWorkflowHandler: vi.fn(async () => response('governanceWorkflowHandler')),
     governanceComplianceExportHandler: vi.fn(async () => response('governanceComplianceExportHandler')),
+    permissionChangeSelfServiceRequestHandler: vi.fn(async () => response('permissionChangeSelfServiceRequestHandler')),
     dataExportHandler: vi.fn(async () => response('dataExportHandler')),
     dataExportStatusHandler: vi.fn(async () => response('dataExportStatusHandler')),
     getMyDataSubjectRightsHandler: vi.fn(async () => response('getMyDataSubjectRightsHandler')),

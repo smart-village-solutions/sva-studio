@@ -5,12 +5,16 @@ import {
   checkOptionalProcessing,
   createDataSubjectRequest,
   getMyDataSubjectRights,
+  requestPermissionChange,
   requestDataExport,
 } from '../../lib/iam-api';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Label } from '../../components/ui/label';
+import { ModalDialog } from '../../components/ModalDialog';
+import { Textarea } from '../../components/ui/textarea';
 import { t } from '../../i18n';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 
@@ -83,6 +87,8 @@ export const AccountPrivacyPage = () => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
+  const [permissionChangeDialogOpen, setPermissionChangeDialogOpen] = React.useState(false);
+  const [permissionChangeNote, setPermissionChangeNote] = React.useState('');
 
   const loadOverview = React.useCallback(async () => {
     setIsLoading(true);
@@ -122,6 +128,21 @@ export const AccountPrivacyPage = () => {
     overview.exportJobs.length === 0 &&
     overview.legalHolds.length === 0;
 
+  const handlePermissionChangeSubmit = async () => {
+    const trimmedNote = permissionChangeNote.trim();
+    if (!trimmedNote) {
+      setErrorMessage(t('account.privacy.permissionChange.validation.required'));
+      return;
+    }
+
+    await runAction(async () => {
+      await requestPermissionChange({ requestNote: trimmedNote });
+      setPermissionChangeDialogOpen(false);
+      setPermissionChangeNote('');
+      setStatusMessage(t('account.privacy.permissionChange.messages.requested'));
+    });
+  };
+
   return (
     <section className="space-y-5" aria-busy={isLoading || isSubmitting}>
       <header className="space-y-2">
@@ -132,7 +153,7 @@ export const AccountPrivacyPage = () => {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,1fr)]">
         <section className="space-y-4">
           <Card>
-            <CardContent className="grid gap-3 p-4 md:grid-cols-3">
+            <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
               <Button
                 type="button"
                 disabled={isSubmitting}
@@ -157,6 +178,17 @@ export const AccountPrivacyPage = () => {
                 }
               >
                 {t('account.privacy.actions.requestAccess')}
+              </Button>
+              <Button
+                type="button"
+                disabled={isSubmitting}
+                variant="outline"
+                onClick={() => {
+                  setErrorMessage(null);
+                  setPermissionChangeDialogOpen(true);
+                }}
+              >
+                {t('account.privacy.actions.requestPermissionChange')}
               </Button>
               <Button
                 type="button"
@@ -296,6 +328,56 @@ export const AccountPrivacyPage = () => {
           </CardContent>
         </Card>
       </div>
+      <ModalDialog
+        open={permissionChangeDialogOpen}
+        title={t('account.privacy.permissionChange.dialog.title')}
+        description={t('account.privacy.permissionChange.dialog.description')}
+        onClose={() => {
+          setPermissionChangeDialogOpen(false);
+          setPermissionChangeNote('');
+        }}
+      >
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handlePermissionChangeSubmit();
+          }}
+        >
+          <div className="space-y-2">
+            <Label htmlFor="permission-change-note">
+              {t('account.privacy.permissionChange.fields.requestNote')}
+            </Label>
+            <Textarea
+              id="permission-change-note"
+              value={permissionChangeNote}
+              onChange={(event) => setPermissionChangeNote(event.target.value)}
+              rows={5}
+              disabled={isSubmitting}
+              placeholder={t('account.privacy.permissionChange.fields.requestNotePlaceholder')}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('account.privacy.permissionChange.fields.requestNoteHint')}
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSubmitting}
+              onClick={() => {
+                setPermissionChangeDialogOpen(false);
+                setPermissionChangeNote('');
+              }}
+            >
+              {t('account.privacy.permissionChange.actions.cancel')}
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {t('account.privacy.permissionChange.actions.submit')}
+            </Button>
+          </div>
+        </form>
+      </ModalDialog>
     </section>
   );
 };

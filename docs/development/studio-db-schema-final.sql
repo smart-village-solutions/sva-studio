@@ -1021,7 +1021,7 @@ CREATE TABLE iam.permission_change_requests (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     requester_account_id uuid NOT NULL,
     target_account_id uuid NOT NULL,
-    role_id uuid NOT NULL,
+    role_id uuid,
     status text DEFAULT 'draft'::text NOT NULL,
     is_critical boolean DEFAULT true NOT NULL,
     ticket_id text,
@@ -1037,7 +1037,10 @@ CREATE TABLE iam.permission_change_requests (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     instance_id text NOT NULL,
-    CONSTRAINT permission_change_requests_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'submitted'::text, 'approved'::text, 'rejected'::text, 'applied'::text])))
+    request_note text NOT NULL,
+    request_origin text DEFAULT 'admin'::text NOT NULL,
+    CONSTRAINT permission_change_requests_request_origin_chk CHECK ((request_origin = ANY (ARRAY['admin'::text, 'self_service'::text]))),
+    CONSTRAINT permission_change_requests_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'intake'::text, 'triaged'::text, 'submitted'::text, 'approved'::text, 'rejected'::text, 'applied'::text])))
 );
 
 

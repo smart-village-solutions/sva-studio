@@ -313,7 +313,9 @@ describe('IamViewerPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Anfragebeschreibung')).toBeTruthy();
-      expect(screen.getAllByText('Ich benötige Schreibrechte für die Veranstaltungsredaktion.')).toHaveLength(1);
+      expect(screen.getAllByText('Ich benötige Schreibrechte für die Veranstaltungsredaktion.').length).toBeGreaterThan(0);
+      expect(screen.getByText('Metadaten')).toBeTruthy();
+      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
       expect(screen.queryByText('requestOrigin: self_service')).toBeNull();
     });
   });

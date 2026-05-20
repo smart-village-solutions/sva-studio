@@ -78,6 +78,7 @@ vi.mock('../iam-account-management/api-helpers.js', () => ({
 vi.mock('@sva/iam-governance', () => ({
   createSelfServicePermissionChangeRequest: state.createSelfServicePermissionChangeRequest,
   listGovernanceCases: state.listGovernanceCases,
+  MAX_SELF_SERVICE_PERMISSION_CHANGE_REQUEST_NOTE_LENGTH: 2000,
 }));
 
 vi.mock('../iam-account-management/csrf.js', () => ({

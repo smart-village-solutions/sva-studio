@@ -3,6 +3,7 @@
 - [ ] 1.1 Tenantbezogene Löschregeln mit `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays` und der normativen V1-Strategiemenge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln` spezifizieren
 - [ ] 1.1.1 Normative Baseline-Defaults/Fallbacks `90 / 180 / 365` und die geerbte Default-Inhaltsstrategie `beibehalten` für neue oder noch nicht konfigurierte Tenants festlegen
 - [ ] 1.1.2 Die fachliche Bedeutung der vier V1-Inhaltsstrategien für `iam.contents` mit konkreten Zustandsübergängen, Pseudonym-Labels und Tombstone-Effekten normieren
+- [ ] 1.1.3 Festlegen, dass `deactivateAfterDays`, `pseudonymizeAfterDays` und `deleteAfterDays` positive ganzzahlige Tageswerte mit strikt aufsteigender Reihenfolge sind
 - [ ] 1.2 Den Lebenszyklus für Tenant-Accounts mit `active`, `deactivated`, `pseudonymized` und `deleted` normieren
 - [ ] 1.2.1 Festlegen, dass `deactivated` nicht automatisch durch Login aufgehoben wird, sondern einen separaten Reaktivierungsprozess verlangt
 - [ ] 1.2.2 Festlegen, dass ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterlaufen dürfen
@@ -44,6 +45,7 @@
 - [ ] 4.4.1 Pflichtfelder, zulässige `result`-Werte und normative Event-Familien für den Auditvertrag festlegen
 - [ ] 4.4.1.1 Separate Lifecycle-Event-Familien für `applied`, fachlich `blocked` und vorab `rejected` normieren
 - [ ] 4.4.1.2 Separate `*_applied`- und `*_rejected`-Familien für Tenant-Regelsaves und Override-Saves normieren
+- [ ] 4.4.1.3 Rejected-Lifecycle-Payload ohne nicht definierten `requested_status`-Begriff normieren
 - [ ] 4.4.2 Die Semantik von `applied`, `blocked` und `rejected` einschließlich Erst-Save-Payloads aus geerbtem Wirkszustand normieren
 
 ## 5. Dokumentation und Nachweise

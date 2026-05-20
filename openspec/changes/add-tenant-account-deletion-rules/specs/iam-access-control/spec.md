@@ -41,7 +41,8 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln serverseitig validi
 
 - **WHEN** ein Benutzer tenantbezogene Löschregeln speichert
 - **THEN** gilt `deactivateAfterDays < pseudonymizeAfterDays < deleteAfterDays`
-- **AND** werden ungültige oder gleichrangige Fristen mit einer stabilen, verständlichen Fehlermeldung abgewiesen
+- **AND** müssen alle drei Werte positive ganzzahlige Tageswerte sein
+- **AND** werden null, negative oder nicht-ganzzahlige Werte ebenso wie ungültige oder gleichrangige Fristen mit einer stabilen, verständlichen Fehlermeldung abgewiesen
 
 #### Scenario: Inhaltsstrategie bleibt auf V1-Scope begrenzt
 

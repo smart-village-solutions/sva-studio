@@ -48,9 +48,10 @@ Das System MUST in den Account-/Privacy-Oberflächen die tenantweiten Löschrege
 - **UND** sieht er bei nicht konfigurierten Tenants die Baseline-Defaults/Fallbacks `90 / 180 / 365` als wirksame Standardwerte
 - **UND** sieht er bei nicht konfigurierten Tenants `beibehalten` als geerbte wirksame Default-Inhaltsstrategie
 - **UND** wird erklärt, dass die Fristen sich auf Inaktivität relativ zum persistierten Feld `last_login_at` des Tenant-Account-Records der aktiven `instanceId` beziehen
+- **UND** wird erklärt, dass Accounts mit `last_login_at = null` in V1 nicht automatisch in den Inaktivitäts-Lifecycle fallen
 - **UND** sieht der Benutzer seine aktuell wirksame Inhaltspräferenz für eigene Inhalte im Scope `iam.contents`
 - **UND** werden die zulässigen Strategiewerte `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln` verständlich benannt
-- **UND** werden die Strategiewirkungen verständlich erklärt: unverändert lassen, in einen deaktivierten Inhaltszustand überführen, in einen pseudonymisierten Inhaltszustand mit stabilem pseudonymisiertem Label überführen oder erst in einen Deleted-Tombstone-Zustand mit Deleted-Label überführen
+- **UND** werden die Strategiewirkungen verständlich erklärt: unverändert lassen, ab Deaktivierung in den späteren Lifecycle einsteigen, ab Pseudonymisierung in den späteren Lifecycle einsteigen oder erst im finalen Deleted-Tombstone-Zustand mitbehandeln
 
 #### Scenario: Benutzer überschreibt die tenantweite Default-Inhaltsstrategie für eigene Inhalte
 

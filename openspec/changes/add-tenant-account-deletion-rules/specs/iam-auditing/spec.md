@@ -7,14 +7,18 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 #### Scenario: Audit-Events folgen einem gemeinsamen Mindestvertrag
 
 - **WHEN** das System ein Audit-Event für Regeländerungen, per-Account-Overrides, Lifecycle-Übergänge oder blockierte Lifecycle-Übergänge erzeugt
-- **THEN** enthält jedes Event mindestens `instance_id`, `event_type`, `result`, `request_id`, `trace_id`, `actor_ref` und, soweit fachlich anwendbar, `subject_ref`
+- **THEN** enthält jedes Event mindestens `event_type`, `instance_id`, `result`, `occurred_at`, `request_id`, `trace_id`, `actor_ref` und, soweit fachlich anwendbar, `subject_ref`
+- **AND** ist `result` auf `applied`, `blocked` oder `rejected` begrenzt
 - **AND** dürfen `request_id` und `trace_id` null-sicher als leer oder nicht verfügbar geführt werden, wenn der auslösende Kontext keine Korrelationswerte bereitstellt
 - **AND** bleiben `actor_ref` und `subject_ref` pseudonymisierte Referenzen
+- **AND** gehören Events mindestens zu den Familien `tenant_rule_changed`, `content_preference_override_changed`, `lifecycle_transition_applied` und `lifecycle_transition_blocked`
 
 #### Scenario: Änderung der Tenant-Löschregeln wird auditiert
 
 - **WHEN** ein berechtigter Tenant-Admin `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays` oder die Default-Inhaltsstrategie ändert
 - **THEN** erzeugt das System ein unveränderbares Audit-Event gemäß dem gemeinsamen Mindestvertrag mit alter und neuer Regelkonfiguration
+- **AND** verwendet das Event die Familie `tenant_rule_changed`
+- **AND** enthält die Familien-Payload mindestens `previous_rule_config` und `new_rule_config`
 - **AND** werden Strategiewerte in der Auditspur nur aus der normativen V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln` gespeichert
 - **AND** enthält das Event keine Klartext-PII
 
@@ -22,6 +26,8 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 
 - **WHEN** ein Benutzer seine Inhaltspräferenz für eigene Inhalte ändert
 - **THEN** erzeugt das System ein Audit-Event gemäß dem gemeinsamen Mindestvertrag mit betroffenem Scope `iam.contents`, alter und neuer Präferenz
+- **AND** verwendet das Event die Familie `content_preference_override_changed`
+- **AND** enthält die Familien-Payload mindestens `content_scope`, `previous_preference` und `new_preference`
 - **AND** liegen alte und neue Präferenz jeweils in der normativen V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln`
 - **AND** bleibt das Event konsistent zur im Self-Service angezeigten wirksamen Präferenz
 
@@ -29,10 +35,14 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 
 - **WHEN** ein Tenant-Account durch manuellen oder geplanten Lauf von `active` nach `deactivated`, von `deactivated` nach `pseudonymized` oder von `pseudonymized` nach `deleted` überführt wird
 - **THEN** erzeugt das System pro Übergang ein unveränderbares Audit-Event gemäß dem gemeinsamen Mindestvertrag mit pseudonymisierter Account-Referenz, altem Status, neuem Status und auslösendem Regelgrund relativ zu tenantbezogenem `last_login_at`
+- **AND** verwendet das Event die Familie `lifecycle_transition_applied`
+- **AND** enthält die Familien-Payload mindestens `previous_status`, `new_status` und `transition_reason`
 - **AND** beschreibt `deleted` im Audit einen finalen Tombstone-Soft-Delete und keine physische Löschung
 
 #### Scenario: Blockierte Lifecycle-Verarbeitung bleibt nachvollziehbar
 
 - **WHEN** ein Account wegen Validierungsfehlern, Schutzbedingungen oder fehlender Berechtigung nicht in die nächste Lifecycle-Stufe überführt wird
 - **THEN** erzeugt das System ein Audit-Event gemäß dem gemeinsamen Mindestvertrag mit Blockierungsgrund und pseudonymisierter Account-Referenz
+- **AND** verwendet das Event die Familie `lifecycle_transition_blocked`
+- **AND** enthält die Familien-Payload mindestens `attempted_status` und `block_reason`
 - **AND** kann Betrieb oder Compliance den ausbleibenden Übergang ohne Rohdatenzugriff nachvollziehen

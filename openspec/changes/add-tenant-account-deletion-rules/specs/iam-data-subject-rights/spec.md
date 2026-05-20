@@ -9,6 +9,8 @@ Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebensz
 - **WHEN** das System prüft, ob ein Tenant-Account die konfigurierten Löschregeln erreicht hat
 - **THEN** verwendet es in V1 ausschließlich das persistierte Feld `last_login_at` des Tenant-Account-Records der betroffenen `instanceId` als Referenzzeitpunkt
 - **AND** behandelt es diesen Wert nicht als globales Cross-Tenant-Inaktivitätssignal
+- **AND** sind Accounts mit `last_login_at = null` in V1 nicht für den automatischen Inaktivitäts-Lifecycle qualifiziert
+- **AND** gilt ein Schwellwert `N` als erreicht, sobald `last_login_at + N * 24h <= now()`
 - **AND** verlangt kein neues Aktivitäts-Tracking-System und keine zusätzlichen Aktivitätsquellen
 
 #### Scenario: Lebenszyklus durchläuft die fachlichen Stufen geordnet
@@ -41,8 +43,8 @@ Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsst
 
 - **WHEN** das System die Inhaltsstrategie eines Accounts im Scope `iam.contents` auswertet
 - **THEN** bedeutet `beibehalten`, dass Inhalte über alle Account-Zustandswechsel unverändert bleiben
-- **AND** bedeutet `bei Deaktivierung mitbehandeln`, dass Inhalte beim Übergang des Accounts nach `deactivated` in einen deaktivierten Content-Lifecycle-Zustand markiert werden, während die Zeile persistiert bleibt
-- **AND** bedeutet `bei Pseudonymisierung mitbehandeln`, dass Inhalte beim Übergang des Accounts nach `pseudonymized` in einen pseudonymisierten Zustand markiert werden und author-facing Ownership-/Namensfelder durch ein stabiles pseudonymisiertes Label ersetzt werden, während die Zeile persistiert bleibt
+- **AND** bedeutet `bei Deaktivierung mitbehandeln`, dass Inhalte beim Übergang des Accounts nach `deactivated` in einen deaktivierten Content-Lifecycle-Zustand markiert werden, während die Zeile persistiert bleibt, und dass diese Inhalte bei fortgesetztem Account-Lifecycle später ebenfalls pseudonymisiert und schließlich in einen Deleted-Tombstone-Zustand überführt werden
+- **AND** bedeutet `bei Pseudonymisierung mitbehandeln`, dass Inhalte bis zum Übergang des Accounts nach `pseudonymized` unverändert bleiben, dann in einen pseudonymisierten Zustand markiert werden und author-facing Ownership-/Namensfelder durch ein stabiles pseudonymisiertes Label ersetzt werden, während die Zeile persistiert bleibt, und dass diese Inhalte bei fortgesetztem Account-Lifecycle später in einen Deleted-Tombstone-Zustand überführt werden
 - **AND** bedeutet `bei Löschung mitbehandeln`, dass Inhalte erst beim finalen Übergang des Accounts nach `deleted` in einen Deleted-Tombstone-Zustand markiert werden und author-facing Ownership-/Namensfelder durch ein Deleted-Label ersetzt werden, während die Zeile persistiert bleibt
 - **AND** werden `iam.contents`-Zeilen in V1 nicht physisch gelöscht
 

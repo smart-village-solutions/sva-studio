@@ -8,8 +8,10 @@
 - [ ] 1.2.2 Festlegen, dass ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterlaufen dürfen
 - [ ] 1.3 Festlegen, dass V1 Inaktivität ausschließlich aus `last_login_at` ableitet und kein neues Aktivitäts-Tracking einführt
 - [ ] 1.3.1 Festlegen, dass V1 ausschließlich das persistierte Feld `last_login_at` des Tenant-Account-Records als kanonische Quelle für Online- und Offline-Auswertung verwendet und nicht tenantübergreifend interpretiert
+- [ ] 1.3.2 Festlegen, dass Accounts mit `last_login_at = null` in V1 nicht am automatischen Inaktivitäts-Lifecycle teilnehmen und dass Schwellwerte bei `last_login_at + N * 24h <= now()` erreicht sind
 - [ ] 1.4 Festlegen, dass `deleted` einen finalen Tombstone-Soft-Delete beschreibt und keine physische Löschung auslöst
 - [ ] 1.5 Den fachlichen Scope in V1 auf `iam.contents` als einzige Inhaltsdomäne begrenzen
+- [ ] 1.5.1 Die Weiterführung von `iam.contents` durch spätere Account-Stufen je Inhaltsstrategie normieren
 
 ## 2. Admin- und Self-Service-Oberflächen
 
@@ -36,6 +38,7 @@
 - [ ] 4.2 Revisionssichere Audit-Events für Lifecycle-Übergänge und Blockierungen spezifizieren
 - [ ] 4.3 Revisionssichere Audit-Events für per-Account-Inhaltspräferenz-Overrides spezifizieren
 - [ ] 4.4 Einen gemeinsamen Mindestvertrag für Audit-Events von Regeländerungen, Overrides, Lifecycle-Übergängen und Blockierungen normieren
+- [ ] 4.4.1 Pflichtfelder, zulässige `result`-Werte und normative Event-Familien für den Auditvertrag festlegen
 
 ## 5. Dokumentation und Nachweise
 

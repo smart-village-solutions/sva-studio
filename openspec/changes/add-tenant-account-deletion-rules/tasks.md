@@ -6,6 +6,7 @@
 - [ ] 1.2 Den Lebenszyklus für Tenant-Accounts mit `active`, `deactivated`, `pseudonymized` und `deleted` normieren
 - [ ] 1.2.1 Festlegen, dass `deactivated` nicht automatisch durch Login aufgehoben wird, sondern einen separaten Reaktivierungsprozess verlangt
 - [ ] 1.2.2 Festlegen, dass ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterlaufen dürfen
+- [ ] 1.2.3 Festlegen, dass ein einzelner Lifecycle-Lauf einen Account höchstens um eine benachbarte Stufe weiterbewegt
 - [ ] 1.3 Festlegen, dass V1 Inaktivität ausschließlich aus `last_login_at` ableitet und kein neues Aktivitäts-Tracking einführt
 - [ ] 1.3.1 Festlegen, dass V1 ausschließlich das persistierte Feld `last_login_at` des Tenant-Account-Records als kanonische Quelle für Online- und Offline-Auswertung verwendet und nicht tenantübergreifend interpretiert
 - [ ] 1.3.2 Festlegen, dass Accounts mit `last_login_at = null` in V1 nicht am automatischen Inaktivitäts-Lifecycle teilnehmen und dass Schwellwerte bei `last_login_at + N * 24h <= now()` erreicht sind
@@ -42,6 +43,7 @@
 - [ ] 4.4 Einen gemeinsamen Mindestvertrag für Audit-Events von Regeländerungen, Overrides, Lifecycle-Übergängen und Blockierungen normieren
 - [ ] 4.4.1 Pflichtfelder, zulässige `result`-Werte und normative Event-Familien für den Auditvertrag festlegen
 - [ ] 4.4.1.1 Separate Lifecycle-Event-Familien für `applied`, fachlich `blocked` und vorab `rejected` normieren
+- [ ] 4.4.1.2 Separate `*_applied`- und `*_rejected`-Familien für Tenant-Regelsaves und Override-Saves normieren
 - [ ] 4.4.2 Die Semantik von `applied`, `blocked` und `rejected` einschließlich Erst-Save-Payloads aus geerbtem Wirkszustand normieren
 
 ## 5. Dokumentation und Nachweise

@@ -25,6 +25,8 @@ Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebensz
 
 - **WHEN** ein Tenant-Account die konfigurierten Schwellwerte erreicht
 - **THEN** wechselt er höchstens in der Reihenfolge `active` → `deactivated` → `pseudonymized` → `deleted`
+- **AND** bewegt ein einzelner geplanter oder manueller Lifecycle-Lauf den Account höchstens um eine benachbarte Stufe weiter
+- **AND** erfolgen weitere Stufen trotz bereits überschrittener späterer Schwellwerte erst in nachfolgenden Läufen
 - **AND** hebt ein bloßer Login den Zustand `deactivated` nicht automatisch auf
 - **AND** verlangt eine Rückkehr aus `deactivated` einen separaten Reaktivierungsprozess
 - **AND** dürfen ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterhin greifen

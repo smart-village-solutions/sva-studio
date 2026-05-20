@@ -161,6 +161,7 @@ const submitPermissionChange = async (
 ): Promise<GovernanceWorkflowResponse> => {
   const targetSubject = readString(payload.targetKeycloakSubject);
   const roleId = readString(payload.roleId);
+  const requestNote = readString(payload.requestNote)?.trim() ?? '';
   const ticketId = readString(payload.ticketId);
   const ticketSystem = readString(payload.ticketSystem) ?? 'jira';
   const ticketState = readString(payload.ticketState);
@@ -204,11 +205,13 @@ INSERT INTO iam.permission_change_requests (
   role_id,
   status,
   is_critical,
+  request_note,
+  request_origin,
   ticket_id,
   ticket_system,
   ticket_state
 )
-VALUES ($1, $2, $3, $4, 'submitted', $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, 'submitted', $5, $6, $7, $8, $9, $10)
 RETURNING id;
 `,
     [
@@ -217,6 +220,8 @@ RETURNING id;
       targetAccountId,
       roleId,
       critical,
+      requestNote,
+      'admin',
       ticketId,
       ticketSystem,
       ticketState,

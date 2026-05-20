@@ -124,6 +124,18 @@ SET role_id = (
 )
 WHERE role_id IS NULL;
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM iam.permission_change_requests
+    WHERE role_id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Cannot restore role_id NOT NULL: permission_change_requests still contains rows without a role_id. Ensure each affected instance has at least one role or delete unresolved rows before rollback.';
+  END IF;
+END
+$$;
+
 ALTER TABLE iam.permission_change_requests
   ALTER COLUMN role_id SET NOT NULL;
 -- +goose StatementEnd

@@ -23,6 +23,16 @@ export {
 } from './dsr-read-models.js';
 export type { DsrFilters } from './dsr-read-models.types.js';
 export {
+  loadMyDeletionRulesOverview,
+  loadTenantDeletionRulesOverview,
+  DeletionRulesAccountNotFoundError,
+} from './deletion-rules-read-models.js';
+export {
+  runDeletionRulesMaintenance,
+  type DeletionRulesMaintenanceInput,
+  type DeletionRulesMaintenanceResult,
+} from './deletion-rules-maintenance.js';
+export {
   collectDsrExportPayload,
   serializeDsrExportPayload,
   type DsrExportAccountSnapshot,

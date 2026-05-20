@@ -14,8 +14,17 @@ Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebensz
 
 - **WHEN** ein Tenant-Account die konfigurierten Schwellwerte erreicht
 - **THEN** wechselt er höchstens in der Reihenfolge `active` → `deactivated` → `pseudonymized` → `deleted`
+- **AND** hebt ein bloßer Login den Zustand `deactivated` nicht automatisch auf
+- **AND** verlangt eine Rückkehr aus `deactivated` einen separaten Reaktivierungsprozess
+- **AND** dürfen ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterhin greifen
 - **AND** beschreibt `deleted` einen finalen Tombstone-Soft-Delete
 - **AND** werden referenzwahrende Nachweise und Auditspuren weiterhin pseudonymisiert erhalten
+
+#### Scenario: Neue oder unkonfigurierte Tenants verwenden Baseline-Defaults
+
+- **WHEN** für einen Tenant noch keine individuellen Löschregeln konfiguriert wurden
+- **THEN** verwendet das System die Baseline-Defaults/Fallbacks `deactivateAfterDays=90`, `pseudonymizeAfterDays=180` und `deleteAfterDays=365`
+- **AND** gelten diese Werte so lange als wirksame Tenant-Regeln, bis tenant-spezifische Werte gespeichert werden
 
 #### Scenario: Root- und Plattform-Accounts bleiben außerhalb des Löschregelmodells
 

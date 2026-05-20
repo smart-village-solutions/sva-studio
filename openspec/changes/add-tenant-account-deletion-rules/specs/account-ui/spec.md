@@ -8,6 +8,7 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 
 - **WENN** ein berechtigter Tenant-Admin `/admin/iam?tab=deletion-rules` öffnet
 - **DANN** zeigt die UI die aktuellen Werte für `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays` und die tenantweite Default-Inhaltsstrategie
+- **UND** zeigt die UI die Baseline-Defaults/Fallbacks `90 / 180 / 365` getrennt von tenant-spezifischen Werten an
 - **UND** können die Werte in einer validierten Bearbeitungsmaske geändert werden
 - **UND** ist die auswählbare Strategiemenge auf `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln` begrenzt
 - **UND** wird klar angezeigt, dass sich die Regeln nur auf Tenant-Accounts der aktiven `instanceId` beziehen
@@ -17,6 +18,8 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 - **WENN** der Tab `deletion-rules` dargestellt wird
 - **DANN** beschreibt die UI die Zustände `active`, `deactivated`, `pseudonymized` und `deleted`
 - **UND** erläutert, dass `deleted` einen finalen Tombstone-Soft-Delete und keine physische Löschung bedeutet
+- **UND** erläutert, dass `deactivated` nicht automatisch durch Login aufgehoben wird und eine separate Reaktivierung verlangt
+- **UND** macht kenntlich, dass ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterlaufen können
 - **UND** weist darauf hin, dass V1 Inaktivität ausschließlich aus `last_login_at` ableitet
 
 #### Scenario: Root- oder plattformweite Administration erhält keinen Tenant-Regeltab
@@ -33,6 +36,7 @@ Das System MUST in den Account-/Privacy-Oberflächen die tenantweiten Löschrege
 
 - **WENN** ein authentifizierter Benutzer `/account/privacy` oder die zugehörige Datenschutzfläche seines Accounts öffnet
 - **DANN** sieht er die tenantweiten Fristen für Deaktivierung, Pseudonymisierung und finalen Tombstone-Soft-Delete
+- **UND** sieht er bei nicht konfigurierten Tenants die Baseline-Defaults/Fallbacks `90 / 180 / 365` als wirksame Standardwerte
 - **UND** wird erklärt, dass die Fristen sich auf Inaktivität relativ zu `last_login_at` beziehen
 - **UND** sieht der Benutzer seine aktuell wirksame Inhaltspräferenz für eigene Inhalte im Scope `iam.contents`
 - **UND** werden die zulässigen Strategiewerte `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln` verständlich benannt

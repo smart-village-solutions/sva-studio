@@ -22,9 +22,11 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
 
 - Decision: Tenant-Admins verwalten die Regeln in `/admin/iam?tab=deletion-rules`.
   - Rationale: Das Feature gehört in das bestehende IAM-Transparenz- und Governance-Cockpit und bleibt damit für Betreiber auffindbar.
+  - Normative Baseline-Defaults/Fallbacks für neue oder noch nicht konfigurierte Tenants: `deactivateAfterDays=90`, `pseudonymizeAfterDays=180`, `deleteAfterDays=365`
 
 - Decision: Der Lebenszyklus verwendet die Zustände `active`, `deactivated`, `pseudonymized` und `deleted`.
   - Rationale: Diese Zustände bilden die fachlichen Eskalationsstufen verständlich ab und trennen reversible Sperre von irreversibleren Datenschutzschritten.
+  - Reaktivierungssemantik: `deactivated` wird nicht automatisch durch Login aufgehoben; eine Reaktivierung verlangt einen separaten Prozess. Ohne Reaktivierung dürfen spätere automatische Lifecycle-Stufen weiterhin greifen.
 
 - Decision: `deleted` bleibt ein finaler Tombstone-Soft-Delete.
   - Rationale: Referenzintegrität, Auditierbarkeit und Compliance-Nachweise bleiben erhalten, ohne eine Hard-Delete-Kaskade zu verlangen.
@@ -56,4 +58,4 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
 
 ## Open Questions
 
-- Ob und wie ein manueller Reaktivierungsprozess aus `deactivated` spezifiziert wird, bleibt einem nachfolgenden Implementierungschange vorbehalten.
+- Wie der separate Reaktivierungsprozess operativ oder UI-seitig ausgelöst wird, bleibt einem nachfolgenden Implementierungschange vorbehalten.

@@ -1,7 +1,10 @@
 ## 1. Fachliches Modell und Persistenz
 
 - [ ] 1.1 Tenantbezogene Löschregeln mit `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays` und der normativen V1-Strategiemenge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln` spezifizieren
+- [ ] 1.1.1 Normative Baseline-Defaults/Fallbacks `90 / 180 / 365` für neue oder noch nicht konfigurierte Tenants festlegen
 - [ ] 1.2 Den Lebenszyklus für Tenant-Accounts mit `active`, `deactivated`, `pseudonymized` und `deleted` normieren
+- [ ] 1.2.1 Festlegen, dass `deactivated` nicht automatisch durch Login aufgehoben wird, sondern einen separaten Reaktivierungsprozess verlangt
+- [ ] 1.2.2 Festlegen, dass ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterlaufen dürfen
 - [ ] 1.3 Festlegen, dass V1 Inaktivität ausschließlich aus `last_login_at` ableitet und kein neues Aktivitäts-Tracking einführt
 - [ ] 1.4 Festlegen, dass `deleted` einen finalen Tombstone-Soft-Delete beschreibt und keine physische Löschung auslöst
 - [ ] 1.5 Den fachlichen Scope in V1 auf `iam.contents` als einzige Inhaltsdomäne begrenzen
@@ -9,6 +12,7 @@
 ## 2. Admin- und Self-Service-Oberflächen
 
 - [ ] 2.1 Einen neuen Tab `/admin/iam?tab=deletion-rules` für tenantbezogene Regelbearbeitung spezifizieren
+- [ ] 2.1.1 Im Admin-Tab Baseline-Defaults/Fallbacks gegenüber tenant-spezifischen Werten sichtbar machen
 - [ ] 2.2 Transparente Anzeige der tenantweiten Regeln in Account-/Privacy-Oberflächen spezifizieren
 - [ ] 2.3 Einen per-Account-Override für die Behandlung eigener Inhalte im Self-Service spezifizieren
 - [ ] 2.4 Leer-, Lade-, Fehler- und Zugriffsverweigerungszustände für die neuen UI-Flächen normieren

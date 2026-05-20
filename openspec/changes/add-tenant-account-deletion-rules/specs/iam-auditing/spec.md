@@ -74,4 +74,4 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln, per-Account-Inhalt
 - **WHEN** ein Lifecycle-Lauf wegen fehlender Berechtigung oder ungültiger Request-Form vor Beginn der Fachverarbeitung abgelehnt wird
 - **THEN** erzeugt das System kein Event der Familie `lifecycle_transition_blocked`
 - **AND** wird stattdessen ein Event der Familie `lifecycle_transition_rejected` mit `result=rejected` erzeugt
-- **AND** enthält die Familien-Payload mindestens `run_mode` und `rejection_reason`
+- **AND** enthält die Familien-Payload mindestens `run_mode`, `instance_id` und `rejection_reason`

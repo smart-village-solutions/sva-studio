@@ -884,6 +884,44 @@ export const i18nResources = {
         messages: {
           loading: 'Datenschutzdaten werden geladen ...',
         },
+        deletionRules: {
+          title: 'Konten-Löschregeln',
+          subtitle:
+            'Sehen Sie die tenantweit geltenden Fristen und steuern Sie die Behandlung Ihrer eigenen Inhalte.',
+          actions: {
+            save: 'Inhaltsregel speichern',
+            saving: 'Inhaltsregel wird gespeichert ...',
+          },
+          messages: {
+            loading: 'Löschregeln werden geladen ...',
+            saveSuccess: 'Die Inhaltsregel wurde gespeichert.',
+            overrideActive: 'Für Ihre Inhalte ist derzeit eine persönliche Überschreibung aktiv.',
+            overrideInactive: 'Für Ihre Inhalte gilt derzeit der Tenant-Standard.',
+          },
+          summary: {
+            lastLoginAt: 'Zuletzt eingeloggt',
+            lifecycleState: 'Kontostatus',
+            deactivateAfterDays: 'Deaktivierung nach Tagen',
+            pseudonymizeAfterDays: 'Pseudonymisierung nach Tagen',
+            deleteAfterDays: 'Löschung nach Tagen',
+            tenantDefaultStrategy: 'Tenant-Standard für Inhalte',
+            effectiveStrategy: 'Wirksame Inhaltsregel',
+          },
+          fields: {
+            contentPreference: 'Regel für eigene Inhalte',
+            useTenantDefault: 'Tenant-Standard verwenden',
+          },
+          lifecycle: {
+            active: 'Aktiv',
+            deactivated: 'Deaktiviert',
+            pseudonymized: 'Pseudonymisiert',
+            deleted: 'Gelöscht',
+          },
+          strategies: {
+            retain: 'Inhalte beibehalten',
+            with_owner_lifecycle: 'Inhalte mitbehandeln',
+          },
+        },
         empty: {
           title: 'Noch keine Datenschutzvorgänge vorhanden',
           body: 'Für dieses Konto liegen derzeit keine Exporte, Anfragen oder rechtlichen Sperren vor.',
@@ -2741,6 +2779,7 @@ export const i18nResources = {
           rights: 'Rechte',
           governance: 'Governance',
           dsr: 'Datenschutz',
+          deletionRules: 'Löschregeln',
         },
         messages: {
           initializing: 'IAM Transparenz-Cockpit wird initialisiert ...',
@@ -2872,6 +2911,33 @@ export const i18nResources = {
             legal_hold: 'Rechtliche Sperre',
             profile_correction: 'Profilkorrektur',
             recipient_notification: 'Empfängerbenachrichtigung',
+          },
+        },
+        deletionRules: {
+          title: 'Tenant-Löschregeln',
+          subtitle:
+            'Verwalten Sie die tenantweiten Fristen für Deaktivierung, Pseudonymisierung und Soft-Delete sowie die Standardregel für Inhalte.',
+          fields: {
+            deactivateAfterDays: 'Deaktivierung nach Tagen',
+            pseudonymizeAfterDays: 'Pseudonymisierung nach Tagen',
+            deleteAfterDays: 'Löschung nach Tagen',
+            defaultContentStrategy: 'Standardregel für Inhalte',
+            allowContentPreferenceOverride: 'Nutzer dürfen die Standardregel für eigene Inhalte überschreiben',
+            allowContentPreferenceOverrideHint:
+              'Wenn deaktiviert, wird im Datenschutz-Cockpit keine persönliche Überschreibung angeboten.',
+          },
+          actions: {
+            save: 'Löschregeln speichern',
+            saving: 'Löschregeln werden gespeichert ...',
+          },
+          messages: {
+            loading: 'Tenant-Löschregeln werden geladen ...',
+            instanceMissing: 'Instanzkontext fehlt für Tenant-Löschregeln.',
+            readOnly: 'Diese Löschregeln sind nur lesbar.',
+          },
+          strategies: {
+            retain: 'Inhalte beibehalten',
+            with_owner_lifecycle: 'Inhalte mitbehandeln',
           },
         },
       },
@@ -3749,6 +3815,44 @@ export const i18nResources = {
         },
         messages: {
           loading: 'Loading privacy data ...',
+        },
+        deletionRules: {
+          title: 'Account deletion rules',
+          subtitle:
+            'Review the tenant-wide deadlines and control how your own content is handled.',
+          actions: {
+            save: 'Save content rule',
+            saving: 'Saving content rule ...',
+          },
+          messages: {
+            loading: 'Loading deletion rules ...',
+            saveSuccess: 'The content rule was saved.',
+            overrideActive: 'A personal override is currently active for your content.',
+            overrideInactive: 'Your content currently follows the tenant default.',
+          },
+          summary: {
+            lastLoginAt: 'Last login',
+            lifecycleState: 'Account state',
+            deactivateAfterDays: 'Deactivation after days',
+            pseudonymizeAfterDays: 'Pseudonymization after days',
+            deleteAfterDays: 'Deletion after days',
+            tenantDefaultStrategy: 'Tenant default for content',
+            effectiveStrategy: 'Effective content rule',
+          },
+          fields: {
+            contentPreference: 'Rule for your own content',
+            useTenantDefault: 'Use tenant default',
+          },
+          lifecycle: {
+            active: 'Active',
+            deactivated: 'Deactivated',
+            pseudonymized: 'Pseudonymized',
+            deleted: 'Deleted',
+          },
+          strategies: {
+            retain: 'Keep content',
+            with_owner_lifecycle: 'Handle content together with the owner lifecycle',
+          },
         },
         empty: {
           title: 'No privacy activity yet',
@@ -5548,6 +5652,7 @@ export const i18nResources = {
           rights: 'Rights',
           governance: 'Governance',
           dsr: 'Privacy',
+          deletionRules: 'Deletion rules',
         },
         messages: {
           initializing: 'Initializing IAM transparency cockpit ...',
@@ -5679,6 +5784,33 @@ export const i18nResources = {
             legal_hold: 'Legal hold',
             profile_correction: 'Profile correction',
             recipient_notification: 'Recipient notification',
+          },
+        },
+        deletionRules: {
+          title: 'Tenant deletion rules',
+          subtitle:
+            'Manage the tenant-wide deadlines for deactivation, pseudonymization, and soft delete as well as the default content rule.',
+          fields: {
+            deactivateAfterDays: 'Deactivation after days',
+            pseudonymizeAfterDays: 'Pseudonymization after days',
+            deleteAfterDays: 'Deletion after days',
+            defaultContentStrategy: 'Default content rule',
+            allowContentPreferenceOverride: 'Users may override the default rule for their own content',
+            allowContentPreferenceOverrideHint:
+              'If disabled, no personal override is shown in the privacy cockpit.',
+          },
+          actions: {
+            save: 'Save deletion rules',
+            saving: 'Saving deletion rules ...',
+          },
+          messages: {
+            loading: 'Loading tenant deletion rules ...',
+            instanceMissing: 'Tenant deletion rules require an instance context.',
+            readOnly: 'These deletion rules are read-only.',
+          },
+          strategies: {
+            retain: 'Keep content',
+            with_owner_lifecycle: 'Handle content together with the owner lifecycle',
           },
         },
       },

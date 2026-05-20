@@ -154,7 +154,7 @@ CREATE TABLE iam.account_deletion_content_preferences (
     content_strategy text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT account_deletion_content_preferences_content_strategy_chk CHECK ((content_strategy = ANY (ARRAY['retain'::text, 'on_deactivation'::text, 'on_pseudonymization'::text, 'on_deletion'::text])))
+    CONSTRAINT account_deletion_content_preferences_content_strategy_chk CHECK ((content_strategy = ANY (ARRAY['retain'::text, 'with_owner_lifecycle'::text])))
 );
 
 ALTER TABLE ONLY iam.account_deletion_content_preferences FORCE ROW LEVEL SECURITY;
@@ -661,10 +661,11 @@ CREATE TABLE iam.instance_deletion_rules (
     pseudonymize_after_days integer NOT NULL,
     delete_after_days integer NOT NULL,
     default_content_strategy text DEFAULT 'retain'::text NOT NULL,
+    allow_content_preference_override boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT instance_deletion_rules_deactivate_after_days_chk CHECK ((deactivate_after_days > 0)),
-    CONSTRAINT instance_deletion_rules_default_content_strategy_chk CHECK ((default_content_strategy = ANY (ARRAY['retain'::text, 'on_deactivation'::text, 'on_pseudonymization'::text, 'on_deletion'::text]))),
+    CONSTRAINT instance_deletion_rules_default_content_strategy_chk CHECK ((default_content_strategy = ANY (ARRAY['retain'::text, 'with_owner_lifecycle'::text]))),
     CONSTRAINT instance_deletion_rules_delete_after_days_chk CHECK ((delete_after_days > pseudonymize_after_days)),
     CONSTRAINT instance_deletion_rules_pseudonymize_after_days_chk CHECK ((pseudonymize_after_days > deactivate_after_days))
 );
@@ -3430,4 +3431,3 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 --
 
 \unrestrict JcgUNDli7BV6ns23FpobiSNzgNhs7HNeagxyJldDjaGIFs14Im04PWUxhh8r7yN
-

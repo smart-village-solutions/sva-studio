@@ -699,6 +699,7 @@ describe('app.routes', () => {
   it('normalizes IAM and role detail tabs to canonical search values', () => {
     expect(normalizeIamTab('governance')).toBe('governance');
     expect(normalizeIamTab('dsr')).toBe('dsr');
+    expect(normalizeIamTab('deletion-rules')).toBe('deletion-rules');
     expect(normalizeIamTab('anything-else')).toBe('rights');
 
     expect(normalizeRoleDetailTab('permissions')).toBe('permissions');

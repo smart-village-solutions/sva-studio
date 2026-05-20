@@ -1,4 +1,11 @@
-import type { AuthorizeResponse, EffectivePermission, IamDsrCaseListItem, IamGovernanceCaseListItem } from '@sva/core';
+import type {
+  AuthorizeResponse,
+  EffectivePermission,
+  IamDeletionContentStrategy,
+  IamDsrCaseListItem,
+  IamGovernanceCaseListItem,
+  IamTenantDeletionRulesOverview,
+} from '@sva/core';
 import { useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
@@ -6,13 +13,16 @@ import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Checkbox } from '../../components/ui/checkbox';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import {
   fetchWithRequestTimeout,
+  getAdminDeletionRules,
   listAdminDsrCases,
   listGovernanceCases,
+  saveAdminDeletionRules,
   type DsrAdminCasesQuery,
   type GovernanceCasesQuery,
 } from '../../lib/iam-api';
@@ -111,6 +121,11 @@ const dsrStatusOptions = [
   'blocked',
   'failed',
  ] as const;
+
+const deletionContentStrategyOptions: readonly IamDeletionContentStrategy[] = [
+  'retain',
+  'with_owner_lifecycle',
+] as const;
 
 const getTabId = (tab: IamCockpitTabKey) => `iam-tab-${tab}`;
 const getTabPanelId = (tab: IamCockpitTabKey) => `iam-panel-${tab}`;
@@ -330,6 +345,17 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
   });
   const [isLoadingDsr, setIsLoadingDsr] = React.useState(false);
   const [selectedDsrId, setSelectedDsrId] = React.useState<string | null>(null);
+  const [deletionRules, setDeletionRules] = React.useState<IamTenantDeletionRulesOverview | null>(null);
+  const [deletionRulesDraft, setDeletionRulesDraft] = React.useState<{
+    deactivateAfterDays: string;
+    pseudonymizeAfterDays: string;
+    deleteAfterDays: string;
+    defaultContentStrategy: IamDeletionContentStrategy;
+    allowContentPreferenceOverride: boolean;
+  } | null>(null);
+  const [deletionRulesError, setDeletionRulesError] = React.useState<string | null>(null);
+  const [isLoadingDeletionRules, setIsLoadingDeletionRules] = React.useState(false);
+  const [isSavingDeletionRules, setIsSavingDeletionRules] = React.useState(false);
 
   const cockpitEnabled = isIamCockpitEnabled();
   const canAccessCockpit = hasIamCockpitAccessRole(user);
@@ -586,6 +612,88 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       controller.abort();
     };
   }, [activeTab, allowedTabs, canAccessCockpit, cockpitEnabled, dsrRequestQuery]);
+
+  React.useEffect(() => {
+    if (!cockpitEnabled || !canAccessCockpit || activeTab !== 'deletion-rules' || !allowedTabs.includes('deletion-rules')) {
+      return;
+    }
+    if (!instanceId) {
+      setDeletionRules(null);
+      setDeletionRulesDraft(null);
+      setDeletionRulesError(t('admin.iam.deletionRules.messages.instanceMissing'));
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsLoadingDeletionRules(true);
+    setDeletionRulesError(null);
+
+    void getAdminDeletionRules(instanceId)
+      .then((response) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setDeletionRules(response);
+        setDeletionRulesDraft({
+          deactivateAfterDays: String(response.deactivateAfterDays),
+          pseudonymizeAfterDays: String(response.pseudonymizeAfterDays),
+          deleteAfterDays: String(response.deleteAfterDays),
+          defaultContentStrategy: response.defaultContentStrategy,
+          allowContentPreferenceOverride: response.allowContentPreferenceOverride,
+        });
+      })
+      .catch((error) => {
+        if (isAbortError(error) || controller.signal.aborted) {
+          return;
+        }
+        setDeletionRules(null);
+        setDeletionRulesDraft(null);
+        setDeletionRulesError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsLoadingDeletionRules(false);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [activeTab, allowedTabs, canAccessCockpit, cockpitEnabled, instanceId]);
+
+  const handleDeletionRulesSave = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!instanceId || !deletionRulesDraft) {
+      setDeletionRulesError(t('admin.iam.deletionRules.messages.instanceMissing'));
+      return;
+    }
+
+    setIsSavingDeletionRules(true);
+    setDeletionRulesError(null);
+
+    try {
+      const response = await saveAdminDeletionRules({
+        instanceId,
+        deactivateAfterDays: Number(deletionRulesDraft.deactivateAfterDays),
+        pseudonymizeAfterDays: Number(deletionRulesDraft.pseudonymizeAfterDays),
+        deleteAfterDays: Number(deletionRulesDraft.deleteAfterDays),
+        defaultContentStrategy: deletionRulesDraft.defaultContentStrategy,
+        allowContentPreferenceOverride: deletionRulesDraft.allowContentPreferenceOverride,
+      });
+      setDeletionRules(response);
+      setDeletionRulesDraft({
+        deactivateAfterDays: String(response.deactivateAfterDays),
+        pseudonymizeAfterDays: String(response.pseudonymizeAfterDays),
+        deleteAfterDays: String(response.deleteAfterDays),
+        defaultContentStrategy: response.defaultContentStrategy,
+        allowContentPreferenceOverride: response.allowContentPreferenceOverride,
+      });
+    } catch (error) {
+      setDeletionRulesError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsSavingDeletionRules(false);
+    }
+  };
 
   const filteredPermissions = React.useMemo(
     () =>
@@ -1099,6 +1207,139 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
             )}
           </div>
           <DsrDetail item={activeDsrItem} />
+        </div>
+      ) : null}
+
+      {activeTab === 'deletion-rules' ? (
+        <div
+          id={getTabPanelId('deletion-rules')}
+          role="tabpanel"
+          aria-labelledby={getTabId('deletion-rules')}
+          className="space-y-4"
+        >
+          <Card>
+            <CardHeader className="p-4 pb-0">
+              <CardTitle>{t('admin.iam.deletionRules.title')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-4 pt-0">
+              <p className="text-sm text-muted-foreground">{t('admin.iam.deletionRules.subtitle')}</p>
+
+              {deletionRulesError ? (
+                <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+                  <AlertDescription>{deletionRulesError}</AlertDescription>
+                </Alert>
+              ) : null}
+
+              {isLoadingDeletionRules || !deletionRulesDraft ? (
+                <p className="text-sm text-muted-foreground">{t('admin.iam.deletionRules.messages.loading')}</p>
+              ) : (
+                <form className="grid gap-4 md:grid-cols-2" onSubmit={handleDeletionRulesSave}>
+                  <div className="grid gap-1">
+                    <Label htmlFor="deletion-rules-deactivate">{t('admin.iam.deletionRules.fields.deactivateAfterDays')}</Label>
+                    <Input
+                      id="deletion-rules-deactivate"
+                      inputMode="numeric"
+                      value={deletionRulesDraft.deactivateAfterDays}
+                      onChange={(event) =>
+                        setDeletionRulesDraft((current) =>
+                          current ? { ...current, deactivateAfterDays: event.target.value } : current
+                        )
+                      }
+                      disabled={!deletionRules?.canEdit || isSavingDeletionRules}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="deletion-rules-pseudonymize">{t('admin.iam.deletionRules.fields.pseudonymizeAfterDays')}</Label>
+                    <Input
+                      id="deletion-rules-pseudonymize"
+                      inputMode="numeric"
+                      value={deletionRulesDraft.pseudonymizeAfterDays}
+                      onChange={(event) =>
+                        setDeletionRulesDraft((current) =>
+                          current ? { ...current, pseudonymizeAfterDays: event.target.value } : current
+                        )
+                      }
+                      disabled={!deletionRules?.canEdit || isSavingDeletionRules}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="deletion-rules-delete">{t('admin.iam.deletionRules.fields.deleteAfterDays')}</Label>
+                    <Input
+                      id="deletion-rules-delete"
+                      inputMode="numeric"
+                      value={deletionRulesDraft.deleteAfterDays}
+                      onChange={(event) =>
+                        setDeletionRulesDraft((current) =>
+                          current ? { ...current, deleteAfterDays: event.target.value } : current
+                        )
+                      }
+                      disabled={!deletionRules?.canEdit || isSavingDeletionRules}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="deletion-rules-strategy">{t('admin.iam.deletionRules.fields.defaultContentStrategy')}</Label>
+                    <Select
+                      id="deletion-rules-strategy"
+                      value={deletionRulesDraft.defaultContentStrategy}
+                      onChange={(event) =>
+                        setDeletionRulesDraft((current) =>
+                          current
+                            ? {
+                                ...current,
+                                defaultContentStrategy: event.target.value as IamDeletionContentStrategy,
+                              }
+                            : current
+                        )
+                      }
+                      disabled={!deletionRules?.canEdit || isSavingDeletionRules}
+                    >
+                      {deletionContentStrategyOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {t(`admin.iam.deletionRules.strategies.${option}` as const)}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="md:col-span-2 flex items-start gap-3 rounded-lg border border-border p-3">
+                    <Checkbox
+                      id="deletion-rules-allow-override"
+                      checked={deletionRulesDraft.allowContentPreferenceOverride}
+                      onChange={(event) => {
+                        const nextChecked = event.currentTarget.checked;
+                        setDeletionRulesDraft((current) =>
+                          current
+                            ? {
+                                ...current,
+                                allowContentPreferenceOverride: nextChecked,
+                              }
+                            : current
+                        );
+                      }}
+                      disabled={!deletionRules?.canEdit || isSavingDeletionRules}
+                    />
+                    <div className="grid gap-1">
+                      <Label htmlFor="deletion-rules-allow-override">
+                        {t('admin.iam.deletionRules.fields.allowContentPreferenceOverride')}
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {t('admin.iam.deletionRules.fields.allowContentPreferenceOverrideHint')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2 flex items-center gap-3">
+                    <Button type="submit" disabled={!deletionRules?.canEdit || isSavingDeletionRules}>
+                      {isSavingDeletionRules
+                        ? t('admin.iam.deletionRules.actions.saving')
+                        : t('admin.iam.deletionRules.actions.save')}
+                    </Button>
+                    {!deletionRules?.canEdit ? (
+                      <p className="text-sm text-muted-foreground">{t('admin.iam.deletionRules.messages.readOnly')}</p>
+                    ) : null}
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
         </div>
       ) : null}
     </section>

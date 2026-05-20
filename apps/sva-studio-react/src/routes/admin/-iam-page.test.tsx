@@ -7,6 +7,8 @@ const useAuthMock = vi.fn();
 const useNavigateMock = vi.fn();
 const listGovernanceCasesMock = vi.fn();
 const listAdminDsrCasesMock = vi.fn();
+const getAdminDeletionRulesMock = vi.fn();
+const saveAdminDeletionRulesMock = vi.fn();
 const getAllowedIamCockpitTabsMock = vi.fn();
 const hasIamCockpitAccessRoleMock = vi.fn();
 const isIamCockpitEnabledMock = vi.fn();
@@ -23,6 +25,8 @@ vi.mock('../../lib/iam-api', () => ({
   fetchWithRequestTimeout: (...args: Parameters<typeof fetch>) => fetch(...args),
   listGovernanceCases: (...args: unknown[]) => listGovernanceCasesMock(...args),
   listAdminDsrCases: (...args: unknown[]) => listAdminDsrCasesMock(...args),
+  getAdminDeletionRules: (...args: unknown[]) => getAdminDeletionRulesMock(...args),
+  saveAdminDeletionRules: (...args: unknown[]) => saveAdminDeletionRulesMock(...args),
 }));
 
 vi.mock('../../lib/iam-viewer-access', () => ({
@@ -44,6 +48,8 @@ describe('IamViewerPage', () => {
     useNavigateMock.mockReset();
     listGovernanceCasesMock.mockReset();
     listAdminDsrCasesMock.mockReset();
+    getAdminDeletionRulesMock.mockReset();
+    saveAdminDeletionRulesMock.mockReset();
     getAllowedIamCockpitTabsMock.mockReset();
     hasIamCockpitAccessRoleMock.mockReset();
     isIamCockpitEnabledMock.mockReset();
@@ -255,6 +261,64 @@ describe('IamViewerPage', () => {
       expect(listAdminDsrCasesMock).toHaveBeenCalledTimes(1);
       expect(screen.getAllByText('Auskunftsersuchen')).toHaveLength(2);
       expect(screen.getAllByText('In Bearbeitung').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('loads and saves tenant deletion rules in the admin cockpit', async () => {
+    getAdminDeletionRulesMock.mockResolvedValue({
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      deactivateAfterDays: 90,
+      pseudonymizeAfterDays: 180,
+      deleteAfterDays: 365,
+      defaultContentStrategy: 'retain',
+      allowContentPreferenceOverride: true,
+      canEdit: true,
+    });
+    saveAdminDeletionRulesMock.mockResolvedValue({
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      deactivateAfterDays: 120,
+      pseudonymizeAfterDays: 180,
+      deleteAfterDays: 365,
+      defaultContentStrategy: 'with_owner_lifecycle',
+      allowContentPreferenceOverride: false,
+      canEdit: true,
+    });
+
+    useAuthMock.mockReturnValue({
+      user: adminUser,
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['deletion-rules']);
+
+    render(<IamViewerPage activeTab="deletion-rules" />);
+
+    await waitFor(() => {
+      expect(getAdminDeletionRulesMock).toHaveBeenCalledWith('11111111-1111-1111-8111-111111111111');
+      expect(screen.getByRole('heading', { name: 'Tenant-Löschregeln' })).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Deaktivierung nach Tagen'), {
+      target: { value: '120' },
+    });
+    fireEvent.change(screen.getByLabelText('Standardregel für Inhalte'), {
+      target: { value: 'with_owner_lifecycle' },
+    });
+    fireEvent.click(screen.getByLabelText('Nutzer dürfen die Standardregel für eigene Inhalte überschreiben'));
+    fireEvent.click(screen.getByRole('button', { name: 'Löschregeln speichern' }));
+
+    await waitFor(() => {
+      expect(saveAdminDeletionRulesMock).toHaveBeenCalledWith({
+        instanceId: '11111111-1111-1111-8111-111111111111',
+        deactivateAfterDays: 120,
+        pseudonymizeAfterDays: 180,
+        deleteAfterDays: 365,
+        defaultContentStrategy: 'with_owner_lifecycle',
+        allowContentPreferenceOverride: false,
+      });
     });
   });
 

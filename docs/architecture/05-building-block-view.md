@@ -434,6 +434,19 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 4. `packages/iam-governance/src/read-models.ts`, `packages/iam-governance/src/data-subject-rights/read-models.ts`, `packages/iam-admin/src/user-timeline-query.ts`
    - Serverseitige Normalisierung der Transparenzdaten statt Roh-JSON aus Einzeltabellen.
 
+### Ergänzung 2026-05: Tenant-Löschregeln und Account-Lifecycle
+
+1. `packages/data/migrations/0042_iam_tenant_account_deletion_rules.sql`
+   - Führt tenantbezogene Löschregeln, Self-Service-Inhaltspräferenzen sowie Lifecycle-Felder für Accounts und Contents ein.
+2. `packages/iam-governance/src/deletion-rules-read-models.*`
+   - Leiten wirksame Tenant-Regeln und Self-Service-Overviews aus Baseline-Defaults, Tenant-Konfiguration und dem letzten `login`-Event aus `iam.activity_logs` ab.
+3. `packages/iam-governance/src/deletion-rules-maintenance.ts`
+   - Bewertet tenantweit den Login-basierten Inaktivitäts-Lifecycle und spiegelt Owner-Stufen optional referenzwahrend auf `iam.contents`.
+4. `packages/auth-runtime/src/iam-deletion-rules/core.ts`
+   - Stellt tenantgebundene Runtime-Endpunkte für Admin-Read/Write, Self-Service-Read und Self-Service-Inhaltspräferenzen bereit.
+5. `apps/sva-studio-react/src/routes/admin/-iam-page.tsx` und `apps/sva-studio-react/src/routes/account/-account-privacy-page.tsx`
+   - Erweitern das IAM-Transparenz-Cockpit um den Tab `deletion-rules` und das Datenschutz-Cockpit um eine tenantgebundene Konten-Löschregeln-Box.
+
 ### Ergänzung 2026-03: Direkte Nutzerrechte in der Benutzerverwaltung
 
 1. `packages/data/migrations/0024_iam_account_permissions.sql` (historischer Migrationsort)

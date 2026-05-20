@@ -7,30 +7,33 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
 - Goals:
   - Tenantweite Default-Regeln für Account-Deaktivierung, Pseudonymisierung und finalen Tombstone-Soft-Delete
   - Transparente Anzeige der Regeln in Admin- und Self-Service-Oberflächen
-  - Ein per-Account-Override für die Behandlung eigener Inhalte in `iam.contents`
-  - Explizite tenantgebundene Permissions und Audit-Events für Regelpflege und Lifecycle-Ausführung
+  - Ein tenantseitig freischaltbarer per-Account-Override für die Behandlung eigener Inhalte in `iam.contents`
+  - Ein operativer Runtime-/Ops-Einstieg für tenantweite Lifecycle-Läufe
 - Non-Goals:
   - Keine Unterstützung für Root-/Plattform-Admins ohne Tenant-Scope
   - Kein neues Aktivitäts- oder Telemetrie-Tracking-System
   - Keine physische Löschung von Accounts oder Inhalten in V1
   - Keine Inhaltsdomänen außerhalb von `iam.contents`
+  - Keine neue feingranulare Action-Matrix oder dedizierten Audit-Event-Familien in diesem Change
 
 ## Decisions
 
-- Decision: Inaktivität wird in V1 ausschließlich aus `last_login_at` abgeleitet.
-  - Rationale: Das vermeidet ein neues Aktivitäts-Tracking-System und hält den ersten Wurf fachlich klar.
-  - Kanonische Quelle: V1 verwendet für Online- und Offline-Auswertung ausschließlich das persistierte Feld `last_login_at` des Tenant-Account-Records der betroffenen `instanceId`.
+- Decision: Inaktivität wird in V1 ausschließlich aus Login-Events abgeleitet.
+  - Rationale: Das nutzt den bereits in den bestehenden IAM-Read-Models etablierten Login-Zeitpunkt und vermeidet ein neues Aktivitäts-Tracking-System.
+  - Kanonische Quelle: V1 verwendet für Online- und Offline-Auswertung `MAX(iam.activity_logs.created_at WHERE event_type = 'login')` pro Tenant-Account der betroffenen `instanceId`.
   - Tenant-Scope: Dieser Wert wird nicht als globales Cross-Tenant-Inaktivitätssignal interpretiert.
-  - Null-Handling und Schwellwerte: Accounts mit `last_login_at = null` sind in V1 nicht für den automatischen Inaktivitäts-Lifecycle qualifiziert. Ein Schwellwert `N` gilt als erreicht, sobald `last_login_at + N * 24h <= now()`.
-  - Manuelle Läufe: Accounts mit `last_login_at = null` werden auch durch manuelle Läufe dieses Deletion-Rules-Mechanismus nicht verarbeitet; ihre Behandlung bleibt außerhalb dieses V1-Features und erfolgt über separate manuelle Account-Administration.
+  - Persistierter Fallback: `iam.accounts.last_login_at` darf im Schema vorhanden sein, wird in V1 aber nicht zur führenden fachlichen Wahrheit gemacht.
+  - Null-Handling und Schwellwerte: Accounts ohne Login-Event sind in V1 nicht für den automatischen Inaktivitäts-Lifecycle qualifiziert. Ein Schwellwert `N` gilt als erreicht, sobald `last_login_at + N * 24h <= now()`.
+  - Manuelle Läufe: Accounts ohne Login-Event werden auch durch manuelle Läufe dieses Deletion-Rules-Mechanismus nicht verarbeitet; ihre Behandlung bleibt außerhalb dieses V1-Features und erfolgt über separate manuelle Account-Administration.
 
 - Decision: Tenant-Admins verwalten die Regeln in `/admin/iam?tab=deletion-rules`.
   - Rationale: Das Feature gehört in das bestehende IAM-Transparenz- und Governance-Cockpit und bleibt damit für Betreiber auffindbar.
   - Normative Baseline-Defaults/Fallbacks für neue oder noch nicht konfigurierte Tenants: `deactivateAfterDays=90`, `pseudonymizeAfterDays=180`, `deleteAfterDays=365`
   - Numerische Domäne: `deactivateAfterDays`, `pseudonymizeAfterDays` und `deleteAfterDays` sind positive ganzzahlige Tageswerte und müssen strikt `deactivateAfterDays < pseudonymizeAfterDays < deleteAfterDays` erfüllen.
   - Geerbte Default-Inhaltsstrategie für unkonfigurierte Tenants: `beibehalten`
-  - UI-Verhalten für unkonfigurierte Tenants: Die Oberfläche zeigt diese Baseline-Defaults und die geerbte Default-Inhaltsstrategie `beibehalten` als wirksamen Zustand; Speichern erzeugt oder aktualisiert eine explizite Tenant-Konfiguration.
-  - Read-vs-Manage-Verhalten: `iam.deletionRules.read` ohne `iam.deletionRules.manage` liefert einen lesbaren, aber nicht bearbeitbaren Zustand mit erklärender Meldung. Nur `iam.deletionRules.manage` aktiviert Bearbeitungs- und Speichervorgänge.
+  - Tenant-Schalter für Self-Service-Overrides: `allowContentPreferenceOverride` ist Teil der Tenant-Konfiguration und startet mit Default `false`.
+  - UI-Verhalten für unkonfigurierte Tenants: Die Oberfläche zeigt diese Baseline-Defaults, die geerbte Default-Inhaltsstrategie `beibehalten` und den Override-Schalter deaktiviert als wirksamen Zustand; Speichern erzeugt oder aktualisiert eine explizite Tenant-Konfiguration.
+  - Zugriffsmodell im gelieferten Scope: Nur tenantgebundene Admin-Accounts (`iam_admin`, `support_admin`, `system_admin`) mit passender `instanceId` erhalten den Admin-Tab; Root-/Plattform-Admins ohne Tenant-Scope bleiben ausgeschlossen.
   - Zustandsanforderungen: Der Admin-Tab benötigt explizite Lade-, Fehler-, Read-only- und Denied-Zustände; ein unkonfigurierter Tenant erzeugt keinen leeren Zustand, sondern zeigt wirksame Baseline-Defaults.
 
 - Decision: Der Lebenszyklus verwendet die Zustände `active`, `deactivated`, `pseudonymized` und `deleted`.
@@ -44,43 +47,43 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
 
 - Decision: Die Inhaltsbehandlung in V1 beschränkt sich auf `iam.contents`, mit tenantweitem Default und per-Account-Override.
   - Rationale: Das reduziert Komplexität und schafft dennoch eine klare Nutzerentscheidung für die einzige unterstützte Inhaltsdomäne.
-  - Normative V1-Strategiemenge: `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln`
-  - Strategiebedeutung in V1: `beibehalten` lässt Inhalte über alle Account-Zustandswechsel unverändert und koppelt sie nie an den Lifecycle. `bei Deaktivierung mitbehandeln` markiert Inhalte beim Account-Übergang nach `deactivated` in einem deaktivierten Content-Lifecycle-Zustand; anschließend laufen diese Inhalte mit späteren Account-Stufen weiter und werden bei fortgesetztem Account-Lifecycle ebenfalls pseudonymisiert und schließlich in einen Deleted-Tombstone-Zustand überführt, wobei das Deleted-Label ein zuvor gesetztes pseudonymisiertes Label für owner-/author-facing Ownership- und Display-Name-Felder ersetzt. `bei Pseudonymisierung mitbehandeln` lässt Inhalte bis zur Account-Pseudonymisierung unverändert, markiert sie dann in einem pseudonymisierten Zustand und ersetzt owner-/author-facing Ownership- und Display-Name-Felder durch ein stabiles pseudonymisiertes Label; anschließend laufen diese Inhalte bei fortgesetztem Account-Lifecycle weiter bis zum Deleted-Tombstone-Zustand, wobei das Deleted-Label das zuvor gesetzte pseudonymisierte Label für owner-/author-facing Ownership- und Display-Name-Felder ersetzt. `bei Löschung mitbehandeln` lässt Inhalte bis zum finalen Account-Übergang nach `deleted` unverändert und markiert sie erst dann in einem Deleted-Tombstone-Zustand mit Deleted-Label.
+  - Normative V1-Strategiemenge: `beibehalten`, `mit Eigentümer-Lifecycle mitbehandeln`
+  - Strategiebedeutung in V1: `beibehalten` lässt Inhalte über alle Account-Zustandswechsel unverändert und koppelt sie nie an den Lifecycle. `mit Eigentümer-Lifecycle mitbehandeln` spiegelt die jeweils erreichte Account-Stufe auf `iam.contents`: `deactivated` macht Inhalte unsichtbar/deaktiviert, `pseudonymized` erhält Inhalte referenzwahrend und ersetzt owner-/author-facing Felder durch ein stabiles Pseudonym-Label, `deleted` markiert Inhalte referenzwahrend als gelöscht und ersetzt owner-/author-facing Felder durch ein Deleted-Label.
   - Labelstabilität: Die ersetzenden Lifecycle-Labels für owner-/author-facing Ownership- und Display-Name-Felder sind pro Locale über alle betroffenen Entitäten stabil und nicht pro Account oder Inhalt individuell abgeleitet. Deutsche Standardbeispiele für diese stabilen Semantiken sind `Pseudonymisiert` und `Gelöscht`.
   - V1 löscht `iam.contents`-Zeilen niemals physisch.
   - Geerbte Baseline-Strategie ohne Tenant-Konfiguration: `beibehalten`
   - Override-Autorisierung: Der per-Account-Override ist ein Self-Service-Schreibpfad für den eigenen Tenant-Account; der Zielaccount wird serverseitig aus Session/Auth-Kontext gebunden. Dieser Change führt keinen separaten Admin-Schreibpfad für fremde Overrides ein.
-  - Rückkehr zum geerbten Zustand: Tenant-Admins können eine explizite Tenant-Konfiguration entfernen und damit zu Baseline-Defaults und geerbter Strategie zurückkehren. Benutzer können ihren expliziten Override entfernen und damit zur tenantweiten Default-Strategie zurückkehren.
+  - Override-Freigabe: Tenant-Admins können Self-Service-Overrides tenantweit erlauben oder unterbinden. Wenn Overrides deaktiviert sind, zeigt die Privacy-UI nur den wirksamen Tenant-Standard und keinen Schreibbereich.
+  - Rückkehr zum Tenant-Default: Benutzer können ihren expliziten Override indirekt entfernen, indem sie denselben Wert wie den Tenant-Standard speichern; dann bleibt nur noch der wirksame Tenant-Standard bestehen.
 
-- Decision: Für Regelpflege und Lifecycle-Ausführung werden eigene tenantgebundene Actions im `iam`-Namespace benötigt.
-  - Rationale: Das Feature darf weder implizit über Plattformrechte noch über allgemeine Admin-Rechte ohne expliziten Tenant-Bezug steuerbar sein.
-  - Geplante Lifecycle-Läufe verwenden eine dedizierte tenantgebundene technische Service-Identität, der `iam.accountLifecycle.run` explizit für die Ziel-`instanceId` zugewiesen ist; Plattform- oder Root-Rechte allein reichen nicht aus.
-  - Manuelle Laufreichweite: Manuelle Läufe dieses V1-Features sind tenantweit für die aktive `instanceId` definiert und verarbeiten alle dafür qualifizierten Accounts; per-Account- oder Teilmengenläufe gehören nicht zu diesem Change.
+- Decision: Der gelieferte Scope bleibt bei tenantgebundenen Rollen- und Kontextprüfungen statt bei einer neuen Action-Matrix.
+  - Rationale: Das liefert die gewünschte Tenant-Abgrenzung mit geringerer Querwirkung auf den bestehenden IAM-Rechtekatalog.
+  - Admin-Zugriff: `/admin/iam?tab=deletion-rules` ist nur mit Tenant-Scope und Admin-Rolle verfügbar.
+  - Self-Service: `/account/privacy` und die Schreiboperation für Inhaltspräferenzen sind ausschließlich an das eigene authentifizierte Tenant-Konto gebunden.
+  - Root-/Plattform-Scope: Root-/Plattform-Admins ohne aktive `instanceId` sehen weder den Admin-Tab noch die Self-Service-Löschregeln-Box.
+  - Laufreichweite: Manuelle oder geplante Läufe dieses V1-Features sind tenantweit für die aktive `instanceId` definiert und verarbeiten alle dafür qualifizierten Accounts; per-Account- oder Teilmengenläufe gehören nicht zu diesem Change.
 
-- Decision: Audit-Events verwenden eine stabile Ergebnis- und Herkunftssemantik.
-  - Rationale: Betrieb, UI und Compliance müssen unterscheiden können, ob eine Aktion erfolgreich angewendet, fachlich blockiert oder vor der Fachverarbeitung zurückgewiesen wurde.
-  - Ergebnissemantik: `applied` bedeutet, dass eine autorisierte Aktion eine Regeländerung, einen Override oder einen Lifecycle-Übergang tatsächlich persistiert bzw. angewendet hat. `blocked` bedeutet, dass eine autorisierte Aktion die Fachverarbeitung erreicht hat, dort aber an fachlichen oder datenbezogenen Vorbedingungen scheiterte, etwa wegen Schutzbedingungen oder fehlender Lifecycle-Voraussetzungen. `rejected` bedeutet, dass Autorisierung oder Request-Validierung die Aktion vor der Fachverarbeitung abgelehnt haben.
-  - Accounts mit `last_login_at = null` werden von diesem V1-Mechanismus übersprungen und nicht als `blocked` auditierbare Lifecycle-Transition behandelt.
-  - Event-Familien: erfolgreiche Tenant-Regelsaves verwenden `tenant_rule_change_applied`, vorab abgelehnte Tenant-Regelsaves `tenant_rule_change_rejected`, erfolgreiche Override-Saves `content_preference_override_applied`, vorab abgelehnte Override-Saves `content_preference_override_rejected`, erfolgreiche Lifecycle-Übergänge `lifecycle_transition_applied`, fachlich blockierte autorisierte Lifecycle-Läufe `lifecycle_transition_blocked` und vor der Fachverarbeitung abgelehnte Lifecycle-Anfragen `lifecycle_transition_rejected`.
-  - Autorisierungsfehler und Request-Validierungsfehler werden nicht als `lifecycle_transition_blocked`, sondern als `lifecycle_transition_rejected` emittiert; diese Familie beschreibt die abgelehnte Lifecycle-Aktion über Laufkontext und Ablehnungsgrund statt über einen nicht definierten Zielstatus.
-  - Erst-Save-Semantik: Beim ersten Speichern einer Tenant-Regelkonfiguration oder eines Account-Overrides protokolliert das Audit den zuvor wirksamen geerbten Geschäftsstatus als `previous_*`-Wert und markiert zusätzlich, dass vorher keine explizite Konfiguration existierte, etwa über `previous_source='inherited'` oder `previous_config_present=false`.
+- Decision: Lifecycle-Ausführung erhält einen expliziten Ops-Einstieg.
+  - Rationale: Tenantweite Läufe sollen operational erreichbar sein, ohne den Feature-Scope an eine neue UI-Steuerung zu koppeln.
+  - Einstieg: `pnpm iam:account-deletion-rules:run`
+  - Semantik: Der Lauf verwendet denselben tenantbezogenen Login-Zeitpunkt wie die Read-Models und bewegt einen Account pro Lauf höchstens um eine Stufe.
 
 ## Risks / Trade-offs
 
-- `last_login_at` kann fachlich weniger reichhaltig sein als ein vollwertiges Aktivitätsmodell.
+- Login-Events können fachlich weniger reichhaltig sein als ein vollwertiges Aktivitätsmodell.
   - Mitigation: Der Scope wird explizit dokumentiert; spätere Erweiterungen können zusätzliche Aktivitätsquellen separat einführen.
 
 - Ein Tombstone-Soft-Delete kann bei Nutzern als unvollständige Löschung missverstanden werden.
   - Mitigation: Self-Service und Audit-Nachweise müssen den finalen Zustand und seine Datenschutzwirkung klar erläutern.
 
-- Zusätzliche Permissions und Audit-Pfade erhöhen die Governance-Komplexität.
-  - Mitigation: Die Actions werden klein, tenantgebunden und eindeutig benannt; Auditfelder werden normativ vorgegeben.
+- Die führende fachliche Wahrheit für den letzten Login liegt in der Aggregation über `iam.activity_logs`, obwohl ein persistiertes Feld existiert.
+  - Mitigation: Die Doku benennt diese Abgrenzung explizit; spätere Denormalisierung oder Backfill kann separat erfolgen.
 
 ## Migration Plan
 
 1. Tenantbezogene Regeln, Zustände und Inhaltsstrategien fachlich normieren.
-2. Admin-Cockpit-Tab und Self-Service-Anzeigen samt Override-Verhalten spezifizieren.
-3. Permissions, Lifecycle-Ausführung und Audit-Events als querschnittliche Anforderungen ergänzen.
+2. Admin-Cockpit-Tab und Self-Service-Anzeigen samt tenantseitiger Override-Freigabe spezifizieren.
+3. Runtime-, Maintenance- und Ops-Einstieg gegen denselben Login-Zeitpunkt wie die bestehenden Read-Models ausrichten.
 4. Danach Implementierung und Dokumentation gegen die freigegebenen Deltas planen.
 
 ## Open Questions

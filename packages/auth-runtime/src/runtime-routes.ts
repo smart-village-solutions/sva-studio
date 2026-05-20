@@ -36,6 +36,11 @@ export {
   listGovernanceCasesHandler,
 } from './iam-governance/core.js';
 export {
+  deletionRulesAdminHandler,
+  myDeletionRulesOverviewHandler,
+  myDeletionRulesPreferenceHandler,
+} from './iam-deletion-rules/core.js';
+export {
   createLegalTextHandler,
   deleteLegalTextHandler,
   listLegalTextsHandler,

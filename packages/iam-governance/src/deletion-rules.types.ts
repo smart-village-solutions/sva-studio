@@ -5,11 +5,13 @@ export const deletionRulesBaselineDefaults = {
   pseudonymizeAfterDays: 180,
   deleteAfterDays: 365,
   defaultContentStrategy: 'retain',
+  allowContentPreferenceOverride: false,
 } as const satisfies Readonly<{
   deactivateAfterDays: number;
   pseudonymizeAfterDays: number;
   deleteAfterDays: number;
   defaultContentStrategy: IamDeletionContentStrategy;
+  allowContentPreferenceOverride: boolean;
 }>;
 
 export type TenantDeletionRulesRow = {
@@ -18,6 +20,7 @@ export type TenantDeletionRulesRow = {
   pseudonymize_after_days: number;
   delete_after_days: number;
   default_content_strategy: IamDeletionContentStrategy;
+  allow_content_preference_override: boolean;
 };
 
 export type MyDeletionRulesRow = {
@@ -28,6 +31,7 @@ export type MyDeletionRulesRow = {
   pseudonymize_after_days: number | null;
   delete_after_days: number | null;
   default_content_strategy: IamDeletionContentStrategy | null;
+  allow_content_preference_override: boolean | null;
   override_content_strategy: IamDeletionContentStrategy | null;
 };
 
@@ -39,6 +43,7 @@ export type DeletionRulesMaintenanceCandidateRow = {
   pseudonymize_after_days: number | null;
   delete_after_days: number | null;
   default_content_strategy: IamDeletionContentStrategy | null;
+  allow_content_preference_override: boolean | null;
   override_content_strategy: IamDeletionContentStrategy | null;
 };
 
@@ -55,6 +60,10 @@ export const resolveTenantDeletionThresholds = (input: {
 export const resolveDefaultDeletionContentStrategy = (
   strategy: IamDeletionContentStrategy | null | undefined
 ): IamDeletionContentStrategy => strategy ?? deletionRulesBaselineDefaults.defaultContentStrategy;
+
+export const resolveAllowContentPreferenceOverride = (
+  allowOverride: boolean | null | undefined
+): boolean => allowOverride ?? deletionRulesBaselineDefaults.allowContentPreferenceOverride;
 
 export const resolveEffectiveDeletionContentStrategy = (
   tenantStrategy: IamDeletionContentStrategy,

@@ -2,21 +2,21 @@
 
 ### Requirement: Tenantbezogener Inaktivitäts-Lebenszyklus ergänzt das Recht auf Löschung
 
-Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebenszyklus bereitstellen, der die Stufen `active`, `deactivated`, `pseudonymized` und `deleted` verwendet. Der Lebenszyklus gilt nur im Tenant-Scope, leitet Inaktivität in V1 ausschließlich aus dem persistierten Feld `last_login_at` des Tenant-Account-Records der betroffenen `instanceId` ab und endet in einem finalen Tombstone-Soft-Delete statt in einer physischen Löschung.
+Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebenszyklus bereitstellen, der die Stufen `active`, `deactivated`, `pseudonymized` und `deleted` verwendet. Der Lebenszyklus gilt nur im Tenant-Scope, leitet Inaktivität in V1 ausschließlich aus Login-Events der betroffenen `instanceId` ab und endet in einem finalen Tombstone-Soft-Delete statt in einer physischen Löschung.
 
 #### Scenario: Inaktivität wird aus dem letzten Login bestimmt
 
 - **WHEN** das System prüft, ob ein Tenant-Account die konfigurierten Löschregeln erreicht hat
-- **THEN** verwendet es in V1 ausschließlich das persistierte Feld `last_login_at` des Tenant-Account-Records der betroffenen `instanceId` als Referenzzeitpunkt
+- **THEN** verwendet es in V1 ausschließlich `MAX(iam.activity_logs.created_at)` für `event_type = 'login'` innerhalb der betroffenen `instanceId` als Referenzzeitpunkt
 - **AND** behandelt es diesen Wert nicht als globales Cross-Tenant-Inaktivitätssignal
-- **AND** sind Accounts mit `last_login_at = null` in V1 nicht für den automatischen Inaktivitäts-Lifecycle qualifiziert
-- **AND** sind Accounts mit `last_login_at = null` auch durch manuelle Läufe dieses Deletion-Rules-Mechanismus nicht für Lifecycle-Übergänge qualifiziert
+- **AND** sind Accounts ohne Login-Event in V1 nicht für den automatischen Inaktivitäts-Lifecycle qualifiziert
+- **AND** sind Accounts ohne Login-Event auch durch manuelle Läufe dieses Deletion-Rules-Mechanismus nicht für Lifecycle-Übergänge qualifiziert
 - **AND** gilt ein Schwellwert `N` als erreicht, sobald `last_login_at + N * 24h <= now()`
 - **AND** verlangt kein neues Aktivitäts-Tracking-System und keine zusätzlichen Aktivitätsquellen
 
-#### Scenario: Accounts ohne `last_login_at` bleiben außerhalb dieses V1-Lifecycles
+#### Scenario: Accounts ohne Login-Event bleiben außerhalb dieses V1-Lifecycles
 
-- **WHEN** ein Tenant-Account kein persistiertes `last_login_at` besitzt
+- **WHEN** ein Tenant-Account in `iam.activity_logs` kein `login`-Event für die aktive `instanceId` besitzt
 - **THEN** verarbeitet das System den Account weder in geplanten noch in manuellen Läufen dieses Deletion-Rules-Mechanismus
 - **AND** bleibt die Behandlung dieses Accounts außerhalb des V1-Inaktivitäts-Lifecycles
 - **AND** erfordert sie separate manuelle Account-Administration
@@ -39,6 +39,8 @@ Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebensz
 
 - **WHEN** für einen Tenant noch keine individuellen Löschregeln konfiguriert wurden
 - **THEN** verwendet das System die Baseline-Defaults/Fallbacks `deactivateAfterDays=90`, `pseudonymizeAfterDays=180` und `deleteAfterDays=365`
+- **AND** gilt `beibehalten` als geerbte Default-Inhaltsstrategie
+- **AND** gilt `allowContentPreferenceOverride = false` als geerbter Tenant-Default
 - **AND** gelten diese Werte so lange als wirksame Tenant-Regeln, bis tenant-spezifische Werte gespeichert werden
 
 #### Scenario: Root- und Plattform-Accounts bleiben außerhalb des Löschregelmodells
@@ -49,15 +51,16 @@ Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebensz
 
 ### Requirement: Inhaltsbehandlung ist tenantweit steuerbar und pro Account überschreibbar
 
-Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsstrategie und einen per-Account-Override für eigene Inhalte unterstützen. In V1 ist `iam.contents` die einzige unterstützte Inhaltsdomäne. Die normative V1-Strategiemenge lautet `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln`.
+Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsstrategie und einen tenantseitig freischaltbaren per-Account-Override für eigene Inhalte unterstützen. In V1 ist `iam.contents` die einzige unterstützte Inhaltsdomäne. Die normative V1-Strategiemenge lautet `beibehalten` und `mit Eigentümer-Lifecycle mitbehandeln`.
 
 #### Scenario: Strategiebedeutungen sind zustandsbezogen, nicht physisch und labelstabil
 
 - **WHEN** das System die Inhaltsstrategie eines Accounts im Scope `iam.contents` auswertet
 - **THEN** bedeutet `beibehalten`, dass Inhalte über alle Account-Zustandswechsel unverändert bleiben
-- **AND** bedeutet `bei Deaktivierung mitbehandeln`, dass Inhalte beim Übergang des Accounts nach `deactivated` in einen deaktivierten Content-Lifecycle-Zustand markiert werden, während die Zeile persistiert bleibt, und dass diese Inhalte bei fortgesetztem Account-Lifecycle später ebenfalls pseudonymisiert und schließlich in einen Deleted-Tombstone-Zustand überführt werden
-- **AND** bedeutet `bei Pseudonymisierung mitbehandeln`, dass Inhalte bis zum Übergang des Accounts nach `pseudonymized` unverändert bleiben, dann in einen pseudonymisierten Zustand markiert werden und owner-/author-facing Ownership- und Display-Name-Felder durch ein stabiles pseudonymisiertes Label ersetzt werden, während die Zeile persistiert bleibt, und dass diese Inhalte bei fortgesetztem Account-Lifecycle später in einen Deleted-Tombstone-Zustand überführt werden, bei dem das Deleted-Label das zuvor gesetzte pseudonymisierte Label für dieselben owner-/author-facing Ownership- und Display-Name-Felder ersetzt
-- **AND** bedeutet `bei Löschung mitbehandeln`, dass Inhalte erst beim finalen Übergang des Accounts nach `deleted` in einen Deleted-Tombstone-Zustand markiert werden und owner-/author-facing Ownership- und Display-Name-Felder durch ein Deleted-Label ersetzt werden, während die Zeile persistiert bleibt
+- **AND** bedeutet `mit Eigentümer-Lifecycle mitbehandeln`, dass Inhalte die jeweils erreichte Owner-Stufe spiegeln
+- **AND** führt ein Owner-Übergang nach `deactivated` zu einem deaktivierten oder unsichtbaren Content-Zustand
+- **AND** führt ein Owner-Übergang nach `pseudonymized` zu einem referenzwahrenden pseudonymisierten Content-Zustand, in dem owner-/author-facing Ownership- und Display-Name-Felder durch ein stabiles pseudonymisiertes Label ersetzt werden
+- **AND** führt ein Owner-Übergang nach `deleted` zu einem referenzwahrenden Deleted-Tombstone-Zustand, in dem owner-/author-facing Ownership- und Display-Name-Felder durch ein Deleted-Label ersetzt werden
 - **AND** sind das pseudonymisierte Label und das Deleted-Label pro Locale über alle betroffenen Entitäten stabil und nicht pro Account oder Inhalt individuell abgeleitet
 - **AND** werden `iam.contents`-Zeilen in V1 nicht physisch gelöscht
 
@@ -65,7 +68,7 @@ Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsst
 
 - **WHEN** ein Tenant Löschregeln mit einer Default-Inhaltsstrategie konfiguriert
 - **THEN** gilt diese Strategie für eigene Inhalte eines Accounts, solange kein individueller Override gesetzt ist
-- **AND** stammt die Strategie aus der normativen V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln`
+- **AND** stammt die Strategie aus der normativen V1-Menge `beibehalten`, `mit Eigentümer-Lifecycle mitbehandeln`
 - **AND** ist die Wirkung auf `iam.contents` begrenzt
 
 #### Scenario: Individueller Override ersetzt nur die Inhaltsstrategie des eigenen Accounts
@@ -73,23 +76,18 @@ Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsst
 - **WHEN** ein Benutzer eine abweichende Inhaltspräferenz für die Behandlung seiner eigenen Inhalte speichert
 - **THEN** überschreibt diese Präferenz nur die tenantweite Default-Inhaltsstrategie für diesen Account
 - **AND** verändert sie keine Fristenwerte des Tenants
-- **AND** bleibt auch der Override auf die normative V1-Menge `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln` begrenzt
+- **AND** bleibt auch der Override auf die normative V1-Menge `beibehalten`, `mit Eigentümer-Lifecycle mitbehandeln` begrenzt
 - **AND** erweitert sie den Scope nicht auf andere Inhaltsdomänen als `iam.contents`
+- **AND** ist der Override nur verfügbar, wenn der Tenant `allowContentPreferenceOverride = true` gesetzt hat
 
 #### Scenario: Unkonfigurierter Tenant verwendet geerbte Regeln bis zur expliziten Speicherung
 
 - **WHEN** für einen Tenant noch keine explizite Löschregel-Konfiguration gespeichert ist
-- **THEN** gelten die Baseline-Defaults `90 / 180 / 365` und die geerbte Default-Inhaltsstrategie `beibehalten` als wirksamer Tenant-Zustand
+- **THEN** gelten die Baseline-Defaults `90 / 180 / 365`, die geerbte Default-Inhaltsstrategie `beibehalten` und der geerbte Override-Default `false` als wirksamer Tenant-Zustand
 - **AND** bleibt dieser geerbte Zustand wirksam, bis ein Tenant-Admin eine explizite Konfiguration speichert
-
-#### Scenario: Explizite Tenant-Regelkonfiguration kann auf geerbte Defaults zurückgesetzt werden
-
-- **WHEN** ein Tenant-Admin eine bestehende explizite Tenant-Regelkonfiguration entfernt
-- **THEN** kehrt der Tenant zu den wirksamen Baseline-Defaults `90 / 180 / 365` und zur geerbten Strategie `beibehalten` zurück
-- **AND** wird dieser Rückweg als fachlich gültiger Zustandswechsel behandelt
 
 #### Scenario: Expliziter Self-Service-Override kann auf Tenant-Default zurückgesetzt werden
 
-- **WHEN** ein Benutzer seinen bestehenden Inhaltsstrategie-Override entfernt
+- **WHEN** ein Benutzer denselben Strategiewert wie den aktuellen Tenant-Standard speichert
 - **THEN** gilt wieder die tenantweite Default-Inhaltsstrategie für diesen Account
-- **AND** wird dieser Rückweg als fachlich gültiger Zustandswechsel behandelt
+- **AND** bleibt dafür kein eigener expliziter Override mehr erforderlich

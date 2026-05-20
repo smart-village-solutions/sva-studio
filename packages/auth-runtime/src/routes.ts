@@ -63,6 +63,9 @@ export type AuthRoutePath =
   | '/api/v1/iam/admin/reconcile'
   | '/iam/governance/workflows'
   | '/iam/governance/compliance/export'
+  | '/iam/admin/deletion-rules'
+  | '/iam/me/deletion-rules'
+  | '/iam/me/deletion-rules/content-preference'
   | '/iam/me/data-export'
   | '/iam/me/data-export/status'
   | '/iam/me/data-subject-rights/requests'
@@ -174,6 +177,9 @@ export const authRoutePaths = [
   '/api/v1/iam/admin/reconcile',
   '/iam/governance/workflows',
   '/iam/governance/compliance/export',
+  '/iam/admin/deletion-rules',
+  '/iam/me/deletion-rules',
+  '/iam/me/deletion-rules/content-preference',
   '/iam/me/data-export',
   '/iam/me/data-export/status',
   '/iam/me/data-subject-rights/requests',

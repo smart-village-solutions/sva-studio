@@ -23,6 +23,8 @@ import {
   assignOrganizationMembership,
   bulkDeactivateUsers,
   createInstance,
+  getAdminDeletionRules,
+  getMyDeletionRules,
   updateInstance,
   createGroup,
   createOrganization,
@@ -57,6 +59,8 @@ import {
   removeGroupMembership,
   removeGroupRole,
   requestDataExport,
+  saveAdminDeletionRules,
+  saveMyDeletionRulesContentPreference,
   revokeInstanceModule,
   seedInstanceIamBaseline,
   syncUsersFromKeycloak,
@@ -214,6 +218,65 @@ describe('iam-api organization helpers', () => {
 
     await expect(firstRequest).resolves.toMatchObject({ data: [expect.objectContaining({ legalTextId: 'lt-1' })] });
     await expect(secondRequest).resolves.toMatchObject({ data: [expect.objectContaining({ legalTextId: 'lt-1' })] });
+  });
+
+  it('calls the deletion-rules admin and self-service endpoints with the expected payloads', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(async () =>
+        createJsonResponse({ instanceId: 'de-musterhausen', canEdit: true })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await getAdminDeletionRules('de-musterhausen');
+    await saveAdminDeletionRules({
+      instanceId: 'de-musterhausen',
+      deactivateAfterDays: 90,
+      pseudonymizeAfterDays: 180,
+      deleteAfterDays: 365,
+      defaultContentStrategy: 'retain',
+      allowContentPreferenceOverride: true,
+    });
+    await getMyDeletionRules();
+    await saveMyDeletionRulesContentPreference({ strategy: 'with_owner_lifecycle' });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/iam/admin/deletion-rules?instanceId=de-musterhausen',
+      expect.objectContaining({
+        credentials: 'include',
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/iam/admin/deletion-rules',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'de-musterhausen',
+          deactivateAfterDays: 90,
+          pseudonymizeAfterDays: 180,
+          deleteAfterDays: 365,
+          defaultContentStrategy: 'retain',
+          allowContentPreferenceOverride: true,
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/iam/me/deletion-rules',
+      expect.objectContaining({
+        credentials: 'include',
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/iam/me/deletion-rules/content-preference',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ strategy: 'with_owner_lifecycle' }),
+      })
+    );
   });
 
   it('normalizes legacy runtime health responses', () => {

@@ -5,16 +5,18 @@ INSERT INTO iam.instance_deletion_rules (
   deactivate_after_days,
   pseudonymize_after_days,
   delete_after_days,
-  default_content_strategy
+  default_content_strategy,
+  allow_content_preference_override
 )
 VALUES
-  ('de-musterhausen', 90, 180, 365, 'retain')
+  ('de-musterhausen', 90, 180, 365, 'retain', false)
 ON CONFLICT (instance_id) DO UPDATE
 SET
   deactivate_after_days = EXCLUDED.deactivate_after_days,
   pseudonymize_after_days = EXCLUDED.pseudonymize_after_days,
   delete_after_days = EXCLUDED.delete_after_days,
   default_content_strategy = EXCLUDED.default_content_strategy,
+  allow_content_preference_override = EXCLUDED.allow_content_preference_override,
   updated_at = NOW();
 
 COMMIT;

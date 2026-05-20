@@ -10,12 +10,13 @@ type MaintenanceRow = {
   deactivate_after_days: number | null;
   pseudonymize_after_days: number | null;
   delete_after_days: number | null;
-  default_content_strategy: 'retain' | 'on_deactivation' | 'on_pseudonymization' | 'on_deletion' | null;
-  override_content_strategy: 'retain' | 'on_deactivation' | 'on_pseudonymization' | 'on_deletion' | null;
+  default_content_strategy: 'retain' | 'with_owner_lifecycle' | null;
+  allow_content_preference_override: boolean | null;
+  override_content_strategy: 'retain' | 'with_owner_lifecycle' | null;
 };
 
 const buildClient = (rows: readonly MaintenanceRow[], contentUpdates: readonly number[] = []) => {
-  const query = vi.fn<QueryClient['query']>(async (sql, params) => {
+  const query = vi.fn<QueryClient['query']>(async (sql) => {
     if (sql.includes('FROM iam.accounts account')) {
       return {
         rowCount: rows.length,
@@ -50,6 +51,7 @@ describe('deletion-rules/maintenance', () => {
         pseudonymize_after_days: 180,
         delete_after_days: 365,
         default_content_strategy: 'retain',
+        allow_content_preference_override: true,
         override_content_strategy: null,
       },
       {
@@ -59,7 +61,8 @@ describe('deletion-rules/maintenance', () => {
         deactivate_after_days: 90,
         pseudonymize_after_days: 180,
         delete_after_days: 365,
-        default_content_strategy: 'on_pseudonymization',
+        default_content_strategy: 'with_owner_lifecycle',
+        allow_content_preference_override: true,
         override_content_strategy: null,
       },
       {
@@ -69,7 +72,8 @@ describe('deletion-rules/maintenance', () => {
         deactivate_after_days: 90,
         pseudonymize_after_days: 180,
         delete_after_days: 365,
-        default_content_strategy: 'on_deletion',
+        default_content_strategy: 'with_owner_lifecycle',
+        allow_content_preference_override: true,
         override_content_strategy: null,
       },
       {
@@ -80,6 +84,7 @@ describe('deletion-rules/maintenance', () => {
         pseudonymize_after_days: 180,
         delete_after_days: 365,
         default_content_strategy: 'retain',
+        allow_content_preference_override: true,
         override_content_strategy: null,
       },
       {
@@ -90,6 +95,7 @@ describe('deletion-rules/maintenance', () => {
         pseudonymize_after_days: 180,
         delete_after_days: 365,
         default_content_strategy: 'retain',
+        allow_content_preference_override: true,
         override_content_strategy: null,
       },
     ]);
@@ -124,7 +130,8 @@ describe('deletion-rules/maintenance', () => {
           deactivate_after_days: 30,
           pseudonymize_after_days: 60,
           delete_after_days: 90,
-          default_content_strategy: 'on_deactivation',
+          default_content_strategy: 'with_owner_lifecycle',
+          allow_content_preference_override: true,
           override_content_strategy: null,
         },
       ],
@@ -159,7 +166,8 @@ describe('deletion-rules/maintenance', () => {
           deactivate_after_days: 30,
           pseudonymize_after_days: 60,
           delete_after_days: 90,
-          default_content_strategy: 'on_pseudonymization',
+          default_content_strategy: 'with_owner_lifecycle',
+          allow_content_preference_override: true,
           override_content_strategy: null,
         },
         {
@@ -170,7 +178,8 @@ describe('deletion-rules/maintenance', () => {
           pseudonymize_after_days: 60,
           delete_after_days: 90,
           default_content_strategy: 'retain',
-          override_content_strategy: 'on_deletion',
+          allow_content_preference_override: true,
+          override_content_strategy: 'with_owner_lifecycle',
         },
       ],
       [1, 3]
@@ -196,5 +205,33 @@ describe('deletion-rules/maintenance', () => {
     expect(contentUpdateCalls[0]?.[0]).toContain('Pseudonymisiert');
     expect(contentUpdateCalls[0]?.[0]).toContain('Gelöscht');
     expect(contentUpdateCalls.map(([, params]) => params?.[2])).toEqual(['pseudonymized', 'deleted']);
+  });
+
+  it('does not touch iam.contents when tenant and account both keep content', async () => {
+    const client = buildClient(
+      [
+        {
+          id: 'account-4',
+          last_login_at: '2025-01-01T00:00:00.000Z',
+          deletion_lifecycle_state: 'deactivated',
+          deactivate_after_days: 30,
+          pseudonymize_after_days: 60,
+          delete_after_days: 90,
+          default_content_strategy: 'retain',
+          allow_content_preference_override: false,
+          override_content_strategy: 'with_owner_lifecycle',
+        },
+      ],
+      [2]
+    );
+
+    const summary = await runDeletionRulesMaintenance(client, {
+      instanceId: 'de-test',
+      dryRun: false,
+      now: new Date('2026-05-20T00:00:00.000Z'),
+    });
+
+    expect(summary.tombstonedContents).toBe(0);
+    expect(client.query.mock.calls.some(([sql]) => sql.includes('UPDATE iam.contents'))).toBe(false);
   });
 });

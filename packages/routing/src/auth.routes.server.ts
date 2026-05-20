@@ -36,6 +36,16 @@ const governanceAuthHandlerMap = {
   '/iam/governance/compliance/export': {
     GET: routeHandler(authRuntimeRoutes.governanceComplianceExportHandler),
   },
+  '/iam/admin/deletion-rules': {
+    GET: routeHandler(authRuntimeRoutes.deletionRulesAdminHandler),
+    POST: routeHandler(authRuntimeRoutes.deletionRulesAdminHandler),
+  },
+  '/iam/me/deletion-rules': {
+    GET: routeHandler(authRuntimeRoutes.myDeletionRulesOverviewHandler),
+  },
+  '/iam/me/deletion-rules/content-preference': {
+    POST: routeHandler(authRuntimeRoutes.myDeletionRulesPreferenceHandler),
+  },
   '/iam/me/data-export': {
     GET: createMethodNotAllowedHandler('/iam/me/data-export', 'POST'),
     POST: routeHandler(authRuntimeRoutes.dataExportHandler),

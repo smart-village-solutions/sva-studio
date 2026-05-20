@@ -76,9 +76,7 @@ export type IamDsrSelfServiceOverview = {
 
 export type IamDeletionContentStrategy =
   | 'retain'
-  | 'on_deactivation'
-  | 'on_pseudonymization'
-  | 'on_deletion';
+  | 'with_owner_lifecycle';
 
 export type IamDeletionLifecycleState = 'active' | 'deactivated' | 'pseudonymized' | 'deleted';
 
@@ -88,6 +86,7 @@ export type IamTenantDeletionRulesOverview = {
   readonly pseudonymizeAfterDays: number;
   readonly deleteAfterDays: number;
   readonly defaultContentStrategy: IamDeletionContentStrategy;
+  readonly allowContentPreferenceOverride: boolean;
   readonly canEdit: boolean;
 };
 

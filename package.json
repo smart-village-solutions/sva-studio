@@ -78,6 +78,7 @@
     "env:doctor:studio": "tsx scripts/ops/runtime-env.ts doctor studio",
     "schema-diff:sva-mainserver": "node scripts/ci/sva-mainserver-schema-diff.mjs",
     "benchmark:sva-mainserver": "node scripts/ops/benchmark-sva-mainserver.mjs",
+    "iam:account-deletion-rules:run": "node --import tsx scripts/ops/run-iam-account-deletion-rules.mjs",
     "iam:retention:run": "node scripts/ops/run-iam-retention.mjs",
     "knip:scan": "knip -c knip.json --no-progress --no-exit-code --reporter compact",
     "hooks:install": "git config core.hooksPath .githooks"

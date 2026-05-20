@@ -309,6 +309,11 @@ Referenzen:
    - Wahrscheinlichkeit: hoch
    - Maßnahme: Retention-Automation (Anonymisierung + Archivierung) mit mandantenspezifischen Policies
 
+16b. Login-basierte Inaktivität ist nur ein Näherungswert
+   - Impact: mittel bis hoch (Accounts können zwischen letztem Login und tatsächlicher letzter Nutzung fachlich später aktiv gewesen sein)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: V1 bewusst auf Login-Events begrenzen, UI klar auf diese Quelle hinweisen und spätere Aktivitätssignale nur in einem separaten Folge-Change ergänzen
+
 16a. Drift zwischen Plattform-Scope und Tenant-Scope
    - Impact: hoch (falsche Audit-Zuordnung, Root-Host-Fehler, unklare Logs)
    - Wahrscheinlichkeit: mittel

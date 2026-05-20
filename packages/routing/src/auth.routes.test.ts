@@ -29,6 +29,9 @@ describe('auth.routes', () => {
     expect(authRoutePaths).toContain('/api/v1/iam/instances/$instanceId');
     expect(authRoutePaths).toContain('/api/v1/iam/legal-texts');
     expect(authRoutePaths).toContain('/api/v1/iam/legal-texts/$legalTextVersionId');
+    expect(authRoutePaths).toContain('/iam/admin/deletion-rules');
+    expect(authRoutePaths).toContain('/iam/me/deletion-rules');
+    expect(authRoutePaths).toContain('/iam/me/deletion-rules/content-preference');
     expect(authRoutePaths).toContain('/iam/admin/data-subject-rights/maintenance');
   });
 

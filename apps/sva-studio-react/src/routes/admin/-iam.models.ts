@@ -22,11 +22,12 @@ export type AuthorizeDecisionViewModel = {
   readonly matchedPermissions?: AuthorizeResponse['matchedPermissions'];
 };
 
-const VALID_TABS: readonly IamCockpitTabKey[] = ['rights', 'governance', 'dsr'];
+const VALID_TABS: readonly IamCockpitTabKey[] = ['rights', 'governance', 'dsr', 'deletion-rules'];
 const TAB_TRANSLATION_KEY_BY_VALUE = {
   rights: 'admin.iam.tabs.rights',
   governance: 'admin.iam.tabs.governance',
   dsr: 'admin.iam.tabs.dsr',
+  'deletion-rules': 'admin.iam.tabs.deletionRules',
 } as const satisfies Record<IamCockpitTabKey, string>;
 
 const GOVERNANCE_TYPE_TRANSLATION_KEY_BY_VALUE = {

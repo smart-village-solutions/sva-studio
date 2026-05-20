@@ -1,8 +1,8 @@
-export type IamRouteTab = 'rights' | 'governance' | 'dsr';
+export type IamRouteTab = 'rights' | 'governance' | 'dsr' | 'deletion-rules';
 export type RoleDetailRouteTab = 'general' | 'permissions' | 'assignments' | 'sync';
 
 export const normalizeIamTab = (value: unknown): IamRouteTab => {
-  if (value === 'governance' || value === 'dsr') {
+  if (value === 'governance' || value === 'dsr' || value === 'deletion-rules') {
     return value;
   }
 

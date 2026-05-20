@@ -47,11 +47,31 @@ describe('iam-viewer-access', () => {
 
     const { getAllowedIamCockpitTabs, hasIamCockpitAccessRole } = await import('./iam-viewer-access');
 
-    expect(getAllowedIamCockpitTabs({ roles: ['support_admin'] })).toEqual(['rights', 'governance', 'dsr']);
-    expect(getAllowedIamCockpitTabs({ roles: ['admin'] })).toEqual(['rights', 'governance', 'dsr']);
+    expect(getAllowedIamCockpitTabs({ roles: ['support_admin'], instanceId: 'de-test' })).toEqual([
+      'rights',
+      'governance',
+      'dsr',
+      'deletion-rules',
+    ]);
+    expect(getAllowedIamCockpitTabs({ roles: ['admin'], instanceId: 'de-test' })).toEqual([
+      'rights',
+      'governance',
+      'dsr',
+      'deletion-rules',
+    ]);
+    expect(getAllowedIamCockpitTabs({ roles: ['support_admin'] })).toEqual([
+      'rights',
+      'governance',
+      'dsr',
+    ]);
     expect(getAllowedIamCockpitTabs({ roles: ['security_admin'] })).toEqual(['governance']);
     expect(getAllowedIamCockpitTabs({ roles: ['compliance_officer'] })).toEqual(['governance']);
-    expect(getAllowedIamCockpitTabs({ roles: ['iam_admin', 'security_admin'] })).toEqual(['rights', 'governance', 'dsr']);
+    expect(getAllowedIamCockpitTabs({ roles: ['iam_admin', 'security_admin'], instanceId: 'de-test' })).toEqual([
+      'rights',
+      'governance',
+      'dsr',
+      'deletion-rules',
+    ]);
     expect(getAllowedIamCockpitTabs({ roles: ['editor'] })).toEqual([]);
     expect(getAllowedIamCockpitTabs({ roles: null })).toEqual([]);
     expect(getAllowedIamCockpitTabs(null)).toEqual([]);

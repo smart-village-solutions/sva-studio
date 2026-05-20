@@ -32,15 +32,6 @@ const lifecycleOrder: Record<IamDeletionLifecycleState, number> = {
   deleted: 3,
 };
 
-const strategyStartState: Record<
-  Exclude<IamDeletionContentStrategy, 'retain'>,
-  Extract<IamDeletionLifecycleState, 'deactivated' | 'pseudonymized' | 'deleted'>
-> = {
-  on_deactivation: 'deactivated',
-  on_pseudonymization: 'pseudonymized',
-  on_deletion: 'deleted',
-};
-
 const loadMaintenanceCandidates = async (
   client: QueryClient,
   input: { instanceId: string }
@@ -65,6 +56,7 @@ SELECT
   rules.pseudonymize_after_days,
   rules.delete_after_days,
   rules.default_content_strategy,
+  rules.allow_content_preference_override,
   preference.content_strategy AS override_content_strategy
 FROM iam.accounts account
 LEFT JOIN iam.instance_deletion_rules rules
@@ -118,11 +110,7 @@ const shouldApplyContentTransition = (
   strategy: IamDeletionContentStrategy,
   nextState: IamDeletionLifecycleState
 ): boolean => {
-  if (strategy === 'retain') {
-    return false;
-  }
-
-  return lifecycleOrder[nextState] >= lifecycleOrder[strategyStartState[strategy]];
+  return strategy === 'with_owner_lifecycle' && lifecycleOrder[nextState] >= lifecycleOrder.deactivated;
 };
 
 const updateAccountLifecycleState = async (
@@ -225,7 +213,7 @@ export const runDeletionRulesMaintenance = async (
 
     const contentStrategy = resolveEffectiveDeletionContentStrategy(
       resolveDefaultDeletionContentStrategy(candidate.row.default_content_strategy),
-      candidate.row.override_content_strategy
+      candidate.row.allow_content_preference_override ? candidate.row.override_content_strategy : null
     );
 
     if (!shouldApplyContentTransition(contentStrategy, candidate.nextState)) {

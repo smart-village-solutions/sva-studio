@@ -17,7 +17,8 @@ SELECT
   deactivate_after_days,
   pseudonymize_after_days,
   delete_after_days,
-  default_content_strategy
+  default_content_strategy,
+  allow_content_preference_override
 FROM iam.instance_deletion_rules
 WHERE instance_id = $1
 LIMIT 1;
@@ -46,6 +47,7 @@ SELECT
   rules.pseudonymize_after_days,
   rules.delete_after_days,
   rules.default_content_strategy,
+  rules.allow_content_preference_override,
   preference.content_strategy AS override_content_strategy
 FROM iam.accounts account
 LEFT JOIN iam.instance_deletion_rules rules

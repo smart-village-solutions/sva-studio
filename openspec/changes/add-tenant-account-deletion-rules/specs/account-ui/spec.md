@@ -7,19 +7,12 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 #### Scenario: Tenant-Admin bearbeitet Löschregeln der aktiven Instanz
 
 - **WENN** ein berechtigter Tenant-Admin `/admin/iam?tab=deletion-rules` öffnet
-- **DANN** zeigt die UI die aktuellen Werte für `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays` und die tenantweite Default-Inhaltsstrategie
+- **DANN** zeigt die UI die aktuellen Werte für `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays`, die tenantweite Default-Inhaltsstrategie und den Tenant-Schalter `Nutzer dürfen die Standardregel für eigene Inhalte überschreiben`
 - **UND** zeigt die UI die Baseline-Defaults/Fallbacks `90 / 180 / 365` getrennt von tenant-spezifischen Werten an
-- **UND** zeigt die UI bei unkonfigurierten Tenants die Baseline-Defaults `90 / 180 / 365` und die geerbte Default-Inhaltsstrategie `beibehalten` als wirksamen Zustand
+- **UND** zeigt die UI bei unkonfigurierten Tenants die Baseline-Defaults `90 / 180 / 365`, die geerbte Default-Inhaltsstrategie `beibehalten` und den Override-Schalter standardmäßig deaktiviert als wirksamen Zustand
 - **UND** können die Werte in einer validierten Bearbeitungsmaske geändert werden
-- **UND** ist die auswählbare Strategiemenge auf `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln` begrenzt
+- **UND** ist die auswählbare Strategiemenge auf `beibehalten` und `mit Eigentümer-Lifecycle mitbehandeln` begrenzt
 - **UND** wird klar angezeigt, dass sich die Regeln nur auf Tenant-Accounts der aktiven `instanceId` beziehen
-
-#### Scenario: Read-only-Zustand bei Lese- ohne Bearbeitungsrecht
-
-- **WENN** ein Benutzer `iam.deletionRules.read`, aber nicht `iam.deletionRules.manage` für die aktive `instanceId` besitzt
-- **DANN** zeigt die UI die wirksamen tenantbezogenen Regeln in einem lesbaren Read-only-Zustand
-- **UND** sind Bearbeitungs- und Speicherelemente deaktiviert oder nicht vorhanden
-- **UND** erklärt die UI verständlich, dass zum Ändern `iam.deletionRules.manage` erforderlich ist
 
 #### Scenario: Speichern erzeugt oder aktualisiert explizite Tenant-Konfiguration
 
@@ -42,8 +35,7 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 - **UND** erläutert, dass `deleted` einen finalen Tombstone-Soft-Delete und keine physische Löschung bedeutet
 - **UND** erläutert, dass `deactivated` nicht automatisch durch Login aufgehoben wird und eine separate Reaktivierung verlangt
 - **UND** macht kenntlich, dass ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterlaufen können
-- **UND** weist darauf hin, dass V1 Inaktivität ausschließlich aus tenantbezogenem `last_login_at` der aktiven `instanceId` ableitet
-- **UND** weist darauf hin, dass dafür ausschließlich das persistierte Feld `last_login_at` des Tenant-Account-Records verwendet wird
+- **UND** weist darauf hin, dass V1 Inaktivität ausschließlich aus dem letzten `login`-Event der aktiven `instanceId` ableitet
 
 #### Scenario: Root- oder plattformweite Administration erhält keinen Tenant-Regeltab
 
@@ -67,7 +59,7 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 #### Scenario: Unkonfigurierter Tenant erzeugt keinen leeren Admin-Zustand
 
 - **WENN** für einen Tenant noch keine explizite Löschregel-Konfiguration gespeichert ist
-- **DANN** zeigt die UI die Baseline-Defaults `90 / 180 / 365` und die geerbte Strategie `beibehalten` als wirksamen Zustand
+- **DANN** zeigt die UI die Baseline-Defaults `90 / 180 / 365`, die geerbte Strategie `beibehalten` und den Override-Default `deaktiviert` als wirksamen Zustand
 - **UND** verwendet sie keinen leeren oder mehrdeutigen Empty-State anstelle dieser wirksamen Standardwerte
 
 ### Requirement: Self-Service zeigt Löschregeln und Inhaltspräferenz transparent an
@@ -80,26 +72,33 @@ Das System MUST in den Account-/Privacy-Oberflächen die tenantweiten Löschrege
 - **DANN** sieht er die tenantweiten Fristen für Deaktivierung, Pseudonymisierung und finalen Tombstone-Soft-Delete
 - **UND** sieht er bei nicht konfigurierten Tenants die Baseline-Defaults/Fallbacks `90 / 180 / 365` als wirksame Standardwerte
 - **UND** sieht er bei nicht konfigurierten Tenants `beibehalten` als geerbte wirksame Default-Inhaltsstrategie
-- **UND** wird erklärt, dass die Fristen sich auf Inaktivität relativ zum persistierten Feld `last_login_at` des Tenant-Account-Records der aktiven `instanceId` beziehen
-- **UND** wird erklärt, dass Accounts mit `last_login_at = null` in V1 nicht automatisch in den Inaktivitäts-Lifecycle fallen
-- **UND** sieht der Benutzer seine aktuell wirksame Inhaltspräferenz für eigene Inhalte im Scope `iam.contents`
-- **UND** werden die zulässigen Strategiewerte `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln` verständlich benannt
-- **UND** werden die Strategiewirkungen verständlich erklärt: unverändert lassen, ab Deaktivierung in den späteren Lifecycle einsteigen, ab Pseudonymisierung in den späteren Lifecycle einsteigen oder erst im finalen Deleted-Tombstone-Zustand mitbehandeln
+- **UND** wird erklärt, dass die Fristen sich auf den letzten `login`-Zeitpunkt innerhalb der aktiven `instanceId` beziehen
+- **UND** wird erklärt, dass Accounts ohne Login-Event in V1 nicht automatisch in den Inaktivitäts-Lifecycle fallen
+- **UND** sieht der Benutzer den aktuell wirksamen Strategiewert für eigene Inhalte im Scope `iam.contents`
+- **UND** werden die zulässigen Strategiewerte `beibehalten` und `mit Eigentümer-Lifecycle mitbehandeln` verständlich benannt
+- **UND** werden die Strategiewirkungen verständlich erklärt: unverändert lassen oder die jeweils erreichte Account-Stufe auf Inhalte spiegeln
+
+#### Scenario: Root- oder Plattform-Accounts ohne Tenant-Scope sehen keine Konten-Löschregeln-Box
+
+- **WENN** ein Root- oder Plattform-Account ohne aktive `instanceId` `/account/privacy` öffnet
+- **DANN** zeigt die UI keine Konten-Löschregeln-Box
+- **UND** leakt sie keinen tenantbezogenen Regelzustand in diese Oberfläche
 
 #### Scenario: Benutzer überschreibt die tenantweite Default-Inhaltsstrategie für eigene Inhalte
 
-- **WENN** ein Benutzer seine Inhaltspräferenz in der Privacy-Oberfläche ändert
+- **WENN** ein Benutzer seine Inhaltspräferenz in der Privacy-Oberfläche ändert und der Tenant Self-Service-Overrides erlaubt
 - **DANN** kann er die tenantweite Default-Inhaltsstrategie für seine eigenen Inhalte gezielt überschreiben
 - **UND** ist der Override auf den Scope `iam.contents` begrenzt
 - **UND** ist der schreibbare Zielaccount serverseitig aus dem Session-/Authentifizierungskontext des Benutzers gebunden
 - **UND** kann die Self-Service-Oberfläche keinen Override für andere Benutzerkonten schreiben
+- **UND** ist im Auswahlfeld direkt die wirksame Regel vorausgewählt
 - **UND** zeigt die UI nach dem Speichern den wirksamen Zustand verständlich und ohne Rohdateninterpretation an
 
-#### Scenario: Entfernen eines Overrides kehrt zum Tenant-Default zurück
+#### Scenario: Tenant deaktiviert Self-Service-Overrides
 
-- **WENN** ein Benutzer seinen bestehenden Inhaltsstrategie-Override entfernt
-- **DANN** zeigt die UI wieder die tenantweite Default-Inhaltsstrategie als wirksamen Zustand für diesen Account
-- **UND** behandelt die UI dies als gültigen Zustandswechsel statt als fehlenden oder unbestimmten Zustand
+- **WENN** für den Tenant `allowContentPreferenceOverride = false` gilt
+- **DANN** zeigt die UI in der Konten-Löschregeln-Box keinen Überschreibungs- und Speicherbereich
+- **UND** bleibt nur die tenantweit wirksame Regel sichtbar
 
 #### Scenario: Self-Service bleibt auch ohne verfügbare Override-Daten verständlich
 

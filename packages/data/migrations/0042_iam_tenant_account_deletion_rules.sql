@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS iam.instance_deletion_rules (
   pseudonymize_after_days INTEGER NOT NULL,
   delete_after_days INTEGER NOT NULL,
   default_content_strategy TEXT NOT NULL DEFAULT 'retain',
+  allow_content_preference_override BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT instance_deletion_rules_deactivate_after_days_chk CHECK (deactivate_after_days > 0),
@@ -16,7 +17,7 @@ CREATE TABLE IF NOT EXISTS iam.instance_deletion_rules (
     delete_after_days > pseudonymize_after_days
   ),
   CONSTRAINT instance_deletion_rules_default_content_strategy_chk CHECK (
-    default_content_strategy IN ('retain', 'on_deactivation', 'on_pseudonymization', 'on_deletion')
+    default_content_strategy IN ('retain', 'with_owner_lifecycle')
   )
 );
 
@@ -28,7 +29,7 @@ CREATE TABLE IF NOT EXISTS iam.account_deletion_content_preferences (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (instance_id, account_id),
   CONSTRAINT account_deletion_content_preferences_content_strategy_chk CHECK (
-    content_strategy IN ('retain', 'on_deactivation', 'on_pseudonymization', 'on_deletion')
+    content_strategy IN ('retain', 'with_owner_lifecycle')
   ),
   CONSTRAINT account_deletion_content_preferences_membership_fk FOREIGN KEY (instance_id, account_id)
     REFERENCES iam.instance_memberships(instance_id, account_id) ON DELETE CASCADE

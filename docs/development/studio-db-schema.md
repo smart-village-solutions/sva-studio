@@ -128,7 +128,8 @@ Kernidee:
 
 - Audit-Tabellen sind unveränderlich abgesichert.
 - Governance- und Datenschutzflüsse sind relational nachvollziehbar modelliert.
-- Tenantbezogene Löschregeln, Inhaltsstrategien (`retain`, `on_deactivation`, `on_pseudonymization`, `on_deletion`) und per-Account-Overrides werden explizit relational gespeichert.
+- Tenantbezogene Löschregeln, die einfache Inhaltsstrategie (`retain` oder `with_owner_lifecycle`) sowie der Tenant-Schalter für erlaubte Nutzer-Overrides werden explizit relational gespeichert.
+- Für V1-Löschregeln bleibt der fachlich führende letzte Login dennoch die Aggregation aus `iam.activity_logs` (`MAX(created_at)` für `event_type = 'login'`); `iam.accounts.last_login_at` ist im aktuellen Scope nicht die primäre Read-Modell-Quelle.
 
 ### 4. Organisation, Geo und Scope
 

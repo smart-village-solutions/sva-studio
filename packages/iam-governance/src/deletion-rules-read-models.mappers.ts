@@ -2,6 +2,7 @@ import type { IamMyDeletionRulesOverview, IamTenantDeletionRulesOverview } from 
 
 import {
   deletionRulesBaselineDefaults,
+  resolveAllowContentPreferenceOverride,
   resolveDefaultDeletionContentStrategy,
   resolveEffectiveDeletionContentStrategy,
   resolveTenantDeletionThresholds,
@@ -13,7 +14,11 @@ const resolveTenantOverviewValues = (
   row:
     | Pick<
         TenantDeletionRulesRow | MyDeletionRulesRow,
-        'deactivate_after_days' | 'pseudonymize_after_days' | 'delete_after_days' | 'default_content_strategy'
+        | 'deactivate_after_days'
+        | 'pseudonymize_after_days'
+        | 'delete_after_days'
+        | 'default_content_strategy'
+        | 'allow_content_preference_override'
       >
     | undefined
 ) => {
@@ -27,6 +32,9 @@ const resolveTenantOverviewValues = (
     ...thresholds,
     defaultContentStrategy: resolveDefaultDeletionContentStrategy(
       row?.default_content_strategy ?? deletionRulesBaselineDefaults.defaultContentStrategy
+    ),
+    allowContentPreferenceOverride: resolveAllowContentPreferenceOverride(
+      row?.allow_content_preference_override ?? deletionRulesBaselineDefaults.allowContentPreferenceOverride
     ),
   };
 };
@@ -43,6 +51,7 @@ export const buildTenantDeletionRulesOverview = (
     pseudonymizeAfterDays: values.pseudonymizeAfterDays,
     deleteAfterDays: values.deleteAfterDays,
     defaultContentStrategy: values.defaultContentStrategy,
+    allowContentPreferenceOverride: values.allowContentPreferenceOverride,
     canEdit: input.canEdit,
   };
 };
@@ -58,6 +67,7 @@ export const buildMyDeletionRulesOverview = (
       pseudonymize_after_days: row.pseudonymize_after_days ?? deletionRulesBaselineDefaults.pseudonymizeAfterDays,
       delete_after_days: row.delete_after_days ?? deletionRulesBaselineDefaults.deleteAfterDays,
       default_content_strategy: resolveDefaultDeletionContentStrategy(row.default_content_strategy),
+      allow_content_preference_override: resolveAllowContentPreferenceOverride(row.allow_content_preference_override),
     },
     {
       instanceId: input.instanceId,
@@ -71,12 +81,13 @@ export const buildMyDeletionRulesOverview = (
     lifecycleState: row.deletion_lifecycle_state,
     rules,
     contentPreference: {
-      isOverridden: row.override_content_strategy !== null,
+      isOverridden: rules.allowContentPreferenceOverride && row.override_content_strategy !== null,
       effectiveStrategy: resolveEffectiveDeletionContentStrategy(
         rules.defaultContentStrategy,
-        row.override_content_strategy
+        rules.allowContentPreferenceOverride ? row.override_content_strategy : null
       ),
-      overrideStrategy: row.override_content_strategy ?? undefined,
+      overrideStrategy:
+        rules.allowContentPreferenceOverride ? (row.override_content_strategy ?? undefined) : undefined,
     },
   };
 };

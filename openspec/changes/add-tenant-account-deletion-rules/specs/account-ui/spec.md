@@ -29,6 +29,12 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 - **UND** zeigt die UI nach dem Speichern die gespeicherten tenant-spezifischen Werte statt nur geerbter Baseline-Defaults
 - **UND** bleibt die Speicheraktion ausschließlich mit `iam.deletionRules.manage` verfügbar
 
+#### Scenario: Entfernen einer expliziten Tenant-Konfiguration kehrt zum geerbten Zustand zurück
+
+- **WENN** ein berechtigter Tenant-Admin eine bestehende explizite Tenant-Konfiguration entfernt
+- **DANN** zeigt die UI wieder die wirksamen Baseline-Defaults `90 / 180 / 365` und die geerbte Strategie `beibehalten`
+- **UND** behandelt die UI dies als gültigen Zustandswechsel statt als leeren oder fehlerhaften Zustand
+
 #### Scenario: UI erklärt die fachlichen Lebenszykluszustände
 
 - **WENN** der Tab `deletion-rules` dargestellt wird
@@ -88,6 +94,12 @@ Das System MUST in den Account-/Privacy-Oberflächen die tenantweiten Löschrege
 - **UND** ist der schreibbare Zielaccount serverseitig aus dem Session-/Authentifizierungskontext des Benutzers gebunden
 - **UND** kann die Self-Service-Oberfläche keinen Override für andere Benutzerkonten schreiben
 - **UND** zeigt die UI nach dem Speichern den wirksamen Zustand verständlich und ohne Rohdateninterpretation an
+
+#### Scenario: Entfernen eines Overrides kehrt zum Tenant-Default zurück
+
+- **WENN** ein Benutzer seinen bestehenden Inhaltsstrategie-Override entfernt
+- **DANN** zeigt die UI wieder die tenantweite Default-Inhaltsstrategie als wirksamen Zustand für diesen Account
+- **UND** behandelt die UI dies als gültigen Zustandswechsel statt als fehlenden oder unbestimmten Zustand
 
 #### Scenario: Self-Service bleibt auch ohne verfügbare Override-Daten verständlich
 

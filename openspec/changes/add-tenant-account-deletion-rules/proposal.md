@@ -9,8 +9,8 @@ Im IAM fehlt bislang ein tenantbezogenes Regelwerk, mit dem inaktive Tenant-Acco
 - Für Tenant-Accounts wird ein konfigurierbarer Inaktivitäts-Lebenszyklus mit den Zuständen `active`, `deactivated`, `pseudonymized` und `deleted` spezifiziert.
 - Neue oder noch nicht konfigurierte Tenants verwenden normative Baseline-Defaults/Fallbacks von `90 / 180 / 365` Tagen für Deaktivierung, Pseudonymisierung und finalen Tombstone-Soft-Delete.
 - `/admin/iam` erhält einen neuen Tab `deletion-rules` für tenantbezogene Default-Regeln zu `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays` und zur Default-Strategie für eigene Inhalte.
-- Für unkonfigurierte Tenants zeigt die Admin-UI die Baseline-Defaults `90 / 180 / 365` und die geerbte Inhaltsstrategie `beibehalten` als wirksamen Zustand; Speichern erzeugt oder aktualisiert eine explizite tenantbezogene Konfiguration.
-- `/account/privacy` und verwandte Account-Flächen zeigen die tenantweiten Löschregeln transparent an und erlauben einen per-Account-Override für die Behandlung eigener Inhalte.
+- Für unkonfigurierte Tenants zeigt die Admin-UI die Baseline-Defaults `90 / 180 / 365` und die geerbte Inhaltsstrategie `beibehalten` als wirksamen Zustand; Speichern erzeugt oder aktualisiert eine explizite tenantbezogene Konfiguration, und das Entfernen einer expliziten Konfiguration stellt den geerbten Zustand wieder her.
+- `/account/privacy` und verwandte Account-Flächen zeigen die tenantweiten Löschregeln transparent an und erlauben einen per-Account-Override für die Behandlung eigener Inhalte, einschließlich der Rückkehr vom expliziten Override zur tenantweiten Default-Strategie.
 - V1 leitet Inaktivität ausschließlich aus dem persistierten Feld `last_login_at` des Tenant-Account-Records ab; ein neues Aktivitäts-Tracking-System ist nicht Bestandteil dieses Changes.
 - `last_login_at` wird nicht als globales Cross-Tenant-Inaktivitätssignal bewertet.
 - `deactivated` wird nicht automatisch durch einen Login aufgehoben; eine Reaktivierung verlangt einen separaten Prozess, andernfalls können spätere automatische Lifecycle-Stufen weiterlaufen.

@@ -25,6 +25,8 @@ Die normative Action-Menge für V1 umfasst `iam.deletionRules.read`, `iam.deleti
 - **THEN** verlangt das System die Action `iam.accountLifecycle.run` im Scope der betroffenen `instanceId`
 - **AND** darf dieselbe Berechtigung nicht stillschweigend aus allgemeinen Plattform- oder Root-Rechten abgeleitet werden
 - **AND** erweitert diese Berechtigung den V1-Scope nicht auf Accounts mit `last_login_at = null`
+- **AND** ist ein manueller Lauf in V1 tenantweit für die aktive `instanceId` über alle qualifizierten Accounts definiert
+- **AND** gehören per-Account- oder Teilmengenläufe nicht zu diesem Change
 
 #### Scenario: Geplanter Lifecycle-Lauf nutzt dedizierte tenantgebundene Service-Identität
 

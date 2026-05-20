@@ -48,3 +48,16 @@ Das System SHALL Änderungen an tenantbezogenen Löschregeln serverseitig validi
 - **THEN** akzeptiert das System nur Werte für den Scope `iam.contents`
 - **AND** akzeptiert es als Strategiewerte ausschließlich `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln`
 - **AND** werden Strategien für andere Inhaltsdomänen in diesem Change zurückgewiesen
+
+#### Scenario: Self-Service-Override bleibt auf den eigenen Tenant-Account beschränkt
+
+- **WHEN** ein authentifizierter Tenant-Benutzer einen per-Account-Override für die Inhaltsstrategie speichert
+- **THEN** darf er nur den Override für seinen eigenen Tenant-Account schreiben
+- **AND** bindet der Server den Zielaccount ausschließlich aus Session-/Authentifizierungskontext
+- **AND** akzeptiert der Schreibpfad keine fremden Benutzer- oder Account-IDs als Override-Ziel
+
+#### Scenario: Kein separater Cross-User-Override-Schreibpfad für Admins
+
+- **WHEN** ein Administrator versucht, über diesen Change die Override-Präferenz eines anderen Benutzerkontos zu schreiben
+- **THEN** stellt das System dafür keinen separaten Admin-Schreibpfad bereit
+- **AND** entstehen aus `iam.deletionRules.read`, `iam.deletionRules.manage` oder `iam.accountLifecycle.run` keine impliziten Cross-User-Override-Schreibrechte

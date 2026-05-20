@@ -19,12 +19,14 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
 
 - Decision: Inaktivität wird in V1 ausschließlich aus `last_login_at` abgeleitet.
   - Rationale: Das vermeidet ein neues Aktivitäts-Tracking-System und hält den ersten Wurf fachlich klar.
-  - Tenant-Scope: `last_login_at` wird gegen den Tenant-Account-Record beziehungsweise den aktiven Tenant-Mitgliedschaftskontext der betroffenen `instanceId` ausgewertet und nicht als globales Cross-Tenant-Inaktivitätssignal interpretiert.
+  - Kanonische Quelle: V1 verwendet für Online- und Offline-Auswertung ausschließlich das persistierte Feld `last_login_at` des Tenant-Account-Records der betroffenen `instanceId`.
+  - Tenant-Scope: Dieser Wert wird nicht als globales Cross-Tenant-Inaktivitätssignal interpretiert.
 
 - Decision: Tenant-Admins verwalten die Regeln in `/admin/iam?tab=deletion-rules`.
   - Rationale: Das Feature gehört in das bestehende IAM-Transparenz- und Governance-Cockpit und bleibt damit für Betreiber auffindbar.
   - Normative Baseline-Defaults/Fallbacks für neue oder noch nicht konfigurierte Tenants: `deactivateAfterDays=90`, `pseudonymizeAfterDays=180`, `deleteAfterDays=365`
-  - UI-Verhalten für unkonfigurierte Tenants: Die Oberfläche zeigt diese Baseline-Defaults und die geerbte Default-Inhaltsstrategie als wirksamen Zustand; Speichern erzeugt oder aktualisiert eine explizite Tenant-Konfiguration.
+  - Geerbte Default-Inhaltsstrategie für unkonfigurierte Tenants: `beibehalten`
+  - UI-Verhalten für unkonfigurierte Tenants: Die Oberfläche zeigt diese Baseline-Defaults und die geerbte Default-Inhaltsstrategie `beibehalten` als wirksamen Zustand; Speichern erzeugt oder aktualisiert eine explizite Tenant-Konfiguration.
 
 - Decision: Der Lebenszyklus verwendet die Zustände `active`, `deactivated`, `pseudonymized` und `deleted`.
   - Rationale: Diese Zustände bilden die fachlichen Eskalationsstufen verständlich ab und trennen reversible Sperre von irreversibleren Datenschutzschritten.
@@ -36,7 +38,10 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
 - Decision: Die Inhaltsbehandlung in V1 beschränkt sich auf `iam.contents`, mit tenantweitem Default und per-Account-Override.
   - Rationale: Das reduziert Komplexität und schafft dennoch eine klare Nutzerentscheidung für die einzige unterstützte Inhaltsdomäne.
   - Normative V1-Strategiemenge: `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln`, `bei Löschung mitbehandeln`
-  - Strategiebedeutung in V1: `beibehalten` lässt Inhalte über alle Account-Zustandswechsel unverändert; `bei Deaktivierung mitbehandeln` überführt Inhalte beim Übergang nach `deactivated` in denselben fachlichen Stufeneffekt; `bei Pseudonymisierung mitbehandeln` überführt Inhalte beim Übergang nach `pseudonymized` in denselben fachlichen Stufeneffekt; `bei Löschung mitbehandeln` überführt Inhalte erst beim finalen Übergang nach `deleted` in denselben fachlichen Stufeneffekt. Auch für Inhalte bleibt dies in V1 zustandsbezogene Tombstone-Behandlung und keine physische Löschung.
+  - Strategiebedeutung in V1: `beibehalten` lässt Inhalte über alle Account-Zustandswechsel unverändert. `bei Deaktivierung mitbehandeln` markiert Inhalte beim Account-Übergang nach `deactivated` in einem deaktivierten Content-Lifecycle-Zustand; die Zeile bleibt persistiert. `bei Pseudonymisierung mitbehandeln` markiert Inhalte beim Account-Übergang nach `pseudonymized` in einem pseudonymisierten Zustand und ersetzt author-facing Ownership-/Namensfelder durch ein stabiles pseudonymisiertes Label; die Zeile bleibt persistiert. `bei Löschung mitbehandeln` markiert Inhalte erst beim finalen Account-Übergang nach `deleted` in einem Deleted-Tombstone-Zustand und ersetzt author-facing Ownership-/Namensfelder durch ein Deleted-Label; die Zeile bleibt persistiert.
+  - V1 löscht `iam.contents`-Zeilen niemals physisch.
+  - Geerbte Baseline-Strategie ohne Tenant-Konfiguration: `beibehalten`
+  - Override-Autorisierung: Der per-Account-Override ist ein Self-Service-Schreibpfad für den eigenen Tenant-Account; der Zielaccount wird serverseitig aus Session/Auth-Kontext gebunden. Dieser Change führt keinen separaten Admin-Schreibpfad für fremde Overrides ein.
 
 - Decision: Für Regelpflege und Lifecycle-Ausführung werden eigene tenantgebundene Actions im `iam`-Namespace benötigt.
   - Rationale: Das Feature darf weder implizit über Plattformrechte noch über allgemeine Admin-Rechte ohne expliziten Tenant-Bezug steuerbar sein.

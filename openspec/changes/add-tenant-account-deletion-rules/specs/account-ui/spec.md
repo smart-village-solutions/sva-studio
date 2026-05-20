@@ -9,7 +9,7 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 - **WENN** ein berechtigter Tenant-Admin `/admin/iam?tab=deletion-rules` öffnet
 - **DANN** zeigt die UI die aktuellen Werte für `deactivateAfterDays`, `pseudonymizeAfterDays`, `deleteAfterDays` und die tenantweite Default-Inhaltsstrategie
 - **UND** zeigt die UI die Baseline-Defaults/Fallbacks `90 / 180 / 365` getrennt von tenant-spezifischen Werten an
-- **UND** zeigt die UI bei unkonfigurierten Tenants die Baseline-Defaults `90 / 180 / 365` und die geerbte Default-Inhaltsstrategie als wirksamen Zustand
+- **UND** zeigt die UI bei unkonfigurierten Tenants die Baseline-Defaults `90 / 180 / 365` und die geerbte Default-Inhaltsstrategie `beibehalten` als wirksamen Zustand
 - **UND** können die Werte in einer validierten Bearbeitungsmaske geändert werden
 - **UND** ist die auswählbare Strategiemenge auf `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln` begrenzt
 - **UND** wird klar angezeigt, dass sich die Regeln nur auf Tenant-Accounts der aktiven `instanceId` beziehen
@@ -29,6 +29,7 @@ Das System MUST unter `/admin/iam?tab=deletion-rules` einen tenantgebundenen Adm
 - **UND** erläutert, dass `deactivated` nicht automatisch durch Login aufgehoben wird und eine separate Reaktivierung verlangt
 - **UND** macht kenntlich, dass ohne Reaktivierung spätere automatische Lifecycle-Stufen weiterlaufen können
 - **UND** weist darauf hin, dass V1 Inaktivität ausschließlich aus tenantbezogenem `last_login_at` der aktiven `instanceId` ableitet
+- **UND** weist darauf hin, dass dafür ausschließlich das persistierte Feld `last_login_at` des Tenant-Account-Records verwendet wird
 
 #### Scenario: Root- oder plattformweite Administration erhält keinen Tenant-Regeltab
 
@@ -45,16 +46,19 @@ Das System MUST in den Account-/Privacy-Oberflächen die tenantweiten Löschrege
 - **WENN** ein authentifizierter Benutzer `/account/privacy` oder die zugehörige Datenschutzfläche seines Accounts öffnet
 - **DANN** sieht er die tenantweiten Fristen für Deaktivierung, Pseudonymisierung und finalen Tombstone-Soft-Delete
 - **UND** sieht er bei nicht konfigurierten Tenants die Baseline-Defaults/Fallbacks `90 / 180 / 365` als wirksame Standardwerte
-- **UND** wird erklärt, dass die Fristen sich auf Inaktivität relativ zu tenantbezogenem `last_login_at` der aktiven `instanceId` beziehen
+- **UND** sieht er bei nicht konfigurierten Tenants `beibehalten` als geerbte wirksame Default-Inhaltsstrategie
+- **UND** wird erklärt, dass die Fristen sich auf Inaktivität relativ zum persistierten Feld `last_login_at` des Tenant-Account-Records der aktiven `instanceId` beziehen
 - **UND** sieht der Benutzer seine aktuell wirksame Inhaltspräferenz für eigene Inhalte im Scope `iam.contents`
 - **UND** werden die zulässigen Strategiewerte `beibehalten`, `bei Deaktivierung mitbehandeln`, `bei Pseudonymisierung mitbehandeln` und `bei Löschung mitbehandeln` verständlich benannt
-- **UND** werden die Strategiewirkungen verständlich erklärt: unverändert lassen, bei Deaktivierung mitbehandeln, bei Pseudonymisierung mitbehandeln oder erst beim finalen Tombstone-Zustand mitbehandeln
+- **UND** werden die Strategiewirkungen verständlich erklärt: unverändert lassen, in einen deaktivierten Inhaltszustand überführen, in einen pseudonymisierten Inhaltszustand mit stabilem pseudonymisiertem Label überführen oder erst in einen Deleted-Tombstone-Zustand mit Deleted-Label überführen
 
 #### Scenario: Benutzer überschreibt die tenantweite Default-Inhaltsstrategie für eigene Inhalte
 
 - **WENN** ein Benutzer seine Inhaltspräferenz in der Privacy-Oberfläche ändert
 - **DANN** kann er die tenantweite Default-Inhaltsstrategie für seine eigenen Inhalte gezielt überschreiben
 - **UND** ist der Override auf den Scope `iam.contents` begrenzt
+- **UND** ist der schreibbare Zielaccount serverseitig aus dem Session-/Authentifizierungskontext des Benutzers gebunden
+- **UND** kann die Self-Service-Oberfläche keinen Override für andere Benutzerkonten schreiben
 - **UND** zeigt die UI nach dem Speichern den wirksamen Zustand verständlich und ohne Rohdateninterpretation an
 
 #### Scenario: Self-Service bleibt auch ohne verfügbare Override-Daten verständlich

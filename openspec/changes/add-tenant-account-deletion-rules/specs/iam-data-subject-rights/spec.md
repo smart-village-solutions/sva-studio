@@ -2,12 +2,12 @@
 
 ### Requirement: Tenantbezogener Inaktivitäts-Lebenszyklus ergänzt das Recht auf Löschung
 
-Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebenszyklus bereitstellen, der die Stufen `active`, `deactivated`, `pseudonymized` und `deleted` verwendet. Der Lebenszyklus gilt nur im Tenant-Scope, leitet Inaktivität in V1 ausschließlich aus `last_login_at` des Tenant-Account-Records beziehungsweise des aktiven Tenant-Mitgliedschaftskontexts der betroffenen `instanceId` ab und endet in einem finalen Tombstone-Soft-Delete statt in einer physischen Löschung.
+Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebenszyklus bereitstellen, der die Stufen `active`, `deactivated`, `pseudonymized` und `deleted` verwendet. Der Lebenszyklus gilt nur im Tenant-Scope, leitet Inaktivität in V1 ausschließlich aus dem persistierten Feld `last_login_at` des Tenant-Account-Records der betroffenen `instanceId` ab und endet in einem finalen Tombstone-Soft-Delete statt in einer physischen Löschung.
 
 #### Scenario: Inaktivität wird aus dem letzten Login bestimmt
 
 - **WHEN** das System prüft, ob ein Tenant-Account die konfigurierten Löschregeln erreicht hat
-- **THEN** verwendet es in V1 ausschließlich tenantbezogenes `last_login_at` des Tenant-Account-Records beziehungsweise des aktiven Tenant-Mitgliedschaftskontexts der betroffenen `instanceId` als Referenzzeitpunkt
+- **THEN** verwendet es in V1 ausschließlich das persistierte Feld `last_login_at` des Tenant-Account-Records der betroffenen `instanceId` als Referenzzeitpunkt
 - **AND** behandelt es diesen Wert nicht als globales Cross-Tenant-Inaktivitätssignal
 - **AND** verlangt kein neues Aktivitäts-Tracking-System und keine zusätzlichen Aktivitätsquellen
 
@@ -41,10 +41,10 @@ Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsst
 
 - **WHEN** das System die Inhaltsstrategie eines Accounts im Scope `iam.contents` auswertet
 - **THEN** bedeutet `beibehalten`, dass Inhalte über alle Account-Zustandswechsel unverändert bleiben
-- **AND** bedeutet `bei Deaktivierung mitbehandeln`, dass Inhalte beim Übergang des Accounts nach `deactivated` in denselben fachlichen Stufeneffekt überführt werden
-- **AND** bedeutet `bei Pseudonymisierung mitbehandeln`, dass Inhalte beim Übergang des Accounts nach `pseudonymized` in denselben fachlichen Stufeneffekt überführt werden
-- **AND** bedeutet `bei Löschung mitbehandeln`, dass Inhalte erst beim finalen Übergang des Accounts nach `deleted` in denselben fachlichen Stufeneffekt überführt werden
-- **AND** bleibt die Inhaltsbehandlung in V1 zustandsbezogene Tombstone-Behandlung und keine physische Löschung
+- **AND** bedeutet `bei Deaktivierung mitbehandeln`, dass Inhalte beim Übergang des Accounts nach `deactivated` in einen deaktivierten Content-Lifecycle-Zustand markiert werden, während die Zeile persistiert bleibt
+- **AND** bedeutet `bei Pseudonymisierung mitbehandeln`, dass Inhalte beim Übergang des Accounts nach `pseudonymized` in einen pseudonymisierten Zustand markiert werden und author-facing Ownership-/Namensfelder durch ein stabiles pseudonymisiertes Label ersetzt werden, während die Zeile persistiert bleibt
+- **AND** bedeutet `bei Löschung mitbehandeln`, dass Inhalte erst beim finalen Übergang des Accounts nach `deleted` in einen Deleted-Tombstone-Zustand markiert werden und author-facing Ownership-/Namensfelder durch ein Deleted-Label ersetzt werden, während die Zeile persistiert bleibt
+- **AND** werden `iam.contents`-Zeilen in V1 nicht physisch gelöscht
 
 #### Scenario: Tenantweite Default-Strategie wirkt ohne individuellen Override
 
@@ -64,5 +64,5 @@ Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsst
 #### Scenario: Unkonfigurierter Tenant verwendet geerbte Regeln bis zur expliziten Speicherung
 
 - **WHEN** für einen Tenant noch keine explizite Löschregel-Konfiguration gespeichert ist
-- **THEN** gelten die Baseline-Defaults `90 / 180 / 365` und die geerbte Default-Inhaltsstrategie als wirksamer Tenant-Zustand
+- **THEN** gelten die Baseline-Defaults `90 / 180 / 365` und die geerbte Default-Inhaltsstrategie `beibehalten` als wirksamer Tenant-Zustand
 - **AND** bleibt dieser geerbte Zustand wirksam, bis ein Tenant-Admin eine explizite Konfiguration speichert

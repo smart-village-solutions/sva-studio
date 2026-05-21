@@ -1,5 +1,5 @@
 import { setupWorker } from 'msw/browser';
 
-import { studioMswHandlers } from './handlers.ts';
+import { getStudioMswHandlers } from './handlers.ts';
 
-export const studioMswBrowser = typeof window === 'undefined' ? undefined : setupWorker(...studioMswHandlers);
+export const studioMswBrowser = typeof window === 'undefined' ? undefined : setupWorker(...getStudioMswHandlers());

@@ -1,5 +1,5 @@
 import { setupServer } from 'msw/node';
 
-import { studioMswHandlers } from './handlers.ts';
+import { getStudioMswHandlers } from './handlers.ts';
 
-export const studioMswServer = setupServer(...studioMswHandlers);
+export const studioMswServer = setupServer(...getStudioMswHandlers());

@@ -340,6 +340,9 @@ importers:
       jsdom:
         specifier: ^29.1.0
         version: 29.1.0
+      tooling-testing:
+        specifier: workspace:*
+        version: link:../../tooling/testing
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -760,6 +763,9 @@ importers:
       jsdom:
         specifier: ^29.1.0
         version: 29.1.0
+      tooling-testing:
+        specifier: workspace:*
+        version: link:../../tooling/testing
       vitest:
         specifier: ^4.1.5
         version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.5)(happy-dom@20.8.9)(jsdom@29.1.0)(msw@2.14.6(@types/node@25.8.0)(typescript@6.0.3))(vite@8.0.8(@types/node@25.8.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))
@@ -828,6 +834,9 @@ importers:
       happy-dom:
         specifier: ^20.0.8
         version: 20.8.9
+      tooling-testing:
+        specifier: workspace:*
+        version: link:../../tooling/testing
       vitest:
         specifier: ^4.1.5
         version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.5)(happy-dom@20.8.9)(jsdom@29.1.0)(msw@2.14.6(@types/node@25.8.0)(typescript@6.0.3))(vite@8.0.8(@types/node@25.8.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))

@@ -6,6 +6,10 @@
     "./msw": {
       "types": "./src/msw/index.ts",
       "default": "./src/msw/index.ts"
+    },
+    "./msw/setup": {
+      "types": "./src/msw/setup.ts",
+      "default": "./src/msw/setup.ts"
     }
   },
   "dependencies": {

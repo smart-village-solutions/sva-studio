@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path';
 import sharedConfig from '../../vitest.config';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
-const studioMswSetupFile = resolve(currentDir, '../../tooling/testing/src/msw/reset.ts');
+const studioMswSetupFile = fileURLToPath(new URL(import.meta.resolve('tooling-testing/msw/setup')));
 
 export default mergeConfig(
   sharedConfig,

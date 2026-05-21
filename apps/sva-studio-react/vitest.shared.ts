@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export const appRoot = fileURLToPath(new URL('.', import.meta.url));
-export const studioMswSetupFile = fileURLToPath(new URL('../../tooling/testing/src/msw/reset.ts', import.meta.url));
+export const studioMswSetupFile = fileURLToPath(new URL(import.meta.resolve('tooling-testing/msw/setup')));
 export const prGateExcludedTestFiles = [
   'src/lib/development-logs.test.ts',
   'src/lib/plugins.test.ts',

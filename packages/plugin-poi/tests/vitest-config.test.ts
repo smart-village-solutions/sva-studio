@@ -11,7 +11,7 @@ describe('plugin-poi vitest coverage config', () => {
 
   it('registers the shared MSW setup file', () => {
     expect(vitestConfig.test?.setupFiles).toEqual(
-      expect.arrayContaining([expect.stringMatching(/tooling\/testing\/src\/msw\/reset\.ts$/)])
+      expect.arrayContaining([expect.stringMatching(/tooling\/testing\/src\/msw\/setup\.ts$/)])
     );
   });
 });

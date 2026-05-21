@@ -1,3 +1,5 @@
+import '../src/msw/setup.ts';
+
 import { describe, expect, it } from 'vitest';
 
 import { HttpResponse, http, resetStudioMswHandlers, studioMswServer } from '../src/msw/index.ts';

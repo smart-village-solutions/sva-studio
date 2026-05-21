@@ -292,4 +292,228 @@ describe('iam deletion rules runtime handlers', () => {
       state.queries.some((query) => query.includes('INSERT INTO iam.account_deletion_content_preferences'))
     ).toBe(false);
   });
+
+  it('returns method not allowed for unsupported admin handler verbs', async () => {
+    const { deletionRulesAdminHandler } = await import('./core.js');
+
+    const response = await deletionRulesAdminHandler(
+      new Request('http://localhost/iam/admin/deletion-rules', { method: 'DELETE' })
+    );
+
+    expect(response.status).toBe(405);
+    await expect(response.text()).resolves.toBe('Method Not Allowed');
+  });
+
+  it('maps admin overview and save failures to database_unavailable responses', async () => {
+    const { deletionRulesAdminHandler } = await import('./core.js');
+    state.loadTenantDeletionRulesOverview.mockRejectedValueOnce(new Error('db_down'));
+
+    const getResponse = await deletionRulesAdminHandler(
+      new Request('http://localhost/iam/admin/deletion-rules?instanceId=de-test')
+    );
+
+    expect(getResponse.status).toBe(503);
+    await expect(getResponse.json()).resolves.toMatchObject({
+      error: 'database_unavailable',
+    });
+
+    state.withResolvedInstanceDb.mockRejectedValueOnce(new Error('write_failed'));
+    const postResponse = await deletionRulesAdminHandler(
+      new Request('http://localhost/iam/admin/deletion-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instanceId: 'de-test',
+          deactivateAfterDays: 120,
+          pseudonymizeAfterDays: 240,
+          deleteAfterDays: 400,
+          defaultContentStrategy: 'retain',
+          allowContentPreferenceOverride: true,
+        }),
+      })
+    );
+
+    expect(postResponse.status).toBe(503);
+    await expect(postResponse.json()).resolves.toMatchObject({
+      error: 'database_unavailable',
+    });
+  });
+
+  it('short-circuits admin saves on csrf and missing tenant scope', async () => {
+    const { deletionRulesAdminHandler } = await import('./core.js');
+    state.validateCsrf.mockReturnValueOnce(
+      new Response(JSON.stringify({ error: 'csrf_invalid' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const csrfResponse = await deletionRulesAdminHandler(
+      new Request('http://localhost/iam/admin/deletion-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instanceId: 'de-test',
+          deactivateAfterDays: 120,
+          pseudonymizeAfterDays: 240,
+          deleteAfterDays: 400,
+          defaultContentStrategy: 'retain',
+          allowContentPreferenceOverride: true,
+        }),
+      })
+    );
+
+    expect(csrfResponse.status).toBe(403);
+    await expect(csrfResponse.json()).resolves.toMatchObject({ error: 'csrf_invalid' });
+
+    state.withAuthenticatedUser.mockImplementationOnce(async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
+      handler({
+        user: {
+          id: 'platform-admin',
+          roles: ['system_admin'],
+        },
+      })
+    );
+
+    const scopedResponse = await deletionRulesAdminHandler(
+      new Request('http://localhost/iam/admin/deletion-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instanceId: 'de-test',
+          deactivateAfterDays: 120,
+          pseudonymizeAfterDays: 240,
+          deleteAfterDays: 400,
+          defaultContentStrategy: 'retain',
+          allowContentPreferenceOverride: true,
+        }),
+      })
+    );
+
+    expect(scopedResponse.status).toBe(403);
+    await expect(scopedResponse.json()).resolves.toMatchObject({ error: 'forbidden' });
+  });
+
+  it('returns forbidden or database_unavailable for missing actor and unexpected overview failures', async () => {
+    const { myDeletionRulesOverviewHandler } = await import('./core.js');
+    state.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, _instanceId, work) =>
+      work({
+        query: vi.fn(async (text: string) => {
+          state.queries.push(text);
+          return { rowCount: 0, rows: [] };
+        }),
+      })
+    );
+
+    const missingActorResponse = await myDeletionRulesOverviewHandler(
+      new Request('http://localhost/iam/me/deletion-rules')
+    );
+
+    expect(missingActorResponse.status).toBe(403);
+    await expect(missingActorResponse.json()).resolves.toMatchObject({ error: 'forbidden' });
+
+    state.withResolvedInstanceDb.mockRejectedValueOnce('repo_down_string');
+    const failedResponse = await myDeletionRulesOverviewHandler(
+      new Request('http://localhost/iam/me/deletion-rules')
+    );
+
+    expect(failedResponse.status).toBe(503);
+    await expect(failedResponse.json()).resolves.toMatchObject({ error: 'database_unavailable' });
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'My deletion rules overview failed',
+      expect.objectContaining({ error: 'repo_down_string' })
+    );
+  });
+
+  it('short-circuits self-service preference writes on csrf, missing actor and repository failures', async () => {
+    const { myDeletionRulesPreferenceHandler } = await import('./core.js');
+    state.validateCsrf.mockReturnValueOnce(
+      new Response(JSON.stringify({ error: 'csrf_invalid' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const csrfResponse = await myDeletionRulesPreferenceHandler(
+      new Request('http://localhost/iam/me/deletion-rules/content-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ strategy: 'retain' }),
+      })
+    );
+
+    expect(csrfResponse.status).toBe(403);
+    await expect(csrfResponse.json()).resolves.toMatchObject({ error: 'csrf_invalid' });
+
+    state.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, _instanceId, work) =>
+      work({
+        query: vi.fn(async (text: string) => {
+          state.queries.push(text);
+          return { rowCount: 0, rows: [] };
+        }),
+      })
+    );
+
+    const missingActorResponse = await myDeletionRulesPreferenceHandler(
+      new Request('http://localhost/iam/me/deletion-rules/content-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ strategy: 'retain' }),
+      })
+    );
+
+    expect(missingActorResponse.status).toBe(403);
+    await expect(missingActorResponse.json()).resolves.toMatchObject({ error: 'forbidden' });
+
+    state.withResolvedInstanceDb.mockRejectedValueOnce(new Error('repo_down'));
+    const failedResponse = await myDeletionRulesPreferenceHandler(
+      new Request('http://localhost/iam/me/deletion-rules/content-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ strategy: 'retain' }),
+      })
+    );
+
+    expect(failedResponse.status).toBe(503);
+    await expect(failedResponse.json()).resolves.toMatchObject({ error: 'database_unavailable' });
+  });
+
+  it('rejects self-service preference writes without tenant scope and logs non-Error repository failures', async () => {
+    const { myDeletionRulesPreferenceHandler } = await import('./core.js');
+    state.withAuthenticatedUser.mockImplementationOnce(async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
+      handler({
+        user: {
+          id: 'platform-admin',
+          roles: ['system_admin'],
+        },
+      })
+    );
+
+    const forbiddenResponse = await myDeletionRulesPreferenceHandler(
+      new Request('http://localhost/iam/me/deletion-rules/content-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ strategy: 'retain' }),
+      })
+    );
+
+    expect(forbiddenResponse.status).toBe(400);
+    await expect(forbiddenResponse.json()).resolves.toMatchObject({ error: 'invalid_instance_id' });
+
+    state.withResolvedInstanceDb.mockRejectedValueOnce('repo_down_string');
+    const failedResponse = await myDeletionRulesPreferenceHandler(
+      new Request('http://localhost/iam/me/deletion-rules/content-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ strategy: 'retain' }),
+      })
+    );
+
+    expect(failedResponse.status).toBe(503);
+    await expect(failedResponse.json()).resolves.toMatchObject({ error: 'database_unavailable' });
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'My deletion rules preference update failed',
+      expect.objectContaining({ error: 'repo_down_string' })
+    );
+  });
 });

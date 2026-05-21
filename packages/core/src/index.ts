@@ -112,10 +112,7 @@ export type {
   WasteManagementTechnicalEventType,
 } from './waste-management-contract.js';
 export { wasteManagementOperationsContract } from './waste-management-operations-contract.js';
-export {
-  getWasteManagementImportCatalogEntry,
-  wasteManagementImportCatalog,
-} from './waste-management-import-catalog.js';
+export { getWasteManagementImportCatalogEntry, wasteManagementImportCatalog } from './waste-management-import-catalog.js';
 export {
   detectWasteImportCsvDelimiter,
   normalizeWasteImportPickupDate,
@@ -211,11 +208,7 @@ export {
   normalizeHost,
   trafficEnabledInstanceStatuses,
 } from './instances/registry.js';
-export {
-  areAllInstanceKeycloakRequirementsSatisfied,
-  INSTANCE_KEYCLOAK_REQUIREMENTS,
-  isInstanceKeycloakRequirementSatisfied,
-} from './instances/keycloak-checklist.js';
+export { areAllInstanceKeycloakRequirementsSatisfied, INSTANCE_KEYCLOAK_REQUIREMENTS, isInstanceKeycloakRequirementSatisfied } from './instances/keycloak-checklist.js';
 export type {
   HostClassification,
   InstanceAuditEvent,

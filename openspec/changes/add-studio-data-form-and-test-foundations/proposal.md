@@ -18,7 +18,7 @@ Zusätzlich fehlen für kritische Kernlogik systematische generative Tests sowie
 
 ## Impact
 
-- Affected specs: `monorepo-structure`, `account-ui`, `content-management`, `test-coverage-governance`
+- Affected specs: `monorepo-structure`, `account-ui`, `content-management`, `review-governance`
 - Affected code: `apps/sva-studio-react`, `packages/studio-ui-react`, `packages/plugin-*`, `packages/core`, `packages/routing`, `tooling/testing`, `scripts/ci`
 - Affected arc42 sections: `05-building-block-view`, `08-cross-cutting-concepts`, `09-architecture-decisions`, `10-quality-requirements`
 - Required migration artifact: `docs/development/studio-form-migrationsinventur.md` als vollständige Formularinventur für Host und Plugins mit Pfad, Zweck, heutigem Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Priorität, Risiko, Legacy-Ausnahme und Zielzustand

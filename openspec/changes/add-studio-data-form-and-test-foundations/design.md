@@ -49,6 +49,13 @@ Dieser Change benötigt zwei Architekturentscheidungen in `docs/adr/`, die spät
 - Decision: Die Foundations werden über gemeinsame Integrationsbausteine, eine vollständige Formularinventur und prüfbare Governance eingeführt, nicht per verteiltem Ad-hoc-Einsatz.
   - Rationale: Der größte Einführungsrisiko-Treiber ist uneinheitliche Nutzung. Deshalb braucht der Change kleine gemeinsame Adapter, Test-Helfer, Migrationsregeln und ein Pflichtartefakt zur Bestandsaufnahme, bevor breite Umstellungen stattfinden.
 
+## Capability Mapping
+
+- `monorepo-structure` ist die Single Source of Truth für den Foundation-Stack, gemeinsame Integrationsbausteine, die initiale `fast-check`-Startmenge sowie die Ablage- und Pflichtregeln für Inventur- und Governance-Artefakte.
+- `review-governance` ist die Single Source of Truth für Review-Kriterien, Ausnahmebehandlung und Exit-Governance dieser Foundations.
+- `account-ui` und `content-management` konkretisieren den repo-weiten Formularstandard nur für ihre jeweiligen UI-Bereiche.
+- `test-coverage-governance` bleibt von diesem Change unberührt, weil Coverage-Gates und Coverage-Policies nicht die richtige Capability für MSW-/`fast-check`-Foundations sind.
+
 ## Alternatives Considered
 
 - Alternative: Formularlogik mit lokaler React-State-Verwaltung oder ad-hoc Hooks.
@@ -154,6 +161,8 @@ Die Governance- und Review-Kriterien dieses Changes werden verbindlich unter `do
 - die Abgrenzung zwischen repo-weitem Default und initialen Referenzimplementierungen
 - Review-Kriterien für RHF-, `msw`- und `fast-check`-Nutzung
 - Exit-Nachweise für Inventur, Referenzscope und dokumentierte Ausnahmen
+
+Diese Governance wird capability-seitig in `review-governance` verankert, nicht in `test-coverage-governance`.
 
 ## Governance and Review Rules
 

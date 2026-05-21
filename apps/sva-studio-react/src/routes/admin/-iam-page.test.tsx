@@ -431,7 +431,7 @@ describe('IamViewerPage', () => {
     expect(screen.queryByRole('link', { name: 'CSV exportieren' })).toBeNull();
   });
 
-  it('shows the requester free text for self-service permission change requests in the detail pane', async () => {
+  it('renders self-service permission change requests as governance detail links without leaking hidden metadata', async () => {
     listGovernanceCasesMock.mockResolvedValue({
       data: [
         {
@@ -463,18 +463,46 @@ describe('IamViewerPage', () => {
     render(<IamViewerPage activeTab="governance" />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Rechteänderung/i })).toBeTruthy();
+      expect(screen.getAllByRole('link', { name: /Rechteänderung/i }).length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Rechteänderung/i }));
+    expect(screen.getAllByText('Ich benötige Schreibrechte für die Veranstaltungsredaktion.').length).toBeGreaterThan(0);
+    expect(screen.queryByText('requestOrigin: self_service')).toBeNull();
+  });
+
+  it('renders governance rows as detail links without inline detail pane content', async () => {
+    listGovernanceCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'gov-1',
+          type: 'delegation',
+          status: 'open',
+          title: 'Delegation freigeben',
+          summary: 'Zusätzliche Freigabe für Redaktion',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          metadata: {},
+        },
+      ],
+    });
+
+    useAuthMock.mockReturnValue({
+      user: { ...adminUser, roles: ['security_admin'] },
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
+
+    render(<IamViewerPage activeTab="governance" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Anfragebeschreibung')).toBeTruthy();
-      expect(screen.getAllByText('Ich benötige Schreibrechte für die Veranstaltungsredaktion.').length).toBeGreaterThan(0);
-      expect(screen.getByText('Metadaten')).toBeTruthy();
-      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
-      expect(screen.queryByText('requestOrigin: self_service')).toBeNull();
+      expect(screen.getAllByRole('link', { name: 'Delegation freigeben' })[0]?.getAttribute('href')).toBe('/admin/iam/governance/gov-1');
     });
+
+    expect(screen.queryByText('Wählen Sie links einen Eintrag aus, um Details anzuzeigen.')).toBeNull();
   });
 
   it('loads DSR entries and renders canonical status badges', async () => {
@@ -510,6 +538,41 @@ describe('IamViewerPage', () => {
       expect(screen.getAllByText('Auskunftsersuchen')).toHaveLength(2);
       expect(screen.getAllByText('In Bearbeitung').length).toBeGreaterThan(0);
     });
+  });
+
+  it('renders DSR rows as detail links without inline detail pane content', async () => {
+    listAdminDsrCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'dsr-1',
+          type: 'request',
+          canonicalStatus: 'in_progress',
+          rawStatus: 'processing',
+          title: 'Auskunftsersuchen',
+          summary: 'Benutzerkonto Alice',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          metadata: {},
+        },
+      ],
+    });
+
+    useAuthMock.mockReturnValue({
+      user: adminUser,
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['dsr']);
+
+    render(<IamViewerPage activeTab="dsr" />);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('link', { name: 'Auskunftsersuchen' })[0]?.getAttribute('href')).toBe('/admin/iam/dsr/dsr-1');
+    });
+
+    expect(screen.queryByText('Wählen Sie links einen Eintrag aus, um Details anzuzeigen.')).toBeNull();
   });
 
   it('loads and saves tenant deletion rules in the admin cockpit', async () => {

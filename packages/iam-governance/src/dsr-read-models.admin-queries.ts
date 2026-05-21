@@ -38,9 +38,10 @@ JOIN iam.accounts target
   ON target.id = request.target_account_id
 WHERE request.instance_id = $1
   AND ($2::uuid IS NULL OR request.requester_account_id = $2::uuid OR request.target_account_id = $2::uuid)
+  AND ($3::uuid IS NULL OR request.id = $3::uuid)
 ORDER BY request.request_accepted_at DESC;
 `,
-    [input.instanceId, input.relatedAccountId ?? null]
+    [input.instanceId, input.relatedAccountId ?? null, input.caseId ?? null]
   );
 
 const queryAdminExportJobs = (client: QueryClient, input: DsrFilters) =>
@@ -70,9 +71,10 @@ LEFT JOIN iam.accounts requester
   ON requester.id = job.requested_by_account_id
 WHERE job.instance_id = $1
   AND ($2::uuid IS NULL OR job.target_account_id = $2::uuid OR job.requested_by_account_id = $2::uuid)
+  AND ($3::uuid IS NULL OR job.id = $3::uuid)
 ORDER BY job.created_at DESC;
 `,
-    [input.instanceId, input.relatedAccountId ?? null]
+    [input.instanceId, input.relatedAccountId ?? null, input.caseId ?? null]
   );
 
 const queryAdminLegalHolds = (client: QueryClient, input: DsrFilters) =>
@@ -103,9 +105,10 @@ LEFT JOIN iam.accounts creator
   ON creator.id = hold.created_by_account_id
 WHERE hold.instance_id = $1
   AND ($2::uuid IS NULL OR hold.account_id = $2::uuid OR hold.created_by_account_id = $2::uuid OR hold.lifted_by_account_id = $2::uuid)
+  AND ($3::uuid IS NULL OR hold.id = $3::uuid)
 ORDER BY hold.created_at DESC;
 `,
-    [input.instanceId, input.relatedAccountId ?? null]
+    [input.instanceId, input.relatedAccountId ?? null, input.caseId ?? null]
   );
 
 const queryAdminProfileCorrections = (client: QueryClient, input: DsrFilters) =>
@@ -132,9 +135,10 @@ LEFT JOIN iam.accounts actor
   ON actor.id = correction.actor_account_id
 WHERE correction.instance_id = $1
   AND ($2::uuid IS NULL OR correction.account_id = $2::uuid OR correction.actor_account_id = $2::uuid)
+  AND ($3::uuid IS NULL OR correction.id = $3::uuid)
 ORDER BY correction.created_at DESC;
 `,
-    [input.instanceId, input.relatedAccountId ?? null]
+    [input.instanceId, input.relatedAccountId ?? null, input.caseId ?? null]
   );
 
 const queryAdminRecipientNotifications = (client: QueryClient, input: DsrFilters) =>
@@ -160,9 +164,10 @@ JOIN iam.accounts target
   ON target.id = request.target_account_id
 WHERE notification.instance_id = $1
   AND ($2::uuid IS NULL OR request.target_account_id = $2::uuid)
+  AND ($3::uuid IS NULL OR notification.id = $3::uuid)
 ORDER BY notification.created_at DESC;
 `,
-    [input.instanceId, input.relatedAccountId ?? null]
+    [input.instanceId, input.relatedAccountId ?? null, input.caseId ?? null]
   );
 
 export const loadAdminDsrRows = async (client: QueryClient, input: DsrFilters): Promise<AdminDsrSourceRows> => {

@@ -1,4 +1,5 @@
 import type { QueryClient } from './query-client.js';
+import type { IamDsrCaseListItem } from '@sva/core';
 import {
   buildAdminDsrItems,
   buildDsrSelfServiceOverview,
@@ -27,4 +28,24 @@ export const listAdminDsrCases = async (
     items: paginateDsrItems(items, input.page, input.pageSize),
     total: items.length,
   };
+};
+
+export const getAdminDsrCase = async (
+  client: QueryClient,
+  input: Omit<DsrFilters, 'page' | 'pageSize'>
+): Promise<IamDsrCaseListItem | null> => {
+  if (!input.caseId) {
+    return null;
+  }
+
+  const items = filterAdminDsrItems(
+    buildAdminDsrItems(await loadAdminDsrRows(client, { ...input, page: 1, pageSize: 1 })),
+    {
+      ...input,
+      page: 1,
+      pageSize: 1,
+    }
+  );
+
+  return items.find((item) => item.id === input.caseId) ?? null;
 };

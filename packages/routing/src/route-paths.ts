@@ -34,6 +34,8 @@ export const uiRoutePaths = {
   adminLegalTextCreate: '/admin/legal-texts/new',
   adminLegalTextDetail: '/admin/legal-texts/$legalTextVersionId',
   adminIam: '/admin/iam',
+  adminIamGovernanceDetail: '/admin/iam/governance/$caseId',
+  adminIamDsrDetail: '/admin/iam/dsr/$caseId',
   modules: '/modules',
   monitoring: '/monitoring',
   monitoringJobs: '/monitoring/jobs',

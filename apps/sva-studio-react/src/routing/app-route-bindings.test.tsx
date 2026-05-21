@@ -60,6 +60,18 @@ vi.mock('../routes/admin/-iam-page', () => ({
   ),
 }));
 
+vi.mock('../routes/admin/-iam-governance-detail-page', () => ({
+  IamGovernanceDetailPage: ({ caseId }: { caseId: string }) => (
+    <div data-testid="iam-governance-detail-page">{caseId}</div>
+  ),
+}));
+
+vi.mock('../routes/admin/-iam-dsr-detail-page', () => ({
+  IamDsrDetailPage: ({ caseId }: { caseId: string }) => (
+    <div data-testid="iam-dsr-detail-page">{caseId}</div>
+  ),
+}));
+
 vi.mock('../routes/admin/groups/-group-create-page', () => ({
   GroupCreatePage: () => <div data-testid="group-create-page" />,
 }));
@@ -248,6 +260,7 @@ describe('appRouteBindings', () => {
       id: 'content-7',
       groupId: 'group-5',
       instanceId: 'instance-3',
+      caseId: 'case-3',
       legalTextVersionId: 'legal-2',
       organizationId: 'org-4',
       roleId: 'role-6',
@@ -313,6 +326,14 @@ describe('appRouteBindings', () => {
     expect(screen.getByTestId('iam-viewer-page').textContent).toBe('iam:members');
     cleanup();
 
+    render(<appRouteBindings.adminIamGovernanceDetail />);
+    expect(screen.getByTestId('iam-governance-detail-page').textContent).toBe('case-3');
+    cleanup();
+
+    render(<appRouteBindings.adminIamDsrDetail />);
+    expect(screen.getByTestId('iam-dsr-detail-page').textContent).toBe('case-3');
+    cleanup();
+
     render(<appRouteBindings.newsList />);
     expect(screen.getByTestId('news-list-page')).toBeTruthy();
     cleanup();
@@ -338,6 +359,7 @@ describe('appRouteBindings', () => {
 
     routeState.params = {
       id: 123,
+      caseId: null,
       groupId: null,
       instanceId: false,
       legalTextVersionId: { value: 'legal-2' },
@@ -376,6 +398,14 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.adminUserDetail />);
     await waitFor(() => expect(screen.getByTestId('user-edit-page').textContent).toBe(''));
+    cleanup();
+
+    render(<appRouteBindings.adminIamGovernanceDetail />);
+    expect(screen.getByTestId('iam-governance-detail-page').textContent).toBe('');
+    cleanup();
+
+    render(<appRouteBindings.adminIamDsrDetail />);
+    expect(screen.getByTestId('iam-dsr-detail-page').textContent).toBe('');
   });
 
   it('exposes the direct page bindings for the canonical route keys', async () => {

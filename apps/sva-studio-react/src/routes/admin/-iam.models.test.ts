@@ -3,6 +3,7 @@ import type { AuthorizeResponse, EffectivePermission } from '@sva/core';
 
 import {
   filterPermissions,
+  formatGovernanceTitle,
   formatPermissionAreaLabel,
   formatPermissionSourceKindLabels,
   formatPermissionSourceKinds,
@@ -223,6 +224,11 @@ describe('iam.models', () => {
     expect(mapGovernanceTypeToTranslationKey('legal_acceptance')).toBe('admin.iam.governance.types.legal_acceptance');
     expect(mapDsrTypeToTranslationKey('recipient_notification')).toBe('admin.iam.dsr.types.recipient_notification');
     expect(mapDsrCanonicalStatusToTranslationKey('in_progress')).toBe('admin.iam.dsr.status.inProgress');
+  });
+
+  it('formats governance fallback titles via localized type labels', () => {
+    expect(formatGovernanceTitle({ title: 'delegation', type: 'delegation' })).toBe('Delegation');
+    expect(formatGovernanceTitle({ title: 'Benutzerfreigabe', type: 'delegation' })).toBe('Benutzerfreigabe');
   });
 
   it('maps DSR status tones for success, error and pending variants', () => {

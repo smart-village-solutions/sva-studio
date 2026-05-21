@@ -9,7 +9,7 @@ export const iamGovernancePackageRoles = [
   'governance-cases',
 ] as const satisfies readonly IamGovernancePackageRole[];
 
-export { listGovernanceCases } from './read-models.js';
+export { getGovernanceCase, listGovernanceCases } from './read-models.js';
 export type { GovernanceFilters } from './read-models.types.js';
 export {
   listWasteManagementAuditRecords,
@@ -17,6 +17,7 @@ export {
 } from './waste-audit-read-models.js';
 export type { WasteAuditFilters } from './waste-audit-read-models.types.js';
 export {
+  getAdminDsrCase,
   listAdminDsrCases,
   loadDsrSelfServiceOverview,
   toCanonicalDsrStatus,

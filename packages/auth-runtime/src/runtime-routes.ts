@@ -31,6 +31,7 @@ export {
   updateOrganizationHandler,
 } from './iam-organizations/core.js';
 export {
+  getGovernanceCaseHandler,
   governanceComplianceExportHandler,
   permissionChangeSelfServiceRequestHandler,
   governanceWorkflowHandler,
@@ -55,6 +56,7 @@ export {
   dataExportStatusHandler,
   dataSubjectMaintenanceHandler,
   dataSubjectRequestHandler,
+  getAdminDataSubjectRightsCaseHandler,
   getMyDataSubjectRightsHandler,
   legalHoldApplyHandler,
   legalHoldReleaseHandler,

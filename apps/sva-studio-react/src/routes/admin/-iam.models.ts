@@ -1,4 +1,10 @@
-import type { AuthorizeResponse, EffectivePermission, IamDsrCaseListItem, MePermissionsResponse } from '@sva/core';
+import type {
+  AuthorizeResponse,
+  EffectivePermission,
+  IamDsrCaseListItem,
+  IamGovernanceCaseListItem,
+  MePermissionsResponse,
+} from '@sva/core';
 import { t } from '../../i18n';
 import type { TranslationKey } from '../../i18n/translate';
 
@@ -173,6 +179,14 @@ export const mapIamTabToTranslationKey = (tab: IamCockpitTabKey) => TAB_TRANSLAT
 export const mapGovernanceTypeToTranslationKey = (
   value: keyof typeof GOVERNANCE_TYPE_TRANSLATION_KEY_BY_VALUE
 ) => GOVERNANCE_TYPE_TRANSLATION_KEY_BY_VALUE[value];
+
+export const formatGovernanceTitle = (value: Pick<IamGovernanceCaseListItem, 'title' | 'type'>) => {
+  if (value.title === value.type) {
+    return t(mapGovernanceTypeToTranslationKey(value.type));
+  }
+
+  return value.title;
+};
 
 export const mapDsrTypeToTranslationKey = (value: keyof typeof DSR_TYPE_TRANSLATION_KEY_BY_VALUE) =>
   DSR_TYPE_TRANSLATION_KEY_BY_VALUE[value];

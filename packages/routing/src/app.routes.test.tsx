@@ -108,6 +108,8 @@ const bindingKeys = [
   'adminLegalTextCreate',
   'adminLegalTextDetail',
   'adminIam',
+  'adminIamGovernanceDetail',
+  'adminIamDsrDetail',
   'modules',
   'monitoring',
   'monitoringJobs',
@@ -198,6 +200,8 @@ describe('app.routes', () => {
     expect(routeMap.has('/content')).toBe(true);
     expect(routeMap.has('/admin/users')).toBe(true);
     expect(routeMap.has('/admin/roles/$roleId')).toBe(true);
+    expect(routeMap.has('/admin/iam/governance/$caseId')).toBe(true);
+    expect(routeMap.has('/admin/iam/dsr/$caseId')).toBe(true);
     expect(routeMap.has('/modules')).toBe(true);
     expect(routeMap.has('/monitoring')).toBe(true);
     expect(routeMap.has('/monitoring/jobs')).toBe(true);

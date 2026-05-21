@@ -202,8 +202,8 @@ describe('iam-governance/read-models', () => {
         locale: 'en-GB',
       },
     });
-    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), ['de-musterhausen', relatedAccountId]);
-    expect(client.query).toHaveBeenNthCalledWith(4, expect.any(String), ['de-musterhausen', relatedAccountId]);
+    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), ['de-musterhausen', relatedAccountId, null]);
+    expect(client.query).toHaveBeenNthCalledWith(4, expect.any(String), ['de-musterhausen', relatedAccountId, null]);
   });
 
   it('maps self-service intake requests without requiring a role assignment', async () => {

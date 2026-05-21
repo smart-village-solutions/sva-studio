@@ -12,6 +12,7 @@ export type PersonColumns = {
 
 export type DsrFilters = {
   readonly instanceId: string;
+  readonly caseId?: string;
   readonly page: number;
   readonly pageSize: number;
   readonly search?: string;

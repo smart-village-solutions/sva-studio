@@ -33,6 +33,9 @@ const governanceAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.listGovernanceCasesHandler),
     POST: routeHandler(authRuntimeRoutes.governanceWorkflowHandler),
   },
+  '/iam/governance/workflows/$caseId': {
+    GET: routeHandler(authRuntimeRoutes.getGovernanceCaseHandler),
+  },
   '/iam/governance/compliance/export': {
     GET: routeHandler(authRuntimeRoutes.governanceComplianceExportHandler),
   },
@@ -78,6 +81,9 @@ const governanceAuthHandlerMap = {
   },
   '/iam/admin/data-subject-rights/cases': {
     GET: routeHandler(authRuntimeRoutes.listAdminDataSubjectRightsCasesHandler),
+  },
+  '/iam/admin/data-subject-rights/cases/$caseId': {
+    GET: routeHandler(authRuntimeRoutes.getAdminDataSubjectRightsCaseHandler),
   },
   '/iam/admin/data-subject-rights/legal-holds/apply': {
     POST: routeHandler(authRuntimeRoutes.legalHoldApplyHandler),

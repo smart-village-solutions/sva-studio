@@ -59,6 +59,8 @@ export type AppRouteBindings = {
   readonly adminLegalTextCreate: RouteComponent;
   readonly adminLegalTextDetail: RouteComponent;
   readonly adminIam: RouteComponent;
+  readonly adminIamGovernanceDetail: RouteComponent;
+  readonly adminIamDsrDetail: RouteComponent;
   readonly modules: RouteComponent;
   readonly monitoring: RouteComponent;
   readonly monitoringJobs: RouteComponent;
@@ -126,6 +128,16 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
     validateSearch: (search: Record<string, unknown>) => ({
       tab: normalizeIamTab(search.tab),
     }),
+  },
+  {
+    binding: 'adminIamGovernanceDetail',
+    path: uiRoutePaths.adminIamGovernanceDetail,
+    guard: 'adminIam',
+  },
+  {
+    binding: 'adminIamDsrDetail',
+    path: uiRoutePaths.adminIamDsrDetail,
+    guard: 'adminIam',
   },
   { binding: 'modules', path: uiRoutePaths.modules, guard: 'adminInstances' },
   { binding: 'monitoring', path: uiRoutePaths.monitoring, guard: 'adminRoles' },

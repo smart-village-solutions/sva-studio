@@ -274,7 +274,7 @@ describe('iam-data-subject-rights/read-models', () => {
       canonicalStatus: 'failed',
       format: 'csv',
     });
-    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), ['de-musterhausen', relatedAccountId]);
-    expect(client.query).toHaveBeenNthCalledWith(5, expect.any(String), ['de-musterhausen', relatedAccountId]);
+    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), ['de-musterhausen', relatedAccountId, null]);
+    expect(client.query).toHaveBeenNthCalledWith(5, expect.any(String), ['de-musterhausen', relatedAccountId, null]);
   });
 });

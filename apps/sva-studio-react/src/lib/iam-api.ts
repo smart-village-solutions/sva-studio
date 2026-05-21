@@ -1655,6 +1655,21 @@ export const listGovernanceCases = async (
   );
 };
 
+export const getGovernanceCase = async (
+  caseId: string,
+  options?: IamRequestOptions
+): Promise<ApiItemResponse<IamGovernanceCaseListItem>> =>
+  requestJson<ApiItemResponse<IamGovernanceCaseListItem>>(
+    `/iam/governance/workflows/${encodeURIComponent(caseId)}`,
+    {
+      signal: options?.signal,
+    },
+    {
+      signal: options?.signal,
+      timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );
+
 export const getAdminDeletionRules = async (
   instanceId: string
 ): Promise<IamTenantDeletionRulesOverview> =>
@@ -1839,3 +1854,18 @@ export const listAdminDsrCases = async (
     }
   );
 };
+
+export const getAdminDsrCase = async (
+  caseId: string,
+  options?: IamRequestOptions
+): Promise<ApiItemResponse<IamDsrCaseListItem>> =>
+  requestJson<ApiItemResponse<IamDsrCaseListItem>>(
+    `/iam/admin/data-subject-rights/cases/${encodeURIComponent(caseId)}`,
+    {
+      signal: options?.signal,
+    },
+    {
+      signal: options?.signal,
+      timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );

@@ -1,5 +1,6 @@
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
 import {
+  getGovernanceCase,
   createSelfServicePermissionChangeRequest,
   listGovernanceCases,
   MAX_SELF_SERVICE_PERMISSION_CHANGE_REQUEST_NOTE_LENGTH,
@@ -24,8 +25,9 @@ import { createPoolResolver, jsonResponse, type QueryClient, withResolvedInstanc
 import { isUuid, readString } from '../shared/input-readers.js';
 import { buildLogContext } from '../log-context.js';
 import { governanceRequestSchema, type GovernanceRequestInput } from '../shared/schemas.js';
-import { asApiList, createApiError, readPage } from '../iam-account-management/api-helpers.js';
+import { asApiItem, asApiList, createApiError, readPage } from '../iam-account-management/api-helpers.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
+import { readPathSegment } from '../shared/request-helpers.js';
 
 const logger = createSdkLogger({ component: 'iam-governance', level: 'info' });
 
@@ -256,6 +258,53 @@ export const governanceComplianceExportHandler = async (request: Request): Promi
           ...buildGovernanceLogContext(instanceId),
         });
         return jsonResponse(503, { error: 'database_unavailable' });
+      }
+    });
+  });
+};
+
+export const getGovernanceCaseHandler = async (request: Request): Promise<Response> => {
+  return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    return withAuthenticatedUser(request, async ({ user }) => {
+      if (!hasRequiredGovernanceRole(user.roles, governanceReadRoles)) {
+        return createApiError(403, 'forbidden', 'Keine Berechtigung für Governance-Transparenz.', getWorkspaceContext().requestId);
+      }
+
+      const url = new URL(request.url);
+      const instanceId = readString(url.searchParams.get('instanceId')) ?? user.instanceId;
+      const caseId = readPathSegment(request, 3);
+
+      if (!instanceId) {
+        return createApiError(400, 'invalid_instance_id', 'Instanzkontext fehlt.', getWorkspaceContext().requestId);
+      }
+      if (user.instanceId && user.instanceId !== instanceId) {
+        return createApiError(403, 'forbidden', 'Instanzkontext unzulässig.', getWorkspaceContext().requestId);
+      }
+      if (!caseId || !isUuid(caseId)) {
+        return createApiError(400, 'invalid_request', 'Ungültige Governance-Fall-ID.', getWorkspaceContext().requestId);
+      }
+
+      try {
+        const item = await withInstanceScopedDb(instanceId, (client) =>
+          getGovernanceCase(client, {
+            instanceId,
+            caseId,
+          })
+        );
+
+        if (!item) {
+          return createApiError(404, 'not_found', 'Governance-Fall wurde nicht gefunden.', getWorkspaceContext().requestId);
+        }
+
+        return jsonResponse(200, asApiItem(item, getWorkspaceContext().requestId));
+      } catch (error) {
+        logger.error('Governance detail failed', {
+          operation: 'get_governance_case',
+          case_id: caseId,
+          error: error instanceof Error ? error.message : String(error),
+          ...buildGovernanceLogContext(instanceId),
+        });
+        return createApiError(503, 'database_unavailable', 'Governance-Fall konnte nicht geladen werden.', getWorkspaceContext().requestId);
       }
     });
   });

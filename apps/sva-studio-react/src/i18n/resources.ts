@@ -2900,13 +2900,31 @@ export const i18nResources = {
           },
         },
         governance: {
+          tableAriaLabel: 'Governance-Fälle',
+          tableCaption: 'Tabelle der Governance-Fälle',
+          detailLink: 'Governance-Detail öffnen',
           actions: {
             exportCsv: 'CSV exportieren',
+          },
+          columns: {
+            case: 'Fall',
+            status: 'Status',
+            actors: 'Beteiligte',
+            ticket: 'Ticket',
+            createdAt: 'Erstellt',
+            updatedAt: 'Aktualisiert',
           },
           filters: {
             search: 'Suche',
             type: 'Typ',
             status: 'Status',
+          },
+          detail: {
+            title: 'Governance-Detail',
+            subtitle: 'Prüfen Sie Status, Beteiligte, Ticketbezug und Metadaten des Governance-Falls.',
+            back: 'Zur Governance-Übersicht',
+            loading: 'Governance-Detail wird geladen ...',
+            notFound: 'Der Governance-Fall wurde nicht gefunden.',
           },
           messages: {
             exportHint: 'Die aktuelle Governance-Ansicht kann als Compliance-Export heruntergeladen werden.',
@@ -2921,10 +2939,28 @@ export const i18nResources = {
           },
         },
         dsr: {
+          tableAriaLabel: 'Datenschutzfälle',
+          tableCaption: 'Tabelle der Datenschutzfälle',
+          detailLink: 'Datenschutzfall-Detail öffnen',
+          columns: {
+            case: 'Fall',
+            status: 'Status',
+            people: 'Betroffene / Anfragende',
+            blocker: 'Blocker',
+            createdAt: 'Erstellt',
+            completedAt: 'Abgeschlossen',
+          },
           filters: {
             search: 'Suche',
             type: 'Typ',
             status: 'Kanonischer Status',
+          },
+          detail: {
+            title: 'Datenschutzfall-Detail',
+            subtitle: 'Prüfen Sie Status, betroffene Person, Blocker und Fallmetadaten.',
+            back: 'Zur Datenschutz-Übersicht',
+            loading: 'Datenschutzfall-Detail wird geladen ...',
+            notFound: 'Der Datenschutzfall wurde nicht gefunden.',
           },
           messages: {
             loading: 'Datenschutzfälle werden geladen ...',
@@ -5805,13 +5841,31 @@ export const i18nResources = {
           },
         },
         governance: {
+          tableAriaLabel: 'Governance cases',
+          tableCaption: 'Governance cases table',
+          detailLink: 'Open governance detail',
           actions: {
             exportCsv: 'Export CSV',
+          },
+          columns: {
+            case: 'Case',
+            status: 'Status',
+            actors: 'People',
+            ticket: 'Ticket',
+            createdAt: 'Created',
+            updatedAt: 'Updated',
           },
           filters: {
             search: 'Search',
             type: 'Type',
             status: 'Status',
+          },
+          detail: {
+            title: 'Governance detail',
+            subtitle: 'Inspect status, involved identities, ticket context, and governance metadata.',
+            back: 'Back to governance overview',
+            loading: 'Loading governance detail ...',
+            notFound: 'The governance case was not found.',
           },
           messages: {
             exportHint: 'Download the current governance view as a compliance export.',
@@ -5826,10 +5880,28 @@ export const i18nResources = {
           },
         },
         dsr: {
+          tableAriaLabel: 'Privacy cases',
+          tableCaption: 'Privacy cases table',
+          detailLink: 'Open privacy case detail',
+          columns: {
+            case: 'Case',
+            status: 'Status',
+            people: 'Affected / requester',
+            blocker: 'Blocker',
+            createdAt: 'Created',
+            completedAt: 'Completed',
+          },
           filters: {
             search: 'Search',
             type: 'Type',
             status: 'Canonical status',
+          },
+          detail: {
+            title: 'Privacy case detail',
+            subtitle: 'Inspect status, affected person, blockers, and case metadata.',
+            back: 'Back to privacy overview',
+            loading: 'Loading privacy case detail ...',
+            notFound: 'The privacy case was not found.',
           },
           messages: {
             loading: 'Loading privacy cases ...',

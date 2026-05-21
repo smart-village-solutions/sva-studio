@@ -7,6 +7,7 @@ import type {
   WasteStreetRecord,
   WasteTourRecord,
 } from '@sva/plugin-sdk';
+import type { WasteManagementOutputOverview } from './waste-management.api.js';
 
 export type WasteMasterDataLocationsWorkspaceProps = {
   readonly regions: readonly WasteRegionRecord[];
@@ -15,6 +16,7 @@ export type WasteMasterDataLocationsWorkspaceProps = {
   readonly houseNumbers: readonly WasteHouseNumberRecord[];
   readonly collectionLocations: readonly WasteCollectionLocationRecord[];
   readonly locationTourLinks: readonly WasteLocationTourLinkRecord[];
+  readonly outputOverview: WasteManagementOutputOverview | null;
   readonly selectedLocationIds: readonly string[];
   readonly allFilteredLocationsSelected: boolean;
   readonly selectedCollectionLocationsCount: number;

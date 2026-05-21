@@ -16,6 +16,8 @@ import type {
   WasteManagementHistoryOverview,
   WasteManagementImportSourceFormat,
   WasteManagementMasterDataOverview,
+  WasteManagementOutputOverview,
+  WasteManagementOutputPdfResult,
   WasteManagementSchedulingOverview,
   WasteManagementToursOverview,
   WasteLocationTourPickupDateImportPreview,
@@ -83,8 +85,14 @@ export type WasteManagementHandlerDeps = {
   readonly loadMasterDataOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
   readonly loadMasterDataFractionsOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
   readonly loadMasterDataLocationsOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
+  readonly loadWasteOutputOverview?: (instanceId: string) => Promise<WasteManagementOutputOverview>;
   readonly loadToursOverview?: (instanceId: string) => Promise<WasteManagementToursOverview>;
   readonly loadSchedulingOverview?: (instanceId: string) => Promise<WasteManagementSchedulingOverview>;
+  readonly generateWasteOutputPdf?: (input: {
+    readonly instanceId: string;
+    readonly collectionLocationId: string;
+    readonly year: number;
+  }) => Promise<WasteManagementOutputPdfResult>;
   readonly previewWasteLocationTourPickupDateImport?: (input: {
     readonly instanceId: string;
     readonly sourceFormat: WasteManagementImportSourceFormat;

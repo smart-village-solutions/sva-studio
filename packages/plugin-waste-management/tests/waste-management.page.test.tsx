@@ -33,7 +33,7 @@ const clickMenuItemContaining = (textFragment: string) => {
 
 vi.mock('../src/waste-management.ui-access.js', () => ({
   deriveWasteManagementUiAccess: () => ({
-    visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'tools', 'settings'],
+    visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'],
     canAccessSettings: true,
     canAccessTools: true,
     canRunInitialize: true,
@@ -44,7 +44,7 @@ vi.mock('../src/waste-management.ui-access.js', () => ({
   }),
   useWasteManagementUiAccess: () => ({
     isResolved: true,
-    visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'tools', 'settings'],
+    visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'],
     canAccessSettings: true,
     canAccessTools: true,
     canRunInitialize: true,
@@ -172,6 +172,9 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     audit: { items: [], total: 0 },
     technical: { items: [], total: 0 },
   })),
+  getWasteManagementOutputOverview: vi.fn(async () => ({
+    collectionLocations: [],
+  })),
   getWasteManagementImportCatalog: vi.fn(() => [
     {
       profileId: 'waste-management.geografie-abholorte',
@@ -208,6 +211,13 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     tours: [],
   })),
   getWasteManagementSettings: vi.fn(async () => null),
+  createWasteManagementOutputPdf: vi.fn(async () => ({
+    collectionLocationId: '11111111-1111-4111-8111-111111111111',
+    year: 2026,
+    storageKey: 'waste-output/collection-locations/11111111-1111-4111-8111-111111111111/2026.pdf',
+    deliveryUrl: 'https://cdn.example/output.pdf',
+    expiresAt: '2026-05-21T12:00:00.000Z',
+  })),
   updateWasteManagementSettings: vi.fn(async () => null),
   startWasteManagementMigrations: vi.fn(async () => ({
     id: 'job-1',
@@ -651,6 +661,7 @@ describe('WasteManagementPage', () => {
       'wasteManagement.tabs.tours.title',
       'wasteManagement.tabs.locations.title',
       'wasteManagement.tabs.scheduling.title',
+      'wasteManagement.tabs.output.title',
       'wasteManagement.tabs.tools.title',
       'wasteManagement.tabs.settings.title',
     ];

@@ -67,6 +67,10 @@ vi.mock('../src/waste-management.scheduling-panel.js', () => ({
   WasteSchedulingPanel: () => <div>scheduling</div>,
 }));
 
+vi.mock('../src/waste-management.output-panel.js', () => ({
+  WasteOutputPanel: () => <div>output</div>,
+}));
+
 vi.mock('../src/waste-management.tools-panel.js', () => ({
   WasteToolsPanel: ({ overview }: { readonly overview?: React.ReactNode }) => (
     <div>
@@ -114,7 +118,7 @@ describe('WasteManagementPageTabs', () => {
       />
     );
 
-    expect(tabsContentSpy).toHaveBeenCalledTimes(6);
+    expect(tabsContentSpy).toHaveBeenCalledTimes(7);
     expect(tabsContentSpy.mock.calls[0]?.[0]?.forceMount).toBeUndefined();
     expect(tabsContentSpy.mock.calls[1]?.[0]?.forceMount).toBeUndefined();
 
@@ -131,11 +135,11 @@ describe('WasteManagementPageTabs', () => {
       />
     );
 
-    expect(tabsContentSpy).toHaveBeenCalledTimes(12);
+    expect(tabsContentSpy).toHaveBeenCalledTimes(14);
     expect(tabsContentSpy.mock.calls[0]?.[0]?.forceMount).toBe(true);
     expect(tabsContentSpy.mock.calls[1]?.[0]?.forceMount).toBeUndefined();
-    expect(tabsContentSpy.mock.calls[6]?.[0]?.forceMount).toBe(true);
-    expect(tabsContentSpy.mock.calls[7]?.[0]?.forceMount).toBeUndefined();
+    expect(tabsContentSpy.mock.calls[7]?.[0]?.forceMount).toBe(true);
+    expect(tabsContentSpy.mock.calls[8]?.[0]?.forceMount).toBeUndefined();
   });
 
   it('renders tab-specific info content inside each panel and no global badges', () => {
@@ -271,6 +275,31 @@ describe('WasteManagementPageTabs', () => {
     expect(screen.getAllByText('overview').length).toBeGreaterThan(0);
   });
 
+  it('renders the dedicated output tab panel', () => {
+    render(
+      <WasteManagementPageTabs
+        pt={(key) => key}
+        search={{
+          tab: 'output',
+          masterDataTab: 'locations',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: undefined,
+          tourId: undefined,
+        }}
+        onTabChange={() => undefined}
+      />
+    );
+
+    expect(screen.getAllByText('output').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('tabs.output.title').length).toBeGreaterThan(0);
+  });
+
   it('omits settings and tools tabs when the current UI access does not allow them', () => {
     tabsContentSpy.mockClear();
 
@@ -290,13 +319,14 @@ describe('WasteManagementPageTabs', () => {
           wasteFractionId: undefined,
           tourId: undefined,
         }}
-        visibleTabIds={['fractions', 'tours', 'locations', 'scheduling']}
+        visibleTabIds={['fractions', 'tours', 'locations', 'scheduling', 'output']}
         onTabChange={() => undefined}
       />
     );
 
     expect(screen.queryAllByText('tabs.tools.title')).toHaveLength(0);
     expect(screen.queryAllByText('tabs.settings.title')).toHaveLength(0);
-    expect(tabsContentSpy).toHaveBeenCalledTimes(4);
+    expect(screen.getAllByText('tabs.output.title').length).toBeGreaterThan(0);
+    expect(tabsContentSpy).toHaveBeenCalledTimes(5);
   });
 });

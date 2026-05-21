@@ -1,4 +1,4 @@
-const wasteManagementTabs = ['fractions', 'tours', 'locations', 'scheduling', 'tools', 'settings'] as const;
+const wasteManagementTabs = ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'] as const;
 const wasteManagementMasterDataTabs = ['fractions', 'locations'] as const;
 const wasteManagementFractionsViews = ['list', 'create', 'edit'] as const;
 const wasteManagementToursViews = ['list', 'create', 'edit'] as const;

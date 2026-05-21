@@ -4,6 +4,7 @@ import type {
   WasteStreetRecord,
 } from '@sva/plugin-sdk';
 
+import type { WasteOutputPdfArtifactRecord } from './waste-management.api.js';
 import type { WasteMasterDataLocationsTableMaps, WasteMasterDataLocationsTableProps } from './waste-management.master-data-locations-table.types.js';
 
 export const formatAddressLine = ({
@@ -31,9 +32,10 @@ export const createLocationsTableMaps = ({
   houseNumbers,
   availableTours,
   locationTourLinks,
+  outputOverview,
 }: Pick<
   WasteMasterDataLocationsTableProps,
-  'regions' | 'cities' | 'streets' | 'houseNumbers' | 'availableTours' | 'locationTourLinks'
+  'regions' | 'cities' | 'streets' | 'houseNumbers' | 'availableTours' | 'locationTourLinks' | 'outputOverview'
 >): WasteMasterDataLocationsTableMaps => {
   const toursById = new Map(availableTours.map((tour) => [tour.id, tour] as const));
   const locationTourNamesByLocationId = new Map<string, string[]>();
@@ -57,6 +59,10 @@ export const createLocationsTableMaps = ({
     locationTourNamesByLocationId.set(locationId, names);
   }
 
+  const outputPdfsByLocationId = new Map<string, readonly WasteOutputPdfArtifactRecord[]>(
+    (outputOverview?.collectionLocations ?? []).map((entry) => [entry.collectionLocationId, entry.pdfs] as const)
+  );
+
   return {
     regionsById: new Map(regions.map((region) => [region.id, region] as const)),
     citiesById: new Map(cities.map((city) => [city.id, city] as const)),
@@ -64,5 +70,6 @@ export const createLocationsTableMaps = ({
     houseNumbersById: new Map(houseNumbers.map((houseNumber) => [houseNumber.id, houseNumber] as const)),
     toursById,
     locationTourNamesByLocationId,
+    outputPdfsByLocationId,
   };
 };

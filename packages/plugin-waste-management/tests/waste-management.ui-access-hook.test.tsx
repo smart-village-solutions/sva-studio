@@ -47,7 +47,7 @@ describe('waste-management ui access hook', () => {
       expect(screen.getByTestId('resolved').textContent).toBe('yes');
     });
 
-    expect(screen.getByTestId('tabs').textContent).toBe('fractions,tours,locations,scheduling,tools,settings');
+    expect(screen.getByTestId('tabs').textContent).toBe('fractions,tours,locations,scheduling,output,tools,settings');
     expect(screen.getByTestId('can-delete-history').textContent).toBe('yes');
   });
 });

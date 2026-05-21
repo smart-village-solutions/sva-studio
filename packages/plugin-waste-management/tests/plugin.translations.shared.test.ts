@@ -14,6 +14,7 @@ describe('waste-management translation builders', () => {
         tours: ['Tours', 'Tours body', 'No tours', 'Add one'],
         locations: ['Locations', 'Locations body', 'No locations', 'Add one'],
         scheduling: ['Scheduling', 'Scheduling body', 'No shifts', 'Add one'],
+        output: ['Output', 'Output body', 'No output', 'Add one'],
         tools: ['Tools', 'Tools body', 'No tools', 'Add one'],
         settings: ['Settings', 'Settings body', 'No settings', 'Add one'],
       })
@@ -44,6 +45,12 @@ describe('waste-management translation builders', () => {
           emptyTitle: 'No shifts',
           emptyBody: 'Add one',
         },
+        output: {
+          title: 'Output',
+          body: 'Output body',
+          emptyTitle: 'No output',
+          emptyBody: 'Add one',
+        },
         tools: {
           title: 'Tools',
           body: 'Tools body',
@@ -67,6 +74,7 @@ describe('waste-management translation builders', () => {
       tours: ['Touren', 'Touren', 'Leer', 'Leer'],
       locations: ['Orte', 'Orte', 'Leer', 'Leer'],
       scheduling: ['Planung', 'Planung', 'Leer', 'Leer'],
+      output: ['Ausgabe', 'Ausgabe', 'Leer', 'Leer'],
       tools: ['Tools', 'Tools', 'Leer', 'Leer'],
       settings: ['Einstellungen', 'Einstellungen', 'Leer', 'Leer'],
     });

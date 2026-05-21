@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 
 import {
   getWasteManagementMasterDataOverview,
+  getWasteManagementOutputOverview,
   getWasteManagementToursOverview,
 } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
@@ -18,16 +19,20 @@ export const useWasteMasterDataDataLoading = (
   const ptRef = useRef(pt);
   const isMountedRef = useRef(false);
   ptRef.current = pt;
-  const { setAvailableTours, setError, setLoading, setOverview } = state;
+  const { setAvailableTours, setError, setLoading, setOutputOverview, setOverview } = state;
 
   const loadOverview = useCallback(
     async () => {
       try {
-        const response = await getWasteManagementMasterDataOverview(
-          tab === 'fractions' ? { scope: 'fractions' } : tab === 'locations' ? { scope: 'locations' } : undefined
-        );
+        const [overviewResponse, outputResponse] = await Promise.all([
+          getWasteManagementMasterDataOverview(
+            tab === 'fractions' ? { scope: 'fractions' } : tab === 'locations' ? { scope: 'locations' } : undefined
+          ),
+          tab === 'locations' ? getWasteManagementOutputOverview() : Promise.resolve(null),
+        ]);
         if (!isMountedRef.current) return;
-        setOverview(response);
+        setOverview(overviewResponse);
+        setOutputOverview(outputResponse);
         setError(null);
       } catch (loadError) {
         if (!isMountedRef.current) return;
@@ -38,11 +43,12 @@ export const useWasteMasterDataDataLoading = (
             : ptRef.current('masterData.messages.loadError')
         );
         setAvailableTours([]);
+        setOutputOverview(null);
       } finally {
         if (isMountedRef.current) setLoading(false);
       }
     },
-    [setAvailableTours, setError, setLoading, setOverview, tab]
+    [setAvailableTours, setError, setLoading, setOutputOverview, setOverview, tab]
   );
 
   useEffect(() => {

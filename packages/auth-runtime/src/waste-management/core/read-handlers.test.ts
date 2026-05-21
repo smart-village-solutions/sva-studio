@@ -38,6 +38,8 @@ const createDeps = (action = 'waste-management.read') => ({
 });
 
 describe('waste-management read handlers', () => {
+  const collectionLocationId = '11111111-1111-4111-8111-111111111111';
+
   it('loads settings and history with sanitized payloads and paging params', async () => {
     const settingsResponse = await wasteManagementReadHandlers.getWasteManagementSettingsInternal(
       new Request('https://studio.test/api/v1/waste-management/settings'),
@@ -181,6 +183,14 @@ describe('waste-management read handlers', () => {
             { ...createDeps(), loadSchedulingOverview: vi.fn(async () => ({ tourDateShifts: [], globalDateShifts: [] })) }
           ),
       },
+      {
+        run: () =>
+          wasteManagementReadHandlers.getWasteManagementOutputOverviewInternal(
+            new Request('https://studio.test/api/v1/waste-management/outputs'),
+            actor,
+            { ...createDeps(), loadWasteOutputOverview: vi.fn(async () => ({ collectionLocations: [] })) }
+          ),
+      },
     ];
 
     for (const testCase of successCases) {
@@ -202,6 +212,20 @@ describe('waste-management read handlers', () => {
     );
 
     expect(failureResponse.status).toBe(503);
+    expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(expect.any(Object), 'tenant-a', 'revalidate');
+
+    const outputFailureResponse = await wasteManagementReadHandlers.getWasteManagementOutputOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/outputs'),
+      actor,
+      {
+        ...createDeps(),
+        loadWasteOutputOverview: vi.fn(async () => {
+          throw new Error('storage down');
+        }),
+      }
+    );
+
+    expect(outputFailureResponse.status).toBe(503);
     expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(expect.any(Object), 'tenant-a', 'revalidate');
   });
 
@@ -284,6 +308,178 @@ describe('waste-management read handlers', () => {
         fractions: [],
         regions: [{ id: 'region-1' }],
         collectionLocations: [{ id: 'location-1' }],
+      },
+    });
+  });
+
+  it('loads waste output overview and creates pdf outputs through dedicated handlers', async () => {
+    const loadWasteOutputOverview = vi.fn(async () => ({
+      collectionLocations: [
+        {
+          collectionLocationId,
+          pdfs: [
+            {
+              year: 2026,
+              deliveryUrl: `https://cdn.example/${collectionLocationId}/2026.pdf`,
+              expiresAt: '2026-05-21T12:00:00.000Z',
+            },
+          ],
+        },
+      ],
+    }));
+    const generateWasteOutputPdf = vi.fn(async () => ({
+      collectionLocationId,
+      year: 2026,
+      storageKey: `waste-output/collection-locations/${collectionLocationId}/2026.pdf`,
+      deliveryUrl: `https://cdn.example/${collectionLocationId}/2026.pdf`,
+      expiresAt: '2026-05-21T12:00:00.000Z',
+    }));
+
+    const overviewResponse = await wasteManagementReadHandlers.getWasteManagementOutputOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/outputs'),
+      actor,
+      {
+        ...createDeps(),
+        loadWasteOutputOverview,
+      }
+    );
+
+    expect(overviewResponse.status).toBe(200);
+    expect(loadWasteOutputOverview).toHaveBeenCalledWith('tenant-a');
+    await expect(overviewResponse.json()).resolves.toMatchObject({
+      data: {
+        collectionLocations: [
+          {
+            collectionLocationId,
+            pdfs: [{ year: 2026 }],
+          },
+        ],
+      },
+    });
+
+    const createResponse = await wasteManagementReadHandlers.createWasteManagementOutputPdfInternal(
+      new Request('https://studio.test/api/v1/waste-management/outputs/pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'https://studio.test',
+        },
+        body: JSON.stringify({
+          collectionLocationId,
+          year: 2026,
+        }),
+      }),
+      actor,
+      {
+        ...createDeps('waste-management.master-data.manage'),
+        generateWasteOutputPdf,
+      }
+    );
+
+    expect(createResponse.status).toBe(200);
+    expect(generateWasteOutputPdf).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      collectionLocationId,
+      year: 2026,
+    });
+    await expect(createResponse.json()).resolves.toMatchObject({
+      data: {
+        collectionLocationId,
+        year: 2026,
+        deliveryUrl: `https://cdn.example/${collectionLocationId}/2026.pdf`,
+      },
+    });
+  });
+
+  it('forbids waste pdf generation for read-only permissions', async () => {
+    const createResponse = await wasteManagementReadHandlers.createWasteManagementOutputPdfInternal(
+      new Request('https://studio.test/api/v1/waste-management/outputs/pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'https://studio.test',
+        },
+        body: JSON.stringify({
+          collectionLocationId,
+          year: 2026,
+        }),
+      }),
+      actor,
+      {
+        ...createDeps('waste-management.read'),
+        generateWasteOutputPdf: vi.fn(async () => ({
+          collectionLocationId,
+          year: 2026,
+          storageKey: `waste-output/collection-locations/${collectionLocationId}/2026.pdf`,
+          deliveryUrl: `https://cdn.example/${collectionLocationId}/2026.pdf`,
+          expiresAt: '2026-05-21T12:00:00.000Z',
+        })),
+      }
+    );
+
+    expect(createResponse.status).toBe(403);
+  });
+
+  it('returns not_found when waste pdf generation targets a deleted location', async () => {
+    const createResponse = await wasteManagementReadHandlers.createWasteManagementOutputPdfInternal(
+      new Request('https://studio.test/api/v1/waste-management/outputs/pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'https://studio.test',
+        },
+        body: JSON.stringify({
+          collectionLocationId,
+          year: 2026,
+        }),
+      }),
+      actor,
+      {
+        ...createDeps('waste-management.master-data.manage'),
+        generateWasteOutputPdf: vi.fn(async () => {
+          throw new Error(`waste_output_location_not_found:${collectionLocationId}`);
+        }),
+      }
+    );
+
+    expect(createResponse.status).toBe(404);
+    await expect(createResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'not_found',
+      },
+    });
+  });
+
+  it('returns a neutral output-generation error code for non-not-found failures', async () => {
+    const createResponse = await wasteManagementReadHandlers.createWasteManagementOutputPdfInternal(
+      new Request('https://studio.test/api/v1/waste-management/outputs/pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'https://studio.test',
+        },
+        body: JSON.stringify({
+          collectionLocationId,
+          year: 2026,
+        }),
+      }),
+      actor,
+      {
+        ...createDeps('waste-management.master-data.manage'),
+        generateWasteOutputPdf: vi.fn(async () => {
+          throw new Error('storage offline');
+        }),
+      }
+    );
+
+    expect(createResponse.status).toBe(503);
+    await expect(createResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'internal_error',
       },
     });
   });

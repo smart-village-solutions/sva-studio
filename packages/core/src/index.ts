@@ -50,14 +50,7 @@ export {
   studioPluginOperationErrorContract,
 } from './plugin-operations-contract.js';
 export { externalInterfaceContract } from './external-interfaces-contract.js';
-export {
-  isUuid,
-  readBoolean,
-  readNumber,
-  readNumberLike,
-  readObject,
-  readString,
-} from './input-readers.js';
+export { isUuid, readBoolean, readNumber, readNumberLike, readObject, readString } from './input-readers.js';
 export type {
   ExternalInterfaceCategory,
   ExternalInterfaceConnectionCheckRecord,
@@ -119,10 +112,7 @@ export type {
   WasteManagementTechnicalEventType,
 } from './waste-management-contract.js';
 export { wasteManagementOperationsContract } from './waste-management-operations-contract.js';
-export {
-  getWasteManagementImportCatalogEntry,
-  wasteManagementImportCatalog,
-} from './waste-management-import-catalog.js';
+export { getWasteManagementImportCatalogEntry, wasteManagementImportCatalog } from './waste-management-import-catalog.js';
 export {
   detectWasteImportCsvDelimiter,
   normalizeWasteImportPickupDate,
@@ -193,6 +183,16 @@ export type {
   WasteTourRecord,
 } from './waste-management-master-data.js';
 export { wasteManagementMasterDataContract } from './waste-management-master-data.js';
+export { buildWasteCalendarPdfDocument, renderWasteCalendarPdf } from './waste-management-output.js';
+export type {
+  WasteCalendarPdfDocument,
+  WasteManagementOutputOverview,
+  WasteManagementOutputPdfResult,
+  WasteOutputCollectionLocationArtifacts,
+  WasteOutputPdfArtifactRecord,
+  WasteOutputPickupEntry,
+  WasteOutputFraction,
+} from './waste-management-output.types.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';
 export {
@@ -208,11 +208,7 @@ export {
   normalizeHost,
   trafficEnabledInstanceStatuses,
 } from './instances/registry.js';
-export {
-  areAllInstanceKeycloakRequirementsSatisfied,
-  INSTANCE_KEYCLOAK_REQUIREMENTS,
-  isInstanceKeycloakRequirementSatisfied,
-} from './instances/keycloak-checklist.js';
+export { areAllInstanceKeycloakRequirementsSatisfied, INSTANCE_KEYCLOAK_REQUIREMENTS, isInstanceKeycloakRequirementSatisfied } from './instances/keycloak-checklist.js';
 export type {
   HostClassification,
   InstanceAuditEvent,

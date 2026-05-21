@@ -9,6 +9,7 @@ import { wasteManagementPluginTranslationsENTabs } from './plugin.translations.e
 import { wasteManagementPluginTranslationsENSettings } from './plugin.translations.en.settings.js';
 import { wasteManagementPluginTranslationsENOverview } from './plugin.translations.en.overview.js';
 import { wasteManagementPluginTranslationsENMasterData } from './plugin.translations.en.masterData.js';
+import { wasteManagementPluginTranslationsENOutput } from './plugin.translations.en.output.js';
 import { wasteManagementPluginTranslationsENTools } from './plugin.translations.en.tools.js';
 import { wasteManagementPluginTranslationsENTours } from './plugin.translations.en.tours.js';
 import { wasteManagementPluginTranslationsENScheduling } from './plugin.translations.en.scheduling.js';
@@ -27,6 +28,7 @@ export const wasteManagementPluginTranslationsEN = createWasteManagementPluginTr
   wasteManagementPluginTranslationsENSettings,
   wasteManagementPluginTranslationsENOverview,
   wasteManagementPluginTranslationsENMasterData,
+  wasteManagementPluginTranslationsENOutput,
   wasteManagementPluginTranslationsENTools,
   wasteManagementPluginTranslationsENTours,
   wasteManagementPluginTranslationsENScheduling,

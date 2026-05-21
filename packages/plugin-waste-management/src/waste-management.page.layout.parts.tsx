@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import {
   IconCalendarClock,
   IconDatabase,
+  IconFileText,
   IconMapPin,
   IconRecycle,
   IconRoute,
@@ -11,6 +12,7 @@ import { Select, StudioEmptyState, TabsContent, TabsList, TabsTrigger } from '@s
 
 import { WasteMasterDataPanel } from './waste-management.master-data-panel.js';
 import { WasteOverviewPanel } from './waste-management.overview-panel.js';
+import { WasteOutputPanel } from './waste-management.output-panel.js';
 import { WasteSchedulingPanel } from './waste-management.scheduling-panel.js';
 import { WasteSettingsPanel } from './waste-management.settings-panel.js';
 import { WasteTabPanelActionsProvider } from './waste-management.tab-panel-actions.js';
@@ -26,6 +28,7 @@ export const wasteManagementTabTranslationKeyMap = {
   tours: 'tours',
   locations: 'locations',
   scheduling: 'scheduling',
+  output: 'output',
   tools: 'tools',
   settings: 'settings',
 } as const satisfies Record<WasteManagementTabId, string>;
@@ -35,6 +38,7 @@ const wasteManagementTabIconMap = {
   tours: IconRoute,
   locations: IconMapPin,
   scheduling: IconCalendarClock,
+  output: IconFileText,
   tools: IconDatabase,
   settings: IconSettings,
 } as const satisfies Record<WasteManagementTabId, typeof IconRecycle>;
@@ -47,6 +51,7 @@ export const createWasteManagementTabContentMap = (
   tours: <WasteToursPanel search={search} />,
   locations: <WasteMasterDataPanel search={search} tab="locations" />,
   scheduling: <WasteSchedulingPanel search={search} />,
+  output: <WasteOutputPanel />,
   settings: <WasteSettingsPanel />,
   tools: <WasteToolsPanel access={access} overview={<WasteOverviewPanel search={search} />} />,
 });

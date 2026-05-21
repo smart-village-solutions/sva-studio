@@ -21,6 +21,13 @@ gleichzeitig beeinflussen.
 - Löschungen bleiben fail-closed bei aktiven Referenzen oder unvollständigem Upload-/Processing-Zustand.
 - i18n für Medienrollen und Fehlerzustände folgt denselben Dot-Notation-Regeln wie übrige Host- und Plugin-Oberflächen.
 
+### Hostgeführte Artefakt-Downloads im Waste-Management
+
+- Der neue PDF-Ausdruck im Waste-Management folgt bewusst keinem browserseitigen Render- oder Storage-Pfad; Dokumentmodell, Terminauflösung und PDF-Rendering bleiben vollständig serverseitig.
+- Persistierte Waste-PDFs werden pro `collectionLocationId + year` deterministisch überschrieben statt versioniert; der erste Ausbau bevorzugt einen klaren aktuellen Stand vor Historisierung.
+- Das Plugin konsumiert nur Delivery-Links aus der Host-Fassade und erhält weder Storage-Credentials noch Bucket-/Key-Wissen über den berechneten Delivery-Link hinaus.
+- Anders als generische Medien-Plugins darf Waste im ersten Ausbau direkte Artefaktlinks anzeigen, weil die Delivery-URL hostseitig aufgelöst und zeitlich begrenzt signiert wird; ein separater Download-Endpoint bleibt mögliche Härtung, ist aber noch kein Pflichtbaustein.
+
 ### Hintergrundprozesse und Workflow-Orchestrierung
 
 - Hostseitige Hintergrundprozesse folgen einem runner-agnostischen Plattformvertrag mit zentralem Jobdatensatz im Studio-Postgres.

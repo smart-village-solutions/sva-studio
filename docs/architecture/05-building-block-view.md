@@ -74,7 +74,7 @@ Abhängigkeiten des aktuellen Systems.
    - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
    - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an
 11. Plugin Waste Management (`packages/plugin-waste-management`)
-   - freies Fachplugin unter `/plugins/waste-management` für Waste-Stammdaten, Touren, Ausweichtermine, technische Werkzeuge und instanzbezogene Einstellungen
+   - freies Fachplugin unter `/plugins/waste-management` für Waste-Stammdaten, Touren, Ausweichtermine, PDF-Ausgaben, technische Werkzeuge und instanzbezogene Einstellungen
    - konsumiert ausschließlich hostgeführte Endpunkte unter `/api/v1/waste-management/*`
    - hält bewusst nur fachliche UI-, Dialog-, Bulk- und lokale View-Model-Logik; keine direkte Datenbank-, Supabase- oder `Newcms`-Runtime-Kopplung
    - nutzt `@sva/plugin-sdk` für Route, Navigation, Audit-, Import- und Job-Verträge sowie `@sva/studio-ui-react` für generische Confirm-, Status- und Job-UI
@@ -98,10 +98,11 @@ Abhängigkeiten des aktuellen Systems.
    - strukturierte Progress-Details wie `processedRows` und `totalRows` bleiben Teil desselben generischen Jobdatensatzes und werden nicht in plugin-spezifische Nebenspeicher ausgelagert
    - eine interne Worker-Anbindung wie Graphile Worker bleibt hinter diesem Hostpfad austauschbar und ist kein Teil des öffentlichen Plugin-Vertrags
 14. Waste-Host-Fassade (`packages/auth-runtime`, `packages/server-runtime`, `packages/data-repositories`)
-   - `@sva/auth-runtime` publiziert die hostgeführte Waste-Fassade für Settings, Historie, CRUD, Bulk-Flows und technische Tool-Starts
-   - `@sva/server-runtime` löst die aktive instanzbezogene Waste-Datenquelle serverseitig auf und kapselt Secret-Nutzung sowie Connection-Checks
+   - `@sva/auth-runtime` publiziert die hostgeführte Waste-Fassade für Settings, Historie, CRUD, Bulk-Flows, PDF-Ausgaben und technische Tool-Starts
+   - `@sva/server-runtime` löst die aktive instanzbezogene Waste-Datenquelle serverseitig auf, rendert den adressgenauen Jahreskalender pro Abholort und kapselt Secret-Nutzung sowie Connection-Checks
    - `@sva/data-repositories` hält sowohl die zentrale Governance-Persistenz der Waste-Datenquelle im Studio-Postgres als auch die hostseitigen Repositories gegen die instanzbezogene `waste_*`-Tabellenfamilie
    - `@sva/data` bleibt dabei ausdrücklich ohne neue primäre Waste-SQL- oder Orchestrierungs-Ownership
+   - erzeugte PDFs werden pro `collectionLocationId + year` unter einem deterministischen Storage-Schlüssel persistiert; die Linkauflösung bleibt hostgeführt und wird vom Plugin nur als Delivery-URL konsumiert
 
 ### IAM-Bausteine und Package-Zuordnung
 

@@ -100,6 +100,7 @@ export const WasteMasterDataLocationsTableSection = ({
   houseNumbers,
   collectionLocations,
   locationTourLinks,
+  outputOverview,
   selectedLocationIds,
   allFilteredLocationsSelected,
   selectedCollectionLocationsCount,
@@ -133,6 +134,7 @@ export const WasteMasterDataLocationsTableSection = ({
   | 'houseNumbers'
   | 'collectionLocations'
   | 'locationTourLinks'
+  | 'outputOverview'
   | 'selectedLocationIds'
   | 'allFilteredLocationsSelected'
   | 'selectedCollectionLocationsCount'
@@ -167,6 +169,7 @@ export const WasteMasterDataLocationsTableSection = ({
     houseNumbers={houseNumbers}
     collectionLocations={collectionLocations}
     locationTourLinks={locationTourLinks}
+    outputOverview={outputOverview}
     selectedLocationIds={selectedLocationIds}
     allFilteredLocationsSelected={allFilteredLocationsSelected}
     selectedCollectionLocationsCount={selectedCollectionLocationsCount}

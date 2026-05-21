@@ -34,6 +34,8 @@ export {
   type MediaReferenceFieldProps,
 } from './media-reference-field.js';
 export { Select } from './select.js';
+export { StudioFormFieldError, StudioFormSummaryErrors, getStudioFieldError } from './studio-form-bridge.js';
+export type { StudioFormFieldErrorProps, StudioFormSummaryErrorsProps } from './studio-form-bridge.js';
 export {
   StudioDataTable,
   type StudioBulkAction,

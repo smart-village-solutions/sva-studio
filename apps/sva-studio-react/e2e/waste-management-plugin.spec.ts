@@ -35,6 +35,62 @@ type WasteTourState = {
   updatedAt: string;
 };
 
+type WasteRegionState = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type WasteCityState = {
+  id: string;
+  regionId: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type WasteStreetState = {
+  id: string;
+  cityId: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type WasteHouseNumberState = {
+  id: string;
+  streetId: string;
+  number: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type WasteCollectionLocationState = {
+  id: string;
+  regionId?: string;
+  cityId: string;
+  streetId?: string;
+  houseNumberId?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type WasteOutputPdfState = {
+  year: number;
+  deliveryUrl: string;
+  expiresAt?: string;
+  storageKey?: string;
+};
+
+type WasteOutputOverviewState = {
+  collectionLocations: Array<{
+    collectionLocationId: string;
+    pdfs: WasteOutputPdfState[];
+  }>;
+};
+
 type WasteJobState = {
   id: string;
   jobTypeId: string;
@@ -123,11 +179,28 @@ const mockWasteFacade = async (page: Page, input: {
   readonly settings: WasteSettingsState;
   readonly fractions: WasteFractionState[];
   readonly tours: WasteTourState[];
+  readonly regions?: WasteRegionState[];
+  readonly cities?: WasteCityState[];
+  readonly streets?: WasteStreetState[];
+  readonly houseNumbers?: WasteHouseNumberState[];
+  readonly collectionLocations?: WasteCollectionLocationState[];
+  readonly outputOverview?: WasteOutputOverviewState;
   readonly allowFractionCreate?: boolean;
 }) : Promise<WasteHarness> => {
   const settingsState: WasteSettingsState = { ...input.settings };
   const fractionsState = [...input.fractions];
   const toursState = [...input.tours];
+  const regionsState = [...(input.regions ?? [])];
+  const citiesState = [...(input.cities ?? [])];
+  const streetsState = [...(input.streets ?? [])];
+  const houseNumbersState = [...(input.houseNumbers ?? [])];
+  const collectionLocationsState = [...(input.collectionLocations ?? [])];
+  const outputOverviewState: WasteOutputOverviewState = {
+    collectionLocations: (input.outputOverview?.collectionLocations ?? []).map((entry) => ({
+      collectionLocationId: entry.collectionLocationId,
+      pdfs: [...entry.pdfs],
+    })),
+  };
   const requests = {
     settingsUpdates: [] as Array<Record<string, unknown>>,
     createdFractions: [] as Array<Record<string, unknown>>,
@@ -164,12 +237,56 @@ const mockWasteFacade = async (page: Page, input: {
         contentType: 'application/json',
         body: createApiItem({
           fractions: fractionsState,
-          regions: [],
-          cities: [],
-          streets: [],
-          houseNumbers: [],
-          collectionLocations: [],
+          regions: regionsState,
+          cities: citiesState,
+          streets: streetsState,
+          houseNumbers: houseNumbersState,
+          collectionLocations: collectionLocationsState,
           locationTourLinks: [],
+        }),
+      });
+      return;
+    }
+
+    if (method === 'GET' && path === '/api/v1/waste-management/outputs') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: createApiItem(outputOverviewState),
+      });
+      return;
+    }
+
+    if (method === 'POST' && path === '/api/v1/waste-management/outputs/pdf') {
+      const body = request.postDataJSON() as { collectionLocationId: string; year: number };
+      const pdf: WasteOutputPdfState = {
+        year: body.year,
+        deliveryUrl: `https://cdn.example/waste-output/${body.collectionLocationId}/${body.year}.pdf`,
+        expiresAt: '2026-05-10T13:15:00.000Z',
+        storageKey: `waste-output/collection-locations/${body.collectionLocationId}/${body.year}.pdf`,
+      };
+      const existingEntry = outputOverviewState.collectionLocations.find(
+        (entry) => entry.collectionLocationId === body.collectionLocationId
+      );
+      if (existingEntry) {
+        existingEntry.pdfs = [...existingEntry.pdfs.filter((entry) => entry.year !== body.year), pdf].sort(
+          (left, right) => right.year - left.year
+        );
+      } else {
+        outputOverviewState.collectionLocations.push({
+          collectionLocationId: body.collectionLocationId,
+          pdfs: [pdf],
+        });
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: createApiItem({
+          collectionLocationId: body.collectionLocationId,
+          year: body.year,
+          deliveryUrl: pdf.deliveryUrl,
+          expiresAt: pdf.expiresAt,
+          storageKey: pdf.storageKey,
         }),
       });
       return;
@@ -392,6 +509,53 @@ test.describe('waste management plugin', () => {
           updatedAt: '2026-05-10T11:00:00.000Z',
         },
       ],
+      regions: [
+        {
+          id: 'region-1',
+          name: 'Nord',
+          createdAt: '2026-05-10T11:00:00.000Z',
+          updatedAt: '2026-05-10T11:00:00.000Z',
+        },
+      ],
+      cities: [
+        {
+          id: 'city-1',
+          regionId: 'region-1',
+          name: 'Musterhausen',
+          createdAt: '2026-05-10T11:00:00.000Z',
+          updatedAt: '2026-05-10T11:00:00.000Z',
+        },
+      ],
+      streets: [
+        {
+          id: 'street-1',
+          cityId: 'city-1',
+          name: 'Hauptstraße',
+          createdAt: '2026-05-10T11:00:00.000Z',
+          updatedAt: '2026-05-10T11:00:00.000Z',
+        },
+      ],
+      houseNumbers: [
+        {
+          id: 'house-1',
+          streetId: 'street-1',
+          number: '7',
+          createdAt: '2026-05-10T11:00:00.000Z',
+          updatedAt: '2026-05-10T11:00:00.000Z',
+        },
+      ],
+      collectionLocations: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          regionId: 'region-1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: 'house-1',
+          active: true,
+          createdAt: '2026-05-10T11:00:00.000Z',
+          updatedAt: '2026-05-10T11:00:00.000Z',
+        },
+      ],
     });
 
     await openWastePlugin(page);
@@ -449,6 +613,20 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Reset bestätigen' }).click();
 
     await expect(page.getByText('Job job-reset-1 wurde gestartet.')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Ausgabe' }).click();
+    const outputPanel = page.getByRole('tabpanel', { name: 'Ausgabe' });
+    await expect(outputPanel).toBeVisible();
+    await outputPanel.locator('select').first().selectOption({ label: 'Nord, Musterhausen, Hauptstraße 7' });
+    await outputPanel.getByLabel('Jahr').fill('2026');
+    await outputPanel.getByRole('button', { name: 'PDF erzeugen' }).click();
+    await expect(page.getByText('Das PDF wurde erfolgreich erzeugt.')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'PDF öffnen' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Jahr 2026' })).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Abholorte' }).click();
+    await expect(page.getByRole('link', { name: '2026' })).toBeVisible();
+
     expect(harness.requests.startedJobTypes).toEqual([
       'waste-management.import-data',
       'waste-management.apply-migrations',

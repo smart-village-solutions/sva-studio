@@ -5,17 +5,25 @@ import {
   type SqlStatement,
 } from '@sva/data-repositories';
 import { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
-import type {
+import {
+  buildWasteCalendarPdfDocument,
+  renderWasteCalendarPdf,
   WasteCollectionLocationRecord,
+  type WasteCityRecord,
+  type WasteFractionRecord,
   WasteGlobalDateShiftRecord,
   WasteHouseNumberRecord,
   WasteLocationTourLinkBulkCreateInput,
   WasteLocationTourLinkRecord,
   WasteManagementHistoryOverview,
   WasteManagementMasterDataOverview,
+  WasteManagementOutputOverview,
+  WasteManagementOutputPdfResult,
   WasteManagementSchedulingOverview,
   WasteManagementTechnicalHistoryRecord,
   WasteManagementToursOverview,
+  type WasteOutputFraction,
+  type WasteOutputPickupEntry,
   WasteRegionRecord,
   WasteStreetRecord,
   WasteTourDateShiftRecord,
@@ -27,6 +35,7 @@ import { Pool } from 'pg';
 
 import { withInstanceDb } from '../db.js';
 import { revealField } from '../iam-account-management/encryption.js';
+import { createConfiguredMediaStoragePort } from '../iam-media/storage-s3.js';
 import { previewWasteLocationTourPickupDateImport as buildWasteLocationTourPickupDateImportPreview } from './import-preview.js';
 
 const schemaIdentifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -603,6 +612,270 @@ const loadSchedulingOverview = (instanceId: string): Promise<WasteManagementSche
     })
   );
 
+const wasteOutputPdfStorageKey = (collectionLocationId: string, year: number): string =>
+  `waste-output/collection-locations/${collectionLocationId}/${year}.pdf`;
+
+const wasteOutputIndexStorageKey = (collectionLocationId: string): string =>
+  `waste-output/collection-locations/${collectionLocationId}/index.json`;
+
+const wasteOutputAssetId = (collectionLocationId: string, year: number): string =>
+  `waste-output.${collectionLocationId}.${year}`;
+
+const readWasteOutputYears = async (
+  instanceId: string,
+  collectionLocationId: string
+): Promise<readonly number[]> => {
+  const storage = createConfiguredMediaStoragePort();
+
+  try {
+    const indexFile = await storage.readObject({
+      instanceId,
+      storageKey: wasteOutputIndexStorageKey(collectionLocationId),
+    });
+    const parsed = JSON.parse(new TextDecoder().decode(indexFile.body)) as { years?: unknown };
+    if (!Array.isArray(parsed.years)) {
+      return [];
+    }
+    return parsed.years
+      .map((value) => (typeof value === 'number' && Number.isInteger(value) ? value : null))
+      .filter((value): value is number => value !== null)
+      .sort((left, right) => left - right);
+  } catch {
+    return [];
+  }
+};
+
+const writeWasteOutputYears = async (
+  instanceId: string,
+  collectionLocationId: string,
+  years: readonly number[]
+): Promise<void> => {
+  const storage = createConfiguredMediaStoragePort();
+  await storage.writeObject({
+    instanceId,
+    storageKey: wasteOutputIndexStorageKey(collectionLocationId),
+    body: new TextEncoder().encode(JSON.stringify({ years })),
+    contentType: 'application/json',
+  });
+};
+
+const formatWasteOutputLocationLabel = (input: {
+  readonly location: WasteCollectionLocationRecord;
+  readonly regions: readonly WasteRegionRecord[];
+  readonly cities: readonly WasteCityRecord[];
+  readonly streets: readonly WasteStreetRecord[];
+  readonly houseNumbers: readonly WasteHouseNumberRecord[];
+}): string => {
+  const region = input.location.regionId ? input.regions.find((entry) => entry.id === input.location.regionId) : undefined;
+  const city = input.cities.find((entry) => entry.id === input.location.cityId);
+  const street = input.location.streetId ? input.streets.find((entry) => entry.id === input.location.streetId) : undefined;
+  const houseNumber = input.location.houseNumberId
+    ? input.houseNumbers.find((entry) => entry.id === input.location.houseNumberId)
+    : undefined;
+
+  return [region?.name, city?.name, street?.name, houseNumber?.number]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join(', ');
+};
+
+const buildWasteOutputPickups = (input: {
+  readonly collectionLocationId: string;
+  readonly year: number;
+  readonly locationTourLinks: readonly WasteLocationTourLinkRecord[];
+  readonly tours: readonly WasteTourRecord[];
+  readonly fractions: readonly WasteFractionRecord[];
+  readonly locationTourPickupDates: readonly {
+    locationId: string;
+    tourId: string;
+    pickupDate: string;
+  }[];
+  readonly tourDateShifts: readonly WasteTourDateShiftRecord[];
+  readonly globalDateShifts: readonly WasteGlobalDateShiftRecord[];
+}): readonly WasteOutputPickupEntry[] => {
+  const linkedTourIds = new Set(
+    input.locationTourLinks
+      .filter((entry) => entry.locationId === input.collectionLocationId)
+      .map((entry) => entry.tourId)
+  );
+  const toursById = new Map(input.tours.filter((tour) => tour.active).map((tour) => [tour.id, tour]));
+  const fractionsById = new Map(input.fractions.filter((fraction) => fraction.active).map((fraction) => [fraction.id, fraction]));
+  const tourShiftMap = new Map(
+    input.tourDateShifts
+      .filter((shift) => linkedTourIds.has(shift.tourId))
+      .map((shift) => [`${shift.tourId}:${shift.originalDate}`, shift.actualDate] as const)
+  );
+  const globalShiftMap = new Map(
+    input.globalDateShifts
+      .filter((shift) => !shift.tourIds || shift.tourIds.some((tourId) => linkedTourIds.has(tourId)))
+      .map((shift) => [shift.originalDate, shift.actualDate] as const)
+  );
+  const entriesByDate = new Map<string, Map<string, WasteOutputFraction>>();
+
+  for (const pickup of input.locationTourPickupDates) {
+    if (pickup.locationId !== input.collectionLocationId || pickup.pickupDate.startsWith(`${input.year}-`) === false) {
+      continue;
+    }
+
+    const tour = toursById.get(pickup.tourId);
+    if (!tour) {
+      continue;
+    }
+
+    const shiftedDate =
+      tourShiftMap.get(`${pickup.tourId}:${pickup.pickupDate}`) ??
+      globalShiftMap.get(pickup.pickupDate) ??
+      pickup.pickupDate;
+    if (shiftedDate.startsWith(`${input.year}-`) === false) {
+      continue;
+    }
+
+    const dayEntries = entriesByDate.get(shiftedDate) ?? new Map<string, WasteOutputFraction>();
+    for (const fractionId of tour.wasteFractionIds) {
+      const fraction = fractionsById.get(fractionId);
+      if (!fraction) {
+        continue;
+      }
+      dayEntries.set(fraction.id, {
+        id: fraction.id,
+        label: fraction.name,
+        color: fraction.color,
+      });
+    }
+    entriesByDate.set(shiftedDate, dayEntries);
+  }
+
+  return Array.from(entriesByDate.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, fractions]) => ({
+      date,
+      fractions: Array.from(fractions.values()).sort((left, right) => left.label.localeCompare(right.label, 'de')),
+    }));
+};
+
+const loadWasteOutputOverview = async (instanceId: string): Promise<WasteManagementOutputOverview> =>
+  withWasteRepository(instanceId, 'load_waste_output_overview', async (repository) => {
+    const storage = createConfiguredMediaStoragePort();
+    const collectionLocations = await repository.listWasteCollectionLocations();
+    const locationOutputs = await Promise.all(
+      collectionLocations.map(async (location) => {
+        const years = await readWasteOutputYears(instanceId, location.id);
+        const pdfs = await Promise.all(
+          years.map(async (year) => {
+            const delivery = await storage.resolveDelivery({
+              instanceId,
+              assetId: wasteOutputAssetId(location.id, year),
+              storageKey: wasteOutputPdfStorageKey(location.id, year),
+              visibility: 'private',
+            });
+            return {
+              year,
+              deliveryUrl: delivery.deliveryUrl,
+              expiresAt: delivery.expiresAt,
+            };
+          })
+        );
+
+        return {
+          collectionLocationId: location.id,
+          pdfs,
+        };
+      })
+    );
+
+    return {
+      collectionLocations: locationOutputs,
+    };
+  });
+
+const generateWasteOutputPdf = async (input: {
+  readonly instanceId: string;
+  readonly collectionLocationId: string;
+  readonly year: number;
+}): Promise<WasteManagementOutputPdfResult> =>
+  withWasteRepository(input.instanceId, 'generate_waste_output_pdf', async (repository) => {
+    const [
+      location,
+      regions,
+      cities,
+      streets,
+      houseNumbers,
+      locationTourLinks,
+      tours,
+      fractions,
+      locationTourPickupDates,
+      tourDateShifts,
+      globalDateShifts,
+    ] = await Promise.all([
+      repository.getWasteCollectionLocationById(input.collectionLocationId),
+      repository.listWasteRegions(),
+      repository.listWasteCities(),
+      repository.listWasteStreets(),
+      repository.listWasteHouseNumbers(),
+      repository.listWasteLocationTourLinks(),
+      repository.listWasteTours(),
+      repository.listWasteFractions(),
+      repository.listWasteLocationTourPickupDates(),
+      repository.listWasteTourDateShifts(),
+      repository.listWasteGlobalDateShifts(),
+    ]);
+
+    if (!location) {
+      throw new Error(`waste_output_location_not_found:${input.collectionLocationId}`);
+    }
+
+    const locationLabel = formatWasteOutputLocationLabel({
+      location,
+      regions,
+      cities,
+      streets,
+      houseNumbers,
+    });
+    const pdf = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: input.year,
+        locationLabel,
+        pickups: buildWasteOutputPickups({
+          collectionLocationId: input.collectionLocationId,
+          year: input.year,
+          locationTourLinks,
+          tours,
+          fractions,
+          locationTourPickupDates,
+          tourDateShifts,
+          globalDateShifts,
+        }),
+      })
+    );
+    const storage = createConfiguredMediaStoragePort();
+    const storageKey = wasteOutputPdfStorageKey(input.collectionLocationId, input.year);
+
+    await storage.writeObject({
+      instanceId: input.instanceId,
+      storageKey,
+      body: pdf,
+      contentType: 'application/pdf',
+    });
+
+    const previousYears = await readWasteOutputYears(input.instanceId, input.collectionLocationId);
+    const nextYears = Array.from(new Set([...previousYears, input.year])).sort((left, right) => left - right);
+    await writeWasteOutputYears(input.instanceId, input.collectionLocationId, nextYears);
+
+    const delivery = await storage.resolveDelivery({
+      instanceId: input.instanceId,
+      assetId: wasteOutputAssetId(input.collectionLocationId, input.year),
+      storageKey,
+      visibility: 'private',
+    });
+
+    return {
+      collectionLocationId: input.collectionLocationId,
+      year: input.year,
+      storageKey,
+      deliveryUrl: delivery.deliveryUrl,
+      expiresAt: delivery.expiresAt,
+    };
+  });
+
 const previewWasteLocationTourPickupDateImport = (input: {
   readonly instanceId: string;
   readonly sourceFormat: 'text/csv' | 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -746,10 +1019,16 @@ export const wasteManagementOverviewLoaders = {
   loadMasterDataOverview,
   loadMasterDataFractionsOverview,
   loadMasterDataLocationsOverview,
+  loadWasteOutputOverview,
   loadWasteHistoryOverview,
   loadToursOverview,
   loadSchedulingOverview,
   previewWasteLocationTourPickupDateImport,
+} as const;
+
+export const wasteManagementOutputLoaders = {
+  loadWasteOutputOverview,
+  generateWasteOutputPdf,
 } as const;
 
 export const wasteManagementEntityLoaders = {

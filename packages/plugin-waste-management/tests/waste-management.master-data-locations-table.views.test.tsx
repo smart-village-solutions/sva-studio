@@ -132,6 +132,7 @@ describe('waste-management master-data location table views', () => {
               houseNumbersById: new Map(),
               toursById: new Map(),
               locationTourNamesByLocationId: new Map(),
+              outputPdfsByLocationId: new Map(),
             }}
             selectedLocationIds={[]}
             onToggleLocation={vi.fn()}
@@ -148,6 +149,7 @@ describe('waste-management master-data location table views', () => {
     expect(screen.getByText('masterData.locationsWorkspace.table.streetUnavailable')).toBeTruthy();
     expect(screen.getByText('masterData.locationsWorkspace.table.houseNumbersUnavailable')).toBeTruthy();
     expect(screen.getByText('masterData.locationsWorkspace.table.noTours')).toBeTruthy();
+    expect(screen.getByText('masterData.locationsWorkspace.table.noOutputs')).toBeTruthy();
     expect(screen.getByText('common.inactive')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.edit' }));

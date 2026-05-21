@@ -26,6 +26,12 @@ export const wasteManagementPluginTranslationsDETabs = createWasteManagementTabs
     'Ausweichtermine folgen',
     'Hier werden später Kalender-, Bulk- und Konfliktansichten angeschlossen.',
   ],
+  output: [
+    'Ausgabe',
+    'Erzeugen und verlinken Sie PDF-Ausdrücke pro Abholort und Jahr direkt aus den gepflegten Waste-Daten.',
+    'Noch keine Ausgabe vorhanden',
+    'Sobald ein PDF erzeugt wurde, erscheint der Direktlink hier und zusätzlich in der Tabelle der Abholorte.',
+  ],
   tools: [
     'Datentools',
     'Import, Migration, Seed und Reset werden über die generische Job-Fähigkeit des Hosts gestartet.',

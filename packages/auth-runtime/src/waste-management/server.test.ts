@@ -26,6 +26,7 @@ const coreHandlerMocks = vi.hoisted(() => ({
   deleteWasteManagementGlobalDateShiftInternal: vi.fn(async () => new Response('delete-global-shift')),
   createWasteManagementGlobalDateShiftInternal: vi.fn(async () => new Response('create-global-shift')),
   createWasteManagementHouseNumberInternal: vi.fn(async () => new Response('create-house-number')),
+  createWasteManagementOutputPdfInternal: vi.fn(async () => new Response('create-output-pdf')),
   createWasteManagementLocationTourLinkInternal: vi.fn(async () => new Response('create-location-tour-link')),
   createWasteManagementLocationTourLinksBulkInternal: vi.fn(async () => new Response('create-location-tour-links-bulk')),
   createWasteManagementRegionInternal: vi.fn(async () => new Response('create-region')),
@@ -37,6 +38,7 @@ const coreHandlerMocks = vi.hoisted(() => ({
   deleteWasteManagementTourInternal: vi.fn(async () => new Response('delete-tour')),
   getWasteManagementHistoryInternal: vi.fn(async () => new Response('get-history')),
   getWasteManagementMasterDataOverviewInternal: vi.fn(async () => new Response('get-master-data-overview')),
+  getWasteManagementOutputOverviewInternal: vi.fn(async () => new Response('get-output-overview')),
   getWasteManagementSchedulingOverviewInternal: vi.fn(async () => new Response('get-scheduling-overview')),
   getWasteManagementSettingsInternal: vi.fn(async () => new Response('get-settings')),
   getWasteManagementToursOverviewInternal: vi.fn(async () => new Response('get-tours-overview')),
@@ -63,6 +65,8 @@ const loaderMocks = vi.hoisted(() => ({
   loadMasterDataOverview: vi.fn(async () => null),
   loadMasterDataFractionsOverview: vi.fn(async () => null),
   loadMasterDataLocationsOverview: vi.fn(async () => null),
+  loadWasteOutputOverview: vi.fn(async () => null),
+  generateWasteOutputPdf: vi.fn(async () => null),
   loadSchedulingOverview: vi.fn(async () => null),
   loadToursOverview: vi.fn(async () => null),
   loadWasteHistoryOverview: vi.fn(async () => null),
@@ -113,10 +117,15 @@ vi.mock('./server-loaders.js', () => ({
     loadMasterDataOverview: loaderMocks.loadMasterDataOverview,
     loadMasterDataFractionsOverview: loaderMocks.loadMasterDataFractionsOverview,
     loadMasterDataLocationsOverview: loaderMocks.loadMasterDataLocationsOverview,
+    loadWasteOutputOverview: loaderMocks.loadWasteOutputOverview,
     loadSchedulingOverview: loaderMocks.loadSchedulingOverview,
     loadToursOverview: loaderMocks.loadToursOverview,
     loadWasteHistoryOverview: loaderMocks.loadWasteHistoryOverview,
     previewWasteLocationTourPickupDateImport: loaderMocks.previewWasteLocationTourPickupDateImport,
+  },
+  wasteManagementOutputLoaders: {
+    loadWasteOutputOverview: loaderMocks.loadWasteOutputOverview,
+    generateWasteOutputPdf: loaderMocks.generateWasteOutputPdf,
   },
   wasteManagementEntityLoaders: {
     loadWasteCityById: loaderMocks.loadWasteCityById,
@@ -175,6 +184,11 @@ describe('wasteManagementHandlers', () => {
           loadMasterDataFractionsOverview: loaderMocks.loadMasterDataFractionsOverview,
           loadMasterDataLocationsOverview: loaderMocks.loadMasterDataLocationsOverview,
         },
+      },
+      {
+        handlerKey: 'getOutputOverview',
+        internal: coreHandlerMocks.getWasteManagementOutputOverviewInternal,
+        deps: { ...sharedWasteManagementDepsMock, loadWasteOutputOverview: loaderMocks.loadWasteOutputOverview },
       },
       {
         handlerKey: 'getToursOverview',
@@ -311,6 +325,14 @@ describe('wasteManagementHandlers', () => {
           ...sharedWasteManagementDepsMock,
           deleteWasteCollectionLocation: saverMocks.deleteWasteCollectionLocation,
           loadWasteCollectionLocationById: loaderMocks.loadWasteCollectionLocationById,
+        },
+      },
+      {
+        handlerKey: 'createOutputPdf',
+        internal: coreHandlerMocks.createWasteManagementOutputPdfInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          generateWasteOutputPdf: loaderMocks.generateWasteOutputPdf,
         },
       },
       {

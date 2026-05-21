@@ -26,6 +26,12 @@ export const wasteManagementPluginTranslationsENTabs = createWasteManagementTabs
     'Schedule deviations coming next',
     'Calendar, bulk and conflict surfaces will be added here later.',
   ],
+  output: [
+    'Output',
+    'Generate and link PDF printouts per collection location and year directly from the maintained waste data.',
+    'No output available yet',
+    'As soon as a PDF is generated, the direct link appears here and also in the collection locations table.',
+  ],
   tools: [
     'Data tools',
     'Import, migration, seed and reset are started through the host generic job capability.',

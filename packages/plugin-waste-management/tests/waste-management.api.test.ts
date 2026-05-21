@@ -4,6 +4,7 @@ import {
   createWasteManagementCity,
   createWasteManagementCollectionLocation,
   createWasteManagementHouseNumber,
+  createWasteManagementOutputPdf,
   createWasteManagementLocationTourLinksBulk,
   deleteWasteManagementFraction,
   createWasteManagementFraction,
@@ -18,6 +19,7 @@ import {
   getWasteManagementImportCatalog,
   getWasteManagementJobDetail,
   getWasteManagementMasterDataOverview,
+  getWasteManagementOutputOverview,
   getWasteManagementSchedulingOverview,
   getWasteManagementSettings,
   getWasteManagementToursOverview,
@@ -229,6 +231,81 @@ describe('waste-management api client', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/waste-management/master-data',
       expect.objectContaining({
+        credentials: 'include',
+      })
+    );
+  });
+
+  it('loads the waste output overview through the host facade', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            collectionLocations: [
+              {
+                collectionLocationId: '11111111-1111-4111-8111-111111111111',
+                pdfs: [
+                  {
+                    year: 2026,
+                    deliveryUrl: 'https://cdn.example/location-1/2026.pdf',
+                    expiresAt: '2026-05-21T12:00:00.000Z',
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await expect(getWasteManagementOutputOverview()).resolves.toMatchObject({
+      collectionLocations: [
+        {
+          collectionLocationId: '11111111-1111-4111-8111-111111111111',
+          pdfs: [expect.objectContaining({ year: 2026 })],
+        },
+      ],
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/outputs',
+      expect.objectContaining({
+        credentials: 'include',
+      })
+    );
+  });
+
+  it('starts waste pdf generation through the host facade', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            collectionLocationId: '11111111-1111-4111-8111-111111111111',
+            year: 2026,
+            storageKey: 'waste-output/collection-locations/11111111-1111-4111-8111-111111111111/2026.pdf',
+            deliveryUrl: 'https://cdn.example/location-1/2026.pdf',
+            expiresAt: '2026-05-21T12:00:00.000Z',
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await expect(
+      createWasteManagementOutputPdf({
+        collectionLocationId: '11111111-1111-4111-8111-111111111111',
+        year: 2026,
+      })
+    ).resolves.toMatchObject({
+      collectionLocationId: '11111111-1111-4111-8111-111111111111',
+      year: 2026,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/outputs/pdf',
+      expect.objectContaining({
+        method: 'POST',
         credentials: 'include',
       })
     );

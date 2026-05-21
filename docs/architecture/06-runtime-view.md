@@ -39,22 +39,25 @@ Fehlerpfad:
 - Datenbankfehler beim Anlegen oder Lesen werden als hostgeführte `database_unavailable`-Antworten abgebildet.
 - Die öffentliche API bleibt runner-agnostisch; eine interne Worker-Technologie darf den Fehler- und Statusvertrag nicht verändern.
 
-### Waste-Management: Settings, CRUD und technische Tools
+### Waste-Management: Settings, CRUD, PDF-Ausgabe und technische Tools
 
 1. Ein berechtigter Instanzbenutzer öffnet `/plugins/waste-management`.
 2. Die App-Shell materialisiert die freie Plugin-Route hostgeführt über `@sva/routing` und prüft Guard plus Modulfreigabe fail-closed.
-3. Das Plugin lädt fachliche Leseansichten ausschließlich über `/api/v1/waste-management/settings`, `/history`, `/master-data`, `/tours` und `/scheduling`.
+3. Das Plugin lädt fachliche Leseansichten ausschließlich über `/api/v1/waste-management/settings`, `/history`, `/master-data`, `/tours`, `/scheduling` und `/outputs`.
 4. `@sva/auth-runtime` prüft Session, Instanzkontext, modulbezogene `waste-management.*`-Rechte und den stabilen Fehlervertrag.
-5. Für Settings, Seed, Reset, Migrations- und Importpfade löst `@sva/server-runtime` die aktive Waste-Datenquelle der Instanz auf und verwendet dabei serverseitig geschützte Secrets.
+5. Für Settings, PDF-Ausgabe, Seed, Reset, Migrations- und Importpfade löst `@sva/server-runtime` die aktive Waste-Datenquelle der Instanz auf und verwendet dabei serverseitig geschützte Secrets.
 6. Zentrale Governance-Daten wie Waste-Datenquelle, letzter Connection-Check und Auditspur liegen im Studio-Postgres; die fachlichen Waste-Daten liegen in der instanzbezogenen Waste-Fachdatenbank.
 7. Mutationen gegen Fraktionen, Orte, Abholorte, Touren, Ausweichtermine und Bulk-Zuordnungen laufen immer über dieselbe Host-Fassade und erzeugen zentrale Audit-Events.
-8. Technische Operationen wie Import, Migration, Seed und Reset starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
-9. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.
+8. Für `POST /api/v1/waste-management/outputs/pdf` lädt der Host alle wirksamen Fraktionen, ortsbezogenen Abholtermine sowie globale und tourbezogene Verschiebungen für genau einen Abholort und genau ein Jahr, rendert daraus serverseitig ein PDF und speichert das Artefakt unter einem deterministischen Schlüssel.
+9. Das Plugin zeigt den resultierenden PDF-Link sofort im Tab `Ausgabe` und nach erneutem Laden zusätzlich direkt in der Tabelle `Abholorte`.
+10. Technische Operationen wie Import, Migration, Seed und Reset starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
+11. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.
 
 Fehlerpfad:
 
 - Fehlt die Modulfreigabe oder die spezifische `waste-management.*`-Berechtigung, blockiert der Host fail-closed vor der Mutation oder dem Jobstart.
 - Fehlt oder driftet die Waste-Datenquelle einer Instanz, antwortet die Fassade mit technischem Fehlervertrag; Secrets werden nie im Plugin oder Browser aufgelöst.
+- Fehlende oder unvollständige Abholortdaten, Terminimporte oder Storage-Zugriffe brechen die PDF-Erzeugung serverseitig mit einem stabilen Fehlervertrag ab; teilweise gerenderte Artefakte werden nicht browserseitig weiterverarbeitet.
 - Ein `Newcms`-ähnlicher Direktzugriff auf Supabase-Funktionen, direkte DB-Connections oder mitportierte Runtime-Hooks ist kein zulässiger Alternativpfad.
 
 ### Öffentlicher Abfallkalender: Auswahl, Restore und Detailansicht

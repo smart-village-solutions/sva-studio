@@ -7,6 +7,7 @@ import type {
   WasteStreetRecord,
   WasteTourRecord,
 } from '@sva/plugin-sdk';
+import type { WasteManagementOutputOverview, WasteOutputPdfArtifactRecord } from './waste-management.api.js';
 
 export type WasteMasterDataLocationsTableProps = {
   readonly regions: readonly WasteRegionRecord[];
@@ -15,6 +16,7 @@ export type WasteMasterDataLocationsTableProps = {
   readonly houseNumbers: readonly WasteHouseNumberRecord[];
   readonly collectionLocations: readonly WasteCollectionLocationRecord[];
   readonly locationTourLinks: readonly WasteLocationTourLinkRecord[];
+  readonly outputOverview: WasteManagementOutputOverview | null;
   readonly selectedLocationIds: readonly string[];
   readonly allFilteredLocationsSelected: boolean;
   readonly selectedCollectionLocationsCount: number;
@@ -59,4 +61,5 @@ export type WasteMasterDataLocationsTableMaps = {
   readonly houseNumbersById: ReadonlyMap<string, WasteHouseNumberRecord>;
   readonly toursById: ReadonlyMap<string, WasteTourRecord>;
   readonly locationTourNamesByLocationId: ReadonlyMap<string, readonly string[]>;
+  readonly outputPdfsByLocationId: ReadonlyMap<string, readonly WasteOutputPdfArtifactRecord[]>;
 };

@@ -20,7 +20,7 @@ const searchState = {
 };
 const useWasteManagementUiAccessMock = vi.fn(() => ({
   isResolved: true,
-  visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'tools', 'settings'],
+  visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'],
   canAccessSettings: true,
   canAccessTools: true,
   canRunInitialize: true,
@@ -109,7 +109,7 @@ describe('WasteManagementPage shell', () => {
     useWasteManagementUiAccessMock.mockReset();
     useWasteManagementUiAccessMock.mockReturnValue({
       isResolved: true,
-      visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'tools', 'settings'],
+      visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'],
       canAccessSettings: true,
       canAccessTools: true,
       canRunInitialize: true,
@@ -154,7 +154,7 @@ describe('WasteManagementPage shell', () => {
     searchState.masterDataTab = 'locations';
     useWasteManagementUiAccessMock.mockReturnValue({
       isResolved: true,
-      visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling'],
+      visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output'],
       canAccessSettings: false,
       canAccessTools: false,
       canRunInitialize: false,
@@ -167,7 +167,7 @@ describe('WasteManagementPage shell', () => {
     render(<WasteManagementPage />);
 
     expect(screen.queryByRole('button', { name: 'actions.openSettings' })).toBeNull();
-    expect(screen.getByText('fractions,tours,locations,scheduling')).toBeTruthy();
+    expect(screen.getByText('fractions,tours,locations,scheduling,output')).toBeTruthy();
 
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith({

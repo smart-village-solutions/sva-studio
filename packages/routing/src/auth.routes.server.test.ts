@@ -135,8 +135,10 @@ const authServerMocks = vi.hoisted(() => {
     },
     wasteManagementHandlers: {
       getHistory: vi.fn(async () => response('getWasteManagementHistoryHandler')),
+      getOutputOverview: vi.fn(async () => response('getWasteManagementOutputOverviewHandler')),
       createCity: vi.fn(async () => response('createWasteManagementCityHandler')),
       createCollectionLocation: vi.fn(async () => response('createWasteManagementCollectionLocationHandler')),
+      createOutputPdf: vi.fn(async () => response('createWasteManagementOutputPdfHandler')),
       createFraction: vi.fn(async () => response('createWasteManagementFractionHandler')),
       deleteCollectionLocation: vi.fn(async () => response('deleteWasteManagementCollectionLocationHandler')),
       deleteFraction: vi.fn(async () => response('deleteWasteManagementFractionHandler')),
@@ -394,6 +396,8 @@ describe('auth.routes.server', () => {
 
   it('dispatches waste management routes to the auth runtime', async () => {
     const masterDataHandlers = resolveAuthHandlers('/api/v1/waste-management/master-data');
+    const outputsHandlers = resolveAuthHandlers('/api/v1/waste-management/outputs');
+    const outputPdfHandlers = resolveAuthHandlers('/api/v1/waste-management/outputs/pdf');
     const fractionHandlers = resolveAuthHandlers('/api/v1/waste-management/fractions');
     const fractionDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/fractions/$fractionId');
     const collectionLocationHandlers = resolveAuthHandlers('/api/v1/waste-management/collection-locations');
@@ -425,6 +429,8 @@ describe('auth.routes.server', () => {
     const resetHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/reset');
 
     expect(masterDataHandlers?.GET).toBeDefined();
+    expect(outputsHandlers?.GET).toBeDefined();
+    expect(outputPdfHandlers?.POST).toBeDefined();
     expect(fractionHandlers?.POST).toBeDefined();
     expect(fractionDetailHandlers?.DELETE).toBeDefined();
     expect(collectionLocationHandlers?.POST).toBeDefined();
@@ -454,6 +460,12 @@ describe('auth.routes.server', () => {
 
     await masterDataHandlers.GET?.({
       request: new Request('http://localhost/api/v1/waste-management/master-data', { method: 'GET' }),
+    });
+    await outputsHandlers.GET?.({
+      request: new Request('http://localhost/api/v1/waste-management/outputs', { method: 'GET' }),
+    });
+    await outputPdfHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/outputs/pdf', { method: 'POST' }),
     });
     await fractionHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/fractions', { method: 'POST' }),
@@ -565,6 +577,8 @@ describe('auth.routes.server', () => {
     });
 
     expect(authServerMocks.wasteManagementHandlers.getMasterDataOverview).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.getOutputOverview).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createOutputPdf).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createFraction).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createCollectionLocation).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.deleteCollectionLocation).toHaveBeenCalled();

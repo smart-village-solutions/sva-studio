@@ -113,5 +113,8 @@ describe('WasteOutputPanel', () => {
     expect(await screen.findByText('output.pdf.messages.generateSuccess')).toBeTruthy();
     expect(screen.getAllByRole('link', { name: 'output.pdf.actions.open' }).length).toBeGreaterThan(0);
     expect(screen.getAllByText('output.pdf.existing.yearLabel:{"value":2026}').length).toBeGreaterThan(0);
+    for (const link of screen.getAllByRole('link')) {
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    }
   });
 });

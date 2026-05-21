@@ -12,6 +12,9 @@ const wasteOutputPdfRequestSchema = z.object({
   year: z.number().int().min(2000).max(2100),
 });
 
+const isWasteOutputLocationNotFoundError = (error: unknown): boolean =>
+  error instanceof Error && error.message.startsWith('waste_output_location_not_found:');
+
 export const wasteManagementReadHandlers = {
   getWasteManagementSettingsInternal: async (
     _request: Request,
@@ -186,11 +189,13 @@ export const wasteManagementReadHandlers = {
 
     try {
       const overview = await requireDeps(deps.loadWasteOutputOverview, 'loadWasteOutputOverview')(instanceId);
+      await updateWasteVisibleStatus(deps, instanceId, 'success');
       return new Response(JSON.stringify(asApiItem(overview, requestId)), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
     } catch {
+      await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
       return createApiError(503, 'database_unavailable', 'Die Waste-Ausgaben konnten nicht geladen werden.', requestId);
     }
   },
@@ -230,7 +235,10 @@ export const wasteManagementReadHandlers = {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
-    } catch {
+    } catch (error) {
+      if (isWasteOutputLocationNotFoundError(error)) {
+        return createApiError(404, 'not_found', 'Der Waste-Abholort wurde nicht gefunden.', requestId);
+      }
       return createApiError(503, 'database_unavailable', 'Das Waste-PDF konnte nicht erzeugt werden.', requestId);
     }
   },

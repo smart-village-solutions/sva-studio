@@ -474,6 +474,12 @@ describe('waste-management server loaders', () => {
       storageKey: 'waste-output/collection-locations/location-1/2026.pdf',
       deliveryUrl: 'https://cdn.example/waste-output/collection-locations/location-1/2026.pdf',
     });
+    const pdfWrite = mediaStoragePortMock.writeObject.mock.calls.find(
+      ([input]: readonly [{ readonly storageKey: string }]) =>
+        input.storageKey === 'waste-output/collection-locations/location-1/2026.pdf'
+    );
+    const pdfText = Buffer.from((pdfWrite?.[0].body as Uint8Array | undefined) ?? new Uint8Array()).toString('latin1');
+    expect(pdfText).toContain('Havelland, Rathenow, Berliner Str. 12');
   });
 
   it('evicts stale waste pools after the idle ttl expires', async () => {

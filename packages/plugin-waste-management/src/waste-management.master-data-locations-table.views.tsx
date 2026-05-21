@@ -437,7 +437,7 @@ export const WasteMasterDataLocationsRow = ({
                 key={`${location.id}-${pdf.year}`}
                 href={pdf.deliveryUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="block text-sm font-medium text-primary underline-offset-2 hover:underline"
                 aria-label={pt('masterData.locationsWorkspace.table.openOutput', { value: pdf.year })}
               >

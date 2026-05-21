@@ -183,11 +183,17 @@ const renderNotes = (commands: string[], page: WasteCalendarPdfDocument['pages']
 };
 
 const renderLegend = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
+  const rowsPerColumn = 4;
+  const columnWidth = 118;
+  const baseX = 446;
+  const baseY = 486;
+  const rowGap = 22;
+
   for (const [index, entry] of page.legend.entries()) {
-    const columnIndex = index < 3 ? 0 : 1;
-    const rowIndex = index % 3;
-    const x = 520 + columnIndex * 140;
-    const y = 518 + rowIndex * 28;
+    const columnIndex = Math.floor(index / rowsPerColumn);
+    const rowIndex = index % rowsPerColumn;
+    const x = baseX + columnIndex * columnWidth;
+    const y = baseY + rowIndex * rowGap;
     drawFilledRectangle(commands, x, y, 22, 14, entry.fillColor);
     drawText(commands, x + 4, y + 10.2, 7.8, entry.code, 'F1');
     for (const [lineIndex, line] of splitLegendLabel(entry.label).entries()) {

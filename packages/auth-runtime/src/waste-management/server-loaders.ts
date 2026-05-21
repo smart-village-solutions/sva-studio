@@ -672,8 +672,11 @@ const formatWasteOutputLocationLabel = (input: {
   const houseNumber = input.location.houseNumberId
     ? input.houseNumbers.find((entry) => entry.id === input.location.houseNumberId)
     : undefined;
+  const addressLabel = [street?.name, houseNumber?.number]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join(' ');
 
-  return [region?.name, city?.name, street?.name, houseNumber?.number]
+  return [region?.name, city?.name, addressLabel]
     .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
     .join(', ');
 };

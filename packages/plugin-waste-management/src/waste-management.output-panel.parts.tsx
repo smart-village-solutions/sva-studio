@@ -23,7 +23,7 @@ const OutputPdfLink = ({
   readonly href: string;
   readonly label: string;
 }) => (
-  <a href={href} target="_blank" rel="noreferrer" className={outputPdfLinkClassName}>
+  <a href={href} target="_blank" rel="noopener noreferrer" className={outputPdfLinkClassName}>
     {label}
   </a>
 );

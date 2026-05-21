@@ -160,4 +160,50 @@ describe('waste-management master-data location table views', () => {
     expect(onCopyLocation).toHaveBeenCalledWith(expect.objectContaining({ id: 'location-1' }));
     expect(onDeleteLocation).toHaveBeenCalledWith(expect.objectContaining({ id: 'location-1' }));
   });
+
+  it('renders output links with tabnabbing protection', () => {
+    render(
+      <table>
+        <tbody>
+          <WasteMasterDataLocationsRow
+            location={{
+              id: 'location-1',
+              regionId: 'region-1',
+              cityId: 'city-1',
+              streetId: 'street-1',
+              houseNumberId: 'house-1',
+              active: true,
+              createdAt: '',
+              updatedAt: '',
+            }}
+            maps={{
+              regionsById: new Map([['region-1', { id: 'region-1', name: 'Region' }]]),
+              citiesById: new Map([['city-1', { id: 'city-1', name: 'Stadt' }]]),
+              streetsById: new Map([['street-1', { id: 'street-1', name: 'Straße' }]]),
+              houseNumbersById: new Map([['house-1', { id: 'house-1', number: '12' }]]),
+              toursById: new Map(),
+              locationTourNamesByLocationId: new Map(),
+              outputPdfsByLocationId: new Map([
+                [
+                  'location-1',
+                  [{ year: 2026, deliveryUrl: 'https://cdn.example/location-1/2026.pdf', expiresAt: '' }],
+                ],
+              ]),
+            }}
+            selectedLocationIds={[]}
+            onToggleLocation={vi.fn()}
+            onCopyLocation={vi.fn()}
+            onDeleteLocation={vi.fn(async () => undefined)}
+            onOpenEditLocation={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'masterData.locationsWorkspace.table.openOutput:{"value":2026}' }).getAttribute(
+        'rel'
+      )
+    ).toBe('noopener noreferrer');
+  });
 });

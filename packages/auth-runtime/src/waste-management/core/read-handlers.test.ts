@@ -183,6 +183,14 @@ describe('waste-management read handlers', () => {
             { ...createDeps(), loadSchedulingOverview: vi.fn(async () => ({ tourDateShifts: [], globalDateShifts: [] })) }
           ),
       },
+      {
+        run: () =>
+          wasteManagementReadHandlers.getWasteManagementOutputOverviewInternal(
+            new Request('https://studio.test/api/v1/waste-management/outputs'),
+            actor,
+            { ...createDeps(), loadWasteOutputOverview: vi.fn(async () => ({ collectionLocations: [] })) }
+          ),
+      },
     ];
 
     for (const testCase of successCases) {
@@ -204,6 +212,20 @@ describe('waste-management read handlers', () => {
     );
 
     expect(failureResponse.status).toBe(503);
+    expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(expect.any(Object), 'tenant-a', 'revalidate');
+
+    const outputFailureResponse = await wasteManagementReadHandlers.getWasteManagementOutputOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/outputs'),
+      actor,
+      {
+        ...createDeps(),
+        loadWasteOutputOverview: vi.fn(async () => {
+          throw new Error('storage down');
+        }),
+      }
+    );
+
+    expect(outputFailureResponse.status).toBe(503);
     expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(expect.any(Object), 'tenant-a', 'revalidate');
   });
 
@@ -366,6 +388,37 @@ describe('waste-management read handlers', () => {
         collectionLocationId,
         year: 2026,
         deliveryUrl: `https://cdn.example/${collectionLocationId}/2026.pdf`,
+      },
+    });
+  });
+
+  it('returns not_found when waste pdf generation targets a deleted location', async () => {
+    const createResponse = await wasteManagementReadHandlers.createWasteManagementOutputPdfInternal(
+      new Request('https://studio.test/api/v1/waste-management/outputs/pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'https://studio.test',
+        },
+        body: JSON.stringify({
+          collectionLocationId,
+          year: 2026,
+        }),
+      }),
+      actor,
+      {
+        ...createDeps(),
+        generateWasteOutputPdf: vi.fn(async () => {
+          throw new Error(`waste_output_location_not_found:${collectionLocationId}`);
+        }),
+      }
+    );
+
+    expect(createResponse.status).toBe(404);
+    await expect(createResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'not_found',
       },
     });
   });

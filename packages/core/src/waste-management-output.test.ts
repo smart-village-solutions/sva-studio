@@ -42,6 +42,7 @@ describe('waste-management output pdf', () => {
       'Leichtverpackungen',
       'Papier und Pappe',
     ]);
+    expect(document.pages[0]?.months[2]?.label).toBe('März');
   });
 
   it('renders a valid two-page pdf buffer', () => {
@@ -64,7 +65,42 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('Abfallkalender 2026');
     expect(pdfText).toContain('Rathenow, Berliner Str. 12');
     expect(pdfText).toContain('Januar');
+    expect(pdfText).toContain('März');
     expect(pdfText).toContain('Juli');
     expect(pdfText).toContain('Hausmuell');
+  });
+
+  it('renders legend labels at distinct positions once more than six fractions are present', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Rathenow, Berliner Str. 12',
+        pickups: [
+          {
+            date: '2026-01-14',
+            fractions: [
+              { id: 'fraction-1', label: 'Fraktion 1', color: '#111111' },
+              { id: 'fraction-2', label: 'Fraktion 2', color: '#222222' },
+              { id: 'fraction-3', label: 'Fraktion 3', color: '#333333' },
+              { id: 'fraction-4', label: 'Fraktion 4', color: '#444444' },
+              { id: 'fraction-5', label: 'Fraktion 5', color: '#555555' },
+              { id: 'fraction-6', label: 'Fraktion 6', color: '#666666' },
+              { id: 'fraction-7', label: 'Fraktion 7', color: '#777777' },
+            ],
+          },
+        ],
+      })
+    ).toString('latin1');
+
+    const extractLegendPosition = (label: string): string | null => {
+      const match = pdfText.match(new RegExp(`1 0 0 1 ([0-9.]+) ([0-9.]+) Tm \\(${label}\\) Tj ET`));
+      return match ? `${match[1]}:${match[2]}` : null;
+    };
+
+    const positions = Array.from({ length: 7 }, (_, index) => extractLegendPosition(`Fraktion ${index + 1}`));
+
+    expect(positions.every((value) => value !== null)).toBe(true);
+    expect(new Set(positions).size).toBe(7);
+    expect(extractLegendPosition('Fraktion 4')).not.toBe(extractLegendPosition('Fraktion 7'));
   });
 });

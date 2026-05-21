@@ -31,7 +31,7 @@ type WasteCalendarPdfMonth = Readonly<{
 const MONTH_NAMES = [
   'Januar',
   'Februar',
-  'Maerz',
+  'März',
   'April',
   'Mai',
   'Juni',

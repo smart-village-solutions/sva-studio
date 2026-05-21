@@ -35,8 +35,11 @@ export class PdfBuilder {
     const xrefOffset = Buffer.byteLength(output, 'latin1');
     output += `xref\n0 ${this.nextObjectId}\n0000000000 65535 f \n`;
     for (let objectId = 1; objectId < this.nextObjectId; objectId += 1) {
-      const offset = offsets.get(objectId) ?? 0;
-      output += `${offset.toString().padStart(10, '0')} 00000 n \n`;
+      const offset = offsets.get(objectId);
+      output +=
+        offset === undefined
+          ? '0000000000 65535 f \n'
+          : `${offset.toString().padStart(10, '0')} 00000 n \n`;
     }
     output += `trailer\n<< /Size ${this.nextObjectId} /Root ${rootObjectId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
     return Buffer.from(output, 'latin1');

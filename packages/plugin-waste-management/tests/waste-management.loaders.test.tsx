@@ -13,6 +13,7 @@ import { useWasteToursState } from '../src/waste-management.tours.state.js';
 
 const apiMocks = vi.hoisted(() => ({
   getWasteManagementMasterDataOverview: vi.fn(),
+  getWasteManagementOutputOverview: vi.fn(),
   getWasteManagementSchedulingOverview: vi.fn(),
   getWasteManagementSettings: vi.fn(),
   getWasteManagementToursOverview: vi.fn(),
@@ -96,6 +97,7 @@ const SchedulingLoaderHarness = () => {
 describe('waste management data loaders', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiMocks.getWasteManagementOutputOverview.mockResolvedValue({ collectionLocations: [] });
   });
 
   afterEach(() => {
@@ -161,6 +163,7 @@ describe('waste management data loaders', () => {
 
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({ scope: 'locations' });
+    expect(apiMocks.getWasteManagementOutputOverview).toHaveBeenCalledTimes(1);
   });
 
   it('reloads the master-data overview when the active tab scope changes', async () => {
@@ -192,6 +195,7 @@ describe('waste management data loaders', () => {
     await waitFor(() => {
       expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, { scope: 'locations' });
     });
+    expect(apiMocks.getWasteManagementOutputOverview).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the scheduling loader on a single failed fetch cycle', async () => {

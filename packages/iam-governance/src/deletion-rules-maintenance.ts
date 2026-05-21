@@ -50,6 +50,7 @@ WITH last_login_events AS (
   FROM iam.activity_logs log
   WHERE log.instance_id = $1
     AND log.event_type = 'login'
+    AND log.result = 'success'
     AND log.account_id IS NOT NULL
   GROUP BY log.account_id
 )

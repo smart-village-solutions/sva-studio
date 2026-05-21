@@ -237,6 +237,19 @@ describe('workspace package scripts', () => {
     expect(e2eWorkflow).toContain('pull_request:');
   });
 
+  it('determines PR scope before conditionally starting Redis in runtime gates', () => {
+    const workflow = loadRuntimeGatesWorkflow();
+    const scopeIndex = workflow.indexOf('      - name: Determine PR scope');
+    const startRedisIndex = workflow.indexOf('      - name: Start Redis for coverage tests');
+    const waitRedisIndex = workflow.indexOf('      - name: Wait for Redis readiness');
+
+    expect(scopeIndex).toBeGreaterThan(-1);
+    expect(startRedisIndex).toBeGreaterThan(-1);
+    expect(waitRedisIndex).toBeGreaterThan(-1);
+    expect(scopeIndex).toBeLessThan(startRedisIndex);
+    expect(startRedisIndex).toBeLessThan(waitRedisIndex);
+  });
+
   it('keeps PR build validation on the shared pr-scope helper', () => {
     const mainBuildWorkflow = loadMainBuildWorkflow();
 

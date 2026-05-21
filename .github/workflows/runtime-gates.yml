@@ -51,6 +51,11 @@ jobs:
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
 
+      - name: Determine PR scope
+        id: scope
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
+
       - name: Start Redis for coverage tests
         if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip')
         run: docker run -d --name sva-studio-redis-coverage -p 6379:6379 redis:7-alpine
@@ -70,11 +75,6 @@ jobs:
           echo "Redis did not become ready in time"
           docker ps -a
           exit 1
-
-      - name: Determine PR scope
-        id: scope
-        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
       - name: Run coverage on PR
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip'

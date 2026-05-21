@@ -99,6 +99,7 @@ describe('deletion-rules/read-models', () => {
     expect(client.query).toHaveBeenCalledTimes(1);
     expect(client.query.mock.calls[0]?.[0]).toContain('MAX(log.created_at)::text AS last_login_at');
     expect(client.query.mock.calls[0]?.[0]).toContain("log.event_type = 'login'");
+    expect(client.query.mock.calls[0]?.[0]).toContain("log.result = 'success'");
   });
 
   it('suppresses account overrides when the tenant disables them', async () => {

@@ -233,6 +233,47 @@ describe('auth-runtime withAuthenticatedUser', () => {
     expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalled();
   });
 
+  it('fails closed when lifecycle enforcement cannot resolve the tenant account or IAM database', async () => {
+    const request = new Request('http://localhost/auth/me', {
+      headers: { cookie: 'sva_auth_session=session-2' },
+    });
+
+    dbMocks.resolvePool.mockReturnValueOnce(null);
+    const unavailableResponse = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(unavailableResponse.status).toBe(503);
+    await expect(unavailableResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'internal_error',
+        details: {
+          dependency: 'iam_db',
+          reason_code: 'iam_db_unavailable',
+        },
+      },
+    });
+
+    dbMocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolvePool, _instanceId, work) =>
+      work({
+        query: vi.fn(async () => ({
+          rowCount: 0,
+          rows: [],
+        })),
+      })
+    );
+
+    const missingAccountResponse = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(missingAccountResponse.status).toBe(403);
+    await expect(missingAccountResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+        details: {
+          reason_code: 'account_not_found',
+        },
+      },
+    });
+  });
+
   it('accepts requests with an active local dev auth cookie in dev auth mode', async () => {
     authServerMocks.isMockAuthEnabled.mockReturnValue(true);
     authServerMocks.hasActiveMockAuthSession.mockReturnValue(true);

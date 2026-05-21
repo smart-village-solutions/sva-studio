@@ -144,6 +144,27 @@ describe('iam deletion rules runtime handlers', () => {
     });
   });
 
+  it('accepts the legacy admin alias for tenant deletion rules', async () => {
+    const { deletionRulesAdminHandler } = await import('./core.js');
+    state.withAuthenticatedUser.mockImplementationOnce(
+      async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'legacy-admin',
+            instanceId: 'de-test',
+            roles: ['admin'],
+          },
+        })
+    );
+
+    const response = await deletionRulesAdminHandler(
+      new Request('http://localhost/iam/admin/deletion-rules?instanceId=de-test')
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(adminOverview);
+  });
+
   it('stores tenant defaults and returns the refreshed overview', async () => {
     const { deletionRulesAdminHandler } = await import('./core.js');
 

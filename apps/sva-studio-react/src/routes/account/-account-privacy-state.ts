@@ -15,7 +15,7 @@ const toErrorMessage = (error: unknown) => (error instanceof Error ? error.messa
 export const useAccountPrivacyState = () => {
   const [overview, setOverview] = React.useState<PrivacyOverview | null>(null);
   const [deletionRules, setDeletionRules] = React.useState<IamMyDeletionRulesOverview | null>(null);
-  const [hasDeletionRulesAccess, setHasDeletionRulesAccess] = React.useState(true);
+  const [hasDeletionRulesAccess, setHasDeletionRulesAccess] = React.useState(false);
   const [contentPreferenceDraft, setContentPreferenceDraft] = React.useState<IamDeletionContentStrategy>('retain');
   const [isLoading, setIsLoading] = React.useState(true);
   const [isLoadingDeletionRules, setIsLoadingDeletionRules] = React.useState(true);
@@ -47,6 +47,7 @@ export const useAccountPrivacyState = () => {
   const loadDeletionRules = React.useCallback(async () => {
     setIsLoadingDeletionRules(true);
     setDeletionRulesError(null);
+    setHasDeletionRulesAccess(false);
     try {
       const response = await getMyDeletionRules();
       setHasDeletionRulesAccess(true);
@@ -59,7 +60,7 @@ export const useAccountPrivacyState = () => {
         setHasDeletionRulesAccess(false);
         setDeletionRulesError(null);
       } else {
-        setHasDeletionRulesAccess(true);
+        setHasDeletionRulesAccess(false);
         setDeletionRulesError(toErrorMessage(error));
       }
     } finally {

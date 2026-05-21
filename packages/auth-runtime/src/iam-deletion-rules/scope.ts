@@ -4,7 +4,7 @@ import { createApiError } from '../iam-account-management/api-helpers.js';
 import { type AuthenticatedRequestContext } from '../middleware.js';
 import { readString } from '../shared/input-readers.js';
 
-const ADMIN_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
+const ADMIN_ROLES = new Set(['admin', 'iam_admin', 'support_admin', 'system_admin']);
 
 const isAdminRole = (roles: readonly string[]): boolean => roles.some((role) => ADMIN_ROLES.has(role));
 

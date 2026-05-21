@@ -6,19 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { t } from '../../i18n';
-import { formatEditorDateTime } from '../../lib/editor-date-time';
+import { formatPrivacyDateTime } from './-account-privacy-shared';
 
 const deletionContentStrategyOptions: readonly IamDeletionContentStrategy[] = [
   'retain',
   'with_owner_lifecycle',
 ] as const;
-
-const formatDateTime = (value?: string) => {
-  if (!value) {
-    return '—';
-  }
-  return formatEditorDateTime(value) ?? value;
-};
 
 const mapLifecycleStateKey = (state: IamMyDeletionRulesOverview['lifecycleState']) => {
   switch (state) {
@@ -96,7 +89,7 @@ export const AccountDeletionRulesCard = ({
                 <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                   {t('account.privacy.deletionRules.summary.lastLoginAt')}
                 </dt>
-                <dd className="text-foreground">{formatDateTime(deletionRules.lastLoginAt)}</dd>
+                <dd className="text-foreground">{formatPrivacyDateTime(deletionRules.lastLoginAt)}</dd>
               </div>
               <div>
                 <dt className="text-xs uppercase tracking-wide text-muted-foreground">

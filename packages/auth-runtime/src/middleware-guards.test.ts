@@ -151,6 +151,50 @@ describe('middleware-guards', () => {
     );
   });
 
+  it('fails closed when the IAM database or the tenant account record is unavailable', async () => {
+    const { ensureAccountLifecycleAllowsAccess } = await import('./middleware-guards.js');
+    const request = new Request('http://localhost/auth/me');
+    const activeUser = {
+      id: 'user-1',
+      roles: ['editor'],
+      instanceId: 'de-musterhausen',
+    } as never;
+
+    dbMocks.resolvePool.mockReturnValueOnce(null);
+    const unavailableResponse = await ensureAccountLifecycleAllowsAccess(request, activeUser);
+
+    expect(unavailableResponse?.status).toBe(503);
+    await expect(unavailableResponse?.json()).resolves.toMatchObject({
+      error: {
+        code: 'internal_error',
+        details: {
+          dependency: 'iam_db',
+          reason_code: 'iam_db_unavailable',
+        },
+      },
+    });
+
+    dbMocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolvePool, _instanceId, work) =>
+      work({
+        query: vi.fn(async () => ({
+          rows: [],
+        })),
+      })
+    );
+
+    const missingAccountResponse = await ensureAccountLifecycleAllowsAccess(request, activeUser);
+
+    expect(missingAccountResponse?.status).toBe(403);
+    await expect(missingAccountResponse?.json()).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+        details: {
+          reason_code: 'account_not_found',
+        },
+      },
+    });
+  });
+
   it('maps session store, hydration, and unexpected middleware failures to stable api errors', async () => {
     const { logUnexpectedMiddlewareError } = await import('./middleware-guards.js');
     const request = new Request('http://localhost/auth/me');

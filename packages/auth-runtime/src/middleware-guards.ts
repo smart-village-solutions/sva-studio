@@ -61,11 +61,34 @@ export const ensureAccountLifecycleAllowsAccess = async (
   user: SessionUser,
   options?: { isLocalDevelopmentAuth?: boolean }
 ): Promise<Response | null> => {
-  if (options?.isLocalDevelopmentAuth || !user.instanceId || !resolvePool()) {
+  if (options?.isLocalDevelopmentAuth || !user.instanceId) {
     return null;
   }
 
-  const accountState = await withResolvedInstanceDb(resolvePool, user.instanceId, async (client) => {
+  const pool = resolvePool();
+  if (!pool) {
+    const logContext = buildLogContext(user.instanceId, { includeTraceId: true });
+    logger.error('Auth middleware cannot enforce account lifecycle without an IAM database connection', {
+      endpoint: request.url,
+      operation: 'auth_middleware',
+      user_id: user.id,
+      reason_code: 'iam_db_unavailable',
+      ...logContext,
+    });
+
+    return createApiError(
+      503,
+      'internal_error',
+      'Authentifizierung ist momentan nicht verfügbar, weil die IAM-Datenbank nicht erreichbar ist.',
+      logContext.request_id,
+      {
+        dependency: 'iam_db',
+        reason_code: 'iam_db_unavailable',
+      }
+    );
+  }
+
+  const accountState = await withResolvedInstanceDb(() => pool, user.instanceId, async (client) => {
     const result = await client.query<AccountLifecycleRow>(
       `
 SELECT a.deletion_lifecycle_state
@@ -80,11 +103,31 @@ LIMIT 1;
     return result.rows[0]?.deletion_lifecycle_state;
   });
 
-  if (!accountState || accountState === 'active') {
+  if (accountState === 'active') {
     return null;
   }
 
   const logContext = buildLogContext(user.instanceId, { includeTraceId: true });
+  if (!accountState) {
+    logger.warn('Auth middleware rejected request because the tenant account could not be resolved', {
+      endpoint: request.url,
+      operation: 'auth_middleware',
+      user_id: user.id,
+      reason_code: 'account_not_found',
+      ...logContext,
+    });
+
+    return createApiError(
+      403,
+      'forbidden',
+      'Dieses Konto ist nicht mehr aktiv.',
+      logContext.request_id,
+      {
+        reason_code: 'account_not_found',
+      }
+    );
+  }
+
   logger.warn('Auth middleware rejected request because the account lifecycle is blocked', {
     endpoint: request.url,
     operation: 'auth_middleware',

@@ -684,7 +684,7 @@ test('iam cockpit redirects unknown or disallowed tabs to the first allowed gove
   await expect(page).toHaveURL(/\/admin\/iam\?tab=governance$/);
   await expect(page.getByRole('heading', { name: 'IAM Transparenz-Cockpit' })).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole('tab', { name: 'Governance', selected: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Impersonation für Support-Fall' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Impersonation für Support-Fall' })).toBeVisible();
 });
 
 test('direct access to admin users redirects unauthenticated clients to login', async ({ request }) => {

@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
   getAdminExportStatus: vi.fn(),
   runDsrMaintenance: vi.fn(),
   listAdminDsrCases: vi.fn(),
+  getAdminDsrCase: vi.fn(),
   loadDsrSelfServiceOverview: vi.fn(),
   parseFieldEncryptionConfigFromEnv: vi.fn(() => ({ keyId: 'enc-1' })),
   encryptFieldValue: vi.fn((value: string) => `enc:${value}`),
@@ -96,6 +97,7 @@ vi.mock('@sva/iam-governance/dsr-maintenance', () => ({
 }));
 
 vi.mock('@sva/iam-governance', () => ({
+  getAdminDsrCase: mocks.getAdminDsrCase,
   listAdminDsrCases: mocks.listAdminDsrCases,
   loadDsrSelfServiceOverview: mocks.loadDsrSelfServiceOverview,
 }));
@@ -224,6 +226,7 @@ describe('iam data subject rights handlers', () => {
     mocks.runDsrMaintenance.mockResolvedValue({ dryRun: false, affected: 0 });
     mocks.loadDsrSelfServiceOverview.mockResolvedValue({ totals: { open: 1 } });
     mocks.listAdminDsrCases.mockResolvedValue({ items: [{ id: 'case-1' }], total: 1 });
+    mocks.getAdminDsrCase.mockResolvedValue({ id: 'case-1' });
   });
 
   it('rejects invalid self-export formats before touching the database', async () => {
@@ -1432,6 +1435,64 @@ describe('iam data subject rights handlers', () => {
       data: [{ id: 'case-1' }, { id: 'case-2' }],
       page: { page: 2, pageSize: 10, total: 2 },
       requestId: 'req-test',
+    });
+  });
+
+  it('guards admin DSR case detail and maps not-found or backend failures', async () => {
+    const { getAdminDataSubjectRightsCaseHandler } = await import('./core.js');
+
+    const forbidden = await getAdminDataSubjectRightsCaseHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/cases/123e4567-e89b-42d3-a456-426614174000?instanceId=de-test')
+    );
+    expect(forbidden.status).toBe(403);
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, instanceId: undefined, roles: ['support_admin'] } })
+    );
+    const missingInstance = await getAdminDataSubjectRightsCaseHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/cases/123e4567-e89b-42d3-a456-426614174000')
+    );
+    expect(missingInstance.status).toBe(400);
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['support_admin'] } })
+    );
+    const invalidCaseId = await getAdminDataSubjectRightsCaseHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/cases/not-a-uuid?instanceId=de-test')
+    );
+    expect(invalidCaseId.status).toBe(400);
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['support_admin'] } })
+    );
+    const success = await getAdminDataSubjectRightsCaseHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/cases/123e4567-e89b-42d3-a456-426614174000?instanceId=de-test')
+    );
+    expect(success.status).toBe(200);
+    await expect(expectJson(success)).resolves.toEqual({
+      data: { id: 'case-1' },
+      requestId: 'req-test',
+    });
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['support_admin'] } })
+    );
+    mocks.getAdminDsrCase.mockResolvedValueOnce(null);
+    const notFound = await getAdminDataSubjectRightsCaseHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/cases/123e4567-e89b-42d3-a456-426614174000?instanceId=de-test')
+    );
+    expect(notFound.status).toBe(404);
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['support_admin'] } })
+    );
+    mocks.withResolvedInstanceDb.mockRejectedValueOnce(new Error('case detail down'));
+    const unavailable = await getAdminDataSubjectRightsCaseHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/cases/123e4567-e89b-42d3-a456-426614174000?instanceId=de-test')
+    );
+    expect(unavailable.status).toBe(503);
+    await expect(expectJson(unavailable)).resolves.toMatchObject({
+      error: 'database_unavailable',
     });
   });
 });

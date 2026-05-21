@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { listGovernanceCases } from './read-models.js';
+import { getGovernanceCase, listGovernanceCases } from './read-models.js';
 
 type QueryResult = {
   rowCount: number;
@@ -267,5 +267,44 @@ describe('iam-governance/read-models', () => {
         requestOrigin: 'self_service',
       },
     });
+  });
+
+  it('returns a governance case by id and short-circuits missing ids', async () => {
+    const client = buildClient(
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'legal-2',
+            legal_text_id: 'privacy_policy',
+            legal_text_version: '2026-04',
+            locale: 'en-GB',
+            accepted_at: '2026-03-18T08:00:00.000Z',
+            revoked_at: '2026-03-19T08:00:00.000Z',
+            request_id: 'req-2',
+            trace_id: 'trace-2',
+            account_id: '11111111-1111-4111-8111-111111111111',
+            display_name_ciphertext: 'Privacy Person',
+            first_name_ciphertext: 'Privacy',
+            last_name_ciphertext: 'Person',
+            keycloak_subject: 'kc-privacy',
+          },
+        ],
+      }
+    );
+
+    await expect(getGovernanceCase(client as never, { instanceId: 'de-musterhausen', caseId: '' })).resolves.toBeNull();
+
+    const result = await getGovernanceCase(client as never, {
+      instanceId: 'de-musterhausen',
+      caseId: 'legal-2',
+      type: 'legal_acceptance',
+    });
+
+    expect(result).toMatchObject({ id: 'legal-2', status: 'revoked' });
+    expect(client.query).toHaveBeenCalledTimes(4);
   });
 });

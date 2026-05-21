@@ -33,6 +33,55 @@ const formatMetadata = (metadata: Readonly<Record<string, unknown>>) => {
   return entries.map(([key, value]) => `${key}: ${String(value)}`).join(', ');
 };
 
+const DetailField = ({ label, value }: Readonly<{ label: string; value: string }>) => (
+  <div>
+    <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+    <p>{value}</p>
+  </div>
+);
+
+const DsrDetailContent = ({ item }: Readonly<{ item: IamDsrCaseListItem }>) => {
+  const requesterName = item.requesterDisplayName ?? item.actorDisplayName ?? '—';
+  const completedAt = formatDateTime(item.completedAt ?? item.updatedAt);
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <CardTitle>{item.title}</CardTitle>
+              <p className="text-sm text-muted-foreground">{item.summary}</p>
+            </div>
+            <Badge className={mapDsrStatusTone(item)} variant="outline">
+              {t(mapDsrStatusToTranslationKey(item))}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2">
+          <DetailField label={t('admin.iam.shared.type', { value: '' }).replace(': ', '')} value={t(mapDsrTypeToTranslationKey(item.type))} />
+          <DetailField label={t('admin.iam.shared.status')} value={item.rawStatus} />
+          <DetailField label={t('admin.iam.shared.targetLabel')} value={item.targetDisplayName ?? '—'} />
+          <DetailField label={t('admin.iam.shared.requester')} value={requesterName} />
+          <DetailField label={t('admin.iam.dsr.columns.createdAt')} value={formatDateTime(item.createdAt)} />
+          <DetailField label={t('admin.iam.dsr.columns.completedAt')} value={completedAt} />
+          <div className="md:col-span-2">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.dsr.columns.blocker')}</p>
+            <p>{item.blockedReason ?? '—'}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('admin.iam.shared.meta')}</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-foreground">{formatMetadata(item.metadata)}</CardContent>
+      </Card>
+    </>
+  );
+};
+
 export function IamDsrDetailPage({ caseId }: Readonly<{ caseId: string }>) {
   const navigate = useNavigate();
   const { user, isLoading: isLoadingUser, error: authError } = useAuth();
@@ -123,60 +172,7 @@ export function IamDsrDetailPage({ caseId }: Readonly<{ caseId: string }>) {
           <AlertDescription>{t('admin.iam.dsr.detail.notFound')}</AlertDescription>
         </Alert>
       ) : null}
-      {item ? (
-        <>
-          <Card>
-            <CardHeader className="gap-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <CardTitle>{item.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{item.summary}</p>
-                </div>
-                <Badge className={mapDsrStatusTone(item)} variant="outline">
-                  {t(mapDsrStatusToTranslationKey(item))}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.type', { value: '' }).replace(': ', '')}</p>
-                <p>{t(mapDsrTypeToTranslationKey(item.type))}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.status')}</p>
-                <p>{item.rawStatus}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.targetLabel')}</p>
-                <p>{item.targetDisplayName ?? '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.requester')}</p>
-                <p>{item.requesterDisplayName ?? item.actorDisplayName ?? '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.dsr.columns.createdAt')}</p>
-                <p>{formatDateTime(item.createdAt)}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.dsr.columns.completedAt')}</p>
-                <p>{formatDateTime(item.completedAt ?? item.updatedAt)}</p>
-              </div>
-              <div className="md:col-span-2">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.dsr.columns.blocker')}</p>
-                <p>{item.blockedReason ?? '—'}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('admin.iam.shared.meta')}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-foreground">{formatMetadata(item.metadata)}</CardContent>
-          </Card>
-        </>
-      ) : null}
+      {item ? <DsrDetailContent item={item} /> : null}
     </StudioDetailPageTemplate>
   );
 }

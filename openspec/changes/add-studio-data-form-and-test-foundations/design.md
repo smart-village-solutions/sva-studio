@@ -35,7 +35,7 @@ Dieser Change benötigt zwei Architekturentscheidungen in `docs/adr/`, die spät
 - Decision: `react-hook-form` mit `@hookform/resolvers` wird der Formularstandard für Host- und Plugin-Views mit `zod`-Validierung.
   - Rationale: Das Repository nutzt bereits `zod` intensiv. Die Kombination minimiert Boilerplate, hält Validierungslogik typnah und verbessert Konsistenz über Account-, Admin- und Content-Formulare.
   - Rollout: Verbindlich für neue oder grundlegend überarbeitete Formular-Flows in Host und Plugins. Bestehende stabile Formulare werden nur bei fachlicher Überarbeitung oder gezielter Konsolidierung migriert.
-  - Exceptions: Nur rein lokale Fachlogik ohne HTTP-Bezug, unveränderte Legacy-Flows und dokumentierte Spezialfälle dürfen abweichen.
+  - Exceptions: Nur unveränderte Legacy-Flows, sehr kleine Interaktionen ohne eigenständige Formularorchestrierung und dokumentierte Spezialfälle dürfen abweichen.
 
 - Decision: `msw` wird der Standard für HTTP-nahe Frontend-Tests unterhalb echter E2E-Läufe.
   - Rationale: Netzwerkverhalten soll auf Protokollebene und nicht über clientinterne Stubs geprüft werden. Das passt zu Host/Plugin-Integrationen und reduziert Mock-Kopplung an Implementierungsdetails.
@@ -51,7 +51,7 @@ Dieser Change benötigt zwei Architekturentscheidungen in `docs/adr/`, die spät
 
 ## Capability Mapping
 
-- `monorepo-structure` ist die Single Source of Truth für den Foundation-Stack, gemeinsame Integrationsbausteine, die initiale `fast-check`-Startmenge sowie die Ablage- und Pflichtregeln für Inventur- und Governance-Artefakte.
+- `monorepo-structure` ist die Single Source of Truth für den Foundation-Stack ueber formularzentrierte Frontend-Workflows, HTTP-nahe Frontend-Tests und kritische framework-agnostische Kernlogik, inklusive gemeinsamer Integrationsbausteine, initialer `fast-check`-Startmenge sowie Ablage- und Pflichtregeln fuer Inventur- und Governance-Artefakte.
 - `review-governance` ist die Single Source of Truth für Review-Kriterien, Ausnahmebehandlung und Exit-Governance dieser Foundations.
 - `account-ui` und `content-management` konkretisieren den repo-weiten Formularstandard nur für ihre jeweiligen UI-Bereiche.
 - `test-coverage-governance` bleibt von diesem Change unberührt, weil Coverage-Gates und Coverage-Policies nicht die richtige Capability für MSW-/`fast-check`-Foundations sind.
@@ -114,7 +114,10 @@ Dieser Change benötigt zwei Architekturentscheidungen in `docs/adr/`, die spät
   - konsistentes Fehler-Mapping auf `StudioField` und `StudioFormSummary`
   - Fokusführung für Error-Summary und erstes fehlerhaftes Feld
   - klare Regel, wann `register` reicht und wann `Controller` genutzt wird
-- Vor Referenzmigrationen wird verbindlich festgelegt, welche dieser Primitiven rein `register`-basiert bleiben und für welche Komponenten ein `Controller`-Pfad bereitgestellt wird.
+- Verbindliche Aufteilung vor Referenzmigrationen:
+  - `Input`, `Textarea` und native `Checkbox`-Anbindungen nutzen standardmaessig `register`.
+  - `Select` sowie Komponenten mit kontrolliertem Value-/Event-Modell nutzen einen dokumentierten `Controller`-Pfad.
+  - Abweichungen von dieser Aufteilung gelten als Spezialfall und muessen separat begruendet werden.
 
 ### Test-Integration
 
@@ -164,26 +167,9 @@ Die Governance- und Review-Kriterien dieses Changes werden verbindlich unter `do
 
 Diese Governance wird capability-seitig in `review-governance` verankert, nicht in `test-coverage-governance`.
 
-## Governance and Review Rules
+## Governance and Exit Mapping
 
-- Neue oder grundlegend überarbeitete Formular-Flows dürfen keine konkurrierende formularweite Eigenorchestrierung einführen.
-- Neue oder grundlegend überarbeitete HTTP-nahe Frontend-Tests dürfen HTTP-Verhalten nicht primär über direkte `fetch`-, Wrapper- oder Client-Stubs abbilden, wenn `msw` den beobachtbaren Netzpfad abdecken kann.
-- Für kritische Kernlogik-Hotspots muss im Review eine kurze Entscheidung pro oder contra `fast-check` dokumentiert sein.
-- Für die initiale Startmenge in `packages/routing/src/route-search.ts`, `packages/routing/src/admin-resource-search-params.ts`, `packages/core/src/waste-management-location-tour-pickup-date-import.ts` und `packages/core/src/input-readers.ts` muss der Change konkrete Property-basierte Abdeckung oder eine eng begründete Verschiebung dokumentieren.
-- Ausnahmen sind nie implizit zulässig; sie müssen als Legacy-Ausnahme oder Spezialfall nachvollziehbar begründet werden.
-- Referenzimplementierungen sind Belege für den Standardpfad, keine Sonderzone mit abgeschwächten Regeln.
-
-## Exit Criteria
-
-- Referenzimplementierungen verwenden dieselben dokumentierten RHF-Patterns ohne view-spezifische Sonderverdrahtung.
-- Referenzformulare bilden Feldfehler, Summary-Fehler und Fokusführung konsistent über gemeinsame Studio-Primitiven ab.
-- HTTP-nahe Referenztests verwenden `msw` statt direkter `fetch`-Stubs, ohne bestehende Live-E2E-Anforderungen zu ersetzen.
-- Für `fast-check` existiert eine kleine dokumentierte Erstmenge an Hotspots mit nachvollziehbaren Invarianten und akzeptabler Laufzeit.
-- Die initiale `fast-check`-Startmenge für `route-search`, `admin-resource-search-params`, `waste-management-location-tour-pickup-date-import` und `input-readers` ist im Change selbst konkret benannt.
-- Die vollständige Formular-Migrationsinventur liegt vollständig für Host und Plugins vor.
-- `docs/development/studio-form-migrationsinventur.md` und `docs/development/studio-foundations-governance.md` liegen mit den geforderten Inhalten vor.
-- Die Entwicklerdokumentation beschreibt Entscheidungskriterien dafür, wann Migration verpflichtend, optional oder unzulässig abweichend ist.
-- Ein Reviewer kann für jeden Referenzbereich schnell erkennen, ob Standardpfad, Ausnahmegrund und Migrationsstatus nachvollziehbar dokumentiert sind.
+Review-Kriterien, Ausnahmebehandlung und Exit-Bedingungen werden normativ ausschliesslich in `review-governance` verankert. `monorepo-structure` beschreibt in diesem Change nur den Foundation-Stack, die Integrationsbausteine und die verpflichtenden Artefakte, nicht die abschliessende Exit-Governance.
 
 ## Migration Plan
 
@@ -194,7 +180,3 @@ Diese Governance wird capability-seitig in `review-governance` verankert, nicht 
 5. Referenz-Flows in Admin/Content sowie erste HTTP-nahe Tests schrittweise umstellen.
 6. Nach erfolgreicher Referenzphase weitere neue oder grundlegend überarbeitete Flows an dieselben Standards binden.
 7. Kritische Kernmodule selektiv mit `fast-check` absichern.
-
-## Open Questions
-
-- Welche konkrete Aufteilung zwischen `register`-basierten Adaptern und `Controller`-basierten Adaptern wird für `Input`, `Textarea`, `Select` und `Checkbox` in `packages/studio-ui-react` festgelegt?

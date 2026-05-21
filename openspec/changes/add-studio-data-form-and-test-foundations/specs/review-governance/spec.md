@@ -22,6 +22,12 @@ Das System SHALL fuer Formular-, HTTP-Test- und Property-based-Testing-Foundatio
 - **THEN** ist die Abweichung als Legacy-Ausnahme oder Spezialfall explizit begruendet
 - **AND** bleibt die Entscheidung im Review nachvollziehbar
 
+#### Scenario: Formular- und MSW-Ausnahmen werden getrennt bewertet
+
+- **WHEN** ein Reviewer eine Abweichung vom Foundation-Stack prueft
+- **THEN** bewertet er Formular-Ausnahmen getrennt von MSW-/HTTP-Test-Ausnahmen
+- **AND** gilt fehlender HTTP-Bezug allein nicht als hinreichender Ausnahmegrund fuer Formularorchestrierung
+
 ### Requirement: Exit-Governance trennt Default-Standard und Referenzscope
 
 Das System SHALL den repo-weiten Default-Standard und die kleinere Menge initialer Referenzimplementierungen als getrennte Review- und Exit-Sichten fuehren.
@@ -37,3 +43,9 @@ Das System SHALL den repo-weiten Default-Standard und die kleinere Menge initial
 - **WHEN** der Change als exit-bereit bewertet wird
 - **THEN** sind Referenzimplementierungen, Ausnahmen, die vollstaendige Formularinventur und die Entscheidungskriterien fuer `fast-check` reviewbar dokumentiert
 - **AND** darf fehlende Governance-Dokumentation den Exit blockieren
+
+#### Scenario: Inventurpflicht beeinflusst den Exit-Status
+
+- **WHEN** relevante Host- oder Plugin-Formulare in der Inventur fehlen
+- **THEN** gilt das Pflichtartefakt als nicht erfuellt
+- **AND** darf der Change nicht als exit-bereit bewertet werden

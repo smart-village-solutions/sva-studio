@@ -32,6 +32,6 @@ Das System SHALL fuer Account- und Admin-Views den repo-weiten Formularstandard 
 
 #### Scenario: Ausdruecklich zulaessige Ausnahme wird dokumentiert
 
-- **WENN** ein Account- oder Admin-Flow ausschliesslich lokale Logik ohne HTTP-Bezug enthaelt oder technisch begruendet als Spezialfall dokumentiert ist
+- **WENN** ein Account- oder Admin-Flow nur eine sehr kleine Interaktion ohne eigenstaendige Formularorchestrierung abbildet oder technisch begruendet als Spezialfall dokumentiert ist
 - **DANN** darf er vom Default-Standard abweichen
 - **UND** muss die Ausnahme im Review nachvollziehbar dokumentiert sein

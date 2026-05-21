@@ -1,8 +1,8 @@
 ## ADDED Requirements
 
-### Requirement: Freigegebene Studio-Foundations fuer Formulare und Tests
+### Requirement: Freigegebene Studio-Foundations fuer Formulare, Frontend-Tests und Kernlogik
 
-Das System SHALL fuer die React-Host-Anwendung und pluginfaehige Frontend-Pakete einen verbindlichen repo-weiten Foundation-Stack fuer Formulare und Frontend-Tests bereitstellen.
+Das System SHALL fuer formularzentrierte Frontend-Workflows, HTTP-nahe Frontend-Tests und kritische framework-agnostische Kernlogik einen verbindlichen repo-weiten Foundation-Stack bereitstellen.
 
 Dieser Foundation-Stack umfasst mindestens `react-hook-form`, `@hookform/resolvers`, `msw` und `fast-check`.
 
@@ -11,6 +11,12 @@ Dieser Foundation-Stack umfasst mindestens `react-hook-form`, `@hookform/resolve
 - **WHEN** ein Host- oder Plugin-Frontend-Paket neue oder grundlegend ueberarbeitete formularzentrierte UI-Logik einfuehrt
 - **THEN** verwendet es fuer formularzentrierte Interaktionen `react-hook-form` plus `@hookform/resolvers`
 - **AND** fuehrt keine parallele zweite Foundation fuer dieselben Aufgaben ein
+
+#### Scenario: Kritische Kernlogik benoetigt Property-based Foundation
+
+- **WHEN** framework-agnostische Kernlogik in `packages/core`, `packages/routing` oder vergleichbaren Workspace-Paketen kritische Invarianten absichert
+- **THEN** ist `fast-check` Teil desselben repo-weiten Foundation-Stacks
+- **AND** bleibt die Foundation nicht auf React-Host- oder pluginfaehige Frontend-Pakete beschraenkt
 
 #### Scenario: Referenzimplementierung bestaetigt einen Default-Standard
 
@@ -46,6 +52,13 @@ Das System SHALL die Einfuehrung von Formular- und Test-Foundations ueber gemein
 - **WHEN** `react-hook-form` in Host- oder Plugin-Views eingefuehrt wird
 - **THEN** stehen dokumentierte Studio-Patterns oder gemeinsame Adapter fuer gaengige Formularbausteine zur Verfuegung
 - **AND** wird Fehler- und Summary-Mapping nicht pro View neu erfunden
+
+#### Scenario: `register`- und `Controller`-Pfade sind verbindlich festgelegt
+
+- **WHEN** gemeinsame Formularadapter fuer `Input`, `Textarea`, `Select` und `Checkbox` bereitgestellt werden
+- **THEN** nutzen `Input`, `Textarea` und native `Checkbox`-Anbindungen standardmaessig `register`
+- **AND** nutzen `Select` sowie kontrollierte Komponenten mit abweichendem Value-/Event-Modell einen dokumentierten `Controller`-Pfad
+- **AND** gelten Abweichungen davon als begruendungspflichtige Spezialfaelle
 
 #### Scenario: HTTP-Teststandard wird eingefuehrt
 
@@ -137,9 +150,3 @@ Das System SHALL fuer diesen Change eine vollstaendige Formular-Migrationsinvent
 - **WHEN** Review-Kriterien, Ausnahmeregeln und Exit-Nachweise fuer diesen Change dokumentiert werden
 - **THEN** werden sie unter `docs/development/studio-foundations-governance.md` gebuendelt
 - **AND** folgen Inventur- und Governance-Artefakte damit den Repo-Doku-Regeln fuer Entwicklungsdokumentation
-
-#### Scenario: Inventur ist unvollstaendig
-
-- **WHEN** relevante Host- oder Plugin-Formulare in der Inventur fehlen
-- **THEN** gilt das Pflichtartefakt als nicht erfuellt
-- **AND** darf der Change nicht als exit-bereit bewertet werden

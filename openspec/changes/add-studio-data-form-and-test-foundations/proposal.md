@@ -11,7 +11,7 @@ Zusätzlich fehlen für kritische Kernlogik systematische generative Tests sowie
 - `react-hook-form` und `@hookform/resolvers` werden als verbindlicher Default-Standard für neue oder grundlegend überarbeitete Studio-Formulare mit `zod`-basierter Validierung festgelegt.
 - `msw` wird als verbindlicher Default-Standard für neue oder grundlegend überarbeitete HTTP-nahe Frontend-Unit- und Integrations-Tests festgelegt.
 - `fast-check` wird für kritische, framework-agnostische Kernlogik als gezielt zu prüfender Property-based-Testing-Baustein festgelegt.
-- Zulässige Ausnahmen werden explizit auf rein lokale Logik ohne HTTP-Bezug, unveränderte Legacy-Flows und dokumentierte Spezialfälle begrenzt.
+- Zulässige Ausnahmen werden für Formular-Foundations explizit auf unveränderte Legacy-Flows, sehr kleine Interaktionen ohne eigenständige Formularorchestrierung und dokumentierte Spezialfälle begrenzt; MSW-Ausnahmen bleiben davon getrennt auf nicht-HTTP-nahe Tests beschränkt.
 - Eine vollständige Formular-Migrationsinventur für Host und Plugins wird als Pflichtartefakt des Changes verankert.
 - Governance-, Review- und Exit-Kriterien werden so verschärft, dass Referenzpiloten den Standard validieren, aber keine optionale Pilot-Sonderzone begründen.
 - Die betroffenen Spezifikationen präzisieren Architektur-, UI- und Testmuster für Host und Plugins als verbindliche Repo-Vorgabe.

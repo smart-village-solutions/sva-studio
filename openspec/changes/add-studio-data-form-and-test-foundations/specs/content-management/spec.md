@@ -18,6 +18,6 @@ Das System SHALL fuer host- und pluginseitige Content-Editoren denselben verbind
 
 #### Scenario: Content-Flow mit begruendeter Ausnahme
 
-- **WENN** ein Content-Flow nur lokale Logik ohne HTTP-Bezug enthaelt oder als dokumentierter Spezialfall ausgewiesen ist
+- **WENN** ein Content-Flow nur eine sehr kleine Interaktion ohne eigenstaendige Formularorchestrierung abbildet oder als dokumentierter Spezialfall ausgewiesen ist
 - **DANN** darf er ausnahmsweise vom Standardpfad abweichen
 - **UND** muss die Abweichung mit Ausnahmegrund und Zielzustand reviewbar dokumentiert sein

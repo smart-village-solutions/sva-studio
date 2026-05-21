@@ -8,16 +8,62 @@ export type StudioFormFieldError = Readonly<{
   message: string;
 }>;
 
-export type StudioFormFieldErrorProps = Readonly<{
-  error: FieldError | undefined;
+export type StudioFieldControlProps = Readonly<{
+  id: string;
+  'aria-invalid'?: true;
+  'aria-describedby'?: string;
 }>;
 
 export function getStudioFieldError(error: FieldError | undefined): string | undefined {
   return typeof error?.message === 'string' ? error.message : undefined;
 }
 
-export function StudioFormFieldError({ error }: StudioFormFieldErrorProps) {
-  return getStudioFieldError(error) ?? null;
+export type StudioFormFieldBindings = Readonly<{
+  id: string;
+  error?: string;
+  errorId: string;
+  descriptionId: string;
+  controlProps: StudioFieldControlProps;
+  summaryError?: StudioFormFieldError;
+}>;
+
+export type GetStudioFormFieldPropsOptions = Readonly<{
+  id: string;
+  error: FieldError | undefined;
+  descriptionId?: string;
+  errorId?: string;
+  hasDescription?: boolean;
+}>;
+
+export function getStudioFormFieldProps({
+  id,
+  error,
+  descriptionId = `${id}-description`,
+  errorId = `${id}-error`,
+  hasDescription = false,
+}: GetStudioFormFieldPropsOptions): StudioFormFieldBindings {
+  const message = getStudioFieldError(error);
+  const describedBy = [hasDescription ? descriptionId : undefined, message ? errorId : undefined]
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .join(' ');
+
+  return {
+    id,
+    error: message,
+    errorId,
+    descriptionId,
+    controlProps: {
+      id,
+      'aria-invalid': message ? true : undefined,
+      'aria-describedby': describedBy || undefined,
+    },
+    summaryError: message
+      ? {
+          field: id,
+          message,
+        }
+      : undefined,
+  };
 }
 
 export type StudioFormSummaryErrorsProps = Readonly<{
@@ -37,7 +83,7 @@ const focusFieldById = (fieldId: string) => {
 
 export function StudioFormSummaryErrors({
   errors,
-  title = 'Bitte korrigieren Sie die markierten Felder.',
+  title,
   className,
 }: StudioFormSummaryErrorsProps) {
   if (errors.length === 0) {
@@ -50,7 +96,7 @@ export function StudioFormSummaryErrors({
       aria-live="assertive"
       className={cn('space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive', className)}
     >
-      <p className="font-medium">{title}</p>
+      {title ? <p className="font-medium">{title}</p> : null}
       <ul className="space-y-1">
         {errors.map((error) => (
           <li key={`${error.field}:${error.message}`}>

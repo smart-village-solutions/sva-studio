@@ -36,6 +36,7 @@ import {
   StudioField,
   StudioFieldGroup,
   StudioFormSummary,
+  getStudioFormFieldProps,
   StudioJobSummaryCard,
   StudioListPageTemplate,
   StudioLoadingState,
@@ -206,6 +207,27 @@ describe('studio-ui-react primitives', () => {
     expect(input.getAttribute('aria-describedby')).toBe('title-help title-error');
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(screen.getByText('Pflichtfeld').id).toBe('title-help');
+    expect(screen.getByText('Titel fehlt').id).toBe('title-error');
+  });
+
+  it('applies StudioField control props to child inputs and merges described-by values', () => {
+    const titleField = getStudioFormFieldProps({
+      id: 'title',
+      error: { type: 'required', message: 'Titel fehlt' },
+      hasDescription: true,
+    });
+
+    render(
+      <StudioField {...titleField} label="Titel" description="Pflichtfeld">
+        <Input {...titleField.controlProps} aria-describedby="hint-extra" />
+      </StudioField>
+    );
+
+    const input = screen.getByLabelText('Titel');
+    expect(input.getAttribute('id')).toBe('title');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe('hint-extra title-description title-error');
+    expect(screen.getByText('Pflichtfeld').id).toBe('title-description');
     expect(screen.getByText('Titel fehlt').id).toBe('title-error');
   });
 

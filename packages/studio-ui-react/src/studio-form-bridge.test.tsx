@@ -4,7 +4,15 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Controller, type FieldError, useForm } from 'react-hook-form';
 
-import { Input, Select, StudioField, StudioFormFieldError, StudioFormSummaryErrors, getStudioFieldError } from './index.js';
+import {
+  Input,
+  Select,
+  StudioField,
+  StudioFormSummaryErrors,
+  getStudioFieldError,
+  getStudioFormFieldProps,
+  type StudioFormFieldError,
+} from './index.js';
 
 afterEach(() => {
   cleanup();
@@ -29,25 +37,18 @@ function RegisterOnlyForm() {
     },
   });
 
-  const summaryErrors = errors.title
-    ? [
-        {
-          field: 'title',
-          message: getStudioFieldError(errors.title) ?? 'Titel fehlt',
-        },
-      ]
-    : [];
+  const titleField = getStudioFormFieldProps({
+    id: 'title',
+    error: errors.title,
+  });
+
+  const summaryErrors: readonly StudioFormFieldError[] = titleField.summaryError ? [titleField.summaryError] : [];
 
   return (
     <form onSubmit={handleSubmit(() => undefined)} noValidate>
       <StudioFormSummaryErrors errors={summaryErrors} />
-      <StudioField id="title" label="Titel" error={<StudioFormFieldError error={errors.title} />}>
-        <Input
-          id="title"
-          aria-invalid={errors.title ? 'true' : 'false'}
-          aria-describedby={errors.title ? 'title-error' : undefined}
-          {...register('title', { required: 'Titel fehlt' })}
-        />
+      <StudioField {...titleField} label="Titel">
+        <Input {...titleField.controlProps} {...register('title', { required: 'Titel fehlt' })} />
       </StudioField>
       <button type="submit">Speichern</button>
     </form>
@@ -65,30 +66,23 @@ function ControlledSelectForm({ onSubmit }: Readonly<{ onSubmit: (values: Contro
     },
   });
 
-  const summaryErrors = errors.category
-    ? [
-        {
-          field: 'category',
-          message: getStudioFieldError(errors.category) ?? 'Kategorie fehlt',
-        },
-      ]
-    : [];
+  const categoryField = getStudioFormFieldProps({
+    id: 'category',
+    error: errors.category,
+  });
+
+  const summaryErrors: readonly StudioFormFieldError[] = categoryField.summaryError ? [categoryField.summaryError] : [];
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <StudioFormSummaryErrors errors={summaryErrors} />
-      <StudioField id="category" label="Kategorie" error={<StudioFormFieldError error={errors.category} />}>
+      <StudioField {...categoryField} label="Kategorie">
         <Controller
           name="category"
           control={control}
           rules={{ required: 'Kategorie fehlt' }}
           render={({ field }) => (
-            <Select
-              {...field}
-              id="category"
-              aria-invalid={errors.category ? 'true' : 'false'}
-              aria-describedby={errors.category ? 'category-error' : undefined}
-            >
+            <Select {...categoryField.controlProps} {...field}>
               <option value="">Bitte wählen</option>
               <option value="news">News</option>
               <option value="events">Events</option>
@@ -107,22 +101,27 @@ describe('studio-ui-react RHF bridge', () => {
       type: 'required',
       message: 'Titel fehlt',
     } satisfies FieldError;
+    const fieldProps = getStudioFormFieldProps({
+      id: 'title',
+      error,
+      hasDescription: true,
+    });
 
     render(
-      <StudioField id="title" label="Titel" error={<StudioFormFieldError error={error} />}>
-        <Input id="title" aria-invalid={getStudioFieldError(error) ? 'true' : 'false'} aria-describedby="title-error" />
+      <StudioField {...fieldProps} label="Titel" description="Pflichtfeld">
+        <Input {...fieldProps.controlProps} />
       </StudioField>
     );
 
     expect(screen.getByText('Titel fehlt')).toBeTruthy();
     expect(screen.getByLabelText('Titel').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Titel').getAttribute('aria-describedby')).toBe('title-description title-error');
   });
 
   it('renders summary errors with focusable anchor behavior', () => {
     render(
       <>
         <StudioFormSummaryErrors
-          title="Bitte korrigieren"
           errors={[
             { field: 'title', message: 'Titel fehlt' },
             { field: 'category', message: 'Kategorie fehlt' },
@@ -139,7 +138,7 @@ describe('studio-ui-react RHF bridge', () => {
     fireEvent.click(link);
 
     expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Titel' }));
-    expect(screen.getByText('Bitte korrigieren')).toBeTruthy();
+    expect(screen.queryByText(/korrigieren/i)).toBeNull();
   });
 
   it('supports register-only inputs without Controller', async () => {
@@ -183,5 +182,18 @@ describe('studio-ui-react RHF bridge', () => {
       expect(onSubmit).toHaveBeenCalledWith({ category: 'news' }, expect.anything());
     });
     expect(screen.queryByText('Kategorie fehlt')).toBeNull();
+  });
+
+  it('creates summary items only when a field error message exists', () => {
+    const fieldProps = getStudioFormFieldProps({
+      id: 'title',
+      error: undefined,
+      hasDescription: true,
+    });
+
+    expect(fieldProps.summaryError).toBeUndefined();
+    expect(fieldProps.controlProps['aria-invalid']).toBeUndefined();
+    expect(fieldProps.controlProps['aria-describedby']).toBe('title-description');
+    expect(getStudioFieldError(undefined)).toBeUndefined();
   });
 });

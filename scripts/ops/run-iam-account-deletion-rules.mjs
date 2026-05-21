@@ -53,9 +53,11 @@ const pool = new Pool({
 });
 
 const run = async () => {
-  const client = await pool.connect();
+  let client;
 
   try {
+    client = await pool.connect();
+
     await client.query('BEGIN');
     await client.query('SET LOCAL ROLE iam_app;');
     await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', options.instanceId]);
@@ -72,14 +74,16 @@ const run = async () => {
     await client.query('COMMIT');
     console.log(JSON.stringify(summary, null, 2));
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (client) {
+      await client.query('ROLLBACK').catch(() => undefined);
+    }
     console.error(
       '[run-iam-account-deletion-rules] failed',
       error instanceof Error ? error.message : String(error)
     );
     process.exitCode = 1;
   } finally {
-    client.release();
+    client?.release();
     await pool.end();
   }
 };

@@ -142,9 +142,7 @@ Dabei gilt:
 Jeder Tenant definiert genau eine Default-Strategie für die Behandlung eigener Inhalte eines Accounts:
 
 - `beibehalten`
-- `bei Deaktivierung mitbehandeln`
-- `bei Pseudonymisierung mitbehandeln`
-- `bei Löschung mitbehandeln`
+- `mit Account-Lifecycle mitbehandeln`
 
 ### Nutzer-Override
 

@@ -18,6 +18,8 @@ export {
   validateCreateIamContentInput,
   withServerDeniedContentAccess,
   GENERIC_CONTENT_TYPE,
+  IAM_DELETED_CONTENT_AUTHOR_TOKEN,
+  IAM_PSEUDONYMIZED_CONTENT_AUTHOR_TOKEN,
 } from './content-management.js';
 export type {
   ContentJsonPrimitive,

@@ -1,4 +1,9 @@
-import type { IamDeletionContentStrategy, IamDeletionLifecycleState } from '@sva/core';
+import {
+  IAM_DELETED_CONTENT_AUTHOR_TOKEN,
+  IAM_PSEUDONYMIZED_CONTENT_AUTHOR_TOKEN,
+  type IamDeletionContentStrategy,
+  type IamDeletionLifecycleState,
+} from '@sva/core';
 
 import type { QueryClient } from './query-client.js';
 import {
@@ -134,6 +139,55 @@ SET
     WHEN $3 = 'deleted' AND deletion_marked_at IS NULL THEN NOW()
     ELSE deletion_marked_at
   END,
+  email_ciphertext = CASE
+    WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL
+    ELSE email_ciphertext
+  END,
+  display_name_ciphertext = CASE
+    WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL
+    ELSE display_name_ciphertext
+  END,
+  first_name_ciphertext = CASE
+    WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL
+    ELSE first_name_ciphertext
+  END,
+  last_name_ciphertext = CASE
+    WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL
+    ELSE last_name_ciphertext
+  END,
+  phone_ciphertext = CASE
+    WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL
+    ELSE phone_ciphertext
+  END,
+  username_ciphertext = CASE
+    WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL
+    ELSE username_ciphertext
+  END,
+  notes = CASE
+    WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL
+    ELSE notes
+  END,
+  avatar_url = CASE
+    WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL
+    ELSE avatar_url
+  END,
+  position = CASE
+    WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL
+    ELSE position
+  END,
+  department = CASE
+    WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL
+    ELSE department
+  END,
+  preferred_language = CASE
+    WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL
+    ELSE preferred_language
+  END,
+  timezone = CASE
+    WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL
+    ELSE timezone
+  END,
+  status = CASE WHEN $3 IN ('pseudonymized', 'deleted') THEN 'inactive' ELSE status END,
   updated_at = NOW()
 WHERE instance_id = $1
   AND id = $2::uuid;
@@ -152,15 +206,23 @@ UPDATE iam.contents
 SET
   deletion_lifecycle_state = $3,
   deletion_lifecycle_changed_at = NOW(),
+  updated_at = NOW(),
   author_display_name = CASE
-    WHEN $3 = 'pseudonymized' THEN 'Pseudonymisiert'
-    WHEN $3 = 'deleted' THEN 'Gelöscht'
+    WHEN $3 = 'pseudonymized' THEN $4
+    WHEN $3 = 'deleted' THEN $5
     ELSE author_display_name
   END
 WHERE instance_id = $1
-  AND author_account_id = $2::uuid;
+  AND author_account_id = $2::uuid
+  AND deletion_lifecycle_state IS DISTINCT FROM $3;
 `,
-    [input.instanceId, input.accountId, input.nextState]
+    [
+      input.instanceId,
+      input.accountId,
+      input.nextState,
+      IAM_PSEUDONYMIZED_CONTENT_AUTHOR_TOKEN,
+      IAM_DELETED_CONTENT_AUTHOR_TOKEN,
+    ]
   );
 
   return result.rowCount;

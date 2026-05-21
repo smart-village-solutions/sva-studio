@@ -13,6 +13,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { useContentAccess } from '../../hooks/use-content-access';
 import { useContentDetail, useCreateContent } from '../../hooks/use-contents';
 import { t } from '../../i18n';
+import { formatContentAuthor } from '../../lib/content-author';
 import { formatEditorDateTime, parseOptionalEditorDateTime, toDatetimeLocalValue } from '../../lib/editor-date-time';
 import type { CreateContentPayload, IamHttpError, UpdateContentPayload } from '../../lib/iam-api';
 
@@ -150,7 +151,7 @@ const renderContentMeta = ({
     <dl className="space-y-3 text-sm">
       <div>
         <dt className="text-muted-foreground">{t('content.meta.author')}</dt>
-        <dd className="text-foreground">{content?.author}</dd>
+        <dd className="text-foreground">{content ? formatContentAuthor(content.author) : '—'}</dd>
       </div>
       <div>
         <dt className="text-muted-foreground">{t('content.meta.createdAt')}</dt>

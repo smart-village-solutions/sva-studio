@@ -2,6 +2,7 @@ import { parse as parseCookie } from 'cookie-es';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { createApiError } from './api-error.js';
+import { resolvePool, withResolvedInstanceDb } from './db.js';
 import { shouldEnforceLegalTextCompliance } from './middleware-compliance.js';
 import { withLegalTextCompliance } from './legal-text-enforcement.js';
 import {
@@ -53,6 +54,54 @@ const shouldLogProfileDiagnostics = (request: Request): boolean => {
 
   const pathname = new URL(request.url).pathname;
   return PROFILE_DIAGNOSTIC_PATHS.has(pathname);
+};
+
+type AccountLifecycleRow = {
+  deletion_lifecycle_state: 'active' | 'deactivated' | 'pseudonymized' | 'deleted';
+};
+
+const ensureAccountLifecycleAllowsAccess = async (
+  request: Request,
+  user: SessionUser,
+  options?: { isLocalDevelopmentAuth?: boolean }
+): Promise<Response | null> => {
+  if (options?.isLocalDevelopmentAuth || !user.instanceId || !resolvePool()) {
+    return null;
+  }
+
+  const accountState = await withResolvedInstanceDb(resolvePool, user.instanceId, async (client) => {
+    const result = await client.query<AccountLifecycleRow>(
+      `
+SELECT a.deletion_lifecycle_state
+FROM iam.accounts a
+WHERE a.instance_id = $1
+  AND a.keycloak_subject = $2
+LIMIT 1;
+`,
+      [user.instanceId, user.id]
+    );
+
+    return result.rows[0]?.deletion_lifecycle_state;
+  });
+
+  if (!accountState || accountState === 'active') {
+    return null;
+  }
+
+  const logContext = buildLogContext(user.instanceId, { includeTraceId: true });
+  logger.warn('Auth middleware rejected request because the account lifecycle is blocked', {
+    endpoint: request.url,
+    operation: 'auth_middleware',
+    user_id: user.id,
+    lifecycle_state: accountState,
+    reason_code: 'account_lifecycle_blocked',
+    ...logContext,
+  });
+
+  return createApiError(403, 'forbidden', 'Dieses Konto ist nicht mehr aktiv.', logContext.request_id, {
+    lifecycle_state: accountState,
+    reason_code: 'account_lifecycle_blocked',
+  });
 };
 
 const createAuthenticatedContext = async (request: Request): Promise<SessionResolution> => {
@@ -285,6 +334,12 @@ export const withAuthenticatedUser = async (
       isLocalDevelopmentAuth: resolution.isLocalDevelopmentAuth,
       user: resolution.user,
     };
+    const lifecycleResponse = await ensureAccountLifecycleAllowsAccess(request, ctx.user, {
+      isLocalDevelopmentAuth: ctx.isLocalDevelopmentAuth,
+    });
+    if (lifecycleResponse) {
+      return lifecycleResponse;
+    }
     logProfileDiagnosticsIfEnabled(request, ctx.user);
     return await runWithLegalTextComplianceIfRequired(request, ctx, handler);
   } catch (error) {

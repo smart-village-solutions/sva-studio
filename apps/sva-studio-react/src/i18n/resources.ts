@@ -379,6 +379,8 @@ export const i18nResources = {
         createHint:
           'Metadaten wie Autor, Zeitstempel und ID werden nach dem ersten Speichern ergänzt.',
         author: 'Autor',
+        authorPseudonymized: 'Pseudonymisiert',
+        authorDeleted: 'Gelöscht',
         createdAt: 'Erstellt am',
         updatedAt: 'Geändert am',
         id: 'Inhalts-ID',
@@ -3321,6 +3323,8 @@ export const i18nResources = {
         title: 'Metadata',
         createHint: 'Metadata such as author, timestamps, and ID are added after the first save.',
         author: 'Author',
+        authorPseudonymized: 'Pseudonymized',
+        authorDeleted: 'Deleted',
         createdAt: 'Created at',
         updatedAt: 'Updated at',
         id: 'Content ID',

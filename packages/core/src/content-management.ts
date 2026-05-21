@@ -1,4 +1,6 @@
 export const GENERIC_CONTENT_TYPE = 'generic' as const;
+export const IAM_PSEUDONYMIZED_CONTENT_AUTHOR_TOKEN = '__iam_author_pseudonymized__' as const;
+export const IAM_DELETED_CONTENT_AUTHOR_TOKEN = '__iam_author_deleted__' as const;
 
 export const iamContentStatuses = ['draft', 'in_review', 'approved', 'published', 'archived'] as const;
 export const iamContentValidationStates = ['valid', 'invalid', 'pending'] as const;

@@ -1,4 +1,3 @@
-import * as React from 'react';
 import type { FieldError } from 'react-hook-form';
 
 import type { StudioFieldControlProps } from './studio-primitives.js';

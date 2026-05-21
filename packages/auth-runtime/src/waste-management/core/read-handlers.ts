@@ -205,7 +205,7 @@ export const wasteManagementReadHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
     const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.read', deps, requestId);
+    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.master-data.manage', deps, requestId);
     if (authError) {
       return authError;
     }
@@ -239,7 +239,12 @@ export const wasteManagementReadHandlers = {
       if (isWasteOutputLocationNotFoundError(error)) {
         return createApiError(404, 'not_found', 'Der Waste-Abholort wurde nicht gefunden.', requestId);
       }
-      return createApiError(503, 'database_unavailable', 'Das Waste-PDF konnte nicht erzeugt werden.', requestId);
+      return createApiError(
+        503,
+        'internal_error',
+        'Das Waste-PDF konnte derzeit nicht erzeugt werden.',
+        requestId
+      );
     }
   },
 };

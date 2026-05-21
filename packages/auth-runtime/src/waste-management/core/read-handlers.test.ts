@@ -372,7 +372,7 @@ describe('waste-management read handlers', () => {
       }),
       actor,
       {
-        ...createDeps(),
+        ...createDeps('waste-management.master-data.manage'),
         generateWasteOutputPdf,
       }
     );
@@ -392,6 +392,36 @@ describe('waste-management read handlers', () => {
     });
   });
 
+  it('forbids waste pdf generation for read-only permissions', async () => {
+    const createResponse = await wasteManagementReadHandlers.createWasteManagementOutputPdfInternal(
+      new Request('https://studio.test/api/v1/waste-management/outputs/pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'https://studio.test',
+        },
+        body: JSON.stringify({
+          collectionLocationId,
+          year: 2026,
+        }),
+      }),
+      actor,
+      {
+        ...createDeps('waste-management.read'),
+        generateWasteOutputPdf: vi.fn(async () => ({
+          collectionLocationId,
+          year: 2026,
+          storageKey: `waste-output/collection-locations/${collectionLocationId}/2026.pdf`,
+          deliveryUrl: `https://cdn.example/${collectionLocationId}/2026.pdf`,
+          expiresAt: '2026-05-21T12:00:00.000Z',
+        })),
+      }
+    );
+
+    expect(createResponse.status).toBe(403);
+  });
+
   it('returns not_found when waste pdf generation targets a deleted location', async () => {
     const createResponse = await wasteManagementReadHandlers.createWasteManagementOutputPdfInternal(
       new Request('https://studio.test/api/v1/waste-management/outputs/pdf', {
@@ -408,7 +438,7 @@ describe('waste-management read handlers', () => {
       }),
       actor,
       {
-        ...createDeps(),
+        ...createDeps('waste-management.master-data.manage'),
         generateWasteOutputPdf: vi.fn(async () => {
           throw new Error(`waste_output_location_not_found:${collectionLocationId}`);
         }),
@@ -419,6 +449,37 @@ describe('waste-management read handlers', () => {
     await expect(createResponse.json()).resolves.toMatchObject({
       error: {
         code: 'not_found',
+      },
+    });
+  });
+
+  it('returns a neutral output-generation error code for non-not-found failures', async () => {
+    const createResponse = await wasteManagementReadHandlers.createWasteManagementOutputPdfInternal(
+      new Request('https://studio.test/api/v1/waste-management/outputs/pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
+          origin: 'https://studio.test',
+        },
+        body: JSON.stringify({
+          collectionLocationId,
+          year: 2026,
+        }),
+      }),
+      actor,
+      {
+        ...createDeps('waste-management.master-data.manage'),
+        generateWasteOutputPdf: vi.fn(async () => {
+          throw new Error('storage offline');
+        }),
+      }
+    );
+
+    expect(createResponse.status).toBe(503);
+    await expect(createResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'internal_error',
       },
     });
   });

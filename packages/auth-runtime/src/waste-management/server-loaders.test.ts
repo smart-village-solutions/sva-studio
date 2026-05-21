@@ -482,6 +482,43 @@ describe('waste-management server loaders', () => {
     expect(pdfText).toContain('Havelland, Rathenow, Berliner Str. 12');
   });
 
+  it('falls back to the collection location id when output labels cannot resolve address references', async () => {
+    repositoryMocks.getWasteCollectionLocationById.mockResolvedValueOnce({
+      id: 'location-1',
+      regionId: 'region-missing',
+      cityId: 'city-missing',
+      streetId: 'street-missing',
+      houseNumberId: 'house-missing',
+      active: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    repositoryMocks.listWasteRegions.mockResolvedValueOnce([]);
+    repositoryMocks.listWasteCities.mockResolvedValueOnce([]);
+    repositoryMocks.listWasteStreets.mockResolvedValueOnce([]);
+    repositoryMocks.listWasteHouseNumbers.mockResolvedValueOnce([]);
+    repositoryMocks.listWasteLocationTourLinks.mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTours.mockResolvedValueOnce([]);
+    repositoryMocks.listWasteFractions.mockResolvedValueOnce([]);
+    repositoryMocks.listWasteLocationTourPickupDates.mockResolvedValueOnce([]);
+    repositoryMocks.listWasteTourDateShifts.mockResolvedValueOnce([]);
+    repositoryMocks.listWasteGlobalDateShifts.mockResolvedValueOnce([]);
+    mediaStoragePortMock.readObject.mockRejectedValueOnce(new Error('missing_index'));
+
+    await wasteManagementOutputLoaders.generateWasteOutputPdf({
+      instanceId: 'tenant-a',
+      collectionLocationId: 'location-1',
+      year: 2026,
+    });
+
+    const pdfWrite = mediaStoragePortMock.writeObject.mock.calls.find(
+      ([input]: readonly [{ readonly storageKey: string }]) =>
+        input.storageKey === 'waste-output/collection-locations/location-1/2026.pdf'
+    );
+    const pdfText = Buffer.from((pdfWrite?.[0].body as Uint8Array | undefined) ?? new Uint8Array()).toString('latin1');
+    expect(pdfText).toContain('location-1');
+  });
+
   it('evicts stale waste pools after the idle ttl expires', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-15T09:00:00.000Z'));

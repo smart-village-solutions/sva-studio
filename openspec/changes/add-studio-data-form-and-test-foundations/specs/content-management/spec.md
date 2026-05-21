@@ -2,7 +2,7 @@
 
 ### Requirement: Standardisierte Formularmuster fuer Content-Editoren
 
-Das System SHALL fuer host- und pluginseitige Content-Editoren denselben Formular-Stack wie in den uebrigen Studio-Admin-Views verwenden.
+Das System SHALL fuer host- und pluginseitige Content-Editoren denselben verbindlichen Formular-Stack wie in den uebrigen Studio-Admin-Views verwenden.
 
 #### Scenario: Content-Editor verwendet denselben Formularstandard
 
@@ -15,3 +15,9 @@ Das System SHALL fuer host- und pluginseitige Content-Editoren denselben Formula
 - **WENN** ein bestehender Content-Flow keine strukturelle Ueberarbeitung erhaelt
 - **DANN** ist eine sofortige Migration auf den neuen Formular-Stack nicht zwingend
 - **UND** soll eine spaetere Umstellung bevorzugt zusammen mit fachlichen oder UX-seitigen Aenderungen erfolgen
+
+#### Scenario: Content-Flow mit begruendeter Ausnahme
+
+- **WENN** ein Content-Flow nur lokale Logik ohne HTTP-Bezug enthaelt oder als dokumentierter Spezialfall ausgewiesen ist
+- **DANN** darf er ausnahmsweise vom Standardpfad abweichen
+- **UND** muss die Abweichung mit Ausnahmegrund und Zielzustand reviewbar dokumentiert sein

@@ -2,7 +2,7 @@
 
 ### Requirement: Einheitlicher Formular-Stack fuer Account- und Admin-Views
 
-Das System SHALL fuer Account- und Admin-Views `react-hook-form` in Kombination mit `zod`-basierten Resolvern als Standard fuer Form-State, Feldbindung, Submit-Status und Validierungsabbildung verwenden.
+Das System SHALL fuer Account- und Admin-Views `react-hook-form` in Kombination mit `zod`-basierten Resolvern als verbindlichen Default-Standard fuer Form-State, Feldbindung, Submit-Status und Validierungsabbildung verwenden.
 
 #### Scenario: Profil- oder Admin-Formular wird neu erstellt oder ueberarbeitet
 
@@ -23,3 +23,9 @@ Das System SHALL fuer Account- und Admin-Views `react-hook-form` in Kombination 
 - **WENN** ein bestehender Account- oder Admin-Flow nur redaktionell oder minimal angepasst wird
 - **DANN** erzwingt diese Foundation keine isolierte RHF-Migration
 - **UND** bleibt eine spaetere Konsolidierung zulaessig, solange keine zweite konkurrierende Formular-Foundation fuer denselben Flow eingefuehrt wird
+
+#### Scenario: Ausdruecklich zulaessige Ausnahme wird dokumentiert
+
+- **WENN** ein Account- oder Admin-Flow ausschliesslich lokale Logik ohne HTTP-Bezug enthaelt oder technisch begruendet als Spezialfall dokumentiert ist
+- **DANN** darf er vom Default-Standard abweichen
+- **UND** muss die Ausnahme im Review nachvollziehbar dokumentiert sein

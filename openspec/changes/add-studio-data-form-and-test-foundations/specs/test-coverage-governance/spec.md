@@ -2,7 +2,7 @@
 
 ### Requirement: HTTP-nahe Frontend-Tests mit MSW
 
-Das System SHALL fuer Frontend-Unit- und Integrations-Tests, die HTTP-Verhalten pruefen, `msw` als Standard-Mocking-Schicht verwenden.
+Das System SHALL fuer Frontend-Unit- und Integrations-Tests, die HTTP-Verhalten pruefen, `msw` als verbindliche Default-Mocking-Schicht verwenden.
 
 #### Scenario: Frontend-Test prueft API-Verhalten
 
@@ -16,6 +16,12 @@ Das System SHALL fuer Frontend-Unit- und Integrations-Tests, die HTTP-Verhalten 
 - **WHEN** ein bestehender HTTP-naher Frontend-Test noch direkte `fetch`- oder Wrapper-Stubs nutzt
 - **THEN** wird er spaetestens bei grundlegendem Umbau oder in einem definierten Pilotblock auf `msw` migriert
 - **AND** muss nicht allein aus kosmetischen Gruenden sofort umgestellt werden
+
+#### Scenario: Rein lokale Logik bleibt bei Modul-Mocks
+
+- **WHEN** ein Test ausschliesslich lokale Fachlogik ohne HTTP-Verhalten prueft
+- **THEN** sind Modul-Mocks oder andere passende Testdoubles weiterhin zulaessig
+- **AND** wird `msw` nicht fuer Faelle erzwungen, in denen kein beobachtbarer Netzpfad existiert
 
 #### Scenario: MSW ersetzt keinen echten E2E- oder Infra-Lauf
 
@@ -39,3 +45,19 @@ Das System SHALL fuer kritische, framework-agnostische Kernlogik gezielt Propert
 - **WHEN** ein Testgegenstand hauptsaechlich aus praesentationsnaher UI ohne kritische Eingabeinvarianten besteht
 - **THEN** ist `fast-check` nicht verpflichtend
 - **AND** bleibt der gezielte Einsatz auf risikoreiche Kernlogik fokussiert
+
+### Requirement: Governance- und Review-Kriterien fuer Foundations
+
+Das System SHALL fuer Formular-, HTTP-Test- und Property-based-Testing-Foundations explizite Governance- und Review-Kriterien als Exit-Bedingung dokumentieren.
+
+#### Scenario: Reviewer bewertet einen Referenzbereich
+
+- **WHEN** ein Reviewer einen neuen oder grundlegend ueberarbeiteten Formular- oder HTTP-Test-Flow prueft
+- **THEN** kann er schnell erkennen, ob der Default-Standard eingehalten wurde
+- **AND** sind Ausnahmegrund, Migrationsstatus und relevante Pflichtartefakte nachvollziehbar dokumentiert
+
+#### Scenario: Change erreicht den Exit-Status
+
+- **WHEN** der Change als exit-bereit bewertet wird
+- **THEN** sind Referenzimplementierungen, Ausnahmen, die vollstaendige Formularinventur und die Entscheidungskriterien fuer `fast-check` reviewbar dokumentiert
+- **AND** darf fehlende Governance-Dokumentation den Exit blockieren

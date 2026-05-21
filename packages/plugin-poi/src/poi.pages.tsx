@@ -1,4 +1,5 @@
 import React from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import {
   findHostMediaReferenceAssetId,
@@ -18,11 +19,14 @@ import {
   StudioErrorState,
   StudioField,
   StudioFieldGroup,
+  StudioFormSummaryErrors,
   StudioFormSummary,
   StudioLoadingState,
   StudioOverviewPageTemplate,
   StudioDataTable,
   Textarea,
+  getStudioFormFieldProps,
+  type StudioFormFieldError,
 } from '@sva/studio-ui-react';
 
 import { createPoi, deletePoi, getPoi, listPoi, PoiApiError, updatePoi } from './poi.api.js';
@@ -36,6 +40,22 @@ type StatusMessage = {
   readonly text: string;
 };
 
+type PoiEditorFormValues = Readonly<{
+  name: string;
+  description: string;
+  mobileDescription: string;
+  active: boolean;
+  categoryName: string;
+  street: string;
+  city: string;
+  email: string;
+  url: string;
+  weekday: string;
+  timeFrom: string;
+  payloadText: string;
+  teaserImageAssetId: string;
+}>;
+
 const defaultForm = (): PoiFormInput => ({
   name: '',
   description: '',
@@ -48,6 +68,22 @@ const defaultForm = (): PoiFormInput => ({
   webUrls: [{ url: '', description: '' }],
   tags: [],
   payload: {},
+});
+
+const defaultEditorForm = (): PoiEditorFormValues => ({
+  name: '',
+  description: '',
+  mobileDescription: '',
+  active: true,
+  categoryName: '',
+  street: '',
+  city: '',
+  email: '',
+  url: '',
+  weekday: '',
+  timeFrom: '',
+  payloadText: '{}',
+  teaserImageAssetId: '',
 });
 
 const compactString = (value?: string) => {
@@ -69,6 +105,38 @@ const itemToForm = (item: PoiContentItem): PoiFormInput => ({
   tags: item.tags ?? [],
   payload: item.payload && typeof item.payload === 'object' && !Array.isArray(item.payload) ? item.payload : {},
 });
+
+const formToEditorValues = (form: PoiFormInput, teaserImageAssetId: string | null = null): PoiEditorFormValues => ({
+  name: form.name,
+  description: form.description ?? '',
+  mobileDescription: form.mobileDescription ?? '',
+  active: form.active !== false,
+  categoryName: form.categoryName ?? '',
+  street: form.addresses?.[0]?.street ?? '',
+  city: form.addresses?.[0]?.city ?? '',
+  email: form.contact?.email ?? '',
+  url: form.webUrls?.[0]?.url ?? '',
+  weekday: form.openingHours?.[0]?.weekday ?? '',
+  timeFrom: form.openingHours?.[0]?.timeFrom ?? '',
+  payloadText: JSON.stringify(form.payload ?? {}, null, 2),
+  teaserImageAssetId: teaserImageAssetId ?? '',
+});
+
+const editorValuesToForm = (values: PoiEditorFormValues, payload: Record<string, unknown>): PoiFormInput => ({
+  name: values.name,
+  description: values.description,
+  mobileDescription: values.mobileDescription,
+  active: values.active,
+  categoryName: values.categoryName,
+  addresses: [{ street: values.street, city: values.city }],
+  contact: { email: values.email },
+  openingHours: [{ weekday: values.weekday, timeFrom: values.timeFrom, open: true }],
+  webUrls: [{ url: values.url }],
+  payload,
+});
+
+const collectSummaryErrors = (fields: readonly ReturnType<typeof getStudioFormFieldProps>[]): readonly StudioFormFieldError[] =>
+  fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
 
 const compactForm = (form: PoiFormInput): PoiFormInput => ({
   name: form.name.trim(),
@@ -260,14 +328,23 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   const navigate = useNavigate();
   const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
   const contentId = params.contentId ?? params.id;
-  const [form, setForm] = React.useState<PoiFormInput>(defaultForm);
-  const [payloadText, setPayloadText] = React.useState('{}');
+  const {
+    control,
+    clearErrors,
+    formState: { errors, isSubmitting },
+    handleSubmit,
+    register,
+    reset,
+    setError,
+    setValue,
+  } = useForm<PoiEditorFormValues>({
+    defaultValues: defaultEditorForm(),
+    reValidateMode: 'onChange',
+  });
   const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
-  const [teaserImageAssetId, setTeaserImageAssetId] = React.useState<string | null>(null);
   const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
-  const [payloadError, setPayloadError] = React.useState(false);
 
   React.useEffect(() => {
     void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
@@ -284,8 +361,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
       .then((item) => {
         if (active) {
           const nextForm = itemToForm(item);
-          setForm(nextForm);
-          setPayloadText(JSON.stringify(nextForm.payload ?? {}, null, 2));
+          reset(formToEditorValues(nextForm));
           void listHostMediaReferencesByTarget({
             fetch: globalThis.fetch.bind(globalThis),
             targetType: 'poi',
@@ -293,13 +369,14 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
           })
             .then((references) => {
               setExistingMediaReferenceCount(references.length);
-              setTeaserImageAssetId(
-                findHostMediaReferenceAssetId(references, pluginPoiMediaPickers.teaserImage.roles[0])
+              setValue(
+                'teaserImageAssetId',
+                findHostMediaReferenceAssetId(references, pluginPoiMediaPickers.teaserImage.roles[0]) ?? ''
               );
             })
             .catch(() => {
               setExistingMediaReferenceCount(0);
-              setTeaserImageAssetId(null);
+              setValue('teaserImageAssetId', '');
             });
         }
       })
@@ -316,48 +393,66 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     return () => {
       active = false;
     };
-  }, [contentId, mode, pt]);
+  }, [contentId, mode, pt, reset, setValue]);
 
-  const errors = validatePoiForm(form);
-  const setField = <TKey extends keyof PoiFormInput>(key: TKey, value: PoiFormInput[TKey]) =>
-    setForm((current) => ({ ...current, [key]: value }));
-  const firstAddress = form.addresses?.[0] ?? {};
-  const firstUrl = form.webUrls?.[0] ?? { url: '', description: '' };
-  const firstOpeningHour = form.openingHours?.[0] ?? {};
+  const nameField = getStudioFormFieldProps({
+    id: 'poi-name',
+    error: errors.name,
+  });
+  const categoryField = getStudioFormFieldProps({
+    id: 'poi-category',
+    error: errors.categoryName,
+  });
+  const urlField = getStudioFormFieldProps({
+    id: 'poi-url',
+    error: errors.url,
+  });
+  const payloadField = getStudioFormFieldProps({
+    id: 'poi-payload',
+    error: errors.payloadText,
+  });
+  const summaryErrors = collectSummaryErrors([nameField, categoryField, urlField, payloadField]);
 
-  const parsePayload = () => {
+  const parsePayload = (payloadText: string) => {
     try {
       const parsed = JSON.parse(payloadText) as unknown;
       if (parsed !== null && typeof parsed === 'object' && Array.isArray(parsed) === false) {
-        setPayloadError(false);
         return parsed as Record<string, unknown>;
       }
     } catch {
       // handled below
     }
-    setPayloadError(true);
     return null;
   };
 
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const payload = parsePayload();
+  const submit = handleSubmit(async (values) => {
+    clearErrors();
+    setStatus(null);
+    const payload = parsePayload(values.payloadText);
     if (!payload) {
-      setStatus({ kind: 'error', text: pt('validation.payload') });
+      setError('payloadText', { type: 'validate', message: pt('validation.payload') }, { shouldFocus: true });
       return;
     }
-    const compacted = compactForm({ ...form, payload });
+    const compacted = compactForm(editorValuesToForm(values, payload));
     const validationErrors = validatePoiForm(compacted);
     if (validationErrors.length > 0) {
-      setStatus({ kind: 'error', text: pt('messages.validationError') });
+      if (validationErrors.includes('name')) {
+        setError('name', { type: 'validate', message: pt('validation.name') }, { shouldFocus: true });
+      }
+      if (validationErrors.includes('categoryName')) {
+        setError('categoryName', { type: 'validate', message: pt('validation.categoryName') });
+      }
+      if (validationErrors.includes('webUrls')) {
+        setError('url', { type: 'validate', message: pt('validation.webUrls') });
+      }
       return;
     }
     try {
       const saved = mode === 'create' ? await createPoi(compacted) : await updatePoi(contentId as string, compacted);
-      const mediaReferences = teaserImageAssetId
+      const mediaReferences = values.teaserImageAssetId
         ? [
             {
-              assetId: teaserImageAssetId,
+              assetId: values.teaserImageAssetId,
               role: pluginPoiMediaPickers.teaserImage.roles[0],
               sortOrder: 0,
             },
@@ -378,7 +473,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     } catch (saveError) {
       setStatus({ kind: 'error', text: errorMessage(pt, saveError, 'messages.saveError') });
     }
-  };
+  });
 
   const remove = async () => {
     if (!contentId || !globalThis.confirm(pt('actions.deleteConfirm'))) {
@@ -406,63 +501,111 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
         </Button>
       }
     >
-      <form onSubmit={(submitEvent) => void submit(submitEvent)} className="space-y-5">
+      <form onSubmit={(submitEvent) => void submit(submitEvent)} className="space-y-5" noValidate>
+        <StudioFormSummaryErrors errors={summaryErrors} />
         {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
         <StudioFieldGroup columns={2}>
-          <StudioField id="poi-name" label={pt('fields.name')} required error={errors.includes('name') ? pt('validation.name') : undefined}>
-            <Input id="poi-name" value={form.name} onChange={(event) => setField('name', event.target.value)} />
+          <StudioField {...nameField} label={pt('fields.name')} required>
+            <Controller
+              name="name"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  {...nameField.controlProps}
+                  {...field}
+                  onChange={(event) => {
+                    clearErrors('name');
+                    field.onChange(event.target.value);
+                  }}
+                />
+              )}
+            />
           </StudioField>
-          <StudioField id="poi-category" label={pt('fields.categoryName')} error={errors.includes('categoryName') ? pt('validation.categoryName') : undefined}>
-            <Input id="poi-category" value={form.categoryName ?? ''} onChange={(event) => setField('categoryName', event.target.value)} />
+          <StudioField {...categoryField} label={pt('fields.categoryName')}>
+            <Input
+              {...categoryField.controlProps}
+              {...register('categoryName', {
+                onChange: () => clearErrors('categoryName'),
+              })}
+            />
           </StudioField>
         </StudioFieldGroup>
         <StudioField id="poi-description" label={pt('fields.description')}>
-          <Textarea id="poi-description" value={form.description ?? ''} onChange={(event) => setField('description', event.target.value)} rows={6} />
+          <Textarea id="poi-description" {...register('description')} rows={6} />
         </StudioField>
         <StudioField id="poi-mobile-description" label={pt('fields.mobileDescription')}>
-          <Textarea id="poi-mobile-description" value={form.mobileDescription ?? ''} onChange={(event) => setField('mobileDescription', event.target.value)} rows={4} />
+          <Textarea id="poi-mobile-description" {...register('mobileDescription')} rows={4} />
         </StudioField>
-        <MediaReferenceField
-          id="poi-teaser-image"
-          label={pt('fields.teaserImage')}
-          value={teaserImageAssetId}
-          options={mediaOptions}
-          onChange={setTeaserImageAssetId}
-          placeholder={pt('fields.mediaPlaceholder')}
-          clearLabel={pt('actions.clearMedia')}
+        <Controller
+          name="teaserImageAssetId"
+          control={control}
+          render={({ field }) => (
+            <MediaReferenceField
+              id="poi-teaser-image"
+              label={pt('fields.teaserImage')}
+              value={field.value || null}
+              options={mediaOptions}
+              onChange={(assetId) => field.onChange(assetId ?? '')}
+              placeholder={pt('fields.mediaPlaceholder')}
+              clearLabel={pt('actions.clearMedia')}
+            />
+          )}
         />
         <StudioField id="poi-active" label={pt('fields.active')}>
-          <Checkbox id="poi-active" checked={form.active !== false} onChange={(event) => setField('active', event.target.checked)} />
+          <Controller
+            name="active"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                id="poi-active"
+                checked={field.value}
+                onChange={(event) => field.onChange(event.target.checked)}
+              />
+            )}
+          />
         </StudioField>
         <StudioFieldGroup columns={2}>
           <StudioField id="poi-street" label={pt('fields.street')}>
-            <Input id="poi-street" value={firstAddress.street ?? ''} onChange={(event) => setField('addresses', [{ ...firstAddress, street: event.target.value }])} />
+            <Input id="poi-street" {...register('street')} />
           </StudioField>
           <StudioField id="poi-city" label={pt('fields.city')}>
-            <Input id="poi-city" value={firstAddress.city ?? ''} onChange={(event) => setField('addresses', [{ ...firstAddress, city: event.target.value }])} />
+            <Input id="poi-city" {...register('city')} />
           </StudioField>
         </StudioFieldGroup>
         <StudioFieldGroup columns={2}>
           <StudioField id="poi-email" label={pt('fields.email')}>
-            <Input id="poi-email" value={form.contact?.email ?? ''} onChange={(event) => setField('contact', { ...(form.contact ?? {}), email: event.target.value })} />
+            <Input id="poi-email" {...register('email')} />
           </StudioField>
-          <StudioField id="poi-url" label={pt('fields.url')} error={errors.includes('webUrls') ? pt('validation.webUrls') : undefined}>
-            <Input id="poi-url" value={firstUrl.url} onChange={(event) => setField('webUrls', [{ ...firstUrl, url: event.target.value }])} />
+          <StudioField {...urlField} label={pt('fields.url')}>
+            <Input
+              {...urlField.controlProps}
+              {...register('url', {
+                onChange: () => clearErrors('url'),
+              })}
+            />
           </StudioField>
         </StudioFieldGroup>
         <StudioFieldGroup columns={2}>
           <StudioField id="poi-weekday" label={pt('fields.weekday')}>
-            <Input id="poi-weekday" value={firstOpeningHour.weekday ?? ''} onChange={(event) => setField('openingHours', [{ ...firstOpeningHour, weekday: event.target.value }])} />
+            <Input id="poi-weekday" {...register('weekday')} />
           </StudioField>
           <StudioField id="poi-time-from" label={pt('fields.timeFrom')}>
-            <Input id="poi-time-from" value={firstOpeningHour.timeFrom ?? ''} onChange={(event) => setField('openingHours', [{ ...firstOpeningHour, timeFrom: event.target.value }])} />
+            <Input id="poi-time-from" {...register('timeFrom')} />
           </StudioField>
         </StudioFieldGroup>
-        <StudioField id="poi-payload" label={pt('fields.payload')} error={payloadError ? pt('validation.payload') : undefined}>
-          <Textarea id="poi-payload" value={payloadText} onChange={(event) => setPayloadText(event.target.value)} rows={6} />
+        <StudioField {...payloadField} label={pt('fields.payload')}>
+          <Textarea
+            {...payloadField.controlProps}
+            {...register('payloadText', {
+              onChange: () => clearErrors('payloadText'),
+            })}
+            rows={6}
+          />
         </StudioField>
         <div className="flex gap-2">
-          <Button type="submit">{mode === 'create' ? pt('actions.create') : pt('actions.update')}</Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {mode === 'create' ? pt('actions.create') : pt('actions.update')}
+          </Button>
           {mode === 'edit' ? (
             <Button type="button" variant="destructive" onClick={() => void remove()}>
               {pt('actions.delete')}

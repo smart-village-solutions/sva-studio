@@ -1,4 +1,5 @@
-import { type FormEvent, useMemo } from 'react';
+import React, { type FormEvent, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
 
 import type {
   WasteCityRecord,
@@ -54,13 +55,41 @@ export const WasteMasterDataLocationFormContent = ({
   onReloadAssignments,
 }: WasteMasterDataLocationFormContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const filteredCities = form.regionId ? cities.filter((city) => city.regionId === form.regionId) : cities;
-  const filteredStreets = form.cityId ? streets.filter((street) => street.cityId === form.cityId) : [];
-  const filteredHouseNumbers = form.streetId ? houseNumbers.filter((houseNumber) => houseNumber.streetId === form.streetId) : [];
+  const { handleSubmit, register, reset, setValue, watch } = useForm<CollectionLocationFormState>({
+    defaultValues: form,
+  });
+
+  React.useEffect(() => {
+    reset(form);
+  }, [form, reset]);
+
+  React.useEffect(() => {
+    register('id');
+    register('regionId');
+    register('cityId');
+    register('streetId');
+    register('houseNumberId');
+    register('active');
+  }, [register]);
+
+  const formValues = watch();
+  const filteredCities = formValues.regionId ? cities.filter((city) => city.regionId === formValues.regionId) : cities;
+  const filteredStreets = formValues.cityId ? streets.filter((street) => street.cityId === formValues.cityId) : [];
+  const filteredHouseNumbers = formValues.streetId ? houseNumbers.filter((houseNumber) => houseNumber.streetId === formValues.streetId) : [];
   const currentLocationTourLinks = useMemo(
-    () => locationTourLinks.filter((link) => link.locationId === form.id),
-    [form.id, locationTourLinks]
+    () => locationTourLinks.filter((link) => link.locationId === formValues.id),
+    [formValues.id, locationTourLinks]
   );
+  const handleFormChange = (patch: Partial<CollectionLocationFormState>) => {
+    for (const [key, value] of Object.entries(patch) as Array<[keyof CollectionLocationFormState, CollectionLocationFormState[keyof CollectionLocationFormState]]>) {
+      setValue(key, value);
+    }
+    onChange(patch);
+  };
+  const submitForm = (event: FormEvent<HTMLFormElement>) => {
+    void handleSubmit(() => undefined)(event);
+    void onSubmit(event);
+  };
 
   const saveLabel = saving
     ? pt('masterData.collectionLocations.actions.saving')
@@ -96,19 +125,19 @@ export const WasteMasterDataLocationFormContent = ({
         actions={topActions}
       />
 
-      <form id="waste-location-form" className="space-y-6" onSubmit={(event) => void onSubmit(event)}>
+      <form id="waste-location-form" className="space-y-6" onSubmit={submitForm}>
         <LocationSelectSection
-          form={form}
+          form={formValues}
           regions={regions}
           filteredCities={filteredCities}
           filteredStreets={filteredStreets}
           filteredHouseNumbers={filteredHouseNumbers}
-          onChange={onChange}
+          onChange={handleFormChange}
         />
-        <LocationStatusSection active={form.active} onChange={onChange} />
+        <LocationStatusSection active={formValues.active} onChange={handleFormChange} />
         {mode === 'edit' ? (
           <LocationAssignmentsSection
-            locationId={form.id}
+            locationId={formValues.id}
             tours={availableTours}
             fractions={fractions}
             links={currentLocationTourLinks}

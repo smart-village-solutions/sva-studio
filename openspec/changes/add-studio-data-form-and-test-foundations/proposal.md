@@ -14,6 +14,7 @@ Zusätzlich fehlen für kritische Kernlogik systematische generative Tests sowie
 - Zulässige Ausnahmen werden für Formular-Foundations explizit auf unveränderte Legacy-Flows, sehr kleine Interaktionen ohne eigenständige Formularorchestrierung und dokumentierte Spezialfälle begrenzt; MSW-Ausnahmen bleiben davon getrennt auf nicht-HTTP-nahe Tests beschränkt.
 - Eine vollständige Formular-Migrationsinventur für Host und Plugins wird als Pflichtartefakt des Changes verankert.
 - Die Governance-, Review- und Exit-Mechanik wird in `review-governance` verankert, sodass Referenzpiloten den Standard validieren, aber keine optionale Pilot-Sonderzone begründen.
+- Der konkrete Referenzscope wird dort ebenfalls explizit normiert: `/admin/users`, `/admin/roles` und der Host-Content-Flow als Referenzimplementierungen; `/account` nur unter der Default-Regel.
 - Die betroffenen Spezifikationen präzisieren Architektur-, UI- und Testmuster für Host und Plugins als verbindliche Repo-Vorgabe.
 
 ## Impact

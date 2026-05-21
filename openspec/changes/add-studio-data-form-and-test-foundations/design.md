@@ -100,6 +100,8 @@ Dieser Change benötigt zwei Architekturentscheidungen in `docs/adr/`, die spät
 - Zweck: Referenzimplementierungen validieren den verbindlichen Standardpfad, ohne die repo-weite Default-Geltung einzuschränken.
 - `/account`-Flows fallen bereits unter die repo-weite Default-Regel für neue oder grundlegend überarbeitete Formulare, sind in diesem Change aber keine initialen Referenzimplementierungen.
 
+Der normative Referenzscope und die Ausnahmebehandlung dieses Changes werden in `review-governance` festgelegt; dieser Design-Text beschreibt nur die fachliche Einordnung.
+
 ### Phase 2: Auswertung und Ausweitung
 
 - Weitere Migrationen erfolgen erst, wenn die Referenzimplementierungen ohne zusätzliche Sonderadapter tragfähig sind.

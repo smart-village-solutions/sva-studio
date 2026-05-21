@@ -32,6 +32,12 @@ Das System SHALL fuer Formular-, HTTP-Test- und Property-based-Testing-Foundatio
 
 Das System SHALL den repo-weiten Default-Standard und die kleinere Menge initialer Referenzimplementierungen als getrennte Review- und Exit-Sichten fuehren.
 
+#### Scenario: Initialer Referenzscope dieses Changes ist explizit festgelegt
+
+- **WHEN** der Change die ersten Referenzimplementierungen fuer den Rollout bestimmt
+- **THEN** gelten `/admin/users`, `/admin/roles` und der Host-Content-Flow als initiale Referenzimplementierungen
+- **AND** faellt `/account` unter den repo-weiten Default-Standard, ohne in diesem Change als initialer Referenzpilot zu gelten
+
 #### Scenario: Reviewer bewertet den Rollout-Scope
 
 - **WHEN** der Change Referenzimplementierungen fuer den Rollout benennt
@@ -49,3 +55,19 @@ Das System SHALL den repo-weiten Default-Standard und die kleinere Menge initial
 - **WHEN** relevante Host- oder Plugin-Formulare in der Inventur fehlen
 - **THEN** gilt das Pflichtartefakt als nicht erfuellt
 - **AND** darf der Change nicht als exit-bereit bewertet werden
+
+### Requirement: Ausnahmebehandlung ist zentral normiert
+
+Das System SHALL Ausnahmen vom Foundation-Stack zentral ueber `review-governance` bewerten und dokumentieren.
+
+#### Scenario: Formular-Ausnahme wird bewertet
+
+- **WHEN** ein Formular-Flow vom RHF-/Resolver-Standard abweichen soll
+- **THEN** wird die Abweichung nur als unveraenderter Legacy-Flow, sehr kleine Interaktion ohne eigenstaendige Formularorchestrierung oder dokumentierter Spezialfall akzeptiert
+- **AND** bleibt die Ausnahme zentral nachvollziehbar dokumentiert
+
+#### Scenario: MSW-Ausnahme wird bewertet
+
+- **WHEN** ein HTTP-naher Frontend-Test nicht ueber `msw` abgesichert werden soll
+- **THEN** wird die Abweichung getrennt von Formular-Ausnahmen bewertet
+- **AND** bleiben nicht-HTTP-nahe Tests oder klar begruendete Spezialfaelle die zulaessigen Ausnahmepfade

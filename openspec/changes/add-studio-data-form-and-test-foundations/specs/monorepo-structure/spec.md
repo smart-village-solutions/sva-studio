@@ -18,24 +18,6 @@ Dieser Foundation-Stack umfasst mindestens `react-hook-form`, `@hookform/resolve
 - **THEN** ist `fast-check` Teil desselben repo-weiten Foundation-Stacks
 - **AND** bleibt die Foundation nicht auf React-Host- oder pluginfaehige Frontend-Pakete beschraenkt
 
-#### Scenario: Referenzimplementierung bestaetigt einen Default-Standard
-
-- **WHEN** definierte Referenzimplementierungen fuer Formulare oder HTTP-nahe Tests umgesetzt werden
-- **THEN** validieren sie den verbindlichen Standardpfad fuer das Repository
-- **AND** begrenzen die Geltung des Standards nicht auf Pilot- oder Sonderbereiche
-
-#### Scenario: Bestehender stabiler Formularfluss bleibt unveraendert
-
-- **WHEN** ein bestehender Formularfluss keine neue Funktionalitaet und keine grundlegende Ueberarbeitung erhaelt
-- **THEN** muss er nicht allein zur Angleichung an die neue Foundation sofort migriert werden
-- **AND** bleibt die Migration bis zu einer fachlichen Ueberarbeitung oder gezielten Konsolidierung optional
-
-#### Scenario: Dokumentierter Spezialfall weicht begruendet ab
-
-- **WHEN** ein Flow aus technischen Gruenden nicht sinnvoll ueber denselben Standardpfad abgebildet werden kann
-- **THEN** darf er nur mit dokumentierter Architekturbegruendung als Spezialfall abweichen
-- **AND** bleibt die Abweichung als explizite Ausnahme gekennzeichnet
-
 #### Scenario: Test- und Runtime-Abhaengigkeiten bleiben korrekt getrennt
 
 - **WHEN** die Workspace-Pakete fuer diese Foundations konfiguriert werden
@@ -128,13 +110,13 @@ Das System SHALL fuer diesen Change eine vollstaendige Formular-Migrationsinvent
 
 #### Scenario: Change wird fuer den Rollout vorbereitet
 
-- **WHEN** der Change konkrete Referenzmigrationen und Ausnahmen festlegt
+- **WHEN** der Change die Foundation-Einfuehrung vorbereitet
 - **THEN** existiert eine vollstaendige Inventur aller bekannten Host- und Plugin-Formulare
 - **AND** wird sie unter `docs/development/studio-form-migrationsinventur.md` gefuehrt
 - **AND** dokumentiert sie mindestens Pfad, Zweck, heutiges Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Prioritaet, Risiko, Legacy-Ausnahme und Zielzustand
 
 #### Scenario: Begleit-Artefakt fuer Foundations wird abgelegt
 
-- **WHEN** das Begleit-Artefakt fuer Foundation-Regeln und Referenzscope dieses Changes erstellt wird
+- **WHEN** das Begleit-Artefakt fuer Foundations dieses Changes erstellt wird
 - **THEN** wird es unter `docs/development/studio-foundations-governance.md` abgelegt
 - **AND** folgen Inventur- und Begleit-Artefakte damit den Repo-Doku-Regeln fuer Entwicklungsdokumentation

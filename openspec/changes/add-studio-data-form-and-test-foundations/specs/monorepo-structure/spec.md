@@ -71,7 +71,7 @@ Das System SHALL fuer Frontend-Unit- und Integrations-Tests, die HTTP-Verhalten 
 
 #### Scenario: MSW ersetzt keinen echten E2E- oder Infra-Lauf
 
-- **WHEN** die Teststrategie fuer einen Flow bewertet wird
+- **WHEN** ein HTTP-naher Testpfad unterhalb echter E2E- oder Infra-Laeufe eingeordnet wird
 - **THEN** deckt `msw` den HTTP-nahen Unit- oder Integrations-Layer unterhalb echter E2E- oder Infra-Laeufe ab
 - **AND** bleibt die Abgrenzung zu echten Service-Stacks dokumentiert
 
@@ -98,7 +98,7 @@ Das System SHALL fuer diesen Change eine kleine initiale `fast-check`-Hotspot-Li
 
 - **WHEN** der Change die ersten Property-based-Testing-Bereiche festlegt
 - **THEN** benennt er mindestens `packages/routing/src/route-search.ts`, `packages/routing/src/admin-resource-search-params.ts`, `packages/core/src/waste-management-location-tour-pickup-date-import.ts` und `packages/core/src/input-readers.ts`
-- **AND** dokumentiert fuer diese Startmenge die erwarteten Invarianten oder den fachlichen Grund fuer eine eng begruendete Verschiebung
+- **AND** dokumentiert fuer diese Startmenge die erwarteten Invarianten
 
 ### Requirement: Vollstaendige Formular-Migrationsinventur als Pflichtartefakt
 
@@ -109,7 +109,7 @@ Das System SHALL fuer diesen Change eine vollstaendige Formular-Migrationsinvent
 - **WHEN** der Change die Foundation-Einfuehrung vorbereitet
 - **THEN** existiert eine vollstaendige Inventur aller bekannten Host- und Plugin-Formulare
 - **AND** wird sie unter `docs/development/studio-form-migrationsinventur.md` gefuehrt
-- **AND** dokumentiert sie mindestens Pfad, Zweck, heutiges Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Prioritaet, Risiko, Legacy-Ausnahme und Zielzustand
+- **AND** dokumentiert sie mindestens Pfad, Zweck, heutiges Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Prioritaet, Risiko und Zielzustand
 
 #### Scenario: Begleit-Artefakt fuer Foundations wird abgelegt
 

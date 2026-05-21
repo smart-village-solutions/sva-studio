@@ -62,7 +62,11 @@ export type AuthRoutePath =
   | '/api/v1/iam/legal-texts/$legalTextVersionId'
   | '/api/v1/iam/admin/reconcile'
   | '/iam/governance/workflows'
+  | '/iam/governance/workflows/$caseId'
   | '/iam/governance/compliance/export'
+  | '/iam/admin/deletion-rules'
+  | '/iam/me/deletion-rules'
+  | '/iam/me/deletion-rules/content-preference'
   | '/iam/me/permission-change-requests'
   | '/iam/me/data-export'
   | '/iam/me/data-export/status'
@@ -73,6 +77,7 @@ export type AuthRoutePath =
   | '/iam/admin/data-subject-rights/export'
   | '/iam/admin/data-subject-rights/export/status'
   | '/iam/admin/data-subject-rights/cases'
+  | '/iam/admin/data-subject-rights/cases/$caseId'
   | '/iam/admin/data-subject-rights/legal-holds/apply'
   | '/iam/admin/data-subject-rights/legal-holds/release'
   | '/iam/admin/data-subject-rights/maintenance'
@@ -174,7 +179,11 @@ export const authRoutePaths = [
   '/api/v1/iam/legal-texts/$legalTextVersionId',
   '/api/v1/iam/admin/reconcile',
   '/iam/governance/workflows',
+  '/iam/governance/workflows/$caseId',
   '/iam/governance/compliance/export',
+  '/iam/admin/deletion-rules',
+  '/iam/me/deletion-rules',
+  '/iam/me/deletion-rules/content-preference',
   '/iam/me/permission-change-requests',
   '/iam/me/data-export',
   '/iam/me/data-export/status',
@@ -185,6 +194,7 @@ export const authRoutePaths = [
   '/iam/admin/data-subject-rights/export',
   '/iam/admin/data-subject-rights/export/status',
   '/iam/admin/data-subject-rights/cases',
+  '/iam/admin/data-subject-rights/cases/$caseId',
   '/iam/admin/data-subject-rights/legal-holds/apply',
   '/iam/admin/data-subject-rights/legal-holds/release',
   '/iam/admin/data-subject-rights/maintenance',

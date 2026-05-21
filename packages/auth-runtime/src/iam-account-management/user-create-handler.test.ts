@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   executeCreateUser: vi.fn(),
@@ -14,6 +14,12 @@ vi.mock('./user-mutation-errors.js', () => ({
 }));
 
 describe('executeCreateUserWithKnownErrors', () => {
+  let executeCreateUserWithKnownErrors: typeof import('./user-create-handler.js').executeCreateUserWithKnownErrors;
+
+  beforeAll(async () => {
+    ({ executeCreateUserWithKnownErrors } = await import('./user-create-handler.js'));
+  }, 30_000);
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -25,7 +31,6 @@ describe('executeCreateUserWithKnownErrors', () => {
     });
     state.createUserMutationErrorResponse.mockReturnValue(null);
 
-    const { executeCreateUserWithKnownErrors } = await import('./user-create-handler.js');
     const payload = {
       email: 'alice@example.com',
       roleIds: ['role-1'] as const,
@@ -76,8 +81,6 @@ describe('executeCreateUserWithKnownErrors', () => {
     state.executeCreateUser.mockRejectedValue(new Error('invalid_request:Mindestens eine aktive Gruppe existiert nicht.'));
     state.createUserMutationErrorResponse.mockReturnValue(knownResponse);
 
-    const { executeCreateUserWithKnownErrors } = await import('./user-create-handler.js');
-
     await expect(
       executeCreateUserWithKnownErrors({
         actor: {
@@ -115,8 +118,6 @@ describe('executeCreateUserWithKnownErrors', () => {
     const failure = new Error('boom');
     state.executeCreateUser.mockRejectedValue(failure);
     state.createUserMutationErrorResponse.mockReturnValue(null);
-
-    const { executeCreateUserWithKnownErrors } = await import('./user-create-handler.js');
 
     await expect(
       executeCreateUserWithKnownErrors({

@@ -102,6 +102,13 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Legal Holds blockieren finale Löschung deterministisch
   - Art.-19-Nachweise für Berichtigung/Löschung/Einschränkung vollständig dokumentiert
   - Wartungslauf verarbeitet Exportjobs, Eskalationen und Finalisierungen nachvollziehbar
+- Tenant-Löschregeln:
+  - `pnpm nx run iam-governance:test:unit --testFiles=src/deletion-rules-read-models.test.ts --testFiles=src/deletion-rules-maintenance.test.ts` muss grün sein
+  - `pnpm nx run auth-runtime:test:unit --testFiles=src/iam-deletion-rules/core.test.ts` muss grün sein
+  - `pnpm nx run sva-studio-react:test:unit --testFiles=src/routes/admin/-iam-page.test.tsx --testFiles=src/routes/account/-account-privacy-page.test.tsx` muss grün sein
+  - `pnpm nx run data:db:test:seeds` muss tenantbezogene Löschregel-Defaults idempotent anwenden
+  - Root-/Plattform-Accounts ohne Tenant-Scope dürfen weder den Admin-Tab `deletion-rules` noch die Konten-Löschregeln-Box im Datenschutz-Cockpit sehen
+  - Die automatische Löschverarbeitung bleibt referenzwahrend; `deleted` markiert Accounts und Inhalte nur als Tombstone-Soft-Delete und löscht keine Zeilen physisch
 - UI-Shell-Qualität:
   - Landmarks (`header`, `aside`, `main`) und Skip-Link vorhanden
   - Skeleton-Zustand für Sidebar, Kopfzeile und Contentbereich vorhanden

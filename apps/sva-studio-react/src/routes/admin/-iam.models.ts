@@ -1,4 +1,10 @@
-import type { AuthorizeResponse, EffectivePermission, IamDsrCaseListItem, MePermissionsResponse } from '@sva/core';
+import type {
+  AuthorizeResponse,
+  EffectivePermission,
+  IamDsrCaseListItem,
+  IamGovernanceCaseListItem,
+  MePermissionsResponse,
+} from '@sva/core';
 import { t } from '../../i18n';
 import type { TranslationKey } from '../../i18n/translate';
 
@@ -22,11 +28,12 @@ export type AuthorizeDecisionViewModel = {
   readonly matchedPermissions?: AuthorizeResponse['matchedPermissions'];
 };
 
-const VALID_TABS: readonly IamCockpitTabKey[] = ['rights', 'governance', 'dsr'];
+const VALID_TABS: readonly IamCockpitTabKey[] = ['rights', 'governance', 'dsr', 'deletion-rules'];
 const TAB_TRANSLATION_KEY_BY_VALUE = {
   rights: 'admin.iam.tabs.rights',
   governance: 'admin.iam.tabs.governance',
   dsr: 'admin.iam.tabs.dsr',
+  'deletion-rules': 'admin.iam.tabs.deletionRules',
 } as const satisfies Record<IamCockpitTabKey, string>;
 
 const GOVERNANCE_TYPE_TRANSLATION_KEY_BY_VALUE = {
@@ -172,6 +179,14 @@ export const mapIamTabToTranslationKey = (tab: IamCockpitTabKey) => TAB_TRANSLAT
 export const mapGovernanceTypeToTranslationKey = (
   value: keyof typeof GOVERNANCE_TYPE_TRANSLATION_KEY_BY_VALUE
 ) => GOVERNANCE_TYPE_TRANSLATION_KEY_BY_VALUE[value];
+
+export const formatGovernanceTitle = (value: Pick<IamGovernanceCaseListItem, 'title' | 'type'>) => {
+  if (value.title === value.type) {
+    return t(mapGovernanceTypeToTranslationKey(value.type));
+  }
+
+  return value.title;
+};
 
 export const mapDsrTypeToTranslationKey = (value: keyof typeof DSR_TYPE_TRANSLATION_KEY_BY_VALUE) =>
   DSR_TYPE_TRANSLATION_KEY_BY_VALUE[value];

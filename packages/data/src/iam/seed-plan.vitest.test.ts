@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { getPersonaSeed, iamSeedPlan } from './seed-plan';
 
@@ -37,7 +40,18 @@ const pluginContentPermissions = [
   'poi.delete',
 ] as const;
 
+const seedDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../seeds');
+const personaSeedSql = readFileSync(resolve(seedDir, '0001_iam_personas.sql'), 'utf8');
+
 describe('iamSeedPlan content permissions', () => {
+  it('includes deletion-rules defaults in the seed plan', () => {
+    expect(iamSeedPlan.seedFiles).toEqual([
+      '0001_iam_personas.sql',
+      '0002_bb_guben_permissions.sql',
+      '0003_iam_deletion_rules_defaults.sql',
+    ]);
+  });
+
   it('seeds every granular content and plugin permission without legacy content aliases', () => {
     const permissionKeys = iamSeedPlan.permissions.map((permission) => permission.key);
 
@@ -77,5 +91,29 @@ describe('iamSeedPlan content permissions', () => {
       expect.arrayContaining(['news.read', 'events.read', 'poi.read'])
     );
     expect(getPersonaSeed('moderator').permissionKeys).not.toContain('events.update');
+  });
+
+  it('keeps the SQL seed aligned with the canonical instance_registry_admin persona', () => {
+    expect(personaSeedSql).toContain("'instance_registry_admin'");
+    expect(personaSeedSql).toContain("'50888888-8888-8888-8888-888888888888'");
+    expect(personaSeedSql).toContain("'seed:instance_registry_admin'");
+    expect(personaSeedSql).toContain(
+      "('de-musterhausen', '50888888-8888-8888-8888-888888888888', 'member')"
+    );
+    expect(personaSeedSql).toContain(
+      "('30188888-8888-8888-8888-888888888888', 'de-musterhausen', 'instance_registry_admin'"
+    );
+    expect(personaSeedSql).toContain(
+      "('de-musterhausen', '50888888-8888-8888-8888-888888888888', '30188888-8888-8888-8888-888888888888')"
+    );
+    expect(personaSeedSql).toContain(
+      "('instance_registry_admin', 'instance.registry.manage')"
+    );
+    expect(personaSeedSql).toContain(
+      "('instance_registry_admin', 'feature.toggle')"
+    );
+    expect(personaSeedSql).toContain(
+      "('instance_registry_admin', 'integration.manage')"
+    );
   });
 });

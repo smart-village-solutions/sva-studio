@@ -31,11 +31,17 @@ export {
   updateOrganizationHandler,
 } from './iam-organizations/core.js';
 export {
+  getGovernanceCaseHandler,
   governanceComplianceExportHandler,
   permissionChangeSelfServiceRequestHandler,
   governanceWorkflowHandler,
   listGovernanceCasesHandler,
 } from './iam-governance/core.js';
+export {
+  deletionRulesAdminHandler,
+  myDeletionRulesOverviewHandler,
+  myDeletionRulesPreferenceHandler,
+} from './iam-deletion-rules/core.js';
 export {
   createLegalTextHandler,
   deleteLegalTextHandler,
@@ -50,6 +56,7 @@ export {
   dataExportStatusHandler,
   dataSubjectMaintenanceHandler,
   dataSubjectRequestHandler,
+  getAdminDataSubjectRightsCaseHandler,
   getMyDataSubjectRightsHandler,
   legalHoldApplyHandler,
   legalHoldReleaseHandler,

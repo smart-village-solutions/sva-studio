@@ -3,6 +3,7 @@ import type { AuthorizeResponse, EffectivePermission } from '@sva/core';
 
 import {
   filterPermissions,
+  formatGovernanceTitle,
   formatPermissionAreaLabel,
   formatPermissionSourceKindLabels,
   formatPermissionSourceKinds,
@@ -199,6 +200,7 @@ describe('iam.models', () => {
 
   it('normalizes invalid IAM tabs to rights', () => {
     expect(normalizeIamTab('governance')).toBe('governance');
+    expect(normalizeIamTab('deletion-rules')).toBe('deletion-rules');
     expect(normalizeIamTab('unknown')).toBe('rights');
     expect(normalizeIamTab(undefined)).toBe('rights');
   });
@@ -218,9 +220,15 @@ describe('iam.models', () => {
 
   it('maps IAM tab, governance type and DSR filter values to static translation keys', () => {
     expect(mapIamTabToTranslationKey('rights')).toBe('admin.iam.tabs.rights');
+    expect(mapIamTabToTranslationKey('deletion-rules')).toBe('admin.iam.tabs.deletionRules');
     expect(mapGovernanceTypeToTranslationKey('legal_acceptance')).toBe('admin.iam.governance.types.legal_acceptance');
     expect(mapDsrTypeToTranslationKey('recipient_notification')).toBe('admin.iam.dsr.types.recipient_notification');
     expect(mapDsrCanonicalStatusToTranslationKey('in_progress')).toBe('admin.iam.dsr.status.inProgress');
+  });
+
+  it('formats governance fallback titles via localized type labels', () => {
+    expect(formatGovernanceTitle({ title: 'delegation', type: 'delegation' })).toBe('Delegation');
+    expect(formatGovernanceTitle({ title: 'Benutzerfreigabe', type: 'delegation' })).toBe('Benutzerfreigabe');
   });
 
   it('maps DSR status tones for success, error and pending variants', () => {

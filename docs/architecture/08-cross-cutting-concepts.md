@@ -486,7 +486,11 @@ Referenzen:
 - Der Zugriff auf `/admin/iam` und seine Tabs folgt einer abgestuften Rollenmatrix:
   - Route und Tabs `rights`/`dsr`: `iam_admin`, `support_admin`, `system_admin`
   - Tab `governance` lesend zusätzlich: `security_admin`, `compliance_officer`
+- Der Tab `/admin/iam?tab=deletion-rules` ist tenantgebunden und bleibt Root-/Plattform-Accounts ohne aktive `instanceId` verborgen.
 - `/account/privacy` verarbeitet ausschließlich das eigene Subjekt; der Client akzeptiert dort keine fremden User- oder Account-IDs.
+- Die Konten-Löschregeln im Datenschutz-Cockpit erscheinen nur für Tenant-Accounts; Root-/Plattform-Accounts ohne Tenant-Scope sehen diese Box nicht.
+- Self-Service-Inhaltspräferenzen dürfen nur für das eigene Tenant-Konto geschrieben werden und nur dann, wenn der Tenant `allowContentPreferenceOverride = true` gesetzt hat.
+- V1 leitet Inaktivität für Tenant-Löschregeln ausschließlich aus `MAX(iam.activity_logs.created_at WHERE event_type = 'login' AND result = 'success')` pro `instanceId` ab; fehlgeschlagene Login-Versuche halten den Lifecycle bewusst nicht künstlich aktiv, und neue Aktivitätstelemetrie gehört nicht zu diesem Scope.
 - Das DSR-UI verwendet ein kanonisches Statusmodell (`queued`, `in_progress`, `completed`, `blocked`, `failed`) und zeigt Rohstatus nur sekundär zur Betriebsdiagnose.
 - Transparenzlisten laden tab-spezifisch, serverseitig paginiert und filterbar; Detaildaten und User-Timeline-Ereignisse werden on demand geladen.
 - Neue IAM-/Privacy-Texte laufen vollständig über Translation-Keys in `de` und `en`; harte Strings in den neuen Views sind nicht zulässig.

@@ -134,6 +134,22 @@ const breadcrumbRoutes: ReadonlyArray<
     build: () => [overviewBreadcrumb(), { label: t('admin.iam.page.title') }],
   },
   {
+    pattern: /^\/admin\/iam\/governance\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/iam', label: t('admin.iam.page.title') },
+      { label: t('admin.iam.governance.detail.title') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/iam\/dsr\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/iam', label: t('admin.iam.page.title') },
+      { label: t('admin.iam.dsr.detail.title') },
+    ],
+  },
+  {
     pattern: /^\/admin\/api\/phase1-test$/,
     build: () => [overviewBreadcrumb(), { label: t('shell.sidebar.adminApiTest') }],
   },

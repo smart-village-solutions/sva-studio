@@ -7,6 +7,8 @@ const useAuthMock = vi.fn();
 const useNavigateMock = vi.fn();
 const listGovernanceCasesMock = vi.fn();
 const listAdminDsrCasesMock = vi.fn();
+const getAdminDeletionRulesMock = vi.fn();
+const saveAdminDeletionRulesMock = vi.fn();
 const getAllowedIamCockpitTabsMock = vi.fn();
 const hasGovernanceComplianceExportRoleMock = vi.fn();
 const hasIamCockpitAccessRoleMock = vi.fn();
@@ -24,6 +26,8 @@ vi.mock('../../lib/iam-api', () => ({
   fetchWithRequestTimeout: (...args: Parameters<typeof fetch>) => fetch(...args),
   listGovernanceCases: (...args: unknown[]) => listGovernanceCasesMock(...args),
   listAdminDsrCases: (...args: unknown[]) => listAdminDsrCasesMock(...args),
+  getAdminDeletionRules: (...args: unknown[]) => getAdminDeletionRulesMock(...args),
+  saveAdminDeletionRules: (...args: unknown[]) => saveAdminDeletionRulesMock(...args),
 }));
 
 vi.mock('../../lib/iam-viewer-access', () => ({
@@ -46,6 +50,8 @@ describe('IamViewerPage', () => {
     useNavigateMock.mockReset();
     listGovernanceCasesMock.mockReset();
     listAdminDsrCasesMock.mockReset();
+    getAdminDeletionRulesMock.mockReset();
+    saveAdminDeletionRulesMock.mockReset();
     getAllowedIamCockpitTabsMock.mockReset();
     hasGovernanceComplianceExportRoleMock.mockReset();
     hasIamCockpitAccessRoleMock.mockReset();
@@ -193,6 +199,113 @@ describe('IamViewerPage', () => {
     });
   });
 
+  it('updates rights filters and shows authorize progress and fallback summary values', async () => {
+    let resolveAuthorize: (response: Response) => void = () => {
+      throw new Error('Expected authorize request promise to be pending.');
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            permissions: [],
+            subject: {
+              actorUserId: 'user-1',
+              effectiveUserId: 'user-1',
+              isImpersonating: false,
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveAuthorize = resolve;
+          })
+      )
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            permissions: [],
+            subject: {
+              actorUserId: 'user-1',
+              effectiveUserId: 'user-1',
+              isImpersonating: false,
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    useAuthMock.mockReturnValue({
+      user: adminUser,
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['rights']);
+
+    render(<IamViewerPage activeTab="rights" />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText('Organisation', { selector: '#iam-organization-filter' }), {
+      target: { value: 'org-9' },
+    });
+    fireEvent.change(screen.getByLabelText('Handeln als'), {
+      target: { value: 'user-9' },
+    });
+    fireEvent.change(screen.getByLabelText('Suche'), {
+      target: { value: 'content.update' },
+    });
+    fireEvent.change(document.getElementById('iam-authorize-action') as HTMLInputElement, {
+      target: { value: 'content.delete' },
+    });
+    fireEvent.change(document.getElementById('iam-authorize-resource-type') as HTMLInputElement, {
+      target: { value: 'news' },
+    });
+    fireEvent.change(document.getElementById('iam-authorize-resource-id') as HTMLInputElement, {
+      target: { value: 'news-1' },
+    });
+    fireEvent.change(screen.getByLabelText('Organisation', { selector: '#iam-authorize-organization-id' }), {
+      target: { value: 'org-10' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Authorize prüfen' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Authorize/ })).toHaveProperty('disabled', true);
+    });
+
+    resolveAuthorize(
+      new Response(
+        JSON.stringify({
+          allowed: false,
+          reason: 'Denied by policy',
+          diagnostics: null,
+          provenance: null,
+          matchedPermissions: [],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Verweigert')).toBeTruthy();
+      expect(screen.getByText('content.delete')).toBeTruthy();
+      expect(screen.getByText('news / news-1')).toBeTruthy();
+      expect(screen.getByText('org-10')).toBeTruthy();
+      expect(screen.getByText('Denied by policy')).toBeTruthy();
+      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    });
+  });
+
   it('loads governance entries without touching the permissions endpoint', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
@@ -318,7 +431,7 @@ describe('IamViewerPage', () => {
     expect(screen.queryByRole('link', { name: 'CSV exportieren' })).toBeNull();
   });
 
-  it('shows the requester free text for self-service permission change requests in the detail pane', async () => {
+  it('renders self-service permission change requests as governance detail links without leaking hidden metadata', async () => {
     listGovernanceCasesMock.mockResolvedValue({
       data: [
         {
@@ -350,18 +463,46 @@ describe('IamViewerPage', () => {
     render(<IamViewerPage activeTab="governance" />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Rechteänderung/i })).toBeTruthy();
+      expect(screen.getAllByRole('link', { name: /Rechteänderung/i }).length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Rechteänderung/i }));
+    expect(screen.getAllByText('Ich benötige Schreibrechte für die Veranstaltungsredaktion.').length).toBeGreaterThan(0);
+    expect(screen.queryByText('requestOrigin: self_service')).toBeNull();
+  });
+
+  it('renders governance rows as detail links without inline detail pane content', async () => {
+    listGovernanceCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'gov-1',
+          type: 'delegation',
+          status: 'open',
+          title: 'Delegation freigeben',
+          summary: 'Zusätzliche Freigabe für Redaktion',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          metadata: {},
+        },
+      ],
+    });
+
+    useAuthMock.mockReturnValue({
+      user: { ...adminUser, roles: ['security_admin'] },
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
+
+    render(<IamViewerPage activeTab="governance" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Anfragebeschreibung')).toBeTruthy();
-      expect(screen.getAllByText('Ich benötige Schreibrechte für die Veranstaltungsredaktion.').length).toBeGreaterThan(0);
-      expect(screen.getByText('Metadaten')).toBeTruthy();
-      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
-      expect(screen.queryByText('requestOrigin: self_service')).toBeNull();
+      expect(screen.getAllByRole('link', { name: 'Delegation freigeben' })[0]?.getAttribute('href')).toBe('/admin/iam/governance/gov-1');
     });
+
+    expect(screen.queryByText('Wählen Sie links einen Eintrag aus, um Details anzuzeigen.')).toBeNull();
   });
 
   it('loads DSR entries and renders canonical status badges', async () => {
@@ -396,6 +537,294 @@ describe('IamViewerPage', () => {
       expect(listAdminDsrCasesMock).toHaveBeenCalledTimes(1);
       expect(screen.getAllByText('Auskunftsersuchen')).toHaveLength(2);
       expect(screen.getAllByText('In Bearbeitung').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('renders DSR rows as detail links without inline detail pane content', async () => {
+    listAdminDsrCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'dsr-1',
+          type: 'request',
+          canonicalStatus: 'in_progress',
+          rawStatus: 'processing',
+          title: 'Auskunftsersuchen',
+          summary: 'Benutzerkonto Alice',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          metadata: {},
+        },
+      ],
+    });
+
+    useAuthMock.mockReturnValue({
+      user: adminUser,
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['dsr']);
+
+    render(<IamViewerPage activeTab="dsr" />);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('link', { name: 'Auskunftsersuchen' })[0]?.getAttribute('href')).toBe('/admin/iam/dsr/dsr-1');
+    });
+
+    expect(screen.queryByText('Wählen Sie links einen Eintrag aus, um Details anzuzeigen.')).toBeNull();
+  });
+
+  it('loads and saves tenant deletion rules in the admin cockpit', async () => {
+    getAdminDeletionRulesMock.mockResolvedValue({
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      deactivateAfterDays: 90,
+      pseudonymizeAfterDays: 180,
+      deleteAfterDays: 365,
+      defaultContentStrategy: 'retain',
+      allowContentPreferenceOverride: true,
+      canEdit: true,
+    });
+    saveAdminDeletionRulesMock.mockResolvedValue({
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      deactivateAfterDays: 120,
+      pseudonymizeAfterDays: 180,
+      deleteAfterDays: 365,
+      defaultContentStrategy: 'with_owner_lifecycle',
+      allowContentPreferenceOverride: false,
+      canEdit: true,
+    });
+
+    useAuthMock.mockReturnValue({
+      user: adminUser,
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['deletion-rules']);
+
+    render(<IamViewerPage activeTab="deletion-rules" />);
+
+    await waitFor(() => {
+      expect(getAdminDeletionRulesMock).toHaveBeenCalledWith('11111111-1111-1111-8111-111111111111');
+      expect(screen.getByRole('heading', { name: 'Tenant-Löschregeln' })).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Deaktivierung nach Tagen'), {
+      target: { value: '120' },
+    });
+    fireEvent.change(screen.getByLabelText('Pseudonymisierung nach Tagen'), {
+      target: { value: '240' },
+    });
+    fireEvent.change(screen.getByLabelText('Löschung nach Tagen'), {
+      target: { value: '480' },
+    });
+    fireEvent.change(screen.getByLabelText('Standardregel für Inhalte'), {
+      target: { value: 'with_owner_lifecycle' },
+    });
+    fireEvent.click(screen.getByLabelText('Nutzer dürfen die Standardregel für eigene Inhalte überschreiben'));
+    fireEvent.click(screen.getByRole('button', { name: 'Löschregeln speichern' }));
+
+    await waitFor(() => {
+      expect(saveAdminDeletionRulesMock).toHaveBeenCalledWith({
+        instanceId: '11111111-1111-1111-8111-111111111111',
+        deactivateAfterDays: 120,
+        pseudonymizeAfterDays: 240,
+        deleteAfterDays: 480,
+        defaultContentStrategy: 'with_owner_lifecycle',
+        allowContentPreferenceOverride: false,
+      });
+    });
+  });
+
+  it('moves focus to the newly selected tab after keyboard navigation', async () => {
+    useAuthMock.mockReturnValue({
+      user: adminUser,
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['rights', 'governance']);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            permissions: [],
+            subject: {
+              actorUserId: 'user-1',
+              effectiveUserId: 'user-1',
+              isImpersonating: false,
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+    );
+    listGovernanceCasesMock.mockResolvedValue({ data: [] });
+
+    const { rerender } = render(<IamViewerPage activeTab="rights" />);
+
+    const rightsTab = screen.getByRole('tab', { name: 'Rechte' });
+    fireEvent.keyDown(rightsTab, { key: 'ArrowRight' });
+
+    rerender(<IamViewerPage activeTab="governance" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Governance' })).toBe(document.activeElement);
+    });
+  });
+
+  it('shows deletion-rules guard, read-only and save-error states', async () => {
+    useAuthMock.mockReturnValue({
+      user: { ...adminUser, instanceId: '' },
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['deletion-rules']);
+
+    render(<IamViewerPage activeTab="deletion-rules" />);
+
+    expect(screen.getByText('Instanzkontext fehlt für Tenant-Löschregeln.')).toBeTruthy();
+    cleanup();
+
+    getAdminDeletionRulesMock.mockResolvedValue({
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      deactivateAfterDays: 90,
+      pseudonymizeAfterDays: 180,
+      deleteAfterDays: 365,
+      defaultContentStrategy: 'retain',
+      allowContentPreferenceOverride: false,
+      canEdit: false,
+    });
+    useAuthMock.mockReturnValue({
+      user: adminUser,
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+
+    render(<IamViewerPage activeTab="deletion-rules" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Diese Löschregeln sind nur lesbar.')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Löschregeln speichern' })).toHaveProperty('disabled', true);
+    });
+    cleanup();
+
+    getAdminDeletionRulesMock.mockResolvedValueOnce({
+      instanceId: '11111111-1111-1111-8111-111111111111',
+      deactivateAfterDays: 90,
+      pseudonymizeAfterDays: 180,
+      deleteAfterDays: 365,
+      defaultContentStrategy: 'retain',
+      allowContentPreferenceOverride: false,
+      canEdit: true,
+    });
+    saveAdminDeletionRulesMock.mockRejectedValueOnce(new Error('save_failed'));
+
+    render(<IamViewerPage activeTab="deletion-rules" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Löschregeln speichern' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Löschregeln speichern' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('save_failed')).toBeTruthy();
+    });
+  });
+
+  it('shows deletion-rules loading errors and authorize 403 errors with permission invalidation', async () => {
+    const invalidatePermissions = vi.fn().mockResolvedValue(undefined);
+    getAdminDeletionRulesMock.mockRejectedValueOnce(new Error('rules_down'));
+    useAuthMock.mockReturnValue({
+      user: adminUser,
+      isLoading: false,
+      error: null,
+      invalidatePermissions,
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['deletion-rules', 'rights']);
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            permissions: [],
+            subject: {
+              actorUserId: 'user-1',
+              effectiveUserId: 'user-1',
+              isImpersonating: false,
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'authorize_forbidden' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { rerender } = render(<IamViewerPage activeTab="deletion-rules" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('rules_down')).toBeTruthy();
+    });
+
+    rerender(<IamViewerPage activeTab="rights" />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Authorize prüfen' }));
+
+    await waitFor(() => {
+      expect(invalidatePermissions).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('authorize_forbidden')).toBeTruthy();
+    });
+  });
+
+  it('renders empty governance and dsr states and keeps export hidden without an instance id', async () => {
+    listGovernanceCasesMock.mockResolvedValue({ data: [] });
+    listAdminDsrCasesMock.mockResolvedValue({ data: [] });
+    useAuthMock.mockReturnValue({
+      user: { ...adminUser, instanceId: '' },
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['governance', 'dsr']);
+
+    const { rerender } = render(<IamViewerPage activeTab="governance" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Keine Governance-Fälle gefunden.')).toBeTruthy();
+    });
+    expect(screen.queryByRole('link', { name: 'CSV exportieren' })).toBeNull();
+
+    rerender(<IamViewerPage activeTab="dsr" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Keine Datenschutzfälle gefunden.')).toBeTruthy();
     });
   });
 

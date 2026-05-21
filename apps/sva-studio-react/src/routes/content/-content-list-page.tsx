@@ -13,6 +13,7 @@ import { Select } from '../../components/ui/select';
 import { useContentAccess } from '../../hooks/use-content-access';
 import { useContents } from '../../hooks/use-contents';
 import { t } from '../../i18n';
+import { formatContentAuthor } from '../../lib/content-author';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import type { IamHttpError } from '../../lib/iam-api';
 import { appAdminResources } from '../../routing/admin-resources';
@@ -338,10 +339,11 @@ export const ContentListPage = () => {
   );
 
   const filteredContents = contentsWithPayloadJson.filter((item) => {
+    const displayAuthor = formatContentAuthor(item.author).toLowerCase();
     const matchesSearch =
       normalizedSearch.length === 0 ||
       item.title.toLowerCase().includes(normalizedSearch) ||
-      item.author.toLowerCase().includes(normalizedSearch) ||
+      displayAuthor.includes(normalizedSearch) ||
       item.contentType.toLowerCase().includes(normalizedSearch) ||
       item.payloadJson.toLowerCase().includes(normalizedSearch);
 
@@ -433,9 +435,9 @@ export const ContentListPage = () => {
       {
         id: 'author',
         header: t('content.table.headerAuthor'),
-        cell: (item) => item.author,
+        cell: (item) => formatContentAuthor(item.author),
         sortable: true,
-        sortValue: (item) => item.author.toLowerCase(),
+        sortValue: (item) => formatContentAuthor(item.author).toLowerCase(),
       },
       {
         id: 'payload',

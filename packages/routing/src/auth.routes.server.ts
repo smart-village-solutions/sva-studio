@@ -33,8 +33,21 @@ const governanceAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.listGovernanceCasesHandler),
     POST: routeHandler(authRuntimeRoutes.governanceWorkflowHandler),
   },
+  '/iam/governance/workflows/$caseId': {
+    GET: routeHandler(authRuntimeRoutes.getGovernanceCaseHandler),
+  },
   '/iam/governance/compliance/export': {
     GET: routeHandler(authRuntimeRoutes.governanceComplianceExportHandler),
+  },
+  '/iam/admin/deletion-rules': {
+    GET: routeHandler(authRuntimeRoutes.deletionRulesAdminHandler),
+    POST: routeHandler(authRuntimeRoutes.deletionRulesAdminHandler),
+  },
+  '/iam/me/deletion-rules': {
+    GET: routeHandler(authRuntimeRoutes.myDeletionRulesOverviewHandler),
+  },
+  '/iam/me/deletion-rules/content-preference': {
+    POST: routeHandler(authRuntimeRoutes.myDeletionRulesPreferenceHandler),
   },
   '/iam/me/permission-change-requests': {
     POST: routeHandler(authRuntimeRoutes.permissionChangeSelfServiceRequestHandler),
@@ -68,6 +81,9 @@ const governanceAuthHandlerMap = {
   },
   '/iam/admin/data-subject-rights/cases': {
     GET: routeHandler(authRuntimeRoutes.listAdminDataSubjectRightsCasesHandler),
+  },
+  '/iam/admin/data-subject-rights/cases/$caseId': {
+    GET: routeHandler(authRuntimeRoutes.getAdminDataSubjectRightsCaseHandler),
   },
   '/iam/admin/data-subject-rights/legal-holds/apply': {
     POST: routeHandler(authRuntimeRoutes.legalHoldApplyHandler),
@@ -214,7 +230,6 @@ export const resolveAuthHandlers = (path: string): AuthHandlers => {
   if (!isAuthRoutePath(path)) {
     throw new Error(`Unknown auth route path: ${path}`);
   }
-
   return authHandlerMap[path];
 };
 
@@ -228,24 +243,19 @@ export const dispatchAuthRouteRequest = (request: Request): Promise<Response | n
     suppressMethodNotAllowedLogging: (path) => healthCheckRoutes.has(path),
   });
 
-const createAuthServerRouteFactory = (path: AuthRoutePath) => {
-  return (rootRoute: RootRoute) => {
-    const routeOptions = {
+const createAuthServerRouteFactory =
+  (path: AuthRoutePath) =>
+  (rootRoute: RootRoute) =>
+    createRoute({
       getParentRoute: () => rootRoute,
       path,
       component: () => null,
       server: {
         handlers: wrapHandlersWithJsonErrorBoundary(resolveAuthHandlers(path), path),
       },
-    };
+    } as unknown as CreateRouteOptions);
 
-    return createRoute(routeOptions as unknown as CreateRouteOptions);
-  };
-};
-
-export const authServerRouteFactories = authRoutePaths.map((path) =>
-  createAuthServerRouteFactory(path)
-);
+export const authServerRouteFactories = authRoutePaths.map(createAuthServerRouteFactory);
 
 export { wrapHandlersWithJsonErrorBoundary };
 export { authRoutePaths } from './auth.routes.js';

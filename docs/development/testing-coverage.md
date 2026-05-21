@@ -58,10 +58,10 @@ pnpm test:pr
 Das Kommando bildet den blockierenden GitHub-PR-Workflow für lokale Vorprüfung nach:
 
 - `check:file-placement`
-- `affected` oder `full` für `lint`, `test:unit`, `test:types` und `test:coverage` abhängig vom PR-Scope
+- `affected` oder `full` für `lint`, `test:unit` und `test:types` abhängig vom PR-Scope
+- Coverage im PR nur noch bei Coverage-/CI-kritischen Änderungen; reguläre PRs überspringen den teuren Coverage-Re-Run bewusst
 - bei isolierten App-only-Änderungen führt der Unit-Pfad nur die betroffenen `sva-studio-react`-Slices aus; unklare oder gemischte Änderungen nutzen den sicheren Aggregat-Fallback
-- `patch-coverage-gate --base=origin/main` für geänderte, ausführbare Zeilen im PR-Diff
-- `coverage-gate` im PR-Modus mit optionalen Summary-Dateien
+- `patch-coverage-gate --base=origin/main`, `sonar-new-code-gate` und `coverage-gate` nur dann, wenn der PR-Scope auch einen Coverage-Lauf ausführt
 - `complexity-gate`
 - `affected`, `full` oder No-op für `test:integration`
 - relevanten React-App-Build und relevanten `App E2E`
@@ -136,7 +136,7 @@ Wenn die Komplexität eines kritischen Hotspots steigt, darf der bestehende Floo
 Workflow: `.github/workflows/runtime-gates.yml`
 
 - Pull Requests:
-  - Job `Coverage`: `affected` oder `full` für `test:coverage` gegen den PR-Base-Branch, gesteuert durch `scripts/ci/pr-scope.ts`
+  - Job `Coverage`: für reguläre PRs bewusster No-op; nur Coverage-/CI-kritische Änderungen triggern `full` für `test:coverage`, Patch-Coverage und New-Code-Gates
   - Job `Complexity`: separates, blockierendes Komplexitäts-Gate
   - Job `PR Integration`: `affected`, `full` oder bewusster No-op für `test:integration`, exklusive `monitoring-client`
   - Reine Doku-/Meta-PRs starten die Workflows weiterhin, beenden die betroffenen Jobs aber bewusst früh als erfolgreicher No-op, damit Required Checks nicht im Status `expected` hängen bleiben
@@ -150,7 +150,7 @@ Workflow: `.github/workflows/runtime-gates.yml`
 
 | Workflow / Jobname in GitHub | Zweck | Trigger-Modell |
 | --- | --- | --- |
-| `Runtime Gates / Coverage` | Coverage für affected/full + internes Coverage-Gate | alle PRs, `main`, nightly |
+| `Runtime Gates / Coverage` | No-op für normale PRs, voller Coverage-Lauf für Coverage-/CI-kritische PRs sowie `main`/nightly | alle PRs, `main`, nightly |
 | `Runtime Gates / Complexity` | Repository-weites Komplexitäts-Gate | alle PRs, `main`, nightly |
 | `Runtime Gates / PR Integration` | scoped `test:integration` außer Monitoring-Stack | Pull Requests |
 | `Runtime Gates / Integration` | voller Integrationslauf | `main`, nightly |

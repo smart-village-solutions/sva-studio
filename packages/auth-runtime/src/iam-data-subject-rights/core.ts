@@ -21,8 +21,9 @@ import { dataSubjectRightsRequestSchema } from '../shared/schemas.js';
 import { asApiItem, asApiList, createApiError, readPage, requireIdempotencyKey, toPayloadHash } from '../iam-account-management/api-helpers.js';
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
-import { listAdminDsrCases, loadDsrSelfServiceOverview } from '@sva/iam-governance';
+import { getAdminDsrCase, listAdminDsrCases, loadDsrSelfServiceOverview } from '@sva/iam-governance';
 import { DsrAccountSnapshotNotFoundError } from '@sva/iam-governance/dsr-read-models-internal';
+import { readPathSegment } from '../shared/request-helpers.js';
 
 const logger = createSdkLogger({ component: 'iam-dsr', level: 'info' });
 const isExportFormat = (value: string | undefined): value is ExportFormat =>
@@ -1405,6 +1406,57 @@ export const listAdminDataSubjectRightsCasesHandler = async (request: Request): 
           instanceId,
           error,
           'DSR-Fälle konnten nicht geladen werden.'
+        );
+      }
+    });
+  });
+};
+
+export const getAdminDataSubjectRightsCaseHandler = async (request: Request): Promise<Response> => {
+  return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    return withAuthenticatedUser(request, async ({ user }) => {
+      if (!isAdminRole(user.roles)) {
+        return createApiError(403, 'forbidden', 'Keine Berechtigung für DSR-Transparenz.', getWorkspaceContext().requestId);
+      }
+
+      const instanceScope = resolveApiScopedInstance({
+        request,
+        fallback: user.instanceId,
+        userInstanceId: user.instanceId,
+        missingMessage: 'Instanzkontext fehlt.',
+        mismatchMessage: 'Instanzkontext unzulässig.',
+      });
+      const caseId = readPathSegment(request, 4);
+
+      if (!instanceScope.ok) {
+        return instanceScope.response;
+      }
+      if (!caseId || !isUuid(caseId)) {
+        return createApiError(400, 'invalid_request', 'Ungültige Datenschutzfall-ID.', getWorkspaceContext().requestId);
+      }
+
+      const { instanceId } = instanceScope;
+
+      try {
+        const item = await withInstanceScopedDb(instanceId, (client) =>
+          getAdminDsrCase(client, {
+            instanceId,
+            caseId,
+          })
+        );
+
+        if (!item) {
+          return createApiError(404, 'not_found', 'Datenschutzfall wurde nicht gefunden.', getRequestId());
+        }
+
+        return jsonResponse(200, asApiItem(item, getRequestId()));
+      } catch (error) {
+        return handleApiDatabaseError(
+          'DSR admin case detail failed',
+          'admin_case_detail',
+          instanceId,
+          error,
+          'DSR-Fall konnte nicht geladen werden.'
         );
       }
     });

@@ -51,12 +51,17 @@ jobs:
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
 
+      - name: Determine PR scope
+        id: scope
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
+
       - name: Start Redis for coverage tests
-        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
+        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip')
         run: docker run -d --name sva-studio-redis-coverage -p 6379:6379 redis:7-alpine
 
       - name: Wait for Redis readiness
-        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
+        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip')
         run: |
           set -euo pipefail
           for i in {1..30}; do
@@ -71,13 +76,8 @@ jobs:
           docker ps -a
           exit 1
 
-      - name: Determine PR scope
-        id: scope
-        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
-
       - name: Run coverage on PR
-        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip'
         run: |
           if [ "${{ steps.scope.outputs.coverage_mode }}" = "full" ]; then
             pnpm test:coverage
@@ -85,14 +85,23 @@ jobs:
             NX_BASE=${{ github.event.pull_request.base.sha }} pnpm test:coverage:affected
           fi
 
+      - name: Run PR coverage gates
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip'
+        env:
+          COVERAGE_GATE_REQUIRE_SUMMARIES: 0
+        run: |
+          pnpm patch-coverage-gate --base=${{ github.event.pull_request.base.sha }}
+          pnpm sonar-new-code-gate --base=${{ github.event.pull_request.base.sha }}
+          pnpm coverage-gate
+
       - name: Run full coverage on main/schedule
         if: github.event_name != 'pull_request'
         run: pnpm test:coverage
 
       - name: Evaluate coverage gates
-        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
+        if: github.event_name != 'pull_request'
         env:
-          COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+          COVERAGE_GATE_REQUIRE_SUMMARIES: '1'
         run: pnpm coverage-gate
 
       - name: Build app for Codecov bundle analysis
@@ -100,7 +109,7 @@ jobs:
         run: pnpm nx run sva-studio-react:build
 
       - name: Upload to Codecov
-        if: always() && env.CODECOV_TOKEN != '' && (github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true')
+        if: always() && env.CODECOV_TOKEN != '' && (github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip'))
         uses: codecov/codecov-action@v6
         with:
           token: ${{ env.CODECOV_TOKEN }}
@@ -111,7 +120,7 @@ jobs:
           name: coverage-${{ github.run_id }}
 
       - name: Upload coverage artifacts
-        if: always() && (github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true')
+        if: always() && (github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip'))
         uses: actions/upload-artifact@v7
         with:
           name: coverage-reports-${{ github.run_id }}
@@ -143,7 +152,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Stop Redis
-        if: always() && (github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true')
+        if: always() && (github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip'))
         run: docker rm -f sva-studio-redis-coverage || true
 
       - name: Publish coverage summary
@@ -152,12 +161,15 @@ jobs:
           echo 'Coverage-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
             echo 'Scope: keine code-relevanten Änderungen im Pull Request, Heavy-Checks wurden bewusst übersprungen.' >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.scope.outputs.coverage_mode }}" = "skip" ]; then
+            echo 'Scope: regulärer PR ohne Coverage-/CI-kritische Änderungen, der teure Coverage-Re-Run wird bewusst übersprungen.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Schutzwirkung: Unit/Types/Lint/Build/Integration/E2E im PR, volle Coverage weiterhin auf main und nightly.' >> "$GITHUB_STEP_SUMMARY"
           elif [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "Scope: \`${{ steps.scope.outputs.coverage_mode }}\` gegen Base-SHA \`${{ github.event.pull_request.base.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
           else
             echo 'Scope: voller Coverage-Lauf für main/schedule' >> "$GITHUB_STEP_SUMMARY"
           fi
-          if [ "${{ github.event_name }}" != "pull_request" ] || [ "${{ steps.changes.outputs.relevant }}" = "true" ]; then
+          if [ "${{ github.event_name }}" != "pull_request" ] || ([ "${{ steps.changes.outputs.relevant }}" = "true" ] && [ "${{ steps.scope.outputs.coverage_mode }}" != "skip" ]); then
             echo "Artifact: \`coverage-reports-${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"
           fi
 

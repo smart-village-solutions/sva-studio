@@ -26,13 +26,10 @@ import { buildLogContext } from '../log-context.js';
 import { governanceRequestSchema, type GovernanceRequestInput } from '../shared/schemas.js';
 import { asApiList, createApiError, readPage } from '../iam-account-management/api-helpers.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
-
+export { getGovernanceCaseHandler } from './detail-handler.js';
 const logger = createSdkLogger({ component: 'iam-governance', level: 'info' });
-
 type GovernanceWorkflowRequest = GovernanceRequestInput;
-
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
-
 const buildGovernanceLogContext = (instanceId?: string) =>
   buildLogContext(instanceId, { includeTraceId: true });
 const governanceWorkflowExecutor = createGovernanceWorkflowExecutor({

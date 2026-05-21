@@ -77,13 +77,23 @@ const runQualityGates = (base: string, head: string, mode: GateMode, durations: 
 const runCoverageGate = (base: string, mode: GateMode, durations: DurationEntry[]): void => {
   if (mode === 'full') {
     recordDuration(durations, 'coverage', runCommand('pnpm test:coverage'));
-  } else if (mode === 'affected') {
-    recordDuration(durations, 'coverage:affected', runAffectedCommand(base, 'pnpm test:coverage:affected'));
+    recordDuration(durations, 'patch-coverage', runCommand(`pnpm patch-coverage-gate --base=${base}`));
+    recordDuration(durations, 'sonar-new-code', runCommand(`pnpm sonar-new-code-gate --base=${base}`));
+    recordDuration(durations, 'coverage-gate', runCommand('env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate'));
+    recordDuration(durations, 'complexity', runCommand('pnpm complexity-gate'));
+    return;
   }
 
-  recordDuration(durations, 'patch-coverage', runCommand(`pnpm patch-coverage-gate --base=${base}`));
-  recordDuration(durations, 'sonar-new-code', runCommand(`pnpm sonar-new-code-gate --base=${base}`));
-  recordDuration(durations, 'coverage-gate', runCommand('env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate'));
+  if (mode === 'affected') {
+    recordDuration(durations, 'coverage:affected', runAffectedCommand(base, 'pnpm test:coverage:affected'));
+    recordDuration(durations, 'patch-coverage', runCommand(`pnpm patch-coverage-gate --base=${base}`));
+    recordDuration(durations, 'sonar-new-code', runCommand(`pnpm sonar-new-code-gate --base=${base}`));
+    recordDuration(durations, 'coverage-gate', runCommand('env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate'));
+    recordDuration(durations, 'complexity', runCommand('pnpm complexity-gate'));
+    return;
+  }
+
+  recordDuration(durations, 'coverage:skipped', 0);
   recordDuration(durations, 'complexity', runCommand('pnpm complexity-gate'));
 };
 

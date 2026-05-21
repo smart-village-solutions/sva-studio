@@ -210,6 +210,7 @@ const authServerMocks = vi.hoisted(() => {
     deleteLegalTextHandler: vi.fn(async () => response('deleteLegalTextHandler')),
     reconcileHandler: vi.fn(async () => response('reconcileHandler')),
     listGovernanceCasesHandler: vi.fn(async () => response('listGovernanceCasesHandler')),
+    getGovernanceCaseHandler: vi.fn(async () => response('getGovernanceCaseHandler')),
     governanceWorkflowHandler: vi.fn(async () => response('governanceWorkflowHandler')),
     governanceComplianceExportHandler: vi.fn(async () => response('governanceComplianceExportHandler')),
     permissionChangeSelfServiceRequestHandler: vi.fn(async () => response('permissionChangeSelfServiceRequestHandler')),
@@ -223,9 +224,13 @@ const authServerMocks = vi.hoisted(() => {
     adminDataExportHandler: vi.fn(async () => response('adminDataExportHandler')),
     adminDataExportStatusHandler: vi.fn(async () => response('adminDataExportStatusHandler')),
     listAdminDataSubjectRightsCasesHandler: vi.fn(async () => response('listAdminDataSubjectRightsCasesHandler')),
+    getAdminDataSubjectRightsCaseHandler: vi.fn(async () => response('getAdminDataSubjectRightsCaseHandler')),
     legalHoldApplyHandler: vi.fn(async () => response('legalHoldApplyHandler')),
     legalHoldReleaseHandler: vi.fn(async () => response('legalHoldReleaseHandler')),
     dataSubjectMaintenanceHandler: vi.fn(async () => response('dataSubjectMaintenanceHandler')),
+    deletionRulesAdminHandler: vi.fn(async () => response('deletionRulesAdminHandler')),
+    myDeletionRulesOverviewHandler: vi.fn(async () => response('myDeletionRulesOverviewHandler')),
+    myDeletionRulesPreferenceHandler: vi.fn(async () => response('myDeletionRulesPreferenceHandler')),
     listPluginOperationJobsHandler: vi.fn(async () => response('listPluginOperationJobsHandler')),
     startPluginOperationJobHandler: vi.fn(async () => response('startPluginOperationJobHandler')),
     getPluginOperationJobHandler: vi.fn(async () => response('getPluginOperationJobHandler')),
@@ -357,6 +362,34 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.getPluginOperationJobHandler).toHaveBeenCalled();
     expect(authServerMocks.deletePluginOperationJobHandler).toHaveBeenCalled();
     expect(authServerMocks.cancelPluginOperationJobHandler).toHaveBeenCalled();
+  });
+
+  it('dispatches deletion-rules routes to the auth runtime', async () => {
+    const adminHandlers = resolveAuthHandlers('/iam/admin/deletion-rules');
+    const myHandlers = resolveAuthHandlers('/iam/me/deletion-rules');
+    const preferenceHandlers = resolveAuthHandlers('/iam/me/deletion-rules/content-preference');
+
+    expect(adminHandlers?.GET).toBeDefined();
+    expect(adminHandlers?.POST).toBeDefined();
+    expect(myHandlers?.GET).toBeDefined();
+    expect(preferenceHandlers?.POST).toBeDefined();
+
+    await adminHandlers.GET?.({
+      request: new Request('http://localhost/iam/admin/deletion-rules?instanceId=de-test', { method: 'GET' }),
+    });
+    await adminHandlers.POST?.({
+      request: new Request('http://localhost/iam/admin/deletion-rules', { method: 'POST' }),
+    });
+    await myHandlers.GET?.({
+      request: new Request('http://localhost/iam/me/deletion-rules', { method: 'GET' }),
+    });
+    await preferenceHandlers.POST?.({
+      request: new Request('http://localhost/iam/me/deletion-rules/content-preference', { method: 'POST' }),
+    });
+
+    expect(authServerMocks.deletionRulesAdminHandler).toHaveBeenCalledTimes(2);
+    expect(authServerMocks.myDeletionRulesOverviewHandler).toHaveBeenCalledTimes(1);
+    expect(authServerMocks.myDeletionRulesPreferenceHandler).toHaveBeenCalledTimes(1);
   });
 
   it('dispatches waste management routes to the auth runtime', async () => {

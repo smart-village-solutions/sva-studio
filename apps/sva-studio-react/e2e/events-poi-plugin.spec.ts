@@ -116,9 +116,12 @@ const expectAdminListUrl = async (page: Page, basePath: '/admin/events' | '/admi
 };
 
 const expectLoginRedirect = async (page: Page, returnToPattern: RegExp) => {
-  await expect(page).toHaveURL(/\/\?auth=login&returnTo=/);
+  await expect(page).toHaveURL(/\/(?:\?auth=(?:login|dev-login|mock-login)&returnTo=|auth\/login\?returnTo=)/);
   const loginUrl = new URL(page.url());
-  expect(loginUrl.searchParams.get('auth')).toBe('login');
+  const authMode = loginUrl.searchParams.get('auth');
+  expect(authMode === 'login' || authMode === 'dev-login' || authMode === 'mock-login' || authMode === null).toBe(
+    true
+  );
   expect(loginUrl.searchParams.get('returnTo')).toMatch(returnToPattern);
 };
 

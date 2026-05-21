@@ -4,26 +4,52 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountPrivacyPage } from './-account-privacy-page';
 
 const getMyDataSubjectRightsMock = vi.fn();
+const getMyDeletionRulesMock = vi.fn();
 const requestDataExportMock = vi.fn();
 const createDataSubjectRequestMock = vi.fn();
 const checkOptionalProcessingMock = vi.fn();
 const requestPermissionChangeMock = vi.fn();
+const saveMyDeletionRulesContentPreferenceMock = vi.fn();
 
 vi.mock('../../lib/iam-api', () => ({
   getMyDataSubjectRights: (...args: unknown[]) => getMyDataSubjectRightsMock(...args),
+  getMyDeletionRules: (...args: unknown[]) => getMyDeletionRulesMock(...args),
   requestDataExport: (...args: unknown[]) => requestDataExportMock(...args),
   createDataSubjectRequest: (...args: unknown[]) => createDataSubjectRequestMock(...args),
   checkOptionalProcessing: (...args: unknown[]) => checkOptionalProcessingMock(...args),
   requestPermissionChange: (...args: unknown[]) => requestPermissionChangeMock(...args),
+  saveMyDeletionRulesContentPreference: (...args: unknown[]) =>
+    saveMyDeletionRulesContentPreferenceMock(...args),
 }));
 
 describe('AccountPrivacyPage', () => {
   beforeEach(() => {
     getMyDataSubjectRightsMock.mockReset();
+    getMyDeletionRulesMock.mockReset();
     requestDataExportMock.mockReset();
     createDataSubjectRequestMock.mockReset();
     checkOptionalProcessingMock.mockReset();
     requestPermissionChangeMock.mockReset();
+    saveMyDeletionRulesContentPreferenceMock.mockReset();
+
+    getMyDeletionRulesMock.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      lastLoginAt: '2026-03-20T10:00:00.000Z',
+      lifecycleState: 'active',
+      rules: {
+        instanceId: 'de-musterhausen',
+        deactivateAfterDays: 90,
+        pseudonymizeAfterDays: 180,
+        deleteAfterDays: 365,
+        defaultContentStrategy: 'retain',
+        allowContentPreferenceOverride: true,
+        canEdit: false,
+      },
+      contentPreference: {
+        isOverridden: false,
+        effectiveStrategy: 'retain',
+      },
+    });
   });
 
   afterEach(() => {
@@ -131,6 +157,127 @@ describe('AccountPrivacyPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert').textContent).toContain('privacy_unavailable');
     });
+  });
+
+  it('renders tenant deletion rules and saves a personal content override', async () => {
+    getMyDataSubjectRightsMock.mockResolvedValue({
+      data: {
+        instanceId: 'de-musterhausen',
+        accountId: 'account-1',
+        nonEssentialProcessingAllowed: true,
+        requests: [],
+        exportJobs: [],
+        legalHolds: [],
+      },
+    });
+    saveMyDeletionRulesContentPreferenceMock.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      lastLoginAt: '2026-03-20T10:00:00.000Z',
+      lifecycleState: 'active',
+      rules: {
+        instanceId: 'de-musterhausen',
+        deactivateAfterDays: 90,
+        pseudonymizeAfterDays: 180,
+        deleteAfterDays: 365,
+        defaultContentStrategy: 'retain',
+        allowContentPreferenceOverride: true,
+        canEdit: false,
+      },
+      contentPreference: {
+        isOverridden: true,
+        effectiveStrategy: 'with_owner_lifecycle',
+        overrideStrategy: 'with_owner_lifecycle',
+      },
+    });
+
+    render(<AccountPrivacyPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Konten-Löschregeln' })).toBeTruthy();
+      expect(screen.getByText('90')).toBeTruthy();
+      expect(screen.getByText('Aktiv')).toBeTruthy();
+    });
+
+    expect(screen.queryByText('Wirksame Inhaltsregel')).toBeNull();
+    expect((screen.getByLabelText('Regel für eigene Inhalte') as HTMLSelectElement).value).toBe('retain');
+
+    fireEvent.change(screen.getByLabelText('Regel für eigene Inhalte'), {
+      target: { value: 'with_owner_lifecycle' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Inhaltsregel speichern' }));
+
+    await waitFor(() => {
+      expect(saveMyDeletionRulesContentPreferenceMock).toHaveBeenCalledWith({
+        strategy: 'with_owner_lifecycle',
+      });
+      expect(screen.getByText('Die Inhaltsregel wurde gespeichert.')).toBeTruthy();
+    });
+  });
+
+  it('hides the override controls when the tenant disables personal content overrides', async () => {
+    getMyDataSubjectRightsMock.mockResolvedValue({
+      data: {
+        instanceId: 'de-musterhausen',
+        accountId: 'account-1',
+        nonEssentialProcessingAllowed: true,
+        requests: [],
+        exportJobs: [],
+        legalHolds: [],
+      },
+    });
+    getMyDeletionRulesMock.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      lastLoginAt: '2026-03-20T10:00:00.000Z',
+      lifecycleState: 'active',
+      rules: {
+        instanceId: 'de-musterhausen',
+        deactivateAfterDays: 90,
+        pseudonymizeAfterDays: 180,
+        deleteAfterDays: 365,
+        defaultContentStrategy: 'retain',
+        allowContentPreferenceOverride: false,
+        canEdit: false,
+      },
+      contentPreference: {
+        isOverridden: false,
+        effectiveStrategy: 'retain',
+      },
+    });
+
+    render(<AccountPrivacyPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Konten-Löschregeln' })).toBeTruthy();
+    });
+
+    expect(screen.queryByText('Wirksame Inhaltsregel')).toBeNull();
+    expect(screen.queryByLabelText('Regel für eigene Inhalte')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Inhaltsregel speichern' })).toBeNull();
+  });
+
+  it('hides the deletion-rules card for accounts without tenant scope', async () => {
+    getMyDataSubjectRightsMock.mockResolvedValue({
+      data: {
+        instanceId: 'de-musterhausen',
+        accountId: 'account-1',
+        nonEssentialProcessingAllowed: true,
+        requests: [],
+        exportJobs: [],
+        legalHolds: [],
+      },
+    });
+    getMyDeletionRulesMock.mockRejectedValue({
+      status: 403,
+      message: 'forbidden',
+    });
+
+    render(<AccountPrivacyPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Datenschutz & Transparenz' })).toBeTruthy();
+    });
+
+    expect(screen.queryByRole('heading', { name: 'Konten-Löschregeln' })).toBeNull();
   });
 
   it('renders export failures as destructive alerts', async () => {

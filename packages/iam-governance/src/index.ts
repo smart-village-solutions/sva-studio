@@ -9,7 +9,7 @@ export const iamGovernancePackageRoles = [
   'governance-cases',
 ] as const satisfies readonly IamGovernancePackageRole[];
 
-export { listGovernanceCases } from './read-models.js';
+export { getGovernanceCase, listGovernanceCases } from './read-models.js';
 export type { GovernanceFilters } from './read-models.types.js';
 export {
   listWasteManagementAuditRecords,
@@ -17,11 +17,22 @@ export {
 } from './waste-audit-read-models.js';
 export type { WasteAuditFilters } from './waste-audit-read-models.types.js';
 export {
+  getAdminDsrCase,
   listAdminDsrCases,
   loadDsrSelfServiceOverview,
   toCanonicalDsrStatus,
 } from './dsr-read-models.js';
 export type { DsrFilters } from './dsr-read-models.types.js';
+export {
+  loadMyDeletionRulesOverview,
+  loadTenantDeletionRulesOverview,
+  DeletionRulesAccountNotFoundError,
+} from './deletion-rules-read-models.js';
+export {
+  runDeletionRulesMaintenance,
+  type DeletionRulesMaintenanceInput,
+  type DeletionRulesMaintenanceResult,
+} from './deletion-rules-maintenance.js';
 export {
   collectDsrExportPayload,
   serializeDsrExportPayload,

@@ -69,12 +69,16 @@ export type {
 } from './account-management-contract.js';
 export { deriveIamRuntimeDiagnostics } from './runtime-diagnostics.js';
 export type {
+  IamDeletionContentStrategy,
+  IamDeletionLifecycleState,
   IamDsrCanonicalStatus,
   IamDsrCaseListItem,
   IamDsrCaseType,
+  IamMyDeletionRulesOverview,
   IamDsrSelfServiceOverview,
   IamGovernanceCaseListItem,
   IamGovernanceCaseType,
+  IamTenantDeletionRulesOverview,
   IamUserTimelineEvent,
   IamUserTimelineEventCategory,
   IamUserTimelinePerspective,

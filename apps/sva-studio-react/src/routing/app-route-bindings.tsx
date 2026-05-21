@@ -10,6 +10,8 @@ import { AccountProfilePage } from '../routes/account/-account-profile-page';
 import { AccountPrivacyPage } from '../routes/account/-account-privacy-page';
 import { Phase1TestPage } from '../routes/admin/api/-phase1-test-page';
 import { IamViewerPage } from '../routes/admin/-iam-page';
+import { IamDsrDetailPage } from '../routes/admin/-iam-dsr-detail-page';
+import { IamGovernanceDetailPage } from '../routes/admin/-iam-governance-detail-page';
 import { GroupCreatePage } from '../routes/admin/groups/-group-create-page';
 import { InstanceCreatePage } from '../routes/admin/instances/-instance-create-page';
 import { InstanceDetailPage } from '../routes/admin/instances/-instance-detail-page';
@@ -225,6 +227,16 @@ const IamRoutePage = () => {
   return <IamViewerPage activeTab={normalizeIamTab(search.tab)} />;
 };
 
+const IamGovernanceDetailRoutePage = () => {
+  const params = useParams({ strict: false });
+  return <IamGovernanceDetailPage caseId={readStringParam(params.caseId)} />;
+};
+
+const IamDsrDetailRoutePage = () => {
+  const params = useParams({ strict: false });
+  return <IamDsrDetailPage caseId={readStringParam(params.caseId)} />;
+};
+
 export const appRouteBindings: StudioAppRouteBindings = {
   home: HomePage,
   account: AccountProfilePage,
@@ -269,6 +281,8 @@ export const appRouteBindings: StudioAppRouteBindings = {
   adminLegalTextCreate: LegalTextCreatePage,
   adminLegalTextDetail: LegalTextDetailRoutePage,
   adminIam: IamRoutePage,
+  adminIamGovernanceDetail: IamGovernanceDetailRoutePage,
+  adminIamDsrDetail: IamDsrDetailRoutePage,
   modules: ModulesPage,
   monitoring: MonitoringRoutePage,
   monitoringJobs: MonitoringJobsRoutePage,

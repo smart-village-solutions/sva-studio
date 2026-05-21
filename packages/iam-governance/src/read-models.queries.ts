@@ -47,9 +47,10 @@ JOIN iam.accounts target
   ON target.id = request.target_account_id
 WHERE request.instance_id = $1
   AND ($2::uuid IS NULL OR request.requester_account_id = $2::uuid OR request.target_account_id = $2::uuid)
+  AND ($3::uuid IS NULL OR request.id = $3::uuid)
 ORDER BY request.requested_at DESC;
 `,
-    [input.instanceId, input.relatedAccountId ?? null]
+    [input.instanceId, input.relatedAccountId ?? null, input.caseId ?? null]
   );
 
 const queryDelegations = (client: QueryClient, input: GovernanceFilters) =>
@@ -89,9 +90,10 @@ JOIN iam.accounts delegatee
   ON delegatee.id = delegation.delegatee_account_id
 WHERE delegation.instance_id = $1
   AND ($2::uuid IS NULL OR delegation.delegator_account_id = $2::uuid OR delegation.delegatee_account_id = $2::uuid)
+  AND ($3::uuid IS NULL OR delegation.id = $3::uuid)
 ORDER BY delegation.created_at DESC;
 `,
-    [input.instanceId, input.relatedAccountId ?? null]
+    [input.instanceId, input.relatedAccountId ?? null, input.caseId ?? null]
   );
 
 const queryImpersonations = (client: QueryClient, input: GovernanceFilters) =>
@@ -128,9 +130,10 @@ JOIN iam.accounts target
   ON target.id = session.target_account_id
 WHERE session.instance_id = $1
   AND ($2::uuid IS NULL OR session.actor_account_id = $2::uuid OR session.target_account_id = $2::uuid)
+  AND ($3::uuid IS NULL OR session.id = $3::uuid)
 ORDER BY session.requested_at DESC;
 `,
-    [input.instanceId, input.relatedAccountId ?? null]
+    [input.instanceId, input.relatedAccountId ?? null, input.caseId ?? null]
   );
 
 const queryLegalAcceptances = (client: QueryClient, input: GovernanceFilters) =>
@@ -157,9 +160,10 @@ JOIN iam.accounts account
   ON account.id = acceptance.account_id
 WHERE acceptance.instance_id = $1
   AND ($2::uuid IS NULL OR acceptance.account_id = $2::uuid)
+  AND ($3::uuid IS NULL OR acceptance.id = $3::uuid)
 ORDER BY acceptance.accepted_at DESC;
 `,
-    [input.instanceId, input.relatedAccountId ?? null]
+    [input.instanceId, input.relatedAccountId ?? null, input.caseId ?? null]
   );
 
 export const loadGovernanceSourceRows = async (client: QueryClient, input: GovernanceFilters) => {

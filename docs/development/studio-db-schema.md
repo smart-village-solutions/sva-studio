@@ -18,6 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
+- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-05-20`
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung
@@ -25,6 +26,8 @@ Es kombiniert:
 - Der Live-Dump enthält aktuell **47 Tabellen**.
 - Davon liegen **46 Tabellen im Schema `iam`**.
 - Zusätzlich existiert `public.goose_db_version` als Migrationshistorie.
+- Der aktuelle Repo-Soll-Snapshot enthält **53 Tabellen**.
+- Davon liegen **52 Tabellen im Schema `iam`**.
 - Im Live-Schema sind aktuell mindestens diese DB-Funktionen vorhanden:
   - `iam.check_geo_hierarchy_depth()`
   - `iam.current_instance_id()`
@@ -36,14 +39,16 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0038_iam_role_permission_ownership.sql`
+- Repo-Migrationen vorhanden bis: `0043_iam_tenant_account_deletion_rules.sql`
 
-Konkret fehlt im Live-Dump aktuell noch die Änderung aus `0038_iam_role_permission_ownership.sql` auf `iam.role_permissions`:
+Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0042`:
 
-- `grant_origin_kind`
-- `grant_origin_module_id`
-- die zugehörigen Check-Constraints
-- der Index `idx_role_permissions_origin_module`
+- auf `iam.role_permissions` die Ownership-/Origin-Felder `grant_origin_kind` und `grant_origin_module_id` samt Check-Constraints und Index `idx_role_permissions_origin_module`
+- die Tabellen `iam.plugin_operation_jobs` und `iam.plugin_operation_job_events` sowie die ergänzten Runtime-Felder aus `0040_plugin_operation_job_runtime_fields.sql`
+- der External-Interface-Katalog mit `iam.external_interface_types` und `iam.instance_external_interfaces`
+- die tenantbezogenen Löschregel-Tabellen `iam.instance_deletion_rules` und `iam.account_deletion_content_preferences`
+- die Lifecycle-Spalten `last_login_at`, `deletion_lifecycle_state`, `deactivated_at`, `pseudonymized_at`, `deletion_marked_at` auf `iam.accounts`
+- die Content-Lifecycle-Spalten `deletion_lifecycle_state` und `deletion_lifecycle_changed_at` auf `iam.contents`
 
 Für Entwicklungsentscheidungen gilt deshalb:
 
@@ -56,7 +61,8 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält explizit auch `0038_iam_role_permission_ownership.sql`
+- Enthält explizit die Repo-Migrationen bis `0043_iam_tenant_account_deletion_rules.sql`
+- Aktueller Soll-Stand: **53 Tabellen**, davon **52 im Schema `iam`**
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
 
@@ -107,6 +113,8 @@ Tabellen für Nachvollziehbarkeit, Freigaben und DSGVO-nahe Prozesse:
 - `iam.permission_change_requests`
 - `iam.delegations`
 - `iam.impersonation_sessions`
+- `iam.instance_deletion_rules`
+- `iam.account_deletion_content_preferences`
 - `iam.legal_text_versions`
 - `iam.legal_text_acceptances`
 - `iam.legal_holds`
@@ -120,6 +128,8 @@ Kernidee:
 
 - Audit-Tabellen sind unveränderlich abgesichert.
 - Governance- und Datenschutzflüsse sind relational nachvollziehbar modelliert.
+- Tenantbezogene Löschregeln, die einfache Inhaltsstrategie (`retain` oder `with_owner_lifecycle`) sowie der Tenant-Schalter für erlaubte Nutzer-Overrides werden explizit relational gespeichert.
+- Für V1-Löschregeln bleibt der fachlich führende letzte Login dennoch die Aggregation aus `iam.activity_logs` (`MAX(created_at)` für erfolgreiche `login`-Events mit `result = 'success'`); `iam.accounts.last_login_at` ist im aktuellen Scope nicht die primäre Read-Modell-Quelle.
 - `iam.permission_change_requests` unterstützt zusätzlich einen Self-Service-Intake mit Freitextbegründung und Ursprung (`admin` oder `self_service`).
 
 ### 4. Organisation, Geo und Scope
@@ -166,6 +176,7 @@ Kernidee:
 
 - `contents` hält den aktuellen Stand.
 - `content_history` hält Historisierung und Änderungsverlauf.
+- `contents` trägt zusätzlich einen eigenen Lösch-Lifecycle-Zustand, damit tenantweite Account-Löschregeln in V1 referenzwahrend auf Inhalte abgebildet werden können.
 
 ### 7. Media-Management
 

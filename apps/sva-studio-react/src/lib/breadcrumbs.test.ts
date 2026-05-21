@@ -60,4 +60,18 @@ describe('resolveBreadcrumbItems', () => {
       { label: 'Job-Details' },
     ]);
   });
+
+  it('returns IAM governance and DSR detail breadcrumbs', () => {
+    expect(resolveBreadcrumbItems('/admin/iam/governance/case-1')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/admin/iam', label: 'IAM Transparenz-Cockpit' },
+      { label: 'Governance-Detail' },
+    ]);
+
+    expect(resolveBreadcrumbItems('/admin/iam/dsr/case-2')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/admin/iam', label: 'IAM Transparenz-Cockpit' },
+      { label: 'Datenschutzfall-Detail' },
+    ]);
+  });
 });

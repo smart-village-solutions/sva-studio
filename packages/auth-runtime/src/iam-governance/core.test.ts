@@ -19,7 +19,9 @@ const state = vi.hoisted(() => ({
   createApiError: vi.fn(),
   readPage: vi.fn(),
   listGovernanceCases: vi.fn(),
+  getGovernanceCase: vi.fn(),
   validateCsrf: vi.fn(),
+  asApiItem: vi.fn(),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -70,6 +72,7 @@ vi.mock('../shared/schemas.js', () => ({
 }));
 
 vi.mock('../iam-account-management/api-helpers.js', () => ({
+  asApiItem: state.asApiItem,
   asApiList: state.asApiList,
   createApiError: state.createApiError,
   readPage: state.readPage,
@@ -77,6 +80,7 @@ vi.mock('../iam-account-management/api-helpers.js', () => ({
 
 vi.mock('@sva/iam-governance', () => ({
   createSelfServicePermissionChangeRequest: state.createSelfServicePermissionChangeRequest,
+  getGovernanceCase: state.getGovernanceCase,
   listGovernanceCases: state.listGovernanceCases,
   MAX_SELF_SERVICE_PERMISSION_CHANGE_REQUEST_NOTE_LENGTH: 2000,
 }));
@@ -110,7 +114,9 @@ describe('iam governance runtime handlers', () => {
     state.createApiError.mockReset();
     state.readPage.mockReset();
     state.listGovernanceCases.mockReset();
+    state.getGovernanceCase.mockReset();
     state.validateCsrf.mockReset();
+    state.asApiItem.mockReset();
 
     state.withAuthenticatedUser.mockImplementation(async (_request, handler) => handler({ user: defaultUser }));
     state.withResolvedInstanceDb.mockImplementation(async (_resolver, _instanceId, work) => work({ query: vi.fn() }));
@@ -127,11 +133,13 @@ describe('iam governance runtime handlers', () => {
     state.executeWorkflow.mockResolvedValue({ status: 'ok', workflowId: 'wf-1' });
     state.readPage.mockReturnValue({ page: 2, pageSize: 25 });
     state.listGovernanceCases.mockResolvedValue({ items: [{ id: 'case-1' }], total: 1 });
+    state.getGovernanceCase.mockResolvedValue({ id: 'case-1' });
     state.createSelfServicePermissionChangeRequest.mockResolvedValue({
       workflowId: 'wf-self-1',
       actorAccountId: 'account-1',
     });
     state.asApiList.mockImplementation((items, meta, requestId) => ({ items, meta, requestId }));
+    state.asApiItem.mockImplementation((item, requestId) => ({ data: item, requestId }));
     state.createApiError.mockImplementation((status, code, message, requestId) =>
       new Response(JSON.stringify({ error: { code, message }, requestId }), {
         status,
@@ -305,6 +313,58 @@ describe('iam governance runtime handlers', () => {
     });
     const dbFailure = await listGovernanceCasesHandler(
       new Request('https://example.test/api/v1/iam/governance/cases?instanceId=instance-1')
+    );
+    expect(dbFailure.status).toBe(503);
+  });
+
+  it('guards governance case detail and returns item, not-found, or backend errors', async () => {
+    const { getGovernanceCaseHandler } = await import('./core.js');
+
+    state.hasRequiredGovernanceRole.mockReturnValueOnce(false);
+    const forbidden = await getGovernanceCaseHandler(
+      new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1')
+    );
+    expect(forbidden.status).toBe(403);
+
+    state.hasRequiredGovernanceRole.mockReturnValue(true);
+    state.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...defaultUser, instanceId: undefined } })
+    );
+    const missingInstance = await getGovernanceCaseHandler(
+      new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000')
+    );
+    expect(missingInstance.status).toBe(400);
+
+    const mismatched = await getGovernanceCaseHandler(
+      new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=other-instance')
+    );
+    expect(mismatched.status).toBe(403);
+
+    const invalidCaseId = await getGovernanceCaseHandler(
+      new Request('https://example.test/iam/governance/workflows/not-a-uuid?instanceId=instance-1')
+    );
+    expect(invalidCaseId.status).toBe(400);
+
+    const success = await getGovernanceCaseHandler(
+      new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1')
+    );
+    expect(success.status).toBe(200);
+    await expect(success.json()).resolves.toEqual({
+      data: { id: 'case-1' },
+      requestId: 'req-1',
+    });
+
+    state.getGovernanceCase.mockResolvedValueOnce(null);
+    const notFound = await getGovernanceCaseHandler(
+      new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1')
+    );
+    expect(notFound.status).toBe(404);
+
+    state.withResolvedInstanceDb.mockImplementationOnce(async () => {
+      throw new Error('db down');
+    });
+    const dbFailure = await getGovernanceCaseHandler(
+      new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1')
     );
     expect(dbFailure.status).toBe(503);
   });

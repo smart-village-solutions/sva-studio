@@ -2,6 +2,7 @@ import type { IamGovernanceCaseType } from '@sva/core';
 
 export type GovernanceFilters = {
   readonly instanceId: string;
+  readonly caseId?: string;
   readonly type?: IamGovernanceCaseType;
   readonly status?: string;
   readonly search?: string;

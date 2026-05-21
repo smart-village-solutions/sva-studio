@@ -59,6 +59,8 @@ export type AppRouteBindings = {
   readonly adminLegalTextCreate: RouteComponent;
   readonly adminLegalTextDetail: RouteComponent;
   readonly adminIam: RouteComponent;
+  readonly adminIamGovernanceDetail: RouteComponent;
+  readonly adminIamDsrDetail: RouteComponent;
   readonly modules: RouteComponent;
   readonly monitoring: RouteComponent;
   readonly monitoringJobs: RouteComponent;
@@ -105,28 +107,16 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminInstanceDetail', path: uiRoutePaths.adminInstanceDetail, guard: 'adminInstances' },
   { binding: 'adminRoles', path: uiRoutePaths.adminRoles, guard: 'adminRoles' },
   { binding: 'adminRoleCreate', path: uiRoutePaths.adminRoleCreate, guard: 'adminRoles' },
-  {
-    binding: 'adminRoleDetail',
-    path: uiRoutePaths.adminRoleDetail,
-    guard: 'adminRoleDetail',
-    validateSearch: (search: Record<string, unknown>) => ({
-      tab: normalizeRoleDetailTab(search.tab),
-    }),
-  },
+  { binding: 'adminRoleDetail', path: uiRoutePaths.adminRoleDetail, guard: 'adminRoleDetail', validateSearch: (search: Record<string, unknown>) => ({ tab: normalizeRoleDetailTab(search.tab) }) },
   { binding: 'adminGroups', path: uiRoutePaths.adminGroups, guard: 'adminGroups' },
   { binding: 'adminGroupCreate', path: uiRoutePaths.adminGroupCreate, guard: 'adminGroupCreate' },
   { binding: 'adminGroupDetail', path: uiRoutePaths.adminGroupDetail, guard: 'adminGroupDetail' },
   { binding: 'adminLegalTexts', path: uiRoutePaths.adminLegalTexts, guard: 'adminLegalTexts' },
   { binding: 'adminLegalTextCreate', path: uiRoutePaths.adminLegalTextCreate, guard: 'adminLegalTextCreate' },
   { binding: 'adminLegalTextDetail', path: uiRoutePaths.adminLegalTextDetail, guard: 'adminLegalTextDetail' },
-  {
-    binding: 'adminIam',
-    path: uiRoutePaths.adminIam,
-    guard: 'adminIam',
-    validateSearch: (search: Record<string, unknown>) => ({
-      tab: normalizeIamTab(search.tab),
-    }),
-  },
+  { binding: 'adminIam', path: uiRoutePaths.adminIam, guard: 'adminIam', validateSearch: (search: Record<string, unknown>) => ({ tab: normalizeIamTab(search.tab) }) },
+  { binding: 'adminIamGovernanceDetail', path: uiRoutePaths.adminIamGovernanceDetail, guard: 'adminIam' },
+  { binding: 'adminIamDsrDetail', path: uiRoutePaths.adminIamDsrDetail, guard: 'adminIam' },
   { binding: 'modules', path: uiRoutePaths.modules, guard: 'adminInstances' },
   { binding: 'monitoring', path: uiRoutePaths.monitoring, guard: 'adminRoles' },
   { binding: 'monitoringJobs', path: uiRoutePaths.monitoringJobs, guard: 'adminRoles' },

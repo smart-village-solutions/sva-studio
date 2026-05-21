@@ -9,6 +9,7 @@ import type {
   IamContentDetail,
   IamContentHistoryEntry,
   IamContentListItem,
+  IamDeletionContentStrategy,
   IamDsrCanonicalStatus,
   IamDsrCaseListItem,
   IamDsrSelfServiceOverview,
@@ -22,9 +23,11 @@ import type {
   IamOrganizationListItem,
   IamOrganizationMembershipVisibility,
   IamOrganizationType,
+  IamMyDeletionRulesOverview,
   IamPermission,
   IamRoleListItem,
   IamRoleReconcileReport,
+  IamTenantDeletionRulesOverview,
   RuntimeHealthResponse,
   StudioJobDetail,
   StudioJobDetailResponse,
@@ -1652,6 +1655,54 @@ export const listGovernanceCases = async (
   );
 };
 
+export const getGovernanceCase = async (
+  caseId: string,
+  options?: IamRequestOptions
+): Promise<ApiItemResponse<IamGovernanceCaseListItem>> =>
+  requestJson<ApiItemResponse<IamGovernanceCaseListItem>>(
+    `/iam/governance/workflows/${encodeURIComponent(caseId)}`,
+    {
+      signal: options?.signal,
+    },
+    {
+      signal: options?.signal,
+      timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );
+
+export const getAdminDeletionRules = async (
+  instanceId: string
+): Promise<IamTenantDeletionRulesOverview> =>
+  requestJson<IamTenantDeletionRulesOverview>(
+    `/iam/admin/deletion-rules?instanceId=${encodeURIComponent(instanceId)}`
+  );
+
+export const saveAdminDeletionRules = async (payload: {
+  readonly instanceId: string;
+  readonly deactivateAfterDays: number;
+  readonly pseudonymizeAfterDays: number;
+  readonly deleteAfterDays: number;
+  readonly defaultContentStrategy: IamDeletionContentStrategy;
+  readonly allowContentPreferenceOverride: boolean;
+}): Promise<IamTenantDeletionRulesOverview> =>
+  requestJson<IamTenantDeletionRulesOverview>('/iam/admin/deletion-rules', {
+    method: 'POST',
+    headers: IAM_HEADERS,
+    body: JSON.stringify(payload),
+  });
+
+export const getMyDeletionRules = async (): Promise<IamMyDeletionRulesOverview> =>
+  requestJson<IamMyDeletionRulesOverview>('/iam/me/deletion-rules');
+
+export const saveMyDeletionRulesContentPreference = async (payload: {
+  readonly strategy?: IamDeletionContentStrategy;
+}): Promise<IamMyDeletionRulesOverview> =>
+  requestJson<IamMyDeletionRulesOverview>('/iam/me/deletion-rules/content-preference', {
+    method: 'POST',
+    headers: IAM_HEADERS,
+    body: JSON.stringify(payload),
+  });
+
 export const getMyDataSubjectRights = async (): Promise<
   ApiItemResponse<IamDsrSelfServiceOverview>
 > =>
@@ -1803,3 +1854,18 @@ export const listAdminDsrCases = async (
     }
   );
 };
+
+export const getAdminDsrCase = async (
+  caseId: string,
+  options?: IamRequestOptions
+): Promise<ApiItemResponse<IamDsrCaseListItem>> =>
+  requestJson<ApiItemResponse<IamDsrCaseListItem>>(
+    `/iam/admin/data-subject-rights/cases/${encodeURIComponent(caseId)}`,
+    {
+      signal: options?.signal,
+    },
+    {
+      signal: options?.signal,
+      timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );

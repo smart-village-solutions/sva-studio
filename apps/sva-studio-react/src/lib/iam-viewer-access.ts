@@ -2,13 +2,15 @@ import { isIamAdminEnabled } from './iam-admin-access';
 
 type UserWithRoles = {
   roles?: readonly string[] | null;
+  instanceId?: string | null;
 };
 
-export type IamCockpitTabKey = 'rights' | 'governance' | 'dsr';
+export type IamCockpitTabKey = 'rights' | 'governance' | 'dsr' | 'deletion-rules';
 
 const RIGHTS_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
 const GOVERNANCE_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin', 'security_admin', 'compliance_officer']);
 const DSR_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
+const DELETION_RULES_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
 const GOVERNANCE_EXPORT_ROLES = new Set(['iam_admin', 'system_admin', 'security_admin', 'compliance_officer']);
 const LEGACY_ADMIN_ROLES = new Set(['admin']);
 
@@ -36,6 +38,9 @@ export const getAllowedIamCockpitTabs = (user: UserWithRoles | null | undefined)
   }
   if (hasRole(user, DSR_ROLES)) {
     tabs.push('dsr');
+  }
+  if (user?.instanceId && hasRole(user, DELETION_RULES_ROLES)) {
+    tabs.push('deletion-rules');
   }
   return tabs;
 };

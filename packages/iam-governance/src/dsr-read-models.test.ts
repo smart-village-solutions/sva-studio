@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  getAdminDsrCase,
   listAdminDsrCases,
   loadDsrSelfServiceOverview,
   toCanonicalDsrStatus,
@@ -274,7 +275,51 @@ describe('iam-data-subject-rights/read-models', () => {
       canonicalStatus: 'failed',
       format: 'csv',
     });
-    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), ['de-musterhausen', relatedAccountId]);
-    expect(client.query).toHaveBeenNthCalledWith(5, expect.any(String), ['de-musterhausen', relatedAccountId]);
+    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), ['de-musterhausen', relatedAccountId, null]);
+    expect(client.query).toHaveBeenNthCalledWith(5, expect.any(String), ['de-musterhausen', relatedAccountId, null]);
+  });
+
+  it('returns an admin DSR case by id and short-circuits missing ids', async () => {
+    const client = buildClient(
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'req-2',
+            request_type: 'deletion',
+            status: 'accepted',
+            requester_account_id: 'requester-1',
+            target_account_id: 'target-1',
+            legal_hold_blocked: true,
+            request_accepted_at: '2026-03-10T09:00:00.000Z',
+            completed_at: null,
+            updated_at: '2026-03-10T09:05:00.000Z',
+            requester_display_name_ciphertext: 'Requester',
+            requester_first_name_ciphertext: 'Req',
+            requester_last_name_ciphertext: 'Uester',
+            requester_keycloak_subject: 'kc-requester',
+            target_display_name_ciphertext: 'Target',
+            target_first_name_ciphertext: 'Tar',
+            target_last_name_ciphertext: 'Get',
+            target_keycloak_subject: 'kc-target',
+          },
+        ],
+      },
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] }
+    );
+
+    await expect(getAdminDsrCase(client as never, { instanceId: 'de-musterhausen', caseId: '' })).resolves.toBeNull();
+
+    const result = await getAdminDsrCase(client as never, {
+      instanceId: 'de-musterhausen',
+      caseId: 'req-2',
+      type: 'request',
+    });
+
+    expect(result).toMatchObject({ id: 'req-2', canonicalStatus: 'queued' });
+    expect(client.query).toHaveBeenCalledTimes(5);
   });
 });

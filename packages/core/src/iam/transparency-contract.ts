@@ -74,6 +74,34 @@ export type IamDsrSelfServiceOverview = {
   readonly exportJobs: readonly IamDsrCaseListItem[];
 };
 
+export type IamDeletionContentStrategy =
+  | 'retain'
+  | 'with_owner_lifecycle';
+
+export type IamDeletionLifecycleState = 'active' | 'deactivated' | 'pseudonymized' | 'deleted';
+
+export type IamTenantDeletionRulesOverview = {
+  readonly instanceId: IamInstanceId;
+  readonly deactivateAfterDays: number;
+  readonly pseudonymizeAfterDays: number;
+  readonly deleteAfterDays: number;
+  readonly defaultContentStrategy: IamDeletionContentStrategy;
+  readonly allowContentPreferenceOverride: boolean;
+  readonly canEdit: boolean;
+};
+
+export type IamMyDeletionRulesOverview = {
+  readonly instanceId: IamInstanceId;
+  readonly lastLoginAt?: string;
+  readonly lifecycleState: IamDeletionLifecycleState;
+  readonly rules: IamTenantDeletionRulesOverview;
+  readonly contentPreference: {
+    readonly isOverridden: boolean;
+    readonly effectiveStrategy: IamDeletionContentStrategy;
+    readonly overrideStrategy?: IamDeletionContentStrategy;
+  };
+};
+
 export type IamUserTimelineEventCategory = 'iam' | 'governance' | 'dsr';
 
 export type IamUserTimelinePerspective = 'actor' | 'target' | 'actor_and_target';

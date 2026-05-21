@@ -40,6 +40,10 @@ const authServerMocks = vi.hoisted(() => ({
       handler()
   ),
 }));
+const dbMocks = vi.hoisted(() => ({
+  resolvePool: vi.fn(() => ({}) as object),
+  withResolvedInstanceDb: vi.fn(),
+}));
 
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => middlewareLogger,
@@ -67,6 +71,11 @@ vi.mock('./config.js', () => ({
   getAuthConfig: authServerMocks.getAuthConfig,
 }));
 
+vi.mock('./db.js', () => ({
+  resolvePool: dbMocks.resolvePool,
+  withResolvedInstanceDb: dbMocks.withResolvedInstanceDb,
+}));
+
 vi.mock('./mock-auth.js', () => ({
   DEV_AUTH_COOKIE_NAME: 'sva_dev_auth',
   createMockSessionUser: authServerMocks.createMockSessionUser,
@@ -83,7 +92,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
 
   beforeAll(async () => {
     ({ withAuthenticatedUser } = await import('./middleware.js'));
-  });
+  }, 30_000);
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -99,6 +108,15 @@ describe('auth-runtime withAuthenticatedUser', () => {
     authServerMocks.validateTenantHost.mockResolvedValue(null);
     authServerMocks.withLegalTextCompliance.mockImplementation(
       async (_instanceId, _userId, handler) => handler()
+    );
+    dbMocks.resolvePool.mockReturnValue({} as object);
+    dbMocks.withResolvedInstanceDb.mockImplementation(async (_resolvePool, _instanceId, work) =>
+      work({
+        query: vi.fn(async () => ({
+          rowCount: 1,
+          rows: [{ deletion_lifecycle_state: 'active' }],
+        })),
+      })
     );
     getSessionUserMock.mockResolvedValue({
       kind: 'authenticated',
@@ -212,6 +230,48 @@ describe('auth-runtime withAuthenticatedUser', () => {
       request,
       expect.objectContaining({ id: 'user-1' })
     );
+    expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalled();
+  });
+
+  it('fails closed when lifecycle enforcement cannot resolve the tenant account or IAM database', async () => {
+    const request = new Request('http://localhost/auth/me', {
+      headers: { cookie: 'sva_auth_session=session-2' },
+    });
+
+    dbMocks.resolvePool.mockReturnValueOnce(null);
+    const unavailableResponse = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(unavailableResponse.status).toBe(503);
+    await expect(unavailableResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'internal_error',
+        details: {
+          dependency: 'iam_db',
+          reason_code: 'iam_db_unavailable',
+        },
+      },
+    });
+
+    dbMocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolvePool, _instanceId, work) =>
+      work({
+        query: vi.fn(async () => ({
+          rowCount: 0,
+          rows: [],
+        })),
+      })
+    );
+
+    const missingAccountResponse = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(missingAccountResponse.status).toBe(403);
+    await expect(missingAccountResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+        details: {
+          reason_code: 'account_not_found',
+        },
+      },
+    });
   });
 
   it('accepts requests with an active local dev auth cookie in dev auth mode', async () => {
@@ -237,6 +297,46 @@ describe('auth-runtime withAuthenticatedUser', () => {
         instanceId: 'mock-instance',
       },
     });
+    expect(dbMocks.withResolvedInstanceDb).not.toHaveBeenCalled();
+  });
+
+  it('rejects authenticated tenant users whose account lifecycle is no longer active', async () => {
+    const request = new Request('http://localhost/auth/me', {
+      headers: { cookie: 'sva_auth_session=session-4' },
+    });
+    dbMocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolvePool, _instanceId, work) =>
+      work({
+        query: vi.fn(async () => ({
+          rowCount: 1,
+          rows: [{ deletion_lifecycle_state: 'deactivated' }],
+        })),
+      })
+    );
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+        message: 'Dieses Konto ist nicht mehr aktiv.',
+        safeDetails: {
+          reason_code: 'account_lifecycle_blocked',
+        },
+        details: {
+          lifecycle_state: 'deactivated',
+          reason_code: 'account_lifecycle_blocked',
+        },
+      },
+      requestId: 'req-auth-runtime',
+    });
+    expect(middlewareLogger.warn).toHaveBeenCalledWith(
+      'Auth middleware rejected request because the account lifecycle is blocked',
+      expect.objectContaining({
+        lifecycle_state: 'deactivated',
+        reason_code: 'account_lifecycle_blocked',
+      })
+    );
   });
 
   it('runs protected handlers through legal text compliance for tenant users when required', async () => {

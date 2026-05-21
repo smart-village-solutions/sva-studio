@@ -42,7 +42,7 @@ describe('pr-scope', () => {
     expectDecision(decision, {
       codeRelevant: true,
       qualityGateMode: 'affected',
-      coverageMode: 'affected',
+      coverageMode: 'skip',
       integrationMode: 'skip',
       e2eMode: 'skip',
       appBuildMode: 'skip',
@@ -71,7 +71,7 @@ describe('pr-scope', () => {
     expectDecision(decision, {
       codeRelevant: true,
       qualityGateMode: 'affected',
-      coverageMode: 'affected',
+      coverageMode: 'skip',
       integrationMode: 'affected',
       e2eMode: 'affected',
       appBuildMode: 'affected',
@@ -97,7 +97,7 @@ describe('pr-scope', () => {
     expectDecision(decision, {
       codeRelevant: true,
       qualityGateMode: 'affected',
-      coverageMode: 'affected',
+      coverageMode: 'full',
       integrationMode: 'full',
       e2eMode: 'skip',
       appBuildMode: 'full',
@@ -110,7 +110,7 @@ describe('pr-scope', () => {
     expectDecision(decision, {
       codeRelevant: true,
       qualityGateMode: 'affected',
-      coverageMode: 'affected',
+      coverageMode: 'full',
       integrationMode: 'full',
       e2eMode: 'skip',
       appBuildMode: 'full',
@@ -124,7 +124,7 @@ describe('pr-scope', () => {
     expectDecision(decision, {
       codeRelevant: true,
       qualityGateMode: 'affected',
-      coverageMode: 'affected',
+      coverageMode: 'full',
       integrationMode: 'full',
       e2eMode: 'full',
       appBuildMode: 'full',

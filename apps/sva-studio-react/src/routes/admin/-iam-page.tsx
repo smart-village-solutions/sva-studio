@@ -1,18 +1,30 @@
-import type { AuthorizeResponse, EffectivePermission, IamDsrCaseListItem, IamGovernanceCaseListItem } from '@sva/core';
+import type {
+  AuthorizeResponse,
+  EffectivePermission,
+  IamDeletionContentStrategy,
+  IamDsrCaseListItem,
+  IamGovernanceCaseListItem,
+  IamTenantDeletionRulesOverview,
+} from '@sva/core';
+import { StudioDataTable, type StudioColumnDef } from '@sva/studio-ui-react';
 import { useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
+import { createStudioDataTableLabels } from '../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Checkbox } from '../../components/ui/checkbox';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import {
   fetchWithRequestTimeout,
+  getAdminDeletionRules,
   listAdminDsrCases,
   listGovernanceCases,
+  saveAdminDeletionRules,
   type DsrAdminCasesQuery,
   type GovernanceCasesQuery,
 } from '../../lib/iam-api';
@@ -35,6 +47,7 @@ import { t } from '../../i18n';
 import { useAuth } from '../../providers/auth-provider';
 import {
   filterPermissions,
+  formatGovernanceTitle,
   formatPermissionAreaLabel,
   formatPermissionSourceKindLabels,
   formatPermissionSourceKinds,
@@ -100,35 +113,6 @@ const formatObjectEntries = (value: Readonly<Record<string, unknown>> | undefine
     .join(', ');
 };
 
-const filterMetadataEntries = (
-  metadata: Readonly<Record<string, unknown>> | undefined,
-  excludedKeys: readonly string[]
-) => {
-  if (!metadata) {
-    return undefined;
-  }
-
-  const filtered = Object.fromEntries(Object.entries(metadata).filter(([key]) => !excludedKeys.includes(key)));
-  return Object.keys(filtered).length > 0 ? filtered : undefined;
-};
-
-const readRequestNote = (metadata: Readonly<Record<string, unknown>> | undefined) =>
-  typeof metadata?.requestNote === 'string' && metadata.requestNote.trim().length > 0
-    ? metadata.requestNote
-    : null;
-
-const formatGovernanceTitle = (item: IamGovernanceCaseListItem) => {
-  if (item.title === item.type) {
-    return t(mapGovernanceTypeToTranslationKey(item.type));
-  }
-
-  return item.title;
-};
-
-const isGovernanceCaseItem = (
-  item: IamGovernanceCaseListItem | IamDsrCaseListItem
-): item is IamGovernanceCaseListItem => 'status' in item;
-
 const governanceTypeOptions = [
   'permission_change',
   'delegation',
@@ -151,6 +135,21 @@ const dsrStatusOptions = [
   'blocked',
   'failed',
  ] as const;
+
+const mapDeletionContentStrategyKey = (strategy: IamDeletionContentStrategy) => {
+  switch (strategy) {
+    case 'with_owner_lifecycle':
+      return 'admin.iam.deletionRules.strategies.with_owner_lifecycle';
+    case 'retain':
+    default:
+      return 'admin.iam.deletionRules.strategies.retain';
+  }
+};
+
+const deletionContentStrategyOptions: readonly IamDeletionContentStrategy[] = [
+  'retain',
+  'with_owner_lifecycle',
+] as const;
 
 const getTabId = (tab: IamCockpitTabKey) => `iam-tab-${tab}`;
 const getTabPanelId = (tab: IamCockpitTabKey) => `iam-panel-${tab}`;
@@ -214,132 +213,6 @@ const StatusBadge = ({ label, tone }: Readonly<{ label: string; tone: string }>)
   </Badge>
 );
 
-const CaseList = ({
-  items,
-  selectedId,
-  onSelect,
-  renderStatus,
-}: Readonly<{
-  items: readonly (IamGovernanceCaseListItem | IamDsrCaseListItem)[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  renderStatus: (item: IamGovernanceCaseListItem | IamDsrCaseListItem) => React.ReactNode;
-}>) => {
-  return (
-    <div className="grid gap-3">
-      {items.map((item) => {
-        const displayTitle = isGovernanceCaseItem(item) ? formatGovernanceTitle(item) : item.title;
-        return (
-        <Button
-          key={item.id}
-          type="button"
-          className={`rounded-xl border p-4 text-left transition ${
-            item.id === selectedId ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted/50'
-          }`}
-          onClick={() => onSelect(item.id)}
-          variant="ghost"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">{displayTitle}</p>
-              <p className="text-xs text-muted-foreground">{item.summary}</p>
-            </div>
-            {renderStatus(item)}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-            <span>{t('admin.iam.shared.createdAt', { value: formatDateTime(item.createdAt) })}</span>
-            {'type' in item ? <span>{t('admin.iam.shared.type', { value: item.type })}</span> : null}
-            {'ticketId' in item && item.ticketId ? <span>{t('admin.iam.shared.ticket', { value: item.ticketId })}</span> : null}
-            {'targetDisplayName' in item && item.targetDisplayName ? (
-              <span>{t('admin.iam.shared.target', { value: item.targetDisplayName })}</span>
-            ) : null}
-          </div>
-        </Button>
-        );
-      })}
-    </div>
-  );
-};
-
-const GovernanceDetail = ({ item }: Readonly<{ item: IamGovernanceCaseListItem | null }>) => {
-  if (!item) {
-    return <p className="text-sm text-muted-foreground">{t('admin.iam.shared.selectPrompt')}</p>;
-  }
-
-  const requestNote = readRequestNote(item.metadata);
-  const metadata = filterMetadataEntries(item.metadata, ['requestNote', 'requestOrigin']);
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle>{formatGovernanceTitle(item)}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3 pt-0">
-      <dl className="grid gap-2 text-sm">
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.status')}</dt>
-          <dd className="text-foreground">{item.status}</dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.actor')}</dt>
-          <dd className="text-foreground">{item.actorDisplayName ?? '—'}</dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.targetLabel')}</dt>
-          <dd className="text-foreground">{item.targetDisplayName ?? '—'}</dd>
-        </div>
-        {requestNote ? (
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-              {t('admin.iam.shared.requestNote')}
-            </dt>
-            <dd className="whitespace-pre-wrap text-foreground">{requestNote}</dd>
-          </div>
-        ) : null}
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.meta')}</dt>
-          <dd className="text-foreground">{formatObjectEntries(metadata)}</dd>
-        </div>
-      </dl>
-      </CardContent>
-    </Card>
-  );
-};
-
-const DsrDetail = ({ item }: Readonly<{ item: IamDsrCaseListItem | null }>) => {
-  if (!item) {
-    return <p className="text-sm text-muted-foreground">{t('admin.iam.shared.selectPrompt')}</p>;
-  }
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle>{item.title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3 pt-0">
-      <dl className="grid gap-2 text-sm">
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.status')}</dt>
-          <dd className="text-foreground">{item.rawStatus}</dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.targetLabel')}</dt>
-          <dd className="text-foreground">{item.targetDisplayName ?? '—'}</dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.requester')}</dt>
-          <dd className="text-foreground">{item.requesterDisplayName ?? item.actorDisplayName ?? '—'}</dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.meta')}</dt>
-          <dd className="text-foreground">{formatObjectEntries(item.metadata)}</dd>
-        </div>
-      </dl>
-      </CardContent>
-    </Card>
-  );
-};
-
 export function IamViewerPage({ activeTab }: IamViewerPageProps) {
   const navigate = useNavigate();
   const { user, isLoading: isLoadingUser, error: authError, invalidatePermissions } = useAuth();
@@ -373,7 +246,6 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     search: '',
   });
   const [isLoadingGovernance, setIsLoadingGovernance] = React.useState(false);
-  const [selectedGovernanceId, setSelectedGovernanceId] = React.useState<string | null>(null);
 
   const [dsrItems, setDsrItems] = React.useState<readonly IamDsrCaseListItem[]>([]);
   const [dsrError, setDsrError] = React.useState<string | null>(null);
@@ -383,12 +255,23 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     search: '',
   });
   const [isLoadingDsr, setIsLoadingDsr] = React.useState(false);
-  const [selectedDsrId, setSelectedDsrId] = React.useState<string | null>(null);
+  const [deletionRules, setDeletionRules] = React.useState<IamTenantDeletionRulesOverview | null>(null);
+  const [deletionRulesDraft, setDeletionRulesDraft] = React.useState<{
+    deactivateAfterDays: string;
+    pseudonymizeAfterDays: string;
+    deleteAfterDays: string;
+    defaultContentStrategy: IamDeletionContentStrategy;
+    allowContentPreferenceOverride: boolean;
+  } | null>(null);
+  const [deletionRulesError, setDeletionRulesError] = React.useState<string | null>(null);
+  const [isLoadingDeletionRules, setIsLoadingDeletionRules] = React.useState(false);
+  const [isSavingDeletionRules, setIsSavingDeletionRules] = React.useState(false);
 
   const cockpitEnabled = isIamCockpitEnabled();
   const canAccessCockpit = hasIamCockpitAccessRole(user);
   const canExportGovernanceCompliance = hasGovernanceComplianceExportRole(user);
   const allowedTabs = React.useMemo(() => getAllowedIamCockpitTabs(user), [user]);
+  const studioDataTableLabels = React.useMemo(() => createStudioDataTableLabels(), []);
   const governanceRequestQuery = React.useMemo(
     () => ({ ...governanceQuery, search: governanceQuery.search?.trim() ?? '' }),
     [governanceQuery]
@@ -545,9 +428,6 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
             return;
           }
           setGovernanceItems(response.data);
-          setSelectedGovernanceId((current) =>
-            response.data.some((item) => item.id === current) ? current : (response.data[0]?.id ?? null)
-          );
           logBrowserOperationSuccess(
             iamViewerLogger,
             'iam_governance_load_succeeded',
@@ -603,9 +483,6 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
             return;
           }
           setDsrItems(response.data);
-          setSelectedDsrId((current) =>
-            response.data.some((item) => item.id === current) ? current : (response.data[0]?.id ?? null)
-          );
           logBrowserOperationSuccess(
             iamViewerLogger,
             'iam_dsr_load_succeeded',
@@ -641,6 +518,88 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       controller.abort();
     };
   }, [activeTab, allowedTabs, canAccessCockpit, cockpitEnabled, dsrRequestQuery]);
+
+  React.useEffect(() => {
+    if (!cockpitEnabled || !canAccessCockpit || activeTab !== 'deletion-rules' || !allowedTabs.includes('deletion-rules')) {
+      return;
+    }
+    if (!instanceId) {
+      setDeletionRules(null);
+      setDeletionRulesDraft(null);
+      setDeletionRulesError(t('admin.iam.deletionRules.messages.instanceMissing'));
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsLoadingDeletionRules(true);
+    setDeletionRulesError(null);
+
+    void getAdminDeletionRules(instanceId)
+      .then((response) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setDeletionRules(response);
+        setDeletionRulesDraft({
+          deactivateAfterDays: String(response.deactivateAfterDays),
+          pseudonymizeAfterDays: String(response.pseudonymizeAfterDays),
+          deleteAfterDays: String(response.deleteAfterDays),
+          defaultContentStrategy: response.defaultContentStrategy,
+          allowContentPreferenceOverride: response.allowContentPreferenceOverride,
+        });
+      })
+      .catch((error) => {
+        if (isAbortError(error) || controller.signal.aborted) {
+          return;
+        }
+        setDeletionRules(null);
+        setDeletionRulesDraft(null);
+        setDeletionRulesError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsLoadingDeletionRules(false);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [activeTab, allowedTabs, canAccessCockpit, cockpitEnabled, instanceId]);
+
+  const handleDeletionRulesSave = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!instanceId || !deletionRulesDraft) {
+      setDeletionRulesError(t('admin.iam.deletionRules.messages.instanceMissing'));
+      return;
+    }
+
+    setIsSavingDeletionRules(true);
+    setDeletionRulesError(null);
+
+    try {
+      const response = await saveAdminDeletionRules({
+        instanceId,
+        deactivateAfterDays: Number(deletionRulesDraft.deactivateAfterDays),
+        pseudonymizeAfterDays: Number(deletionRulesDraft.pseudonymizeAfterDays),
+        deleteAfterDays: Number(deletionRulesDraft.deleteAfterDays),
+        defaultContentStrategy: deletionRulesDraft.defaultContentStrategy,
+        allowContentPreferenceOverride: deletionRulesDraft.allowContentPreferenceOverride,
+      });
+      setDeletionRules(response);
+      setDeletionRulesDraft({
+        deactivateAfterDays: String(response.deactivateAfterDays),
+        pseudonymizeAfterDays: String(response.pseudonymizeAfterDays),
+        deleteAfterDays: String(response.deleteAfterDays),
+        defaultContentStrategy: response.defaultContentStrategy,
+        allowContentPreferenceOverride: response.allowContentPreferenceOverride,
+      });
+    } catch (error) {
+      setDeletionRulesError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsSavingDeletionRules(false);
+    }
+  };
 
   const filteredPermissions = React.useMemo(
     () =>
@@ -762,8 +721,93 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     navigateToTab(allowedTabs[nextIndex] ?? 'rights', true);
   };
 
-  const activeGovernanceItem = governanceItems.find((item) => item.id === selectedGovernanceId) ?? null;
-  const activeDsrItem = dsrItems.find((item) => item.id === selectedDsrId) ?? null;
+  const governanceColumns = React.useMemo<readonly StudioColumnDef<IamGovernanceCaseListItem>[]>(() => [
+    {
+      id: 'case',
+      header: t('admin.iam.governance.columns.case'),
+      cell: (item) => (
+        <div className="space-y-1">
+          <a className="font-semibold text-foreground underline-offset-4 hover:underline" href={`/admin/iam/governance/${item.id}`}>
+            {formatGovernanceTitle(item)}
+          </a>
+          <p className="text-xs text-muted-foreground">{item.summary}</p>
+        </div>
+      ),
+    },
+    {
+      id: 'status',
+      header: t('admin.iam.governance.columns.status'),
+      cell: (item) => <StatusBadge label={item.status} tone="border-secondary/40 bg-secondary/10 text-secondary" />,
+    },
+    {
+      id: 'actors',
+      header: t('admin.iam.governance.columns.actors'),
+      cell: (item) => [item.actorDisplayName, item.targetDisplayName].filter(Boolean).join(' -> ') || '—',
+    },
+    {
+      id: 'ticket',
+      header: t('admin.iam.governance.columns.ticket'),
+      cell: (item) => item.ticketId ?? '—',
+    },
+    {
+      id: 'createdAt',
+      header: t('admin.iam.governance.columns.createdAt'),
+      cell: (item) => formatDateTime(item.createdAt),
+      sortable: true,
+      sortValue: (item) => item.createdAt,
+    },
+    {
+      id: 'updatedAt',
+      header: t('admin.iam.governance.columns.updatedAt'),
+      cell: (item) => formatDateTime(item.updatedAt ?? item.resolvedAt),
+      sortable: true,
+      sortValue: (item) => item.updatedAt ?? item.resolvedAt ?? item.createdAt,
+    },
+  ], []);
+
+  const dsrColumns = React.useMemo<readonly StudioColumnDef<IamDsrCaseListItem>[]>(() => [
+    {
+      id: 'case',
+      header: t('admin.iam.dsr.columns.case'),
+      cell: (item) => (
+        <div className="space-y-1">
+          <a className="font-semibold text-foreground underline-offset-4 hover:underline" href={`/admin/iam/dsr/${item.id}`}>
+            {item.title}
+          </a>
+          <p className="text-xs text-muted-foreground">{item.summary}</p>
+        </div>
+      ),
+    },
+    {
+      id: 'status',
+      header: t('admin.iam.dsr.columns.status'),
+      cell: (item) => <StatusBadge label={t(mapDsrStatusToTranslationKey(item))} tone={mapDsrStatusTone(item)} />,
+    },
+    {
+      id: 'people',
+      header: t('admin.iam.dsr.columns.people'),
+      cell: (item) => [item.targetDisplayName, item.requesterDisplayName ?? item.actorDisplayName].filter(Boolean).join(' / ') || '—',
+    },
+    {
+      id: 'blocker',
+      header: t('admin.iam.dsr.columns.blocker'),
+      cell: (item) => item.blockedReason ?? '—',
+    },
+    {
+      id: 'createdAt',
+      header: t('admin.iam.dsr.columns.createdAt'),
+      cell: (item) => formatDateTime(item.createdAt),
+      sortable: true,
+      sortValue: (item) => item.createdAt,
+    },
+    {
+      id: 'completedAt',
+      header: t('admin.iam.dsr.columns.completedAt'),
+      cell: (item) => formatDateTime(item.completedAt),
+      sortable: true,
+      sortValue: (item) => item.completedAt ?? item.createdAt,
+    },
+  ], []);
 
   if (isLoadingUser) {
     return <p className="text-sm text-muted-foreground">{t('admin.iam.messages.initializing')}</p>;
@@ -994,21 +1038,20 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           id={getTabPanelId('governance')}
           role="tabpanel"
           aria-labelledby={getTabId('governance')}
-          className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,1fr)]"
+          className="space-y-4"
         >
-          <div className="space-y-4">
-            <Card className="grid gap-3 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.exportHint')}</p>
-                {instanceId && canExportGovernanceCompliance ? (
-                  <Button asChild size="sm" variant="outline">
-                    <a href={buildGovernanceComplianceExportPath({ instanceId })}>
-                      {t('admin.iam.governance.actions.exportCsv')}
-                    </a>
-                  </Button>
-                ) : null}
-              </div>
-              <div className="grid gap-3 md:grid-cols-3">
+          <Card className="grid gap-3 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.exportHint')}</p>
+              {instanceId && canExportGovernanceCompliance ? (
+                <Button asChild size="sm" variant="outline">
+                  <a href={buildGovernanceComplianceExportPath({ instanceId })}>
+                    {t('admin.iam.governance.actions.exportCsv')}
+                  </a>
+                </Button>
+              ) : null}
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
               <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
                 <Label htmlFor="iam-governance-search">{t('admin.iam.governance.filters.search')}</Label>
                 <Input
@@ -1047,34 +1090,25 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                   onChange={(event) => setGovernanceQuery((current) => ({ ...current, page: 1, status: event.target.value || undefined }))}
                 />
               </div>
-              </div>
-            </Card>
-            {governanceError ? (
-              <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-                <AlertDescription>{governanceError}</AlertDescription>
-              </Alert>
-            ) : null}
-            {isLoadingGovernance ? (
-              <p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.loading')}</p>
-            ) : governanceItems.length === 0 ? (
-              <Card className="border-dashed p-6 text-sm text-muted-foreground shadow-none">
-                {t('admin.iam.governance.messages.empty')}
-              </Card>
-            ) : (
-              <CaseList
-                items={governanceItems}
-                selectedId={selectedGovernanceId}
-                onSelect={setSelectedGovernanceId}
-                renderStatus={(item) => (
-                  <StatusBadge
-                    label={(item as IamGovernanceCaseListItem).status}
-                    tone="border-secondary/40 bg-secondary/10 text-secondary"
-                  />
-                )}
-              />
-            )}
-          </div>
-          <GovernanceDetail item={activeGovernanceItem} />
+            </div>
+          </Card>
+          {governanceError ? (
+            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+              <AlertDescription>{governanceError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <StudioDataTable
+            ariaLabel={t('admin.iam.governance.tableAriaLabel')}
+            labels={studioDataTableLabels}
+            caption={t('admin.iam.governance.tableCaption')}
+            data={governanceItems}
+            columns={governanceColumns}
+            getRowId={(item) => item.id}
+            selectionMode="none"
+            isLoading={isLoadingGovernance}
+            loadingState={t('admin.iam.governance.messages.loading')}
+            emptyState={<p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.empty')}</p>}
+          />
         </div>
       ) : null}
 
@@ -1083,10 +1117,9 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           id={getTabPanelId('dsr')}
           role="tabpanel"
           aria-labelledby={getTabId('dsr')}
-          className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,1fr)]"
+          className="space-y-4"
         >
-          <div className="space-y-4">
-            <Card className="grid gap-3 p-4 md:grid-cols-3">
+          <Card className="grid gap-3 p-4 md:grid-cols-3">
               <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
                 <Label htmlFor="iam-dsr-search">{t('admin.iam.dsr.filters.search')}</Label>
                 <Input
@@ -1139,33 +1172,157 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                   ))}
                 </Select>
               </div>
-            </Card>
-            {dsrError ? (
-              <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-                <AlertDescription>{dsrError}</AlertDescription>
-              </Alert>
-            ) : null}
-            {isLoadingDsr ? (
-              <p className="text-sm text-muted-foreground">{t('admin.iam.dsr.messages.loading')}</p>
-            ) : dsrItems.length === 0 ? (
-              <Card className="border-dashed p-6 text-sm text-muted-foreground shadow-none">
-                {t('admin.iam.dsr.messages.empty')}
-              </Card>
-            ) : (
-              <CaseList
-                items={dsrItems}
-                selectedId={selectedDsrId}
-                onSelect={setSelectedDsrId}
-                renderStatus={(item) => (
-                  <StatusBadge
-                    label={t(mapDsrStatusToTranslationKey(item as IamDsrCaseListItem))}
-                    tone={mapDsrStatusTone(item as IamDsrCaseListItem)}
-                  />
-                )}
-              />
-            )}
-          </div>
-          <DsrDetail item={activeDsrItem} />
+          </Card>
+          {dsrError ? (
+            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+              <AlertDescription>{dsrError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <StudioDataTable
+            ariaLabel={t('admin.iam.dsr.tableAriaLabel')}
+            labels={studioDataTableLabels}
+            caption={t('admin.iam.dsr.tableCaption')}
+            data={dsrItems}
+            columns={dsrColumns}
+            getRowId={(item) => item.id}
+            selectionMode="none"
+            isLoading={isLoadingDsr}
+            loadingState={t('admin.iam.dsr.messages.loading')}
+            emptyState={<p className="text-sm text-muted-foreground">{t('admin.iam.dsr.messages.empty')}</p>}
+          />
+        </div>
+      ) : null}
+
+      {activeTab === 'deletion-rules' ? (
+        <div
+          id={getTabPanelId('deletion-rules')}
+          role="tabpanel"
+          aria-labelledby={getTabId('deletion-rules')}
+          className="space-y-4"
+        >
+          <Card>
+            <CardHeader className="p-4 pb-0">
+              <CardTitle>{t('admin.iam.deletionRules.title')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-4 pt-0">
+              <p className="text-sm text-muted-foreground">{t('admin.iam.deletionRules.subtitle')}</p>
+
+              {deletionRulesError ? (
+                <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+                  <AlertDescription>{deletionRulesError}</AlertDescription>
+                </Alert>
+              ) : null}
+
+              {isLoadingDeletionRules || !deletionRulesDraft ? (
+                <p className="text-sm text-muted-foreground">{t('admin.iam.deletionRules.messages.loading')}</p>
+              ) : (
+                <form className="grid gap-4 md:grid-cols-2" onSubmit={handleDeletionRulesSave}>
+                  <div className="grid gap-1">
+                    <Label htmlFor="deletion-rules-deactivate">{t('admin.iam.deletionRules.fields.deactivateAfterDays')}</Label>
+                    <Input
+                      id="deletion-rules-deactivate"
+                      inputMode="numeric"
+                      value={deletionRulesDraft.deactivateAfterDays}
+                      onChange={(event) =>
+                        setDeletionRulesDraft((current) =>
+                          current ? { ...current, deactivateAfterDays: event.target.value } : current
+                        )
+                      }
+                      disabled={!deletionRules?.canEdit || isSavingDeletionRules}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="deletion-rules-pseudonymize">{t('admin.iam.deletionRules.fields.pseudonymizeAfterDays')}</Label>
+                    <Input
+                      id="deletion-rules-pseudonymize"
+                      inputMode="numeric"
+                      value={deletionRulesDraft.pseudonymizeAfterDays}
+                      onChange={(event) =>
+                        setDeletionRulesDraft((current) =>
+                          current ? { ...current, pseudonymizeAfterDays: event.target.value } : current
+                        )
+                      }
+                      disabled={!deletionRules?.canEdit || isSavingDeletionRules}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="deletion-rules-delete">{t('admin.iam.deletionRules.fields.deleteAfterDays')}</Label>
+                    <Input
+                      id="deletion-rules-delete"
+                      inputMode="numeric"
+                      value={deletionRulesDraft.deleteAfterDays}
+                      onChange={(event) =>
+                        setDeletionRulesDraft((current) =>
+                          current ? { ...current, deleteAfterDays: event.target.value } : current
+                        )
+                      }
+                      disabled={!deletionRules?.canEdit || isSavingDeletionRules}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="deletion-rules-strategy">{t('admin.iam.deletionRules.fields.defaultContentStrategy')}</Label>
+                    <Select
+                      id="deletion-rules-strategy"
+                      value={deletionRulesDraft.defaultContentStrategy}
+                      onChange={(event) =>
+                        setDeletionRulesDraft((current) =>
+                          current
+                            ? {
+                                ...current,
+                                defaultContentStrategy: event.target.value as IamDeletionContentStrategy,
+                              }
+                            : current
+                        )
+                      }
+                      disabled={!deletionRules?.canEdit || isSavingDeletionRules}
+                    >
+                      {deletionContentStrategyOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {t(mapDeletionContentStrategyKey(option))}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="md:col-span-2 flex items-start gap-3 rounded-lg border border-border p-3">
+                    <Checkbox
+                      id="deletion-rules-allow-override"
+                      checked={deletionRulesDraft.allowContentPreferenceOverride}
+                      onChange={(event) => {
+                        const nextChecked = event.currentTarget.checked;
+                        setDeletionRulesDraft((current) =>
+                          current
+                            ? {
+                                ...current,
+                                allowContentPreferenceOverride: nextChecked,
+                              }
+                            : current
+                        );
+                      }}
+                      disabled={!deletionRules?.canEdit || isSavingDeletionRules}
+                    />
+                    <div className="grid gap-1">
+                      <Label htmlFor="deletion-rules-allow-override">
+                        {t('admin.iam.deletionRules.fields.allowContentPreferenceOverride')}
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {t('admin.iam.deletionRules.fields.allowContentPreferenceOverrideHint')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2 flex items-center gap-3">
+                    <Button type="submit" disabled={!deletionRules?.canEdit || isSavingDeletionRules}>
+                      {isSavingDeletionRules
+                        ? t('admin.iam.deletionRules.actions.saving')
+                        : t('admin.iam.deletionRules.actions.save')}
+                    </Button>
+                    {!deletionRules?.canEdit ? (
+                      <p className="text-sm text-muted-foreground">{t('admin.iam.deletionRules.messages.readOnly')}</p>
+                    ) : null}
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
         </div>
       ) : null}
     </section>

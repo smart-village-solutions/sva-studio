@@ -117,6 +117,21 @@ Dieser Change benötigt vor oder spätestens während der Umsetzung zwei Archite
 - `fast-check` wird nur dort verpflichtend geprüft, wo Invarianten oder große Eingaberäume vorliegen.
 - Jede neue Property braucht eine knappe Aussage darüber, welche Invariante abgesichert wird.
 
+### Initiale `fast-check`-Startmenge
+
+Der Change definiert bereits für Phase 0/1 eine kleine konkrete Startmenge, damit Umsetzung und Review nicht auf abstrakte Kategorien ausweichen:
+
+- `packages/routing/src/route-search.ts`
+  - Invarianten: unbekannte Tabs fallen deterministisch auf die erlaubten Defaults zurück; erlaubte Tabs bleiben unverändert erhalten.
+- `packages/routing/src/admin-resource-search-params.ts`
+  - Invarianten: nur deklarierte Sort-/Filterwerte werden übernommen; Pagination bleibt positiv und fällt sonst auf definierte Defaults zurück.
+- `packages/core/src/waste-management-location-tour-pickup-date-import.ts`
+  - Invarianten: nur kanonische ISO-Datumswerte `YYYY-MM-DD` werden akzeptiert; ungültige oder nicht kalendarisch existente Daten ergeben `null`.
+- `packages/core/src/input-readers.ts`
+  - Invarianten: Trimming, Typgrenzen und `undefined`-Fallbacks für String-, Number-, Boolean- und Object-Reader bleiben stabil.
+
+Weitere Hotspots dürfen später ergänzt werden, aber diese Startmenge ist Teil des Changes und keine nachgelagerte Option.
+
 ## Required Inventory Artifact
 
 Die vollständige Formular-Migrationsinventur ist ein Pflichtartefakt des Changes. Sie muss alle bekannten Host- und Plugin-Formulare erfassen und mindestens Zweck, heutiges Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Priorität, Risiko, Legacy-Ausnahme und Zielzustand dokumentieren.
@@ -133,6 +148,7 @@ Unvollständige Inventur blockiert den Exit dieses Changes.
 - Neue oder grundlegend überarbeitete Formular-Flows dürfen keine konkurrierende formularweite Eigenorchestrierung einführen.
 - Neue oder grundlegend überarbeitete HTTP-nahe Frontend-Tests dürfen HTTP-Verhalten nicht primär über direkte `fetch`-, Wrapper- oder Client-Stubs abbilden, wenn `msw` den beobachtbaren Netzpfad abdecken kann.
 - Für kritische Kernlogik-Hotspots muss im Review eine kurze Entscheidung pro oder contra `fast-check` dokumentiert sein.
+- Für die initiale Startmenge in `packages/routing/src/route-search.ts`, `packages/routing/src/admin-resource-search-params.ts`, `packages/core/src/waste-management-location-tour-pickup-date-import.ts` und `packages/core/src/input-readers.ts` muss der Change konkrete Property-basierte Abdeckung oder eine eng begründete Verschiebung dokumentieren.
 - Ausnahmen sind nie implizit zulässig; sie müssen als Legacy-Ausnahme oder Spezialfall nachvollziehbar begründet werden.
 - Referenzimplementierungen sind Belege für den Standardpfad, keine Sonderzone mit abgeschwächten Regeln.
 
@@ -142,6 +158,7 @@ Unvollständige Inventur blockiert den Exit dieses Changes.
 - Referenzformulare bilden Feldfehler, Summary-Fehler und Fokusführung konsistent über gemeinsame Studio-Primitiven ab.
 - HTTP-nahe Referenztests verwenden `msw` statt direkter `fetch`-Stubs, ohne bestehende Live-E2E-Anforderungen zu ersetzen.
 - Für `fast-check` existiert eine kleine dokumentierte Erstmenge an Hotspots mit nachvollziehbaren Invarianten und akzeptabler Laufzeit.
+- Die initiale `fast-check`-Startmenge für `route-search`, `admin-resource-search-params`, `waste-management-location-tour-pickup-date-import` und `input-readers` ist im Change selbst konkret benannt.
 - Die vollständige Formular-Migrationsinventur liegt vollständig für Host und Plugins vor.
 - Die Entwicklerdokumentation beschreibt Entscheidungskriterien dafür, wann Migration verpflichtend, optional oder unzulässig abweichend ist.
 - Ein Reviewer kann für jeden Referenzbereich schnell erkennen, ob Standardpfad, Ausnahmegrund und Migrationsstatus nachvollziehbar dokumentiert sind.

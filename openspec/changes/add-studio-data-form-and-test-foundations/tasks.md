@@ -18,13 +18,13 @@
 - [ ] 3.1 `react-hook-form` und `@hookform/resolvers` in den betroffenen Frontend-Projekten einführen
 - [ ] 3.2 In `packages/studio-ui-react` gemeinsame Formularpatterns oder schlanke Adapter für `Input`, `Textarea`, `Select`, `Checkbox`, Fehler-Mapping und Summary-Fokus definieren
 - [ ] 3.3 `msw` als gemeinsames Frontend-Test-Mocking-Setup für Browser- und Node-Testläufe mit Handler-Utilities und Reset-Regeln bereitstellen
-- [ ] 3.4 `fast-check` als gezielte Test-Foundation für kritische Kern- und Routing-Hotspots vorbereiten
+- [ ] 3.4 `fast-check` als gezielte Test-Foundation für die initiale Startmenge `packages/routing/src/route-search.ts`, `packages/routing/src/admin-resource-search-params.ts`, `packages/core/src/waste-management-location-tour-pickup-date-import.ts` und `packages/core/src/input-readers.ts` vorbereiten
 
 ## 4. Referenzimplementierungen und Rollout
 
 - [ ] 4.1 Referenz-Formulare in Account/Admin und Content auf `react-hook-form` plus `zodResolver` umstellen
 - [ ] 4.2 HTTP-nahe Frontend-Tests mit direkten `fetch`- oder `fetchWithRequestTimeout`-Stubs in Referenzbereichen auf `msw` umstellen
-- [ ] 4.3 Für definierte Kern-Hotspots erste gezielte `fast-check`-Properties ergänzen
+- [ ] 4.3 Für die initiale Startmenge `route-search`, `admin-resource-search-params`, `waste-management-location-tour-pickup-date-import` und `input-readers` erste gezielte `fast-check`-Properties ergänzen oder eine eng begründete Verschiebung dokumentieren
 - [ ] 4.4 Nach jedem Referenzblock betroffene Unit-, Type- und Frontend-Tests ausführen und den Rollout nur bei grünem Stand fortsetzen
 
 ## 5. Dokumentation und Exit

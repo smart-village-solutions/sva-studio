@@ -46,6 +46,22 @@ Das System SHALL fuer kritische, framework-agnostische Kernlogik gezielt Propert
 - **THEN** ist `fast-check` nicht verpflichtend
 - **AND** bleibt der gezielte Einsatz auf risikoreiche Kernlogik fokussiert
 
+### Requirement: Initiale `fast-check`-Hotspot-Liste ist Teil des Changes
+
+Das System SHALL fuer diesen Change eine kleine initiale `fast-check`-Hotspot-Liste im Change selbst dokumentieren.
+
+#### Scenario: Change definiert die erste Hotspot-Startmenge
+
+- **WHEN** der Change die ersten Property-based-Testing-Bereiche festlegt
+- **THEN** benennt er mindestens `packages/routing/src/route-search.ts`, `packages/routing/src/admin-resource-search-params.ts`, `packages/core/src/waste-management-location-tour-pickup-date-import.ts` und `packages/core/src/input-readers.ts`
+- **AND** dokumentiert fuer diese Startmenge die erwarteten Invarianten oder den fachlichen Grund fuer eine eng begruendete Verschiebung
+
+#### Scenario: Hotspot-Liste bleibt nur abstrakt
+
+- **WHEN** der Change nur allgemeine Kategorien wie Parser, Guards oder Routing-Invarianten nennt
+- **THEN** gilt die initiale Hotspot-Liste als nicht hinreichend dokumentiert
+- **AND** ist der Change fuer Review und Exit nicht ausreichend geschaerft
+
 ### Requirement: Governance- und Review-Kriterien fuer Foundations
 
 Das System SHALL fuer Formular-, HTTP-Test- und Property-based-Testing-Foundations explizite Governance- und Review-Kriterien als Exit-Bedingung dokumentieren.

@@ -200,7 +200,9 @@ describe('IamViewerPage', () => {
   });
 
   it('updates rights filters and shows authorize progress and fallback summary values', async () => {
-    let resolveAuthorize: ((response: Response) => void) | null = null;
+    let resolveAuthorize: (response: Response) => void = () => {
+      throw new Error('Expected authorize request promise to be pending.');
+    };
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -281,7 +283,7 @@ describe('IamViewerPage', () => {
       expect(screen.getByRole('button', { name: /Authorize/ })).toHaveProperty('disabled', true);
     });
 
-    resolveAuthorize?.(
+    resolveAuthorize(
       new Response(
         JSON.stringify({
           allowed: false,

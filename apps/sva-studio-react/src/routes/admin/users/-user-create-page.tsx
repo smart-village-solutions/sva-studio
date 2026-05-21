@@ -1,5 +1,15 @@
 import { Link, useNavigate } from '@tanstack/react-router';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  StudioField,
+  StudioFieldGroup,
+  StudioFormSummaryErrors,
+  getStudioFormFieldProps,
+  type StudioFormFieldError,
+} from '@sva/studio-ui-react';
 import React from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from '../../../../../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/index.js';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
@@ -7,7 +17,6 @@ import { Card } from '../../../components/ui/card';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
-import { Label } from '../../../components/ui/label';
 import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUsers } from '../../../hooks/use-users';
@@ -27,17 +36,33 @@ type UserCreateFormValues = {
 };
 
 type UserCreateAssignmentsProps = {
-  readonly formValues: UserCreateFormValues;
+  readonly selectedRoleIds: readonly string[];
+  readonly selectedGroupIds: readonly string[];
   readonly roles: ReturnType<typeof useRoles>['roles'];
   readonly groups: ReturnType<typeof useGroups>['groups'];
-  readonly setFormValues: React.Dispatch<React.SetStateAction<UserCreateFormValues>>;
+  readonly onToggleRole: (roleId: string, checked: boolean) => void;
+  readonly onToggleGroup: (groupId: string, checked: boolean) => void;
 };
 
+const userCreateSchema = z.object({
+  email: z.string().trim().email(t('account.validation.emailInvalid')),
+  firstName: z.string().trim().min(1, t('account.validation.firstNameRequired')),
+  lastName: z.string().trim().min(1, t('account.validation.lastNameRequired')),
+  roleIds: z.array(z.string()),
+  groupIds: z.array(z.string()),
+  sendPasswordSetupEmail: z.boolean(),
+});
+
+const collectSummaryErrors = (
+  fields: readonly ReturnType<typeof getStudioFormFieldProps>[]
+): readonly StudioFormFieldError[] =>
+  fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
+
 const UserCreateGroupAssignments = ({
-  formValues,
+  selectedGroupIds,
   groups,
-  setFormValues,
-}: Pick<UserCreateAssignmentsProps, 'formValues' | 'groups' | 'setFormValues'>) => (
+  onToggleGroup,
+}: Pick<UserCreateAssignmentsProps, 'selectedGroupIds' | 'groups' | 'onToggleGroup'>) => (
   <fieldset className="grid gap-3 rounded-lg border border-border/60 p-4">
     <legend className="px-1 text-sm font-medium text-foreground">{t('admin.users.createDialog.groupsLabel')}</legend>
     <p className="text-sm text-muted-foreground">{t('admin.users.createDialog.groupsHint')}</p>
@@ -46,7 +71,7 @@ const UserCreateGroupAssignments = ({
     ) : (
       <div className="grid gap-3 md:grid-cols-2">
         {groups.map((group) => {
-          const selected = formValues.groupIds.includes(group.id);
+          const selected = selectedGroupIds.includes(group.id);
           return (
             <label
               key={group.id}
@@ -56,14 +81,7 @@ const UserCreateGroupAssignments = ({
               <Checkbox
                 id={`create-user-group-${group.id}`}
                 checked={selected}
-                onChange={(event) =>
-                  setFormValues((current) => ({
-                    ...current,
-                    groupIds: event.target.checked
-                      ? appendUnique(current.groupIds, group.id)
-                      : current.groupIds.filter((entry) => entry !== group.id),
-                  }))
-                }
+                onChange={(event) => onToggleGroup(group.id, event.target.checked)}
               />
               <span className="space-y-1">
                 <span className="block font-medium">{group.displayName}</span>
@@ -80,10 +98,10 @@ const UserCreateGroupAssignments = ({
 );
 
 const UserCreateRoleAssignments = ({
-  formValues,
+  selectedRoleIds,
   roles,
-  setFormValues,
-}: Pick<UserCreateAssignmentsProps, 'formValues' | 'roles' | 'setFormValues'>) => (
+  onToggleRole,
+}: Pick<UserCreateAssignmentsProps, 'selectedRoleIds' | 'roles' | 'onToggleRole'>) => (
   <details className="rounded-lg border border-border/60">
     <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-foreground">
       {t('admin.users.createDialog.advancedRolesTitle')}
@@ -92,7 +110,7 @@ const UserCreateRoleAssignments = ({
       <p className="text-sm text-muted-foreground">{t('admin.users.createDialog.advancedRolesHint')}</p>
       <div className="grid gap-3 md:grid-cols-2">
         {roles.map((role) => {
-          const selected = formValues.roleIds.includes(role.id);
+          const selected = selectedRoleIds.includes(role.id);
           return (
             <label
               key={role.id}
@@ -102,14 +120,7 @@ const UserCreateRoleAssignments = ({
               <Checkbox
                 id={`create-user-role-${role.id}`}
                 checked={selected}
-                onChange={(event) =>
-                  setFormValues((current) => ({
-                    ...current,
-                    roleIds: event.target.checked
-                      ? appendUnique(current.roleIds, role.id)
-                      : current.roleIds.filter((entry) => entry !== role.id),
-                  }))
-                }
+                onChange={(event) => onToggleRole(role.id, event.target.checked)}
               />
               <span className="block font-medium">{role.roleName}</span>
             </label>
@@ -132,47 +143,84 @@ export const UserCreatePage = () => {
     () => groupsApi.groups.filter((group) => group.isActive !== false),
     [groupsApi.groups]
   );
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [formValues, setFormValues] = React.useState<UserCreateFormValues>({
-    email: '',
-    firstName: '',
-    lastName: '',
-    roleIds: [] as string[],
-    groupIds: [] as string[],
-    sendPasswordSetupEmail: true,
+  const form = useForm<UserCreateFormValues>({
+    resolver: zodResolver(userCreateSchema as never),
+    defaultValues: {
+      email: '',
+      firstName: '',
+      lastName: '',
+      roleIds: [],
+      groupIds: [],
+      sendPasswordSetupEmail: true,
+    },
+    reValidateMode: 'onChange',
   });
+  const {
+    formState: { errors, isSubmitting },
+    handleSubmit,
+    register,
+    setValue,
+    watch,
+  } = form;
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (isSubmitting) {
+  const emailField = getStudioFormFieldProps({
+    id: 'create-user-email',
+    error: errors.email,
+  });
+  const firstNameField = getStudioFormFieldProps({
+    id: 'create-user-first-name',
+    error: errors.firstName,
+  });
+  const lastNameField = getStudioFormFieldProps({
+    id: 'create-user-last-name',
+    error: errors.lastName,
+  });
+  const summaryErrors = collectSummaryErrors([emailField, firstNameField, lastNameField]);
+  const selectedGroupIds = watch('groupIds');
+  const selectedRoleIds = watch('roleIds');
+  const sendPasswordSetupEmail = watch('sendPasswordSetupEmail');
+
+  const toggleGroup = React.useCallback(
+    (groupId: string, checked: boolean) => {
+      const nextValue = checked
+        ? appendUnique(selectedGroupIds, groupId)
+        : selectedGroupIds.filter((entry) => entry !== groupId);
+      setValue('groupIds', nextValue, { shouldDirty: true });
+    },
+    [selectedGroupIds, setValue]
+  );
+
+  const toggleRole = React.useCallback(
+    (roleId: string, checked: boolean) => {
+      const nextValue = checked
+        ? appendUnique(selectedRoleIds, roleId)
+        : selectedRoleIds.filter((entry) => entry !== roleId);
+      setValue('roleIds', nextValue, { shouldDirty: true });
+    },
+    [selectedRoleIds, setValue]
+  );
+
+  const onSubmit = handleSubmit(async (values) => {
+    const created = await usersApi.createUser({
+      email: values.email.trim(),
+      firstName: values.firstName.trim() || undefined,
+      lastName: values.lastName.trim() || undefined,
+      displayName: `${values.firstName} ${values.lastName}`.trim() || undefined,
+      roleIds: values.roleIds,
+      groupIds: values.groupIds,
+      sendPasswordSetupEmail: values.sendPasswordSetupEmail,
+    });
+
+    if (!created) {
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const created = await usersApi.createUser({
-        email: formValues.email.trim(),
-        firstName: formValues.firstName.trim() || undefined,
-        lastName: formValues.lastName.trim() || undefined,
-        displayName: `${formValues.firstName} ${formValues.lastName}`.trim() || undefined,
-        roleIds: formValues.roleIds,
-        groupIds: formValues.groupIds,
-        sendPasswordSetupEmail: formValues.sendPasswordSetupEmail,
-      });
-
-      if (!created) {
-        return;
-      }
-
-      await navigate({
-        to: '/admin/users/$userId',
-        params: { userId: created.user.id },
-        search: created.invitation.status === 'failed' ? ({ invite: 'failed' } as const) : undefined,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    await navigate({
+      to: '/admin/users/$userId',
+      params: { userId: created.user.id },
+      search: created.invitation.status === 'failed' ? ({ invite: 'failed' } as const) : undefined,
+    });
+  });
 
   return (
     <section className="space-y-5" aria-busy={isSubmitting}>
@@ -187,58 +235,42 @@ export const UserCreatePage = () => {
       </header>
 
       <Card className="space-y-4 p-4">
-        <form className="grid gap-4" onSubmit={onSubmit}>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="create-user-email">{t('account.fields.email')}</Label>
-            <Input
-              id="create-user-email"
-              required
-              type="email"
-              value={formValues.email}
-              onChange={(event) => setFormValues((current) => ({ ...current, email: event.target.value }))}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground md:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="create-user-first-name">{t('account.fields.firstName')}</Label>
-              <Input
-                id="create-user-first-name"
-                required
-                value={formValues.firstName}
-                onChange={(event) => setFormValues((current) => ({ ...current, firstName: event.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="create-user-last-name">{t('account.fields.lastName')}</Label>
-              <Input
-                id="create-user-last-name"
-                required
-                value={formValues.lastName}
-                onChange={(event) => setFormValues((current) => ({ ...current, lastName: event.target.value }))}
-              />
-            </div>
-          </div>
+        <form className="grid gap-4" onSubmit={onSubmit} noValidate>
+          <StudioFormSummaryErrors errors={summaryErrors} title={t('account.messages.validationSummary')} />
+          <StudioField {...emailField} label={t('account.fields.email')} required>
+            <Input {...register('email')} type="email" />
+          </StudioField>
+          <StudioFieldGroup columns={2}>
+            <StudioField {...firstNameField} label={t('account.fields.firstName')} required>
+              <Input {...register('firstName')} />
+            </StudioField>
+            <StudioField {...lastNameField} label={t('account.fields.lastName')} required>
+              <Input {...register('lastName')} />
+            </StudioField>
+          </StudioFieldGroup>
           <UserCreateGroupAssignments
-            formValues={formValues}
+            selectedGroupIds={selectedGroupIds}
             groups={selectableGroups}
-            setFormValues={setFormValues}
+            onToggleGroup={toggleGroup}
           />
           <UserCreateRoleAssignments
-            formValues={formValues}
+            selectedRoleIds={selectedRoleIds}
             roles={rolesApi.roles}
-            setFormValues={setFormValues}
+            onToggleRole={toggleRole}
           />
           <div className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-3 text-sm text-foreground">
             <Checkbox
               id="create-user-send-password-setup-email"
-              checked={formValues.sendPasswordSetupEmail}
+              checked={sendPasswordSetupEmail}
               onChange={(event) =>
-                setFormValues((current) => ({ ...current, sendPasswordSetupEmail: event.target.checked }))
+                setValue('sendPasswordSetupEmail', event.target.checked, {
+                  shouldDirty: true,
+                })
               }
             />
-            <Label htmlFor="create-user-send-password-setup-email" className="cursor-pointer">
+            <label htmlFor="create-user-send-password-setup-email" className="cursor-pointer text-sm font-medium">
               {t('admin.users.createDialog.sendPasswordSetupEmail')}
-            </Label>
+            </label>
           </div>
 
           <div className="mt-2 flex justify-end gap-3">

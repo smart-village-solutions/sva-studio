@@ -79,6 +79,26 @@ describe('UserCreatePage', () => {
     expect(checkbox?.checked).toBe(true);
   });
 
+  it('shows resolver-driven field errors and blocks invalid submit through the shared RHF path', async () => {
+    const createUser = vi.fn();
+    useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
+
+    render(<UserCreatePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
+
+    await waitFor(() => {
+      expect(createUser).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert').textContent).toContain('Bitte eine gültige E-Mail-Adresse eingeben.');
+    });
+
+    expect(screen.getByRole('alert').textContent).toContain('Vorname ist ein Pflichtfeld.');
+    expect(screen.getByRole('alert').textContent).toContain('Nachname ist ein Pflichtfeld.');
+    expect(screen.getByLabelText('E-Mail').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Vorname').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Nachname').getAttribute('aria-invalid')).toBe('true');
+  });
+
   it('submits selected groups as the primary assignment and navigates with a warning marker when invitation delivery failed', async () => {
     const createUser = vi.fn().mockResolvedValue({
       user: {

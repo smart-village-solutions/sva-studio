@@ -37,7 +37,6 @@ export { Select } from './select.js';
 export { StudioFormSummaryErrors, getStudioFieldError, getStudioFormFieldProps } from './studio-form-bridge.js';
 export type {
   GetStudioFormFieldPropsOptions,
-  StudioFieldControlProps,
   StudioFormFieldBindings,
   StudioFormFieldError,
   StudioFormSummaryErrorsProps,
@@ -68,6 +67,7 @@ export {
   type StudioConfirmDialogProps,
   type StudioDetailPageTemplateProps,
   type StudioFieldGroupProps,
+  type StudioFieldControlProps,
   type StudioFieldProps,
   type StudioFormSummaryProps,
   type StudioJobSummaryCardProps,

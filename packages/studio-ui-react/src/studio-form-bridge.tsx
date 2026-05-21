@@ -1,17 +1,12 @@
 import * as React from 'react';
 import type { FieldError } from 'react-hook-form';
 
+import type { StudioFieldControlProps } from './studio-primitives.js';
 import { cn } from './utils.js';
 
 export type StudioFormFieldError = Readonly<{
   field: string;
   message: string;
-}>;
-
-export type StudioFieldControlProps = Readonly<{
-  id: string;
-  'aria-invalid'?: true;
-  'aria-describedby'?: string;
 }>;
 
 export function getStudioFieldError(error: FieldError | undefined): string | undefined {

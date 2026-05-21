@@ -1,6 +1,5 @@
 import * as React from 'react';
 
-import type { StudioFieldControlProps } from './studio-form-bridge.js';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -189,6 +188,12 @@ export type StudioFieldProps = Readonly<{
   controlProps?: StudioFieldControlProps;
   children: React.ReactNode;
   className?: string;
+}>;
+
+export type StudioFieldControlProps = Readonly<{
+  id: string;
+  'aria-invalid'?: true;
+  'aria-describedby'?: string;
 }>;
 
 const mergeDescribedBy = (currentValue: string | undefined, nextValue: string | undefined) => {

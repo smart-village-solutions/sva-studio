@@ -83,7 +83,7 @@ function ControlledSelectForm({ onSubmit }: Readonly<{ onSubmit: (values: Contro
           rules={{ required: 'Kategorie fehlt' }}
           render={({ field }) => (
             <Select {...categoryField.controlProps} {...field}>
-              <option value="">Bitte wählen</option>
+              <option value="">Select one</option>
               <option value="news">News</option>
               <option value="events">Events</option>
             </Select>

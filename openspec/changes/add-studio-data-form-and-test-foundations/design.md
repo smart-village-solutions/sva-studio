@@ -107,6 +107,7 @@ Dieser Change benötigt zwei Architekturentscheidungen in `docs/adr/`, die spät
   - konsistentes Fehler-Mapping auf `StudioField` und `StudioFormSummary`
   - Fokusführung für Error-Summary und erstes fehlerhaftes Feld
   - klare Regel, wann `register` reicht und wann `Controller` genutzt wird
+- Vor Referenzmigrationen wird verbindlich festgelegt, welche dieser Primitiven rein `register`-basiert bleiben und für welche Komponenten ein `Controller`-Pfad bereitgestellt wird.
 
 ### Test-Integration
 
@@ -136,7 +137,7 @@ Weitere Hotspots dürfen später ergänzt werden, aber diese Startmenge ist Teil
 
 ## Required Inventory Artifact
 
-Die vollständige Formular-Migrationsinventur ist ein Pflichtartefakt des Changes. Sie muss alle bekannten Host- und Plugin-Formulare erfassen und mindestens Pfad, Zweck, heutiges Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Priorität, Risiko, Legacy-Ausnahme und Zielzustand dokumentieren.
+Die vollständige Formular-Migrationsinventur ist ein Pflichtartefakt des Changes. Sie wird unter `docs/development/studio-form-migrationsinventur.md` geführt und muss alle bekannten Host- und Plugin-Formulare mit mindestens Pfad, Zweck, heutigem Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Priorität, Risiko, Legacy-Ausnahme und Zielzustand dokumentieren.
 
 Mindestens folgende Bereiche müssen explizit auftauchen:
 
@@ -144,6 +145,15 @@ Mindestens folgende Bereiche müssen explizit auftauchen:
 - Plugins: `plugin-poi` sowie die relevanten Formulare in `plugin-waste-management`
 
 Unvollständige Inventur blockiert den Exit dieses Changes.
+
+## Required Governance Artifact
+
+Die Governance- und Review-Kriterien dieses Changes werden verbindlich unter `docs/development/studio-foundations-governance.md` dokumentiert. Diese Datei bündelt:
+
+- zulässige und unzulässige Abweichungen vom Default-Standard
+- die Abgrenzung zwischen repo-weitem Default und initialen Referenzimplementierungen
+- Review-Kriterien für RHF-, `msw`- und `fast-check`-Nutzung
+- Exit-Nachweise für Inventur, Referenzscope und dokumentierte Ausnahmen
 
 ## Governance and Review Rules
 
@@ -162,6 +172,7 @@ Unvollständige Inventur blockiert den Exit dieses Changes.
 - Für `fast-check` existiert eine kleine dokumentierte Erstmenge an Hotspots mit nachvollziehbaren Invarianten und akzeptabler Laufzeit.
 - Die initiale `fast-check`-Startmenge für `route-search`, `admin-resource-search-params`, `waste-management-location-tour-pickup-date-import` und `input-readers` ist im Change selbst konkret benannt.
 - Die vollständige Formular-Migrationsinventur liegt vollständig für Host und Plugins vor.
+- `docs/development/studio-form-migrationsinventur.md` und `docs/development/studio-foundations-governance.md` liegen mit den geforderten Inhalten vor.
 - Die Entwicklerdokumentation beschreibt Entscheidungskriterien dafür, wann Migration verpflichtend, optional oder unzulässig abweichend ist.
 - Ein Reviewer kann für jeden Referenzbereich schnell erkennen, ob Standardpfad, Ausnahmegrund und Migrationsstatus nachvollziehbar dokumentiert sind.
 
@@ -169,7 +180,7 @@ Unvollständige Inventur blockiert den Exit dieses Changes.
 
 1. Foundations als Dependencies und Workspace-Standards einführen.
 2. ADRs zur Formular- und Test-Foundation vor Beginn der Referenzimplementierungen erstellen oder aktualisieren.
-3. Vollständige Formular-Migrationsinventur für Host und Plugins erstellen.
+3. `docs/development/studio-form-migrationsinventur.md` und `docs/development/studio-foundations-governance.md` mit den verbindlichen Mindestinhalten anlegen.
 4. Gemeinsame Adapter, Test-Helfer und Hotspot-Definitionen bereitstellen.
 5. Referenz-Flows in Admin/Content sowie erste HTTP-nahe Tests schrittweise umstellen.
 6. Nach erfolgreicher Referenzphase weitere neue oder grundlegend überarbeitete Flows an dieselben Standards binden.
@@ -177,4 +188,4 @@ Unvollständige Inventur blockiert den Exit dieses Changes.
 
 ## Open Questions
 
-- Welche exakten RHF-Adapter oder Wrapper werden in `packages/studio-ui-react` benötigt, bevor Referenzmigrationen starten?
+- Welche konkrete Aufteilung zwischen `register`-basierten Adaptern und `Controller`-basierten Adaptern wird für `Input`, `Textarea`, `Select` und `Checkbox` in `packages/studio-ui-react` festgelegt?

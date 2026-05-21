@@ -61,6 +61,7 @@ Das System SHALL fuer diesen Change eine vollstaendige Formular-Migrationsinvent
 
 - **WHEN** der Change konkrete Referenzmigrationen, Ausnahmen und Governance festlegt
 - **THEN** existiert eine vollstaendige Inventur aller bekannten Host- und Plugin-Formulare
+- **AND** wird sie unter `docs/development/studio-form-migrationsinventur.md` gefuehrt
 - **AND** dokumentiert sie mindestens Pfad, Zweck, heutiges Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Prioritaet, Risiko, Legacy-Ausnahme und Zielzustand
 
 #### Scenario: Repo-weiter Default und Referenzscope werden getrennt dokumentiert
@@ -68,6 +69,12 @@ Das System SHALL fuer diesen Change eine vollstaendige Formular-Migrationsinvent
 - **WHEN** der Change Referenzimplementierungen fuer den Rollout benennt
 - **THEN** trennt er klar zwischen repo-weitem Default-Standard fuer neue oder grundlegend ueberarbeitete Flows und der kleineren Menge initialer Referenzimplementierungen
 - **AND** bleibt nachvollziehbar, welche Bereiche nur unter die Default-Regel fallen und welche Bereiche im Change konkret als Referenz umgesetzt werden
+
+#### Scenario: Governance-Artefakte werden abgelegt
+
+- **WHEN** Review-Kriterien, Ausnahmeregeln und Exit-Nachweise fuer diesen Change dokumentiert werden
+- **THEN** werden sie unter `docs/development/studio-foundations-governance.md` gebuendelt
+- **AND** folgen Inventur- und Governance-Artefakte damit den Repo-Doku-Regeln fuer Entwicklungsdokumentation
 
 #### Scenario: Inventur ist unvollstaendig
 

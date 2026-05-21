@@ -21,7 +21,8 @@ Zusätzlich fehlen für kritische Kernlogik systematische generative Tests sowie
 - Affected specs: `monorepo-structure`, `account-ui`, `content-management`, `test-coverage-governance`
 - Affected code: `apps/sva-studio-react`, `packages/studio-ui-react`, `packages/plugin-*`, `packages/core`, `packages/routing`, `tooling/testing`, `scripts/ci`
 - Affected arc42 sections: `05-building-block-view`, `08-cross-cutting-concepts`, `09-architecture-decisions`, `10-quality-requirements`
-- Required migration artifact: vollständige Formularinventur für Host und Plugins mit Ausnahmen, Prioritäten und Zielzustand
+- Required migration artifact: `docs/development/studio-form-migrationsinventur.md` als vollständige Formularinventur für Host und Plugins mit Pfad, Zweck, heutigem Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Priorität, Risiko, Legacy-Ausnahme und Zielzustand
+- Required governance artifact: `docs/development/studio-foundations-governance.md` mit Review-Kriterien, Ausnahmeregeln, Referenzscope und Exit-Nachweisen
 - Required review gates:
   - verpflichtende Prüfung, ob neue oder grundlegend überarbeitete Formular-Flows den RHF-/Resolver-Standard einhalten
   - verpflichtende Prüfung, ob HTTP-nahe Frontend-Tests `msw` statt Implementierungsdetail-Stubs verwenden

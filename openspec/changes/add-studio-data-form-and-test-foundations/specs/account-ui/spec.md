@@ -1,8 +1,8 @@
 ## ADDED Requirements
 
-### Requirement: Einheitlicher Formular-Stack fuer Account- und Admin-Views
+### Requirement: Account- und Admin-Views konkretisieren den Formularstandard fuer ihren Bereich
 
-Das System SHALL fuer Account- und Admin-Views `react-hook-form` in Kombination mit `zod`-basierten Resolvern als verbindlichen Default-Standard fuer Form-State, Feldbindung, Submit-Status und Validierungsabbildung verwenden.
+Das System SHALL fuer Account- und Admin-Views den repo-weiten Formularstandard mit `react-hook-form` und `zod`-basierten Resolvern bereichsspezifisch auf Form-State, Feldbindung, Submit-Status, Fehlerdarstellung und Accessibility anwenden.
 
 #### Scenario: Profil- oder Admin-Formular wird neu erstellt oder ueberarbeitet
 
@@ -11,11 +11,11 @@ Das System SHALL fuer Account- und Admin-Views `react-hook-form` in Kombination 
 - **UND** verwendet `@hookform/resolvers` mit einem `zod`-Schema fuer die Formularvalidierung
 - **UND** fuehrt keine parallele formularweite Eigenorchestrierung fuer dieselben Aufgaben ein
 
-#### Scenario: `/account` faellt unter den Default-Standard ohne Referenzrolle in diesem Change
+#### Scenario: `/account` uebernimmt den Formularstandard fuer seinen Bereich
 
 - **WENN** ein neuer oder grundlegend ueberarbeiteter `/account`-Flow umgesetzt wird
-- **DANN** gilt derselbe verbindliche Default-Standard wie fuer Admin-Views
-- **UND** folgt daraus nicht automatisch, dass `/account` in diesem Change eine initiale Referenzimplementierung ist
+- **DANN** verwendet er denselben Formularstandard fuer Form-State, Validierung und Fehlerdarstellung wie andere Account- und Admin-Views
+- **UND** bleiben Referenzscope und Rollout-Governance im uebergeordneten Foundation-Change geregelt
 
 #### Scenario: Formular zeigt Feld- und Gesamtfehler konsistent an
 

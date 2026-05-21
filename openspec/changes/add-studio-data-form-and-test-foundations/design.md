@@ -23,7 +23,7 @@ Die Einführung neuer npm-Pakete ist in diesem Repository bewusst architekturwir
 
 ## ADR Requirements
 
-Dieser Change benötigt vor oder spätestens während der Umsetzung zwei Architekturentscheidungen in `docs/adr/`:
+Dieser Change benötigt zwei Architekturentscheidungen in `docs/adr/`, die spätestens vor Beginn der Referenzimplementierungen vorliegen:
 
 - `ADR: Formular-Foundation mit react-hook-form und zodResolver`
   - dokumentiert Bibliothekswahl, Geltungsbereich, gemeinsame Adapter in `packages/studio-ui-react`, Ausnahmen und Migrationsregeln für Alt-Flows
@@ -79,6 +79,7 @@ Dieser Change benötigt vor oder spätestens während der Umsetzung zwei Archite
 ### Phase 0: Foundations bereitstellen
 
 - `react-hook-form`, `@hookform/resolvers`, `msw` und `fast-check` werden eingeführt.
+- Die beiden ADRs zur Formular- und Test-Foundation werden erstellt oder aktualisiert, bevor Referenzimplementierungen beginnen.
 - Für Formulare entsteht ein kleiner gemeinsamer Integrationspfad in `packages/studio-ui-react`, damit Feld-, Fehler- und Summary-Mapping nicht pro View neu erfunden wird.
 - Für `msw` entsteht ein gemeinsames Test-Setup mit wiederverwendbaren Handlern und klarer Trennung zwischen Node- und Browser-nahen Testläufen.
 - Für `fast-check` wird eine kleine Hotspot-Liste definiert, bevor erste Properties geschrieben werden.
@@ -90,6 +91,7 @@ Dieser Change benötigt vor oder spätestens während der Umsetzung zwei Archite
 - MSW-Piloten: Frontend-Tests mit direkten `fetch`-/`fetchWithRequestTimeout`-Stubs, insbesondere IAM-nahe Seiten-/Hook-Tests und content-nahe HTTP-Tests.
 - `fast-check`-Piloten: Guard-, Parser-, Normalisierungs- oder Routing-nahe Kernlogik mit klaren Invarianten.
 - Zweck: Referenzimplementierungen validieren den verbindlichen Standardpfad, ohne die repo-weite Default-Geltung einzuschränken.
+- `/account`-Flows fallen bereits unter die repo-weite Default-Regel für neue oder grundlegend überarbeitete Formulare, sind in diesem Change aber keine initialen Referenzimplementierungen.
 
 ### Phase 2: Auswertung und Ausweitung
 
@@ -134,7 +136,7 @@ Weitere Hotspots dürfen später ergänzt werden, aber diese Startmenge ist Teil
 
 ## Required Inventory Artifact
 
-Die vollständige Formular-Migrationsinventur ist ein Pflichtartefakt des Changes. Sie muss alle bekannten Host- und Plugin-Formulare erfassen und mindestens Zweck, heutiges Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Priorität, Risiko, Legacy-Ausnahme und Zielzustand dokumentieren.
+Die vollständige Formular-Migrationsinventur ist ein Pflichtartefakt des Changes. Sie muss alle bekannten Host- und Plugin-Formulare erfassen und mindestens Pfad, Zweck, heutiges Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Priorität, Risiko, Legacy-Ausnahme und Zielzustand dokumentieren.
 
 Mindestens folgende Bereiche müssen explizit auftauchen:
 
@@ -166,13 +168,13 @@ Unvollständige Inventur blockiert den Exit dieses Changes.
 ## Migration Plan
 
 1. Foundations als Dependencies und Workspace-Standards einführen.
-2. Vollständige Formular-Migrationsinventur für Host und Plugins erstellen.
-3. Gemeinsame Adapter, Test-Helfer und Hotspot-Definitionen bereitstellen.
-4. Referenz-Flows in Account/Admin/Content sowie erste HTTP-nahe Tests schrittweise umstellen.
-5. Nach erfolgreicher Referenzphase weitere neue oder grundlegend überarbeitete Flows an dieselben Standards binden.
-6. Kritische Kernmodule selektiv mit `fast-check` absichern.
+2. ADRs zur Formular- und Test-Foundation vor Beginn der Referenzimplementierungen erstellen oder aktualisieren.
+3. Vollständige Formular-Migrationsinventur für Host und Plugins erstellen.
+4. Gemeinsame Adapter, Test-Helfer und Hotspot-Definitionen bereitstellen.
+5. Referenz-Flows in Admin/Content sowie erste HTTP-nahe Tests schrittweise umstellen.
+6. Nach erfolgreicher Referenzphase weitere neue oder grundlegend überarbeitete Flows an dieselben Standards binden.
+7. Kritische Kernmodule selektiv mit `fast-check` absichern.
 
 ## Open Questions
 
 - Welche exakten RHF-Adapter oder Wrapper werden in `packages/studio-ui-react` benötigt, bevor Referenzmigrationen starten?
-- Welche Kernmodule werden initial als `fast-check`-Hotspots geführt?

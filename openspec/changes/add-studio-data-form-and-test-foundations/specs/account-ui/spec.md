@@ -11,6 +11,12 @@ Das System SHALL fuer Account- und Admin-Views `react-hook-form` in Kombination 
 - **UND** verwendet `@hookform/resolvers` mit einem `zod`-Schema fuer die Formularvalidierung
 - **UND** fuehrt keine parallele formularweite Eigenorchestrierung fuer dieselben Aufgaben ein
 
+#### Scenario: `/account` faellt unter den Default-Standard ohne Referenzrolle in diesem Change
+
+- **WENN** ein neuer oder grundlegend ueberarbeiteter `/account`-Flow umgesetzt wird
+- **DANN** gilt derselbe verbindliche Default-Standard wie fuer Admin-Views
+- **UND** folgt daraus nicht automatisch, dass `/account` in diesem Change eine initiale Referenzimplementierung ist
+
 #### Scenario: Formular zeigt Feld- und Gesamtfehler konsistent an
 
 - **WENN** ein Account- oder Admin-Formular Validierungs- oder Submit-Fehler verarbeitet

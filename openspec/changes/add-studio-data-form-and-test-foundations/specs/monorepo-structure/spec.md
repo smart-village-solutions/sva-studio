@@ -63,6 +63,12 @@ Das System SHALL fuer diesen Change eine vollstaendige Formular-Migrationsinvent
 - **THEN** existiert eine vollstaendige Inventur aller bekannten Host- und Plugin-Formulare
 - **AND** dokumentiert sie mindestens Pfad, Zweck, heutiges Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Prioritaet, Risiko, Legacy-Ausnahme und Zielzustand
 
+#### Scenario: Repo-weiter Default und Referenzscope werden getrennt dokumentiert
+
+- **WHEN** der Change Referenzimplementierungen fuer den Rollout benennt
+- **THEN** trennt er klar zwischen repo-weitem Default-Standard fuer neue oder grundlegend ueberarbeitete Flows und der kleineren Menge initialer Referenzimplementierungen
+- **AND** bleibt nachvollziehbar, welche Bereiche nur unter die Default-Regel fallen und welche Bereiche im Change konkret als Referenz umgesetzt werden
+
 #### Scenario: Inventur ist unvollstaendig
 
 - **WHEN** relevante Host- oder Plugin-Formulare in der Inventur fehlen

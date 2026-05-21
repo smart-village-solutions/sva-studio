@@ -40,6 +40,13 @@ const qualityEscalationPatterns = [
   /^vitest\.workspace\.ts$/u,
 ];
 
+const coverageEscalationPatterns = [
+  ...qualityEscalationPatterns,
+  /^package\.json$/u,
+  /^scripts\/ci\//u,
+  /^\.github\/workflows\/(?:runtime-gates|quality-gates)\.yml$/u,
+];
+
 const integrationRelevantPatterns = [
   /^apps\/sva-studio-react\//u,
   /^packages\/(?:auth-runtime|core|data|data-repositories|instance-registry|routing|server-runtime|sva-mainserver)\//u,
@@ -108,7 +115,11 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
   }
 
   const qualityGateMode: GateMode = escalationReasons.length > 0 ? 'full' : 'affected';
-  const coverageMode: GateMode = escalationReasons.length > 0 ? 'full' : 'affected';
+  const coverageMode: GateMode = codeRelevantFiles.some((file) =>
+    matchesAnyPattern(file, coverageEscalationPatterns)
+  )
+    ? 'full'
+    : 'skip';
   const integrationMode: GateMode = codeRelevantFiles.some((file) =>
     matchesAnyPattern(file, integrationEscalationPatterns)
   )

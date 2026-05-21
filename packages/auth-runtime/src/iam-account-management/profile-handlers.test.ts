@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client.js';
 
@@ -127,8 +127,6 @@ vi.mock('./user-projection.js', () => ({
   resolveProjectedMainserverCredentialState: state.resolveProjectedMainserverCredentialState,
 }));
 
-const importSubject = async () => import('./profile-handlers.js');
-
 const createAuthenticatedContext = () =>
   ({
     user: {
@@ -144,8 +142,14 @@ const createAuthenticatedContext = () =>
   }) as const;
 
 describe('profile handlers', () => {
+  let getMyProfileInternal: typeof import('./profile-handlers.js').getMyProfileInternal;
+  let updateMyProfileInternal: typeof import('./profile-handlers.js').updateMyProfileInternal;
+
+  beforeAll(async () => {
+    ({ getMyProfileInternal, updateMyProfileInternal } = await import('./profile-handlers.js'));
+  });
+
   beforeEach(() => {
-    vi.resetModules();
     vi.clearAllMocks();
 
     state.ensureFeature.mockReturnValue(undefined);
@@ -197,8 +201,6 @@ describe('profile handlers', () => {
       adminRealm: 'de-studio-sandbox',
       executionMode: 'tenant_admin',
     });
-
-    const { updateMyProfileInternal } = await importSubject();
 
     const response = await updateMyProfileInternal(
       new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
@@ -262,8 +264,6 @@ describe('profile handlers', () => {
       executionMode: 'tenant_admin',
     });
 
-    const { updateMyProfileInternal } = await importSubject();
-
     const response = await updateMyProfileInternal(
       new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
         method: 'PATCH',
@@ -300,8 +300,6 @@ describe('profile handlers', () => {
       executionMode: 'tenant_admin',
     });
 
-    const { updateMyProfileInternal } = await importSubject();
-
     const response = await updateMyProfileInternal(
       new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
         method: 'PATCH',
@@ -331,8 +329,6 @@ describe('profile handlers', () => {
       executionMode: 'tenant_admin',
     });
     state.updateMyProfileDetail.mockRejectedValue(new Error('db write failed'));
-
-    const { updateMyProfileInternal } = await importSubject();
 
     const response = await updateMyProfileInternal(
       new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
@@ -395,8 +391,6 @@ describe('profile handlers', () => {
       mainserverUserApplicationSecretSet: false,
     });
 
-    const { updateMyProfileInternal } = await importSubject();
-
     const response = await updateMyProfileInternal(
       new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
         method: 'PATCH',
@@ -417,8 +411,6 @@ describe('profile handlers', () => {
   });
 
   it('serves a platform self-service profile directly from the session context', async () => {
-    const { getMyProfileInternal } = await importSubject();
-
     const response = await getMyProfileInternal(
       new Request('https://platform.example.test/api/v1/iam/users/me/profile'),
       {
@@ -462,8 +454,6 @@ describe('profile handlers', () => {
   it('returns tenant_admin_client_not_configured when the tenant identity provider is unavailable', async () => {
     state.resolveIdentityProviderForInstance.mockResolvedValue(null);
 
-    const { updateMyProfileInternal } = await importSubject();
-
     const response = await updateMyProfileInternal(
       new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
         method: 'PATCH',
@@ -504,8 +494,6 @@ describe('profile handlers', () => {
         },
       ],
     });
-
-    const { getMyProfileInternal } = await importSubject();
 
     const response = await getMyProfileInternal(
       new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile'),

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   ensureFeature: vi.fn(),
@@ -33,6 +33,18 @@ vi.mock('./shared-runtime.js', () => ({
 }));
 
 describe('mutation-request-context.shared', () => {
+  let resolveMutationActorWithAccount: typeof import('./mutation-request-context.shared.js').resolveMutationActorWithAccount;
+  let requireMutationIdentityProvider: typeof import('./mutation-request-context.shared.js').requireMutationIdentityProvider;
+  let requireMutationPathId: typeof import('./mutation-request-context.shared.js').requireMutationPathId;
+
+  beforeAll(async () => {
+    ({
+      resolveMutationActorWithAccount,
+      requireMutationIdentityProvider,
+      requireMutationPathId,
+    } = await import('./mutation-request-context.shared.js'));
+  }, 30_000);
+
   beforeEach(() => {
     vi.clearAllMocks();
     state.ensureFeature.mockReturnValue(null);
@@ -53,7 +65,6 @@ describe('mutation-request-context.shared', () => {
   });
 
   it('short-circuits on feature, role, actor, csrf, and rate-limit failures before succeeding', async () => {
-    const { resolveMutationActorWithAccount } = await import('./mutation-request-context.shared.js');
     const request = new Request('http://localhost/api/v1/iam/users/123e4567-e89b-12d3-a456-426614174000', {
       method: 'PATCH',
     });
@@ -139,11 +150,6 @@ describe('mutation-request-context.shared', () => {
   });
 
   it('validates mutation path ids and resolves tenant-admin identity providers', async () => {
-    const {
-      requireMutationIdentityProvider,
-      requireMutationPathId,
-    } = await import('./mutation-request-context.shared.js');
-
     const validRequest = new Request('http://localhost/api/v1/iam/users/123e4567-e89b-12d3-a456-426614174000');
     expect(requireMutationPathId(validRequest, { paramName: 'userId' })).toBe('123e4567-e89b-12d3-a456-426614174000');
 

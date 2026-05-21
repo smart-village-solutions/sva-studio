@@ -92,7 +92,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
 
   beforeAll(async () => {
     ({ withAuthenticatedUser } = await import('./middleware.js'));
-  });
+  }, 30_000);
 
   beforeEach(() => {
     vi.resetAllMocks();

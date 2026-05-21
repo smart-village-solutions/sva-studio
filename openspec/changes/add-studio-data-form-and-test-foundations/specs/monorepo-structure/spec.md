@@ -34,7 +34,7 @@ Dieser Foundation-Stack umfasst mindestens `react-hook-form`, `@hookform/resolve
 
 - **WHEN** ein Flow aus technischen Gruenden nicht sinnvoll ueber denselben Standardpfad abgebildet werden kann
 - **THEN** darf er nur mit dokumentierter Architekturbegruendung als Spezialfall abweichen
-- **AND** muss die Abweichung im Review als explizite Ausnahme nachvollziehbar sein
+- **AND** bleibt die Abweichung als explizite Ausnahme gekennzeichnet
 
 #### Scenario: Test- und Runtime-Abhaengigkeiten bleiben korrekt getrennt
 
@@ -126,7 +126,6 @@ Das System SHALL fuer diesen Change eine kleine initiale `fast-check`-Hotspot-Li
 
 - **WHEN** der Change nur allgemeine Kategorien wie Parser, Guards oder Routing-Invarianten nennt
 - **THEN** gilt die initiale Hotspot-Liste als nicht hinreichend dokumentiert
-- **AND** ist der Change fuer Review und Exit nicht ausreichend geschaerft
 
 ### Requirement: Vollstaendige Formular-Migrationsinventur als Pflichtartefakt
 
@@ -134,7 +133,7 @@ Das System SHALL fuer diesen Change eine vollstaendige Formular-Migrationsinvent
 
 #### Scenario: Change wird fuer den Rollout vorbereitet
 
-- **WHEN** der Change konkrete Referenzmigrationen, Ausnahmen und Governance festlegt
+- **WHEN** der Change konkrete Referenzmigrationen und Ausnahmen festlegt
 - **THEN** existiert eine vollstaendige Inventur aller bekannten Host- und Plugin-Formulare
 - **AND** wird sie unter `docs/development/studio-form-migrationsinventur.md` gefuehrt
 - **AND** dokumentiert sie mindestens Pfad, Zweck, heutiges Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Prioritaet, Risiko, Legacy-Ausnahme und Zielzustand
@@ -147,6 +146,6 @@ Das System SHALL fuer diesen Change eine vollstaendige Formular-Migrationsinvent
 
 #### Scenario: Governance-Artefakte werden abgelegt
 
-- **WHEN** Review-Kriterien, Ausnahmeregeln und Exit-Nachweise fuer diesen Change dokumentiert werden
+- **WHEN** Governance-Artefakte fuer diesen Change dokumentiert werden
 - **THEN** werden sie unter `docs/development/studio-foundations-governance.md` gebuendelt
 - **AND** folgen Inventur- und Governance-Artefakte damit den Repo-Doku-Regeln fuer Entwicklungsdokumentation

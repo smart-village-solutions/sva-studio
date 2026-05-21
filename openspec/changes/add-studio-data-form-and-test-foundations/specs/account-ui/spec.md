@@ -15,7 +15,7 @@ Das System SHALL fuer Account- und Admin-Views den repo-weiten Formularstandard 
 
 - **WENN** ein neuer oder grundlegend ueberarbeiteter `/account`-Flow umgesetzt wird
 - **DANN** verwendet er denselben Formularstandard fuer Form-State, Validierung und Fehlerdarstellung wie andere Account- und Admin-Views
-- **UND** bleiben Referenzscope und Rollout-Governance im uebergeordneten Foundation-Change geregelt
+- **UND** bleibt der bereichsspezifische Formularstandard konsistent zu anderen Account- und Admin-Views
 
 #### Scenario: Formular zeigt Feld- und Gesamtfehler konsistent an
 
@@ -34,4 +34,4 @@ Das System SHALL fuer Account- und Admin-Views den repo-weiten Formularstandard 
 
 - **WENN** ein Account- oder Admin-Flow nur eine sehr kleine Interaktion ohne eigenstaendige Formularorchestrierung abbildet oder technisch begruendet als Spezialfall dokumentiert ist
 - **DANN** darf er vom Default-Standard abweichen
-- **UND** muss die Ausnahme im Review nachvollziehbar dokumentiert sein
+- **UND** bleibt die Ausnahme fachlich als Spezialfall gekennzeichnet

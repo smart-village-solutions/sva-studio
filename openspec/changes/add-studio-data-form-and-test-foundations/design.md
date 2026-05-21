@@ -14,7 +14,7 @@ Die Einführung neuer npm-Pakete ist in diesem Repository bewusst architekturwir
   - Ein verbindlicher repo-weiter Default-Standard für Form-State, `zod`-Resolver und Fehlerrendering
   - Ein verbindlicher HTTP-Level-Mocking-Standard für neue oder grundlegend überarbeitete Frontend-Tests
   - Ein gezielter Property-based-Testing-Standard für kritische Kernlogik mit dokumentierter Review-Entscheidung
-  - Ein risikoarmer Rollout über Referenzimplementierungen, Wrapper, Inventur und Governance-Exit-Kriterien
+  - Ein risikoarmer Rollout über Referenzimplementierungen, Wrapper, Inventur und zentralisierte Governance in `review-governance`
 - Non-Goals:
   - Kein vollständiger Umstieg aller bestehenden Komponenten in einem Schritt
   - Keine Einführung zusätzlicher UI- oder DnD-Bibliotheken in diesem Change
@@ -40,13 +40,13 @@ Dieser Change benötigt zwei Architekturentscheidungen in `docs/adr/`, die spät
 - Decision: `msw` wird der Standard für HTTP-nahe Frontend-Tests unterhalb echter E2E-Läufe.
   - Rationale: Netzwerkverhalten soll auf Protokollebene und nicht über clientinterne Stubs geprüft werden. Das passt zu Host/Plugin-Integrationen und reduziert Mock-Kopplung an Implementierungsdetails.
   - Rollout: Verbindlich für neue oder grundlegend überarbeitete HTTP-nahe Frontend-Tests. Referenzpiloten validieren den Standardpfad, begrenzen aber nicht seine Geltung.
-  - Exceptions: Modul-Mocks für rein lokale Fachlogik ohne HTTP-Bezug bleiben zulässig; dokumentierte Spezialfälle müssen im Review begründet werden.
+  - Exceptions: Modul-Mocks für rein lokale Fachlogik ohne HTTP-Bezug bleiben zulässig; dokumentierte Spezialfälle bleiben gesondert zu kennzeichnen.
 
 - Decision: `fast-check` wird gezielt für kritische framework-agnostische Logik eingeführt, nicht pauschal für jede Komponente.
   - Rationale: Der höchste Mehrwert liegt in Parsern, Guards, Normalisierern, Query-Key-/Routing-Invarianten und ähnlicher Kernlogik. Für rein visuelle UI-Komponenten wäre der Nutzen meist gering.
   - Rollout: Gezielt für eine kleine, dokumentierte Hotspot-Liste mit hoher Eingabevielfalt oder Invariantenlast; jede Änderung an kritischen Hotspots verlangt eine dokumentierte Entscheidung pro oder contra `fast-check`.
 
-- Decision: Die Foundations werden über gemeinsame Integrationsbausteine, eine vollständige Formularinventur und prüfbare Governance eingeführt, nicht per verteiltem Ad-hoc-Einsatz.
+- Decision: Die Foundations werden über gemeinsame Integrationsbausteine, eine vollständige Formularinventur und zentralisierte Governance eingeführt, nicht per verteiltem Ad-hoc-Einsatz.
   - Rationale: Der größte Einführungsrisiko-Treiber ist uneinheitliche Nutzung. Deshalb braucht der Change kleine gemeinsame Adapter, Test-Helfer, Migrationsregeln und ein Pflichtartefakt zur Bestandsaufnahme, bevor breite Umstellungen stattfinden.
 
 ## Capability Mapping
@@ -158,7 +158,7 @@ Unvollständige Inventur blockiert den Exit dieses Changes.
 
 ## Required Governance Artifact
 
-Die Governance- und Review-Kriterien dieses Changes werden verbindlich unter `docs/development/studio-foundations-governance.md` dokumentiert. Diese Datei bündelt:
+Die Governance- und Review-Kriterien dieses Changes werden unter `docs/development/studio-foundations-governance.md` dokumentiert. Diese Datei bündelt:
 
 - zulässige und unzulässige Abweichungen vom Default-Standard
 - die Abgrenzung zwischen repo-weitem Default und initialen Referenzimplementierungen
@@ -169,7 +169,7 @@ Diese Governance wird capability-seitig in `review-governance` verankert, nicht 
 
 ## Governance and Exit Mapping
 
-Review-Kriterien, Ausnahmebehandlung und Exit-Bedingungen werden normativ ausschliesslich in `review-governance` verankert. `monorepo-structure` beschreibt in diesem Change nur den Foundation-Stack, die Integrationsbausteine und die verpflichtenden Artefakte, nicht die abschliessende Exit-Governance.
+`review-governance` ist die normative Single Source of Truth fuer Review-Kriterien, Ausnahmebehandlung und Exit-Bedingungen. `monorepo-structure` beschreibt in diesem Change nur den Foundation-Stack, die Integrationsbausteine und die verpflichtenden Artefakte.
 
 ## Migration Plan
 

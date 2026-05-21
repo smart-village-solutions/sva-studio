@@ -34,9 +34,9 @@ import {
   StudioEmptyState,
   StudioErrorState,
   StudioField,
+  type StudioFieldControlProps,
   StudioFieldGroup,
   StudioFormSummary,
-  getStudioFormFieldProps,
   StudioJobSummaryCard,
   StudioListPageTemplate,
   StudioLoadingState,
@@ -211,15 +211,15 @@ describe('studio-ui-react primitives', () => {
   });
 
   it('applies StudioField control props to child inputs and merges described-by values', () => {
-    const titleField = getStudioFormFieldProps({
+    const controlProps: StudioFieldControlProps = {
       id: 'title',
-      error: { type: 'required', message: 'Titel fehlt' },
-      hasDescription: true,
-    });
+      'aria-invalid': true,
+      'aria-describedby': 'title-description title-error',
+    };
 
     render(
-      <StudioField {...titleField} label="Titel" description="Pflichtfeld">
-        <Input {...titleField.controlProps} aria-describedby="hint-extra" />
+      <StudioField id="title" label="Titel" description="Pflichtfeld" error="Titel fehlt" controlProps={controlProps}>
+        <Input {...controlProps} aria-describedby="hint-extra" />
       </StudioField>
     );
 

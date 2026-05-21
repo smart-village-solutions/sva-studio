@@ -929,9 +929,6 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.2.5(react@19.2.5)
-      react-hook-form:
-        specifier: ^7.76.0
-        version: 7.76.0(react@19.2.5)
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.5.0
@@ -951,6 +948,9 @@ importers:
       happy-dom:
         specifier: ^20.8.9
         version: 20.8.9
+      react-hook-form:
+        specifier: ^7.76.0
+        version: 7.76.0(react@19.2.5)
       vitest:
         specifier: ^4.1.5
         version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.5)(happy-dom@20.8.9)(jsdom@29.1.0)(msw@2.14.6(@types/node@25.8.0)(typescript@6.0.3))(vite@8.0.8(@types/node@25.8.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))
@@ -984,7 +984,7 @@ importers:
         version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@25.8.0)(@vitest/coverage-v8@4.1.5)(happy-dom@20.8.9)(jsdom@29.1.0)(msw@2.14.6(@types/node@25.8.0)(typescript@6.0.3))(vite@8.0.8(@types/node@25.8.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))
 
   tooling/testing:
-    devDependencies:
+    dependencies:
       msw:
         specifier: ^2.14.6
         version: 2.14.6(@types/node@25.8.0)(typescript@6.0.3)

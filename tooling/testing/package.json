@@ -2,7 +2,7 @@
   "name": "tooling-testing",
   "private": true,
   "type": "module",
-  "devDependencies": {
+  "dependencies": {
     "msw": "^2.14.6"
   }
 }

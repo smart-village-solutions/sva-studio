@@ -148,6 +148,23 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
       deleteForbidden: 'Für das Löschen von Waste-Abholorten fehlt die Berechtigung.',
       deleteConflict: 'Der Waste-Abholort kann wegen bestehender Zuordnungen nicht gelöscht werden.',
     },
+    assignmentEditor: {
+      title: 'Tour-Zuordnungen',
+      description: 'Wählen Sie die Touren aus, die diesem Abholort zugeordnet sein sollen.',
+      empty: 'Es sind aktuell keine Touren verfügbar.',
+      actions: {
+        save: 'Zuordnungen speichern',
+        saving: 'Speichert…',
+      },
+      meta: {
+        selectedCount: '{{value}} Touren zugeordnet',
+      },
+      messages: {
+        saveSuccess: 'Die Tour-Zuordnungen wurden aktualisiert.',
+        saveError: 'Die Tour-Zuordnungen konnten nicht gespeichert werden.',
+        saveForbidden: 'Für das Speichern der Tour-Zuordnungen fehlt die Berechtigung.',
+      },
+    },
     bulk: {
       actions: {
         openAssign: '{{value}} auswählen und Tour zuweisen',

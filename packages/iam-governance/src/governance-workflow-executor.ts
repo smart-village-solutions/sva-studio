@@ -1,6 +1,10 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
+import {
+  pseudonymizeGovernanceSubject,
+  resolveGovernanceAccountId,
+} from './governance-audit-shared.js';
 import { readNumber, readString } from './input-readers.js';
 import type { QueryClient } from './query-client.js';
 import {
@@ -40,30 +44,6 @@ export type GovernanceWorkflowExecutorDeps = {
   readonly buildLogContext: (instanceId?: string) => Record<string, unknown>;
 };
 
-const pseudonymize = (value: string) => createHash('sha256').update(value).digest('hex').slice(0, 16);
-
-const resolveAccountId = async (
-  client: QueryClient,
-  input: { instanceId: string; keycloakSubject: string }
-): Promise<string | undefined> => {
-  const lookup = await client.query<{ id: string }>(
-    `
-SELECT a.id
-FROM iam.accounts a
-JOIN iam.instance_memberships im
-  ON im.account_id = a.id
- AND im.instance_id = $1
-WHERE a.keycloak_subject = $2
-LIMIT 1;
-`,
-    [input.instanceId, input.keycloakSubject]
-  );
-  if (lookup.rowCount <= 0) {
-    return undefined;
-  }
-  return lookup.rows[0]?.id;
-};
-
 const resolvePermissionKeyForRole = async (
   client: QueryClient,
   input: { instanceId: string; roleId: string }
@@ -96,7 +76,7 @@ const resolveActorAccountId = (
   client: QueryClient,
   actor: GovernanceActor
 ): Promise<string | undefined> =>
-  resolveAccountId(client, {
+  resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: actor.keycloakSubject,
   });
@@ -126,9 +106,9 @@ const emitGovernanceAuditEvent = async (
     instance_id: input.instanceId,
     action: input.action,
     result: input.result,
-    actor_pseudonym: input.actorSubject ? pseudonymize(input.actorSubject) : undefined,
+    actor_pseudonym: input.actorSubject ? pseudonymizeGovernanceSubject(input.actorSubject) : undefined,
     target_ref: input.targetRef,
-    target_pseudonym: input.targetSubject ? pseudonymize(input.targetSubject) : undefined,
+    target_pseudonym: input.targetSubject ? pseudonymizeGovernanceSubject(input.targetSubject) : undefined,
     reason_code: input.reasonCode,
     request_id: input.requestId,
     trace_id: input.traceId,
@@ -181,6 +161,7 @@ const submitPermissionChange = async (
 ): Promise<GovernanceWorkflowResponse> => {
   const targetSubject = readString(payload.targetKeycloakSubject);
   const roleId = readString(payload.roleId);
+  const requestNote = readString(payload.requestNote)?.trim() ?? '';
   const ticketId = readString(payload.ticketId);
   const ticketSystem = readString(payload.ticketSystem) ?? 'jira';
   const ticketState = readString(payload.ticketState);
@@ -197,11 +178,11 @@ const submitPermissionChange = async (
     };
   }
 
-  const requesterAccountId = await resolveAccountId(client, {
+  const requesterAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: actor.keycloakSubject,
   });
-  const targetAccountId = await resolveAccountId(client, {
+  const targetAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: targetSubject,
   });
@@ -224,11 +205,13 @@ INSERT INTO iam.permission_change_requests (
   role_id,
   status,
   is_critical,
+  request_note,
+  request_origin,
   ticket_id,
   ticket_system,
   ticket_state
 )
-VALUES ($1, $2, $3, $4, 'submitted', $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, 'submitted', $5, $6, $7, $8, $9, $10)
 RETURNING id;
 `,
     [
@@ -237,6 +220,8 @@ RETURNING id;
       targetAccountId,
       roleId,
       critical,
+      requestNote,
+      'admin',
       ticketId,
       ticketSystem,
       ticketState,
@@ -277,7 +262,7 @@ const approvePermissionChange = async (
     return { operation: 'approve_permission_change', status: 'error', reasonCode: 'invalid_request' };
   }
 
-  const approverAccountId = await resolveAccountId(client, {
+  const approverAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: actor.keycloakSubject,
   });
@@ -391,7 +376,7 @@ WHERE id = $1
     [requestId, actor.instanceId]
   );
 
-  const actorAccountId = await resolveAccountId(client, {
+  const actorAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: actor.keycloakSubject,
   });
@@ -445,15 +430,15 @@ const createDelegation = async (
     return { operation: 'create_delegation', status: 'error', reasonCode: 'DENY_DELEGATION_DURATION_EXCEEDED' };
   }
 
-  const delegatorAccountId = await resolveAccountId(client, {
+  const delegatorAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: delegatorSubject,
   });
-  const delegateeAccountId = await resolveAccountId(client, {
+  const delegateeAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: delegateeSubject,
   });
-  const approverAccountId = await resolveAccountId(client, {
+  const approverAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: approverSubject,
   });
@@ -518,8 +503,8 @@ RETURNING id;
   deps.logWarn('Delegation workflow event', {
     operation: status === 'active' ? 'delegation_create' : 'delegation_request',
     delegation_id: workflowId,
-    actor_pseudonym: pseudonymize(delegatorSubject),
-    target_pseudonym: pseudonymize(delegateeSubject),
+    actor_pseudonym: pseudonymizeGovernanceSubject(delegatorSubject),
+    target_pseudonym: pseudonymizeGovernanceSubject(delegateeSubject),
     ...deps.buildLogContext(actor.instanceId),
   });
 
@@ -537,7 +522,7 @@ const revokeDelegation = async (
     return { operation: 'revoke_delegation', status: 'error', reasonCode: 'invalid_request' };
   }
 
-  const actorAccountId = await resolveAccountId(client, {
+  const actorAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: actor.keycloakSubject,
   });
@@ -599,11 +584,11 @@ const startImpersonation = async (
   }
 
   const actorAccountId = await resolveActorAccountId(client, actor);
-  const targetAccountId = await resolveAccountId(client, {
+  const targetAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: targetSubject,
   });
-  const approverAccountId = await resolveAccountId(client, {
+  const approverAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: approverSubject,
   });
@@ -663,8 +648,8 @@ RETURNING id;
   deps.logWarn('Impersonation started', {
     operation: 'impersonate_start',
     ticket_id: ticketId,
-    actor_pseudonym: pseudonymize(actor.keycloakSubject),
-    target_pseudonym: pseudonymize(targetSubject),
+    actor_pseudonym: pseudonymizeGovernanceSubject(actor.keycloakSubject),
+    target_pseudonym: pseudonymizeGovernanceSubject(targetSubject),
     max_duration_s: durationMinutes * 60,
     ...deps.buildLogContext(actor.instanceId),
   });
@@ -771,7 +756,7 @@ const resolveSecurityApproverAccountId = async (
     return { ok: false, reasonCode: 'DENY_SELF_APPROVAL' };
   }
 
-  const accountId = await resolveAccountId(client, {
+  const accountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: input.securityApproverSubject,
   });
@@ -821,7 +806,7 @@ const acceptLegalText = async (
     };
   }
 
-  const actorAccountId = await resolveAccountId(client, {
+  const actorAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: actor.keycloakSubject,
   });
@@ -940,11 +925,11 @@ export const createGovernanceWorkflowExecutor = (deps: GovernanceWorkflowExecuto
   }): Promise<{ ok: true } | { ok: false; reasonCode: string }> => {
     try {
       return await input.withInstanceScopedDb(input.instanceId, async (client) => {
-        const actorAccountId = await resolveAccountId(client, {
+        const actorAccountId = await resolveGovernanceAccountId(client, {
           instanceId: input.instanceId,
           keycloakSubject: input.actorKeycloakSubject,
         });
-        const targetAccountId = await resolveAccountId(client, {
+        const targetAccountId = await resolveGovernanceAccountId(client, {
           instanceId: input.instanceId,
           keycloakSubject: input.targetKeycloakSubject,
         });

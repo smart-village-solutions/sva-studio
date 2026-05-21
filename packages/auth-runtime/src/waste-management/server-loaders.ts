@@ -676,6 +676,10 @@ const saveWasteLocationTourLink = createLoader(
   (repository, input: Omit<WasteLocationTourLinkRecord, 'createdAt' | 'updatedAt'>) =>
     repository.upsertWasteLocationTourLink(input)
 );
+const deleteWasteLocationTourLink = createLoader(
+  'delete_waste_location_tour_link',
+  (repository, linkId: string) => repository.deleteWasteLocationTourLink(linkId)
+);
 const loadWasteTourById = createLoader('load_waste_tour_by_id', (repository, tourId: string) => repository.getWasteTourById(tourId));
 const saveWasteTour = createLoader('save_waste_tour', (repository, input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) =>
   repository.upsertWasteTour(input)
@@ -771,6 +775,7 @@ export const wasteManagementEntitySavers = {
   saveWasteCollectionLocation,
   deleteWasteCollectionLocation,
   saveWasteLocationTourLink,
+  deleteWasteLocationTourLink,
   saveWasteLocationTourLinksBulk,
   saveWasteTour,
   deleteWasteTour,

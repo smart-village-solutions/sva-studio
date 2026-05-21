@@ -29,7 +29,7 @@
       },
       "targets": [
         {
-          "expr": "{component=~\".+\"}",
+          "expr": "{job=\"sva-studio\"}",
           "refId": "A"
         }
       ],
@@ -59,7 +59,7 @@
       },
       "targets": [
         {
-          "expr": "sum(count_over_time({level=\"error\"}[5m]))",
+          "expr": "sum(count_over_time({job=\"sva-studio\",level=\"error\"}[5m]))",
           "legendFormat": "errors",
           "refId": "A"
         }

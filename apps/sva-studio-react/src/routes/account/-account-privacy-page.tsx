@@ -1,9 +1,16 @@
+import React from 'react';
+
 import {
   checkOptionalProcessing,
   createDataSubjectRequest,
   requestDataExport,
+  requestPermissionChange,
 } from '../../lib/iam-api';
 import { Alert, AlertDescription } from '../../components/ui/alert';
+import { Button } from '../../components/ui/button';
+import { Label } from '../../components/ui/label';
+import { ModalDialog } from '../../components/ModalDialog';
+import { Textarea } from '../../components/ui/textarea';
 import { t } from '../../i18n';
 import { AccountDeletionRulesCard } from './-account-deletion-rules-card';
 import {
@@ -30,15 +37,34 @@ export const AccountPrivacyPage = () => {
     runAction,
     saveDeletionRulesPreference,
     setContentPreferenceDraft,
+    setErrorMessage,
     setStatusMessage,
     statusMessage,
   } = useAccountPrivacyState();
+  const [permissionChangeDialogOpen, setPermissionChangeDialogOpen] = React.useState(false);
+  const [permissionChangeNote, setPermissionChangeNote] = React.useState('');
 
   const hasNoEntries =
     overview &&
     overview.requests.length === 0 &&
     overview.exportJobs.length === 0 &&
     overview.legalHolds.length === 0;
+
+  const handlePermissionChangeSubmit = async () => {
+    const trimmedNote = permissionChangeNote.trim();
+    if (!trimmedNote) {
+      setErrorMessage(t('account.privacy.permissionChange.validation.required'));
+      return;
+    }
+
+    await runAction(async () => {
+      await requestPermissionChange({ requestNote: trimmedNote });
+      setPermissionChangeDialogOpen(false);
+      setPermissionChangeNote('');
+      setStatusMessage(t('account.privacy.permissionChange.messages.requested'));
+    });
+  };
+
   return (
     <section className="space-y-5" aria-busy={isLoading || isSubmitting || isLoadingDeletionRules || isSavingDeletionRules}>
       <header className="space-y-2">
@@ -62,6 +88,12 @@ export const AccountPrivacyPage = () => {
                 setStatusMessage(t('account.privacy.actions.accessRequested'));
               })
             }
+            onRequestPermissionChange={() => {
+              setErrorMessage(null);
+              setStatusMessage(null);
+              setPermissionChangeNote('');
+              setPermissionChangeDialogOpen(true);
+            }}
             onSubmitObjection={() =>
               void runAction(async () => {
                 await createDataSubjectRequest({ type: 'objection' });
@@ -143,6 +175,57 @@ export const AccountPrivacyPage = () => {
           }
         />
       </div>
+
+      <ModalDialog
+        open={permissionChangeDialogOpen}
+        title={t('account.privacy.permissionChange.dialog.title')}
+        description={t('account.privacy.permissionChange.dialog.description')}
+        onClose={() => {
+          setPermissionChangeDialogOpen(false);
+          setPermissionChangeNote('');
+        }}
+      >
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handlePermissionChangeSubmit();
+          }}
+        >
+          <div className="space-y-2">
+            <Label htmlFor="permission-change-note">
+              {t('account.privacy.permissionChange.fields.requestNote')}
+            </Label>
+            <Textarea
+              id="permission-change-note"
+              value={permissionChangeNote}
+              onChange={(event) => setPermissionChangeNote(event.target.value)}
+              rows={5}
+              disabled={isSubmitting}
+              placeholder={t('account.privacy.permissionChange.fields.requestNotePlaceholder')}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('account.privacy.permissionChange.fields.requestNoteHint')}
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSubmitting}
+              onClick={() => {
+                setPermissionChangeDialogOpen(false);
+                setPermissionChangeNote('');
+              }}
+            >
+              {t('account.privacy.permissionChange.actions.cancel')}
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {t('account.privacy.permissionChange.actions.submit')}
+            </Button>
+          </div>
+        </form>
+      </ModalDialog>
     </section>
   );
 };

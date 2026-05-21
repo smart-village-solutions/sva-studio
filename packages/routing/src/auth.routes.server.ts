@@ -46,6 +46,9 @@ const governanceAuthHandlerMap = {
   '/iam/me/deletion-rules/content-preference': {
     POST: routeHandler(authRuntimeRoutes.myDeletionRulesPreferenceHandler),
   },
+  '/iam/me/permission-change-requests': {
+    POST: routeHandler(authRuntimeRoutes.permissionChangeSelfServiceRequestHandler),
+  },
   '/iam/me/data-export': {
     GET: createMethodNotAllowedHandler('/iam/me/data-export', 'POST'),
     POST: routeHandler(authRuntimeRoutes.dataExportHandler),
@@ -136,6 +139,7 @@ const governanceAuthHandlerMap = {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createLocationTourLinksBulk),
   },
   '/api/v1/waste-management/location-tour-links/$linkId': {
+    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteLocationTourLink),
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateLocationTourLink),
   },
   '/api/v1/waste-management/scheduling': {

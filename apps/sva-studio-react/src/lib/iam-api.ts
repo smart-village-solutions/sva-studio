@@ -1739,6 +1739,24 @@ export const createDataSubjectRequest = async (payload: {
     payload
   );
 
+export const requestPermissionChange = async (payload: {
+  readonly requestNote: string;
+}): Promise<
+  ApiItemResponse<{
+    workflowId: string;
+    operation: 'request_permission_change';
+    status: 'accepted';
+  }>
+> =>
+  postJson<
+    ApiItemResponse<{
+      workflowId: string;
+      operation: 'request_permission_change';
+      status: 'accepted';
+    }>,
+    typeof payload
+  >('/iam/me/permission-change-requests', payload);
+
 export const requestDataExport = async (input: {
   readonly format: 'json' | 'csv' | 'xml';
   readonly async: boolean;

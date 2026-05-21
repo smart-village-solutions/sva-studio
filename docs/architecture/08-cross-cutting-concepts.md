@@ -251,6 +251,14 @@ gleichzeitig beeinflussen.
 - Die Inhaltsverwaltung arbeitet fail-closed: ungültiges JSON, fehlendes `publishedAt` bei `published`, nicht erlaubte Rollen oder nicht auflösbare Inhalte liefern stabile `invalid_request`-, `forbidden`- bzw. `not_found`-Antworten
 - Geo-Hierarchie-Konflikte werden deterministisch diagnostiziert: `hierarchy_restriction` für wirksame Restriktionen, `instance_scope_mismatch` für Instanzverletzungen und `permission_missing` für fehlende Kandidaten
 
+### Öffentlicher Abfallkalender: Accessibility und Embed-Konzept
+
+- Auswahlfluss, Kalenderansicht und Modal folgen als Mindestziel WCAG 2.1 AA für Tastaturbedienbarkeit, semantische Rollen und sichtbare Fokusführung.
+- Die reduzierte Bürgeroberfläche bleibt iFrame-tauglich: kein Studio-Layout, keine Auth-Abhängigkeit, keine versteckten Pflichtinteraktionen außerhalb des sichtbaren Bereichs.
+- Export-Aktionen für PDF und iCal bleiben als globale Links außerhalb des Termin-Dialogs erreichbar, damit eingebettete Oberflächen keine Modal-Blockade für Primäraktionen erzeugen.
+- Der Termin-Dialog nutzt `role="dialog"` plus `aria-modal="true"` und trägt seinen Titel über `aria-labelledby`.
+- Der öffentliche Präferenzspeicher bleibt auf genau einen stabilen Standortschlüssel begrenzt; ungültige Cookies werden verworfen statt heuristisch repariert.
+
 ### Fortschreibung 2026-04: IAM-Diagnostik als Cross-Cutting-Konzept
 
 - Der heutige Bestand liefert bereits gute Einzelbausteine für `requestId`, `reason_code`, Schema-Drift und Provisioning-Drift.

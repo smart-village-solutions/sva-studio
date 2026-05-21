@@ -99,71 +99,18 @@ Das System MUST eine Account-Profilseite unter `/account` bereitstellen, auf der
 
 Das System MUST eine User-Administrationsliste unter `/admin/users` bereitstellen, mit der Administratoren alle Benutzer-Accounts verwalten können.
 
-#### Scenario: User-Liste laden
-
-- **WENN** ein Administrator `/admin/users` aufruft
-- **DANN** wird eine semantische Tabelle (`<table>` mit `<caption>` oder `aria-label`) aller Nutzer angezeigt
-- **UND** die Spalten sind: Name, E-Mail, Rolle, Status, Letzter Login
-- **UND** jede Tabellenkopfzelle hat `<th scope="col">`
-- **UND** sortierbare Spalten haben `aria-sort` (ascending|descending|none)
-- **UND** die Tabelle paginiert bei mehr als 25 Einträgen
-- **UND** ein Loading-State (`aria-busy="true"`) wird angezeigt, bis die Daten geladen sind
-- **UND** bei leerem Ergebnis wird ein Empty-State angezeigt (`t('admin.users.emptyState')`)
-
-#### Scenario: Keycloak-Benutzer synchronisieren
-
-- **WENN** ein Administrator in `/admin/users` die Aktion „Aus Keycloak synchronisieren" ausführt
-- **DANN** lädt das System Keycloak-Benutzer für den aktuellen `instanceId`-Kontext
-- **UND** importiert oder aktualisiert fehlende Benutzer in IAM idempotent
-- **UND** zeigt nach Abschluss eine Ergebnisrückmeldung mit Anzahl importierter und aktualisierter Benutzer
-- **UND** lädt die User-Liste anschließend neu
-
-#### Scenario: User-Suche
-
-- **WENN** ein Administrator einen Suchbegriff eingibt
-- **DANN** werden die Ergebnisse nach Name, E-Mail und Organisation gefiltert
-- **UND** die Filterung erfolgt in Echtzeit (Debounce 300ms)
-- **UND** die Anzahl der Treffer wird über eine `aria-live="polite"`-Region angekündigt
-
-#### Scenario: Status-Filter
-
-- **WENN** ein Administrator den Status-Filter auf „Aktiv", „Inaktiv" oder „Ausstehend" setzt
-- **DANN** zeigt die Tabelle nur Nutzer mit dem ausgewählten Status
-- **UND** der Filter ist mit der Suche kombinierbar
-
-#### Scenario: Status-Badge-Darstellung
-
-- **WENN** ein Account-Status angezeigt wird (aktiv/inaktiv/ausstehend)
-- **DANN** wird neben der Farbe immer ein Text-Label angezeigt (`t('admin.users.status.active')` etc.)
-- **UND** optional ein differenzierendes Icon (z. B. Häkchen, Pause, Uhr)
-- **UND** das Kontrastverhältnis beträgt mindestens 4.5:1 (WCAG 1.4.1 + 1.4.3)
-
-#### Scenario: Bulk-Aktionen
-
-- **WENN** ein Administrator mehrere Nutzer per Checkbox auswählt
-- **UND** eine Bulk-Aktion ausführt (z. B. „Deaktivieren")
-- **DANN** wird eine Bestätigungsmeldung in einem `role="alertdialog"` angezeigt
-- **UND** die maximale Batch-Größe beträgt 50 Nutzer
-- **UND** der aktuell angemeldete Nutzer wird automatisch aus der Auswahl ausgeschlossen (Self-Protection)
-- **UND** der letzte aktive `system_admin` wird automatisch aus der Auswahl ausgeschlossen
-- **UND** nach Bestätigung werden alle ausgewählten Nutzer aktualisiert
-- **UND** ein Activity-Log-Eintrag (`user.bulk_deactivated`) wird pro betroffenem Nutzer erstellt
-- **UND** die „Alle auswählen“-Checkbox zeigt den `indeterminate`-Zustand, wenn nur ein Teil der Nutzer ausgewählt ist
-
-#### Scenario: Pagination-ARIA
-
-- **WENN** die User-Tabelle paginiert dargestellt wird
-- **DANN** MUST die Pagination als `<nav aria-label="Seitennavigation">` ausgezeichnet sein
-- **UND** die aktuelle Seite MUST mit `aria-current="page"` markiert sein
-- **UND** die Seitenanzahl MUST über eine `aria-live="polite"`-Region angekündigt werden bei Seitenwechsel
 #### Scenario: Neuen Nutzer anlegen
 
 - **WENN** ein Administrator auf „Nutzer anlegen" klickt
-- **DANN** öffnet sich ein Formular-Dialog (`role="dialog"`, `aria-modal="true"`, Focus-Trap)
-- **UND** Pflichtfelder sind markiert mit `aria-required="true"`: Name, E-Mail, Rolle
+- **DANN** öffnet sich ein Formular-Dialog oder Arbeitsbereich (`role="dialog"` oder gleichwertig zugänglicher Formularfluss)
+- **UND** Pflichtfelder sind markiert mit `aria-required="true"`: Name und E-Mail
+- **UND** die UI bietet eine primäre Auswahl für initiale Gruppenmitgliedschaften an
+- **UND** die direkte Rollenwahl bleibt als optionale erweiterte Einstellung verfügbar
 - **UND** nach dem Speichern wird der Nutzer in der IAM-DB und in Keycloak erstellt
-- **UND** der Nutzer erhält eine Einladungs-E-Mail über Keycloak
-- **UND** bei Escape oder Klick außerhalb wird der Dialog geschlossen
+- **UND** ausgewählte Gruppen werden dem Nutzer initial zugewiesen
+- **UND** optional ausgewählte direkte Rollen werden zusätzlich zugewiesen
+- **UND** der Nutzer erhält auf Wunsch eine Einladungs-E-Mail über Keycloak
+- **UND** bei Escape oder Klick außerhalb wird der Dialog nur geschlossen, sofern der verwendete UI-Pattern dies zulässt und keine ungespeicherten Pflichtdaten verloren gehen
 
 ### Requirement: User-Bearbeitungsseite
 

@@ -105,9 +105,14 @@ Verbotene Labels (PII / High Cardinality):
 - CPU: `sum(rate(process_cpu_seconds_total[5m])) by (job)`
 
 **LogQL:**
-- Alle Logs: `{component=~".+"}`
-- Errors (5m): `sum(count_over_time({level="error"}[5m]))`
-- Logs je Workspace: `sum(count_over_time({workspace_id=~".+"}[5m])) by (workspace_id)`
+- Alle App-Logs: `{job="sva-studio"}`
+- Errors (5m): `sum(count_over_time({job="sva-studio",level="error"}[5m]))`
+- App-Logs eines Workspace: `{job="sva-studio"} |= "\"workspace_id\":\"default\""`
+
+Hinweis zum lokalen OTEL-Pfad:
+
+- Das provisionierte Grafana-Dashboard `Application Logs` filtert bewusst auf `job="sva-studio"`.
+- Attribute wie `component` und `workspace_id` liegen bei OTEL-Logs im Log-Body bzw. als OTEL-Attribute vor und sind lokal nicht das primäre Loki-Indexlabel des Dashboards.
 
 ## Standards & Versionen
 

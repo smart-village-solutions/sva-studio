@@ -35,6 +35,7 @@ import {
 } from '../../lib/browser-operation-logging';
 import {
   getAllowedIamCockpitTabs,
+  hasGovernanceComplianceExportRole,
   hasIamCockpitAccessRole,
   isIamCockpitEnabled,
   type IamCockpitTabKey,
@@ -83,6 +84,16 @@ const buildPermissionsPath = (query: IamPermissionsQuery) => {
   return `/iam/me/permissions?${searchParams.toString()}`;
 };
 
+const buildGovernanceComplianceExportPath = (input: {
+  instanceId: string;
+}) => {
+  const searchParams = new URLSearchParams();
+  searchParams.set('instanceId', input.instanceId);
+  searchParams.set('format', 'csv');
+
+  return `/iam/governance/compliance/export?${searchParams.toString()}`;
+};
+
 const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
@@ -98,6 +109,35 @@ const formatObjectEntries = (value: Readonly<Record<string, unknown>> | undefine
     .map(([key, entry]) => `${key}: ${String(entry)}`)
     .join(', ');
 };
+
+const filterMetadataEntries = (
+  metadata: Readonly<Record<string, unknown>> | undefined,
+  excludedKeys: readonly string[]
+) => {
+  if (!metadata) {
+    return undefined;
+  }
+
+  const filtered = Object.fromEntries(Object.entries(metadata).filter(([key]) => !excludedKeys.includes(key)));
+  return Object.keys(filtered).length > 0 ? filtered : undefined;
+};
+
+const readRequestNote = (metadata: Readonly<Record<string, unknown>> | undefined) =>
+  typeof metadata?.requestNote === 'string' && metadata.requestNote.trim().length > 0
+    ? metadata.requestNote
+    : null;
+
+const formatGovernanceTitle = (item: IamGovernanceCaseListItem) => {
+  if (item.title === item.type) {
+    return t(mapGovernanceTypeToTranslationKey(item.type));
+  }
+
+  return item.title;
+};
+
+const isGovernanceCaseItem = (
+  item: IamGovernanceCaseListItem | IamDsrCaseListItem
+): item is IamGovernanceCaseListItem => 'status' in item;
 
 const governanceTypeOptions = [
   'permission_change',
@@ -212,7 +252,9 @@ const CaseList = ({
 }>) => {
   return (
     <div className="grid gap-3">
-      {items.map((item) => (
+      {items.map((item) => {
+        const displayTitle = isGovernanceCaseItem(item) ? formatGovernanceTitle(item) : item.title;
+        return (
         <Button
           key={item.id}
           type="button"
@@ -224,7 +266,7 @@ const CaseList = ({
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">{item.title}</p>
+              <p className="text-sm font-semibold text-foreground">{displayTitle}</p>
               <p className="text-xs text-muted-foreground">{item.summary}</p>
             </div>
             {renderStatus(item)}
@@ -238,7 +280,8 @@ const CaseList = ({
             ) : null}
           </div>
         </Button>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -248,10 +291,13 @@ const GovernanceDetail = ({ item }: Readonly<{ item: IamGovernanceCaseListItem |
     return <p className="text-sm text-muted-foreground">{t('admin.iam.shared.selectPrompt')}</p>;
   }
 
+  const requestNote = readRequestNote(item.metadata);
+  const metadata = filterMetadataEntries(item.metadata, ['requestNote', 'requestOrigin']);
+
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>{item.title}</CardTitle>
+        <CardTitle>{formatGovernanceTitle(item)}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
       <dl className="grid gap-2 text-sm">
@@ -267,9 +313,17 @@ const GovernanceDetail = ({ item }: Readonly<{ item: IamGovernanceCaseListItem |
           <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.targetLabel')}</dt>
           <dd className="text-foreground">{item.targetDisplayName ?? '—'}</dd>
         </div>
+        {requestNote ? (
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+              {t('admin.iam.shared.requestNote')}
+            </dt>
+            <dd className="whitespace-pre-wrap text-foreground">{requestNote}</dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.shared.meta')}</dt>
-          <dd className="text-foreground">{formatObjectEntries(item.metadata)}</dd>
+          <dd className="text-foreground">{formatObjectEntries(metadata)}</dd>
         </div>
       </dl>
       </CardContent>
@@ -369,6 +423,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
 
   const cockpitEnabled = isIamCockpitEnabled();
   const canAccessCockpit = hasIamCockpitAccessRole(user);
+  const canExportGovernanceCompliance = hasGovernanceComplianceExportRole(user);
   const allowedTabs = React.useMemo(() => getAllowedIamCockpitTabs(user), [user]);
   const governanceRequestQuery = React.useMemo(
     () => ({ ...governanceQuery, search: governanceQuery.search?.trim() ?? '' }),
@@ -1060,7 +1115,18 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,1fr)]"
         >
           <div className="space-y-4">
-            <Card className="grid gap-3 p-4 md:grid-cols-3">
+            <Card className="grid gap-3 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.exportHint')}</p>
+                {instanceId && canExportGovernanceCompliance ? (
+                  <Button asChild size="sm" variant="outline">
+                    <a href={buildGovernanceComplianceExportPath({ instanceId })}>
+                      {t('admin.iam.governance.actions.exportCsv')}
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
               <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
                 <Label htmlFor="iam-governance-search">{t('admin.iam.governance.filters.search')}</Label>
                 <Input
@@ -1098,6 +1164,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                   value={governanceQuery.status ?? ''}
                   onChange={(event) => setGovernanceQuery((current) => ({ ...current, page: 1, status: event.target.value || undefined }))}
                 />
+              </div>
               </div>
             </Card>
             {governanceError ? (

@@ -22,6 +22,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 ### Lokale Entwicklungsverteilung
 
 - App: `pnpm nx run sva-studio-react:serve` auf `localhost:3000`
+- Öffentliche App: `pnpm nx run public-waste-calendar-web:serve` auf `localhost:3002`
 - Postgres IAM-DB: `docker-compose.yml` (`5432`)
 - Redis: `docker-compose.yml` (`6379`, optional TLS `6380`)
 - Monitoring Stack: `docker-compose.monitoring.yml`
@@ -36,6 +37,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 ### Deployment-Bausteine (logisch)
 
 - Web-App Runtime (TanStack Start / Node)
+- Öffentliche Waste-Web-App als separates Vite-Frontend mit eigenem Playwright-Gate
 - Nx-/pnpm-basierte Build- und Test-Pipeline
 - Separates IAM-Acceptance-Gate für Paket-1-/2-Abnahmen
 - Externe Plattform (GitHub Actions) für CI-Ausführung
@@ -172,6 +174,7 @@ Referenzen:
 ### Sicherheits-/Betriebsaspekte
 
 - Monitoring-Ports in Compose explizit auf `127.0.0.1` gebunden
+- Die öffentliche Abfallkalender-App ist bewusst iFrame-tauglich ausgelegt und benötigt für lokale oder eingebettete Browserläufe keine Studio-Session.
 - Redis TLS-Unterstützung vorhanden, in local Dev optional
 - Postgres mit Healthcheck (`pg_isready`) und separatem Volume
 - Healthchecks für zentrale Monitoring-Services konfiguriert
@@ -190,6 +193,12 @@ Referenzen:
 - Swarm-Stack: `postgres-schema-bootstrap` ist nur noch ein Legacy-Übergangspfad; der regulaere Schemarollout erfolgt ueber `pnpm env:migrate:studio` bzw. `pnpm env:release:studio:local -- --release-mode=schema-and-app` mit `migrate`- und `bootstrap`-Job
 - Operative Zielwerte für das Referenzprofil: `RTO <= 2h` für App/Monitoring und Session-Store, `RTO <= 15 min` für den rekonstruierbaren Permission-Cache, `RPO <= 24h` für IAM-Daten in Postgres
 - Primäre betriebliche Eskalation via `operations@smart-village.app`, Sicherheits-/DSGVO-Eskalation via `security@smart-village.app`
+
+### Fortschreibung 2026-05: Öffentliches Waste-Frontend
+
+- Die öffentliche App wird lokal über den separaten Vite-Port `3002` ausgeliefert und über Playwright gegen denselben Devserver geprüft.
+- Der Bootstrap-Pfad liest optionale Serverkonfiguration aus `PUBLIC_WASTE_CONFIG_JSON`; fehlende oder invalide Werte werden als expliziter Fehlerzustand statt als impliziter Runtime-Abbruch modelliert.
+- Für die aktuelle Entwicklungsstufe läuft die öffentliche Bürgeroberfläche mit einer app-lokalen Demo-Runtime. Der spätere produktive Datenpfad über öffentliche Read-Endpunkte bleibt davon architektonisch getrennt.
 
 ### Noch offen (Stand heute)
 

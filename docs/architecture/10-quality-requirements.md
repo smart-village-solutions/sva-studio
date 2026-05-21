@@ -116,6 +116,12 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Shell-Farben werden über semantische Tokens statt direkter Farbcodes bezogen
   - Light- und Dark-Mode bleiben in Header, Sidebar und Content kontraststabil und fokussierbar
   - Unbekannte `instanceId` fällt deterministisch auf ein Basis-Theme zurück
+- Öffentlicher Abfallkalender:
+  - `pnpm nx run public-waste-calendar-web:test:unit` muss für Auswahlfluss, Cookie-Restore, Export-Links und Termin-Modal grün sein
+  - `pnpm nx run public-waste-calendar-web:test:e2e` deckt den vollständigen Bürgerfluss Auswahl -> Kalender -> Modal -> Reload-Restore ab
+  - `pnpm nx run public-waste-calendar-web:test:types` bleibt Pflichtgate für alle app-lokalen Verträge
+  - Auswahlbuttons, Fraktionsfilter, Exportlinks und Dialog müssen per Rolle oder zugänglichem Namen testbar bleiben
+  - Die Oberfläche muss eingebettet und auf kleinen Viewports ohne horizontale Zwangsinteraktion benutzbar bleiben
 - Mainserver-Plugin-Listen:
   - News-, Events- und POI-Listen müssen `page` und `pageSize` typsicher über URL/Search-Params führen
   - die erste Listenanfrage lädt höchstens eine Seite plus notwendiges Overfetching für sichtbarkeitsbasierte `hasNextPage`-Entscheidungen
@@ -213,6 +219,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Ein lokaler Kandidatencontainer kann fuer `studio` Private-DNS-, Ingress- und Swarm-Vertraege nicht vollstaendig abbilden; prod-nahe Freigaben bleiben deshalb bewusst an Remote-Evidenz gebunden
 - Auch bei starker Repo-Abdeckung bleibt IAM-Diagnostik ohne reale Dev-/Staging-Evidenz für Host-, Cookie-, Keycloak- und Datenzustandsprobleme unvollständig; ein vorbereiteter Live-Triage-Block ist daher Teil des Qualitätsziels
 - Exakte End-to-End-Performancebelege für Mainserver-Listen über echte Upstream-Bestände bleiben trotz der Pagination-Migration Folgearbeit; lokal und in Tests ist zunächst die Vertrags- und Interaktionsstabilität abgesichert
+- Für die öffentliche Waste-App basiert der aktuelle E2E-Nachweis noch auf einer app-lokalen Demo-Runtime; der produktive Endpunktpfad benötigt später einen separaten Integrationsnachweis.
 
 Referenzen:
 

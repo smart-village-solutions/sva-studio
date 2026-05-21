@@ -75,6 +75,7 @@ export const wasteMasterDataRepositoryContract = {
   upsertWasteLocationTourLink: defineRepositoryMethod<
     (input: Omit<WasteLocationTourLinkRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
   >(),
+  deleteWasteLocationTourLink: defineRepositoryMethod<(id: string) => Promise<void>>(),
   listWasteLocationTourPickupDates: defineRepositoryMethod<
     (filter?: WasteLocationTourPickupDateListFilter) => Promise<readonly WasteLocationTourPickupDateRecord[]>
   >(),

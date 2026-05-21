@@ -300,6 +300,17 @@ describe('waste-management master-data branch handlers', () => {
       deps: () => createDeps('waste-management.tours.manage'),
     },
     {
+      label: 'location-tour-link delete rejects missing path ids',
+      handler: wasteManagementLocationTourLinkHandlers.deleteWasteManagementLocationTourLinkInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/location-tour-links/', {
+          method: 'DELETE',
+          headers: createHeaders(),
+        }),
+      expectedMessage: 'linkId fehlt im Pfad.',
+      deps: () => createDeps('waste-management.tours.manage'),
+    },
+    {
       label: 'tour update rejects missing path ids',
       handler: wasteManagementTourHandlers.updateWasteManagementTourInternal,
       request: () =>
@@ -467,6 +478,21 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: 'Die Waste-Tour-Zuordnung wurde nicht gefunden.',
     },
     {
+      label: 'location-tour-link delete returns not_found for unknown records',
+      handler: wasteManagementLocationTourLinkHandlers.deleteWasteManagementLocationTourLinkInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-404', {
+          method: 'DELETE',
+          headers: createHeaders(),
+        }),
+      deps: () => ({
+        ...createDeps('waste-management.tours.manage'),
+        loadWasteLocationTourLinkById: vi.fn(async () => null),
+        deleteWasteLocationTourLink: vi.fn(async () => undefined),
+      }),
+      expectedMessage: 'Die Waste-Tour-Zuordnung wurde nicht gefunden.',
+    },
+    {
       label: 'tour update returns not_found for unknown records',
       handler: wasteManagementTourHandlers.updateWasteManagementTourInternal,
       request: () =>
@@ -534,6 +560,27 @@ describe('waste-management master-data branch handlers', () => {
         code: 'not_found',
         message: expectedMessage,
       },
+      requestId: 'req-test',
+    });
+  });
+
+  it('location-tour-link delete returns the deleted resource id on success', async () => {
+    const response = await wasteManagementLocationTourLinkHandlers.deleteWasteManagementLocationTourLinkInternal(
+      new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-delete', {
+        method: 'DELETE',
+        headers: createHeaders(),
+      }),
+      actor,
+      {
+        ...createDeps('waste-management.tours.manage'),
+        loadWasteLocationTourLinkById: vi.fn(async () => ({ id: 'link-delete', locationId: 'location-1', tourId: 'tour-1' })),
+        deleteWasteLocationTourLink: vi.fn(async () => undefined),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: { id: 'link-delete' },
       requestId: 'req-test',
     });
   });

@@ -76,6 +76,8 @@ describe('governance workflow executor', () => {
       'target-account',
       uuid,
       true,
+      '',
+      'admin',
       'JIRA-1',
       'jira',
       'approved_for_execution',

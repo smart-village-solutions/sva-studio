@@ -8,7 +8,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
   actions: {
     openCreate: 'Neue Tour',
     openCalendar: 'Jahreskalender anzeigen',
-    openAssignments: 'Zugeordnete Abholorte anzeigen',
+    openAssignments: 'Zugeordnete Abholorte bearbeiten',
     edit: 'Bearbeiten',
     delete: 'Löschen',
     activateStatus: 'Tour {{value}} aktivieren',
@@ -142,6 +142,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     actions: {
       openCreate: 'Zuordnung anlegen',
       edit: 'Bearbeiten',
+      resetFilters: 'Filter zurücksetzen',
       cancel: 'Abbrechen',
       create: 'Zuordnung speichern',
       save: 'Änderungen speichern',
@@ -164,6 +165,14 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     meta: {
       startDate: 'Start: {{value}}',
       endDate: 'Ende: {{value}}',
+    },
+    workspace: {
+      availableTitle: 'Abholorte der Tour',
+      selectedCount: '{{value}} ausgewählt',
+      visibleCount: '{{value}} sichtbar',
+      hiddenSelectedCount: '{{value}} außerhalb des Filters ausgewählt',
+      noLocations: 'Keine Abholorte passen auf die aktuellen Filter.',
+      assigned: 'Bereits zugeordnet',
     },
     messages: {
       createSuccess: 'Die Waste-Tour-Zuordnung wurde angelegt.',

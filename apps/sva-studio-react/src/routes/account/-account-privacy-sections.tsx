@@ -8,22 +8,29 @@ import { DsrCaseRow, formatPrivacyDateTime } from './-account-privacy-shared';
 export const PrivacyActionPanel = ({
   disabled,
   onExport,
+  onRequestPermissionChange,
   onRequestAccess,
   onSubmitObjection,
 }: Readonly<{
   disabled: boolean;
   onExport: () => void;
+  onRequestPermissionChange?: () => void;
   onRequestAccess: () => void;
   onSubmitObjection: () => void;
 }>) => (
   <Card>
-    <CardContent className="grid gap-3 p-4 md:grid-cols-3">
+    <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
       <Button type="button" disabled={disabled} onClick={onExport}>
         {t('account.privacy.actions.requestExport')}
       </Button>
       <Button type="button" disabled={disabled} variant="outline" onClick={onRequestAccess}>
         {t('account.privacy.actions.requestAccess')}
       </Button>
+      {onRequestPermissionChange ? (
+        <Button type="button" disabled={disabled} variant="outline" onClick={onRequestPermissionChange}>
+          {t('account.privacy.actions.requestPermissionChange')}
+        </Button>
+      ) : null}
       <Button type="button" disabled={disabled} variant="outline" onClick={onSubmitObjection}>
         {t('account.privacy.actions.optOut')}
       </Button>

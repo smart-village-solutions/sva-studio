@@ -255,6 +255,11 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: die aktuelle Host-Diagnostik über `heartbeatAt`, `lastProgressAt` und `runtime.staleState` als Operator-Signal nutzen; Recovery-, Requeue- oder Dead-Letter-Strategie erst in einem getrennten Folgechange einführen
 
+46. Demo-Runtime der öffentlichen Waste-App kann vom späteren produktiven Read-Pfad abweichen
+   - Impact: mittel bis hoch (grüne lokale Auswahl- und E2E-Flows beweisen noch nicht den finalen Server-/Datenpfad)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: vor Produktivsetzung denselben Bürgerfluss gegen die echten öffentlichen Read-Endpunkte und die finale Konfiguration erneut als Integrations- und E2E-Gate absichern
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries

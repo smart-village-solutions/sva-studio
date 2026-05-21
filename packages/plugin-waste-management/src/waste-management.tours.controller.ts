@@ -1,6 +1,6 @@
 import { createWasteToursActions } from './waste-management.tours.actions.js';
 import { useWasteToursDataLoading } from './waste-management.tours.loaders.js';
-import { resolveTourLocationOptions } from './waste-management.tours.locations.js';
+import { resolveTourAssignmentLocationOptions, resolveTourLocationOptions } from './waste-management.tours.locations.js';
 import { createWasteToursSubmitHandlers } from './waste-management.tours.submissions.js';
 import { useWasteToursState } from './waste-management.tours.state.js';
 import {
@@ -20,6 +20,7 @@ export const useWasteToursController = (pt: Translate, search: WasteManagementSe
     ...state,
     tours: filterTours(state.overview?.tours ?? [], search),
     locationOptions: resolveTourLocationOptions(pt, state.masterDataOverview),
+    assignmentLocationOptions: resolveTourAssignmentLocationOptions(pt, state.masterDataOverview, state.selectedTour?.id),
     ...actions,
     ...submissions,
   };

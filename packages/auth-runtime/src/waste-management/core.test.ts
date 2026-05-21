@@ -32,6 +32,7 @@ const {
   createWasteManagementStreetInternal,
   createWasteManagementTourDateShiftInternal,
   createWasteManagementTourInternal,
+  deleteWasteManagementLocationTourLinkInternal,
   getWasteManagementHistoryInternal,
   getWasteManagementMasterDataOverviewInternal,
   getWasteManagementSchedulingOverviewInternal,
@@ -1220,6 +1221,8 @@ describe('waste-management auth runtime handlers', () => {
       .mockResolvedValueOnce(updatedLink);
     const saveWasteLocationTourLink = vi.fn(async () => undefined);
 
+    const emitAuditEvent = vi.fn(async () => undefined);
+
     const response = await updateWasteManagementLocationTourLinkInternal(
       new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-1', {
         method: 'PUT',
@@ -1238,6 +1241,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        emitAuditEvent,
         saveWasteLocationTourLink,
         loadWasteLocationTourLinkById,
         resolvePermissions: vi.fn(async () => ({
@@ -1259,6 +1263,71 @@ describe('waste-management auth runtime handlers', () => {
       data: updatedLink,
       requestId: 'req-test',
     });
+    expect(emitAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_authorized',
+        pluginAction: expect.objectContaining({
+          actionId: 'waste-management.location-tour-link.updated',
+          resourceType: 'waste_location_tour_link',
+          resourceId: 'link-1',
+          result: 'success',
+        }),
+      })
+    );
+  });
+
+  it('deletes a waste location-tour link through the tours mutation path', async () => {
+    const existingLink: WasteLocationTourLinkRecord = {
+      id: 'link-1',
+      locationId: 'location-1',
+      tourId: 'tour-1',
+      startDate: '2026-05-01',
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+    };
+
+    const loadWasteLocationTourLinkById = vi.fn(async () => existingLink);
+    const deleteWasteLocationTourLink = vi.fn(async () => undefined);
+    const emitAuditEvent = vi.fn(async () => undefined);
+
+    const response = await deleteWasteManagementLocationTourLinkInternal(
+      new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-1', {
+        method: 'DELETE',
+        headers: {
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        emitAuditEvent,
+        deleteWasteLocationTourLink,
+        loadWasteLocationTourLinkById,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.tours.manage'),
+        })),
+      }
+    );
+
+    expect(deleteWasteLocationTourLink).toHaveBeenCalledWith('tenant-a', 'link-1');
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: { id: 'link-1' },
+      requestId: 'req-test',
+    });
+    expect(emitAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_authorized',
+        pluginAction: expect.objectContaining({
+          actionId: 'waste-management.location-tour-link.deleted',
+          resourceType: 'waste_location_tour_link',
+          resourceId: 'link-1',
+          result: 'success',
+        }),
+      })
+    );
   });
 
   it('creates a waste tour through the tours mutation path', async () => {

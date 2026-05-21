@@ -32,6 +32,7 @@ export {
 } from './iam-organizations/core.js';
 export {
   governanceComplianceExportHandler,
+  permissionChangeSelfServiceRequestHandler,
   governanceWorkflowHandler,
   listGovernanceCasesHandler,
 } from './iam-governance/core.js';

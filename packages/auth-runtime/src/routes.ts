@@ -66,6 +66,7 @@ export type AuthRoutePath =
   | '/iam/admin/deletion-rules'
   | '/iam/me/deletion-rules'
   | '/iam/me/deletion-rules/content-preference'
+  | '/iam/me/permission-change-requests'
   | '/iam/me/data-export'
   | '/iam/me/data-export/status'
   | '/iam/me/data-subject-rights/requests'
@@ -180,6 +181,7 @@ export const authRoutePaths = [
   '/iam/admin/deletion-rules',
   '/iam/me/deletion-rules',
   '/iam/me/deletion-rules/content-preference',
+  '/iam/me/permission-change-requests',
   '/iam/me/data-export',
   '/iam/me/data-export/status',
   '/iam/me/data-subject-rights/requests',

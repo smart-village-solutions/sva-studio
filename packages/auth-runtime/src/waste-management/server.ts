@@ -15,6 +15,7 @@ const {
   createWasteManagementLocationTourLinksBulkInternal,
   createWasteManagementRegionInternal,
   createWasteManagementStreetInternal,
+  deleteWasteManagementLocationTourLinkInternal,
   deleteWasteManagementTourDateShiftInternal,
   createWasteManagementTourDateShiftInternal,
   createWasteManagementTourInternal,
@@ -62,6 +63,7 @@ const {
   deleteWasteGlobalDateShift,
   saveWasteGlobalDateShift,
   saveWasteHouseNumber,
+  deleteWasteLocationTourLink,
   saveWasteLocationTourLink,
   saveWasteLocationTourLinksBulk,
   saveWasteRegion,
@@ -236,6 +238,14 @@ export const wasteManagementHandlers = {
       updateWasteManagementLocationTourLinkInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
         saveWasteLocationTourLink,
+        loadWasteLocationTourLinkById,
+      })
+    ),
+  deleteLocationTourLink: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      deleteWasteManagementLocationTourLinkInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        deleteWasteLocationTourLink,
         loadWasteLocationTourLinkById,
       })
     ),

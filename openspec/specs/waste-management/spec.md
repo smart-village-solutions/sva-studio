@@ -380,173 +380,20 @@ Das System SHALL fachnahe Waste-Stammdaten für spätere mehrsprachige und visue
 
 Das System SHALL CSV-Import, Seed und Reset als kontrollierte Data-Tools im Waste-Management-Modul bereitstellen.
 
-#### Scenario: Waste-Importe nutzen generische Studio-Importprofile
+#### Scenario: CSV-Import meldet echten Laufzeitfortschritt für laufende Spezialimporte
+- **WHEN** ein Benutzer den Waste-Spezialimport für Tourzuordnungen nach Fraktionen startet
+- **THEN** veröffentlicht das System während des laufenden Commit-Pfads einen echten Fortschritt mit verarbeiteten und insgesamt zu verarbeitenden gültigen Zeilen
+- **AND** der Fortschritt enthält fachliche Phasen wie Vorbereitung, Importlauf und Abschluss
+- **AND** fehlerhafte Zeilen aus der Vorvalidierung erhöhen nicht die Laufzeit-Gesamtmenge des Commit-Pfads
 
-- **WHEN** das Waste-Management strukturierte Quelldaten importiert
-- **THEN** nutzt es dafür eine allgemeine Studio-Import-Fähigkeit statt einer nur für Waste gebauten Sonderlösung
-- **AND** Waste definiert dafür pluginseitige Importprofile statt eine eigene parallele Importplattform aufzubauen
+#### Scenario: Laufender Import zeigt Prozentwert und Zeilenbezug
+- **WHEN** ein laufender Waste-Import im Datentools-Bereich angezeigt wird
+- **THEN** sieht der Benutzer einen Fortschrittsbalken mit Prozentwert
+- **AND** die Anzeige nennt mindestens die aktuelle Phase sowie `verarbeitete Zeilen / Gesamtzeilen`
+- **AND** die Darstellung bleibt auf den aktuell laufenden Import fokussiert und überlädt nicht die Historienansicht
 
-#### Scenario: Generische Import-Fähigkeit wird als Plattformbasis aufgebaut
-
-- **WHEN** das Studio die erste allgemeine Import-Fähigkeit im vorgelagerten Plattformchange bereitstellt
-- **THEN** wird sie bereits als tragfähige Plattformbasis für weitere Plugins aufgebaut
-- **AND** sie bleibt nicht nur eine schmale vorbereitende Sonderlösung für Waste allein
-
-#### Scenario: Importprofile werden über einen expliziten Plugin-Vertrag registriert
-
-- **WHEN** ein Plugin strukturierte Datenimporte über die allgemeine Studio-Import-Fähigkeit anbieten will
-- **THEN** registriert es seine Importprofile über einen expliziten Plugin-Vertrag
-- **AND** das Studio übernimmt darauf aufbauend die generische Runtime, UI und Orchestrierung
-
-#### Scenario: Erste Waste-Importtypen sind getrennt spezifiziert
-
-- **WHEN** der erste verbindliche Importumfang für Waste beschrieben wird
-- **THEN** werden mindestens die getrennten Importprofile `geografie-abholorte`, `touren` und `ausweichtermine` vorgesehen
-- **AND** weitere spätere Importprofile bleiben zulässig, sind in diesem Change aber noch nicht verpflichtend
-
-#### Scenario: Jeder Waste-Importtyp besitzt eigenes Schema, Vorlage und Validierung
-
-- **WHEN** ein Waste-Importprofil definiert wird
-- **THEN** besitzt es ein eigenes explizites Spalten- oder Feldschema
-- **AND** es bringt eine kanonische Vorlage mit Beispielspalten und bei Bedarf einer Beispieldatei mit
-- **AND** es enthält eigene fachliche und technische Validierungsregeln
-
-#### Scenario: Waste nutzt in diesem Change CSV und XLSX als erste produktive Importformate
-
-- **WHEN** das Studio die erste produktive Importstrecke für Waste-Management in diesem Change bereitstellt
-- **THEN** unterstützen die registrierten Waste-Importprofile mindestens CSV und XLSX als Quellformate
-- **AND** XLSX wird als echte Tabellenquelle behandelt, nicht nur als umbenannte CSV-Datei
-- **AND** weitere Quellformate wie JSON oder XML bleiben als Plattformerweiterung des vorgelagerten generischen Import-Changes architektonisch zulässig
-
-#### Scenario: Erste Import-Oberfläche folgt einem mehrstufigen Wizard
-
-- **WHEN** das Studio eine allgemeine Import-Oberfläche für die registrierten Host-Importverträge bereitstellt
-- **THEN** führt sie Benutzer mindestens durch Quellwahl, Profilwahl, Mapping-Prüfung, Validierungsvorschau, Job-Start und Ergebnisansicht
-- **AND** Waste kann diese allgemeine Bedienlogik anbinden
-- **AND** bis zur Verfügbarkeit einer solchen Host-Oberfläche darf Waste eine fachnahe Bedienhülle nutzen, solange der generische Host-Vertrag nicht umgangen wird
-
-#### Scenario: Import-Mapping darf automatische Vorschläge erzeugen
-
-- **WHEN** ein Benutzer Quelldaten auf ein Waste-Importprofil abbildet
-- **THEN** darf das Studio automatische Mapping-Vorschläge für Quellspalten oder Quellfelder erzeugen
-- **AND** der Benutzer kann diese Vorschläge vor dem Import prüfen und manuell korrigieren
-
-#### Scenario: Mapping-Vorlagen dürfen pro Instanz und Importprofil gespeichert werden
-
-- **WHEN** Benutzer für wiederkehrende Importe ein manuell angepasstes Mapping erfolgreich verwenden
-- **THEN** darf das Studio dieses Mapping als einfache Vorlage pro Instanz und Importprofil speichern
-- **AND** spätere Importe dürfen diese Vorlage erneut verwenden, ohne dass in diesem Change bereits eine komplexe Versions- oder Freigabelogik verpflichtend wird
-
-#### Scenario: KI-basierte Mapping-Vorschläge bleiben später integrierbar
-
-- **WHEN** das Studio die erste automatische Mapping-Strecke für Importprofile bereitstellt
-- **THEN** wird die Vorschlagslogik so gekapselt, dass später auch eine externe KI-basierte Mapping-Hilfe angeschlossen werden kann
-- **AND** diese mögliche KI-Integration ist in diesem Change noch nicht als produktiver Bestandteil verpflichtend
-
-#### Scenario: CSV-Import validiert Daten und meldet Fehler nachvollziehbar
-
-- **WHEN** ein Benutzer einen CSV-Import für Waste-Daten ausführt
-- **THEN** startet das System eine asynchrone Import-Operation
-- **AND** der Import validiert die Daten fachlich und technisch
-- **AND** importierte, übersprungene und fehlgeschlagene Datensätze können über einen nachvollziehbaren Status rückgemeldet werden
-
-#### Scenario: Seed-Werkzeug ist gesondert geschützt
-
-- **WHEN** ein Benutzer Seed-Daten laden möchte
-- **THEN** ist das Werkzeug nur mit dem dafür vorgesehenen Spezialrecht verfügbar
-- **AND** die Seed-Operation wirkt ausschließlich im aktiven Instanzkontext
-- **AND** die Ausführung erfolgt als asynchrone Operation mit nachvollziehbarem Ergebnisstatus
-
-#### Scenario: Reset verlangt explizite Hochrisiko-Bestätigung
-
-- **WHEN** ein Benutzer einen Reset für Waste-Daten auslösen möchte
-- **THEN** verlangt das System eine explizite Hochrisiko-Bestätigung mit sichtbarem Scope
-- **AND** die Operation ist nur mit einem separaten Reset-Recht verfügbar
-- **AND** auch in Produktionsumgebungen bleibt diese Schutzstrecke verbindlich
-- **AND** der Reset bezieht sich nur auf Waste-Fachdaten der aktiven Instanz und nicht auf die technische Datenquellenkonfiguration im Studio-Postgres
-
-#### Scenario: Migrationen werden als asynchrone Data-Tools behandelt
-
-- **WHEN** ein Benutzer eine ausstehende Waste-Schema-Migration für die aktive Instanz anstößt
-- **THEN** wird die Operation asynchron ausgeführt
-- **AND** Start, Fortschritt, Erfolg oder Fehler können nachvollziehbar eingesehen werden
-
-#### Scenario: Waste nutzt eine generische Studio-Job-Fähigkeit
-
-- **WHEN** das Waste-Management langlaufende Operationen wie Migration, CSV-Import, Seed oder Reset ausführt
-- **THEN** verwendet es dafür ein allgemeines Studio-Jobmodell statt einer nur für Waste gebauten Sonderlösung
-- **AND** Waste liefert dabei nur plugin-spezifische Jobtypen oder Payloads auf dieser allgemeinen Studio-Fähigkeit
-
-#### Scenario: Generische Job-Fähigkeit wird als Plattformbasis aufgebaut
-
-- **WHEN** das Studio die erste allgemeine Job-Fähigkeit im vorgelagerten Plattformchange bereitstellt
-- **THEN** wird sie bereits als tragfähige Plattformbasis für weitere Plugins aufgebaut
-- **AND** sie bleibt nicht nur eine schmale vorbereitende Sonderlösung für Waste allein
-
-#### Scenario: Jobtypen werden über einen expliziten Plugin-Vertrag registriert
-
-- **WHEN** ein Plugin langlaufende Operationen über die allgemeine Studio-Job-Fähigkeit anbieten will
-- **THEN** registriert es seine fachlichen Jobtypen über einen expliziten Plugin-Vertrag
-- **AND** das Studio übernimmt darauf aufbauend die generische Runtime, Persistenz, UI und Orchestrierung
-
-#### Scenario: Generische Studio-Jobs sind zentral im Studio-Postgres persistent
-
-- **WHEN** das Studio pluginübergreifende langlaufende Jobs verwaltet
-- **THEN** liegt deren zentrale Persistenz im Studio-Postgres
-- **AND** diese allgemeine Job-Persistenz wird nicht als primärer Vertrag in externe Plugin-Datenbanken verlagert
-
-#### Scenario: Erste feste Statusmenge der generischen Studio-Job-Fähigkeit ist definiert
-
-- **WHEN** das Studio langlaufende Jobs für Waste oder spätere Plugins führt
-- **THEN** umfasst die erste feste Statusmenge mindestens `queued`, `running`, `succeeded`, `failed`, `cancelled`
-
-#### Scenario: Erste generische Studio-Jobs enthalten keine automatische Retry-Logik
-
-- **WHEN** die erste Ausbaustufe der generischen Studio-Job-Fähigkeit langlaufende Operationen ausführt
-- **THEN** enthält sie keine automatische Retry-Logik als Pflichtbestandteil
-- **AND** mögliche Wiederholungsmechanismen bleiben späteren Erweiterungen vorbehalten
-
-#### Scenario: Wiederholung erfolgt durch neuen Job statt Neustart eines bestehenden Jobs
-
-- **WHEN** ein Job in der ersten Ausbaustufe fehlschlägt oder abgebrochen wurde
-- **THEN** wird er nicht als derselbe Job erneut gestartet
-- **AND** eine erneute Ausführung erfolgt bei Bedarf durch das Anlegen eines neuen Jobs
-
-#### Scenario: `cancelled` ist zunächst nur als Status vorgesehen
-
-- **WHEN** die erste Ausbaustufe der generischen Studio-Job-Fähigkeit das Statusmodell definiert
-- **THEN** ist `cancelled` als Status bereits vorgesehen
-- **AND** daraus folgt noch keine Pflicht, für alle Jobtypen bereits einen echten aktiven Abbruchpfad bereitzustellen
-
-#### Scenario: Generische Studio-Jobs sind pluginübergreifend im UI sichtbar
-
-- **WHEN** das Studio eine zentrale Host-Sicht für generische Jobs bereitstellt
-- **THEN** können Waste-Jobs dort als pluginübergreifendes Studio-Konzept erscheinen
-- **AND** die Waste-Capability bleibt dennoch nutzbar, auch wenn zunächst nur fachnahe Statusdarstellungen im Plugin vorhanden sind
-
-#### Scenario: Erste zentrale Job-Sicht hängt unter `Monitoring`
-
-- **WHEN** das Studio eine zentrale pluginübergreifende UI-Sicht für generische Jobs materialisiert
-- **THEN** darf diese unter dem bestehenden Sidebar-Punkt `Monitoring` verankert werden
-- **AND** die Waste-Capability hängt nicht zwingend von der sofortigen Verfügbarkeit dieser Seite ab
-- **AND** ein späteres Desktop-Widget ist für diesen Change nicht verpflichtend
-
-#### Scenario: Erste Monitoring-Sicht bleibt in ihrer Informationsarchitektur flexibel
-
-- **WHEN** das Studio eine zentrale `Monitoring`-Sicht für Jobs und externe Datenquellen aufbaut
-- **THEN** bleibt diese zunächst eine technische und temporäre Admin-Sicht
-- **AND** sie darf initial Jobs, aktuellen technischen Datenquellenstatus und technische Ereignishistorie zeigen
-- **AND** eine breitere fachliche Betriebsoberfläche wird in diesem Change nicht verpflichtend eingeführt
-
-#### Scenario: Wiederverwendbare UI-Muster werden als allgemeine Studio-Bausteine geschnitten
-
-- **WHEN** das Waste-Management neue UI für Import, Jobs, Bulk-Actions, Hochrisiko-Bestätigungen oder technische Statusanzeigen benötigt
-- **THEN** werden diese Muster als allgemeine Studio-UI-Bausteine umgesetzt oder aus bestehenden allgemeinen Bausteinen abgeleitet
-- **AND** sie verbleiben nicht als einmalige isolierte Sonderlösung im Waste-Plugin, sofern ihre Semantik fachneutral genug für weitere Plugins ist
-
-#### Scenario: Fachliche Waste-Dialoge und Jahreskalender bleiben im Plugin
-
-- **WHEN** die Waste-Oberfläche Jahreskalender, Touren-, Ausweichtermin-, Abholort-, Fraktions- oder Zuordnungsdialoge bereitstellt
-- **THEN** bleiben diese Komponenten fachliche Bestandteile von `packages/plugin-waste-management`
-- **AND** sie werden in diesem Change nicht als allgemeine Plugin-UI-Komponenten in die zentrale UI-Library verschoben
+#### Scenario: Fortschrittsmeldungen bleiben technisch kontrolliert
+- **WHEN** der Waste-Import viele gültige CSV-Zeilen verarbeitet
+- **THEN** persistiert das System Fortschrittsmeldungen blockweise statt zwingend für jede einzelne Zeile
+- **AND** die gewählte Strategie hält Jobdetail und UI fachlich aussagekräftig, ohne die Event-Persistenz unverhältnismäßig zu vergrößern
 

@@ -196,6 +196,11 @@ Abhängigkeiten des aktuellen Systems.
    - rendert auf `/admin/instances/$instanceId` einen separaten Tenant-IAM-Bereich mit Statusachsen, Korrelation und kontextbezogenen Aktionen.
    - strukturiert dieselbe Detailseite als `Control Tower + Workbench`: fester Überblick für Gesamtstatus, Evidenzfrische, priorisierte Befunde und genau eine Primäraktion; nachgelagerte Arbeitsbereiche für `Konfiguration`, `Betrieb` und `Historie`.
    - leitet dafür in der React-Schicht ein kanonisches Cockpit-Modell aus bestehenden Datenquellen wie `tenantIamStatus`, Keycloak-Preflight, Provisioning-Vorschau, letztem Run und Mutationsdiagnostik ab, ohne den Backend-Vertrag zu ändern.
+13. Öffentlicher Abfallkalender (`apps/public-waste-calendar-web`)
+   - eigenständige Vite/React-App für den öffentlichen Waste-Kalender außerhalb der Studio-Admin-Shell
+   - hält Resolver, Kalenderprojektion, Demo-Runtime, Cookie-Restore, PDF-/iCal-Links und Modal-Interaktion bewusst app-lokal
+   - nutzt eine reduzierte UI aus `PublicWasteApp`, `PublicWasteSelectionForm`, `PublicWasteCalendarPanels` und `PublicWasteEventDialog`
+   - kapselt servernahe Verträge in `src/lib/public-waste-*.ts`, ohne neue Workspace-Kopplung zu `@sva/core` oder `@sva/data-repositories` einzuführen
 
 ### Fortschreibung 2026-04: Instanz-Modulaktivierung
 
@@ -228,6 +233,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/server-runtime` Context API
 - `@sva/iam-core` -> `@sva/core`
 - `apps/sva-studio-react` -> Zielpackages über Server-Funktionen für Inhaltsliste, Detail, Historie und Statuswechsel
+- `apps/public-waste-calendar-web` -> keine zusätzliche Workspace-Domain-Abhängigkeit; die App hält ihren öffentlichen Domain- und Laufzeitpfad lokal
 
 ### Schichtregel für Plugins
 

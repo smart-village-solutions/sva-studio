@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const createWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
+const createWasteManagementLocationTourLinksBulkMock = vi.hoisted(() => vi.fn());
+const deleteWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
 const updateWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
 
 import { WasteManagementApiError } from '../src/waste-management.api.js';
@@ -40,6 +42,8 @@ vi.mock('../src/waste-management.api.js', async (importOriginal) => {
   return {
     ...actual,
     createWasteManagementLocationTourLink: createWasteManagementLocationTourLinkMock,
+    createWasteManagementLocationTourLinksBulk: createWasteManagementLocationTourLinksBulkMock,
+    deleteWasteManagementLocationTourLink: deleteWasteManagementLocationTourLinkMock,
     updateWasteManagementLocationTourLink: updateWasteManagementLocationTourLinkMock,
   };
 });
@@ -545,8 +549,14 @@ describe('waste management helper modules', () => {
     expect(state.setSelectedTour).toHaveBeenCalledWith(tour);
     expect(state.setAssignmentsDialogMode).toHaveBeenCalledWith('create');
     expect(state.setAssignmentsDialogMode).toHaveBeenCalledWith('edit');
-    expect(state.setAssignmentsDialogOpen).toHaveBeenCalledTimes(2);
-    expect(state.setLinkForm).toHaveBeenCalled();
+    expect(state.setAssignmentsDialogOpen).toHaveBeenCalledTimes(3);
+    expect(state.setLinkForm).toHaveBeenCalledWith({
+      id: 'link-1',
+      locationId: 'location-1',
+      tourId: 'tour-1',
+      startDate: '2026-05-01',
+      endDate: '2026-06-01',
+    });
     expect(state.setCalendarOpen).toHaveBeenCalledWith(true);
   });
 
@@ -682,7 +692,7 @@ describe('waste management helper modules', () => {
       loadOverview,
     });
 
-    await createHandlers.onSubmitAssignments({ preventDefault: vi.fn() } as never);
+    await createHandlers.onSubmitAssignments({ preventDefault: vi.fn() } as never, []);
 
     expect(createWasteManagementLocationTourLinkMock).toHaveBeenCalledTimes(1);
     expect(loadOverview).toHaveBeenCalledWith(true);
@@ -709,7 +719,7 @@ describe('waste management helper modules', () => {
       loadOverview,
     });
 
-    await updateHandlers.onSubmitAssignments({ preventDefault: vi.fn() } as never);
+    await updateHandlers.onSubmitAssignments({ preventDefault: vi.fn() } as never, []);
 
     expect(updateWasteManagementLocationTourLinkMock).toHaveBeenCalledTimes(1);
     expect(updateState.setMessage).toHaveBeenCalledWith({
@@ -717,6 +727,84 @@ describe('waste management helper modules', () => {
       text: 'tours.assignments.messages.saveForbidden',
     });
     expect(updateState.setSaving).toHaveBeenLastCalledWith(false);
+  });
+
+  it('covers bulk create, delete, and edit fallback branches for tour assignments', async () => {
+    const loadOverview = vi.fn(async () => undefined);
+    const translate = (key: string) => key;
+    const baseState = {
+      linkForm: {
+        id: 'link-1',
+        locationId: 'location-1',
+        tourId: 'tour-1',
+        startDate: '2026-05-01',
+        endDate: '2026-12-31',
+      },
+      selectedTour: { id: 'tour-1' },
+      setSaving: vi.fn(),
+      setMessage: vi.fn(),
+      setAssignmentsDialogOpen: vi.fn(),
+    };
+
+    const bulkState = {
+      ...baseState,
+      assignmentsDialogMode: 'edit',
+      masterDataOverview: {
+        locationTourLinks: [
+          { id: 'link-1', locationId: 'location-1', tourId: 'tour-1' },
+          { id: 'link-2', locationId: 'location-2', tourId: 'tour-1' },
+        ],
+      },
+    };
+    createWasteManagementLocationTourLinksBulkMock.mockResolvedValueOnce(undefined);
+    deleteWasteManagementLocationTourLinkMock.mockResolvedValueOnce(undefined);
+
+    const bulkHandlers = createWasteToursAssignmentSubmitHandlers({
+      state: bulkState as never,
+      pt: translate,
+      loadOverview,
+    });
+
+    await bulkHandlers.onSubmitAssignments({ preventDefault: vi.fn() } as never, ['location-2', 'location-3', 'location-3']);
+
+    expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenCalledWith({
+      locationIds: ['location-3'],
+      tourId: 'tour-1',
+      startDate: '2026-05-01',
+      endDate: '2026-12-31',
+    });
+    expect(deleteWasteManagementLocationTourLinkMock).toHaveBeenCalledWith('link-1');
+
+    const editState = {
+      ...baseState,
+      assignmentsDialogMode: 'edit',
+      masterDataOverview: {
+        locationTourLinks: [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1' }],
+      },
+      setMessage: vi.fn(),
+      setSaving: vi.fn(),
+      setAssignmentsDialogOpen: vi.fn(),
+    };
+    updateWasteManagementLocationTourLinkMock.mockResolvedValueOnce(undefined);
+
+    const editHandlers = createWasteToursAssignmentSubmitHandlers({
+      state: editState as never,
+      pt: translate,
+      loadOverview,
+    });
+
+    await editHandlers.onSubmitAssignments({ preventDefault: vi.fn() } as never, ['location-1']);
+
+    expect(updateWasteManagementLocationTourLinkMock).toHaveBeenLastCalledWith('link-1', {
+      locationId: 'location-1',
+      tourId: 'tour-1',
+      startDate: '2026-05-01',
+      endDate: '2026-12-31',
+    });
+    expect(editState.setMessage).toHaveBeenCalledWith({
+      kind: 'success',
+      text: 'tours.assignments.messages.updateSuccess',
+    });
   });
 
   it('covers tours presentation helpers including recurrence, ranges, custom dates, and shifts', () => {

@@ -38,6 +38,19 @@ export const formatCollectionLocationLabel = (
   return parts.join(' / ');
 };
 
+export type TourAssignmentLocationOption = Readonly<{
+  id: string;
+  label: string;
+  active: boolean;
+  regionId: string;
+  regionName: string;
+  cityId: string;
+  cityName: string;
+  streetId: string;
+  streetName: string;
+  assignedLinkId?: string;
+}>;
+
 export const resolveTourLocationOptions = (
   pt: (key: string) => string,
   data: WasteManagementMasterDataOverview | null
@@ -50,6 +63,38 @@ export const resolveTourLocationOptions = (
       location
     ),
   }));
+
+export const resolveTourAssignmentLocationOptions = (
+  pt: (key: string) => string,
+  data: WasteManagementMasterDataOverview | null,
+  tourId?: string
+): readonly TourAssignmentLocationOption[] => {
+  if (!data) {
+    return [];
+  }
+
+  const assignedLinkIdByLocationId = new Map<string, string>();
+  if (tourId) {
+    for (const link of data.locationTourLinks ?? []) {
+      if (link.tourId === tourId) {
+        assignedLinkIdByLocationId.set(link.locationId, link.id);
+      }
+    }
+  }
+
+  return data.collectionLocations.map((location) => ({
+    id: location.id,
+    label: formatCollectionLocationLabel(pt, data, location),
+    active: location.active,
+    regionId: location.regionId ?? '',
+    regionName: findRegionName(data.regions, location.regionId) ?? '',
+    cityId: location.cityId,
+    cityName: findCityName(data.cities, location.cityId),
+    streetId: location.streetId ?? '',
+    streetName: findStreetName(data.streets, location.streetId) ?? pt('masterData.collectionLocations.meta.allStreets'),
+    assignedLinkId: assignedLinkIdByLocationId.get(location.id),
+  }));
+};
 
 export const resolveTourAssignmentItems = (
   pt: (key: string) => string,

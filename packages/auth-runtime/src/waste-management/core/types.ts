@@ -129,6 +129,7 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     linkId: string
   ) => Promise<WasteLocationTourLinkRecord | null>;
+  readonly deleteWasteLocationTourLink?: (instanceId: string, linkId: string) => Promise<void>;
   readonly saveWasteTour?: (instanceId: string, input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
   readonly loadWasteTourById?: (instanceId: string, tourId: string) => Promise<WasteTourRecord | null>;
   readonly deleteWasteTour?: (instanceId: string, tourId: string) => Promise<void>;

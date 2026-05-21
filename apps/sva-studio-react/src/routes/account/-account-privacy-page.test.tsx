@@ -8,6 +8,7 @@ const getMyDeletionRulesMock = vi.fn();
 const requestDataExportMock = vi.fn();
 const createDataSubjectRequestMock = vi.fn();
 const checkOptionalProcessingMock = vi.fn();
+const requestPermissionChangeMock = vi.fn();
 const saveMyDeletionRulesContentPreferenceMock = vi.fn();
 
 vi.mock('../../lib/iam-api', () => ({
@@ -16,6 +17,7 @@ vi.mock('../../lib/iam-api', () => ({
   requestDataExport: (...args: unknown[]) => requestDataExportMock(...args),
   createDataSubjectRequest: (...args: unknown[]) => createDataSubjectRequestMock(...args),
   checkOptionalProcessing: (...args: unknown[]) => checkOptionalProcessingMock(...args),
+  requestPermissionChange: (...args: unknown[]) => requestPermissionChangeMock(...args),
   saveMyDeletionRulesContentPreference: (...args: unknown[]) =>
     saveMyDeletionRulesContentPreferenceMock(...args),
 }));
@@ -27,6 +29,7 @@ describe('AccountPrivacyPage', () => {
     requestDataExportMock.mockReset();
     createDataSubjectRequestMock.mockReset();
     checkOptionalProcessingMock.mockReset();
+    requestPermissionChangeMock.mockReset();
     saveMyDeletionRulesContentPreferenceMock.mockReset();
 
     getMyDeletionRulesMock.mockResolvedValue({
@@ -356,6 +359,13 @@ describe('AccountPrivacyPage', () => {
     requestDataExportMock.mockResolvedValue({ status: 'accepted' });
     createDataSubjectRequestMock.mockResolvedValue({ status: 'accepted' });
     checkOptionalProcessingMock.mockResolvedValue({ allowed: true });
+    requestPermissionChangeMock.mockResolvedValue({
+      data: {
+        workflowId: 'wf-1',
+        operation: 'request_permission_change',
+        status: 'accepted',
+      },
+    });
 
     render(<AccountPrivacyPage />);
 
@@ -395,6 +405,51 @@ describe('AccountPrivacyPage', () => {
     await waitFor(() => {
       expect(checkOptionalProcessingMock).toHaveBeenCalledTimes(1);
       expect(screen.getByText('Die optionale Verarbeitung ist aktuell zulässig.')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rechteänderung beantragen' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'Rechteänderung beantragen' })).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Gewünschte zusätzliche Rechte'), {
+      target: { value: 'Ich benötige zusätzliche Rechte für Veranstaltungsfreigaben.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Antrag senden' }));
+
+    await waitFor(() => {
+      expect(requestPermissionChangeMock).toHaveBeenCalledWith({
+        requestNote: 'Ich benötige zusätzliche Rechte für Veranstaltungsfreigaben.',
+      });
+      expect(screen.getByText('Die Anfrage zur Rechteänderung wurde eingereicht.')).toBeTruthy();
+    });
+  });
+
+  it('validates the self-service permission change request locally before submitting', async () => {
+    getMyDataSubjectRightsMock.mockResolvedValue({
+      data: {
+        instanceId: 'de-musterhausen',
+        accountId: 'account-1',
+        nonEssentialProcessingAllowed: true,
+        requests: [],
+        exportJobs: [],
+        legalHolds: [],
+      },
+    });
+
+    render(<AccountPrivacyPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Rechteänderung beantragen' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rechteänderung beantragen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Antrag senden' }));
+
+    await waitFor(() => {
+      expect(requestPermissionChangeMock).not.toHaveBeenCalled();
+      expect(screen.getByText('Bitte beschreiben Sie den gewünschten zusätzlichen Zugriff.')).toBeTruthy();
     });
   });
 });

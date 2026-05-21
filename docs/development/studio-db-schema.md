@@ -130,6 +130,7 @@ Kernidee:
 - Governance- und Datenschutzflüsse sind relational nachvollziehbar modelliert.
 - Tenantbezogene Löschregeln, die einfache Inhaltsstrategie (`retain` oder `with_owner_lifecycle`) sowie der Tenant-Schalter für erlaubte Nutzer-Overrides werden explizit relational gespeichert.
 - Für V1-Löschregeln bleibt der fachlich führende letzte Login dennoch die Aggregation aus `iam.activity_logs` (`MAX(created_at)` für `event_type = 'login'`); `iam.accounts.last_login_at` ist im aktuellen Scope nicht die primäre Read-Modell-Quelle.
+- `iam.permission_change_requests` unterstützt zusätzlich einen Self-Service-Intake mit Freitextbegründung und Ursprung (`admin` oder `self_service`).
 
 ### 4. Organisation, Geo und Scope
 

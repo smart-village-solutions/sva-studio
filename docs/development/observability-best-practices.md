@@ -258,11 +258,13 @@ try {
 
 ```logql
 # Alle Fehler in letzten 5 Minuten
-{level="error", workspace_id="org-123"} | json | line_format "{{.error_code}}: {{.error_message}}"
+{job="sva-studio", level="error"} |= "\"workspace_id\":\"org-123\""
 
-# Fehler pro Komponente
-sum(count_over_time({level="error"}[5m])) by (component)
+# Fehler aus dem App-Stream
+sum(count_over_time({job="sva-studio", level="error"}[5m]))
 ```
+
+Im lokalen OTEL-Setup wird der Grafana-/Loki-Zugriff primär über den App-Stream `job="sva-studio"` aufgebaut. Fachattribute wie `component` oder `workspace_id` bleiben in den OTEL-Logdaten erhalten, sind lokal aber nicht das primäre Indexlabel des Standard-Dashboards.
 
 ## Testing Observability
 

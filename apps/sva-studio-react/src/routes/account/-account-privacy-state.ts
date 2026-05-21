@@ -124,6 +124,7 @@ export const useAccountPrivacyState = () => {
     runAction,
     saveDeletionRulesPreference,
     setContentPreferenceDraft,
+    setErrorMessage,
     setStatusMessage,
     statusMessage,
   };

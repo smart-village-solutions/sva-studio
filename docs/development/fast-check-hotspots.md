@@ -18,8 +18,8 @@ Der erste Batch konzentriert sich bewusst auf kleine, aber risikoreiche Normalis
 
 ### `packages/routing/src/admin-resource-search-params.ts`
 
-- Property: beliebige rohe Query-Werte werden in einen gültigen Listenzustand normalisiert, und dieser Zustand ist über die kanonische Query-Codierung verlustfrei rekonstruierbar.
-- Begründung: Die Search-Param-Normalisierung ist ein zentraler Adapter zwischen URL, UI-State und Backend-Abfragen; die Property deckt Defaults, erlaubte Wertebereiche und stabile Roundtrips gemeinsam ab.
+- Property: deklarierte gültige Skalarwerte für `status`, `sort`, `page` und `pageSize` bleiben unter der Normalisierung erhalten; unsupported rohe Formen wie Arrays oder objektartige Werte kollabieren dagegen in den erlaubten Zustand und bleiben über die kanonische Query-Codierung stabil rekonstruierbar.
+- Begründung: Die Search-Param-Normalisierung ist ein zentraler Adapter zwischen URL, UI-State und Backend-Abfragen; die Property sichert sowohl Nicht-Verlust gültiger URL-Zustände als auch robustes Abweisen nicht unterstützter Query-Formen ab.
 
 ## Nächste Hotspots
 

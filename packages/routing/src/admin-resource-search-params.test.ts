@@ -57,9 +57,18 @@ const arbitraryQueryValue = fc.oneof(
   fc.string(),
   fc.integer(),
   fc.boolean(),
+  fc.array(fc.oneof(fc.string(), fc.integer(), fc.boolean(), fc.constant(null)), { maxLength: 3 }),
+  fc.dictionary(fc.string({ minLength: 1, maxLength: 8 }), fc.oneof(fc.string(), fc.integer(), fc.boolean()), {
+    maxKeys: 3,
+  }),
   fc.constant(null),
   fc.constant(undefined)
 );
+
+const validStatus = fc.constantFrom('draft', 'published');
+const validSort = fc.constantFrom('title', '-title', 'updatedAt', '-updatedAt');
+const validPage = fc.oneof(fc.integer({ min: 1, max: 500 }), fc.integer({ min: 1, max: 500 }).map(String));
+const validPageSize = fc.oneof(fc.constantFrom(10, 25, 50), fc.constantFrom('10', '25', '50'));
 
 const encodeCanonicalSearch = (
   normalized: ReturnType<typeof normalizeAdminResourceListSearch>
@@ -92,6 +101,33 @@ const encodeCanonicalSearch = (
 };
 
 describe('admin resource search parameter normalization', () => {
+  it('preserves declared valid scalar list params instead of collapsing them to defaults', () => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          q: fc.string({ minLength: 1 }).filter((value) => value.trim().length > 0),
+          status: validStatus,
+          sort: validSort,
+          page: validPage,
+          pageSize: validPageSize,
+          ignored: arbitraryQueryValue,
+        }),
+        (search) => {
+          const normalized = normalizeAdminResourceListSearch(resource, search);
+
+          expect(normalized.search).toBe(search.q.trim());
+          expect(normalized.filters.status).toBe(search.status);
+          expect(normalized.sort).toEqual({
+            field: String(search.sort).startsWith('-') ? String(search.sort).slice(1) : String(search.sort),
+            direction: String(search.sort).startsWith('-') ? 'desc' : 'asc',
+          });
+          expect(normalized.page).toBe(Number(search.page));
+          expect(normalized.pageSize).toBe(Number(search.pageSize));
+        }
+      )
+    );
+  });
+
   it('roundtrips arbitrary query input through the canonical list-search encoding', () => {
     fc.assert(
       fc.property(

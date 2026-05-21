@@ -2,6 +2,12 @@
   "name": "tooling-testing",
   "private": true,
   "type": "module",
+  "exports": {
+    "./msw": {
+      "types": "./src/msw/index.ts",
+      "default": "./src/msw/index.ts"
+    }
+  },
   "dependencies": {
     "msw": "^2.14.6"
   }

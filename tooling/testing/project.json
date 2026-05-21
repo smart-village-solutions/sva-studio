@@ -1,7 +1,7 @@
 {
   "name": "tooling-testing",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "tooling/testing/tests",
+  "sourceRoot": "tooling/testing",
   "projectType": "library",
   "targets": {
     "lint": {
@@ -15,6 +15,7 @@
       ],
       "options": {
         "lintFilePatterns": [
+          "tooling/testing/src/**/*.{ts,tsx,js,jsx}",
           "tooling/testing/tests/**/*.{ts,tsx,js,jsx}",
           "scripts/**/*.ts"
         ]

@@ -51,7 +51,7 @@ Dieser Change benötigt zwei Architekturentscheidungen in `docs/adr/`, die spät
 
 ## Capability Mapping
 
-- `monorepo-structure` ist die Single Source of Truth für den Foundation-Stack ueber formularzentrierte Frontend-Workflows, HTTP-nahe Frontend-Tests und kritische framework-agnostische Kernlogik, inklusive gemeinsamer Integrationsbausteine, initialer `fast-check`-Startmenge sowie Ablage- und Pflichtregeln fuer Inventur- und Governance-Artefakte.
+- `monorepo-structure` ist die Single Source of Truth für den Foundation-Stack ueber formularzentrierte Frontend-Workflows, HTTP-nahe Frontend-Tests und kritische framework-agnostische Kernlogik, inklusive gemeinsamer Integrationsbausteine, initialer `fast-check`-Startmenge sowie Ablage- und Pflichtregeln fuer Inventur- und Begleit-Artefakte.
 - `review-governance` ist die Single Source of Truth für Review-Kriterien, Ausnahmebehandlung und Exit-Governance dieser Foundations.
 - `account-ui` und `content-management` konkretisieren den repo-weiten Formularstandard nur für ihre jeweiligen UI-Bereiche.
 - `test-coverage-governance` bleibt von diesem Change unberührt, weil Coverage-Gates und Coverage-Policies nicht die richtige Capability für MSW-/`fast-check`-Foundations sind.
@@ -169,7 +169,7 @@ Diese Governance wird capability-seitig in `review-governance` verankert, nicht 
 
 ## Governance and Exit Mapping
 
-`review-governance` ist die normative Single Source of Truth fuer Review-Kriterien, Ausnahmebehandlung und Exit-Bedingungen. `monorepo-structure` beschreibt in diesem Change nur den Foundation-Stack, die Integrationsbausteine und die verpflichtenden Artefakte.
+`review-governance` ist die normative Single Source of Truth fuer Review-Kriterien, Ausnahmebehandlung und Exit-Bedingungen. `monorepo-structure` beschreibt in diesem Change nur den Foundation-Stack, die Integrationsbausteine und die verpflichtenden Artefakte inklusive ihrer Ablage.
 
 ## Migration Plan
 

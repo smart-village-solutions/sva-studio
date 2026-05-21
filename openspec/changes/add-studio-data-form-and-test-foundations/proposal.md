@@ -23,7 +23,7 @@ Zusätzlich fehlen für kritische Kernlogik systematische generative Tests sowie
 - Affected arc42 sections: `05-building-block-view`, `08-cross-cutting-concepts`, `09-architecture-decisions`, `10-quality-requirements`
 - Required migration artifact: `docs/development/studio-form-migrationsinventur.md` als vollständige Formularinventur für Host und Plugins mit Pfad, Zweck, heutigem Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Priorität, Risiko, Legacy-Ausnahme und Zielzustand
 - Required governance artifact: `docs/development/studio-foundations-governance.md` mit Review-Kriterien, Ausnahmeregeln, Referenzscope und Exit-Nachweisen
-- Governance-Quelle: `review-governance` normiert Review-Gates, Ausnahmebehandlung und Exit-Bedingungen für diesen Change
+- Governance-Zuordnung: `review-governance` normiert Review-/Exit-Mechanik für diesen Change, waehrend `monorepo-structure` die dafuer benoetigten Foundation- und Artefaktanforderungen beschreibt
 - Required ADRs:
   - `ADR: Formular-Foundation mit react-hook-form und zodResolver`
   - `ADR: Frontend-Test-Foundation mit MSW und selektivem fast-check`

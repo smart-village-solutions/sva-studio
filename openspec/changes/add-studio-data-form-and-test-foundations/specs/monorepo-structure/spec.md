@@ -122,11 +122,6 @@ Das System SHALL fuer diesen Change eine kleine initiale `fast-check`-Hotspot-Li
 - **THEN** benennt er mindestens `packages/routing/src/route-search.ts`, `packages/routing/src/admin-resource-search-params.ts`, `packages/core/src/waste-management-location-tour-pickup-date-import.ts` und `packages/core/src/input-readers.ts`
 - **AND** dokumentiert fuer diese Startmenge die erwarteten Invarianten oder den fachlichen Grund fuer eine eng begruendete Verschiebung
 
-#### Scenario: Hotspot-Liste bleibt nur abstrakt
-
-- **WHEN** der Change nur allgemeine Kategorien wie Parser, Guards oder Routing-Invarianten nennt
-- **THEN** gilt die initiale Hotspot-Liste als nicht hinreichend dokumentiert
-
 ### Requirement: Vollstaendige Formular-Migrationsinventur als Pflichtartefakt
 
 Das System SHALL fuer diesen Change eine vollstaendige Formular-Migrationsinventur fuer Host und Plugins als Pflichtartefakt dokumentieren.
@@ -138,14 +133,8 @@ Das System SHALL fuer diesen Change eine vollstaendige Formular-Migrationsinvent
 - **AND** wird sie unter `docs/development/studio-form-migrationsinventur.md` gefuehrt
 - **AND** dokumentiert sie mindestens Pfad, Zweck, heutiges Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Prioritaet, Risiko, Legacy-Ausnahme und Zielzustand
 
-#### Scenario: Repo-weiter Default und Referenzscope werden getrennt dokumentiert
+#### Scenario: Begleit-Artefakt fuer Foundations wird abgelegt
 
-- **WHEN** der Change Referenzimplementierungen fuer den Rollout benennt
-- **THEN** trennt er klar zwischen repo-weitem Default-Standard fuer neue oder grundlegend ueberarbeitete Flows und der kleineren Menge initialer Referenzimplementierungen
-- **AND** bleibt nachvollziehbar, welche Bereiche nur unter die Default-Regel fallen und welche Bereiche im Change konkret als Referenz umgesetzt werden
-
-#### Scenario: Governance-Artefakte werden abgelegt
-
-- **WHEN** Governance-Artefakte fuer diesen Change dokumentiert werden
-- **THEN** werden sie unter `docs/development/studio-foundations-governance.md` gebuendelt
-- **AND** folgen Inventur- und Governance-Artefakte damit den Repo-Doku-Regeln fuer Entwicklungsdokumentation
+- **WHEN** das Begleit-Artefakt fuer Foundation-Regeln und Referenzscope dieses Changes erstellt wird
+- **THEN** wird es unter `docs/development/studio-foundations-governance.md` abgelegt
+- **AND** folgen Inventur- und Begleit-Artefakte damit den Repo-Doku-Regeln fuer Entwicklungsdokumentation

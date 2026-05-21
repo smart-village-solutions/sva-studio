@@ -40,7 +40,6 @@ Das System SHALL die Einfuehrung von Formular- und Test-Foundations ueber gemein
 - **WHEN** gemeinsame Formularadapter fuer `Input`, `Textarea`, `Select` und `Checkbox` bereitgestellt werden
 - **THEN** nutzen `Input`, `Textarea` und native `Checkbox`-Anbindungen standardmaessig `register`
 - **AND** nutzen `Select` sowie kontrollierte Komponenten mit abweichendem Value-/Event-Modell einen dokumentierten `Controller`-Pfad
-- **AND** gelten Abweichungen davon als begruendungspflichtige Spezialfaelle
 
 #### Scenario: HTTP-Teststandard wird eingefuehrt
 
@@ -62,20 +61,18 @@ Das System SHALL fuer Frontend-Unit- und Integrations-Tests, die HTTP-Verhalten 
 #### Scenario: Bestehender Test nutzt noch direkten Fetch-Stub
 
 - **WHEN** ein bestehender HTTP-naher Frontend-Test noch direkte `fetch`- oder Wrapper-Stubs nutzt
-- **THEN** wird er spaetestens bei grundlegendem Umbau oder in einem definierten Referenzblock auf `msw` migriert
-- **AND** muss nicht allein aus kosmetischen Gruenden sofort umgestellt werden
+- **THEN** bleibt das gemeinsame `msw`-Setup der vorgesehene Foundation-Pfad fuer kuenftige Umstellungen dieser Tests
 
 #### Scenario: Rein lokale Logik bleibt bei Modul-Mocks
 
 - **WHEN** ein Test ausschliesslich lokale Fachlogik ohne HTTP-Verhalten prueft
-- **THEN** sind Modul-Mocks oder andere passende Testdoubles weiterhin zulaessig
-- **AND** wird `msw` nicht fuer Faelle erzwungen, in denen kein beobachtbarer Netzpfad existiert
+- **THEN** liegt dieser Testfall ausserhalb des HTTP-nahen Foundation-Pfads
+- **AND** bleibt die Abgrenzung zwischen HTTP-nahen und rein lokalen Tests technisch nachvollziehbar
 
 #### Scenario: MSW ersetzt keinen echten E2E- oder Infra-Lauf
 
 - **WHEN** die Teststrategie fuer einen Flow bewertet wird
-- **THEN** gilt `msw` als Ersatz fuer HTTP-nahe Unit- oder Integrations-Mocks
-- **AND** ersetzt nicht die bestehenden Live-E2E- oder Infra-Readiness-Anforderungen
+- **THEN** deckt `msw` den HTTP-nahen Unit- oder Integrations-Layer unterhalb echter E2E- oder Infra-Laeufe ab
 - **AND** bleibt die Abgrenzung zu echten Service-Stacks dokumentiert
 
 ### Requirement: Property-based Testing ist Teil der Foundation fuer kritische Kernlogik
@@ -85,14 +82,13 @@ Das System SHALL fuer kritische, framework-agnostische Kernlogik gezielt Propert
 #### Scenario: Kritischer Guard oder Normalisierer wird geaendert
 
 - **WHEN** Guard-, Parser-, Routing-, Normalisierungs- oder aehnliche Kernlogik in kritischen Hotspots geaendert oder neu eingefuehrt wird
-- **THEN** prueft die Teststrategie, ob Invarianten oder Randfallraeume mit `fast-check` abgesichert werden muessen
-- **AND** werden beispielbasierte Tests bei hohem Kombinationsraum durch mindestens eine passende Property ergaenzt
+- **THEN** bildet `fast-check` den vorgesehenen Foundation-Pfad fuer Invarianten und grosse Eingaberaeume
+- **AND** ergaenzt dieser Pfad beispielbasierte Tests fuer solche Hotspots
 
 #### Scenario: Reiner UI-Baustein ohne hohe Eingabevielfalt
 
 - **WHEN** ein Testgegenstand hauptsaechlich aus praesentationsnaher UI ohne kritische Eingabeinvarianten besteht
-- **THEN** ist `fast-check` nicht verpflichtend
-- **AND** bleibt der gezielte Einsatz auf risikoreiche Kernlogik fokussiert
+- **THEN** liegt dieser Testgegenstand ausserhalb des kritischen Kernlogik-Scope der `fast-check`-Foundation
 
 ### Requirement: Initiale `fast-check`-Hotspot-Liste ist Teil der Foundation-Einfuehrung
 

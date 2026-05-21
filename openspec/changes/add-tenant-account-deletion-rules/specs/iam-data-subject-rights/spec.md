@@ -2,13 +2,14 @@
 
 ### Requirement: Tenantbezogener Inaktivitäts-Lebenszyklus ergänzt das Recht auf Löschung
 
-Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebenszyklus bereitstellen, der die Stufen `active`, `deactivated`, `pseudonymized` und `deleted` verwendet. Der Lebenszyklus gilt nur im Tenant-Scope, leitet Inaktivität in V1 ausschließlich aus Login-Events der betroffenen `instanceId` ab und endet in einem finalen Tombstone-Soft-Delete statt in einer physischen Löschung.
+Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebenszyklus bereitstellen, der die Stufen `active`, `deactivated`, `pseudonymized` und `deleted` verwendet. Der Lebenszyklus gilt nur im Tenant-Scope, leitet Inaktivität in V1 ausschließlich aus erfolgreichen Login-Events der betroffenen `instanceId` ab und endet in einem finalen Tombstone-Soft-Delete statt in einer physischen Löschung.
 
 #### Scenario: Inaktivität wird aus dem letzten Login bestimmt
 
 - **WHEN** das System prüft, ob ein Tenant-Account die konfigurierten Löschregeln erreicht hat
-- **THEN** verwendet es in V1 ausschließlich `MAX(iam.activity_logs.created_at)` für `event_type = 'login'` innerhalb der betroffenen `instanceId` als Referenzzeitpunkt
+- **THEN** verwendet es in V1 ausschließlich `MAX(iam.activity_logs.created_at)` für erfolgreiche `event_type = 'login'`-Events mit `result = 'success'` innerhalb der betroffenen `instanceId` als Referenzzeitpunkt
 - **AND** behandelt es diesen Wert nicht als globales Cross-Tenant-Inaktivitätssignal
+- **AND** halten fehlgeschlagene Login-Versuche diesen Referenzzeitpunkt nicht künstlich frisch
 - **AND** sind Accounts ohne Login-Event in V1 nicht für den automatischen Inaktivitäts-Lifecycle qualifiziert
 - **AND** sind Accounts ohne Login-Event auch durch manuelle Läufe dieses Deletion-Rules-Mechanismus nicht für Lifecycle-Übergänge qualifiziert
 - **AND** gilt ein Schwellwert `N` als erreicht, sobald `last_login_at + N * 24h <= now()`
@@ -16,7 +17,7 @@ Das System SHALL für Tenant-Accounts einen regelbasierten Inaktivitäts-Lebensz
 
 #### Scenario: Accounts ohne Login-Event bleiben außerhalb dieses V1-Lifecycles
 
-- **WHEN** ein Tenant-Account in `iam.activity_logs` kein `login`-Event für die aktive `instanceId` besitzt
+- **WHEN** ein Tenant-Account in `iam.activity_logs` kein erfolgreiches `login`-Event für die aktive `instanceId` besitzt
 - **THEN** verarbeitet das System den Account weder in geplanten noch in manuellen Läufen dieses Deletion-Rules-Mechanismus
 - **AND** bleibt die Behandlung dieses Accounts außerhalb des V1-Inaktivitäts-Lifecycles
 - **AND** erfordert sie separate manuelle Account-Administration
@@ -58,7 +59,8 @@ Das System SHALL für den Lösch-Lebenszyklus eine tenantweite Default-Inhaltsst
 - **WHEN** das System die Inhaltsstrategie eines Accounts im Scope `iam.contents` auswertet
 - **THEN** bedeutet `beibehalten`, dass Inhalte über alle Account-Zustandswechsel unverändert bleiben
 - **AND** bedeutet `mit Eigentümer-Lifecycle mitbehandeln`, dass Inhalte die jeweils erreichte Owner-Stufe spiegeln
-- **AND** führt ein Owner-Übergang nach `deactivated` zu einem deaktivierten oder unsichtbaren Content-Zustand
+- **AND** führt ein Owner-Übergang nach `deactivated` mindestens zu einem referenzwahrenden Content-Lifecycle-Zustand `deactivated`
+- **AND** kann die fachliche Auswirkung dieses Zustands in V1 je nach konsumierender Oberfläche als deaktiviert oder ausgeblendet interpretiert werden, ohne dass `iam.contents` physisch gelöscht wird
 - **AND** führt ein Owner-Übergang nach `pseudonymized` zu einem referenzwahrenden pseudonymisierten Content-Zustand, in dem owner-/author-facing Ownership- und Display-Name-Felder durch ein stabiles pseudonymisiertes Label ersetzt werden
 - **AND** führt ein Owner-Übergang nach `deleted` zu einem referenzwahrenden Deleted-Tombstone-Zustand, in dem owner-/author-facing Ownership- und Display-Name-Felder durch ein Deleted-Label ersetzt werden
 - **AND** sind das pseudonymisierte Label und das Deleted-Label pro Locale über alle betroffenen Entitäten stabil und nicht pro Account oder Inhalt individuell abgeleitet

@@ -18,10 +18,11 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
 
 ## Decisions
 
-- Decision: Inaktivität wird in V1 ausschließlich aus Login-Events abgeleitet.
+- Decision: Inaktivität wird in V1 ausschließlich aus erfolgreichen Login-Events abgeleitet.
   - Rationale: Das nutzt den bereits in den bestehenden IAM-Read-Models etablierten Login-Zeitpunkt und vermeidet ein neues Aktivitäts-Tracking-System.
-  - Kanonische Quelle: V1 verwendet für Online- und Offline-Auswertung `MAX(iam.activity_logs.created_at WHERE event_type = 'login')` pro Tenant-Account der betroffenen `instanceId`.
+  - Kanonische Quelle: V1 verwendet für Online- und Offline-Auswertung `MAX(iam.activity_logs.created_at WHERE event_type = 'login' AND result = 'success')` pro Tenant-Account der betroffenen `instanceId`.
   - Tenant-Scope: Dieser Wert wird nicht als globales Cross-Tenant-Inaktivitätssignal interpretiert.
+  - Fehlversuche: Fehlgeschlagene Login-Versuche halten den fachlichen Aktivitätszeitpunkt nicht frisch und dürfen den Lifecycle daher nicht verzögern.
   - Persistierter Fallback: `iam.accounts.last_login_at` darf im Schema vorhanden sein, wird in V1 aber nicht zur führenden fachlichen Wahrheit gemacht.
   - Null-Handling und Schwellwerte: Accounts ohne Login-Event sind in V1 nicht für den automatischen Inaktivitäts-Lifecycle qualifiziert. Ein Schwellwert `N` gilt als erreicht, sobald `last_login_at + N * 24h <= now()`.
   - Manuelle Läufe: Accounts ohne Login-Event werden auch durch manuelle Läufe dieses Deletion-Rules-Mechanismus nicht verarbeitet; ihre Behandlung bleibt außerhalb dieses V1-Features und erfolgt über separate manuelle Account-Administration.
@@ -48,7 +49,8 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
 - Decision: Die Inhaltsbehandlung in V1 beschränkt sich auf `iam.contents`, mit tenantweitem Default und per-Account-Override.
   - Rationale: Das reduziert Komplexität und schafft dennoch eine klare Nutzerentscheidung für die einzige unterstützte Inhaltsdomäne.
   - Normative V1-Strategiemenge: `beibehalten`, `mit Eigentümer-Lifecycle mitbehandeln`
-  - Strategiebedeutung in V1: `beibehalten` lässt Inhalte über alle Account-Zustandswechsel unverändert und koppelt sie nie an den Lifecycle. `mit Eigentümer-Lifecycle mitbehandeln` spiegelt die jeweils erreichte Account-Stufe auf `iam.contents`: `deactivated` macht Inhalte unsichtbar/deaktiviert, `pseudonymized` erhält Inhalte referenzwahrend und ersetzt owner-/author-facing Felder durch ein stabiles Pseudonym-Label, `deleted` markiert Inhalte referenzwahrend als gelöscht und ersetzt owner-/author-facing Felder durch ein Deleted-Label.
+  - Strategiebedeutung in V1: `beibehalten` lässt Inhalte über alle Account-Zustandswechsel unverändert und koppelt sie nie an den Lifecycle. `mit Eigentümer-Lifecycle mitbehandeln` spiegelt die jeweils erreichte Account-Stufe auf `iam.contents`: `deactivated` setzt mindestens den referenzwahrenden Content-Lifecycle-Zustand `deactivated`, `pseudonymized` erhält Inhalte referenzwahrend und ersetzt owner-/author-facing Felder durch ein stabiles Pseudonym-Label, `deleted` markiert Inhalte referenzwahrend als gelöscht und ersetzt owner-/author-facing Felder durch ein Deleted-Label.
+  - Sichtbarkeit: Ob `deactivated`-Inhalte in einer konkreten Oberfläche ausgeblendet oder nur als deaktiviert dargestellt werden, bleibt eine nachgelagerte Interpretationsfrage der konsumierenden Read-Models/UI und ist in V1 keine physische Löschwirkung.
   - Labelstabilität: Die ersetzenden Lifecycle-Labels für owner-/author-facing Ownership- und Display-Name-Felder sind pro Locale über alle betroffenen Entitäten stabil und nicht pro Account oder Inhalt individuell abgeleitet. Deutsche Standardbeispiele für diese stabilen Semantiken sind `Pseudonymisiert` und `Gelöscht`.
   - V1 löscht `iam.contents`-Zeilen niemals physisch.
   - Geerbte Baseline-Strategie ohne Tenant-Konfiguration: `beibehalten`
@@ -67,6 +69,7 @@ Das Studio besitzt bereits DSR-nahe Funktionen, Audit-Logging und ein tab-basier
   - Rationale: Tenantweite Läufe sollen operational erreichbar sein, ohne den Feature-Scope an eine neue UI-Steuerung zu koppeln.
   - Einstieg: `pnpm iam:account-deletion-rules:run`
   - Semantik: Der Lauf verwendet denselben tenantbezogenen Login-Zeitpunkt wie die Read-Models und bewegt einen Account pro Lauf höchstens um eine Stufe.
+  - Betriebsmodell: V1 enthält bewusst keinen impliziten Scheduler in diesem Change; die Lifecycle-Ausführung erfolgt nur über einen explizit eingerichteten operativen Trigger, Cronjob oder manuellen Run.
 
 ## Risks / Trade-offs
 

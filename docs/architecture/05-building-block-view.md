@@ -442,7 +442,7 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 
 ### Ergänzung 2026-05: Tenant-Löschregeln und Account-Lifecycle
 
-1. `packages/data/migrations/0042_iam_tenant_account_deletion_rules.sql`
+1. `packages/data/migrations/0043_iam_tenant_account_deletion_rules.sql`
    - Führt tenantbezogene Löschregeln, Self-Service-Inhaltspräferenzen sowie Lifecycle-Felder für Accounts und Contents ein.
 2. `packages/iam-governance/src/deletion-rules-read-models.*`
    - Leiten wirksame Tenant-Regeln und Self-Service-Overviews aus Baseline-Defaults, Tenant-Konfiguration und dem letzten `login`-Event aus `iam.activity_logs` ab.

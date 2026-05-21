@@ -2,8 +2,13 @@ import { parse as parseCookie } from 'cookie-es';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { createApiError } from './api-error.js';
-import { resolvePool, withResolvedInstanceDb } from './db.js';
 import { shouldEnforceLegalTextCompliance } from './middleware-compliance.js';
+import {
+  ensureAccountLifecycleAllowsAccess,
+  logComplianceDiagnosticsIfEnabled,
+  logProfileDiagnosticsIfEnabled,
+  logUnexpectedMiddlewareError,
+} from './middleware-guards.js';
 import { withLegalTextCompliance } from './legal-text-enforcement.js';
 import {
   resolveSessionUser as resolveRuntimeSessionUser,
@@ -13,7 +18,6 @@ import { resolveSessionUser as resolveStoredSessionUser } from './auth-server/se
 import { getAuthConfig } from './config.js';
 import { buildLogContext } from './log-context.js';
 import { createMockSessionUser, hasActiveMockAuthSession, isMockAuthEnabled } from './mock-auth.js';
-import { SessionStoreUnavailableError, SessionUserHydrationError } from './runtime-errors.js';
 import type { SessionUser } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
@@ -41,67 +45,6 @@ const readSessionId = (request: Request) => {
   const { sessionCookieName } = getAuthConfig();
   const cookies = parseCookie(request.headers.get('cookie') ?? '');
   return cookies[sessionCookieName];
-};
-
-const PROFILE_DIAGNOSTIC_PATHS = new Set(['/auth/me', '/api/v1/iam/users/me/profile']);
-
-const isProfileDiagnosticsEnabled = (): boolean => process.env.IAM_DEBUG_PROFILE_ERRORS === 'true';
-
-const shouldLogProfileDiagnostics = (request: Request): boolean => {
-  if (!isProfileDiagnosticsEnabled()) {
-    return false;
-  }
-
-  const pathname = new URL(request.url).pathname;
-  return PROFILE_DIAGNOSTIC_PATHS.has(pathname);
-};
-
-type AccountLifecycleRow = {
-  deletion_lifecycle_state: 'active' | 'deactivated' | 'pseudonymized' | 'deleted';
-};
-
-const ensureAccountLifecycleAllowsAccess = async (
-  request: Request,
-  user: SessionUser,
-  options?: { isLocalDevelopmentAuth?: boolean }
-): Promise<Response | null> => {
-  if (options?.isLocalDevelopmentAuth || !user.instanceId || !resolvePool()) {
-    return null;
-  }
-
-  const accountState = await withResolvedInstanceDb(resolvePool, user.instanceId, async (client) => {
-    const result = await client.query<AccountLifecycleRow>(
-      `
-SELECT a.deletion_lifecycle_state
-FROM iam.accounts a
-WHERE a.instance_id = $1
-  AND a.keycloak_subject = $2
-LIMIT 1;
-`,
-      [user.instanceId, user.id]
-    );
-
-    return result.rows[0]?.deletion_lifecycle_state;
-  });
-
-  if (!accountState || accountState === 'active') {
-    return null;
-  }
-
-  const logContext = buildLogContext(user.instanceId, { includeTraceId: true });
-  logger.warn('Auth middleware rejected request because the account lifecycle is blocked', {
-    endpoint: request.url,
-    operation: 'auth_middleware',
-    user_id: user.id,
-    lifecycle_state: accountState,
-    reason_code: 'account_lifecycle_blocked',
-    ...logContext,
-  });
-
-  return createApiError(403, 'forbidden', 'Dieses Konto ist nicht mehr aktiv.', logContext.request_id, {
-    lifecycle_state: accountState,
-    reason_code: 'account_lifecycle_blocked',
-  });
 };
 
 const createAuthenticatedContext = async (request: Request): Promise<SessionResolution> => {
@@ -200,24 +143,6 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
   };
 };
 
-const logProfileDiagnosticsIfEnabled = (request: Request, user: SessionUser): void => {
-  if (!shouldLogProfileDiagnostics(request)) {
-    return;
-  }
-
-  logger.info('Auth middleware resolved session user for self-service diagnostics', {
-    endpoint: request.url,
-    operation: 'auth_middleware',
-    auth_state: 'authenticated',
-    user_id: user.id,
-    session_id_present: true,
-    session_instance_id: user.instanceId ?? null,
-    session_roles: user.roles,
-    session_roles_count: user.roles.length,
-    ...buildLogContext(user.instanceId, { includeTraceId: true }),
-  });
-};
-
 const createProtectedHandler =
   (
     ctx: AuthenticatedRequestContext,
@@ -237,80 +162,10 @@ const runWithLegalTextComplianceIfRequired = async (
   }
 
   const requestUrl = new URL(request.url);
-  if (shouldLogProfileDiagnostics(request)) {
-    logger.info('Auth middleware enforcing legal text compliance for self-service request', {
-      endpoint: request.url,
-      operation: 'auth_middleware',
-      user_id: ctx.user.id,
-      session_instance_id: ctx.user.instanceId,
-      ...buildLogContext(ctx.user.instanceId, { includeTraceId: true }),
-    });
-  }
+  logComplianceDiagnosticsIfEnabled(request, ctx.user);
 
   return withLegalTextCompliance(ctx.user.instanceId, ctx.user.id, runHandler, {
     returnTo: `${requestUrl.pathname}${requestUrl.search}`,
-  });
-};
-
-const logUnexpectedMiddlewareError = (request: Request, error: unknown): Response => {
-  const logContext = buildLogContext(undefined, { includeTraceId: true });
-  if (error instanceof SessionStoreUnavailableError) {
-    logger.error('Auth middleware dependency failed', {
-      endpoint: request.url,
-      operation: 'auth_middleware',
-      dependency: 'redis',
-      dependency_operation: error.operation,
-      error_type: error.name,
-      error_message: error.message,
-      ...logContext,
-    });
-
-    return createApiError(
-      503,
-      'internal_error',
-      'Authentifizierung ist momentan nicht verfügbar, weil der Sitzungsspeicher nicht erreichbar ist.',
-      logContext.request_id,
-      {
-        dependency: 'redis',
-        reason_code: 'session_store_unavailable',
-      }
-    );
-  }
-
-  if (error instanceof SessionUserHydrationError) {
-    logger.warn(
-      'Auth middleware rejected request because the session user is missing required tenant context',
-      {
-        endpoint: request.url,
-        operation: 'auth_middleware',
-        reason_code: 'missing_session_instance_id',
-        request_host: error.requestHost,
-        ...logContext,
-      }
-    );
-
-    return createApiError(
-      401,
-      'unauthorized',
-      'Die Sitzung enthält keinen gültigen Instanzkontext.',
-      logContext.request_id,
-      {
-        reason_code: 'missing_session_instance_id',
-        request_host: error.requestHost,
-      }
-    );
-  }
-
-  logger.error('Auth middleware failed unexpectedly', {
-    endpoint: request.url,
-    operation: 'auth_middleware',
-    error_type: error instanceof Error ? error.constructor.name : typeof error,
-    error_message: error instanceof Error ? error.message : String(error),
-    ...logContext,
-  });
-
-  return createApiError(500, 'internal_error', 'Authentifizierungsfehler.', logContext.request_id, {
-    reason_code: 'auth_resolution_failed',
   });
 };
 

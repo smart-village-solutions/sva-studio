@@ -39,7 +39,7 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0042_iam_tenant_account_deletion_rules.sql`
+- Repo-Migrationen vorhanden bis: `0043_iam_tenant_account_deletion_rules.sql`
 
 Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0042`:
 
@@ -61,7 +61,7 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält explizit die Repo-Migrationen bis `0042_iam_tenant_account_deletion_rules.sql`
+- Enthält explizit die Repo-Migrationen bis `0043_iam_tenant_account_deletion_rules.sql`
 - Aktueller Soll-Stand: **53 Tabellen**, davon **52 im Schema `iam`**
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.

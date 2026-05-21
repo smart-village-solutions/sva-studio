@@ -224,7 +224,6 @@ export const resolveAuthHandlers = (path: string): AuthHandlers => {
   if (!isAuthRoutePath(path)) {
     throw new Error(`Unknown auth route path: ${path}`);
   }
-
   return authHandlerMap[path];
 };
 
@@ -238,24 +237,19 @@ export const dispatchAuthRouteRequest = (request: Request): Promise<Response | n
     suppressMethodNotAllowedLogging: (path) => healthCheckRoutes.has(path),
   });
 
-const createAuthServerRouteFactory = (path: AuthRoutePath) => {
-  return (rootRoute: RootRoute) => {
-    const routeOptions = {
+const createAuthServerRouteFactory =
+  (path: AuthRoutePath) =>
+  (rootRoute: RootRoute) =>
+    createRoute({
       getParentRoute: () => rootRoute,
       path,
       component: () => null,
       server: {
         handlers: wrapHandlersWithJsonErrorBoundary(resolveAuthHandlers(path), path),
       },
-    };
+    } as unknown as CreateRouteOptions);
 
-    return createRoute(routeOptions as unknown as CreateRouteOptions);
-  };
-};
-
-export const authServerRouteFactories = authRoutePaths.map((path) =>
-  createAuthServerRouteFactory(path)
-);
+export const authServerRouteFactories = authRoutePaths.map(createAuthServerRouteFactory);
 
 export { wrapHandlersWithJsonErrorBoundary };
 export { authRoutePaths } from './auth.routes.js';

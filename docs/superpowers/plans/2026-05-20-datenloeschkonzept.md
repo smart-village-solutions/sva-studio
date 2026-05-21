@@ -24,7 +24,7 @@
 
 ### Database / Seeds / Schema Docs
 
-- Create: `packages/data/migrations/0042_iam_tenant_account_deletion_rules.sql`
+- Create: `packages/data/migrations/0043_iam_tenant_account_deletion_rules.sql`
 - Create: `packages/data/seeds/0003_iam_deletion_rules_defaults.sql`
 - Modify: `packages/data/src/iam/seed-plan.ts`
 - Modify: `packages/data/src/iam/seed-plan.vitest.test.ts`
@@ -153,7 +153,7 @@ git commit -m "spec: add tenant account deletion rules"
 ## Task 2: Add the database model, lifecycle columns, and seeds
 
 **Files:**
-- Create: `packages/data/migrations/0042_iam_tenant_account_deletion_rules.sql`
+- Create: `packages/data/migrations/0043_iam_tenant_account_deletion_rules.sql`
 - Create: `packages/data/seeds/0003_iam_deletion_rules_defaults.sql`
 - Modify: `packages/data/src/iam/seed-plan.ts`
 - Modify: `packages/data/src/iam/seed-plan.vitest.test.ts`
@@ -262,7 +262,7 @@ Expected: migration validation passes, seed smoke test passes, targeted tests PA
 - [ ] **Step 6: Commit the schema and seed slice**
 
 ```bash
-git add packages/data/migrations/0042_iam_tenant_account_deletion_rules.sql \
+git add packages/data/migrations/0043_iam_tenant_account_deletion_rules.sql \
   packages/data/seeds/0003_iam_deletion_rules_defaults.sql \
   packages/data/src/iam/seed-plan.ts \
   packages/data/src/iam/seed-plan.vitest.test.ts \
@@ -785,4 +785,3 @@ git commit -m "docs: document tenant deletion rules rollout"
 - Anzeige im Bereich `Mein Konto`: covered in Task 5
 - Seeds for defaults: covered in Task 2
 - IAM DB schema source of truth and docs updates: covered in Task 2 and Task 6
-

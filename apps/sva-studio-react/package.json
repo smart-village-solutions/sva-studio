@@ -39,6 +39,7 @@
     "@tanstack/react-router": "^1.168.24",
     "@tanstack/react-router-devtools": "^1.166.13",
     "@tanstack/react-start": "^1.167.49",
+    "@hookform/resolvers": "^3.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "jiti": "^2.6.1",
@@ -48,6 +49,7 @@
     "postcss": "^8.5.11",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-hook-form": "^7.76.0",
     "tailwind-merge": "^3.5.0",
     "xlsx": "^0.18.5"
   },

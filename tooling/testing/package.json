@@ -1,0 +1,8 @@
+{
+  "name": "tooling-testing",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "msw": "^2.14.6"
+  }
+}

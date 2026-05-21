@@ -143,6 +143,7 @@ describe('ContentEditorPage', () => {
       expect(screen.getByRole('alert').textContent).toContain('Die Payload muss gültiges JSON sein.');
     });
 
+    expect(document.activeElement).toBe(screen.getByLabelText('Payload (JSON)'));
     expect(screen.getByLabelText('Payload (JSON)').getAttribute('aria-invalid')).toBe('true');
 
     fireEvent.change(screen.getByLabelText('Payload (JSON)'), {
@@ -252,6 +253,7 @@ describe('ContentEditorPage', () => {
       );
     });
 
+    expect(document.activeElement).toBe(screen.getByLabelText('Veröffentlichungsdatum'));
     expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('aria-invalid')).toBe('true');
 
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), {
@@ -310,6 +312,8 @@ describe('ContentEditorPage', () => {
         'Bitte geben Sie ein gültiges Veröffentlichungsdatum in der Fachzeitzone Europe/Berlin ein.'
       );
     });
+
+    expect(document.activeElement).toBe(screen.getByLabelText('Veröffentlichungsdatum'));
   });
 
   it('renders edit errors and hides the form when no content is available', async () => {

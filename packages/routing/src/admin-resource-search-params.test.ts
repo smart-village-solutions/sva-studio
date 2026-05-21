@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
 import { normalizeAdminResourceListSearch } from './admin-resource-search-params.js';
@@ -52,7 +53,77 @@ const resource = {
   },
 } as const satisfies AdminResourceDefinition;
 
+const arbitraryQueryValue = fc.oneof(
+  fc.string(),
+  fc.integer(),
+  fc.boolean(),
+  fc.constant(null),
+  fc.constant(undefined)
+);
+
+const encodeCanonicalSearch = (
+  normalized: ReturnType<typeof normalizeAdminResourceListSearch>
+): Record<string, unknown> => {
+  const search: Record<string, unknown> = {};
+
+  if (normalized.search !== undefined) {
+    search.q = normalized.search;
+  }
+
+  const status = normalized.filters.status;
+  if (status !== undefined) {
+    search.status = status;
+  }
+
+  if (normalized.sort) {
+    search.sort =
+      normalized.sort.direction === 'desc' ? `-${normalized.sort.field}` : normalized.sort.field;
+  }
+
+  if (normalized.page !== undefined) {
+    search.page = String(normalized.page);
+  }
+
+  if (normalized.pageSize !== undefined) {
+    search.pageSize = String(normalized.pageSize);
+  }
+
+  return search;
+};
+
 describe('admin resource search parameter normalization', () => {
+  it('roundtrips arbitrary query input through the canonical list-search encoding', () => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          q: arbitraryQueryValue,
+          status: arbitraryQueryValue,
+          sort: arbitraryQueryValue,
+          page: arbitraryQueryValue,
+          pageSize: arbitraryQueryValue,
+          ignored: arbitraryQueryValue,
+        }),
+        (search) => {
+          const normalized = normalizeAdminResourceListSearch(resource, search);
+          const canonicalSearch = encodeCanonicalSearch(normalized);
+
+          expect(normalized.search?.trim()).toBe(normalized.search);
+          expect(normalized.search === undefined || normalized.search.length > 0).toBe(true);
+          expect(['draft', 'published']).toContain(normalized.filters.status);
+          expect(normalized.sort).toEqual(
+            expect.objectContaining({
+              field: expect.stringMatching(/^(title|updatedAt)$/),
+              direction: expect.stringMatching(/^(asc|desc)$/),
+            })
+          );
+          expect(normalized.page).toBeGreaterThanOrEqual(1);
+          expect([10, 25, 50]).toContain(normalized.pageSize);
+          expect(normalizeAdminResourceListSearch(resource, canonicalSearch)).toEqual(normalized);
+        }
+      )
+    );
+  });
+
   it('normalizes declared list search, filters, sorting and pagination', () => {
     expect(
       normalizeAdminResourceListSearch(resource, {

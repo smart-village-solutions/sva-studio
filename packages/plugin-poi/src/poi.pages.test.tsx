@@ -2,11 +2,13 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PoiCreatePage } from './poi.pages.js';
+import { PoiCreatePage, PoiEditPage } from './poi.pages.js';
 
 const navigateMock = vi.hoisted(() => vi.fn());
 const createPoiMock = vi.hoisted(() => vi.fn());
+const getPoiMock = vi.hoisted(() => vi.fn());
 const listHostMediaAssetsMock = vi.hoisted(() => vi.fn());
+const paramsMock = vi.hoisted(() => vi.fn(() => ({})));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { readonly to: string }) => (
@@ -15,7 +17,7 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
   useNavigate: () => navigateMock,
-  useParams: () => ({}),
+  useParams: () => paramsMock(),
   useSearch: () => ({}),
 }));
 
@@ -39,7 +41,7 @@ vi.mock('./plugin.js', () => ({
 vi.mock('./poi.api.js', () => ({
   PoiApiError: class PoiApiError extends Error {},
   listPoi: vi.fn(),
-  getPoi: vi.fn(),
+  getPoi: getPoiMock,
   createPoi: createPoiMock,
   updatePoi: vi.fn(),
   deletePoi: vi.fn(),
@@ -49,7 +51,10 @@ describe('PoiCreatePage', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     createPoiMock.mockReset();
+    getPoiMock.mockReset();
     listHostMediaAssetsMock.mockReset();
+    paramsMock.mockReset();
+    paramsMock.mockReturnValue({});
     listHostMediaAssetsMock.mockResolvedValue([]);
   });
 
@@ -147,6 +152,19 @@ describe('PoiCreatePage', () => {
         })
       );
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/poi/$id', params: { id: 'poi-1' } });
+    });
+  });
+
+  it('shows the translated missing-content fallback when loading an edit form fails generically', async () => {
+    paramsMock.mockReturnValue({ id: 'poi-404' });
+    getPoiMock.mockRejectedValue(new Error('network down'));
+
+    render(<PoiEditPage />);
+
+    expect(screen.getByText('messages.loading')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(screen.getByText('messages.missingContent')).toBeTruthy();
     });
   });
 });

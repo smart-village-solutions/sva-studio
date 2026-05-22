@@ -134,6 +134,50 @@ describe('createWasteMasterDataLocationSubmissions', () => {
     expect(state.setLastOutcome).toHaveBeenCalledWith('location-create-success');
   });
 
+  it('uses RHF-submitted collection-location values as the real create source instead of stale state form data', async () => {
+    const state = createState();
+    state.locationForm = {
+      id: 'location-1',
+      regionId: 'stale-region',
+      cityId: 'stale-city',
+      streetId: 'stale-street',
+      houseNumberId: 'stale-house',
+      active: false,
+    };
+    const loadOverview = vi.fn(async () => undefined);
+    const handlers = createWasteMasterDataLocationSubmissions({
+      state,
+      pt: (key: string) => key,
+      search: {
+        ...createSearch(),
+        locationsView: 'create',
+      },
+      loadOverview,
+      selectedCollectionLocationIds: [],
+    });
+
+    await handlers.onSubmitLocation(
+      {
+        id: 'location-1',
+        regionId: 'region-2',
+        cityId: 'city-2',
+        streetId: 'street-2',
+        houseNumberId: 'house-2',
+        active: true,
+      },
+      'create'
+    );
+
+    expect(createWasteManagementCollectionLocationMock).toHaveBeenCalledWith({
+      id: 'location-1',
+      regionId: 'region-2',
+      cityId: 'city-2',
+      streetId: 'street-2',
+      houseNumberId: 'house-2',
+      active: true,
+    });
+  });
+
   it('maps delete branches for single and bulk deletions', async () => {
     const state = createState();
     const loadOverview = vi.fn(async () => undefined);

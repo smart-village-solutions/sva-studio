@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteMasterDataLocationFormContent } from '../src/waste-management.master-data-location-form-content.js';
@@ -133,9 +133,9 @@ describe('WasteMasterDataLocationFormContent', () => {
     cleanup();
   });
 
-  it('keeps the location form on the RHF path while cascading dependent selections', () => {
+  it('submits RHF-backed location values instead of a DOM event while cascading dependent selections', async () => {
     const onChange = vi.fn();
-    const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault());
+    const onSubmit = vi.fn();
 
     render(
       <WasteMasterDataLocationFormContent
@@ -183,12 +183,60 @@ describe('WasteMasterDataLocationFormContent', () => {
       houseNumberId: '',
     });
 
+    fireEvent.change(screen.getByLabelText('city'), {
+      target: { value: 'city-2' },
+    });
+
     fireEvent.click(screen.getAllByRole('button', { name: 'masterData.collectionLocations.actions.save' })[0] as HTMLButtonElement);
 
-    expect(onSubmit).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(onSubmit).toHaveBeenCalledWith({
+        id: 'location-1',
+        regionId: 'region-2',
+        cityId: 'city-2',
+        streetId: '',
+        houseNumberId: '',
+        active: true,
+      });
+    });
     expect((screen.getByLabelText('region') as HTMLSelectElement).value).toBe('region-2');
-    expect((screen.getByLabelText('city') as HTMLSelectElement).value).toBe('');
+    expect((screen.getByLabelText('city') as HTMLSelectElement).value).toBe('city-2');
     expect((screen.getByLabelText('street') as HTMLSelectElement).value).toBe('');
     expect((screen.getByLabelText('house-number') as HTMLSelectElement).value).toBe('');
+  });
+
+  it('blocks submit when the RHF location contract is still missing a city', () => {
+    const onSubmit = vi.fn();
+
+    render(
+      <WasteMasterDataLocationFormContent
+        mode="create"
+        form={{
+          id: 'location-2',
+          regionId: 'region-1',
+          cityId: '',
+          streetId: '',
+          houseNumberId: '',
+          active: true,
+        }}
+        regions={[{ id: 'region-1', name: 'Nord' }] as never}
+        cities={[{ id: 'city-1', name: 'Altstadt', regionId: 'region-1' }] as never}
+        streets={[] as never}
+        houseNumbers={[] as never}
+        fractions={[] as never}
+        availableTours={[] as never}
+        locationTourLinks={[] as never}
+        saving={false}
+        onChange={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+        onReloadAssignments={vi.fn(async () => undefined)}
+      />
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'masterData.collectionLocations.actions.create' })[0] as HTMLButtonElement);
+
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

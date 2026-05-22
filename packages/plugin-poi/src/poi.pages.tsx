@@ -1,5 +1,5 @@
 import React from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, type FieldErrors, type Resolver } from 'react-hook-form';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import {
   findHostMediaReferenceAssetId,
@@ -55,6 +55,11 @@ type PoiEditorFormValues = Readonly<{
   payloadText: string;
   teaserImageAssetId: string;
 }>;
+
+const createResolverError = (message: string) => ({
+  type: 'validate',
+  message,
+});
 
 const defaultForm = (): PoiFormInput => ({
   name: '',
@@ -137,6 +142,39 @@ const editorValuesToForm = (values: PoiEditorFormValues, payload: Record<string,
 
 const collectSummaryErrors = (fields: readonly ReturnType<typeof getStudioFormFieldProps>[]): readonly StudioFormFieldError[] =>
   fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
+
+const parsePayloadText = (payloadText: string): Record<string, unknown> | null => {
+  try {
+    const parsed = JSON.parse(payloadText) as unknown;
+    return parsed !== null && typeof parsed === 'object' && Array.isArray(parsed) === false
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const poiEditorResolver: Resolver<PoiEditorFormValues> = async (values) => {
+  const errors: FieldErrors<PoiEditorFormValues> = {
+    ...(parsePayloadText(values.payloadText) ? {} : { payloadText: createResolverError('validation.payload') }),
+  };
+  const payload = parsePayloadText(values.payloadText);
+
+  const compacted = compactForm(editorValuesToForm(values, payload ?? {}));
+  const validationErrors = validatePoiForm(compacted);
+
+  const resolvedErrors: FieldErrors<PoiEditorFormValues> = {
+    ...errors,
+    ...(validationErrors.includes('name') ? { name: createResolverError('validation.name') } : {}),
+    ...(validationErrors.includes('categoryName') ? { categoryName: createResolverError('validation.categoryName') } : {}),
+    ...(validationErrors.includes('webUrls') ? { url: createResolverError('validation.webUrls') } : {}),
+  };
+
+  return {
+    values: Object.keys(resolvedErrors).length === 0 ? values : {},
+    errors: resolvedErrors,
+  };
+};
 
 const compactForm = (form: PoiFormInput): PoiFormInput => ({
   name: form.name.trim(),
@@ -339,6 +377,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     setValue,
   } = useForm<PoiEditorFormValues>({
     defaultValues: defaultEditorForm(),
+    resolver: poiEditorResolver,
     reValidateMode: 'onChange',
   });
   const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
@@ -413,40 +452,13 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   });
   const summaryErrors = collectSummaryErrors([nameField, categoryField, urlField, payloadField]);
 
-  const parsePayload = (payloadText: string) => {
-    try {
-      const parsed = JSON.parse(payloadText) as unknown;
-      if (parsed !== null && typeof parsed === 'object' && Array.isArray(parsed) === false) {
-        return parsed as Record<string, unknown>;
-      }
-    } catch {
-      // handled below
-    }
-    return null;
-  };
-
   const submit = handleSubmit(async (values) => {
-    clearErrors();
     setStatus(null);
-    const payload = parsePayload(values.payloadText);
+    const payload = parsePayloadText(values.payloadText);
     if (!payload) {
-      setError('payloadText', { type: 'validate', message: pt('validation.payload') }, { shouldFocus: true });
       return;
     }
     const compacted = compactForm(editorValuesToForm(values, payload));
-    const validationErrors = validatePoiForm(compacted);
-    if (validationErrors.length > 0) {
-      if (validationErrors.includes('name')) {
-        setError('name', { type: 'validate', message: pt('validation.name') }, { shouldFocus: true });
-      }
-      if (validationErrors.includes('categoryName')) {
-        setError('categoryName', { type: 'validate', message: pt('validation.categoryName') });
-      }
-      if (validationErrors.includes('webUrls')) {
-        setError('url', { type: 'validate', message: pt('validation.webUrls') });
-      }
-      return;
-    }
     try {
       const saved = mode === 'create' ? await createPoi(compacted) : await updatePoi(contentId as string, compacted);
       const mediaReferences = values.teaserImageAssetId
@@ -524,9 +536,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
           <StudioField {...categoryField} label={pt('fields.categoryName')}>
             <Input
               {...categoryField.controlProps}
-              {...register('categoryName', {
-                onChange: () => clearErrors('categoryName'),
-              })}
+              {...register('categoryName')}
             />
           </StudioField>
         </StudioFieldGroup>
@@ -579,9 +589,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
           <StudioField {...urlField} label={pt('fields.url')}>
             <Input
               {...urlField.controlProps}
-              {...register('url', {
-                onChange: () => clearErrors('url'),
-              })}
+              {...register('url')}
             />
           </StudioField>
         </StudioFieldGroup>
@@ -596,9 +604,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
         <StudioField {...payloadField} label={pt('fields.payload')}>
           <Textarea
             {...payloadField.controlProps}
-            {...register('payloadText', {
-              onChange: () => clearErrors('payloadText'),
-            })}
+              {...register('payloadText')}
             rows={6}
           />
         </StudioField>

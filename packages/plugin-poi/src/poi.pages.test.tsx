@@ -82,6 +82,29 @@ describe('PoiCreatePage', () => {
     expect(createPoiMock).not.toHaveBeenCalled();
   });
 
+  it('surfaces category validation through the resolver when other fields are already valid', async () => {
+    render(<PoiCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('fields.name'), {
+      target: { value: 'Valid POI' },
+    });
+    fireEvent.change(screen.getByLabelText('fields.url'), {
+      target: { value: 'https://example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('fields.categoryName'), {
+      target: { value: 'x'.repeat(129) },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'actions.create' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain('validation.categoryName');
+    });
+
+    expect(screen.getByLabelText('fields.categoryName').getAttribute('aria-invalid')).toBe('true');
+    expect(createPoiMock).not.toHaveBeenCalled();
+  });
+
   it('blocks invalid JSON payloads and submits compacted data after correction', async () => {
     createPoiMock.mockResolvedValue({
       id: 'poi-1',

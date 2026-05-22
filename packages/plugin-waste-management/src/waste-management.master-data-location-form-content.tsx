@@ -1,5 +1,5 @@
-import React, { type FormEvent, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useMemo } from 'react';
+import { useForm, type FieldErrors, type Resolver } from 'react-hook-form';
 
 import type {
   WasteCityRecord,
@@ -33,10 +33,26 @@ type WasteMasterDataLocationFormContentProps = {
   readonly saving: boolean;
   readonly onChange: (patch: Partial<CollectionLocationFormState>) => void;
   readonly onCancel: () => void;
-  readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  readonly onSubmit: (values: CollectionLocationFormState) => void | Promise<void>;
   readonly onReloadAssignments: () => Promise<void>;
 };
 
+const locationFormResolver: Resolver<CollectionLocationFormState> = async (values) => {
+  const errors: FieldErrors<CollectionLocationFormState> =
+    values.cityId.trim().length === 0
+      ? {
+          cityId: {
+            type: 'required',
+            message: 'masterData.collectionLocations.fields.cityId',
+          },
+        }
+      : {};
+
+  return {
+    values: Object.keys(errors).length === 0 ? values : {},
+    errors,
+  };
+};
 
 export const WasteMasterDataLocationFormContent = ({
   mode,
@@ -57,6 +73,7 @@ export const WasteMasterDataLocationFormContent = ({
   const pt = usePluginTranslation('wasteManagement');
   const { handleSubmit, register, reset, setValue, watch } = useForm<CollectionLocationFormState>({
     defaultValues: form,
+    resolver: locationFormResolver,
   });
 
   React.useEffect(() => {
@@ -86,10 +103,9 @@ export const WasteMasterDataLocationFormContent = ({
     }
     onChange(patch);
   };
-  const submitForm = (event: FormEvent<HTMLFormElement>) => {
-    void handleSubmit(() => undefined)(event);
-    void onSubmit(event);
-  };
+  const submitForm = handleSubmit(async (values) => {
+    await onSubmit(values);
+  });
 
   const saveLabel = saving
     ? pt('masterData.collectionLocations.actions.saving')

@@ -1,6 +1,8 @@
 import type { WasteCityRecord, WasteHouseNumberRecord, WasteRegionRecord, WasteStreetRecord, WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import React from 'react';
+import { useForm, type Resolver } from 'react-hook-form';
 import type { FormEvent } from 'react';
 
 import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
@@ -19,14 +21,55 @@ type LocationDialogProps = {
   readonly message: StatusMessage | null;
   readonly onOpenChange: (open: boolean) => void;
   readonly onChange: (patch: Partial<CollectionLocationFormState>) => void;
-  readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  readonly onSubmit: (values: CollectionLocationFormState) => void | Promise<void>;
 };
+
+const collectionLocationDialogResolver: Resolver<CollectionLocationFormState> = async (values) => ({
+  values: values.cityId.trim().length > 0 ? values : {},
+  errors:
+    values.cityId.trim().length > 0
+      ? {}
+      : {
+          cityId: {
+            type: 'required',
+            message: 'masterData.collectionLocations.fields.cityId',
+          },
+        },
+});
 
 export const CollectionLocationDialog = ({ open, mode, form, regions, cities, streets, houseNumbers, saving, message, onOpenChange, onChange, onSubmit }: LocationDialogProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const filteredCities = form.regionId ? cities.filter((city) => city.regionId === form.regionId) : cities;
-  const filteredStreets = form.cityId ? streets.filter((street) => street.cityId === form.cityId) : [];
-  const filteredHouseNumbers = form.streetId ? houseNumbers.filter((houseNumber) => houseNumber.streetId === form.streetId) : [];
+  const { handleSubmit, register, reset, setValue, watch } = useForm<CollectionLocationFormState>({
+    defaultValues: form,
+    resolver: collectionLocationDialogResolver,
+  });
+
+  React.useEffect(() => {
+    reset(form);
+  }, [form, reset]);
+
+  React.useEffect(() => {
+    register('id');
+    register('regionId');
+    register('cityId');
+    register('streetId');
+    register('houseNumberId');
+    register('active');
+  }, [register]);
+
+  const formValues = watch();
+  const filteredCities = formValues.regionId ? cities.filter((city) => city.regionId === formValues.regionId) : cities;
+  const filteredStreets = formValues.cityId ? streets.filter((street) => street.cityId === formValues.cityId) : [];
+  const filteredHouseNumbers = formValues.streetId ? houseNumbers.filter((houseNumber) => houseNumber.streetId === formValues.streetId) : [];
+  const handleFormChange = (patch: Partial<CollectionLocationFormState>) => {
+    for (const [key, value] of Object.entries(patch) as Array<[keyof CollectionLocationFormState, CollectionLocationFormState[keyof CollectionLocationFormState]]>) {
+      setValue(key, value);
+    }
+    onChange(patch);
+  };
+  const submitForm = handleSubmit(async (values) => {
+    await onSubmit(values);
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -39,15 +82,15 @@ export const CollectionLocationDialog = ({ open, mode, form, regions, cities, st
               : pt('masterData.collectionLocations.dialog.editDescription')}
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={onSubmit}>
+        <form className="space-y-4" onSubmit={submitForm}>
           <StatusNotice message={message} />
           <StudioFieldGroup>
             <StudioField id="waste-location-region-id" label={pt('masterData.collectionLocations.fields.regionId')}>
               <Select
                 id="waste-location-region-id"
                 name="regionId"
-                value={form.regionId}
-                onChange={(event) => onChange({ regionId: event.target.value, cityId: '', streetId: '', houseNumberId: '' })}
+                value={formValues.regionId}
+                onChange={(event) => handleFormChange({ regionId: event.target.value, cityId: '', streetId: '', houseNumberId: '' })}
               >
                 <option value="">{pt('masterData.collectionLocations.fields.regionUnset')}</option>
                 {regions.map((region) => (
@@ -61,8 +104,8 @@ export const CollectionLocationDialog = ({ open, mode, form, regions, cities, st
               <Select
                 id="waste-location-city-id"
                 name="cityId"
-                value={form.cityId}
-                onChange={(event) => onChange({ cityId: event.target.value, streetId: '', houseNumberId: '' })}
+                value={formValues.cityId}
+                onChange={(event) => handleFormChange({ cityId: event.target.value, streetId: '', houseNumberId: '' })}
               >
                 <option value="">{pt('masterData.collectionLocations.fields.cityUnset')}</option>
                 {filteredCities.map((city) => (
@@ -76,8 +119,8 @@ export const CollectionLocationDialog = ({ open, mode, form, regions, cities, st
               <Select
                 id="waste-location-street-id"
                 name="streetId"
-                value={form.streetId}
-                onChange={(event) => onChange({ streetId: event.target.value, houseNumberId: '' })}
+                value={formValues.streetId}
+                onChange={(event) => handleFormChange({ streetId: event.target.value, houseNumberId: '' })}
               >
                 <option value="">{pt('masterData.collectionLocations.fields.streetUnset')}</option>
                 {filteredStreets.map((street) => (
@@ -91,8 +134,8 @@ export const CollectionLocationDialog = ({ open, mode, form, regions, cities, st
               <Select
                 id="waste-location-house-number-id"
                 name="houseNumberId"
-                value={form.houseNumberId}
-                onChange={(event) => onChange({ houseNumberId: event.target.value })}
+                value={formValues.houseNumberId}
+                onChange={(event) => handleFormChange({ houseNumberId: event.target.value })}
               >
                 <option value="">{pt('masterData.collectionLocations.fields.houseNumberUnset')}</option>
                 {filteredHouseNumbers.map((houseNumber) => (
@@ -104,11 +147,11 @@ export const CollectionLocationDialog = ({ open, mode, form, regions, cities, st
             </StudioField>
             <div className="flex items-center gap-3">
               <WasteManagementFormSwitch
-                checked={form.active}
+                checked={formValues.active}
                 ariaLabel={pt('masterData.collectionLocations.fields.active')}
-                onChange={(active) => onChange({ active })}
+                onChange={(active) => handleFormChange({ active })}
               />
-              <span className="text-sm text-muted-foreground">{form.active ? pt('common.active') : pt('common.inactive')}</span>
+              <span className="text-sm text-muted-foreground">{formValues.active ? pt('common.active') : pt('common.inactive')}</span>
             </div>
           </StudioFieldGroup>
           <DialogFooter>

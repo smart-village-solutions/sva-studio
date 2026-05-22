@@ -383,6 +383,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
+  const missingContentMessage = pt('messages.missingContent');
 
   React.useEffect(() => {
     void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
@@ -420,7 +421,10 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
       })
       .catch((loadError: unknown) => {
         if (active) {
-          setStatus({ kind: 'error', text: errorMessage(pt, loadError, 'messages.missingContent') });
+          setStatus({
+            kind: 'error',
+            text: loadError instanceof PoiApiError ? loadError.message : missingContentMessage,
+          });
         }
       })
       .finally(() => {
@@ -431,7 +435,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     return () => {
       active = false;
     };
-  }, [contentId, mode, pt, reset, setValue]);
+  }, [contentId, missingContentMessage, mode, reset, setValue]);
 
   const nameField = getStudioFormFieldProps({
     id: 'poi-name',

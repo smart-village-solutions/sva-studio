@@ -373,7 +373,6 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     handleSubmit,
     register,
     reset,
-    setError,
     setValue,
   } = useForm<PoiEditorFormValues>({
     defaultValues: defaultEditorForm(),

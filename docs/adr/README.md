@@ -70,6 +70,8 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 040 | graphile-worker als Standard für Hintergrundprozesse | ✅ | 2026-05-09 | Runtime / Workflow / Betrieb |
 | 041 | Plugin-Plattform v2 für externe Distribution und host-owned Runtime | ✅ | 2026-05-10 | Plugins / Distribution / Runtime |
 | 042 | Externe Schnittstellen als host-owned Registry | ✅ | 2026-05-12 | Integration / Secrets / Runtime |
+| 043 | Formular-Foundation mit react-hook-form und zodResolver | ✅ | 2026-05-22 | Frontend / Formulare / Governance |
+| 044 | Frontend-Test-Foundation mit MSW und selektivem fast-check | ✅ | 2026-05-22 | Frontend / Testing / Governance |
 
 ### Kanonischer Ablageort
 

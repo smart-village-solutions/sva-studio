@@ -28,6 +28,16 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 - Bei Typänderungen sind Type- und Unit-Checks obligatorisch.
 - Vor größeren Test- oder Coverage-Läufen werden versehentlich erzeugte Source-Artefakte mit `pnpm clean:generated-source-artifacts` bereinigt.
 
+## Studio-Foundations für Formulare und Frontend-Tests
+
+Für neue oder grundlegend überarbeitete Studio-Flows gelten zusätzlich die verbindlichen Foundations aus `./studio-foundations-governance.md`:
+
+- Formular-Flows mit echter Eingabe-, Validierungs- oder Submit-Verantwortung verwenden `react-hook-form` mit `zodResolver`.
+- HTTP-nahe Frontend-Tests verwenden `msw`, sobald Request-, Fehler-, Retry- oder Response-Verhalten Teil des Testgegenstands ist.
+- Modul-Mocks bleiben für rein lokale Logik ohne HTTP-Bezug zulässig, sind aber kein Ersatz für `msw` bei Netzverhalten.
+- Für kritische framework-agnostische Kernlogik muss im Review explizit geprüft werden, ob eine `fast-check`-Property erforderlich ist.
+- Legacy- oder Spezialausnahmen sind nur zulässig, wenn sie sowohl im PR-Kontext als auch in `./studio-form-migrationsinventur.md` nachvollziehbar dokumentiert sind.
+
 ## Testablage und Ownership
 
 - Der Standard für neue Unit-Tests in Packages ist kolokiert unter `packages/<projekt>/src/**/*.test.ts` oder `*.test.tsx`.
@@ -142,6 +152,7 @@ Diese Strategie definiert nur die Leitplanken:
 - Dateien dürfen nur in gut begründbaren Ausnahmefällen von Coverage-, New-Code- oder CPD-Gates ausgenommen werden.
 - Zulässige Ausnahmefälle sind vor allem generierte Artefakte oder ressourcenartige Dateien ohne sinnvolles Qualitätssignal aus Coverage oder Duplikationsmessung.
 - Fehlende Testbarkeit ist kein Freifahrtschein für Exclusions; in solchen Fällen sind Tests nachzuziehen oder die betroffene Datei strukturell testbarer zu schneiden.
+- Coverage allein ersetzt nicht die Foundation-Governance: Ein grüner Lauf legitimiert weder Formular-Flows außerhalb des RHF-Standards noch HTTP-nahe Tests ohne `msw` oder ungeprüfte Hotspots ohne `fast-check`-Entscheidung.
 
 ## Umgang mit Fehlern und Flakes
 
@@ -159,6 +170,7 @@ Neue Features, Architekturänderungen oder neue Betriebswege müssen die betroff
 ## Verweise
 
 - Coverage-Governance: `./testing-coverage.md`
+- Studio-Foundations-Governance: `./studio-foundations-governance.md`
 - App-E2E-Integration: `./app-e2e-integration-testing.md`
 - Review-Governance: `./review-agent-governance.md`
 - QS-Mindeststandard: `./qs-mindeststandard-sva-studio.md`

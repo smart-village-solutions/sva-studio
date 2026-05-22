@@ -13,6 +13,15 @@ gleichzeitig beeinflussen.
 
 ## Aktueller Stand
 
+### Formular- und Frontend-Test-Foundations
+
+- Neue oder grundlegend überarbeitete Formular-Flows folgen repo-weit dem Standard `react-hook-form` plus `zodResolver`.
+- Neue oder grundlegend überarbeitete HTTP-nahe Frontend-Tests folgen repo-weit dem Standard `msw`.
+- Modul-Mocks bleiben für rein lokale Logik ohne HTTP-Bezug zulässig, sind aber kein gleichwertiger Ersatz für HTTP-Verhalten.
+- Für kritische framework-agnostische Kernlogik wird `fast-check` selektiv über dokumentierte Hotspots und Review-Entscheidungen eingesetzt.
+- Legacy- und Spezialausnahmen müssen in `docs/development/studio-form-migrationsinventur.md` und `docs/development/studio-foundations-governance.md` nachvollziehbar dokumentiert werden.
+- Coverage-Gates bleiben wichtig, ersetzen aber diese Foundation-Governance nicht.
+
 ### Medienmanagement
 
 - Medienzugriffe bleiben mandantengetrennt und hostgeführt.
@@ -257,6 +266,13 @@ gleichzeitig beeinflussen.
 - Die Rechtstext-Verwaltung arbeitet fail-closed: ungültige Statuswechsel, fehlendes `publishedAt` bei `valid` oder nicht reloadbare Neuanlagen liefern stabile `invalid_request`- bzw. `database_unavailable`-Antworten
 - Die Inhaltsverwaltung arbeitet fail-closed: ungültiges JSON, fehlendes `publishedAt` bei `published`, nicht erlaubte Rollen oder nicht auflösbare Inhalte liefern stabile `invalid_request`-, `forbidden`- bzw. `not_found`-Antworten
 - Geo-Hierarchie-Konflikte werden deterministisch diagnostiziert: `hierarchy_restriction` für wirksame Restriktionen, `instance_scope_mismatch` für Instanzverletzungen und `permission_missing` für fehlende Kandidaten
+
+### Review-Governance fuer Studio-Foundations
+
+- Review prüft bei neuen oder grundlegend überarbeiteten Formular-Flows explizit, ob der RHF-/`zodResolver`-Standard eingehalten wird.
+- Review prüft bei HTTP-nahen Frontend-Tests explizit, ob `msw` statt Modul-Mocks verwendet wird.
+- Review prüft für geänderte kritische Hotspots explizit, ob eine `fast-check`-Property ergänzt wurde oder eine belastbare Gegenbegründung vorliegt.
+- Dokumentierte Ausnahmen bleiben nur zulässig, wenn Scope, Risiko und späterer Nachzieh-Trigger sichtbar benannt sind.
 
 ### Öffentlicher Abfallkalender: Accessibility und Embed-Konzept
 

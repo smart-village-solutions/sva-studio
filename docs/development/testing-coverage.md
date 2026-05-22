@@ -108,6 +108,15 @@ Regeln:
 - Zulässige Ausnahmefälle sind insbesondere generierte Artefakte oder ressourcenartige Dateien, bei denen Coverage- oder CPD-Metriken systematisch kein sinnvolles Qualitätssignal liefern.
 - „schwer testbar“, „zu groß“ oder „orchestriert nur andere Funktionen“ sind für sich allein keine ausreichenden Gründe für eine Exclusion; in diesen Fällen sind stattdessen Tests zu ergänzen oder die Datei gezielt zu refactoren.
 
+## Foundation-Governance jenseits von Coverage
+
+Coverage-Metriken allein entscheiden nicht, ob ein Test dem Studio-Standard entspricht. Für Frontend- und Kernlogik-Änderungen gelten zusätzlich die prüfbaren Regeln aus `./studio-foundations-governance.md`:
+
+- Neue oder grundlegend überarbeitete HTTP-nahe Frontend-Tests verwenden `msw`.
+- Modul-Mocks bleiben nur für rein lokale Logik ohne HTTP-Bezug zulässig.
+- Für kritische framework-agnostische Kernlogik muss der Review eine explizite `fast-check`-Entscheidung sehen.
+- Legacy- und Spezialausnahmen müssen in Inventur und PR-Kontext dokumentiert sein; reine Coverage-Werte heben diese Pflicht nicht auf.
+
 ## Kritische Module und Hotspots
 
 Kritische Coverage-Regeln liegen in `criticalProjects` der Policy.
@@ -257,6 +266,16 @@ Neue Exemptions sind nur in begründeten Ausnahmefällen zulässig und müssen i
 Die Merge-Checkliste für Coverage-Nachweise steht unter `../reports/PR_CHECKLIST.md`.
 Policy und Floors liegen in `../../tooling/testing/coverage-policy.json`.
 Die ergänzende Komplexitäts-Governance steht unter `./complexity-quality-governance.md`.
+
+## Review-Ergänzung für Frontend-Foundations
+
+Bei PRs mit Formular-, Frontend-HTTP- oder Hotspot-Änderungen prüfen Reviewer zusätzlich zu Floors und Coverage:
+
+- ob neue oder tief überarbeitete Formular-Flows dem RHF-/`zodResolver`-Standard folgen
+- ob HTTP-nahes Verhalten über `msw` statt über Modul-Mocks beschrieben wird
+- ob für geänderte Hotspots eine `fast-check`-Property oder eine belastbare Gegenbegründung vorliegt
+
+Ein Coverage-Pass ohne diese Nachweise ist für den Foundation-Scope nicht ausreichend.
 
 ## Troubleshooting
 

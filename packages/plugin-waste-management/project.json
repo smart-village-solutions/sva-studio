@@ -22,17 +22,10 @@
       }
     },
     "test:unit": {
-      "executor": "@nx/vitest:test",
-      "cache": true,
-      "inputs": [
-        "default",
-        "^production",
-        "testing",
-        "frontendTooling"
-      ],
-      "outputs": [],
+      "executor": "nx:run-commands",
       "options": {
-        "configFile": "packages/plugin-waste-management/vitest.config.ts"
+        "cwd": "packages/plugin-waste-management",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:coverage": {

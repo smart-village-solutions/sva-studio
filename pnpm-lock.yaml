@@ -834,6 +834,9 @@ importers:
       happy-dom:
         specifier: ^20.0.8
         version: 20.8.9
+      msw:
+        specifier: ^2.14.6
+        version: 2.14.6(@types/node@25.8.0)(typescript@6.0.3)
       tooling-testing:
         specifier: workspace:*
         version: link:../../tooling/testing

@@ -46,8 +46,8 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-039-medienmanagement-host-capability-und-storage-vertrag.md`
 - `ADR-040-graphile-worker-als-standard-fuer-hintergrundprozesse.md`
 - `ADR-041-plugin-plattform-v2-fuer-externe-distribution.md`
-- `ADR-043-formular-foundation-mit-react-hook-form-und-zodresolver.md`
-- `ADR-044-frontend-test-foundation-mit-msw-und-selektivem-fast-check.md`
+- [ADR-043 formular foundation mit react-hook-form und zodResolver](../adr/ADR-043-formular-foundation-mit-react-hook-form-und-zodresolver.md)
+- [ADR-044 frontend-test-foundation mit MSW und selektivem fast-check](../adr/ADR-044-frontend-test-foundation-mit-msw-und-selektivem-fast-check.md)
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -241,10 +241,10 @@ Zuordnung:
 
 ### Fortschreibung 2026-05: Studio-Foundations für Formulare und Frontend-Tests
 
-- `ADR-043-formular-foundation-mit-react-hook-form-und-zodresolver.md`
+- [ADR-043 formular foundation mit react-hook-form und zodResolver](../adr/ADR-043-formular-foundation-mit-react-hook-form-und-zodresolver.md)
   - setzt `react-hook-form` mit `zodResolver` als verbindlichen Standardpfad für neue oder grundlegend überarbeitete Formular-Flows in Host und Plugins
   - koppelt die Bibliothekswahl ausdrücklich an Inventur-, Review- und Ausnahme-Governance statt an lose Stilpräferenzen
-- `ADR-044-frontend-test-foundation-mit-msw-und-selektivem-fast-check.md`
+- [ADR-044 frontend-test-foundation mit MSW und selektivem fast-check](../adr/ADR-044-frontend-test-foundation-mit-msw-und-selektivem-fast-check.md)
   - setzt `msw` als Standardpfad für HTTP-nahe Frontend-Tests
   - begrenzt `fast-check` bewusst auf kritische framework-agnostische Hotspots und hält Modul-Mocks für rein lokale Logik zulässig
 

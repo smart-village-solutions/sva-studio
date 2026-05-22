@@ -12,6 +12,14 @@ Dieses Dokument definiert den verbindlichen Governance-Rahmen für die Studio-Fo
 - gemeinsame Testinfrastruktur unter `tooling/testing`
 - framework-agnostische Kernlogik in Workspace-Packages wie `packages/core` und `packages/routing`
 
+## Referenzscope dieses Changes
+
+Der repo-weite Default-Standard gilt fuer alle neuen oder grundlegend ueberarbeiteten Formular- und Frontend-Test-Flows im Scope dieser Governance. Der initiale Referenzscope aus OpenSpec ist enger:
+
+- Referenzimplementierungen fuer diese Foundation sind `/admin/users`, `/admin/roles` und die Host-Content-Flows unter `/admin/content`.
+- `/account` faellt ebenfalls unter den repo-weiten Default-Standard, ist fuer diesen Change aber kein initialer Referenzpilot.
+- Weitere Host- und Plugin-Flows bleiben vom Standard erfasst, auch wenn sie nicht Teil des ersten Referenzpiloten sind.
+
 ## Verbindlicher Standardpfad
 
 | Bereich | Verbindlicher Standard | Pflicht ab wann | Dokumentierte Ausnahmen |
@@ -83,9 +91,10 @@ Review-Blocker:
 
 ## Dokumentationspflicht für Ausnahmen
 
-Legacy- und Spezialausnahmen sind nur zulässig, wenn sie gleichzeitig an zwei Stellen sichtbar sind:
+Legacy- und Spezialausnahmen sind nur zulässig, wenn sie gleichzeitig in allen folgenden Pflichtartefakten sichtbar sind:
 
-- in `docs/development/studio-form-migrationsinventur.md` in der Spalte `Legacy-Ausnahme`
+- in `docs/development/studio-foundations-governance.md` als geltende Ausnahmeregel und Pflichtprozess
+- in `docs/development/studio-form-migrationsinventur.md` in der Spalte `Legacy-Ausnahme`, sobald ein konkreter Host- oder Plugin-Flow betroffen ist
 - im PR- oder Arbeitskontext mit kurzer Begründung, Risiko und Auslöser für den späteren Rückbau
 
 Jede Ausnahme muss mindestens enthalten:
@@ -108,7 +117,7 @@ Zulässige Trigger für eine spätere Nachführung sind zum Beispiel:
 - Ist ein neuer oder grundlegend überarbeiteter Formular-Flow auf `react-hook-form` mit `zodResolver` geführt?
 - Beschreibt ein HTTP-naher Frontend-Test Netzwerkverhalten über `msw` statt über Modul-Mocks?
 - Ist für geänderte kritische Kernlogik die `fast-check`-Entscheidung explizit sichtbar?
-- Sind Ausnahmen in Inventur und PR-Kontext konsistent dokumentiert?
+- Sind Ausnahmen in Governance-Artefakt, Formularinventur und PR-/Arbeitskontext konsistent dokumentiert?
 - Bleibt der Standardpfad für künftige Migrationen klar erkennbar, statt durch Pilotsprache verwässert zu werden?
 
 ## Exit-Kriterien für diese Foundations
@@ -118,4 +127,4 @@ Die Foundations gelten nur dann als reviewbar eingeführt, wenn alle folgenden P
 - Formularinventur und Governance-Artefakt sind aktuell.
 - Die beiden zugehörigen ADRs sind im kanonischen ADR-Pfad dokumentiert.
 - arc42-Abschnitte 05, 08, 09 und 10 referenzieren den Standardpfad.
-- Ausnahmen sind explizit dokumentiert und nicht stillschweigend im Code versteckt.
+- Ausnahmen sind in Governance-Artefakt, Formularinventur und PR-/Arbeitskontext explizit dokumentiert und nicht stillschweigend im Code versteckt.

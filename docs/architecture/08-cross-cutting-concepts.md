@@ -19,7 +19,7 @@ gleichzeitig beeinflussen.
 - Neue oder grundlegend überarbeitete HTTP-nahe Frontend-Tests folgen repo-weit dem Standard `msw`.
 - Modul-Mocks bleiben für rein lokale Logik ohne HTTP-Bezug zulässig, sind aber kein gleichwertiger Ersatz für HTTP-Verhalten.
 - Für kritische framework-agnostische Kernlogik wird `fast-check` selektiv über dokumentierte Hotspots und Review-Entscheidungen eingesetzt.
-- Legacy- und Spezialausnahmen müssen in `docs/development/studio-form-migrationsinventur.md` und `docs/development/studio-foundations-governance.md` nachvollziehbar dokumentiert werden.
+- Legacy- und Spezialausnahmen müssen in `docs/development/studio-foundations-governance.md`, in der konkreten Formularinventur `docs/development/studio-form-migrationsinventur.md` und im PR- oder Arbeitskontext nachvollziehbar dokumentiert werden.
 - Coverage-Gates bleiben wichtig, ersetzen aber diese Foundation-Governance nicht.
 
 ### Medienmanagement
@@ -272,7 +272,7 @@ gleichzeitig beeinflussen.
 - Review prüft bei neuen oder grundlegend überarbeiteten Formular-Flows explizit, ob der RHF-/`zodResolver`-Standard eingehalten wird.
 - Review prüft bei HTTP-nahen Frontend-Tests explizit, ob `msw` statt Modul-Mocks verwendet wird.
 - Review prüft für geänderte kritische Hotspots explizit, ob eine `fast-check`-Property ergänzt wurde oder eine belastbare Gegenbegründung vorliegt.
-- Dokumentierte Ausnahmen bleiben nur zulässig, wenn Scope, Risiko und späterer Nachzieh-Trigger sichtbar benannt sind.
+- Dokumentierte Ausnahmen bleiben nur zulässig, wenn Governance-Artefakt, Formularinventur und PR-/Arbeitskontext konsistent sind sowie Scope, Risiko und spaeterer Nachzieh-Trigger sichtbar benannt sind.
 
 ### Öffentlicher Abfallkalender: Accessibility und Embed-Konzept
 

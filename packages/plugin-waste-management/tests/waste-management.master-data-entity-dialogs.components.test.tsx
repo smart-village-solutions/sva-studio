@@ -8,7 +8,7 @@ import {
   HouseNumberDialog,
   RegionDialog,
   StreetDialog,
-} from '../src/waste-management.master-data-entity-dialogs.js';
+} from '../src/waste-management.master-data-entity-dialogs';
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,

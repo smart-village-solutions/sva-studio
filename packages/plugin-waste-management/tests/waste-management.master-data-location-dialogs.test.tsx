@@ -2,7 +2,7 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { CollectionLocationDialog } from '../src/waste-management.master-data-location-dialogs.js';
+import { CollectionLocationDialog } from '../src/waste-management.master-data-location-dialogs';
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,

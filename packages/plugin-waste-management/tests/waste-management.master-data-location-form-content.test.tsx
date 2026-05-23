@@ -2,7 +2,7 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { WasteMasterDataLocationFormContent } from '../src/waste-management.master-data-location-form-content.js';
+import { WasteMasterDataLocationFormContent } from '../src/waste-management.master-data-location-form-content';
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,

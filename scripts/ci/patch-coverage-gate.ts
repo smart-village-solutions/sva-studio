@@ -25,6 +25,13 @@ interface FileLineCoverage {
   instrumentedLines: Set<number>;
 }
 
+interface LcovCandidate {
+  lcovPath: string;
+  projectRoot: string;
+  priority: number;
+  modifiedAt: number;
+}
+
 interface UncoveredFileSummary {
   path: string;
   covered: number;
@@ -203,11 +210,14 @@ function listChangedFiles(rootDir: string, baseRef: string, headRef: string, pro
 
 function parseLcovLineCoverage(rootDir: string): Map<string, FileLineCoverage> {
   const workspaceRoots = [path.join(rootDir, 'apps'), path.join(rootDir, 'packages')];
-  const lcovFiles = workspaceRoots.flatMap((workspaceRoot) => findCoverageArtifacts(workspaceRoot, 'lcov.info'));
+  const nxCacheRoot = path.join(rootDir, '.nx', 'cache');
+  const workspaceLcovFiles = workspaceRoots.flatMap((workspaceRoot) => findCoverageArtifacts(workspaceRoot, 'lcov.info'));
+  const cacheLcovFiles = findCoverageArtifacts(nxCacheRoot, 'lcov.info');
+  const selectedLcovFiles = selectLcovArtifacts(rootDir, [...workspaceLcovFiles, ...cacheLcovFiles]);
   const coverageByFile = new Map<string, FileLineCoverage>();
 
-  for (const lcovPath of lcovFiles) {
-    const projectRoot = path.dirname(path.dirname(lcovPath));
+  for (const candidate of selectedLcovFiles) {
+    const { lcovPath, projectRoot } = candidate;
     const contents = fs.readFileSync(lcovPath, 'utf8');
     const records = contents.split('end_of_record');
 
@@ -249,6 +259,53 @@ function parseLcovLineCoverage(rootDir: string): Map<string, FileLineCoverage> {
   }
 
   return coverageByFile;
+}
+
+function resolveWorkspaceProjectRootFromCachePath(rootDir: string, lcovPath: string): string | null {
+  const normalizedRoot = rootDir.split(path.sep).join('/').replace(/\/$/, '');
+  const normalizedPath = lcovPath.split(path.sep).join('/');
+  const pattern = new RegExp(`^${normalizedRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/\\.nx/cache/[^/]+/(apps|packages)/([^/]+)/coverage/lcov\\.info$`);
+  const match = normalizedPath.match(pattern);
+  if (!match) {
+    return null;
+  }
+
+  return path.join(rootDir, match[1], match[2]);
+}
+
+function selectLcovArtifacts(rootDir: string, lcovFiles: string[]): LcovCandidate[] {
+  const bestByProjectRoot = new Map<string, LcovCandidate>();
+
+  for (const lcovPath of lcovFiles) {
+    const isCacheArtifact = lcovPath.includes(`${path.sep}.nx${path.sep}cache${path.sep}`);
+    const resolvedProjectRoot =
+      (isCacheArtifact ? resolveWorkspaceProjectRootFromCachePath(rootDir, lcovPath) : null) ??
+      path.dirname(path.dirname(lcovPath));
+    const priority = isCacheArtifact ? 1 : 2;
+    const modifiedAt = fs.statSync(lcovPath).mtimeMs;
+    const existing = bestByProjectRoot.get(resolvedProjectRoot);
+
+    if (!existing) {
+      bestByProjectRoot.set(resolvedProjectRoot, {
+        lcovPath,
+        projectRoot: resolvedProjectRoot,
+        priority,
+        modifiedAt,
+      });
+      continue;
+    }
+
+    if (priority > existing.priority || (priority === existing.priority && modifiedAt > existing.modifiedAt)) {
+      bestByProjectRoot.set(resolvedProjectRoot, {
+        lcovPath,
+        projectRoot: resolvedProjectRoot,
+        priority,
+        modifiedAt,
+      });
+    }
+  }
+
+  return [...bestByProjectRoot.values()];
 }
 
 function isLikelyExecutableLine(sourceLine: string): boolean {

@@ -263,9 +263,10 @@ function parseLcovLineCoverage(rootDir: string): Map<string, FileLineCoverage> {
 
 function resolveWorkspaceProjectRootFromCachePath(rootDir: string, lcovPath: string): string | null {
   const normalizedRoot = rootDir.split(path.sep).join('/').replace(/\/$/, '');
+  const escapedRoot = normalizedRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const normalizedPath = lcovPath.split(path.sep).join('/');
-  const pattern = new RegExp(`^${normalizedRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/\\.nx/cache/[^/]+/(apps|packages)/([^/]+)/coverage/lcov\\.info$`);
-  const match = normalizedPath.match(pattern);
+  const pattern = new RegExp(String.raw`^${escapedRoot}/\.nx/cache/[^/]+/(apps|packages)/([^/]+)/coverage/lcov\.info$`);
+  const match = pattern.exec(normalizedPath);
   if (!match) {
     return null;
   }
@@ -402,7 +403,7 @@ function isLikelyTypeOnlyOrReexportLine(sourceLine: string): boolean {
 }
 
 function isLikelyGeneratedFile(filePath: string, sourceLines: readonly string[]): boolean {
-  const normalizedPath = filePath.replace(/\\/g, '/');
+  const normalizedPath = filePath.replaceAll('\\', '/');
   if (
     normalizedPath.endsWith('.gen.ts') ||
     normalizedPath.endsWith('.gen.tsx') ||

@@ -1,11 +1,18 @@
 // @vitest-environment node
 
-import { HttpResponse, http, studioMswServer } from 'tooling-testing/msw';
+import { HttpResponse, http } from 'msw';
+import type { SetupServerApi } from 'msw/node';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createWasteManagementCollectionLocation } from '../src/waste-management.api.js';
 
 describe('waste-management api client with shared MSW foundation', () => {
+  const studioMswServer = (globalThis as { __studioMswServer?: SetupServerApi }).__studioMswServer;
+
+  if (!studioMswServer) {
+    throw new Error('Shared MSW server is not initialized. Ensure tooling-testing/msw/setup is configured in setupFiles.');
+  }
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });

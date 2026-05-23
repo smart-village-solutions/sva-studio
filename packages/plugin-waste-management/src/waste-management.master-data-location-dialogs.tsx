@@ -180,7 +180,7 @@ type BulkDialogProps = {
   readonly message: StatusMessage | null;
   readonly onOpenChange: (open: boolean) => void;
   readonly onChange: (patch: Partial<LocationTourLinkBulkFormState>) => void;
-  readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  readonly onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 };
 
 export const BulkLocationAssignmentsDialog = ({ open, form, selectedLocations, tours, saving, message, onOpenChange, onChange, onSubmit }: BulkDialogProps) => {

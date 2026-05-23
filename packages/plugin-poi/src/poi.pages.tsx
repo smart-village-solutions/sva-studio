@@ -422,6 +422,9 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
             targetId: item.id,
           })
             .then((references) => {
+              if (!active) {
+                return;
+              }
               setExistingMediaReferenceCount(references.length);
               setValue(
                 'teaserImageAssetId',
@@ -429,6 +432,9 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
               );
             })
             .catch(() => {
+              if (!active) {
+                return;
+              }
               setExistingMediaReferenceCount(0);
               setValue('teaserImageAssetId', '');
             });
@@ -471,7 +477,6 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   const summaryErrors = collectSummaryErrors([nameField, categoryField, urlField, payloadField]);
 
   const submit = handleSubmit(async (values) => {
-    setStatus(null);
     const payload = parsePayloadText(values.payloadText);
     if (!payload) {
       return;
@@ -505,6 +510,11 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     }
   });
 
+  const handleFormSubmit = (submitEvent: React.FormEvent<HTMLFormElement>) => {
+    setStatus(null);
+    void submit(submitEvent);
+  };
+
   const remove = async () => {
     if (!contentId || !globalThis.confirm(pt('actions.deleteConfirm'))) {
       return;
@@ -531,7 +541,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
         </Button>
       }
     >
-      <form onSubmit={(submitEvent) => void submit(submitEvent)} className="space-y-5" noValidate>
+      <form onSubmit={handleFormSubmit} className="space-y-5" noValidate>
         <StudioFormSummaryErrors errors={summaryErrors} />
         {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
         <StudioFieldGroup columns={2}>

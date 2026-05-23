@@ -220,7 +220,7 @@ export function StudioField({
   className,
 }: StudioFieldProps) {
   const childElement = React.isValidElement<StudioFieldChildProps>(children) ? children : null;
-  const resolvedControlId = controlProps?.id ?? id;
+  const resolvedControlId = controlProps && childElement ? controlProps.id : id;
   const resolvedChildren =
     controlProps && childElement
       ? React.cloneElement(childElement, {

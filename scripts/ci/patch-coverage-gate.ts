@@ -210,9 +210,9 @@ function listChangedFiles(rootDir: string, baseRef: string, headRef: string, pro
 
 function parseLcovLineCoverage(rootDir: string): Map<string, FileLineCoverage> {
   const workspaceRoots = [path.join(rootDir, 'apps'), path.join(rootDir, 'packages')];
-  const nxCacheRoot = path.join(rootDir, '.nx', 'cache');
   const workspaceLcovFiles = workspaceRoots.flatMap((workspaceRoot) => findCoverageArtifacts(workspaceRoot, 'lcov.info'));
-  const cacheLcovFiles = findCoverageArtifacts(nxCacheRoot, 'lcov.info');
+  const cacheLcovFiles =
+    workspaceLcovFiles.length > 0 ? [] : findCoverageArtifacts(path.join(rootDir, '.nx', 'cache'), 'lcov.info');
   const selectedLcovFiles = selectLcovArtifacts(rootDir, [...workspaceLcovFiles, ...cacheLcovFiles]);
   const coverageByFile = new Map<string, FileLineCoverage>();
 

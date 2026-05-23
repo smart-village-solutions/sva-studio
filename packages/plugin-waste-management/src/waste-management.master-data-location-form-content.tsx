@@ -71,7 +71,7 @@ export const WasteMasterDataLocationFormContent = ({
   onReloadAssignments,
 }: WasteMasterDataLocationFormContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const { handleSubmit, register, reset, setValue, watch } = useForm<CollectionLocationFormState>({
+  const { handleSubmit, register, reset, setValue, watch, formState } = useForm<CollectionLocationFormState>({
     defaultValues: form,
     resolver: locationFormResolver,
   });
@@ -148,6 +148,7 @@ export const WasteMasterDataLocationFormContent = ({
           filteredCities={filteredCities}
           filteredStreets={filteredStreets}
           filteredHouseNumbers={filteredHouseNumbers}
+          cityError={formState.errors.cityId?.message ? pt(formState.errors.cityId.message) : undefined}
           onChange={handleFormChange}
         />
         <LocationStatusSection active={formValues.active} onChange={handleFormChange} />

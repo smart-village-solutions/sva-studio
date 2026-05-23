@@ -38,7 +38,7 @@ const collectionLocationDialogResolver: Resolver<CollectionLocationFormState> = 
 
 export const CollectionLocationDialog = ({ open, mode, form, regions, cities, streets, houseNumbers, saving, message, onOpenChange, onChange, onSubmit }: LocationDialogProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const { handleSubmit, register, reset, setValue, watch } = useForm<CollectionLocationFormState>({
+  const { handleSubmit, register, reset, setValue, watch, formState } = useForm<CollectionLocationFormState>({
     defaultValues: form,
     resolver: collectionLocationDialogResolver,
   });
@@ -99,7 +99,12 @@ export const CollectionLocationDialog = ({ open, mode, form, regions, cities, st
                 ))}
               </Select>
             </StudioField>
-            <StudioField id="waste-location-city-id" label={pt('masterData.collectionLocations.fields.cityId')}>
+            <StudioField
+              id="waste-location-city-id"
+              label={pt('masterData.collectionLocations.fields.cityId')}
+              error={formState.errors.cityId?.message ? pt(formState.errors.cityId.message) : undefined}
+              required
+            >
               <Select
                 id="waste-location-city-id"
                 name="cityId"

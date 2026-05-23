@@ -138,4 +138,44 @@ describe('CollectionLocationDialog', () => {
       expect(screen.getByText('masterData.collectionLocations.fields.cityId')).toBeTruthy();
     });
   });
+
+  it('revalidates city errors when a selection is made after a blocked submit', async () => {
+    render(
+      <CollectionLocationDialog
+        open
+        mode="create"
+        form={{
+          id: 'location-3',
+          regionId: 'region-1',
+          cityId: '',
+          streetId: '',
+          houseNumberId: '',
+          active: true,
+        }}
+        regions={[{ id: 'region-1', name: 'Nord' }] as never}
+        cities={[{ id: 'city-1', name: 'Altstadt', regionId: 'region-1' }] as never}
+        streets={[] as never}
+        houseNumbers={[] as never}
+        saving={false}
+        message={null}
+        onOpenChange={vi.fn()}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.create' }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('masterData.collectionLocations.fields.cityId')).toHaveLength(2);
+    });
+
+    fireEvent.change(screen.getAllByRole('combobox')[1] as HTMLSelectElement, {
+      target: { value: 'city-1' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('masterData.collectionLocations.fields.cityId')).toHaveLength(1);
+    });
+  });
 });

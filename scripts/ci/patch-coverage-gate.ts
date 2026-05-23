@@ -208,11 +208,34 @@ function listChangedFiles(rootDir: string, baseRef: string, headRef: string, pro
     .filter((entry) => entry.changedLines.length > 0 && isCoverableSourceFile(entry.path));
 }
 
-function parseLcovLineCoverage(rootDir: string): Map<string, FileLineCoverage> {
-  const workspaceRoots = [path.join(rootDir, 'apps'), path.join(rootDir, 'packages')];
-  const workspaceLcovFiles = workspaceRoots.flatMap((workspaceRoot) => findCoverageArtifacts(workspaceRoot, 'lcov.info'));
-  const cacheLcovFiles =
-    workspaceLcovFiles.length > 0 ? [] : findCoverageArtifacts(path.join(rootDir, '.nx', 'cache'), 'lcov.info');
+function findNxCacheCoverageArtifacts(rootDir: string, projectRoots: readonly string[], fileName: string): string[] {
+  const nxCacheRoot = path.join(rootDir, '.nx', 'cache');
+  if (!fs.existsSync(nxCacheRoot)) {
+    return [];
+  }
+
+  const relativeProjectRoots = projectRoots.map((projectRoot) => path.relative(rootDir, projectRoot));
+  const results: string[] = [];
+
+  for (const entry of fs.readdirSync(nxCacheRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    for (const relativeProjectRoot of relativeProjectRoots) {
+      const candidate = path.join(nxCacheRoot, entry.name, relativeProjectRoot, 'coverage', fileName);
+      if (fs.existsSync(candidate)) {
+        results.push(candidate);
+      }
+    }
+  }
+
+  return results;
+}
+
+function parseLcovLineCoverage(rootDir: string, projectRoots: readonly string[]): Map<string, FileLineCoverage> {
+  const workspaceLcovFiles = projectRoots.flatMap((projectRoot) => findCoverageArtifacts(projectRoot, 'lcov.info'));
+  const cacheLcovFiles = findNxCacheCoverageArtifacts(rootDir, projectRoots, 'lcov.info');
   const selectedLcovFiles = selectLcovArtifacts(rootDir, [...workspaceLcovFiles, ...cacheLcovFiles]);
   const coverageByFile = new Map<string, FileLineCoverage>();
 
@@ -458,7 +481,7 @@ export function runPatchCoverageGate(options: RunPatchCoverageGateOptions = {}):
   const changedFiles = listChangedFiles(rootDir, baseRef, headRef, projectRoots).filter(
     (changedFile) => !isSonarCoverageExcludedPath(changedFile.path, sonarCoverageExclusions)
   );
-  const coverageByFile = parseLcovLineCoverage(rootDir);
+  const coverageByFile = parseLcovLineCoverage(rootDir, projectRoots);
 
   let coveredLines = 0;
   let missedLines = 0;

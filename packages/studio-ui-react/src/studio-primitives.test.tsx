@@ -231,6 +231,20 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByText('Titel fehlt').id).toBe('title-error');
   });
 
+  it('binds the label to the effective control id when controlProps override the child id', () => {
+    render(
+      <StudioField id="base-id" label="Titel" controlProps={{ id: 'resolved-id' }}>
+        <Input id="base-id" />
+      </StudioField>
+    );
+
+    const input = screen.getByLabelText('Titel');
+    const label = screen.getByText('Titel').closest('label');
+
+    expect(input.getAttribute('id')).toBe('resolved-id');
+    expect(label?.getAttribute('for')).toBe('resolved-id');
+  });
+
   it('keeps label htmlFor on base id when children cannot be cloned', () => {
     render(
       <StudioField

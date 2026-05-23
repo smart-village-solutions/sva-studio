@@ -245,4 +245,46 @@ describe('WasteMasterDataLocationFormContent', () => {
       expect(screen.getByText('masterData.collectionLocations.fields.cityId')).toBeTruthy();
     });
   });
+
+  it('clears the city validation error when the user fixes the selection after a blocked submit', async () => {
+    render(
+      <WasteMasterDataLocationFormContent
+        mode="create"
+        form={{
+          id: 'location-3',
+          regionId: 'region-1',
+          cityId: '',
+          streetId: '',
+          houseNumberId: '',
+          active: true,
+        }}
+        regions={[{ id: 'region-1', name: 'Nord' }] as never}
+        cities={[{ id: 'city-1', name: 'Altstadt', regionId: 'region-1' }] as never}
+        streets={[] as never}
+        houseNumbers={[] as never}
+        fractions={[] as never}
+        availableTours={[] as never}
+        locationTourLinks={[] as never}
+        saving={false}
+        onChange={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+        onReloadAssignments={vi.fn(async () => undefined)}
+      />
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'masterData.collectionLocations.actions.create' })[0] as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(screen.getByText('masterData.collectionLocations.fields.cityId')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('city'), {
+      target: { value: 'city-1' },
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('masterData.collectionLocations.fields.cityId')).toBeNull();
+    });
+  });
 });

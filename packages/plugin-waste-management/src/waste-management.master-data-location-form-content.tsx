@@ -99,7 +99,11 @@ export const WasteMasterDataLocationFormContent = ({
   );
   const handleFormChange = (patch: Partial<CollectionLocationFormState>) => {
     for (const [key, value] of Object.entries(patch) as Array<[keyof CollectionLocationFormState, CollectionLocationFormState[keyof CollectionLocationFormState]]>) {
-      setValue(key, value);
+      setValue(key, value, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
     }
     onChange(patch);
   };

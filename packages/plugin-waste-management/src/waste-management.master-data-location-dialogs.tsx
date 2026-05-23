@@ -62,7 +62,11 @@ export const CollectionLocationDialog = ({ open, mode, form, regions, cities, st
   const filteredHouseNumbers = formValues.streetId ? houseNumbers.filter((houseNumber) => houseNumber.streetId === formValues.streetId) : [];
   const handleFormChange = (patch: Partial<CollectionLocationFormState>) => {
     for (const [key, value] of Object.entries(patch) as Array<[keyof CollectionLocationFormState, CollectionLocationFormState[keyof CollectionLocationFormState]]>) {
-      setValue(key, value);
+      setValue(key, value, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
     }
     onChange(patch);
   };

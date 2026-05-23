@@ -196,4 +196,21 @@ describe('studio-ui-react RHF bridge', () => {
     expect(fieldProps.controlProps['aria-describedby']).toBe('title-description');
     expect(getStudioFieldError(undefined)).toBeUndefined();
   });
+
+  it('renders optional summary title and safely handles missing target elements', () => {
+    render(
+      <StudioFormSummaryErrors
+        title="Bitte korrigieren"
+        className="custom-summary"
+        errors={[{ field: 'missing-input', message: 'Fehlendes Feld' }]}
+      />
+    );
+
+    expect(screen.getByText('Bitte korrigieren')).toBeTruthy();
+    const link = screen.getByRole('link', { name: 'Fehlendes Feld' });
+    expect(link.className).toContain('underline');
+
+    fireEvent.click(link);
+    expect(document.activeElement).not.toBeNull();
+  });
 });

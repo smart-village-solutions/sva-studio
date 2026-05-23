@@ -205,4 +205,26 @@ describe('PoiListPage', () => {
       expect(screen.getByText('POI wurde aktualisiert.')).toBeTruthy();
     });
   });
+
+  it('clears a previous success status before a validation-blocked submit', async () => {
+    render(<PoiEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Stadtbibliothek')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('POI wurde aktualisiert.')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Web-URL'), { target: { value: 'http://invalid.example' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('POI wurde aktualisiert.')).toBeNull();
+      expect(screen.getAllByText('URLs müssen mit https:// beginnen.').length).toBeGreaterThan(0);
+    });
+  });
 });

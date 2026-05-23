@@ -48,4 +48,11 @@ describe('MSW setup package contract', () => {
     expect(poiVitestConfig).toContain(expectedSetupEntry);
     expect(wasteVitestConfig).toContain(expectedSetupEntry);
   });
+
+  it('exports the browser worker as lazy factory instead of eager import-time instance', () => {
+    const browserSource = readText('tooling/testing/src/msw/browser.ts');
+
+    expect(browserSource).toContain('createStudioMswBrowser');
+    expect(browserSource).not.toContain('export const studioMswBrowser =');
+  });
 });

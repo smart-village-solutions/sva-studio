@@ -40,6 +40,7 @@ vi.mock('../src/waste-management.master-data-location-form.parts.js', () => ({
     filteredCities,
     filteredStreets,
     filteredHouseNumbers,
+    cityError,
     onChange,
   }: {
     readonly form: {
@@ -52,6 +53,7 @@ vi.mock('../src/waste-management.master-data-location-form.parts.js', () => ({
     readonly filteredCities: readonly { id: string; name: string }[];
     readonly filteredStreets: readonly { id: string; name: string }[];
     readonly filteredHouseNumbers: readonly { id: string; number: string }[];
+    readonly cityError?: string;
     readonly onChange: (patch: Record<string, string>) => void;
   }) => (
     <div>
@@ -87,6 +89,7 @@ vi.mock('../src/waste-management.master-data-location-form.parts.js', () => ({
           ))}
         </select>
       </label>
+      {cityError ? <div>{cityError}</div> : null}
       <label>
         street
         <select
@@ -206,7 +209,7 @@ describe('WasteMasterDataLocationFormContent', () => {
     expect((screen.getByLabelText('house-number') as HTMLSelectElement).value).toBe('');
   });
 
-  it('blocks submit when the RHF location contract is still missing a city', () => {
+  it('blocks submit when the RHF location contract is still missing a city', async () => {
     const onSubmit = vi.fn();
 
     render(
@@ -237,6 +240,9 @@ describe('WasteMasterDataLocationFormContent', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'masterData.collectionLocations.actions.create' })[0] as HTMLButtonElement);
 
-    expect(onSubmit).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(screen.getByText('masterData.collectionLocations.fields.cityId')).toBeTruthy();
+    });
   });
 });

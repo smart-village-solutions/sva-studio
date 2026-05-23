@@ -233,4 +233,87 @@ describe('waste-management.master-data-entity-dialogs components', () => {
     });
     expect(onHouseNumberChange).toHaveBeenCalledWith({ streetId: 'street-1' });
   });
+
+  it('blocks submit in fraction, city, street and house-number dialogs when required names are missing', async () => {
+    const onSubmit = vi.fn();
+
+    const { rerender } = render(
+      <FractionDialog
+        open
+        mode="create"
+        form={{
+          name: '',
+          translations: { de: '', en: '' },
+          color: '',
+          containerSize: '',
+          description: '',
+          active: true,
+        } as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onSubmit={onSubmit as never}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.create' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('masterData.fractions.fields.name');
+
+    rerender(
+      <CityDialog
+        open
+        mode="create"
+        form={{ id: 'city-1', name: '', regionId: '' } as never}
+        regions={[{ id: 'region-1', name: 'Region 1' }] as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.cities.actions.create' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('masterData.cities.fields.name');
+
+    rerender(
+      <StreetDialog
+        open
+        mode="create"
+        form={{ id: 'street-1', name: '', cityId: '' } as never}
+        cities={[{ id: 'city-1', name: 'Musterstadt' }] as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.streets.actions.create' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('masterData.streets.fields.name');
+
+    rerender(
+      <HouseNumberDialog
+        open
+        mode="create"
+        form={{ id: 'house-1', number: '', streetId: '' } as never}
+        streets={[{ id: 'street-1', name: 'Hauptstraße' }] as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.houseNumbers.actions.create' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('masterData.houseNumbers.fields.number');
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });

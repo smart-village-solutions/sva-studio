@@ -231,6 +231,21 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByText('Titel fehlt').id).toBe('title-error');
   });
 
+  it('keeps label htmlFor on base id when children cannot be cloned', () => {
+    render(
+      <StudioField
+        id="fallback-id"
+        label="Titel"
+        controlProps={{ id: 'overridden-id' }}
+      >
+        {'plain-text-child'}
+      </StudioField>
+    );
+
+    const label = screen.getByText('Titel').closest('label');
+    expect(label?.getAttribute('for')).toBe('fallback-id');
+  });
+
   it('renders state blocks with polite live status semantics', () => {
     render(
       <>

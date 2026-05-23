@@ -31,10 +31,11 @@ vi.mock('@sva/studio-ui-react', () => ({
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <h2>{children}</h2>,
   Input: React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>((props, ref) => <input ref={ref} {...props} />),
   Select: React.forwardRef<HTMLSelectElement, React.ComponentProps<'select'>>((props, ref) => <select ref={ref} {...props} />),
-  StudioField: ({ children, label }: { readonly children: React.ReactNode; readonly label: string }) => (
+  StudioField: ({ children, label, error }: { readonly children: React.ReactNode; readonly label: string; readonly error?: string }) => (
     <label>
       <span>{label}</span>
       {children}
+      {error ? <span>{error}</span> : null}
     </label>
   ),
   StudioFieldGroup: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
@@ -100,6 +101,41 @@ describe('CollectionLocationDialog', () => {
       cityId: '',
       streetId: '',
       houseNumberId: '',
+    });
+  });
+
+  it('shows city validation feedback when submit is blocked by missing city', async () => {
+    const onSubmit = vi.fn();
+
+    render(
+      <CollectionLocationDialog
+        open
+        mode="create"
+        form={{
+          id: 'location-2',
+          regionId: 'region-1',
+          cityId: '',
+          streetId: '',
+          houseNumberId: '',
+          active: true,
+        }}
+        regions={[{ id: 'region-1', name: 'Nord' }] as never}
+        cities={[{ id: 'city-1', name: 'Altstadt', regionId: 'region-1' }] as never}
+        streets={[] as never}
+        houseNumbers={[] as never}
+        saving={false}
+        message={null}
+        onOpenChange={vi.fn()}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.create' }));
+
+    await waitFor(() => {
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(screen.getByText('masterData.collectionLocations.fields.cityId')).toBeTruthy();
     });
   });
 });

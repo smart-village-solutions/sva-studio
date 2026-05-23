@@ -1,5 +1,5 @@
 import React from 'react';
-import { Controller, useForm, type FieldErrors, type Resolver } from 'react-hook-form';
+import { Controller, useForm, type FieldError, type FieldErrors, type Resolver } from 'react-hook-form';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import {
   findHostMediaReferenceAssetId,
@@ -142,6 +142,21 @@ const editorValuesToForm = (values: PoiEditorFormValues, payload: Record<string,
 
 const collectSummaryErrors = (fields: readonly ReturnType<typeof getStudioFormFieldProps>[]): readonly StudioFormFieldError[] =>
   fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
+
+const translateFieldError = (
+  error: FieldError | undefined,
+  translate: ReturnType<typeof usePluginTranslation>
+): FieldError | undefined => {
+  if (!error || typeof error.message !== 'string') {
+    return error;
+  }
+
+  const message = error.message.startsWith('validation.') ? translate(error.message) : error.message;
+  return {
+    ...error,
+    message,
+  };
+};
 
 const parsePayloadText = (payloadText: string): Record<string, unknown> | null => {
   try {
@@ -439,19 +454,19 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
 
   const nameField = getStudioFormFieldProps({
     id: 'poi-name',
-    error: errors.name,
+    error: translateFieldError(errors.name, pt),
   });
   const categoryField = getStudioFormFieldProps({
     id: 'poi-category',
-    error: errors.categoryName,
+    error: translateFieldError(errors.categoryName, pt),
   });
   const urlField = getStudioFormFieldProps({
     id: 'poi-url',
-    error: errors.url,
+    error: translateFieldError(errors.url, pt),
   });
   const payloadField = getStudioFormFieldProps({
     id: 'poi-payload',
-    error: errors.payloadText,
+    error: translateFieldError(errors.payloadText, pt),
   });
   const summaryErrors = collectSummaryErrors([nameField, categoryField, urlField, payloadField]);
 

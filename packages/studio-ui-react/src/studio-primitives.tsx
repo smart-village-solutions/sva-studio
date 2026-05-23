@@ -220,6 +220,7 @@ export function StudioField({
   className,
 }: StudioFieldProps) {
   const childElement = React.isValidElement<StudioFieldChildProps>(children) ? children : null;
+  const resolvedControlId = controlProps?.id ?? id;
   const resolvedChildren =
     controlProps && childElement
       ? React.cloneElement(childElement, {
@@ -235,7 +236,7 @@ export function StudioField({
 
   return (
     <div className={cn('space-y-1', className)}>
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={resolvedControlId} className="text-sm font-medium">
         {label}
         {required ? <span aria-hidden="true" className="ml-1 before:content-['*']" /> : null}
       </label>

@@ -9,7 +9,7 @@ import {
 } from '@sva/studio-ui-react';
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { z } from '../../../../../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/index.js';
+import { z } from 'zod';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';

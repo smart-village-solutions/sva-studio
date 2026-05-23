@@ -1,24 +1,12 @@
 // @vitest-environment node
 
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { HttpResponse, http } from 'msw';
-import { setupServer } from 'msw/node';
+import { HttpResponse, http, studioMswServer } from 'tooling-testing/msw';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createWasteManagementCollectionLocation } from '../src/waste-management.api.js';
 
-const server = setupServer();
-
 describe('waste-management api client with shared MSW foundation', () => {
-  beforeAll(() => {
-    server.listen({ onUnhandledRequest: 'error' });
-  });
-
-  afterAll(() => {
-    server.close();
-  });
-
   afterEach(() => {
-    server.resetHandlers();
     vi.unstubAllGlobals();
   });
 
@@ -31,7 +19,7 @@ describe('waste-management api client with shared MSW foundation', () => {
       return nativeFetch(url, init);
     });
 
-    server.use(
+    studioMswServer.use(
       http.post('http://localhost/api/v1/waste-management/collection-locations', async ({ request }) => {
         requestBody = await request.json();
         return HttpResponse.json({

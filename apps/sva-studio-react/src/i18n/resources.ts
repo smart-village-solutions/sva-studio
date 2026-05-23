@@ -448,6 +448,7 @@ export const i18nResources = {
         invalidRequest: 'Der Inhalt enthält ungültige oder unvollständige Daten.',
       },
       validation: {
+        titleRequired: 'Der Titel ist ein Pflichtfeld.',
         payloadJsonInvalid: 'Die Payload muss gültiges JSON sein.',
         publishedAtRequired:
           'Für veröffentlichte Inhalte ist ein Veröffentlichungsdatum erforderlich.',
@@ -3456,6 +3457,7 @@ export const i18nResources = {
         invalidRequest: 'The content contains invalid or incomplete data.',
       },
       validation: {
+        titleRequired: 'Title is required.',
         payloadJsonInvalid: 'The payload must be valid JSON.',
         publishedAtRequired: 'Published content requires a publication date.',
         publishedAtInvalid:

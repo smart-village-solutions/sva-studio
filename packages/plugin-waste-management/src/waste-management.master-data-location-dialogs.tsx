@@ -3,7 +3,6 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 import React from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
-import type { FormEvent } from 'react';
 
 import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';

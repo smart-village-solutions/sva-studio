@@ -10,7 +10,7 @@ import {
 } from '@sva/studio-ui-react';
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { z } from '../../../../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/index.js';
+import { z } from 'zod';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
@@ -140,7 +140,7 @@ const contentStatusSchema = z.enum(['draft', 'in_review', 'approved', 'published
 const createContentFormSchema = (originalPublishedAt?: string) =>
   z
     .object({
-      title: z.string(),
+      title: z.string().trim().min(1, t('content.validation.titleRequired')),
       contentType: z.string(),
       status: contentStatusSchema,
       publishedAt: z.string(),
@@ -441,7 +441,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
             <form className="space-y-4" onSubmit={submitForm} noValidate>
               <StudioFormSummaryErrors errors={summaryErrors} title={t('account.messages.validationSummary')} />
               <StudioFieldGroup columns={2}>
-                <StudioField {...titleField} label={t('content.fields.title')} className="md:col-span-2">
+                <StudioField {...titleField} label={t('content.fields.title')} required className="md:col-span-2">
                   <Input {...register('title')} disabled={actionsDisabled} />
                 </StudioField>
                 <StudioField {...contentTypeField} label={t('content.fields.contentType')}>

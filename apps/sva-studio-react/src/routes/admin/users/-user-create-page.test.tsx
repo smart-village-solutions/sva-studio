@@ -1,8 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+import { HttpResponse, http, studioMswServer } from 'tooling-testing/msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HttpResponse, http } from '../../../../../../tooling/testing/src/msw/handlers.ts';
-import { studioMswServer } from '../../../../../../tooling/testing/src/msw/server.ts';
 
 import { UserCreatePage } from './-user-create-page';
 

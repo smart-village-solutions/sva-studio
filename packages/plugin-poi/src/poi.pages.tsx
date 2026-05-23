@@ -170,10 +170,10 @@ const parsePayloadText = (payloadText: string): Record<string, unknown> | null =
 };
 
 const poiEditorResolver: Resolver<PoiEditorFormValues> = async (values) => {
-  const errors: FieldErrors<PoiEditorFormValues> = {
-    ...(parsePayloadText(values.payloadText) ? {} : { payloadText: createResolverError('validation.payload') }),
-  };
   const payload = parsePayloadText(values.payloadText);
+  const errors: FieldErrors<PoiEditorFormValues> = {
+    ...(payload ? {} : { payloadText: createResolverError('validation.payload') }),
+  };
 
   const compacted = compactForm(editorValuesToForm(values, payload ?? {}));
   const validationErrors = validatePoiForm(compacted);

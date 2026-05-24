@@ -554,6 +554,12 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-media/server-authorization.ts)"
     },
+    "auth-runtime:packages/auth-runtime/src/iam-contents/repository.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-contents-repository-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-contents/repository.ts)"
+    },
     "auth-runtime:packages/auth-runtime/src/iam-media/storage-s3.ts:functionLines": {
       "ticketId": "baseline-auth-runtime-src-iam-media-storage-s3-ts",
       "ticketSystem": "policy-baseline",
@@ -1838,6 +1844,18 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/studio-ui-react/src/studio-data-table.tsx)"
     },
+    "packages-default:packages/studio-ui-react/src/studio-detail-tabs.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-packages-default-studio-ui-react-src-studio-detail-tabs-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/studio-ui-react/src/studio-detail-tabs.tsx)"
+    },
+    "packages-default:packages/studio-ui-react/src/studio-detail-tabs.tsx:functionLines": {
+      "ticketId": "baseline-packages-default-studio-ui-react-src-studio-detail-tabs-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/studio-ui-react/src/studio-detail-tabs.tsx)"
+    },
     "packages-default:packages/studio-ui-react/src/studio-primitives.tsx:fileLines": {
       "ticketId": "baseline-packages-default-studio-ui-react-src-studio-primitives-tsx",
       "ticketSystem": "policy-baseline",
@@ -1862,6 +1880,42 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-news/src/news.pages.tsx)"
     },
+    "plugin-news:packages/plugin-news/src/news.detail-basis-tab.tsx:functionLines": {
+      "ticketId": "baseline-plugin-news-src-news-detail-basis-tab-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/plugin-news/src/news.detail-basis-tab.tsx)"
+    },
+    "plugin-news:packages/plugin-news/src/news.detail-form.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-plugin-news-src-news-detail-form-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-news/src/news.detail-form.ts)"
+    },
+    "plugin-news:packages/plugin-news/src/news.detail-form.ts:fileLines": {
+      "ticketId": "baseline-plugin-news-src-news-detail-form-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-news/src/news.detail-form.ts)"
+    },
+    "plugin-news:packages/plugin-news/src/news.detail-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-plugin-news-src-news-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-news/src/news.detail-page.tsx)"
+    },
+    "plugin-news:packages/plugin-news/src/news.detail-page.tsx:fileLines": {
+      "ticketId": "baseline-plugin-news-src-news-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-news/src/news.detail-page.tsx)"
+    },
+    "plugin-news:packages/plugin-news/src/news.detail-page.tsx:functionLines": {
+      "ticketId": "baseline-plugin-news-src-news-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/plugin-news/src/news.detail-page.tsx)"
+    },
     "plugin-news:packages/plugin-news/src/news.pages.tsx:fileLines": {
       "ticketId": "baseline-plugin-news-src-news-pages-tsx",
       "ticketSystem": "policy-baseline",
@@ -1879,6 +1933,12 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-news/src/news.validation.ts)"
+    },
+    "plugin-news:packages/plugin-news/src/plugin.translations.ts:fileLines": {
+      "ticketId": "baseline-plugin-news-src-plugin-translations-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-news/src/plugin.translations.ts)"
     },
     "plugin-sdk:packages/plugin-sdk/src/admin-resources.ts:fileLines": {
       "ticketId": "baseline-plugin-sdk-src-admin-resources-ts",

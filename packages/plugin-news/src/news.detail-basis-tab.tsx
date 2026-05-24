@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 import { getStudioFormFieldProps, StudioFormSummaryErrors } from '@sva/studio-ui-react';
 import {

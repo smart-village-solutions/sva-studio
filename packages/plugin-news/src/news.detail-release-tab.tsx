@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Controller, useFormContext, type FieldError } from 'react-hook-form';
 import { getStudioFormFieldProps, StudioFormSummaryErrors } from '@sva/studio-ui-react';
 import { Button, Checkbox, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';

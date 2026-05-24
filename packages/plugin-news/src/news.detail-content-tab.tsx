@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button, Input, MediaReferenceField, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
 import { buildNewsDetailCharacterCounts } from './news.detail-form.js';

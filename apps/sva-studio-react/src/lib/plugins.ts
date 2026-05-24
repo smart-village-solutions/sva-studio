@@ -120,11 +120,26 @@ mergeI18nResources(studioBuildTimeRegistry.translations);
 
 export const studioPlugins = studioBuildTimeRegistry.plugins;
 export const studioPluginActionRegistry = studioBuildTimeRegistry.pluginActionRegistry;
-export const studioPluginNavigation = studioBuildTimeRegistry.navigation;
 export const studioAdminResources = studioBuildTimeRegistry.adminResources;
+export const studioContentTypes = studioBuildTimeRegistry.studioContentTypes;
+const unifiedContentNavigationTargets = new Set(
+  studioAdminResources
+    .filter(
+      (resource) =>
+        resource.guard === 'content' &&
+        resource.resourceId !== 'content' &&
+        studioContentTypes.some((definition) => definition.contentType === resource.contentUi?.contentType)
+    )
+    .map((resource) => `/admin/${resource.basePath}`)
+);
+export const studioPluginNavigation = studioBuildTimeRegistry.navigation.filter(
+  (item) => !unifiedContentNavigationTargets.has(item.to)
+);
 const studioPluginNavigationOwners = new Map(
   studioPlugins.flatMap((plugin) =>
-    (plugin.navigation ?? []).map((item) => [item.id, plugin.id] as const)
+    (plugin.navigation ?? [])
+      .filter((item) => !unifiedContentNavigationTargets.has(item.to))
+      .map((item) => [item.id, plugin.id] as const)
   )
 );
 

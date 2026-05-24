@@ -3,6 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useContentDetail, useContents, useCreateContent } from './use-contents';
 
+const contentListQuery = {
+  page: 1,
+  pageSize: 25,
+  sortBy: 'updatedAt',
+  sortDirection: 'desc',
+  visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
+} as const;
+
 const listContentsMock = vi.fn();
 const createContentMock = vi.fn();
 const getContentMock = vi.fn();
@@ -92,7 +100,7 @@ describe('useContents', () => {
       pagination: { page: 1, pageSize: 1, total: 1 },
     });
 
-    const { result } = renderHook(() => useContents());
+    const { result } = renderHook(() => useContents(contentListQuery));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -107,7 +115,7 @@ describe('useContents', () => {
     asIamErrorMock.mockReturnValue(protectedError);
     listContentsMock.mockRejectedValueOnce(new Error('protected-list'));
 
-    const { result } = renderHook(() => useContents());
+    const { result } = renderHook(() => useContents(contentListQuery));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -141,7 +149,7 @@ describe('useContents', () => {
       })
       .mockRejectedValueOnce(new Error('protected-refetch'));
 
-    const { result } = renderHook(() => useContents());
+    const { result } = renderHook(() => useContents(contentListQuery));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -192,7 +200,7 @@ describe('useContents', () => {
     updateContentMock.mockResolvedValue({ data: { id: 'content-1' } });
     deleteContentMock.mockResolvedValue({ data: { id: 'content-1' } });
 
-    const { result } = renderHook(() => useContents());
+    const { result } = renderHook(() => useContents(contentListQuery));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);

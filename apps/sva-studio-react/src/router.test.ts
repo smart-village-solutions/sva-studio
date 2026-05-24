@@ -45,7 +45,7 @@ describe('createRuntimeRouteTree', () => {
         '/account',
         '/admin/users',
         '/admin/content',
-        '/admin/news',
+        '/admin/content/new',
         '/admin/news/new',
         '/admin/news/$id',
         '/content',

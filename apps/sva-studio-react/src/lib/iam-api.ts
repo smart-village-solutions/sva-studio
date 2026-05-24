@@ -9,6 +9,7 @@ import type {
   IamContentDetail,
   IamContentHistoryEntry,
   IamContentListItem,
+  IamContentListQuery,
   IamDeletionContentStrategy,
   IamDsrCanonicalStatus,
   IamDsrCaseListItem,
@@ -1044,8 +1045,31 @@ export const getGroup = async (groupId: string): Promise<ApiItemResponse<IamAdmi
 export const listLegalTexts = async (): Promise<ApiListResponse<IamLegalTextListItem>> =>
   requestJson<ApiListResponse<IamLegalTextListItem>>('/api/v1/iam/legal-texts');
 
-export const listContents = async (): Promise<ApiListResponse<IamContentListItem>> =>
-  requestJson<ApiListResponse<IamContentListItem>>('/api/v1/iam/contents');
+export const listContents = async (
+  query: IamContentListQuery
+): Promise<ApiListResponse<IamContentListItem>> => {
+  const params = new URLSearchParams({
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+    sortBy: query.sortBy,
+    sortDirection: query.sortDirection,
+  });
+
+  if (query.q) {
+    params.set('q', query.q);
+  }
+  if (query.type) {
+    params.set('type', query.type);
+  }
+  if (query.status) {
+    params.set('status', query.status);
+  }
+  for (const contentType of query.visibleTypes ?? []) {
+    params.append('visibleType', contentType);
+  }
+
+  return requestJson<ApiListResponse<IamContentListItem>>(`/api/v1/iam/contents?${params.toString()}`);
+};
 
 export const getContent = async (contentId: string): Promise<ApiItemResponse<IamContentDetail>> =>
   requestJson<ApiItemResponse<IamContentDetail>>(`/api/v1/iam/contents/${contentId}`);

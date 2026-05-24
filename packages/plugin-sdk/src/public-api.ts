@@ -110,12 +110,16 @@ export type {
   ContentTypeEditorFieldDefinition,
   ContentTypeEditorFieldKind,
   ContentTypeListColumnDefinition,
+  RegisteredStudioContentType,
+  StudioContentTypeDefinition,
 } from './content-types.js';
 export {
+  collectRegisteredStudioContentTypes,
   createContentTypeRegistry,
   definePluginContentTypes,
   genericContentTypeDefinition,
   getContentTypeDefinition,
+  resolveStudioContentDetailPath,
 } from './content-types.js';
 export type {
   PluginActionDefinition,

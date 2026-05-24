@@ -183,8 +183,21 @@ export const createStandardContentAdminResource = (
 export const createStandardContentTypeDefinition = (
   pluginId: string,
   contentType: string,
-  displayName: string
-): readonly ContentTypeDefinition[] => definePluginContentTypes(pluginId, [{ contentType, displayName }] as const);
+  displayName: string,
+  basePath?: string
+): readonly ContentTypeDefinition[] =>
+  definePluginContentTypes(pluginId, [
+    {
+      contentType,
+      displayName,
+      studioContentType: {
+        requiredReadAction: `${pluginId}.read`,
+        requiredCreateAction: `${pluginId}.create`,
+        createPath: `/admin/${basePath ?? pluginId}/new`,
+        detailPath: `/admin/${basePath ?? pluginId}/$id`,
+      },
+    },
+  ] as const);
 
 export const createStandardContentPluginContribution = (
   options: StandardContentPluginContributionOptions
@@ -201,7 +214,12 @@ export const createStandardContentPluginContribution = (
   actions: createStandardContentPluginActions(options.pluginId, options.actionOptions),
   permissions: createStandardContentPluginPermissions(options.pluginId),
   moduleIam: createStandardContentModuleIamContract(options.pluginId),
-  contentTypes: createStandardContentTypeDefinition(options.pluginId, options.contentType, options.displayName),
+  contentTypes: createStandardContentTypeDefinition(
+    options.pluginId,
+    options.contentType,
+    options.displayName,
+    options.basePath
+  ),
   adminResources: definePluginAdminResources(options.pluginId, [createStandardContentAdminResource(options)]),
 });
 

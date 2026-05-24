@@ -308,6 +308,8 @@ export const i18nResources = {
       filters: {
         searchLabel: 'Suche',
         searchPlaceholder: 'Nach Titel, Typ, Autor oder Payload suchen',
+        typeLabel: 'Typ',
+        typeAll: 'Alle Typen',
         statusLabel: 'Status',
         statusAll: 'Alle Status',
       },
@@ -373,6 +375,17 @@ export const i18nResources = {
           'Definieren Sie den Basiskern und hinterlegen Sie die generische JSON-Payload.',
         editTitle: 'Inhalt bearbeiten',
         editSubtitle: 'Aktualisieren Sie Metadaten, Status und Payload des ausgewählten Inhalts.',
+      },
+      typePicker: {
+        title: 'Inhaltstyp wählen',
+        subtitle: 'Wählen Sie den Inhaltstyp aus, für den Sie einen neuen Eintrag anlegen möchten.',
+        help: 'Es werden nur Inhaltstypen angezeigt, die im aktuellen Kontext tatsächlich angelegt werden dürfen.',
+        openCreate: 'Erstellungsseite öffnen',
+        fallbackDescription: '{{type}} im gemeinsamen Inhaltsbereich anlegen und bearbeiten.',
+        empty: {
+          title: 'Keine anlegbaren Inhaltstypen',
+          body: 'Im aktuellen Kontext steht kein Inhaltstyp mit Erstellungsrecht zur Verfügung.',
+        },
       },
       meta: {
         title: 'Metadaten',
@@ -3321,6 +3334,8 @@ export const i18nResources = {
       filters: {
         searchLabel: 'Search',
         searchPlaceholder: 'Search by title, type, author, or payload',
+        typeLabel: 'Type',
+        typeAll: 'All types',
         statusLabel: 'Status',
         statusAll: 'All statuses',
       },
@@ -3385,6 +3400,17 @@ export const i18nResources = {
         createSubtitle: 'Define the core fields and provide the generic JSON payload.',
         editTitle: 'Edit content',
         editSubtitle: 'Update metadata, status, and payload for the selected content item.',
+      },
+      typePicker: {
+        title: 'Choose content type',
+        subtitle: 'Select the content type for which you want to create a new entry.',
+        help: 'Only content types that can actually be created in the current context are shown.',
+        openCreate: 'Open create page',
+        fallbackDescription: 'Create and edit {{type}} within the shared content area.',
+        empty: {
+          title: 'No creatable content types',
+          body: 'No content type with create permission is available in the current context.',
+        },
       },
       meta: {
         title: 'Metadata',

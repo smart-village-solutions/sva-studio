@@ -50,7 +50,7 @@ const breadcrumbRoutes: ReadonlyArray<
     build: () => [
       overviewBreadcrumb(),
       { href: '/admin/content', label: t('content.page.title') },
-      { label: t('content.editor.createTitle') },
+      { label: t('content.typePicker.title') },
     ],
   },
   {
@@ -69,7 +69,7 @@ const breadcrumbRoutes: ReadonlyArray<
     pattern: /^\/admin\/news\/new$/,
     build: () => [
       overviewBreadcrumb(),
-      { href: '/admin/news', label: t('news.navigation.title') },
+      { href: '/admin/content', label: t('content.page.title') },
       { label: t('news.editor.createTitle') },
     ],
   },
@@ -77,13 +77,41 @@ const breadcrumbRoutes: ReadonlyArray<
     pattern: /^\/admin\/news\/[^/]+$/,
     build: () => [
       overviewBreadcrumb(),
-      { href: '/admin/news', label: t('news.navigation.title') },
+      { href: '/admin/content', label: t('content.page.title') },
       { label: t('news.editor.editTitle') },
     ],
   },
   {
-    pattern: /^\/admin\/news$/,
-    build: () => [overviewBreadcrumb(), { label: t('news.navigation.title') }],
+    pattern: /^\/admin\/events\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('events.editor.createTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/events\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('events.editor.editTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/poi\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('poi.editor.createTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/poi\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/content', label: t('content.page.title') },
+      { label: t('poi.editor.editTitle') },
+    ],
   },
   {
     pattern: /^\/interfaces$/,

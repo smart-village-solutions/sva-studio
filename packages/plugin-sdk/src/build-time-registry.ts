@@ -27,7 +27,8 @@ import {
   mergePluginRouteDefinitions,
   mergePluginTranslations,
 } from './plugins.js';
-import type { ContentTypeDefinition } from './content-types.js';
+import type { ContentTypeDefinition, RegisteredStudioContentType } from './content-types.js';
+import { collectRegisteredStudioContentTypes } from './content-types.js';
 import {
   createPluginImportProfileRegistry,
   createPluginJobTypeRegistry,
@@ -72,6 +73,7 @@ export type BuildTimeRegistry = {
   readonly routes: readonly PluginRouteDefinition[];
   readonly navigation: readonly PluginNavigationItem[];
   readonly contentTypes: readonly ContentTypeDefinition[];
+  readonly studioContentTypes: readonly RegisteredStudioContentType[];
   readonly auditEvents: readonly PluginAuditEventDefinition[];
   readonly translations: PluginTranslations;
   readonly adminResources: readonly AdminResourceDefinition[];
@@ -85,6 +87,7 @@ type PreflightPhaseOutput = {
 
 type ContentPhaseOutput = {
   readonly contentTypes: readonly ContentTypeDefinition[];
+  readonly studioContentTypes: readonly RegisteredStudioContentType[];
 };
 
 type AdminPhaseOutput = {
@@ -146,9 +149,14 @@ const runPreflightPhase = (plugins: readonly PluginDefinition[]): PreflightPhase
   };
 };
 
-const runContentPhase = (plugins: readonly PluginDefinition[]): ContentPhaseOutput => ({
-  contentTypes: mergePluginContentTypes(plugins),
-});
+const runContentPhase = (plugins: readonly PluginDefinition[]): ContentPhaseOutput => {
+  const contentTypes = mergePluginContentTypes(plugins);
+
+  return {
+    contentTypes,
+    studioContentTypes: collectRegisteredStudioContentTypes(contentTypes),
+  };
+};
 
 const runAdminPhase = (
   plugins: readonly PluginDefinition[],
@@ -226,6 +234,7 @@ const publishBuildTimeRegistry = ({
   routes: routing.routes,
   navigation: routing.navigation,
   contentTypes: content.contentTypes,
+  studioContentTypes: content.studioContentTypes,
   auditEvents: audit.auditEvents,
   translations: mergePluginTranslations(preflight.plugins),
   adminResources: admin.adminResources,

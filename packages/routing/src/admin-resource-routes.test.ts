@@ -396,7 +396,7 @@ describe('admin resource routes', () => {
         .map((route) => [String(route.path), route])
     );
 
-    expect(routeMap.get('/admin/news')?.component?.()).toBe('newsList');
+    expect(routeMap.has('/admin/news')).toBe(false);
     expect(routeMap.get('/admin/news/new')?.component?.()).toBe('newsEditor');
     expect(routeMap.get('/admin/news/$id')?.component?.()).toBe('newsDetail');
   });
@@ -429,7 +429,7 @@ describe('admin resource routes', () => {
         .map((route) => [String(route.path), route])
     );
 
-    expect(routeMap.get('/admin/news')?.component?.()).toBe('newsList');
+    expect(routeMap.has('/admin/news')).toBe(false);
     expect(routeMap.get('/admin/news/new')?.component?.()).toBe('contentCreate');
     expect(routeMap.get('/admin/news/$id')?.component?.()).toBe('contentDetail');
   });
@@ -636,7 +636,7 @@ describe('admin resource routes', () => {
     ).toThrow(expect.objectContaining({ href: '/admin/editorial-content/content-7', __redirect: true }));
   });
 
-  it('redirects legacy plugin CRUD aliases to the canonical host-owned admin routes', () => {
+  it('does not create legacy plugin CRUD aliases for unified content overview resources', () => {
     const routeFactories = createLegacyContentAliasFactories([
       {
         resourceId: 'news.content',
@@ -647,6 +647,14 @@ describe('admin resource routes', () => {
           list: { bindingKey: 'newsList' },
           create: { bindingKey: 'newsEditor' },
           detail: { bindingKey: 'newsDetail' },
+        },
+        contentUi: {
+          contentType: 'news.article',
+          bindings: {
+            list: { bindingKey: 'newsList' },
+            detail: { bindingKey: 'newsDetail' },
+            editor: { bindingKey: 'newsEditor' },
+          },
         },
       },
       {
@@ -659,20 +667,22 @@ describe('admin resource routes', () => {
           create: { bindingKey: 'poiEditor' },
           detail: { bindingKey: 'poiDetail' },
         },
+        contentUi: {
+          contentType: 'poi.point-of-interest',
+          bindings: {
+            list: { bindingKey: 'poiList' },
+            detail: { bindingKey: 'poiDetail' },
+            editor: { bindingKey: 'poiEditor' },
+          },
+        },
       },
     ] as never);
     const rootRoute = { id: 'root' };
     const routes = routeFactories.map((factory) => factory(rootRoute as never));
     const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
 
-    expect(() => readRouteOptions(routeMap.get('/plugins/news')).beforeLoad?.({ href: '/plugins/news?page=2' })).toThrow(
-      expect.objectContaining({ href: '/admin/news?page=2', __redirect: true })
-    );
-    expect(() => readRouteOptions(routeMap.get('/plugins/news/new')).beforeLoad?.({ href: '/plugins/news/new' })).toThrow(
-      expect.objectContaining({ href: '/admin/news/new', __redirect: true })
-    );
-    expect(
-      () => readRouteOptions(routeMap.get('/plugins/poi/$contentId')).beforeLoad?.({ href: '/plugins/poi/poi-7?tab=usage' })
-    ).toThrow(expect.objectContaining({ href: '/admin/poi/poi-7?tab=usage', __redirect: true }));
+    expect(routeMap.has('/plugins/news')).toBe(false);
+    expect(routeMap.has('/plugins/news/new')).toBe(false);
+    expect(routeMap.has('/plugins/poi/$contentId')).toBe(false);
   });
 });

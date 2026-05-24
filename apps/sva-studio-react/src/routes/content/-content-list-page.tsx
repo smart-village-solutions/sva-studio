@@ -1,4 +1,8 @@
-import { withServerDeniedContentAccess, type IamContentAccessSummary } from '@sva/core';
+import {
+  withServerDeniedContentAccess,
+  type IamContentAccessSummary,
+  type IamContentListQuery,
+} from '@sva/core';
 import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
@@ -13,9 +17,13 @@ import { Select } from '../../components/ui/select';
 import { useContentAccess } from '../../hooks/use-content-access';
 import { useContents } from '../../hooks/use-contents';
 import { t } from '../../i18n';
-import { formatContentAuthor } from '../../lib/content-author';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import type { IamHttpError } from '../../lib/iam-api';
+import { studioContentTypes } from '../../lib/plugins';
+import {
+  filterCreatableStudioContentTypes,
+  filterRegisteredStudioContentItems,
+} from '../../lib/studio-content-types';
 import { appAdminResources } from '../../routing/admin-resources';
 
 type StatusFilter = 'all' | 'draft' | 'in_review' | 'approved' | 'published' | 'archived';
@@ -27,6 +35,7 @@ type ContentListSortState = Readonly<{
 type RouteSearchState = Readonly<Record<string, unknown>>;
 type ContentListRouteState = Readonly<{
   search: string;
+  type: string;
   status: StatusFilter;
   page: number;
   pageSize: number;
@@ -59,22 +68,7 @@ const contentErrorMessage = (error: IamHttpError | null): string => {
   }
 };
 
-const formatDateTime = (value?: string): string => {
-  if (!value) {
-    return t('content.table.notPublished');
-  }
-  return formatEditorDateTime(value) ?? value;
-};
-
-const summarizePayload = (value: unknown): string => {
-  const json = JSON.stringify(value);
-  if (!json) {
-    return '{}';
-  }
-  return json.length <= 80 ? json : `${json.slice(0, 77)}...`;
-};
-
-const stringifyPayload = (value: unknown): string => JSON.stringify(value) ?? '';
+const formatDateTime = (value: string): string => formatEditorDateTime(value) ?? value;
 
 const resolveRowAccess = (
   access: IamContentAccessSummary | undefined,
@@ -102,20 +96,6 @@ const contentAccessLabelKeyByState = {
   read_only: 'content.access.states.readOnly',
   blocked: 'content.access.states.blocked',
   server_denied: 'content.access.states.serverDenied',
-} as const;
-
-const contentAccessVariantByState = {
-  editable: 'default',
-  read_only: 'secondary',
-  blocked: 'destructive',
-  server_denied: 'destructive',
-} as const;
-
-const contentAccessReasonKeyByValue = {
-  content_read_missing: 'content.access.reasons.contentReadMissing',
-  content_update_missing: 'content.access.reasons.contentUpdateMissing',
-  context_restricted: 'content.access.reasons.contextRestricted',
-  server_forbidden: 'content.access.reasons.serverForbidden',
 } as const;
 
 const formatAccessContext = (access: IamContentAccessSummary) => {
@@ -146,6 +126,21 @@ const statusLabelKeyByValue = {
 
 const isStatusFilter = (value: unknown): value is StatusFilter =>
   typeof value === 'string' && contentStatusOptions.some((option) => option === value);
+
+const normalizeTypeFilter = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    return 'all';
+  }
+
+  const normalizedValue = value.trim();
+  if (normalizedValue.length === 0) {
+    return 'all';
+  }
+
+  return normalizedValue === 'all' || studioContentTypes.some((definition) => definition.contentType === normalizedValue)
+    ? normalizedValue
+    : 'all';
+};
 
 const asRouteSearchState = (value: unknown): RouteSearchState | undefined =>
   value && typeof value === 'object' ? (value as RouteSearchState) : undefined;
@@ -198,17 +193,30 @@ const readNormalizedRouteState = (search: RouteSearchState): ContentListRouteSta
 
   return {
     search: normalizedSearch,
+    type: normalizeTypeFilter(normalizedFilters?.type ?? search.type),
     status: normalizeStatusFilter(normalizedFilters?.status ?? search.status),
     page: normalizePositiveInteger(search.page, 1),
     pageSize: normalizePositiveInteger(search.pageSize, pageSizeDefault),
-    sort: normalizeSortState(search.sort) ?? normalizeSortState(search.sort ?? search.sorting) ?? fallbackSort,
+    sort:
+      normalizeSortState(
+        typeof search.sortBy === 'string'
+          ? {
+              field: search.sortBy,
+              direction: search.sortDirection,
+            }
+          : undefined
+      ) ??
+      normalizeSortState(search.sort) ??
+      normalizeSortState(search.sort ?? search.sorting) ??
+      fallbackSort,
   };
 };
 
 const serializeRouteState = (state: ContentListRouteState): RouteSearchState => ({
   ...(state.search.trim().length > 0 ? { q: state.search.trim() } : {}),
+  ...(state.type !== 'all' ? { type: state.type } : {}),
   ...(state.status !== 'all' ? { status: state.status } : {}),
-  ...(state.sort ? { sort: state.sort.direction === 'desc' ? `-${state.sort.field}` : state.sort.field } : {}),
+  ...(state.sort ? { sortBy: state.sort.field, sortDirection: state.sort.direction } : {}),
   page: state.page,
   pageSize: state.pageSize,
 });
@@ -276,24 +284,6 @@ const resolveRowActionLabel = (access: IamContentAccessSummary): string => {
   return t('content.actions.blocked');
 };
 
-const sortContents = <TItem extends Record<string, unknown>>(
-  items: readonly TItem[],
-  sort: ContentListSortState | undefined
-): readonly TItem[] => {
-  if (!sort) {
-    return items;
-  }
-
-  const direction = sort.direction === 'desc' ? -1 : 1;
-  return [...items].sort((left, right) => {
-    const leftValue = left[sort.field];
-    const rightValue = right[sort.field];
-    const normalizedLeft = typeof leftValue === 'string' ? leftValue.toLowerCase() : String(leftValue ?? '');
-    const normalizedRight = typeof rightValue === 'string' ? rightValue.toLowerCase() : String(rightValue ?? '');
-    return normalizedLeft.localeCompare(normalizedRight) * direction;
-  });
-};
-
 const ContentPaginationNav = ({
   page,
   pageCount,
@@ -322,40 +312,59 @@ export const ContentListPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as RouteSearchState;
-  const contentsApi = useContents();
   const contentAccessApi = useContentAccess();
   const routeState = readNormalizedRouteState(search);
-  const normalizedSearch = routeState.search.trim().toLowerCase();
-  const createDisabled =
-    contentAccessApi.access ? !contentAccessApi.access.canCreate : contentsApi.error?.code === 'forbidden';
-
-  const contentsWithPayloadJson = React.useMemo(
+  const readableContentTypes = React.useMemo(
     () =>
-      contentsApi.contents.map((item) => ({
-        ...item,
-        payloadJson: stringifyPayload(item.payload),
-      })),
-    [contentsApi.contents]
+      studioContentTypes.filter((definition) =>
+        contentAccessApi.permissionActions?.includes(definition.requiredReadAction)
+      ),
+    [contentAccessApi.permissionActions]
   );
+  const contentListQuery = React.useMemo<IamContentListQuery>(
+    () => ({
+      page: routeState.page,
+      pageSize: routeState.pageSize,
+      ...(routeState.search.trim().length > 0 ? { q: routeState.search.trim() } : {}),
+      ...(routeState.type !== 'all' ? { type: routeState.type } : {}),
+      ...(routeState.status !== 'all' ? { status: routeState.status } : {}),
+      visibleTypes: readableContentTypes.map((definition) => definition.contentType),
+      sortBy:
+        routeState.sort?.field === 'contentType'
+          ? 'contentType'
+          : routeState.sort?.field === 'title' ||
+              routeState.sort?.field === 'status' ||
+              routeState.sort?.field === 'updatedAt'
+            ? routeState.sort.field
+            : 'updatedAt',
+      sortDirection: routeState.sort?.direction ?? 'desc',
+    }),
+    [readableContentTypes, routeState.page, routeState.pageSize, routeState.search, routeState.sort, routeState.status, routeState.type]
+  );
+  const contentsApi = useContents(contentListQuery);
+  const creatableContentTypes = React.useMemo(
+    () => filterCreatableStudioContentTypes(studioContentTypes, contentAccessApi.permissionActions),
+    [contentAccessApi.permissionActions]
+  );
+  const createDisabled =
+    creatableContentTypes.length === 0 &&
+    (contentAccessApi.access ? !contentAccessApi.access.canCreate : contentsApi.error?.code === 'forbidden');
 
-  const filteredContents = contentsWithPayloadJson.filter((item) => {
-    const displayAuthor = formatContentAuthor(item.author).toLowerCase();
-    const matchesSearch =
-      normalizedSearch.length === 0 ||
-      item.title.toLowerCase().includes(normalizedSearch) ||
-      displayAuthor.includes(normalizedSearch) ||
-      item.contentType.toLowerCase().includes(normalizedSearch) ||
-      item.payloadJson.toLowerCase().includes(normalizedSearch);
-
-    const matchesStatus = routeState.status === 'all' || item.status === routeState.status;
-    return matchesSearch && matchesStatus;
-  });
-  const sortedContents = React.useMemo(() => sortContents(filteredContents, routeState.sort), [filteredContents, routeState.sort]);
-  const pageCount = Math.max(1, Math.ceil(sortedContents.length / routeState.pageSize));
-  const safePage = Math.min(routeState.page, pageCount);
-  const pagedContents = React.useMemo(
-    () => sortedContents.slice((safePage - 1) * routeState.pageSize, safePage * routeState.pageSize),
-    [routeState.pageSize, safePage, sortedContents]
+  const registeredContents = React.useMemo(
+    () =>
+      filterRegisteredStudioContentItems(contentsApi.contents, studioContentTypes, contentAccessApi.permissionActions).map(
+        ({ item, definition }) => ({
+          ...item,
+          typeLabel: definition.displayName,
+          editPath: definition.detailPath.replace('$id', item.id),
+        })
+      ),
+    [contentAccessApi.permissionActions, contentsApi.contents]
+  );
+  const safePage = Math.max(1, contentsApi.pagination.page);
+  const pageCount = Math.max(
+    1,
+    Math.ceil(contentsApi.pagination.total / Math.max(1, contentsApi.pagination.pageSize))
   );
 
   const navigateSearch = React.useCallback(
@@ -372,12 +381,17 @@ export const ContentListPage = () => {
 
   const runBulkAction = React.useCallback(
     async (actionId: 'content.archive' | 'content.delete', selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery', selectedIds: readonly string[]) => {
-      const contentIds = resolveContentIdsForBulkAction(selectionMode, pagedContents, sortedContents, selectedIds);
+      const contentIds = resolveContentIdsForBulkAction(
+        selectionMode,
+        registeredContents,
+        registeredContents,
+        selectedIds
+      );
 
       const input = {
         actionId,
         contentIds,
-        matchingCount: sortedContents.length,
+        matchingCount: contentsApi.pagination.total,
         page: safePage,
         pageSize: routeState.pageSize,
         selectionMode,
@@ -392,10 +406,10 @@ export const ContentListPage = () => {
 
       await contentsApi.deleteContents(input);
     },
-    [contentsApi, pagedContents, routeState.pageSize, routeState.sort, routeState.status, safePage, sortedContents]
+    [contentsApi, registeredContents, routeState.pageSize, routeState.sort, routeState.status, safePage]
   );
 
-  const contentColumns = React.useMemo<readonly StudioColumnDef<(typeof filteredContents)[number]>[]>(
+  const contentColumns = React.useMemo<readonly StudioColumnDef<(typeof registeredContents)[number]>[]>(
     () => [
       {
         id: 'title',
@@ -407,23 +421,9 @@ export const ContentListPage = () => {
       {
         id: 'contentType',
         header: t('content.table.headerType'),
-        cell: (item) => item.contentType,
+        cell: (item) => item.typeLabel,
         sortable: true,
-        sortValue: (item) => item.contentType.toLowerCase(),
-      },
-      {
-        id: 'publishedAt',
-        header: t('content.table.headerPublished'),
-        cell: (item) => formatDateTime(item.publishedAt),
-        sortable: true,
-        sortValue: (item) => item.publishedAt ?? '',
-      },
-      {
-        id: 'createdAt',
-        header: t('content.table.headerCreated'),
-        cell: (item) => formatDateTime(item.createdAt),
-        sortable: true,
-        sortValue: (item) => item.createdAt,
+        sortValue: (item) => item.typeLabel.toLowerCase(),
       },
       {
         id: 'updatedAt',
@@ -433,62 +433,32 @@ export const ContentListPage = () => {
         sortValue: (item) => item.updatedAt,
       },
       {
-        id: 'author',
-        header: t('content.table.headerAuthor'),
-        cell: (item) => formatContentAuthor(item.author),
-        sortable: true,
-        sortValue: (item) => formatContentAuthor(item.author).toLowerCase(),
-      },
-      {
-        id: 'payload',
-        header: t('content.table.headerPayload'),
-        cell: (item) => <span className="max-w-sm text-foreground">{summarizePayload(item.payload)}</span>,
-      },
-      {
         id: 'status',
         header: t('content.table.headerStatus'),
         cell: (item) => <Badge variant={statusVariantByValue[item.status]}>{t(statusLabelKeyByValue[item.status])}</Badge>,
         sortable: true,
         sortValue: (item) => item.status,
       },
-      {
-        id: 'access',
-        header: t('content.table.headerAccess'),
-        cell: (item) => {
-          const access = resolveRowAccess(item.access, contentsApi.error);
-          return (
-            <div>
-              <Badge variant={contentAccessVariantByState[access.state]}>
-                {t(contentAccessLabelKeyByState[access.state])}
-              </Badge>
-              {access.reasonCode ? (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {t(contentAccessReasonKeyByValue[access.reasonCode])}
-                </p>
-              ) : null}
-            </div>
-          );
-        },
-      },
-      {
-        id: 'context',
-        header: t('content.table.headerContext'),
-        cell: (item) => formatAccessContext(resolveRowAccess(item.access, contentsApi.error)),
-      },
     ],
-    [contentsApi.error]
+    []
   );
 
   const bulkActionButtons = contentBulkActions.flatMap((action) =>
-    action.selectionModes.map((selectionMode) => {
+    action.selectionModes
+      .filter((selectionMode) => selectionMode !== 'allMatchingQuery')
+      .map((selectionMode) => {
       const labelKey = resolveSelectionModeLabelKey(selectionMode);
 
       return {
         id: `${action.id}:${selectionMode}`,
         label: `${t(action.labelKey)} (${t(labelKey)})`,
-        disabled: isBulkActionDisabled(selectionMode, pagedContents.length, sortedContents.length),
+        disabled: isBulkActionDisabled(
+          selectionMode,
+          registeredContents.length,
+          contentsApi.pagination.total
+        ),
         variant: 'outline' as const,
-        onClick: async ({ selectedRows, clearSelection }: { selectedRows: typeof pagedContents; clearSelection: () => void }) => {
+        onClick: async ({ selectedRows, clearSelection }: { selectedRows: typeof registeredContents; clearSelection: () => void }) => {
           await runBulkAction(
             action.actionId as 'content.archive' | 'content.delete',
             selectionMode,
@@ -546,7 +516,7 @@ export const ContentListPage = () => {
         ariaLabel={t('content.table.ariaLabel')}
         labels={studioDataTableLabels}
         caption={t('content.table.caption')}
-        data={pagedContents}
+        data={registeredContents}
         columns={contentColumns}
         getRowId={(item) => item.id}
         selectionMode={contentBulkActions.length > 0 ? 'multiple' : 'none'}
@@ -571,6 +541,21 @@ export const ContentListPage = () => {
               />
             </div>
             <div className="flex flex-col gap-1">
+              <Label htmlFor="content-type-filter">{t('content.filters.typeLabel')}</Label>
+              <Select
+                id="content-type-filter"
+                value={routeState.type}
+                onChange={(event) => navigateSearch({ type: normalizeTypeFilter(event.target.value), page: 1 })}
+              >
+                <option value="all">{t('content.filters.typeAll')}</option>
+                {readableContentTypes.map((definition) => (
+                  <option key={definition.contentType} value={definition.contentType}>
+                    {definition.displayName}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1">
               <Label htmlFor="content-status-filter">{t('content.filters.statusLabel')}</Label>
               <Select
                 id="content-status-filter"
@@ -593,7 +578,7 @@ export const ContentListPage = () => {
               <Label htmlFor="content-page-size">{t('content.pagination.pageSizeLabel')}</Label>
               <Select
                 id="content-page-size"
-                value={String(routeState.pageSize)}
+                value={String(contentsApi.pagination.pageSize)}
                 onChange={(event) => navigateSearch({ page: 1, pageSize: Number(event.target.value) })}
               >
                 {(contentPagination?.pageSizeOptions ?? [25]).map((option) => (
@@ -612,7 +597,7 @@ export const ContentListPage = () => {
 
           return access.canRead ? (
             <Button asChild size="sm" variant="outline">
-              <Link to="/admin/content/$id" params={{ id: item.id }}>
+              <Link to={item.editPath}>
                 {actionLabel}
               </Link>
             </Button>

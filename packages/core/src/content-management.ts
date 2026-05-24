@@ -3,6 +3,8 @@ export const IAM_PSEUDONYMIZED_CONTENT_AUTHOR_TOKEN = '__iam_author_pseudonymize
 export const IAM_DELETED_CONTENT_AUTHOR_TOKEN = '__iam_author_deleted__' as const;
 
 export const iamContentStatuses = ['draft', 'in_review', 'approved', 'published', 'archived'] as const;
+export const iamContentListSortFields = ['title', 'contentType', 'status', 'updatedAt'] as const;
+export const iamContentListSortDirections = ['asc', 'desc'] as const;
 export const iamContentValidationStates = ['valid', 'invalid', 'pending'] as const;
 export const iamContentPrimitiveActions = [
   'content.read',
@@ -37,6 +39,8 @@ export const iamContentAccessReasonCodes = [
 ] as const;
 
 export type IamContentStatus = (typeof iamContentStatuses)[number];
+export type IamContentListSortField = (typeof iamContentListSortFields)[number];
+export type IamContentListSortDirection = (typeof iamContentListSortDirections)[number];
 export type IamContentValidationState = (typeof iamContentValidationStates)[number];
 export type IamContentPrimitiveAction = (typeof iamContentPrimitiveActions)[number];
 export type IamContentDomainCapability = (typeof iamContentDomainCapabilities)[number];
@@ -131,6 +135,17 @@ export type IamContentListItem = {
 
 export type IamContentDetail = IamContentListItem & {
   readonly history: readonly IamContentHistoryEntry[];
+};
+
+export type IamContentListQuery = {
+  readonly page: number;
+  readonly pageSize: number;
+  readonly q?: string;
+  readonly type?: string;
+  readonly visibleTypes?: readonly string[];
+  readonly status?: IamContentStatus;
+  readonly sortBy: IamContentListSortField;
+  readonly sortDirection: IamContentListSortDirection;
 };
 
 export type CreateIamContentInput = {

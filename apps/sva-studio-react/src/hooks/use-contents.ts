@@ -1,5 +1,11 @@
 import React from 'react';
-import type { IamContentDetail, IamContentHistoryEntry, IamContentListItem } from '@sva/core';
+import type {
+  ApiPagination,
+  IamContentDetail,
+  IamContentHistoryEntry,
+  IamContentListItem,
+  IamContentListQuery,
+} from '@sva/core';
 
 import {
   asIamError,
@@ -24,6 +30,7 @@ import { useIamAdminList } from './use-iam-admin-list';
 
 type UseContentsResult = {
   readonly contents: readonly IamContentListItem[];
+  readonly pagination: ApiPagination;
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
   readonly mutationError: IamHttpError | null;
@@ -70,12 +77,35 @@ export type ContentBulkMutationResult = Readonly<{
   readonly skippedCount: number;
 }>;
 
+const DEFAULT_CONTENT_PAGINATION = {
+  page: 1,
+  pageSize: 25,
+  total: 0,
+} as const satisfies ApiPagination;
+
 const contentsLogger = createOperationLogger('contents-hook', 'debug');
 const PERMISSION_INVALIDATED_EVENT = 'permission_invalidated_after_401_or_403';
 
-export const useContents = (): UseContentsResult => {
+export const useContents = (query: IamContentListQuery): UseContentsResult => {
   const { invalidatePermissions } = useAuth();
-  const adminList = useIamAdminList(listContents, invalidatePermissions);
+  const [pagination, setPagination] = React.useState<ApiPagination>(DEFAULT_CONTENT_PAGINATION);
+  const listItems = React.useCallback(() => listContents(query), [query]);
+  const handleLoaded = React.useCallback(
+    (response: { readonly pagination?: ApiPagination }) => {
+      const nextPagination = response.pagination ?? DEFAULT_CONTENT_PAGINATION;
+      setPagination((currentPagination) =>
+        currentPagination.page === nextPagination.page &&
+        currentPagination.pageSize === nextPagination.pageSize &&
+        currentPagination.total === nextPagination.total
+          ? currentPagination
+          : nextPagination
+      );
+    },
+    []
+  );
+  const adminList = useIamAdminList(listItems, invalidatePermissions, {
+    onLoaded: handleLoaded,
+  });
 
   const runBulkMutation = React.useCallback(
     async (
@@ -163,6 +193,7 @@ export const useContents = (): UseContentsResult => {
 
   return {
     contents: adminList.items,
+    pagination,
     isLoading: adminList.isLoading,
     error: adminList.error,
     mutationError: adminList.mutationError,

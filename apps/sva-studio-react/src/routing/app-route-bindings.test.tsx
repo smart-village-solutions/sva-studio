@@ -174,6 +174,10 @@ vi.mock('../routes/content/-content-list-page', () => ({
   ContentListPage: () => <div data-testid="content-list-page" />,
 }));
 
+vi.mock('../routes/content/-content-type-picker-page', () => ({
+  ContentTypePickerPage: () => <div data-testid="content-type-picker-page" />,
+}));
+
 vi.mock('../routes/-home-page', () => ({
   HomePage: () => <div data-testid="home-page" />,
 }));
@@ -199,19 +203,16 @@ vi.mock('../routes/monitoring/-job-detail-page', () => ({
 vi.mock('@sva/plugin-news', () => ({
   NewsCreatePage: () => <div data-testid="news-create-page" />,
   NewsEditPage: () => <div data-testid="news-edit-page" />,
-  NewsListPage: () => <div data-testid="news-list-page" />,
 }));
 
 vi.mock('@sva/plugin-events', () => ({
   EventsCreatePage: () => <div data-testid="events-create-page" />,
   EventsEditPage: () => <div data-testid="events-edit-page" />,
-  EventsListPage: () => <div data-testid="events-list-page" />,
 }));
 
 vi.mock('@sva/plugin-poi', () => ({
   PoiCreatePage: () => <div data-testid="poi-create-page" />,
   PoiEditPage: () => <div data-testid="poi-edit-page" />,
-  PoiListPage: () => <div data-testid="poi-list-page" />,
 }));
 
 describe('appRouteBindings', () => {
@@ -301,7 +302,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.contentCreate />);
-    expect(screen.getByTestId('content-editor-page').textContent).toBe('create:');
+    expect(screen.getByTestId('content-type-picker-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.contentDetail />);
@@ -335,7 +336,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.newsList />);
-    expect(screen.getByTestId('news-list-page')).toBeTruthy();
+    expect(screen.getByTestId('content-list-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.newsEditor />);
@@ -476,7 +477,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.eventsList />);
-    expect(screen.getByTestId('events-list-page')).toBeTruthy();
+    expect(screen.getByTestId('content-list-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.eventsEditor />);
@@ -488,7 +489,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.poiList />);
-    expect(screen.getByTestId('poi-list-page')).toBeTruthy();
+    expect(screen.getByTestId('content-list-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.poiEditor />);

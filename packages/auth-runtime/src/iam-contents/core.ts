@@ -1,6 +1,13 @@
+import {
+  iamContentListSortDirections,
+  iamContentListSortFields,
+  iamContentStatuses,
+  type IamContentStatus,
+  type IamContentListQuery,
+} from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
-import { asApiItem, asApiList, createApiError, readPathSegment } from '../iam-account-management/api-helpers.js';
+import { asApiItem, asApiList, createApiError, readPage, readPathSegment } from '../iam-account-management/api-helpers.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import {
   authorizeContentAction,
@@ -10,11 +17,53 @@ import {
   withAuthenticatedContentHandler,
 } from './request-context.js';
 import { createContentResponse, deleteContentResponse, updateContentResponse } from './mutations.js';
-import { loadContentById, loadContentDetail, loadContentHistory, loadContentListItems } from './repository.js';
+import {
+  loadContentById,
+  loadContentDetail,
+  loadContentHistory,
+  loadContentListItems,
+  loadContentListScopes,
+} from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
 const isServerAuthorizationError = (response: Response): boolean => response.status >= 500;
+
+const isContentStatus = (value: string): value is IamContentStatus =>
+  (iamContentStatuses as readonly string[]).includes(value);
+
+const readContentListQuery = (request: Request): IamContentListQuery => {
+  const url = new URL(request.url);
+  const { page, pageSize } = readPage(request);
+  const q = url.searchParams.get('q')?.trim() || undefined;
+  const typeValue = url.searchParams.get('type')?.trim();
+  const statusValue = url.searchParams.get('status')?.trim();
+  const sortByValue = url.searchParams.get('sortBy')?.trim();
+  const sortDirectionValue = url.searchParams.get('sortDirection')?.trim();
+  const visibleTypes = url.searchParams
+    .getAll('visibleType')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  return {
+    page,
+    pageSize,
+    ...(q ? { q } : {}),
+    ...(typeValue && typeValue !== 'all' ? { type: typeValue } : {}),
+    ...(statusValue && isContentStatus(statusValue)
+      ? { status: statusValue }
+      : {}),
+    ...(visibleTypes.length > 0 ? { visibleTypes } : {}),
+    sortBy:
+      sortByValue && (iamContentListSortFields as readonly string[]).includes(sortByValue)
+        ? (sortByValue as IamContentListQuery['sortBy'])
+        : 'updatedAt',
+    sortDirection:
+      sortDirectionValue && (iamContentListSortDirections as readonly string[]).includes(sortDirectionValue)
+        ? (sortDirectionValue as IamContentListQuery['sortDirection'])
+        : 'desc',
+  };
+};
 
 const authorizeReadableContentItem = (
   actor: ResolvedContentActor['actor'],
@@ -30,6 +79,38 @@ const authorizeReadableContentItem = (
     organizationId: item.organizationId,
   });
 
+const resolveReadableContentScopes = async (
+  actor: ResolvedContentActor['actor'],
+  scopes: readonly (string | null)[]
+): Promise<{ readonly allowedOrganizationIds: readonly string[]; readonly includeUnscopedContent: boolean } | Response> => {
+  const allowedOrganizationIds: string[] = [];
+  let includeUnscopedContent = false;
+
+  for (const scope of scopes) {
+    const authorizationError = await authorizeContentAction(actor, 'content.read', {
+      ...(scope ? { organizationId: scope } : {}),
+    });
+
+    if (!authorizationError) {
+      if (scope) {
+        allowedOrganizationIds.push(scope);
+      } else {
+        includeUnscopedContent = true;
+      }
+      continue;
+    }
+
+    if (isServerAuthorizationError(authorizationError)) {
+      return authorizationError;
+    }
+  }
+
+  return {
+    allowedOrganizationIds,
+    includeUnscopedContent,
+  };
+};
+
 export const listContentsInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
@@ -40,31 +121,25 @@ export const listContentsInternal = async (
   }
 
   try {
-    const [items, access] = await Promise.all([
-      loadContentListItems(actorResolution.actor.instanceId),
-      resolveContentAccess(actorResolution.actor),
-    ]);
-    const authorizationResults = await Promise.all(
-      items.map(async (item) => ({
-        item,
-        authorizationError: await authorizeReadableContentItem(actorResolution.actor, item),
-      }))
-    );
-    const serverAuthorizationError = authorizationResults.find(
-      ({ authorizationError }) => authorizationError && isServerAuthorizationError(authorizationError)
-    )?.authorizationError;
-    if (serverAuthorizationError) {
-      return serverAuthorizationError;
+    const query = readContentListQuery(request);
+    const scopes = await loadContentListScopes(actorResolution.actor.instanceId, query);
+    const readableScopes = await resolveReadableContentScopes(actorResolution.actor, scopes);
+    if (readableScopes instanceof Response) {
+      return readableScopes;
     }
 
-    const authorizedItems = authorizationResults
-      .filter(({ authorizationError }) => !authorizationError)
-      .map(({ item }) => item);
-    const itemsWithAccess = authorizedItems.map((item) => ({ ...item, access }));
-    const pageSize = Math.max(1, authorizedItems.length);
+    const [{ items, total }, access] = await Promise.all([
+      loadContentListItems(actorResolution.actor.instanceId, query, readableScopes),
+      resolveContentAccess(actorResolution.actor),
+    ]);
+    const itemsWithAccess = items.map((item) => ({ ...item, access }));
     return new Response(
       JSON.stringify(
-        asApiList(itemsWithAccess, { page: 1, pageSize, total: authorizedItems.length }, actorResolution.actor.requestId)
+        asApiList(
+          itemsWithAccess,
+          { page: query.page, pageSize: query.pageSize, total },
+          actorResolution.actor.requestId
+        )
       ),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );

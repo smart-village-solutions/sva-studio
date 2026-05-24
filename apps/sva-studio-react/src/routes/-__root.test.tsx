@@ -121,12 +121,12 @@ describe('root route document', () => {
     expect(document.head.querySelector('style[data-app-styles="true"]')).not.toBeNull();
   });
 
-  it('updates the document title for plugin routes', async () => {
+  it('updates the document title for the unified content route', async () => {
     useRouterStateMock.mockImplementation(({ select }) =>
       select({
         status: 'idle',
         isLoading: false,
-        location: { pathname: '/admin/news' },
+        location: { pathname: '/admin/content' },
       }),
     );
 
@@ -142,7 +142,7 @@ describe('root route document', () => {
     );
 
     await waitFor(() => {
-      expect(document.title).toBe('news.navigation.title | SVA Studio');
+      expect(document.title).toBe('content.page.title | SVA Studio');
     });
   });
 

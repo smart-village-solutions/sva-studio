@@ -31,7 +31,7 @@ describe('resolveBreadcrumbItems', () => {
   it('returns create breadcrumbs for the news plugin', () => {
     expect(resolveBreadcrumbItems('/admin/news/new')).toEqual([
       { href: '/', label: 'Übersicht' },
-      { href: '/admin/news', label: 'News' },
+      { href: '/admin/content', label: 'Inhalte' },
       { label: 'News-Eintrag anlegen' },
     ]);
   });
@@ -39,8 +39,36 @@ describe('resolveBreadcrumbItems', () => {
   it('returns edit breadcrumbs for dynamic news pages', () => {
     expect(resolveBreadcrumbItems('/admin/news/content-1')).toEqual([
       { href: '/', label: 'Übersicht' },
-      { href: '/admin/news', label: 'News' },
+      { href: '/admin/content', label: 'Inhalte' },
       { label: 'News-Eintrag bearbeiten' },
+    ]);
+  });
+
+  it('returns content breadcrumbs for event create and edit pages', () => {
+    expect(resolveBreadcrumbItems('/admin/events/new')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/admin/content', label: 'Inhalte' },
+      { label: 'Event anlegen' },
+    ]);
+
+    expect(resolveBreadcrumbItems('/admin/events/event-1')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/admin/content', label: 'Inhalte' },
+      { label: 'Event bearbeiten' },
+    ]);
+  });
+
+  it('returns content breadcrumbs for POI create and edit pages', () => {
+    expect(resolveBreadcrumbItems('/admin/poi/new')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/admin/content', label: 'Inhalte' },
+      { label: 'POI anlegen' },
+    ]);
+
+    expect(resolveBreadcrumbItems('/admin/poi/poi-1')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/admin/content', label: 'Inhalte' },
+      { label: 'POI bearbeiten' },
     ]);
   });
 

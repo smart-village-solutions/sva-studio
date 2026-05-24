@@ -1,7 +1,7 @@
 import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
-import { EventsCreatePage, EventsEditPage, EventsListPage } from '@sva/plugin-events';
-import { NewsCreatePage, NewsEditPage, NewsListPage } from '@sva/plugin-news';
-import { PoiCreatePage, PoiEditPage, PoiListPage } from '@sva/plugin-poi';
+import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events';
+import { NewsCreatePage, NewsEditPage } from '@sva/plugin-news';
+import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
@@ -29,6 +29,7 @@ import { MediaPage } from '../routes/admin/media/-media-page';
 import { MediaUsagePage } from '../routes/admin/media/-media-usage-page';
 import { ContentEditorPage } from '../routes/content/-content-editor-page';
 import { ContentListPage } from '../routes/content/-content-list-page';
+import { ContentTypePickerPage } from '../routes/content/-content-type-picker-page';
 import { HomePage } from '../routes/-home-page';
 import { PlaceholderPage } from '../routes/-placeholder-page';
 
@@ -242,16 +243,16 @@ export const appRouteBindings: StudioAppRouteBindings = {
   account: AccountProfilePage,
   accountPrivacy: AccountPrivacyPage,
   content: ContentListPage,
-  contentCreate: () => <ContentEditorPage mode="create" />,
+  contentCreate: ContentTypePickerPage,
   contentDetail: ContentDetailRoutePage,
   mediaUsage: MediaUsagePage,
-  newsList: NewsListPage,
+  newsList: ContentListPage,
   newsDetail: NewsEditPage,
   newsEditor: NewsCreatePage,
-  eventsList: EventsListPage,
+  eventsList: ContentListPage,
   eventsDetail: EventsEditPage,
   eventsEditor: EventsCreatePage,
-  poiList: PoiListPage,
+  poiList: ContentListPage,
   poiDetail: PoiEditPage,
   poiEditor: PoiCreatePage,
   media: MediaPage,

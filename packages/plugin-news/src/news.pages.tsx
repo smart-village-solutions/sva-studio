@@ -468,7 +468,7 @@ const NewsForm = ({
           });
         }
         persistFlashMessage('createSuccess');
-        await navigate({ to: '/admin/news' });
+        await navigate({ to: '/admin/content' });
         return;
       }
 
@@ -503,7 +503,7 @@ const NewsForm = ({
     try {
       await deleteNews(contentId);
       persistFlashMessage('deleteSuccess');
-      await navigate({ to: '/admin/news' });
+      await navigate({ to: '/admin/content' });
     } catch (error) {
       setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.deleteError') });
     } finally {
@@ -938,7 +938,7 @@ const NewsForm = ({
         <div className="flex flex-wrap gap-3">
           <Button type="submit">{submitLabel}</Button>
           <Button asChild variant="outline">
-            <Link to="/admin/news">{pt('actions.back')}</Link>
+            <Link to="/admin/content">{pt('actions.back')}</Link>
           </Button>
           {mode === 'edit' ? (
             <Button variant="destructive" type="button" onClick={onDelete} disabled={deletePending}>

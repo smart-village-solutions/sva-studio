@@ -1,5 +1,6 @@
 import type {
   ContentJsonValue,
+  IamContentListQuery,
   IamContentStatus,
   IamContentValidationState,
 } from '@sva/core';
@@ -83,6 +84,16 @@ export type DeleteContentInput = {
   traceId?: string;
   contentId: string;
   currentContent?: ContentRow;
+};
+
+export type LoadContentListItemsInput = Pick<
+  IamContentListQuery,
+  'page' | 'pageSize' | 'q' | 'sortBy' | 'sortDirection' | 'status' | 'type' | 'visibleTypes'
+>;
+
+export type LoadContentListAuthorizationInput = {
+  readonly allowedOrganizationIds: readonly string[];
+  readonly includeUnscopedContent: boolean;
 };
 
 export const CONTENT_SELECT = `

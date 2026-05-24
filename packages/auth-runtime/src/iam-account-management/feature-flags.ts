@@ -1,23 +1,38 @@
+import { deriveIamRuntimeDiagnostics, type ApiErrorCode, type ApiErrorResponse } from '@sva/core';
+import { createSdkLogger } from '@sva/server-runtime';
+
 import type { FeatureFlags } from './types.js';
-import { createApiError } from './api-helpers.js';
-import { logger } from './shared-observability.js';
+export { getFeatureFlags, parseBooleanFlag } from './feature-flags-core.js';
 
-export const parseBooleanFlag = (value: string | undefined, defaultValue: boolean): boolean => {
-  if (!value) {
-    return defaultValue;
-  }
-  const lowered = value.trim().toLowerCase();
-  return lowered === '1' || lowered === 'true' || lowered === 'yes' || lowered === 'on';
-};
+const logger = createSdkLogger({
+  component: 'iam-account-management',
+  level: 'info',
+});
 
-export const getFeatureFlags = (): FeatureFlags => {
-  const readFlag = (key: string, defaultValue: boolean) => parseBooleanFlag(process.env[key], defaultValue);
+const createFeatureApiError = (
+  code: ApiErrorCode,
+  message: string,
+  requestId?: string
+): Response => {
+  const diagnostics = deriveIamRuntimeDiagnostics({ code, status: 503 });
 
-  const iamUiEnabled = readFlag('IAM_UI_ENABLED', true);
-  const iamAdminEnabled = iamUiEnabled && readFlag('IAM_ADMIN_ENABLED', true);
-  const iamBulkEnabled = iamAdminEnabled && readFlag('IAM_BULK_ENABLED', true);
-
-  return { iamUiEnabled, iamAdminEnabled, iamBulkEnabled };
+  return Response.json(
+    {
+      error: {
+        code,
+        message,
+        classification: diagnostics.classification,
+        status: diagnostics.status,
+        recommendedAction: diagnostics.recommendedAction,
+        ...(diagnostics.safeDetails ? { safeDetails: diagnostics.safeDetails } : {}),
+      },
+      ...(requestId ? { requestId } : {}),
+    } satisfies ApiErrorResponse,
+    {
+      status: 503,
+      headers: requestId ? { 'X-Request-Id': requestId } : undefined,
+    }
+  );
 };
 
 export const ensureFeature = (
@@ -31,7 +46,7 @@ export const ensureFeature = (
       feature,
       request_id: requestId,
     });
-    return createApiError(503, 'feature_disabled', 'Feature iam-ui-enabled ist deaktiviert.', requestId);
+    return createFeatureApiError('feature_disabled', 'Feature iam-ui-enabled ist deaktiviert.', requestId);
   }
   if (feature === 'iam_admin' && !flags.iamAdminEnabled) {
     logger.warn('IAM feature guard rejected request', {
@@ -39,7 +54,7 @@ export const ensureFeature = (
       feature,
       request_id: requestId,
     });
-    return createApiError(503, 'feature_disabled', 'Feature iam-admin-enabled ist deaktiviert.', requestId);
+    return createFeatureApiError('feature_disabled', 'Feature iam-admin-enabled ist deaktiviert.', requestId);
   }
   if (feature === 'iam_bulk' && !flags.iamBulkEnabled) {
     logger.warn('IAM feature guard rejected request', {
@@ -47,7 +62,7 @@ export const ensureFeature = (
       feature,
       request_id: requestId,
     });
-    return createApiError(503, 'feature_disabled', 'Feature iam-bulk-enabled ist deaktiviert.', requestId);
+    return createFeatureApiError('feature_disabled', 'Feature iam-bulk-enabled ist deaktiviert.', requestId);
   }
   return null;
 };

@@ -183,7 +183,7 @@ const mapNewsToUnifiedContent = (newsItems: readonly NewsRecord[]) =>
   }));
 
 const routeUnifiedContentOverview = async (page: Page, newsItems: readonly NewsRecord[]) => {
-  await page.route('**/api/v1/iam/contents', async (route) => {
+  await page.route('**/api/v1/iam/contents**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -193,6 +193,10 @@ const routeUnifiedContentOverview = async (page: Page, newsItems: readonly NewsR
       }),
     });
   });
+};
+
+const openNewsDetailTab = async (page: Page, labelPattern: RegExp) => {
+  await page.getByRole('tab', { name: labelPattern }).click();
 };
 
 const fulfillContentRoute = async (
@@ -374,21 +378,25 @@ test.describe('news plugin', () => {
     await page.locator('#news-keywords').fill('stadt, kultur');
     await page.locator('#news-external-id').fill('cms-42');
     await page.locator('#news-type').fill('press_release');
+    await page.locator('#news-category-name').fill('Allgemein');
+    await page.locator('#news-categories').fill('Allgemein\nKultur');
+
+    await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
     await page.getByLabel(/Einleitung|news\.fields\.blockIntro/).fill('Kurztext');
     await page.getByLabel(/Inhalt|news\.fields\.blockBody/).fill('<p>Inhalt</p>');
-    await page.getByRole('textbox', { name: 'Kategorie', exact: true }).fill('Allgemein');
-    await page.locator('#news-categories').fill('Allgemein\nKultur');
     await page.locator('#news-source-url').fill('https://example.com/news/source');
     await page.locator('#news-source-description').fill('Quellseite');
     await page.locator('#news-address-street').fill('Marktplatz 1');
     await page.locator('#news-address-zip').fill('12345');
     await page.locator('#news-address-city').fill('Musterhausen');
     await page.locator('#news-poi').fill('poi-1');
-    await page.getByLabel(/Veröffentlichungsdatum|news\.fields\.publishedAt/).fill('2026-04-14T09:30');
-    await page.locator('#news-publication-date').fill('2026-04-14T08:30');
     await page.getByRole('button', { name: /Medium hinzufügen|news\.actions\.addMedia/ }).click();
     await page.locator('#news-media-url-0-0').fill('https://example.com/news/image.jpg');
     await page.locator('#news-media-caption-0-0').fill('Titelbild');
+
+    await openNewsDetailTab(page, /Freigabe|news\.tabs\.release/);
+    await page.getByLabel(/Veröffentlichungsdatum|news\.fields\.publishedAt/).fill('2026-04-14T09:30');
+    await page.getByLabel(/Publikationsdatum|news\.fields\.publicationDate/).fill('2026-04-14T08:30');
     await page.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
 
     await expectContentOverviewUrl(page);
@@ -422,6 +430,7 @@ test.describe('news plugin', () => {
     await page.locator('main table').locator('a[href="/admin/news/news-1"]').first().click();
     await expectPluginPageHeading(page, /News-Eintrag bearbeiten|news\.editor\.editTitle/);
 
+    await openNewsDetailTab(page, /Basis|news\.tabs\.basis/);
     await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News aktualisiert');
     await page.getByRole('button', { name: /Änderungen speichern|news\.actions\.save/ }).click();
     await expect(page.getByRole('status')).toContainText(/gespeichert|aktualisiert|news\.messages\.updateSuccess/);

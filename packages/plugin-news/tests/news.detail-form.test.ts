@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { NewsContentItem } from '../src/news.types.js';
 import {
+  createDefaultNewsDetailFormValues,
   buildNewsDetailCharacterCounts,
   deriveDirtyNewsDetailTabs,
   mapNewsItemToDetailFormValues,
@@ -76,6 +77,30 @@ describe('news.detail-form', () => {
     });
   });
 
+  it('provides stable default values for create mode', () => {
+    expect(createDefaultNewsDetailFormValues()).toEqual({
+      title: '',
+      author: '',
+      keywords: '',
+      categoryName: '',
+      categoriesText: '',
+      publishedAt: '',
+      publicationDate: '',
+      externalId: '',
+      newsType: '',
+      charactersToBeShown: '',
+      fullVersion: false,
+      showPublishDate: true,
+      pushNotification: false,
+      teaserImageAssetId: null,
+      headerImageAssetId: null,
+      contentBlocks: [{ title: '', intro: '', body: '', mediaContents: [] }],
+      sourceUrl: { url: '', description: '' },
+      address: { street: '', zip: '', city: '' },
+      pointOfInterestId: '',
+    });
+  });
+
   it('rejects invalid publishedAt values through the resolver schema', async () => {
     const resolver = zodResolver(newsDetailFormSchema);
     const result = await resolver(
@@ -109,6 +134,58 @@ describe('news.detail-form', () => {
     );
 
     expect(result.errors.contentBlocks?.message).toBeTruthy();
+  });
+
+  it('rejects non-https source URLs and media URLs', async () => {
+    const resolver = zodResolver(newsDetailFormSchema);
+    const result = await resolver(
+      {
+        ...mapNewsItemToDetailFormValues(sampleItem),
+        sourceUrl: {
+          url: 'http://example.org/news',
+          description: 'Quelle',
+        },
+        contentBlocks: [
+          {
+            title: 'Abschnitt 1',
+            intro: 'Kurzer Einstieg',
+            body: '<p>Ausführlicher Inhalt</p>',
+            mediaContents: [
+              {
+                captionText: '',
+                copyright: '',
+                contentType: 'image',
+                height: '',
+                width: '',
+                sourceUrl: {
+                  url: 'http://example.org/image.jpg',
+                  description: '',
+                },
+              },
+            ],
+          },
+        ],
+      },
+      undefined,
+      { fields: {}, shouldUseNativeValidation: false }
+    );
+
+    expect(result.errors.sourceUrl?.url?.message).toBeTruthy();
+    expect(result.errors.contentBlocks?.message).toBeTruthy();
+  });
+
+  it('rejects categories longer than the allowed limit', async () => {
+    const resolver = zodResolver(newsDetailFormSchema);
+    const result = await resolver(
+      {
+        ...mapNewsItemToDetailFormValues(sampleItem),
+        categoriesText: `${'A'.repeat(129)}\nStadt`,
+      },
+      undefined,
+      { fields: {}, shouldUseNativeValidation: false }
+    );
+
+    expect(result.errors.categoriesText?.message).toBeTruthy();
   });
 
   it('derives changed field groups for basis versus content tabs', () => {

@@ -209,7 +209,7 @@ const routeUnifiedContentOverview = async (
   getEvents: () => readonly EventRecord[],
   getPois: () => readonly PoiRecord[]
 ) => {
-  await page.route('**/api/v1/iam/contents', async (route) => {
+  await page.route('**/api/v1/iam/contents**', async (route) => {
     const items = [...mapEventToUnifiedContent(getEvents()), ...mapPoiToUnifiedContent(getPois())];
     await route.fulfill({
       status: 200,

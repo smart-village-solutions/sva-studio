@@ -395,9 +395,10 @@ test.describe('news plugin', () => {
     await page.locator('#news-media-caption-0-0').fill('Titelbild');
 
     await openNewsDetailTab(page, /Freigabe|news\.tabs\.release/);
-    await page.locator('#news-release-published-at').fill('2026-04-14T09:30');
-    await page.locator('#news-release-publication-date').fill('2026-04-14T08:30');
-    await page.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
+    const releasePanel = page.getByRole('tabpanel', { name: /Freigabe|news\.tabs\.release/ });
+    await releasePanel.locator('#news-release-published-at').fill('2026-04-14T09:30');
+    await releasePanel.locator('#news-release-publication-date').fill('2026-04-14T08:30');
+    await releasePanel.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
 
     await expectContentOverviewUrl(page);
     await expect(page.locator('main table').getByText('Erste News')).toBeVisible();

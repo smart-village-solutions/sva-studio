@@ -207,7 +207,7 @@ export const newsDetailFormSchema = z
     }
   });
 
-export const newsDetailFormResolver = zodResolver(newsDetailFormSchema);
+export const newsDetailFormResolver = zodResolver(newsDetailFormSchema as never);
 
 export const createDefaultNewsDetailFormValues = (): NewsDetailFormValues => ({
   title: '',

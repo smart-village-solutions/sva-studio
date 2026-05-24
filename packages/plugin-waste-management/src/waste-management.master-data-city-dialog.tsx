@@ -20,6 +20,7 @@ import {
   MasterDataDialogActions,
   MasterDataDialogHeader,
   type BaseProps,
+  useResetOnFormContextChange,
 } from './waste-management.master-data-entity-dialogs.shared.js';
 import { StatusNotice } from './waste-management.page.support.js';
 
@@ -32,6 +33,7 @@ export const CityDialog = ({
   message,
   onOpenChange,
   onChange,
+  onBeforeSubmit,
   onSubmit,
 }: BaseProps<CityFormState> & { readonly regions: readonly WasteRegionRecord[] }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -40,9 +42,7 @@ export const CityDialog = ({
     reValidateMode: 'onChange',
   });
 
-  React.useEffect(() => {
-    formApi.reset(form);
-  }, [form, formApi]);
+  useResetOnFormContextChange(formApi.reset, form, `${open}:${mode}:${form.id}`);
 
   return (
     <CityDialogForm
@@ -50,6 +50,7 @@ export const CityDialog = ({
       message={message}
       mode={mode}
       onChange={onChange}
+      onBeforeSubmit={onBeforeSubmit}
       onOpenChange={onOpenChange}
       onSubmit={onSubmit}
       open={open}
@@ -66,6 +67,7 @@ const CityDialogForm = ({
   message,
   mode,
   onChange,
+  onBeforeSubmit,
   onOpenChange,
   onSubmit,
   pt,
@@ -76,6 +78,7 @@ const CityDialogForm = ({
   readonly message: BaseProps<CityFormState>['message'];
   readonly mode: BaseProps<CityFormState>['mode'];
   readonly onChange: BaseProps<CityFormState>['onChange'];
+  readonly onBeforeSubmit?: BaseProps<CityFormState>['onBeforeSubmit'];
   readonly onOpenChange: BaseProps<CityFormState>['onOpenChange'];
   readonly onSubmit: BaseProps<CityFormState>['onSubmit'];
   readonly open: boolean;
@@ -106,7 +109,7 @@ const CityDialogForm = ({
           editTitle={pt('masterData.cities.dialog.editTitle')}
           mode={mode}
         />
-        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit)} noValidate>
+        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit, onBeforeSubmit)} noValidate>
           <StatusNotice message={message} />
           <StudioFormSummaryErrors errors={collectSummaryErrors([nameField])} />
           <CityDialogFields control={control} nameField={nameField} onChange={onChange} pt={pt} regions={regions} register={register} clearErrors={clearErrors} />

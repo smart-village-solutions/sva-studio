@@ -178,4 +178,65 @@ describe('CollectionLocationDialog', () => {
       expect(screen.getAllByText('masterData.collectionLocations.fields.cityId')).toHaveLength(1);
     });
   });
+
+  it('keeps the city validation error when the same dialog context rerenders', async () => {
+    const onSubmit = vi.fn();
+
+    const { rerender } = render(
+      <CollectionLocationDialog
+        open
+        mode="create"
+        form={{
+          id: 'location-4',
+          regionId: 'region-1',
+          cityId: '',
+          streetId: '',
+          houseNumberId: '',
+          active: true,
+        }}
+        regions={[{ id: 'region-1', name: 'Nord' }] as never}
+        cities={[{ id: 'city-1', name: 'Altstadt', regionId: 'region-1' }] as never}
+        streets={[] as never}
+        houseNumbers={[] as never}
+        saving={false}
+        message={null}
+        onOpenChange={vi.fn()}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.create' }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('masterData.collectionLocations.fields.cityId')).toHaveLength(2);
+    });
+
+    rerender(
+      <CollectionLocationDialog
+        open
+        mode="create"
+        form={{
+          id: 'location-4',
+          regionId: 'region-1',
+          cityId: '',
+          streetId: '',
+          houseNumberId: '',
+          active: true,
+        }}
+        regions={[{ id: 'region-1', name: 'Nord' }] as never}
+        cities={[{ id: 'city-1', name: 'Altstadt', regionId: 'region-1' }] as never}
+        streets={[] as never}
+        houseNumbers={[] as never}
+        saving={false}
+        message={null}
+        onOpenChange={vi.fn()}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    expect(screen.getAllByText('masterData.collectionLocations.fields.cityId')).toHaveLength(2);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });

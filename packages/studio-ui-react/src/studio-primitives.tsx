@@ -212,8 +212,8 @@ export function StudioField({
   label,
   description,
   error,
-  descriptionId = `${id}-description`,
-  errorId = `${id}-error`,
+  descriptionId,
+  errorId,
   required = false,
   controlProps,
   children,
@@ -221,6 +221,8 @@ export function StudioField({
 }: StudioFieldProps) {
   const childElement = React.isValidElement<StudioFieldChildProps>(children) ? children : null;
   const resolvedControlId = controlProps && childElement ? controlProps.id : id;
+  const resolvedDescriptionId = descriptionId ?? `${resolvedControlId}-description`;
+  const resolvedErrorId = errorId ?? `${resolvedControlId}-error`;
   const resolvedChildren =
     controlProps && childElement
       ? React.cloneElement(childElement, {
@@ -242,12 +244,12 @@ export function StudioField({
       </label>
       {resolvedChildren}
       {description ? (
-        <p id={descriptionId} className="text-xs text-muted-foreground">
+        <p id={resolvedDescriptionId} className="text-xs text-muted-foreground">
           {description}
         </p>
       ) : null}
       {error ? (
-        <p id={errorId} className="text-xs text-destructive">
+        <p id={resolvedErrorId} className="text-xs text-destructive">
           {error}
         </p>
       ) : null}

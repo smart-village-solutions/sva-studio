@@ -9,10 +9,11 @@ import {
   getStudioFormFieldProps,
   type StudioFormFieldError,
 } from '@sva/studio-ui-react';
-import type React from 'react';
+import React from 'react';
 import type {
   FieldValues,
   UseFormHandleSubmit,
+  UseFormReset,
 } from 'react-hook-form';
 
 export type BaseProps<TForm> = {
@@ -23,6 +24,7 @@ export type BaseProps<TForm> = {
   readonly message: { readonly kind: 'success' | 'error'; readonly text: string } | null;
   readonly onOpenChange: (open: boolean) => void;
   readonly onChange: (patch: Partial<TForm>) => void;
+  readonly onBeforeSubmit?: () => void;
   readonly onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 };
 
@@ -33,10 +35,29 @@ export const collectSummaryErrors = (
 export const createSubmitHandler =
   <TForm extends FieldValues>(
     handleSubmit: UseFormHandleSubmit<TForm>,
-    onSubmit: (event: React.FormEvent<HTMLFormElement>) => void
+    onSubmit: (event: React.FormEvent<HTMLFormElement>) => void,
+    onBeforeSubmit?: () => void
   ) =>
-  (event: React.FormEvent<HTMLFormElement>) =>
+  (event: React.FormEvent<HTMLFormElement>) => {
+    onBeforeSubmit?.();
     void handleSubmit(() => onSubmit(event))(event);
+  };
+
+export const useResetOnFormContextChange = <TForm extends FieldValues>(
+  reset: UseFormReset<TForm>,
+  values: TForm,
+  resetKey: string
+): void => {
+  const lastResetKey = React.useRef<string | undefined>(undefined);
+
+  React.useEffect(() => {
+    if (lastResetKey.current === resetKey) {
+      return;
+    }
+    lastResetKey.current = resetKey;
+    reset(values);
+  }, [reset, resetKey, values]);
+};
 
 export const MasterDataDialogShell = ({
   children,

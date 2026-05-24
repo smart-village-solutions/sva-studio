@@ -124,8 +124,35 @@ describe('waste-management.master-data-entity-dialogs components', () => {
 
   it('surfaces missing required values through the RHF bridge before submit', async () => {
     const onSubmit = vi.fn();
+    const onBeforeSubmit = vi.fn();
 
     render(
+      <RegionDialog
+        open
+        mode="create"
+        form={{ id: 'region-1', name: '' } as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onBeforeSubmit={onBeforeSubmit}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.regions.actions.create' }));
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('masterData.regions.fields.name');
+    expect(screen.getByLabelText('masterData.regions.fields.name').getAttribute('aria-invalid')).toBe('true');
+    expect(onBeforeSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('keeps validation feedback when the same region dialog context rerenders', async () => {
+    const onSubmit = vi.fn();
+
+    const { rerender } = render(
       <RegionDialog
         open
         mode="create"
@@ -141,8 +168,21 @@ describe('waste-management.master-data-entity-dialogs components', () => {
     fireEvent.click(screen.getByRole('button', { name: 'masterData.regions.actions.create' }));
 
     expect(await screen.findByRole('alert')).toBeTruthy();
+
+    rerender(
+      <RegionDialog
+        open
+        mode="create"
+        form={{ id: 'region-1', name: '' } as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
     expect(screen.getByRole('alert').textContent).toContain('masterData.regions.fields.name');
-    expect(screen.getByLabelText('masterData.regions.fields.name').getAttribute('aria-invalid')).toBe('true');
     expect(onSubmit).not.toHaveBeenCalled();
   });
 

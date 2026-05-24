@@ -4,6 +4,7 @@ import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogFooter, 
 import React from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 
+import { useResetOnFormContextChange } from './waste-management.master-data-entity-dialogs.shared.js';
 import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import type { CollectionLocationFormState, LocationTourLinkBulkFormState } from './waste-management.master-data.forms.js';
@@ -43,9 +44,7 @@ export const CollectionLocationDialog = ({ open, mode, form, regions, cities, st
     resolver: collectionLocationDialogResolver,
   });
 
-  React.useEffect(() => {
-    reset(form);
-  }, [form, reset]);
+  useResetOnFormContextChange(reset, form, `${open}:${mode}:${form.id}`);
 
   React.useEffect(() => {
     register('id');

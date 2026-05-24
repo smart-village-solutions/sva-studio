@@ -17,6 +17,7 @@ import {
 } from '@sva/studio-ui-react';
 
 import type { CollectionLocationFormState } from './waste-management.master-data.forms.js';
+import { useResetOnFormContextChange } from './waste-management.master-data-entity-dialogs.shared.js';
 import { LocationAssignmentsSection } from './waste-management.master-data-location-assignments.js';
 import { LocationFormActions, LocationSelectSection, LocationStatusSection } from './waste-management.master-data-location-form.parts.js';
 
@@ -76,9 +77,7 @@ export const WasteMasterDataLocationFormContent = ({
     resolver: locationFormResolver,
   });
 
-  React.useEffect(() => {
-    reset(form);
-  }, [form, reset]);
+  useResetOnFormContextChange(reset, form, `${mode}:${form.id}`);
 
   React.useEffect(() => {
     register('id');

@@ -20,6 +20,7 @@ import {
   MasterDataDialogActions,
   MasterDataDialogHeader,
   type BaseProps,
+  useResetOnFormContextChange,
 } from './waste-management.master-data-entity-dialogs.shared.js';
 import { StatusNotice } from './waste-management.page.support.js';
 
@@ -37,6 +38,7 @@ export const HouseNumberDialog = ({
   message,
   onOpenChange,
   onChange,
+  onBeforeSubmit,
   onSubmit,
 }: BaseProps<HouseNumberFormState> & { readonly streets: readonly WasteStreetRecord[] }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -45,9 +47,12 @@ export const HouseNumberDialog = ({
     reValidateMode: 'onChange',
   });
 
-  React.useEffect(() => {
-    formApi.reset(withDefaultStreetId(form, streets));
-  }, [form, formApi, streets]);
+  const resetValues = withDefaultStreetId(form, streets);
+  useResetOnFormContextChange(
+    formApi.reset,
+    resetValues,
+    `${open}:${mode}:${form.id}:${streets.length === 1 ? (streets[0]?.id ?? '') : ''}`
+  );
 
   return (
     <HouseNumberDialogForm
@@ -55,6 +60,7 @@ export const HouseNumberDialog = ({
       message={message}
       mode={mode}
       onChange={onChange}
+      onBeforeSubmit={onBeforeSubmit}
       onOpenChange={onOpenChange}
       onSubmit={onSubmit}
       open={open}
@@ -72,6 +78,7 @@ const HouseNumberDialogForm = ({
   message,
   mode,
   onChange,
+  onBeforeSubmit,
   onOpenChange,
   onSubmit,
   pt,
@@ -81,6 +88,7 @@ const HouseNumberDialogForm = ({
   readonly message: BaseProps<HouseNumberFormState>['message'];
   readonly mode: BaseProps<HouseNumberFormState>['mode'];
   readonly onChange: BaseProps<HouseNumberFormState>['onChange'];
+  readonly onBeforeSubmit?: BaseProps<HouseNumberFormState>['onBeforeSubmit'];
   readonly onOpenChange: BaseProps<HouseNumberFormState>['onOpenChange'];
   readonly onSubmit: BaseProps<HouseNumberFormState>['onSubmit'];
   readonly open: boolean;
@@ -111,7 +119,7 @@ const HouseNumberDialogForm = ({
           editTitle={pt('masterData.houseNumbers.dialog.editTitle')}
           mode={mode}
         />
-        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit)} noValidate>
+        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit, onBeforeSubmit)} noValidate>
           <StatusNotice message={message} />
           <StudioFormSummaryErrors errors={collectSummaryErrors([numberField])} />
           <HouseNumberDialogFields clearErrors={clearErrors} control={control} numberField={numberField} onChange={onChange} pt={pt} register={register} streets={streets} />

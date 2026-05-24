@@ -19,6 +19,7 @@ import {
   MasterDataDialogActions,
   MasterDataDialogHeader,
   type BaseProps,
+  useResetOnFormContextChange,
 } from './waste-management.master-data-entity-dialogs.shared.js';
 import { StatusNotice } from './waste-management.page.support.js';
 
@@ -141,16 +142,14 @@ const FractionDialogActiveField = ({
   </div>
 );
 
-export const FractionDialog = ({ open, mode, form, saving, message, onOpenChange, onChange, onSubmit }: BaseProps<FractionFormState>) => {
+export const FractionDialog = ({ open, mode, form, saving, message, onOpenChange, onChange, onBeforeSubmit, onSubmit }: BaseProps<FractionFormState>) => {
   const pt = usePluginTranslation('wasteManagement');
   const formApi = useForm<FractionFormState>({
     defaultValues: form,
     reValidateMode: 'onChange',
   });
 
-  React.useEffect(() => {
-    formApi.reset(form);
-  }, [form, formApi]);
+  useResetOnFormContextChange(formApi.reset, form, `${open}:${mode}:${form.id}`);
 
   return (
     <FractionDialogForm
@@ -158,6 +157,7 @@ export const FractionDialog = ({ open, mode, form, saving, message, onOpenChange
       message={message}
       mode={mode}
       onChange={onChange}
+      onBeforeSubmit={onBeforeSubmit}
       onOpenChange={onOpenChange}
       onSubmit={onSubmit}
       open={open}
@@ -172,6 +172,7 @@ const FractionDialogForm = ({
   message,
   mode,
   onChange,
+  onBeforeSubmit,
   onOpenChange,
   onSubmit,
   open,
@@ -182,6 +183,7 @@ const FractionDialogForm = ({
   readonly message: BaseProps<FractionFormState>['message'];
   readonly mode: BaseProps<FractionFormState>['mode'];
   readonly onChange: BaseProps<FractionFormState>['onChange'];
+  readonly onBeforeSubmit?: BaseProps<FractionFormState>['onBeforeSubmit'];
   readonly onOpenChange: BaseProps<FractionFormState>['onOpenChange'];
   readonly onSubmit: BaseProps<FractionFormState>['onSubmit'];
   readonly open: boolean;
@@ -207,7 +209,7 @@ const FractionDialogForm = ({
           editTitle={pt('masterData.fractions.dialog.editTitle')}
           mode={mode}
         />
-        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit)} noValidate>
+        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit, onBeforeSubmit)} noValidate>
           <StatusNotice message={message} />
           <FractionDialogFields
             active={watch('active')}

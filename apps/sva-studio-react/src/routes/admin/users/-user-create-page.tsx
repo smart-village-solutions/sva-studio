@@ -44,14 +44,15 @@ type UserCreateAssignmentsProps = {
   readonly onToggleGroup: (groupId: string, checked: boolean) => void;
 };
 
-const userCreateSchema = z.object({
-  email: z.string().trim().email(t('account.validation.emailInvalid')),
-  firstName: z.string().trim().min(1, t('account.validation.firstNameRequired')),
-  lastName: z.string().trim().min(1, t('account.validation.lastNameRequired')),
-  roleIds: z.array(z.string()),
-  groupIds: z.array(z.string()),
-  sendPasswordSetupEmail: z.boolean(),
-});
+const createUserCreateSchema = () =>
+  z.object({
+    email: z.string().trim().email(t('account.validation.emailInvalid')),
+    firstName: z.string().trim().min(1, t('account.validation.firstNameRequired')),
+    lastName: z.string().trim().min(1, t('account.validation.lastNameRequired')),
+    roleIds: z.array(z.string()),
+    groupIds: z.array(z.string()),
+    sendPasswordSetupEmail: z.boolean(),
+  });
 
 const collectSummaryErrors = (
   fields: readonly ReturnType<typeof getStudioFormFieldProps>[]
@@ -139,6 +140,7 @@ export const UserCreatePage = () => {
   const usersApi = useUsers();
   const rolesApi = useRoles();
   const groupsApi = useGroups();
+  const userCreateSchema = React.useMemo(() => createUserCreateSchema(), []);
   const selectableGroups = React.useMemo(
     () => groupsApi.groups.filter((group) => group.isActive !== false),
     [groupsApi.groups]

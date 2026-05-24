@@ -245,6 +245,23 @@ describe('studio-ui-react primitives', () => {
     expect(label?.getAttribute('for')).toBe('resolved-id');
   });
 
+  it('derives default description and error ids from the effective control id', () => {
+    render(
+      <StudioField
+        id="base-id"
+        label="Titel"
+        description="Pflichtfeld"
+        error="Titel fehlt"
+        controlProps={{ id: 'resolved-id', 'aria-describedby': 'resolved-id-description resolved-id-error' }}
+      >
+        <Input id="base-id" />
+      </StudioField>
+    );
+
+    expect(screen.getByText('Pflichtfeld').id).toBe('resolved-id-description');
+    expect(screen.getByText('Titel fehlt').id).toBe('resolved-id-error');
+  });
+
   it('keeps label htmlFor on base id when children cannot be cloned', () => {
     render(
       <StudioField

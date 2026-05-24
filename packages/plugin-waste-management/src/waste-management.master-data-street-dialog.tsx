@@ -20,6 +20,7 @@ import {
   MasterDataDialogActions,
   MasterDataDialogHeader,
   type BaseProps,
+  useResetOnFormContextChange,
 } from './waste-management.master-data-entity-dialogs.shared.js';
 import { StatusNotice } from './waste-management.page.support.js';
 
@@ -37,6 +38,7 @@ export const StreetDialog = ({
   message,
   onOpenChange,
   onChange,
+  onBeforeSubmit,
   onSubmit,
 }: BaseProps<StreetFormState> & { readonly cities: readonly WasteCityRecord[] }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -45,9 +47,12 @@ export const StreetDialog = ({
     reValidateMode: 'onChange',
   });
 
-  React.useEffect(() => {
-    formApi.reset(withDefaultCityId(form, cities));
-  }, [cities, form, formApi]);
+  const resetValues = withDefaultCityId(form, cities);
+  useResetOnFormContextChange(
+    formApi.reset,
+    resetValues,
+    `${open}:${mode}:${form.id}:${cities.length === 1 ? (cities[0]?.id ?? '') : ''}`
+  );
 
   return (
     <StreetDialogForm
@@ -56,6 +61,7 @@ export const StreetDialog = ({
       message={message}
       mode={mode}
       onChange={onChange}
+      onBeforeSubmit={onBeforeSubmit}
       onOpenChange={onOpenChange}
       onSubmit={onSubmit}
       open={open}
@@ -72,6 +78,7 @@ const StreetDialogForm = ({
   message,
   mode,
   onChange,
+  onBeforeSubmit,
   onOpenChange,
   onSubmit,
   pt,
@@ -82,6 +89,7 @@ const StreetDialogForm = ({
   readonly message: BaseProps<StreetFormState>['message'];
   readonly mode: BaseProps<StreetFormState>['mode'];
   readonly onChange: BaseProps<StreetFormState>['onChange'];
+  readonly onBeforeSubmit?: BaseProps<StreetFormState>['onBeforeSubmit'];
   readonly onOpenChange: BaseProps<StreetFormState>['onOpenChange'];
   readonly onSubmit: BaseProps<StreetFormState>['onSubmit'];
   readonly open: boolean;
@@ -111,7 +119,7 @@ const StreetDialogForm = ({
           editTitle={pt('masterData.streets.dialog.editTitle')}
           mode={mode}
         />
-        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit)} noValidate>
+        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit, onBeforeSubmit)} noValidate>
           <StatusNotice message={message} />
           <StudioFormSummaryErrors errors={collectSummaryErrors([nameField])} />
           <StreetDialogFields cities={cities} clearErrors={clearErrors} control={control} nameField={nameField} onChange={onChange} pt={pt} register={register} />

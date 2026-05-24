@@ -18,10 +18,11 @@ import {
   MasterDataDialogActions,
   MasterDataDialogHeader,
   type BaseProps,
+  useResetOnFormContextChange,
 } from './waste-management.master-data-entity-dialogs.shared.js';
 import { StatusNotice } from './waste-management.page.support.js';
 
-export const RegionDialog = ({ open, mode, form, saving, message, onOpenChange, onChange, onSubmit }: BaseProps<RegionFormState>) => {
+export const RegionDialog = ({ open, mode, form, saving, message, onOpenChange, onChange, onBeforeSubmit, onSubmit }: BaseProps<RegionFormState>) => {
   const pt = usePluginTranslation('wasteManagement');
   const {
     clearErrors,
@@ -34,9 +35,7 @@ export const RegionDialog = ({ open, mode, form, saving, message, onOpenChange, 
     reValidateMode: 'onChange',
   });
 
-  React.useEffect(() => {
-    reset(form);
-  }, [form, reset]);
+  useResetOnFormContextChange(reset, form, `${open}:${mode}:${form.id}`);
 
   const nameField = getStudioFormFieldProps({
     id: 'waste-region-name',
@@ -53,7 +52,7 @@ export const RegionDialog = ({ open, mode, form, saving, message, onOpenChange, 
           editTitle={pt('masterData.regions.dialog.editTitle')}
           mode={mode}
         />
-        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit)} noValidate>
+        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit, onBeforeSubmit)} noValidate>
           <StatusNotice message={message} />
           <StudioFormSummaryErrors errors={collectSummaryErrors([nameField])} />
           <StudioFieldGroup>

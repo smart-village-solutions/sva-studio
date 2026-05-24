@@ -375,7 +375,8 @@ const hasDirtyPath = (tree: DirtyFieldTree | readonly DirtyFieldTree[] | true | 
   }
 
   const [head, ...tail] = path;
-  return hasDirtyPath(tree[head], tail);
+  const nextTree = (tree as Record<string, true | DirtyFieldTree | readonly DirtyFieldTree[] | undefined>)[head];
+  return hasDirtyPath(nextTree, tail);
 };
 
 export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTabState => ({

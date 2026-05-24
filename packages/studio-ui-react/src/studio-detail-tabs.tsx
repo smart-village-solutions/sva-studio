@@ -77,11 +77,11 @@ function isTabVisible<TTabId extends string>(tab: StudioDetailTabDefinition<TTab
 }
 
 function tabHasChanges<TTabId extends string>(tab: StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>) {
-  return tab.hasChanges ?? tab.isDirty ?? false;
+  return tab.hasChanges ?? (isLegacyTab(tab) ? (tab.isDirty ?? false) : false);
 }
 
 function getChangeLabel<TTabId extends string>(tab: StudioDetailTabDefinition<TTabId> | StudioDetailTabLegacy<TTabId>) {
-  return tab.changeLabel ?? tab.dirtyLabel;
+  return tab.changeLabel ?? (isLegacyTab(tab) ? tab.dirtyLabel : undefined);
 }
 
 function getMobileOptionLabel<TTabId extends string>(

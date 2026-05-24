@@ -279,6 +279,7 @@ describe('waste location tour assignment import parser', () => {
 
   it('normalizes strict iso pickup dates and rejects invalid values', () => {
     expect(normalizeWasteImportPickupDate(' 2026-05-18 ')).toBe('2026-05-18');
+    expect(normalizeWasteImportPickupDate('2026-00-01')).toBeNull();
     expect(normalizeWasteImportPickupDate('2026-02-30')).toBeNull();
     expect(normalizeWasteImportPickupDate('18.05.2026')).toBeNull();
     expect(normalizeWasteImportPickupDate('')).toBeNull();

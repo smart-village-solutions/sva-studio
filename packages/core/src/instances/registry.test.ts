@@ -14,6 +14,7 @@ import {
 describe('instance registry core', () => {
   it('normalizes host casing, trailing dots and ports', () => {
     expect(normalizeHost('Foo.Studio.Example.org.:443')).toBe('foo.studio.example.org');
+    expect(normalizeHost('Studio.Example.org')).toBe('studio.example.org');
   });
 
   it('classifies root and tenant hosts', () => {
@@ -30,6 +31,14 @@ describe('instance registry core', () => {
   });
 
   it('rejects invalid hosts deterministically', () => {
+    expect(classifyHost('hb.studio.example.org', 'invalid_domain')).toMatchObject({
+      kind: 'invalid',
+      reason: 'invalid_parent_domain',
+    });
+    expect(classifyHost('hb.other.example.org', 'studio.example.org')).toMatchObject({
+      kind: 'invalid',
+      reason: 'outside_parent_domain',
+    });
     expect(classifyHost('foo.bar.studio.example.org', 'studio.example.org')).toMatchObject({
       kind: 'invalid',
       reason: 'multi_level_subdomain',

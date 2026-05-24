@@ -34,6 +34,7 @@ describe('input readers', () => {
   it('supports permissive number parsing when callers allow numeric strings', () => {
     expect(readNumberLike(42)).toBe(42);
     expect(readNumberLike(' 42 ')).toBe(42);
+    expect(readNumberLike(true)).toBeUndefined();
     expect(readNumberLike('')).toBeUndefined();
     expect(readNumberLike('abc')).toBeUndefined();
   });

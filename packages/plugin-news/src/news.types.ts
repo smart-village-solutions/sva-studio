@@ -110,7 +110,6 @@ export type NewsFormInput = {
   readonly publicationDate?: string;
   readonly publishedAt: string;
   readonly showPublishDate?: boolean;
-  readonly categoryName?: string;
   readonly categories?: readonly NewsCategory[];
   readonly sourceUrl?: NewsWebUrl;
   readonly address?: NewsAddress;
@@ -119,14 +118,13 @@ export type NewsFormInput = {
   readonly pushNotification?: boolean;
 };
 
-export type NewsDetailTabId = 'basis' | 'content' | 'release' | 'history';
+export type NewsDetailTabId = 'basis' | 'content' | 'release' | 'settings' | 'history';
 
 export type NewsDetailFormValues = {
   title: string;
   author: string;
   keywords: string;
-  categoryName: string;
-  categoriesText: string;
+  categories: string[];
   publishedAt: string;
   publicationDate: string;
   externalId: string;
@@ -161,7 +159,6 @@ export type NewsContentItem = {
   readonly newsType?: string;
   readonly publicationDate?: string;
   readonly showPublishDate?: boolean;
-  readonly categoryName?: string;
   readonly categories?: readonly NewsCategory[];
   readonly sourceUrl?: NewsWebUrl;
   readonly address?: NewsAddress;
@@ -177,4 +174,9 @@ export type NewsContentItem = {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly publishedAt: string;
+};
+
+export type NewsCategoryOption = {
+  readonly id?: string;
+  readonly name: string;
 };

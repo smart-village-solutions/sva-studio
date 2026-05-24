@@ -14,19 +14,25 @@ import {
 } from '@sva/plugin-sdk';
 import {
   Button,
+  Select,
   StudioDetailPageTemplate,
-  StudioDetailTabs,
   StudioFormSummary,
   StudioLoadingState,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from '@sva/studio-ui-react';
 
 import {
   buildNewsBasisMutation,
   buildNewsContentMutation,
   buildNewsReleaseMutation,
+  buildNewsSettingsMutation,
   createNews,
   deleteNews,
   getNews,
+  listNewsCategories,
   NewsApiError,
   updateNewsPartial,
 } from './news.api.js';
@@ -34,6 +40,7 @@ import { NewsDetailBasisTab } from './news.detail-basis-tab.js';
 import { NewsDetailContentTab } from './news.detail-content-tab.js';
 import { NewsDetailHistoryTab } from './news.detail-history-tab.js';
 import { NewsDetailReleaseTab } from './news.detail-release-tab.js';
+import { NewsDetailSettingsTab } from './news.detail-settings-tab.js';
 import {
   createDefaultNewsDetailFormValues,
   deriveDirtyNewsDetailTabs,
@@ -43,7 +50,7 @@ import {
 } from './news.detail-form.js';
 import { createNewsDetailTabDefinitions } from './news.detail-tabs.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds, pluginNewsMediaPickers } from './plugin.js';
-import type { NewsContentItem, NewsDetailFormValues, NewsDetailTabId } from './news.types.js';
+import type { NewsCategoryOption, NewsContentItem, NewsDetailFormValues, NewsDetailTabId } from './news.types.js';
 
 type StatusMessage = Readonly<{
   kind: 'success' | 'error';
@@ -73,12 +80,7 @@ const basisFieldNames = [
   'title',
   'author',
   'keywords',
-  'categoryName',
-  'categoriesText',
-  'externalId',
-  'newsType',
-  'charactersToBeShown',
-  'fullVersion',
+  'categories',
 ] as const;
 
 const contentFieldNames = [
@@ -95,6 +97,13 @@ const releaseFieldNames = [
   'publicationDate',
   'showPublishDate',
   'pushNotification',
+] as const;
+
+const settingsFieldNames = [
+  'externalId',
+  'newsType',
+  'charactersToBeShown',
+  'fullVersion',
 ] as const;
 
 const resolvePluginActionLabel = (
@@ -162,20 +171,6 @@ const formatDate = (value?: string) => {
   return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
-const formatOptionalNumber = (value?: number) => (typeof value === 'number' ? String(value) : '—');
-
-const formatSettings = (value: NewsContentItem['settings']) => {
-  if (!value) {
-    return '—';
-  }
-  const labels = [
-    value.alwaysRecreateOnImport ? `alwaysRecreateOnImport: ${value.alwaysRecreateOnImport}` : undefined,
-    value.displayOnlySummary ? `displayOnlySummary: ${value.displayOnlySummary}` : undefined,
-    value.onlySummaryLinkText ? `onlySummaryLinkText: ${value.onlySummaryLinkText}` : undefined,
-  ].filter(Boolean);
-  return labels.length > 0 ? labels.join(', ') : '—';
-};
-
 const getFieldNamesForTab = (tabId: NewsDetailTabId) =>
   tabId === 'basis'
     ? basisFieldNames
@@ -183,18 +178,73 @@ const getFieldNamesForTab = (tabId: NewsDetailTabId) =>
       ? contentFieldNames
       : tabId === 'release'
         ? releaseFieldNames
+        : tabId === 'settings'
+          ? settingsFieldNames
         : [];
 
 const isDirtyFieldTree = (
   value: FieldNamesMarkedBoolean<NewsDetailFormValues> | undefined
 ): value is FieldNamesMarkedBoolean<NewsDetailFormValues> => Boolean(value);
 
+type NewsTabIconProps = Readonly<{ className?: string }>;
+
+const NewsTabBasisIcon = ({ className }: NewsTabIconProps) => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+    <path d="M7 4.75h7.5L19 9.25v9A1.75 1.75 0 0 1 17.25 20h-10.5A1.75 1.75 0 0 1 5 18.25v-11.5A1.75 1.75 0 0 1 6.75 5Z" />
+    <path d="M14 4.75v4.5h4.5" />
+    <path d="M8.5 12h7" />
+    <path d="M8.5 15.5h7" />
+  </svg>
+);
+
+const NewsTabContentIcon = ({ className }: NewsTabIconProps) => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+    <rect x="4.5" y="5" width="15" height="14" rx="2" />
+    <path d="m8 14 2.5-2.5 2 2 2.5-3 3 4.5" />
+    <circle cx="9" cy="9.5" r="1.2" />
+  </svg>
+);
+
+const NewsTabReleaseIcon = ({ className }: NewsTabIconProps) => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+    <path d="M5 12h11" />
+    <path d="m12 5 7 7-7 7" />
+  </svg>
+);
+
+const NewsTabSettingsIcon = ({ className }: NewsTabIconProps) => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+    <path d="M4 7h10" />
+    <path d="M4 17h16" />
+    <circle cx="17" cy="7" r="2.5" />
+    <circle cx="9" cy="17" r="2.5" />
+  </svg>
+);
+
+const NewsTabHistoryIcon = ({ className }: NewsTabIconProps) => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+    <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+    <path d="M4.5 5.5v3.7h3.7" />
+    <path d="M12 8.5v4l2.5 1.5" />
+  </svg>
+);
+
+const newsTabIconMap = {
+  basis: NewsTabBasisIcon,
+  content: NewsTabContentIcon,
+  release: NewsTabReleaseIcon,
+  settings: NewsTabSettingsIcon,
+  history: NewsTabHistoryIcon,
+} as const satisfies Record<NewsDetailTabId, (props: NewsTabIconProps) => React.JSX.Element>;
+
 export const NewsDetailPage = ({
   mode,
   contentId,
+  initialAuthor,
 }: Readonly<{
   mode: 'create' | 'edit';
   contentId?: string;
+  initialAuthor?: string;
 }>) => {
   const navigate = useNavigate();
   const pt = React.useCallback<PluginTranslator>(
@@ -207,6 +257,7 @@ export const NewsDetailPage = ({
       : resolvePluginActionLabel(pt, pluginNewsActionIds.update);
   const deleteLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.delete);
   const [activeTab, setActiveTab] = React.useState<NewsDetailTabId>('basis');
+  const [tabStatusMessage, setTabStatusMessage] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
@@ -215,11 +266,15 @@ export const NewsDetailPage = ({
   const [publicationDateInput, setPublicationDateInput] = React.useState('');
   const [invalidDateInputs, setInvalidDateInputs] = React.useState({ publishedAt: false, publicationDate: false });
   const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
+  const [categoryOptions, setCategoryOptions] = React.useState<readonly NewsCategoryOption[]>([]);
+  const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
+  const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
   const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
+  const [visitedTabs, setVisitedTabs] = React.useState<readonly NewsDetailTabId[]>(['basis']);
   const editLoadRequestIdRef = React.useRef(0);
 
   const methods = useForm<NewsDetailFormValues>({
-    defaultValues: createDefaultNewsDetailFormValues(),
+    defaultValues: createDefaultNewsDetailFormValues(initialAuthor?.trim() ?? ''),
     resolver: newsDetailFormResolver,
   });
   const {
@@ -243,10 +298,65 @@ export const NewsDetailPage = ({
             basis: false,
             content: false,
             release: false,
+            settings: false,
             history: false,
           },
     [formState.dirtyFields, formState.isDirty]
   );
+
+  React.useEffect(() => {
+    if (mode !== 'create') {
+      return;
+    }
+
+    const normalizedInitialAuthor = initialAuthor?.trim() ?? '';
+    if (normalizedInitialAuthor.length === 0) {
+      return;
+    }
+
+    if (formState.dirtyFields.author) {
+      return;
+    }
+
+    const currentAuthor = getValues('author').trim();
+    if (currentAuthor.length > 0) {
+      return;
+    }
+
+    setValue('author', normalizedInitialAuthor, {
+      shouldDirty: false,
+      shouldTouch: false,
+    });
+  }, [formState.dirtyFields.author, getValues, initialAuthor, mode, setValue]);
+
+  React.useEffect(() => {
+    let active = true;
+
+    void listNewsCategories()
+      .then((categories) => {
+        if (!active) {
+          return;
+        }
+        setCategoryOptions(categories);
+        setCategoryOptionsError(null);
+      })
+      .catch((error: unknown) => {
+        if (!active) {
+          return;
+        }
+        setCategoryOptions([]);
+        setCategoryOptionsError(resolveNewsErrorMessage(pt, error, 'messages.categoryOptionsLoadError'));
+      })
+      .finally(() => {
+        if (active) {
+          setCategoryOptionsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [pt]);
 
   React.useEffect(() => {
     void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
@@ -342,7 +452,9 @@ export const NewsDetailPage = ({
     async (tabId: NewsDetailTabId) => {
       setStatusMessage(null);
       const fieldsToValidate =
-        mode === 'create' ? [...basisFieldNames, ...contentFieldNames, ...releaseFieldNames] : getFieldNamesForTab(tabId);
+        mode === 'create'
+          ? [...basisFieldNames, ...contentFieldNames, ...releaseFieldNames, ...settingsFieldNames]
+          : getFieldNamesForTab(tabId);
       if (fieldsToValidate.length > 0) {
         const valid = await trigger(fieldsToValidate);
         if (!valid) {
@@ -385,6 +497,8 @@ export const NewsDetailPage = ({
               ? buildNewsContentMutation(values)
               : tabId === 'release'
                 ? buildNewsReleaseMutation(values)
+                : tabId === 'settings'
+                  ? buildNewsSettingsMutation(values)
               : {};
 
         const hasMutationFields = Object.keys(mutation).length > 0;
@@ -428,6 +542,31 @@ export const NewsDetailPage = ({
     }
   };
 
+  React.useEffect(() => {
+    setVisitedTabs((current) => (current.includes(activeTab) ? current : [...current, activeTab]));
+  }, [activeTab]);
+
+  const warmTab = React.useCallback((tabId: NewsDetailTabId) => {
+    setVisitedTabs((current) => (current.includes(tabId) ? current : [...current, tabId]));
+  }, []);
+
+  const handleTabChange = React.useCallback(
+    (nextTab: NewsDetailTabId) => {
+      if (nextTab === activeTab) {
+        return;
+      }
+
+      if (mode === 'edit' && dirtyTabs[activeTab]) {
+        setTabStatusMessage(pt('messages.unsavedTabChanges'));
+        return;
+      }
+
+      setTabStatusMessage(null);
+      setActiveTab(nextTab);
+    },
+    [activeTab, dirtyTabs, mode, pt]
+  );
+
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   }
@@ -447,6 +586,9 @@ export const NewsDetailPage = ({
       ) : null,
       panel: (
         <NewsDetailBasisTab
+          availableCategories={categoryOptions}
+          categoryOptionsError={categoryOptionsError}
+          categoryOptionsLoading={categoryOptionsLoading}
           mode={mode}
           loadedItem={loadedItem}
           onSave={() => void saveTab('basis')}
@@ -509,6 +651,21 @@ export const NewsDetailPage = ({
       ),
     },
     {
+      id: 'settings',
+      label: pt('tabs.settings.label'),
+      title: pt('tabs.settings.title'),
+      description: pt('tabs.settings.description'),
+      hasChanges: dirtyTabs.settings,
+      changeLabel: pt('tabs.changeLabel'),
+      panel: (
+        <NewsDetailSettingsTab
+          onSave={() => void saveTab('settings')}
+          pt={pt}
+          saveLabel={submitLabel}
+        />
+      ),
+    },
+    {
       id: 'history',
       label: pt('tabs.history.label'),
       title: pt('tabs.history.title'),
@@ -536,60 +693,81 @@ export const NewsDetailPage = ({
     >
       <FormProvider {...methods}>
         {statusMessage ? <StudioFormSummary kind={statusMessage.kind}>{statusMessage.text}</StudioFormSummary> : null}
-        <StudioDetailTabs
-          ariaLabel={pt('tabs.ariaLabel')}
-          mobileSelectLabel={pt('tabs.mobileLabel')}
-          tabs={tabs}
-          value={activeTab}
-          onValueChange={setActiveTab}
-          keepMounted
-          blockedTabChangeMessage={pt('messages.unsavedTabChanges')}
-          onBeforeTabChange={({ currentValue }) =>
-            mode === 'edit' && dirtyTabs[currentValue] ? pt('messages.unsavedTabChanges') : true
-          }
-        />
+        <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as NewsDetailTabId)} className="space-y-0">
+          <label className="block md:hidden">
+            <span className="sr-only">{pt('tabs.mobileLabel')}</span>
+            <Select
+              aria-label={pt('tabs.mobileLabel')}
+              className="h-11 rounded-xl border-border/70 bg-card"
+              value={activeTab}
+              onChange={(event) => handleTabChange(event.target.value as NewsDetailTabId)}
+            >
+              {tabs.map((tab) => (
+                <option key={tab.id} value={tab.id}>
+                  {tab.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] hidden gap-10 md:flex">
+            {tabs.map((tab) => {
+              const TabIcon = newsTabIconMap[tab.id];
+              const isActive = tab.id === activeTab;
 
-        {mode === 'edit' && loadedItem ? (
-          <section className="space-y-3 border-t border-border pt-4">
-            <h2 className="text-base font-semibold">{pt('fields.technicalDetails')}</h2>
-            <dl className="grid gap-3 text-sm md:grid-cols-2">
-              <div>
-                <dt className="font-medium">{pt('fields.dataProvider')}</dt>
-                <dd className="text-muted-foreground">
-                  {loadedItem.dataProvider?.name ?? loadedItem.dataProvider?.id ?? '—'}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium">{pt('fields.visible')}</dt>
-                <dd className="text-muted-foreground">
-                  {typeof loadedItem.visible === 'boolean' ? pt(loadedItem.visible ? 'values.yes' : 'values.no') : '—'}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium">{pt('fields.likeCount')}</dt>
-                <dd className="text-muted-foreground">{formatOptionalNumber(loadedItem.likeCount)}</dd>
-              </div>
-              <div>
-                <dt className="font-medium">{pt('fields.likedByMe')}</dt>
-                <dd className="text-muted-foreground">
-                  {typeof loadedItem.likedByMe === 'boolean' ? pt(loadedItem.likedByMe ? 'values.yes' : 'values.no') : '—'}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium">{pt('fields.pushNotificationsSentAt')}</dt>
-                <dd className="text-muted-foreground">{formatDate(loadedItem.pushNotificationsSentAt)}</dd>
-              </div>
-              <div>
-                <dt className="font-medium">{pt('fields.settings')}</dt>
-                <dd className="text-muted-foreground">{formatSettings(loadedItem.settings)}</dd>
-              </div>
-              <div>
-                <dt className="font-medium">{pt('fields.announcements')}</dt>
-                <dd className="text-muted-foreground">{formatOptionalNumber(loadedItem.announcements?.length)}</dd>
-              </div>
-            </dl>
-          </section>
-        ) : null}
+              return (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  onMouseEnter={() => warmTab(tab.id)}
+                  onFocus={() => warmTab(tab.id)}
+                  className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
+                    isActive ? 'mb-[-1px] border-primary text-primary' : 'border-transparent text-muted-foreground'
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <TabIcon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                    <span>{tab.label}</span>
+                    {tab.hasChanges && tab.changeLabel ? (
+                      <span className="text-xs font-medium text-foreground">{tab.changeLabel}</span>
+                    ) : null}
+                  </span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+
+          {tabStatusMessage ? <StudioFormSummary kind="error">{tabStatusMessage}</StudioFormSummary> : null}
+
+          {tabs.map((tab) => {
+            const shouldKeepMounted = visitedTabs.includes(tab.id) && tab.id !== activeTab;
+
+            return (
+              <TabsContent
+                key={tab.id}
+                value={tab.id}
+                forceMount={shouldKeepMounted || undefined}
+                className="mt-0 data-[state=inactive]:hidden"
+              >
+                <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
+                  <section
+                    aria-label={tab.title ? String(tab.title) : tab.label}
+                    className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
+                  >
+                    <div className="space-y-1">
+                      <h2 className="text-base font-semibold text-foreground">{tab.title ?? tab.label}</h2>
+                      {tab.description ? (
+                        <p className="text-sm leading-relaxed text-muted-foreground">{tab.description}</p>
+                      ) : null}
+                    </div>
+                    {tab.actions ? <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">{tab.actions}</div> : null}
+                  </section>
+                  {tab.panel}
+                </div>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
+
       </FormProvider>
     </StudioDetailPageTemplate>
   );

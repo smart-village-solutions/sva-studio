@@ -424,7 +424,9 @@ describe('studio-ui-react primitives', () => {
         ]}
         emptyState={<p>Keine Daten</p>}
         toolbarStart={<span>Start</span>}
+        toolbarCenter={<span>Mitte</span>}
         toolbarEnd={<span>Ende</span>}
+        footer={<span>Seitenfuß</span>}
         rowActions={(row) => <Button>Öffnen {row.title}</Button>}
         bulkActions={[
           { id: 'custom', label: 'Custom', render: <button type="button">Sonderaktion</button>, onClick: vi.fn() },
@@ -441,7 +443,9 @@ describe('studio-ui-react primitives', () => {
     );
 
     expect(screen.getByText('Start')).toBeTruthy();
+    expect(screen.getByText('Mitte')).toBeTruthy();
     expect(screen.getByText('Ende')).toBeTruthy();
+    expect(screen.getByText('Seitenfuß')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sonderaktion' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Archivieren' }).hasAttribute('disabled')).toBe(true);
     expect(screen.getAllByRole('button', { name: 'Öffnen Alpha' })).toHaveLength(2);
@@ -457,6 +461,9 @@ describe('studio-ui-react primitives', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Archivieren' }));
     expect(onBulk).toHaveBeenCalledWith(data);
     expect(screen.getByRole('button', { name: 'Archivieren' }).hasAttribute('disabled')).toBe(true);
+    const table = screen.getByRole('table', { name: 'News' });
+    const footer = screen.getByText('Seitenfuß');
+    expect(Boolean(table.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
   });
 
   it('renders table loading, empty and no-selection variants', () => {

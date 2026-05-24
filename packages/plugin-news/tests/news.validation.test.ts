@@ -45,7 +45,6 @@ describe('validateNewsForm', () => {
         publishedAt: '2026-04-13T09:00:00.000Z',
         publicationDate: '2026-04-13T08:00:00.000Z',
         charactersToBeShown: 240,
-        categoryName: 'Allgemein',
         sourceUrl: { url: 'https://example.com/article' },
         categories: [{ name: 'Allgemein' }],
         contentBlocks: [
@@ -66,7 +65,6 @@ describe('validateNewsForm', () => {
         publishedAt: 'kein-datum',
         publicationDate: 'auch-kein-datum',
         charactersToBeShown: -1,
-        categoryName: 'x'.repeat(129),
         sourceUrl: { url: 'http://example.com/article' },
         categories: [{ name: '' }],
         contentBlocks: [{ body: '' }, { body: '<p>Hallo</p>', mediaContents: [{ sourceUrl: { url: 'ftp://example.com' } }] }],
@@ -76,7 +74,6 @@ describe('validateNewsForm', () => {
       'publishedAt',
       'publicationDate',
       'charactersToBeShown',
-      'categoryName',
       'sourceUrl',
       'categories',
       'mediaContents',

@@ -1,11 +1,15 @@
 import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
+import type { IamOrganizationContextOption, IamOrganizationDetail } from '@sva/core';
 import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events';
 import { NewsCreatePage, NewsEditPage } from '@sva/plugin-news';
 import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
+import { useOrganizationContext } from '../hooks/use-organization-context';
 import { t } from '../i18n';
+import { getOrganization } from '../lib/iam-api';
+import { useAuth } from '../providers/auth-provider';
 import { AccountProfilePage } from '../routes/account/-account-profile-page';
 import { AccountPrivacyPage } from '../routes/account/-account-privacy-page';
 import { Phase1TestPage } from '../routes/admin/api/-phase1-test-page';
@@ -27,7 +31,7 @@ import { UserCreatePage } from '../routes/admin/users/-user-create-page';
 import { UserListPage } from '../routes/admin/users/-user-list-page';
 import { MediaPage } from '../routes/admin/media/-media-page';
 import { MediaUsagePage } from '../routes/admin/media/-media-usage-page';
-import { ContentEditorPage } from '../routes/content/-content-editor-page';
+import { ContentEditorPage, normalizeContentEditorTab } from '../routes/content/-content-editor-page';
 import { ContentListPage } from '../routes/content/-content-list-page';
 import { ContentTypePickerPage } from '../routes/content/-content-type-picker-page';
 import { HomePage } from '../routes/-home-page';
@@ -35,6 +39,91 @@ import { PlaceholderPage } from '../routes/-placeholder-page';
 
 const readStringParam = (value: unknown, fallback = ''): string => {
   return typeof value === 'string' ? value : fallback;
+};
+
+const resolveUserDisplayName = (user: { readonly id: string }) => {
+  const candidate = user as { readonly name?: string; readonly displayName?: string };
+  return candidate.displayName?.trim() || candidate.name?.trim() || user.id;
+};
+
+const resolveNewsInitialAuthor = (input: {
+  readonly organizations: readonly IamOrganizationContextOption[];
+  readonly organizationDetails: ReadonlyMap<string, IamOrganizationDetail>;
+  readonly userDisplayName?: string;
+}): string | undefined => {
+  const organizationAuthors = input.organizations
+    .filter((organization) => organization.isActive)
+    .filter(
+      (organization) => input.organizationDetails.get(organization.organizationId)?.contentAuthorPolicy === 'org_only'
+    )
+    .map((organization) => organization.displayName.trim())
+    .filter((displayName) => displayName.length > 0);
+
+  if (organizationAuthors.length > 0) {
+    return organizationAuthors.join(', ');
+  }
+
+  const normalizedUserDisplayName = input.userDisplayName?.trim();
+  return normalizedUserDisplayName && normalizedUserDisplayName.length > 0 ? normalizedUserDisplayName : undefined;
+};
+
+const useNewsCreateInitialAuthor = () => {
+  const { isAuthenticated, user } = useAuth();
+  const organizationContext = useOrganizationContext();
+  const [organizationDetails, setOrganizationDetails] = React.useState<ReadonlyMap<string, IamOrganizationDetail>>(
+    () => new Map()
+  );
+
+  const organizations = organizationContext.context?.organizations ?? [];
+  const organizationIdsKey = organizations
+    .filter((organization) => organization.isActive)
+    .map((organization) => organization.organizationId)
+    .sort()
+    .join('|');
+
+  React.useEffect(() => {
+    if (!isAuthenticated || organizations.length === 0) {
+      setOrganizationDetails(new Map());
+      return;
+    }
+
+    let active = true;
+
+    void Promise.all(
+      organizations
+        .filter((organization) => organization.isActive)
+        .map(async (organization) => {
+          try {
+            const response = await getOrganization(organization.organizationId);
+            return [organization.organizationId, response.data] as const;
+          } catch {
+            return null;
+          }
+        })
+    ).then((entries) => {
+      if (!active) {
+        return;
+      }
+
+      const nextDetails = new Map<string, IamOrganizationDetail>();
+      for (const entry of entries) {
+        if (entry) {
+          nextDetails.set(entry[0], entry[1]);
+        }
+      }
+      setOrganizationDetails(nextDetails);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated, organizationIdsKey, organizations]);
+
+  return resolveNewsInitialAuthor({
+    organizations,
+    organizationDetails,
+    userDisplayName: user ? resolveUserDisplayName(user) : undefined,
+  });
 };
 
 const CategoriesPlaceholderRoutePage = () => (
@@ -64,6 +153,11 @@ const MonitoringRoutePage = () => {
       title={t('shell.sidebar.monitoring')}
     />
   );
+};
+
+const NewsCreateRoutePage = () => {
+  const initialAuthor = useNewsCreateInitialAuthor();
+  return <NewsCreatePage initialAuthor={initialAuthor} />;
 };
 
 const HelpPlaceholderRoutePage = () => (
@@ -198,7 +292,22 @@ const UserEditRoutePage = () => {
 
 const ContentDetailRoutePage = () => {
   const params = useParams({ strict: false });
-  return <ContentEditorPage mode="edit" contentId={readStringParam(params.id)} />;
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
+
+  return (
+    <ContentEditorPage
+      mode="edit"
+      contentId={readStringParam(params.id)}
+      activeTab={normalizeContentEditorTab(search.tab)}
+      onTabChange={(tab) =>
+        void navigate({
+          search: { tab } as never,
+          replace: true,
+        })
+      }
+    />
+  );
 };
 
 const InstanceDetailRoutePage = () => {
@@ -248,7 +357,7 @@ export const appRouteBindings: StudioAppRouteBindings = {
   mediaUsage: MediaUsagePage,
   newsList: ContentListPage,
   newsDetail: NewsEditPage,
-  newsEditor: NewsCreatePage,
+  newsEditor: NewsCreateRoutePage,
   eventsList: ContentListPage,
   eventsDetail: EventsEditPage,
   eventsEditor: EventsCreatePage,

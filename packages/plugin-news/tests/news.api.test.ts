@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews } from '../src/news.api.js';
+import { NewsApiError, createNews, deleteNews, getNews, listNews, listNewsCategories, updateNews } from '../src/news.api.js';
 import type { NewsFormInput } from '../src/index.js';
 import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
 const sampleInput: NewsFormInput = {
   title: 'Neue News',
   author: 'Editor',
-  categoryName: 'Allgemein',
+  categories: [{ name: 'Allgemein' }],
   publishedAt: '2026-04-13T09:00:00.000Z',
   contentBlocks: [{ intro: 'Kurztext', body: '<p>Inhalt</p>' }],
   sourceUrl: { url: 'https://example.org/details' },
@@ -72,6 +72,24 @@ describe('news api', () => {
     expect(fetch).toHaveBeenCalledWith('/api/v1/mainserver/news?page=2&pageSize=50', expect.any(Object));
   });
 
+  it('loads available categories from the mainserver facade', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'cat-1', name: 'Allgemein' },
+          { id: 'cat-2', name: 'Rathaus' },
+        ],
+      }),
+    } as Response);
+
+    await expect(listNewsCategories()).resolves.toEqual([
+      { id: 'cat-1', name: 'Allgemein' },
+      { id: 'cat-2', name: 'Rathaus' },
+    ]);
+    expect(fetch).toHaveBeenCalledWith('/api/v1/mainserver/categories', expect.any(Object));
+  });
+
   it('creates news with idempotency header through the mainserver facade', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
@@ -96,7 +114,7 @@ describe('news api', () => {
     expect(JSON.parse(requestInit?.body as string)).toEqual({
       title: sampleInput.title,
       author: sampleInput.author,
-      categoryName: sampleInput.categoryName,
+      categories: sampleInput.categories,
       publishedAt: sampleInput.publishedAt,
       contentBlocks: sampleInput.contentBlocks,
       sourceUrl: sampleInput.sourceUrl,

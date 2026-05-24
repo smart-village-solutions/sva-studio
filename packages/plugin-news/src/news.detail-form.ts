@@ -115,8 +115,7 @@ export const newsDetailFormSchema = z
     title: z.string().trim().min(1, 'title'),
     author: z.string(),
     keywords: z.string(),
-    categoryName: z.string().max(128, 'categoryName'),
-    categoriesText: z.string(),
+    categories: z.array(z.string().trim().min(1, 'categories').max(128, 'categories')),
     publishedAt: z
       .string()
       .trim()
@@ -150,19 +149,6 @@ export const newsDetailFormSchema = z
     pointOfInterestId: z.string(),
   })
   .superRefine((values, ctx) => {
-    const categoryNames = values.categoriesText
-      .split('\n')
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-
-    if (categoryNames.some((entry) => entry.length > 128)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['categoriesText'],
-        message: 'categories',
-      });
-    }
-
     if (values.sourceUrl.url.trim().length > 0 && isHttpsUrl(values.sourceUrl.url) === false) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -209,12 +195,11 @@ export const newsDetailFormSchema = z
 
 export const newsDetailFormResolver = zodResolver(newsDetailFormSchema as never);
 
-export const createDefaultNewsDetailFormValues = (): NewsDetailFormValues => ({
+export const createDefaultNewsDetailFormValues = (author = ''): NewsDetailFormValues => ({
   title: '',
-  author: '',
+  author,
   keywords: '',
-  categoryName: '',
-  categoriesText: '',
+  categories: [],
   publishedAt: '',
   publicationDate: '',
   externalId: '',
@@ -240,8 +225,12 @@ export const mapNewsItemToDetailFormValues = (item: NewsContentItem): NewsDetail
   title: item.title,
   author: item.author ?? '',
   keywords: item.keywords ?? '',
-  categoryName: item.categoryName ?? item.payload.category ?? '',
-  categoriesText: (item.categories ?? []).map((category) => category.name).join('\n'),
+  categories:
+    item.categories && item.categories.length > 0
+      ? item.categories.map((category) => category.name)
+      : item.payload.category
+        ? [item.payload.category]
+        : [],
   publishedAt: item.publishedAt,
   publicationDate: item.publicationDate ?? '',
   externalId: item.externalId ?? '',
@@ -314,14 +303,11 @@ export const mapNewsDetailFormValuesToMutation = (
   ...(compactString(values.newsType) ? { newsType: compactString(values.newsType) } : {}),
   ...(compactString(values.publicationDate) ? { publicationDate: compactString(values.publicationDate) } : {}),
   ...(values.showPublishDate !== undefined ? { showPublishDate: values.showPublishDate } : {}),
-  ...(compactString(values.categoryName) ? { categoryName: compactString(values.categoryName) } : {}),
-  ...(values.categoriesText.trim().length > 0
+  ...(values.categories.length > 0
     ? {
-        categories: values.categoriesText
-          .split('\n')
-          .map((entry) => entry.trim())
-          .filter(Boolean)
-          .map((name) => ({ name })),
+        categories: Array.from(new Set(values.categories.map((entry) => entry.trim()).filter(Boolean))).map((name) => ({
+          name,
+        })),
       }
     : {}),
   ...(compactWebUrl(values.sourceUrl) ? { sourceUrl: compactWebUrl(values.sourceUrl) } : {}),
@@ -384,12 +370,7 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
     ['title'],
     ['author'],
     ['keywords'],
-    ['categoryName'],
-    ['categoriesText'],
-    ['externalId'],
-    ['newsType'],
-    ['charactersToBeShown'],
-    ['fullVersion'],
+    ['categories'],
   ].some((path) => hasDirtyPath(dirtyFields, path)),
   content: [
     ['teaserImageAssetId'],
@@ -404,6 +385,12 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
     ['publicationDate'],
     ['showPublishDate'],
     ['pushNotification'],
+  ].some((path) => hasDirtyPath(dirtyFields, path)),
+  settings: [
+    ['externalId'],
+    ['newsType'],
+    ['charactersToBeShown'],
+    ['fullVersion'],
   ].some((path) => hasDirtyPath(dirtyFields, path)),
   history: false,
 });

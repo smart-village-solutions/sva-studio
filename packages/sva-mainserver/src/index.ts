@@ -5,6 +5,7 @@ export type {
   SvaMainserverListQuery,
   SvaMainserverListResult,
   SvaMainserverAddressInput,
+  SvaMainserverCategory,
   SvaMainserverCategoryInput,
   SvaMainserverContactInput,
   SvaMainserverDateInput,

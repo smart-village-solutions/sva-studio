@@ -29,7 +29,6 @@ const sampleItem: NewsContentItem = {
   publicationDate: '2026-05-24T08:00:00.000Z',
   publishedAt: '2026-05-24T09:00:00.000Z',
   showPublishDate: true,
-  categoryName: 'Stadt',
   categories: [{ name: 'Stadt' }, { name: 'Verwaltung' }],
   sourceUrl: { url: 'https://example.org/news', description: 'Quelle' },
   address: {
@@ -55,8 +54,7 @@ describe('news.detail-form', () => {
     expect(mapNewsItemToDetailFormValues(sampleItem)).toMatchObject({
       title: 'Rathaus informiert',
       author: 'Redaktion',
-      categoryName: 'Stadt',
-      categoriesText: 'Stadt\nVerwaltung',
+      categories: ['Stadt', 'Verwaltung'],
       publishedAt: '2026-05-24T09:00:00.000Z',
       publicationDate: '2026-05-24T08:00:00.000Z',
       externalId: 'ext-42',
@@ -82,8 +80,7 @@ describe('news.detail-form', () => {
       title: '',
       author: '',
       keywords: '',
-      categoryName: '',
-      categoriesText: '',
+      categories: [],
       publishedAt: '',
       publicationDate: '',
       externalId: '',
@@ -179,20 +176,20 @@ describe('news.detail-form', () => {
     const result = await resolver(
       {
         ...mapNewsItemToDetailFormValues(sampleItem),
-        categoriesText: `${'A'.repeat(129)}\nStadt`,
+        categories: [`${'A'.repeat(129)}`, 'Stadt'],
       },
       undefined,
       { fields: {}, shouldUseNativeValidation: false }
     );
 
-    expect(result.errors.categoriesText?.message).toBeTruthy();
+    expect(result.errors.categories).toBeTruthy();
   });
 
   it('derives changed field groups for basis versus content tabs', () => {
     expect(
       deriveDirtyNewsDetailTabs({
         title: true,
-        categoriesText: true,
+        categories: true,
         contentBlocks: [{ intro: true }],
         sourceUrl: { url: true },
       })
@@ -200,6 +197,7 @@ describe('news.detail-form', () => {
       basis: true,
       content: true,
       release: false,
+      settings: false,
       history: false,
     });
   });

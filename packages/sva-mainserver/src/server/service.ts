@@ -6,7 +6,12 @@ import {
   type SvaMainserverMutationRootTypenameMutation,
   type SvaMainserverQueryRootTypenameQuery,
 } from '../generated/diagnostics.js';
+import {
+  svaMainserverCategoriesListDocument,
+  type SvaMainserverCategoriesListQuery,
+} from '../generated/categories.js';
 import type {
+  SvaMainserverCategory,
   SvaMainserverConnectionInput,
   SvaMainserverConnectionStatus,
   SvaMainserverEventInput,
@@ -20,6 +25,7 @@ import { createAccessTokenProvider } from './service-internals/access-token-prov
 import { createCredentialProvider, createDefaultCredentialReader } from './service-internals/credentials.js';
 import { createEventOperations } from './service-internals/event-operations.js';
 import { createFetchWithRetry, createGraphqlExecutor } from './service-internals/graphql-client.js';
+import { mapCategory } from './service-internals/mappers-shared.js';
 import { createNewsOperations } from './service-internals/news-operations.js';
 import { buildLogContext, logger, withObservedHop } from './service-internals/observability.js';
 import { createPoiOperations } from './service-internals/poi-operations.js';
@@ -30,6 +36,7 @@ import {
   DEFAULT_TOKEN_SKEW_MS,
   DEFAULT_UPSTREAM_TIMEOUT_MS,
   normalizeUnexpectedError,
+  defined,
   unwrapSettledResult,
   type CredentialValue,
   type SvaMainserverListInput,
@@ -147,6 +154,21 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   ): Promise<SvaMainserverMutationRootTypenameMutation> => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return getMutationRootTypenameWithConfig(input, config);
+  };
+
+  const listCategories = async (input: SvaMainserverConnectionInput): Promise<readonly SvaMainserverCategory[]> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    const response = await executeGraphqlWithConfig<SvaMainserverCategoriesListQuery>(
+      {
+        ...input,
+        document: svaMainserverCategoriesListDocument,
+        operationName: 'SvaMainserverCategoriesList',
+        variables: { order: 'name_ASC' },
+      },
+      config
+    );
+
+    return (response.categories ?? []).map(mapCategory).filter(defined);
   };
 
   const listNews = async (input: SvaMainserverListInput) => {
@@ -295,6 +317,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     getNews,
     getPoi,
     getQueryRootTypename,
+    listCategories,
     listEvents,
     listNews,
     listPoi,
@@ -323,6 +346,9 @@ export const getSvaMainserverQueryRootTypename = (input: SvaMainserverConnection
 
 export const getSvaMainserverMutationRootTypename = (input: SvaMainserverConnectionInput) =>
   getDefaultService().getMutationRootTypename(input);
+
+export const listSvaMainserverCategories = (input: SvaMainserverConnectionInput) =>
+  getDefaultService().listCategories(input);
 
 export const listSvaMainserverNews = (input: SvaMainserverConnectionInput & SvaMainserverListQuery) =>
   getDefaultService().listNews(input);

@@ -1,16 +1,13 @@
 import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 import { getStudioFormFieldProps, StudioFormSummaryErrors } from '@sva/studio-ui-react';
-import {
-  Button,
-  Checkbox,
-  Input,
-  StudioField,
-  StudioFieldGroup,
-  Textarea,
-} from '@sva/studio-ui-react';
-import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
+import { Button, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { NewsCategoryMultiselect } from './news.category-multiselect.js';
+import type { NewsCategoryOption, NewsContentItem, NewsDetailFormValues } from './news.types.js';
 
 export type NewsDetailBasisTabProps = Readonly<{
+  availableCategories: readonly NewsCategoryOption[];
+  categoryOptionsError?: string | null;
+  categoryOptionsLoading: boolean;
   mode: 'create' | 'edit';
   loadedItem: NewsContentItem | null;
   onSave: () => void;
@@ -36,7 +33,18 @@ const translateFieldError = (
   };
 };
 
+const readCategoryFieldError = (value: unknown): FieldError | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+
+  return 'message' in value || 'type' in value ? (value as FieldError) : undefined;
+};
+
 export function NewsDetailBasisTab({
+  availableCategories,
+  categoryOptionsError,
+  categoryOptionsLoading,
   mode,
   loadedItem,
   onSave,
@@ -62,35 +70,15 @@ export function NewsDetailBasisTab({
     id: 'news-keywords',
     error: translateFieldError(errors.keywords, pt),
   });
-  const externalIdField = getStudioFormFieldProps({
-    id: 'news-external-id',
-    error: translateFieldError(errors.externalId, pt),
-  });
-  const newsTypeField = getStudioFormFieldProps({
-    id: 'news-type',
-    error: translateFieldError(errors.newsType, pt),
-  });
-  const charactersField = getStudioFormFieldProps({
-    id: 'news-characters',
-    error: translateFieldError(errors.charactersToBeShown, pt),
-  });
-  const categoryNameField = getStudioFormFieldProps({
-    id: 'news-category-name',
-    error: translateFieldError(errors.categoryName, pt),
-  });
   const categoriesField = getStudioFormFieldProps({
     id: 'news-categories',
-    error: translateFieldError(errors.categoriesText, pt),
+    error: translateFieldError(readCategoryFieldError(errors.categories), pt),
     hasDescription: true,
   });
   const summaryErrors = collectSummaryErrors([
     titleField,
     authorField,
     keywordsField,
-    externalIdField,
-    newsTypeField,
-    charactersField,
-    categoryNameField,
     categoriesField,
   ]);
 
@@ -138,48 +126,27 @@ export function NewsDetailBasisTab({
         </StudioField>
       </StudioFieldGroup>
 
-      <StudioFieldGroup columns={2}>
-        <StudioField {...externalIdField} label={pt('fields.externalId')}>
-          <Input {...externalIdField.controlProps} {...register('externalId')} />
-        </StudioField>
-        <StudioField {...newsTypeField} label={pt('fields.newsType')}>
-          <Input {...newsTypeField.controlProps} {...register('newsType')} />
-        </StudioField>
-      </StudioFieldGroup>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <StudioField {...charactersField} label={pt('fields.charactersToBeShown')}>
-          <Input {...charactersField.controlProps} type="number" min={0} {...register('charactersToBeShown')} />
-        </StudioField>
-        <label className="flex items-center gap-2 text-sm font-medium">
-          <Controller
-            control={control}
-            name="fullVersion"
-            render={({ field }) => (
-              <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />
-            )}
-          />
-          {pt('fields.fullVersion')}
-        </label>
-        <div />
-      </div>
-
-      <StudioFieldGroup columns={2}>
-        <StudioField {...categoryNameField} label={pt('fields.categoryName')}>
-          <Input {...categoryNameField.controlProps} {...register('categoryName')} />
-        </StudioField>
-        <StudioField
-          {...categoriesField}
-          label={pt('fields.categories')}
-          description={pt('fields.categoriesHelp')}
-        >
-          <Textarea
-            {...categoriesField.controlProps}
-            className="min-h-24"
-            {...register('categoriesText')}
-          />
-        </StudioField>
-      </StudioFieldGroup>
+      <StudioField {...categoriesField} label={pt('fields.categories')} description={pt('fields.categoriesHelp')}>
+        <Controller
+          name="categories"
+          control={control}
+          render={({ field }) => (
+            <NewsCategoryMultiselect
+              availableCategories={availableCategories}
+              errorMessage={categoryOptionsError ?? undefined}
+              loading={categoryOptionsLoading}
+              helpText={pt('fields.categoriesHelp')}
+              inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
+              loadingText={pt('messages.categoryOptionsLoading')}
+              searchLabel={pt('fields.categoriesSearch')}
+              addLabel={pt('actions.addCategory')}
+              removeLabel={(name) => pt('actions.removeCategory', { name })}
+              value={field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
+      </StudioField>
 
       <div className="flex flex-wrap gap-3">
         <Button type="button" onClick={onSave}>

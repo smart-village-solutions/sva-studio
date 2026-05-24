@@ -1,10 +1,18 @@
 import {
   createMainserverCrudClient,
   createMainserverJsonRequestHeaders,
+  requestMainserverJson,
 } from '@sva/plugin-sdk';
 
 import { mapNewsDetailFormValuesToMutation } from './news.detail-form.js';
-import type { NewsContentItem, NewsDetailFormValues, NewsFormInput, NewsListQuery, NewsListResult } from './news.types.js';
+import type {
+  NewsCategoryOption,
+  NewsContentItem,
+  NewsDetailFormValues,
+  NewsFormInput,
+  NewsListQuery,
+  NewsListResult,
+} from './news.types.js';
 
 export class NewsApiError extends Error {
   public constructor(
@@ -57,6 +65,14 @@ const newsClient = createMainserverCrudClient<NewsContentItem, NewsFormInput, Ne
 
 export const listNews = async (query: NewsListQuery): Promise<NewsListResult> => newsClient.list(query);
 
+export const listNewsCategories = async (): Promise<readonly NewsCategoryOption[]> => {
+  const response = await requestMainserverJson<{ readonly data: readonly NewsCategoryOption[] }, NewsApiError>({
+    url: '/api/v1/mainserver/categories',
+    errorFactory: (code, message) => new NewsApiError(code, message),
+  });
+  return response.data;
+};
+
 export const getNews = async (contentId: string): Promise<NewsContentItem> => newsClient.get(contentId);
 
 export const createNews = async (input: NewsFormInput): Promise<NewsContentItem> => newsClient.create(input);
@@ -76,14 +92,6 @@ export const buildNewsBasisMutation = (values: NewsDetailFormValues): Partial<Ne
     'title',
     'author',
     'keywords',
-    'externalId',
-    'fullVersion',
-    'charactersToBeShown',
-    'newsType',
-    'publicationDate',
-    'publishedAt',
-    'showPublishDate',
-    'categoryName',
     'categories',
   ]);
 
@@ -100,4 +108,12 @@ export const buildNewsReleaseMutation = (values: NewsDetailFormValues): Partial<
     'publishedAt',
     'publicationDate',
     'showPublishDate',
+  ]);
+
+export const buildNewsSettingsMutation = (values: NewsDetailFormValues): Partial<NewsFormInput> =>
+  pickMutationFields(mapNewsDetailFormValuesToMutation(values, 'edit'), [
+    'externalId',
+    'fullVersion',
+    'charactersToBeShown',
+    'newsType',
   ]);

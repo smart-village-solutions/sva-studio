@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,8 +6,40 @@ import { ContentListPage } from './-content-list-page';
 
 const useContentsMock = vi.fn();
 const useContentAccessMock = vi.fn();
+const useAuthMock = vi.fn();
+const deleteNewsMock = vi.fn();
+const deleteEventMock = vi.fn();
+const deletePoiMock = vi.fn();
 const navigateMock = vi.fn();
 let searchState: Record<string, unknown> = {};
+const { mockedStudioContentTypes } = vi.hoisted(() => ({
+  mockedStudioContentTypes: [
+    {
+      contentType: 'news.article',
+      displayName: 'News',
+      requiredReadAction: 'news.read',
+      requiredCreateAction: 'news.create',
+      createPath: '/admin/news/new',
+      detailPath: '/admin/news/$contentId',
+    },
+    {
+      contentType: 'events.event-record',
+      displayName: 'Veranstaltungen',
+      requiredReadAction: 'events.read',
+      requiredCreateAction: 'events.create',
+      createPath: '/admin/events/new',
+      detailPath: '/admin/events/$contentId',
+    },
+    {
+      contentType: 'poi.point-of-interest',
+      displayName: 'Orte',
+      requiredReadAction: 'poi.read',
+      requiredCreateAction: 'poi.create',
+      createPath: '/admin/poi/new',
+      detailPath: '/admin/poi/$contentId',
+    },
+  ] as const,
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
@@ -27,20 +59,49 @@ vi.mock('@tanstack/react-router', () => ({
   },
 }));
 
-vi.mock('../../hooks/use-contents', () => ({
-  useContents: (...args: unknown[]) => useContentsMock(...args),
+vi.mock('../../hooks/use-unified-content-list', () => ({
+  useUnifiedContentList: (...args: unknown[]) => useContentsMock(...args),
+}));
+
+vi.mock('../../providers/auth-provider', () => ({
+  useAuth: () => useAuthMock(),
 }));
 
 vi.mock('../../hooks/use-content-access', () => ({
   useContentAccess: () => useContentAccessMock(),
 }));
 
+vi.mock('@sva/plugin-news', () => ({
+  deleteNews: (...args: unknown[]) => deleteNewsMock(...args),
+}));
+
+vi.mock('@sva/plugin-events', () => ({
+  deleteEvent: (...args: unknown[]) => deleteEventMock(...args),
+}));
+
+vi.mock('@sva/plugin-poi', () => ({
+  deletePoi: (...args: unknown[]) => deletePoiMock(...args),
+}));
+
+vi.mock('../../lib/plugins', () => ({
+  studioContentTypes: mockedStudioContentTypes,
+}));
+
 describe('ContentListPage', () => {
   beforeEach(() => {
     useContentsMock.mockReset();
     useContentAccessMock.mockReset();
+    useAuthMock.mockReset();
+    deleteNewsMock.mockReset();
+    deleteEventMock.mockReset();
+    deletePoiMock.mockReset();
     navigateMock.mockReset();
     searchState = {};
+    useAuthMock.mockReturnValue({
+      user: {
+        instanceId: 'de-musterhausen',
+      },
+    });
     useContentAccessMock.mockReturnValue({
       access: {
         state: 'editable',
@@ -50,7 +111,18 @@ describe('ContentListPage', () => {
         organizationIds: ['org-1'],
         sourceKinds: ['direct_role'],
       },
-      permissionActions: ['news.read', 'news.create', 'poi.read', 'poi.create', 'events.read', 'events.create'],
+      permissionActions: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'news.delete',
+        'poi.read',
+        'poi.create',
+        'poi.delete',
+        'events.read',
+        'events.create',
+        'events.delete',
+      ],
       isLoading: false,
       error: null,
     });
@@ -65,11 +137,8 @@ describe('ContentListPage', () => {
     pagination: { page: 1, pageSize: 25, total: 0 },
     isLoading: false,
     error: null,
-    mutationError: null,
     refetch: vi.fn(),
-    clearMutationError: vi.fn(),
-    archiveContents: vi.fn(),
-    deleteContents: vi.fn(),
+    supportsBulkActions: false,
     ...overrides,
   });
 
@@ -120,16 +189,36 @@ describe('ContentListPage', () => {
 
     const view = render(<ContentListPage />);
 
+    expect(screen.getByRole('heading', { name: 'Inhaltsliste', level: 2 })).toBeTruthy();
+    expect(
+      screen.getByText('Durchsuchen Sie die gemeinsamen redaktionellen Inhalte und öffnen Sie bei Bedarf die typspezifische Detailansicht.')
+    ).toBeTruthy();
     expect(useContentsMock).toHaveBeenCalledWith({
       page: 1,
       pageSize: 25,
       sortBy: 'updatedAt',
       sortDirection: 'desc',
       visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
-    });
+    }, ['news.article', 'events.event-record', 'poi.point-of-interest'], 'de-musterhausen', [
+      'news.read',
+      'news.create',
+      'news.update',
+      'news.delete',
+      'poi.read',
+      'poi.create',
+      'poi.delete',
+      'events.read',
+      'events.create',
+      'events.delete',
+    ]);
     expect(screen.getByRole('heading', { name: 'Inhalte' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Neuer Inhalt' }).getAttribute('href')).toBe('/admin/content/new');
+    expect(screen.getByText('1–2 von 2 Inhalten')).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' })).toBeTruthy();
+    expect(screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile content-1 auswählen' })).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]?.getAttribute('href')).toBe('/admin/news/content-1');
     expect(screen.getAllByRole('link', { name: 'Nur lesen' })[0]?.getAttribute('href')).toBe('/admin/poi/content-2');
+    expect(screen.getAllByRole('button', { name: 'Löschen' }).length).toBeGreaterThanOrEqual(2);
 
     fireEvent.change(screen.getByLabelText('Suche'), {
       target: { value: 'archiv' },
@@ -172,9 +261,65 @@ describe('ContentListPage', () => {
       sortBy: 'updatedAt',
       sortDirection: 'desc',
       visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
-    });
+    }, ['news.article', 'events.event-record', 'poi.point-of-interest'], 'de-musterhausen', [
+      'news.read',
+      'news.create',
+      'news.update',
+      'news.delete',
+      'poi.read',
+      'poi.create',
+      'poi.delete',
+      'events.read',
+      'events.create',
+      'events.delete',
+    ]);
     expect(screen.queryAllByText('Startseite')).toHaveLength(0);
     expect(screen.getAllByText('Archiv').length).toBeGreaterThan(0);
+  });
+
+  it('deletes a mainserver content row when delete permission exists', async () => {
+    const refetch = vi.fn(async () => undefined);
+    const confirmMock = vi.fn(() => true);
+    Object.defineProperty(window, 'confirm', { configurable: true, writable: true, value: confirmMock });
+
+    useContentsMock.mockReturnValue(createContentsApiResult({
+      contents: [
+        {
+          id: 'content-1',
+          contentType: 'news.article',
+          title: 'Startseite',
+          publishedAt: '2026-03-21T10:00:00.000Z',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-21T11:00:00.000Z',
+          author: 'Editor',
+          payload: { hero: 'Willkommen' },
+          status: 'published',
+          access: {
+            state: 'editable',
+            canRead: true,
+            canCreate: true,
+            canUpdate: true,
+            organizationIds: ['org-1'],
+            sourceKinds: ['direct_role'],
+          },
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, total: 1 },
+      refetch,
+    }));
+    deleteNewsMock.mockResolvedValue(undefined);
+
+    render(<ContentListPage />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+
+    expect(confirmMock).toHaveBeenCalledWith('Soll dieser Inhalt wirklich gelöscht werden?');
+    await waitFor(() => {
+      expect(deleteNewsMock).toHaveBeenCalledWith('content-1');
+    });
+    await waitFor(() => {
+      expect(refetch).toHaveBeenCalled();
+    });
   });
 
   it('shows loading, empty and error states', () => {
@@ -347,6 +492,23 @@ describe('ContentListPage', () => {
     });
   });
 
+  it('keeps the content list query reference stable across rerenders without search changes', () => {
+    searchState = {
+      filters: { status: 'all' },
+      sort: { field: 'updatedAt', direction: 'desc' },
+      page: 1,
+      pageSize: 25,
+    };
+
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    const view = render(<ContentListPage />);
+    view.rerender(<ContentListPage />);
+
+    expect(useContentsMock).toHaveBeenCalledTimes(2);
+    expect(useContentsMock.mock.calls[0]?.[0]).toBe(useContentsMock.mock.calls[1]?.[0]);
+  });
+
   it('normalizes legacy query aliases from route search state into canonical list controls', () => {
     searchState = {
       q: 'live',
@@ -394,12 +556,21 @@ describe('ContentListPage', () => {
       sortBy: 'updatedAt',
       sortDirection: 'desc',
       visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
-    });
+    }, ['news.article', 'events.event-record', 'poi.point-of-interest'], 'de-musterhausen', [
+      'news.read',
+      'news.create',
+      'news.update',
+      'news.delete',
+      'poi.read',
+      'poi.create',
+      'poi.delete',
+      'events.read',
+      'events.create',
+      'events.delete',
+    ]);
   });
 
-  it('derives bulk action scopes from host capabilities and forwards normalized selection inputs', async () => {
-    const archiveContents = vi.fn().mockResolvedValue({ acceptedCount: 2, failedCount: 0, skippedCount: 0 });
-    const deleteContents = vi.fn().mockResolvedValue({ acceptedCount: 1, failedCount: 0, skippedCount: 0 });
+  it('hides generic bulk actions for mainserver-backed content items', async () => {
     searchState = {
       search: '',
       filters: { status: 'all' },
@@ -431,39 +602,14 @@ describe('ContentListPage', () => {
           status: 'published',
         },
       ],
-      archiveContents,
-      deleteContents,
       pagination: { page: 1, pageSize: 2, total: 3 },
     }));
 
     render(<ContentListPage />);
 
-    fireEvent.click(screen.getAllByLabelText(/Inhalte: Zeile content-1 auswählen/i)[0]!);
-    fireEvent.click(screen.getByRole('button', { name: 'Löschen (Auswahl)' }));
-
-    expect(deleteContents).toHaveBeenCalledWith({
-      actionId: 'content.delete',
-      contentIds: ['content-1'],
-      matchingCount: 3,
-      page: 1,
-      pageSize: 2,
-      selectionMode: 'explicitIds',
-      sort: { direction: 'desc', field: 'updatedAt' },
-      statusFilter: 'all',
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Archivieren (Aktuelle Seite)' }));
-
-    expect(archiveContents).toHaveBeenCalledWith({
-      actionId: 'content.archive',
-      contentIds: ['content-1', 'content-2'],
-      matchingCount: 3,
-      page: 1,
-      pageSize: 2,
-      selectionMode: 'currentPage',
-      sort: { direction: 'desc', field: 'updatedAt' },
-      statusFilter: 'all',
-    });
-    expect(screen.queryByRole('button', { name: 'Archivieren (Alle Treffer)' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Löschen (Auswahl)' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Archivieren (Aktuelle Seite)' })).toBeNull();
+    expect(screen.getByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' })).toBeTruthy();
+    expect(screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile content-1 auswählen' })).toHaveLength(2);
   });
 });

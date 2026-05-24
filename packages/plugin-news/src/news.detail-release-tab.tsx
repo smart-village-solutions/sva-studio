@@ -1,4 +1,5 @@
 import { Controller, useFormContext, type FieldError } from 'react-hook-form';
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { getStudioFormFieldProps, StudioFormSummaryErrors } from '@sva/studio-ui-react';
 import { Button, Checkbox, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
@@ -43,6 +44,38 @@ const createManualFieldError = (message: string): FieldError => ({
   message,
 });
 
+const formatBoolean = (value: boolean | undefined, pt: NewsDetailReleaseTabProps['pt']) => {
+  if (value === undefined) {
+    return '—';
+  }
+
+  return value ? pt('values.yes') : pt('values.no');
+};
+
+const formatDateTime = (value: string | undefined) => {
+  if (!value) {
+    return '—';
+  }
+
+  return formatDateTimeInEditorTimeZone(value) ?? value;
+};
+
+const formatSettings = (settings: NewsContentItem['settings']) => {
+  if (!settings) {
+    return '—';
+  }
+
+  const labels = [
+    settings.alwaysRecreateOnImport
+      ? `alwaysRecreateOnImport: ${settings.alwaysRecreateOnImport}`
+      : undefined,
+    settings.displayOnlySummary ? `displayOnlySummary: ${settings.displayOnlySummary}` : undefined,
+    settings.onlySummaryLinkText ? `onlySummaryLinkText: ${settings.onlySummaryLinkText}` : undefined,
+  ].filter(Boolean);
+
+  return labels.length > 0 ? labels.join(', ') : '—';
+};
+
 export function NewsDetailReleaseTab({
   mode,
   loadedItem,
@@ -76,19 +109,6 @@ export function NewsDetailReleaseTab({
   return (
     <div className="space-y-6">
       <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
-
-      <section className="rounded-lg border border-border bg-muted/20 p-4">
-        <dl className="grid gap-3 text-sm md:grid-cols-2">
-          <div>
-            <dt className="font-medium">{pt('fields.status')}</dt>
-            <dd className="text-muted-foreground">{loadedItem?.status ?? '—'}</dd>
-          </div>
-          <div>
-            <dt className="font-medium">{pt('fields.pushNotificationsSentAt')}</dt>
-            <dd className="text-muted-foreground">{loadedItem?.pushNotificationsSentAt ?? '—'}</dd>
-          </div>
-        </dl>
-      </section>
 
       <StudioFieldGroup columns={2}>
         <StudioField {...publishedAtBindings} label={pt('fields.publishedAt')} required>
@@ -154,6 +174,48 @@ export function NewsDetailReleaseTab({
           <p className="mt-2">{pt('release.workflowHintBody')}</p>
         </section>
       )}
+
+      {mode === 'edit' && loadedItem ? (
+        <section className="rounded-lg border border-border bg-muted/20 p-4">
+          <h3 className="font-medium text-foreground">{pt('fields.technicalDetails')}</h3>
+          <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <dt className="font-medium">{pt('fields.status')}</dt>
+              <dd className="text-muted-foreground">{loadedItem.status ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">{pt('fields.dataProvider')}</dt>
+              <dd className="text-muted-foreground">{loadedItem.dataProvider?.name ?? loadedItem.dataProvider?.id ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">{pt('fields.visible')}</dt>
+              <dd className="text-muted-foreground">{formatBoolean(loadedItem.visible, pt)}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">{pt('fields.likeCount')}</dt>
+              <dd className="text-muted-foreground">
+                {typeof loadedItem.likeCount === 'number' ? String(loadedItem.likeCount) : '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">{pt('fields.likedByMe')}</dt>
+              <dd className="text-muted-foreground">{formatBoolean(loadedItem.likedByMe, pt)}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">{pt('fields.pushNotificationsSentAt')}</dt>
+              <dd className="text-muted-foreground">{formatDateTime(loadedItem.pushNotificationsSentAt)}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">{pt('fields.settings')}</dt>
+              <dd className="text-muted-foreground">{formatSettings(loadedItem.settings)}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">{pt('fields.announcements')}</dt>
+              <dd className="text-muted-foreground">{String(loadedItem.announcements?.length ?? 0)}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
 
       <div className="flex flex-wrap gap-3">
         <Button type="button" onClick={onSave}>

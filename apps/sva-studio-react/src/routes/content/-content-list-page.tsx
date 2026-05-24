@@ -3,6 +3,10 @@ import {
   type IamContentAccessSummary,
   type IamContentListQuery,
 } from '@sva/core';
+import { deleteEvent } from '@sva/plugin-events';
+import { deleteNews } from '@sva/plugin-news';
+import { deletePoi } from '@sva/plugin-poi';
+import { IconEdit, IconEye, IconTrash, IconXboxX } from '@tabler/icons-react';
 import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
@@ -14,8 +18,9 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
+import { useAuth } from '../../providers/auth-provider';
 import { useContentAccess } from '../../hooks/use-content-access';
-import { useContents } from '../../hooks/use-contents';
+import { useUnifiedContentList } from '../../hooks/use-unified-content-list';
 import { t } from '../../i18n';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import type { IamHttpError } from '../../lib/iam-api';
@@ -232,21 +237,6 @@ const updateRouteState = (
   });
 };
 
-const resolveContentIdsForBulkAction = <TItem extends { id: string }>(
-  selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery',
-  pagedItems: readonly TItem[],
-  allItems: readonly TItem[],
-  selectedIds: readonly string[]
-): readonly string[] => {
-  if (selectionMode === 'currentPage') {
-    return pagedItems.map((item) => item.id);
-  }
-  if (selectionMode === 'allMatchingQuery') {
-    return allItems.map((item) => item.id);
-  }
-  return selectedIds;
-};
-
 const resolveSelectionModeLabelKey = (
   selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery'
 ): 'content.bulk.scope.explicitIds' | 'content.bulk.scope.currentPage' | 'content.bulk.scope.allMatchingQuery' => {
@@ -284,36 +274,82 @@ const resolveRowActionLabel = (access: IamContentAccessSummary): string => {
   return t('content.actions.blocked');
 };
 
+const deriveDeleteAction = (contentType: string): string | null => {
+  const namespace = contentType.split('.')[0]?.trim();
+  return namespace ? `${namespace}.delete` : null;
+};
+
+const canDeleteMainserverItem = (contentType: string, permissionActions: readonly string[] = []): boolean => {
+  const deleteAction = deriveDeleteAction(contentType);
+  return deleteAction ? permissionActions.includes(deleteAction) : false;
+};
+
+const deleteMainserverItem = async (contentType: string, contentId: string): Promise<void> => {
+  if (contentType === 'news.article') {
+    await deleteNews(contentId);
+    return;
+  }
+  if (contentType === 'events.event-record') {
+    await deleteEvent(contentId);
+    return;
+  }
+  if (contentType === 'poi.point-of-interest') {
+    await deletePoi(contentId);
+  }
+};
+
 const ContentPaginationNav = ({
   page,
   pageCount,
+  pageSize,
+  total,
+  currentCount,
   onPageChange,
 }: Readonly<{
   page: number;
   pageCount: number;
+  pageSize: number;
+  total: number;
+  currentCount: number;
   onPageChange: (page: number) => void;
-}>) => (
-  <nav aria-label={t('content.pagination.ariaLabel')} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-    <p aria-live="polite">
-      {t('content.pagination.pageLabel', { page, total: pageCount })}
-    </p>
-    <div className="flex items-center gap-2">
+}>) => {
+  const resultStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const resultEnd = total === 0 ? 0 : resultStart + Math.max(0, currentCount - 1);
+
+  return (
+    <nav
+      aria-label={t('content.pagination.ariaLabel')}
+      className="flex flex-col gap-3 text-sm text-muted-foreground lg:flex-row lg:items-center lg:justify-between"
+    >
+      <div className="space-y-1">
+        <p aria-live="polite">
+          {t('content.pagination.resultsLabel', { start: resultStart, end: resultEnd, total })}
+        </p>
+        <p aria-live="polite">
+          {t('content.pagination.pageLabel', { page, total: pageCount })}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
       <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))}>
         {t('content.pagination.previous')}
       </Button>
       <Button type="button" size="sm" variant="outline" disabled={page >= pageCount} onClick={() => onPageChange(Math.min(pageCount, page + 1))}>
         {t('content.pagination.next')}
       </Button>
-    </div>
-  </nav>
-);
+      </div>
+    </nav>
+  );
+};
 
 export const ContentListPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as RouteSearchState;
+  const { user } = useAuth();
   const contentAccessApi = useContentAccess();
   const routeState = readNormalizedRouteState(search);
+  const routeSortField = routeState.sort?.field;
+  const routeSortDirection = routeState.sort?.direction;
   const readableContentTypes = React.useMemo(
     () =>
       studioContentTypes.filter((definition) =>
@@ -330,18 +366,32 @@ export const ContentListPage = () => {
       ...(routeState.status !== 'all' ? { status: routeState.status } : {}),
       visibleTypes: readableContentTypes.map((definition) => definition.contentType),
       sortBy:
-        routeState.sort?.field === 'contentType'
+        routeSortField === 'contentType'
           ? 'contentType'
-          : routeState.sort?.field === 'title' ||
-              routeState.sort?.field === 'status' ||
-              routeState.sort?.field === 'updatedAt'
-            ? routeState.sort.field
+          : routeSortField === 'title' ||
+              routeSortField === 'status' ||
+              routeSortField === 'updatedAt'
+            ? routeSortField
             : 'updatedAt',
-      sortDirection: routeState.sort?.direction ?? 'desc',
+      sortDirection: routeSortDirection ?? 'desc',
     }),
-    [readableContentTypes, routeState.page, routeState.pageSize, routeState.search, routeState.sort, routeState.status, routeState.type]
+    [
+      readableContentTypes,
+      routeSortDirection,
+      routeSortField,
+      routeState.page,
+      routeState.pageSize,
+      routeState.search,
+      routeState.status,
+      routeState.type,
+    ]
   );
-  const contentsApi = useContents(contentListQuery);
+  const contentsApi = useUnifiedContentList(
+    contentListQuery,
+    contentListQuery.visibleTypes ?? [],
+    user?.instanceId ?? '',
+    contentAccessApi.permissionActions
+  );
   const creatableContentTypes = React.useMemo(
     () => filterCreatableStudioContentTypes(studioContentTypes, contentAccessApi.permissionActions),
     [contentAccessApi.permissionActions]
@@ -356,7 +406,7 @@ export const ContentListPage = () => {
         ({ item, definition }) => ({
           ...item,
           typeLabel: definition.displayName,
-          editPath: definition.detailPath.replace('$id', item.id),
+          editPath: definition.detailPath.replace('$contentId', item.id).replace('$id', item.id),
         })
       ),
     [contentAccessApi.permissionActions, contentsApi.contents]
@@ -377,36 +427,6 @@ export const ContentListPage = () => {
       ).catch(() => undefined);
     },
     [navigate]
-  );
-
-  const runBulkAction = React.useCallback(
-    async (actionId: 'content.archive' | 'content.delete', selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery', selectedIds: readonly string[]) => {
-      const contentIds = resolveContentIdsForBulkAction(
-        selectionMode,
-        registeredContents,
-        registeredContents,
-        selectedIds
-      );
-
-      const input = {
-        actionId,
-        contentIds,
-        matchingCount: contentsApi.pagination.total,
-        page: safePage,
-        pageSize: routeState.pageSize,
-        selectionMode,
-        ...(routeState.sort ? { sort: routeState.sort } : {}),
-        statusFilter: routeState.status,
-      } as const;
-
-      if (actionId === 'content.archive') {
-        await contentsApi.archiveContents(input);
-        return;
-      }
-
-      await contentsApi.deleteContents(input);
-    },
-    [contentsApi, registeredContents, routeState.pageSize, routeState.sort, routeState.status, safePage]
   );
 
   const contentColumns = React.useMemo<readonly StudioColumnDef<(typeof registeredContents)[number]>[]>(
@@ -443,50 +463,29 @@ export const ContentListPage = () => {
     []
   );
 
-  const bulkActionButtons = contentBulkActions.flatMap((action) =>
-    action.selectionModes
-      .filter((selectionMode) => selectionMode !== 'allMatchingQuery')
-      .map((selectionMode) => {
-      const labelKey = resolveSelectionModeLabelKey(selectionMode);
+  const bulkActionButtons = contentsApi.supportsBulkActions
+    ? contentBulkActions.flatMap((action) =>
+        action.selectionModes
+          .filter((selectionMode) => selectionMode !== 'allMatchingQuery')
+          .map((selectionMode) => {
+            const labelKey = resolveSelectionModeLabelKey(selectionMode);
 
-      return {
-        id: `${action.id}:${selectionMode}`,
-        label: `${t(action.labelKey)} (${t(labelKey)})`,
-        disabled: isBulkActionDisabled(
-          selectionMode,
-          registeredContents.length,
-          contentsApi.pagination.total
-        ),
-        variant: 'outline' as const,
-        onClick: async ({ selectedRows, clearSelection }: { selectedRows: typeof registeredContents; clearSelection: () => void }) => {
-          await runBulkAction(
-            action.actionId as 'content.archive' | 'content.delete',
-            selectionMode,
-            selectedRows.map((row) => row.id)
-          );
-          clearSelection();
-        },
-      };
-    })
-  );
+            return {
+              id: `${action.id}:${selectionMode}`,
+              label: `${t(action.labelKey)} (${t(labelKey)})`,
+              disabled: isBulkActionDisabled(selectionMode, registeredContents.length, contentsApi.pagination.total),
+              variant: 'outline' as const,
+              onClick: async () => undefined,
+            };
+          })
+      )
+    : [];
 
   return (
     <section className="space-y-5" aria-busy={contentsApi.isLoading}>
       <StudioListPageTemplate
         title={t('content.page.title')}
         description={t('content.page.subtitle')}
-        primaryAction={{
-          label: t('content.actions.create'),
-          render: createDisabled ? (
-            <Button type="button" disabled>
-              {t('content.actions.create')}
-            </Button>
-          ) : (
-            <Button asChild>
-              <Link to="/admin/content/new">{t('content.actions.create')}</Link>
-            </Button>
-          ),
-        }}
       >
         {contentAccessApi.access ? (
           <p className="text-sm text-muted-foreground">
@@ -512,102 +511,172 @@ export const ContentListPage = () => {
         </Alert>
       ) : null}
 
-      <StudioDataTable
-        ariaLabel={t('content.table.ariaLabel')}
-        labels={studioDataTableLabels}
-        caption={t('content.table.caption')}
-        data={registeredContents}
-        columns={contentColumns}
-        getRowId={(item) => item.id}
-        selectionMode={contentBulkActions.length > 0 ? 'multiple' : 'none'}
-        bulkActions={bulkActionButtons}
-        isLoading={contentsApi.isLoading || contentAccessApi.isLoading}
-        loadingState={t('content.messages.loading')}
-        emptyState={
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">{t('content.empty.title')}</h2>
-            <p className="text-sm text-muted-foreground">{t('content.empty.body')}</p>
-          </div>
-        }
-        toolbarStart={
-          <>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="content-search">{t('content.filters.searchLabel')}</Label>
-              <Input
-                id="content-search"
-                value={routeState.search}
-                onChange={(event) => navigateSearch({ search: event.target.value, page: 1 })}
-                placeholder={t('content.filters.searchPlaceholder')}
+      <section className="space-y-4" aria-labelledby="content-workspace-title">
+        <header className="space-y-2">
+          <h2 id="content-workspace-title" className="text-xl font-semibold text-foreground">
+            {t('content.table.sectionTitle')}
+          </h2>
+          <p className="max-w-3xl text-sm text-muted-foreground">{t('content.table.sectionDescription')}</p>
+        </header>
+
+        <StudioDataTable
+          ariaLabel={t('content.table.ariaLabel')}
+          labels={studioDataTableLabels}
+          caption={t('content.table.caption')}
+          data={registeredContents}
+          columns={contentColumns}
+          getRowId={(item) => item.id}
+          selectionMode="multiple"
+          bulkActions={bulkActionButtons}
+          isLoading={contentsApi.isLoading || contentAccessApi.isLoading}
+          loadingState={t('content.messages.loading')}
+          emptyState={
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-foreground">{t('content.empty.title')}</h3>
+              <p className="text-sm text-muted-foreground">{t('content.empty.body')}</p>
+            </div>
+          }
+          toolbarCenter={
+            <>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="content-search">{t('content.filters.searchLabel')}</Label>
+                <Input
+                  id="content-search"
+                  value={routeState.search}
+                  onChange={(event) => navigateSearch({ search: event.target.value, page: 1 })}
+                  placeholder={t('content.filters.searchPlaceholder')}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="content-type-filter">{t('content.filters.typeLabel')}</Label>
+                <Select
+                  id="content-type-filter"
+                  value={routeState.type}
+                  onChange={(event) => navigateSearch({ type: normalizeTypeFilter(event.target.value), page: 1 })}
+                >
+                  <option value="all">{t('content.filters.typeAll')}</option>
+                  {readableContentTypes.map((definition) => (
+                    <option key={definition.contentType} value={definition.contentType}>
+                      {definition.displayName}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="content-status-filter">{t('content.filters.statusLabel')}</Label>
+                <Select
+                  id="content-status-filter"
+                  value={routeState.status}
+                  onChange={(event) => navigateSearch({ status: normalizeStatusFilter(event.target.value), page: 1 })}
+                >
+                  <option value="all">{t('content.filters.statusAll')}</option>
+                  <option value="draft">{t('content.status.draft')}</option>
+                  <option value="in_review">{t('content.status.inReview')}</option>
+                  <option value="approved">{t('content.status.approved')}</option>
+                  <option value="published">{t('content.status.published')}</option>
+                  <option value="archived">{t('content.status.archived')}</option>
+                </Select>
+              </div>
+            </>
+          }
+          toolbarEnd={
+            createDisabled ? (
+              <Button type="button" disabled>
+                {t('content.actions.create')}
+              </Button>
+            ) : (
+              <Button asChild>
+                <Link to="/admin/content/new">{t('content.actions.create')}</Link>
+              </Button>
+            )
+          }
+          footer={
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="content-page-size">{t('content.pagination.pageSizeLabel')}</Label>
+                <Select
+                  id="content-page-size"
+                  value={String(contentsApi.pagination.pageSize)}
+                  onChange={(event) => navigateSearch({ page: 1, pageSize: Number(event.target.value) })}
+                >
+                  {(contentPagination?.pageSizeOptions ?? [25]).map((option) => (
+                    <option key={option} value={option}>
+                      {String(option)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <ContentPaginationNav
+                page={safePage}
+                pageCount={pageCount}
+                pageSize={contentsApi.pagination.pageSize}
+                total={contentsApi.pagination.total}
+                currentCount={registeredContents.length}
+                onPageChange={(page) => navigateSearch({ page })}
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="content-type-filter">{t('content.filters.typeLabel')}</Label>
-              <Select
-                id="content-type-filter"
-                value={routeState.type}
-                onChange={(event) => navigateSearch({ type: normalizeTypeFilter(event.target.value), page: 1 })}
-              >
-                <option value="all">{t('content.filters.typeAll')}</option>
-                {readableContentTypes.map((definition) => (
-                  <option key={definition.contentType} value={definition.contentType}>
-                    {definition.displayName}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="content-status-filter">{t('content.filters.statusLabel')}</Label>
-              <Select
-                id="content-status-filter"
-                value={routeState.status}
-                onChange={(event) => navigateSearch({ status: normalizeStatusFilter(event.target.value), page: 1 })}
-              >
-                <option value="all">{t('content.filters.statusAll')}</option>
-                <option value="draft">{t('content.status.draft')}</option>
-                <option value="in_review">{t('content.status.inReview')}</option>
-                <option value="approved">{t('content.status.approved')}</option>
-                <option value="published">{t('content.status.published')}</option>
-                <option value="archived">{t('content.status.archived')}</option>
-              </Select>
-            </div>
-          </>
-        }
-        toolbarEnd={
-          <>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="content-page-size">{t('content.pagination.pageSizeLabel')}</Label>
-              <Select
-                id="content-page-size"
-                value={String(contentsApi.pagination.pageSize)}
-                onChange={(event) => navigateSearch({ page: 1, pageSize: Number(event.target.value) })}
-              >
-                {(contentPagination?.pageSizeOptions ?? [25]).map((option) => (
-                  <option key={option} value={option}>
-                    {String(option)}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <ContentPaginationNav page={safePage} pageCount={pageCount} onPageChange={(page) => navigateSearch({ page })} />
-          </>
-        }
-        rowActions={(item) => {
-          const access = resolveRowAccess(item.access, contentsApi.error);
-          const actionLabel = resolveRowActionLabel(access);
+          }
+          rowActions={(item) => {
+            const access = resolveRowAccess(item.access, contentsApi.error);
+            const actionLabel = resolveRowActionLabel(access);
+            const canDelete = canDeleteMainserverItem(item.contentType, contentAccessApi.permissionActions);
+            const actionIcon = access.canUpdate ? (
+              <IconEdit aria-hidden="true" className="h-4 w-4" />
+            ) : access.canRead ? (
+              <IconEye aria-hidden="true" className="h-4 w-4" />
+            ) : (
+              <IconXboxX aria-hidden="true" className="h-4 w-4 text-destructive" />
+            );
 
-          return access.canRead ? (
-            <Button asChild size="sm" variant="outline">
-              <Link to={item.editPath}>
-                {actionLabel}
-              </Link>
-            </Button>
-          ) : (
-            <Button type="button" size="sm" variant="outline" disabled>
-              {actionLabel}
-            </Button>
-          );
-        }}
-      />
+            return (
+              <>
+                {access.canRead ? (
+                  <Button
+                    asChild
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
+                  >
+                    <Link to={item.editPath} aria-label={actionLabel}>
+                      {actionIcon}
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
+                    aria-label={actionLabel}
+                    disabled
+                  >
+                    {actionIcon}
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
+                  aria-label={t('content.actions.delete')}
+                  disabled={!canDelete}
+                  onClick={() => {
+                    if (!canDelete || !window.confirm(t('content.actions.deleteConfirm'))) {
+                      return;
+                    }
+                    void deleteMainserverItem(item.contentType, item.id)
+                      .then(() => contentsApi.refetch())
+                      .catch(() => undefined);
+                  }}
+                >
+                  <IconTrash aria-hidden="true" className="h-4 w-4 text-destructive" />
+                </Button>
+              </>
+            );
+          }}
+        />
+      </section>
     </section>
   );
 };

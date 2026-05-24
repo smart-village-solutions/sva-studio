@@ -1,14 +1,53 @@
+import { CalendarDays, FileText, MapPin, Shapes } from 'lucide-react';
 import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
+import type { LucideIcon } from 'lucide-react';
 
 import { useContentAccess } from '../../hooks/use-content-access';
 import { t } from '../../i18n';
 import { studioContentTypes } from '../../lib/plugins';
 import { filterCreatableStudioContentTypes } from '../../lib/studio-content-types';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 
-const resolveTypeDescription = (description: string | undefined, displayName: string): string =>
-  description && description.trim().length > 0 ? description : t('content.typePicker.fallbackDescription', { type: displayName });
+const contentTypePresentationByNamespace = {
+  news: {
+    icon: FileText,
+    descriptionKey: 'content.typePicker.typeDescriptions.news',
+  },
+  events: {
+    icon: CalendarDays,
+    descriptionKey: 'content.typePicker.typeDescriptions.events',
+  },
+  poi: {
+    icon: MapPin,
+    descriptionKey: 'content.typePicker.typeDescriptions.poi',
+  },
+} as const satisfies Record<string, { icon: LucideIcon; descriptionKey: string }>;
+
+type KnownContentTypeNamespace = keyof typeof contentTypePresentationByNamespace;
+
+const resolveContentTypeNamespace = (contentType: string): string => contentType.split('.', 1)[0] ?? contentType;
+
+const isKnownContentTypeNamespace = (value: string): value is KnownContentTypeNamespace =>
+  value in contentTypePresentationByNamespace;
+
+const resolveTypePresentation = (contentType: string): { icon: LucideIcon; description: string } => {
+  const namespace = resolveContentTypeNamespace(contentType);
+  if (isKnownContentTypeNamespace(namespace)) {
+    const knownPresentation = contentTypePresentationByNamespace[namespace];
+    return {
+      icon: knownPresentation.icon,
+      description: t(knownPresentation.descriptionKey),
+    };
+  }
+
+  return {
+    icon: Shapes,
+    description: t('content.typePicker.fallbackDescription', { type: contentType }),
+  };
+};
+
+const resolveTypeDescription = (contentType: string): string => resolveTypePresentation(contentType).description;
 
 export const ContentTypePickerPage = () => {
   const contentAccessApi = useContentAccess();
@@ -35,27 +74,27 @@ export const ContentTypePickerPage = () => {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {creatableContentTypes.map((definition) => (
-            <Card key={definition.contentType} className="border-border/80">
-              <CardHeader className="space-y-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
-                  {definition.displayName.slice(0, 1)}
-                </div>
-                <div className="space-y-1">
-                  <CardTitle>{definition.displayName}</CardTitle>
-                  <CardDescription>{resolveTypeDescription(definition.description, definition.displayName)}</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{definition.contentType}</p>
-              </CardContent>
-              <CardFooter>
-                <Link
-                  to={definition.createPath}
-                  className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-all duration-150 hover:bg-primary/90"
-                >
-                  {t('content.typePicker.openCreate')}
-                </Link>
-              </CardFooter>
+            <Card key={definition.contentType} className="border-border/80 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+              <Link
+                to={definition.createPath}
+                aria-label={definition.displayName}
+                className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <CardHeader className="space-y-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    {(() => {
+                      const Icon = resolveTypePresentation(definition.contentType).icon;
+                      return <Icon className="h-6 w-6" aria-hidden="true" />;
+                    })()}
+                  </div>
+                  <div className="space-y-2">
+                    <CardTitle>{definition.displayName}</CardTitle>
+                    <CardDescription className="text-sm leading-6 text-muted-foreground">
+                      {resolveTypeDescription(definition.contentType)}
+                    </CardDescription>
+                  </div>
+                </CardHeader>
+              </Link>
             </Card>
           ))}
         </div>

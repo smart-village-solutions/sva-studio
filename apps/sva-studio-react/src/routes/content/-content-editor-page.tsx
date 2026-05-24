@@ -1,10 +1,18 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { GENERIC_CONTENT_TYPE, withServerDeniedContentAccess, type IamContentAccessSummary, type IamContentStatus } from '@sva/core';
+import { FilePenLine, History } from 'lucide-react';
 import {
+  StudioDetailPageTemplate,
   StudioField,
   StudioFieldGroup,
   StudioFormSummaryErrors,
+  StudioResourceHeader,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Select as StudioSelect,
   getStudioFormFieldProps,
   type StudioFormFieldError,
 } from '@sva/studio-ui-react';
@@ -15,9 +23,8 @@ import { z } from 'zod';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { Select } from '../../components/ui/select';
+import { Select as FieldSelect } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 import { useContentAccess } from '../../hooks/use-content-access';
 import { useContentDetail, useCreateContent } from '../../hooks/use-contents';
@@ -29,6 +36,8 @@ import type { CreateContentPayload, IamHttpError, UpdateContentPayload } from '.
 type ContentEditorPageProps = {
   readonly mode: 'create' | 'edit';
   readonly contentId?: string;
+  readonly activeTab?: ContentEditorTabId;
+  readonly onTabChange?: (tab: ContentEditorTabId) => void;
 };
 
 type ContentFormState = {
@@ -39,6 +48,10 @@ type ContentFormState = {
   payloadText: string;
 };
 
+type ContentEditorTabId = 'general' | 'history';
+
+const contentEditorTabIds = ['general', 'history'] as const satisfies readonly ContentEditorTabId[];
+
 const emptyFormState = (): ContentFormState => ({
   title: '',
   contentType: GENERIC_CONTENT_TYPE,
@@ -46,6 +59,11 @@ const emptyFormState = (): ContentFormState => ({
   publishedAt: '',
   payloadText: '{}',
 });
+
+export const normalizeContentEditorTab = (value: unknown): ContentEditorTabId =>
+  typeof value === 'string' && contentEditorTabIds.includes(value as ContentEditorTabId)
+    ? (value as ContentEditorTabId)
+    : 'general';
 
 const toDateTimeInputValue = (value?: string): string => {
   return toDatetimeLocalValue(value);
@@ -182,50 +200,6 @@ const collectSummaryErrors = (
 ): readonly StudioFormFieldError[] =>
   fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
 
-const renderContentMeta = ({
-  mode,
-  content,
-  access,
-}: {
-  mode: ContentEditorPageProps['mode'];
-  content: ReturnType<typeof useContentDetail>['content'];
-  access: IamContentAccessSummary | null;
-}) => {
-  if (mode === 'create') {
-    return (
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">{t('content.meta.createHint')}</p>
-        {access ? <p className="text-xs text-muted-foreground">{t('content.meta.accessContext', { value: access.organizationIds.join(', ') || '—' })}</p> : null}
-      </div>
-    );
-  }
-
-  return (
-    <dl className="space-y-3 text-sm">
-      <div>
-        <dt className="text-muted-foreground">{t('content.meta.author')}</dt>
-        <dd className="text-foreground">{content ? formatContentAuthor(content.author) : '—'}</dd>
-      </div>
-      <div>
-        <dt className="text-muted-foreground">{t('content.meta.createdAt')}</dt>
-        <dd className="text-foreground">{formatDateTime(content?.createdAt)}</dd>
-      </div>
-      <div>
-        <dt className="text-muted-foreground">{t('content.meta.updatedAt')}</dt>
-        <dd className="text-foreground">{formatDateTime(content?.updatedAt)}</dd>
-      </div>
-      <div>
-        <dt className="text-muted-foreground">{t('content.meta.id')}</dt>
-        <dd className="break-all text-foreground">{content?.id}</dd>
-      </div>
-      <div>
-        <dt className="text-muted-foreground">{t('content.meta.access')}</dt>
-        <dd className="text-foreground">{access ? t(contentAccessLabelKeyByState[access.state]) : '—'}</dd>
-      </div>
-    </dl>
-  );
-};
-
 const renderContentHistory = ({
   mode,
   history,
@@ -262,8 +236,27 @@ const renderContentHistory = ({
   );
 };
 
-export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) => {
+const resolveResourceTitle = (content: ReturnType<typeof useContentDetail>['content']): string =>
+  content?.title.trim() || content?.id || '—';
+
+const contentEditorTabIconMap = {
+  general: FilePenLine,
+  history: History,
+} as const satisfies Record<ContentEditorTabId, typeof FilePenLine>;
+
+const contentEditorTabLabelKeyMap = {
+  general: 'content.tabs.generalTitle',
+  history: 'content.history.title',
+} as const satisfies Record<ContentEditorTabId, string>;
+
+const contentEditorTabBodyKeyMap = {
+  general: 'content.tabs.generalDescription',
+  history: 'content.tabs.historyDescription',
+} as const satisfies Record<ContentEditorTabId, string>;
+
+export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: ContentEditorPageProps) => {
   const navigate = useNavigate();
+  const [internalActiveTab, setInternalActiveTab] = React.useState<ContentEditorTabId>(activeTab ?? 'general');
   const createApi = useCreateContent();
   const detailApi = useContentDetail(mode === 'edit' ? contentId ?? null : null);
   const contentAccessApi = useContentAccess();
@@ -332,6 +325,16 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
     error: errors.payloadText,
   });
   const summaryErrors = collectSummaryErrors([titleField, contentTypeField, statusField, publishedAtField, payloadField]);
+  const formId = React.useId();
+  const primaryActionLabel = mode === 'create' ? t('content.actions.createNow') : t('content.actions.save');
+  const submitDisabled = actionsDisabled || isSubmitting || isLoading || (mode === 'edit' && !content);
+  const showEditorTabs = mode === 'create' || Boolean(content);
+  const resolvedActiveTab = activeTab ?? internalActiveTab;
+  const visibleTabs = React.useMemo<readonly ContentEditorTabId[]>(
+    () => (mode === 'edit' ? ['general', 'history'] : ['general']),
+    [mode]
+  );
+  const [visitedTabs, setVisitedTabs] = React.useState<readonly ContentEditorTabId[]>([resolvedActiveTab]);
 
   const submitCreate = async (values: ContentFormState): Promise<void> => {
     const parsedPayload = parseContentPayload(values.payloadText);
@@ -391,112 +394,226 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
     }
   });
 
+  React.useEffect(() => {
+    if (activeTab === undefined) {
+      return;
+    }
+
+    setInternalActiveTab(activeTab);
+  }, [activeTab]);
+
+  React.useEffect(() => {
+    setVisitedTabs((current) => (current.includes(resolvedActiveTab) ? current : [...current, resolvedActiveTab]));
+  }, [resolvedActiveTab]);
+
+  const warmTab = React.useCallback((tabId: ContentEditorTabId) => {
+    setVisitedTabs((current) => (current.includes(tabId) ? current : [...current, tabId]));
+  }, []);
+
+  const handleTabChange = React.useCallback(
+    (nextTab: ContentEditorTabId) => {
+      if (activeTab === undefined) {
+        setInternalActiveTab(nextTab);
+      }
+
+      onTabChange?.(nextTab);
+    },
+    [activeTab, onTabChange]
+  );
+
+  const renderGeneralTabPanel = () => (
+    <div className="space-y-5">
+      <form id={formId} className="space-y-4" onSubmit={submitForm} noValidate>
+        <StudioFormSummaryErrors errors={summaryErrors} title={t('account.messages.validationSummary')} />
+        <StudioFieldGroup columns={2}>
+          <StudioField {...titleField} label={t('content.fields.title')} required className="md:col-span-2">
+            <Input {...register('title')} disabled={actionsDisabled} />
+          </StudioField>
+          <StudioField {...contentTypeField} label={t('content.fields.contentType')}>
+            <Input {...register('contentType')} readOnly />
+          </StudioField>
+          <StudioField {...statusField} label={t('content.fields.status')}>
+            <FieldSelect {...register('status')} disabled={actionsDisabled}>
+              <option value="draft">{t('content.status.draft')}</option>
+              <option value="in_review">{t('content.status.inReview')}</option>
+              <option value="approved">{t('content.status.approved')}</option>
+              <option value="published">{t('content.status.published')}</option>
+              <option value="archived">{t('content.status.archived')}</option>
+            </FieldSelect>
+          </StudioField>
+          <StudioField {...publishedAtField} label={t('content.fields.publishedAt')} className="md:col-span-2">
+            <Input
+              {...register('publishedAt')}
+              type="datetime-local"
+              disabled={actionsDisabled}
+              required={statusValue === 'published'}
+            />
+          </StudioField>
+          <StudioField {...payloadField} label={t('content.fields.payload')} className="md:col-span-2">
+            <Textarea
+              {...register('payloadText')}
+              disabled={actionsDisabled}
+              className="min-h-[22rem] font-mono text-xs"
+            />
+          </StudioField>
+        </StudioFieldGroup>
+      </form>
+      <div className="flex flex-wrap gap-3 border-t border-border/60 pt-4">
+        <Button asChild variant="outline">
+          <Link to="/admin/content">{t('content.actions.cancel')}</Link>
+        </Button>
+        <Button type="submit" form={formId} disabled={submitDisabled}>
+          {primaryActionLabel}
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <section className="space-y-5" aria-busy={isLoading || isSubmitting}>
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-semibold text-foreground">
-              {mode === 'create' ? t('content.editor.createTitle') : t('content.editor.editTitle')}
-            </h1>
-            {content ? (
-              <Badge variant={statusVariantByValue[content.status]}>{t(statusLabelKeyByValue[content.status])}</Badge>
-            ) : null}
-          </div>
-          <p className="max-w-3xl text-sm text-muted-foreground">
-            {mode === 'create' ? t('content.editor.createSubtitle') : t('content.editor.editSubtitle')}
-          </p>
-          {isReadOnly ? (
-            <p className="text-sm text-muted-foreground">{t('content.messages.readOnly')}</p>
-          ) : actionsDisabled ? (
-            <p className="text-sm text-muted-foreground">{t('content.messages.actionsDisabled')}</p>
-          ) : null}
-        </div>
+      <div>
         <Button asChild variant="outline">
           <Link to="/admin/content">{t('content.actions.back')}</Link>
         </Button>
-      </header>
+      </div>
 
-      {detailApi.error && mode === 'edit' ? (
-        <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
-          <AlertDescription>{contentErrorMessage(detailApi.error)}</AlertDescription>
-        </Alert>
-      ) : null}
+      <StudioDetailPageTemplate
+        title={mode === 'create' ? t('content.editor.createTitle') : t('content.editor.editTitle')}
+        description={mode === 'create' ? t('content.editor.createSubtitle') : t('content.editor.editSubtitle')}
+        actions={
+          mode === 'edit' ? (
+            <Button type="submit" form={formId} disabled={submitDisabled}>
+              {primaryActionLabel}
+            </Button>
+          ) : undefined
+        }
+      >
 
-      {activeError ? (
-        <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
-          <AlertDescription>{contentErrorMessage(activeError)}</AlertDescription>
-        </Alert>
-      ) : null}
+        {detailApi.error && mode === 'edit' ? (
+          <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
+            <AlertDescription>{contentErrorMessage(detailApi.error)}</AlertDescription>
+          </Alert>
+        ) : null}
 
-      {isReadOnly ? (
-        <Alert className="border-secondary/40 bg-secondary/5 text-secondary">
-          <AlertDescription>{t('content.messages.readOnly')}</AlertDescription>
-        </Alert>
-      ) : null}
+        {activeError ? (
+          <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
+            <AlertDescription>{contentErrorMessage(activeError)}</AlertDescription>
+          </Alert>
+        ) : null}
 
-      {mode === 'edit' && !content && !detailApi.isLoading ? null : (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-          <Card className="p-5">
-            <form className="space-y-4" onSubmit={submitForm} noValidate>
-              <StudioFormSummaryErrors errors={summaryErrors} title={t('account.messages.validationSummary')} />
-              <StudioFieldGroup columns={2}>
-                <StudioField {...titleField} label={t('content.fields.title')} required className="md:col-span-2">
-                  <Input {...register('title')} disabled={actionsDisabled} />
-                </StudioField>
-                <StudioField {...contentTypeField} label={t('content.fields.contentType')}>
-                  <Input {...register('contentType')} readOnly />
-                </StudioField>
-                <StudioField {...statusField} label={t('content.fields.status')}>
-                  <Select {...register('status')} disabled={actionsDisabled}>
-                    <option value="draft">{t('content.status.draft')}</option>
-                    <option value="in_review">{t('content.status.inReview')}</option>
-                    <option value="approved">{t('content.status.approved')}</option>
-                    <option value="published">{t('content.status.published')}</option>
-                    <option value="archived">{t('content.status.archived')}</option>
-                  </Select>
-                </StudioField>
-                <StudioField {...publishedAtField} label={t('content.fields.publishedAt')} className="md:col-span-2">
-                  <Input
-                    {...register('publishedAt')}
-                    type="datetime-local"
-                    disabled={actionsDisabled}
-                    required={statusValue === 'published'}
-                  />
-                </StudioField>
-                <StudioField {...payloadField} label={t('content.fields.payload')} className="md:col-span-2">
-                  <Textarea
-                    {...register('payloadText')}
-                    disabled={actionsDisabled}
-                    className="min-h-[22rem] font-mono text-xs"
-                  />
-                </StudioField>
-              </StudioFieldGroup>
+        {isReadOnly ? (
+          <Alert className="border-secondary/40 bg-secondary/5 text-secondary">
+            <AlertDescription>{t('content.messages.readOnly')}</AlertDescription>
+          </Alert>
+        ) : actionsDisabled ? (
+          <Alert className="border-secondary/40 bg-secondary/5 text-secondary">
+            <AlertDescription>{t('content.messages.actionsDisabled')}</AlertDescription>
+          </Alert>
+        ) : null}
 
-              <div className="flex flex-wrap gap-3">
-                <Button type="submit" disabled={actionsDisabled}>
-                  {mode === 'create' ? t('content.actions.createNow') : t('content.actions.save')}
-                </Button>
-                <Button asChild variant="outline">
-                  <Link to="/admin/content">{t('content.actions.cancel')}</Link>
-                </Button>
-              </div>
-            </form>
-          </Card>
+        {mode === 'edit' && content ? (
+          <StudioResourceHeader
+            title={resolveResourceTitle(content)}
+            status={<Badge variant={statusVariantByValue[content.status]}>{t(statusLabelKeyByValue[content.status])}</Badge>}
+            description={content.contentType}
+            metadata={[
+              { id: 'author', label: t('content.meta.author'), value: formatContentAuthor(content.author) },
+              { id: 'createdAt', label: t('content.meta.createdAt'), value: formatDateTime(content.createdAt) },
+              { id: 'updatedAt', label: t('content.meta.updatedAt'), value: formatDateTime(content.updatedAt) },
+              { id: 'contentId', label: t('content.meta.id'), value: content.id },
+              {
+                id: 'access',
+                label: t('content.meta.access'),
+                value: activeAccess ? t(contentAccessLabelKeyByState[activeAccess.state]) : '—',
+              },
+            ]}
+          />
+        ) : null}
 
-          <div className="space-y-5">
-            <Card className="space-y-3 p-5">
-              <h2 className="text-lg font-semibold text-foreground">{t('content.meta.title')}</h2>
-              {renderContentMeta({ mode, content, access: activeAccess })}
-            </Card>
+        {mode === 'edit' && !content && !detailApi.isLoading ? null : showEditorTabs ? (
+          <div className="space-y-4">
+            <Tabs
+              value={resolvedActiveTab}
+              onValueChange={(value) => handleTabChange(normalizeContentEditorTab(value))}
+              className="space-y-0"
+            >
+              <label className="block md:hidden">
+                <span className="sr-only">{t('content.tabs.ariaLabel')}</span>
+                <StudioSelect
+                  aria-label={t('content.tabs.ariaLabel')}
+                  className="h-11 rounded-xl border-border/70 bg-card"
+                  value={resolvedActiveTab}
+                  onChange={(event) => handleTabChange(normalizeContentEditorTab(event.target.value))}
+                >
+                  {visibleTabs.map((tabId) => (
+                    <option key={tabId} value={tabId}>
+                      {t(contentEditorTabLabelKeyMap[tabId])}
+                    </option>
+                  ))}
+                </StudioSelect>
+              </label>
 
-            <Card className="space-y-3 p-5">
-              <h2 className="text-lg font-semibold text-foreground">{t('content.history.title')}</h2>
-              {renderContentHistory({ mode, history: detailApi.history })}
-            </Card>
+              <TabsList aria-label={t('content.tabs.ariaLabel')} className="ml-[10px] hidden gap-10 md:flex">
+                {visibleTabs.map((tabId) => {
+                  const TabIcon = contentEditorTabIconMap[tabId];
+                  const isActive = tabId === resolvedActiveTab;
+
+                  return (
+                    <TabsTrigger
+                      key={tabId}
+                      value={tabId}
+                      onMouseEnter={() => warmTab(tabId)}
+                      onFocus={() => warmTab(tabId)}
+                      className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
+                        isActive ? 'mb-[-1px] border-primary text-primary' : 'border-transparent text-muted-foreground'
+                      }`}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <TabIcon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                        <span>{t(contentEditorTabLabelKeyMap[tabId])}</span>
+                      </span>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              {visibleTabs.map((tabId) => {
+                const shouldKeepMounted = visitedTabs.includes(tabId) && tabId !== resolvedActiveTab;
+
+                return (
+                  <TabsContent
+                    key={tabId}
+                    value={tabId}
+                    forceMount={shouldKeepMounted || undefined}
+                    className="mt-0 data-[state=inactive]:hidden"
+                  >
+                    <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
+                      <section
+                        aria-label={t(contentEditorTabLabelKeyMap[tabId])}
+                        className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
+                      >
+                        <div className="space-y-1">
+                          <h2 className="text-base font-semibold text-foreground">{t(contentEditorTabLabelKeyMap[tabId])}</h2>
+                          <p className="text-sm leading-relaxed text-muted-foreground">
+                            {t(contentEditorTabBodyKeyMap[tabId])}
+                          </p>
+                        </div>
+                      </section>
+
+                      {tabId === 'general'
+                        ? renderGeneralTabPanel()
+                        : renderContentHistory({
+                            mode,
+                            history: detailApi.history,
+                          })}
+                    </div>
+                  </TabsContent>
+                );
+              })}
+            </Tabs>
           </div>
-        </div>
-      )}
+        ) : null}
+      </StudioDetailPageTemplate>
     </section>
   );
 };

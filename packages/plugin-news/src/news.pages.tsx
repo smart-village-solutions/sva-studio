@@ -88,7 +88,7 @@ const firstBlockSummary = (item: NewsContentItem) => {
 };
 
 const categorySummary = (item: NewsContentItem) =>
-  item.categoryName ?? item.categories?.map((category) => category.name).join(', ') ?? item.payload.category ?? '—';
+  item.categories?.map((category) => category.name).join(', ') ?? item.payload.category ?? '—';
 
 const readPaginationValue = (key: 'page' | 'pageSize', fallback: number) => {
   const search = typeof globalThis.window === 'undefined' ? '' : globalThis.window.location.search;
@@ -202,8 +202,8 @@ export const NewsListPage = () => {
                 ),
               },
               {
-                id: 'categoryName',
-                header: pt('fields.categoryName'),
+                id: 'categories',
+                header: pt('fields.categories'),
                 cell: categorySummary,
               },
               {
@@ -276,7 +276,13 @@ export const NewsListPage = () => {
   );
 };
 
-export const NewsCreatePage = () => <NewsDetailPage mode="create" />;
+type NewsCreatePageProps = Readonly<{
+  initialAuthor?: string;
+}>;
+
+export const NewsCreatePage = ({ initialAuthor }: NewsCreatePageProps) => (
+  <NewsDetailPage mode="create" initialAuthor={initialAuthor} />
+);
 
 export const NewsEditPage = () => {
   const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };

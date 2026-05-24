@@ -43,11 +43,27 @@ export type NewsMediaContent = {
   readonly sourceUrl?: NewsWebUrl;
 };
 
+export type NewsMediaContentFormValue = {
+  captionText: string;
+  copyright: string;
+  contentType: string;
+  height: string;
+  width: string;
+  sourceUrl: NewsWebUrl;
+};
+
 export type NewsContentBlock = {
   readonly title?: string;
   readonly intro?: string;
   readonly body?: string;
   readonly mediaContents?: readonly NewsMediaContent[];
+};
+
+export type NewsContentBlockFormValue = {
+  title: string;
+  intro: string;
+  body: string;
+  mediaContents: NewsMediaContentFormValue[];
 };
 
 export type NewsDataProvider = {
@@ -101,6 +117,34 @@ export type NewsFormInput = {
   readonly contentBlocks?: readonly NewsContentBlock[];
   readonly pointOfInterestId?: string;
   readonly pushNotification?: boolean;
+};
+
+export type NewsDetailTabId = 'basis' | 'content' | 'release' | 'history';
+
+export type NewsDetailFormValues = {
+  title: string;
+  author: string;
+  keywords: string;
+  categoryName: string;
+  categoriesText: string;
+  publishedAt: string;
+  publicationDate: string;
+  externalId: string;
+  newsType: string;
+  charactersToBeShown: string;
+  fullVersion: boolean;
+  showPublishDate: boolean;
+  pushNotification: boolean;
+  teaserImageAssetId: string | null;
+  headerImageAssetId: string | null;
+  contentBlocks: NewsContentBlockFormValue[];
+  sourceUrl: NewsWebUrl;
+  address: {
+    street: string;
+    zip: string;
+    city: string;
+  };
+  pointOfInterestId: string;
 };
 
 export type NewsContentItem = {

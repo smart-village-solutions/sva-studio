@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import sharedConfig from '../../vitest.config';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
+const studioMswSetupFile = fileURLToPath(new URL('../../tooling/testing/src/msw/setup.ts', import.meta.url));
 
 export default mergeConfig(
   sharedConfig,
@@ -20,6 +21,7 @@ export default mergeConfig(
       name: 'plugin-news',
       environment: 'happy-dom',
       include: ['tests/**/*.{test,spec}.{ts,tsx}', 'src/**/*.{test,spec}.{ts,tsx}'],
+      setupFiles: [studioMswSetupFile],
       // Der Thread-Pool mit happy-dom vermeidet Instabilitäten aus der jsdom/undici-Kombination.
       pool: 'threads',
       fileParallelism: false,

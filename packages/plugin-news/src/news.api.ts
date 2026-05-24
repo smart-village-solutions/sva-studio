@@ -3,7 +3,8 @@ import {
   createMainserverJsonRequestHeaders,
 } from '@sva/plugin-sdk';
 
-import type { NewsContentItem, NewsFormInput, NewsListQuery, NewsListResult } from './news.types.js';
+import { mapNewsDetailFormValuesToMutation } from './news.detail-form.js';
+import type { NewsContentItem, NewsDetailFormValues, NewsFormInput, NewsListQuery, NewsListResult } from './news.types.js';
 
 export class NewsApiError extends Error {
   public constructor(
@@ -26,6 +27,17 @@ const toMutationBody = (input: NewsFormInput, options: { readonly includePushNot
     ...(options.includePushNotification && pushNotification !== undefined ? { pushNotification } : {}),
   };
 };
+
+const pickMutationFields = <TKey extends keyof NewsFormInput>(
+  input: NewsFormInput,
+  keys: readonly TKey[]
+): Pick<NewsFormInput, TKey> =>
+  keys.reduce<Pick<NewsFormInput, TKey>>((result, key) => {
+    if (key in input) {
+      result[key] = input[key];
+    }
+    return result;
+  }, {} as Pick<NewsFormInput, TKey>);
 
 const newsClient = createMainserverCrudClient<NewsContentItem, NewsFormInput, NewsListResult, NewsListResult, NewsApiError>({
   basePath: '/api/v1/mainserver/news',
@@ -53,3 +65,39 @@ export const updateNews = async (contentId: string, input: NewsFormInput): Promi
   newsClient.update(contentId, input);
 
 export const deleteNews = async (contentId: string): Promise<void> => newsClient.remove(contentId);
+
+export const updateNewsPartial = async (
+  contentId: string,
+  input: Partial<NewsFormInput>
+): Promise<NewsContentItem> => newsClient.update(contentId, input as NewsFormInput);
+
+export const buildNewsBasisMutation = (values: NewsDetailFormValues): Partial<NewsFormInput> =>
+  pickMutationFields(mapNewsDetailFormValuesToMutation(values, 'edit'), [
+    'title',
+    'author',
+    'keywords',
+    'externalId',
+    'fullVersion',
+    'charactersToBeShown',
+    'newsType',
+    'publicationDate',
+    'publishedAt',
+    'showPublishDate',
+    'categoryName',
+    'categories',
+  ]);
+
+export const buildNewsContentMutation = (values: NewsDetailFormValues): Partial<NewsFormInput> =>
+  pickMutationFields(mapNewsDetailFormValuesToMutation(values, 'edit'), [
+    'sourceUrl',
+    'address',
+    'contentBlocks',
+    'pointOfInterestId',
+  ]);
+
+export const buildNewsReleaseMutation = (values: NewsDetailFormValues): Partial<NewsFormInput> =>
+  pickMutationFields(mapNewsDetailFormValuesToMutation(values, 'edit'), [
+    'publishedAt',
+    'publicationDate',
+    'showPublishDate',
+  ]);

@@ -31,6 +31,26 @@ describe('StudioDetailTabs', () => {
     expect(screen.getByText('Inhalte Panel')).toBeTruthy();
   });
 
+  it('supports keyboard-only tab switching and moves focus to the selected trigger', () => {
+    render(
+      <StudioDetailTabs
+        ariaLabel="Detailbereiche"
+        tabs={[
+          { id: 'base', label: 'Basis', panel: <p>Basis Panel</p> },
+          { id: 'content', label: 'Inhalte', panel: <p>Inhalte Panel</p> },
+        ]}
+      />
+    );
+
+    const contentTab = screen.getByRole('tab', { name: 'Inhalte' });
+    contentTab.focus();
+    fireEvent.keyDown(contentTab, { key: 'Enter' });
+
+    expect(contentTab.getAttribute('data-state')).toBe('active');
+    expect(document.activeElement).toBe(contentTab);
+    expect(screen.getByText('Inhalte Panel')).toBeTruthy();
+  });
+
   it('filters out tabs that are not visible', () => {
     render(
       <StudioDetailTabs

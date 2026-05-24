@@ -386,14 +386,10 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
     ['keywords'],
     ['categoryName'],
     ['categoriesText'],
-    ['publishedAt'],
-    ['publicationDate'],
     ['externalId'],
     ['newsType'],
     ['charactersToBeShown'],
     ['fullVersion'],
-    ['showPublishDate'],
-    ['pushNotification'],
   ].some((path) => hasDirtyPath(dirtyFields, path)),
   content: [
     ['teaserImageAssetId'],
@@ -403,7 +399,12 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
     ['address'],
     ['pointOfInterestId'],
   ].some((path) => hasDirtyPath(dirtyFields, path)),
-  release: false,
+  release: [
+    ['publishedAt'],
+    ['publicationDate'],
+    ['showPublishDate'],
+    ['pushNotification'],
+  ].some((path) => hasDirtyPath(dirtyFields, path)),
   history: false,
 });
 

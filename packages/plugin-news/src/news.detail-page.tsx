@@ -1,5 +1,5 @@
-import React from 'react';
-import { Controller, useFieldArray, useForm, type Control, type UseFormRegister } from 'react-hook-form';
+import * as React from 'react';
+import { FormProvider, useForm, type FieldNamesMarkedBoolean } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   findHostMediaReferenceAssetId,
@@ -11,37 +11,47 @@ import {
   toDatetimeLocalValue,
   toHostMediaFieldOptions,
   translatePluginKey,
-  usePluginTranslation,
 } from '@sva/plugin-sdk';
 import {
   Button,
-  Checkbox,
-  Input,
-  MediaReferenceField,
   StudioDetailPageTemplate,
-  StudioField,
-  StudioFieldGroup,
+  StudioDetailTabs,
   StudioFormSummary,
   StudioLoadingState,
-  Textarea,
 } from '@sva/studio-ui-react';
 
-import { createNews, deleteNews, getNews, NewsApiError, updateNews } from './news.api.js';
+import {
+  buildNewsBasisMutation,
+  buildNewsContentMutation,
+  buildNewsReleaseMutation,
+  createNews,
+  deleteNews,
+  getNews,
+  NewsApiError,
+  updateNewsPartial,
+} from './news.api.js';
+import { NewsDetailBasisTab } from './news.detail-basis-tab.js';
+import { NewsDetailContentTab } from './news.detail-content-tab.js';
+import { NewsDetailHistoryTab } from './news.detail-history-tab.js';
+import { NewsDetailReleaseTab } from './news.detail-release-tab.js';
 import {
   createDefaultNewsDetailFormValues,
+  deriveDirtyNewsDetailTabs,
   mapNewsDetailFormValuesToMutation,
   mapNewsItemToDetailFormValues,
   newsDetailFormResolver,
 } from './news.detail-form.js';
+import { createNewsDetailTabDefinitions } from './news.detail-tabs.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds, pluginNewsMediaPickers } from './plugin.js';
-import type { NewsContentBlockFormValue, NewsContentItem, NewsDetailFormValues, NewsMediaContentFormValue } from './news.types.js';
+import type { NewsContentItem, NewsDetailFormValues, NewsDetailTabId } from './news.types.js';
 
-type StatusMessage = {
-  readonly kind: 'success' | 'error';
-  readonly text: string;
-};
+type StatusMessage = Readonly<{
+  kind: 'success' | 'error';
+  text: string;
+}>;
 
 type FlashMessageCode = 'createSuccess' | 'deleteSuccess';
+type PluginTranslator = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
 const newsFlashStorageKey = 'news-plugin-flash-message';
 
@@ -59,8 +69,36 @@ const errorMessageTranslationKeys: Record<string, string> = {
   not_found: 'messages.missingContent',
 };
 
+const basisFieldNames = [
+  'title',
+  'author',
+  'keywords',
+  'categoryName',
+  'categoriesText',
+  'externalId',
+  'newsType',
+  'charactersToBeShown',
+  'fullVersion',
+] as const;
+
+const contentFieldNames = [
+  'teaserImageAssetId',
+  'headerImageAssetId',
+  'contentBlocks',
+  'sourceUrl',
+  'address',
+  'pointOfInterestId',
+] as const;
+
+const releaseFieldNames = [
+  'publishedAt',
+  'publicationDate',
+  'showPublishDate',
+  'pushNotification',
+] as const;
+
 const resolvePluginActionLabel = (
-  pt: ReturnType<typeof usePluginTranslation>,
+  pt: PluginTranslator,
   actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]
 ) => {
   const definition = getPluginNewsActionDefinition(actionId);
@@ -73,7 +111,7 @@ const resolvePluginActionLabel = (
   return localTitleKey ? pt(localTitleKey) : translatePluginKey('news', titleKey);
 };
 
-const resolveNewsErrorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknown, fallbackKey: string) => {
+const resolveNewsErrorMessage = (pt: PluginTranslator, error: unknown, fallbackKey: string) => {
   if (error instanceof NewsApiError) {
     const key = errorMessageTranslationKeys[error.code];
     if (key) {
@@ -89,11 +127,6 @@ const persistFlashMessage = (code: FlashMessageCode) => {
   }
 
   globalThis.window.sessionStorage.setItem(newsFlashStorageKey, code);
-};
-
-const buildDescribedBy = (...ids: readonly (string | undefined | false)[]) => {
-  const describedBy = ids.filter(Boolean).join(' ');
-  return describedBy.length > 0 ? describedBy : undefined;
 };
 
 const parseDatetimeLocalInput = (value: string, referenceValue?: string) => {
@@ -143,116 +176,18 @@ const formatSettings = (value: NewsContentItem['settings']) => {
   return labels.length > 0 ? labels.join(', ') : '—';
 };
 
-const createDefaultMediaContent = (): NewsMediaContentFormValue => ({
-  captionText: '',
-  copyright: '',
-  contentType: 'image',
-  height: '',
-  width: '',
-  sourceUrl: {
-    url: '',
-    description: '',
-  },
-});
+const getFieldNamesForTab = (tabId: NewsDetailTabId) =>
+  tabId === 'basis'
+    ? basisFieldNames
+    : tabId === 'content'
+      ? contentFieldNames
+      : tabId === 'release'
+        ? releaseFieldNames
+        : [];
 
-const createDefaultContentBlock = (): NewsContentBlockFormValue => ({
-  title: '',
-  intro: '',
-  body: '',
-  mediaContents: [],
-});
-
-type MediaFieldsProps = {
-  readonly blockIndex: number;
-  readonly control: Control<NewsDetailFormValues>;
-  readonly pt: ReturnType<typeof usePluginTranslation>;
-  readonly register: UseFormRegister<NewsDetailFormValues>;
-};
-
-const MediaFields = ({ blockIndex, control, pt, register }: MediaFieldsProps) => {
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: `contentBlocks.${blockIndex}.mediaContents`,
-  });
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h4 className="text-sm font-medium">{pt('fields.mediaContents')}</h4>
-        <Button type="button" variant="outline" size="sm" onClick={() => append(createDefaultMediaContent())}>
-          {pt('actions.addMedia')}
-        </Button>
-      </div>
-
-      {fields.map((field, mediaIndex) => (
-        <div key={field.id} className="grid gap-3 border-t border-border pt-3 md:grid-cols-2">
-          <StudioField id={`news-media-url-${blockIndex}-${mediaIndex}`} label={pt('fields.mediaUrl')}>
-            <Input id={`news-media-url-${blockIndex}-${mediaIndex}`} type="url" {...register(`contentBlocks.${blockIndex}.mediaContents.${mediaIndex}.sourceUrl.url`)} />
-          </StudioField>
-          <StudioField id={`news-media-caption-${blockIndex}-${mediaIndex}`} label={pt('fields.mediaCaption')}>
-            <Input id={`news-media-caption-${blockIndex}-${mediaIndex}`} {...register(`contentBlocks.${blockIndex}.mediaContents.${mediaIndex}.captionText`)} />
-          </StudioField>
-          <StudioField id={`news-media-type-${blockIndex}-${mediaIndex}`} label={pt('fields.mediaContentType')}>
-            <Input id={`news-media-type-${blockIndex}-${mediaIndex}`} {...register(`contentBlocks.${blockIndex}.mediaContents.${mediaIndex}.contentType`)} />
-          </StudioField>
-          <div className="flex items-end justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={() => remove(mediaIndex)}>
-              {pt('actions.remove')}
-            </Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-type ContentBlockSectionProps = {
-  readonly blockIndex: number;
-  readonly control: Control<NewsDetailFormValues>;
-  readonly hasContentBlocksError: boolean;
-  readonly pt: ReturnType<typeof usePluginTranslation>;
-  readonly register: UseFormRegister<NewsDetailFormValues>;
-  readonly removeBlock: (index: number) => void;
-};
-
-const ContentBlockSection = ({
-  blockIndex,
-  control,
-  hasContentBlocksError,
-  pt,
-  register,
-  removeBlock,
-}: ContentBlockSectionProps) => (
-  <section className="space-y-4 border-t border-border pt-4">
-    <div className="flex items-center justify-between gap-3">
-      <h3 className="text-sm font-semibold">{pt('fields.contentBlock')}</h3>
-      <Button type="button" variant="outline" size="sm" onClick={() => removeBlock(blockIndex)}>
-        {pt('actions.remove')}
-      </Button>
-    </div>
-
-    <StudioFieldGroup columns={2}>
-      <StudioField id={`news-block-title-${blockIndex}`} label={pt('fields.blockTitle')}>
-        <Input id={`news-block-title-${blockIndex}`} {...register(`contentBlocks.${blockIndex}.title`)} />
-      </StudioField>
-      <StudioField id={`news-block-intro-${blockIndex}`} label={pt('fields.blockIntro')}>
-        <Input id={`news-block-intro-${blockIndex}`} {...register(`contentBlocks.${blockIndex}.intro`)} />
-      </StudioField>
-    </StudioFieldGroup>
-
-    <StudioField id={`news-block-body-${blockIndex}`} label={pt('fields.blockBody')} required>
-      <Textarea
-        id={`news-block-body-${blockIndex}`}
-        className="min-h-48"
-        aria-describedby={buildDescribedBy(hasContentBlocksError && 'news-content-blocks-error')}
-        aria-invalid={hasContentBlocksError || undefined}
-        {...register(`contentBlocks.${blockIndex}.body`)}
-      />
-    </StudioField>
-
-    <MediaFields blockIndex={blockIndex} control={control} pt={pt} register={register} />
-  </section>
-);
+const isDirtyFieldTree = (
+  value: FieldNamesMarkedBoolean<NewsDetailFormValues> | undefined
+): value is FieldNamesMarkedBoolean<NewsDetailFormValues> => Boolean(value);
 
 export const NewsDetailPage = ({
   mode,
@@ -262,12 +197,16 @@ export const NewsDetailPage = ({
   contentId?: string;
 }>) => {
   const navigate = useNavigate();
-  const pt = usePluginTranslation('news');
+  const pt = React.useCallback<PluginTranslator>(
+    (key, variables) => translatePluginKey('news', key, variables),
+    []
+  );
   const submitLabel =
     mode === 'create'
       ? resolvePluginActionLabel(pt, pluginNewsActionIds.create)
       : resolvePluginActionLabel(pt, pluginNewsActionIds.update);
   const deleteLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.delete);
+  const [activeTab, setActiveTab] = React.useState<NewsDetailTabId>('basis');
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
@@ -279,27 +218,35 @@ export const NewsDetailPage = ({
   const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
   const editLoadRequestIdRef = React.useRef(0);
 
-  const {
-    control,
-    formState: { errors },
-    handleSubmit,
-    register,
-    reset,
-    setError,
-    setValue,
-  } = useForm<NewsDetailFormValues>({
+  const methods = useForm<NewsDetailFormValues>({
     defaultValues: createDefaultNewsDetailFormValues(),
     resolver: newsDetailFormResolver,
   });
+  const {
+    formState,
+    getValues,
+    reset,
+    setError,
+    setValue,
+    trigger,
+  } = methods;
 
-  const contentBlocksFieldArray = useFieldArray({
-    control,
-    name: 'contentBlocks',
-  });
-
-  const hasContentBlocksError = Boolean(errors.contentBlocks);
-  const hasPublishedAtError = Boolean(errors.publishedAt) || invalidDateInputs.publishedAt;
-  const hasPublicationDateError = Boolean(errors.publicationDate) || invalidDateInputs.publicationDate;
+  const dirtyTabs = React.useMemo(
+    () =>
+      formState.isDirty
+        ? deriveDirtyNewsDetailTabs(
+            (isDirtyFieldTree(formState.dirtyFields) ? formState.dirtyFields : {}) as Parameters<
+              typeof deriveDirtyNewsDetailTabs
+            >[0]
+          )
+        : {
+            basis: false,
+            content: false,
+            release: false,
+            history: false,
+          },
+    [formState.dirtyFields, formState.isDirty]
+  );
 
   React.useEffect(() => {
     void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
@@ -374,8 +321,36 @@ export const NewsDetailPage = ({
     };
   }, [contentId, mode, pt, reset, setValue]);
 
-  const submitValid = handleSubmit(
-    async (values) => {
+  const syncMediaReferences = React.useCallback(
+    async (values: NewsDetailFormValues, targetId: string) => {
+      const mediaReferences = buildNewsMediaReferences(values.teaserImageAssetId, values.headerImageAssetId);
+      if (!shouldSyncMediaReferences(existingMediaReferenceCount, mediaReferences)) {
+        return;
+      }
+
+      await replaceHostMediaReferences({
+        fetch: globalThis.fetch.bind(globalThis),
+        targetType: 'news',
+        targetId,
+        references: mediaReferences,
+      });
+    },
+    [existingMediaReferenceCount]
+  );
+
+  const saveTab = React.useCallback(
+    async (tabId: NewsDetailTabId) => {
+      setStatusMessage(null);
+      const fieldsToValidate =
+        mode === 'create' ? [...basisFieldNames, ...contentFieldNames, ...releaseFieldNames] : getFieldNamesForTab(tabId);
+      if (fieldsToValidate.length > 0) {
+        const valid = await trigger(fieldsToValidate);
+        if (!valid) {
+          setStatusMessage({ kind: 'error', text: pt('messages.validationError') });
+          return;
+        }
+      }
+
       if (invalidDateInputs.publishedAt) {
         setError('publishedAt', { type: 'manual', message: 'publishedAt' });
       }
@@ -387,45 +362,48 @@ export const NewsDetailPage = ({
         return;
       }
 
-      try {
-        const mutationInput = mapNewsDetailFormValuesToMutation(values, mode);
-        const mediaReferences = buildNewsMediaReferences(values.teaserImageAssetId, values.headerImageAssetId);
-        const syncMediaReferences = shouldSyncMediaReferences(existingMediaReferenceCount, mediaReferences);
+      const values = getValues();
 
+      try {
         if (mode === 'create') {
-          const saved = await createNews(mutationInput);
-          if (syncMediaReferences) {
-            await replaceHostMediaReferences({
-              fetch: globalThis.fetch.bind(globalThis),
-              targetType: 'news',
-              targetId: saved.id,
-              references: mediaReferences,
-            });
-          }
+          const saved = await createNews(mapNewsDetailFormValuesToMutation(values, 'create'));
+          await syncMediaReferences(values, saved.id);
           persistFlashMessage('createSuccess');
           await navigate({ to: '/admin/content' });
           return;
         }
 
-        if (contentId) {
-          const saved = await updateNews(contentId, mutationInput);
-          if (syncMediaReferences) {
-            await replaceHostMediaReferences({
-              fetch: globalThis.fetch.bind(globalThis),
-              targetType: 'news',
-              targetId: saved.id,
-              references: mediaReferences,
-            });
-          }
-          setStatusMessage({ kind: 'success', text: pt('messages.updateSuccess') });
+        if (!contentId) {
+          setStatusMessage({ kind: 'error', text: pt('messages.missingContent') });
+          return;
         }
+
+        const mutation =
+          tabId === 'basis'
+            ? buildNewsBasisMutation(values)
+            : tabId === 'content'
+              ? buildNewsContentMutation(values)
+              : tabId === 'release'
+                ? buildNewsReleaseMutation(values)
+              : {};
+
+        const hasMutationFields = Object.keys(mutation).length > 0;
+        let targetId = contentId;
+        if (hasMutationFields) {
+          const saved = await updateNewsPartial(contentId, mutation);
+          targetId = saved.id;
+        }
+        if (tabId === 'content') {
+          await syncMediaReferences(values, targetId);
+        }
+
+        reset(values);
+        setStatusMessage({ kind: 'success', text: pt('messages.updateSuccess') });
       } catch (error) {
         setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.saveError') });
       }
     },
-    () => {
-      setStatusMessage({ kind: 'error', text: pt('messages.validationError') });
-    }
+    [contentId, getValues, invalidDateInputs.publicationDate, invalidDateInputs.publishedAt, mode, navigate, pt, reset, setError, syncMediaReferences, trigger]
   );
 
   const onDelete = async () => {
@@ -454,269 +432,97 @@ export const NewsDetailPage = ({
     return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   }
 
+  const tabs = createNewsDetailTabDefinitions([
+    {
+      id: 'basis',
+      label: pt('tabs.basis.label'),
+      title: pt('tabs.basis.title'),
+      description: pt('tabs.basis.description'),
+      hasChanges: dirtyTabs.basis,
+      changeLabel: pt('tabs.changeLabel'),
+      actions: mode === 'edit' && loadedItem ? (
+        <span className="text-sm text-muted-foreground">
+          {pt('tabs.basis.metaSummaryInline', { publishedAt: formatDate(loadedItem.publishedAt) })}
+        </span>
+      ) : null,
+      panel: (
+        <NewsDetailBasisTab
+          mode={mode}
+          loadedItem={loadedItem}
+          onSave={() => void saveTab('basis')}
+          saveLabel={submitLabel}
+          pt={pt}
+        />
+      ),
+    },
+    {
+      id: 'content',
+      label: pt('tabs.content.label'),
+      title: pt('tabs.content.title'),
+      description: pt('tabs.content.description'),
+      hasChanges: dirtyTabs.content,
+      changeLabel: pt('tabs.changeLabel'),
+      panel: (
+        <NewsDetailContentTab
+          mediaOptions={mediaOptions}
+          onSave={() => void saveTab('content')}
+          pt={pt}
+          saveLabel={submitLabel}
+        />
+      ),
+    },
+    {
+      id: 'release',
+      label: pt('tabs.release.label'),
+      title: pt('tabs.release.title'),
+      description: pt('tabs.release.description'),
+      hasChanges: dirtyTabs.release,
+      changeLabel: pt('tabs.changeLabel'),
+      panel: (
+        <NewsDetailReleaseTab
+          mode={mode}
+          loadedItem={loadedItem}
+          publishedAtField={{
+            value: publishedAtInput,
+            isInvalid: invalidDateInputs.publishedAt,
+            onChange: (nextValue) => {
+              const { isInvalid, normalizedValue } = parseDatetimeLocalInput(nextValue, methods.getValues('publishedAt'));
+              setPublishedAtInput(nextValue);
+              setInvalidDateInputs((current) => ({ ...current, publishedAt: isInvalid }));
+              return normalizedValue;
+            },
+          }}
+          publicationDateField={{
+            value: publicationDateInput,
+            isInvalid: invalidDateInputs.publicationDate,
+            onChange: (nextValue) => {
+              const { isInvalid, normalizedValue } = parseDatetimeLocalInput(nextValue, methods.getValues('publicationDate'));
+              setPublicationDateInput(nextValue);
+              setInvalidDateInputs((current) => ({ ...current, publicationDate: isInvalid }));
+              return normalizedValue;
+            },
+          }}
+          onSave={() => void saveTab('release')}
+          pt={pt}
+          saveLabel={submitLabel}
+        />
+      ),
+    },
+    {
+      id: 'history',
+      label: pt('tabs.history.label'),
+      title: pt('tabs.history.title'),
+      description: pt('tabs.history.description'),
+      panel: <NewsDetailHistoryTab contentId={contentId} pt={pt} />,
+    },
+  ]);
+
   return (
     <StudioDetailPageTemplate
       title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
       description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
-    >
-      {statusMessage ? <StudioFormSummary kind={statusMessage.kind}>{statusMessage.text}</StudioFormSummary> : null}
-
-      <form className="space-y-6" onSubmit={(event) => void submitValid(event)}>
-        <StudioField id="news-title" label={pt('fields.title')} required>
-          <Input id="news-title" required {...register('title')} />
-        </StudioField>
-
-        <StudioFieldGroup columns={2}>
-          <StudioField id="news-author" label={pt('fields.author')}>
-            <Input id="news-author" {...register('author')} />
-          </StudioField>
-          <StudioField id="news-keywords" label={pt('fields.keywords')}>
-            <Input id="news-keywords" {...register('keywords')} />
-          </StudioField>
-        </StudioFieldGroup>
-
-        <StudioFieldGroup columns={2}>
-          <StudioField id="news-external-id" label={pt('fields.externalId')}>
-            <Input id="news-external-id" {...register('externalId')} />
-          </StudioField>
-          <StudioField id="news-type" label={pt('fields.newsType')}>
-            <Input id="news-type" {...register('newsType')} />
-          </StudioField>
-        </StudioFieldGroup>
-
-        <StudioFieldGroup columns={2}>
-          <StudioField
-            id="news-published-at"
-            label={pt('fields.publishedAt')}
-            error={hasPublishedAtError ? pt('validation.publishedAt') : undefined}
-            errorId="news-published-at-error"
-            required
-          >
-            <Controller
-              control={control}
-              name="publishedAt"
-              render={({ field }) => (
-                <Input
-                  id="news-published-at"
-                  type="datetime-local"
-                  required
-                  aria-describedby={buildDescribedBy(hasPublishedAtError && 'news-published-at-error')}
-                  aria-invalid={hasPublishedAtError || undefined}
-                  value={publishedAtInput}
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    const { isInvalid, normalizedValue } = parseDatetimeLocalInput(nextValue, field.value);
-                    setPublishedAtInput(nextValue);
-                    setInvalidDateInputs((current) => ({ ...current, publishedAt: isInvalid }));
-                    field.onChange(normalizedValue);
-                  }}
-                />
-              )}
-            />
-          </StudioField>
-          <StudioField
-            id="news-publication-date"
-            label={pt('fields.publicationDate')}
-            error={hasPublicationDateError ? pt('validation.publicationDate') : undefined}
-            errorId="news-publication-date-error"
-          >
-            <Controller
-              control={control}
-              name="publicationDate"
-              render={({ field }) => (
-                <Input
-                  id="news-publication-date"
-                  type="datetime-local"
-                  aria-describedby={buildDescribedBy(hasPublicationDateError && 'news-publication-date-error')}
-                  aria-invalid={hasPublicationDateError || undefined}
-                  value={publicationDateInput}
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    const { isInvalid, normalizedValue } = parseDatetimeLocalInput(nextValue, field.value);
-                    setPublicationDateInput(nextValue);
-                    setInvalidDateInputs((current) => ({ ...current, publicationDate: isInvalid }));
-                    field.onChange(normalizedValue);
-                  }}
-                />
-              )}
-            />
-          </StudioField>
-        </StudioFieldGroup>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <StudioField
-            id="news-characters"
-            label={pt('fields.charactersToBeShown')}
-            error={errors.charactersToBeShown ? pt('validation.charactersToBeShown') : undefined}
-            errorId="news-characters-error"
-          >
-            <Input
-              id="news-characters"
-              type="number"
-              min={0}
-              aria-describedby={buildDescribedBy(errors.charactersToBeShown && 'news-characters-error')}
-              aria-invalid={errors.charactersToBeShown ? true : undefined}
-              {...register('charactersToBeShown')}
-            />
-          </StudioField>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <Controller
-              control={control}
-              name="fullVersion"
-              render={({ field }) => <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />}
-            />
-            {pt('fields.fullVersion')}
-          </label>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <Controller
-              control={control}
-              name="showPublishDate"
-              render={({ field }) => <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />}
-            />
-            {pt('fields.showPublishDate')}
-          </label>
-        </div>
-
-        {mode === 'create' ? (
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <Controller
-              control={control}
-              name="pushNotification"
-              render={({ field }) => <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />}
-            />
-            {pt('fields.pushNotification')}
-          </label>
-        ) : null}
-
-        <StudioFieldGroup columns={2}>
-          <StudioField
-            id="news-category-name"
-            label={pt('fields.categoryName')}
-            error={errors.categoryName ? pt('validation.categoryName') : undefined}
-            errorId="news-category-name-error"
-          >
-            <Input
-              id="news-category-name"
-              aria-describedby={buildDescribedBy(errors.categoryName && 'news-category-name-error')}
-              aria-invalid={errors.categoryName ? true : undefined}
-              {...register('categoryName')}
-            />
-          </StudioField>
-          <StudioField
-            id="news-categories"
-            label={pt('fields.categories')}
-            description={pt('fields.categoriesHelp')}
-            descriptionId="news-categories-help"
-            error={errors.categoriesText ? pt('validation.categories') : undefined}
-            errorId="news-categories-error"
-          >
-            <Textarea
-              id="news-categories"
-              aria-describedby={buildDescribedBy('news-categories-help', errors.categoriesText && 'news-categories-error')}
-              aria-invalid={errors.categoriesText ? true : undefined}
-              {...register('categoriesText')}
-            />
-          </StudioField>
-        </StudioFieldGroup>
-
-        <StudioFieldGroup columns={2}>
-          <Controller
-            control={control}
-            name="teaserImageAssetId"
-            render={({ field }) => (
-              <MediaReferenceField
-                id="news-teaser-image"
-                label={pt('fields.teaserImage')}
-                value={field.value}
-                options={mediaOptions}
-                onChange={field.onChange}
-                placeholder={pt('fields.mediaPlaceholder')}
-                clearLabel={pt('actions.clearMedia')}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="headerImageAssetId"
-            render={({ field }) => (
-              <MediaReferenceField
-                id="news-header-image"
-                label={pt('fields.headerImage')}
-                value={field.value}
-                options={mediaOptions}
-                onChange={field.onChange}
-                placeholder={pt('fields.mediaPlaceholder')}
-                clearLabel={pt('actions.clearMedia')}
-              />
-            )}
-          />
-        </StudioFieldGroup>
-
-        <StudioFieldGroup columns={2}>
-          <StudioField
-            id="news-source-url"
-            label={pt('fields.sourceUrl')}
-            error={errors.sourceUrl?.url ? pt('validation.sourceUrl') : undefined}
-            errorId="news-source-url-error"
-          >
-            <Input
-              id="news-source-url"
-              type="url"
-              aria-describedby={buildDescribedBy(errors.sourceUrl?.url && 'news-source-url-error')}
-              aria-invalid={errors.sourceUrl?.url ? true : undefined}
-              {...register('sourceUrl.url')}
-            />
-          </StudioField>
-          <StudioField id="news-source-description" label={pt('fields.sourceUrlDescription')}>
-            <Input id="news-source-description" {...register('sourceUrl.description')} />
-          </StudioField>
-        </StudioFieldGroup>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <StudioField id="news-address-street" label={pt('fields.street')}>
-            <Input id="news-address-street" {...register('address.street')} />
-          </StudioField>
-          <StudioField id="news-address-zip" label={pt('fields.zip')}>
-            <Input id="news-address-zip" {...register('address.zip')} />
-          </StudioField>
-          <StudioField id="news-address-city" label={pt('fields.city')}>
-            <Input id="news-address-city" {...register('address.city')} />
-          </StudioField>
-        </div>
-
-        <StudioField id="news-poi" label={pt('fields.pointOfInterestId')}>
-          <Input id="news-poi" {...register('pointOfInterestId')} />
-        </StudioField>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold">{pt('fields.contentBlocks')}</h2>
-            <Button type="button" variant="outline" onClick={() => contentBlocksFieldArray.append(createDefaultContentBlock())}>
-              {pt('actions.addContentBlock')}
-            </Button>
-          </div>
-
-          {hasContentBlocksError ? (
-            <p id="news-content-blocks-error" className="text-sm text-destructive">
-              {pt('validation.contentBlocks')}
-            </p>
-          ) : null}
-
-          {contentBlocksFieldArray.fields.map((field, blockIndex) => (
-            <ContentBlockSection
-              key={field.id}
-              blockIndex={blockIndex}
-              control={control}
-              hasContentBlocksError={hasContentBlocksError}
-              pt={pt}
-              register={register}
-              removeBlock={contentBlocksFieldArray.remove}
-            />
-          ))}
-        </div>
-
+      actions={
         <div className="flex flex-wrap gap-3">
-          <Button type="submit">{submitLabel}</Button>
           <Button asChild variant="outline">
             <Link to="/admin/content">{pt('actions.back')}</Link>
           </Button>
@@ -726,6 +532,22 @@ export const NewsDetailPage = ({
             </Button>
           ) : null}
         </div>
+      }
+    >
+      <FormProvider {...methods}>
+        {statusMessage ? <StudioFormSummary kind={statusMessage.kind}>{statusMessage.text}</StudioFormSummary> : null}
+        <StudioDetailTabs
+          ariaLabel={pt('tabs.ariaLabel')}
+          mobileSelectLabel={pt('tabs.mobileLabel')}
+          tabs={tabs}
+          value={activeTab}
+          onValueChange={setActiveTab}
+          keepMounted
+          blockedTabChangeMessage={pt('messages.unsavedTabChanges')}
+          onBeforeTabChange={({ currentValue }) =>
+            mode === 'edit' && dirtyTabs[currentValue] ? pt('messages.unsavedTabChanges') : true
+          }
+        />
 
         {mode === 'edit' && loadedItem ? (
           <section className="space-y-3 border-t border-border pt-4">
@@ -768,7 +590,7 @@ export const NewsDetailPage = ({
             </dl>
           </section>
         ) : null}
-      </form>
+      </FormProvider>
     </StudioDetailPageTemplate>
   );
 };

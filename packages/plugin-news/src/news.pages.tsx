@@ -1,10 +1,9 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { formatDateTimeInEditorTimeZone, translatePluginKey, usePluginTranslation } from '@sva/plugin-sdk';
+import { formatDateTimeInEditorTimeZone, translatePluginKey } from '@sva/plugin-sdk';
 import {
   Button,
   StudioDataTable,
-  StudioDetailPageTemplate,
   StudioEmptyState,
   StudioErrorState,
   StudioFormSummary,
@@ -18,6 +17,7 @@ import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js'
 import type { NewsContentItem, NewsListResult } from './news.types.js';
 
 type FlashMessageCode = 'createSuccess' | 'deleteSuccess';
+type PluginTranslator = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
 const newsFlashStorageKey = 'news-plugin-flash-message';
 
@@ -41,7 +41,7 @@ const errorMessageTranslationKeys: Record<string, string> = {
 };
 
 const resolvePluginActionLabel = (
-  pt: ReturnType<typeof usePluginTranslation>,
+  pt: PluginTranslator,
   actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]
 ) => {
   const definition = getPluginNewsActionDefinition(actionId);
@@ -54,7 +54,7 @@ const resolvePluginActionLabel = (
   return localTitleKey ? pt(localTitleKey) : translatePluginKey('news', titleKey);
 };
 
-const resolveNewsErrorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknown, fallbackKey: string) => {
+const resolveNewsErrorMessage = (pt: PluginTranslator, error: unknown, fallbackKey: string) => {
   if (error instanceof NewsApiError) {
     const key = errorMessageTranslationKeys[error.code];
     if (key) {
@@ -101,7 +101,10 @@ const readPaginationValue = (key: 'page' | 'pageSize', fallback: number) => {
 };
 
 export const NewsListPage = () => {
-  const pt = usePluginTranslation('news');
+  const pt = React.useCallback<PluginTranslator>(
+    (key, variables) => translatePluginKey('news', key, variables),
+    []
+  );
   const navigate = useNavigate();
   const createLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.create);
   const editLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.edit);

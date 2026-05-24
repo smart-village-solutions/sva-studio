@@ -6,6 +6,8 @@ export {
 } from '@sva/core';
 export type {
   ApiItemResponse,
+  IamContentHistoryEntry,
+  IamContentStatus,
   StudioJobDetail,
   StudioJobResponse,
   WasteCityRecord,
@@ -104,6 +106,7 @@ export {
   MainserverApiError,
   requestMainserverJson,
 } from './mainserver-client.js';
+export { fetchIamContentHistory } from './content-history-client.js';
 export type {
   ContentTypeActionDefinition,
   ContentTypeDefinition,

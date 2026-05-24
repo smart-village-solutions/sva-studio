@@ -395,8 +395,8 @@ test.describe('news plugin', () => {
     await page.locator('#news-media-caption-0-0').fill('Titelbild');
 
     await openNewsDetailTab(page, /Freigabe|news\.tabs\.release/);
-    await page.getByLabel(/Veröffentlichungsdatum|news\.fields\.publishedAt/).fill('2026-04-14T09:30');
-    await page.getByLabel(/Publikationsdatum|news\.fields\.publicationDate/).fill('2026-04-14T08:30');
+    await page.locator('#news-release-published-at').fill('2026-04-14T09:30');
+    await page.locator('#news-release-publication-date').fill('2026-04-14T08:30');
     await page.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
 
     await expectContentOverviewUrl(page);

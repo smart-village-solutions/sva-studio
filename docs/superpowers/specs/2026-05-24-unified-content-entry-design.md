@@ -20,6 +20,19 @@ Ziel ist ein einheitlicher Einstiegspunkt unter `/admin/content`, der als einzig
 - Rechte, Sortierung, Filterung und Pagination werden zentral und sauber gelöst.
 - Neue Inhaltstypen sollen künftig über einen SDK-Vertrag registrierbar sein.
 
+## Verbindliche UI-Referenzen
+
+Für die Umsetzung dieser Änderung sind die bestehenden Studio-Standards ausdrücklich maßgeblich:
+
+- [Studio-Standard für Listen- und Tabellen-Seiten](../../development/studio-list-page-standard.md)
+- [Studio-Standard für Übersichts- und Detailseiten](../../development/studio-uebersichts-und-detailseiten-standard.md)
+
+Daraus folgt für diesen Change:
+
+- Die gemeinsame Inhaltsübersicht unter `/admin/content` folgt dem Listen- und Tabellen-Standard.
+- Die Typauswahlseite unter `/admin/content/new` folgt dem Übersichts-/Detailseiten-Standard als fokussierte Auswahlseite.
+- Die typspezifischen Erstellungs- und Bearbeitungsseiten folgen dem Standardmuster der fokussierten Erstellungs-/Bearbeitungsseite.
+
 ## Nicht-Ziele
 
 - Keine Vereinheitlichung der eigentlichen Formulare für `News`, `Events` und `POI` in diesem Schritt.
@@ -32,6 +45,8 @@ Ziel ist ein einheitlicher Einstiegspunkt unter `/admin/content`, der als einzig
 ### 1. Übersicht
 
 `/admin/content` ist die kanonische Inhaltsübersicht.
+
+Die Seite folgt dem [Studio-Standard für Listen- und Tabellen-Seiten](../../development/studio-list-page-standard.md).
 
 Die Seite besteht aus:
 
@@ -54,6 +69,8 @@ Die Tabelle verwendet einen kleinen, typübergreifend belastbaren Spaltensatz:
 
 `Neuer Inhalt` führt auf eine eigenständige Host-Seite, zum Beispiel `/admin/content/new`.
 
+Die Seite folgt dem [Studio-Standard für Übersichts- und Detailseiten](../../development/studio-uebersichts-und-detailseiten-standard.md) und nutzt dabei das fokussierte Muster für eine einzelne zentrale Auswahlaufgabe.
+
 Diese Seite zeigt Inhaltstypen als Kacheln. Jede Kachel enthält mindestens:
 
 - Anzeigename
@@ -70,11 +87,11 @@ Nach Auswahl eines Typs navigiert der Host in die typspezifische Erstellungsseit
 - `Events`
 - `POI`
 
-Die Erstellungsseite folgt dem bereits definierten Standardmuster der fokussierten Erstellungs-/Bearbeitungsseite.
+Die Erstellungsseite folgt dem bereits definierten Standardmuster der fokussierten Erstellungs-/Bearbeitungsseite gemäß [Studio-Standard für Übersichts- und Detailseiten](../../development/studio-uebersichts-und-detailseiten-standard.md).
 
 ### 4. Bearbeiten
 
-Die gemeinsame Inhaltsliste öffnet für jeden Datensatz die typspezifische Bearbeitungsseite. Die Bearbeitung bleibt fachlich getrennt, aber der Einstieg ist vereinheitlicht.
+Die gemeinsame Inhaltsliste öffnet für jeden Datensatz die typspezifische Bearbeitungsseite. Die Bearbeitung bleibt fachlich getrennt, aber der Einstieg ist vereinheitlicht. Auch diese Seiten folgen dem fokussierten Erstellungs-/Bearbeitungsmuster aus dem [Studio-Standard für Übersichts- und Detailseiten](../../development/studio-uebersichts-und-detailseiten-standard.md).
 
 ## Routing
 

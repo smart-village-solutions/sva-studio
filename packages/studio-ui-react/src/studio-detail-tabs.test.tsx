@@ -265,4 +265,47 @@ describe('StudioDetailTabs', () => {
     expect(screen.getByRole('tab', { name: 'Basis' }).getAttribute('data-state')).toBe('active');
     expect(screen.queryByText('Historie Panel')).toBeNull();
   });
+
+  it('supports legacy tab descriptors with content, dirtyLabel, and react-node labels', () => {
+    render(
+      <StudioDetailTabs
+        ariaLabel="Detailbereiche"
+        tabs={[
+          {
+            id: 'legacy',
+            label: <span>Legacy Label</span>,
+            description: <span>Legacy Beschreibung</span>,
+            isDirty: true,
+            dirtyLabel: 'Ungespeichert',
+            content: <p>Legacy Panel</p>,
+          },
+          { id: 'history', label: 'Historie', panel: <p>Historie Panel</p> },
+        ]}
+      />
+    );
+
+    expect(screen.getByRole('tab', { name: /Legacy Label.*Ungespeichert/i })).toBeTruthy();
+    expect(screen.getByText('Legacy Beschreibung')).toBeTruthy();
+    expect(screen.getByText('Legacy Panel')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Legacy Label' })).toBeNull();
+    expect(screen.getAllByRole('option')[0].getAttribute('label')).toBe('legacy (Ungespeichert)');
+  });
+
+  it('falls back to the first visible tab when the provided default value is not renderable', () => {
+    render(
+      <StudioDetailTabs
+        ariaLabel="Detailbereiche"
+        defaultValue="release"
+        tabs={[
+          { id: 'release', label: 'Freigabe', isVisible: false, panel: <p>Freigabe Panel</p> },
+          { id: 'base', label: 'Basis', panel: <p>Basis Panel</p> },
+          { id: 'history', label: 'Historie', panel: <p>Historie Panel</p> },
+        ]}
+      />
+    );
+
+    expect(screen.getByRole('tab', { name: 'Basis' }).getAttribute('data-state')).toBe('active');
+    expect(screen.getByText('Basis Panel')).toBeTruthy();
+    expect(screen.queryByText('Freigabe Panel')).toBeNull();
+  });
 });

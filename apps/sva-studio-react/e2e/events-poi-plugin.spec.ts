@@ -538,15 +538,15 @@ test.describe('events and POI plugins', () => {
 
     await page.goto('/');
 
-    for (const [path, selector] of [
-      ['/admin/content', 'main table'],
-      ['/admin/events/new', 'main form'],
-      ['/admin/poi/new', 'main form'],
+    for (const path of [
+      '/admin/content',
+      '/admin/events/new',
+      '/admin/poi/new',
     ] as const) {
       await navigateClientSide(page, path);
       await expect(page.locator('main h1')).toBeVisible();
-      await expect(page.locator(selector)).toBeVisible();
-      const result = await new AxeBuilder({ page }).include(selector).analyze();
+      await expect(page.locator('#main-content')).toBeVisible();
+      const result = await new AxeBuilder({ page }).include('#main-content').analyze();
       expect(result.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
     }
   });

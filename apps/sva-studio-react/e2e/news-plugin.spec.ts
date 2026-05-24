@@ -382,8 +382,8 @@ test.describe('news plugin', () => {
     await page.locator('#news-categories').fill('Allgemein\nKultur');
 
     await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
-    await page.getByLabel(/Einleitung|news\.fields\.blockIntro/).fill('Kurztext');
-    await page.getByLabel(/Inhalt|news\.fields\.blockBody/).fill('<p>Inhalt</p>');
+    await page.locator('#news-block-intro-0').fill('Kurztext');
+    await page.locator('#news-block-body-0').fill('<p>Inhalt</p>');
     await page.locator('#news-source-url').fill('https://example.com/news/source');
     await page.locator('#news-source-description').fill('Quellseite');
     await page.locator('#news-address-street').fill('Marktplatz 1');

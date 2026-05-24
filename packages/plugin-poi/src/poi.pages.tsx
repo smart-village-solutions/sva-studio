@@ -632,7 +632,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
         <StudioField {...payloadField} label={pt('fields.payload')}>
           <Textarea
             {...payloadField.controlProps}
-              {...register('payloadText')}
+            {...register('payloadText')}
             rows={6}
           />
         </StudioField>

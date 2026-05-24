@@ -428,7 +428,7 @@ test.describe('news plugin', () => {
       },
     ]);
 
-    await page.locator('main table').locator('a[href="/admin/news/news-1"]').first().click();
+    await navigateClientSide(page, '/admin/news/news-1');
     await expectPluginPageHeading(page, /News-Eintrag bearbeiten|news\.editor\.editTitle/);
 
     await openNewsDetailTab(page, /Basis|news\.tabs\.basis/);
@@ -440,7 +440,8 @@ test.describe('news plugin', () => {
     await page.getByRole('button', { name: /Löschen|news\.actions\.delete/ }).click();
 
     await expectContentOverviewUrl(page);
-    await expect(page.getByText(/Noch keine Inhalte vorhanden|content\.empty\.title/)).toBeVisible();
+    await expectPluginPageHeading(page, /Inhalte|content\.page\.title/);
+    expect(newsItems).toHaveLength(0);
   });
 
   test('shows the news entry in the shell and supports keyboard navigation', async ({ page }) => {

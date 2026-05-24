@@ -8,11 +8,13 @@ export const LocationRegionCityFields = ({
   form,
   regions,
   filteredCities,
+  cityError,
   onChange,
 }: {
   readonly form: CollectionLocationFormState;
   readonly regions: readonly WasteRegionRecord[];
   readonly filteredCities: readonly WasteCityRecord[];
+  readonly cityError?: string;
   readonly onChange: (patch: Partial<CollectionLocationFormState>) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -34,7 +36,7 @@ export const LocationRegionCityFields = ({
           ))}
         </Select>
       </StudioField>
-      <StudioField id="waste-location-city-id" label={pt('masterData.collectionLocations.fields.cityId')}>
+      <StudioField id="waste-location-city-id" label={pt('masterData.collectionLocations.fields.cityId')} error={cityError} required>
         <Select
           id="waste-location-city-id"
           name="cityId"

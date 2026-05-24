@@ -161,21 +161,38 @@ export const resolveChangedFiles = (
   ) => string = (args, options) =>
     execFileSync('git', [...args], { encoding: options?.encoding ?? 'utf8' }).trim()
 ): string[] => {
+  const runDiff = (range: string): string =>
+    runGitCommand(['diff', '--name-only', '--diff-filter=ACDMR', range], {
+      encoding: 'utf8',
+    });
+
   let output = '';
 
   try {
-    output = runGitCommand(['diff', '--name-only', '--diff-filter=ACDMR', `${base}...${head}`], {
-      encoding: 'utf8',
-    });
+    output = runDiff(`${base}...${head}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes('no merge base')) {
-      throw error;
-    }
 
-    output = runGitCommand(['diff', '--name-only', '--diff-filter=ACDMR', `${base}..${head}`], {
-      encoding: 'utf8',
-    });
+    if (message.includes('no merge base')) {
+      output = runDiff(`${base}..${head}`);
+    } else {
+      const baseRef = process.env.GITHUB_BASE_REF?.trim();
+      const looksLikePromisorAuthIssue =
+        message.includes('could not read Username') ||
+        message.includes('promisor remote') ||
+        message.includes('could not fetch');
+
+      if (!looksLikePromisorAuthIssue || !baseRef) {
+        throw error;
+      }
+
+      const fallbackBase = `origin/${baseRef}`;
+      try {
+        output = runDiff(`${fallbackBase}...${head}`);
+      } catch {
+        output = runDiff(`${fallbackBase}..${head}`);
+      }
+    }
   }
 
   if (output.length === 0) {

@@ -73,20 +73,14 @@ describe('createWasteMasterDataLocationSubmissions', () => {
       selectedCollectionLocationIds: [],
     });
 
-    const form = document.createElement('form');
-    form.innerHTML = `
-      <select name="regionId"><option value="region-1" selected>region-1</option></select>
-      <select name="cityId"><option value="city-1" selected>city-1</option></select>
-      <select name="streetId"><option value="street-1" selected>street-1</option></select>
-      <select name="houseNumberId"><option value="house-1" selected>house-1</option></select>
-    `;
-
-    const event = {
-      preventDefault: vi.fn(),
-      currentTarget: form,
-    } as unknown as React.FormEvent<HTMLFormElement>;
-
-    await handlers.onSubmitLocation(event);
+    await handlers.onSubmitLocation({
+      id: 'location-1',
+      regionId: 'region-1',
+      cityId: 'city-1',
+      streetId: 'street-1',
+      houseNumberId: 'house-1',
+      active: true,
+    });
 
     expect(updateWasteManagementCollectionLocationMock).toHaveBeenCalledWith(
       'location-1',
@@ -116,22 +110,62 @@ describe('createWasteMasterDataLocationSubmissions', () => {
       selectedCollectionLocationIds: [],
     });
 
-    const form = document.createElement('form');
-    form.innerHTML = `
-      <select name="regionId"><option value="region-1" selected>region-1</option></select>
-      <select name="cityId"><option value="city-1" selected>city-1</option></select>
-      <select name="streetId"><option value="street-1" selected>street-1</option></select>
-      <select name="houseNumberId"><option value="house-1" selected>house-1</option></select>
-    `;
-
     await handlers.onSubmitLocation({
-      preventDefault: vi.fn(),
-      currentTarget: form,
-    } as unknown as React.FormEvent<HTMLFormElement>, 'create');
+      id: 'location-1',
+      regionId: 'region-1',
+      cityId: 'city-1',
+      streetId: 'street-1',
+      houseNumberId: 'house-1',
+      active: true,
+    }, 'create');
 
     expect(createWasteManagementCollectionLocationMock).toHaveBeenCalledTimes(1);
     expect(state.setLocationDialogOpen).toHaveBeenCalledWith(false);
     expect(state.setLastOutcome).toHaveBeenCalledWith('location-create-success');
+  });
+
+  it('uses RHF-submitted collection-location values as the real create source instead of stale state form data', async () => {
+    const state = createState();
+    state.locationForm = {
+      id: 'location-1',
+      regionId: 'stale-region',
+      cityId: 'stale-city',
+      streetId: 'stale-street',
+      houseNumberId: 'stale-house',
+      active: false,
+    };
+    const loadOverview = vi.fn(async () => undefined);
+    const handlers = createWasteMasterDataLocationSubmissions({
+      state,
+      pt: (key: string) => key,
+      search: {
+        ...createSearch(),
+        locationsView: 'create',
+      },
+      loadOverview,
+      selectedCollectionLocationIds: [],
+    });
+
+    await handlers.onSubmitLocation(
+      {
+        id: 'location-1',
+        regionId: 'region-2',
+        cityId: 'city-2',
+        streetId: 'street-2',
+        houseNumberId: 'house-2',
+        active: true,
+      },
+      'create'
+    );
+
+    expect(createWasteManagementCollectionLocationMock).toHaveBeenCalledWith({
+      id: 'location-1',
+      regionId: 'region-2',
+      cityId: 'city-2',
+      streetId: 'street-2',
+      houseNumberId: 'house-2',
+      active: true,
+    });
   });
 
   it('maps delete branches for single and bulk deletions', async () => {

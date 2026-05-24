@@ -255,4 +255,69 @@ describe('runtime-profile', () => {
     expect(result.derived).toEqual([]);
     expect(result.placeholders).toEqual(expect.arrayContaining(['IAM_DATABASE_URL', 'REDIS_URL']));
   });
+
+  it('reports a missing OTEL endpoint when telemetry stays enabled without an endpoint', () => {
+    const result = validateRuntimeProfileEnv('studio', {
+      SVA_RUNTIME_PROFILE: 'studio',
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.app',
+      SVA_MAINSERVER_GRAPHQL_URL: 'https://mainserver.example/graphql',
+      SVA_MAINSERVER_OAUTH_TOKEN_URL: 'https://mainserver.example/oauth/token',
+      SVA_MAINSERVER_CLIENT_ID: 'client-id',
+      SVA_MAINSERVER_CLIENT_SECRET: 'client-secret',
+      SVA_AUTH_CLIENT_SECRET: 'tenant-client-secret',
+      SVA_AUTH_STATE_SECRET: 'state-secret',
+      SVA_AUTH_REDIRECT_URI: 'https://studio.example.app/auth/callback',
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: 'https://studio.example.app',
+      KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example',
+      KEYCLOAK_ADMIN_REALM: 'demo',
+      KEYCLOAK_ADMIN_CLIENT_ID: 'svc-client',
+      KEYCLOAK_ADMIN_CLIENT_SECRET: 'svc-secret',
+      SVA_PARENT_DOMAIN: 'studio.example.app',
+      POSTGRES_DB: 'sva_studio',
+      POSTGRES_USER: 'sva',
+      POSTGRES_PASSWORD: 'postgres-secret',
+      APP_DB_USER: 'sva_app',
+      APP_DB_PASSWORD: 'app-secret',
+      REDIS_PASSWORD: 'redis-secret',
+      SVA_STACK_NAME: 'studio',
+      QUANTUM_ENDPOINT: 'sva',
+      IAM_PII_ACTIVE_KEY_ID: 'active',
+      IAM_PII_KEYRING_JSON: '{"active":"secret"}',
+      ENCRYPTION_KEY: 'encryption-key',
+    });
+
+    expect(result.missing).toContain('OTEL_EXPORTER_OTLP_ENDPOINT');
+  });
+
+  it('tracks placeholder OTEL endpoints and missing derived remote URLs independently', () => {
+    const result = validateRuntimeProfileEnv('studio', {
+      SVA_RUNTIME_PROFILE: 'studio',
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.app',
+      OTEL_EXPORTER_OTLP_ENDPOINT: '__SET_REMOTE_OTEL_ENDPOINT__',
+      SVA_MAINSERVER_GRAPHQL_URL: 'https://mainserver.example/graphql',
+      SVA_MAINSERVER_OAUTH_TOKEN_URL: 'https://mainserver.example/oauth/token',
+      SVA_MAINSERVER_CLIENT_ID: 'client-id',
+      SVA_MAINSERVER_CLIENT_SECRET: 'client-secret',
+      SVA_AUTH_CLIENT_SECRET: 'tenant-client-secret',
+      SVA_AUTH_STATE_SECRET: 'state-secret',
+      SVA_AUTH_REDIRECT_URI: 'https://studio.example.app/auth/callback',
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: 'https://studio.example.app',
+      KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example',
+      KEYCLOAK_ADMIN_REALM: 'demo',
+      KEYCLOAK_ADMIN_CLIENT_ID: 'svc-client',
+      KEYCLOAK_ADMIN_CLIENT_SECRET: 'svc-secret',
+      SVA_PARENT_DOMAIN: 'studio.example.app',
+      POSTGRES_DB: 'sva_studio',
+      APP_DB_USER: 'sva_app',
+      SVA_STACK_NAME: 'studio',
+      QUANTUM_ENDPOINT: 'sva',
+      IAM_PII_ACTIVE_KEY_ID: 'active',
+      IAM_PII_KEYRING_JSON: '{"active":"secret"}',
+      ENCRYPTION_KEY: 'encryption-key',
+    });
+
+    expect(result.placeholders).toContain('OTEL_EXPORTER_OTLP_ENDPOINT');
+    expect(result.missing).toEqual(expect.arrayContaining(['IAM_DATABASE_URL', 'REDIS_URL']));
+    expect(result.derived).toEqual([]);
+  });
 });

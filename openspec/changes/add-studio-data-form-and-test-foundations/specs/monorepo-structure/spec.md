@@ -1,8 +1,8 @@
 ## ADDED Requirements
 
-### Requirement: Freigegebene Studio-Foundations fuer Formulare und Tests
+### Requirement: Freigegebene Studio-Foundations fuer Formulare, Frontend-Tests und Kernlogik
 
-Das System SHALL fuer die React-Host-Anwendung und pluginfaehige Frontend-Pakete einen freigegebenen Foundation-Stack fuer Formulare und Frontend-Tests bereitstellen.
+Das System SHALL fuer formularzentrierte Frontend-Workflows, HTTP-nahe Frontend-Tests und kritische framework-agnostische Kernlogik einen verbindlichen repo-weiten Foundation-Stack bereitstellen.
 
 Dieser Foundation-Stack umfasst mindestens `react-hook-form`, `@hookform/resolvers`, `msw` und `fast-check`.
 
@@ -12,11 +12,11 @@ Dieser Foundation-Stack umfasst mindestens `react-hook-form`, `@hookform/resolve
 - **THEN** verwendet es fuer formularzentrierte Interaktionen `react-hook-form` plus `@hookform/resolvers`
 - **AND** fuehrt keine parallele zweite Foundation fuer dieselben Aufgaben ein
 
-#### Scenario: Bestehender stabiler Formularfluss bleibt unveraendert
+#### Scenario: Kritische Kernlogik benoetigt Property-based Foundation
 
-- **WHEN** ein bestehender Formularfluss keine neue Funktionalitaet und keine grundlegende Ueberarbeitung erhaelt
-- **THEN** muss er nicht allein zur Angleichung an die neue Foundation sofort migriert werden
-- **AND** bleibt die Migration bis zu einer fachlichen Ueberarbeitung oder gezielten Konsolidierung optional
+- **WHEN** framework-agnostische Kernlogik in `packages/core`, `packages/routing` oder vergleichbaren Workspace-Paketen kritische Invarianten absichert
+- **THEN** ist `fast-check` Teil desselben repo-weiten Foundation-Stacks
+- **AND** bleibt die Foundation nicht auf React-Host- oder pluginfaehige Frontend-Pakete beschraenkt
 
 #### Scenario: Test- und Runtime-Abhaengigkeiten bleiben korrekt getrennt
 
@@ -35,8 +35,84 @@ Das System SHALL die Einfuehrung von Formular- und Test-Foundations ueber gemein
 - **THEN** stehen dokumentierte Studio-Patterns oder gemeinsame Adapter fuer gaengige Formularbausteine zur Verfuegung
 - **AND** wird Fehler- und Summary-Mapping nicht pro View neu erfunden
 
+#### Scenario: `register`- und `Controller`-Pfade sind verbindlich festgelegt
+
+- **WHEN** gemeinsame Formularadapter fuer `Input`, `Textarea`, `Select` und `Checkbox` bereitgestellt werden
+- **THEN** nutzen `Input`, `Textarea` und native `Checkbox`-Anbindungen standardmaessig `register`
+- **AND** nutzen `Select` sowie kontrollierte Komponenten mit abweichendem Value-/Event-Modell einen dokumentierten `Controller`-Pfad
+
 #### Scenario: HTTP-Teststandard wird eingefuehrt
 
 - **WHEN** `msw` fuer HTTP-nahe Frontend-Tests eingefuehrt wird
 - **THEN** existiert ein gemeinsames Test-Setup mit wiederverwendbaren Handlern und Reset-Regeln
 - **AND** ist die Abgrenzung zu Modul-Mocks und Live-E2E dokumentiert
+
+### Requirement: HTTP-nahe Frontend-Tests nutzen denselben Foundation-Stack
+
+Das System SHALL fuer Frontend-Unit- und Integrations-Tests, die HTTP-Verhalten pruefen, `msw` als verbindliche Default-Mocking-Schicht im gemeinsamen Foundation-Stack bereitstellen.
+
+#### Scenario: Frontend-Test prueft API-Verhalten
+
+- **WHEN** ein neuer oder grundlegend ueberarbeiteter Frontend-Test Request-, Fehler-, Lade- oder Retry-Verhalten gegen HTTP-Endpunkte prueft
+- **THEN** beschreibt der Test das Netzwerkverhalten ueber `msw`
+- **AND** mockt nicht primaer interne Fetch-Wrapper oder komponentenlokale Implementierungsdetails
+- **AND** bleibt derselbe Mocking-Ansatz zwischen Browser- und Node-Testumgebungen wiederverwendbar
+
+#### Scenario: Bestehender Test nutzt noch direkten Fetch-Stub
+
+- **WHEN** ein bestehender HTTP-naher Frontend-Test noch direkte `fetch`- oder Wrapper-Stubs nutzt
+- **THEN** bleibt das gemeinsame `msw`-Setup der vorgesehene Foundation-Pfad fuer kuenftige Umstellungen dieser Tests
+
+#### Scenario: Rein lokale Logik bleibt bei Modul-Mocks
+
+- **WHEN** ein Test ausschliesslich lokale Fachlogik ohne HTTP-Verhalten prueft
+- **THEN** liegt dieser Testfall ausserhalb des HTTP-nahen Foundation-Pfads
+- **AND** bleibt die Abgrenzung zwischen HTTP-nahen und rein lokalen Tests technisch nachvollziehbar
+
+#### Scenario: MSW ersetzt keinen echten E2E- oder Infra-Lauf
+
+- **WHEN** ein HTTP-naher Testpfad unterhalb echter E2E- oder Infra-Laeufe eingeordnet wird
+- **THEN** deckt `msw` den HTTP-nahen Unit- oder Integrations-Layer unterhalb echter E2E- oder Infra-Laeufe ab
+- **AND** bleibt die Abgrenzung zu echten Service-Stacks dokumentiert
+
+### Requirement: Property-based Testing ist Teil der Foundation fuer kritische Kernlogik
+
+Das System SHALL fuer kritische, framework-agnostische Kernlogik gezielt Property-based Tests mit `fast-check` als Teil des gemeinsamen Foundation-Stacks einsetzen.
+
+#### Scenario: Kritischer Guard oder Normalisierer wird geaendert
+
+- **WHEN** Guard-, Parser-, Routing-, Normalisierungs- oder aehnliche Kernlogik in kritischen Hotspots geaendert oder neu eingefuehrt wird
+- **THEN** bildet `fast-check` den vorgesehenen Foundation-Pfad fuer Invarianten und grosse Eingaberaeume
+- **AND** ergaenzt dieser Pfad beispielbasierte Tests fuer solche Hotspots
+
+#### Scenario: Reiner UI-Baustein ohne hohe Eingabevielfalt
+
+- **WHEN** ein Testgegenstand hauptsaechlich aus praesentationsnaher UI ohne kritische Eingabeinvarianten besteht
+- **THEN** liegt dieser Testgegenstand ausserhalb des kritischen Kernlogik-Scope der `fast-check`-Foundation
+
+### Requirement: Initiale `fast-check`-Hotspot-Liste ist Teil der Foundation-Einfuehrung
+
+Das System SHALL fuer diesen Change eine kleine initiale `fast-check`-Hotspot-Liste im Foundation-Stack selbst dokumentieren.
+
+#### Scenario: Change definiert die erste Hotspot-Startmenge
+
+- **WHEN** der Change die ersten Property-based-Testing-Bereiche festlegt
+- **THEN** benennt er mindestens `packages/routing/src/route-search.ts`, `packages/routing/src/admin-resource-search-params.ts`, `packages/core/src/waste-management-location-tour-pickup-date-import.ts` und `packages/core/src/input-readers.ts`
+- **AND** dokumentiert fuer diese Startmenge die erwarteten Invarianten
+
+### Requirement: Vollstaendige Formular-Migrationsinventur als Pflichtartefakt
+
+Das System SHALL fuer diesen Change eine vollstaendige Formular-Migrationsinventur fuer Host und Plugins als Pflichtartefakt dokumentieren.
+
+#### Scenario: Change wird fuer den Rollout vorbereitet
+
+- **WHEN** der Change die Foundation-Einfuehrung vorbereitet
+- **THEN** existiert eine vollstaendige Inventur aller bekannten Host- und Plugin-Formulare
+- **AND** wird sie unter `docs/development/studio-form-migrationsinventur.md` gefuehrt
+- **AND** dokumentiert sie mindestens Pfad, Zweck, heutiges Muster, Validierung, Submit-Pfad, Primitiven, Teststand, RHF-Bedarf, `msw`-Bedarf, `fast-check`-Eignung, Prioritaet, Risiko und Zielzustand
+
+#### Scenario: Begleit-Artefakt fuer Foundations wird abgelegt
+
+- **WHEN** das Begleit-Artefakt fuer Foundations dieses Changes erstellt wird
+- **THEN** wird es unter `docs/development/studio-foundations-governance.md` abgelegt
+- **AND** folgen Inventur- und Begleit-Artefakte damit den Repo-Doku-Regeln fuer Entwicklungsdokumentation

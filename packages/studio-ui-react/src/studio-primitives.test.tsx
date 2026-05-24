@@ -34,6 +34,7 @@ import {
   StudioEmptyState,
   StudioErrorState,
   StudioField,
+  type StudioFieldControlProps,
   StudioFieldGroup,
   StudioFormSummary,
   StudioJobSummaryCard,
@@ -207,6 +208,73 @@ describe('studio-ui-react primitives', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(screen.getByText('Pflichtfeld').id).toBe('title-help');
     expect(screen.getByText('Titel fehlt').id).toBe('title-error');
+  });
+
+  it('applies StudioField control props to child inputs and merges described-by values', () => {
+    const controlProps: StudioFieldControlProps = {
+      id: 'title',
+      'aria-invalid': true,
+      'aria-describedby': 'title-description title-error',
+    };
+
+    render(
+      <StudioField id="title" label="Titel" description="Pflichtfeld" error="Titel fehlt" controlProps={controlProps}>
+        <Input {...controlProps} aria-describedby="hint-extra" />
+      </StudioField>
+    );
+
+    const input = screen.getByLabelText('Titel');
+    expect(input.getAttribute('id')).toBe('title');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe('hint-extra title-description title-error');
+    expect(screen.getByText('Pflichtfeld').id).toBe('title-description');
+    expect(screen.getByText('Titel fehlt').id).toBe('title-error');
+  });
+
+  it('binds the label to the effective control id when controlProps override the child id', () => {
+    render(
+      <StudioField id="base-id" label="Titel" controlProps={{ id: 'resolved-id' }}>
+        <Input id="base-id" />
+      </StudioField>
+    );
+
+    const input = screen.getByLabelText('Titel');
+    const label = screen.getByText('Titel').closest('label');
+
+    expect(input.getAttribute('id')).toBe('resolved-id');
+    expect(label?.getAttribute('for')).toBe('resolved-id');
+  });
+
+  it('derives default description and error ids from the effective control id', () => {
+    render(
+      <StudioField
+        id="base-id"
+        label="Titel"
+        description="Pflichtfeld"
+        error="Titel fehlt"
+        controlProps={{ id: 'resolved-id', 'aria-describedby': 'resolved-id-description resolved-id-error' }}
+      >
+        <Input id="base-id" />
+      </StudioField>
+    );
+
+    expect(screen.getByText('Pflichtfeld').id).toBe('resolved-id-description');
+    expect(screen.getByText('Titel fehlt').id).toBe('resolved-id-error');
+  });
+
+  it('keeps label htmlFor on base id when children cannot be cloned', () => {
+    render(
+      <StudioField
+        id="fallback-id"
+        label="Titel"
+        controlProps={{ id: 'overridden-id' }}
+      >
+        {'plain-text-child'}
+      </StudioField>
+    );
+
+    const label = screen.getByText('Titel').closest('label');
+    expect(label?.getAttribute('for')).toBe('fallback-id');
   });
 
   it('renders state blocks with polite live status semantics', () => {

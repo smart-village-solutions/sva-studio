@@ -34,6 +34,13 @@ export {
   type MediaReferenceFieldProps,
 } from './media-reference-field.js';
 export { Select } from './select.js';
+export { StudioFormSummaryErrors, getStudioFieldError, getStudioFormFieldProps } from './studio-form-bridge.js';
+export type {
+  GetStudioFormFieldPropsOptions,
+  StudioFormFieldBindings,
+  StudioFormFieldError,
+  StudioFormSummaryErrorsProps,
+} from './studio-form-bridge.js';
 export {
   StudioDataTable,
   type StudioBulkAction,
@@ -60,6 +67,7 @@ export {
   type StudioConfirmDialogProps,
   type StudioDetailPageTemplateProps,
   type StudioFieldGroupProps,
+  type StudioFieldControlProps,
   type StudioFieldProps,
   type StudioFormSummaryProps,
   type StudioJobSummaryCardProps,

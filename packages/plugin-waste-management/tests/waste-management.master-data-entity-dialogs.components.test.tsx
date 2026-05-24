@@ -8,7 +8,7 @@ import {
   HouseNumberDialog,
   RegionDialog,
   StreetDialog,
-} from '../src/waste-management.master-data-entity-dialogs.js';
+} from '../src/waste-management.master-data-entity-dialogs';
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
@@ -41,8 +41,18 @@ vi.mock('@sva/studio-ui-react', () => ({
   DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <h2>{children}</h2>,
-  Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
-  Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
+  Input: React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>((props, ref) => <input ref={ref} {...props} />),
+  Select: React.forwardRef<HTMLSelectElement, React.ComponentProps<'select'>>((props, ref) => <select ref={ref} {...props} />),
+  StudioFormSummaryErrors: ({ errors }: { readonly errors: readonly { field: string; message: string }[] }) =>
+    errors.length > 0 ? (
+      <div role="alert">
+        {errors.map((error) => (
+          <a key={`${error.field}:${error.message}`} href={`#${error.field}`}>
+            {error.message}
+          </a>
+        ))}
+      </div>
+    ) : null,
   StudioField: ({ children, label }: { readonly children: React.ReactNode; readonly label: string }) => (
     <label>
       <span>{label}</span>
@@ -50,6 +60,18 @@ vi.mock('@sva/studio-ui-react', () => ({
     </label>
   ),
   StudioFieldGroup: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  getStudioFormFieldProps: ({ id, error }: { readonly id: string; readonly error?: { readonly message?: string } }) => ({
+    id,
+    error: error?.message,
+    errorId: `${id}-error`,
+    descriptionId: `${id}-description`,
+    controlProps: {
+      id,
+      'aria-invalid': error?.message ? true : undefined,
+      'aria-describedby': error?.message ? `${id}-error` : undefined,
+    },
+    summaryError: error?.message ? { field: id, message: error.message } : undefined,
+  }),
 }));
 
 afterEach(() => {
@@ -92,18 +114,76 @@ describe('waste-management.master-data-entity-dialogs components', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.cancel' }));
     const submitButton = screen.getByRole('button', { name: 'masterData.fractions.actions.create' });
-    const form = submitButton.closest('form');
-    expect(form).toBeInstanceOf(HTMLFormElement);
-    if (!form) {
-      throw new Error('expected create fraction form');
-    }
-    fireEvent.submit(form);
+    fireEvent.click(submitButton);
 
     expect(onChange).toHaveBeenCalledWith({
       translations: { de: 'Rest', en: 'Residual waste' },
     });
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(onSubmit).toHaveBeenCalled();
+  });
+
+  it('surfaces missing required values through the RHF bridge before submit', async () => {
+    const onSubmit = vi.fn();
+    const onBeforeSubmit = vi.fn();
+
+    render(
+      <RegionDialog
+        open
+        mode="create"
+        form={{ id: 'region-1', name: '' } as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onBeforeSubmit={onBeforeSubmit}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.regions.actions.create' }));
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('masterData.regions.fields.name');
+    expect(screen.getByLabelText('masterData.regions.fields.name').getAttribute('aria-invalid')).toBe('true');
+    expect(onBeforeSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('keeps validation feedback when the same region dialog context rerenders', async () => {
+    const onSubmit = vi.fn();
+
+    const { rerender } = render(
+      <RegionDialog
+        open
+        mode="create"
+        form={{ id: 'region-1', name: '' } as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.regions.actions.create' }));
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+
+    rerender(
+      <RegionDialog
+        open
+        mode="create"
+        form={{ id: 'region-1', name: '' } as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    expect(screen.getByRole('alert').textContent).toContain('masterData.regions.fields.name');
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('renders edit and saving branches for the region and city dialogs', () => {
@@ -192,5 +272,88 @@ describe('waste-management.master-data-entity-dialogs components', () => {
       target: { value: 'street-1' },
     });
     expect(onHouseNumberChange).toHaveBeenCalledWith({ streetId: 'street-1' });
+  });
+
+  it('blocks submit in fraction, city, street and house-number dialogs when required names are missing', async () => {
+    const onSubmit = vi.fn();
+
+    const { rerender } = render(
+      <FractionDialog
+        open
+        mode="create"
+        form={{
+          name: '',
+          translations: { de: '', en: '' },
+          color: '',
+          containerSize: '',
+          description: '',
+          active: true,
+        } as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onSubmit={onSubmit as never}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.create' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('masterData.fractions.fields.name');
+
+    rerender(
+      <CityDialog
+        open
+        mode="create"
+        form={{ id: 'city-1', name: '', regionId: '' } as never}
+        regions={[{ id: 'region-1', name: 'Region 1' }] as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.cities.actions.create' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('masterData.cities.fields.name');
+
+    rerender(
+      <StreetDialog
+        open
+        mode="create"
+        form={{ id: 'street-1', name: '', cityId: '' } as never}
+        cities={[{ id: 'city-1', name: 'Musterstadt' }] as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.streets.actions.create' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('masterData.streets.fields.name');
+
+    rerender(
+      <HouseNumberDialog
+        open
+        mode="create"
+        form={{ id: 'house-1', number: '', streetId: '' } as never}
+        streets={[{ id: 'street-1', name: 'Hauptstraße' }] as never}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.houseNumbers.actions.create' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('masterData.houseNumbers.fields.number');
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

@@ -1,8 +1,8 @@
 ## ADDED Requirements
 
-### Requirement: Einheitlicher Formular-Stack fuer Account- und Admin-Views
+### Requirement: Account- und Admin-Views konkretisieren den Formularstandard fuer ihren Bereich
 
-Das System SHALL fuer Account- und Admin-Views `react-hook-form` in Kombination mit `zod`-basierten Resolvern als Standard fuer Form-State, Feldbindung, Submit-Status und Validierungsabbildung verwenden.
+Das System SHALL fuer Account- und Admin-Views den repo-weiten Formularstandard mit `react-hook-form` und `zod`-basierten Resolvern bereichsspezifisch auf Form-State, Feldbindung, Submit-Status, Fehlerdarstellung und Accessibility anwenden.
 
 #### Scenario: Profil- oder Admin-Formular wird neu erstellt oder ueberarbeitet
 
@@ -11,15 +11,15 @@ Das System SHALL fuer Account- und Admin-Views `react-hook-form` in Kombination 
 - **UND** verwendet `@hookform/resolvers` mit einem `zod`-Schema fuer die Formularvalidierung
 - **UND** fuehrt keine parallele formularweite Eigenorchestrierung fuer dieselben Aufgaben ein
 
+#### Scenario: `/account` uebernimmt den Formularstandard fuer seinen Bereich
+
+- **WENN** ein neuer oder grundlegend ueberarbeiteter `/account`-Flow umgesetzt wird
+- **DANN** verwendet er denselben Formularstandard fuer Form-State, Validierung und Fehlerdarstellung wie andere Account- und Admin-Views
+- **UND** bleibt der bereichsspezifische Formularstandard konsistent zu anderen Account- und Admin-Views
+
 #### Scenario: Formular zeigt Feld- und Gesamtfehler konsistent an
 
 - **WENN** ein Account- oder Admin-Formular Validierungs- oder Submit-Fehler verarbeitet
 - **DANN** werden feldspezifische Fehler aus dem Resolver in die Studio-Form-Primitiven gemappt
 - **UND** bleibt eine Error-Summary am Formularanfang moeglich
 - **UND** bleiben Fokusfuehrung, `aria-invalid` und `aria-describedby` konsistent mit den bestehenden Accessibility-Anforderungen
-
-#### Scenario: Bestehender stabiler Admin-Flow bleibt ausserhalb einer Ueberarbeitung
-
-- **WENN** ein bestehender Account- oder Admin-Flow nur redaktionell oder minimal angepasst wird
-- **DANN** erzwingt diese Foundation keine isolierte RHF-Migration
-- **UND** bleibt eine spaetere Konsolidierung zulaessig, solange keine zweite konkurrierende Formular-Foundation fuer denselben Flow eingefuehrt wird

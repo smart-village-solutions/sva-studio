@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config';
 import { sharedCoverageConfig } from '../../vitest.config';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
+const studioMswSetupFile = fileURLToPath(new URL(import.meta.resolve('tooling-testing/msw/setup')));
 
 export default defineConfig({
   resolve: {
@@ -18,7 +19,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     name: 'plugin-poi',
-    setupFiles: [],
+    setupFiles: [studioMswSetupFile],
     coverage: sharedCoverageConfig,
   },
 });

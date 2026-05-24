@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import sharedConfig from '../../vitest.config';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
+const studioMswSetupFile = fileURLToPath(new URL(import.meta.resolve('tooling-testing/msw/setup')));
 
 export default mergeConfig(
   sharedConfig,
@@ -19,6 +20,7 @@ export default mergeConfig(
     test: {
       name: 'plugin-waste-management',
       environment: 'happy-dom',
+      setupFiles: [studioMswSetupFile],
       include: ['tests/**/*.{test,spec}.{ts,tsx}', 'src/**/*.{test,spec}.{ts,tsx}'],
       pool: 'threads',
       fileParallelism: false,

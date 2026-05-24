@@ -185,8 +185,26 @@ export type StudioFieldProps = Readonly<{
   descriptionId?: string;
   errorId?: string;
   required?: boolean;
+  controlProps?: StudioFieldControlProps;
   children: React.ReactNode;
   className?: string;
+}>;
+
+export type StudioFieldControlProps = Readonly<{
+  id: string;
+  'aria-invalid'?: true;
+  'aria-describedby'?: string;
+}>;
+
+const mergeDescribedBy = (currentValue: string | undefined, nextValue: string | undefined) => {
+  const tokens = [...(currentValue?.split(/\s+/) ?? []), ...(nextValue?.split(/\s+/) ?? [])].filter(Boolean);
+  return tokens.length > 0 ? Array.from(new Set(tokens)).join(' ') : undefined;
+};
+
+type StudioFieldChildProps = Readonly<{
+  id?: string;
+  'aria-invalid'?: true;
+  'aria-describedby'?: string;
 }>;
 
 export function StudioField({
@@ -194,26 +212,44 @@ export function StudioField({
   label,
   description,
   error,
-  descriptionId = `${id}-description`,
-  errorId = `${id}-error`,
+  descriptionId,
+  errorId,
   required = false,
+  controlProps,
   children,
   className,
 }: StudioFieldProps) {
+  const childElement = React.isValidElement<StudioFieldChildProps>(children) ? children : null;
+  const resolvedControlId = controlProps && childElement ? controlProps.id : id;
+  const resolvedDescriptionId = descriptionId ?? `${resolvedControlId}-description`;
+  const resolvedErrorId = errorId ?? `${resolvedControlId}-error`;
+  const resolvedChildren =
+    controlProps && childElement
+      ? React.cloneElement(childElement, {
+          ...controlProps,
+          'aria-describedby': mergeDescribedBy(
+            childElement.props['aria-describedby'],
+            controlProps['aria-describedby']
+          ),
+          'aria-invalid': controlProps['aria-invalid'] ?? childElement.props['aria-invalid'],
+          id: controlProps.id,
+        })
+      : children;
+
   return (
     <div className={cn('space-y-1', className)}>
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={resolvedControlId} className="text-sm font-medium">
         {label}
         {required ? <span aria-hidden="true" className="ml-1 before:content-['*']" /> : null}
       </label>
-      {children}
+      {resolvedChildren}
       {description ? (
-        <p id={descriptionId} className="text-xs text-muted-foreground">
+        <p id={resolvedDescriptionId} className="text-xs text-muted-foreground">
           {description}
         </p>
       ) : null}
       {error ? (
-        <p id={errorId} className="text-xs text-destructive">
+        <p id={resolvedErrorId} className="text-xs text-destructive">
           {error}
         </p>
       ) : null}

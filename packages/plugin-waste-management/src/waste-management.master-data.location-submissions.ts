@@ -26,26 +26,17 @@ export const createWasteMasterDataLocationSubmissions = ({
   selectedCollectionLocationIds: readonly string[];
 }) => ({
   onSubmitLocation: async (
-    event: React.FormEvent<HTMLFormElement>,
+    submittedForm: CollectionLocationFormState,
     mode = search.locationsView === 'edit' ? 'edit' : state.locationDialogMode
   ) => {
-    event.preventDefault();
     state.setSaving(true);
     state.setMessage(null);
     state.setLastOutcome(null);
-    const formData = new FormData(event.currentTarget);
-    const submittedForm: CollectionLocationFormState = {
-      ...state.locationForm,
-      regionId: String(formData.get('regionId') ?? state.locationForm.regionId),
-      cityId: String(formData.get('cityId') ?? state.locationForm.cityId),
-      streetId: String(formData.get('streetId') ?? state.locationForm.streetId),
-      houseNumberId: String(formData.get('houseNumberId') ?? state.locationForm.houseNumberId),
-    };
     try {
       if (mode === 'create') {
         await createWasteManagementCollectionLocation(wasteMasterDataInputMappers.toCreateCollectionLocationInput(submittedForm));
       } else {
-        await updateWasteManagementCollectionLocation(state.locationForm.id, wasteMasterDataInputMappers.toUpdateCollectionLocationInput(submittedForm));
+        await updateWasteManagementCollectionLocation(submittedForm.id, wasteMasterDataInputMappers.toUpdateCollectionLocationInput(submittedForm));
       }
       await loadOverview(true);
       applySuccess(

@@ -1,4 +1,5 @@
-import { type FormEvent, useMemo } from 'react';
+import React, { useMemo } from 'react';
+import { useForm, type FieldErrors, type Resolver } from 'react-hook-form';
 
 import type {
   WasteCityRecord,
@@ -16,6 +17,7 @@ import {
 } from '@sva/studio-ui-react';
 
 import type { CollectionLocationFormState } from './waste-management.master-data.forms.js';
+import { useResetOnFormContextChange } from './waste-management.master-data-entity-dialogs.shared.js';
 import { LocationAssignmentsSection } from './waste-management.master-data-location-assignments.js';
 import { LocationFormActions, LocationSelectSection, LocationStatusSection } from './waste-management.master-data-location-form.parts.js';
 
@@ -32,10 +34,26 @@ type WasteMasterDataLocationFormContentProps = {
   readonly saving: boolean;
   readonly onChange: (patch: Partial<CollectionLocationFormState>) => void;
   readonly onCancel: () => void;
-  readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  readonly onSubmit: (values: CollectionLocationFormState) => void | Promise<void>;
   readonly onReloadAssignments: () => Promise<void>;
 };
 
+const locationFormResolver: Resolver<CollectionLocationFormState> = async (values) => {
+  const errors: FieldErrors<CollectionLocationFormState> =
+    values.cityId.trim().length === 0
+      ? {
+          cityId: {
+            type: 'required',
+            message: 'masterData.collectionLocations.fields.cityId',
+          },
+        }
+      : {};
+
+  return {
+    values: Object.keys(errors).length === 0 ? values : {},
+    errors,
+  };
+};
 
 export const WasteMasterDataLocationFormContent = ({
   mode,
@@ -54,13 +72,43 @@ export const WasteMasterDataLocationFormContent = ({
   onReloadAssignments,
 }: WasteMasterDataLocationFormContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const filteredCities = form.regionId ? cities.filter((city) => city.regionId === form.regionId) : cities;
-  const filteredStreets = form.cityId ? streets.filter((street) => street.cityId === form.cityId) : [];
-  const filteredHouseNumbers = form.streetId ? houseNumbers.filter((houseNumber) => houseNumber.streetId === form.streetId) : [];
+  const { handleSubmit, register, reset, setValue, watch, formState } = useForm<CollectionLocationFormState>({
+    defaultValues: form,
+    resolver: locationFormResolver,
+  });
+
+  useResetOnFormContextChange(reset, form, `${mode}:${form.id}`);
+
+  React.useEffect(() => {
+    register('id');
+    register('regionId');
+    register('cityId');
+    register('streetId');
+    register('houseNumberId');
+    register('active');
+  }, [register]);
+
+  const formValues = watch();
+  const filteredCities = formValues.regionId ? cities.filter((city) => city.regionId === formValues.regionId) : cities;
+  const filteredStreets = formValues.cityId ? streets.filter((street) => street.cityId === formValues.cityId) : [];
+  const filteredHouseNumbers = formValues.streetId ? houseNumbers.filter((houseNumber) => houseNumber.streetId === formValues.streetId) : [];
   const currentLocationTourLinks = useMemo(
-    () => locationTourLinks.filter((link) => link.locationId === form.id),
-    [form.id, locationTourLinks]
+    () => locationTourLinks.filter((link) => link.locationId === formValues.id),
+    [formValues.id, locationTourLinks]
   );
+  const handleFormChange = (patch: Partial<CollectionLocationFormState>) => {
+    for (const [key, value] of Object.entries(patch) as Array<[keyof CollectionLocationFormState, CollectionLocationFormState[keyof CollectionLocationFormState]]>) {
+      setValue(key, value, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+    }
+    onChange(patch);
+  };
+  const submitForm = handleSubmit(async (values) => {
+    await onSubmit(values);
+  });
 
   const saveLabel = saving
     ? pt('masterData.collectionLocations.actions.saving')
@@ -96,19 +144,20 @@ export const WasteMasterDataLocationFormContent = ({
         actions={topActions}
       />
 
-      <form id="waste-location-form" className="space-y-6" onSubmit={(event) => void onSubmit(event)}>
+      <form id="waste-location-form" className="space-y-6" onSubmit={submitForm}>
         <LocationSelectSection
-          form={form}
+          form={formValues}
           regions={regions}
           filteredCities={filteredCities}
           filteredStreets={filteredStreets}
           filteredHouseNumbers={filteredHouseNumbers}
-          onChange={onChange}
+          cityError={formState.errors.cityId?.message ? pt(formState.errors.cityId.message) : undefined}
+          onChange={handleFormChange}
         />
-        <LocationStatusSection active={form.active} onChange={onChange} />
+        <LocationStatusSection active={formValues.active} onChange={handleFormChange} />
         {mode === 'edit' ? (
           <LocationAssignmentsSection
-            locationId={form.id}
+            locationId={formValues.id}
             tours={availableTours}
             fractions={fractions}
             links={currentLocationTourLinks}

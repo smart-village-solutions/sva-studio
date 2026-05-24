@@ -21,7 +21,7 @@ export const WasteMasterDataLocationDialogs = ({ controller }: { readonly contro
         if (!open) controller.resetLocationForm();
       }}
       onChange={(patch) => controller.setLocationForm((current: CollectionLocationFormState) => ({ ...current, ...patch }))}
-      onSubmit={controller.onSubmitLocation}
+      onSubmit={(values) => controller.onSubmitLocation(values)}
     />
     <BulkLocationAssignmentsDialog
       open={controller.bulkAssignmentsDialogOpen}

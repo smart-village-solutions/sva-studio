@@ -46,6 +46,8 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-039-medienmanagement-host-capability-und-storage-vertrag.md`
 - `ADR-040-graphile-worker-als-standard-fuer-hintergrundprozesse.md`
 - `ADR-041-plugin-plattform-v2-fuer-externe-distribution.md`
+- [ADR-043 formular foundation mit react-hook-form und zodResolver](../adr/ADR-043-formular-foundation-mit-react-hook-form-und-zodresolver.md)
+- [ADR-044 frontend-test-foundation mit MSW und selektivem fast-check](../adr/ADR-044-frontend-test-foundation-mit-msw-und-selektivem-fast-check.md)
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -69,6 +71,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 03/04/05/06/07/08/09/10/11 (Kontext/Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-039
 - Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-040
 - Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-041
+- Abschnitt 05/08/09/10 (Bausteine/Querschnitt/Entscheidungen/Qualität): ADR-043, ADR-044
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
@@ -108,6 +111,8 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-040: `graphile-worker` als aktueller Host-Standard für Hintergrundprozesse; Temporal bleibt dokumentierte Eskalationsoption, Trigger.dev ist ausgeschlossen (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
 - ADR-041: Plugin-Plattform v2 für externe Distribution, Katalog/Loader-Snapshot und host-owned Runtime; ADR-034 bleibt als v1-Zwischenstand bestehen (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
 - ADR-042: Externe Schnittstellen als host-owned Registry mit zentralem Secret-Store, Default-Auflösung und plugin-konsumierbarem Typkatalog (Abschnitt 03, 05, 08, 09, 11, 12)
+- ADR-043: Formular-Foundation mit `react-hook-form` und `zodResolver` als verbindlichem Standardpfad für neue oder grundlegend überarbeitete Formular-Flows (Abschnitt 05, 08, 09, 10)
+- ADR-044: Frontend-Test-Foundation mit `msw` für HTTP-nahe Tests und selektivem `fast-check` für kritische Kernlogik (Abschnitt 05, 08, 09, 10)
 
 ### Pflege-Regel
 
@@ -233,6 +238,19 @@ Zuordnung:
 Zuordnung:
 
 - Abschnitt 03/05/08/09/11/12: ADR-042
+
+### Fortschreibung 2026-05: Studio-Foundations für Formulare und Frontend-Tests
+
+- [ADR-043 formular foundation mit react-hook-form und zodResolver](../adr/ADR-043-formular-foundation-mit-react-hook-form-und-zodresolver.md)
+  - setzt `react-hook-form` mit `zodResolver` als verbindlichen Standardpfad für neue oder grundlegend überarbeitete Formular-Flows in Host und Plugins
+  - koppelt die Bibliothekswahl ausdrücklich an Inventur-, Review- und Ausnahme-Governance statt an lose Stilpräferenzen
+- [ADR-044 frontend-test-foundation mit MSW und selektivem fast-check](../adr/ADR-044-frontend-test-foundation-mit-msw-und-selektivem-fast-check.md)
+  - setzt `msw` als Standardpfad für HTTP-nahe Frontend-Tests
+  - begrenzt `fast-check` bewusst auf kritische framework-agnostische Hotspots und hält Modul-Mocks für rein lokale Logik zulässig
+
+Zuordnung:
+
+- Abschnitt 05/08/09/10: ADR-043, ADR-044
 
 ### Fortschreibung 2026-03: Swarm-Deployment und Multi-Host-Betrieb
 

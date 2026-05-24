@@ -39,6 +39,9 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - isolierte App-Änderungen dürfen im PR-Pfad über `sva-studio-react:test:unit:ui|routes|hooks|server` statt über die komplette App-Suite validiert werden
   - nicht-serverseitige Änderungen unter `apps/sva-studio-react/src/lib/` gelten dabei als Bestandteil des bestehenden Hooks/Lib-Slices
   - gemischte oder nicht eindeutig klassifizierbare App-Änderungen fallen bewusst auf das aggregierte `sva-studio-react:test:unit` zurück
+  - neue oder grundlegend überarbeitete HTTP-nahe Frontend-Tests nutzen `msw`; reine Modul-Mocks sind dort kein ausreichender Qualitätsnachweis
+  - für geänderte kritische framework-agnostische Hotspots muss eine `fast-check`-Property oder eine dokumentierte Gegenbegründung reviewbar vorliegen
+  - neue oder grundlegend überarbeitete Formular-Flows müssen dem RHF-/`zodResolver`-Standardpfad folgen oder als Ausnahme dokumentiert sein
 - IAM-Acceptance-Gate:
   - `pnpm nx run sva-studio-react:test:acceptance` läuft als separates Delivery-Gate gegen die Testumgebung
   - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben
@@ -173,6 +176,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Proposal- und PR-Reviews nutzen spezialisierte Agents mit standardisierten Templates
   - Trigger-Matrix und Abgrenzungen sind in `docs/development/review-agent-governance.md` dokumentiert
   - relevante Bot-Kommentare von `Copilot` und `chatgpt-codex-connector[bot]` blockieren den Merge, bis ein maschinenlesbarer Bearbeitungsnachweis vorliegt
+  - Formular-, Frontend-HTTP- und Hotspot-Änderungen sind erst reviewbar abgeschlossen, wenn `docs/development/studio-foundations-governance.md`, die konkrete Formularinventur `docs/development/studio-form-migrationsinventur.md` und der PR- oder Arbeitskontext den Standardpfad oder die Ausnahme nachvollziehbar und konsistent abbilden
 
 ### Qualitätsattribute und Review-Zuordnung
 
@@ -224,6 +228,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 Referenzen:
 
 - `../development/testing-coverage.md`
+- `../development/studio-foundations-governance.md`
 - `../development/complexity-quality-governance.md`
 - `../development/review-agent-governance.md`
 - `scripts/ci/coverage-gate.ts`

@@ -377,6 +377,54 @@ describe('patch coverage gate', () => {
     expect(result.missedLines).toBe(0);
   });
 
+  it('combines workspace and nx-cache lcov artifacts before selecting the best project candidate', async () => {
+    const runPatchCoverageGate = await loadRunPatchCoverageGate();
+    const rootDir = createTempWorkspace();
+    initGitRepo(rootDir);
+    writePolicy(rootDir, {
+      perProjectFloors: {
+        'server-runtime': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+        data: {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+    });
+    writeSourceFile(rootDir, 'packages/server-runtime/src/index.ts', 'export const serverRuntimeValue = 1;\n');
+    writeSourceFile(rootDir, 'packages/data/src/query.ts', 'export const dataValue = 1;\n');
+    commitAll(rootDir, 'base');
+    runGit(rootDir, ['checkout', '-b', 'feature/test']);
+
+    writeSourceFile(rootDir, 'packages/server-runtime/src/index.ts', 'export const serverRuntimeValue = 2;\n');
+    writeSourceFile(rootDir, 'packages/data/src/query.ts', 'export const dataValue = 2;\n');
+    writeLcov(rootDir, 'packages/server-runtime', 'src/index.ts', [[1, 1]]);
+    const cacheCoverageDir = path.join(rootDir, '.nx/cache/task-data/packages/data/coverage');
+    fs.mkdirSync(cacheCoverageDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(cacheCoverageDir, 'lcov.info'),
+      ['TN:', 'SF:src/query.ts', 'DA:1,1', 'LF:1', 'LH:1', 'end_of_record', ''].join('\n')
+    );
+    commitAll(rootDir, 'change');
+
+    const result = runPatchCoverageGate({
+      rootDir,
+      baseRef: 'main',
+      headRef: 'HEAD',
+      targetPct: 85,
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.coveragePct).toBe(100);
+    expect(result.consideredFiles).toBe(2);
+  });
+
   it('prefers TypeScript sources over colocated js artifacts in lcov records', async () => {
     const runPatchCoverageGate = await loadRunPatchCoverageGate();
     const rootDir = createTempWorkspace();

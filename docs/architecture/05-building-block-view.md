@@ -51,35 +51,40 @@ Abhängigkeiten des aktuellen Systems.
 6. Studio UI React (`packages/studio-ui-react`)
   - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
   - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
+  - ist der kanonische UI-Owner für die Formular-Foundation rund um `react-hook-form`-, Resolver- und Form-Bridge-Muster; Host und Plugins sollen keine parallelen Basis-Formularsysteme etablieren
   - ist kanonischer Owner für wiederverwendbare Host-Listen-UI wie `StudioDataTable` und `StudioListPageTemplate`; die App liefert nur noch explizite Labels, Routen und Seitendaten
   - bleibt UI-only: keine Plugin-Registry, keine Route-Materialisierung, keine Persistenz, keine IAM- oder Server-Runtime-Logik
-7. Monitoring Client (`packages/monitoring-client`)
+7. Tooling Testing (`tooling/testing`)
+   - gemeinsamer Owner für Frontend-Test-Foundations wie `msw`-Setup, Handler-Konventionen, Reset-Regeln und Test-Utilities
+   - trennt HTTP-nahe Testinfrastruktur von produktiver Runtime-Logik und von E2E-/Infra-Läufen
+   - bildet zusammen mit `docs/development/studio-foundations-governance.md` den Standardpfad für HTTP-nahe Frontend-Tests
+8. Monitoring Client (`packages/monitoring-client`)
    - OTEL SDK Setup, Exporter, Log-Redaction-Processor
-8. Data Client und Data Repositories (`packages/data-client`, `packages/data-repositories`)
+9. Data Client und Data Repositories (`packages/data-client`, `packages/data-repositories`)
    - `@sva/data-client`: client-sicherer HTTP-DataClient mit Schema-Validierung
    - `@sva/data-repositories`: serverseitige Repository-Fassaden und DB-nahe Operationen
    - enthält den führenden zentralen Job-Store für generische Plugin-Operations im Studio-Postgres
    - hält zusätzlich den kanonischen Registry-Store für `external_interface_types` und `instance_external_interfaces`
    - IAM-Persistenzmodell (`iam`-Schema) mit Multi-Tenant-Struktur bleibt SQL-first versioniert
-9. SVA Mainserver (`packages/sva-mainserver`)
+10. SVA Mainserver (`packages/sva-mainserver`)
   - dedizierte Integrationsschicht für OAuth2, GraphQL-Transport, Fehlerabbildung und Fachadapter
   - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
   - exportiert die kanonischen serverseitigen Host-Verträge für Mainserver-News, -Events, -POI und die Schnittstellenverwaltung; `apps/sva-studio-react` hält dafür nur dünne Request- und TanStack-Adapter
   - liest seine instanzbezogene Endpunktkonfiguration nicht mehr aus einer Mainserver-Spezialtabelle, sondern aus der zentralen External-Interface-Registry
   - hält `src/server/service.ts` bewusst als schlanke Fassade; Credentials, Token, GraphQL-Transport, Sichtbarkeits-Pagination, Mapper und ressourcenspezifische Operationen liegen in getrennten internen Modulen unter `src/server/service-internals/`
-10. Plugin News (`packages/plugin-news`)
+11. Plugin News (`packages/plugin-news`)
    - produktives Fachplugin für Mainserver-News mit pluginnahem Modell `news.article`
    - eigene Listen- und Editor-Ansichten, plugin-beigestellte Admin-Ressourcen-Spezialisierungen, Navigation und Übersetzungen
    - bildet das vollständige Mainserver-`NewsItem`-Modell über dedizierte Felder ab; `contentBlocks` sind der führende Langinhalt
    - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
    - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an
-11. Plugin Waste Management (`packages/plugin-waste-management`)
+12. Plugin Waste Management (`packages/plugin-waste-management`)
    - freies Fachplugin unter `/plugins/waste-management` für Waste-Stammdaten, Touren, Ausweichtermine, PDF-Ausgaben, technische Werkzeuge und instanzbezogene Einstellungen
    - konsumiert ausschließlich hostgeführte Endpunkte unter `/api/v1/waste-management/*`
    - hält bewusst nur fachliche UI-, Dialog-, Bulk- und lokale View-Model-Logik; keine direkte Datenbank-, Supabase- oder `Newcms`-Runtime-Kopplung
    - nutzt `@sva/plugin-sdk` für Route, Navigation, Audit-, Import- und Job-Verträge sowie `@sva/studio-ui-react` für generische Confirm-, Status- und Job-UI
    - zeigt für den laufenden CSV-Spezialimport eine fachnahe Live-Fortschrittskarte an, leitet Prozent und Zeilenstand aber weiterhin ausschließlich aus dem generischen Host-Jobvertrag ab
-12. Instanz-Registry (`packages/instance-registry`)
+13. Instanz-Registry (`packages/instance-registry`)
    - Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
    - Registry-Repositories, persistente Provisioning-Runs und Cache-Zugriffe über injizierte Repository-Verträge
    - Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
@@ -91,13 +96,13 @@ Abhängigkeiten des aktuellen Systems.
    - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
    - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
    - HTTP-Handler, Service-Komposition und Keycloak-Ausführung sind intern entlang Read, Mutation, Payload/Sync/Finalize und Diagnose getrennt, damit Runtime-Consumer stabile Fassaden nutzen und fachliche Flows nicht wieder in Sammeldateien zusammenlaufen
-13. Plugin-Operations-Hostpfad (`packages/auth-runtime`, `packages/routing`, `packages/data-repositories`)
+14. Plugin-Operations-Hostpfad (`packages/auth-runtime`, `packages/routing`, `packages/data-repositories`)
    - `@sva/auth-runtime` veröffentlicht die hostgeführten Start- und Status-Endpunkte für generische Plugin-Jobs
    - `@sva/routing` führt diese Endpunkte im typisierten Runtime-Route-Katalog als Single Source of Truth
    - `@sva/data-repositories` hält den kanonischen Jobdatensatz mit Status, Progress, Payload-, Retry- und Fehlerfeldern
    - strukturierte Progress-Details wie `processedRows` und `totalRows` bleiben Teil desselben generischen Jobdatensatzes und werden nicht in plugin-spezifische Nebenspeicher ausgelagert
    - eine interne Worker-Anbindung wie Graphile Worker bleibt hinter diesem Hostpfad austauschbar und ist kein Teil des öffentlichen Plugin-Vertrags
-14. Waste-Host-Fassade (`packages/auth-runtime`, `packages/server-runtime`, `packages/data-repositories`)
+15. Waste-Host-Fassade (`packages/auth-runtime`, `packages/server-runtime`, `packages/data-repositories`)
    - `@sva/auth-runtime` publiziert die hostgeführte Waste-Fassade für Settings, Historie, CRUD, Bulk-Flows, PDF-Ausgaben und technische Tool-Starts
    - `@sva/server-runtime` löst die aktive instanzbezogene Waste-Datenquelle serverseitig auf, rendert den adressgenauen Jahreskalender pro Abholort und kapselt Secret-Nutzung sowie Connection-Checks
    - `@sva/data-repositories` hält sowohl die zentrale Governance-Persistenz der Waste-Datenquelle im Studio-Postgres als auch die hostseitigen Repositories gegen die instanzbezogene `waste_*`-Tabellenfamilie
@@ -197,11 +202,17 @@ Abhängigkeiten des aktuellen Systems.
    - rendert auf `/admin/instances/$instanceId` einen separaten Tenant-IAM-Bereich mit Statusachsen, Korrelation und kontextbezogenen Aktionen.
    - strukturiert dieselbe Detailseite als `Control Tower + Workbench`: fester Überblick für Gesamtstatus, Evidenzfrische, priorisierte Befunde und genau eine Primäraktion; nachgelagerte Arbeitsbereiche für `Konfiguration`, `Betrieb` und `Historie`.
    - leitet dafür in der React-Schicht ein kanonisches Cockpit-Modell aus bestehenden Datenquellen wie `tenantIamStatus`, Keycloak-Preflight, Provisioning-Vorschau, letztem Run und Mutationsdiagnostik ab, ohne den Backend-Vertrag zu ändern.
-13. Öffentlicher Abfallkalender (`apps/public-waste-calendar-web`)
+16. Öffentlicher Abfallkalender (`apps/public-waste-calendar-web`)
    - eigenständige Vite/React-App für den öffentlichen Waste-Kalender außerhalb der Studio-Admin-Shell
    - hält Resolver, Kalenderprojektion, Demo-Runtime, Cookie-Restore, PDF-/iCal-Links und Modal-Interaktion bewusst app-lokal
    - nutzt eine reduzierte UI aus `PublicWasteApp`, `PublicWasteSelectionForm`, `PublicWasteCalendarPanels` und `PublicWasteEventDialog`
    - kapselt servernahe Verträge in `src/lib/public-waste-*.ts`, ohne neue Workspace-Kopplung zu `@sva/core` oder `@sva/data-repositories` einzuführen
+
+### Foundation-Governance über Bausteingrenzen
+
+- `docs/development/studio-foundations-governance.md` definiert den verbindlichen Standardpfad für Formular- und Frontend-Test-Foundations über Host, Plugins, `@sva/studio-ui-react` und `tooling/testing`.
+- `docs/development/studio-form-migrationsinventur.md` bleibt das Pflichtartefakt für Legacy-Ausnahmen, Migrationsreihenfolge und betroffene Host-/Plugin-Flows.
+- Die zugehörigen Architekturentscheidungen liegen in `docs/adr/ADR-043-formular-foundation-mit-react-hook-form-und-zodresolver.md` und `docs/adr/ADR-044-frontend-test-foundation-mit-msw-und-selektivem-fast-check.md`.
 
 ### Fortschreibung 2026-04: Instanz-Modulaktivierung
 

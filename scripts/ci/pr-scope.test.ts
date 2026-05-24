@@ -164,4 +164,29 @@ describe('pr-scope', () => {
       'apps/sva-studio-react/src/routes/index.tsx',
     ]);
   });
+
+  it('falls back to the base ref when partial clone diffing triggers a promisor auth fetch', () => {
+    const previousBaseRef = process.env.GITHUB_BASE_REF;
+    process.env.GITHUB_BASE_REF = 'main';
+
+    try {
+      const changedFiles = resolveChangedFiles('3bf9958ef86bbbe2b841f9ab7c46ec8614d78580', 'HEAD', (args) => {
+        const diffRange = args.at(-1);
+
+        if (diffRange === '3bf9958ef86bbbe2b841f9ab7c46ec8614d78580...HEAD') {
+          throw new Error(
+            "fatal: could not read Username for 'https://github.com': No such device or address\n" +
+              'fatal: could not fetch c24de8f97e2c4fe0da0bc39c85ad66b253fc0528 from promisor remote'
+          );
+        }
+
+        expect(diffRange).toBe('origin/main...HEAD');
+        return 'apps/sva-studio-react/src/routes/index.tsx\n';
+      });
+
+      expect(changedFiles).toEqual(['apps/sva-studio-react/src/routes/index.tsx']);
+    } finally {
+      process.env.GITHUB_BASE_REF = previousBaseRef;
+    }
+  });
 });

@@ -33,6 +33,7 @@ export const LocationSelectSection = ({
   filteredCities,
   filteredStreets,
   filteredHouseNumbers,
+  cityError,
   onChange,
 }: {
   readonly form: CollectionLocationFormState;
@@ -40,11 +41,12 @@ export const LocationSelectSection = ({
   readonly filteredCities: readonly WasteCityRecord[];
   readonly filteredStreets: readonly WasteStreetRecord[];
   readonly filteredHouseNumbers: readonly WasteHouseNumberRecord[];
+  readonly cityError?: string;
   readonly onChange: (patch: Partial<CollectionLocationFormState>) => void;
 }) => (
   <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
     <StudioFieldGroup columns={2}>
-      <LocationRegionCityFields form={form} regions={regions} filteredCities={filteredCities} onChange={onChange} />
+      <LocationRegionCityFields form={form} regions={regions} filteredCities={filteredCities} cityError={cityError} onChange={onChange} />
       <LocationStreetHouseNumberFields
         form={form}
         filteredStreets={filteredStreets}

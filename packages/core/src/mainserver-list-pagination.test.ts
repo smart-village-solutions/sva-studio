@@ -25,4 +25,16 @@ describe('parseMainserverListQuery', () => {
 
     expect(query).toEqual({ page: 401, pageSize: 25 });
   });
+
+  it('falls back to defaults for missing or non-canonical integer query values', () => {
+    expect(parseMainserverListQuery(new Request('https://studio.test/api/v1/mainserver/news'))).toEqual({
+      page: 1,
+      pageSize: 25,
+    });
+
+    expect(parseMainserverListQuery(new Request('https://studio.test/api/v1/mainserver/news?page=01&pageSize=050'))).toEqual({
+      page: 1,
+      pageSize: 25,
+    });
+  });
 });

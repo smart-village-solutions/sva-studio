@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -6,7 +7,21 @@ import {
   parseWasteLocationTourPickupDateCsv,
 } from './waste-management-location-tour-pickup-date-import.js';
 
+const formatUtcDate = (value: Date): string => value.toISOString().slice(0, 10);
+const earliestFourDigitUtcDate = new Date(Date.UTC(1000, 0, 1));
+const latestFourDigitUtcDate = new Date(Date.UTC(9999, 11, 31, 23, 59, 59, 999));
+
 describe('waste location tour assignment import parser', () => {
+  it('keeps canonical pickup dates stable for arbitrary UTC calendar dates', () => {
+    fc.assert(
+      fc.property(fc.date({ min: earliestFourDigitUtcDate, max: latestFourDigitUtcDate }), (value) => {
+        const canonicalDate = formatUtcDate(value);
+
+        expect(normalizeWasteImportPickupDate(canonicalDate)).toBe(canonicalDate);
+      })
+    );
+  });
+
   it('detects delimiters with semicolon as the stable fallback', () => {
     expect(detectWasteImportCsvDelimiter('Region;Ort;Straße;Hausnummern;Hausmüll')).toBe(';');
     expect(detectWasteImportCsvDelimiter('Ort,Straße,Hausmüll,Papier')).toBe(',');
@@ -264,6 +279,7 @@ describe('waste location tour assignment import parser', () => {
 
   it('normalizes strict iso pickup dates and rejects invalid values', () => {
     expect(normalizeWasteImportPickupDate(' 2026-05-18 ')).toBe('2026-05-18');
+    expect(normalizeWasteImportPickupDate('2026-00-01')).toBeNull();
     expect(normalizeWasteImportPickupDate('2026-02-30')).toBeNull();
     expect(normalizeWasteImportPickupDate('18.05.2026')).toBeNull();
     expect(normalizeWasteImportPickupDate('')).toBeNull();

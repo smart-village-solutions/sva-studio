@@ -1,13 +1,22 @@
 import { Link, useNavigate } from '@tanstack/react-router';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { GENERIC_CONTENT_TYPE, withServerDeniedContentAccess, type IamContentAccessSummary, type IamContentStatus } from '@sva/core';
+import {
+  StudioField,
+  StudioFieldGroup,
+  StudioFormSummaryErrors,
+  getStudioFormFieldProps,
+  type StudioFormFieldError,
+} from '@sva/studio-ui-react';
 import React from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 import { useContentAccess } from '../../hooks/use-content-access';
@@ -126,8 +135,52 @@ const parseContentPayload = (payloadText: string): { ok: true; payload: unknown 
   }
 };
 
+const contentStatusSchema = z.enum(['draft', 'in_review', 'approved', 'published', 'archived']);
+
+const createContentFormSchema = (originalPublishedAt?: string) =>
+  z
+    .object({
+      title: z.string().trim().min(1, t('content.validation.titleRequired')),
+      contentType: z.string(),
+      status: contentStatusSchema,
+      publishedAt: z.string(),
+      payloadText: z.string(),
+    })
+    .superRefine((values, context) => {
+      const parsedPayload = parseContentPayload(values.payloadText);
+      if (!parsedPayload.ok) {
+        context.addIssue({
+          code: 'custom',
+          path: ['payloadText'],
+          message: parsedPayload.message,
+        });
+      }
+
+      const publishedAt = parseOptionalEditorDateTime(values.publishedAt, originalPublishedAt);
+      if (publishedAt.kind === 'invalid') {
+        context.addIssue({
+          code: 'custom',
+          path: ['publishedAt'],
+          message: t('content.validation.publishedAtInvalid'),
+        });
+      }
+
+      if (values.status === 'published' && publishedAt.kind === 'empty') {
+        context.addIssue({
+          code: 'custom',
+          path: ['publishedAt'],
+          message: t('content.validation.publishedAtRequired'),
+        });
+      }
+    });
+
 const toDeniedAccess = (errorCode: IamHttpError['code'] | undefined): IamContentAccessSummary | null =>
   errorCode === 'forbidden' ? withServerDeniedContentAccess(undefined) : null;
+
+const collectSummaryErrors = (
+  fields: readonly ReturnType<typeof getStudioFormFieldProps>[]
+): readonly StudioFormFieldError[] =>
+  fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
 
 const renderContentMeta = ({
   mode,
@@ -214,15 +267,28 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
   const createApi = useCreateContent();
   const detailApi = useContentDetail(mode === 'edit' ? contentId ?? null : null);
   const contentAccessApi = useContentAccess();
-  const [formState, setFormState] = React.useState<ContentFormState>(emptyFormState);
-  const [payloadError, setPayloadError] = React.useState<string | null>(null);
+  const formSchema = React.useMemo(
+    () => createContentFormSchema(detailApi.content?.publishedAt),
+    [detailApi.content?.publishedAt]
+  );
+  const form = useForm<ContentFormState>({
+    defaultValues: emptyFormState(),
+    resolver: zodResolver(formSchema as never),
+    reValidateMode: 'onChange',
+  });
+  const {
+    formState: { errors, isSubmitting },
+    handleSubmit,
+    register,
+    reset,
+    watch,
+  } = form;
 
   React.useEffect(() => {
     if (mode === 'edit' && detailApi.content) {
-      setFormState(buildFormState(detailApi.content));
-      setPayloadError(null);
+      reset(buildFormState(detailApi.content));
     }
-  }, [detailApi.content, mode]);
+  }, [detailApi.content, mode, reset]);
 
   const activeError = mode === 'create' ? createApi.mutationError : detailApi.mutationError;
   const isLoading = mode === 'create' ? false : detailApi.isLoading;
@@ -244,12 +310,43 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
     return !activeAccess?.canUpdate;
   })();
 
-  const submitCreate = async (parsedPayload: { payload: unknown }, publishedAt: string | null | undefined): Promise<void> => {
+  const statusValue = watch('status');
+  const titleField = getStudioFormFieldProps({
+    id: 'content-title',
+    error: errors.title,
+  });
+  const contentTypeField = getStudioFormFieldProps({
+    id: 'content-type',
+    error: errors.contentType,
+  });
+  const statusField = getStudioFormFieldProps({
+    id: 'content-status',
+    error: errors.status,
+  });
+  const publishedAtField = getStudioFormFieldProps({
+    id: 'content-published-at',
+    error: errors.publishedAt,
+  });
+  const payloadField = getStudioFormFieldProps({
+    id: 'content-payload',
+    error: errors.payloadText,
+  });
+  const summaryErrors = collectSummaryErrors([titleField, contentTypeField, statusField, publishedAtField, payloadField]);
+
+  const submitCreate = async (values: ContentFormState): Promise<void> => {
+    const parsedPayload = parseContentPayload(values.payloadText);
+    if (!parsedPayload.ok) {
+      return;
+    }
+    const publishedAt = parseOptionalEditorDateTime(values.publishedAt, detailApi.content?.publishedAt);
+    if (publishedAt.kind === 'invalid') {
+      return;
+    }
     const payload: CreateContentPayload = {
-      title: formState.title.trim(),
-      contentType: formState.contentType,
-      status: formState.status,
-      publishedAt: publishedAt ?? undefined,
+      title: values.title.trim(),
+      contentType: values.contentType,
+      status: values.status,
+      publishedAt: publishedAt.kind === 'value' ? publishedAt.value : undefined,
       payload: parsedPayload.payload as CreateContentPayload['payload'],
     };
 
@@ -259,55 +356,43 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
     }
   };
 
-  const submitUpdate = async (parsedPayload: { payload: unknown }, publishedAt: string | null | undefined): Promise<void> => {
+  const submitUpdate = async (values: ContentFormState): Promise<void> => {
     if (!contentId) {
+      return;
+    }
+    const parsedPayload = parseContentPayload(values.payloadText);
+    if (!parsedPayload.ok) {
+      return;
+    }
+    const publishedAt = parseOptionalEditorDateTime(values.publishedAt, detailApi.content?.publishedAt);
+    if (publishedAt.kind === 'invalid') {
       return;
     }
 
     const payload: UpdateContentPayload = {
-      title: formState.title.trim(),
-      status: formState.status,
-      publishedAt: publishedAt ?? undefined,
+      title: values.title.trim(),
+      status: values.status,
+      publishedAt: publishedAt.kind === 'value' ? publishedAt.value : undefined,
       payload: parsedPayload.payload as UpdateContentPayload['payload'],
     };
 
     await detailApi.updateContent(payload);
   };
 
-  const submitForm = async (event: React.SyntheticEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submitForm = handleSubmit(async (values) => {
     if (actionsDisabled) {
       return;
     }
-    setPayloadError(null);
-
-    const parsedPayload = parseContentPayload(formState.payloadText);
-    if (!parsedPayload.ok) {
-      setPayloadError(parsedPayload.message);
-      return;
-    }
-
-    const publishedAt = parseOptionalEditorDateTime(formState.publishedAt, detailApi.content?.publishedAt);
-    if (publishedAt.kind === 'invalid') {
-      setPayloadError(t('content.validation.publishedAtInvalid'));
-      return;
-    }
-    if (formState.status === 'published' && publishedAt.kind === 'empty') {
-      setPayloadError(t('content.validation.publishedAtRequired'));
-      return;
-    }
-
-    const publishedAtValue = publishedAt.kind === 'value' ? publishedAt.value : undefined;
 
     if (mode === 'create') {
-      await submitCreate(parsedPayload, publishedAtValue);
+      await submitCreate(values);
     } else {
-      await submitUpdate(parsedPayload, publishedAtValue);
+      await submitUpdate(values);
     }
-  };
+  });
 
   return (
-    <section className="space-y-5" aria-busy={isLoading}>
+    <section className="space-y-5" aria-busy={isLoading || isSubmitting}>
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
@@ -338,9 +423,9 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
         </Alert>
       ) : null}
 
-      {activeError || payloadError ? (
+      {activeError ? (
         <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
-          <AlertDescription>{payloadError ?? contentErrorMessage(activeError)}</AlertDescription>
+          <AlertDescription>{contentErrorMessage(activeError)}</AlertDescription>
         </Alert>
       ) : null}
 
@@ -353,61 +438,40 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
       {mode === 'edit' && !content && !detailApi.isLoading ? null : (
         <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
           <Card className="p-5">
-            <form className="space-y-4" onSubmit={submitForm}>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1.5 md:col-span-2">
-                  <Label htmlFor="content-title">{t('content.fields.title')}</Label>
-                  <Input
-                    id="content-title"
-                    value={formState.title}
-                    disabled={actionsDisabled}
-                    onChange={(event) => setFormState((current) => ({ ...current, title: event.target.value }))}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="content-type">{t('content.fields.contentType')}</Label>
-                  <Input id="content-type" value={formState.contentType} readOnly />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="content-status">{t('content.fields.status')}</Label>
-                  <Select
-                    id="content-status"
-                    value={formState.status}
-                    disabled={actionsDisabled}
-                    onChange={(event) =>
-                      setFormState((current) => ({ ...current, status: event.target.value as IamContentStatus }))
-                    }
-                  >
+            <form className="space-y-4" onSubmit={submitForm} noValidate>
+              <StudioFormSummaryErrors errors={summaryErrors} title={t('account.messages.validationSummary')} />
+              <StudioFieldGroup columns={2}>
+                <StudioField {...titleField} label={t('content.fields.title')} required className="md:col-span-2">
+                  <Input {...register('title')} disabled={actionsDisabled} />
+                </StudioField>
+                <StudioField {...contentTypeField} label={t('content.fields.contentType')}>
+                  <Input {...register('contentType')} readOnly />
+                </StudioField>
+                <StudioField {...statusField} label={t('content.fields.status')}>
+                  <Select {...register('status')} disabled={actionsDisabled}>
                     <option value="draft">{t('content.status.draft')}</option>
                     <option value="in_review">{t('content.status.inReview')}</option>
                     <option value="approved">{t('content.status.approved')}</option>
                     <option value="published">{t('content.status.published')}</option>
                     <option value="archived">{t('content.status.archived')}</option>
                   </Select>
-                </div>
-                <div className="space-y-1.5 md:col-span-2">
-                  <Label htmlFor="content-published-at">{t('content.fields.publishedAt')}</Label>
+                </StudioField>
+                <StudioField {...publishedAtField} label={t('content.fields.publishedAt')} className="md:col-span-2">
                   <Input
-                    id="content-published-at"
+                    {...register('publishedAt')}
                     type="datetime-local"
-                    value={formState.publishedAt}
                     disabled={actionsDisabled}
-                    required={formState.status === 'published'}
-                    onChange={(event) => setFormState((current) => ({ ...current, publishedAt: event.target.value }))}
+                    required={statusValue === 'published'}
                   />
-                </div>
-                <div className="space-y-1.5 md:col-span-2">
-                  <Label htmlFor="content-payload">{t('content.fields.payload')}</Label>
+                </StudioField>
+                <StudioField {...payloadField} label={t('content.fields.payload')} className="md:col-span-2">
                   <Textarea
-                    id="content-payload"
-                    value={formState.payloadText}
+                    {...register('payloadText')}
                     disabled={actionsDisabled}
                     className="min-h-[22rem] font-mono text-xs"
-                    onChange={(event) => setFormState((current) => ({ ...current, payloadText: event.target.value }))}
                   />
-                </div>
-              </div>
+                </StudioField>
+              </StudioFieldGroup>
 
               <div className="flex flex-wrap gap-3">
                 <Button type="submit" disabled={actionsDisabled}>

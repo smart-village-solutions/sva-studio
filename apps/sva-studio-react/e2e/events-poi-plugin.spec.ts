@@ -111,6 +111,15 @@ const expectPluginPageHeading = async (page: Page, pattern: RegExp) => {
   await expect(page.locator('main h1').filter({ hasText: pattern })).toBeVisible();
 };
 
+const expectEventOrPoiEditorReady = async (page: Page, path: '/admin/events/new' | '/admin/poi/new') => {
+  if (path === '/admin/events/new') {
+    await expectPluginPageHeading(page, /Event anlegen|events\.editor\.createTitle/);
+    return;
+  }
+
+  await expectPluginPageHeading(page, /POI anlegen|poi\.editor\.createTitle/);
+};
+
 const expectContentOverviewUrl = async (page: Page) => {
   await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
 };
@@ -511,7 +520,7 @@ test.describe('events and POI plugins', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|events\.actions\.delete/ }).click();
 
-    await expectContentOverviewUrl(page);
+    await expectContentOverviewReady(page);
     await expect(page.locator('main table').getByText('Rathaus')).toBeVisible();
   });
 
@@ -580,7 +589,7 @@ test.describe('events and POI plugins', () => {
       if (path === '/admin/content') {
         await expectContentOverviewReady(page);
       } else {
-        await expect(page.locator('main h1')).toBeVisible();
+        await expectEventOrPoiEditorReady(page, path);
       }
       const result = await new AxeBuilder({ page }).include('#main-content').analyze();
       expect(result.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);

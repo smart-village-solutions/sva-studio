@@ -80,4 +80,40 @@ describe('shared assignment helpers', () => {
 
     expect(calls).toHaveLength(0);
   });
+
+  it('falls back to replace semantics when existing role ids are omitted', async () => {
+    const { assignRoles } = await import('./shared-assignment.js');
+    const { client, calls } = createClient();
+
+    await assignRoles(client as never, {
+      instanceId: 'instance-1',
+      accountId: 'account-1',
+      roleIds: ['role-1', 'role-1', 'role-2'],
+      assignedBy: 'actor-1',
+    });
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.sql).toContain('DELETE FROM iam.account_roles');
+    expect(calls[0]?.params).toEqual(['instance-1', 'account-1', ['role-1', 'role-2']]);
+    expect(calls[1]?.sql).toContain('ON CONFLICT (instance_id, account_id, role_id)');
+    expect(calls[1]?.params).toEqual(['instance-1', 'account-1', 'actor-1', ['role-1', 'role-2']]);
+  });
+
+  it('falls back to replace semantics when existing group ids are omitted', async () => {
+    const { assignGroups } = await import('./shared-assignment.js');
+    const { client, calls } = createClient();
+
+    await assignGroups(client as never, {
+      instanceId: 'instance-1',
+      accountId: 'account-1',
+      groupIds: ['group-1', 'group-1', 'group-2'],
+      origin: 'sync',
+    });
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.sql).toContain('DELETE FROM iam.account_groups');
+    expect(calls[0]?.params).toEqual(['instance-1', 'account-1', ['group-1', 'group-2']]);
+    expect(calls[1]?.sql).toContain('ON CONFLICT (instance_id, account_id, group_id)');
+    expect(calls[1]?.params).toEqual(['instance-1', 'account-1', 'sync', ['group-1', 'group-2']]);
+  });
 });

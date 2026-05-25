@@ -2,19 +2,10 @@ import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import { studioModuleIamContracts } from '../../../lib/plugins';
+import { resolveModuleDescription } from '../modules/-module-description';
 import { TenantIamStatusBadge } from './-instance-detail-view-shared';
 
 import type { SelectedInstance } from './-instances-shared-types';
-
-const resolveModuleDescription = (descriptionKey: string): string => {
-  const translatedDescription = t(descriptionKey).trim();
-
-  if (!translatedDescription || translatedDescription === descriptionKey) {
-    return t('admin.instances.instanceModules.detail.descriptionFallback');
-  }
-
-  return translatedDescription;
-};
 
 const ModuleTransparencyTable = ({ selectedInstance }: { selectedInstance: SelectedInstance }) => {
   const assignedModuleIds = new Set(selectedInstance.assignedModules ?? []);

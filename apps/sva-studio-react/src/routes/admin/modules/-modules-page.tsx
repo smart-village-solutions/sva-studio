@@ -8,19 +8,10 @@ import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
 import { studioModuleIamContracts } from '../../../lib/plugins';
 import { useAuth } from '../../../providers/auth-provider';
+import { resolveModuleDescription } from './-module-description';
 import { getErrorMessage } from '../instances/-instances-shared';
 
 const formatRoleNames = (roleNames: readonly string[]) => roleNames.join(', ');
-
-const resolveModuleDescription = (descriptionKey: string): string => {
-  const translatedDescription = t(descriptionKey).trim();
-
-  if (!translatedDescription || translatedDescription === descriptionKey) {
-    return t('admin.instances.instanceModules.detail.descriptionFallback');
-  }
-
-  return translatedDescription;
-};
 
 const TenantModulesPage = ({
   assignedModules,

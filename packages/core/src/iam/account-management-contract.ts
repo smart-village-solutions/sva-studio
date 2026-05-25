@@ -354,6 +354,11 @@ export type IamGroupDetail = IamGroupListItem & {
   readonly members: readonly IamUserGroupAssignment[];
 };
 
+export type IamLegalTextTargeting = {
+  readonly roleIds: readonly IamUuid[];
+  readonly groupIds: readonly IamUuid[];
+};
+
 export type IamLegalTextListItem = {
   readonly id: IamUuid;
   readonly name: string;
@@ -367,6 +372,7 @@ export type IamLegalTextListItem = {
   readonly acceptanceCount: number;
   readonly activeAcceptanceCount: number;
   readonly lastAcceptedAt?: string;
+  readonly targets: IamLegalTextTargeting;
 };
 
 export type IamPendingLegalTextItem = {
@@ -377,6 +383,7 @@ export type IamPendingLegalTextItem = {
   readonly locale: string;
   readonly contentHtml: string;
   readonly publishedAt?: string;
+  readonly targets: IamLegalTextTargeting;
 };
 
 export type IamOrganizationType =

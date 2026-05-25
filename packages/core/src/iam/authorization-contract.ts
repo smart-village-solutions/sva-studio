@@ -232,6 +232,10 @@ export type LegalConsentExportRecord = {
   readonly actionType: LegalAcceptanceActionType;
   readonly acceptedAt: string;
   readonly revokedAt?: string;
+  readonly targets: {
+    readonly roleIds: readonly IamUuid[];
+    readonly groupIds: readonly IamUuid[];
+  };
 };
 
 export type ReadinessStatus = 'ready' | 'warming' | 'empty' | 'degraded' | 'failed';

@@ -91,6 +91,10 @@ describe('legal consent export', () => {
         legalTextVersion: 'v1',
         actionType: 'accepted',
         acceptedAt: '2026-05-09T12:00:00.000Z',
+        targets: {
+          roleIds: ['role-1'],
+          groupIds: ['group-1'],
+        },
       },
       {
         id: 'acceptance-2',
@@ -100,6 +104,10 @@ describe('legal consent export', () => {
         actionType: 'revoked',
         acceptedAt: '2026-05-09T13:00:00.000Z',
         revokedAt: '2026-05-09T14:00:00.000Z',
+        targets: {
+          roleIds: [],
+          groupIds: [],
+        },
       },
     ]);
 

@@ -748,7 +748,7 @@ export const NewsDetailPage = ({
                 forceMount={shouldKeepMounted || undefined}
                 className="mt-0 data-[state=inactive]:hidden"
               >
-                <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
+                <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5 [&_.text-muted-foreground]:text-foreground">
                   <section
                     aria-label={tab.title ? String(tab.title) : tab.label}
                     className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"

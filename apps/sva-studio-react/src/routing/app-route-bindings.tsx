@@ -1,8 +1,8 @@
 import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
 import type { IamOrganizationContextOption, IamOrganizationDetail } from '@sva/core';
-import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events';
+import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events/events.pages';
 import { NewsCreatePage, NewsEditPage } from '@sva/plugin-news';
-import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
+import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi/poi.pages';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
@@ -127,17 +127,11 @@ const useNewsCreateInitialAuthor = () => {
 };
 
 const CategoriesPlaceholderRoutePage = () => (
-  <PlaceholderPage
-    section={t('shell.sidebar.sections.dataManagement')}
-    title={t('shell.sidebar.categories')}
-  />
+  <PlaceholderPage section={t('shell.sidebar.sections.dataManagement')} title={t('shell.sidebar.categories')} />
 );
 
 const AppPlaceholderRoutePage = () => (
-  <PlaceholderPage
-    section={t('shell.sidebar.sections.applications')}
-    title={t('shell.sidebar.app')}
-  />
+  <PlaceholderPage section={t('shell.sidebar.sections.applications')} title={t('shell.sidebar.app')} />
 );
 
 const MonitoringRoutePage = () => {

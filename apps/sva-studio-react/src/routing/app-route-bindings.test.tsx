@@ -19,6 +19,7 @@ vi.mock('@tanstack/react-router', () => ({
   useSearch: () => routeState.search,
   useLocation: () => ({ pathname: '/admin/media' }),
   useNavigate: () => vi.fn(),
+  Link: ({ children }: { children?: unknown }) => <>{children}</>,
 }));
 
 vi.mock('@sva/routing', () => ({
@@ -235,12 +236,12 @@ vi.mock('@sva/plugin-news', () => ({
   NewsEditPage: () => <div data-testid="news-edit-page" />,
 }));
 
-vi.mock('@sva/plugin-events', () => ({
+vi.mock('@sva/plugin-events/events.pages', () => ({
   EventsCreatePage: () => <div data-testid="events-create-page" />,
   EventsEditPage: () => <div data-testid="events-edit-page" />,
 }));
 
-vi.mock('@sva/plugin-poi', () => ({
+vi.mock('@sva/plugin-poi/poi.pages', () => ({
   PoiCreatePage: () => <div data-testid="poi-create-page" />,
   PoiEditPage: () => <div data-testid="poi-edit-page" />,
 }));

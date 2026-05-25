@@ -3383,6 +3383,7 @@ export const i18nResources = {
         back: 'Back to overview',
         archive: 'Archive',
         delete: 'Delete',
+        deleteConfirm: 'Do you really want to delete this content item?',
       },
       fields: {
         title: 'Title',

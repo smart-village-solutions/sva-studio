@@ -11,6 +11,10 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./poi.pages": {
+      "types": "./src/poi.pages.tsx",
+      "default": "./src/poi.pages.tsx"
+    },
     "./plugin.manifest.json": {
       "default": "./plugin.manifest.json"
     }

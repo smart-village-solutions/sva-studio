@@ -358,6 +358,13 @@ test.describe('news plugin', () => {
     await page.route('**/api/v1/mainserver/news/*', async (route) => {
       await fulfillContentRoute(route, newsItems);
     });
+    await page.route('**/api/v1/mainserver/categories', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [{ name: 'Allgemein' }, { name: 'Kultur' }] }),
+      });
+    });
     await routeUnifiedContentOverview(page, newsItems);
 
     await gotoShellRoot(page);
@@ -376,10 +383,17 @@ test.describe('news plugin', () => {
     await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News');
     await page.locator('#news-author').fill('Redaktion Musterhausen');
     await page.locator('#news-keywords').fill('stadt, kultur');
+    const categorySearch = page.getByRole('combobox', { name: /Kategorien suchen|news\.fields\.categoriesSearch/ });
+    const addCategoryButton = page.getByRole('button', { name: /Kategorie hinzufügen|news\.actions\.addCategory/ });
+    await expect(categorySearch).toBeVisible();
+    await categorySearch.fill('Allgemein');
+    await addCategoryButton.click();
+    await categorySearch.fill('Kultur');
+    await addCategoryButton.click();
+
+    await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
     await page.locator('#news-external-id').fill('cms-42');
     await page.locator('#news-type').fill('press_release');
-    await page.locator('#news-category-name').fill('Allgemein');
-    await page.locator('#news-categories').fill('Allgemein\nKultur');
 
     await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
     await page.locator('#news-block-intro-0').fill('Kurztext');
@@ -408,7 +422,6 @@ test.describe('news plugin', () => {
       keywords: 'stadt, kultur',
       externalId: 'cms-42',
       newsType: 'press_release',
-      categoryName: 'Allgemein',
       sourceUrl: { url: 'https://example.com/news/source', description: 'Quellseite' },
       address: { street: 'Marktplatz 1', zip: '12345', city: 'Musterhausen' },
       pointOfInterestId: 'poi-1',
@@ -541,6 +554,13 @@ test.describe('news plugin', () => {
 
     await page.route('**/api/v1/mainserver/news/*', async (route) => {
       await fulfillContentRoute(route, newsItems);
+    });
+    await page.route('**/api/v1/mainserver/categories', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [{ name: 'Allgemein' }, { name: 'Kultur' }] }),
+      });
     });
     await routeUnifiedContentOverview(page, newsItems);
 

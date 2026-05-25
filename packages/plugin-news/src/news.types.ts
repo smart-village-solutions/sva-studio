@@ -13,7 +13,7 @@ export type NewsWebUrl = {
   readonly description?: string;
 };
 
-export type NewsGeoLocation = {
+type NewsGeoLocation = {
   readonly latitude: number;
   readonly longitude: number;
 };
@@ -77,7 +77,7 @@ export type NewsSetting = {
   readonly onlySummaryLinkText?: string;
 };
 
-export type NewsAnnouncementSummary = {
+type NewsAnnouncementSummary = {
   readonly id?: string;
   readonly title?: string;
 };

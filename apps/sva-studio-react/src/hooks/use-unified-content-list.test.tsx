@@ -32,6 +32,8 @@ describe('useUnifiedContentList', () => {
   });
 
   it('loads mainserver-backed content items, filters them and paginates the merged result', async () => {
+    const permissionActions: readonly string[] = [];
+
     listNewsMock.mockResolvedValue({
       data: [
         {
@@ -106,7 +108,7 @@ describe('useUnifiedContentList', () => {
     };
 
     const { result, rerender } = renderHook(
-      ({ query, visibleTypes, instanceId }) => useUnifiedContentList(query, visibleTypes, instanceId),
+      ({ query, visibleTypes, instanceId }) => useUnifiedContentList(query, visibleTypes, instanceId, permissionActions),
       {
         initialProps,
       }
@@ -145,6 +147,14 @@ describe('useUnifiedContentList', () => {
 
   it('falls back to the first news content block headline when the news title is missing', async () => {
     const visibleTypes = ['news.article'] as const;
+    const permissionActions: readonly string[] = [];
+    const query = {
+      page: 1,
+      pageSize: 25,
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+      visibleTypes,
+    } as const;
 
     listNewsMock.mockResolvedValue({
       data: [
@@ -177,19 +187,7 @@ describe('useUnifiedContentList', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
-    const { result } = renderHook(() =>
-      useUnifiedContentList(
-        {
-          page: 1,
-          pageSize: 25,
-          sortBy: 'updatedAt',
-          sortDirection: 'desc',
-          visibleTypes,
-        },
-        visibleTypes,
-        'de-musterhausen'
-      )
-    );
+    const { result } = renderHook(() => useUnifiedContentList(query, visibleTypes, 'de-musterhausen', permissionActions));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -200,6 +198,14 @@ describe('useUnifiedContentList', () => {
 
   it('derives per-item edit access from granted update permissions', async () => {
     const visibleTypes = ['news.article', 'events.event-record'] as const;
+    const query = {
+      page: 1,
+      pageSize: 25,
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+      visibleTypes,
+    } as const;
+    const permissionActions = ['news.read', 'news.update', 'events.read'] as const;
 
     listNewsMock.mockResolvedValue({
       data: [
@@ -235,20 +241,7 @@ describe('useUnifiedContentList', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
-    const { result } = renderHook(() =>
-      useUnifiedContentList(
-        {
-          page: 1,
-          pageSize: 25,
-          sortBy: 'updatedAt',
-          sortDirection: 'desc',
-          visibleTypes,
-        },
-        visibleTypes,
-        'de-musterhausen',
-        ['news.read', 'news.update', 'events.read']
-      )
-    );
+    const { result } = renderHook(() => useUnifiedContentList(query, visibleTypes, 'de-musterhausen', permissionActions));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -267,6 +260,115 @@ describe('useUnifiedContentList', () => {
       state: 'read_only',
       canRead: true,
       canCreate: false,
+      canUpdate: false,
+      reasonCode: 'content_update_missing',
+    });
+  });
+
+  it('short-circuits unsupported status filters without calling mainserver sources', async () => {
+    const visibleTypes = ['news.article', 'events.event-record', 'poi.point-of-interest'] as const;
+    const query = {
+      page: 2,
+      pageSize: 10,
+      status: 'draft',
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+      visibleTypes,
+    } as const;
+    const permissionActions = ['news.read', 'news.create'] as const;
+
+    const { result } = renderHook(() => useUnifiedContentList(query, visibleTypes, 'de-musterhausen', permissionActions));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.contents).toEqual([]);
+    expect(result.current.pagination).toEqual({ page: 2, pageSize: 10, total: 0 });
+    expect(listNewsMock).not.toHaveBeenCalled();
+    expect(listEventsMock).not.toHaveBeenCalled();
+    expect(listPoiMock).not.toHaveBeenCalled();
+  });
+
+  it('fetches multiple pages, narrows the requested type and preserves create access without update access', async () => {
+    const visibleTypes = ['news.article', 'events.event-record'] as const;
+    const query = {
+      page: 1,
+      pageSize: 25,
+      type: 'news.article',
+      sortBy: 'title',
+      sortDirection: 'asc',
+      visibleTypes,
+    } as const;
+    const permissionActions = ['news.read', 'news.create'] as const;
+
+    listNewsMock
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'news-b',
+            title: 'Beta',
+            contentType: 'news.article',
+            status: 'published',
+            payload: { blocks: [1] },
+            author: 'Redaktion',
+            createdAt: '2026-05-01T10:00:00.000Z',
+            updatedAt: '2026-05-03T10:00:00.000Z',
+            publishedAt: '2026-05-03T10:00:00.000Z',
+          },
+        ],
+        pagination: { page: 1, pageSize: 100, hasNextPage: true },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'news-a',
+            title: 'Alpha',
+            contentType: 'news.article',
+            status: 'published',
+            payload: { blocks: [2] },
+            author: 'Redaktion',
+            createdAt: '2026-05-01T09:00:00.000Z',
+            updatedAt: '2026-05-02T10:00:00.000Z',
+            publishedAt: '2026-05-02T10:00:00.000Z',
+          },
+        ],
+        pagination: { page: 2, pageSize: 100, hasNextPage: false },
+      });
+    listEventsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'event-1',
+          title: 'Event',
+          contentType: 'events.event-record',
+          status: 'published',
+          createdAt: '2026-05-01T08:00:00.000Z',
+          updatedAt: '2026-05-04T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    listPoiMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    const { result } = renderHook(() => useUnifiedContentList(query, visibleTypes, 'de-musterhausen', permissionActions));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(listNewsMock).toHaveBeenCalledTimes(2);
+    expect(listNewsMock).toHaveBeenNthCalledWith(1, { page: 1, pageSize: 100 });
+    expect(listNewsMock).toHaveBeenNthCalledWith(2, { page: 2, pageSize: 100 });
+    expect(listEventsMock).not.toHaveBeenCalled();
+    expect(result.current.contents.map((item) => item.id)).toEqual(['news-a', 'news-b']);
+    expect(result.current.pagination).toEqual({ page: 1, pageSize: 25, total: 2 });
+    expect(result.current.contents[0]?.access).toMatchObject({
+      state: 'read_only',
+      canRead: true,
+      canCreate: true,
       canUpdate: false,
       reasonCode: 'content_update_missing',
     });

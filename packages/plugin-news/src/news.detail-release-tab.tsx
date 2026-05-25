@@ -76,6 +76,60 @@ const formatSettings = (settings: NewsContentItem['settings']) => {
   return labels.length > 0 ? labels.join(', ') : '—';
 };
 
+type TechnicalDetailItem = Readonly<{
+  id: string;
+  label: string;
+  value: string;
+}>;
+
+const buildTechnicalDetails = (loadedItem: NewsContentItem, pt: NewsDetailReleaseTabProps['pt']): readonly TechnicalDetailItem[] => [
+  { id: 'status', label: pt('fields.status'), value: loadedItem.status ?? '—' },
+  {
+    id: 'provider',
+    label: pt('fields.dataProvider'),
+    value: loadedItem.dataProvider?.name ?? loadedItem.dataProvider?.id ?? '—',
+  },
+  { id: 'visible', label: pt('fields.visible'), value: formatBoolean(loadedItem.visible, pt) },
+  {
+    id: 'likes',
+    label: pt('fields.likeCount'),
+    value: typeof loadedItem.likeCount === 'number' ? String(loadedItem.likeCount) : '—',
+  },
+  { id: 'likedByMe', label: pt('fields.likedByMe'), value: formatBoolean(loadedItem.likedByMe, pt) },
+  {
+    id: 'pushSentAt',
+    label: pt('fields.pushNotificationsSentAt'),
+    value: formatDateTime(loadedItem.pushNotificationsSentAt),
+  },
+  { id: 'settings', label: pt('fields.settings'), value: formatSettings(loadedItem.settings) },
+  {
+    id: 'announcements',
+    label: pt('fields.announcements'),
+    value: String(loadedItem.announcements?.length ?? 0),
+  },
+];
+
+function NewsTechnicalDetailsSection({
+  loadedItem,
+  pt,
+}: Readonly<{ loadedItem: NewsContentItem; pt: NewsDetailReleaseTabProps['pt'] }>) {
+  const details = buildTechnicalDetails(loadedItem, pt);
+
+  return (
+    <section className="rounded-lg border border-border bg-muted/20 p-4">
+      <h3 className="font-medium text-foreground">{pt('fields.technicalDetails')}</h3>
+      <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+        {details.map((detail) => (
+          <div key={detail.id}>
+            <dt className="font-medium">{detail.label}</dt>
+            <dd className="text-muted-foreground">{detail.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 export function NewsDetailReleaseTab({
   mode,
   loadedItem,
@@ -175,47 +229,7 @@ export function NewsDetailReleaseTab({
         </section>
       )}
 
-      {mode === 'edit' && loadedItem ? (
-        <section className="rounded-lg border border-border bg-muted/20 p-4">
-          <h3 className="font-medium text-foreground">{pt('fields.technicalDetails')}</h3>
-          <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <dt className="font-medium">{pt('fields.status')}</dt>
-              <dd className="text-muted-foreground">{loadedItem.status ?? '—'}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">{pt('fields.dataProvider')}</dt>
-              <dd className="text-muted-foreground">{loadedItem.dataProvider?.name ?? loadedItem.dataProvider?.id ?? '—'}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">{pt('fields.visible')}</dt>
-              <dd className="text-muted-foreground">{formatBoolean(loadedItem.visible, pt)}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">{pt('fields.likeCount')}</dt>
-              <dd className="text-muted-foreground">
-                {typeof loadedItem.likeCount === 'number' ? String(loadedItem.likeCount) : '—'}
-              </dd>
-            </div>
-            <div>
-              <dt className="font-medium">{pt('fields.likedByMe')}</dt>
-              <dd className="text-muted-foreground">{formatBoolean(loadedItem.likedByMe, pt)}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">{pt('fields.pushNotificationsSentAt')}</dt>
-              <dd className="text-muted-foreground">{formatDateTime(loadedItem.pushNotificationsSentAt)}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">{pt('fields.settings')}</dt>
-              <dd className="text-muted-foreground">{formatSettings(loadedItem.settings)}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">{pt('fields.announcements')}</dt>
-              <dd className="text-muted-foreground">{String(loadedItem.announcements?.length ?? 0)}</dd>
-            </div>
-          </dl>
-        </section>
-      ) : null}
+      {mode === 'edit' && loadedItem ? <NewsTechnicalDetailsSection loadedItem={loadedItem} pt={pt} /> : null}
 
       <div className="flex flex-wrap gap-3">
         <Button type="button" onClick={onSave}>

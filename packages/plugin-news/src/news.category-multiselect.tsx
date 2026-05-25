@@ -96,7 +96,7 @@ export function NewsCategoryMultiselect({
               <option key={name} value={name} />
             ))}
           </datalist>
-          <p className="text-sm text-muted-foreground">{loading ? loadingText : helpText}</p>
+          <p className="text-sm text-foreground">{loading ? loadingText : helpText}</p>
           {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
         </div>
         <Button type="button" disabled={disabled || loading || draftValue.trim().length === 0} onClick={addCategory}>

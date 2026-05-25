@@ -153,19 +153,6 @@ const deletionContentStrategyOptions: readonly IamDeletionContentStrategy[] = [
 
 const getTabId = (tab: IamCockpitTabKey) => `iam-tab-${tab}`;
 const getTabPanelId = (tab: IamCockpitTabKey) => `iam-panel-${tab}`;
-const getTabHelpKey = (tab: IamCockpitTabKey) => {
-  switch (tab) {
-    case 'rights':
-      return 'rights';
-    case 'governance':
-      return 'governance';
-    case 'dsr':
-      return 'dsr';
-    case 'deletion-rules':
-      return 'deletionRules';
-  }
-};
-
 const isAbortError = (error: unknown) =>
   (error instanceof DOMException || error instanceof Error) && error.name === 'AbortError';
 
@@ -663,7 +650,50 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     () => buildSelectOptions([...governanceItems.map((item) => item.status), governanceQuery.status]),
     [governanceItems, governanceQuery.status]
   );
-  const activeTabHelpKey = getTabHelpKey(activeTab);
+  const activeTabHelp = React.useMemo(() => {
+    switch (activeTab) {
+      case 'rights':
+        return {
+          title: t('admin.iam.tabHelp.rights.title'),
+          description: t('admin.iam.tabHelp.rights.description'),
+          options: [
+            t('admin.iam.tabHelp.rights.options.first'),
+            t('admin.iam.tabHelp.rights.options.second'),
+            t('admin.iam.tabHelp.rights.options.third'),
+          ],
+        };
+      case 'governance':
+        return {
+          title: t('admin.iam.tabHelp.governance.title'),
+          description: t('admin.iam.tabHelp.governance.description'),
+          options: [
+            t('admin.iam.tabHelp.governance.options.first'),
+            t('admin.iam.tabHelp.governance.options.second'),
+            t('admin.iam.tabHelp.governance.options.third'),
+          ],
+        };
+      case 'dsr':
+        return {
+          title: t('admin.iam.tabHelp.dsr.title'),
+          description: t('admin.iam.tabHelp.dsr.description'),
+          options: [
+            t('admin.iam.tabHelp.dsr.options.first'),
+            t('admin.iam.tabHelp.dsr.options.second'),
+            t('admin.iam.tabHelp.dsr.options.third'),
+          ],
+        };
+      case 'deletion-rules':
+        return {
+          title: t('admin.iam.tabHelp.deletionRules.title'),
+          description: t('admin.iam.tabHelp.deletionRules.description'),
+          options: [
+            t('admin.iam.tabHelp.deletionRules.options.first'),
+            t('admin.iam.tabHelp.deletionRules.options.second'),
+            t('admin.iam.tabHelp.deletionRules.options.third'),
+          ],
+        };
+    }
+  }, [activeTab]);
 
   const handleOrganizationFilterToggle = (organizationValue: string) => {
     setSelectedOrganizationIds((current) =>
@@ -919,16 +949,16 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
 
       <Card className="border-border/80 bg-white p-4 shadow-sm">
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-foreground">{t(`admin.iam.tabHelp.${activeTabHelpKey}.title`)}</p>
-          <p className="text-sm text-muted-foreground">{t(`admin.iam.tabHelp.${activeTabHelpKey}.description`)}</p>
+          <p className="text-sm font-semibold text-foreground">{activeTabHelp.title}</p>
+          <p className="text-sm text-muted-foreground">{activeTabHelp.description}</p>
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('admin.iam.tabHelp.optionsLabel')}
             </p>
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-              <li>{t(`admin.iam.tabHelp.${activeTabHelpKey}.options.first`)}</li>
-              <li>{t(`admin.iam.tabHelp.${activeTabHelpKey}.options.second`)}</li>
-              <li>{t(`admin.iam.tabHelp.${activeTabHelpKey}.options.third`)}</li>
+              {activeTabHelp.options.map((option) => (
+                <li key={option}>{option}</li>
+              ))}
             </ul>
           </div>
         </div>

@@ -55,6 +55,8 @@ describe('legal consent export', () => {
           accepted_at: '2026-05-09T12:00:00.000Z',
           revoked_at: null,
           action_type: null,
+          target_role_ids: ['role-1'],
+          target_group_ids: ['group-1'],
         },
         {
           id: 'acceptance-2',
@@ -65,6 +67,8 @@ describe('legal consent export', () => {
           accepted_at: '2026-05-09T13:00:00.000Z',
           revoked_at: '2026-05-09T14:00:00.000Z',
           action_type: 'revoked',
+          target_role_ids: [],
+          target_group_ids: [],
         },
       ],
     });

@@ -34,6 +34,7 @@ export {
   getGovernanceCaseHandler,
   governanceComplianceExportHandler,
   permissionChangeSelfServiceRequestHandler,
+  legalConsentExportHandler,
   governanceWorkflowHandler,
   listGovernanceCasesHandler,
 } from './iam-governance/core.js';

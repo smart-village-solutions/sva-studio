@@ -1,7 +1,9 @@
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
 import {
   createSelfServicePermissionChangeRequest,
+  hasLegalConsentExportPermission,
   listGovernanceCases,
+  loadConsentExportRecords,
   MAX_SELF_SERVICE_PERMISSION_CHANGE_REQUEST_NOTE_LENGTH,
 } from '@sva/iam-governance';
 import {
@@ -248,6 +250,47 @@ export const governanceComplianceExportHandler = async (request: Request): Promi
       } catch (error) {
         logger.error('Governance compliance export failed', {
           operation: 'compliance_export',
+          error: error instanceof Error ? error.message : String(error),
+          format,
+          ...buildGovernanceLogContext(instanceId),
+        });
+        return jsonResponse(503, { error: 'database_unavailable' });
+      }
+    });
+  });
+};
+
+export const legalConsentExportHandler = async (request: Request): Promise<Response> => {
+  return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    return withAuthenticatedUser(request, async ({ user }) => {
+      const url = new URL(request.url);
+      const instanceId = readString(url.searchParams.get('instanceId')) ?? user.instanceId;
+      const accountId = readString(url.searchParams.get('accountId')) ?? undefined;
+      const format = (readString(url.searchParams.get('format')) ?? 'json').toLowerCase();
+
+      if (!instanceId) {
+        return jsonResponse(400, { error: 'invalid_instance_id' });
+      }
+      if (user.instanceId && user.instanceId !== instanceId) {
+        return jsonResponse(403, { error: 'instance_scope_mismatch' });
+      }
+      if (!hasLegalConsentExportPermission(user.roles ?? [])) {
+        logger.warn('Legal consent export denied due to missing role', {
+          operation: 'legal_consent_export',
+          reason_code: 'forbidden',
+          ...buildGovernanceLogContext(user.instanceId),
+        });
+        return jsonResponse(403, { error: 'forbidden' });
+      }
+
+      try {
+        const rows = await withInstanceScopedDb(instanceId, (client) =>
+          loadConsentExportRecords(instanceId, accountId, client)
+        );
+        return jsonResponse(200, { format, rows });
+      } catch (error) {
+        logger.error('Legal consent export failed', {
+          operation: 'legal_consent_export',
           error: error instanceof Error ? error.message : String(error),
           format,
           ...buildGovernanceLogContext(instanceId),

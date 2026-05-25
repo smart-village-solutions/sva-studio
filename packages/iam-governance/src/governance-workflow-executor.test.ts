@@ -292,6 +292,17 @@ describe('governance workflow executor', () => {
       })
     ).resolves.toEqual({ operation: 'accept_legal_text', status: 'ok', workflowId: 'version-1' });
     expect(accepted.queries[2]?.sql).toContain('INSERT INTO iam.legal_text_acceptances');
+    expect(accepted.queries[2]?.params).toEqual([
+      'tenant-a',
+      'tenant-a',
+      'actor-subject',
+      'version-1',
+      'actor-account',
+      '1.0',
+      'accepted',
+      'request-1',
+      'trace-1',
+    ]);
 
     const revoked = createClient([[{ id: 'actor-account' }], [{ id: 'version-1' }], [], []]);
     await expect(
@@ -302,6 +313,8 @@ describe('governance workflow executor', () => {
       })
     ).resolves.toEqual({ operation: 'revoke_legal_acceptance', status: 'ok', workflowId: 'version-1' });
     expect(revoked.queries[2]?.sql).toContain('SET revoked_at = now()');
+    expect(revoked.queries[2]?.sql).toContain("action_type = 'revoked'");
+    expect(revoked.queries[2]?.params).toEqual(['tenant-a', 'version-1', 'actor-account', 'withdrawn']);
   });
 
   it('resolves active, expired and missing impersonation subjects', async () => {

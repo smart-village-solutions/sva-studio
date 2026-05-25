@@ -14,6 +14,8 @@ const state = vi.hoisted(() => ({
   hasRequiredGovernanceRole: vi.fn(),
   readGovernanceCaseType: vi.fn(),
   requiresPrivilegedGovernanceWorkflowRole: vi.fn(),
+  loadConsentExportRecords: vi.fn(),
+  hasLegalConsentExportPermission: vi.fn(),
   governanceRequestSafeParse: vi.fn(),
   asApiList: vi.fn(),
   createApiError: vi.fn(),
@@ -81,7 +83,9 @@ vi.mock('../iam-account-management/api-helpers.js', () => ({
 vi.mock('@sva/iam-governance', () => ({
   createSelfServicePermissionChangeRequest: state.createSelfServicePermissionChangeRequest,
   getGovernanceCase: state.getGovernanceCase,
+  hasLegalConsentExportPermission: state.hasLegalConsentExportPermission,
   listGovernanceCases: state.listGovernanceCases,
+  loadConsentExportRecords: state.loadConsentExportRecords,
   MAX_SELF_SERVICE_PERMISSION_CHANGE_REQUEST_NOTE_LENGTH: 2000,
 }));
 
@@ -105,6 +109,8 @@ describe('iam governance runtime handlers', () => {
     state.withResolvedInstanceDb.mockReset();
     state.executeWorkflow.mockReset();
     state.buildGovernanceComplianceExport.mockReset();
+    state.loadConsentExportRecords.mockReset();
+    state.hasLegalConsentExportPermission.mockReset();
     state.createSelfServicePermissionChangeRequest.mockReset();
     state.hasRequiredGovernanceRole.mockReset();
     state.readGovernanceCaseType.mockReset();
@@ -151,6 +157,8 @@ describe('iam governance runtime handlers', () => {
       body: { ok: true },
       contentType: 'application/json',
     });
+    state.loadConsentExportRecords.mockResolvedValue([]);
+    state.hasLegalConsentExportPermission.mockReturnValue(true);
     state.validateCsrf.mockReturnValue(null);
   });
 
@@ -424,6 +432,83 @@ describe('iam governance runtime handlers', () => {
     });
     const dbFailure = await governanceComplianceExportHandler(
       new Request('https://example.test/api/v1/iam/governance/compliance?instanceId=instance-1')
+    );
+    expect(dbFailure.status).toBe(503);
+  });
+
+  it('exports legal consents as json by default and enforces scope and permission', async () => {
+    const { legalConsentExportHandler } = await import('./core.js');
+
+    state.hasLegalConsentExportPermission.mockReturnValueOnce(false);
+    const forbidden = await legalConsentExportHandler(
+      new Request('https://example.test/api/v1/iam/governance/legal-consents?instanceId=instance-1')
+    );
+    expect(forbidden.status).toBe(403);
+
+    state.hasLegalConsentExportPermission.mockReturnValue(true);
+    state.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...defaultUser, instanceId: undefined } })
+    );
+    const invalidInstance = await legalConsentExportHandler(
+      new Request('https://example.test/api/v1/iam/governance/legal-consents')
+    );
+    expect(invalidInstance.status).toBe(400);
+
+    const mismatched = await legalConsentExportHandler(
+      new Request('https://example.test/api/v1/iam/governance/legal-consents?instanceId=other-instance')
+    );
+    expect(mismatched.status).toBe(403);
+
+    state.loadConsentExportRecords.mockResolvedValueOnce([
+      {
+        id: 'acceptance-1',
+        workspaceId: 'workspace-1',
+        subjectId: 'subject-1',
+        legalTextId: 'terms',
+        legalTextVersion: '1.0',
+        actionType: 'accepted',
+        acceptedAt: '2026-05-01T10:00:00.000Z',
+        targets: { roleIds: ['role-1'], groupIds: [] },
+      },
+    ]);
+    const json = await legalConsentExportHandler(
+      new Request(
+        'https://example.test/api/v1/iam/governance/legal-consents?instanceId=instance-1&accountId=account-1'
+      )
+    );
+    expect(json.status).toBe(200);
+    await expect(json.json()).resolves.toEqual({
+      format: 'json',
+      rows: [
+        {
+          id: 'acceptance-1',
+          workspaceId: 'workspace-1',
+          subjectId: 'subject-1',
+          legalTextId: 'terms',
+          legalTextVersion: '1.0',
+          actionType: 'accepted',
+          acceptedAt: '2026-05-01T10:00:00.000Z',
+          targets: { roleIds: ['role-1'], groupIds: [] },
+        },
+      ],
+    });
+    expect(state.loadConsentExportRecords).toHaveBeenCalledWith('instance-1', 'account-1', expect.anything());
+
+    const defaultFormat = await legalConsentExportHandler(
+      new Request('https://example.test/api/v1/iam/governance/legal-consents?instanceId=instance-1')
+    );
+    expect(defaultFormat.status).toBe(200);
+    expect(state.loadConsentExportRecords).toHaveBeenLastCalledWith(
+      'instance-1',
+      undefined,
+      expect.anything()
+    );
+
+    state.withResolvedInstanceDb.mockImplementationOnce(async () => {
+      throw new Error('db down');
+    });
+    const dbFailure = await legalConsentExportHandler(
+      new Request('https://example.test/api/v1/iam/governance/legal-consents?instanceId=instance-1')
     );
     expect(dbFailure.status).toBe(503);
   });

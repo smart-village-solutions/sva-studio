@@ -19,6 +19,8 @@ const legalTextRow = {
   acceptance_count: 4,
   active_acceptance_count: 3,
   last_accepted_at: '2026-03-16T10:00:00.000Z',
+  target_role_ids: [],
+  target_group_ids: [],
 } as const;
 
 const createDeps = () => {
@@ -59,6 +61,10 @@ describe('legal-text-repository', () => {
         acceptanceCount: 4,
         activeAcceptanceCount: 3,
         lastAcceptedAt: '2026-03-16T10:00:00.000Z',
+        targets: {
+          roleIds: [],
+          groupIds: [],
+        },
       },
     ]);
 
@@ -98,6 +104,8 @@ describe('legal-text-repository', () => {
           locale: 'de-DE',
           content_html: '<p>Bitte akzeptieren</p>',
           published_at: '2026-03-22T19:00:00.000Z',
+          target_role_ids: [],
+          target_group_ids: [],
         },
       ],
     });
@@ -111,12 +119,81 @@ describe('legal-text-repository', () => {
         locale: 'de-DE',
         contentHtml: '<p>Bitte akzeptieren</p>',
         publishedAt: '2026-03-22T19:00:00.000Z',
+        targets: {
+          roleIds: [],
+          groupIds: [],
+        },
       },
     ]);
 
     expect(state.client.query).toHaveBeenCalledTimes(1);
     expect(state.client.query.mock.calls[0]?.[0]).toContain("version.status = 'valid'");
     expect(state.client.query.mock.calls[0]?.[0]).not.toContain('version.is_active = true');
+  });
+
+  it('returns tenant-wide and matching targeted pending legal texts with mapped targets', async () => {
+    state.client.query.mockResolvedValueOnce({
+      rowCount: 2,
+      rows: [
+        {
+          id: 'pending-tenant-wide',
+          legal_text_id: 'legal-text-tenant-wide',
+          name: 'Allgemeine Nutzungsbedingungen',
+          legal_text_version: '1',
+          locale: 'de-DE',
+          content_html: '<p>Tenant-wide</p>',
+          published_at: '2026-03-21T19:00:00.000Z',
+          target_role_ids: [],
+          target_group_ids: [],
+        },
+        {
+          id: 'pending-targeted',
+          legal_text_id: 'legal-text-targeted',
+          name: 'Datenschutz Redaktion',
+          legal_text_version: '2',
+          locale: 'de-DE',
+          content_html: '<p>Targeted</p>',
+          published_at: '2026-03-22T19:00:00.000Z',
+          target_role_ids: ['role-editor'],
+          target_group_ids: ['group-privacy'],
+        },
+      ],
+    });
+
+    await expect(state.repository.loadPendingLegalTexts('de-musterhausen', 'kc-user-2')).resolves.toEqual([
+      {
+        id: 'pending-tenant-wide',
+        legalTextId: 'legal-text-tenant-wide',
+        name: 'Allgemeine Nutzungsbedingungen',
+        legalTextVersion: '1',
+        locale: 'de-DE',
+        contentHtml: '<p>Tenant-wide</p>',
+        publishedAt: '2026-03-21T19:00:00.000Z',
+        targets: {
+          roleIds: [],
+          groupIds: [],
+        },
+      },
+      {
+        id: 'pending-targeted',
+        legalTextId: 'legal-text-targeted',
+        name: 'Datenschutz Redaktion',
+        legalTextVersion: '2',
+        locale: 'de-DE',
+        contentHtml: '<p>Targeted</p>',
+        publishedAt: '2026-03-22T19:00:00.000Z',
+        targets: {
+          roleIds: ['role-editor'],
+          groupIds: ['group-privacy'],
+        },
+      },
+    ]);
+
+    expect(state.client.query).toHaveBeenCalledTimes(1);
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('legal_text_target_roles');
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('legal_text_target_groups');
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('account_role.role_id::text = ANY');
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('account_group.group_id::text = ANY');
   });
 
   it('creates a legal text version and emits an activity log', async () => {

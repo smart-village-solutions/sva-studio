@@ -120,7 +120,7 @@ const loadLegalTextByIdWithClient = async (
     `${LEGAL_TEXT_SELECT}
 WHERE version.instance_id = $1
   AND version.id = $2::uuid
-GROUP BY version.id
+GROUP BY version.id, role_targets.role_ids, group_targets.group_ids
 LIMIT 1;
 `,
     [instanceId, legalTextVersionId]
@@ -136,7 +136,7 @@ export const createLegalTextRepository = (deps: LegalTextRepositoryDeps) => ({
       const result = await client.query<LegalTextRow>(
         `${LEGAL_TEXT_SELECT}
 WHERE version.instance_id = $1
-GROUP BY version.id
+GROUP BY version.id, role_targets.role_ids, group_targets.group_ids
 ORDER BY version.name ASC, version.locale ASC, version.published_at DESC NULLS LAST, version.created_at DESC;
 `,
         [instanceId]
@@ -167,10 +167,46 @@ SELECT
   version.legal_text_version,
   version.locale,
   version.content_html,
-  version.published_at::text
+  version.published_at::text,
+  COALESCE(role_targets.role_ids, ARRAY[]::text[]) AS target_role_ids,
+  COALESCE(group_targets.group_ids, ARRAY[]::text[]) AS target_group_ids
 FROM iam.legal_text_versions version
+LEFT JOIN LATERAL (
+  SELECT array_agg(target.role_id::text ORDER BY target.role_id::text) AS role_ids
+  FROM iam.legal_text_target_roles target
+  WHERE target.instance_id = version.instance_id
+    AND target.legal_text_version_id = version.id
+) role_targets ON true
+LEFT JOIN LATERAL (
+  SELECT array_agg(target.group_id::text ORDER BY target.group_id::text) AS group_ids
+  FROM iam.legal_text_target_groups target
+  WHERE target.instance_id = version.instance_id
+    AND target.legal_text_version_id = version.id
+) group_targets ON true
 WHERE version.instance_id = $1
   AND version.status = 'valid'
+  AND (
+    (
+      COALESCE(array_length(role_targets.role_ids, 1), 0) = 0
+      AND COALESCE(array_length(group_targets.group_ids, 1), 0) = 0
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM iam.accounts account
+      LEFT JOIN iam.account_roles account_role
+        ON account_role.instance_id = version.instance_id
+       AND account_role.account_id = account.id
+      LEFT JOIN iam.account_groups account_group
+        ON account_group.instance_id = version.instance_id
+       AND account_group.account_id = account.id
+      WHERE account.instance_id = version.instance_id
+        AND account.keycloak_subject = $2
+        AND (
+          account_role.role_id::text = ANY(COALESCE(role_targets.role_ids, ARRAY[]::text[]))
+          OR account_group.group_id::text = ANY(COALESCE(group_targets.group_ids, ARRAY[]::text[]))
+        )
+    )
+  )
   AND NOT EXISTS (
     SELECT 1
     FROM iam.legal_text_acceptances acceptance

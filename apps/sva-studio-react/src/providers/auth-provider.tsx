@@ -3,6 +3,7 @@ import type {
   IamRuntimeDiagnosticClassification,
   IamRuntimeDiagnosticStatus,
   IamRuntimeSafeDetails,
+  IamUserGroupAssignment,
 } from '@sva/core';
 import { publishSessionAccessSnapshot } from '@sva/plugin-sdk';
 import {
@@ -39,6 +40,7 @@ type SessionUser = {
   id: string;
   instanceId?: string;
   assignedModules?: string[];
+  groups?: readonly IamUserGroupAssignment[];
   permissionActions?: readonly string[];
   roles: string[];
   permissionStatus?: 'ok' | 'degraded';

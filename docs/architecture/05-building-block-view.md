@@ -164,8 +164,24 @@ Abhängigkeiten des aktuellen Systems.
 - `iam.instances` modelliert ausschließlich Tenant-Instanzen; der Root-Host ist ein separater Plattform-Scope.
 - `iam.instances` fuehrt fuer jede tenantfaehige Instanz getrennte Auth-Vertraege fuer Login (`authClientId`) und Tenant-Administration (`tenantAdminClient`) als kanonische Registry-Basisdaten.
 - Redis hält lediglich Permission-Snapshots zur Beschleunigung des Authorize-Pfads.
+- `packages/auth-runtime` haelt zusaetzlich nur sehr kurzlebige In-Process-Caches fuer Session-Resolution und Account-Lifecycle-Pruefung, um wiederholte Authorize-Requests derselben Session ohne neuen Redis-/DB-Roundtrip abzufangen.
 - Der SVA-Mainserver bleibt fachliche Source of Truth für seine GraphQL-Daten; Studio hält nur Endpunktkonfiguration und kurzlebige Laufzeit-Caches für Credentials und Access-Tokens.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.
+
+### Fortschreibung 2026-05: Monitoring-Einstieg fuer IAM-Authorize-Performance
+
+1. `@sva/core`
+   - definiert den gemeinsamen Ergebnis- und Report-Vertrag fuer GUI, API und persistierten Nachweis des Authorize-Performance-Laufs.
+2. `packages/auth-runtime`
+   - exponiert den geschuetzten Endpoint `GET|POST /api/v1/iam/authorize-performance` fuer `system_admin`.
+   - misst den echten `POST /iam/authorize`-Pfad serverseitig mit der aktuellen Administrations-Session statt ueber Browser-Timing.
+   - invalidiert im Szenario `recompute` nur den Snapshot des aktuellen Session-Actors und schreibt JSON-/Markdown-Nachweise unter `docs/reports/`.
+   - nutzt im Hot-Path zusaetzlich kurzlebige In-Process-Caches fuer Session-Resolution und Account-Lifecycle (`TTL 500 ms`), nachdem der lokale Monitoring-Nachweis gezeigt hat, dass der vorherige Engpass nicht in der Policy-Auswertung, sondern in der vorgelagerten Auth-Middleware lag.
+3. `packages/routing`
+   - registriert den Lauf typsicher im zentralen Auth-/IAM-Router und haelt GET-/POST-Dispatch konsistent.
+4. `apps/sva-studio-react`
+   - rendert unter `/monitoring` den betrieblichen Einstieg fuer Plugin-Jobs und den GUI-gestuetzten Authorize-Benchmark.
+   - trennt bewusst Monitoring-Operations von der IAM-Cockpit-Oberflaeche und zeigt nur sichere Ergebnisfelder, Kennzahlen und Report-Referenzen an.
 
 ### Fortschreibung 2026-04: Keycloak-Admin-UI-Bausteine
 

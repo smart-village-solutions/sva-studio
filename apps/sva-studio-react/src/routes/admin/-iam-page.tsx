@@ -153,9 +153,47 @@ const deletionContentStrategyOptions: readonly IamDeletionContentStrategy[] = [
 
 const getTabId = (tab: IamCockpitTabKey) => `iam-tab-${tab}`;
 const getTabPanelId = (tab: IamCockpitTabKey) => `iam-panel-${tab}`;
+const getTabHelpKey = (tab: IamCockpitTabKey) => {
+  switch (tab) {
+    case 'rights':
+      return 'rights';
+    case 'governance':
+      return 'governance';
+    case 'dsr':
+      return 'dsr';
+    case 'deletion-rules':
+      return 'deletionRules';
+  }
+};
 
 const isAbortError = (error: unknown) =>
   (error instanceof DOMException || error instanceof Error) && error.name === 'AbortError';
+
+const buildSelectOptions = (values: readonly (string | null | undefined)[]) =>
+  [...new Set(values.map((value) => value?.trim() ?? '').filter((value) => value.length > 0))].sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+const formatSourceRoles = (permission: EffectivePermission) =>
+  (permission.sourceRoleIds ?? []).length > 0 ? (permission.sourceRoleIds ?? []).join(', ') : '—';
+
+const formatSourceGroups = (permission: EffectivePermission) => {
+  if (permission.groupName && permission.groupName.trim().length > 0) {
+    return permission.groupName;
+  }
+  return (permission.sourceGroupIds ?? []).length > 0 ? (permission.sourceGroupIds ?? []).join(', ') : '—';
+};
+
+const formatGovernanceActors = (item: IamGovernanceCaseListItem) =>
+  [item.actorDisplayName ?? item.actorAccountId, item.targetDisplayName ?? item.targetAccountId].filter(Boolean).join(' -> ') || '—';
+
+const formatDsrPeople = (item: IamDsrCaseListItem) =>
+  [
+    item.targetDisplayName ?? item.targetAccountId,
+    item.requesterDisplayName ?? item.requesterAccountId ?? item.actorDisplayName ?? item.actorAccountId,
+  ]
+    .filter(Boolean)
+    .join(' / ') || '—';
 
 const PermissionTable = ({
   permissions,
@@ -196,8 +234,8 @@ const PermissionTable = ({
               <td className="py-2 pr-4">{permission.organizationId ?? t('admin.iam.rights.noOrganization')}</td>
               <td className="py-2 pr-4">{permission.effect ?? '—'}</td>
               <td className="py-2 pr-4">{formatObjectEntries(permission.scope)}</td>
-              <td className="py-2">{(permission.sourceRoleIds ?? []).length > 0 ? (permission.sourceRoleIds ?? []).join(', ') : '—'}</td>
-              <td className="py-2">{(permission.sourceGroupIds ?? []).length > 0 ? (permission.sourceGroupIds ?? []).join(', ') : '—'}</td>
+              <td className="py-2">{formatSourceRoles(permission)}</td>
+              <td className="py-2">{formatSourceGroups(permission)}</td>
               <td className="py-2">{formatPermissionSourceKinds(permission)}</td>
             </tr>
           ))}
@@ -617,6 +655,15 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     }
     return [...organizationIds];
   }, [permissions]);
+  const organizationSelectOptions = React.useMemo(
+    () => buildSelectOptions([...organizationOptions, organizationId, authorizeOrganizationId]),
+    [authorizeOrganizationId, organizationId, organizationOptions]
+  );
+  const governanceStatusOptions = React.useMemo(
+    () => buildSelectOptions([...governanceItems.map((item) => item.status), governanceQuery.status]),
+    [governanceItems, governanceQuery.status]
+  );
+  const activeTabHelpKey = getTabHelpKey(activeTab);
 
   const handleOrganizationFilterToggle = (organizationValue: string) => {
     setSelectedOrganizationIds((current) =>
@@ -742,7 +789,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     {
       id: 'actors',
       header: t('admin.iam.governance.columns.actors'),
-      cell: (item) => [item.actorDisplayName, item.targetDisplayName].filter(Boolean).join(' -> ') || '—',
+      cell: (item) => formatGovernanceActors(item),
     },
     {
       id: 'ticket',
@@ -786,7 +833,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     {
       id: 'people',
       header: t('admin.iam.dsr.columns.people'),
-      cell: (item) => [item.targetDisplayName, item.requesterDisplayName ?? item.actorDisplayName].filter(Boolean).join(' / ') || '—',
+      cell: (item) => formatDsrPeople(item),
     },
     {
       id: 'blocker',
@@ -870,6 +917,23 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
         })}
       </Card>
 
+      <Card className="border-border/80 bg-white p-4 shadow-sm">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-foreground">{t(`admin.iam.tabHelp.${activeTabHelpKey}.title`)}</p>
+          <p className="text-sm text-muted-foreground">{t(`admin.iam.tabHelp.${activeTabHelpKey}.description`)}</p>
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('admin.iam.tabHelp.optionsLabel')}
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+              <li>{t(`admin.iam.tabHelp.${activeTabHelpKey}.options.first`)}</li>
+              <li>{t(`admin.iam.tabHelp.${activeTabHelpKey}.options.second`)}</li>
+              <li>{t(`admin.iam.tabHelp.${activeTabHelpKey}.options.third`)}</li>
+            </ul>
+          </div>
+        </div>
+      </Card>
+
       {activeTab === 'rights' ? (
         <div
           id={getTabPanelId('rights')}
@@ -880,11 +944,19 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           <Card className="grid gap-3 p-4 lg:grid-cols-4">
             <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
               <Label htmlFor="iam-organization-filter">{t('admin.iam.rights.filters.organization')}</Label>
-              <Input
+              <Select
                 id="iam-organization-filter"
                 value={organizationId}
                 onChange={(event) => setOrganizationId(event.target.value)}
-              />
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="">{t('admin.iam.shared.all')}</option>
+                {organizationSelectOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
               <Label htmlFor="iam-acting-as-filter">{t('admin.iam.rights.filters.actingAs')}</Label>
@@ -972,11 +1044,19 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
             </div>
             <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
               <Label htmlFor="iam-authorize-organization-id">{t('admin.iam.rights.authorize.organizationId')}</Label>
-              <Input
+              <Select
                 id="iam-authorize-organization-id"
                 value={authorizeOrganizationId}
                 onChange={(event) => setAuthorizeOrganizationId(event.target.value)}
-              />
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="">{t('admin.iam.shared.all')}</option>
+                {organizationSelectOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div className="lg:col-span-4 flex items-center gap-3">
               <Button type="submit" disabled={isAuthorizing}>
@@ -1084,11 +1164,25 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
               </div>
               <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
                 <Label htmlFor="iam-governance-status">{t('admin.iam.governance.filters.status')}</Label>
-                <Input
+                <Select
                   id="iam-governance-status"
                   value={governanceQuery.status ?? ''}
-                  onChange={(event) => setGovernanceQuery((current) => ({ ...current, page: 1, status: event.target.value || undefined }))}
-                />
+                  onChange={(event) =>
+                    setGovernanceQuery((current) => ({
+                      ...current,
+                      page: 1,
+                      status: event.target.value || undefined,
+                    }))
+                  }
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">{t('admin.iam.shared.all')}</option>
+                  {governanceStatusOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </Select>
               </div>
             </div>
           </Card>

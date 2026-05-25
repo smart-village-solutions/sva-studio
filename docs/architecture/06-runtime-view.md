@@ -387,6 +387,23 @@ Fehlerpfad:
 - Eventverlust bei Invalidation: TTL begrenzt die Stale-Dauer; ein stale Snapshot darf bei technischem Fehler nicht fachlich weiterverwendet werden.
 - DB-Ausfall ohne nutzbaren Snapshot: `503 database_unavailable`.
 
+### Szenario 5a: GUI-gestuetzter Authorize-Performance-Lauf im Monitoring
+
+1. `system_admin` oeffnet `/monitoring`; die UI liest optional das letzte bekannte Ergebnis ueber `GET /api/v1/iam/authorize-performance`.
+2. Startet der Operator den Lauf, sendet die UI `POST /api/v1/iam/authorize-performance` mit `action`, `resourceType` sowie optional `resourceId` und `organizationId`.
+3. `@sva/auth-runtime` validiert Session, CSRF-Header und Admin-Recht, erzeugt daraus einen sessiongebundenen Benchmark-Run und misst die Dauer im Serverprozess.
+4. Fuer `cache-hit`, `cache-miss` und `recompute` baut der Lauf echte `POST /iam/authorize`-Payloads gegen denselben Runtime-Pfad; Browser-Rendering und Netzwerklatenz des Clients gehen nicht in die Messung ein.
+5. Der gemessene Runtime-Pfad nutzt fuer wiederholte Requests derselben Session kurzlebige In-Process-Caches fuer Session-Resolution und Account-Lifecycle-Pruefung (`TTL 500 ms`), damit der Benchmark denselben produktiven Hot-Path wie die reale UI-Interaktion abbildet.
+6. Im Szenario `recompute` invalidiert der Lauf nur den Permission-Snapshot des aktuellen Actors im aktuellen Instanzkontext und erzwingt danach den Neuaufbau aus Postgres.
+7. Das Ergebnis wird als gemeinsamer Vertrag fuer UI und Nachweis aufbereitet, im Prozess als letztes Ergebnis gehalten und zusaetzlich als JSON- und Markdown-Bericht unter `docs/reports/` persistiert.
+8. Die UI zeigt Samples, `p50`, `p95`, `p99`, Cache-Status, Bewertung und Report-Referenzen an; fuer historische Joblaeufe bleibt der bestehende Link nach `/monitoring/jobs` erhalten.
+
+Fehlerpfad:
+
+- Fehlende Admin-Berechtigung: `403 forbidden`.
+- Ungueltige oder unvollstaendige Benchmark-Parameter: `400 invalid_request`.
+- Recompute oder Authorize-Pfad koennen keinen sicheren Lauf liefern: `503 database_unavailable`.
+
 ### Szenario 6: IAM Governance-Workflow mit Approval, Delegation und Impersonation
 
 1. Client ruft `POST /iam/governance/workflows` mit `operation`, `instanceId` und `payload` auf.
@@ -522,7 +539,7 @@ Fehlerpfad:
 Fehlerpfad:
 
 - Parent aus fremder Instanz oder Zyklusversuch führt zu einer deterministischen Konflikt- oder Validierungsantwort.
-- Deaktivierung mit aktiven Children oder Memberships wird fail-closed abgewiesen.
+- Löschung mit aktiven Children wird fail-closed abgewiesen; Memberships blockieren den Löschpfad nicht.
 
 ### Szenario 13: Benutzer wechselt aktiven Organisationskontext
 
@@ -611,11 +628,12 @@ Fehlerpfad:
 ### Szenario 16: Authorize wertet Geo-Hierarchie mit restriktiver Priorität aus
 
 1. Client oder interne Serverlogik ruft `POST /iam/authorize` mit `instanceId`, `action`, `resource` und optional `context.attributes.geoHierarchy` bzw. `resource.attributes.geoUnitId` auf.
-2. Der Server lädt effektive Permissions aus direkten Rollen und gruppenvermittelten Rollen und normalisiert `sourceKinds`.
-3. Die Engine prüft zuerst Instanzscope und Hard-Deny-Regeln, danach passende RBAC-Kandidaten für `action`, `resourceType`, `resourceId` und Organisationshierarchie.
-4. Für Geo-Scopes wertet sie `allowedGeoUnitIds` gegen `geoHierarchy` bzw. `geoUnitId` aus; Parent-Allows dürfen auf Children vererben.
-5. `restrictedGeoUnitIds` werden mit derselben Hierarchie aufgelöst; ein spezifischerer Child-Deny schlägt den Parent-Allow deterministisch.
-6. Die Antwort enthält neben `allowed` und `reason` auch `diagnostics.stage` sowie Provenance-Felder wie `inheritedFromGeoUnitId` oder `restrictedByGeoUnitId`.
+2. Die Auth-Middleware validiert Session und Tenant-Kontext, darf dafuer aber bei wiederholten Requests derselben Session kurzlebige In-Process-Caches fuer Session-Resolution und Account-Lifecycle-Pruefung nutzen (`TTL 500 ms`).
+3. Der Server lädt effektive Permissions aus direkten Rollen und gruppenvermittelten Rollen und normalisiert `sourceKinds`.
+4. Die Engine prüft zuerst Instanzscope und Hard-Deny-Regeln, danach passende RBAC-Kandidaten für `action`, `resourceType`, `resourceId` und Organisationshierarchie.
+5. Für Geo-Scopes wertet sie `allowedGeoUnitIds` gegen `geoHierarchy` bzw. `geoUnitId` aus; Parent-Allows dürfen auf Children vererben.
+6. `restrictedGeoUnitIds` werden mit derselben Hierarchie aufgelöst; ein spezifischerer Child-Deny schlägt den Parent-Allow deterministisch.
+7. Die Antwort enthält neben `allowed` und `reason` auch `diagnostics.stage` sowie Provenance-Felder wie `inheritedFromGeoUnitId` oder `restrictedByGeoUnitId`.
 
 Fehlerpfad:
 

@@ -1,3 +1,5 @@
+import type { IamUserGroupAssignment } from '@sva/core';
+
 export type ScopeKind = 'platform' | 'instance';
 
 export type PlatformScopeRef = {
@@ -15,6 +17,7 @@ export type SessionUser = {
   id: string;
   instanceId?: string;
   roles: string[];
+  groups?: readonly IamUserGroupAssignment[];
   username?: string;
   email?: string;
   firstName?: string;

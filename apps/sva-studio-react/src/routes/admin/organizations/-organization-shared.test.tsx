@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createOrganizationFormValues,
   getOrganizationParentOptions,
+  suggestOrganizationKey,
   toOrganizationMutationPayload,
 } from './-organization-shared';
 
@@ -29,12 +30,12 @@ describe('organization shared helpers', () => {
     expect(
       getOrganizationParentOptions(
         [
-          { id: 'org-1', displayName: 'Alpha' },
-          { id: 'org-2', displayName: 'Beta' },
+          { id: 'org-1', displayName: 'Alpha', organizationKey: 'alpha' },
+          { id: 'org-2', displayName: 'Beta', organizationKey: 'beta' },
         ],
         'org-1'
       )
-    ).toEqual([{ id: 'org-2', displayName: 'Beta' }]);
+    ).toEqual([{ id: 'org-2', displayName: 'Beta', organizationKey: 'beta' }]);
   });
 
   it('provides the default organization form state', () => {
@@ -45,5 +46,18 @@ describe('organization shared helpers', () => {
       parentOrganizationId: '',
       contentAuthorPolicy: 'org_only',
     });
+  });
+
+  it('suggests a normalized organization key from the display name', () => {
+    expect(suggestOrganizationKey('Städtische Werke Köln', [])).toBe('stadtische-werke-koln');
+  });
+
+  it('adds a running suffix when the generated key already exists', () => {
+    expect(
+      suggestOrganizationKey('Landkreis Alpha', [
+        { id: 'org-1', displayName: 'Landkreis Alpha', organizationKey: 'landkreis-alpha' },
+        { id: 'org-2', displayName: 'Landkreis Alpha', organizationKey: 'landkreis-alpha-2' },
+      ])
+    ).toBe('landkreis-alpha-3');
   });
 });

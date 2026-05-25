@@ -1225,6 +1225,27 @@ Das System SHALL auf der Instanz-Detailseite einen expliziten Befund fuer die IA
 - **AND** weist es darauf hin, dass die Zuweisung im zentralen Bereich `Module` erfolgt
 - **AND** wertet es den leeren Modulsatz nicht als Fehler, sondern als erwarteten Ausgangszustand
 
+### Requirement: Instanz-Detailseite zeigt Modultransparenz fuer alle global bekannten Module
+
+Das System SHALL auf der Instanz-Detailseite alle global bekannten Module in einer lesenden Uebersicht anzeigen. Der Status wird pro Modul ausschliesslich aus der Root-Modulzuordnung der Instanz abgeleitet; die Seite fuehrt keine zweite Aktivierungslogik ein. Die Beschreibung eines Moduls stammt aus pluginseitig gepflegter Metadatenauflosung.
+
+#### Scenario: Instanz zeigt aktive und deaktivierte Module
+
+- **GIVEN** eine Instanzdetailseite kennt die global bekannte Modulliste und den aktuell zugewiesenen Modulsatz der Instanz
+- **WHEN** der Studio-Admin die Detailseite oeffnet
+- **THEN** zeigt die UI alle global bekannten Module in einer Tabelle oder gleichwertigen Listenansicht an
+- **AND** markiert sie Module aus `assignedModules` als aktiv
+- **AND** markiert sie global bekannte, aber nicht zugewiesene Module als deaktiviert
+- **AND** zeigt sie pro Modul eine pluginseitig gepflegte Beschreibung an
+
+#### Scenario: Fehlende Modulbeschreibung nutzt Fallback ohne die Tabelle zu verbergen
+
+- **GIVEN** ein global bekanntes Modul liefert keine aufloesbare Beschreibung
+- **WHEN** der Studio-Admin die Detailseite oeffnet
+- **THEN** bleibt das Modul in der Uebersicht sichtbar
+- **AND** rendert die UI fuer dieses Modul einen definierten Fallbacktext statt einer leeren Beschreibung
+- **AND** bleibt die Modultransparenz der restlichen Eintraege unveraendert lesbar
+
 ### Requirement: Instanz-Anlage-Flow fuehrt einen gefuehrten Admin-Bootstrap-Abschnitt
 
 Das System SHALL im Instanz-Anlage-Flow einen eigenen Abschnitt fuer den initialen Admin-Bootstrap der neuen Instanz bereitstellen. Der Abschnitt muss sich harmonisch in den Happy Path einfuegen, aber Fehler aus Modulzuordnung, Rollenerzeugung und Gruppierung klar getrennt sichtbar machen.
@@ -1262,4 +1283,3 @@ Das System SHALL ueber den Bootstrap-Abschnitt eine initiale Gruppe `Admins` sow
 - **THEN** erzeugt das System zusaetzlich pro ausgewaehltem Modul eine sprechend benannte Modul-Admin-Rolle
 - **AND** verknuepft es diese Rollen zusammen mit `Core Admin` mit der Gruppe `Admins`
 - **AND** bleiben die erzeugten Rollen spaeter im IAM-UI bearbeitbar
-

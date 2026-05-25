@@ -72,6 +72,10 @@ const mapPermissionTraceRows = (
     groupDisplayName: entry.group_display_name ?? undefined,
     groupActive: entry.group_active ?? undefined,
     assignmentOrigin: entry.assignment_origin ?? undefined,
+    inheritedFromOrganizationId: entry.inherited_from_organization_id ?? undefined,
+    inheritedFromGeoUnitId: entry.inherited_from_geo_unit_id ?? undefined,
+    restrictedByGeoUnitId: entry.restricted_by_geo_unit_id ?? undefined,
+    inactiveReason: entry.inactive_reason ?? undefined,
     validFrom: entry.valid_from ?? undefined,
     validTo: entry.valid_to ?? undefined,
   })) ?? [];

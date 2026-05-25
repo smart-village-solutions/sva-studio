@@ -451,6 +451,33 @@ describe('profile handlers', () => {
     expect(state.loadMyProfileDetail).not.toHaveBeenCalled();
   });
 
+  it('marks self-service profiles as manual_review when keycloak role projection degrades', async () => {
+    state.resolveKeycloakRoleNames.mockRejectedValueOnce(new KeycloakAdminUnavailableError('keycloak unavailable'));
+
+    const response = await getMyProfileInternal(
+      new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile'),
+      createAuthenticatedContext()
+    );
+    const payload = (await response.json()) as {
+      data: {
+        mappingStatus: string;
+        editability: string;
+        diagnostics: Array<{ code: string }>;
+        fieldEditability: {
+          roles: string;
+        };
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.mappingStatus).toBe('manual_review');
+    expect(payload.data.editability).toBe('blocked');
+    expect(payload.data.fieldEditability.roles).toBe('blocked');
+    expect(payload.data.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'keycloak_projection_degraded' })])
+    );
+  });
+
   it('returns tenant_admin_client_not_configured when the tenant identity provider is unavailable', async () => {
     state.resolveIdentityProviderForInstance.mockResolvedValue(null);
 

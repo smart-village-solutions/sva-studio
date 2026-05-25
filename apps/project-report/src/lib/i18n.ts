@@ -33,6 +33,8 @@ export const resources = {
         health: 'Warnstufe',
         effort: 'PT',
         progress: 'Fortschritt',
+        showDetails: 'Details',
+        hideDetails: 'Weniger',
       },
       statuses: {
         idea: 'Idee',

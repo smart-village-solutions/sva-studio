@@ -22,6 +22,7 @@ export const updateOrganizationSchema = z
     parentOrganizationId: z.uuid().nullable().optional(),
     organizationType: organizationTypeSchema.optional(),
     contentAuthorPolicy: contentAuthorPolicySchema.optional(),
+    isActive: z.boolean().optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
   .refine(
@@ -31,6 +32,7 @@ export const updateOrganizationSchema = z
       value.parentOrganizationId !== undefined ||
       value.organizationType !== undefined ||
       value.contentAuthorPolicy !== undefined ||
+      value.isActive !== undefined ||
       value.metadata !== undefined,
     { message: 'at_least_one_field_required' }
   );

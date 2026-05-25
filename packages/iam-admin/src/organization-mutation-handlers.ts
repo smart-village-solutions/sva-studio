@@ -167,7 +167,10 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
   readonly resolveActorInfo: (
     request: Request,
     ctx: OrganizationMutationAuthenticatedRequestContext,
-    options: { readonly requireActorMembership: true }
+    options: {
+      readonly requireActorMembership: true;
+      readonly provisionMissingActorMembership: true;
+    }
   ) => Promise<{ readonly actor: OrganizationMutationActor } | { readonly error: Response }>;
   readonly resolveHierarchyFields: (
     client: QueryClient,
@@ -201,7 +204,10 @@ const prepareAdminMutation = async <TFeatureFlags>(
     return { error: roleCheck };
   }
 
-  const actorResolution = await deps.resolveActorInfo(request, ctx, { requireActorMembership: true });
+  const actorResolution = await deps.resolveActorInfo(request, ctx, {
+    requireActorMembership: true,
+    provisionMissingActorMembership: true,
+  });
   if ('error' in actorResolution) {
     return actorResolution;
   }
@@ -508,9 +514,10 @@ SET
   parent_organization_id = $5::uuid,
   organization_type = COALESCE($6, organization_type),
   content_author_policy = COALESCE($7, content_author_policy),
-  metadata = COALESCE($8::jsonb, metadata),
-  hierarchy_path = $9::uuid[],
-  depth = $10::int,
+  is_active = COALESCE($8, is_active),
+  metadata = COALESCE($9::jsonb, metadata),
+  hierarchy_path = $10::uuid[],
+  depth = $11::int,
   updated_at = NOW()
 WHERE instance_id = $1
   AND id = $2::uuid;
@@ -523,6 +530,7 @@ WHERE instance_id = $1
             nextParentOrganizationId ?? null,
             parsed.data.organizationType ?? null,
             parsed.data.contentAuthorPolicy ?? null,
+            parsed.data.isActive ?? null,
             parsed.data.metadata ? JSON.stringify(parsed.data.metadata) : null,
             hierarchy.hierarchyPath,
             hierarchy.depth,
@@ -588,15 +596,23 @@ WHERE instance_id = $1
         if (!organization) {
           return { status: 'not_found' as const };
         }
-        if (organization.child_count > 0 || organization.membership_count > 0) {
+        if (organization.child_count > 0) {
           return { status: 'conflict' as const };
         }
 
         await client.query(
           `
-UPDATE iam.organizations
-SET is_active = false,
+UPDATE iam.contents
+SET organization_id = NULL,
     updated_at = NOW()
+WHERE instance_id = $1
+  AND organization_id = $2::uuid;
+`,
+          [actor.instanceId, organizationId]
+        );
+        await client.query(
+          `
+DELETE FROM iam.organizations
 WHERE instance_id = $1
   AND id = $2::uuid;
 `,
@@ -621,7 +637,7 @@ WHERE instance_id = $1
         return deps.createApiError(
           409,
           'conflict',
-          'Organisation mit Children oder Memberships kann nicht deaktiviert werden.',
+          'Organisation mit Children kann nicht gelöscht werden.',
           actor.requestId
         );
       }
@@ -731,7 +747,7 @@ INSERT INTO iam.account_organizations (
   is_default_context,
   membership_visibility
 )
-VALUES ($1::uuid, $2::uuid, $3::uuid, $4::boolean, $5)
+VALUES ($1, $2::uuid, $3::uuid, $4::boolean, $5)
 ON CONFLICT (instance_id, account_id, organization_id) DO UPDATE
 SET
   is_default_context = EXCLUDED.is_default_context,
@@ -909,7 +925,10 @@ WHERE membership.instance_id = $1
       return featureCheck;
     }
 
-    const actorResolution = await deps.resolveActorInfo(request, ctx, { requireActorMembership: true });
+    const actorResolution = await deps.resolveActorInfo(request, ctx, {
+      requireActorMembership: true,
+      provisionMissingActorMembership: true,
+    });
     if ('error' in actorResolution) {
       return actorResolution.error;
     }

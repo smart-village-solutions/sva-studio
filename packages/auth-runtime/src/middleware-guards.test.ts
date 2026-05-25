@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SessionStoreUnavailableError, SessionUserHydrationError } from './runtime-errors.js';
-
 const logger = vi.hoisted(() => ({
   error: vi.fn(),
   info: vi.fn(),
@@ -30,7 +28,9 @@ vi.mock('./db.js', () => ({
 describe('middleware-guards', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.resetModules();
     vi.unstubAllEnvs();
+    vi.spyOn(Date, 'now').mockReturnValue(5_000);
     dbMocks.resolvePool.mockReturnValue({} as object);
     dbMocks.withResolvedInstanceDb.mockImplementation(async (_resolvePool, _instanceId, work) =>
       work({
@@ -151,6 +151,37 @@ describe('middleware-guards', () => {
     );
   });
 
+  it('reuses active lifecycle checks from the short-lived in-process cache', async () => {
+    const { ensureAccountLifecycleAllowsAccess } = await import('./middleware-guards.js');
+    const request = new Request('http://localhost/auth/me');
+    const activeUser = {
+      id: 'user-1',
+      roles: ['editor'],
+      instanceId: 'de-musterhausen',
+    } as never;
+
+    await expect(ensureAccountLifecycleAllowsAccess(request, activeUser)).resolves.toBeNull();
+    await expect(ensureAccountLifecycleAllowsAccess(request, activeUser)).resolves.toBeNull();
+
+    expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalledTimes(1);
+  });
+
+  it('expires the lifecycle cache after the short ttl', async () => {
+    const { ensureAccountLifecycleAllowsAccess } = await import('./middleware-guards.js');
+    const request = new Request('http://localhost/auth/me');
+    const activeUser = {
+      id: 'user-1',
+      roles: ['editor'],
+      instanceId: 'de-musterhausen',
+    } as never;
+
+    await expect(ensureAccountLifecycleAllowsAccess(request, activeUser)).resolves.toBeNull();
+    vi.spyOn(Date, 'now').mockReturnValue(5_501);
+    await expect(ensureAccountLifecycleAllowsAccess(request, activeUser)).resolves.toBeNull();
+
+    expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalledTimes(2);
+  });
+
   it('fails closed when the IAM database or the tenant account record is unavailable', async () => {
     const { ensureAccountLifecycleAllowsAccess } = await import('./middleware-guards.js');
     const request = new Request('http://localhost/auth/me');
@@ -197,15 +228,22 @@ describe('middleware-guards', () => {
 
   it('maps session store, hydration, and unexpected middleware failures to stable api errors', async () => {
     const { logUnexpectedMiddlewareError } = await import('./middleware-guards.js');
+    const {
+      SessionStoreUnavailableError: RuntimeSessionStoreUnavailableError,
+      SessionUserHydrationError: RuntimeSessionUserHydrationError,
+    } = await import('./runtime-errors.js');
     const request = new Request('http://localhost/auth/me');
 
     const redisResponse = logUnexpectedMiddlewareError(
       request,
-      new SessionStoreUnavailableError('load_session')
+      new RuntimeSessionStoreUnavailableError('load_session')
     );
     const hydrationResponse = logUnexpectedMiddlewareError(
       request,
-      new SessionUserHydrationError({ reason: 'missing_instance_id', requestHost: 'tenant.example.com' })
+      new RuntimeSessionUserHydrationError({
+        reason: 'missing_instance_id',
+        requestHost: 'tenant.example.com',
+      })
     );
     const genericResponse = logUnexpectedMiddlewareError(request, new Error('boom'));
 

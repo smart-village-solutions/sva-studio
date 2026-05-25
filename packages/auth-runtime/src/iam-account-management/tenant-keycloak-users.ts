@@ -13,7 +13,6 @@ import { loadMappedUsersBySubject } from './tenant-keycloak-user-query.js';
 import { mapUnmappedKeycloakUser, mergeMappedUserWithKeycloak } from './tenant-keycloak-user-projection.js';
 import type { UserStatus } from './types.js';
 
-const TENANT_KEYCLOAK_PAGE_SIZE = 100;
 const TENANT_USER_ROLE_PROJECTION_CONCURRENCY = 5;
 
 type TenantKeycloakUsersResult = {
@@ -87,41 +86,46 @@ const resolveRoleNamesForUsers = async (input: {
   return roleNamesBySubject;
 };
 
-const listAllTenantUsers = async (
-  provider: IdentityProviderPort,
-  query: Omit<IdentityUserListQuery, 'first' | 'max'>
-): Promise<readonly IdentityListedUser[]> => {
-  const users: IdentityListedUser[] = [];
-  for (let first = 0; ; first += TENANT_KEYCLOAK_PAGE_SIZE) {
-    const page = await trackKeycloakCall('list_tenant_users', () =>
-      provider.listUsers({ ...query, first, max: TENANT_KEYCLOAK_PAGE_SIZE })
-    );
-    users.push(...page);
-    if (page.length < TENANT_KEYCLOAK_PAGE_SIZE) {
-      return users;
-    }
-  }
-};
-
 export const resolveTenantKeycloakUsersWithPagination = async (
   input: TenantKeycloakUsersInput
 ): Promise<TenantKeycloakUsersResult> => {
-  const identityProvider = await resolveIdentityProviderForInstance(input.instanceId, { executionMode: 'tenant_admin' });
-  if (!identityProvider) {
-    throw new Error('tenant_admin_client_not_configured');
-  }
   if (input.status === 'pending') {
     return { users: [], total: 0, keycloakRoleNamesBySubject: new Map() };
   }
 
+  if (input.role) {
+    const { resolveUsersWithPagination } = await import('@sva/iam-admin');
+    const localResult = await resolveUsersWithPagination(input.client, {
+      instanceId: input.instanceId,
+      page: input.page,
+      pageSize: input.pageSize,
+      status: input.status,
+      role: input.role,
+      search: input.search,
+    });
+
+    return {
+      users: localResult.users,
+      total: localResult.total,
+      keycloakRoleNamesBySubject: new Map(
+        localResult.users.map((user) => [
+          user.keycloakSubject,
+          user.roles.map((role) => role.roleKey),
+        ] as const)
+      ),
+    };
+  }
+
+  const identityProvider = await resolveIdentityProviderForInstance(input.instanceId, { executionMode: 'tenant_admin' });
+  if (!identityProvider) {
+    throw new Error('tenant_admin_client_not_configured');
+  }
+
   const query = toKeycloakQuery(input);
   const first = Math.max(0, (input.page - 1) * input.pageSize);
-
-  const listedUsers = input.role
-    ? await listAllTenantUsers(identityProvider.provider, query)
-    : await trackKeycloakCall('list_tenant_users', () =>
-        identityProvider.provider.listUsers({ ...query, first, max: input.pageSize })
-      );
+  const listedUsers = await trackKeycloakCall('list_tenant_users', () =>
+    identityProvider.provider.listUsers({ ...query, first, max: input.pageSize })
+  );
   const roleNamesBySubject = await resolveRoleNamesForUsers({
     provider: identityProvider.provider,
     users: listedUsers,
@@ -129,10 +133,8 @@ export const resolveTenantKeycloakUsersWithPagination = async (
     requestId: input.requestId,
     traceId: input.traceId,
   });
-  const roleFilteredUsers = input.role
-    ? listedUsers.filter((user) => roleNamesBySubject.get(user.externalId)?.includes(input.role as string))
-    : listedUsers;
-  const visibleUsers = input.role ? roleFilteredUsers.slice(first, first + input.pageSize) : roleFilteredUsers;
+  const roleFilteredUsers = listedUsers;
+  const visibleUsers = roleFilteredUsers;
   const mappedUsersBySubject = await loadMappedUsersBySubject(input.client, {
     instanceId: input.instanceId,
     subjects: visibleUsers.map((user) => user.externalId),
@@ -146,9 +148,7 @@ export const resolveTenantKeycloakUsersWithPagination = async (
       : mapUnmappedKeycloakUser(user, roleNames);
   });
 
-  const total = input.role
-    ? roleFilteredUsers.length
-    : (await identityProvider.provider.countUsers?.(query)) ?? users.length;
+  const total = (await identityProvider.provider.countUsers?.(query)) ?? users.length;
 
   const visibleRoleNamesBySubject = new Map(
     users.map((user) => [user.keycloakSubject, roleNamesBySubject.get(user.keycloakSubject) ?? null] as const)

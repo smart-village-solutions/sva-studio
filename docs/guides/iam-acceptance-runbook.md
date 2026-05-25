@@ -8,6 +8,8 @@ Dieses Runbook beschreibt den reproduzierbaren Abnahmenachweis für die IAM-Basi
 
 - Lokal oder gegen eine laufende Testumgebung: `pnpm nx run sva-studio-react:test:acceptance`
 - Root-Alias: `pnpm test:acceptance:iam`
+- Zielumgebungs-Evidence für `WP-003`, `WP-005`, `WP-006`: `pnpm test:evidence:iam`
+- Performance-Nachweis für `WP-004`: `pnpm test:acceptance:iam:performance`
 - Separates Delivery-Gate in GitHub Actions: `.github/workflows/iam-acceptance.yml`
 
 ## Voraussetzungen
@@ -26,10 +28,10 @@ pnpm --filter sva-studio-react exec playwright install --with-deps chromium
 
 | Variable | Bedeutung |
 | --- | --- |
-| `IAM_ACCEPTANCE_ADMIN_USERNAME` | Login des dedizierten Acceptance-Admins |
-| `IAM_ACCEPTANCE_ADMIN_PASSWORD` | Passwort des dedizierten Acceptance-Admins |
-| `IAM_ACCEPTANCE_MEMBER_USERNAME` | Login des dedizierten Acceptance-Members |
-| `IAM_ACCEPTANCE_MEMBER_PASSWORD` | Passwort des dedizierten Acceptance-Members |
+| `IAM_ACCEPTANCE_ADMIN_USERNAME` oder `IAM_EVIDENCE_ROOT_USERNAME` | Login des dedizierten Acceptance-Admins oder des Evidence-Root-Actors |
+| `IAM_ACCEPTANCE_ADMIN_PASSWORD` oder `IAM_EVIDENCE_ROOT_PASSWORD` | Passwort des dedizierten Acceptance-Admins oder des Evidence-Root-Actors |
+| `IAM_ACCEPTANCE_MEMBER_USERNAME` oder `IAM_EVIDENCE_INSTANCE_USERNAME` | Login des dedizierten Acceptance-Members oder des Evidence-Instanz-Actors |
+| `IAM_ACCEPTANCE_MEMBER_PASSWORD` oder `IAM_EVIDENCE_INSTANCE_PASSWORD` | Passwort des dedizierten Acceptance-Members oder des Evidence-Instanz-Actors |
 | `IAM_DATABASE_URL` oder `IAM_ACCEPTANCE_DATABASE_URL` | PostgreSQL-Verbindung zur IAM-Datenbank |
 | `KEYCLOAK_ADMIN_BASE_URL` | Keycloak-Basis-URL für den Service-Account |
 | `KEYCLOAK_ADMIN_REALM` | technischer Realm des Service-Accounts für den Token-Bezug |
@@ -46,6 +48,27 @@ pnpm --filter sva-studio-react exec playwright install --with-deps chromium
 | `IAM_ACCEPTANCE_ORGANIZATION_KEY_PREFIX` | `acceptance` | Stabiler Prefix für Acceptance-Organisationen |
 | `IAM_ACCEPTANCE_REPORT_DIR` | `docs/reports` | Zielordner für JSON- und Markdown-Berichte |
 | `IAM_ACCEPTANCE_REPORT_SLUG` | `iam-foundation-acceptance` | Dateinamen-Prefix für Berichte |
+| `IAM_AUTHORIZE_BENCH_ACTION` | `content.read` | Action für den echten `POST /iam/authorize`-Lauf |
+| `IAM_AUTHORIZE_BENCH_RESOURCE_TYPE` | `content` | Resource-Type für den Benchmark |
+| `IAM_AUTHORIZE_BENCH_RESOURCE_ID` | leer | Optionale Resource-ID |
+| `IAM_AUTHORIZE_BENCH_ORGANIZATION_ID` | leer | Optionaler Org-Kontext |
+| `IAM_AUTHORIZE_BENCH_MEASURED_REQUESTS` | `100` | Mess-Requests je Szenario |
+| `IAM_AUTHORIZE_BENCH_WARMUP_REQUESTS` | `10` | Warm-up-Requests je Szenario |
+| `IAM_AUTHORIZE_BENCH_CONCURRENCY` | `100` | Parallelität für Cache-Hit und Cache-Miss |
+| `IAM_AUTHORIZE_BENCH_RECOMPUTE_CONCURRENCY` | `1` | Parallelität für Recompute nach Invalidation |
+| `IAM_AUTHORIZE_BENCH_INVALIDATION_DELAY_MS` | `100` | Wartezeit nach `pg_notify`, bevor der Recompute-Request gesendet wird |
+| `IAM_AUTHORIZE_BENCH_REPORT_SLUG` | `iam-authorize-performance` | Dateinamen-Prefix für den Performance-Report |
+| `IAM_EVIDENCE_PACKAGES` | `WP-003,WP-005,WP-006` | Kommagetrennte Auswahl der Evidence-Pakete |
+| `IAM_EVIDENCE_REPORT_DIR` | `docs/reports` | Zielordner für Evidence-Reports |
+| `IAM_EVIDENCE_REPORT_SLUG` | `iam-evidence` | Dateinamen-Prefix für Evidence-Berichte |
+| `IAM_EVIDENCE_ARTIFACT_DIR` | `artifacts/iam-evidence` | Unterordner relativ zum Report-Ordner für Screenshots und Exportartefakte |
+| `IAM_EVIDENCE_ROOT_USERNAME` | Acceptance-Admin | optionaler Root-/System-Admin-Login für Evidence-Läufe |
+| `IAM_EVIDENCE_ROOT_PASSWORD` | Acceptance-Admin | Passwort des Root-/System-Admins |
+| `IAM_EVIDENCE_INSTANCE_USERNAME` | Acceptance-Member | optionaler Instanz-Benutzer für `WP-006` |
+| `IAM_EVIDENCE_INSTANCE_PASSWORD` | Acceptance-Member | Passwort des Instanz-Benutzers |
+| `IAM_EVIDENCE_NEGATIVE_USERNAME` | leer | optionaler nicht privilegierter Benutzer für den `WP-006`-Negativnachweis |
+| `IAM_EVIDENCE_NEGATIVE_PASSWORD` | leer | Passwort des nicht privilegierten Benutzers |
+| `IAM_EVIDENCE_WP005_USER_ID` | leer | optionale Benutzer-ID für die `WP-005`-Detailansicht |
 
 ## Testdaten- und Realm-Kontrakt
 
@@ -94,6 +117,47 @@ Jeder Lauf schreibt zwei Dateien nach `docs/reports/`:
 
 - `<slug>-<timestamp>.md`
 - `<slug>-<timestamp>.json`
+
+Für den `WP-004`-Performance-Nachweis erzeugt `pnpm test:acceptance:iam:performance` einen separaten Bericht mit:
+
+- Cache-Hit-Szenario
+- Cache-Miss-Szenario
+- Recompute-Szenario nach `pg_notify`-Invalidierung
+- `Samples`, `p50`, `p95`, `p99`
+- JSON-Rohdaten zur revisionssicheren Ablage
+
+Für den Evidence-Lauf `pnpm test:evidence:iam` entstehen zusätzlich:
+
+- `<slug>-<timestamp>.md`
+- `<slug>-<timestamp>.json`
+- `artifacts/iam-evidence/<slug>-<timestamp>/...`
+
+Die Artefakte enthalten je nach Paket:
+
+- Screenshots der Organisations-, Benutzer- oder Privacy-Ansicht
+- JSON-Snapshots für `WP-003`
+- positiven und negativen Consent-Export für `WP-006`
+- Marker für manuelle Review-Fälle, wenn ein Zielumgebungsfall nicht zuverlässig automatisch erzeugbar ist
+
+## Typischer lokaler Lauf
+
+```bash
+export IAM_EVIDENCE_ROOT_USERNAME="<root-admin-benutzer>"
+export IAM_EVIDENCE_ROOT_PASSWORD="<root-admin-passwort>"
+export IAM_EVIDENCE_INSTANCE_USERNAME="<mandanten-admin-benutzer>"
+export IAM_EVIDENCE_INSTANCE_PASSWORD="<mandanten-admin-passwort>"
+export IAM_EVIDENCE_NEGATIVE_USERNAME="<nicht-privilegierter-benutzer>"
+export IAM_EVIDENCE_NEGATIVE_PASSWORD="<nicht-privilegiertes-passwort>"
+export IAM_EVIDENCE_WP005_USER_ID="<ziel-benutzer-id>"
+pnpm test:evidence:iam
+```
+
+Hinweise:
+
+- Zugangsdaten nicht ins Repository schreiben; nur lokal als Environment setzen.
+- `WP-005` bleibt ohne `IAM_EVIDENCE_WP005_USER_ID` absichtlich auf `skipped`, weil der Runner sonst keinen konkreten Benutzerdetailfall öffnen kann.
+- `WP-006` bewertet den Negativfall ohne `IAM_EVIDENCE_NEGATIVE_USERNAME` und `IAM_EVIDENCE_NEGATIVE_PASSWORD` bewusst nur als `manual_review`, damit ein privilegierter Testactor nicht fälschlich als Produktfehler erscheint.
+- `WP-003` und Teile von `WP-005` können bewusst als `manual_review` enden. Das ist kein Fehler des Runners, sondern markiert echte Zielumgebungsfälle, die aus Stabilitätsgründen nicht blind automatisiert werden.
 
 Der Bericht enthält mindestens:
 

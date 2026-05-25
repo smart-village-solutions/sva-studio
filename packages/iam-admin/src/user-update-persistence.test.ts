@@ -72,6 +72,8 @@ describe('user-update-persistence', () => {
         actorAccountId: 'actor-1',
         userId: 'user-1',
         keycloakSubject: 'kc-1',
+        existingRoleIds: ['role-0'],
+        existingGroupIds: ['group-0'],
         requestId: 'req-1',
         traceId: 'trace-1',
         payload: {
@@ -95,12 +97,14 @@ describe('user-update-persistence', () => {
       instanceId: 'inst-1',
       accountId: 'user-1',
       roleIds: ['role-1'],
+      existingRoleIds: ['role-0'],
       assignedBy: 'actor-1',
     });
     expect(deps.assignGroups).toHaveBeenCalledWith(client, {
       instanceId: 'inst-1',
       accountId: 'user-1',
       groupIds: ['group-1'],
+      existingGroupIds: ['group-0'],
       origin: 'manual',
     });
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE iam.accounts'), [
@@ -159,6 +163,8 @@ describe('user-update-persistence', () => {
         actorAccountId: 'actor-1',
         userId: 'user-1',
         keycloakSubject: 'kc-1',
+        existingRoleIds: [],
+        existingGroupIds: [],
         payload: {},
         nextMainserverCredentialState: {
           mainserverUserApplicationSecretSet: false,

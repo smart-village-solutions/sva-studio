@@ -40,6 +40,7 @@ const state = vi.hoisted(() => ({
   buildRequestContext: vi.fn((instanceId?: string) => ({ workspaceId: instanceId })),
   logger: {
     debug: vi.fn(),
+    info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
   },
@@ -108,6 +109,7 @@ describe('authorize handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    vi.unstubAllEnvs();
 
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
@@ -295,6 +297,24 @@ describe('authorize handler', () => {
       'actor-1',
       'success',
       'allowed'
+    );
+  });
+
+  it('logs timing diagnostics when authorize timing debug is enabled', async () => {
+    vi.stubEnv('IAM_DEBUG_AUTHORIZE_TIMINGS', 'true');
+    const { authorizeHandler } = await import('./authorize.js');
+
+    const response = await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+
+    expect(response.status).toBe(200);
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'Authorize timing diagnostics',
+      expect.objectContaining({
+        operation: 'authorize_timing',
+        action: 'waste.publish',
+        resource_type: 'waste',
+        cache_status: 'hit',
+      })
     );
   });
 

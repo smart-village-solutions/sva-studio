@@ -4,7 +4,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_legal_text_versions_instance_id_id
   ON iam.legal_text_versions(instance_id, id);
 
 CREATE TABLE IF NOT EXISTS iam.legal_text_target_roles (
-  instance_id TEXT NOT NULL REFERENCES iam.instances(instance_id) ON DELETE CASCADE,
+  instance_id TEXT NOT NULL REFERENCES iam.instances(id) ON DELETE CASCADE,
   legal_text_version_id UUID NOT NULL,
   role_id UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS iam.legal_text_target_roles (
 );
 
 CREATE TABLE IF NOT EXISTS iam.legal_text_target_groups (
-  instance_id TEXT NOT NULL REFERENCES iam.instances(instance_id) ON DELETE CASCADE,
+  instance_id TEXT NOT NULL REFERENCES iam.instances(id) ON DELETE CASCADE,
   legal_text_version_id UUID NOT NULL,
   group_id UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

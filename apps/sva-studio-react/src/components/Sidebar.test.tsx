@@ -218,7 +218,7 @@ describe('Sidebar', () => {
     );
     expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
     expect(screen.getByRole('link', { name: 'Monitoring' }).getAttribute('href')).toBe(
-      '/monitoring/jobs'
+      '/monitoring'
     );
     expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(
       HELP_DISCUSSIONS_URL
@@ -304,6 +304,37 @@ describe('Sidebar', () => {
     );
     expect(screen.queryByRole('button', { name: 'Benutzer' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
+  });
+
+  it('zeigt den Modullink fuer Tenant-Nutzer ohne Root-Systemrechte', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'tenant-user',
+        name: 'Tenant User',
+        instanceId: 'de-musterhausen',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'read_only',
+        canRead: true,
+        canCreate: false,
+        canUpdate: false,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['news.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
+    expect(screen.queryByRole('link', { name: 'Monitoring' })).toBeNull();
   });
 
   it('rendert Hilfe, Support und Lizenz innerhalb der Bereichsnavigation', () => {

@@ -147,6 +147,18 @@ const buildDirectPermissionTraceSql = (includeStructuredPermissions: boolean): s
           NULL::text AS group_display_name,
           NULL::boolean AS group_active,
           NULL::text AS assignment_origin,
+          NULL::text AS inherited_from_organization_id,
+          CASE
+            WHEN jsonb_typeof(COALESCE(p.scope, '{}'::jsonb) -> 'allowedGeoUnitIds') = 'array'
+              THEN p.scope -> 'allowedGeoUnitIds' ->> 0
+            ELSE NULL::text
+          END AS inherited_from_geo_unit_id,
+          CASE
+            WHEN jsonb_typeof(COALESCE(p.scope, '{}'::jsonb) -> 'restrictedGeoUnitIds') = 'array'
+              THEN p.scope -> 'restrictedGeoUnitIds' ->> 0
+            ELSE NULL::text
+          END AS restricted_by_geo_unit_id,
+          NULL::text AS inactive_reason,
           NULL::text AS valid_from,
           NULL::text AS valid_to
         FROM iam.account_permissions ap
@@ -182,6 +194,22 @@ const buildDirectRolePermissionTraceSql = (projection: ReturnType<typeof buildPe
           NULL::text AS group_display_name,
           NULL::boolean AS group_active,
           NULL::text AS assignment_origin,
+          ao.organization_id::text AS inherited_from_organization_id,
+          CASE
+            WHEN jsonb_typeof(COALESCE(p.scope, '{}'::jsonb) -> 'allowedGeoUnitIds') = 'array'
+              THEN p.scope -> 'allowedGeoUnitIds' ->> 0
+            ELSE NULL::text
+          END AS inherited_from_geo_unit_id,
+          CASE
+            WHEN jsonb_typeof(COALESCE(p.scope, '{}'::jsonb) -> 'restrictedGeoUnitIds') = 'array'
+              THEN p.scope -> 'restrictedGeoUnitIds' ->> 0
+            ELSE NULL::text
+          END AS restricted_by_geo_unit_id,
+          CASE
+            WHEN ar.valid_from > NOW() THEN 'assignment_not_started'
+            WHEN ar.valid_to IS NOT NULL AND ar.valid_to <= NOW() THEN 'assignment_expired'
+            ELSE NULL::text
+          END AS inactive_reason,
           ar.valid_from::text,
           ar.valid_to::text
         FROM iam.account_roles ar
@@ -230,6 +258,23 @@ const buildGroupRolePermissionTraceSql = (projection: ReturnType<typeof buildPer
           g.display_name AS group_display_name,
           g.is_active AS group_active,
           ag.origin::text AS assignment_origin,
+          ao.organization_id::text AS inherited_from_organization_id,
+          CASE
+            WHEN jsonb_typeof(COALESCE(p.scope, '{}'::jsonb) -> 'allowedGeoUnitIds') = 'array'
+              THEN p.scope -> 'allowedGeoUnitIds' ->> 0
+            ELSE NULL::text
+          END AS inherited_from_geo_unit_id,
+          CASE
+            WHEN jsonb_typeof(COALESCE(p.scope, '{}'::jsonb) -> 'restrictedGeoUnitIds') = 'array'
+              THEN p.scope -> 'restrictedGeoUnitIds' ->> 0
+            ELSE NULL::text
+          END AS restricted_by_geo_unit_id,
+          CASE
+            WHEN g.is_active IS NOT TRUE THEN 'group_disabled'
+            WHEN ag.valid_from IS NOT NULL AND ag.valid_from > NOW() THEN 'membership_not_started'
+            WHEN ag.valid_until IS NOT NULL AND ag.valid_until <= NOW() THEN 'membership_expired'
+            ELSE NULL::text
+          END AS inactive_reason,
           ag.valid_from::text,
           ag.valid_until::text AS valid_to
         FROM iam.account_groups ag
@@ -287,6 +332,10 @@ export const buildPermissionTraceRowsSql = (
           'group_display_name', trace.group_display_name,
           'group_active', trace.group_active,
           'assignment_origin', trace.assignment_origin,
+          'inherited_from_organization_id', trace.inherited_from_organization_id,
+          'inherited_from_geo_unit_id', trace.inherited_from_geo_unit_id,
+          'restricted_by_geo_unit_id', trace.restricted_by_geo_unit_id,
+          'inactive_reason', trace.inactive_reason,
           'valid_from', trace.valid_from,
           'valid_to', trace.valid_to
         )

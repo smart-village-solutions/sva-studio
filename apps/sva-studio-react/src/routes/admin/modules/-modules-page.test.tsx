@@ -1,12 +1,18 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { studioModuleIamContracts as realStudioModuleIamContracts } from '@sva/studio-module-iam';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ModulesPage } from './-modules-page';
 
 const useInstancesMock = vi.fn();
+const useAuthMock = vi.fn();
 
 vi.mock('../../../hooks/use-instances', () => ({
   useInstances: () => useInstancesMock(),
+}));
+
+vi.mock('../../../providers/auth-provider', () => ({
+  useAuth: () => useAuthMock(),
 }));
 
 vi.mock('../../../components/ConfirmDialog', () => ({
@@ -41,30 +47,7 @@ vi.mock('../../../components/ConfirmDialog', () => ({
 }));
 
 vi.mock('../../../lib/plugins', () => ({
-  studioModuleIamContracts: [
-    {
-      moduleId: 'news',
-      permissionIds: ['news.read', 'news.write'],
-      systemRoles: [{ roleName: 'news_admin', permissionIds: ['news.read', 'news.write'] }],
-    },
-    {
-      moduleId: 'events',
-      permissionIds: ['events.read'],
-      systemRoles: [{ roleName: 'events_admin', permissionIds: ['events.read'] }],
-    },
-    {
-      moduleId: 'media',
-      permissionIds: ['media.read', 'media.create'],
-      systemRoles: [{ roleName: 'editor', permissionIds: ['media.read', 'media.create'] }],
-    },
-    {
-      moduleId: 'waste-management',
-      permissionIds: ['waste-management.read', 'waste-management.settings.manage'],
-      systemRoles: [
-        { roleName: 'waste_management_admin', permissionIds: ['waste-management.read', 'waste-management.settings.manage'] },
-      ],
-    },
-  ],
+  studioModuleIamContracts: realStudioModuleIamContracts,
 }));
 
 const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
@@ -113,6 +96,10 @@ describe('ModulesPage', () => {
 
   beforeEach(() => {
     useInstancesMock.mockReset();
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue({
+      user: null,
+    });
   });
 
   it('selects the first instance automatically, loads details, and renders assigned and available modules', async () => {
@@ -134,6 +121,8 @@ describe('ModulesPage', () => {
     await waitFor(() => {
       expect(loadInstance).toHaveBeenCalledWith('demo');
     });
+
+    expect(realStudioModuleIamContracts.every((module) => module.descriptionKey.length > 0)).toBe(true);
 
     expect(screen.getByDisplayValue('Demo (demo)')).toBeTruthy();
     expect(screen.getByText('Module schalten Bereiche frei')).toBeTruthy();
@@ -213,5 +202,26 @@ describe('ModulesPage', () => {
 
     expect(screen.getByRole('alert').textContent).toContain('Keine Berechtigung');
     expect(screen.getByText('Wählen Sie eine Instanz aus, um Modulzuweisungen zu verwalten.')).toBeTruthy();
+  });
+
+  it('renders a read-only tenant module table when the session has an instance context', () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'tenant-user',
+        instanceId: 'de-musterhausen',
+        assignedModules: ['news', 'media'],
+      },
+    });
+
+    render(<ModulesPage />);
+
+    expect(screen.getByText('IAM-Basis der Module')).toBeTruthy();
+    expect(screen.getByText('news')).toBeTruthy();
+    expect(screen.getByText('events')).toBeTruthy();
+    expect(screen.getAllByText('Aktiv')).toHaveLength(2);
+    expect(screen.getAllByText('Deaktiviert').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole('button', { name: 'Modul zuweisen' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeNull();
+    expect(useInstancesMock).not.toHaveBeenCalled();
   });
 });

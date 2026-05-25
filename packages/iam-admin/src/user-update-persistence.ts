@@ -43,6 +43,7 @@ export type UserUpdatePersistenceDeps = {
       readonly instanceId: string;
       readonly accountId: string;
       readonly groupIds: readonly string[];
+      readonly existingGroupIds?: readonly string[];
       readonly origin?: 'manual' | 'seed' | 'sync';
     }
   ) => Promise<void>;
@@ -52,6 +53,7 @@ export type UserUpdatePersistenceDeps = {
       readonly instanceId: string;
       readonly accountId: string;
       readonly roleIds: readonly string[];
+      readonly existingRoleIds?: readonly string[];
       readonly assignedBy?: string;
     }
   ) => Promise<void>;
@@ -207,6 +209,8 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
     readonly actorAccountId: string;
     readonly userId: string;
     readonly keycloakSubject: string;
+    readonly existingRoleIds?: readonly string[];
+    readonly existingGroupIds?: readonly string[];
     readonly payload: UpdateUserPersistencePayload;
     readonly nextMainserverCredentialState: UserMainserverCredentialState;
   }) =>
@@ -216,6 +220,7 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
           instanceId: input.instanceId,
           accountId: input.userId,
           roleIds: input.payload.roleIds,
+          existingRoleIds: input.existingRoleIds,
           assignedBy: input.actorAccountId,
         });
       }
@@ -225,6 +230,7 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
           instanceId: input.instanceId,
           accountId: input.userId,
           groupIds: input.payload.groupIds,
+          existingGroupIds: input.existingGroupIds,
           origin: 'manual',
         });
       }

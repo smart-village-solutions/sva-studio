@@ -105,7 +105,7 @@
       }
     },
     "test:unit": {
-      "executor": "@nx/vitest:test",
+      "executor": "nx:run-commands",
       "cache": true,
       "inputs": [
         "default",
@@ -115,11 +115,12 @@
       ],
       "outputs": [],
       "options": {
-        "configFile": "apps/sva-studio-react/vitest.config.ts"
+        "cwd": "apps/sva-studio-react",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:unit:ui": {
-      "executor": "@nx/vitest:test",
+      "executor": "nx:run-commands",
       "cache": true,
       "inputs": [
         "default",
@@ -129,11 +130,12 @@
       ],
       "outputs": [],
       "options": {
-        "configFile": "apps/sva-studio-react/vitest.ui.config.ts"
+        "cwd": "apps/sva-studio-react",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.ui.config.ts --passWithNoTests"
       }
     },
     "test:unit:routes": {
-      "executor": "@nx/vitest:test",
+      "executor": "nx:run-commands",
       "cache": true,
       "inputs": [
         "default",
@@ -143,11 +145,12 @@
       ],
       "outputs": [],
       "options": {
-        "configFile": "apps/sva-studio-react/vitest.routes.config.ts"
+        "cwd": "apps/sva-studio-react",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.routes.config.ts --passWithNoTests"
       }
     },
     "test:unit:hooks": {
-      "executor": "@nx/vitest:test",
+      "executor": "nx:run-commands",
       "cache": true,
       "inputs": [
         "default",
@@ -157,11 +160,12 @@
       ],
       "outputs": [],
       "options": {
-        "configFile": "apps/sva-studio-react/vitest.hooks.config.ts"
+        "cwd": "apps/sva-studio-react",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.hooks.config.ts --passWithNoTests"
       }
     },
     "test:unit:server": {
-      "executor": "@nx/vitest:test",
+      "executor": "nx:run-commands",
       "cache": true,
       "inputs": [
         "default",
@@ -171,7 +175,8 @@
       ],
       "outputs": [],
       "options": {
-        "configFile": "apps/sva-studio-react/vitest.server.config.ts"
+        "cwd": "apps/sva-studio-react",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.server.config.ts --passWithNoTests"
       }
     },
     "test:coverage": {
@@ -283,6 +288,24 @@
       "options": {
         "cwd": "apps/sva-studio-react",
         "command": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/run-iam-acceptance.ts"
+      }
+    },
+    "test:evidence": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "outputs": [],
+      "options": {
+        "cwd": "apps/sva-studio-react",
+        "command": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/run-iam-evidence.ts"
+      }
+    },
+    "test:authorize-performance": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "outputs": [],
+      "options": {
+        "cwd": "apps/sva-studio-react",
+        "command": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/run-iam-authorize-performance.ts"
       }
     }
   }

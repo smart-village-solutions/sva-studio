@@ -16,6 +16,7 @@ import {
 import { buildSessionUser, resolveSessionExpiry, TOKEN_REFRESH_SKEW_MS } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
+const SESSION_RESOLUTION_CACHE_TTL_MS = 500;
 
 const shouldRefreshSession = (expiresAt: number | undefined): boolean =>
   typeof expiresAt === 'number' && expiresAt <= Date.now() + TOKEN_REFRESH_SKEW_MS;
@@ -32,6 +33,53 @@ export type SessionResolutionFailureReason =
 export type SessionResolutionResult =
   | { kind: 'authenticated'; user: SessionUser | null; expiresAt?: number; freshReauthAt?: number }
   | { kind: 'invalid'; reason: SessionResolutionFailureReason };
+
+type SessionResolutionCacheEntry = {
+  readonly cachedAtMs: number;
+  readonly result: Extract<SessionResolutionResult, { kind: 'authenticated' }>;
+};
+
+const sessionResolutionCache = new Map<string, SessionResolutionCacheEntry>();
+
+const clearSessionResolutionCacheEntry = (sessionId: string): void => {
+  sessionResolutionCache.delete(sessionId);
+};
+
+const readCachedSessionResolution = (
+  sessionId: string
+): Extract<SessionResolutionResult, { kind: 'authenticated' }> | null => {
+  const entry = sessionResolutionCache.get(sessionId);
+  if (!entry) {
+    return null;
+  }
+
+  if (entry.cachedAtMs + SESSION_RESOLUTION_CACHE_TTL_MS <= Date.now()) {
+    sessionResolutionCache.delete(sessionId);
+    return null;
+  }
+
+  if (shouldRefreshSession(entry.result.expiresAt)) {
+    sessionResolutionCache.delete(sessionId);
+    return null;
+  }
+
+  return entry.result;
+};
+
+const cacheSessionResolution = (
+  sessionId: string,
+  result: Extract<SessionResolutionResult, { kind: 'authenticated' }>
+): void => {
+  if (shouldRefreshSession(result.expiresAt)) {
+    sessionResolutionCache.delete(sessionId);
+    return;
+  }
+
+  sessionResolutionCache.set(sessionId, {
+    cachedAtMs: Date.now(),
+    result,
+  });
+};
 
 const readSessionInvalidationReason = async (
   session: Session
@@ -228,13 +276,20 @@ const handleRefreshFailure = async (input: {
 };
 
 export const resolveSessionUser = async (sessionId: string): Promise<SessionResolutionResult> => {
+  const cached = readCachedSessionResolution(sessionId);
+  if (cached) {
+    return cached;
+  }
+
   const session = await getSession(sessionId);
   if (!session) {
+    clearSessionResolutionCacheEntry(sessionId);
     return { kind: 'invalid', reason: 'invalid_session' };
   }
 
   const sessionInvalidationReason = await readSessionInvalidationReason(session);
   if (sessionInvalidationReason) {
+    clearSessionResolutionCacheEntry(sessionId);
     await deleteSession(sessionId);
     return { kind: 'invalid', reason: sessionInvalidationReason };
   }
@@ -242,20 +297,30 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
   if (!shouldRefreshSession(session.expiresAt)) {
     const user = await hydrateSessionUserFromAccessToken(sessionId, session);
     logIncompleteSessionUser(user, 'session_read');
-    return { kind: 'authenticated', user, expiresAt: session.expiresAt, freshReauthAt: session.freshReauthAt };
+    const result = {
+      kind: 'authenticated',
+      user,
+      expiresAt: session.expiresAt,
+      freshReauthAt: session.freshReauthAt,
+    } satisfies Extract<SessionResolutionResult, { kind: 'authenticated' }>;
+    cacheSessionResolution(sessionId, result);
+    return result;
   }
 
   if (!session.refreshToken) {
     if (session.expiresAt && session.expiresAt < Date.now()) {
+      clearSessionResolutionCacheEntry(sessionId);
       await deleteSession(sessionId);
       return { kind: 'invalid', reason: 'session_expired' };
     }
-    return {
+    const result = {
       kind: 'authenticated',
       user: await hydrateSessionUserFromAccessToken(sessionId, session),
       expiresAt: session.expiresAt,
       freshReauthAt: session.freshReauthAt,
-    };
+    } satisfies Extract<SessionResolutionResult, { kind: 'authenticated' }>;
+    cacheSessionResolution(sessionId, result);
+    return result;
   }
 
   try {
@@ -275,13 +340,16 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
       ...buildLogContext(updatedSession?.auth),
     });
 
-    return {
+    const result = {
       kind: 'authenticated',
       user: updatedSession?.user ?? null,
       expiresAt: updatedSession?.expiresAt,
       freshReauthAt: updatedSession?.freshReauthAt,
-    };
+    } satisfies Extract<SessionResolutionResult, { kind: 'authenticated' }>;
+    cacheSessionResolution(sessionId, result);
+    return result;
   } catch (error) {
+    clearSessionResolutionCacheEntry(sessionId);
     return handleRefreshFailure({
       error,
       sessionId,

@@ -283,6 +283,9 @@ describe('UserEditPage', () => {
             roleName: 'system_admin',
             groupDisplayName: 'Admins',
             organizationId: 'org-1',
+            inheritedFromOrganizationId: 'org-root',
+            inheritedFromGeoUnitId: 'geo-root',
+            restrictedByGeoUnitId: 'geo-child',
             scope: { geoUnitId: 'geo-1' },
           },
           {
@@ -294,6 +297,7 @@ describe('UserEditPage', () => {
             status: 'expired' as const,
             sourceKind: 'direct_role' as const,
             roleName: 'system_admin',
+            inactiveReason: 'assignment_expired' as const,
           },
         ],
       },
@@ -324,6 +328,10 @@ describe('UserEditPage', () => {
     expect(screen.getByText('content.archive')).toBeTruthy();
     expect(screen.getByText('Direkte Zuweisungen')).toBeTruthy();
     expect(screen.getByText(/Organisation: org-1/)).toBeTruthy();
+    expect(screen.getByText(/Vererbt ab Organisation: org-root/)).toBeTruthy();
+    expect(screen.getByText(/Geo-Freigabe ab: geo-root/)).toBeTruthy();
+    expect(screen.getByText(/Geo-Restriktion: geo-child/)).toBeTruthy();
+    expect(screen.getByText(/Inaktivitätsgrund: Zuweisung abgelaufen/)).toBeTruthy();
   });
 
   it('loads unified history entries and renders role validity windows', async () => {

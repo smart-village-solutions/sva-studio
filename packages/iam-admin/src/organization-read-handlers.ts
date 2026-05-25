@@ -90,7 +90,10 @@ export type OrganizationReadHandlerDeps<TFeatureFlags = unknown> = {
   readonly resolveActorInfo: (
     request: Request,
     ctx: OrganizationReadAuthenticatedRequestContext,
-    options: { readonly requireActorMembership: true }
+    options: {
+      readonly requireActorMembership: true;
+      readonly provisionMissingActorMembership: true;
+    }
   ) => Promise<{ readonly actor: OrganizationReadActor } | { readonly error: Response }>;
   readonly updateSession: (sessionId: string, patch: { readonly activeOrganizationId?: string }) => Promise<void>;
   readonly withInstanceScopedDb: <T>(
@@ -116,7 +119,10 @@ const prepareOrganizationReadRequest = async <TFeatureFlags>(
     return { error: roleCheck };
   }
 
-  const actorResolution = await deps.resolveActorInfo(request, ctx, { requireActorMembership: true });
+  const actorResolution = await deps.resolveActorInfo(request, ctx, {
+    requireActorMembership: true,
+    provisionMissingActorMembership: true,
+  });
   if ('error' in actorResolution) {
     return actorResolution;
   }
@@ -215,7 +221,10 @@ export const createOrganizationReadHandlers = <TFeatureFlags>(
       return featureCheck;
     }
 
-    const actorResolution = await deps.resolveActorInfo(request, ctx, { requireActorMembership: true });
+    const actorResolution = await deps.resolveActorInfo(request, ctx, {
+      requireActorMembership: true,
+      provisionMissingActorMembership: true,
+    });
     if ('error' in actorResolution) {
       return actorResolution.error;
     }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type IamKeycloakObjectDiagnostic,
+  type IamUserPermissionTraceItem,
   iamRuntimeDiagnosticClassifications,
   iamRuntimeDiagnosticStatuses,
   iamRuntimeRecommendedActions,
@@ -107,5 +108,25 @@ describe('account-management-contract runtime diagnostics exports', () => {
 
     expect(status.overall.requestId).toBe('req-access-1');
     expect(status.access.errorCode).toBe('IDP_FORBIDDEN');
+  });
+
+  it('supports inheritance and inactive-reason metadata on permission trace items', () => {
+    const entry: IamUserPermissionTraceItem = {
+      permissionKey: 'content.read',
+      action: 'content.read',
+      resourceType: 'content',
+      effect: 'allow',
+      isEffective: false,
+      status: 'disabled',
+      sourceKind: 'group_role',
+      inheritedFromOrganizationId: '11111111-1111-4111-8111-111111111111',
+      inheritedFromGeoUnitId: '22222222-2222-4222-8222-222222222222',
+      restrictedByGeoUnitId: '33333333-3333-4333-8333-333333333333',
+      inactiveReason: 'group_disabled',
+    };
+
+    expect(entry.inheritedFromOrganizationId).toBe('11111111-1111-4111-8111-111111111111');
+    expect(entry.restrictedByGeoUnitId).toBe('33333333-3333-4333-8333-333333333333');
+    expect(entry.inactiveReason).toBe('group_disabled');
   });
 });

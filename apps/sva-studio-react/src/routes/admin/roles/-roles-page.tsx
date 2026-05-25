@@ -1,4 +1,4 @@
-import type { IamKeycloakObjectDiagnostic } from '@sva/core';
+import { IconEdit, IconRefresh, IconTrash } from '@tabler/icons-react';
 import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import React from 'react';
 import { Link } from '@tanstack/react-router';
@@ -38,15 +38,6 @@ const editabilityLabelKey = {
   blocked: 'admin.roles.editability.blocked',
 } as const;
 
-const renderDiagnosticCodes = (diagnostics: readonly IamKeycloakObjectDiagnostic[] | undefined) =>
-  diagnostics && diagnostics.length > 0 ? (
-    <p className="mt-2 text-xs text-muted-foreground">
-      {t('admin.roles.messages.diagnosticCodes', {
-        codes: diagnostics.map((diagnostic) => diagnostic.code).join(', '),
-      })}
-    </p>
-  ) : null;
-
 export const RolesPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const rolesApi = useRoles();
@@ -78,9 +69,12 @@ export const RolesPage = () => {
         id: 'roleName',
         header: t('admin.roles.table.headerName'),
         cell: (role) => (
-          <div>
+          <div className="space-y-1">
             <span className="block font-semibold">{role.roleName}</span>
             <span className="block text-xs text-muted-foreground">{role.roleKey}</span>
+            <span className="block text-xs text-muted-foreground">
+              {role.description?.trim() || t('admin.roles.messages.noDescription')}
+            </span>
           </div>
         ),
         sortable: true,
@@ -93,11 +87,15 @@ export const RolesPage = () => {
           const editability = role.editability ?? 'editable';
           return (
             <div className="space-y-2">
-              <span className="block">{roleTypeLabel(role)}</span>
-              <Badge className={`rounded-full ${editabilityClassByValue[editability]}`} variant="outline">
-                {t(editabilityLabelKey[editability])}
-              </Badge>
-              {renderDiagnosticCodes(role.diagnostics)}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{roleTypeLabel(role)}</span>
+                <Badge className={`rounded-full ${editabilityClassByValue[editability]}`} variant="outline">
+                  {t(editabilityLabelKey[editability])}
+                </Badge>
+              </div>
+              <span className="block text-xs text-muted-foreground">
+                {t('admin.roles.messages.roleLevel', { value: role.roleLevel })}
+              </span>
             </div>
           );
         },
@@ -106,7 +104,7 @@ export const RolesPage = () => {
         id: 'sync',
         header: t('admin.roles.table.headerSync'),
         cell: (role) => (
-          <div>
+          <div className="space-y-2">
             <Badge
               className={`rounded-full ${roleStatusTone(role.syncState)}`}
               aria-label={`${t('admin.roles.table.headerSync')}: ${roleStatusLabel(role.syncState)}`}
@@ -115,24 +113,17 @@ export const RolesPage = () => {
               {roleStatusLabel(role.syncState)}
             </Badge>
             {role.syncError ? (
-              <p className="mt-2 text-xs text-destructive" role="status">
+              <p className="text-xs text-destructive" role="status">
                 {t('admin.roles.messages.syncErrorCode', { code: role.syncError.code })}
               </p>
             ) : null}
-          </div>
-        ),
-      },
-      {
-        id: 'description',
-        header: t('admin.roles.table.headerDescription'),
-        cell: (role) => (
-          <div>
-            <p>{role.description ?? t('admin.roles.messages.noDescription')}</p>
-            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-              <p>{t('admin.roles.messages.externalRoleName', { value: role.externalRoleName })}</p>
-              <p>{t('admin.roles.messages.managedBy', { value: role.managedBy })}</p>
-              <p>{t('admin.roles.messages.roleLevel', { value: role.roleLevel })}</p>
-            </div>
+            {!role.syncError && role.diagnostics && role.diagnostics.length > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {t('admin.roles.messages.diagnosticCodes', {
+                  codes: role.diagnostics.map((diagnostic) => diagnostic.code).join(', '),
+                })}
+              </p>
+            ) : null}
           </div>
         ),
       },
@@ -206,30 +197,39 @@ export const RolesPage = () => {
 
             return (
               <>
-                <Button asChild type="button" size="sm" variant="outline">
-                  <Link to="/admin/roles/$roleId" params={{ roleId: role.id }}>
-                    {t('admin.roles.actions.edit')}
+                <Button asChild type="button" size="icon" variant="outline">
+                  <Link
+                    to="/admin/roles/$roleId"
+                    params={{ roleId: role.id }}
+                    aria-label={t('admin.roles.actions.edit')}
+                    title={t('admin.roles.actions.edit')}
+                  >
+                    <IconEdit aria-hidden="true" className="h-4 w-4" />
                   </Link>
                 </Button>
                 {role.syncState === 'failed' ? (
                   <Button
                     type="button"
-                    size="sm"
+                    size="icon"
                     variant="secondary"
                     disabled={role.managedBy !== 'studio'}
+                    aria-label={t('admin.roles.actions.retrySync')}
+                    title={t('admin.roles.actions.retrySync')}
                     onClick={() => void rolesApi.retryRoleSync(role.id)}
                   >
-                    {t('admin.roles.actions.retrySync')}
+                    <IconRefresh aria-hidden="true" className="h-4 w-4" />
                   </Button>
                 ) : null}
                 <Button
                   type="button"
-                  size="sm"
+                  size="icon"
                   variant="destructive"
                   disabled={isReadOnly}
+                  aria-label={t('admin.roles.actions.delete')}
+                  title={t('admin.roles.actions.delete')}
                   onClick={() => setDeleteRoleId(role.id)}
                 >
-                  {t('admin.roles.actions.delete')}
+                  <IconTrash aria-hidden="true" className="h-4 w-4" />
                 </Button>
               </>
             );

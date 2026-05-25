@@ -40,6 +40,7 @@ import {
   getInstanceKeycloakProvisioningRun,
   getInstanceKeycloakStatus,
   getRuntimeHealth,
+  getLatestAuthorizePerformanceRun,
   getMyDataSubjectRights,
   deactivateOrganization,
   getPluginOperationJob,
@@ -53,6 +54,7 @@ import {
   listInstances,
   listOrganizations,
   listPluginOperationJobs,
+  startAuthorizePerformanceRun,
   planInstanceKeycloakProvisioning,
   probeTenantIamAccess,
   reconcileRoles,
@@ -1443,5 +1445,101 @@ describe('iam-api transparency helpers', () => {
       id: 'job-1',
       status: 'running',
     });
+  });
+
+  it('loads the latest authorize performance run from monitoring', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            data: {
+              generatedAt: '2026-05-25T18:00:00.000Z',
+              measuredOn: 'server',
+              actor: {
+                instanceId: 'tenant-a',
+                keycloakSubject: 'kc-user-1',
+              },
+              request: {
+                action: 'content.read',
+                resourceType: 'content',
+              },
+              configuration: {
+                measuredRequests: 12,
+                warmupRequests: 2,
+              },
+              scenarios: [],
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      )
+    );
+
+    await expect(getLatestAuthorizePerformanceRun()).resolves.toMatchObject({
+      actor: {
+        instanceId: 'tenant-a',
+      },
+      request: {
+        action: 'content.read',
+      },
+    });
+  });
+
+  it('starts an authorize performance run through the monitoring endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            generatedAt: '2026-05-25T18:00:00.000Z',
+            measuredOn: 'server',
+            actor: {
+              instanceId: 'tenant-a',
+              keycloakSubject: 'kc-user-1',
+            },
+            request: {
+              action: 'content.read',
+              resourceType: 'content',
+              resourceId: 'article-1',
+            },
+            configuration: {
+              measuredRequests: 12,
+              warmupRequests: 2,
+            },
+            scenarios: [],
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      startAuthorizePerformanceRun({
+        action: 'content.read',
+        resourceType: 'content',
+        resourceId: 'article-1',
+        measuredRequests: 12,
+        warmupRequests: 2,
+      })
+    ).resolves.toMatchObject({
+      request: {
+        resourceId: 'article-1',
+      },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/authorize-performance',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'content.read',
+          resourceType: 'content',
+          resourceId: 'article-1',
+          measuredRequests: 12,
+          warmupRequests: 2,
+        }),
+      })
+    );
   });
 });

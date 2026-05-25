@@ -2,9 +2,9 @@ import {
   loadInstanceAuthClientSecretCiphertext,
   loadTenantAdminClientSecretCiphertext,
 } from '@sva/data-repositories/server';
-import { revealField } from '@sva/iam-admin/encryption';
 import { createSdkLogger } from '@sva/server-runtime';
 
+import { revealField } from './iam-account-management/encryption.js';
 import { getAuthClientSecret } from './runtime-secrets.js';
 
 const logger = createSdkLogger({ component: 'iam-auth-config', level: 'info' });

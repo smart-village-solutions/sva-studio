@@ -10,6 +10,7 @@ import { t } from '../../../i18n';
 import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
+import { InstanceDetailModulesSection } from './-instance-detail-modules-section';
 import {
   buildExistingRealmOperationsModel,
   buildHistoryWorkspaceModel,
@@ -691,28 +692,13 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 disabled={instancesApi.statusLoading}
               />
 
-              {selectedInstance.moduleIamStatus ? (
-                <Card className="space-y-4 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="font-medium text-foreground">{t('admin.instances.instanceModules.detail.title')}</div>
-                      <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.detail.subtitle')}</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void instancesApi.seedIamBaseline(selectedInstance.instanceId)}
-                      disabled={instancesApi.statusLoading}
-                    >
-                      {t('admin.instances.instanceModules.actions.seedIamBaseline')}
-                    </Button>
-                  </div>
-                  <div className="rounded-xl border border-dashed border-border/70 bg-background/70 p-4 text-sm text-muted-foreground">
-                    {t('admin.instances.operations.followUpSummary')}
-                  </div>
-                </Card>
-              ) : null}
+              <InstanceDetailModulesSection
+                selectedInstance={selectedInstance}
+                onSeedIamBaseline={async () => {
+                  await instancesApi.seedIamBaseline(selectedInstance.instanceId);
+                }}
+                statusLoading={instancesApi.statusLoading}
+              />
             </TabsContent>
 
             <TabsContent value="configuration" className="space-y-5">

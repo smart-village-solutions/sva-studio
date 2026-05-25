@@ -119,6 +119,7 @@ describe('RolesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rolle' }));
 
     expect(screen.getAllByRole('link', { name: 'Rolle bearbeiten' })[0]?.getAttribute('href')).toBe('/admin/roles/role-2');
+    expect(screen.getAllByText('Editorial role').length).toBeGreaterThan(0);
   });
 
   it('links the create action to the dedicated creation page', () => {
@@ -350,5 +351,44 @@ describe('RolesPage', () => {
     expect(screen.queryByRole('button', { name: 'Rolle löschen' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Plattform-Rollen abgleichen' }));
     expect(reconcile).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses compact icon actions for editable roles', () => {
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-9',
+          roleKey: 'writer',
+          roleName: 'writer',
+          externalRoleName: 'writer',
+          managedBy: 'studio',
+          description: 'Writes content',
+          isSystemRole: false,
+          roleLevel: 15,
+          memberCount: 2,
+          syncState: 'failed',
+          syncError: { code: 'IDP_UNAVAILABLE' },
+          permissions: [],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    expect(screen.getAllByRole('link', { name: 'Rolle bearbeiten' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Erneut synchronisieren' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Rolle löschen' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Writes content').length).toBeGreaterThan(0);
   });
 });

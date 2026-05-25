@@ -199,6 +199,76 @@ describe('IamViewerPage', () => {
     });
   });
 
+  it('renders the help box for the currently active tab', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          permissions: [],
+          subject: {
+            actorUserId: 'user-1',
+            effectiveUserId: 'user-1',
+            isImpersonating: false,
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    listGovernanceCasesMock.mockResolvedValue({ data: [] });
+    listAdminDsrCasesMock.mockResolvedValue({ data: [] });
+    getAdminDeletionRulesMock.mockResolvedValue({
+      deactivateAfterDays: 30,
+      pseudonymizeAfterDays: 60,
+      deleteAfterDays: 90,
+      defaultContentStrategy: 'retain',
+      allowContentPreferenceOverride: true,
+      canEdit: true,
+    });
+
+    useAuthMock.mockReturnValue({
+      user: adminUser,
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+
+    getAllowedIamCockpitTabsMock.mockReturnValue(['rights']);
+    const { rerender } = render(<IamViewerPage activeTab="rights" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Rechte verständlich prüfen')).toBeTruthy();
+      expect(screen.getByText('Das können Sie hier tun')).toBeTruthy();
+      expect(screen.getByText(/Mit "Authorize prüfen" einen konkreten Zugriff testen/)).toBeTruthy();
+    });
+
+    getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
+    rerender(<IamViewerPage activeTab="governance" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Governance-Fälle einordnen')).toBeTruthy();
+      expect(screen.getByText(/Bei vorhandener Berechtigung die aktuelle Sicht als CSV exportieren/)).toBeTruthy();
+    });
+
+    getAllowedIamCockpitTabsMock.mockReturnValue(['dsr']);
+    rerender(<IamViewerPage activeTab="dsr" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Datenschutzfälle im Blick behalten')).toBeTruthy();
+      expect(screen.getByText(/Blocker, Metadaten und den genauen Bearbeitungsstand/)).toBeTruthy();
+    });
+
+    getAllowedIamCockpitTabsMock.mockReturnValue(['deletion-rules']);
+    rerender(<IamViewerPage activeTab="deletion-rules" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Löschregeln tenantweit verwalten')).toBeTruthy();
+      expect(screen.getByText(/Fristen in Tagen für Deaktivierung, Pseudonymisierung und Löschung/)).toBeTruthy();
+    });
+  });
+
   it('updates rights filters and shows authorize progress and fallback summary values', async () => {
     let resolveAuthorize: (response: Response) => void = () => {
       throw new Error('Expected authorize request promise to be pending.');
@@ -255,9 +325,6 @@ describe('IamViewerPage', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.change(screen.getByLabelText('Organisation', { selector: '#iam-organization-filter' }), {
-      target: { value: 'org-9' },
-    });
     fireEvent.change(screen.getByLabelText('Handeln als'), {
       target: { value: 'user-9' },
     });
@@ -273,10 +340,6 @@ describe('IamViewerPage', () => {
     fireEvent.change(document.getElementById('iam-authorize-resource-id') as HTMLInputElement, {
       target: { value: 'news-1' },
     });
-    fireEvent.change(screen.getByLabelText('Organisation', { selector: '#iam-authorize-organization-id' }), {
-      target: { value: 'org-10' },
-    });
-
     fireEvent.click(screen.getByRole('button', { name: 'Authorize prüfen' }));
 
     await waitFor(() => {
@@ -300,7 +363,6 @@ describe('IamViewerPage', () => {
       expect(screen.getByText('Verweigert')).toBeTruthy();
       expect(screen.getByText('content.delete')).toBeTruthy();
       expect(screen.getByText('news / news-1')).toBeTruthy();
-      expect(screen.getByText('org-10')).toBeTruthy();
       expect(screen.getByText('Denied by policy')).toBeTruthy();
       expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
@@ -881,6 +943,7 @@ describe('IamViewerPage', () => {
                 scope: { locale: 'de' },
                 sourceRoleIds: ['editor'],
                 sourceGroupIds: ['group-editor'],
+                groupName: 'Redaktion Standard',
               },
               {
                 action: 'content.updatePayload',
@@ -923,12 +986,24 @@ describe('IamViewerPage', () => {
       expect(screen.getByText('Impersonation durch user-2')).toBeTruthy();
       expect(screen.getAllByText('org-1').length).toBeGreaterThan(0);
       expect(screen.getByText('locale: de')).toBeTruthy();
+      expect(screen.getByText('Redaktion Standard')).toBeTruthy();
+      expect(screen.queryByText('group-editor')).toBeNull();
       expect(screen.getAllByText('Keine Organisation').length).toBeGreaterThan(0);
+      expect((screen.getByLabelText('Organisation', { selector: '#iam-organization-filter' }) as HTMLSelectElement).value).toBe('');
+      expect((screen.getByLabelText('Organisation', { selector: '#iam-authorize-organization-id' }) as HTMLSelectElement).value).toBe('');
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'org-1' }));
+    fireEvent.change(screen.getByLabelText('Organisation', { selector: '#iam-organization-filter' }), {
+      target: { value: 'org-1' },
+    });
+    fireEvent.change(screen.getByLabelText('Organisation', { selector: '#iam-authorize-organization-id' }), {
+      target: { value: 'org-1' },
+    });
 
     expect(screen.getByRole('button', { name: 'org-1' }).className).toContain('border-primary');
+    expect((screen.getByLabelText('Organisation', { selector: '#iam-organization-filter' }) as HTMLSelectElement).value).toBe('org-1');
+    expect((screen.getByLabelText('Organisation', { selector: '#iam-authorize-organization-id' }) as HTMLSelectElement).value).toBe('org-1');
   });
 
   it('shows governance and dsr fetch errors without stale success state', async () => {
@@ -1128,5 +1203,111 @@ describe('IamViewerPage', () => {
     });
 
     expect(screen.queryByText('Aborted')).toBeNull();
+  });
+
+  it('renders governance status as a select with loaded status options', async () => {
+    listGovernanceCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'gov-1',
+          type: 'delegation',
+          status: 'open',
+          title: 'Delegation freigeben',
+          summary: 'Zusätzliche Freigabe für Redaktion',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          metadata: {},
+        },
+        {
+          id: 'gov-2',
+          type: 'permission_change',
+          status: 'submitted',
+          title: 'Rollenanpassung beantragt',
+          summary: 'Rolle prüfen',
+          createdAt: '2026-03-16T10:00:00.000Z',
+          metadata: {},
+        },
+      ],
+    });
+
+    useAuthMock.mockReturnValue({
+      user: { ...adminUser, roles: ['security_admin'] },
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
+
+    render(<IamViewerPage activeTab="governance" />);
+
+    await waitFor(() => {
+      expect(listGovernanceCasesMock).toHaveBeenCalledTimes(1);
+    });
+
+    const statusSelect = screen.getByLabelText('Status', { selector: '#iam-governance-status' }) as HTMLSelectElement;
+    expect(Array.from(statusSelect.options).map((option) => option.value)).toEqual(['', 'open', 'submitted']);
+
+    fireEvent.change(statusSelect, { target: { value: 'submitted' } });
+
+    expect(statusSelect.value).toBe('submitted');
+  });
+
+  it('falls back to account ids in governance and dsr tables when display names are missing', async () => {
+    listGovernanceCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'gov-1',
+          type: 'delegation',
+          status: 'open',
+          title: 'Delegation freigeben',
+          summary: 'Zusätzliche Freigabe für Redaktion',
+          actorAccountId: 'account-actor-1',
+          targetAccountId: 'account-target-1',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          metadata: {},
+        },
+      ],
+    });
+    listAdminDsrCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'dsr-1',
+          type: 'request',
+          canonicalStatus: 'queued',
+          rawStatus: 'queued',
+          title: 'Auskunftsersuchen',
+          summary: 'Benutzerkonto Alice',
+          targetAccountId: 'account-target-2',
+          requesterAccountId: 'account-requester-2',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          metadata: {},
+        },
+      ],
+    });
+
+    useAuthMock.mockReturnValue({
+      user: { ...adminUser, roles: ['security_admin'] },
+      isLoading: false,
+      error: null,
+      invalidatePermissions: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['governance', 'dsr']);
+
+    const { rerender } = render(<IamViewerPage activeTab="governance" />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('account-actor-1 -> account-target-1').length).toBeGreaterThan(0);
+    });
+
+    rerender(<IamViewerPage activeTab="dsr" />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('account-target-2 / account-requester-2').length).toBeGreaterThan(0);
+    });
   });
 });

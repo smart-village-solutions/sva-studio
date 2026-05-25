@@ -85,6 +85,15 @@ const permissionTraceStatusTranslationKeyByValue = {
   disabled: 'admin.users.edit.permissionTrace.status.disabled',
 } as const;
 
+const permissionTraceInactiveReasonTranslationKeyByValue = {
+  assignment_not_started: 'admin.users.edit.permissionTrace.inactiveReason.assignmentNotStarted',
+  assignment_expired: 'admin.users.edit.permissionTrace.inactiveReason.assignmentExpired',
+  membership_not_started: 'admin.users.edit.permissionTrace.inactiveReason.membershipNotStarted',
+  membership_expired: 'admin.users.edit.permissionTrace.inactiveReason.membershipExpired',
+  group_disabled: 'admin.users.edit.permissionTrace.inactiveReason.groupDisabled',
+  hierarchy_restricted: 'admin.users.edit.permissionTrace.inactiveReason.hierarchyRestricted',
+} as const;
+
 const permissionTraceSourceTranslationKeyByValue = {
   direct_permission: 'admin.users.edit.permissionTrace.source.directPermission',
   direct_role: 'admin.users.edit.permissionTrace.source.directRole',
@@ -184,6 +193,59 @@ const describePermissionTraceSource = (entry: IamUserPermissionTraceItem) => {
   }
 
   return entry.roleName ? `${base} · ${entry.roleName}` : base;
+};
+
+const formatTraceValidity = (entry: Pick<IamUserPermissionTraceItem, 'validFrom' | 'validTo'>) => {
+  if (entry.validFrom && entry.validTo) {
+    return t('admin.users.edit.permissionTrace.validityRange', {
+      from: formatDateTime(entry.validFrom),
+      to: formatDateTime(entry.validTo),
+    });
+  }
+  if (entry.validFrom) {
+    return t('admin.users.edit.permissionTrace.validityFrom', { from: formatDateTime(entry.validFrom) });
+  }
+  if (entry.validTo) {
+    return t('admin.users.edit.permissionTrace.validityTo', { to: formatDateTime(entry.validTo) });
+  }
+  return null;
+};
+
+const buildPermissionTraceDetails = (entry: IamUserPermissionTraceItem): readonly string[] => {
+  const details: string[] = [];
+  if (entry.inheritedFromOrganizationId) {
+    details.push(
+      t('admin.users.edit.permissionTrace.inheritedOrganization', {
+        value: entry.inheritedFromOrganizationId,
+      })
+    );
+  }
+  if (entry.inheritedFromGeoUnitId) {
+    details.push(
+      t('admin.users.edit.permissionTrace.inheritedGeoUnit', {
+        value: entry.inheritedFromGeoUnitId,
+      })
+    );
+  }
+  if (entry.restrictedByGeoUnitId) {
+    details.push(
+      t('admin.users.edit.permissionTrace.restrictedGeoUnit', {
+        value: entry.restrictedByGeoUnitId,
+      })
+    );
+  }
+  if (entry.inactiveReason) {
+    details.push(
+      t('admin.users.edit.permissionTrace.inactiveReasonLabel', {
+        value: t(permissionTraceInactiveReasonTranslationKeyByValue[entry.inactiveReason]),
+      })
+    );
+  }
+  const validityText = formatTraceValidity(entry);
+  if (validityText) {
+    details.push(validityText);
+  }
+  return details;
 };
 
 const appendUnique = (values: readonly string[], nextValue: string): string[] =>
@@ -667,6 +729,7 @@ export const UserEditPage = ({ userId, invitationStatus }: UserEditPageProps) =>
               {selectableGroups.map((group) => {
                 const selected = formValues.groupIds.includes(group.id);
                 const currentMembership = groupMembershipById.get(group.id);
+                const membershipValidity = currentMembership ? formatTraceValidity(currentMembership) : null;
                 return (
                   <Label key={group.id} className="flex items-start gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground">
                     <Checkbox
@@ -689,6 +752,7 @@ export const UserEditPage = ({ userId, invitationStatus }: UserEditPageProps) =>
                           {t('admin.users.edit.groupOrigin', { value: currentMembership.origin })}
                         </span>
                       ) : null}
+                      {membershipValidity ? <span className="text-xs text-muted-foreground">{membershipValidity}</span> : null}
                     </span>
                   </Label>
                 );
@@ -762,6 +826,7 @@ export const UserEditPage = ({ userId, invitationStatus }: UserEditPageProps) =>
               <ul className="grid gap-3">
                 {effectivePermissionTrace.map((entry, index) => {
                   const scopeText = formatScope(entry.scope);
+                  const detailLines = buildPermissionTraceDetails(entry);
                   return (
                     <li
                       key={`${entry.permissionKey}:${entry.sourceKind}:${entry.roleId ?? 'none'}:${entry.groupId ?? 'none'}:${index}`}
@@ -784,6 +849,13 @@ export const UserEditPage = ({ userId, invitationStatus }: UserEditPageProps) =>
                         ) : null}
                         {scopeText ? <span>{t('admin.users.edit.permissionTrace.scope', { value: scopeText })}</span> : null}
                       </div>
+                      {detailLines.length > 0 ? (
+                        <ul className="mt-3 grid gap-1 text-xs text-muted-foreground">
+                          {detailLines.map((detail) => (
+                            <li key={detail}>{detail}</li>
+                          ))}
+                        </ul>
+                      ) : null}
                     </li>
                   );
                 })}
@@ -795,20 +867,30 @@ export const UserEditPage = ({ userId, invitationStatus }: UserEditPageProps) =>
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-foreground">{t('admin.users.edit.permissionTrace.inactiveTitle')}</h3>
               <ul className="grid gap-3">
-                {inactivePermissionTrace.map((entry, index) => (
-                  <li
-                    key={`${entry.permissionKey}:${entry.sourceKind}:${entry.roleId ?? 'none'}:${entry.groupId ?? 'none'}:inactive:${index}`}
-                    className="rounded-lg border border-dashed border-border bg-background p-3"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-foreground">{entry.permissionKey}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
+                {inactivePermissionTrace.map((entry, index) => {
+                  const detailLines = buildPermissionTraceDetails(entry);
+                  return (
+                    <li
+                      key={`${entry.permissionKey}:${entry.sourceKind}:${entry.roleId ?? 'none'}:${entry.groupId ?? 'none'}:inactive:${index}`}
+                      className="rounded-lg border border-dashed border-border bg-background p-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-foreground">{entry.permissionKey}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
+                        </div>
+                        <Badge variant="outline">{t(permissionTraceStatusTranslationKeyByValue[entry.status])}</Badge>
                       </div>
-                      <Badge variant="outline">{t(permissionTraceStatusTranslationKeyByValue[entry.status])}</Badge>
-                    </div>
-                  </li>
-                ))}
+                      {detailLines.length > 0 ? (
+                        <ul className="mt-3 grid gap-1 text-xs text-muted-foreground">
+                          {detailLines.map((detail) => (
+                            <li key={detail}>{detail}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ) : null}

@@ -76,6 +76,18 @@ const formatDateTime = (value?: string) => {
   return formatEditorDateTime(value) ?? value;
 };
 
+const mappingStatusTranslationKeyByValue = {
+  mapped: 'account.projection.mappingStatus.mapped',
+  unmapped: 'account.projection.mappingStatus.unmapped',
+  manual_review: 'account.projection.mappingStatus.manualReview',
+} as const;
+
+const editabilityTranslationKeyByValue = {
+  editable: 'account.projection.editability.editable',
+  read_only: 'account.projection.editability.readOnly',
+  blocked: 'account.projection.editability.blocked',
+} as const;
+
 const validateForm = (values: ProfileFormValues): ProfileErrors => {
   const errors: ProfileErrors = {};
 
@@ -279,6 +291,15 @@ export const AccountProfilePage = () => {
     '-';
   const email = profile?.email ?? '-';
   const roleNames = profile?.roles.map((role) => role.roleName).join(', ') || '-';
+  const hasProjectionWarning =
+    profile?.mappingStatus === 'manual_review' || Boolean(profile?.diagnostics?.length);
+  const projectionStatusLabel = profile?.mappingStatus
+    ? t(mappingStatusTranslationKeyByValue[profile.mappingStatus])
+    : null;
+  const editabilityLabel = profile?.editability
+    ? t(editabilityTranslationKeyByValue[profile.editability])
+    : null;
+  const diagnosticCodes = profile?.diagnostics?.map((diagnostic) => diagnostic.code).join(', ') ?? null;
 
   return (
     <section className="space-y-5" aria-busy={isSaving}>
@@ -314,6 +335,24 @@ export const AccountProfilePage = () => {
           {formatDateTime(profile?.lastLoginAt)}
         </div>
       </Card>
+
+      {hasProjectionWarning ? (
+        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900">
+          <AlertTitle>{t('account.projection.warningTitle')}</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <p>{t('account.projection.warningBody')}</p>
+            {projectionStatusLabel ? (
+              <p>{t('account.projection.statusLine', { value: projectionStatusLabel })}</p>
+            ) : null}
+            {editabilityLabel ? (
+              <p>{t('account.projection.editabilityLine', { value: editabilityLabel })}</p>
+            ) : null}
+            {diagnosticCodes ? (
+              <p>{t('account.projection.diagnosticCodesLine', { value: diagnosticCodes })}</p>
+            ) : null}
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {Object.keys(validationErrors).length > 0 ? (
         <Alert

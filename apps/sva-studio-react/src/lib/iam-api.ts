@@ -2,6 +2,9 @@ import type {
   ApiErrorResponse,
   ApiItemResponse,
   ApiListResponse,
+  AuthorizePerformanceRequest,
+  AuthorizePerformanceRunResponse,
+  AuthorizePerformanceRunResult,
   CreateIamContentInput,
   IamAdminGroupDetail,
   IamAdminGroupListItem,
@@ -593,6 +596,7 @@ export type CreateOrganizationPayload = {
 
 export type UpdateOrganizationPayload = Partial<CreateOrganizationPayload> & {
   readonly parentOrganizationId?: string | null;
+  readonly isActive?: boolean;
 };
 
 export type AssignOrganizationMembershipPayload = {
@@ -1320,6 +1324,43 @@ export const getPluginOperationJob = async (
     signal: options.signal,
     timeoutMs: options.timeoutMs ?? DEFAULT_IAM_REQUEST_TIMEOUT_MS,
   });
+
+  return response.data;
+};
+
+export const getLatestAuthorizePerformanceRun = async (
+  options: IamRequestOptions = {}
+): Promise<AuthorizePerformanceRunResult | null> => {
+  const response = await requestJson<AuthorizePerformanceRunResponse>(
+    '/api/v1/iam/authorize-performance',
+    undefined,
+    {
+      signal: options.signal,
+      timeoutMs: options.timeoutMs ?? HEAVY_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );
+
+  return response.data;
+};
+
+export const startAuthorizePerformanceRun = async (
+  payload: AuthorizePerformanceRequest
+): Promise<AuthorizePerformanceRunResult> => {
+  const response = await postJson<AuthorizePerformanceRunResponse, AuthorizePerformanceRequest>(
+    '/api/v1/iam/authorize-performance',
+    payload
+  );
+
+  if (!response.data) {
+    throw new IamHttpError({
+      status: 500,
+      code: 'invalid_response',
+      message: 'http_500',
+      classification: 'unknown',
+      diagnosticStatus: 'degradiert',
+      recommendedAction: 'erneut_versuchen',
+    });
+  }
 
   return response.data;
 };

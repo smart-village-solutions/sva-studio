@@ -142,6 +142,14 @@ describe('organization read handlers', () => {
     );
 
     expect(response.status).toBe(200);
+    expect(deps.resolveActorInfo).toHaveBeenCalledWith(
+      expect.any(Request),
+      ctx,
+      {
+        requireActorMembership: true,
+        provisionMissingActorMembership: true,
+      }
+    );
     expect(deps.loadOrganizationList).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ search: 'Alpha', page: 1, pageSize: 20 })

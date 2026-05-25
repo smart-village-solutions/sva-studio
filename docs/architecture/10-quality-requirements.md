@@ -76,6 +76,10 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Snapshot-TTL = 300 s, maximal tolerierte Stale-Dauer = 300 s
   - Cache-Hit P95 < 5 ms, Cache-Miss P95 < 80 ms, Recompute P95 < 300 ms bei `N = 100` gleichzeitigen Requests, endpoint-nah gemessen
   - Zusätzliches Beobachtungsprofil `Slow-4G` wird dokumentiert, auch wenn dort keine harte Abnahmegrenze gilt
+- Monitoring-gestuetzter IAM-Authorize-Performance-Nachweis:
+  - `/monitoring` muss den serverseitigen Benchmark fuer `cache-hit`, `cache-miss` und `recompute` ueber den echten Authorize-Pfad starten koennen
+  - Ergebnisvertrag, API-Antwort und JSON-/Markdown-Report unter `docs/reports/` muessen dieselben Kennzahlen und Report-Referenzen stabil serialisieren
+  - Die UI darf nur sichere, nicht-sensitive Ergebnisfelder und Fehlercodes anzeigen; tiefe Provider-, SQL- oder Cache-Details bleiben im Server-/OTEL-Pfad
 - Instanz-Registry:
   - unbekannte, ungültige, suspendierte und archivierte Hosts liefern identisches fail-closed-Verhalten
   - neue Instanzen müssen ohne App-Redeploy über Registry und Cache-Invalidation erreichbar werden

@@ -1,10 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { IamUserGroupAssignment } from '@sva/core';
 
 type SessionUser = {
   id: string;
   instanceId?: string;
   roles: string[];
   assignedModules?: string[];
+  groups?: readonly IamUserGroupAssignment[];
 };
 
 type EffectivePermission = {
@@ -26,6 +28,7 @@ const mocks = vi.hoisted(() => {
     withAuthenticatedUser: vi.fn(),
     resolveEffectivePermissions: vi.fn(),
     withRegistryRepository: vi.fn(),
+    withInstanceScopedDb: vi.fn(),
     isMockAuthEnabled: vi.fn(),
     hasActiveMockAuthSession: vi.fn(() => false),
     createMockSessionUser: vi.fn(),
@@ -76,6 +79,10 @@ vi.mock('./middleware.js', () => ({
 
 vi.mock('./iam-authorization/permission-store.js', () => ({
   resolveEffectivePermissions: mocks.resolveEffectivePermissions,
+}));
+
+vi.mock('./iam-authorization/shared.js', () => ({
+  withInstanceScopedDb: mocks.withInstanceScopedDb,
 }));
 
 vi.mock('./iam-instance-registry/repository.js', () => ({
@@ -181,6 +188,27 @@ describe('meHandler', () => {
         listAssignedModules: async () => ['news'],
       })
     );
+    mocks.withInstanceScopedDb.mockImplementation(
+      async (
+        _instanceId: string,
+        work: (client: { query: (sql: string, params: readonly unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }> }) => Promise<unknown>
+      ) =>
+        work({
+          query: async () => ({
+            rows: [
+              {
+                group_id: 'group-1',
+                group_key: 'admins',
+                display_name: 'Admins',
+                group_type: 'role_bundle',
+                origin: 'manual',
+                valid_from: null,
+                valid_until: null,
+              },
+            ],
+          }),
+        })
+    );
   });
 
   it('uses keycloakSubject for permission resolution and omits stale userId contract', async () => {
@@ -205,12 +233,22 @@ describe('meHandler', () => {
       user: {
         id: string;
         assignedModules: string[];
+        groups: IamUserGroupAssignment[];
         permissionActions: string[];
       };
     };
 
     expect(payload.user.id).toBe('kc-user-1');
     expect(payload.user.assignedModules).toEqual(['news']);
+    expect(payload.user.groups).toEqual([
+      {
+        groupId: 'group-1',
+        groupKey: 'admins',
+        displayName: 'Admins',
+        groupType: 'role_bundle',
+        origin: 'manual',
+      },
+    ]);
     expect(payload.user.permissionActions).toEqual(['events.read']);
     expect(payload.expiresAt).toBe(1_800_000_000_000);
     expect(mocks.appendSetCookie).toHaveBeenCalledWith(
@@ -234,6 +272,23 @@ describe('meHandler', () => {
 
     const payload = (await response.json()) as { user: { assignedModules: string[] } };
     expect(payload.user.assignedModules).toEqual([]);
+  });
+
+  it('returns fail-closed empty groups when group lookup fails', async () => {
+    const { meHandler } = await import('./auth-route-handlers.js');
+
+    mocks.withInstanceScopedDb.mockRejectedValueOnce(new Error('db unavailable'));
+
+    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Auth me group lookup failed',
+      expect.objectContaining({ reason_code: 'group_lookup_failed', error_type: 'Error' })
+    );
+
+    const payload = (await response.json()) as { user: { groups: IamUserGroupAssignment[] } };
+    expect(payload.user.groups).toEqual([]);
   });
 
   it('returns hardened headers in mock-auth mode without permission lookup', async () => {

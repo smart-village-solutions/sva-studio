@@ -216,6 +216,40 @@ describe('AccountProfilePage', () => {
     expect(authMockValue.refetch).not.toHaveBeenCalled();
   });
 
+  it('shows projection diagnostics when the loaded profile is in manual review', async () => {
+    getMyProfileMock.mockResolvedValue({
+      data: {
+        id: 'account-1',
+        keycloakSubject: 'subject-1',
+        username: 'jane.doe',
+        displayName: 'Jane Doe',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        status: 'active',
+        mappingStatus: 'manual_review',
+        editability: 'blocked',
+        diagnostics: [{ code: 'keycloak_projection_degraded' }],
+        fieldEditability: {
+          profile: 'editable',
+          status: 'read_only',
+          roles: 'blocked',
+        },
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Profilstatus erfordert manuelle Prüfung.')).toBeTruthy();
+    });
+    expect(screen.getByText('Projektionsstatus: Manuelle Prüfung')).toBeTruthy();
+    expect(screen.getByText('Bearbeitbarkeit: Blockiert')).toBeTruthy();
+    expect(screen.getByText('Diagnosecodes: keycloak_projection_degraded')).toBeTruthy();
+  });
+
   it('derives the display name from first and last name when no custom display name exists', async () => {
     getMyProfileMock.mockResolvedValue({
       data: {

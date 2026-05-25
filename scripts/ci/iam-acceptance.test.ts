@@ -40,6 +40,26 @@ test('parseAcceptanceConfig rejects incomplete configuration', () => {
   );
 });
 
+test('parseAcceptanceConfig accepts evidence credentials as fallback aliases', () => {
+  const config = parseAcceptanceConfig(
+    {
+      IAM_DATABASE_URL: 'postgres://localhost/sva',
+      IAM_EVIDENCE_INSTANCE_PASSWORD: 'fixture-member-value',
+      IAM_EVIDENCE_INSTANCE_USERNAME: 'fixture-member-user',
+      IAM_EVIDENCE_ROOT_PASSWORD: 'fixture-admin-value',
+      IAM_EVIDENCE_ROOT_USERNAME: 'fixture-admin-user',
+      KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example.com',
+      KEYCLOAK_ADMIN_CLIENT_ID: 'fixture-client-id',
+      KEYCLOAK_ADMIN_CLIENT_SECRET: 'fixture-client-value',
+      KEYCLOAK_ADMIN_REALM: 'acceptance',
+    },
+    '/workspace'
+  );
+
+  assert.equal(config.admin.username, 'fixture-admin-user');
+  assert.equal(config.member.username, 'fixture-member-user');
+});
+
 test('report helpers summarize and render acceptance steps', () => {
   const report = buildAcceptanceReport({
     baseUrl: 'https://studio.example.com',

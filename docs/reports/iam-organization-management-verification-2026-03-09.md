@@ -58,7 +58,7 @@ Dieser Bericht dokumentiert die technischen Nachweise für den Change `add-iam-o
 - Instanzfremde Org-Kontextwechsel werden serverseitig abgewiesen.
 - Org-Kontextwechsel ohne gültigen CSRF-Contract werden serverseitig abgewiesen.
 - Hierarchie-Zyklen in Organisationsupdates liefern deterministische Konfliktantworten.
-- Löschung von Organisationen mit aktiven Children bleibt fail-closed; bestehende Memberships blockieren den Löschpfad nicht.
+- Deaktivierung von Organisationen mit aktiven Children oder Memberships bleibt fail-closed.
 - Der Org-Switcher zeigt den aktiven Kontext über eine Live-Region an und rendert internationalisierte Fehlermeldungen bei Ablehnung.
 
 ## Rollback-Nachweis

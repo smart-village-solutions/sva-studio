@@ -97,99 +97,50 @@ const WorkPackageTable = ({
   rows,
 }: Readonly<{
   rows: ReturnType<typeof createProjectReportModel>['workPackages'];
-}>) => {
-  const [expandedRows, setExpandedRows] = React.useState<ReadonlySet<string>>(() => new Set());
-
-  const toggleRow = React.useCallback((id: string) => {
-    setExpandedRows((current) => {
-      const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  return (
-    <div className="table-shell">
-      <table className="report-table">
-        <thead>
-          <tr>
-            <th>{t('app.workPackageTable.id')}</th>
-            <th>{t('app.workPackageTable.title')}</th>
-            <th>{t('app.workPackageTable.milestone')}</th>
-            <th>{t('app.workPackageTable.priority')}</th>
-            <th>{t('app.workPackageTable.status')}</th>
-            <th>{t('app.workPackageTable.health')}</th>
-            <th>{t('app.workPackageTable.effort')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((entry) => {
-            const isExpanded = expandedRows.has(entry.id);
-            const detailId = `work-package-summary-${entry.id}`;
-            const hasFeatureSummary = typeof entry.featureSummary === 'string' && entry.featureSummary.trim().length > 0;
-
-            return (
-              <React.Fragment key={entry.id}>
-                <tr className="table-row-progress">
-                  <td colSpan={7}>
-                    <ProgressBar value={entry.progressPercent} />
-                  </td>
-                </tr>
-                <tr>
-                  <td>{entry.id}</td>
-                  <td>
-                    <div className="table-title-row">
-                      <strong>{entry.title}</strong>
-                      {hasFeatureSummary && (
-                        <button
-                          type="button"
-                          className="table-detail-toggle"
-                          aria-expanded={isExpanded}
-                          aria-controls={detailId}
-                          aria-label={
-                            isExpanded
-                              ? `Feature-Details für ${entry.id} ausblenden`
-                              : `Feature-Details für ${entry.id} anzeigen`
-                          }
-                          onClick={() => toggleRow(entry.id)}
-                        >
-                          {isExpanded ? t('app.workPackageTable.hideDetails') : t('app.workPackageTable.showDetails')}
-                        </button>
-                      )}
-                    </div>
-                    <div className="table-secondary">{entry.area}</div>
-                  </td>
-                  <td>{entry.milestoneTitle}</td>
-                  <td>{entry.priorityLabel}</td>
-                  <td>{getStatusLabel(entry.status)}</td>
-                  <td>
-                    {entry.health !== 'on_track' && (
-                      <span className={healthClassNameByValue[entry.health]}>{entry.health}</span>
-                    )}
-                  </td>
-                  <td>{entry.effortPt}</td>
-                </tr>
-                {hasFeatureSummary && isExpanded && (
-                  <tr className="table-detail-row" id={detailId}>
-                    <td colSpan={7}>
-                      <div className="table-detail-card">
-                        <p className="table-detail-text">{entry.featureSummary}</p>
-                      </div>
-                    </td>
-                  </tr>
+}>) => (
+  <div className="table-shell">
+    <table className="report-table">
+      <thead>
+        <tr>
+          <th>{t('app.workPackageTable.id')}</th>
+          <th>{t('app.workPackageTable.title')}</th>
+          <th>{t('app.workPackageTable.milestone')}</th>
+          <th>{t('app.workPackageTable.priority')}</th>
+          <th>{t('app.workPackageTable.status')}</th>
+          <th>{t('app.workPackageTable.health')}</th>
+          <th>{t('app.workPackageTable.effort')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((entry) => (
+          <React.Fragment key={entry.id}>
+            <tr className="table-row-progress">
+              <td colSpan={7}>
+                <ProgressBar value={entry.progressPercent} />
+              </td>
+            </tr>
+            <tr>
+              <td>{entry.id}</td>
+              <td>
+                <strong>{entry.title}</strong>
+                <div className="table-secondary">{entry.area}</div>
+              </td>
+              <td>{entry.milestoneTitle}</td>
+              <td>{entry.priorityLabel}</td>
+              <td>{getStatusLabel(entry.status)}</td>
+              <td>
+                {entry.health !== 'on_track' && (
+                  <span className={healthClassNameByValue[entry.health]}>{entry.health}</span>
                 )}
-              </React.Fragment>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-};
+              </td>
+              <td>{entry.effortPt}</td>
+            </tr>
+          </React.Fragment>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
 
 export function App() {
   const [filters, updateFilters] = useFilterState();

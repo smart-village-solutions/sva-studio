@@ -57,26 +57,4 @@ describe('project report app', () => {
 
     consoleErrorSpy.mockRestore();
   });
-
-  it('toggles the feature summary below a work package row', () => {
-    render(<App />);
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Arbeitspakete' }));
-
-    expect(
-      screen.queryByText(/Dieses Arbeitspaket schafft die sichere und mandantenfaehige Eintrittsschicht des Studios\./)
-    ).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Feature-Details für WP-001 anzeigen' }));
-
-    expect(
-      screen.getByText(/Dieses Arbeitspaket schafft die sichere und mandantenfaehige Eintrittsschicht des Studios\./)
-    ).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Feature-Details für WP-001 ausblenden' }));
-
-    expect(
-      screen.queryByText(/Dieses Arbeitspaket schafft die sichere und mandantenfaehige Eintrittsschicht des Studios\./)
-    ).toBeNull();
-  });
 });

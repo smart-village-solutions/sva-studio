@@ -107,8 +107,6 @@ describe('project status report fixture', () => {
               status: 'rolling',
               health: 'unknown',
               dependsOn: [42],
-              acceptanceCriteria: ['ok', 7],
-              todos: 'offen',
               notes: 7,
             },
             {
@@ -134,37 +132,8 @@ describe('project status report fixture', () => {
       'milestones[0].workPackages[0].status must use a known public status key',
       'milestones[0].workPackages[0].health must use a known public health key',
       'milestones[0].workPackages[0].dependsOn must be an array of work package ids',
-      'milestones[0].workPackages[0].acceptanceCriteria must be an array of non-empty strings when provided',
-      'milestones[0].workPackages[0].todos must be an array of non-empty strings when provided',
       'milestones[0].workPackages[0].notes must be a string when provided',
       'milestones[0].workPackages[1].id must be unique',
     ]);
-  });
-
-  it('accepts lightweight IAM tracking fields on work packages', () => {
-    const validReport = {
-      ...fixtureReport,
-      milestones: [
-        {
-          ...(fixtureReport.milestones[0] ?? {}),
-          workPackages: [
-            {
-              id: 'WP-001',
-              title: 'IAM',
-              area: '1. Rechte & Rollen',
-              priority: 'must',
-              effortPt: 1,
-              status: 'acceptance',
-              health: 'on_track',
-              dependsOn: [],
-              acceptanceCriteria: ['Realm und Clients sind konfiguriert.'],
-              todos: ['Zielumgebung erneut prüfen.'],
-            },
-          ],
-        },
-      ],
-    };
-
-    expect(validateProjectStatusReport(validReport)).toEqual([]);
   });
 });

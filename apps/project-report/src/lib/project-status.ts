@@ -46,10 +46,7 @@ export type ProjectStatusWorkPackage = Readonly<{
   status: ProjectStatus;
   health: ProjectHealth;
   dependsOn: readonly string[];
-  acceptanceCriteria?: readonly string[];
-  todos?: readonly string[];
   notes?: string;
-  featureSummary?: string;
 }>;
 export type ProjectStatusReportContract = Readonly<{
   meta: ProjectStatusMeta;
@@ -70,8 +67,6 @@ const isRecord = (value: unknown): value is JsonRecord => typeof value === 'obje
 const isFiniteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 
 const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every((entry) => typeof entry === 'string');
-const isNonEmptyStringArray = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every((entry) => typeof entry === 'string' && entry.length > 0);
 
 const hasExactEntries = <TKey extends string, TValue>(
   value: unknown,
@@ -205,20 +200,8 @@ const validateWorkPackages = (
       errors.push(`${itemPath}.dependsOn must be an array of work package ids`);
     }
 
-    if ('acceptanceCriteria' in workPackage && !isNonEmptyStringArray(workPackage.acceptanceCriteria)) {
-      errors.push(`${itemPath}.acceptanceCriteria must be an array of non-empty strings when provided`);
-    }
-
-    if ('todos' in workPackage && !isNonEmptyStringArray(workPackage.todos)) {
-      errors.push(`${itemPath}.todos must be an array of non-empty strings when provided`);
-    }
-
     if ('notes' in workPackage && typeof workPackage.notes !== 'string') {
       errors.push(`${itemPath}.notes must be a string when provided`);
-    }
-
-    if ('featureSummary' in workPackage && typeof workPackage.featureSummary !== 'string') {
-      errors.push(`${itemPath}.featureSummary must be a string when provided`);
     }
   });
 };

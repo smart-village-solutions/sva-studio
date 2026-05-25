@@ -1,5 +1,6 @@
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
 import {
+  consumeLegalConsentExportRateLimit,
   createSelfServicePermissionChangeRequest,
   hasLegalConsentExportPermission,
   listGovernanceCases,
@@ -90,6 +91,59 @@ const withInstanceScopedDb = async <T>(
   instanceId: string,
   work: (client: QueryClient) => Promise<T>
 ): Promise<T> => withResolvedInstanceDb(resolvePool, instanceId, work);
+
+const escapeCsvField = (value: string): string => {
+  if (/[",\n\r]/.test(value)) {
+    return `"${value.replaceAll('"', '""')}"`;
+  }
+  return value;
+};
+
+const serializeLegalConsentExportCsv = (
+  rows: readonly {
+    id: string;
+    workspaceId?: string;
+    subjectId: string;
+    legalTextId: string;
+    legalTextVersion: string;
+    actionType: string;
+    acceptedAt: string;
+    revokedAt?: string;
+    targets: { roleIds: readonly string[]; groupIds: readonly string[] };
+  }[]
+): string => {
+  const header = [
+    'id',
+    'workspaceId',
+    'subjectId',
+    'legalTextId',
+    'legalTextVersion',
+    'actionType',
+    'acceptedAt',
+    'revokedAt',
+    'roleTargetIds',
+    'groupTargetIds',
+  ];
+
+  const lines = rows.map((row) =>
+    [
+      row.id,
+      row.workspaceId ?? '',
+      row.subjectId,
+      row.legalTextId,
+      row.legalTextVersion,
+      row.actionType,
+      row.acceptedAt,
+      row.revokedAt ?? '',
+      row.targets.roleIds.join('|'),
+      row.targets.groupIds.join('|'),
+    ]
+      .map((field) => escapeCsvField(field))
+      .join(',')
+  );
+
+  return [header.join(','), ...lines].join('\n');
+};
 
 export const governanceWorkflowHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
@@ -274,7 +328,10 @@ export const legalConsentExportHandler = async (request: Request): Promise<Respo
       if (user.instanceId && user.instanceId !== instanceId) {
         return jsonResponse(403, { error: 'instance_scope_mismatch' });
       }
-      if (format !== 'json') {
+      if (format !== 'json' && format !== 'csv') {
+        return jsonResponse(400, { error: 'invalid_request' });
+      }
+      if (accountId && !isUuid(accountId)) {
         return jsonResponse(400, { error: 'invalid_request' });
       }
       if (!hasLegalConsentExportPermission(user.roles ?? [])) {
@@ -286,10 +343,32 @@ export const legalConsentExportHandler = async (request: Request): Promise<Respo
         return jsonResponse(403, { error: 'forbidden' });
       }
 
+      const rateLimit = consumeLegalConsentExportRateLimit({
+        instanceId,
+        actorKeycloakSubject: user.id,
+      });
+      if (rateLimit) {
+        return new Response(JSON.stringify({ error: 'rate_limited' }), {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(rateLimit.retryAfterSeconds),
+          },
+        });
+      }
+
       try {
         const rows = await withInstanceScopedDb(instanceId, (client) =>
           loadConsentExportRecords(instanceId, accountId, client)
         );
+        if (format === 'csv') {
+          return new Response(serializeLegalConsentExportCsv(rows), {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/csv; charset=utf-8',
+            },
+          });
+        }
         return jsonResponse(200, { format, rows });
       } catch (error) {
         logger.error('Legal consent export failed', {

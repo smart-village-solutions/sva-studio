@@ -110,7 +110,7 @@ export const resolveTenantKeycloakUsersWithPagination = async (
       keycloakRoleNamesBySubject: new Map(
         localResult.users.map((user) => [
           user.keycloakSubject,
-          user.roles.map((role) => role.roleKey),
+          null,
         ] as const)
       ),
     };

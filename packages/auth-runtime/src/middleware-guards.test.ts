@@ -151,7 +151,7 @@ describe('middleware-guards', () => {
     );
   });
 
-  it('reuses active lifecycle checks from the short-lived in-process cache', async () => {
+  it('rechecks active lifecycle state on every request', async () => {
     const { ensureAccountLifecycleAllowsAccess } = await import('./middleware-guards.js');
     const request = new Request('http://localhost/auth/me');
     const activeUser = {
@@ -161,22 +161,6 @@ describe('middleware-guards', () => {
     } as never;
 
     await expect(ensureAccountLifecycleAllowsAccess(request, activeUser)).resolves.toBeNull();
-    await expect(ensureAccountLifecycleAllowsAccess(request, activeUser)).resolves.toBeNull();
-
-    expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalledTimes(1);
-  });
-
-  it('expires the lifecycle cache after the short ttl', async () => {
-    const { ensureAccountLifecycleAllowsAccess } = await import('./middleware-guards.js');
-    const request = new Request('http://localhost/auth/me');
-    const activeUser = {
-      id: 'user-1',
-      roles: ['editor'],
-      instanceId: 'de-musterhausen',
-    } as never;
-
-    await expect(ensureAccountLifecycleAllowsAccess(request, activeUser)).resolves.toBeNull();
-    vi.spyOn(Date, 'now').mockReturnValue(5_501);
     await expect(ensureAccountLifecycleAllowsAccess(request, activeUser)).resolves.toBeNull();
 
     expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalledTimes(2);

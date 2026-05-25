@@ -43,11 +43,13 @@ const state = vi.hoisted(() => ({
   runAuthorizePerformanceBenchmark: vi.fn(),
   readLatestAuthorizePerformanceBenchmark: vi.fn(() => null),
   getWorkspaceContext: vi.fn(() => ({ requestId: 'request-1' })),
+  withRequestContext: vi.fn(async (_input: unknown, work: () => Promise<Response>) => work()),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
   getWorkspaceContext: state.getWorkspaceContext,
+  withRequestContext: state.withRequestContext,
 }));
 
 vi.mock('../middleware.js', () => ({
@@ -147,6 +149,13 @@ describe('authorize performance handlers', () => {
           organizationId: 'org-1',
         }),
       })
+    );
+    expect(state.withRequestContext).toHaveBeenCalledWith(
+      {
+        request: expect.any(Request),
+        fallbackWorkspaceId: 'default',
+      },
+      expect.any(Function)
     );
   });
 
@@ -327,6 +336,13 @@ describe('authorize performance handlers', () => {
       instanceId: INSTANCE_ID,
       keycloakSubject: 'kc-user-1',
     });
+    expect(state.withRequestContext).toHaveBeenCalledWith(
+      {
+        request: expect.any(Request),
+        fallbackWorkspaceId: 'default',
+      },
+      expect.any(Function)
+    );
   });
 
   it('blocks latest-run access for non-monitoring users', async () => {

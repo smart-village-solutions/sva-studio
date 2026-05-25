@@ -1350,6 +1350,34 @@ describe('iam-api transparency helpers', () => {
     );
   });
 
+  it('parses legal consent JSON exports without assuming an API envelope', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            format: 'json',
+            rows: [{ accountId: 'account-7' }],
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }
+        )
+      )
+    );
+
+    await expect(
+      requestLegalConsentExport({
+        instanceId: 'inst-1',
+        format: 'json',
+      })
+    ).resolves.toEqual({
+      format: 'json',
+      rows: [{ accountId: 'account-7' }],
+    });
+  });
+
   it('forwards abort signals for governance and DSR list requests', async () => {
     const fetchMock = vi.fn().mockImplementation(async () =>
       new Response(
@@ -1539,6 +1567,7 @@ describe('iam-api transparency helpers', () => {
           measuredRequests: 12,
           warmupRequests: 2,
         }),
+        signal: expect.any(AbortSignal),
       })
     );
   });

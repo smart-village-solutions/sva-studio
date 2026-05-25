@@ -156,7 +156,7 @@ describe('auth server session resolution', () => {
     });
   });
 
-  it('reuses fresh authenticated session resolutions from the short-lived in-process cache', async () => {
+  it('revalidates authenticated session resolutions on every request', async () => {
     state.getSession.mockResolvedValue(createSession({ expiresAt: 100_000 }));
 
     const { resolveSessionUser } = await import('./session.js');
@@ -172,23 +172,6 @@ describe('auth server session resolution', () => {
       user: completeUser,
       expiresAt: 100_000,
       freshReauthAt: 4_500,
-    });
-
-    expect(state.getSession).toHaveBeenCalledTimes(1);
-    expect(state.getSessionControlState).toHaveBeenCalledTimes(1);
-  });
-
-  it('expires the session resolution cache after the short ttl', async () => {
-    state.getSession.mockResolvedValue(createSession({ expiresAt: 100_000 }));
-
-    const { resolveSessionUser } = await import('./session.js');
-
-    await expect(resolveSessionUser('session-1')).resolves.toMatchObject({
-      kind: 'authenticated',
-    });
-    vi.spyOn(Date, 'now').mockReturnValue(5_501);
-    await expect(resolveSessionUser('session-1')).resolves.toMatchObject({
-      kind: 'authenticated',
     });
 
     expect(state.getSession).toHaveBeenCalledTimes(2);

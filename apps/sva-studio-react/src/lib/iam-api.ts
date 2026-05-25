@@ -1346,9 +1346,12 @@ export const getLatestAuthorizePerformanceRun = async (
 export const startAuthorizePerformanceRun = async (
   payload: AuthorizePerformanceRequest
 ): Promise<AuthorizePerformanceRunResult> => {
-  const response = await postJson<AuthorizePerformanceRunResponse, AuthorizePerformanceRequest>(
+  const response = await requestJson<AuthorizePerformanceRunResponse>(
     '/api/v1/iam/authorize-performance',
-    payload
+    createJsonMutationRequestInit('POST', payload),
+    {
+      timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
+    }
   );
 
   if (!response.data) {
@@ -1869,9 +1872,15 @@ export const requestDataExport = async (input: {
 
 export const requestLegalConsentExport = async (input: {
   readonly instanceId: string;
-  readonly format: 'json' | 'csv' | 'xml';
+  readonly format: 'json' | 'csv';
   readonly accountId?: string;
-}): Promise<{ data: string } | ApiItemResponse<unknown>> => {
+}): Promise<
+  | { data: string }
+  | {
+      readonly format: 'json';
+      readonly rows: readonly Record<string, unknown>[];
+    }
+> => {
   const params = new URLSearchParams();
   params.set('instanceId', input.instanceId);
   params.set('format', input.format);

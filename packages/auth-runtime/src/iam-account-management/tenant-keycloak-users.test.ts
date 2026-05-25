@@ -119,5 +119,6 @@ describe('tenant keycloak users', () => {
     );
     expect(mocks.listUsers).not.toHaveBeenCalled();
     expect(mocks.listUserRoleNames).not.toHaveBeenCalled();
+    expect(result.keycloakRoleNamesBySubject.get('keycloak-subject-1')).toBeNull();
   });
 });

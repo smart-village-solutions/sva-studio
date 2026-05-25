@@ -391,7 +391,7 @@ describe('organization mutation handlers', () => {
     });
   });
 
-  it('deletes organizations without child organizations and clears content organization references', async () => {
+  it('deactivates organizations without child organizations and clears content organization references', async () => {
     const deps = buildDeps();
     const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
     deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
@@ -410,7 +410,7 @@ describe('organization mutation handlers', () => {
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
     );
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('DELETE FROM iam.organizations'),
+      expect.stringContaining('UPDATE iam.organizations'),
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
     );
     expect(emitActivityLog).toHaveBeenCalledWith(
@@ -447,7 +447,7 @@ describe('organization mutation handlers', () => {
 
     expect(response.status).toBe(200);
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('DELETE FROM iam.organizations'),
+      expect.stringContaining('UPDATE iam.organizations'),
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
     );
   });

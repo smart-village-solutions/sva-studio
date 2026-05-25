@@ -7,7 +7,6 @@ import { SessionStoreUnavailableError, SessionUserHydrationError } from './runti
 import type { SessionUser } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
-const ACCOUNT_LIFECYCLE_CACHE_TTL_MS = 500;
 
 const PROFILE_DIAGNOSTIC_PATHS = new Set(['/auth/me', '/api/v1/iam/users/me/profile']);
 
@@ -23,46 +22,6 @@ const shouldLogProfileDiagnostics = (request: Request): boolean => {
 
 type AccountLifecycleRow = {
   deletion_lifecycle_state: 'active' | 'deactivated' | 'pseudonymized' | 'deleted';
-};
-
-type AccountLifecycleState = AccountLifecycleRow['deletion_lifecycle_state'] | 'account_not_found';
-type AccountLifecycleCacheEntry = {
-  readonly cachedAtMs: number;
-  readonly state: AccountLifecycleState;
-};
-
-const accountLifecycleCache = new Map<string, AccountLifecycleCacheEntry>();
-
-const toAccountLifecycleCacheKey = (instanceId: string, keycloakSubject: string): string =>
-  `${instanceId}:${keycloakSubject}`;
-
-const readAccountLifecycleCache = (
-  instanceId: string,
-  keycloakSubject: string
-): AccountLifecycleState | null => {
-  const key = toAccountLifecycleCacheKey(instanceId, keycloakSubject);
-  const entry = accountLifecycleCache.get(key);
-  if (!entry) {
-    return null;
-  }
-
-  if (entry.cachedAtMs + ACCOUNT_LIFECYCLE_CACHE_TTL_MS <= Date.now()) {
-    accountLifecycleCache.delete(key);
-    return null;
-  }
-
-  return entry.state;
-};
-
-const writeAccountLifecycleCache = (
-  instanceId: string,
-  keycloakSubject: string,
-  state: AccountLifecycleState
-): void => {
-  accountLifecycleCache.set(toAccountLifecycleCacheKey(instanceId, keycloakSubject), {
-    cachedAtMs: Date.now(),
-    state,
-  });
 };
 
 export const logProfileDiagnosticsIfEnabled = (request: Request, user: SessionUser): void => {
@@ -106,11 +65,6 @@ export const ensureAccountLifecycleAllowsAccess = async (
     return null;
   }
 
-  const cachedAccountState = readAccountLifecycleCache(user.instanceId, user.id);
-  if (cachedAccountState === 'active') {
-    return null;
-  }
-
   const pool = resolvePool();
   if (!pool) {
     const logContext = buildLogContext(user.instanceId, { includeTraceId: true });
@@ -134,31 +88,27 @@ export const ensureAccountLifecycleAllowsAccess = async (
     );
   }
 
-  const accountState =
-    cachedAccountState
-    ?? await withResolvedInstanceDb(() => pool, user.instanceId, async (client) => {
-    const result = await client.query<AccountLifecycleRow>(
-      `
+  const accountRow = await withResolvedInstanceDb(
+    () => pool,
+    user.instanceId,
+    async (client) => {
+      const result = await client.query<AccountLifecycleRow>(
+        `
 SELECT a.deletion_lifecycle_state
 FROM iam.accounts a
 WHERE a.instance_id = $1
   AND a.keycloak_subject = $2
 LIMIT 1;
 `,
-      [user.instanceId, user.id]
-    );
+        [user.instanceId, user.id]
+      );
 
-    return result.rows[0]?.deletion_lifecycle_state ?? 'account_not_found';
-  });
-
-  writeAccountLifecycleCache(user.instanceId, user.id, accountState);
-
-  if (accountState === 'active') {
-    return null;
-  }
+      return result.rows[0] ?? null;
+    }
+  );
 
   const logContext = buildLogContext(user.instanceId, { includeTraceId: true });
-  if (accountState === 'account_not_found') {
+  if (!accountRow) {
     logger.warn('Auth middleware rejected request because the tenant account could not be resolved', {
       endpoint: request.url,
       operation: 'auth_middleware',
@@ -176,6 +126,11 @@ LIMIT 1;
         reason_code: 'account_not_found',
       }
     );
+  }
+
+  const accountState = accountRow.deletion_lifecycle_state;
+  if (accountState === 'active') {
+    return null;
   }
 
   logger.warn('Auth middleware rejected request because the account lifecycle is blocked', {

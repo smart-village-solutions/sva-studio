@@ -612,7 +612,9 @@ WHERE instance_id = $1
         );
         await client.query(
           `
-DELETE FROM iam.organizations
+UPDATE iam.organizations
+SET is_active = false,
+    updated_at = NOW()
 WHERE instance_id = $1
   AND id = $2::uuid;
 `,

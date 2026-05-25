@@ -1,10 +1,15 @@
 -- +goose Up
 -- +goose StatementBegin
+CREATE UNIQUE INDEX IF NOT EXISTS uq_legal_text_versions_instance_id_id
+  ON iam.legal_text_versions(instance_id, id);
+
 CREATE TABLE IF NOT EXISTS iam.legal_text_target_roles (
   instance_id TEXT NOT NULL REFERENCES iam.instances(instance_id) ON DELETE CASCADE,
-  legal_text_version_id UUID NOT NULL REFERENCES iam.legal_text_versions(id) ON DELETE CASCADE,
+  legal_text_version_id UUID NOT NULL,
   role_id UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  FOREIGN KEY (instance_id, legal_text_version_id)
+    REFERENCES iam.legal_text_versions(instance_id, id) ON DELETE CASCADE,
   FOREIGN KEY (instance_id, role_id)
     REFERENCES iam.roles(instance_id, id) ON DELETE CASCADE,
   CONSTRAINT legal_text_target_roles_unique UNIQUE (instance_id, legal_text_version_id, role_id)
@@ -12,9 +17,11 @@ CREATE TABLE IF NOT EXISTS iam.legal_text_target_roles (
 
 CREATE TABLE IF NOT EXISTS iam.legal_text_target_groups (
   instance_id TEXT NOT NULL REFERENCES iam.instances(instance_id) ON DELETE CASCADE,
-  legal_text_version_id UUID NOT NULL REFERENCES iam.legal_text_versions(id) ON DELETE CASCADE,
+  legal_text_version_id UUID NOT NULL,
   group_id UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  FOREIGN KEY (instance_id, legal_text_version_id)
+    REFERENCES iam.legal_text_versions(instance_id, id) ON DELETE CASCADE,
   FOREIGN KEY (instance_id, group_id)
     REFERENCES iam.groups(instance_id, id) ON DELETE CASCADE,
   CONSTRAINT legal_text_target_groups_unique UNIQUE (instance_id, legal_text_version_id, group_id)
@@ -40,4 +47,5 @@ DROP POLICY IF EXISTS legal_text_target_groups_isolation_policy ON iam.legal_tex
 DROP POLICY IF EXISTS legal_text_target_roles_isolation_policy ON iam.legal_text_target_roles;
 DROP TABLE IF EXISTS iam.legal_text_target_groups;
 DROP TABLE IF EXISTS iam.legal_text_target_roles;
+DROP INDEX IF EXISTS iam.uq_legal_text_versions_instance_id_id;
 -- +goose StatementEnd

@@ -1,4 +1,8 @@
-import type { IamPermissionEffect, IamUuid } from './authorization-contract';
+import type {
+  IamLegalTextTargeting,
+  IamPermissionEffect,
+  IamUuid,
+} from './authorization-contract';
 import type { WasteManagementSettingsRecord } from '../waste-management-contract.js';
 
 export type ApiErrorCode =
@@ -352,11 +356,6 @@ export type IamGroupListItem = {
 
 export type IamGroupDetail = IamGroupListItem & {
   readonly members: readonly IamUserGroupAssignment[];
-};
-
-export type IamLegalTextTargeting = {
-  readonly roleIds: readonly IamUuid[];
-  readonly groupIds: readonly IamUuid[];
 };
 
 export type IamLegalTextListItem = {

@@ -118,12 +118,15 @@ const expectContentOverviewUrl = async (page: Page) => {
 const expectContentOverviewReady = async (page: Page) => {
   await expectContentOverviewUrl(page);
   await expect(page.locator('#main-content')).toBeVisible();
-  await expect(page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ })).toBeVisible();
   await expect(
     page.getByRole('heading', {
       name: /Inhalte|Inhaltsliste|content\.page\.title|content\.table\.sectionTitle/,
     }).first()
   ).toBeVisible();
+};
+
+const expectCreateContentActionReady = async (page: Page) => {
+  await expect(page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ })).toBeVisible();
 };
 
 const expectLoginRedirect = async (page: Page, returnToPattern: RegExp) => {
@@ -414,6 +417,7 @@ test.describe('events and POI plugins', () => {
     await page.goto('/');
     await navigateClientSide(page, '/admin/content');
     await expectContentOverviewReady(page);
+    await expectCreateContentActionReady(page);
 
     await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
     await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
@@ -473,6 +477,7 @@ test.describe('events and POI plugins', () => {
     await page.goto('/');
     await navigateClientSide(page, '/admin/content');
     await expectContentOverviewReady(page);
+    await expectCreateContentActionReady(page);
 
     await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
     await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);

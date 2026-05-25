@@ -91,6 +91,16 @@ const expectContentOverviewUrl = async (page: Page) => {
   await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
 };
 
+const expectContentOverviewReady = async (page: Page) => {
+  await expectContentOverviewUrl(page);
+  await expect(page.locator('#main-content')).toBeVisible();
+  await expect(
+    page.getByRole('heading', {
+      name: /Inhalte|Inhaltsliste|content\.page\.title|content\.table\.sectionTitle/,
+    }).first()
+  ).toBeVisible();
+};
+
 const expectLoginRedirect = async (page: Page, returnToPattern: RegExp) => {
   await page.waitForFunction(() => {
     const { pathname, search } = window.location;
@@ -579,7 +589,7 @@ test.describe('news plugin', () => {
 
     await gotoShellRoot(page);
     await navigateClientSide(page, '/admin/content');
-    await expectPluginPageHeading(page, /Inhalte|content\.page\.title/);
+    await expectContentOverviewReady(page);
     const listViolations = await new AxeBuilder({ page }).include('#main-content').analyze();
     expect(listViolations.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
 

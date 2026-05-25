@@ -17,6 +17,7 @@ const state = vi.hoisted(() => ({
   },
   withAuthenticatedUser: vi.fn(),
   validateCsrf: vi.fn(() => null),
+  parseRequestBody: vi.fn(),
   createApiError: vi.fn(
     (status: number, code: string, message: string, requestId?: string) =>
       new Response(
@@ -59,11 +60,7 @@ vi.mock('../shared/request-security.js', () => ({
 
 vi.mock('../shared/request-helpers.js', () => ({
   createApiError: state.createApiError,
-  parseRequestBody: async <T>(request: Request) => ({
-    ok: true as const,
-    data: (await request.json()) as T,
-    rawBody: '',
-  }),
+  parseRequestBody: state.parseRequestBody,
 }));
 
 vi.mock('../plugin-operations/core.shared.js', () => ({
@@ -85,6 +82,11 @@ describe('authorize performance handlers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    state.parseRequestBody.mockImplementation(async <T>(request: Request) => ({
+      ok: true as const,
+      data: (await request.json()) as T,
+      rawBody: '',
+    }));
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
         handler({ user: baseUser })
@@ -179,6 +181,121 @@ describe('authorize performance handlers', () => {
     expect(state.runAuthorizePerformanceBenchmark).not.toHaveBeenCalled();
   });
 
+  it('rejects requests without an actor instance context', async () => {
+    const { startAuthorizePerformanceRunHandler } = await import('./authorize-performance.js');
+    state.withAuthenticatedUser.mockImplementationOnce(
+      async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
+        handler({
+          user: {
+            ...baseUser,
+            instanceId: '   ',
+          },
+        })
+    );
+
+    const response = await startAuthorizePerformanceRunHandler(
+      new Request('https://studio.test/api/v1/iam/authorize-performance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          action: 'content.read',
+          resourceType: 'content',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(state.validateCsrf).not.toHaveBeenCalled();
+    expect(state.runAuthorizePerformanceBenchmark).not.toHaveBeenCalled();
+  });
+
+  it('returns csrf validation errors before parsing the payload', async () => {
+    const { startAuthorizePerformanceRunHandler } = await import('./authorize-performance.js');
+    state.validateCsrf.mockReturnValueOnce(
+      new Response(JSON.stringify({ error: { code: 'invalid_csrf' } }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const response = await startAuthorizePerformanceRunHandler(
+      new Request('https://studio.test/api/v1/iam/authorize-performance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          action: 'content.read',
+          resourceType: 'content',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(state.runAuthorizePerformanceBenchmark).not.toHaveBeenCalled();
+  });
+
+  it('returns invalid request errors for rejected payloads', async () => {
+    state.parseRequestBody.mockResolvedValueOnce({
+      ok: false as const,
+      message: 'payload invalid',
+    });
+    const { startAuthorizePerformanceRunHandler } = await import('./authorize-performance.js');
+
+    const response = await startAuthorizePerformanceRunHandler(
+      new Request('https://studio.test/api/v1/iam/authorize-performance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          action: 'x',
+          resourceType: '',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(state.runAuthorizePerformanceBenchmark).not.toHaveBeenCalled();
+  });
+
+  it('maps benchmark execution errors to a 503 api response', async () => {
+    const { startAuthorizePerformanceRunHandler } = await import('./authorize-performance.js');
+    state.runAuthorizePerformanceBenchmark.mockRejectedValueOnce(new Error('database offline'));
+
+    const response = await startAuthorizePerformanceRunHandler(
+      new Request('https://studio.test/api/v1/iam/authorize-performance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          action: 'content.read',
+          resourceType: 'content',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'Authorize performance benchmark failed',
+      expect.objectContaining({
+        operation: 'authorize_performance_run',
+        error: 'database offline',
+      })
+    );
+  });
+
   it('returns the latest cached run through the read endpoint', async () => {
     const { getLatestAuthorizePerformanceRunHandler } = await import('./authorize-performance.js');
     state.readLatestAuthorizePerformanceBenchmark.mockReturnValueOnce({
@@ -210,5 +327,27 @@ describe('authorize performance handlers', () => {
       instanceId: INSTANCE_ID,
       keycloakSubject: 'kc-user-1',
     });
+  });
+
+  it('blocks latest-run access for non-monitoring users', async () => {
+    const { getLatestAuthorizePerformanceRunHandler } = await import('./authorize-performance.js');
+    state.withAuthenticatedUser.mockImplementationOnce(
+      async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
+        handler({
+          user: {
+            ...baseUser,
+            roles: ['editor'],
+          },
+        })
+    );
+
+    const response = await getLatestAuthorizePerformanceRunHandler(
+      new Request('https://studio.test/api/v1/iam/authorize-performance', {
+        method: 'GET',
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(state.readLatestAuthorizePerformanceBenchmark).not.toHaveBeenCalled();
   });
 });

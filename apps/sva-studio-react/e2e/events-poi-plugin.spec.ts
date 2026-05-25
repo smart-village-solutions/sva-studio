@@ -118,11 +118,16 @@ const expectContentOverviewUrl = async (page: Page) => {
 const expectContentOverviewReady = async (page: Page) => {
   await expectContentOverviewUrl(page);
   await expect(page.locator('#main-content')).toBeVisible();
-  await expect(
-    page.getByRole('heading', {
-      name: /Inhalte|Inhaltsliste|content\.page\.title|content\.table\.sectionTitle/,
-    }).first()
-  ).toBeVisible();
+  await Promise.any([
+    page
+      .getByRole('heading', {
+        name: /Inhalte|Inhaltsliste|content\.page\.title|content\.table\.sectionTitle/,
+      })
+      .first()
+      .waitFor({ state: 'visible' }),
+    page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).waitFor({ state: 'visible' }),
+    page.getByText(/Noch keine Inhalte vorhanden|content\.empty\.title/).waitFor({ state: 'visible' }),
+  ]);
 };
 
 const expectCreateContentActionReady = async (page: Page) => {

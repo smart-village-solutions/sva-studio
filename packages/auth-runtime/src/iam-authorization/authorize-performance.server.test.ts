@@ -150,13 +150,21 @@ describe('authorize-performance.server', () => {
 
   it('expires cached benchmark results after the ttl window', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1_000);
-    state.authorizeHandler.mockImplementation(
-      async () =>
-        new Response(JSON.stringify({ cacheStatus: 'hit' }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-    );
+    state.authorizeHandler.mockImplementation(async (request: Request) => {
+      const payload = (await request.json()) as { context?: { requestId?: string } };
+      const requestId = payload.context?.requestId ?? '';
+      const cacheStatus =
+        requestId.includes('-cache-hit-')
+          ? 'hit'
+          : requestId.includes('-cache-miss-')
+            ? 'miss'
+            : 'recomputed';
+
+      return new Response(JSON.stringify({ cacheStatus }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
 
     const { readLatestAuthorizePerformanceBenchmark, runAuthorizePerformanceBenchmark } = await import(
       './authorize-performance.server.js'

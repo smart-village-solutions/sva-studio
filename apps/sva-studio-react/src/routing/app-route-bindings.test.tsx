@@ -364,6 +364,23 @@ describe('appRouteBindings', () => {
     });
   });
 
+  it('stays stable with an authenticated user while the org context is still empty', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.newsEditor />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('news-create-page').textContent).toBe('Philipp Wilimzig');
+    });
+
+    expect(routeState.getOrganization).not.toHaveBeenCalled();
+  });
+
   it('renders lazy bindings and route-param based bindings with normalized params and search values', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
 

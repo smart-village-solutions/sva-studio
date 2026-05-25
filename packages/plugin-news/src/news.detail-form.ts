@@ -298,7 +298,7 @@ export const mapNewsDetailFormValuesToMutation = (
   ...(compactString(values.author) ? { author: compactString(values.author) } : {}),
   ...(compactString(values.keywords) ? { keywords: compactString(values.keywords) } : {}),
   ...(compactString(values.externalId) ? { externalId: compactString(values.externalId) } : {}),
-  ...(values.fullVersion ? { fullVersion: values.fullVersion } : {}),
+  ...(mode === 'edit' || values.fullVersion ? { fullVersion: values.fullVersion } : {}),
   ...(values.charactersToBeShown.trim().length > 0 ? { charactersToBeShown: Number(values.charactersToBeShown) } : {}),
   ...(compactString(values.newsType) ? { newsType: compactString(values.newsType) } : {}),
   ...(compactString(values.publicationDate) ? { publicationDate: compactString(values.publicationDate) } : {}),

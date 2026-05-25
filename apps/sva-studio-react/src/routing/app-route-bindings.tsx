@@ -46,6 +46,8 @@ const resolveUserDisplayName = (user: { readonly id: string }) => {
   return candidate.displayName?.trim() || candidate.name?.trim() || user.id;
 };
 
+const EMPTY_ORGANIZATIONS: readonly IamOrganizationContextOption[] = [];
+
 const resolveNewsInitialAuthor = (input: {
   readonly organizations: readonly IamOrganizationContextOption[];
   readonly organizationDetails: ReadonlyMap<string, IamOrganizationDetail>;
@@ -74,32 +76,33 @@ const useNewsCreateInitialAuthor = () => {
     () => new Map()
   );
 
-  const organizations = organizationContext.context?.organizations ?? [];
-  const organizationIdsKey = organizations
-    .filter((organization) => organization.isActive)
+  const organizations = organizationContext.context?.organizations ?? EMPTY_ORGANIZATIONS;
+  const activeOrganizations = React.useMemo(
+    () => organizations.filter((organization) => organization.isActive),
+    [organizations]
+  );
+  const organizationIdsKey = activeOrganizations
     .map((organization) => organization.organizationId)
     .sort()
     .join('|');
 
   React.useEffect(() => {
-    if (!isAuthenticated || organizations.length === 0) {
-      setOrganizationDetails(new Map());
+    if (!isAuthenticated || activeOrganizations.length === 0) {
+      setOrganizationDetails((current) => (current.size === 0 ? current : new Map()));
       return;
     }
 
     let active = true;
 
     void Promise.all(
-      organizations
-        .filter((organization) => organization.isActive)
-        .map(async (organization) => {
-          try {
-            const response = await getOrganization(organization.organizationId);
-            return [organization.organizationId, response.data] as const;
-          } catch {
-            return null;
-          }
-        })
+      activeOrganizations.map(async (organization) => {
+        try {
+          const response = await getOrganization(organization.organizationId);
+          return [organization.organizationId, response.data] as const;
+        } catch {
+          return null;
+        }
+      })
     ).then((entries) => {
       if (!active) {
         return;
@@ -117,7 +120,7 @@ const useNewsCreateInitialAuthor = () => {
     return () => {
       active = false;
     };
-  }, [isAuthenticated, organizationIdsKey, organizations]);
+  }, [activeOrganizations, isAuthenticated, organizationIdsKey]);
 
   return resolveNewsInitialAuthor({
     organizations,

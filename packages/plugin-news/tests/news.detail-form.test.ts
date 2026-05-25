@@ -6,6 +6,7 @@ import {
   createDefaultNewsDetailFormValues,
   buildNewsDetailCharacterCounts,
   deriveDirtyNewsDetailTabs,
+  mapNewsDetailFormValuesToMutation,
   mapNewsItemToDetailFormValues,
   newsDetailFormSchema,
 } from '../src/news.detail-form.js';
@@ -219,6 +220,20 @@ describe('news.detail-form', () => {
       title: 5,
       intros: [8],
       bodies: [10],
+    });
+  });
+
+  it('preserves fullVersion=false when serializing edit payloads', () => {
+    const values = {
+      ...createDefaultNewsDetailFormValues(),
+      title: 'Rathaus informiert',
+      publishedAt: '2026-05-24T09:00:00.000Z',
+      fullVersion: false,
+      contentBlocks: [{ title: '', intro: '', body: '<p>Ausführlicher Inhalt</p>', mediaContents: [] }],
+    };
+
+    expect(mapNewsDetailFormValuesToMutation(values, 'edit')).toMatchObject({
+      fullVersion: false,
     });
   });
 });

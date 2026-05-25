@@ -89,7 +89,7 @@ describe('legal-text-repository-shared', () => {
     ).toEqual(['name', 'legalTextVersion', 'locale', 'contentHtml', 'status', 'publishedAt']);
   });
 
-  it('maps list and pending items with optional fields only when present', () => {
+  it('maps non-targeted list items with optional fields only when present', () => {
     expect(
       mapLegalTextListItem({
         id: 'version-1',
@@ -104,6 +104,8 @@ describe('legal-text-repository-shared', () => {
         acceptance_count: 2,
         active_acceptance_count: 1,
         last_accepted_at: null,
+        target_role_ids: [],
+        target_group_ids: [],
       })
     ).toEqual({
       id: 'version-1',
@@ -116,8 +118,14 @@ describe('legal-text-repository-shared', () => {
       updatedAt: '2026-05-09T11:00:00.000Z',
       acceptanceCount: 2,
       activeAcceptanceCount: 1,
+      targets: {
+        roleIds: [],
+        groupIds: [],
+      },
     });
+  });
 
+  it('maps role-targeted pending items with explicit targets', () => {
     expect(
       mapPendingLegalTextItem({
         id: 'version-2',
@@ -127,6 +135,8 @@ describe('legal-text-repository-shared', () => {
         locale: 'de-DE',
         content_html: '<p>Terms</p>',
         published_at: '2026-05-09T12:00:00.000Z',
+        target_role_ids: ['role-editor'],
+        target_group_ids: [],
       })
     ).toEqual({
       id: 'version-2',
@@ -136,6 +146,38 @@ describe('legal-text-repository-shared', () => {
       locale: 'de-DE',
       contentHtml: '<p>Terms</p>',
       publishedAt: '2026-05-09T12:00:00.000Z',
+      targets: {
+        roleIds: ['role-editor'],
+        groupIds: [],
+      },
+    });
+  });
+
+  it('maps group-targeted pending items with explicit targets', () => {
+    expect(
+      mapPendingLegalTextItem({
+        id: 'version-3',
+        legal_text_id: 'group-targeted',
+        name: 'Privacy Board Terms',
+        legal_text_version: '2',
+        locale: 'de-DE',
+        content_html: '<p>Group terms</p>',
+        published_at: '2026-05-09T13:00:00.000Z',
+        target_role_ids: [],
+        target_group_ids: ['group-privacy'],
+      })
+    ).toEqual({
+      id: 'version-3',
+      legalTextId: 'group-targeted',
+      name: 'Privacy Board Terms',
+      legalTextVersion: '2',
+      locale: 'de-DE',
+      contentHtml: '<p>Group terms</p>',
+      publishedAt: '2026-05-09T13:00:00.000Z',
+      targets: {
+        roleIds: [],
+        groupIds: ['group-privacy'],
+      },
     });
   });
 });

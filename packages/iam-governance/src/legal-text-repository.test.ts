@@ -34,6 +34,18 @@ const createDeps = () => {
   return { client, deps, repository: createLegalTextRepository(deps) };
 };
 
+const expectPendingTargetingSql = (sql: string) => {
+  expect(sql).toContain('legal_text_target_roles');
+  expect(sql).toContain('legal_text_target_groups');
+  expect(sql).toContain('account_role.role_id::text = ANY');
+  expect(sql).toContain('account_role.valid_from <= NOW()');
+  expect(sql).toContain('(account_role.valid_to IS NULL OR account_role.valid_to > NOW())');
+  expect(sql).toContain('(account_group.valid_from IS NULL OR account_group.valid_from <= NOW())');
+  expect(sql).toContain('(account_group.valid_until IS NULL OR account_group.valid_until > NOW())');
+  expect(sql).toContain('group_target.is_active IS TRUE');
+  expect(sql).toContain('group_target.id::text = ANY');
+};
+
 describe('legal-text-repository', () => {
   let state: ReturnType<typeof createDeps>;
 
@@ -166,8 +178,10 @@ describe('legal-text-repository', () => {
     ]);
 
     expect(state.client.query).toHaveBeenCalledTimes(1);
-    expect(state.client.query.mock.calls[0]?.[0]).toContain('legal_text_target_roles');
-    expect(state.client.query.mock.calls[0]?.[0]).toContain('legal_text_target_groups');
+    const sql = state.client.query.mock.calls[0]?.[0] ?? '';
+    expectPendingTargetingSql(sql);
+    expect(sql).toContain('COALESCE(array_length(role_targets.role_ids, 1), 0) = 0');
+    expect(sql).toContain('COALESCE(array_length(group_targets.group_ids, 1), 0) = 0');
   });
 
   it('returns targeted pending legal texts for matching role memberships', async () => {
@@ -205,11 +219,8 @@ describe('legal-text-repository', () => {
     ]);
 
     expect(state.client.query).toHaveBeenCalledTimes(1);
-    expect(state.client.query.mock.calls[0]?.[0]).toContain('account_role.role_id::text = ANY');
-    expect(state.client.query.mock.calls[0]?.[0]).toContain('account_role.valid_from <= NOW()');
-    expect(state.client.query.mock.calls[0]?.[0]).toContain(
-      '(account_role.valid_to IS NULL OR account_role.valid_to > NOW())'
-    );
+    const sql = state.client.query.mock.calls[0]?.[0] ?? '';
+    expectPendingTargetingSql(sql);
   });
 
   it('returns targeted pending legal texts for matching active group memberships', async () => {
@@ -247,14 +258,8 @@ describe('legal-text-repository', () => {
     ]);
 
     expect(state.client.query).toHaveBeenCalledTimes(1);
-    expect(state.client.query.mock.calls[0]?.[0]).toContain('group_target.id::text = ANY');
-    expect(state.client.query.mock.calls[0]?.[0]).toContain(
-      '(account_group.valid_from IS NULL OR account_group.valid_from <= NOW())'
-    );
-    expect(state.client.query.mock.calls[0]?.[0]).toContain(
-      '(account_group.valid_until IS NULL OR account_group.valid_until > NOW())'
-    );
-    expect(state.client.query.mock.calls[0]?.[0]).toContain('group_target.is_active IS TRUE');
+    const sql = state.client.query.mock.calls[0]?.[0] ?? '';
+    expectPendingTargetingSql(sql);
   });
 
   it('creates a legal text version and emits an activity log', async () => {

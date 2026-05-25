@@ -30,6 +30,14 @@ const richTextEditorCommands = {
   clearFormatting: t('admin.legalTexts.editor.clearFormatting'),
 } as const;
 
+const splitTargetIds = (value: string): string[] =>
+  value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+const joinTargetIds = (values: readonly string[]): string => values.join(', ');
+
 const toDateTimeInputValue = (value?: string): string => {
   return toDatetimeLocalValue(value);
 };
@@ -50,6 +58,8 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
     contentHtml: '<p></p>',
     status: 'draft' as LegalTextStatus,
     publishedAt: '',
+    targetRoleIds: '',
+    targetGroupIds: '',
   });
 
   React.useEffect(() => {
@@ -64,6 +74,8 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
       contentHtml: selectedLegalText.contentHtml,
       status: selectedLegalText.status,
       publishedAt: toDateTimeInputValue(selectedLegalText.publishedAt),
+      targetRoleIds: joinTargetIds(selectedLegalText.targets?.roleIds ?? []),
+      targetGroupIds: joinTargetIds(selectedLegalText.targets?.groupIds ?? []),
     });
     setValidationError(null);
   }, [selectedLegalText]);
@@ -89,6 +101,8 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
       contentHtml: formValues.contentHtml.trim(),
       status: formValues.status,
       publishedAt: publishedAt.kind === 'value' ? publishedAt.value : undefined,
+      targetRoleIds: splitTargetIds(formValues.targetRoleIds),
+      targetGroupIds: splitTargetIds(formValues.targetGroupIds),
     };
 
     await legalTextsApi.updateLegalText(legalTextVersionId, payload);
@@ -181,6 +195,24 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
                   value={formValues.publishedAt}
                   required={formValues.status === 'valid'}
                   onChange={(event) => setFormValues((current) => ({ ...current, publishedAt: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="legal-text-edit-role-targets">{t('admin.legalTexts.fields.targetRoleIds')}</Label>
+                <Input
+                  id="legal-text-edit-role-targets"
+                  value={formValues.targetRoleIds}
+                  onChange={(event) => setFormValues((current) => ({ ...current, targetRoleIds: event.target.value }))}
+                  placeholder={t('admin.legalTexts.fields.targetRoleIdsPlaceholder')}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="legal-text-edit-group-targets">{t('admin.legalTexts.fields.targetGroupIds')}</Label>
+                <Input
+                  id="legal-text-edit-group-targets"
+                  value={formValues.targetGroupIds}
+                  onChange={(event) => setFormValues((current) => ({ ...current, targetGroupIds: event.target.value }))}
+                  placeholder={t('admin.legalTexts.fields.targetGroupIdsPlaceholder')}
                 />
               </div>
             </div>

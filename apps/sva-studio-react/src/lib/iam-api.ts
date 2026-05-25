@@ -454,6 +454,8 @@ export type CreateLegalTextPayload = {
   readonly contentHtml: string;
   readonly status: 'draft' | 'valid' | 'archived';
   readonly publishedAt?: string;
+  readonly targetRoleIds?: readonly string[];
+  readonly targetGroupIds?: readonly string[];
 };
 
 export type UpdateLegalTextPayload = {
@@ -463,6 +465,8 @@ export type UpdateLegalTextPayload = {
   readonly contentHtml?: string;
   readonly status?: 'draft' | 'valid' | 'archived';
   readonly publishedAt?: string;
+  readonly targetRoleIds?: readonly string[];
+  readonly targetGroupIds?: readonly string[];
 };
 
 export type CreateContentPayload = CreateIamContentInput;
@@ -1820,6 +1824,21 @@ export const requestDataExport = async (input: {
       timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
     }
   );
+};
+
+export const requestLegalConsentExport = async (input: {
+  readonly instanceId: string;
+  readonly format: 'json' | 'csv' | 'xml';
+  readonly accountId?: string;
+}): Promise<{ data: string } | ApiItemResponse<unknown>> => {
+  const params = new URLSearchParams();
+  params.set('instanceId', input.instanceId);
+  params.set('format', input.format);
+  if (input.accountId) {
+    params.set('accountId', input.accountId);
+  }
+
+  return requestJsonOrText(`/iam/legal-consents/export?${params.toString()}`);
 };
 
 export const getDataExportStatus = async (

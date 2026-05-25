@@ -74,6 +74,10 @@ const legalTextFixture = {
   createdAt: '2026-04-01T08:00:00.000Z',
   updatedAt: '2026-04-01T09:00:00.000Z',
   publishedAt: '2026-04-02T10:00:00.000Z',
+  targets: {
+    roleIds: ['role-existing'],
+    groupIds: ['group-existing'],
+  },
 };
 
 const createState = (overrides: Record<string, unknown> = {}) => ({
@@ -127,6 +131,12 @@ describe('LegalTextDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' }), {
       target: { value: '2026-04-10T10:45' },
     });
+    fireEvent.change(screen.getByLabelText('Zielrollen', { selector: '#legal-text-edit-role-targets' }), {
+      target: { value: ' role-new, role-extra ,, ' },
+    });
+    fireEvent.change(screen.getByLabelText('Zielgruppen', { selector: '#legal-text-edit-group-targets' }), {
+      target: { value: ' group-new, group-extra, ' },
+    });
     fireEvent.change(screen.getByLabelText('Inhalt', { selector: '#legal-text-edit-content' }), {
       target: { value: '<p>Neu</p>' },
     });
@@ -140,6 +150,8 @@ describe('LegalTextDetailPage', () => {
         contentHtml: '<p>Neu</p>',
         status: 'valid',
         publishedAt: '2026-04-10T08:45:00.000Z',
+        targetRoleIds: ['role-new', 'role-extra'],
+        targetGroupIds: ['group-new', 'group-extra'],
       });
     });
   });

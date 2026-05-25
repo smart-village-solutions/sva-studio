@@ -22,6 +22,7 @@ import {
   archiveInstance,
   assignOrganizationMembership,
   bulkDeactivateUsers,
+  createLegalText,
   createInstance,
   getAdminDeletionRules,
   getMyDeletionRules,
@@ -59,6 +60,7 @@ import {
   removeGroupMembership,
   removeGroupRole,
   requestDataExport,
+  requestLegalConsentExport,
   saveAdminDeletionRules,
   saveMyDeletionRulesContentPreference,
   revokeInstanceModule,
@@ -66,6 +68,7 @@ import {
   syncUsersFromKeycloak,
   removeOrganizationMembership,
   suspendInstance,
+  updateLegalText,
   updateMyProfile,
   updateMyOrganizationContext,
   updateGroup,
@@ -1183,6 +1186,19 @@ describe('iam-api profile helpers', () => {
     await getMyProfile();
     await updateMyProfile({ displayName: 'Alice Example' });
     await getMyPendingLegalTexts();
+    await createLegalText({
+      name: 'Datenschutz',
+      legalTextVersion: '2026-05',
+      locale: 'de-DE',
+      contentHtml: '<p>Datenschutz</p>',
+      status: 'draft',
+      targetRoleIds: ['role-1'],
+      targetGroupIds: ['group-1', 'group-2'],
+    });
+    await updateLegalText('legal-1', {
+      targetRoleIds: ['role-2'],
+      targetGroupIds: ['group-3'],
+    });
     await bulkDeactivateUsers(['user-1', 'user-2']);
 
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -1202,6 +1218,33 @@ describe('iam-api profile helpers', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       4,
+      '/api/v1/iam/legal-texts',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Datenschutz',
+          legalTextVersion: '2026-05',
+          locale: 'de-DE',
+          contentHtml: '<p>Datenschutz</p>',
+          status: 'draft',
+          targetRoleIds: ['role-1'],
+          targetGroupIds: ['group-1', 'group-2'],
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      '/api/v1/iam/legal-texts/legal-1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({
+          targetRoleIds: ['role-2'],
+          targetGroupIds: ['group-3'],
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      6,
       '/api/v1/iam/users/bulk-deactivate',
       expect.objectContaining({
         method: 'POST',
@@ -1267,6 +1310,36 @@ describe('iam-api transparency helpers', () => {
     await expect(requestDataExport({ format: 'csv', async: false })).resolves.toEqual({
       data: 'csv-export',
     });
+  });
+
+  it('requests legal consent exports with query parameters and optional account ids', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('consent-export', {
+        status: 200,
+        headers: { 'content-type': 'text/csv' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      requestLegalConsentExport({
+        instanceId: 'inst-1',
+        format: 'csv',
+        accountId: 'account-7',
+      })
+    ).resolves.toEqual({
+      data: 'consent-export',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/iam/legal-consents/export?instanceId=inst-1&format=csv&accountId=account-7',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Accept: 'application/json, text/plain, text/csv, application/xml',
+        }),
+        credentials: 'include',
+      })
+    );
   });
 
   it('forwards abort signals for governance and DSR list requests', async () => {

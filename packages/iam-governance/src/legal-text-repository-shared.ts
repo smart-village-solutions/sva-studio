@@ -53,6 +53,8 @@ export type CreateLegalTextInput = {
   contentHtml: string;
   status: 'draft' | 'valid' | 'archived';
   publishedAt?: string;
+  targetRoleIds?: readonly string[];
+  targetGroupIds?: readonly string[];
 };
 
 export type UpdateLegalTextInput = {
@@ -67,6 +69,8 @@ export type UpdateLegalTextInput = {
   contentHtml?: string;
   status?: 'draft' | 'valid' | 'archived';
   publishedAt?: string;
+  targetRoleIds?: readonly string[];
+  targetGroupIds?: readonly string[];
 };
 
 type LegalTextQueryClient = {
@@ -144,6 +148,26 @@ LIMIT 1;
   return existingVersion.rows[0]?.legal_text_id;
 };
 
+export const normalizeTargetIds = (values: readonly string[] | undefined): string[] | undefined => {
+  if (values === undefined) {
+    return undefined;
+  }
+
+  const normalizedValues: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of values) {
+    const trimmedValue = value.trim();
+    if (trimmedValue.length === 0 || seen.has(trimmedValue)) {
+      continue;
+    }
+    seen.add(trimmedValue);
+    normalizedValues.push(trimmedValue);
+  }
+
+  return normalizedValues;
+};
+
 export const resolveLegalTextUpdateState = (
   current: IamLegalTextListItem,
   input: UpdateLegalTextInput
@@ -190,6 +214,12 @@ export const collectUpdatedFields = (input: UpdateLegalTextInput): string[] => {
   }
   if (input.publishedAt !== undefined) {
     updatedFields.push('publishedAt');
+  }
+  if (input.targetRoleIds !== undefined) {
+    updatedFields.push('targetRoleIds');
+  }
+  if (input.targetGroupIds !== undefined) {
+    updatedFields.push('targetGroupIds');
   }
 
   return updatedFields;

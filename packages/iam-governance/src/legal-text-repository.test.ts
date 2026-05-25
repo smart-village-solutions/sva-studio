@@ -265,7 +265,9 @@ describe('legal-text-repository', () => {
   it('creates a legal text version and emits an activity log', async () => {
     state.client.query
       .mockResolvedValueOnce({ rowCount: 1, rows: [{ legal_text_id: 'privacy_policy_existing' }] })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: legalTextRow.id }] });
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: legalTextRow.id }] })
+      .mockResolvedValueOnce({ rowCount: 2, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] });
 
     await expect(
       state.repository.createLegalTextVersion({
@@ -279,12 +281,32 @@ describe('legal-text-repository', () => {
         contentHtml: '<p>Legal text</p><script>alert(1)</script>',
         status: 'valid',
         publishedAt: '2026-03-16T09:00:00.000Z',
+        targetRoleIds: [
+          '11111111-1111-1111-1111-111111111111',
+          '22222222-2222-2222-2222-222222222222',
+        ],
+        targetGroupIds: ['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'],
       })
     ).resolves.toBe(legalTextRow.id);
 
-    expect(state.client.query).toHaveBeenCalledTimes(2);
+    expect(state.client.query).toHaveBeenCalledTimes(4);
     expect(state.client.query.mock.calls[0]?.[0]).toContain('SELECT legal_text_id');
     expect(state.client.query.mock.calls[1]?.[0]).toContain('INSERT INTO iam.legal_text_versions');
+    expect(state.client.query.mock.calls[2]?.[0]).toContain('INSERT INTO iam.legal_text_target_roles');
+    expect(state.client.query.mock.calls[2]?.[1]).toEqual([
+      'de-musterhausen',
+      legalTextRow.id,
+      [
+        '11111111-1111-1111-1111-111111111111',
+        '22222222-2222-2222-2222-222222222222',
+      ],
+    ]);
+    expect(state.client.query.mock.calls[3]?.[0]).toContain('INSERT INTO iam.legal_text_target_groups');
+    expect(state.client.query.mock.calls[3]?.[1]).toEqual([
+      'de-musterhausen',
+      legalTextRow.id,
+      ['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'],
+    ]);
     expect(state.deps.emitActivityLog).toHaveBeenCalledWith(
       state.client,
       expect.objectContaining({
@@ -322,7 +344,11 @@ describe('legal-text-repository', () => {
   it('updates a legal text version within a single instance-scoped transaction', async () => {
     state.client.query
       .mockResolvedValueOnce({ rowCount: 1, rows: [legalTextRow] })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: legalTextRow.id }] });
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: legalTextRow.id }] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 2, rows: [] });
 
     await expect(
       state.repository.updateLegalTextVersion({
@@ -333,18 +359,43 @@ describe('legal-text-repository', () => {
         legalTextVersionId: legalTextRow.id,
         name: 'Updated Privacy Policy',
         status: 'archived',
+        targetRoleIds: ['33333333-3333-3333-3333-333333333333'],
+        targetGroupIds: [
+          'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+          'cccccccc-cccc-cccc-cccc-cccccccccccc',
+        ],
       })
     ).resolves.toBe(legalTextRow.id);
 
     expect(state.deps.withInstanceScopedDb).toHaveBeenCalledTimes(1);
-    expect(state.client.query).toHaveBeenCalledTimes(2);
+    expect(state.client.query).toHaveBeenCalledTimes(6);
     expect(state.client.query.mock.calls[0]?.[0]).toContain('FROM iam.legal_text_versions version');
     expect(state.client.query.mock.calls[1]?.[0]).toContain('UPDATE iam.legal_text_versions');
+    expect(state.client.query.mock.calls[2]?.[0]).toContain('DELETE FROM iam.legal_text_target_roles');
+    expect(state.client.query.mock.calls[3]?.[0]).toContain('INSERT INTO iam.legal_text_target_roles');
+    expect(state.client.query.mock.calls[3]?.[1]).toEqual([
+      'de-musterhausen',
+      legalTextRow.id,
+      ['33333333-3333-3333-3333-333333333333'],
+    ]);
+    expect(state.client.query.mock.calls[4]?.[0]).toContain('DELETE FROM iam.legal_text_target_groups');
+    expect(state.client.query.mock.calls[5]?.[0]).toContain('INSERT INTO iam.legal_text_target_groups');
+    expect(state.client.query.mock.calls[5]?.[1]).toEqual([
+      'de-musterhausen',
+      legalTextRow.id,
+      [
+        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        'cccccccc-cccc-cccc-cccc-cccccccccccc',
+      ],
+    ]);
     expect(state.deps.emitActivityLog).toHaveBeenCalledWith(
       state.client,
       expect.objectContaining({
         eventType: 'iam.legal_text.updated',
-        payload: expect.objectContaining({ legal_text_version_id: legalTextRow.id }),
+        payload: expect.objectContaining({
+          legal_text_version_id: legalTextRow.id,
+          updated_fields: expect.arrayContaining(['targetRoleIds', 'targetGroupIds']),
+        }),
       })
     );
   });

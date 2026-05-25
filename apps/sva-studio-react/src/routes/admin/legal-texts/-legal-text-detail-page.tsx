@@ -31,10 +31,14 @@ const richTextEditorCommands = {
 } as const;
 
 const splitTargetIds = (value: string): string[] =>
-  value
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
+  Array.from(
+    new Set(
+      value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0)
+    )
+  );
 
 const joinTargetIds = (values: readonly string[]): string => values.join(', ');
 

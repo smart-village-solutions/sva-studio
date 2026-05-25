@@ -2774,10 +2774,12 @@ export const i18nResources = {
           locale: 'Sprache',
           status: 'Status',
           publishedAt: 'Veröffentlicht am',
-          targetRoleIds: 'Zielrollen',
-          targetRoleIdsPlaceholder: 'z. B. role-admin, role-editor',
-          targetGroupIds: 'Zielgruppen',
-          targetGroupIdsPlaceholder: 'z. B. group-legal, group-support',
+          targetRoleIds: 'Zielrollen-IDs',
+          targetRoleIdsPlaceholder:
+            'z. B. 11111111-1111-1111-1111-111111111111, 22222222-2222-2222-2222-222222222222',
+          targetGroupIds: 'Zielgruppen-IDs',
+          targetGroupIdsPlaceholder:
+            'z. B. aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
           contentHtml: 'Inhalt',
           contentPlaceholder: 'HTML-Inhalt des Rechtstexts bearbeiten',
         },
@@ -5756,10 +5758,12 @@ export const i18nResources = {
           locale: 'Locale',
           status: 'Status',
           publishedAt: 'Published at',
-          targetRoleIds: 'Target roles',
-          targetRoleIdsPlaceholder: 'e.g. role-admin, role-editor',
-          targetGroupIds: 'Target groups',
-          targetGroupIdsPlaceholder: 'e.g. group-legal, group-support',
+          targetRoleIds: 'Target role IDs',
+          targetRoleIdsPlaceholder:
+            'e.g. 11111111-1111-1111-1111-111111111111, 22222222-2222-2222-2222-222222222222',
+          targetGroupIds: 'Target group IDs',
+          targetGroupIdsPlaceholder:
+            'e.g. aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
           contentHtml: 'Content',
           contentPlaceholder: 'Edit the legal text HTML content',
         },

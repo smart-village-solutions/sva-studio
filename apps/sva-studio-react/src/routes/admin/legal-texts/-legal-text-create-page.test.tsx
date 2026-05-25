@@ -82,11 +82,17 @@ describe('LegalTextCreatePage', () => {
     fireEvent.change(screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-create-published' }), {
       target: { value: '2026-04-10T09:30' },
     });
-    fireEvent.change(screen.getByLabelText('Zielrollen', { selector: '#legal-text-create-role-targets' }), {
-      target: { value: ' role-a, role-b ,, role-a ' },
+    fireEvent.change(screen.getByLabelText('Zielrollen-IDs', { selector: '#legal-text-create-role-targets' }), {
+      target: {
+        value:
+          ' 11111111-1111-1111-1111-111111111111, 22222222-2222-2222-2222-222222222222 ,, 11111111-1111-1111-1111-111111111111 ',
+      },
     });
-    fireEvent.change(screen.getByLabelText('Zielgruppen', { selector: '#legal-text-create-group-targets' }), {
-      target: { value: ' group-1, group-2 ,, ' },
+    fireEvent.change(screen.getByLabelText('Zielgruppen-IDs', { selector: '#legal-text-create-group-targets' }), {
+      target: {
+        value:
+          ' aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb ,, aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa ',
+      },
     });
     fireEvent.change(screen.getByLabelText('Inhalt', { selector: '#legal-text-create-content' }), {
       target: { value: '<p> Rechtstext </p>' },
@@ -101,8 +107,14 @@ describe('LegalTextCreatePage', () => {
         contentHtml: '<p> Rechtstext </p>',
         status: 'valid',
         publishedAt: '2026-04-10T07:30:00.000Z',
-        targetRoleIds: ['role-a', 'role-b', 'role-a'],
-        targetGroupIds: ['group-1', 'group-2'],
+        targetRoleIds: [
+          '11111111-1111-1111-1111-111111111111',
+          '22222222-2222-2222-2222-222222222222',
+        ],
+        targetGroupIds: [
+          'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        ],
       });
     });
     expect(navigateMock).toHaveBeenCalledWith({

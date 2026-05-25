@@ -26,10 +26,14 @@ const richTextEditorCommands = {
 } as const;
 
 const splitTargetIds = (value: string): string[] =>
-  value
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
+  Array.from(
+    new Set(
+      value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0)
+    )
+  );
 
 const legalTextErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {

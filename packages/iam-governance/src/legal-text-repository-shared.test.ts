@@ -85,8 +85,19 @@ describe('legal-text-repository-shared', () => {
         contentHtml: '<p>Hello</p>',
         status: 'archived',
         publishedAt: '2026-05-09T12:00:00.000Z',
+        targetRoleIds: ['role-editor'],
+        targetGroupIds: ['group-privacy'],
       })
-    ).toEqual(['name', 'legalTextVersion', 'locale', 'contentHtml', 'status', 'publishedAt']);
+    ).toEqual([
+      'name',
+      'legalTextVersion',
+      'locale',
+      'contentHtml',
+      'status',
+      'publishedAt',
+      'targetRoleIds',
+      'targetGroupIds',
+    ]);
   });
 
   it('maps non-targeted list items with optional fields only when present', () => {

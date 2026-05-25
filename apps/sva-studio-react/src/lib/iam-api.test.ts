@@ -1192,12 +1192,15 @@ describe('iam-api profile helpers', () => {
       locale: 'de-DE',
       contentHtml: '<p>Datenschutz</p>',
       status: 'draft',
-      targetRoleIds: ['role-1'],
-      targetGroupIds: ['group-1', 'group-2'],
+      targetRoleIds: ['11111111-1111-1111-1111-111111111111'],
+      targetGroupIds: [
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      ],
     });
     await updateLegalText('legal-1', {
-      targetRoleIds: ['role-2'],
-      targetGroupIds: ['group-3'],
+      targetRoleIds: ['22222222-2222-2222-2222-222222222222'],
+      targetGroupIds: ['cccccccc-cccc-cccc-cccc-cccccccccccc'],
     });
     await bulkDeactivateUsers(['user-1', 'user-2']);
 
@@ -1227,8 +1230,11 @@ describe('iam-api profile helpers', () => {
           locale: 'de-DE',
           contentHtml: '<p>Datenschutz</p>',
           status: 'draft',
-          targetRoleIds: ['role-1'],
-          targetGroupIds: ['group-1', 'group-2'],
+          targetRoleIds: ['11111111-1111-1111-1111-111111111111'],
+          targetGroupIds: [
+            'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+          ],
         }),
       })
     );
@@ -1238,8 +1244,8 @@ describe('iam-api profile helpers', () => {
       expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({
-          targetRoleIds: ['role-2'],
-          targetGroupIds: ['group-3'],
+          targetRoleIds: ['22222222-2222-2222-2222-222222222222'],
+          targetGroupIds: ['cccccccc-cccc-cccc-cccc-cccccccccccc'],
         }),
       })
     );
@@ -1332,7 +1338,7 @@ describe('iam-api transparency helpers', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/iam/legal-consents/export?instanceId=inst-1&format=csv&accountId=account-7',
+      '/iam/governance/legal-consents/export?instanceId=inst-1&format=csv&accountId=account-7',
       expect.objectContaining({
         headers: expect.objectContaining({
           Accept: 'application/json, text/plain, text/csv, application/xml',

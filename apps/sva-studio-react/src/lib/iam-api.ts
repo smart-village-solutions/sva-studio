@@ -1838,7 +1838,7 @@ export const requestLegalConsentExport = async (input: {
     params.set('accountId', input.accountId);
   }
 
-  return requestJsonOrText(`/iam/legal-consents/export?${params.toString()}`);
+  return requestJsonOrText(`/iam/governance/legal-consents/export?${params.toString()}`);
 };
 
 export const getDataExportStatus = async (

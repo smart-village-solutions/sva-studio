@@ -10,6 +10,7 @@ import {
   loadExistingLegalTextId,
   mapLegalTextListItem,
   mapPendingLegalTextItem,
+  normalizeTargetIds,
   type PendingLegalTextRow,
   resolveLegalTextUpdateState,
   type UpdateLegalTextInput,
@@ -110,6 +111,106 @@ const emitLegalTextDeletedActivityLog = (
     requestId: input.requestId,
     traceId: input.traceId,
   });
+
+const persistLegalTextTargetRoles = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    legalTextVersionId: string;
+    targetRoleIds: readonly string[];
+  }
+) => {
+  if (input.targetRoleIds.length === 0) {
+    return;
+  }
+
+  await client.query(
+    `
+INSERT INTO iam.legal_text_target_roles (
+  instance_id,
+  legal_text_version_id,
+  role_id
+)
+SELECT
+  $1,
+  $2::uuid,
+  role_id::uuid
+FROM unnest($3::text[]) AS role_id
+ON CONFLICT (instance_id, legal_text_version_id, role_id) DO NOTHING;
+`,
+    [input.instanceId, input.legalTextVersionId, input.targetRoleIds]
+  );
+};
+
+const persistLegalTextTargetGroups = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    legalTextVersionId: string;
+    targetGroupIds: readonly string[];
+  }
+) => {
+  if (input.targetGroupIds.length === 0) {
+    return;
+  }
+
+  await client.query(
+    `
+INSERT INTO iam.legal_text_target_groups (
+  instance_id,
+  legal_text_version_id,
+  group_id
+)
+SELECT
+  $1,
+  $2::uuid,
+  group_id::uuid
+FROM unnest($3::text[]) AS group_id
+ON CONFLICT (instance_id, legal_text_version_id, group_id) DO NOTHING;
+`,
+    [input.instanceId, input.legalTextVersionId, input.targetGroupIds]
+  );
+};
+
+const replaceLegalTextTargetRoles = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    legalTextVersionId: string;
+    targetRoleIds: readonly string[];
+  }
+) => {
+  await client.query(
+    `
+DELETE FROM iam.legal_text_target_roles
+WHERE instance_id = $1
+  AND legal_text_version_id = $2::uuid;
+`,
+    [input.instanceId, input.legalTextVersionId]
+  );
+
+  await persistLegalTextTargetRoles(client, input);
+};
+
+const replaceLegalTextTargetGroups = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    legalTextVersionId: string;
+    targetGroupIds: readonly string[];
+  }
+) => {
+  await client.query(
+    `
+DELETE FROM iam.legal_text_target_groups
+WHERE instance_id = $1
+  AND legal_text_version_id = $2::uuid;
+`,
+    [input.instanceId, input.legalTextVersionId]
+  );
+
+  await persistLegalTextTargetGroups(client, input);
+};
 
 const loadLegalTextByIdWithClient = async (
   client: QueryClient,
@@ -238,6 +339,8 @@ ORDER BY version.published_at DESC NULLS LAST, version.created_at DESC;
       const sanitizedContentHtml = sanitizeLegalTextHtml(input.contentHtml);
       const derivedContentHash = hashLegalTextHtml(sanitizedContentHtml);
       const isActive = input.status === 'valid';
+      const targetRoleIds = normalizeTargetIds(input.targetRoleIds) ?? [];
+      const targetGroupIds = normalizeTargetIds(input.targetGroupIds) ?? [];
       const legalTextId =
         (await loadExistingLegalTextId(client, input.instanceId, input.name)) ?? deriveLegalTextId(input.name);
       const insert = await client.query<{ id: string }>(
@@ -293,6 +396,17 @@ RETURNING id;
         return undefined;
       }
 
+      await persistLegalTextTargetRoles(client, {
+        instanceId: input.instanceId,
+        legalTextVersionId,
+        targetRoleIds,
+      });
+      await persistLegalTextTargetGroups(client, {
+        instanceId: input.instanceId,
+        legalTextVersionId,
+        targetGroupIds,
+      });
+
       await emitLegalTextCreatedActivityLog(deps, client, input, legalTextVersionId);
 
       return legalTextVersionId;
@@ -307,6 +421,8 @@ RETURNING id;
 
       const { nextContentHash, nextContentHtml, nextPublishedAt, nextStatus } =
         resolveLegalTextUpdateState(current, input);
+      const targetRoleIds = normalizeTargetIds(input.targetRoleIds);
+      const targetGroupIds = normalizeTargetIds(input.targetGroupIds);
       const updateResult = await client.query<{ id: string }>(
         `
 UPDATE iam.legal_text_versions
@@ -341,6 +457,21 @@ RETURNING id;
       const updatedLegalTextVersionId = updateResult.rows[0]?.id;
       if (updatedLegalTextVersionId === undefined) {
         return undefined;
+      }
+
+      if (targetRoleIds !== undefined) {
+        await replaceLegalTextTargetRoles(client, {
+          instanceId: input.instanceId,
+          legalTextVersionId: updatedLegalTextVersionId,
+          targetRoleIds,
+        });
+      }
+      if (targetGroupIds !== undefined) {
+        await replaceLegalTextTargetGroups(client, {
+          instanceId: input.instanceId,
+          legalTextVersionId: updatedLegalTextVersionId,
+          targetGroupIds,
+        });
       }
 
       await emitLegalTextUpdatedActivityLog(

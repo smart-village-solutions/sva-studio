@@ -6,6 +6,7 @@ const isoDateTimeString = z
   .refine((value) => !Number.isNaN(new Date(value).getTime()), 'Datum ist ungültig.');
 
 const legalTextStatusSchema = z.enum(['draft', 'valid', 'archived']);
+const uuidArraySchema = z.array(z.string().trim().uuid()).optional();
 
 const hasDefinedEntries = (value: Record<string, unknown>): boolean =>
   Object.values(value).some((entry) => entry !== undefined);
@@ -31,6 +32,8 @@ export const createLegalTextSchema = z
     contentHtml: z.string().trim().min(1).max(200_000),
     status: legalTextStatusSchema.default('draft'),
     publishedAt: isoDateTimeString.optional(),
+    targetRoleIds: uuidArraySchema,
+    targetGroupIds: uuidArraySchema,
   })
   .superRefine(validatePublishedAtForStatus);
 
@@ -42,5 +45,7 @@ export const updateLegalTextSchema = z
     contentHtml: z.string().trim().min(1).max(200_000).optional(),
     status: legalTextStatusSchema.optional(),
     publishedAt: isoDateTimeString.optional(),
+    targetRoleIds: uuidArraySchema,
+    targetGroupIds: uuidArraySchema,
   })
   .refine(hasDefinedEntries, 'Mindestens ein Feld muss gesetzt werden.');

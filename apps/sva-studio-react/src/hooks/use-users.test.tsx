@@ -30,6 +30,16 @@ const authMockValue = {
   invalidatePermissions: vi.fn(),
 };
 
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+  return { promise, resolve, reject };
+};
+
 vi.mock('../lib/iam-api', () => ({
   IamHttpError: class IamHttpError extends Error {
     status: number;
@@ -412,6 +422,48 @@ describe('useUsers', () => {
     expect(result.current.filters.status).toBe('inactive');
     expect(result.current.filters.role).toBe('editor');
     expect(result.current.page).toBe(1);
+  });
+
+  it('ignores in-flight list results after unmount', async () => {
+    const deferredList = createDeferred<{
+      data: Array<{
+        id: string;
+        keycloakSubject: string;
+        displayName: string;
+        email: string;
+        status: 'active';
+        roles: [];
+      }>;
+      pagination: { page: number; pageSize: number; total: number };
+    }>();
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    listUsersMock.mockImplementation(() => deferredList.promise);
+
+    const { unmount } = renderHook(() => useUsers());
+    unmount();
+
+    deferredList.resolve({
+      data: [
+        {
+          id: 'user-1',
+          keycloakSubject: 'subject-1',
+          displayName: 'Ada Lovelace',
+          email: 'ada@example.com',
+          status: 'active',
+          roles: [],
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, total: 1 },
+    });
+
+    await act(async () => {
+      await deferredList.promise;
+      await Promise.resolve();
+    });
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it('returns null and sets error when update fails with forbidden', async () => {

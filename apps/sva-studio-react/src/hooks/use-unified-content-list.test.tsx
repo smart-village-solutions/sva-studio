@@ -140,9 +140,9 @@ describe('useUnifiedContentList', () => {
     });
 
     expect(result.current.contents.map((item) => item.id)).toEqual(['news-1', 'poi-1']);
-    expect(listNewsMock).toHaveBeenCalled();
-    expect(listEventsMock).toHaveBeenCalled();
-    expect(listPoiMock).toHaveBeenCalled();
+    expect(listNewsMock).toHaveBeenCalledTimes(1);
+    expect(listEventsMock).toHaveBeenCalledTimes(1);
+    expect(listPoiMock).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to the first news content block headline when the news title is missing', async () => {
@@ -372,5 +372,109 @@ describe('useUnifiedContentList', () => {
       canUpdate: false,
       reasonCode: 'content_update_missing',
     });
+  });
+
+  it('reuses fetched source data across page and sort changes until refetch is requested', async () => {
+    const visibleTypes = ['news.article', 'events.event-record', 'poi.point-of-interest'] as const;
+    const permissionActions = ['news.read', 'events.read', 'poi.read'] as const;
+
+    listNewsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'news-1',
+          title: 'Alpha',
+          contentType: 'news.article',
+          status: 'published',
+          payload: {},
+          author: 'Redaktion',
+          createdAt: '2026-05-01T09:00:00.000Z',
+          updatedAt: '2026-05-02T10:00:00.000Z',
+          publishedAt: '2026-05-02T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    listEventsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'event-1',
+          title: 'Beta Event',
+          contentType: 'events.event-record',
+          status: 'published',
+          createdAt: '2026-05-01T08:00:00.000Z',
+          updatedAt: '2026-05-04T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    listPoiMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    type HookProps = {
+      readonly query: IamContentListQuery;
+    };
+
+    const initialQuery: IamContentListQuery = {
+      page: 1,
+      pageSize: 1,
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+      visibleTypes,
+    };
+
+    const sortedQuery: IamContentListQuery = {
+      page: 1,
+      pageSize: 1,
+      sortBy: 'title',
+      sortDirection: 'asc',
+      visibleTypes,
+    };
+
+    const pagedQuery: IamContentListQuery = {
+      page: 2,
+      pageSize: 1,
+      sortBy: 'title',
+      sortDirection: 'asc',
+      visibleTypes,
+    };
+
+    const { result, rerender } = renderHook(
+      ({ query }) => useUnifiedContentList(query, visibleTypes, 'de-musterhausen', permissionActions),
+      {
+        initialProps: {
+          query: initialQuery,
+        } satisfies HookProps,
+      }
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    rerender({ query: sortedQuery });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    rerender({ query: pagedQuery });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(listNewsMock).toHaveBeenCalledTimes(1);
+    expect(listEventsMock).toHaveBeenCalledTimes(1);
+    expect(listPoiMock).toHaveBeenCalledTimes(1);
+
+    await result.current.refetch();
+
+    await waitFor(() => {
+      expect(listNewsMock).toHaveBeenCalledTimes(2);
+    });
+    expect(listEventsMock).toHaveBeenCalledTimes(2);
+    expect(listPoiMock).toHaveBeenCalledTimes(2);
   });
 });

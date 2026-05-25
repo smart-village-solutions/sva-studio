@@ -40,6 +40,19 @@ describe('content-history-client', () => {
     );
   });
 
+  it('encodes content ids when building the history endpoint url', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: [] }), { status: 200 }));
+
+    await fetchIamContentHistory('content/with?#spaces', { fetch: fetchMock as typeof fetch });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/contents/content%2Fwith%3F%23spaces/history',
+      expect.objectContaining({
+        credentials: 'include',
+      })
+    );
+  });
+
   it('returns an empty list for successful no-history responses', async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: [] }), { status: 200 }));
 

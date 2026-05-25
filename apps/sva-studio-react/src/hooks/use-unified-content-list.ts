@@ -21,12 +21,6 @@ type UnifiedContentListResult = {
   readonly supportsBulkActions: boolean;
 };
 
-const DEFAULT_PAGINATION = {
-  page: 1,
-  pageSize: 25,
-  total: 0,
-} as const satisfies ApiPagination;
-
 const MAINSERVER_FETCH_PAGE_SIZE = 100;
 
 const studioContentTypeIds = ['news.article', 'events.event-record', 'poi.point-of-interest'] as const;
@@ -244,11 +238,11 @@ export const useUnifiedContentList = (
   instanceId: string,
   permissionActions: readonly string[] = []
 ): UnifiedContentListResult => {
-  const [contents, setContents] = React.useState<readonly IamContentListItem[]>([]);
-  const [pagination, setPagination] = React.useState<ApiPagination>(DEFAULT_PAGINATION);
+  const [sourceContents, setSourceContents] = React.useState<readonly IamContentListItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [reloadToken, setReloadToken] = React.useState(0);
+  const cacheRef = React.useRef(new Map<string, readonly IamContentListItem[]>());
 
   const normalizedVisibleTypes = React.useMemo(
     () =>
@@ -257,21 +251,29 @@ export const useUnifiedContentList = (
       ),
     [query.type, visibleTypes]
   );
+  const permissionActionsKey = React.useMemo(() => [...permissionActions].sort().join('|'), [permissionActions]);
+  const fetchCacheKey = React.useMemo(
+    () => [instanceId, normalizedVisibleTypes.join('|'), permissionActionsKey].join('::'),
+    [instanceId, normalizedVisibleTypes, permissionActionsKey]
+  );
+  const unsupportedStatusFilter = Boolean(query.status && query.status !== 'published');
 
   const refetch = React.useCallback(async () => {
+    cacheRef.current.delete(fetchCacheKey);
     setReloadToken((current) => current + 1);
-  }, []);
+  }, [fetchCacheKey]);
 
   React.useEffect(() => {
     let isActive = true;
 
-    if (query.status && query.status !== 'published') {
-      setContents([]);
-      setPagination({
-        page: query.page,
-        pageSize: query.pageSize,
-        total: 0,
-      });
+    if (unsupportedStatusFilter) {
+      setIsLoading(false);
+      return;
+    }
+
+    const cachedContents = cacheRef.current.get(fetchCacheKey);
+    if (cachedContents) {
+      setSourceContents(cachedContents);
       setError(null);
       setIsLoading(false);
       return;
@@ -298,27 +300,15 @@ export const useUnifiedContentList = (
           return;
         }
 
-        const filteredItems = filterItems(sources.flat(), query);
-        const sortedItems = sortItems(filteredItems, query.sortBy, query.sortDirection);
-        const pagedItems = paginateItems(sortedItems, query.page, query.pageSize);
-
-        setContents(pagedItems);
-        setPagination({
-          page: query.page,
-          pageSize: query.pageSize,
-          total: sortedItems.length,
-        });
+        const nextSourceContents = sources.flat();
+        cacheRef.current.set(fetchCacheKey, nextSourceContents);
+        setSourceContents(nextSourceContents);
       } catch (nextError) {
         if (!isActive) {
           return;
         }
 
-        setContents([]);
-        setPagination({
-          page: query.page,
-          pageSize: query.pageSize,
-          total: 0,
-        });
+        setSourceContents([]);
         setError({
           name: 'IamHttpError',
           message: nextError instanceof Error ? nextError.message : String(nextError),
@@ -335,7 +325,36 @@ export const useUnifiedContentList = (
     return () => {
       isActive = false;
     };
-  }, [instanceId, normalizedVisibleTypes, permissionActions, query, reloadToken]);
+  }, [fetchCacheKey, instanceId, normalizedVisibleTypes, permissionActions, reloadToken, unsupportedStatusFilter]);
+
+  const pagination = React.useMemo<ApiPagination>(() => {
+    if (unsupportedStatusFilter) {
+      return {
+        page: query.page,
+        pageSize: query.pageSize,
+        total: 0,
+      };
+    }
+
+    const filteredItems = filterItems(sourceContents, query);
+    const sortedItems = sortItems(filteredItems, query.sortBy, query.sortDirection);
+
+    return {
+      page: query.page,
+      pageSize: query.pageSize,
+      total: sortedItems.length,
+    };
+  }, [query, sourceContents, unsupportedStatusFilter]);
+
+  const contents = React.useMemo(() => {
+    if (unsupportedStatusFilter) {
+      return [];
+    }
+
+    const filteredItems = filterItems(sourceContents, query);
+    const sortedItems = sortItems(filteredItems, query.sortBy, query.sortDirection);
+    return paginateItems(sortedItems, query.page, query.pageSize);
+  }, [query, sourceContents, unsupportedStatusFilter]);
 
   return {
     contents,

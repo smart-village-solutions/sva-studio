@@ -322,6 +322,38 @@ describe('ContentListPage', () => {
     });
   });
 
+  it('encodes content ids when building row detail links', () => {
+    useContentsMock.mockReturnValue(createContentsApiResult({
+      contents: [
+        {
+          id: 'news/with?#slug',
+          contentType: 'news.article',
+          title: 'Reservierte Zeichen',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-21T11:00:00.000Z',
+          author: 'Editor',
+          payload: {},
+          status: 'published',
+          access: {
+            state: 'editable',
+            canRead: true,
+            canCreate: true,
+            canUpdate: true,
+            organizationIds: ['org-1'],
+            sourceKinds: ['direct_role'],
+          },
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, total: 1 },
+    }));
+
+    render(<ContentListPage />);
+
+    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]?.getAttribute('href')).toBe(
+      '/admin/news/news%2Fwith%3F%23slug'
+    );
+  });
+
   it('shows loading, empty and error states', () => {
     useContentsMock.mockReturnValue(createContentsApiResult({
       error: { code: 'database_unavailable' },

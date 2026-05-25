@@ -132,12 +132,25 @@ export const listContentsInternal = async (
       loadContentListItems(actorResolution.actor.instanceId, query, readableScopes),
       resolveContentAccess(actorResolution.actor),
     ]);
-    const itemsWithAccess = items.map((item) => ({ ...item, access }));
+    const authorizedItems = [];
+    for (const item of items) {
+      const authorizationError = await authorizeReadableContentItem(actorResolution.actor, item);
+      if (!authorizationError) {
+        authorizedItems.push(item);
+        continue;
+      }
+      if (isServerAuthorizationError(authorizationError)) {
+        return authorizationError;
+      }
+    }
+    const itemsWithAccess = authorizedItems.map((item) => ({ ...item, access }));
+    const deniedItemsOnPage = items.length - authorizedItems.length;
+    const visibleTotal = deniedItemsOnPage > 0 ? Math.max(0, total - deniedItemsOnPage) : total;
     return new Response(
       JSON.stringify(
         asApiList(
           itemsWithAccess,
-          { page: query.page, pageSize: query.pageSize, total },
+          { page: query.page, pageSize: query.pageSize, total: visibleTotal },
           actorResolution.actor.requestId
         )
       ),
@@ -290,20 +303,9 @@ export const deleteContentInternal = async (
   return 'error' in actorResolution ? actorResolution.error : deleteContentResponse(request, actorResolution.actor);
 };
 
-export const listContentsHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedContentHandler(request, listContentsInternal);
-
-export const getContentHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedContentHandler(request, getContentInternal);
-
-export const getContentHistoryHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedContentHandler(request, getContentHistoryInternal);
-
-export const createContentHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedContentHandler(request, createContentInternal);
-
-export const updateContentHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedContentHandler(request, updateContentInternal);
-
-export const deleteContentHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedContentHandler(request, deleteContentInternal);
+export const listContentsHandler = async (request: Request): Promise<Response> => withAuthenticatedContentHandler(request, listContentsInternal);
+export const getContentHandler = async (request: Request): Promise<Response> => withAuthenticatedContentHandler(request, getContentInternal);
+export const getContentHistoryHandler = async (request: Request): Promise<Response> => withAuthenticatedContentHandler(request, getContentHistoryInternal);
+export const createContentHandler = async (request: Request): Promise<Response> => withAuthenticatedContentHandler(request, createContentInternal);
+export const updateContentHandler = async (request: Request): Promise<Response> => withAuthenticatedContentHandler(request, updateContentInternal);
+export const deleteContentHandler = async (request: Request): Promise<Response> => withAuthenticatedContentHandler(request, deleteContentInternal);

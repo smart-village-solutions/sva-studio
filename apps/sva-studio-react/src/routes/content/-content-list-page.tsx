@@ -406,7 +406,9 @@ export const ContentListPage = () => {
         ({ item, definition }) => ({
           ...item,
           typeLabel: definition.displayName,
-          editPath: definition.detailPath.replace('$contentId', item.id).replace('$id', item.id),
+          editPath: definition.detailPath
+            .replace('$contentId', encodeURIComponent(item.id))
+            .replace('$id', encodeURIComponent(item.id)),
         })
       ),
     [contentAccessApi.permissionActions, contentsApi.contents]

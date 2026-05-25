@@ -239,6 +239,48 @@ describe('content core authorization', () => {
     });
   });
 
+  it('filters list items that fail item-specific read authorization', async () => {
+    const allowedItem = item('content-1', '11111111-1111-4111-8111-111111111111');
+    const deniedItem = item('content-2', '11111111-1111-4111-8111-111111111111');
+    deniedItem.contentType = 'poi.point-of-interest';
+
+    loadContentListScopesMock.mockResolvedValue(['11111111-1111-4111-8111-111111111111']);
+    loadContentListItemsMock.mockResolvedValue({
+      items: [allowedItem, deniedItem],
+      total: 2,
+    });
+    authorizeContentActionMock
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(new Response(null, { status: 403 }));
+
+    const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+
+    expect(response.status).toBe(200);
+    await expect(readJson(response)).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'content-1' })],
+      pagination: expect.objectContaining({ total: 1 }),
+    });
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      2,
+      actor,
+      'content.read',
+      expect.objectContaining({
+        contentId: 'content-1',
+        contentType: 'news.article',
+      })
+    );
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      3,
+      actor,
+      'content.read',
+      expect.objectContaining({
+        contentId: 'content-2',
+        contentType: 'poi.point-of-interest',
+      })
+    );
+  });
+
   it('returns server authorization errors from list reads even when other items are readable', async () => {
     loadContentListScopesMock.mockResolvedValue([
       '11111111-1111-4111-8111-111111111111',

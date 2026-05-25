@@ -13,7 +13,7 @@ export const fetchIamContentHistory = async (
   }>
 ): Promise<readonly IamContentHistoryEntry[]> => {
   const response = await requestMainserverJson<ApiListResponse<IamContentHistoryEntry>>({
-    url: `/api/v1/iam/contents/${contentId}/history`,
+    url: `/api/v1/iam/contents/${encodeURIComponent(contentId)}/history`,
     fetch: options?.fetch,
   });
 

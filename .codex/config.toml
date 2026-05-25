@@ -2,6 +2,18 @@
 command = "npx"
 args = [ "nx-mcp@latest", "--minimal" ]
 
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = [
+  "-y",
+  "chrome-devtools-mcp@latest",
+  "--isolated",
+  "--acceptInsecureCerts",
+  "--viewport",
+  "1440x900",
+  "--no-usage-statistics",
+]
+
 [features]
 multi_agent = true
 

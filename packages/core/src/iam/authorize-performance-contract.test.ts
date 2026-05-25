@@ -8,6 +8,18 @@ import {
 } from './authorize-performance-contract.js';
 
 describe('authorize-performance-contract helpers', () => {
+  it('returns a zeroed summary for empty samples', () => {
+    expect(summarizeAuthorizePerformanceDurations([])).toEqual({
+      count: 0,
+      minMs: 0,
+      maxMs: 0,
+      avgMs: 0,
+      p50Ms: 0,
+      p95Ms: 0,
+      p99Ms: 0,
+    });
+  });
+
   it('summarizes p50, p95 and p99 from unsorted samples', () => {
     const summary = summarizeAuthorizePerformanceDurations([12, 4, 30, 8, 16]);
 
@@ -82,6 +94,24 @@ describe('authorize-performance-contract helpers', () => {
     );
   });
 
+  it('creates cache-miss payloads even when the base payload has no context yet', () => {
+    const payload = buildAuthorizePerformancePayload({
+      basePayload: {
+        instanceId: 'de-musterhausen',
+        action: 'content.read',
+        resource: {
+          type: 'content',
+        },
+      },
+      runId: 'run-2',
+      sampleIndex: 3,
+      scenario: 'cache-miss',
+    });
+
+    expect(payload.context?.requestId).toBe('bench-run-2-cache-miss-3');
+    expect(payload.context?.attributes?.geoHierarchy).toHaveLength(1);
+  });
+
   it('renders markdown with scenario summaries, report paths and verdicts', () => {
     const report: AuthorizePerformanceRunResult = {
       generatedAt: '2026-05-25T17:30:00.000Z',
@@ -141,5 +171,40 @@ describe('authorize-performance-contract helpers', () => {
     expect(markdown).toMatch(/nicht erfüllt/);
     expect(markdown).toMatch(/p95 < 100 ms im Cache-Hit-Szenario: erfüllt/);
     expect(markdown).toMatch(/Cache-Status: recompute, recompute, recompute/);
+  });
+
+  it('renders fallback markdown values when cache-hit and optional report fields are absent', () => {
+    const markdown = renderAuthorizePerformanceMarkdownReport({
+      generatedAt: '2026-05-25T17:30:00.000Z',
+      measuredOn: 'server',
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-2',
+      },
+      request: {
+        action: 'content.read',
+        resourceType: 'content',
+      },
+      configuration: {
+        measuredRequests: 12,
+        warmupRequests: 2,
+      },
+      scenarios: [
+        {
+          scenario: 'recompute',
+          samplesMs: [120],
+          summary: summarizeAuthorizePerformanceDurations([120]),
+          evaluation: 'rejected',
+          evaluationLabel: 'nicht erfüllt',
+          observedCacheStatuses: ['recomputed'],
+        },
+      ],
+    });
+
+    expect(markdown).toMatch(/Resource-ID: n\. v\./);
+    expect(markdown).toMatch(/Organisationskontext: n\. v\./);
+    expect(markdown).toMatch(/p95 < 100 ms im Cache-Hit-Szenario: nicht erfüllt/);
+    expect(markdown).not.toMatch(/JSON-Report/);
+    expect(markdown).not.toMatch(/Markdown-Report/);
   });
 });

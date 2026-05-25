@@ -33,12 +33,27 @@ type BenchmarkInput = {
 
 const DEFAULT_MEASURED_REQUESTS = 12;
 const DEFAULT_WARMUP_REQUESTS = 2;
+const LATEST_BENCHMARK_TTL_MS = 15 * 60 * 1000;
 const reportRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../docs/reports');
 
-const latestBenchmarkByActor = new Map<string, AuthorizePerformanceRunResult>();
+type LatestBenchmarkCacheEntry = {
+  readonly cachedAtMs: number;
+  readonly result: AuthorizePerformanceRunResult;
+};
+
+const latestBenchmarkByActor = new Map<string, LatestBenchmarkCacheEntry>();
 
 const toActorKey = (input: { instanceId: string; keycloakSubject: string }) =>
   `${input.instanceId}:${input.keycloakSubject}`;
+
+const sweepExpiredBenchmarks = (): void => {
+  const now = Date.now();
+  for (const [actorKey, entry] of latestBenchmarkByActor.entries()) {
+    if (entry.cachedAtMs + LATEST_BENCHMARK_TTL_MS <= now) {
+      latestBenchmarkByActor.delete(actorKey);
+    }
+  }
+};
 
 const scenarioThresholdMs = (scenario: AuthorizePerformanceScenario): number => {
   switch (scenario) {
@@ -155,7 +170,10 @@ export const readLatestAuthorizePerformanceBenchmark = (input: {
   readonly instanceId: string;
   readonly keycloakSubject: string;
 }): AuthorizePerformanceRunResult | null =>
-  latestBenchmarkByActor.get(toActorKey(input)) ?? null;
+  {
+    sweepExpiredBenchmarks();
+    return latestBenchmarkByActor.get(toActorKey(input))?.result ?? null;
+  };
 
 export const runAuthorizePerformanceBenchmark = async (
   input: BenchmarkInput
@@ -282,13 +300,11 @@ export const runAuthorizePerformanceBenchmark = async (
     ...result,
     report,
   } satisfies AuthorizePerformanceRunResult;
-  latestBenchmarkByActor.set(
-    toActorKey({
-      instanceId: input.actor.instanceId,
-      keycloakSubject: input.actor.id,
-    }),
-    finalizedResult
-  );
+  sweepExpiredBenchmarks();
+  latestBenchmarkByActor.set(toActorKey({ instanceId: input.actor.instanceId, keycloakSubject: input.actor.id }), {
+    cachedAtMs: Date.now(),
+    result: finalizedResult,
+  });
 
   return finalizedResult;
 };

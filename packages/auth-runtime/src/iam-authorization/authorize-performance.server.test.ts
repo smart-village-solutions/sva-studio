@@ -147,4 +147,49 @@ describe('authorize-performance.server', () => {
       })
     ).rejects.toThrowError('scenario:cache-hit:unexpected_cache_status');
   });
+
+  it('expires cached benchmark results after the ttl window', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_000);
+    state.authorizeHandler.mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ cacheStatus: 'hit' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+
+    const { readLatestAuthorizePerformanceBenchmark, runAuthorizePerformanceBenchmark } = await import(
+      './authorize-performance.server.js'
+    );
+
+    await runAuthorizePerformanceBenchmark({
+      actor: {
+        id: 'kc-user-ttl',
+        instanceId: 'tenant-1',
+      },
+      request: {
+        action: 'content.read',
+        resourceType: 'content',
+        measuredRequests: 1,
+        warmupRequests: 0,
+      },
+      requestHeaders: new Headers(),
+      requestUrl: 'https://studio.test/api/v1',
+    });
+
+    expect(
+      readLatestAuthorizePerformanceBenchmark({
+        instanceId: 'tenant-1',
+        keycloakSubject: 'kc-user-ttl',
+      })
+    ).not.toBeNull();
+
+    vi.spyOn(Date, 'now').mockReturnValue(1_000 + 15 * 60 * 1000 + 1);
+    expect(
+      readLatestAuthorizePerformanceBenchmark({
+        instanceId: 'tenant-1',
+        keycloakSubject: 'kc-user-ttl',
+      })
+    ).toBeNull();
+  });
 });

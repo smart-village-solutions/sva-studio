@@ -3,16 +3,20 @@
 CREATE TABLE IF NOT EXISTS iam.legal_text_target_roles (
   instance_id TEXT NOT NULL REFERENCES iam.instances(instance_id) ON DELETE CASCADE,
   legal_text_version_id UUID NOT NULL REFERENCES iam.legal_text_versions(id) ON DELETE CASCADE,
-  role_id UUID NOT NULL REFERENCES iam.roles(id) ON DELETE CASCADE,
+  role_id UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  FOREIGN KEY (instance_id, role_id)
+    REFERENCES iam.roles(instance_id, id) ON DELETE CASCADE,
   CONSTRAINT legal_text_target_roles_unique UNIQUE (instance_id, legal_text_version_id, role_id)
 );
 
 CREATE TABLE IF NOT EXISTS iam.legal_text_target_groups (
   instance_id TEXT NOT NULL REFERENCES iam.instances(instance_id) ON DELETE CASCADE,
   legal_text_version_id UUID NOT NULL REFERENCES iam.legal_text_versions(id) ON DELETE CASCADE,
-  group_id UUID NOT NULL REFERENCES iam.groups(id) ON DELETE CASCADE,
+  group_id UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  FOREIGN KEY (instance_id, group_id)
+    REFERENCES iam.groups(instance_id, id) ON DELETE CASCADE,
   CONSTRAINT legal_text_target_groups_unique UNIQUE (instance_id, legal_text_version_id, group_id)
 );
 

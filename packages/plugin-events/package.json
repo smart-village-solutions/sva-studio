@@ -11,6 +11,10 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./events.pages": {
+      "types": "./src/events.pages.tsx",
+      "default": "./src/events.pages.tsx"
+    },
     "./plugin.manifest.json": {
       "default": "./plugin.manifest.json"
     }

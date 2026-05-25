@@ -11,6 +11,7 @@ const {
   loadContentDetailMock,
   loadContentHistoryMock,
   loadContentListItemsMock,
+  loadContentListScopesMock,
   resolveContentAccessMock,
   resolveContentActorMock,
   updateContentResponseMock,
@@ -23,6 +24,7 @@ const {
   loadContentDetailMock: vi.fn(),
   loadContentHistoryMock: vi.fn(),
   loadContentListItemsMock: vi.fn(),
+  loadContentListScopesMock: vi.fn(),
   resolveContentAccessMock: vi.fn(),
   resolveContentActorMock: vi.fn(),
   updateContentResponseMock: vi.fn(),
@@ -41,6 +43,7 @@ vi.mock('./repository.js', () => ({
   loadContentDetail: loadContentDetailMock,
   loadContentHistory: loadContentHistoryMock,
   loadContentListItems: loadContentListItemsMock,
+  loadContentListScopes: loadContentListScopesMock,
 }));
 
 vi.mock('./mutations.js', () => ({
@@ -111,6 +114,7 @@ describe('content core authorization', () => {
     loadContentDetailMock.mockReset();
     loadContentHistoryMock.mockReset();
     loadContentListItemsMock.mockReset();
+    loadContentListScopesMock.mockReset();
     resolveContentAccessMock.mockReset();
     resolveContentActorMock.mockReset();
     updateContentResponseMock.mockReset();
@@ -118,12 +122,19 @@ describe('content core authorization', () => {
 
     resolveContentActorMock.mockResolvedValue({ actor });
     resolveContentAccessMock.mockResolvedValue(access);
+    loadContentListScopesMock.mockResolvedValue([]);
   });
 
   it('filters list responses per item using the persisted organization context', async () => {
     const visible = item('content-1', '11111111-1111-4111-8111-111111111111');
-    const hidden = item('content-2', '22222222-2222-4222-8222-222222222222');
-    loadContentListItemsMock.mockResolvedValue([visible, hidden]);
+    loadContentListScopesMock.mockResolvedValue([
+      '11111111-1111-4111-8111-111111111111',
+      '22222222-2222-4222-8222-222222222222',
+    ]);
+    loadContentListItemsMock.mockResolvedValue({
+      items: [visible],
+      total: 1,
+    });
     authorizeContentActionMock
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(new Response(null, { status: 403 }));
@@ -131,13 +142,31 @@ describe('content core authorization', () => {
     const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
 
     expect(response.status).toBe(200);
+    expect(loadContentListScopesMock).toHaveBeenCalledWith(
+      'instance-1',
+      expect.objectContaining({
+        page: 1,
+        sortBy: 'updatedAt',
+        sortDirection: 'desc',
+      })
+    );
+    expect(loadContentListItemsMock).toHaveBeenCalledWith(
+      'instance-1',
+      expect.objectContaining({
+        page: 1,
+        sortBy: 'updatedAt',
+        sortDirection: 'desc',
+      }),
+      {
+        allowedOrganizationIds: ['11111111-1111-4111-8111-111111111111'],
+        includeUnscopedContent: false,
+      }
+    );
     expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
       1,
       actor,
       'content.read',
       expect.objectContaining({
-        contentId: 'content-1',
-        contentType: 'news.article',
         organizationId: '11111111-1111-4111-8111-111111111111',
       })
     );
@@ -146,8 +175,6 @@ describe('content core authorization', () => {
       actor,
       'content.read',
       expect.objectContaining({
-        contentId: 'content-2',
-        contentType: 'news.article',
         organizationId: '22222222-2222-4222-8222-222222222222',
       })
     );
@@ -157,10 +184,108 @@ describe('content core authorization', () => {
     });
   });
 
+  it('forwards query filters and paginates after authorization', async () => {
+    loadContentListScopesMock.mockResolvedValue(['11111111-1111-4111-8111-111111111111']);
+    loadContentListItemsMock.mockResolvedValue({
+      items: [item('content-2', '11111111-1111-4111-8111-111111111111')],
+      total: 3,
+    });
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await listContentsInternal(
+      new Request(
+        'https://studio.test/api/v1/iam/contents?page=2&pageSize=1&q=rathaus&type=poi.point-of-interest&status=published&sortBy=title&sortDirection=asc&visibleType=poi.point-of-interest&visibleType=news.article'
+      ),
+      ctx
+    );
+
+    expect(loadContentListScopesMock).toHaveBeenCalledWith(
+      'instance-1',
+      expect.objectContaining({
+        page: 2,
+        pageSize: 1,
+        q: 'rathaus',
+        type: 'poi.point-of-interest',
+        status: 'published',
+        sortBy: 'title',
+        sortDirection: 'asc',
+        visibleTypes: ['poi.point-of-interest', 'news.article'],
+      })
+    );
+    expect(loadContentListItemsMock).toHaveBeenCalledWith(
+      'instance-1',
+      expect.objectContaining({
+        page: 2,
+        pageSize: 1,
+        q: 'rathaus',
+        type: 'poi.point-of-interest',
+        status: 'published',
+        sortBy: 'title',
+        sortDirection: 'asc',
+        visibleTypes: ['poi.point-of-interest', 'news.article'],
+      }),
+      {
+        allowedOrganizationIds: ['11111111-1111-4111-8111-111111111111'],
+        includeUnscopedContent: false,
+      }
+    );
+    await expect(readJson(response)).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'content-2' })],
+      pagination: {
+        page: 2,
+        pageSize: 1,
+        total: 3,
+      },
+    });
+  });
+
+  it('filters list items that fail item-specific read authorization', async () => {
+    const allowedItem = item('content-1', '11111111-1111-4111-8111-111111111111');
+    const deniedItem = item('content-2', '11111111-1111-4111-8111-111111111111');
+    deniedItem.contentType = 'poi.point-of-interest';
+
+    loadContentListScopesMock.mockResolvedValue(['11111111-1111-4111-8111-111111111111']);
+    loadContentListItemsMock.mockResolvedValue({
+      items: [allowedItem, deniedItem],
+      total: 2,
+    });
+    authorizeContentActionMock
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(new Response(null, { status: 403 }));
+
+    const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+
+    expect(response.status).toBe(200);
+    await expect(readJson(response)).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'content-1' })],
+      pagination: expect.objectContaining({ total: 1 }),
+    });
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      2,
+      actor,
+      'content.read',
+      expect.objectContaining({
+        contentId: 'content-1',
+        contentType: 'news.article',
+      })
+    );
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      3,
+      actor,
+      'content.read',
+      expect.objectContaining({
+        contentId: 'content-2',
+        contentType: 'poi.point-of-interest',
+      })
+    );
+  });
+
   it('returns server authorization errors from list reads even when other items are readable', async () => {
-    const first = item('content-1', '11111111-1111-4111-8111-111111111111');
-    const second = item('content-2', '22222222-2222-4222-8222-222222222222');
-    loadContentListItemsMock.mockResolvedValue([first, second]);
+    loadContentListScopesMock.mockResolvedValue([
+      '11111111-1111-4111-8111-111111111111',
+      '22222222-2222-4222-8222-222222222222',
+    ]);
     authorizeContentActionMock
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(new Response(null, { status: 503 }));

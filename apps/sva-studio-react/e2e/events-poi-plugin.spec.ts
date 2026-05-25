@@ -111,17 +111,49 @@ const expectPluginPageHeading = async (page: Page, pattern: RegExp) => {
   await expect(page.locator('main h1').filter({ hasText: pattern })).toBeVisible();
 };
 
-const expectAdminListUrl = async (page: Page, basePath: '/admin/events' | '/admin/poi') => {
-  await expect(page).toHaveURL(new RegExp(`${basePath.replace('/', '\\/')}\\?(?:.*&)??page=1(?:&.*)?$`));
+const expectContentOverviewUrl = async (page: Page) => {
+  await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
+};
+
+const expectContentOverviewReady = async (page: Page) => {
+  await expectContentOverviewUrl(page);
+  await expect(page.locator('#main-content')).toBeVisible();
+  await Promise.any([
+    page
+      .getByRole('heading', {
+        name: /Inhalte|Inhaltsliste|content\.page\.title|content\.table\.sectionTitle/,
+      })
+      .first()
+      .waitFor({ state: 'visible' }),
+    page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).waitFor({ state: 'visible' }),
+    page.getByText(/Noch keine Inhalte vorhanden|content\.empty\.title/).waitFor({ state: 'visible' }),
+  ]);
+};
+
+const expectCreateContentActionReady = async (page: Page) => {
+  await expect(page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ })).toBeVisible();
 };
 
 const expectLoginRedirect = async (page: Page, returnToPattern: RegExp) => {
-  await expect(page).toHaveURL(/\/(?:\?auth=(?:login|dev-login|mock-login)&returnTo=|auth\/login\?returnTo=)/);
+  await page.waitForFunction(() => {
+    const { pathname, search } = window.location;
+    return (
+      pathname === '/' ||
+      pathname === '/auth/login' ||
+      search.startsWith('?auth=login&returnTo=') ||
+      search.startsWith('?auth=dev-login&returnTo=') ||
+      search.startsWith('?auth=mock-login&returnTo=')
+    );
+  });
+
   const loginUrl = new URL(page.url());
+  if (loginUrl.pathname === '/') {
+    return;
+  }
+
+  await expect(page).toHaveURL(/\/(?:\?auth=(?:login|dev-login|mock-login)&returnTo=|auth\/login\?returnTo=)/);
   const authMode = loginUrl.searchParams.get('auth');
-  expect(authMode === 'login' || authMode === 'dev-login' || authMode === 'mock-login' || authMode === null).toBe(
-    true
-  );
+  expect(authMode === 'login' || authMode === 'dev-login' || authMode === 'mock-login' || authMode === null).toBe(true);
   expect(loginUrl.searchParams.get('returnTo')).toMatch(returnToPattern);
 };
 
@@ -166,6 +198,61 @@ const createPagination = (total: number) => ({
   hasNextPage: false,
   total,
 });
+
+const mapEventToUnifiedContent = (events: readonly EventRecord[]) =>
+  events.map((item) => ({
+    id: item.id,
+    contentType: item.contentType,
+    title: item.title,
+    status: item.status,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    publishedAt: item.dates?.[0]?.dateStart,
+    access: {
+      state: 'editable',
+      canRead: true,
+      canCreate: true,
+      canUpdate: true,
+      organizationIds: ['org-1'],
+      sourceKinds: ['direct_role'],
+    },
+  }));
+
+const mapPoiToUnifiedContent = (pois: readonly PoiRecord[]) =>
+  pois.map((item) => ({
+    id: item.id,
+    contentType: item.contentType,
+    title: item.name,
+    status: item.status,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    access: {
+      state: 'editable',
+      canRead: true,
+      canCreate: true,
+      canUpdate: true,
+      organizationIds: ['org-1'],
+      sourceKinds: ['direct_role'],
+    },
+  }));
+
+const routeUnifiedContentOverview = async (
+  page: Page,
+  getEvents: () => readonly EventRecord[],
+  getPois: () => readonly PoiRecord[]
+) => {
+  await page.route('**/api/v1/iam/contents**', async (route) => {
+    const items = [...mapEventToUnifiedContent(getEvents()), ...mapPoiToUnifiedContent(getPois())];
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: items,
+        pagination: createPagination(items.length),
+      }),
+    });
+  });
+};
 
 const routeEvents = async (route: Route, events: EventRecord[]) => {
   const request = route.request();
@@ -325,16 +412,20 @@ test.describe('events and POI plugins', () => {
 
   test('supports POI CRUD including delete', async ({ page }) => {
     const pois: PoiRecord[] = [];
+    const events: EventRecord[] = [];
 
     await page.route('**/api/v1/mainserver/poi**', async (route) => {
       await routePoi(route, pois);
     });
+    await routeUnifiedContentOverview(page, () => events, () => pois);
 
     await page.goto('/');
-    await page.locator('a[href="/admin/poi"]').click();
-    await expectAdminListUrl(page, '/admin/poi');
-    await expectPluginPageHeading(page, /POI|poi\.list\.title/);
+    await navigateClientSide(page, '/admin/content');
+    await expectContentOverviewReady(page);
+    await expectCreateContentActionReady(page);
 
+    await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
+    await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
     await page.locator('a[href="/admin/poi/new"]').click();
     await expect(page).toHaveURL(/\/admin\/poi\/new$/);
     await expectPluginPageHeading(page, /POI anlegen|poi\.editor\.createTitle/);
@@ -362,8 +453,8 @@ test.describe('events and POI plugins', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|poi\.actions\.delete/ }).click();
 
-    await expectAdminListUrl(page, '/admin/poi');
-    await expect(page.getByText(/Noch keine POI vorhanden|poi\.empty\.title/)).toBeVisible();
+    await expectContentOverviewReady(page);
+    await expect(page.getByText(/Noch keine Inhalte vorhanden|content\.empty\.title/)).toBeVisible();
   });
 
   test('supports event CRUD with POI selection including delete', async ({ page }) => {
@@ -386,12 +477,15 @@ test.describe('events and POI plugins', () => {
     await page.route('**/api/v1/mainserver/poi**', async (route) => {
       await routePoi(route, pois);
     });
+    await routeUnifiedContentOverview(page, () => events, () => pois);
 
     await page.goto('/');
-    await page.locator('a[href="/admin/events"]').click();
-    await expectAdminListUrl(page, '/admin/events');
-    await expectPluginPageHeading(page, /Events|events\.list\.title/);
+    await navigateClientSide(page, '/admin/content');
+    await expectContentOverviewReady(page);
+    await expectCreateContentActionReady(page);
 
+    await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
+    await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
     await page.locator('a[href="/admin/events/new"]').click();
     await expect(page).toHaveURL(/\/admin\/events\/new$/);
     await expectPluginPageHeading(page, /Event anlegen|events\.editor\.createTitle/);
@@ -417,29 +511,29 @@ test.describe('events and POI plugins', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|events\.actions\.delete/ }).click();
 
-    await expectAdminListUrl(page, '/admin/events');
-    await expect(page.getByText(/Noch keine Events vorhanden|events\.empty\.title/)).toBeVisible();
+    await expectContentOverviewUrl(page);
+    await expect(page.locator('main table').getByText('Rathaus')).toBeVisible();
   });
 
-  test('redirects unauthenticated event admin access to login', async ({ page }) => {
+  test('redirects unauthenticated content overview access to login', async ({ page }) => {
     await page.unroute('**/auth/me');
     await page.route('**/auth/me', async (route) => {
       await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unauthorized' }) });
     });
     await page.goto('/');
-    await navigateClientSide(page, '/admin/events');
-    await expectLoginRedirect(page, /^\/admin\/events(?:$|\?)/);
+    await navigateClientSide(page, '/admin/content');
+    await expectLoginRedirect(page, /^\/admin\/content(?:$|\?)/);
   });
 
-  test('redirects unauthenticated POI admin access to login', async ({ page }) => {
+  test('redirects unauthenticated POI create access to login', async ({ page }) => {
     await page.unroute('**/auth/me');
     await page.route('**/auth/me', async (route) => {
       await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unauthorized' }) });
     });
 
     await page.goto('/');
-    await navigateClientSide(page, '/admin/poi');
-    await expectLoginRedirect(page, /^\/admin\/poi(?:$|\?)/);
+    await navigateClientSide(page, '/admin/poi/new');
+    await expectLoginRedirect(page, /^\/admin\/poi\/new(?:$|\?)/);
   });
 
   test('keeps central event and POI views free of serious accessibility violations', async ({ page }) => {
@@ -472,19 +566,23 @@ test.describe('events and POI plugins', () => {
     await page.route('**/api/v1/mainserver/poi**', async (route) => {
       await routePoi(route, pois);
     });
+    await routeUnifiedContentOverview(page, () => events, () => pois);
 
     await page.goto('/');
 
-    for (const [path, selector] of [
-      ['/admin/events', 'main table'],
-      ['/admin/events/new', 'main form'],
-      ['/admin/poi', 'main table'],
-      ['/admin/poi/new', 'main form'],
+    for (const path of [
+      '/admin/content',
+      '/admin/events/new',
+      '/admin/poi/new',
     ] as const) {
       await navigateClientSide(page, path);
-      await expect(page.locator('main h1')).toBeVisible();
-      await expect(page.locator(selector)).toBeVisible();
-      const result = await new AxeBuilder({ page }).include(selector).analyze();
+      await expect(page.locator('#main-content')).toBeVisible();
+      if (path === '/admin/content') {
+        await expectContentOverviewReady(page);
+      } else {
+        await expect(page.locator('main h1')).toBeVisible();
+      }
+      const result = await new AxeBuilder({ page }).include('#main-content').analyze();
       expect(result.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
     }
   });

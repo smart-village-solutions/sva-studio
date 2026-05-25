@@ -11,6 +11,11 @@ import {
 
 type ListResponse<TItem> = {
   readonly data: readonly TItem[];
+  readonly pagination?: {
+    readonly page: number;
+    readonly pageSize: number;
+    readonly total: number;
+  };
 };
 
 type UseIamAdminListResult<TItem> = {
@@ -36,9 +41,13 @@ const adminListLogger = createOperationLogger('iam-admin-list', 'debug');
 export const useIamAdminList = <TItem>(
   listItems: () => Promise<ListResponse<TItem>>,
   invalidatePermissions: () => Promise<void> | void,
-  options: { enabled?: boolean } = {}
+  options: {
+    enabled?: boolean;
+    onLoaded?: (response: ListResponse<TItem>) => void;
+  } = {}
 ): UseIamAdminListResult<TItem> => {
   const enabled = options.enabled ?? true;
+  const onLoaded = options.onLoaded;
   const [items, setItems] = React.useState<readonly TItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(enabled);
   const [error, setError] = React.useState<IamHttpError | null>(null);
@@ -59,6 +68,7 @@ export const useIamAdminList = <TItem>(
     try {
       const response = await listItems();
       setItems(response.data);
+      onLoaded?.(response);
       logBrowserOperationSuccess(
         adminListLogger,
         'list_refetch_succeeded',
@@ -83,7 +93,7 @@ export const useIamAdminList = <TItem>(
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, invalidatePermissions, listItems]);
+  }, [enabled, invalidatePermissions, listItems, onLoaded]);
 
   React.useEffect(() => {
     if (!enabled) {

@@ -63,6 +63,7 @@ const {
   loadContentDetail,
   loadContentHistory,
   loadContentListItems,
+  loadContentListScopes,
   loadContentRowById,
   updateContent,
 } = await import('./repository.js');
@@ -189,16 +190,101 @@ describe('iam content repository', () => {
   it('loads content list items and maps database rows', async () => {
     const firstRow = createContentRow();
     const secondRow = createContentRow({ id: 'content-2', title: 'Zweiter Titel' });
-    state.queryMock.mockResolvedValueOnce({ rows: [firstRow, secondRow] });
+    state.queryMock
+      .mockResolvedValueOnce({ rows: [{ total: 2 }] })
+      .mockResolvedValueOnce({ rows: [firstRow, secondRow] });
 
-    await expect(loadContentListItems('instance-1')).resolves.toEqual([
-      { id: 'content-1', title: 'Titel', status: 'draft' },
-      { id: 'content-2', title: 'Zweiter Titel', status: 'draft' },
-    ]);
+    await expect(
+      loadContentListItems('instance-1', {
+        page: 1,
+        pageSize: 25,
+        sortBy: 'updatedAt',
+        sortDirection: 'desc',
+      }, {
+        allowedOrganizationIds: [],
+        includeUnscopedContent: true,
+      })
+    ).resolves.toEqual({
+      items: [
+        { id: 'content-1', title: 'Titel', status: 'draft' },
+        { id: 'content-2', title: 'Zweiter Titel', status: 'draft' },
+      ],
+      total: 2,
+    });
 
     expect(state.queryMock).toHaveBeenCalledWith(expect.stringContaining('ORDER BY content.updated_at DESC'), [
       'instance-1',
+      25,
+      0,
     ]);
+  });
+
+  it('adds search, scope and type filters to the list query', async () => {
+    state.queryMock
+      .mockResolvedValueOnce({ rows: [{ total: 0 }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await loadContentListItems('instance-1', {
+      page: 2,
+      pageSize: 10,
+      q: 'news',
+      type: 'news.article',
+      visibleTypes: ['news.article', 'events.event-record'],
+      status: 'published',
+      sortBy: 'title',
+      sortDirection: 'asc',
+    }, {
+      allowedOrganizationIds: ['11111111-1111-4111-8111-111111111111'],
+      includeUnscopedContent: true,
+    });
+
+    expect(state.queryMock).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('(content.organization_id IS NULL OR content.organization_id = ANY'),
+      [
+        'instance-1',
+        ['news.article', 'events.event-record'],
+        'news.article',
+        'published',
+        '%news%',
+        ['11111111-1111-4111-8111-111111111111'],
+      ]
+    );
+    expect(state.queryMock).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('ORDER BY content.title ASC'),
+      [
+        'instance-1',
+        ['news.article', 'events.event-record'],
+        'news.article',
+        'published',
+        '%news%',
+        ['11111111-1111-4111-8111-111111111111'],
+        10,
+        10,
+      ]
+    );
+  });
+
+  it('loads distinct organization scopes for matching contents', async () => {
+    state.queryMock.mockResolvedValueOnce({
+      rows: [{ organization_id: null }, { organization_id: '11111111-1111-4111-8111-111111111111' }],
+    });
+
+    await expect(
+      loadContentListScopes('instance-1', {
+        page: 1,
+        pageSize: 25,
+        q: 'news',
+        sortBy: 'updatedAt',
+        sortDirection: 'desc',
+      })
+    ).resolves.toEqual([null, '11111111-1111-4111-8111-111111111111']);
+
+    expect(state.queryMock).toHaveBeenCalledWith(
+      expect.stringContaining('SELECT DISTINCT content.organization_id::text AS organization_id'),
+      ['instance-1', '%news%']
+    );
   });
 
   it('loads content rows by id and maps them for public reads', async () => {

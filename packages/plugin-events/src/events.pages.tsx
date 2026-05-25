@@ -426,7 +426,7 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     }
     try {
       await deleteEvent(contentId);
-      await navigate({ to: '/admin/events' });
+      await navigate({ to: '/admin/content' });
     } catch (deleteError) {
       setStatus({ kind: 'error', text: errorMessage(pt, deleteError, 'messages.deleteError') });
     }
@@ -442,7 +442,7 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
       description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
       actions={
         <Button asChild variant="outline">
-          <Link to="/admin/events">{pt('actions.back')}</Link>
+          <Link to="/admin/content">{pt('actions.back')}</Link>
         </Button>
       }
     >

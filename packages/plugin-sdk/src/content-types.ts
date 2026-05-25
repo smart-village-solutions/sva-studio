@@ -32,9 +32,24 @@ export type ContentTypeActionDefinition = {
   readonly domainCapability: IamContentDomainCapability;
 };
 
+export type StudioContentTypeDefinition = {
+  readonly description?: string;
+  readonly icon?: string;
+  readonly requiredReadAction: string;
+  readonly requiredCreateAction: string;
+  readonly createPath: string;
+  readonly detailPath: string;
+};
+
+export type RegisteredStudioContentType = StudioContentTypeDefinition & {
+  readonly contentType: string;
+  readonly displayName: string;
+};
+
 export type ContentTypeDefinition = {
   readonly contentType: string;
   readonly displayName: string;
+  readonly studioContentType?: StudioContentTypeDefinition;
   readonly editorFields?: readonly ContentTypeEditorFieldDefinition[];
   readonly listColumns?: readonly ContentTypeListColumnDefinition[];
   readonly actions?: readonly ContentTypeActionDefinition[];
@@ -44,17 +59,40 @@ export type ContentTypeDefinition = {
 const contentTypeDefinitionAllowedKeys = new Set([
   'contentType',
   'displayName',
+  'studioContentType',
   'editorFields',
   'listColumns',
   'actions',
   'validatePayload',
 ] as const);
 const contentTypeActionDefinitionAllowedKeys = new Set(['key', 'label', 'domainCapability'] as const);
+const studioContentTypeDefinitionAllowedKeys = new Set([
+  'description',
+  'icon',
+  'requiredReadAction',
+  'requiredCreateAction',
+  'createPath',
+  'detailPath',
+] as const);
+
+const normalizeStudioContentTypeDefinition = (
+  definition: StudioContentTypeDefinition
+): StudioContentTypeDefinition => ({
+  description: definition.description?.trim() || undefined,
+  icon: definition.icon?.trim() || undefined,
+  requiredReadAction: normalizePluginIdentifier(definition.requiredReadAction),
+  requiredCreateAction: normalizePluginIdentifier(definition.requiredCreateAction),
+  createPath: definition.createPath.trim(),
+  detailPath: definition.detailPath.trim(),
+});
 
 const normalizeContentTypeDefinition = (definition: ContentTypeDefinition): ContentTypeDefinition => ({
   ...definition,
   contentType: normalizePluginIdentifier(definition.contentType),
   displayName: definition.displayName.trim(),
+  studioContentType: definition.studioContentType
+    ? normalizeStudioContentTypeDefinition(definition.studioContentType)
+    : undefined,
   ...(definition.actions
     ? {
         actions: definition.actions.map((action) => ({
@@ -83,6 +121,32 @@ const validateContentTypeActions = (definition: ContentTypeDefinition): void => 
     if (!mapping.ok) {
       throw new Error(`${mapping.reasonCode}:${definition.contentType}:${action.key.trim()}`);
     }
+  }
+};
+
+const validateStudioContentTypeDefinition = (
+  contentType: string,
+  studioContentType: StudioContentTypeDefinition
+): void => {
+  assertPluginContributionAllowedKeys(
+    studioContentType,
+    studioContentTypeDefinitionAllowedKeys,
+    normalizePluginIdentifier(contentType).split('.')[0] ?? 'host',
+    `${normalizePluginIdentifier(contentType)}.studioContentType`
+  );
+
+  if (studioContentType.requiredReadAction.length === 0 || studioContentType.requiredCreateAction.length === 0) {
+    throw new Error(`invalid_studio_content_type_action:${contentType}`);
+  }
+  if (studioContentType.createPath.startsWith('/') === false || studioContentType.createPath.length === 0) {
+    throw new Error(`invalid_studio_content_type_create_path:${contentType}`);
+  }
+  if (
+    studioContentType.detailPath.startsWith('/') === false ||
+    studioContentType.detailPath.length === 0 ||
+    studioContentType.detailPath.includes('$id') === false
+  ) {
+    throw new Error(`invalid_studio_content_type_detail_path:${contentType}`);
   }
 };
 
@@ -126,6 +190,9 @@ export const definePluginContentTypes = <const TDefinitions extends readonly Con
       throw new Error('invalid_content_type_definition');
     }
     validateContentTypeActions(definition);
+    if (definition.studioContentType) {
+      validateStudioContentTypeDefinition(definition.contentType, definition.studioContentType);
+    }
 
     const parsed = parseNamespacedPluginIdentifier(definition.contentType);
     if (parsed === undefined) {
@@ -160,6 +227,9 @@ export const createContentTypeRegistry = (
       throw new Error('invalid_content_type_definition');
     }
     validateContentTypeActions(normalizedDefinition);
+    if (normalizedDefinition.studioContentType) {
+      validateStudioContentTypeDefinition(normalizedType, normalizedDefinition.studioContentType);
+    }
     if (registry.has(normalizedType)) {
       throw new Error(`duplicate_content_type:${normalizedType}`);
     }
@@ -173,3 +243,23 @@ export const getContentTypeDefinition = (
   registry: ReadonlyMap<string, ContentTypeDefinition>,
   contentType: string
 ): ContentTypeDefinition | undefined => registry.get(contentType.trim());
+
+export const collectRegisteredStudioContentTypes = (
+  definitions: readonly ContentTypeDefinition[]
+): readonly RegisteredStudioContentType[] =>
+  definitions.flatMap((definition) =>
+    definition.studioContentType
+      ? [
+          {
+            contentType: definition.contentType,
+            displayName: definition.displayName,
+            ...definition.studioContentType,
+          },
+        ]
+      : []
+  );
+
+export const resolveStudioContentDetailPath = (
+  definition: Pick<RegisteredStudioContentType, 'detailPath'>,
+  contentId: string
+): string => definition.detailPath.replace('$id', encodeURIComponent(contentId));

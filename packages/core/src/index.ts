@@ -1,6 +1,8 @@
 export const coreVersion = '0.0.1';
 export {
   iamContentAccessReasonCodes,
+  iamContentListSortDirections,
+  iamContentListSortFields,
   iamContentAccessStates,
   iamContentCapabilityMappings,
   iamContentDomainCapabilities,
@@ -34,6 +36,9 @@ export type {
   IamContentDomainCapability,
   IamContentHistoryEntry,
   IamContentListItem,
+  IamContentListQuery,
+  IamContentListSortDirection,
+  IamContentListSortField,
   IamContentPrimitiveAction,
   IamContentStatus,
   IamContentValidationState,

@@ -54,7 +54,9 @@ export type StudioDataTableProps<TData> = Readonly<{
   rowActions?: (row: TData) => React.ReactNode;
   bulkActions?: readonly StudioBulkAction<TData>[];
   toolbarStart?: React.ReactNode;
+  toolbarCenter?: React.ReactNode;
   toolbarEnd?: React.ReactNode;
+  footer?: React.ReactNode;
   emptyState: React.ReactNode;
   loadingState?: React.ReactNode;
   isLoading?: boolean;
@@ -149,7 +151,9 @@ export function StudioDataTable<TData>({
   rowActions,
   bulkActions = [],
   toolbarStart,
+  toolbarCenter,
   toolbarEnd,
+  footer,
   emptyState,
   loadingState,
   isLoading = false,
@@ -270,31 +274,43 @@ export function StudioDataTable<TData>({
   });
 
   const selectedRows = table.getSelectedRowModel().rows.map((row) => row.original);
-  const hasToolbar = bulkActions.length > 0 || toolbarStart || toolbarEnd;
+  const hasToolbar = bulkActions.length > 0 || toolbarStart || toolbarCenter || toolbarEnd;
+  const bulkActionsContent = bulkActions.map((action) =>
+    action.render ? (
+      <React.Fragment key={action.id}>{action.render}</React.Fragment>
+    ) : (
+      <Button
+        key={action.id}
+        type="button"
+        variant={action.variant ?? 'outline'}
+        className="disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground"
+        disabled={action.disabled ?? selectedRows.length === 0}
+        onClick={() => void action.onClick({ selectedRows, clearSelection })}
+      >
+        {action.label}
+      </Button>
+    )
+  );
   const toolbarContent = hasToolbar ? (
     <div className="flex flex-col gap-3 border-b border-border px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
-      <div className="flex flex-wrap items-center gap-2">
-        {bulkActions.map((action) =>
-          action.render ? (
-            <React.Fragment key={action.id}>{action.render}</React.Fragment>
-          ) : (
-            <Button
-              key={action.id}
-              type="button"
-              variant={action.variant ?? 'outline'}
-              className="disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground"
-              disabled={action.disabled ?? selectedRows.length === 0}
-              onClick={() => void action.onClick({ selectedRows, clearSelection })}
-            >
-              {action.label}
-            </Button>
-          )
-        )}
-        {toolbarStart}
-      </div>
-      {toolbarEnd ? <div className="flex flex-wrap items-center gap-2 lg:justify-end">{toolbarEnd}</div> : null}
+      {toolbarCenter ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2">{bulkActionsContent}{toolbarStart}</div>
+          <div className="flex flex-1 flex-wrap items-center gap-2 lg:justify-center">{toolbarCenter}</div>
+          {toolbarEnd ? <div className="flex flex-wrap items-center gap-2 lg:justify-end">{toolbarEnd}</div> : <div className="hidden lg:block" />}
+        </>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            {bulkActionsContent}
+            {toolbarStart}
+          </div>
+          {toolbarEnd ? <div className="flex flex-wrap items-center gap-2 lg:justify-end">{toolbarEnd}</div> : null}
+        </>
+      )}
     </div>
   ) : null;
+  const footerContent = footer ? <div className="border-t border-border px-4 py-4">{footer}</div> : null;
 
   if (isLoading) {
     return (
@@ -313,6 +329,7 @@ export function StudioDataTable<TData>({
         <div className="p-6" role="status" aria-live="polite">
           {emptyState}
         </div>
+        {footerContent}
       </div>
     );
   }
@@ -393,6 +410,8 @@ export function StudioDataTable<TData>({
           </article>
         ))}
       </div>
+
+      {footerContent}
     </div>
   );
 }

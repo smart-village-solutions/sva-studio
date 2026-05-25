@@ -36,6 +36,7 @@ import {
   mergePluginPermissions,
   mergePluginRouteDefinitions,
   mergePluginTranslations,
+  resolveStudioContentDetailPath,
   type PluginDefinition,
 } from './index.js';
 
@@ -959,6 +960,42 @@ describe('plugin registries', () => {
 
     expect(registry.routes[0]?.component).toBe(component);
     expect(registry.contentTypes[0]?.validatePayload).toBe(validatePayload);
+  });
+
+  it('collects registered studio content types from plugins and resolves detail paths', () => {
+    const registry = createBuildTimeRegistry({
+      plugins: [
+        {
+          ...newsPlugin,
+          contentTypes: [
+            {
+              contentType: 'news.article',
+              displayName: 'Article',
+              studioContentType: {
+                description: 'Artikel',
+                requiredReadAction: 'news.read',
+                requiredCreateAction: 'news.create',
+                createPath: '/admin/news/new',
+                detailPath: '/admin/news/$id',
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(registry.studioContentTypes).toEqual([
+      {
+        contentType: 'news.article',
+        displayName: 'Article',
+        description: 'Artikel',
+        requiredReadAction: 'news.read',
+        requiredCreateAction: 'news.create',
+        createPath: '/admin/news/new',
+        detailPath: '/admin/news/$id',
+      },
+    ]);
+    expect(resolveStudioContentDetailPath(registry.studioContentTypes[0]!, 'news-7')).toBe('/admin/news/news-7');
   });
 });
 

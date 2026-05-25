@@ -6,6 +6,8 @@ export {
 } from '@sva/core';
 export type {
   ApiItemResponse,
+  IamContentHistoryEntry,
+  IamContentStatus,
   StudioJobDetail,
   StudioJobResponse,
   WasteCityRecord,
@@ -104,18 +106,23 @@ export {
   MainserverApiError,
   requestMainserverJson,
 } from './mainserver-client.js';
+export { fetchIamContentHistory } from './content-history-client.js';
 export type {
   ContentTypeActionDefinition,
   ContentTypeDefinition,
   ContentTypeEditorFieldDefinition,
   ContentTypeEditorFieldKind,
   ContentTypeListColumnDefinition,
+  RegisteredStudioContentType,
+  StudioContentTypeDefinition,
 } from './content-types.js';
 export {
+  collectRegisteredStudioContentTypes,
   createContentTypeRegistry,
   definePluginContentTypes,
   genericContentTypeDefinition,
   getContentTypeDefinition,
+  resolveStudioContentDetailPath,
 } from './content-types.js';
 export type {
   PluginActionDefinition,

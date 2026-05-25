@@ -13,7 +13,7 @@ export type NewsWebUrl = {
   readonly description?: string;
 };
 
-export type NewsGeoLocation = {
+type NewsGeoLocation = {
   readonly latitude: number;
   readonly longitude: number;
 };
@@ -43,11 +43,27 @@ export type NewsMediaContent = {
   readonly sourceUrl?: NewsWebUrl;
 };
 
+export type NewsMediaContentFormValue = {
+  captionText: string;
+  copyright: string;
+  contentType: string;
+  height: string;
+  width: string;
+  sourceUrl: NewsWebUrl;
+};
+
 export type NewsContentBlock = {
   readonly title?: string;
   readonly intro?: string;
   readonly body?: string;
   readonly mediaContents?: readonly NewsMediaContent[];
+};
+
+export type NewsContentBlockFormValue = {
+  title: string;
+  intro: string;
+  body: string;
+  mediaContents: NewsMediaContentFormValue[];
 };
 
 export type NewsDataProvider = {
@@ -61,7 +77,7 @@ export type NewsSetting = {
   readonly onlySummaryLinkText?: string;
 };
 
-export type NewsAnnouncementSummary = {
+type NewsAnnouncementSummary = {
   readonly id?: string;
   readonly title?: string;
 };
@@ -94,13 +110,39 @@ export type NewsFormInput = {
   readonly publicationDate?: string;
   readonly publishedAt: string;
   readonly showPublishDate?: boolean;
-  readonly categoryName?: string;
   readonly categories?: readonly NewsCategory[];
   readonly sourceUrl?: NewsWebUrl;
   readonly address?: NewsAddress;
   readonly contentBlocks?: readonly NewsContentBlock[];
   readonly pointOfInterestId?: string;
   readonly pushNotification?: boolean;
+};
+
+export type NewsDetailTabId = 'basis' | 'content' | 'release' | 'settings' | 'history';
+
+export type NewsDetailFormValues = {
+  title: string;
+  author: string;
+  keywords: string;
+  categories: string[];
+  publishedAt: string;
+  publicationDate: string;
+  externalId: string;
+  newsType: string;
+  charactersToBeShown: string;
+  fullVersion: boolean;
+  showPublishDate: boolean;
+  pushNotification: boolean;
+  teaserImageAssetId: string | null;
+  headerImageAssetId: string | null;
+  contentBlocks: NewsContentBlockFormValue[];
+  sourceUrl: NewsWebUrl;
+  address: {
+    street: string;
+    zip: string;
+    city: string;
+  };
+  pointOfInterestId: string;
 };
 
 export type NewsContentItem = {
@@ -117,7 +159,6 @@ export type NewsContentItem = {
   readonly newsType?: string;
   readonly publicationDate?: string;
   readonly showPublishDate?: boolean;
-  readonly categoryName?: string;
   readonly categories?: readonly NewsCategory[];
   readonly sourceUrl?: NewsWebUrl;
   readonly address?: NewsAddress;
@@ -133,4 +174,9 @@ export type NewsContentItem = {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly publishedAt: string;
+};
+
+export type NewsCategoryOption = {
+  readonly id?: string;
+  readonly name: string;
 };

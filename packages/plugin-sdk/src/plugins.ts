@@ -136,6 +136,7 @@ const permissionDefinitionAllowedKeys = new Set(['id', 'titleKey', 'descriptionK
 const contentTypeDefinitionAllowedKeys = new Set([
   'contentType',
   'displayName',
+  'studioContentType',
   'editorFields',
   'listColumns',
   'actions',
@@ -685,6 +686,10 @@ const assertPluginRegistryPermissions = ({ plugin, pluginNamespace }: PluginRegi
 };
 
 const assertPluginRegistryContentTypes = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+  const pluginPermissionIds = new Set(
+    (plugin.permissions ?? []).map((permission) => normalizePluginIdentifier(permission.id))
+  );
+
   for (const contentTypeDefinition of plugin.contentTypes ?? []) {
     const contributionId = normalizePluginIdentifier(contentTypeDefinition.contentType);
     assertPluginContributionAllowedKeys(
@@ -701,6 +706,35 @@ const assertPluginRegistryContentTypes = ({ plugin, pluginNamespace }: PluginReg
     if (parsed.namespace !== pluginNamespace) {
       throw new Error(
         `plugin_content_type_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${normalizedContentType}`
+      );
+    }
+
+    const studioContentType = contentTypeDefinition.studioContentType;
+    if (!studioContentType) {
+      continue;
+    }
+
+    const requiredReadAction = normalizePluginIdentifier(studioContentType.requiredReadAction);
+    const requiredCreateAction = normalizePluginIdentifier(studioContentType.requiredCreateAction);
+    const requiredReadIdentifier = parseNamespacedPluginIdentifier(requiredReadAction);
+    const requiredCreateIdentifier = parseNamespacedPluginIdentifier(requiredCreateAction);
+
+    if (requiredReadIdentifier?.namespace !== pluginNamespace) {
+      throw new Error(
+        `plugin_content_type_read_action_namespace_mismatch:${pluginNamespace}:${requiredReadAction}:${normalizedContentType}`
+      );
+    }
+    if (requiredCreateIdentifier?.namespace !== pluginNamespace) {
+      throw new Error(
+        `plugin_content_type_create_action_namespace_mismatch:${pluginNamespace}:${requiredCreateAction}:${normalizedContentType}`
+      );
+    }
+    if (!pluginPermissionIds.has(requiredReadAction)) {
+      throw new Error(`plugin_content_type_read_action_missing:${pluginNamespace}:${requiredReadAction}:${normalizedContentType}`);
+    }
+    if (!pluginPermissionIds.has(requiredCreateAction)) {
+      throw new Error(
+        `plugin_content_type_create_action_missing:${pluginNamespace}:${requiredCreateAction}:${normalizedContentType}`
       );
     }
   }

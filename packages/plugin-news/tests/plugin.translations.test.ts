@@ -8,7 +8,7 @@ describe('pluginNewsTranslations', () => {
       'Verwalten Sie News-Einträge über das Plugin.'
     );
     expect(pluginNewsTranslations.de.news.fields.categoriesHelp).toBe(
-      'Eine Kategorie pro Zeile.'
+      'Waehlen Sie keine, eine oder mehrere Kategorien aus.'
     );
     expect(pluginNewsTranslations.de.news.messages.errors.csrfValidationFailed).toBe(
       'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.'
@@ -18,7 +18,7 @@ describe('pluginNewsTranslations', () => {
       'Manage news entries through the plugin.'
     );
     expect(pluginNewsTranslations.en.news.fields.categoriesHelp).toBe(
-      'One category per line.'
+      'Select none, one, or multiple categories.'
     );
     expect(pluginNewsTranslations.en.news.messages.errors.csrfValidationFailed).toBe(
       'Security validation failed. Please reload the page and try again.'

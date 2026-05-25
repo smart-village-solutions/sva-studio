@@ -63,7 +63,18 @@ vi.mock('../../../../packages/plugin-news/src/index.ts', () => ({
         legacyAliases: ['create'],
       },
     ],
-    contentTypes: [{ contentType: 'news.article', displayName: 'News' }],
+    contentTypes: [
+      {
+        contentType: 'news.article',
+        displayName: 'News',
+        studioContentType: {
+          requiredReadAction: 'news.read',
+          requiredCreateAction: 'news.create',
+          createPath: '/admin/news/new',
+          detailPath: '/admin/news/$id',
+        },
+      },
+    ],
     permissions: [
       { id: 'news.read', titleKey: 'news.permissions.read' },
       { id: 'news.create', titleKey: 'news.permissions.create' },
@@ -91,7 +102,18 @@ vi.mock('../../../../packages/plugin-events/src/index.ts', () => ({
         },
       },
     ],
-    contentTypes: [{ contentType: 'events.event-record', displayName: 'Events' }],
+    contentTypes: [
+      {
+        contentType: 'events.event-record',
+        displayName: 'Events',
+        studioContentType: {
+          requiredReadAction: 'events.read',
+          requiredCreateAction: 'events.create',
+          createPath: '/admin/events/new',
+          detailPath: '/admin/events/$id',
+        },
+      },
+    ],
     translations: {},
   },
 }));
@@ -115,7 +137,18 @@ vi.mock('../../../../packages/plugin-poi/src/index.ts', () => ({
         },
       },
     ],
-    contentTypes: [{ contentType: 'poi.point-of-interest', displayName: 'POI' }],
+    contentTypes: [
+      {
+        contentType: 'poi.point-of-interest',
+        displayName: 'POI',
+        studioContentType: {
+          requiredReadAction: 'poi.read',
+          requiredCreateAction: 'poi.create',
+          createPath: '/admin/poi/new',
+          detailPath: '/admin/poi/$id',
+        },
+      },
+    ],
     translations: {},
   },
 }));

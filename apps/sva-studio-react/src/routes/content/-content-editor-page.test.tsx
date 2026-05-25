@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpResponse, http } from '../../../../../tooling/testing/src/msw/handlers.ts';
@@ -130,6 +130,12 @@ describe('ContentEditorPage', () => {
 
     render(<ContentEditorPage mode="create" />);
 
+    expect(screen.getByRole('combobox', { name: 'Inhaltsbereiche' })).toBeTruthy();
+    expect((screen.getByRole('combobox', { name: 'Inhaltsbereiche' }) as HTMLSelectElement).value).toBe('general');
+    expect(screen.getByRole('tabpanel', { name: /Allgemeine Angaben/i }).firstElementChild?.className).toContain(
+      'bg-[rgb(var(--waste-panel-surface))]'
+    );
+
     fireEvent.change(screen.getByLabelText('Titel'), {
       target: { value: 'Landing Page' },
     });
@@ -197,8 +203,28 @@ describe('ContentEditorPage', () => {
       expect(screen.getByDisplayValue('Startseite')).toBeTruthy();
     });
 
+    expect(screen.getByRole('heading', { name: 'Inhalt bearbeiten', level: 1 })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Startseite', level: 2 })).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: 'Inhaltsbereiche' })).toBeTruthy();
+    expect((screen.getByRole('combobox', { name: 'Inhaltsbereiche' }) as HTMLSelectElement).value).toBe('general');
     expect(screen.getByText('Editor')).toBeTruthy();
-    expect(screen.getAllByText('Inhalt erstellt')).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Änderungen speichern' })).toHaveLength(2);
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Inhaltsbereiche' }), {
+      target: { value: 'history' },
+    });
+
+    await waitFor(() => {
+      expect((screen.getByRole('combobox', { name: 'Inhaltsbereiche' }) as HTMLSelectElement).value).toBe('history');
+    });
+
+    const historyPanel = screen.getByRole('tabpanel', { name: /Historie/i });
+    expect(within(historyPanel).getAllByText('Inhalt erstellt').length).toBeGreaterThan(0);
+    expect(within(historyPanel).queryByRole('button', { name: 'Änderungen speichern' })).toBeNull();
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Inhaltsbereiche' }), {
+      target: { value: 'general' },
+    });
 
     fireEvent.change(screen.getByLabelText('Titel'), {
       target: { value: 'Neue Startseite' },
@@ -206,7 +232,7 @@ describe('ContentEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Payload (JSON)'), {
       target: { value: '{"hero":"Neu"}' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
 
     await waitFor(() => {
       expect(patchPayload).toEqual({
@@ -304,7 +330,7 @@ describe('ContentEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), {
       target: { value: '2026-03-29T02:30' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
 
     await waitFor(() => {
       expect(updateRequests).toBe(0);
@@ -383,9 +409,22 @@ describe('ContentEditorPage', () => {
     });
 
     expect((screen.getByLabelText('Veröffentlichungsdatum') as HTMLInputElement).value).toBe('');
-    expect(screen.getByText('Für diesen Inhalt liegt noch keine Historie vor.')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Inhaltsbereiche' }), {
+      target: { value: 'history' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('tabpanel', { name: /Historie/i }).textContent).toContain(
+        'Für diesen Inhalt liegt noch keine Historie vor.'
+      );
+    });
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Inhaltsbereiche' }), {
+      target: { value: 'general' },
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
 
     await waitFor(() => {
       expect(screen.getByText('Der Inhalt enthält ungültige oder unvollständige Daten.')).toBeTruthy();
@@ -483,7 +522,7 @@ describe('ContentEditorPage', () => {
       screen.getAllByText('Der Inhalt ist im aktuellen Kontext nur lesbar. Felder und Speichern bleiben deaktiviert.')
         .length
     ).toBeGreaterThan(0);
-    expect((screen.getByRole('button', { name: 'Änderungen speichern' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getAllByRole('button', { name: 'Änderungen speichern' }).every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
     expect((screen.getByLabelText('Titel') as HTMLInputElement).disabled).toBe(true);
     expect(screen.getByText('Nur lesbar')).toBeTruthy();
   });

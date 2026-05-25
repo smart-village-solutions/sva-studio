@@ -4,6 +4,8 @@
 
 Entwurf für die einheitliche Gestaltung von fachlichen Übersichtsseiten und Detailseiten im Studio. Das Dokument ergänzt den bestehenden [Studio-Standard für Listen- und Tabellen-Seiten](./studio-list-page-standard.md) und soll nach Review als Referenz für neue oder migrierte Verwaltungsoberflächen dienen.
 
+Für tabbasierte Plugin-Custom-Views mit Listen- oder Tabellenarbeitsflächen gilt der Listen-/Tabellen-Standard ausdrücklich ebenfalls. Das umfasst insbesondere die feste Reihenfolge aus Seitenkopf, primärer Tab-Navigation, `H2` plus Bereichsbeschreibung im aktiven Tabpanel, tab-spezifischer Action-Bar und Pagination.
+
 ## Ziel
 
 Übersichtsseiten und Detailseiten sollen im Studio konsistent aufgebaut sein, damit Nutzerinnen und Nutzer wiederkehrende Verwaltungsaufgaben ohne neue Orientierungskosten erledigen können. Die Gestaltung soll fachliche Unterschiede zulassen, aber Navigation, Seitengerüst, Aktionen, Zustände und Bearbeitungsflüsse vereinheitlichen.
@@ -99,6 +101,8 @@ Plugin-spezifische Wrapper sind erlaubt, wenn sie diese Bausteine komponieren un
 - Listen-, Tabellen- oder Kartenbereich als Hauptinhalt
 - Pagination oder Page-Size-Auswahl in einem konsistenten Bereich am Tabellen- oder Listenrand
 
+Wenn eine Übersichtsseite als tabbasierter Plugin-Workspace aufgebaut ist, bleibt diese Struktur erhalten. Der Unterschied ist nur, dass zwischen Seitenkopf und Listenbereich eine primäre Tab-Navigation liegt und der aktive Bereich im Tabpanel mit eigener `H2` und Bereichsbeschreibung beginnt. Die kanonische Ausprägung ist im [Studio-Standard für Listen- und Tabellen-Seiten](./studio-list-page-standard.md) festgelegt.
+
 ### Navigation
 
 - Die erste sichtbare Interaktion mit einer Zeile oder Karte führt zur Detailseite.
@@ -118,6 +122,13 @@ Plugin-spezifische Wrapper sind erlaubt, wenn sie diese Bausteine komponieren un
 ### Tabellen und Listen
 
 Tabellarische Übersichtsseiten folgen dem bestehenden [Studio-Standard für Listen- und Tabellen-Seiten](./studio-list-page-standard.md). Die konkreten Spalten richten sich nach der fachlichen Ressource und sind nicht verbindlich vorgegeben.
+
+Für Plugin-Workspaces mit mehreren gleichrangigen Tabellenbereichen, zum Beispiel nach dem Muster des Abfallkalenders, gilt zusätzlich:
+
+- Die Seitenbeschreibung erklärt den Gesamtzweck des Plugins oder Moduls.
+- Jeder aktive Tabellenbereich beginnt im Tabpanel mit eigener `H2` und Bereichsbeschreibung.
+- Die tab-spezifische Primäraktion steht im Workspace und nicht im globalen Seitenkopf, sofern sie nur für den aktiven Bereich gilt.
+- Bulk-Aktionen, Filter/Suche und Primäraktion folgen demselben Drei-Zonen-Muster der Action-Bar.
 
 Typische Spaltenarten sind:
 
@@ -141,6 +152,8 @@ Die Spaltenüberschriften konkreter Seiten, zum Beispiel `Titel`, `Zugeordnete R
 
 Detailseiten sind routbare Arbeitsflächen für genau eine fachliche Ressource. Sie müssen die Ressource eindeutig identifizierbar machen, den aktuellen Zustand sichtbar halten und Bearbeitung, Prüfung sowie sekundäre Verwaltungshandlungen klar voneinander trennen.
 
+Für neue Seiten ist zunächst genau ein Standardmuster maßgeblich: die fokussierte Erstellungs- oder Bearbeitungsseite. Sie ist der Default für neue Fachoberflächen, solange kein nachweisbarer Bedarf für zusätzliche Ressourcenkontextblöcke, komplexe Multi-Bereich-Navigation oder betriebliche Cockpit-Sichten besteht.
+
 ### Seitengerüst
 
 Detailseiten verwenden dieselbe Grundstruktur:
@@ -153,6 +166,83 @@ Detailseiten verwenden dieselbe Grundstruktur:
 - Tab-Navigation oder Sektionsnavigation für gleichrangige Detailbereiche
 - aktiver Arbeitsbereich mit fachlichen Sektionen
 - optionale Historie, Aktivität oder Audit-Information
+
+## Kanonisches Standardmuster: Fokussierte Erstellungs-/Bearbeitungsseite
+
+Das primäre Zielbild für neue Detailseiten ist eine ruhige, fokussierte Arbeitsseite mit genau einem dominanten Arbeitsauftrag. Visuell ist nicht entscheidend, ob die technische Umsetzung später als Route, Dialog, Drawer oder Template-Komposition erfolgt. Maßgeblich ist der finale wahrnehmbare Aufbau.
+
+Als Referenz für dieses Muster dienen im Waste-Management-Modul vor allem:
+
+- `Abfallart anlegen`
+- `Tour anlegen`
+
+Diese Referenzen sind deshalb geeignet, weil sie ohne zusätzliche Verwaltungsumwege direkt auf die eigentliche Bearbeitungsaufgabe führen.
+
+### Verbindliche Reihenfolge
+
+1. Rücknavigation oder Breadcrumbs
+2. `H1` mit Modusbezug
+3. kurze Beschreibung in einem Satz
+4. zentrale Arbeitsfläche
+5. logisch gruppierte Felder oder Sektionen
+6. optionale Inline-Hinweise oder Fehlerzusammenfassung
+7. eindeutige Abschlusszone mit `Abbrechen` und Primäraktion
+
+### Zielbild
+
+Die Seite soll im Erstblick folgende Fragen beantworten:
+
+- Was wird hier erstellt oder bearbeitet?
+- Welche Eingaben sind dafür jetzt relevant?
+- Wie wird die Bearbeitung abgeschlossen oder abgebrochen?
+
+Alles, was diese drei Fragen nicht unterstützt, wird im Standardfall nicht in den Erstaufbau aufgenommen.
+
+### Seitenkopf
+
+Der Kopf der fokussierten Erstellungs-/Bearbeitungsseite enthält:
+
+- einen Modus-orientierten Titel, zum Beispiel `Abfallart anlegen` oder `Tour bearbeiten`
+- genau einen kurzen Beschreibungssatz
+- keine konkurrierenden Nebenaktionen auf derselben visuellen Ebene, wenn diese nicht zum Abschluss der Hauptaufgabe gehören
+
+Regeln:
+
+- Der Titel benennt Aufgabe und Fachobjekt.
+- Die Beschreibung erklärt Zweck und fachlichen Rahmen knapp, ohne Bedienungsanweisung zu werden.
+- Zusätzliche Status- oder Diagnoseblöcke werden im Default nicht im Kopfbereich platziert.
+
+### Zentrale Arbeitsfläche
+
+Unterhalb des Kopfbereichs folgt genau eine primäre Arbeitsfläche. Sie enthält das Formular oder den fachlichen Bearbeitungsinhalt in klaren Gruppen.
+
+Regeln:
+
+- Die Arbeitsfläche ist visuell ruhig und vom Seitenrahmen klar abgesetzt.
+- Felder werden nach fachlicher Nähe gruppiert, nicht nach Datenbankschema oder API-Form.
+- Pflichtfelder, Hilfetexte und Validierungsfehler sind direkt am Feld erkennbar.
+- Eine Fehlerzusammenfassung am Anfang der Arbeitsfläche ist sinnvoll, wenn mehrere Felder gleichzeitig fehlschlagen können.
+
+### Abschlusszone
+
+Am Ende der Arbeitsfläche liegt die Abschlusszone mit den entscheidenden Handlungen.
+
+Regeln:
+
+- `Abbrechen` steht vor der Primäraktion.
+- Die Primäraktion benennt den Abschluss konkret, zum Beispiel `Anlegen`, `Speichern` oder `Änderungen übernehmen`.
+- Zusätzliche destruktive oder diagnostische Aktionen gehören nicht in dieselbe Abschlusszone, solange sie nicht Teil des Hauptflows sind.
+
+### Nicht Teil des Default-Musters
+
+Die fokussierte Erstellungs-/Bearbeitungsseite verzichtet im Standardfall auf:
+
+- komplexe Ressourcen-Header
+- mehrstufige Tab-Navigation
+- parallele Cockpit-, Diagnose- oder Audit-Bereiche
+- mehrere gleichgewichtete Aktionsgruppen im Kopf
+
+Solche Elemente werden erst ergänzt, wenn die fachliche Aufgabe ohne sie nicht mehr angemessen abbildbar ist.
 
 ### Kopfbereich
 
@@ -420,37 +510,32 @@ Beispiel für Benutzer:
 ```text
 Zurück oder Breadcrumb
 
-Seitentitel                   Primäraktion
+Seitentitel
 Beschreibung
 
-Ressourcen-Header
-  Avatar/Icon | Anzeigename | Status | Typ/Rolle/Kategorie
-  zentrale Metadaten
+Zentrale Arbeitsfläche
+  Feldgruppe 1
+  Feldgruppe 2
+  Feldgruppe 3
+  optionale Fehlerzusammenfassung oder Hinweistexte
 
-Tabs oder Sektionsnavigation
-
-Aktiver Arbeitsbereich
-  Abschnitt: Zusammenfassung oder persönliche Daten
-  Abschnitt: Stammdaten
-  Abschnitt: Beziehungen und Zuordnungen
-  Abschnitt: Berechtigungen oder Wirksicht
-  Abschnitt: Synchronisation und Diagnose
-  Abschnitt: Historie oder Audit
+Abschlusszone
+  Abbrechen | Primäraktion
 ```
 
-Beispiel für Benutzer:
+Beispiel für eine fokussierte Bearbeitungsseite:
 
-- Seitentitel: `Account bearbeiten`
-- Beschreibung: `Account-Daten, Berechtigungen und Sicherheitseinstellungen verwalten.`
-- Ressourcen-Header: Initialen, Anzeigename, Status, Rolle, E-Mail, Organisation, letzter Login
-- Primäraktion: `Speichern`, falls die Seite im Bearbeitungsmodus ist
-- Sekundäraktionen: `Deaktivieren`, `Einladung erneut senden`, `Synchronisieren`
-- Tabs: persönliche Daten, Verwaltung, Freigabe, Historie
-- Stammdaten: Name, E-Mail, Profilfelder
-- Beziehungen: Rollen, Gruppen, Organisationen
-- Berechtigungen: direkte Rechte und effektive Wirksicht
-- Diagnose: Sync-Status und sichere Fehlerdetails
-- Historie: relevante Konto- und Rollenänderungen
+- Seitentitel: `Abfallart anlegen`
+- Beschreibung: `Erstellen Sie eine neue Fraktion für die weitere Touren- und Kalenderpflege.`
+- Arbeitsfläche: Name, Übersetzungen, Farbe, Behältergröße, Beschreibung, Aktiv-Status
+- Abschlusszone: `Abbrechen` und `Anlegen`
+
+Beispiel für eine fokussierte Bearbeitungsseite mit komplexeren Feldern:
+
+- Seitentitel: `Tour anlegen`
+- Beschreibung: `Erstellen Sie die erste bearbeitbare Tour inklusive Fraktionen und Terminlogik.`
+- Arbeitsfläche: fachliche Grunddaten, Zuordnung zu Fraktionen, Terminlogik
+- Abschlusszone: `Abbrechen` und `Anlegen`
 
 ## Akzeptanzkriterien
 
@@ -465,6 +550,5 @@ Beispiel für Benutzer:
 ## Offene Fragen
 
 - Soll `StudioListPageTemplate` in `StudioOverviewPageTemplate` aufgehen oder als spezialisierte Tabellenvariante bestehen bleiben?
-- Welche Detailseiten brauchen eigene Edit-Routen statt Formularsektionen auf derselben Route?
 - Welche Kennzahlen sind auf Übersichtsseiten standardmäßig erlaubt, ohne zusätzliche Backend-Last zu erzeugen?
 - Wie stark sollen Plugin-Seiten an denselben Detailseitenstandard gebunden werden?

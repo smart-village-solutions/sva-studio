@@ -99,10 +99,6 @@ export const validateNewsForm = (input: NewsFormInput): readonly string[] => {
     errors.push('charactersToBeShown');
   }
 
-  if (input.categoryName && input.categoryName.length > 128) {
-    errors.push('categoryName');
-  }
-
   if (input.sourceUrl?.url && isHttpsUrl(input.sourceUrl.url) === false) {
     errors.push('sourceUrl');
   }

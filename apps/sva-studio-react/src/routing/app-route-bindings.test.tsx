@@ -6,6 +6,12 @@ const routeState = vi.hoisted(() => ({
   search: {} as Record<string, unknown>,
   normalizeIamTab: vi.fn((tab: unknown) => `iam:${String(tab ?? '')}`),
   normalizeRoleDetailTab: vi.fn((tab: unknown) => `role:${String(tab ?? '')}`),
+  authUser: null as null | { id: string; displayName?: string; name?: string },
+  organizationContext: {
+    activeOrganizationId: undefined as string | undefined,
+    organizations: [] as Array<{ organizationId: string; displayName: string; isActive: boolean }>,
+  },
+  getOrganization: vi.fn(),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -13,6 +19,7 @@ vi.mock('@tanstack/react-router', () => ({
   useSearch: () => routeState.search,
   useLocation: () => ({ pathname: '/admin/media' }),
   useNavigate: () => vi.fn(),
+  Link: ({ children }: { children?: unknown }) => <>{children}</>,
 }));
 
 vi.mock('@sva/routing', () => ({
@@ -41,6 +48,27 @@ vi.mock('../i18n', () => ({
       } as Record<string, string>
     )[key] ?? key,
 }));
+
+vi.mock('../providers/auth-provider', () => ({
+  useAuth: () => ({
+    isAuthenticated: Boolean(routeState.authUser),
+    user: routeState.authUser,
+  }),
+}));
+
+vi.mock('../hooks/use-organization-context', () => ({
+  useOrganizationContext: () => ({
+    context: routeState.organizationContext,
+  }),
+}));
+
+vi.mock('../lib/iam-api', async () => {
+  const actual = await vi.importActual<typeof import('../lib/iam-api')>('../lib/iam-api');
+  return {
+    ...actual,
+    getOrganization: (...args: unknown[]) => routeState.getOrganization(...args),
+  };
+});
 
 vi.mock('../routes/account/-account-profile-page', () => ({
   AccountProfilePage: () => <div data-testid="account-profile-page" />,
@@ -165,13 +193,18 @@ vi.mock('../routes/admin/users/-user-edit-page', () => ({
 }));
 
 vi.mock('../routes/content/-content-editor-page', () => ({
-  ContentEditorPage: ({ mode, contentId }: { mode: string; contentId?: string }) => (
-    <div data-testid="content-editor-page">{`${mode}:${contentId ?? ''}`}</div>
+  ContentEditorPage: ({ mode, contentId, activeTab }: { mode: string; contentId?: string; activeTab?: string }) => (
+    <div data-testid="content-editor-page">{`${mode}:${contentId ?? ''}:${activeTab ?? ''}`}</div>
   ),
+  normalizeContentEditorTab: (tab: unknown) => (typeof tab === 'string' && (tab === 'general' || tab === 'history') ? tab : 'general'),
 }));
 
 vi.mock('../routes/content/-content-list-page', () => ({
   ContentListPage: () => <div data-testid="content-list-page" />,
+}));
+
+vi.mock('../routes/content/-content-type-picker-page', () => ({
+  ContentTypePickerPage: () => <div data-testid="content-type-picker-page" />,
 }));
 
 vi.mock('../routes/-home-page', () => ({
@@ -197,21 +230,20 @@ vi.mock('../routes/monitoring/-job-detail-page', () => ({
 }));
 
 vi.mock('@sva/plugin-news', () => ({
-  NewsCreatePage: () => <div data-testid="news-create-page" />,
+  NewsCreatePage: ({ initialAuthor }: { initialAuthor?: string }) => (
+    <div data-testid="news-create-page">{initialAuthor ?? ''}</div>
+  ),
   NewsEditPage: () => <div data-testid="news-edit-page" />,
-  NewsListPage: () => <div data-testid="news-list-page" />,
 }));
 
-vi.mock('@sva/plugin-events', () => ({
+vi.mock('@sva/plugin-events/events.pages', () => ({
   EventsCreatePage: () => <div data-testid="events-create-page" />,
   EventsEditPage: () => <div data-testid="events-edit-page" />,
-  EventsListPage: () => <div data-testid="events-list-page" />,
 }));
 
-vi.mock('@sva/plugin-poi', () => ({
+vi.mock('@sva/plugin-poi/poi.pages', () => ({
   PoiCreatePage: () => <div data-testid="poi-create-page" />,
   PoiEditPage: () => <div data-testid="poi-edit-page" />,
-  PoiListPage: () => <div data-testid="poi-list-page" />,
 }));
 
 describe('appRouteBindings', () => {
@@ -220,6 +252,12 @@ describe('appRouteBindings', () => {
     routeState.search = {};
     routeState.normalizeIamTab.mockClear();
     routeState.normalizeRoleDetailTab.mockClear();
+    routeState.authUser = null;
+    routeState.organizationContext = {
+      activeOrganizationId: undefined,
+      organizations: [],
+    };
+    routeState.getOrganization.mockReset();
   });
 
   afterEach(() => {
@@ -251,6 +289,96 @@ describe('appRouteBindings', () => {
     render(<appRouteBindings.modules />);
 
     expect(screen.getByTestId('modules-page').textContent).toBe('modules');
+  });
+
+  it('passes organization-based author defaults into the news create page when memberships require org authorship', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+    routeState.organizationContext = {
+      activeOrganizationId: 'org-1',
+      organizations: [
+        { organizationId: 'org-1', displayName: 'Stadt Musterhausen', isActive: true },
+        { organizationId: 'org-2', displayName: 'Redaktion Musterhausen', isActive: true },
+      ],
+    };
+    routeState.getOrganization.mockImplementation(async (organizationId: string) => ({
+      data: {
+        id: organizationId,
+        displayName: organizationId === 'org-1' ? 'Stadt Musterhausen' : 'Redaktion Musterhausen',
+        organizationKey: organizationId,
+        organizationType: 'municipality',
+        contentAuthorPolicy: organizationId === 'org-1' ? 'org_only' : 'org_or_personal',
+        isActive: true,
+        parentOrganizationId: undefined,
+        depth: 0,
+        hierarchyPath: [],
+        metadata: {},
+        memberships: [],
+        children: [],
+      },
+    }));
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.newsEditor />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('news-create-page').textContent).toBe('Stadt Musterhausen');
+    });
+  });
+
+  it('falls back to the current user as author when no org-only membership is configured', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+    routeState.organizationContext = {
+      activeOrganizationId: 'org-2',
+      organizations: [{ organizationId: 'org-2', displayName: 'Redaktion Musterhausen', isActive: true }],
+    };
+    routeState.getOrganization.mockResolvedValue({
+      data: {
+        id: 'org-2',
+        displayName: 'Redaktion Musterhausen',
+        organizationKey: 'org-2',
+        organizationType: 'municipality',
+        contentAuthorPolicy: 'org_or_personal',
+        isActive: true,
+        parentOrganizationId: undefined,
+        depth: 0,
+        hierarchyPath: [],
+        metadata: {},
+        memberships: [],
+        children: [],
+      },
+    });
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.newsEditor />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('news-create-page').textContent).toBe('Philipp Wilimzig');
+    });
+  });
+
+  it('stays stable with an authenticated user while the org context is still empty', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.newsEditor />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('news-create-page').textContent).toBe('Philipp Wilimzig');
+    });
+
+    expect(routeState.getOrganization).not.toHaveBeenCalled();
   });
 
   it('renders lazy bindings and route-param based bindings with normalized params and search values', async () => {
@@ -301,11 +429,11 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.contentCreate />);
-    expect(screen.getByTestId('content-editor-page').textContent).toBe('create:');
+    expect(screen.getByTestId('content-type-picker-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.contentDetail />);
-    expect(screen.getByTestId('content-editor-page').textContent).toBe('edit:content-7');
+    expect(screen.getByTestId('content-editor-page').textContent).toBe('edit:content-7:general');
     cleanup();
 
     render(<appRouteBindings.adminInstanceDetail />);
@@ -335,7 +463,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.newsList />);
-    expect(screen.getByTestId('news-list-page')).toBeTruthy();
+    expect(screen.getByTestId('content-list-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.newsEditor />);
@@ -372,7 +500,7 @@ describe('appRouteBindings', () => {
     };
 
     render(<appRouteBindings.contentDetail />);
-    expect(screen.getByTestId('content-editor-page').textContent).toBe('edit:');
+    expect(screen.getByTestId('content-editor-page').textContent).toBe('edit::general');
     cleanup();
 
     render(<appRouteBindings.adminInstanceDetail />);
@@ -476,7 +604,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.eventsList />);
-    expect(screen.getByTestId('events-list-page')).toBeTruthy();
+    expect(screen.getByTestId('content-list-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.eventsEditor />);
@@ -488,7 +616,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.poiList />);
-    expect(screen.getByTestId('poi-list-page')).toBeTruthy();
+    expect(screen.getByTestId('content-list-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.poiEditor />);

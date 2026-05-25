@@ -42,7 +42,11 @@ export const createLegacyContentAliasFactories = (
       targetPrefix: canonicalContentPath,
     },
     ...resources
-      .filter((resource) => resource.guard === 'content')
+      .filter(
+        (resource) =>
+          resource.guard === 'content' &&
+          !(resource.resourceId !== 'content' && resource.contentUi?.contentType)
+      )
       .map((resource) => ({
         sourcePrefix: `/plugins/${resource.basePath}`,
         targetPrefix: toAdminRoutePath(resource.basePath),

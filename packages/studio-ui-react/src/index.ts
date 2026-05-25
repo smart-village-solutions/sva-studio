@@ -83,19 +83,22 @@ export {
 } from './studio-primitives.js';
 export {
   StudioActionMenu,
-  StudioDetailTabs,
   StudioEditSurface,
   StudioResourceHeader,
   StudioSection,
   type StudioActionMenuItem,
   type StudioActionMenuProps,
-  type StudioDetailTab,
-  type StudioDetailTabsProps,
   type StudioEditSurfaceProps,
   type StudioResourceHeaderMetaItem,
   type StudioResourceHeaderProps,
   type StudioSectionProps,
 } from './studio-surfaces.js';
+export {
+  StudioDetailTabs,
+  type StudioDetailTab,
+  type StudioDetailTabDefinition,
+  type StudioDetailTabsProps,
+} from './studio-detail-tabs.js';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs.js';
 export { Textarea } from './textarea.js';
 export { cn } from './utils.js';

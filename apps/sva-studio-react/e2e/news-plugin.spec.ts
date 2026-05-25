@@ -87,17 +87,45 @@ const expectPluginPageHeading = async (page: Page, pattern: RegExp) => {
   await expect(page.locator('main h1').filter({ hasText: pattern })).toBeVisible();
 };
 
-const expectNewsListUrl = async (page: Page) => {
-  await expect(page).toHaveURL(/\/admin\/news\?(?:.*&)?page=1(?:&.*)?$/);
+const expectContentOverviewUrl = async (page: Page) => {
+  await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
+};
+
+const expectContentOverviewReady = async (page: Page) => {
+  await expectContentOverviewUrl(page);
+  await expect(page.locator('#main-content')).toBeVisible();
+  await Promise.any([
+    page
+      .getByRole('heading', {
+        name: /Inhalte|Inhaltsliste|content\.page\.title|content\.table\.sectionTitle/,
+      })
+      .first()
+      .waitFor({ state: 'visible' }),
+    page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).waitFor({ state: 'visible' }),
+    page.getByText(/Noch keine Inhalte vorhanden|content\.empty\.title/).waitFor({ state: 'visible' }),
+  ]);
 };
 
 const expectLoginRedirect = async (page: Page, returnToPattern: RegExp) => {
-  await expect(page).toHaveURL(/\/(?:\?auth=(?:login|dev-login|mock-login)&returnTo=|auth\/login\?returnTo=)/);
+  await page.waitForFunction(() => {
+    const { pathname, search } = window.location;
+    return (
+      pathname === '/' ||
+      pathname === '/auth/login' ||
+      search.startsWith('?auth=login&returnTo=') ||
+      search.startsWith('?auth=dev-login&returnTo=') ||
+      search.startsWith('?auth=mock-login&returnTo=')
+    );
+  });
+
   const loginUrl = new URL(page.url());
+  if (loginUrl.pathname === '/') {
+    return;
+  }
+
+  await expect(page).toHaveURL(/\/(?:\?auth=(?:login|dev-login|mock-login)&returnTo=|auth\/login\?returnTo=)/);
   const authMode = loginUrl.searchParams.get('auth');
-  expect(authMode === 'login' || authMode === 'dev-login' || authMode === 'mock-login' || authMode === null).toBe(
-    true
-  );
+  expect(authMode === 'login' || authMode === 'dev-login' || authMode === 'mock-login' || authMode === null).toBe(true);
   expect(loginUrl.searchParams.get('returnTo')).toMatch(returnToPattern);
 };
 
@@ -161,6 +189,43 @@ const createPagination = (total: number) => ({
   hasNextPage: false,
   total,
 });
+
+const mapNewsToUnifiedContent = (newsItems: readonly NewsRecord[]) =>
+  newsItems.map((item) => ({
+    id: item.id,
+    contentType: item.contentType,
+    title: item.title,
+    status: item.status,
+    author: item.author,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    publishedAt: item.publishedAt,
+    access: {
+      state: 'editable',
+      canRead: true,
+      canCreate: true,
+      canUpdate: true,
+      organizationIds: ['org-1'],
+      sourceKinds: ['direct_role'],
+    },
+  }));
+
+const routeUnifiedContentOverview = async (page: Page, newsItems: readonly NewsRecord[]) => {
+  await page.route('**/api/v1/iam/contents**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: mapNewsToUnifiedContent(newsItems),
+        pagination: createPagination(newsItems.length),
+      }),
+    });
+  });
+};
+
+const openNewsDetailTab = async (page: Page, labelPattern: RegExp) => {
+  await page.getByRole('tab', { name: labelPattern }).click();
+};
 
 const fulfillContentRoute = async (
   route: Route,
@@ -321,14 +386,24 @@ test.describe('news plugin', () => {
     await page.route('**/api/v1/mainserver/news/*', async (route) => {
       await fulfillContentRoute(route, newsItems);
     });
+    await page.route('**/api/v1/mainserver/categories', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [{ name: 'Allgemein' }, { name: 'Kultur' }] }),
+      });
+    });
+    await routeUnifiedContentOverview(page, newsItems);
 
     await gotoShellRoot(page);
     await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
 
-    await page.getByRole('link', { name: 'News' }).click();
-    await expectNewsListUrl(page);
-    await expectPluginPageHeading(page, /News|news\.list\.title/);
+    await navigateClientSide(page, '/admin/content');
+    await expectContentOverviewUrl(page);
+    await expectPluginPageHeading(page, /Inhalte|content\.page\.title/);
 
+    await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
+    await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
     await page.locator('a[href="/admin/news/new"]').click();
     await expect(page).toHaveURL(/\/admin\/news\/new$/);
     await expectPluginPageHeading(page, /News-Eintrag anlegen|news\.editor\.createTitle/);
@@ -336,26 +411,38 @@ test.describe('news plugin', () => {
     await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News');
     await page.locator('#news-author').fill('Redaktion Musterhausen');
     await page.locator('#news-keywords').fill('stadt, kultur');
+    const categorySearch = page.getByRole('combobox', { name: /Kategorien suchen|news\.fields\.categoriesSearch/ });
+    const addCategoryButton = page.getByRole('button', { name: /Kategorie hinzufügen|news\.actions\.addCategory/ });
+    await expect(categorySearch).toBeVisible();
+    await categorySearch.fill('Allgemein');
+    await addCategoryButton.click();
+    await categorySearch.fill('Kultur');
+    await addCategoryButton.click();
+
+    await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
     await page.locator('#news-external-id').fill('cms-42');
     await page.locator('#news-type').fill('press_release');
-    await page.getByLabel(/Einleitung|news\.fields\.blockIntro/).fill('Kurztext');
-    await page.getByLabel(/Inhalt|news\.fields\.blockBody/).fill('<p>Inhalt</p>');
-    await page.getByRole('textbox', { name: 'Kategorie', exact: true }).fill('Allgemein');
-    await page.locator('#news-categories').fill('Allgemein\nKultur');
+
+    await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
+    await page.locator('#news-block-intro-0').fill('Kurztext');
+    await page.locator('#news-block-body-0').fill('<p>Inhalt</p>');
     await page.locator('#news-source-url').fill('https://example.com/news/source');
     await page.locator('#news-source-description').fill('Quellseite');
     await page.locator('#news-address-street').fill('Marktplatz 1');
     await page.locator('#news-address-zip').fill('12345');
     await page.locator('#news-address-city').fill('Musterhausen');
     await page.locator('#news-poi').fill('poi-1');
-    await page.getByLabel(/Veröffentlichungsdatum|news\.fields\.publishedAt/).fill('2026-04-14T09:30');
-    await page.locator('#news-publication-date').fill('2026-04-14T08:30');
     await page.getByRole('button', { name: /Medium hinzufügen|news\.actions\.addMedia/ }).click();
     await page.locator('#news-media-url-0-0').fill('https://example.com/news/image.jpg');
     await page.locator('#news-media-caption-0-0').fill('Titelbild');
-    await page.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
 
-    await expectNewsListUrl(page);
+    await openNewsDetailTab(page, /Freigabe|news\.tabs\.release/);
+    const releasePanel = page.getByRole('tabpanel', { name: /Freigabe|news\.tabs\.release/ });
+    await releasePanel.locator('#news-release-published-at').fill('2026-04-14T09:30');
+    await releasePanel.locator('#news-release-publication-date').fill('2026-04-14T08:30');
+    await releasePanel.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
+
+    await expectContentOverviewUrl(page);
     await expect(page.locator('main table').getByText('Erste News')).toBeVisible();
     expect(createdBody).toMatchObject({
       title: 'Erste News',
@@ -363,7 +450,6 @@ test.describe('news plugin', () => {
       keywords: 'stadt, kultur',
       externalId: 'cms-42',
       newsType: 'press_release',
-      categoryName: 'Allgemein',
       sourceUrl: { url: 'https://example.com/news/source', description: 'Quellseite' },
       address: { street: 'Marktplatz 1', zip: '12345', city: 'Musterhausen' },
       pointOfInterestId: 'poi-1',
@@ -383,9 +469,10 @@ test.describe('news plugin', () => {
       },
     ]);
 
-    await page.getByRole('link', { name: /Bearbeiten|news\.actions\.edit/ }).click();
+    await navigateClientSide(page, '/admin/news/news-1');
     await expectPluginPageHeading(page, /News-Eintrag bearbeiten|news\.editor\.editTitle/);
 
+    await openNewsDetailTab(page, /Basis|news\.tabs\.basis/);
     await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News aktualisiert');
     await page.getByRole('button', { name: /Änderungen speichern|news\.actions\.save/ }).click();
     await expect(page.getByRole('status')).toContainText(/gespeichert|aktualisiert|news\.messages\.updateSuccess/);
@@ -393,8 +480,9 @@ test.describe('news plugin', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|news\.actions\.delete/ }).click();
 
-    await expectNewsListUrl(page);
-    await expect(page.getByText(/Noch keine News vorhanden|news\.empty\.title/)).toBeVisible();
+    await expectContentOverviewUrl(page);
+    await expectPluginPageHeading(page, /Inhalte|content\.page\.title/);
+    expect(newsItems).toHaveLength(0);
   });
 
   test('shows the news entry in the shell and supports keyboard navigation', async ({ page }) => {
@@ -423,15 +511,17 @@ test.describe('news plugin', () => {
         body: JSON.stringify({ data: newsItems, pagination: createPagination(newsItems.length) }),
       });
     });
+    await routeUnifiedContentOverview(page, newsItems);
 
     await gotoShellRoot(page);
-    await expect(page.locator('a[href="/admin/news"]')).toBeVisible();
+    const contentNavLink = page.getByRole('link', { name: 'Inhalte öffnen' }).first();
+    await expect(contentNavLink).toBeVisible();
 
-    await page.locator('a[href="/admin/news"]').focus();
+    await contentNavLink.focus();
     await page.keyboard.press('Enter');
 
-    await expectNewsListUrl(page);
-    await expectPluginPageHeading(page, /News|news\.list\.title/);
+    await expectContentOverviewUrl(page);
+    await expectPluginPageHeading(page, /Inhalte|content\.page\.title/);
   });
 
   test('blocks unauthenticated access to admin news routes', async ({ page }) => {
@@ -444,8 +534,8 @@ test.describe('news plugin', () => {
     });
 
     await gotoShellRoot(page);
-    await navigateClientSide(page, '/admin/news');
-    await expectLoginRedirect(page, /^\/admin\/news(?:$|\?)/);
+    await navigateClientSide(page, '/admin/content');
+    await expectLoginRedirect(page, /^\/admin\/content(?:$|\?)/);
   });
 
   test('stays free of serious accessibility violations on news views', async ({ page }) => {
@@ -493,10 +583,18 @@ test.describe('news plugin', () => {
     await page.route('**/api/v1/mainserver/news/*', async (route) => {
       await fulfillContentRoute(route, newsItems);
     });
+    await page.route('**/api/v1/mainserver/categories', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [{ name: 'Allgemein' }, { name: 'Kultur' }] }),
+      });
+    });
+    await routeUnifiedContentOverview(page, newsItems);
 
     await gotoShellRoot(page);
-    await navigateClientSide(page, '/admin/news');
-    await expectPluginPageHeading(page, /News|news\.list\.title/);
+    await navigateClientSide(page, '/admin/content');
+    await expectContentOverviewReady(page);
     const listViolations = await new AxeBuilder({ page }).include('#main-content').analyze();
     expect(listViolations.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
 

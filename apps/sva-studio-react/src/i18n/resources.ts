@@ -308,6 +308,8 @@ export const i18nResources = {
       filters: {
         searchLabel: 'Suche',
         searchPlaceholder: 'Nach Titel, Typ, Autor oder Payload suchen',
+        typeLabel: 'Typ',
+        typeAll: 'Alle Typen',
         statusLabel: 'Status',
         statusAll: 'Alle Status',
       },
@@ -316,6 +318,7 @@ export const i18nResources = {
         previous: 'Zurück',
         next: 'Weiter',
         pageLabel: 'Seite {{page}} von {{total}}',
+        resultsLabel: '{{start}}–{{end}} von {{total}} Inhalten',
         pageSizeLabel: 'Seitengröße',
       },
       bulk: {
@@ -336,6 +339,7 @@ export const i18nResources = {
         back: 'Zur Übersicht',
         archive: 'Archivieren',
         delete: 'Löschen',
+        deleteConfirm: 'Soll dieser Inhalt wirklich gelöscht werden?',
       },
       fields: {
         title: 'Titel',
@@ -354,6 +358,9 @@ export const i18nResources = {
       table: {
         caption: 'Tabelle der verwalteten Inhalte',
         ariaLabel: 'Inhalte',
+        sectionTitle: 'Inhaltsliste',
+        sectionDescription:
+          'Durchsuchen Sie die gemeinsamen redaktionellen Inhalte und öffnen Sie bei Bedarf die typspezifische Detailansicht.',
         headerTitle: 'Titel',
         headerType: 'Typ',
         headerPublished: 'Veröffentlichungsdatum',
@@ -373,6 +380,30 @@ export const i18nResources = {
           'Definieren Sie den Basiskern und hinterlegen Sie die generische JSON-Payload.',
         editTitle: 'Inhalt bearbeiten',
         editSubtitle: 'Aktualisieren Sie Metadaten, Status und Payload des ausgewählten Inhalts.',
+      },
+      tabs: {
+        ariaLabel: 'Inhaltsbereiche',
+        mobileLabel: 'Bereich auswählen',
+        general: 'Allgemein',
+        generalTitle: 'Allgemeine Angaben',
+        generalDescription: 'Pflegen Sie Titel, Status, Veröffentlichungsdatum und die generische Payload.',
+        historyDescription: 'Prüfen Sie die automatische Änderungshistorie dieses Inhalts.',
+      },
+      typePicker: {
+        title: 'Inhaltstyp wählen',
+        subtitle: 'Wählen Sie den Inhaltstyp aus, für den Sie einen neuen Eintrag anlegen möchten.',
+        help: 'Es werden nur Inhaltstypen angezeigt, die im aktuellen Kontext tatsächlich angelegt werden dürfen.',
+        openCreate: 'Erstellungsseite öffnen',
+        fallbackDescription: '{{type}} im gemeinsamen Inhaltsbereich anlegen und verwalten.',
+        typeDescriptions: {
+          news: 'Meldungen, Artikel und redaktionelle Beiträge für die App erstellen und pflegen.',
+          events: 'Veranstaltungen im gemeinsamen Inhaltsbereich anlegen und verwalten.',
+          poi: 'Orte und relevante Anlaufstellen für die App anlegen und pflegen.',
+        },
+        empty: {
+          title: 'Keine anlegbaren Inhaltstypen',
+          body: 'Im aktuellen Kontext steht kein Inhaltstyp mit Erstellungsrecht zur Verfügung.',
+        },
       },
       meta: {
         title: 'Metadaten',
@@ -3321,6 +3352,8 @@ export const i18nResources = {
       filters: {
         searchLabel: 'Search',
         searchPlaceholder: 'Search by title, type, author, or payload',
+        typeLabel: 'Type',
+        typeAll: 'All types',
         statusLabel: 'Status',
         statusAll: 'All statuses',
       },
@@ -3329,6 +3362,7 @@ export const i18nResources = {
         previous: 'Previous',
         next: 'Next',
         pageLabel: 'Page {{page}} of {{total}}',
+        resultsLabel: '{{start}}–{{end}} of {{total}} content items',
         pageSizeLabel: 'Page size',
       },
       bulk: {
@@ -3349,6 +3383,7 @@ export const i18nResources = {
         back: 'Back to overview',
         archive: 'Archive',
         delete: 'Delete',
+        deleteConfirm: 'Do you really want to delete this content item?',
       },
       fields: {
         title: 'Title',
@@ -3367,6 +3402,9 @@ export const i18nResources = {
       table: {
         caption: 'Table of managed content items',
         ariaLabel: 'Content',
+        sectionTitle: 'Content list',
+        sectionDescription:
+          'Browse shared editorial content and open the type-specific detail view when needed.',
         headerTitle: 'Title',
         headerType: 'Type',
         headerPublished: 'Published at',
@@ -3385,6 +3423,30 @@ export const i18nResources = {
         createSubtitle: 'Define the core fields and provide the generic JSON payload.',
         editTitle: 'Edit content',
         editSubtitle: 'Update metadata, status, and payload for the selected content item.',
+      },
+      tabs: {
+        ariaLabel: 'Content areas',
+        mobileLabel: 'Choose area',
+        general: 'General',
+        generalTitle: 'General details',
+        generalDescription: 'Maintain title, status, publication date, and the generic payload.',
+        historyDescription: 'Review the automatic change history for this content item.',
+      },
+      typePicker: {
+        title: 'Choose content type',
+        subtitle: 'Select the content type for which you want to create a new entry.',
+        help: 'Only content types that can actually be created in the current context are shown.',
+        openCreate: 'Open create page',
+        fallbackDescription: 'Create and manage {{type}} within the shared content area.',
+        typeDescriptions: {
+          news: 'Create and maintain news items, articles, and editorial stories for the app.',
+          events: 'Create and manage events within the shared content area.',
+          poi: 'Create and maintain places and relevant points of interest for the app.',
+        },
+        empty: {
+          title: 'No creatable content types',
+          body: 'No content type with create permission is available in the current context.',
+        },
       },
       meta: {
         title: 'Metadata',

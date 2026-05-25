@@ -67,6 +67,7 @@ const usersLogger = createOperationLogger('users-hook', 'debug');
 
 export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   const { invalidatePermissions } = useAuth();
+  const isMountedRef = React.useRef(false);
 
   const [filters, setFilters] = React.useState<UserFilters>({
     ...DEFAULT_FILTERS,
@@ -78,6 +79,14 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
+
+  React.useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   React.useEffect(() => {
     usersLogger.debug('user_list_query_changed', {
@@ -106,8 +115,10 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
       status: filters.status,
       role: filters.role || undefined,
     });
-    setIsLoading(true);
-    setError(null);
+    if (isMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       const response = await listUsers({
@@ -118,8 +129,10 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         role: filters.role || undefined,
       });
 
-      setUsers(response.data);
-      setTotal(response.pagination.total);
+      if (isMountedRef.current) {
+        setUsers(response.data);
+        setTotal(response.pagination.total);
+      }
       logBrowserOperationSuccess(
         usersLogger,
         'user_list_refetch_succeeded',
@@ -140,14 +153,18 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
           error_code: resolvedError.code,
         });
       }
-      setUsers([]);
-      setTotal(0);
-      setError(resolvedError);
+      if (isMountedRef.current) {
+        setUsers([]);
+        setTotal(0);
+        setError(resolvedError);
+      }
       logBrowserOperationFailure(usersLogger, 'user_list_refetch_failed', resolvedError, {
         operation: 'list_users',
       });
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [debouncedSearch, filters.page, filters.pageSize, filters.role, filters.status, invalidatePermissions]);
 
@@ -178,7 +195,9 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
 
   const mutate = React.useCallback(
     async <T,>(action: () => Promise<T>, operation = 'user_mutation'): Promise<T | null> => {
-      setMutationError(null);
+      if (isMountedRef.current) {
+        setMutationError(null);
+      }
       logBrowserOperationStart(usersLogger, `${operation}_started`, { operation });
       try {
         const result = await action();
@@ -204,7 +223,9 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
             error_code: resolvedError.code,
           });
         }
-        setMutationError(resolvedError);
+        if (isMountedRef.current) {
+          setMutationError(resolvedError);
+        }
         logBrowserOperationFailure(usersLogger, `${operation}_failed`, resolvedError, { operation });
         return null;
       }

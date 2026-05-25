@@ -6,8 +6,8 @@ const state = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('./shared-observability.js', () => ({
-  logger: state.logger,
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => state.logger,
 }));
 
 describe('iam account management feature flags', () => {
@@ -19,7 +19,7 @@ describe('iam account management feature flags', () => {
   });
 
   it('parses boolean flags from common truthy and falsy values', async () => {
-    const { parseBooleanFlag } = await import('./feature-flags.js');
+    const { parseBooleanFlag } = await import('./feature-flags-core.js');
 
     expect(parseBooleanFlag(undefined, true)).toBe(true);
     expect(parseBooleanFlag(undefined, false)).toBe(false);
@@ -32,7 +32,7 @@ describe('iam account management feature flags', () => {
   }, 15000);
 
   it('derives dependent feature flags from environment variables', async () => {
-    const { getFeatureFlags } = await import('./feature-flags.js');
+    const { getFeatureFlags } = await import('./feature-flags-core.js');
 
     expect(getFeatureFlags()).toEqual({
       iamUiEnabled: true,

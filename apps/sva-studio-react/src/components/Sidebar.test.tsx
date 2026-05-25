@@ -30,7 +30,7 @@ const studioPluginNavigationMock = vi.hoisted(() => ({
   items: [
     {
       id: 'news.navigation',
-      to: '/admin/news',
+      to: '/plugins/news/review',
       titleKey: 'news.navigation.title',
       section: 'dataManagement',
       requiredAction: 'news.read',
@@ -112,7 +112,7 @@ beforeEach(() => {
   studioPluginNavigationMock.items = [
     {
       id: 'news.navigation',
-      to: '/admin/news',
+      to: '/plugins/news/review',
       titleKey: 'news.navigation.title',
       section: 'dataManagement',
       requiredAction: 'news.read',
@@ -559,8 +559,8 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
   });
 
-  it('rendert den News-Plugin-Navigationspunkt innerhalb der Datenverwaltung und markiert ihn als aktiv', () => {
-    useRouterStateMock.mockReturnValue('/admin/news');
+  it('rendert benutzerdefinierte Plugin-Navigation innerhalb der Datenverwaltung und markiert sie als aktiv', () => {
+    useRouterStateMock.mockReturnValue('/plugins/news/review');
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,
       user: {
@@ -590,7 +590,7 @@ describe('Sidebar', () => {
     const navigation = screen.getByRole('navigation', { name: 'Bereichsnavigation' });
     const newsLink = within(navigation).getByRole('link', { name: 'News' });
 
-    expect(newsLink.getAttribute('href')).toBe('/admin/news');
+    expect(newsLink.getAttribute('href')).toBe('/plugins/news/review');
     expect(newsLink.getAttribute('aria-current')).toBe('page');
   });
 

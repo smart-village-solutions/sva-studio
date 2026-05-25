@@ -29,6 +29,7 @@ import {
   createSvaMainserverNews,
   deleteSvaMainserverNews,
   getSvaMainserverNews,
+  listSvaMainserverCategories,
   listSvaMainserverNews,
   updateSvaMainserverNews,
 } from './service.js';
@@ -36,14 +37,19 @@ import {
 const NEWS_CONTENT_TYPE = 'news.article';
 const NEWS_COLLECTION_PATH = '/api/v1/mainserver/news';
 const NEWS_ITEM_PATH_PREFIX = `${NEWS_COLLECTION_PATH}/`;
+const CATEGORY_COLLECTION_PATH = '/api/v1/mainserver/categories';
 const logger = createSdkLogger({ component: 'sva-mainserver-news-route', level: 'info' });
 
 type RouteMatch =
   | { readonly kind: 'collection' }
+  | { readonly kind: 'categories' }
   | { readonly kind: 'item'; readonly newsId: string };
 
 const matchRoute = (request: Request): RouteMatch | null => {
   const pathname = new URL(request.url).pathname;
+  if (pathname === CATEGORY_COLLECTION_PATH) {
+    return { kind: 'categories' };
+  }
   if (pathname === NEWS_COLLECTION_PATH) {
     return { kind: 'collection' };
   }
@@ -354,6 +360,20 @@ const handleCollectionRead = async (
   return json(data);
 };
 
+const handleCategoryCollectionRead = async (
+  ctx: AuthenticatedRequestContext,
+  logSuccess: (operation: string, newsId?: string) => void
+) => {
+  const actor = await authorizeOrResponse(ctx, 'news.read');
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const data = await listSvaMainserverCategories(actor);
+  logSuccess('mainserver_news_categories_list');
+  return json({ data });
+};
+
 const handleItemRead = async (
   route: Extract<RouteMatch, { readonly kind: 'item' }>,
   ctx: AuthenticatedRequestContext,
@@ -617,6 +637,10 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
   };
 
   try {
+    if (route.kind === 'categories' && request.method === 'GET') {
+      return await handleCategoryCollectionRead(ctx, logSuccess);
+    }
+
     if (route.kind === 'collection' && request.method === 'GET') {
       return await handleCollectionRead(request, ctx, logSuccess);
     }

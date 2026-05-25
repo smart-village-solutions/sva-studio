@@ -3,7 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { DEFAULT_LOCALE, i18nResources } from '../../apps/sva-studio-react/src/i18n/resources';
+import { pluginEventsTranslations } from '../../packages/plugin-events/src/plugin.translations';
 import { pluginNewsTranslations } from '../../packages/plugin-news/src/plugin.translations';
+import { pluginPoiTranslations } from '../../packages/plugin-poi/src/plugin.translations';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '../..');
@@ -11,7 +13,11 @@ const APP_SOURCE_DIR = path.join(PROJECT_ROOT, 'apps/sva-studio-react/src');
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
 const I18N_USAGE_PATTERN = /\bt\(\s*(['"`])([^'"`]+)\1/g;
 
-const pluginTranslationResources = [pluginNewsTranslations] as const;
+const pluginTranslationResources = [
+  pluginNewsTranslations,
+  pluginEventsTranslations,
+  pluginPoiTranslations,
+] as const;
 
 type TranslationNode = Readonly<Record<string, unknown>>;
 

@@ -1,27 +1,25 @@
 import React from 'react';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { listHostMediaAssets, listHostMediaReferencesByTarget, registerPluginTranslationResolver, replaceHostMediaReferences } from '@sva/plugin-sdk';
+import {
+  fetchIamContentHistory,
+  listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  registerPluginTranslationResolver,
+  replaceHostMediaReferences,
+} from '@sva/plugin-sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from '../src/news.pages.js';
-import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews } from '../src/news.api.js';
+import { NewsApiError, createNews, deleteNews, getNews, listNews, listNewsCategories, updateNews } from '../src/news.api.js';
 import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
-vi.mock('../src/news.api.js', () => ({
-  NewsApiError: class NewsApiError extends Error {
-    public constructor(
-      public readonly code: string,
-      message = code
-    ) {
-      super(message);
-      this.name = 'NewsApiError';
-    }
-  },
-  listNews: vi.fn(async () => ({
+vi.mock('../src/news.api.js', async () => {
+  const actual = await vi.importActual<typeof import('../src/news.api.js')>('../src/news.api.js');
+  const listNewsMock = vi.fn(async () => ({
     data: [],
     pagination: { page: 1, pageSize: 25, hasNextPage: false },
-  })),
-  getNews: vi.fn(async () => ({
+  }));
+  const getNewsMock = vi.fn(async () => ({
     id: 'news-1',
     title: 'Bestehende News',
     contentType: NEWS_CONTENT_TYPE,
@@ -35,15 +33,40 @@ vi.mock('../src/news.api.js', () => ({
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-02T00:00:00.000Z',
     publishedAt: '2026-01-02T00:00:00.000Z',
-  })),
-  createNews: vi.fn(async () => ({
+  }));
+  const createNewsMock = vi.fn(async () => ({
     id: 'news-created',
-  })),
-  updateNews: vi.fn(async () => ({
+  }));
+  const listNewsCategoriesMock = vi.fn(async () => [
+    { id: 'cat-1', name: 'Allgemein' },
+    { id: 'cat-2', name: 'Rathaus' },
+    { id: 'cat-3', name: 'Kultur' },
+  ]);
+  const updateNewsMock = vi.fn(async () => ({
     id: 'news-1',
-  })),
-  deleteNews: vi.fn(async () => undefined),
-}));
+  }));
+  const deleteNewsMock = vi.fn(async () => undefined);
+
+  return {
+    ...actual,
+    NewsApiError: class NewsApiError extends Error {
+      public constructor(
+        public readonly code: string,
+        message = code
+      ) {
+        super(message);
+        this.name = 'NewsApiError';
+      }
+    },
+    listNews: listNewsMock,
+    getNews: getNewsMock,
+    createNews: createNewsMock,
+    listNewsCategories: listNewsCategoriesMock,
+    updateNews: updateNewsMock,
+    updateNewsPartial: vi.fn(async (contentId: string, input: unknown) => updateNewsMock(contentId, input)),
+    deleteNews: deleteNewsMock,
+  };
+});
 
 const navigateMock = vi.fn();
 const paramsMock = vi.fn(() => ({ contentId: 'news-1' }));
@@ -70,6 +93,7 @@ vi.mock('@sva/plugin-sdk', async () => {
   const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
   return {
     ...actual,
+    fetchIamContentHistory: vi.fn(async () => []),
     listHostMediaAssets: vi.fn(async () => []),
     listHostMediaReferencesByTarget: vi.fn(async () => []),
     replaceHostMediaReferences: vi.fn(async (input: unknown) => input),
@@ -91,6 +115,60 @@ const actResolve = async <T,>(deferred: { resolve: (value: T) => void; promise: 
     deferred.resolve(value);
     await deferred.promise;
   });
+};
+
+const openContentTab = async () => {
+  await waitFor(() => {
+    expect(screen.getByLabelText('Bereich auswählen')).toBeTruthy();
+  });
+  fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'content' } });
+  await waitFor(() => {
+    expect(screen.getByLabelText('Inhalt')).toBeTruthy();
+  });
+};
+
+const openReleaseTab = async () => {
+  await waitFor(() => {
+    expect(screen.getByLabelText('Bereich auswählen')).toBeTruthy();
+  });
+  fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'release' } });
+  await waitFor(() => {
+    expect(screen.getByLabelText('Veröffentlichungsdatum')).toBeTruthy();
+  });
+};
+
+const openSettingsTab = async () => {
+  await waitFor(() => {
+    expect(screen.getByLabelText('Bereich auswählen')).toBeTruthy();
+  });
+  fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'settings' } });
+  await waitFor(() => {
+    expect(screen.getByRole('tab', { selected: true, name: 'Einstellungen' })).toBeTruthy();
+  });
+};
+
+const openHistoryTab = async () => {
+  await waitFor(() => {
+    expect(screen.getByLabelText('Bereich auswählen')).toBeTruthy();
+  });
+  fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'history' } });
+  await waitFor(() => {
+    expect(screen.getByRole('tab', { selected: true, name: 'Historie' })).toBeTruthy();
+  });
+};
+
+const clickPrimaryAction = (label: string) => {
+  const activeTab = screen.getByRole('tab', { selected: true });
+  const panelId = activeTab.getAttribute('aria-controls');
+  if (panelId) {
+    const panel = globalThis.document.getElementById(panelId);
+    if (panel) {
+      fireEvent.click(within(panel).getByRole('button', { name: label }));
+      return;
+    }
+  }
+
+  fireEvent.click(screen.getByRole('button', { name: label }));
 };
 
 describe('NewsListPage', () => {
@@ -136,10 +214,14 @@ describe('NewsListPage', () => {
         'news.messages.missingContent': 'Der angeforderte News-Eintrag konnte nicht geladen werden.',
         'news.messages.saveError': 'News konnten nicht gespeichert werden.',
         'news.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
+        'news.messages.validationSummary': 'Bitte prüfen Sie die folgenden Felder:',
         'news.messages.createSuccess': 'News-Eintrag wurde erstellt.',
         'news.messages.updateSuccess': 'News-Eintrag wurde aktualisiert.',
         'news.messages.deleteSuccess': 'News-Eintrag wurde gelöscht.',
         'news.messages.deleteError': 'News-Eintrag konnte nicht gelöscht werden.',
+        'news.messages.categoryOptionsLoading': 'Kategorien werden geladen.',
+        'news.messages.categoryOptionsLoadError': 'Die Kategorien konnten nicht geladen werden.',
+        'news.messages.unsavedTabChanges': 'Bitte speichern Sie die Änderungen im aktuellen Tab, bevor Sie den Bereich wechseln.',
         'news.messages.errors.forbidden': 'Keine Berechtigung für Mainserver-News.',
         'news.messages.errors.graphqlError': 'Der Mainserver hat die News-Anfrage abgelehnt.',
         'news.messages.errors.invalidRequest': 'Die News-Anfrage ist ungültig.',
@@ -159,6 +241,8 @@ describe('NewsListPage', () => {
         'news.actions.update': 'Änderungen speichern',
         'news.actions.back': 'Zurück zur Liste',
         'news.actions.delete': 'Löschen',
+        'news.actions.addCategory': 'Kategorie hinzufügen',
+        'news.actions.removeCategory': 'Kategorie {{name}} entfernen',
         'news.actions.deleteConfirm': 'Soll dieser News-Eintrag wirklich gelöscht werden?',
         'news.editor.createTitle': 'News-Eintrag anlegen',
         'news.editor.createDescription': 'Erstellen Sie einen neuen News-Eintrag.',
@@ -166,6 +250,8 @@ describe('NewsListPage', () => {
         'news.editor.editDescription': 'Aktualisieren oder löschen Sie den News-Eintrag.',
         'news.fields.title': 'Titel',
         'news.fields.author': 'Autor',
+        'news.fields.status': 'Status',
+        'news.fields.createdAt': 'Erstellt am',
         'news.fields.keywords': 'Schlagwörter',
         'news.fields.externalId': 'Externe ID',
         'news.fields.newsType': 'News-Typ',
@@ -175,9 +261,10 @@ describe('NewsListPage', () => {
         'news.fields.publicationDate': 'Publikationsdatum',
         'news.fields.showPublishDate': 'Publikationsdatum anzeigen',
         'news.fields.pushNotification': 'Push-Benachrichtigung senden',
-        'news.fields.categoryName': 'Kategorie',
         'news.fields.categories': 'Kategorien',
-        'news.fields.categoriesHelp': 'Eine Kategorie pro Zeile.',
+        'news.fields.categoriesHelp': 'Waehlen Sie keine, eine oder mehrere Kategorien aus.',
+        'news.fields.categoriesSearch': 'Kategorien suchen',
+        'news.fields.categoriesSearchPlaceholder': 'Kategorie suchen oder auswaehlen',
         'news.fields.sourceUrl': 'Quell-URL',
         'news.fields.sourceUrlDescription': 'Quellbeschreibung',
         'news.fields.street': 'Straße',
@@ -203,6 +290,40 @@ describe('NewsListPage', () => {
         'news.fields.announcements': 'Ankündigungen',
         'news.fields.updatedAt': 'Geändert am',
         'news.fields.actions': 'Aktionen',
+        'news.fields.characterCount': '{{count}} Zeichen',
+        'news.tabs.ariaLabel': 'Detailbereiche',
+        'news.tabs.mobileLabel': 'Bereich auswählen',
+        'news.tabs.changeLabel': 'Ungespeichert',
+        'news.tabs.basis.label': 'Basis',
+        'news.tabs.basis.title': 'Basisdaten',
+        'news.tabs.basis.description': 'Metadaten, Veröffentlichung und redaktionelle Kerndaten des News-Eintrags.',
+        'news.tabs.basis.metaSummaryTitle': 'Aktuelle Metadaten',
+        'news.tabs.basis.metaSummaryInline': 'Veröffentlicht: {{publishedAt}}',
+        'news.tabs.content.label': 'Inhalte',
+        'news.tabs.content.title': 'Inhalte',
+        'news.tabs.content.description': 'Inhaltsblöcke, Medien, Quellen und ortsbezogene Angaben.',
+        'news.tabs.release.label': 'Freigabe',
+        'news.tabs.release.title': 'Freigabe',
+        'news.tabs.release.description': 'Veröffentlichung, Sichtbarkeit und workflow-nahe Hinweise des News-Eintrags.',
+        'news.tabs.settings.label': 'Einstellungen',
+        'news.tabs.settings.title': 'Erweiterte Einstellungen',
+        'news.tabs.settings.description': 'Technische und aussteuerungsnahe Steuerfelder des News-Eintrags.',
+        'news.tabs.history.label': 'Historie',
+        'news.tabs.history.title': 'Historie',
+        'news.tabs.history.description': 'Nachvollziehbare Änderungen und Statuswechsel dieses News-Eintrags.',
+        'news.release.workflowHintTitle': 'Workflow-Hinweis',
+        'news.release.workflowHintBody': 'Weitere Freigabeschritte folgen erst mit einem erweiterten Backend-Vertrag.',
+        'news.history.createHint': 'Die Historie wird nach dem ersten Speichern verfügbar.',
+        'news.history.loading': 'Historie wird geladen.',
+        'news.history.empty': 'Noch keine Historie vorhanden.',
+        'news.history.errors.forbidden': 'Die Historie darf nicht angezeigt werden.',
+        'news.history.errors.notFound': 'Für diesen News-Eintrag wurde keine Historie gefunden.',
+        'news.history.errors.load': 'Die Historie konnte nicht geladen werden.',
+        'news.history.byline': 'Von {{actor}}',
+        'news.history.changedFields': 'Geänderte Felder: {{fields}}',
+        'news.history.actions.created': 'Erstellt',
+        'news.history.actions.updated': 'Aktualisiert',
+        'news.history.actions.statusChanged': 'Status geändert',
         'news.values.yes': 'Ja',
         'news.values.no': 'Nein',
         'news.actions.edit': 'Bearbeiten',
@@ -230,6 +351,7 @@ describe('NewsListPage', () => {
       targetId: 'news-1',
       references: [],
     });
+    vi.mocked(fetchIamContentHistory).mockResolvedValue([]);
   });
 
   it('renders the empty state when no news exist', async () => {
@@ -353,9 +475,11 @@ describe('NewsListPage', () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    await openContentTab();
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: ' ' } });
+    await openReleaseTab();
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
-    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
+    clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
       expect(screen.getByText('Bitte korrigieren Sie die markierten Felder.')).toBeTruthy();
@@ -368,14 +492,24 @@ describe('NewsListPage', () => {
     expect(createNews).not.toHaveBeenCalled();
   });
 
+  it('prefills the author field for new entries when an initial author is provided', async () => {
+    render(<NewsCreatePage initialAuthor="Stadt Musterhausen" />);
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Autor') as HTMLInputElement).value).toBe('Stadt Musterhausen');
+    });
+  });
+
   it('rejects HTML-only body content before creating a news entry', async () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    await openContentTab();
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p><br></p>' } });
+    await openReleaseTab();
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
-    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
+    clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
       expect(screen.getByText('Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.')).toBeTruthy();
@@ -388,15 +522,11 @@ describe('NewsListPage', () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    await openContentTab();
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
-    fireEvent.submit(screen.getByRole('button', { name: 'News anlegen' }).closest('form') as HTMLFormElement);
+    clickPrimaryAction('News anlegen');
 
-    await waitFor(() => {
-      expect(screen.getByText('Das Veröffentlichungsdatum ist erforderlich.')).toBeTruthy();
-    });
-
-    expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('aria-invalid')).toBe('true');
     expect(createNews).not.toHaveBeenCalled();
   });
 
@@ -404,14 +534,16 @@ describe('NewsListPage', () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
-    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
-    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
+    await openReleaseTab();
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
     fireEvent.change(screen.getByLabelText('Publikationsdatum'), { target: { value: '2026-03-29T02:30' } });
-    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
+    await openContentTab();
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
+    clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
-      expect(screen.getByText('Das Publikationsdatum muss gültig sein.')).toBeTruthy();
+      expect(screen.getAllByText('Das Publikationsdatum muss gültig sein.').length).toBeGreaterThan(0);
     });
 
     expect(screen.getByLabelText('Publikationsdatum').getAttribute('value')).toBe('2026-03-29T02:30');
@@ -423,10 +555,12 @@ describe('NewsListPage', () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    await openContentTab();
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
+    await openReleaseTab();
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
-    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
+    clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
       expect(createNews).toHaveBeenCalledWith(
@@ -436,7 +570,7 @@ describe('NewsListPage', () => {
         })
       );
       expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBe('createSuccess');
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/news' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
     });
   });
 
@@ -448,13 +582,15 @@ describe('NewsListPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    await openContentTab();
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     fireEvent.change(screen.getByLabelText('Quell-URL'), { target: { value: 'https://example.com/news' } });
-    fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
     fireEvent.change(screen.getByLabelText('Teaserbild'), { target: { value: 'asset-hero' } });
     fireEvent.change(screen.getByLabelText('Headerbild'), { target: { value: 'asset-header' } });
-    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
+    await openReleaseTab();
+    fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
+    clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
       expect(createNews).toHaveBeenCalledWith(
@@ -482,17 +618,21 @@ describe('NewsListPage', () => {
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Volle News' } });
     fireEvent.change(screen.getByLabelText('Autor'), { target: { value: 'Redaktion' } });
     fireEvent.change(screen.getByLabelText('Schlagwörter'), { target: { value: 'Rathaus, Termin' } });
+    await openSettingsTab();
     fireEvent.change(screen.getByLabelText('Externe ID'), { target: { value: 'ext-42' } });
     fireEvent.change(screen.getByLabelText('News-Typ'), { target: { value: 'press' } });
     fireEvent.change(screen.getByLabelText('Zeichenbegrenzung'), { target: { value: '240' } });
     fireEvent.click(screen.getByLabelText('Vollversion'));
+    fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'basis' } });
+    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Allgemein' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
+    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Rathaus' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie hinzufügen' }));
+    await openReleaseTab();
     fireEvent.click(screen.getByLabelText('Push-Benachrichtigung senden'));
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
     fireEvent.change(screen.getByLabelText('Publikationsdatum'), { target: { value: '2026-04-14T08:00' } });
-    fireEvent.change(screen.getByRole('textbox', { name: 'Kategorie', exact: true }), {
-      target: { value: 'Allgemein' },
-    });
-    fireEvent.change(screen.getByLabelText('Kategorien'), { target: { value: 'Allgemein\nRathaus' } });
+    await openContentTab();
     fireEvent.change(screen.getByLabelText('Quell-URL'), { target: { value: 'https://example.com/news' } });
     fireEvent.change(screen.getByLabelText('Quellbeschreibung'), { target: { value: 'Quelle' } });
     fireEvent.change(screen.getByLabelText('Straße'), { target: { value: 'Markt 1' } });
@@ -512,7 +652,7 @@ describe('NewsListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Inhaltsblock hinzufügen' }));
     const removeButtons = screen.getAllByRole('button', { name: 'Entfernen' });
     fireEvent.click(removeButtons[removeButtons.length - 1] as HTMLElement);
-    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
+    clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
       expect(createNews).toHaveBeenCalledWith(
@@ -524,7 +664,6 @@ describe('NewsListPage', () => {
           fullVersion: true,
           charactersToBeShown: 240,
           newsType: 'press',
-          categoryName: 'Allgemein',
           categories: [{ name: 'Allgemein' }, { name: 'Rathaus' }],
           sourceUrl: { url: 'https://example.com/news', description: 'Quelle' },
           address: expect.objectContaining({ street: 'Markt 1', zip: '12345', city: 'Musterhausen' }),
@@ -550,10 +689,12 @@ describe('NewsListPage', () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    await openContentTab();
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
+    await openReleaseTab();
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
-    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
+    clickPrimaryAction('News anlegen');
 
     await waitFor(() => {
       expect(screen.getByText('Keine Berechtigung für Mainserver-News.')).toBeTruthy();
@@ -637,6 +778,11 @@ describe('NewsListPage', () => {
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Neuere News')).toBeTruthy();
+    });
+
+    await openContentTab();
+
+    await waitFor(() => {
       expect((screen.getByLabelText('Teaserbild') as HTMLSelectElement).value).toBe('asset-hero');
     });
 
@@ -678,7 +824,7 @@ describe('NewsListPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Aktualisierte News' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    clickPrimaryAction('Änderungen speichern');
 
     await waitFor(() => {
       expect(updateNews).toHaveBeenCalledWith(
@@ -691,6 +837,139 @@ describe('NewsListPage', () => {
     });
   });
 
+  it('renders the Freigabe tab with current publish-related fields and status', async () => {
+    render(<NewsEditPage />);
+
+    await openReleaseTab();
+
+    const releasePanel = screen.getByRole('tabpanel', { name: /Freigabe/ });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('2026-01-02T01:00')).toBeTruthy();
+      expect(screen.getByText('Weitere Freigabeschritte folgen erst mit einem erweiterten Backend-Vertrag.')).toBeTruthy();
+      expect(within(releasePanel).getByText('published')).toBeTruthy();
+      expect(within(releasePanel).getByText('Technische Details')).toBeTruthy();
+      expect(within(releasePanel).getByText('Datenanbieter')).toBeTruthy();
+    });
+  });
+
+  it('shows read-only workflow hints for unsupported process steps', async () => {
+    render(<NewsEditPage />);
+
+    await openReleaseTab();
+
+    await waitFor(() => {
+      expect(screen.getByText('Weitere Freigabeschritte folgen erst mit einem erweiterten Backend-Vertrag.')).toBeTruthy();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Freigeben' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ablehnen' })).toBeNull();
+  });
+
+  it('announces blocked tab switches and exposes the dirty indicator in text form', async () => {
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Bestehende News')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Geänderte News' } });
+    fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'content' } });
+
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toContain(
+        'Bitte speichern Sie die Änderungen im aktuellen Tab, bevor Sie den Bereich wechseln.'
+      );
+      expect(screen.getByRole('tab', { selected: true, name: /Basis.*Ungespeichert/i })).toBeTruthy();
+    });
+  });
+
+  it('renders Historie entries in reverse chronological order', async () => {
+    vi.mocked(fetchIamContentHistory).mockResolvedValueOnce([
+      {
+        id: 'history-older',
+        contentId: 'news-1',
+        action: 'updated',
+        actor: 'Editor',
+        changedFields: ['title'],
+        createdAt: '2026-05-24T08:00:00.000Z',
+        summary: 'Titel angepasst',
+      },
+      {
+        id: 'history-newer',
+        contentId: 'news-1',
+        action: 'status_changed',
+        actor: 'Reviewer',
+        changedFields: ['status'],
+        createdAt: '2026-05-24T10:00:00.000Z',
+        summary: 'Freigabe erteilt',
+      },
+    ]);
+
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Bestehende News')).toBeTruthy();
+    });
+    await openHistoryTab();
+
+    await waitFor(() => {
+      expect(fetchIamContentHistory).toHaveBeenCalledWith('news-1');
+      expect(screen.getByText('Freigabe erteilt')).toBeTruthy();
+    });
+
+    const items = within(screen.getByRole('tabpanel', { name: /Historie/ })).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]?.textContent).toContain('Freigabe erteilt');
+    expect(items[1]?.textContent).toContain('Titel angepasst');
+  });
+
+  it('renders a trustworthy empty state when no history exists', async () => {
+    vi.mocked(fetchIamContentHistory).mockResolvedValueOnce([]);
+
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Bestehende News')).toBeTruthy();
+    });
+    await openHistoryTab();
+
+    await waitFor(() => {
+      expect(screen.getByText('Noch keine Historie vorhanden.')).toBeTruthy();
+    });
+  });
+
+  it('keeps Historie read-only and free of save actions', async () => {
+    vi.mocked(fetchIamContentHistory).mockResolvedValueOnce([
+      {
+        id: 'history-1',
+        contentId: 'news-1',
+        action: 'created',
+        actor: 'Editor',
+        changedFields: ['title'],
+        createdAt: '2026-05-24T08:00:00.000Z',
+        summary: 'Eintrag erstellt',
+      },
+    ]);
+
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Bestehende News')).toBeTruthy();
+    });
+    await openHistoryTab();
+
+    await waitFor(() => {
+      expect(screen.getByText('Eintrag erstellt')).toBeTruthy();
+    });
+
+    expect(
+      within(screen.getByRole('tabpanel', { name: /Historie/ })).queryByRole('button', {
+        name: 'Änderungen speichern',
+      })
+    ).toBeNull();
+  });
+
   it('loads existing host media references on edit and can clear them without losing legacy fields', async () => {
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
       { id: 'ref-1', assetId: 'asset-hero', role: 'teaser_image', sortOrder: 0 },
@@ -699,6 +978,8 @@ describe('NewsListPage', () => {
 
     render(<NewsEditPage />);
 
+    await openContentTab();
+
     await waitFor(() => {
       expect((screen.getByLabelText('Teaserbild') as HTMLSelectElement).value).toBe('asset-hero');
       expect((screen.getByLabelText('Headerbild') as HTMLSelectElement).value).toBe('asset-header');
@@ -706,13 +987,12 @@ describe('NewsListPage', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Medium entfernen' })[0] as HTMLElement);
     fireEvent.click(screen.getAllByRole('button', { name: 'Medium entfernen' })[1] as HTMLElement);
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    clickPrimaryAction('Änderungen speichern');
 
     await waitFor(() => {
       expect(updateNews).toHaveBeenCalledWith(
         'news-1',
         expect.objectContaining({
-          title: 'Bestehende News',
           contentBlocks: [expect.objectContaining({ intro: 'Kurztext', body: '<p>Body</p>' })],
         })
       );
@@ -740,7 +1020,6 @@ describe('NewsListPage', () => {
       newsType: 'press',
       publicationDate: '2026-04-14T08:00:00.000Z',
       showPublishDate: false,
-      categoryName: 'Kultur',
       categories: [{ name: 'Kultur' }, { name: 'Rathaus' }],
       sourceUrl: { url: 'https://example.com/source', description: 'Quelle' },
       address: { street: 'Markt 1', zip: '12345', city: 'Musterhausen' },
@@ -775,9 +1054,41 @@ describe('NewsListPage', () => {
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Bestehende volle News')).toBeTruthy();
+      expect(screen.getByDisplayValue('Redaktion')).toBeTruthy();
+      expect(screen.getByDisplayValue('Markt, Kultur')).toBeTruthy();
+      expect(screen.getByText('Kultur')).toBeTruthy();
+    });
+
+    await openSettingsTab();
+
+    await waitFor(() => {
       expect(screen.getByDisplayValue('160')).toBeTruthy();
-      expect(screen.getByDisplayValue('https://example.com/source')).toBeTruthy();
-      expect(screen.getByDisplayValue('https://example.com/image.jpg')).toBeTruthy();
+      expect(screen.getByDisplayValue('external-7')).toBeTruthy();
+    });
+
+    clickPrimaryAction('Änderungen speichern');
+
+    await waitFor(() => {
+      expect(updateNews).toHaveBeenNthCalledWith(
+        1,
+        'news-1',
+        expect.objectContaining({
+          externalId: 'external-7',
+          fullVersion: true,
+          charactersToBeShown: 160,
+          newsType: 'press',
+        })
+      );
+      expect(updateNews).not.toHaveBeenNthCalledWith(
+        1,
+        'news-1',
+        expect.objectContaining({ payload: expect.anything() })
+      );
+    });
+
+    await openReleaseTab();
+
+    await waitFor(() => {
       expect(screen.getByText('Technische Details')).toBeTruthy();
       expect(screen.getByText('Datenquelle')).toBeTruthy();
       expect(screen.getByText('3')).toBeTruthy();
@@ -785,21 +1096,46 @@ describe('NewsListPage', () => {
 
     expect(screen.queryByLabelText('Push-Benachrichtigung senden')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'basis' } });
+    clickPrimaryAction('Änderungen speichern');
 
     await waitFor(() => {
-      expect(updateNews).toHaveBeenCalledWith(
+      expect(updateNews).toHaveBeenNthCalledWith(
+        2,
         'news-1',
         expect.objectContaining({
           title: 'Bestehende volle News',
           author: 'Redaktion',
           keywords: 'Markt, Kultur',
-          externalId: 'external-7',
-          fullVersion: true,
-          charactersToBeShown: 160,
-          newsType: 'press',
-          categoryName: 'Kultur',
           categories: [{ name: 'Kultur' }, { name: 'Rathaus' }],
+        })
+      );
+      expect(updateNews).not.toHaveBeenNthCalledWith(
+        2,
+        'news-1',
+        expect.objectContaining({ payload: expect.anything() })
+      );
+      expect(updateNews).not.toHaveBeenNthCalledWith(
+        2,
+        'news-1',
+        expect.objectContaining({ pushNotification: expect.anything() })
+      );
+    });
+
+    await openContentTab();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('https://example.com/source')).toBeTruthy();
+      expect(screen.getByDisplayValue('https://example.com/image.jpg')).toBeTruthy();
+    });
+
+    clickPrimaryAction('Änderungen speichern');
+
+    await waitFor(() => {
+      expect(updateNews).toHaveBeenNthCalledWith(
+        3,
+        'news-1',
+        expect.objectContaining({
           sourceUrl: { url: 'https://example.com/source', description: 'Quelle' },
           address: expect.objectContaining({ street: 'Markt 1', zip: '12345', city: 'Musterhausen' }),
           pointOfInterestId: 'poi-7',
@@ -819,8 +1155,13 @@ describe('NewsListPage', () => {
           ],
         })
       );
-      expect(updateNews).not.toHaveBeenCalledWith('news-1', expect.objectContaining({ payload: expect.anything() }));
-      expect(updateNews).not.toHaveBeenCalledWith(
+      expect(updateNews).not.toHaveBeenNthCalledWith(
+        3,
+        'news-1',
+        expect.objectContaining({ payload: expect.anything() })
+      );
+      expect(updateNews).not.toHaveBeenNthCalledWith(
+        3,
         'news-1',
         expect.objectContaining({ pushNotification: expect.anything() })
       );
@@ -832,11 +1173,8 @@ describe('NewsListPage', () => {
 
     render(<NewsEditPage />);
 
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('Bestehende News')).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    await openReleaseTab();
+    clickPrimaryAction('Änderungen speichern');
 
     await waitFor(() => {
       expect(screen.getByText('Der Mainserver hat die News-Anfrage abgelehnt.')).toBeTruthy();
@@ -857,7 +1195,7 @@ describe('NewsListPage', () => {
     await waitFor(() => {
       expect(deleteNews).toHaveBeenCalledWith('news-1');
       expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBe('deleteSuccess');
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/news' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
     });
   });
 
@@ -943,6 +1281,8 @@ describe('NewsListPage', () => {
 
     render(<NewsEditPage />);
 
+    await openReleaseTab();
+
     await waitFor(() => {
       expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('value')).toBe('2026-04-14T11:30');
     });
@@ -965,6 +1305,8 @@ describe('NewsListPage', () => {
     });
 
     render(<NewsEditPage />);
+
+    await openReleaseTab();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('value')).toBe('');

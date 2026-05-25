@@ -165,6 +165,39 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
       }),
     });
   });
+
+  await page.route('**/api/v1/iam/contents', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          {
+            id: 'content-1',
+            contentType: 'news.article',
+            title: 'Startmeldung',
+            status: 'published',
+            createdAt: '2026-04-13T12:10:00.000Z',
+            updatedAt: '2026-04-13T12:10:00.000Z',
+            publishedAt: '2026-04-13T12:10:00.000Z',
+            access: {
+              state: 'editable',
+              canRead: true,
+              canCreate: true,
+              canUpdate: true,
+              organizationIds: ['org-1'],
+              sourceKinds: ['direct_role'],
+            },
+          },
+        ],
+        pagination: {
+          page: 1,
+          pageSize: 25,
+          hasNextPage: false,
+        },
+      }),
+    });
+  });
 };
 
 test('GET / returns 200 and renders app shell', async ({ page }) => {
@@ -253,7 +286,7 @@ const navigateWithPlaywrightRouter = async (page: Page, to: string) => {
   }, to);
 };
 
-test('authenticated client navigation to /admin/news renders the host-owned content route', async ({ page }) => {
+test('authenticated client navigation to /admin/content renders the host-owned content route', async ({ page }) => {
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
   const requestFailures: string[] = [];
@@ -284,9 +317,9 @@ test('authenticated client navigation to /admin/news renders the host-owned cont
   expect(response?.status()).toBeLessThan(400);
   await expectInterfacesShellReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
-  await navigateWithPlaywrightRouter(page, '/admin/news');
-  await expect(page).toHaveURL(/\/admin\/news(?:\?.*)?$/);
-  await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
+  await navigateWithPlaywrightRouter(page, '/admin/content');
+  await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
+  await expect(page.getByRole('heading', { name: 'Inhalte', exact: true })).toBeVisible();
 });
 
 test('GET /auth/login returns redirect response', async ({ request }) => {
@@ -366,8 +399,8 @@ test('router keeps the shell active during client-side navigation', async ({ pag
   await page.goto('/interfaces');
   await expectInterfacesShellReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
-  await navigateWithPlaywrightRouter(page, '/admin/news');
-  await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
+  await navigateWithPlaywrightRouter(page, '/admin/content');
+  await expect(page.getByRole('heading', { name: 'Inhalte', exact: true })).toBeVisible();
   await navigateWithPlaywrightRouter(page, '/interfaces');
   await expect(page).toHaveURL(/\/interfaces$/);
   await expectInterfacesShellReady(page);

@@ -135,7 +135,18 @@ describe('standard content plugin helpers', () => {
       ],
       actions: [{ id: 'poi.create' }, { id: 'poi.edit' }, { id: 'poi.update' }, { id: 'poi.delete' }],
       permissions: [{ id: 'poi.read' }, { id: 'poi.create' }, { id: 'poi.update' }, { id: 'poi.delete' }],
-      contentTypes: [{ contentType: 'poi.point-of-interest', displayName: 'POI' }],
+      contentTypes: [
+        {
+          contentType: 'poi.point-of-interest',
+          displayName: 'POI',
+          studioContentType: {
+            requiredReadAction: 'poi.read',
+            requiredCreateAction: 'poi.create',
+            createPath: '/admin/poi/new',
+            detailPath: '/admin/poi/$id',
+          },
+        },
+      ],
       adminResources: [{ resourceId: 'poi.content', basePath: 'poi' }],
     });
   });

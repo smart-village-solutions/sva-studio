@@ -175,6 +175,9 @@ const createListRouteDefinition = (
     : undefined,
 });
 
+const shouldExposeAdminResourceListRoute = (resource: AdminResourceDefinition): boolean =>
+  !(resource.guard === 'content' && resource.resourceId !== 'content' && resource.contentUi?.contentType);
+
 const createAdminResourceRouteDefinitions = (
   bindings: AppRouteBindings,
   resources: readonly AdminResourceDefinition[]
@@ -187,7 +190,9 @@ const createAdminResourceRouteDefinitions = (
     const detailPath = getAdminDetailRoutePath(basePath, detailBindingKey);
 
     return [
-      createListRouteDefinition(resource, resolvedBindings, basePath),
+      ...(shouldExposeAdminResourceListRoute(resource)
+        ? [createListRouteDefinition(resource, resolvedBindings, basePath)]
+        : []),
       {
         binding: resolvedBindings.create,
         resource,

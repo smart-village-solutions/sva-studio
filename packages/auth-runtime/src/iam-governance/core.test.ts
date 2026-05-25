@@ -459,6 +459,13 @@ describe('iam governance runtime handlers', () => {
     );
     expect(mismatched.status).toBe(403);
 
+    const unsupportedFormat = await legalConsentExportHandler(
+      new Request('https://example.test/api/v1/iam/governance/legal-consents?instanceId=instance-1&format=csv')
+    );
+    expect(unsupportedFormat.status).toBe(400);
+    await expect(unsupportedFormat.json()).resolves.toEqual({ error: 'invalid_request' });
+    expect(state.loadConsentExportRecords).not.toHaveBeenCalled();
+
     state.loadConsentExportRecords.mockResolvedValueOnce([
       {
         id: 'acceptance-1',

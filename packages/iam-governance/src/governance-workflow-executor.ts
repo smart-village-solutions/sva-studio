@@ -842,7 +842,9 @@ LIMIT 1;
   }
 
   if (!revoked) {
-    const workspaceId = getWorkspaceContext().workspaceId ?? actor.instanceId;
+    const requestWorkspaceId = getWorkspaceContext().workspaceId;
+    const workspaceId =
+      requestWorkspaceId && requestWorkspaceId !== 'default' ? requestWorkspaceId : actor.instanceId;
     await client.query(
       `
 INSERT INTO iam.legal_text_acceptances (

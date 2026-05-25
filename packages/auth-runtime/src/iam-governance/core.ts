@@ -274,6 +274,9 @@ export const legalConsentExportHandler = async (request: Request): Promise<Respo
       if (user.instanceId && user.instanceId !== instanceId) {
         return jsonResponse(403, { error: 'instance_scope_mismatch' });
       }
+      if (format !== 'json') {
+        return jsonResponse(400, { error: 'invalid_request' });
+      }
       if (!hasLegalConsentExportPermission(user.roles ?? [])) {
         logger.warn('Legal consent export denied due to missing role', {
           operation: 'legal_consent_export',

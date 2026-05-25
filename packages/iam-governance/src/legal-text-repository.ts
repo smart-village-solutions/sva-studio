@@ -212,6 +212,7 @@ WHERE version.instance_id = $1
         AND (
           account_role.role_id::text = ANY(COALESCE(role_targets.role_ids, ARRAY[]::text[]))
           OR group_target.id::text = ANY(COALESCE(group_targets.group_ids, ARRAY[]::text[]))
+          OR group_target.id::text = ANY(COALESCE(group_targets.group_ids, ARRAY[]::text[]))
         )
     )
   )

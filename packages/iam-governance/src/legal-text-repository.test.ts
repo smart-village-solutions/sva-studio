@@ -131,9 +131,9 @@ describe('legal-text-repository', () => {
     expect(state.client.query.mock.calls[0]?.[0]).not.toContain('version.is_active = true');
   });
 
-  it('returns tenant-wide and matching targeted pending legal texts with mapped targets', async () => {
+  it('keeps tenant-wide pending legal texts visible with empty targets', async () => {
     state.client.query.mockResolvedValueOnce({
-      rowCount: 2,
+      rowCount: 1,
       rows: [
         {
           id: 'pending-tenant-wide',
@@ -145,17 +145,6 @@ describe('legal-text-repository', () => {
           published_at: '2026-03-21T19:00:00.000Z',
           target_role_ids: [],
           target_group_ids: [],
-        },
-        {
-          id: 'pending-targeted',
-          legal_text_id: 'legal-text-targeted',
-          name: 'Datenschutz Redaktion',
-          legal_text_version: '2',
-          locale: 'de-DE',
-          content_html: '<p>Targeted</p>',
-          published_at: '2026-03-22T19:00:00.000Z',
-          target_role_ids: ['role-editor'],
-          target_group_ids: ['group-privacy'],
         },
       ],
     });
@@ -174,26 +163,98 @@ describe('legal-text-repository', () => {
           groupIds: [],
         },
       },
+    ]);
+
+    expect(state.client.query).toHaveBeenCalledTimes(1);
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('legal_text_target_roles');
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('legal_text_target_groups');
+  });
+
+  it('returns targeted pending legal texts for matching role memberships', async () => {
+    state.client.query.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        {
+          id: 'pending-role-targeted',
+          legal_text_id: 'legal-text-role-targeted',
+          name: 'Datenschutz Redaktion',
+          legal_text_version: '2',
+          locale: 'de-DE',
+          content_html: '<p>Role targeted</p>',
+          published_at: '2026-03-22T19:00:00.000Z',
+          target_role_ids: ['role-editor'],
+          target_group_ids: [],
+        },
+      ],
+    });
+
+    await expect(state.repository.loadPendingLegalTexts('de-musterhausen', 'kc-user-role')).resolves.toEqual([
       {
-        id: 'pending-targeted',
-        legalTextId: 'legal-text-targeted',
+        id: 'pending-role-targeted',
+        legalTextId: 'legal-text-role-targeted',
         name: 'Datenschutz Redaktion',
         legalTextVersion: '2',
         locale: 'de-DE',
-        contentHtml: '<p>Targeted</p>',
+        contentHtml: '<p>Role targeted</p>',
         publishedAt: '2026-03-22T19:00:00.000Z',
         targets: {
           roleIds: ['role-editor'],
+          groupIds: [],
+        },
+      },
+    ]);
+
+    expect(state.client.query).toHaveBeenCalledTimes(1);
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('account_role.role_id::text = ANY');
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('account_role.valid_from <= NOW()');
+    expect(state.client.query.mock.calls[0]?.[0]).toContain(
+      '(account_role.valid_to IS NULL OR account_role.valid_to > NOW())'
+    );
+  });
+
+  it('returns targeted pending legal texts for matching active group memberships', async () => {
+    state.client.query.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        {
+          id: 'pending-group-targeted',
+          legal_text_id: 'legal-text-group-targeted',
+          name: 'Datenschutz Beirat',
+          legal_text_version: '3',
+          locale: 'de-DE',
+          content_html: '<p>Group targeted</p>',
+          published_at: '2026-03-23T19:00:00.000Z',
+          target_role_ids: [],
+          target_group_ids: ['group-privacy'],
+        },
+      ],
+    });
+
+    await expect(state.repository.loadPendingLegalTexts('de-musterhausen', 'kc-user-group')).resolves.toEqual([
+      {
+        id: 'pending-group-targeted',
+        legalTextId: 'legal-text-group-targeted',
+        name: 'Datenschutz Beirat',
+        legalTextVersion: '3',
+        locale: 'de-DE',
+        contentHtml: '<p>Group targeted</p>',
+        publishedAt: '2026-03-23T19:00:00.000Z',
+        targets: {
+          roleIds: [],
           groupIds: ['group-privacy'],
         },
       },
     ]);
 
     expect(state.client.query).toHaveBeenCalledTimes(1);
-    expect(state.client.query.mock.calls[0]?.[0]).toContain('legal_text_target_roles');
-    expect(state.client.query.mock.calls[0]?.[0]).toContain('legal_text_target_groups');
-    expect(state.client.query.mock.calls[0]?.[0]).toContain('account_role.role_id::text = ANY');
-    expect(state.client.query.mock.calls[0]?.[0]).toContain('account_group.group_id::text = ANY');
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('group_target.id::text = ANY');
+    expect(state.client.query.mock.calls[0]?.[0]).toContain(
+      '(account_group.valid_from IS NULL OR account_group.valid_from <= NOW())'
+    );
+    expect(state.client.query.mock.calls[0]?.[0]).toContain(
+      '(account_group.valid_until IS NULL OR account_group.valid_until > NOW())'
+    );
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('group_target.is_active IS TRUE');
   });
 
   it('creates a legal text version and emits an activity log', async () => {

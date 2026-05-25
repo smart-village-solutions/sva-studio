@@ -196,14 +196,22 @@ WHERE version.instance_id = $1
       LEFT JOIN iam.account_roles account_role
         ON account_role.instance_id = version.instance_id
        AND account_role.account_id = account.id
+       AND account_role.valid_from <= NOW()
+       AND (account_role.valid_to IS NULL OR account_role.valid_to > NOW())
       LEFT JOIN iam.account_groups account_group
         ON account_group.instance_id = version.instance_id
        AND account_group.account_id = account.id
+       AND (account_group.valid_from IS NULL OR account_group.valid_from <= NOW())
+       AND (account_group.valid_until IS NULL OR account_group.valid_until > NOW())
+      LEFT JOIN iam.groups group_target
+        ON group_target.instance_id = account_group.instance_id
+       AND group_target.id = account_group.group_id
+       AND group_target.is_active IS TRUE
       WHERE account.instance_id = version.instance_id
         AND account.keycloak_subject = $2
         AND (
           account_role.role_id::text = ANY(COALESCE(role_targets.role_ids, ARRAY[]::text[]))
-          OR account_group.group_id::text = ANY(COALESCE(group_targets.group_ids, ARRAY[]::text[]))
+          OR group_target.id::text = ANY(COALESCE(group_targets.group_ids, ARRAY[]::text[]))
         )
     )
   )

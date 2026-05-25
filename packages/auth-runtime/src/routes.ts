@@ -12,6 +12,7 @@ export type AuthRoutePath =
   | '/health/live'
   | '/iam/me/permissions'
   | '/iam/authorize'
+  | '/api/v1/iam/authorize-performance'
   | '/api/v1/iam/users'
   | '/api/v1/iam/users/sync-keycloak'
   | '/api/v1/iam/users/$userId'
@@ -64,6 +65,7 @@ export type AuthRoutePath =
   | '/iam/governance/workflows'
   | '/iam/governance/workflows/$caseId'
   | '/iam/governance/compliance/export'
+  | '/iam/governance/legal-consents/export'
   | '/iam/admin/deletion-rules'
   | '/iam/me/deletion-rules'
   | '/iam/me/deletion-rules/content-preference'
@@ -131,6 +133,7 @@ export const authRoutePaths = [
   '/health/live',
   '/iam/me/permissions',
   '/iam/authorize',
+  '/api/v1/iam/authorize-performance',
   '/api/v1/iam/users',
   '/api/v1/iam/users/sync-keycloak',
   '/api/v1/iam/users/$userId',
@@ -183,6 +186,7 @@ export const authRoutePaths = [
   '/iam/governance/workflows',
   '/iam/governance/workflows/$caseId',
   '/iam/governance/compliance/export',
+  '/iam/governance/legal-consents/export',
   '/iam/admin/deletion-rules',
   '/iam/me/deletion-rules',
   '/iam/me/deletion-rules/content-preference',

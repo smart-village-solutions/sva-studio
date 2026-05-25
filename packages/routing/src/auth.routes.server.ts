@@ -39,6 +39,9 @@ const governanceAuthHandlerMap = {
   '/iam/governance/compliance/export': {
     GET: routeHandler(authRuntimeRoutes.governanceComplianceExportHandler),
   },
+  '/iam/governance/legal-consents/export': {
+    GET: routeHandler(authRuntimeRoutes.legalConsentExportHandler),
+  },
   '/iam/admin/deletion-rules': {
     GET: routeHandler(authRuntimeRoutes.deletionRulesAdminHandler),
     POST: routeHandler(authRuntimeRoutes.deletionRulesAdminHandler),
@@ -211,6 +214,10 @@ const governanceAuthHandlerMap = {
   },
   '/api/v1/plugin-operations/jobs/$jobId/cancel': {
     POST: routeHandler(authRuntimeRoutes.cancelPluginOperationJobHandler),
+  },
+  '/api/v1/iam/authorize-performance': {
+    GET: routeHandler(authRuntimeRoutes.getLatestAuthorizePerformanceRunHandler),
+    POST: routeHandler(authRuntimeRoutes.startAuthorizePerformanceRunHandler),
   },
 } satisfies Partial<Record<AuthRoutePath, AuthHandlers>>;
 

@@ -30,7 +30,8 @@ Die verbleibenden funktionalen Lücken liegen vor allem in drei Bereichen:
 
 1. Consent-Auditdaten werden nicht vollständig und konsistent in `iam.legal_text_acceptances` geschrieben.
 2. Der eigentliche Zustimmungsnachweisexport ist als Library-Logik angelegt, aber nicht end-to-end als Runtime- und UI-Pfad verdrahtet.
-3. Die repo-seitigen Nachweise für Enforcement und Export sind noch nicht als vollständiges Abnahmepaket konsolidiert.
+3. Legaltexte können noch nicht zielgruppenspezifisch an Rollen und Gruppen gebunden werden.
+4. Die repo-seitigen Nachweise für Enforcement und Export sind noch nicht als vollständiges Abnahmepaket konsolidiert.
 
 ## Zielbild
 
@@ -39,9 +40,11 @@ Die verbleibenden funktionalen Lücken liegen vor allem in drei Bereichen:
 1. Datenschutz- und Compliance-Pfade bleiben tenant-scoped und fail-closed abgesichert.
 2. Offene Pflicht-Rechtstexte blockieren geschützte IAM-Pfade serverseitig deterministisch.
 3. Akzeptanz-, Widerrufs- und gegebenenfalls Prompt-Zustände werden revisionsrelevant vollständig persistiert.
-4. Zustimmungsnachweise können über einen dedizierten, berechtigungsgebundenen Exportpfad eingesehen oder exportiert werden.
-5. Consent-Nachweisexport und DSR-Datenexport sind fachlich und technisch sauber getrennt.
-6. Die relevanten Pfade sind durch Tests, Reports und Abnahmedokumente repo-seitig belastbar belegt.
+4. Zielgruppenspezifische Legaltexte können Rollen und Gruppen zugewiesen werden.
+5. Nur passende Zielgruppen sehen offene Legaltexte und werden durch sie blockiert.
+6. Zustimmungsnachweise können über einen dedizierten, berechtigungsgebundenen Exportpfad eingesehen oder exportiert werden.
+7. Consent-Nachweisexport und DSR-Datenexport sind fachlich und technisch sauber getrennt.
+8. Die relevanten Pfade sind durch Tests, Reports und Abnahmedokumente repo-seitig belastbar belegt.
 
 ## Scope-Schnitt
 
@@ -51,6 +54,7 @@ Die Umsetzung wird in drei zusammenhängende, aber klar trennbare Bereiche zerle
 
 - vollständige Auditbefüllung von `iam.legal_text_acceptances`
 - semantisch konsistente Abbildung von `accepted`, `revoked` und optional `prompted`
+- zielgruppenspezifische Zuordnung von Legaltexten zu Rollen und Gruppen
 - dedizierter Consent-Nachweisexport mit Tenant-Scope und Rollenbindung
 
 ### 2. Admin-/UI- und API-Anbindung
@@ -87,6 +91,18 @@ Die Tabelle soll nach der Komplettierung nicht nur das minimale Akzeptanzereigni
 - `legal_text_version`
 - `action_type`
 
+### Zielgruppenmodell für Legaltexte
+
+Legaltexte können optional einer oder mehreren Rollen und/oder Gruppen zugewiesen werden.
+
+Die Semantik ist:
+
+- keine Zielgruppen hinterlegt: der Legaltext gilt tenantweit wie bisher
+- mindestens eine Rolle oder Gruppe hinterlegt: nur Benutzer mit mindestens einer passenden Rolle oder Gruppe sind betroffen
+- mehrere Rollen und Gruppen werden mit `OR`-Logik ausgewertet
+
+Für die Modellierung werden getrennte relationale Zuordnungstabellen für Rollen und Gruppen verwendet. Eine generische JSON- oder Freitextmodellierung ist nicht zulässig, weil die Zielgruppen serverseitig prüfbar, exportierbar und tenant-sicher referenzierbar bleiben müssen.
+
 ### Führender Schreibpfad
 
 Der bestehende Governance-Workflow bleibt der einzige fachliche Schreibpfad für:
@@ -112,13 +128,13 @@ Der Consent-Nachweisexport wird nicht in den DSR-Export integriert und nicht als
 
 1. Ein geschützter IAM-Request läuft durch die Auth-Middleware.
 2. `shouldEnforceLegalTextCompliance` entscheidet pfadspezifisch, ob Enforcement greift.
-3. `withLegalTextCompliance` prüft, ob für den Benutzer im Tenant offene aktive Rechtstextversionen existieren.
+3. `withLegalTextCompliance` prüft, ob für den Benutzer im Tenant offene aktive und für ihn relevante Rechtstextversionen existieren.
 4. Bei offenen Akzeptanzen endet der Request fail-closed mit `403 legal_acceptance_required`.
 5. Der Fehler enthält ein sicheres `return_to`, aber keine unnötigen sensitiven Details.
 
 ### Consent-Akzeptanz
 
-1. Das Frontend lädt offene Rechtstexte über den bestehenden Pending-Legal-Texts-Pfad.
+1. Das Frontend lädt offene und für den Benutzer relevante Rechtstexte über den bestehenden Pending-Legal-Texts-Pfad.
 2. Akzeptanzen werden über den Governance-Workflow ausgelöst.
 3. Der Workflow schreibt einen vollständigen Consent-Auditdatensatz.
 4. Nach erfolgreicher Akzeptanz wird der Nutzerpfad entsperrt und Permissions werden invalidiert bzw. neu geladen.
@@ -134,7 +150,7 @@ Der Consent-Nachweisexport wird nicht in den DSR-Export integriert und nicht als
 1. Ein berechtigter Benutzer ruft einen dedizierten Consent-Export-Endpoint auf.
 2. Der Handler validiert Authentifizierung, Tenant-Scope und Exportberechtigung `legal-consents:export`.
 3. Der Export liest die Consent-Nachweisdaten tenant-scoped aus.
-4. JSON- und CSV-Ausgabe werden mit stabilen Pflichtfeldern bereitgestellt.
+4. JSON- und CSV-Ausgabe werden mit stabilen Pflichtfeldern und den zugehörigen Zielgruppeninformationen bereitgestellt.
 5. Benutzer ohne Berechtigung erhalten einen expliziten Negativpfad.
 
 ## Fehler- und Sicherheitsverhalten
@@ -182,6 +198,20 @@ Mindestanforderungen:
 
 Wenn `prompted` in diesem Scope nicht sauber fachlich abbildbar ist, bleibt dieser Zustand außer Betrieb und wird nicht halb eingeführt.
 
+### A2. Zielgruppenbindung für Legaltexte
+
+Legaltexte werden um relationale Zielgruppenzuordnungen erweitert.
+
+Mindestanforderungen:
+
+- getrennte Zuordnungstabellen für Rollen und Gruppen pro Legaltextversion
+- tenant-sichere Referenzen auf bestehende Rollen und Gruppen
+- `OR`-Logik bei der Wirksamkeitsprüfung
+- Pending-Legal-Texts und Compliance-Enforcement berücksichtigen nur relevante Zielgruppentreffer
+- Legaltexte ohne Zielgruppenzuordnung bleiben global im Tenant wirksam
+
+Die Auswertung basiert auf serverseitig aufgelösten Rollen- und Gruppenmitgliedschaften des Benutzers im aktuellen Tenant-Kontext.
+
 ### B. Consent-Nachweisexport end-to-end verdrahten
 
 Die bestehende Exportlogik in `legal-consent-export.ts` wird um einen Runtime-Handler und eine Routenverdrahtung ergänzt.
@@ -203,6 +233,7 @@ Prinzipien:
 
 - kein neuer, fachlich paralleler Datenschutzbereich
 - klare Abgrenzung zu DSR-Export und Governance-Export
+- Zielgruppen von Legaltexten sind in der Verwaltung sichtbar und bearbeitbar
 - nur berechtigte Benutzer sehen die Aktion
 - Server bleibt die letzte Autoritätsinstanz
 
@@ -216,6 +247,8 @@ Mindestumfang:
 - ein gezielter Nachweisreport oder eine definierte Ergänzung für:
   - `403 legal_acceptance_required`
   - Akzeptanz hebt Blockade auf
+  - zielgruppenspezifischer Legaltext ist nur für passende Rollen/Gruppen sichtbar und blockierend
+  - nicht passende Benutzer sehen den Legaltext nicht und werden nicht blockiert
   - erfolgreicher Consent-Export
   - Negativtest ohne `legal-consents:export`
   - Konsistenzabgleich Exportdaten gegen Auditspur
@@ -227,6 +260,7 @@ Mindestumfang:
 Die folgenden Tests sind verpflichtend anzupassen oder zu ergänzen:
 
 - Governance-Workflow-Tests für vollständige Consent-Auditwrites
+- Repository-/Read-Modell-Tests für Zielgruppenzuordnungen von Legaltexten
 - Runtime-Handler-Tests für Consent-Export
 - Mapping-/Exporttests für Consent-Nachweisfelder
 - Negativtests für fehlende Permission und Tenant-Mismatch
@@ -237,6 +271,8 @@ Die folgenden Pfade müssen repo-seitig end-to-end geprüft werden:
 
 - geschützter Request ohne Akzeptanz -> `legal_acceptance_required`
 - Akzeptanzdialog / Akzeptanzworkflow -> geschützter Pfad anschließend erlaubt
+- zielgruppenspezifischer Legaltext trifft Benutzer mit passender Rolle oder Gruppe -> sichtbar und blockierend
+- zielgruppenspezifischer Legaltext trifft Benutzer ohne passende Rolle oder Gruppe nicht -> unsichtbar und nicht blockierend
 - berechtigter Consent-Nachweisexport -> erfolgreich
 - unberechtigter Consent-Nachweisexport -> verweigert
 - UI zeigt keine irreführende Vermischung von DSR-Export und Consent-Nachweisexport
@@ -279,7 +315,9 @@ Folgende Themen sind nicht Teil dieser Komplettierung:
 Die Komplettierung ist erfolgreich, wenn:
 
 1. die funktionalen Lücken im Consent-Audit und Consent-Export geschlossen sind,
-2. Consent-Nachweise serverseitig tenant-scoped und permission-gesichert exportierbar sind,
-3. die UI diese Funktion sauber und fachlich getrennt anbietet,
-4. die Tests Enforcement, Export, Negativpfade und Auditkonsistenz belegen,
-5. das Repo ein konsolidiertes, ehrliches Abnahmepaket für `WP-006` enthält.
+2. Legaltexte zielgruppenspezifisch an Rollen und Gruppen gebunden werden können,
+3. nur passende Zielgruppen offene Legaltexte sehen und akzeptieren müssen,
+4. Consent-Nachweise serverseitig tenant-scoped und permission-gesichert exportierbar sind,
+5. die UI diese Funktion sauber und fachlich getrennt anbietet,
+6. die Tests Enforcement, Zielgruppenlogik, Export, Negativpfade und Auditkonsistenz belegen,
+7. das Repo ein konsolidiertes, ehrliches Abnahmepaket für `WP-006` enthält.

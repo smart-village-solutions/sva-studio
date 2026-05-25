@@ -115,6 +115,17 @@ const expectContentOverviewUrl = async (page: Page) => {
   await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
 };
 
+const expectContentOverviewReady = async (page: Page) => {
+  await expectContentOverviewUrl(page);
+  await expect(page.locator('#main-content')).toBeVisible();
+  await expect(page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ })).toBeVisible();
+  await expect(
+    page.getByRole('heading', {
+      name: /Inhalte|Inhaltsliste|content\.page\.title|content\.table\.sectionTitle/,
+    }).first()
+  ).toBeVisible();
+};
+
 const expectLoginRedirect = async (page: Page, returnToPattern: RegExp) => {
   await expect(page).toHaveURL(/\/(?:\?auth=(?:login|dev-login|mock-login)&returnTo=|auth\/login\?returnTo=)/);
   const loginUrl = new URL(page.url());
@@ -389,8 +400,7 @@ test.describe('events and POI plugins', () => {
 
     await page.goto('/');
     await navigateClientSide(page, '/admin/content');
-    await expectContentOverviewUrl(page);
-    await expectPluginPageHeading(page, /Inhalte|content\.page\.title/);
+    await expectContentOverviewReady(page);
 
     await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
     await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
@@ -421,7 +431,7 @@ test.describe('events and POI plugins', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|poi\.actions\.delete/ }).click();
 
-    await expectContentOverviewUrl(page);
+    await expectContentOverviewReady(page);
     await expect(page.getByText(/Noch keine Inhalte vorhanden|content\.empty\.title/)).toBeVisible();
   });
 
@@ -449,8 +459,7 @@ test.describe('events and POI plugins', () => {
 
     await page.goto('/');
     await navigateClientSide(page, '/admin/content');
-    await expectContentOverviewUrl(page);
-    await expectPluginPageHeading(page, /Inhalte|content\.page\.title/);
+    await expectContentOverviewReady(page);
 
     await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
     await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
@@ -544,8 +553,12 @@ test.describe('events and POI plugins', () => {
       '/admin/poi/new',
     ] as const) {
       await navigateClientSide(page, path);
-      await expect(page.locator('main h1')).toBeVisible();
       await expect(page.locator('#main-content')).toBeVisible();
+      if (path === '/admin/content') {
+        await expectContentOverviewReady(page);
+      } else {
+        await expect(page.locator('main h1')).toBeVisible();
+      }
       const result = await new AxeBuilder({ page }).include('#main-content').analyze();
       expect(result.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
     }

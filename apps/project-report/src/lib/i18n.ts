@@ -79,7 +79,7 @@ export const t = (path: string, params?: Readonly<Record<string, string | number
     return value;
   }
 
-  return value.replaceAll(/\{([^}]+)\}/g, (match, key: string) => {
+  return value.replace(/\{([^}]+)\}/g, (match: string, key: string) => {
     const replacement = params[key];
     return replacement === undefined ? match : String(replacement);
   });

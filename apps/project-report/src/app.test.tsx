@@ -67,13 +67,13 @@ describe('project report app', () => {
       screen.queryByText(/Dieses Arbeitspaket schafft die sichere und mandantenfaehige Eintrittsschicht des Studios\./)
     ).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Feature-Details für WP-001 anzeigen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Details für WP-001 anzeigen' }));
 
     expect(
       screen.getByText(/Dieses Arbeitspaket schafft die sichere und mandantenfaehige Eintrittsschicht des Studios\./)
     ).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Feature-Details für WP-001 ausblenden' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weniger Details für WP-001' }));
 
     expect(
       screen.queryByText(/Dieses Arbeitspaket schafft die sichere und mandantenfaehige Eintrittsschicht des Studios\./)

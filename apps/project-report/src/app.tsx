@@ -131,6 +131,9 @@ const WorkPackageTable = ({
             const isExpanded = expandedRows.has(entry.id);
             const detailId = `work-package-summary-${entry.id}`;
             const hasFeatureSummary = typeof entry.featureSummary === 'string' && entry.featureSummary.trim().length > 0;
+            const detailToggleLabel = isExpanded
+              ? t('app.workPackageTable.hideDetails')
+              : t('app.workPackageTable.showDetails');
 
             return (
               <React.Fragment key={entry.id}>
@@ -152,12 +155,12 @@ const WorkPackageTable = ({
                           aria-controls={detailId}
                           aria-label={
                             isExpanded
-                              ? `Feature-Details für ${entry.id} ausblenden`
-                              : `Feature-Details für ${entry.id} anzeigen`
+                              ? t('app.workPackageTable.hideDetailsAriaLabel', { id: entry.id })
+                              : t('app.workPackageTable.showDetailsAriaLabel', { id: entry.id })
                           }
                           onClick={() => toggleRow(entry.id)}
                         >
-                          {isExpanded ? t('app.workPackageTable.hideDetails') : t('app.workPackageTable.showDetails')}
+                          {detailToggleLabel}
                         </button>
                       )}
                     </div>

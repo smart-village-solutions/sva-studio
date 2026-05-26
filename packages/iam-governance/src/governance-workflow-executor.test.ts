@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { runWithWorkspaceContext } from '@sva/server-runtime';
 
 import { createGovernanceWorkflowExecutor, type GovernanceActor } from './governance-workflow-executor.js';
 import type { QueryClient } from './query-client.js';
@@ -292,6 +293,17 @@ describe('governance workflow executor', () => {
       })
     ).resolves.toEqual({ operation: 'accept_legal_text', status: 'ok', workflowId: 'version-1' });
     expect(accepted.queries[2]?.sql).toContain('INSERT INTO iam.legal_text_acceptances');
+    expect(accepted.queries[2]?.params).toEqual([
+      'tenant-a',
+      'tenant-a',
+      'actor-subject',
+      'version-1',
+      'actor-account',
+      '1.0',
+      'accepted',
+      'request-1',
+      'trace-1',
+    ]);
 
     const revoked = createClient([[{ id: 'actor-account' }], [{ id: 'version-1' }], [], []]);
     await expect(
@@ -302,6 +314,24 @@ describe('governance workflow executor', () => {
       })
     ).resolves.toEqual({ operation: 'revoke_legal_acceptance', status: 'ok', workflowId: 'version-1' });
     expect(revoked.queries[2]?.sql).toContain('SET revoked_at = now()');
+    expect(revoked.queries[2]?.sql).toContain("action_type = 'revoked'");
+    expect(revoked.queries[2]?.params).toEqual(['tenant-a', 'version-1', 'actor-account', 'withdrawn']);
+  });
+
+  it('uses the tenant instance instead of the generic default workspace for legal acceptance audit writes', async () => {
+    const accepted = createClient([[{ id: 'actor-account' }], [{ id: 'version-1' }], [], []]);
+
+    await expect(
+      runWithWorkspaceContext({ workspaceId: 'default', requestId: 'request-1', traceId: 'trace-1' }, () =>
+        createGovernanceWorkflowExecutor(createDeps()).executeWorkflow(accepted.client, actor, {
+          operation: 'accept_legal_text',
+          instanceId: 'tenant-a',
+          payload: { legalTextId: 'terms', legalTextVersion: '1.0', locale: 'de-DE' },
+        })
+      )
+    ).resolves.toEqual({ operation: 'accept_legal_text', status: 'ok', workflowId: 'version-1' });
+
+    expect(accepted.queries[2]?.params?.[1]).toBe('tenant-a');
   });
 
   it('resolves active, expired and missing impersonation subjects', async () => {

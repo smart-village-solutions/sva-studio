@@ -137,20 +137,12 @@ const AppPlaceholderRoutePage = () => (
   <PlaceholderPage section={t('shell.sidebar.sections.applications')} title={t('shell.sidebar.app')} />
 );
 
-const MonitoringRoutePage = () => {
-  const navigate = useNavigate();
+const LazyMonitoringOverviewPage = React.lazy(async () => {
+  const mod = await import('../routes/monitoring/-overview-page');
+  return { default: mod.MonitoringOverviewPage };
+});
 
-  React.useEffect(() => {
-    void navigate({ to: '/monitoring/jobs', replace: true });
-  }, [navigate]);
-
-  return (
-    <PlaceholderPage
-      section={t('shell.sidebar.sections.system')}
-      title={t('shell.sidebar.monitoring')}
-    />
-  );
-};
+const MonitoringRoutePage = () => renderLazyPage(LazyMonitoringOverviewPage);
 
 const NewsCreateRoutePage = () => {
   const initialAuthor = useNewsCreateInitialAuthor();

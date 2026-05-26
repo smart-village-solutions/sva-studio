@@ -6,7 +6,7 @@ const state = vi.hoisted(() => {
     static nextConnectError: Error | null = null;
 
     connectImpl = vi.fn(async () => undefined);
-    queryImpl = vi.fn(async () => undefined);
+    queryImpl = vi.fn(async () => ({ rowCount: 0, rows: [] }));
     endImpl = vi.fn(async () => undefined);
 
     constructor(readonly config: Record<string, unknown>) {
@@ -21,8 +21,8 @@ const state = vi.hoisted(() => {
       return this.connectImpl();
     }
 
-    query(sql: string) {
-      return this.queryImpl(sql);
+    query(sql: string, values?: readonly unknown[]) {
+      return this.queryImpl(sql, values);
     }
 
     end() {
@@ -110,18 +110,11 @@ describe('postgres app user bootstrap', () => {
       database: 'sva_studio',
       password: 'super-secret',
     });
-    expect(state.FakeClient.instances[0]?.queryImpl).toHaveBeenCalledWith(
-      expect.stringContaining('CREATE ROLE "sva_app" LOGIN PASSWORD')
-    );
-    expect(state.FakeClient.instances[0]?.queryImpl).toHaveBeenCalledWith(
-      'GRANT CONNECT ON DATABASE "sva_studio" TO "sva_app"'
-    );
-    expect(state.FakeClient.instances[0]?.queryImpl).toHaveBeenCalledWith(
-      'GRANT CREATE ON DATABASE "sva_studio" TO "sva_app"'
-    );
-    expect(state.FakeClient.instances[0]?.queryImpl).toHaveBeenCalledWith(
-      'GRANT USAGE, CREATE ON SCHEMA public TO "sva_app"'
-    );
+    const executedSql = state.FakeClient.instances[0]?.queryImpl.mock.calls.map(([sql]) => sql) ?? [];
+    expect(executedSql).toContainEqual(expect.stringContaining('CREATE ROLE "sva_app" LOGIN PASSWORD'));
+    expect(executedSql).toContain('GRANT CONNECT ON DATABASE "sva_studio" TO "sva_app"');
+    expect(executedSql).toContain('GRANT CREATE ON DATABASE "sva_studio" TO "sva_app"');
+    expect(executedSql).toContain('GRANT USAGE, CREATE ON SCHEMA public TO "sva_app"');
     expect(state.logger.info).toHaveBeenCalledWith(
       'Bootstrapped studio app DB role',
       expect.objectContaining({
@@ -129,6 +122,28 @@ describe('postgres app user bootstrap', () => {
         app_db_user: 'sva_app',
       })
     );
+  });
+
+  it('bootstraps for local-keycloak permission errors against localhost urls', async () => {
+    vi.stubEnv('SVA_RUNTIME_PROFILE', 'local-keycloak');
+    vi.stubEnv('POSTGRES_PASSWORD', 'super-secret');
+    vi.stubEnv('POSTGRES_USER', 'sva');
+    vi.stubEnv('IAM_DATABASE_URL', 'postgres://sva_app:sva_app_local_dev_password@localhost:5432/sva_studio');
+
+    const { bootstrapStudioAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.js');
+
+    await expect(
+      bootstrapStudioAppDbUserIfNeeded(new Error('permission denied for database sva_studio'))
+    ).resolves.toBe(true);
+
+    expect(state.FakeClient.instances).toHaveLength(1);
+    expect(state.FakeClient.instances[0]?.config).toMatchObject({
+      host: 'localhost',
+      port: 5432,
+      user: 'sva',
+      database: 'sva_studio',
+      password: 'super-secret',
+    });
   });
 
   it('returns false when required bootstrap secrets are absent', async () => {

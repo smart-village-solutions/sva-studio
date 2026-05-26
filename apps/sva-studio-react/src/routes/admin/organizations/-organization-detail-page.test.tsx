@@ -6,6 +6,7 @@ import { OrganizationDetailPage, sortMembershipUsersByLabel } from './-organizat
 
 const useOrganizationsMock = vi.fn();
 const listUsersMock = vi.fn();
+const listOrganizationsMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
@@ -24,6 +25,7 @@ vi.mock('../../../lib/iam-api', async () => {
   return {
     ...actual,
     listUsers: (...args: unknown[]) => listUsersMock(...args),
+    listOrganizations: (...args: unknown[]) => listOrganizationsMock(...args),
   };
 });
 
@@ -102,6 +104,18 @@ describe('OrganizationDetailPage', () => {
   beforeEach(() => {
     useOrganizationsMock.mockReset();
     listUsersMock.mockReset();
+    listOrganizationsMock.mockReset();
+    listUsersMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, total: 0 },
+    });
+    listOrganizationsMock.mockResolvedValue({
+      data: [
+        { id: 'org-1', displayName: 'Landkreis Alpha', organizationKey: 'landkreis-alpha' },
+        { id: 'parent-2', displayName: 'Landkreis Beta', organizationKey: 'landkreis-beta' },
+      ],
+      pagination: { page: 1, pageSize: 100, total: 2 },
+    });
   });
 
   it(
@@ -194,7 +208,6 @@ describe('OrganizationDetailPage', () => {
         target: { value: 'zoe' },
       });
       expect(listUsersMock).toHaveBeenCalledTimes(1);
-      await new Promise((resolve) => globalThis.setTimeout(resolve, 350));
       await waitFor(() => {
         expect(listUsersMock).toHaveBeenCalledTimes(2);
         expect(listUsersMock).toHaveBeenLastCalledWith({
@@ -228,8 +241,8 @@ describe('OrganizationDetailPage', () => {
         expect(removeMembership).toHaveBeenCalledWith('org-1', 'user-1');
       });
 
-      fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
       await waitFor(() => {
         expect(deactivateOrganization).toHaveBeenCalledWith('org-1');
@@ -297,5 +310,54 @@ describe('OrganizationDetailPage', () => {
 
     expect(screen.getByRole('alert').textContent).toContain('Unzureichende Berechtigungen');
     expect(screen.getByRole('link', { name: 'Zur Organisationsliste' }).getAttribute('href')).toBe('/admin/organizations');
+  });
+
+  it('loads parent options across multiple organization pages for reassignment', async () => {
+    const loadOrganization = vi.fn().mockResolvedValue(organizationFixture);
+    const updateOrganization = vi.fn().mockResolvedValue(true);
+    useOrganizationsMock.mockReturnValue(
+      createState({
+        organizations: [organizationFixture],
+        loadOrganization,
+        updateOrganization,
+      })
+    );
+    listOrganizationsMock
+      .mockResolvedValueOnce({
+        data: [{ id: 'org-1', displayName: 'Landkreis Alpha', organizationKey: 'landkreis-alpha' }],
+        pagination: { page: 1, pageSize: 100, total: 101 },
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'parent-2', displayName: 'Landkreis Beta', organizationKey: 'landkreis-beta' }],
+        pagination: { page: 2, pageSize: 100, total: 101 },
+      });
+
+    render(<OrganizationDetailPage organizationId="org-1" />);
+
+    await waitFor(() => {
+      expect(listOrganizationsMock).toHaveBeenNthCalledWith(1, {
+        page: 1,
+        pageSize: 100,
+      });
+      expect(listOrganizationsMock).toHaveBeenNthCalledWith(2, {
+        page: 2,
+        pageSize: 100,
+      });
+      expect(screen.getByRole('option', { name: 'Landkreis Beta' })).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }), {
+      target: { value: 'parent-2' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(updateOrganization).toHaveBeenCalledWith(
+        'org-1',
+        expect.objectContaining({
+          parentOrganizationId: 'parent-2',
+        })
+      );
+    });
   });
 });

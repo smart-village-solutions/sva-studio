@@ -170,7 +170,103 @@ export const i18nResources = {
       nextStepBody:
         'Definieren Sie für „{{area}}“ die konkreten Daten, Aktionen und Freigaben. Die Route und Navigation sind bereits vorbereitet.',
     },
+    plugins: {
+      news: {
+        description: 'Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.',
+      },
+      events: {
+        description: 'Veröffentlicht Termine und Veranstaltungsdaten für den Mandanten.',
+      },
+      poi: {
+        description: 'Veröffentlicht Orte und zugehörige Standortinformationen für den Mandanten.',
+      },
+      'waste-management': {
+        description: 'Aktiviert die Abfallwirtschaft mit Stammdaten, Tourenplanung und Betriebswerkzeugen.',
+      },
+      empty: {
+        description: '',
+      },
+    },
+    host: {
+      media: {
+        description: 'Aktiviert die Medienverwaltung für Uploads, Referenzen und geschützte Auslieferung.',
+      },
+    },
     monitoring: {
+      page: {
+        title: 'Monitoring',
+        subtitle:
+          'Betriebliche Monitoring-Einstiege für Plugin-Jobs und serverseitige IAM-Authorize-Performance.',
+        jobsAction: 'Zu den Monitoring Jobs',
+        jobsCardTitle: 'Plugin-Operations-Jobs',
+        jobsCardDescription: 'Bestehende Jobläufe und technische Historie im Monitoring.',
+        jobsCardBody:
+          'Öffnen Sie die bestehende Jobliste, wenn Sie laufende oder historische Plugin-Operations-Jobs prüfen möchten.',
+      },
+      authorize: {
+        title: 'Authorize Performance',
+        description:
+          'Startet einen serverseitig gemessenen Benchmark für den echten `/iam/authorize`-Pfad mit der aktuellen Administrations-Session.',
+        serverMeasuredNotice:
+          'Die Laufzeit wird im Serverprozess gemessen. Browser-Timing und lokale Rendering-Zeit fließen nicht in das Ergebnis ein.',
+        form: {
+          action: 'Action-ID',
+          resourceType: 'Resource-Typ',
+          resourceId: 'Resource-ID',
+          resourceIdPlaceholder: 'Optional, z. B. article-1',
+          organizationId: 'Organisation-ID',
+          organizationIdPlaceholder: 'Optional, z. B. org-1',
+        },
+        actions: {
+          start: 'Lauf starten',
+          running: 'Läuft…',
+        },
+        status: {
+          idle: 'Bereit für einen neuen Lauf.',
+          loading: 'Letztes Ergebnis wird geladen.',
+          running: 'Serverseitiger Benchmark läuft.',
+        },
+        errors: {
+          forbidden: 'Sie dürfen diesen Monitoring-Lauf nicht ausführen.',
+          invalidRequest: 'Die Benchmark-Parameter sind ungültig.',
+          runFailed: 'Der Authorize-Performance-Lauf konnte nicht abgeschlossen werden.',
+        },
+        values: {
+          notAvailable: 'Nicht verfügbar',
+        },
+        scenarios: {
+          'cache-hit': 'Cache-Hit',
+          'cache-miss': 'Cache-Miss',
+          recompute: 'Recompute',
+        },
+        summary: {
+          actorTitle: 'Messkontext',
+          requestTitle: 'Anfrage',
+          configurationTitle: 'Konfiguration',
+          reportTitle: 'Nachweis',
+          instanceId: 'Instanz: {{value}}',
+          subject: 'Subject: {{value}}',
+          action: 'Action: {{value}}',
+          resourceType: 'Resource-Typ: {{value}}',
+          resourceId: 'Resource-ID: {{value}}',
+          samples: 'Samples je Szenario: {{value}}',
+          warmup: 'Warm-up je Szenario: {{value}}',
+          generatedAt: 'Generiert am: {{value}}',
+          measuredOnServer: 'Messquelle: Server',
+          reportJson: 'JSON-Report: {{value}}',
+          reportMarkdown: 'Markdown-Report: {{value}}',
+        },
+        table: {
+          caption: 'Authorize-Performance-Ergebnis',
+          scenario: 'Szenario',
+          samples: 'Samples',
+          p50: 'p50',
+          p95: 'p95',
+          p99: 'p99',
+          evaluation: 'Bewertung',
+          cacheStatus: 'Cache-Status',
+        },
+      },
       jobs: {
         page: {
           title: 'Monitoring Jobs',
@@ -890,6 +986,24 @@ export const i18nResources = {
           'Die Kontoansicht kann derzeit nicht vollständig geladen werden, weil Keycloak oder ein nachgelagerter Rollenabgleich nicht stabil verfügbar ist.',
         requestId: 'Request-ID: {{requestId}}',
       },
+      projection: {
+        warningTitle: 'Profilstatus erfordert manuelle Prüfung.',
+        warningBody:
+          'Die Profil- oder Rollenprojektion ist derzeit nicht vollständig belastbar. Bitte die Zuordnung im IAM/Keycloak-Verbund prüfen.',
+        statusLine: 'Projektionsstatus: {{value}}',
+        editabilityLine: 'Bearbeitbarkeit: {{value}}',
+        diagnosticCodesLine: 'Diagnosecodes: {{value}}',
+        mappingStatus: {
+          mapped: 'Zugeordnet',
+          unmapped: 'Nicht zugeordnet',
+          manualReview: 'Manuelle Prüfung',
+        },
+        editability: {
+          editable: 'Bearbeitbar',
+          readOnly: 'Schreibgeschützt',
+          blocked: 'Blockiert',
+        },
+      },
       validation: {
         usernameInvalid: 'Bitte einen Benutzernamen ohne Leerzeichen eingeben.',
         emailInvalid: 'Bitte eine gültige E-Mail-Adresse eingeben.',
@@ -1448,7 +1562,17 @@ export const i18nResources = {
           detail: {
             title: 'IAM-Basis der Module',
             subtitle:
-              'Deklarierter Modulvertrag und registrierter Befund der aktuell zugewiesenen Module.',
+              'Zeigt alle global bekannten Module mit aktiviertem oder deaktiviertem Mandanten-Status.',
+            table: {
+              module: 'Modul',
+              status: 'Status',
+              description: 'Beschreibung',
+            },
+            status: {
+              active: 'Aktiv',
+              inactive: 'Deaktiviert',
+            },
+            descriptionFallback: 'Keine Modulbeschreibung hinterlegt.',
           },
           guidance: {
             title: 'Semantik der Freigaben',
@@ -2065,11 +2189,26 @@ export const i18nResources = {
             resourceType: 'Ressource: {{value}}',
             organization: 'Organisation: {{value}}',
             scope: 'Scope: {{value}}',
+            inheritedOrganization: 'Vererbt ab Organisation: {{value}}',
+            inheritedGeoUnit: 'Geo-Freigabe ab: {{value}}',
+            restrictedGeoUnit: 'Geo-Restriktion: {{value}}',
+            inactiveReasonLabel: 'Inaktivitätsgrund: {{value}}',
+            validityRange: 'Gültigkeit: {{from}} bis {{to}}',
+            validityFrom: 'Gültigkeit ab {{from}}',
+            validityTo: 'Gültigkeit bis {{to}}',
             status: {
               effective: 'wirksam',
               inactive: 'noch nicht wirksam',
               expired: 'abgelaufen',
               disabled: 'deaktiviert',
+            },
+            inactiveReason: {
+              assignmentNotStarted: 'Zuweisung noch nicht aktiv',
+              assignmentExpired: 'Zuweisung abgelaufen',
+              membershipNotStarted: 'Mitgliedschaft noch nicht aktiv',
+              membershipExpired: 'Mitgliedschaft abgelaufen',
+              groupDisabled: 'Gruppe deaktiviert',
+              hierarchyRestricted: 'Hierarchie-Restriktion greift',
             },
             source: {
               directPermission: 'Direkte Berechtigung',
@@ -2191,6 +2330,8 @@ export const i18nResources = {
         actions: {
           create: 'Organisation anlegen',
           edit: 'Bearbeiten',
+          delete: 'Löschen',
+          activate: 'Aktivieren',
           save: 'Speichern',
           deactivate: 'Deaktivieren',
           memberships: 'Mitglieder verwalten',
@@ -2226,6 +2367,14 @@ export const i18nResources = {
           backToList: 'Zur Organisationsliste',
           notFound: 'Die angeforderte Organisation wurde nicht gefunden.',
         },
+        sections: {
+          overviewTitle: 'Übersicht',
+          overviewDescription: 'Status, Hierarchie und Kennzahlen der aktuellen Organisation.',
+          baseDataTitle: 'Stammdaten',
+          baseDataDescription: 'Pflegt Schlüssel, Anzeigename, Typ, Parent und Autoren-Policy der Organisation.',
+          membershipsTitle: 'Mitgliedschaften',
+          membershipsDescription: 'Ordnet Accounts zu und verwaltet deren Sichtbarkeit im Organisationskontext.',
+        },
         membershipsDialog: {
           title: 'Mitgliedschaften verwalten',
           description: 'Mitglieder von {{name}} zuordnen oder entfernen.',
@@ -2246,9 +2395,9 @@ export const i18nResources = {
           createdAt: 'Zugeordnet am {{value}}',
         },
         confirm: {
-          deactivateTitle: 'Organisation deaktivieren',
+          deactivateTitle: 'Organisation löschen',
           deactivateDescription:
-            'Die Organisation wird kontrolliert deaktiviert, sofern keine Abhängigkeiten bestehen.',
+            'Die Organisation wird endgültig gelöscht. Kind-Organisationen verhindern das Löschen weiterhin.',
         },
         form: {
           keyLabel: 'Technischer Schlüssel',
@@ -2274,6 +2423,7 @@ export const i18nResources = {
           emptyState: 'Keine Organisationen gefunden.',
           error: 'Organisationen konnten nicht geladen werden.',
           resultCount: '{{count}} Organisationen gefunden.',
+          statusSwitchLabel: 'Aktivstatus für {{name}}',
           root: 'Root',
           depth: 'Ebene: {{value}}',
           hierarchySize: 'Pfadlänge: {{value}}',
@@ -2370,6 +2520,7 @@ export const i18nResources = {
           instance: 'Instanz-Registry',
           integration: 'Integrationen',
           feature: 'Feature-Flags',
+          media: 'Medien',
           news: 'News',
           events: 'Events',
           poi: 'POI',
@@ -2738,6 +2889,7 @@ export const i18nResources = {
           headerVersion: 'Version',
           headerLocale: 'Sprache',
           headerStatus: 'Status',
+          headerTargets: 'Zielgruppen',
           headerContent: 'Inhalt',
           headerPublished: 'Veröffentlicht',
           headerCreated: 'Erstellt',
@@ -2746,6 +2898,8 @@ export const i18nResources = {
           headerLastAccepted: 'Zuletzt akzeptiert',
           headerActions: 'Aktionen',
           acceptanceSummary: '{{active}} aktiv / {{total}} gesamt',
+          targetSummary: '{{roles}} Rollen / {{groups}} Gruppen',
+          targetsAll: 'Alle Accounts',
           publishedUnset: 'Nicht gesetzt',
         },
         dialogs: {
@@ -2771,6 +2925,12 @@ export const i18nResources = {
           locale: 'Sprache',
           status: 'Status',
           publishedAt: 'Veröffentlicht am',
+          targetRoleIds: 'Zielrollen-IDs',
+          targetRoleIdsPlaceholder:
+            'z. B. 11111111-1111-1111-1111-111111111111, 22222222-2222-2222-2222-222222222222',
+          targetGroupIds: 'Zielgruppen-IDs',
+          targetGroupIdsPlaceholder:
+            'z. B. aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
           contentHtml: 'Inhalt',
           contentPlaceholder: 'HTML-Inhalt des Rechtstexts bearbeiten',
         },
@@ -2839,6 +2999,49 @@ export const i18nResources = {
           governance: 'Governance',
           dsr: 'Datenschutz',
           deletionRules: 'Löschregeln',
+        },
+        tabHelp: {
+          optionsLabel: 'Das können Sie hier tun',
+          rights: {
+            title: 'Rechte verständlich prüfen',
+            description:
+              'Hier sehen Sie, welche Berechtigungen für einen Benutzer im aktuellen Kontext wirksam sind. So können Sie leichter nachvollziehen, warum etwas erlaubt oder verboten ist.',
+            options: {
+              first: 'Nach Organisation, Nutzerkontext oder Begriffen filtern, um die Liste einzugrenzen.',
+              second: 'Mit "Authorize prüfen" einen konkreten Zugriff testen, zum Beispiel für eine Aktion auf einem Inhalt.',
+              third: 'Quellrollen, Gruppen und Herkunft ansehen, um die Ursache einer Berechtigung besser zu verstehen.',
+            },
+          },
+          governance: {
+            title: 'Governance-Fälle einordnen',
+            description:
+              'Hier finden Sie Freigaben, Delegationen und ähnliche IAM-Vorgänge. Der Bereich hilft dabei, offene Fälle zu sichten und deren Status nachzuvollziehen.',
+            options: {
+              first: 'Nach Suchbegriff, Falltyp oder Status filtern, um schneller den passenden Fall zu finden.',
+              second: 'Einen Fall öffnen, um Beteiligte, Ticketbezug und weitere Details anzusehen.',
+              third: 'Bei vorhandener Berechtigung die aktuelle Sicht als CSV exportieren.',
+            },
+          },
+          dsr: {
+            title: 'Datenschutzfälle im Blick behalten',
+            description:
+              'Hier sehen Sie Vorgänge rund um Datenschutzanfragen, Exporte und rechtliche Sperren. So erkennen Sie schneller, was schon erledigt ist und wo noch Handlungsbedarf besteht.',
+            options: {
+              first: 'Nach Art und Status filtern, um offene oder abgeschlossene Fälle gezielt anzuzeigen.',
+              second: 'Betroffene und anfragende Personen vergleichen, um den Fall fachlich richtig einzuordnen.',
+              third: 'Einen Eintrag öffnen, um Blocker, Metadaten und den genauen Bearbeitungsstand zu prüfen.',
+            },
+          },
+          deletionRules: {
+            title: 'Löschregeln tenantweit verwalten',
+            description:
+              'Hier legen Sie fest, nach welchen Fristen Konten und Inhalte behandelt werden. Die Einstellungen gelten tenantweit und steuern die Standardlogik für Deaktivierung, Pseudonymisierung und Löschung.',
+            options: {
+              first: 'Fristen in Tagen für Deaktivierung, Pseudonymisierung und Löschung prüfen oder anpassen.',
+              second: 'Festlegen, ob Inhalte standardmäßig erhalten bleiben oder mit dem Besitzer-Lebenszyklus mitlaufen.',
+              third: 'Steuern, ob Nutzer diese Standardregel für eigene Inhalte selbst überschreiben dürfen.',
+            },
+          },
         },
         messages: {
           initializing: 'IAM Transparenz-Cockpit wird initialisiert ...',
@@ -3214,7 +3417,101 @@ export const i18nResources = {
       nextStepBody:
         'Define the concrete data, actions, and access rules for "{{area}}". The route and navigation are already in place.',
     },
+    plugins: {
+      news: {
+        description: 'Publishes news and editorial updates for the tenant.',
+      },
+      events: {
+        description: 'Publishes events and scheduling data for the tenant.',
+      },
+      poi: {
+        description: 'Publishes places and related location information for the tenant.',
+      },
+      'waste-management': {
+        description: 'Enables waste management with master data, route planning, and operations tooling.',
+      },
+      empty: {
+        description: '',
+      },
+    },
+    host: {
+      media: {
+        description: 'Enables media management for uploads, references, and protected delivery.',
+      },
+    },
     monitoring: {
+      page: {
+        title: 'Monitoring',
+        subtitle: 'Operational monitoring entry points for plugin jobs and server-side IAM authorize performance.',
+        jobsAction: 'Open monitoring jobs',
+        jobsCardTitle: 'Plugin operation jobs',
+        jobsCardDescription: 'Existing job runs and technical history in monitoring.',
+        jobsCardBody: 'Open the existing job list when you need to inspect running or historical plugin operation jobs.',
+      },
+      authorize: {
+        title: 'Authorize Performance',
+        description:
+          'Starts a server-side benchmark for the real `/iam/authorize` path with the current administrator session.',
+        serverMeasuredNotice:
+          'The duration is measured inside the server process. Browser timing and local rendering time are not part of the result.',
+        form: {
+          action: 'Action ID',
+          resourceType: 'Resource type',
+          resourceId: 'Resource ID',
+          resourceIdPlaceholder: 'Optional, e.g. article-1',
+          organizationId: 'Organization ID',
+          organizationIdPlaceholder: 'Optional, e.g. org-1',
+        },
+        actions: {
+          start: 'Start run',
+          running: 'Running…',
+        },
+        status: {
+          idle: 'Ready for a new run.',
+          loading: 'Loading latest result.',
+          running: 'Server-side benchmark is running.',
+        },
+        errors: {
+          forbidden: 'You are not allowed to run this monitoring benchmark.',
+          invalidRequest: 'The benchmark parameters are invalid.',
+          runFailed: 'The authorize performance run could not be completed.',
+        },
+        values: {
+          notAvailable: 'Not available',
+        },
+        scenarios: {
+          'cache-hit': 'Cache hit',
+          'cache-miss': 'Cache miss',
+          recompute: 'Recompute',
+        },
+        summary: {
+          actorTitle: 'Measurement context',
+          requestTitle: 'Request',
+          configurationTitle: 'Configuration',
+          reportTitle: 'Evidence',
+          instanceId: 'Instance: {{value}}',
+          subject: 'Subject: {{value}}',
+          action: 'Action: {{value}}',
+          resourceType: 'Resource type: {{value}}',
+          resourceId: 'Resource ID: {{value}}',
+          samples: 'Samples per scenario: {{value}}',
+          warmup: 'Warm-up per scenario: {{value}}',
+          generatedAt: 'Generated at: {{value}}',
+          measuredOnServer: 'Measurement source: server',
+          reportJson: 'JSON report: {{value}}',
+          reportMarkdown: 'Markdown report: {{value}}',
+        },
+        table: {
+          caption: 'Authorize performance result',
+          scenario: 'Scenario',
+          samples: 'Samples',
+          p50: 'p50',
+          p95: 'p95',
+          p99: 'p99',
+          evaluation: 'Evaluation',
+          cacheStatus: 'Cache status',
+        },
+      },
       jobs: {
         page: {
           title: 'Monitoring Jobs',
@@ -3922,6 +4219,24 @@ export const i18nResources = {
           'The account view cannot be loaded completely because Keycloak or a downstream role sync is not stable.',
         requestId: 'Request ID: {{requestId}}',
       },
+      projection: {
+        warningTitle: 'Profile status requires manual review.',
+        warningBody:
+          'The profile or role projection is currently not fully reliable. Please verify the mapping across IAM and Keycloak.',
+        statusLine: 'Projection status: {{value}}',
+        editabilityLine: 'Editability: {{value}}',
+        diagnosticCodesLine: 'Diagnostic codes: {{value}}',
+        mappingStatus: {
+          mapped: 'Mapped',
+          unmapped: 'Unmapped',
+          manualReview: 'Manual review',
+        },
+        editability: {
+          editable: 'Editable',
+          readOnly: 'Read only',
+          blocked: 'Blocked',
+        },
+      },
       validation: {
         usernameInvalid: 'Please enter a username without spaces.',
         emailInvalid: 'Please enter a valid email address.',
@@ -4473,7 +4788,17 @@ export const i18nResources = {
           detail: {
             title: 'Module IAM baseline',
             subtitle:
-              'Declared module contract and registry status for the currently assigned modules.',
+              'Shows all globally known modules with an active or inactive tenant status.',
+            table: {
+              module: 'Module',
+              status: 'Status',
+              description: 'Description',
+            },
+            status: {
+              active: 'Active',
+              inactive: 'Inactive',
+            },
+            descriptionFallback: 'No module description available.',
           },
           guidance: {
             title: 'Release semantics',
@@ -5061,11 +5386,26 @@ export const i18nResources = {
             resourceType: 'Resource: {{value}}',
             organization: 'Organization: {{value}}',
             scope: 'Scope: {{value}}',
+            inheritedOrganization: 'Inherited from organization: {{value}}',
+            inheritedGeoUnit: 'Geo grant from: {{value}}',
+            restrictedGeoUnit: 'Geo restriction: {{value}}',
+            inactiveReasonLabel: 'Inactive reason: {{value}}',
+            validityRange: 'Validity: {{from}} to {{to}}',
+            validityFrom: 'Valid from {{from}}',
+            validityTo: 'Valid until {{to}}',
             status: {
               effective: 'effective',
               inactive: 'inactive',
               expired: 'expired',
               disabled: 'disabled',
+            },
+            inactiveReason: {
+              assignmentNotStarted: 'Assignment not active yet',
+              assignmentExpired: 'Assignment expired',
+              membershipNotStarted: 'Membership not active yet',
+              membershipExpired: 'Membership expired',
+              groupDisabled: 'Group disabled',
+              hierarchyRestricted: 'Hierarchy restriction applied',
             },
             source: {
               directPermission: 'Direct permission',
@@ -5181,6 +5521,8 @@ export const i18nResources = {
         actions: {
           create: 'Create organization',
           edit: 'Edit',
+          delete: 'Delete',
+          activate: 'Activate',
           save: 'Save',
           deactivate: 'Deactivate',
           memberships: 'Manage memberships',
@@ -5216,6 +5558,14 @@ export const i18nResources = {
           backToList: 'Back to organization list',
           notFound: 'The requested organization could not be found.',
         },
+        sections: {
+          overviewTitle: 'Overview',
+          overviewDescription: 'Status, hierarchy, and key figures of the current organization.',
+          baseDataTitle: 'Base data',
+          baseDataDescription: 'Maintain key, display name, type, parent, and author policy of the organization.',
+          membershipsTitle: 'Memberships',
+          membershipsDescription: 'Assign accounts and manage their visibility in the organization context.',
+        },
         membershipsDialog: {
           title: 'Manage memberships',
           description: 'Assign or remove members for {{name}}.',
@@ -5236,9 +5586,9 @@ export const i18nResources = {
           createdAt: 'Assigned on {{value}}',
         },
         confirm: {
-          deactivateTitle: 'Deactivate organization',
+          deactivateTitle: 'Delete organization',
           deactivateDescription:
-            'The organization is deactivated in a controlled way if no blocking dependencies exist.',
+            'The organization is deleted permanently. Child organizations still block the deletion.',
         },
         form: {
           keyLabel: 'Technical key',
@@ -5264,6 +5614,7 @@ export const i18nResources = {
           emptyState: 'No organizations found.',
           error: 'Organizations could not be loaded.',
           resultCount: '{{count}} organizations found.',
+          statusSwitchLabel: 'Active status for {{name}}',
           root: 'Root',
           depth: 'Level: {{value}}',
           hierarchySize: 'Path length: {{value}}',
@@ -5356,6 +5707,7 @@ export const i18nResources = {
           instance: 'Instance registry',
           integration: 'Integrations',
           feature: 'Feature flags',
+          media: 'Media',
           news: 'News',
           events: 'Events',
           poi: 'POI',
@@ -5713,6 +6065,7 @@ export const i18nResources = {
           headerVersion: 'Version',
           headerLocale: 'Locale',
           headerStatus: 'Status',
+          headerTargets: 'Targets',
           headerContent: 'Content',
           headerPublished: 'Published',
           headerCreated: 'Created',
@@ -5721,6 +6074,8 @@ export const i18nResources = {
           headerLastAccepted: 'Last accepted',
           headerActions: 'Actions',
           acceptanceSummary: '{{active}} active / {{total}} total',
+          targetSummary: '{{roles}} roles / {{groups}} groups',
+          targetsAll: 'All accounts',
           publishedUnset: 'Not set',
         },
         dialogs: {
@@ -5746,6 +6101,12 @@ export const i18nResources = {
           locale: 'Locale',
           status: 'Status',
           publishedAt: 'Published at',
+          targetRoleIds: 'Target role IDs',
+          targetRoleIdsPlaceholder:
+            'e.g. 11111111-1111-1111-1111-111111111111, 22222222-2222-2222-2222-222222222222',
+          targetGroupIds: 'Target group IDs',
+          targetGroupIdsPlaceholder:
+            'e.g. aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
           contentHtml: 'Content',
           contentPlaceholder: 'Edit the legal text HTML content',
         },
@@ -5812,6 +6173,49 @@ export const i18nResources = {
           governance: 'Governance',
           dsr: 'Privacy',
           deletionRules: 'Deletion rules',
+        },
+        tabHelp: {
+          optionsLabel: 'What you can do here',
+          rights: {
+            title: 'Check rights in plain language',
+            description:
+              'This area shows which permissions are currently effective for a user in the selected context. It helps explain why something is allowed or denied.',
+            options: {
+              first: 'Filter by organization, user context, or search terms to narrow the list.',
+              second: 'Use "Check authorize" to test a specific access decision for an action and resource.',
+              third: 'Review source roles, groups, and origin to understand where a permission comes from.',
+            },
+          },
+          governance: {
+            title: 'Understand governance cases',
+            description:
+              'This area lists approvals, delegations, and similar IAM processes. It helps you review open cases and understand their current status.',
+            options: {
+              first: 'Filter by search term, case type, or status to find the relevant case faster.',
+              second: 'Open a case to inspect involved people, ticket context, and additional details.',
+              third: 'Export the current view as CSV if your role includes that permission.',
+            },
+          },
+          dsr: {
+            title: 'Track privacy cases',
+            description:
+              'This area shows requests and workflows related to privacy, exports, and legal holds. It helps you see what is done already and where action is still needed.',
+            options: {
+              first: 'Filter by type and status to focus on open or completed cases.',
+              second: 'Compare affected and requesting people to understand the case correctly.',
+              third: 'Open an entry to inspect blockers, metadata, and the exact processing state.',
+            },
+          },
+          deletionRules: {
+            title: 'Manage tenant-wide deletion rules',
+            description:
+              'This area defines how account and content cleanup works over time. The settings apply across the tenant and control the default lifecycle for deactivation, pseudonymization, and deletion.',
+            options: {
+              first: 'Review or change the day-based time limits for deactivation, pseudonymization, and deletion.',
+              second: 'Choose whether content is kept by default or follows the owner lifecycle.',
+              third: 'Control whether users may override the default rule for their own content.',
+            },
+          },
         },
         messages: {
           initializing: 'Initializing IAM transparency cockpit ...',

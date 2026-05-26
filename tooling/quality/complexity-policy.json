@@ -464,6 +464,12 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-authorization/authorize.ts)"
     },
+    "auth-runtime:packages/auth-runtime/src/iam-authorization/authorize-performance.server.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-authorization-authorize-performance-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Benchmark- und Reportpfade in kleinere Lauf- und Cache-Schritte aufteilen (packages/auth-runtime/src/iam-authorization/authorize-performance.server.ts)"
+    },
     "auth-runtime:packages/auth-runtime/src/iam-authorization/permission-store.ts:functionLines": {
       "ticketId": "baseline-auth-runtime-src-iam-authorization-permission-store-ts",
       "ticketSystem": "policy-baseline",
@@ -566,6 +572,12 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-media/storage-s3.ts)"
     },
+    "auth-runtime:packages/auth-runtime/src/iam-governance/core.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-governance-core-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "IAM-Governance-Kernlogik in kleinere fachliche Flows und Hilfsbausteine zerlegen (packages/auth-runtime/src/iam-governance/core.ts)"
+    },
     "auth-runtime:packages/auth-runtime/src/index.ts:publicExports": {
       "ticketId": "baseline-auth-runtime-src-index-ts",
       "ticketSystem": "policy-baseline",
@@ -583,6 +595,12 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/redis-session.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/middleware.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-middleware-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Middleware-Autorisierung und Request-Kontext in kleinere Schritte aufteilen (packages/auth-runtime/src/middleware.ts)"
     },
     "auth-runtime:packages/auth-runtime/src/runtime-routes.ts:publicExports": {
       "ticketId": "baseline-auth-runtime-src-runtime-routes-ts",
@@ -667,6 +685,24 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ci/run-iam-acceptance.ts)"
+    },
+    "ci-scripts:scripts/ci/run-iam-authorize-performance.ts:fileLines": {
+      "ticketId": "baseline-ci-run-iam-authorize-performance-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Authorize-Performance-Runner in kleinere CLI-, Konfigurations- und Auswertungsbausteine zerlegen (scripts/ci/run-iam-authorize-performance.ts)"
+    },
+    "ci-scripts:scripts/ci/run-iam-evidence.ts:fileLines": {
+      "ticketId": "baseline-ci-run-iam-evidence-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "IAM-Evidence-Runner in kleinere Sammel-, Export- und Berichtsschritte zerlegen (scripts/ci/run-iam-evidence.ts)"
+    },
+    "ci-scripts:scripts/ci/run-iam-evidence.ts:functionLines": {
+      "ticketId": "baseline-ci-run-iam-evidence-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Evidence-Orchestrierung in kleinere Ausfuehrungs- und Reportfunktionen aufteilen (scripts/ci/run-iam-evidence.ts)"
     },
     "ci-scripts:scripts/ci/sonar-hotspots.ts:cyclomaticComplexity": {
       "ticketId": "baseline-ci-sonar-hotspots-ts",
@@ -1232,6 +1268,12 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/profile-commands.ts)"
     },
+    "iam-admin:packages/iam-admin/src/profile-commands.ts:fileLines": {
+      "ticketId": "baseline-iam-admin-src-profile-commands-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/profile-commands.ts)"
+    },
     "iam-admin:packages/iam-admin/src/reconcile-core.ts:fileLines": {
       "ticketId": "baseline-iam-admin-src-reconcile-core-ts",
       "ticketSystem": "policy-baseline",
@@ -1291,6 +1333,18 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/user-create-persistence.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/user-detail-permission-sql.ts:fileLines": {
+      "ticketId": "baseline-iam-admin-src-user-detail-permission-sql-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "SQL-Bausteine fuer User-Detail-Berechtigungen in kleinere Query-Segmente zerlegen (packages/iam-admin/src/user-detail-permission-sql.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/user-detail-query.mapping.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-iam-admin-src-user-detail-query-mapping-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Mapping-Verzweigungen in kleinere Projektions- und Diagnosebausteine zerlegen (packages/iam-admin/src/user-detail-query.mapping.ts)"
     },
     "iam-admin:packages/iam-admin/src/user-import-persistence.ts:functionLines": {
       "ticketId": "baseline-iam-admin-src-user-import-persistence-ts",

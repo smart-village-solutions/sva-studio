@@ -165,7 +165,8 @@ describe('organization mutation handlers', () => {
   });
 
   it('creates organizations and completes idempotency', async () => {
-    const handlers = createOrganizationMutationHandlers(buildDeps());
+    const deps = buildDeps();
+    const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.createOrganizationInternal(
       new Request('http://localhost/api/v1/iam/organizations', { method: 'POST' }),
@@ -173,6 +174,14 @@ describe('organization mutation handlers', () => {
     );
 
     expect(response.status).toBe(201);
+    expect(deps.resolveActorInfo).toHaveBeenCalledWith(
+      expect.any(Request),
+      ctx,
+      {
+        requireActorMembership: true,
+        provisionMissingActorMembership: true,
+      }
+    );
     await expect(json(response)).resolves.toMatchObject({ data: { organizationKey: 'alpha' }, requestId: 'req-org' });
     expect(completeIdempotency).toHaveBeenCalledWith(expect.objectContaining({ status: 'COMPLETED', responseStatus: 201 }));
     expect(emitActivityLog).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ eventType: 'organization.created' }));
@@ -334,6 +343,7 @@ describe('organization mutation handlers', () => {
         null,
         null,
         null,
+        null,
         JSON.stringify({ stage: 'beta' }),
         [],
         0,
@@ -381,9 +391,50 @@ describe('organization mutation handlers', () => {
     });
   });
 
-  it('deactivates organizations without children or memberships', async () => {
+  it('deactivates organizations without child organizations and clears content organization references', async () => {
     const deps = buildDeps();
     const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.deactivateOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
+        method: 'DELETE',
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE iam.contents'),
+      ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
+    );
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE iam.organizations'),
+      ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
+    );
+    expect(emitActivityLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: 'organization.deactivated',
+        payload: { organizationId: '11111111-1111-1111-8111-111111111111' },
+      })
+    );
+  });
+
+  it('allows deactivation when the organization still has memberships', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
+    deps.loadOrganizationById = vi.fn(async () => ({
+      id: '11111111-1111-1111-8111-111111111111',
+      organization_key: 'alpha',
+      is_active: true,
+      parent_organization_id: null,
+      hierarchy_path: [],
+      depth: 0,
+      child_count: 0,
+      membership_count: 1,
+    }));
     deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
     const handlers = createOrganizationMutationHandlers(deps);
 
@@ -399,16 +450,9 @@ describe('organization mutation handlers', () => {
       expect.stringContaining('UPDATE iam.organizations'),
       ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
     );
-    expect(emitActivityLog).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        eventType: 'organization.deactivated',
-        payload: { organizationId: '11111111-1111-1111-8111-111111111111' },
-      })
-    );
   });
 
-  it('rejects deactivation when the organization still has memberships', async () => {
+  it('rejects deletion when the organization still has child organizations', async () => {
     const deps = buildDeps();
     deps.loadOrganizationById = vi.fn(async () => ({
       id: '11111111-1111-1111-8111-111111111111',
@@ -417,8 +461,8 @@ describe('organization mutation handlers', () => {
       parent_organization_id: null,
       hierarchy_path: [],
       depth: 0,
-      child_count: 0,
-      membership_count: 1,
+      child_count: 1,
+      membership_count: 0,
     }));
     const handlers = createOrganizationMutationHandlers(deps);
 
@@ -431,7 +475,7 @@ describe('organization mutation handlers', () => {
 
     expect(response.status).toBe(409);
     await expect(json(response)).resolves.toMatchObject({
-      error: { code: 'conflict', message: 'Organisation mit Children oder Memberships kann nicht deaktiviert werden.' },
+      error: { code: 'conflict', message: 'Organisation mit Children kann nicht gelöscht werden.' },
     });
   });
 
@@ -483,6 +527,48 @@ describe('organization mutation handlers', () => {
     );
     expect(completeIdempotency).toHaveBeenCalledWith(
       expect.objectContaining({ endpoint: 'POST:/api/v1/iam/organizations/$organizationId/memberships', status: 'COMPLETED' })
+    );
+  });
+
+  it('assigns organization memberships for text-scoped instance ids without uuid-casting instance_id', async () => {
+    const deps = buildDeps();
+    const observedQueries: string[] = [];
+    deps.parseRequestBody = vi.fn(async () => ({
+      ok: true as const,
+      data: {
+        accountId: '22222222-2222-2222-8222-222222222222',
+        visibility: 'internal',
+      },
+      rawBody: '{"accountId":"22222222-2222-2222-8222-222222222222"}',
+    }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => {
+      const client = {
+        query: vi.fn(async (text: string) => {
+          observedQueries.push(text);
+          if (text.includes('SELECT id')) {
+            return { rowCount: 1, rows: [{ id: 'account-2' }] };
+          }
+          if (text.includes('SELECT organization_id')) {
+            return { rowCount: 0, rows: [] };
+          }
+          return { rowCount: 1, rows: [] };
+        }),
+      };
+      return work(client as never);
+    });
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.assignOrganizationMembershipInternal(
+      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111/memberships', {
+        method: 'POST',
+        body: '{}',
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(observedQueries.find((query) => query.includes('INSERT INTO iam.account_organizations'))).not.toContain(
+      'VALUES ($1::uuid'
     );
   });
 

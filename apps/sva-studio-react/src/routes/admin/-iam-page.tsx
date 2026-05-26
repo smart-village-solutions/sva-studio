@@ -153,9 +153,34 @@ const deletionContentStrategyOptions: readonly IamDeletionContentStrategy[] = [
 
 const getTabId = (tab: IamCockpitTabKey) => `iam-tab-${tab}`;
 const getTabPanelId = (tab: IamCockpitTabKey) => `iam-panel-${tab}`;
-
 const isAbortError = (error: unknown) =>
   (error instanceof DOMException || error instanceof Error) && error.name === 'AbortError';
+
+const buildSelectOptions = (values: readonly (string | null | undefined)[]) =>
+  [...new Set(values.map((value) => value?.trim() ?? '').filter((value) => value.length > 0))].sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+const formatSourceRoles = (permission: EffectivePermission) =>
+  (permission.sourceRoleIds ?? []).length > 0 ? (permission.sourceRoleIds ?? []).join(', ') : '—';
+
+const formatSourceGroups = (permission: EffectivePermission) => {
+  if (permission.groupName && permission.groupName.trim().length > 0) {
+    return permission.groupName;
+  }
+  return (permission.sourceGroupIds ?? []).length > 0 ? (permission.sourceGroupIds ?? []).join(', ') : '—';
+};
+
+const formatGovernanceActors = (item: IamGovernanceCaseListItem) =>
+  [item.actorDisplayName ?? item.actorAccountId, item.targetDisplayName ?? item.targetAccountId].filter(Boolean).join(' -> ') || '—';
+
+const formatDsrPeople = (item: IamDsrCaseListItem) =>
+  [
+    item.targetDisplayName ?? item.targetAccountId,
+    item.requesterDisplayName ?? item.requesterAccountId ?? item.actorDisplayName ?? item.actorAccountId,
+  ]
+    .filter(Boolean)
+    .join(' / ') || '—';
 
 const PermissionTable = ({
   permissions,
@@ -196,8 +221,8 @@ const PermissionTable = ({
               <td className="py-2 pr-4">{permission.organizationId ?? t('admin.iam.rights.noOrganization')}</td>
               <td className="py-2 pr-4">{permission.effect ?? '—'}</td>
               <td className="py-2 pr-4">{formatObjectEntries(permission.scope)}</td>
-              <td className="py-2">{(permission.sourceRoleIds ?? []).length > 0 ? (permission.sourceRoleIds ?? []).join(', ') : '—'}</td>
-              <td className="py-2">{(permission.sourceGroupIds ?? []).length > 0 ? (permission.sourceGroupIds ?? []).join(', ') : '—'}</td>
+              <td className="py-2">{formatSourceRoles(permission)}</td>
+              <td className="py-2">{formatSourceGroups(permission)}</td>
               <td className="py-2">{formatPermissionSourceKinds(permission)}</td>
             </tr>
           ))}
@@ -617,6 +642,58 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     }
     return [...organizationIds];
   }, [permissions]);
+  const organizationSelectOptions = React.useMemo(
+    () => buildSelectOptions([...organizationOptions, organizationId, authorizeOrganizationId]),
+    [authorizeOrganizationId, organizationId, organizationOptions]
+  );
+  const governanceStatusOptions = React.useMemo(
+    () => buildSelectOptions([...governanceItems.map((item) => item.status), governanceQuery.status]),
+    [governanceItems, governanceQuery.status]
+  );
+  const activeTabHelp = React.useMemo(() => {
+    switch (activeTab) {
+      case 'rights':
+        return {
+          title: t('admin.iam.tabHelp.rights.title'),
+          description: t('admin.iam.tabHelp.rights.description'),
+          options: [
+            t('admin.iam.tabHelp.rights.options.first'),
+            t('admin.iam.tabHelp.rights.options.second'),
+            t('admin.iam.tabHelp.rights.options.third'),
+          ],
+        };
+      case 'governance':
+        return {
+          title: t('admin.iam.tabHelp.governance.title'),
+          description: t('admin.iam.tabHelp.governance.description'),
+          options: [
+            t('admin.iam.tabHelp.governance.options.first'),
+            t('admin.iam.tabHelp.governance.options.second'),
+            t('admin.iam.tabHelp.governance.options.third'),
+          ],
+        };
+      case 'dsr':
+        return {
+          title: t('admin.iam.tabHelp.dsr.title'),
+          description: t('admin.iam.tabHelp.dsr.description'),
+          options: [
+            t('admin.iam.tabHelp.dsr.options.first'),
+            t('admin.iam.tabHelp.dsr.options.second'),
+            t('admin.iam.tabHelp.dsr.options.third'),
+          ],
+        };
+      case 'deletion-rules':
+        return {
+          title: t('admin.iam.tabHelp.deletionRules.title'),
+          description: t('admin.iam.tabHelp.deletionRules.description'),
+          options: [
+            t('admin.iam.tabHelp.deletionRules.options.first'),
+            t('admin.iam.tabHelp.deletionRules.options.second'),
+            t('admin.iam.tabHelp.deletionRules.options.third'),
+          ],
+        };
+    }
+  }, [activeTab]);
 
   const handleOrganizationFilterToggle = (organizationValue: string) => {
     setSelectedOrganizationIds((current) =>
@@ -742,7 +819,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     {
       id: 'actors',
       header: t('admin.iam.governance.columns.actors'),
-      cell: (item) => [item.actorDisplayName, item.targetDisplayName].filter(Boolean).join(' -> ') || '—',
+      cell: (item) => formatGovernanceActors(item),
     },
     {
       id: 'ticket',
@@ -786,7 +863,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     {
       id: 'people',
       header: t('admin.iam.dsr.columns.people'),
-      cell: (item) => [item.targetDisplayName, item.requesterDisplayName ?? item.actorDisplayName].filter(Boolean).join(' / ') || '—',
+      cell: (item) => formatDsrPeople(item),
     },
     {
       id: 'blocker',
@@ -870,6 +947,23 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
         })}
       </Card>
 
+      <Card className="border-border/80 bg-white p-4 shadow-sm">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-foreground">{activeTabHelp.title}</p>
+          <p className="text-sm text-muted-foreground">{activeTabHelp.description}</p>
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('admin.iam.tabHelp.optionsLabel')}
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+              {activeTabHelp.options.map((option) => (
+                <li key={option}>{option}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </Card>
+
       {activeTab === 'rights' ? (
         <div
           id={getTabPanelId('rights')}
@@ -880,11 +974,19 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           <Card className="grid gap-3 p-4 lg:grid-cols-4">
             <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
               <Label htmlFor="iam-organization-filter">{t('admin.iam.rights.filters.organization')}</Label>
-              <Input
+              <Select
                 id="iam-organization-filter"
                 value={organizationId}
                 onChange={(event) => setOrganizationId(event.target.value)}
-              />
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="">{t('admin.iam.shared.all')}</option>
+                {organizationSelectOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
               <Label htmlFor="iam-acting-as-filter">{t('admin.iam.rights.filters.actingAs')}</Label>
@@ -972,11 +1074,19 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
             </div>
             <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
               <Label htmlFor="iam-authorize-organization-id">{t('admin.iam.rights.authorize.organizationId')}</Label>
-              <Input
+              <Select
                 id="iam-authorize-organization-id"
                 value={authorizeOrganizationId}
                 onChange={(event) => setAuthorizeOrganizationId(event.target.value)}
-              />
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="">{t('admin.iam.shared.all')}</option>
+                {organizationSelectOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div className="lg:col-span-4 flex items-center gap-3">
               <Button type="submit" disabled={isAuthorizing}>
@@ -1084,11 +1194,25 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
               </div>
               <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
                 <Label htmlFor="iam-governance-status">{t('admin.iam.governance.filters.status')}</Label>
-                <Input
+                <Select
                   id="iam-governance-status"
                   value={governanceQuery.status ?? ''}
-                  onChange={(event) => setGovernanceQuery((current) => ({ ...current, page: 1, status: event.target.value || undefined }))}
-                />
+                  onChange={(event) =>
+                    setGovernanceQuery((current) => ({
+                      ...current,
+                      page: 1,
+                      status: event.target.value || undefined,
+                    }))
+                  }
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">{t('admin.iam.shared.all')}</option>
+                  {governanceStatusOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </Select>
               </div>
             </div>
           </Card>

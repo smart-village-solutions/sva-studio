@@ -9,6 +9,7 @@ export type StudioModuleIamContract = Readonly<{
   moduleId: string;
   namespace: string;
   ownerPluginId: string;
+  descriptionKey: string;
   permissionIds: readonly string[];
   systemRoles: readonly StudioModuleIamSystemRole[];
 }>;
@@ -29,21 +30,23 @@ const createStandardContentSystemRoles = (pluginId: string): readonly StudioModu
   { roleName: 'moderator', permissionIds: [`${pluginId}.read`] },
 ];
 
-const createStandardContentContract = (pluginId: string): StudioModuleIamContract => ({
+const createStandardContentContract = (pluginId: string, descriptionKey: string): StudioModuleIamContract => ({
   moduleId: pluginId,
   namespace: pluginId,
   ownerPluginId: pluginId,
+  descriptionKey,
   permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
   systemRoles: createStandardContentSystemRoles(pluginId),
 });
 
-const newsModuleIamContract = createStandardContentContract('news');
-const eventsModuleIamContract = createStandardContentContract('events');
-const poiModuleIamContract = createStandardContentContract('poi');
+const newsModuleIamContract = createStandardContentContract('news', 'plugins.news.description');
+const eventsModuleIamContract = createStandardContentContract('events', 'plugins.events.description');
+const poiModuleIamContract = createStandardContentContract('poi', 'plugins.poi.description');
 const wasteManagementModuleIamContract: StudioModuleIamContract = {
   moduleId: 'waste-management',
   namespace: 'waste-management',
   ownerPluginId: 'waste-management',
+  descriptionKey: 'plugins.waste-management.description',
   permissionIds: [
     'waste-management.read',
     'waste-management.master-data.manage',
@@ -110,6 +113,7 @@ const mediaModuleIamContract: StudioModuleIamContract = {
   moduleId: 'media',
   namespace: 'media',
   ownerPluginId: 'host',
+  descriptionKey: 'host.media.description',
   permissionIds: [
     'media.read',
     'media.create',

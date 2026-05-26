@@ -18,6 +18,39 @@ vi.mock('../../../hooks/use-instances', () => ({
   useInstances: () => useInstancesMock(),
 }));
 
+const { mockStudioModuleIamContracts } = vi.hoisted(() => ({
+  mockStudioModuleIamContracts: [
+    {
+      moduleId: 'news',
+      namespace: 'news',
+      ownerPluginId: 'news',
+      descriptionKey: 'plugins.news.description',
+      permissionIds: ['news.read'],
+      systemRoles: [],
+    },
+    {
+      moduleId: 'events',
+      namespace: 'events',
+      ownerPluginId: 'events',
+      descriptionKey: 'plugins.events.description',
+      permissionIds: ['events.read'],
+      systemRoles: [],
+    },
+    {
+      moduleId: 'media',
+      namespace: 'media',
+      ownerPluginId: 'host',
+      descriptionKey: 'host.media.description',
+      permissionIds: ['media.read'],
+      systemRoles: [],
+    },
+  ],
+}));
+
+vi.mock('../../../lib/plugins', () => ({
+  studioModuleIamContracts: mockStudioModuleIamContracts,
+}));
+
 const activateTab = async (name: string) => {
   const tab = screen.getByRole('tab', { name });
   tab.focus();
@@ -450,6 +483,31 @@ describe('InstanceDetailPage', () => {
     });
   });
 
+  it('renders all known modules with derived activation status and translated descriptions in operations', async () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          assignedModules: ['news', 'media'],
+          moduleIamStatus: undefined,
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    expect(await screen.findByText('news')).toBeTruthy();
+    expect(screen.getByText('events')).toBeTruthy();
+    expect(screen.getByText('media')).toBeTruthy();
+
+    expect(screen.getAllByText('Aktiv')).toHaveLength(2);
+    expect(screen.getAllByText('Deaktiviert')).toHaveLength(1);
+
+    expect(screen.getByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.')).toBeTruthy();
+    expect(screen.getByText('Veröffentlicht Termine und Veranstaltungsdaten für den Mandanten.')).toBeTruthy();
+    expect(screen.getByText('Aktiviert die Medienverwaltung für Uploads, Referenzen und geschützte Auslieferung.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeNull();
+  });
+
   it('shows action feedback in the overview and clears stale feedback before a later failure', async () => {
     const apiState = createInstancesApiState({
       selectedInstance: createSelectedInstance({
@@ -825,11 +883,8 @@ describe('InstanceDetailPage', () => {
     render(<InstanceDetailPage instanceId="demo" />);
 
     expect(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeTruthy();
-    expect(
-      screen.getByText(
-        'Tenant-IAM-Basis, Modulzuordnung und weitere Folgearbeiten bleiben bewusst vom Realm-Grundaufbau getrennt.'
-      )
-    ).toBeTruthy();
+    expect(screen.getByText('Modul')).toBeTruthy();
+    expect(screen.getByText('news')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');

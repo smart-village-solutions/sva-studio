@@ -5,6 +5,7 @@ import { uiRoutePaths } from './route-paths.js';
 export type AccountUiRouteGuardKey =
   | 'account'
   | 'accountPrivacy'
+  | 'modules'
   | 'content'
   | 'contentCreate'
   | 'contentDetail'
@@ -35,6 +36,7 @@ type AccountUiRouteGuardDefinition = {
 export const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, AccountUiRouteGuardDefinition> = {
   account: { kind: 'protected', route: uiRoutePaths.account },
   accountPrivacy: { kind: 'protected', route: uiRoutePaths.accountPrivacy },
+  modules: { kind: 'protected', route: uiRoutePaths.modules },
   content: { kind: 'protected', route: uiRoutePaths.content },
   contentCreate: { kind: 'protected', route: uiRoutePaths.contentCreate },
   contentDetail: { kind: 'protected', route: uiRoutePaths.contentDetail },
@@ -94,6 +96,7 @@ export const createAccountUiRouteGuards = (diagnostics?: RoutingDiagnosticsHook)
   ({
     account: createAccountUiRouteGuard('account', diagnostics),
     accountPrivacy: createAccountUiRouteGuard('accountPrivacy', diagnostics),
+    modules: createAccountUiRouteGuard('modules', diagnostics),
     content: createAccountUiRouteGuard('content', diagnostics),
     contentCreate: createAccountUiRouteGuard('contentCreate', diagnostics),
     contentDetail: createAccountUiRouteGuard('contentDetail', diagnostics),

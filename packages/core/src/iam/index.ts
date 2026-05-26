@@ -62,6 +62,7 @@ export type {
   IamUserImportSyncReport,
   IamUserListItem,
   IamUserPermissionTraceItem,
+  IamUserPermissionTraceInactiveReason,
   IamUserPermissionTraceSourceKind,
   IamUserPermissionTraceStatus,
   IamUserRoleAssignment,
@@ -117,6 +118,23 @@ export type {
   RuntimeHealthServices,
   SnapshotCacheStatus,
 } from './authorization-contract.js';
+export {
+  authorizePerformanceScenarios,
+  buildAuthorizePerformancePayload,
+  renderAuthorizePerformanceMarkdownReport,
+  summarizeAuthorizePerformanceDurations,
+} from './authorize-performance-contract.js';
+export type {
+  AuthorizePerformanceDurationSummary,
+  AuthorizePerformanceEvaluation,
+  AuthorizePerformancePayload,
+  AuthorizePerformanceReportReference,
+  AuthorizePerformanceRequest,
+  AuthorizePerformanceRunResponse,
+  AuthorizePerformanceRunResult,
+  AuthorizePerformanceScenario,
+  AuthorizePerformanceScenarioResult,
+} from './authorize-performance-contract.js';
 export type {
   IamGroupDetail as IamAdminGroupDetail,
   IamGroupListItem as IamAdminGroupListItem,

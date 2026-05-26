@@ -82,20 +82,53 @@ const normalizeCsv = (value: string | undefined, fallback: readonly string[]): r
   return rawValues && rawValues.length > 0 ? rawValues : fallback;
 };
 
+const readRequiredEnvAlias = (
+  env: NodeJS.ProcessEnv,
+  keys: readonly string[]
+): { keyLabel: string; value: string | null } => {
+  for (const key of keys) {
+    const value = readRequiredEnv(env, key);
+    if (value) {
+      return { keyLabel: keys.join('|'), value };
+    }
+  }
+
+  return { keyLabel: keys.join('|'), value: null };
+};
+
 export const parseAcceptanceConfig = (
   env: NodeJS.ProcessEnv,
   rootDir = process.cwd()
 ): AcceptanceConfig => {
-  const missingKeys = [
+  const adminUsername = readRequiredEnvAlias(env, [
     'IAM_ACCEPTANCE_ADMIN_USERNAME',
+    'IAM_EVIDENCE_ROOT_USERNAME',
+  ]);
+  const adminPassword = readRequiredEnvAlias(env, [
     'IAM_ACCEPTANCE_ADMIN_PASSWORD',
+    'IAM_EVIDENCE_ROOT_PASSWORD',
+  ]);
+  const memberUsername = readRequiredEnvAlias(env, [
     'IAM_ACCEPTANCE_MEMBER_USERNAME',
+    'IAM_EVIDENCE_INSTANCE_USERNAME',
+  ]);
+  const memberPassword = readRequiredEnvAlias(env, [
     'IAM_ACCEPTANCE_MEMBER_PASSWORD',
-    'KEYCLOAK_ADMIN_BASE_URL',
-    'KEYCLOAK_ADMIN_REALM',
-    'KEYCLOAK_ADMIN_CLIENT_ID',
-    'KEYCLOAK_ADMIN_CLIENT_SECRET',
-  ].filter((key) => !readRequiredEnv(env, key));
+    'IAM_EVIDENCE_INSTANCE_PASSWORD',
+  ]);
+
+  const missingKeys = [
+    [adminUsername.keyLabel, adminUsername.value],
+    [adminPassword.keyLabel, adminPassword.value],
+    [memberUsername.keyLabel, memberUsername.value],
+    [memberPassword.keyLabel, memberPassword.value],
+    ['KEYCLOAK_ADMIN_BASE_URL', readRequiredEnv(env, 'KEYCLOAK_ADMIN_BASE_URL')],
+    ['KEYCLOAK_ADMIN_REALM', readRequiredEnv(env, 'KEYCLOAK_ADMIN_REALM')],
+    ['KEYCLOAK_ADMIN_CLIENT_ID', readRequiredEnv(env, 'KEYCLOAK_ADMIN_CLIENT_ID')],
+    ['KEYCLOAK_ADMIN_CLIENT_SECRET', readRequiredEnv(env, 'KEYCLOAK_ADMIN_CLIENT_SECRET')],
+  ]
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
 
   const databaseUrl = readRequiredEnv(env, 'IAM_ACCEPTANCE_DATABASE_URL') ?? readRequiredEnv(env, 'IAM_DATABASE_URL');
   if (!databaseUrl) {
@@ -108,13 +141,13 @@ export const parseAcceptanceConfig = (
 
   return {
     admin: {
-      username: readRequiredEnv(env, 'IAM_ACCEPTANCE_ADMIN_USERNAME') as string,
-      password: readRequiredEnv(env, 'IAM_ACCEPTANCE_ADMIN_PASSWORD') as string,
+      username: adminUsername.value as string,
+      password: adminPassword.value as string,
       expectedRoles: normalizeCsv(env.IAM_ACCEPTANCE_EXPECTED_ADMIN_ROLES, ['system_admin']),
     },
     member: {
-      username: readRequiredEnv(env, 'IAM_ACCEPTANCE_MEMBER_USERNAME') as string,
-      password: readRequiredEnv(env, 'IAM_ACCEPTANCE_MEMBER_PASSWORD') as string,
+      username: memberUsername.value as string,
+      password: memberPassword.value as string,
     },
     baseUrl: normalizeBaseUrl(env.IAM_ACCEPTANCE_BASE_URL?.trim() || 'http://127.0.0.1:3000'),
     databaseUrl: databaseUrl as string,

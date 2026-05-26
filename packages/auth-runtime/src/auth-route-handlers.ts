@@ -1,4 +1,5 @@
 import { serialize as serializeCookie } from 'cookie-es';
+import type { IamUserGroupAssignment } from '@sva/core';
 import {
   createSdkLogger,
   getWorkspaceContext,
@@ -16,6 +17,7 @@ import { logoutSession } from './auth-server/logout.js';
 import { withAuthenticatedUser } from './middleware.js';
 import { getSession } from './redis-session.js';
 import { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
+import { withInstanceScopedDb } from './iam-authorization/shared.js';
 import { withRegistryRepository } from './iam-instance-registry/repository.js';
 import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
 import { decodeLoginStateCookie, encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie.js';
@@ -418,6 +420,7 @@ type AuthMeResolution = {
   readonly permissionActions: string[];
   readonly permissionStatus: 'ok' | 'degraded';
   readonly assignedModules: string[];
+  readonly groups: readonly IamUserGroupAssignment[];
 };
 
 const logCallbackCookieCleanup = (
@@ -756,13 +759,84 @@ const loadAssignedModulesForAuthMe = async (user: { instanceId?: string }): Prom
   }
 };
 
+type AuthMeGroupRow = {
+  readonly group_id: string;
+  readonly group_key: string;
+  readonly display_name: string;
+  readonly group_type: IamUserGroupAssignment['groupType'];
+  readonly origin: IamUserGroupAssignment['origin'];
+  readonly valid_from: string | null;
+  readonly valid_until: string | null;
+};
+
+const loadGroupsForAuthMe = async (user: {
+  id: string;
+  instanceId?: string;
+}): Promise<readonly IamUserGroupAssignment[]> => {
+  if (!user.instanceId) {
+    return [];
+  }
+
+  try {
+    const rows = await withInstanceScopedDb(user.instanceId, async (client) => {
+      const result = await client.query<AuthMeGroupRow>(
+        `
+SELECT
+  g.id AS group_id,
+  g.group_key,
+  g.display_name,
+  g.group_type,
+  ag.origin,
+  ag.valid_from,
+  ag.valid_until
+FROM iam.accounts a
+JOIN iam.account_groups ag
+  ON ag.instance_id = a.instance_id
+ AND ag.account_id = a.id
+JOIN iam.groups g
+  ON g.instance_id = ag.instance_id
+ AND g.id = ag.group_id
+WHERE a.instance_id = $1
+  AND a.keycloak_subject = $2
+  AND g.is_active = true
+  AND (ag.valid_from IS NULL OR ag.valid_from <= NOW())
+  AND (ag.valid_until IS NULL OR ag.valid_until > NOW())
+ORDER BY g.display_name ASC, g.group_key ASC
+        `,
+        [user.instanceId, user.id]
+      );
+
+      return result.rows;
+    });
+
+    return rows.map((row) => ({
+      groupId: row.group_id,
+      groupKey: row.group_key,
+      displayName: row.display_name,
+      groupType: row.group_type,
+      origin: row.origin,
+      validFrom: row.valid_from ?? undefined,
+      validTo: row.valid_until ?? undefined,
+    }));
+  } catch (error) {
+    logger.error('Auth me group lookup failed', {
+      reason_code: 'group_lookup_failed',
+      error_type: error instanceof Error ? error.name : typeof error,
+      ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined),
+    });
+    return [];
+  }
+};
+
 const resolveAuthMeState = async (user: { id: string; instanceId?: string }): Promise<AuthMeResolution> => {
   const permissionState = await loadAuthMePermissionState(user);
   const assignedModules = await loadAssignedModulesForAuthMe(user);
+  const groups = await loadGroupsForAuthMe(user);
 
   return {
     ...permissionState,
     assignedModules,
+    groups,
   };
 };
 
@@ -775,11 +849,12 @@ const createAuthMeResponse = (
     JSON.stringify({
       ...(typeof expiresAt === 'number' ? { expiresAt } : {}),
       user: {
-        ...user,
-        assignedModules: resolution.assignedModules,
-        permissionActions: resolution.permissionActions,
-        permissionStatus: resolution.permissionStatus,
-      },
+      ...user,
+      assignedModules: resolution.assignedModules,
+      groups: resolution.groups,
+      permissionActions: resolution.permissionActions,
+      permissionStatus: resolution.permissionStatus,
+    },
     }),
     {
       status: 200,
@@ -1101,6 +1176,7 @@ export const meHandler = async (request: Request): Promise<Response> => {
         auth_state: 'authenticated',
         operation: 'get_current_user',
         roles_count: user.roles?.length ?? 0,
+        groups_count: resolution.groups.length,
         permission_actions_count: resolution.permissionActions.length,
         permission_status: resolution.permissionStatus,
         ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined),

@@ -842,25 +842,42 @@ LIMIT 1;
   }
 
   if (!revoked) {
+    const requestWorkspaceId = getWorkspaceContext().workspaceId;
+    const workspaceId =
+      requestWorkspaceId && requestWorkspaceId !== 'default' ? requestWorkspaceId : actor.instanceId;
     await client.query(
       `
 INSERT INTO iam.legal_text_acceptances (
   instance_id,
+  workspace_id,
+  subject_id,
   legal_text_version_id,
   account_id,
   accepted_at,
+  legal_text_version,
+  action_type,
   request_id,
   trace_id
 )
-VALUES ($1, $2, $3, now(), $4, $5);
+VALUES ($1, $2, $3, $4, $5, now(), $6, $7, $8, $9);
 `,
-      [actor.instanceId, legalVersionId, actorAccountId, actor.requestId ?? null, actor.traceId ?? null]
+      [
+        actor.instanceId,
+        workspaceId,
+        actor.keycloakSubject,
+        legalVersionId,
+        actorAccountId,
+        legalTextVersion,
+        'accepted',
+        actor.requestId ?? null,
+        actor.traceId ?? null,
+      ]
     );
   } else {
     await client.query(
       `
 UPDATE iam.legal_text_acceptances
-SET revoked_at = now(), revocation_reason = COALESCE($4, 'user_revoke')
+SET revoked_at = now(), revocation_reason = COALESCE($4, 'user_revoke'), action_type = 'revoked'
 WHERE instance_id = $1
   AND legal_text_version_id = $2
   AND account_id = $3

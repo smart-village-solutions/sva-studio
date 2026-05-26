@@ -92,6 +92,8 @@ const authServerMocks = vi.hoisted(() => {
     healthLiveHandler: vi.fn(async () => response('healthLiveHandler')),
     mePermissionsHandler: vi.fn(async () => response('mePermissionsHandler')),
     authorizeHandler: vi.fn(async () => response('authorizeHandler')),
+    getLatestAuthorizePerformanceRunHandler: vi.fn(async () => response('getLatestAuthorizePerformanceRunHandler')),
+    startAuthorizePerformanceRunHandler: vi.fn(async () => response('startAuthorizePerformanceRunHandler')),
     listUsersHandler: vi.fn(async () => response('listUsersHandler')),
     createUserHandler: vi.fn(async () => response('createUserHandler')),
     getUserHandler: vi.fn(async () => response('getUserHandler')),
@@ -215,6 +217,7 @@ const authServerMocks = vi.hoisted(() => {
     getGovernanceCaseHandler: vi.fn(async () => response('getGovernanceCaseHandler')),
     governanceWorkflowHandler: vi.fn(async () => response('governanceWorkflowHandler')),
     governanceComplianceExportHandler: vi.fn(async () => response('governanceComplianceExportHandler')),
+    legalConsentExportHandler: vi.fn(async () => response('legalConsentExportHandler')),
     permissionChangeSelfServiceRequestHandler: vi.fn(async () => response('permissionChangeSelfServiceRequestHandler')),
     dataExportHandler: vi.fn(async () => response('dataExportHandler')),
     dataExportStatusHandler: vi.fn(async () => response('dataExportStatusHandler')),
@@ -322,25 +325,49 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.completeMediaUploadHandler).toHaveBeenCalled();
   });
 
-  it('dispatches plugin operation routes to the auth runtime', async () => {
+  it('dispatches legal consent export routes to the auth runtime', async () => {
+    const handlers = resolveAuthHandlers('/iam/governance/legal-consents/export');
+    expect(handlers?.GET).toBeDefined();
+
+    const get = handlers?.GET;
+    if (!get) {
+      throw new Error('Expected GET handler to be defined');
+    }
+
+    const result = await get({
+      request: new Request('http://localhost/iam/governance/legal-consents/export?instanceId=instance-1', {
+        method: 'GET',
+      }),
+    });
+
+    expect(result.status).toBe(200);
+    expect(authServerMocks.legalConsentExportHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('dispatches plugin operation and authorize-performance routes to the auth runtime', async () => {
     const createHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs');
     const detailHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs/$jobId');
     const cancelHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs/$jobId/cancel');
+    const authorizePerformanceHandlers = resolveAuthHandlers('/api/v1/iam/authorize-performance');
 
     expect(createHandlers?.GET).toBeDefined();
     expect(createHandlers?.POST).toBeDefined();
     expect(detailHandlers?.GET).toBeDefined();
     expect(detailHandlers?.DELETE).toBeDefined();
     expect(cancelHandlers?.POST).toBeDefined();
+    expect(authorizePerformanceHandlers?.GET).toBeDefined();
+    expect(authorizePerformanceHandlers?.POST).toBeDefined();
 
     const list = createHandlers?.GET;
     const post = createHandlers?.POST;
     const get = detailHandlers?.GET;
     const remove = detailHandlers?.DELETE;
     const cancel = cancelHandlers?.POST;
+    const authorizePerformanceGet = authorizePerformanceHandlers?.GET;
+    const authorizePerformancePost = authorizePerformanceHandlers?.POST;
 
-    if (!list || !post || !get || !remove || !cancel) {
-      throw new Error('Expected plugin operation handlers to be defined');
+    if (!list || !post || !get || !remove || !cancel || !authorizePerformanceGet || !authorizePerformancePost) {
+      throw new Error('Expected plugin operation and authorize-performance handlers to be defined');
     }
 
     await list({
@@ -358,12 +385,20 @@ describe('auth.routes.server', () => {
     await cancel({
       request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1/cancel', { method: 'POST' }),
     });
+    await authorizePerformanceGet({
+      request: new Request('http://localhost/api/v1/iam/authorize-performance', { method: 'GET' }),
+    });
+    await authorizePerformancePost({
+      request: new Request('http://localhost/api/v1/iam/authorize-performance', { method: 'POST' }),
+    });
 
     expect(authServerMocks.listPluginOperationJobsHandler).toHaveBeenCalled();
     expect(authServerMocks.startPluginOperationJobHandler).toHaveBeenCalled();
     expect(authServerMocks.getPluginOperationJobHandler).toHaveBeenCalled();
     expect(authServerMocks.deletePluginOperationJobHandler).toHaveBeenCalled();
     expect(authServerMocks.cancelPluginOperationJobHandler).toHaveBeenCalled();
+    expect(authServerMocks.getLatestAuthorizePerformanceRunHandler).toHaveBeenCalled();
+    expect(authServerMocks.startAuthorizePerformanceRunHandler).toHaveBeenCalled();
   });
 
   it('dispatches deletion-rules routes to the auth runtime', async () => {

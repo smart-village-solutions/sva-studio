@@ -25,6 +25,16 @@ const richTextEditorCommands = {
   clearFormatting: t('admin.legalTexts.editor.clearFormatting'),
 } as const;
 
+const splitTargetIds = (value: string): string[] =>
+  Array.from(
+    new Set(
+      value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0)
+    )
+  );
+
 const legalTextErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {
     return t('admin.legalTexts.messages.error');
@@ -59,6 +69,8 @@ const emptyForm = () => ({
   contentHtml: '<p></p>',
   status: 'draft' as LegalTextStatus,
   publishedAt: '',
+  targetRoleIds: '',
+  targetGroupIds: '',
 });
 
 export const LegalTextCreatePage = () => {
@@ -88,6 +100,8 @@ export const LegalTextCreatePage = () => {
       contentHtml: formValues.contentHtml.trim(),
       status: formValues.status,
       publishedAt: publishedAt.kind === 'value' ? publishedAt.value : undefined,
+      targetRoleIds: splitTargetIds(formValues.targetRoleIds),
+      targetGroupIds: splitTargetIds(formValues.targetGroupIds),
     };
 
     const created = await legalTextsApi.createLegalText(payload);
@@ -163,6 +177,24 @@ export const LegalTextCreatePage = () => {
                 value={formValues.publishedAt}
                 required={formValues.status === 'valid'}
                 onChange={(event) => setFormValues((current) => ({ ...current, publishedAt: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="legal-text-create-role-targets">{t('admin.legalTexts.fields.targetRoleIds')}</Label>
+              <Input
+                id="legal-text-create-role-targets"
+                value={formValues.targetRoleIds}
+                onChange={(event) => setFormValues((current) => ({ ...current, targetRoleIds: event.target.value }))}
+                placeholder={t('admin.legalTexts.fields.targetRoleIdsPlaceholder')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="legal-text-create-group-targets">{t('admin.legalTexts.fields.targetGroupIds')}</Label>
+              <Input
+                id="legal-text-create-group-targets"
+                value={formValues.targetGroupIds}
+                onChange={(event) => setFormValues((current) => ({ ...current, targetGroupIds: event.target.value }))}
+                placeholder={t('admin.legalTexts.fields.targetGroupIdsPlaceholder')}
               />
             </div>
           </div>

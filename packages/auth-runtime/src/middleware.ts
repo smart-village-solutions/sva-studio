@@ -22,6 +22,8 @@ import type { SessionUser } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
+const isAuthorizeTimingDebugEnabled = (): boolean => process.env.IAM_DEBUG_AUTHORIZE_TIMINGS === 'true';
+
 export type AuthenticatedRequestContext = {
   sessionId: string;
   sessionExpiresAt?: number;
@@ -33,6 +35,9 @@ export type AuthenticatedRequestContext = {
 type SessionResolution =
   | {
       kind: 'authenticated';
+      tenantHostValidationMs: number;
+      storedSessionResolutionMs: number;
+      runtimeSessionHydrationMs: number;
       sessionId: string;
       sessionExpiresAt?: number;
       freshReauthAt?: number;
@@ -48,7 +53,9 @@ const readSessionId = (request: Request) => {
 };
 
 const createAuthenticatedContext = async (request: Request): Promise<SessionResolution> => {
+  const tenantHostValidationStartedAt = performance.now();
   const tenantHostError = await validateTenantHost(request);
+  const tenantHostValidationMs = performance.now() - tenantHostValidationStartedAt;
   if (tenantHostError) {
     return { kind: 'response', response: tenantHostError };
   }
@@ -56,6 +63,9 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
   if (isMockAuthEnabled() && hasActiveMockAuthSession(request)) {
     return {
       kind: 'authenticated',
+      tenantHostValidationMs,
+      storedSessionResolutionMs: 0,
+      runtimeSessionHydrationMs: 0,
       isLocalDevelopmentAuth: true,
       sessionId: 'mock-auth-session',
       user: createMockSessionUser(),
@@ -81,7 +91,9 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
     };
   }
 
+  const storedSessionResolutionStartedAt = performance.now();
   const sessionResolution = await resolveStoredSessionUser(sessionId);
+  const storedSessionResolutionMs = performance.now() - storedSessionResolutionStartedAt;
   if (sessionResolution.kind === 'invalid') {
     const logContext = buildLogContext(undefined, { includeTraceId: true });
     const invalidSessionMessage =
@@ -134,12 +146,19 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
     };
   }
 
+  const runtimeSessionHydrationStartedAt = performance.now();
+  const runtimeSessionUser = await resolveRuntimeSessionUser(request, sessionResolution.user);
+  const runtimeSessionHydrationMs = performance.now() - runtimeSessionHydrationStartedAt;
+
   return {
     kind: 'authenticated',
+    tenantHostValidationMs,
+    storedSessionResolutionMs,
+    runtimeSessionHydrationMs,
     freshReauthAt: sessionResolution.freshReauthAt,
     sessionId,
     sessionExpiresAt: sessionResolution.expiresAt,
-    user: await resolveRuntimeSessionUser(request, sessionResolution.user),
+    user: runtimeSessionUser,
   };
 };
 
@@ -176,6 +195,7 @@ export const withAuthenticatedUser = async (
   request: Request,
   handler: (ctx: AuthenticatedRequestContext) => Promise<Response> | Response
 ): Promise<Response> => {
+  const middlewareStartedAt = performance.now();
   try {
     const resolution = await createAuthenticatedContext(request);
     if (resolution.kind === 'response') {
@@ -189,13 +209,30 @@ export const withAuthenticatedUser = async (
       isLocalDevelopmentAuth: resolution.isLocalDevelopmentAuth,
       user: resolution.user,
     };
+    const accountLifecycleStartedAt = performance.now();
     const lifecycleResponse = await ensureAccountLifecycleAllowsAccess(request, ctx.user, {
       isLocalDevelopmentAuth: ctx.isLocalDevelopmentAuth,
     });
+    const accountLifecycleMs = performance.now() - accountLifecycleStartedAt;
     if (lifecycleResponse) {
       return lifecycleResponse;
     }
     logProfileDiagnosticsIfEnabled(request, ctx.user);
+    if (isAuthorizeTimingDebugEnabled()) {
+      logger.info('Auth middleware timing diagnostics', {
+        operation: 'auth_middleware_timing',
+        endpoint: new URL(request.url).pathname,
+        tenant_host_validation_ms: Number(resolution.tenantHostValidationMs.toFixed(2)),
+        stored_session_resolution_ms: Number(resolution.storedSessionResolutionMs.toFixed(2)),
+        runtime_session_hydration_ms: Number(resolution.runtimeSessionHydrationMs.toFixed(2)),
+        account_lifecycle_ms: Number(accountLifecycleMs.toFixed(2)),
+        total_ms: Number((performance.now() - middlewareStartedAt).toFixed(2)),
+        user_id: ctx.user.id,
+        instance_id: ctx.user.instanceId,
+        is_local_development_auth: Boolean(ctx.isLocalDevelopmentAuth),
+        ...buildLogContext(ctx.user.instanceId, { includeTraceId: true }),
+      });
+    }
     return await runWithLegalTextComplianceIfRequired(request, ctx, handler);
   } catch (error) {
     return logUnexpectedMiddlewareError(request, error);

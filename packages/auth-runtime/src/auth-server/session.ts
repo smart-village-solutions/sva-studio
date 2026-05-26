@@ -242,7 +242,13 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
   if (!shouldRefreshSession(session.expiresAt)) {
     const user = await hydrateSessionUserFromAccessToken(sessionId, session);
     logIncompleteSessionUser(user, 'session_read');
-    return { kind: 'authenticated', user, expiresAt: session.expiresAt, freshReauthAt: session.freshReauthAt };
+    const result = {
+      kind: 'authenticated',
+      user,
+      expiresAt: session.expiresAt,
+      freshReauthAt: session.freshReauthAt,
+    } satisfies Extract<SessionResolutionResult, { kind: 'authenticated' }>;
+    return result;
   }
 
   if (!session.refreshToken) {
@@ -250,12 +256,13 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
       await deleteSession(sessionId);
       return { kind: 'invalid', reason: 'session_expired' };
     }
-    return {
+    const result = {
       kind: 'authenticated',
       user: await hydrateSessionUserFromAccessToken(sessionId, session),
       expiresAt: session.expiresAt,
       freshReauthAt: session.freshReauthAt,
-    };
+    } satisfies Extract<SessionResolutionResult, { kind: 'authenticated' }>;
+    return result;
   }
 
   try {
@@ -275,12 +282,13 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
       ...buildLogContext(updatedSession?.auth),
     });
 
-    return {
+    const result = {
       kind: 'authenticated',
       user: updatedSession?.user ?? null,
       expiresAt: updatedSession?.expiresAt,
       freshReauthAt: updatedSession?.freshReauthAt,
-    };
+    } satisfies Extract<SessionResolutionResult, { kind: 'authenticated' }>;
+    return result;
   } catch (error) {
     return handleRefreshFailure({
       error,

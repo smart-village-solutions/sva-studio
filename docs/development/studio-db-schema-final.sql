@@ -928,6 +928,29 @@ CREATE TABLE iam.legal_text_versions (
     CONSTRAINT legal_text_versions_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'valid'::text, 'archived'::text])))
 );
 
+--
+-- Name: legal_text_target_groups; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.legal_text_target_groups (
+    instance_id text NOT NULL,
+    legal_text_version_id uuid NOT NULL,
+    group_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: legal_text_target_roles; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.legal_text_target_roles (
+    instance_id text NOT NULL,
+    legal_text_version_id uuid NOT NULL,
+    role_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 
 --
 -- Name: media_assets; Type: TABLE; Schema: iam; Owner: -
@@ -1625,6 +1648,22 @@ ALTER TABLE ONLY iam.legal_text_versions
 
 
 --
+-- Name: legal_text_target_groups legal_text_target_groups_unique; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_target_groups
+    ADD CONSTRAINT legal_text_target_groups_unique UNIQUE (instance_id, legal_text_version_id, group_id);
+
+
+--
+-- Name: legal_text_target_roles legal_text_target_roles_unique; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_target_roles
+    ADD CONSTRAINT legal_text_target_roles_unique UNIQUE (instance_id, legal_text_version_id, role_id);
+
+
+--
 -- Name: media_assets media_assets_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -2080,6 +2119,13 @@ CREATE INDEX idx_legal_text_acceptances_subject ON iam.legal_text_acceptances US
 --
 
 CREATE INDEX idx_legal_text_acceptances_workspace_action ON iam.legal_text_acceptances USING btree (workspace_id, action_type) WHERE (workspace_id IS NOT NULL);
+
+
+--
+-- Name: uq_legal_text_versions_instance_id_id; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_legal_text_versions_instance_id_id ON iam.legal_text_versions USING btree (instance_id, id);
 
 
 --
@@ -2978,6 +3024,54 @@ ALTER TABLE ONLY iam.legal_text_versions
 
 
 --
+-- Name: legal_text_target_groups legal_text_target_groups_group_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_target_groups
+    ADD CONSTRAINT legal_text_target_groups_group_fk FOREIGN KEY (instance_id, group_id) REFERENCES iam.groups(instance_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: legal_text_target_groups legal_text_target_groups_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_target_groups
+    ADD CONSTRAINT legal_text_target_groups_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: legal_text_target_groups legal_text_target_groups_legal_text_version_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_target_groups
+    ADD CONSTRAINT legal_text_target_groups_legal_text_version_fk FOREIGN KEY (instance_id, legal_text_version_id) REFERENCES iam.legal_text_versions(instance_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: legal_text_target_roles legal_text_target_roles_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_target_roles
+    ADD CONSTRAINT legal_text_target_roles_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: legal_text_target_roles legal_text_target_roles_legal_text_version_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_target_roles
+    ADD CONSTRAINT legal_text_target_roles_legal_text_version_fk FOREIGN KEY (instance_id, legal_text_version_id) REFERENCES iam.legal_text_versions(instance_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: legal_text_target_roles legal_text_target_roles_role_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_target_roles
+    ADD CONSTRAINT legal_text_target_roles_role_fk FOREIGN KEY (instance_id, role_id) REFERENCES iam.roles(instance_id, id) ON DELETE CASCADE;
+
+
+--
 -- Name: media_assets media_assets_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3379,6 +3473,20 @@ CREATE POLICY legal_text_acceptances_isolation_policy ON iam.legal_text_acceptan
 --
 
 CREATE POLICY legal_text_versions_isolation_policy ON iam.legal_text_versions USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: legal_text_target_groups legal_text_target_groups_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY legal_text_target_groups_isolation_policy ON iam.legal_text_target_groups USING ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: legal_text_target_roles legal_text_target_roles_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY legal_text_target_roles_isolation_policy ON iam.legal_text_target_roles USING ((instance_id = iam.current_instance_id()));
 
 
 --

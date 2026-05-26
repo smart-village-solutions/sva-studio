@@ -167,6 +167,9 @@ gleichzeitig beeinflussen.
 - Label-Whitelist und PII-Blockliste in OTEL/Promtail
 - IAM-Authorize/Cache-Logs nutzen strukturierte Operations (`cache_lookup`, `cache_invalidate`, `cache_stale_detected`, `cache_invalidate_failed`)
 - Cold-Start-, Recompute- und Store-Fehler im Snapshot-Pfad werden als strukturierte Cache-Events (`cache_cold_start`, `cache_store_failed`) geloggt
+- Der GUI-gestuetzte Authorize-Performance-Lauf misst denselben Serverpfad wie produktive `POST /iam/authorize`-Requests; Browser-Timing oder lokale Renderdauer sind kein Teil des Nachweises
+- Das Monitoring exponiert fuer diesen Lauf nur sichere Zusammenfassungen (`samples`, `p50`, `p95`, `p99`, Bewertung, Cache-Status, Report-Pfade) und keine rohen Snapshot- oder SQL-Dumps
+- Das Szenario `recompute` invalidiert gezielt nur den Snapshot des aktuellen Session-Actors im aktuellen Instanzkontext; globale Cache-Leerungen sind fuer diesen Betriebsnachweis unzulaessig
 - Korrelationsfelder `request_id` und `trace_id` sind im IAM-Pfad verpflichtend
 - Scope-aware Logs enthalten zusätzlich `scope_kind`, `workspace_id` und im Tenant-Scope `instance_id`
 - Außerhalb des `AsyncLocalStorage`-Kontexts werden `request_id` und `trace_id` best effort aus validierten Headern (`X-Request-Id`, `traceparent`) extrahiert

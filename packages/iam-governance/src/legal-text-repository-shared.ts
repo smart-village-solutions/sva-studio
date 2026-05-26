@@ -4,6 +4,13 @@ import type { IamLegalTextListItem, IamPendingLegalTextItem } from '@sva/core';
 
 import { hashLegalTextHtml, sanitizeLegalTextHtml } from './legal-text-html.js';
 
+const mapLegalTextTargets = (
+  row: Pick<LegalTextRow, 'target_role_ids' | 'target_group_ids'>
+): IamLegalTextListItem['targets'] => ({
+  roleIds: row.target_role_ids ?? [],
+  groupIds: row.target_group_ids ?? [],
+});
+
 export type LegalTextRow = {
   id: string;
   legal_text_id?: string;
@@ -18,11 +25,21 @@ export type LegalTextRow = {
   acceptance_count: number;
   active_acceptance_count: number;
   last_accepted_at: string | null;
+  target_role_ids: readonly string[];
+  target_group_ids: readonly string[];
 };
 
 export type PendingLegalTextRow = Pick<
   LegalTextRow,
-  'id' | 'legal_text_id' | 'name' | 'legal_text_version' | 'locale' | 'content_html' | 'published_at'
+  | 'id'
+  | 'legal_text_id'
+  | 'name'
+  | 'legal_text_version'
+  | 'locale'
+  | 'content_html'
+  | 'published_at'
+  | 'target_role_ids'
+  | 'target_group_ids'
 >;
 
 export type CreateLegalTextInput = {
@@ -36,6 +53,8 @@ export type CreateLegalTextInput = {
   contentHtml: string;
   status: 'draft' | 'valid' | 'archived';
   publishedAt?: string;
+  targetRoleIds?: readonly string[];
+  targetGroupIds?: readonly string[];
 };
 
 export type UpdateLegalTextInput = {
@@ -50,6 +69,8 @@ export type UpdateLegalTextInput = {
   contentHtml?: string;
   status?: 'draft' | 'valid' | 'archived';
   publishedAt?: string;
+  targetRoleIds?: readonly string[];
+  targetGroupIds?: readonly string[];
 };
 
 type LegalTextQueryClient = {
@@ -127,6 +148,26 @@ LIMIT 1;
   return existingVersion.rows[0]?.legal_text_id;
 };
 
+export const normalizeTargetIds = (values: readonly string[] | undefined): string[] | undefined => {
+  if (values === undefined) {
+    return undefined;
+  }
+
+  const normalizedValues: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of values) {
+    const trimmedValue = value.trim();
+    if (trimmedValue.length === 0 || seen.has(trimmedValue)) {
+      continue;
+    }
+    seen.add(trimmedValue);
+    normalizedValues.push(trimmedValue);
+  }
+
+  return normalizedValues;
+};
+
 export const resolveLegalTextUpdateState = (
   current: IamLegalTextListItem,
   input: UpdateLegalTextInput
@@ -174,6 +215,12 @@ export const collectUpdatedFields = (input: UpdateLegalTextInput): string[] => {
   if (input.publishedAt !== undefined) {
     updatedFields.push('publishedAt');
   }
+  if (input.targetRoleIds !== undefined) {
+    updatedFields.push('targetRoleIds');
+  }
+  if (input.targetGroupIds !== undefined) {
+    updatedFields.push('targetGroupIds');
+  }
 
   return updatedFields;
 };
@@ -191,6 +238,7 @@ export const mapLegalTextListItem = (row: LegalTextRow): IamLegalTextListItem =>
   acceptanceCount: row.acceptance_count,
   activeAcceptanceCount: row.active_acceptance_count,
   ...(row.last_accepted_at ? { lastAcceptedAt: row.last_accepted_at } : {}),
+  targets: mapLegalTextTargets(row),
 });
 
 export const mapPendingLegalTextItem = (row: PendingLegalTextRow): IamPendingLegalTextItem => ({
@@ -201,6 +249,7 @@ export const mapPendingLegalTextItem = (row: PendingLegalTextRow): IamPendingLeg
   locale: row.locale,
   contentHtml: row.content_html,
   ...(row.published_at ? { publishedAt: row.published_at } : {}),
+  targets: mapLegalTextTargets(row),
 });
 
 export const LEGAL_TEXT_SELECT = `
@@ -219,9 +268,23 @@ SELECT
     WHERE acceptance.id IS NOT NULL
       AND acceptance.revoked_at IS NULL
   )::int AS active_acceptance_count,
-  MAX(acceptance.accepted_at)::text AS last_accepted_at
+  MAX(acceptance.accepted_at)::text AS last_accepted_at,
+  COALESCE(role_targets.role_ids, ARRAY[]::text[]) AS target_role_ids,
+  COALESCE(group_targets.group_ids, ARRAY[]::text[]) AS target_group_ids
 FROM iam.legal_text_versions version
 LEFT JOIN iam.legal_text_acceptances acceptance
   ON acceptance.instance_id = version.instance_id
  AND acceptance.legal_text_version_id = version.id
+LEFT JOIN LATERAL (
+  SELECT array_agg(target.role_id::text ORDER BY target.role_id::text) AS role_ids
+  FROM iam.legal_text_target_roles target
+  WHERE target.instance_id = version.instance_id
+    AND target.legal_text_version_id = version.id
+) role_targets ON true
+LEFT JOIN LATERAL (
+  SELECT array_agg(target.group_id::text ORDER BY target.group_id::text) AS group_ids
+  FROM iam.legal_text_target_groups target
+  WHERE target.instance_id = version.instance_id
+    AND target.legal_text_version_id = version.id
+) group_targets ON true
 `;

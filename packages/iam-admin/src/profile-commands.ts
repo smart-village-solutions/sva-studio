@@ -127,6 +127,48 @@ const buildSeedDisplayName = (input: SessionProfileSeed): string | undefined => 
   return fullName || normalizeSeedValue(input.username);
 };
 
+const buildNormalizedSessionProfile = (
+  sessionProfile: SessionProfileSeed | undefined
+): {
+  readonly username?: string;
+  readonly email?: string;
+  readonly firstName?: string;
+  readonly lastName?: string;
+  readonly displayName?: string;
+} => ({
+  username: normalizeSeedValue(sessionProfile?.username),
+  email: normalizeSeedValue(sessionProfile?.email),
+  firstName: normalizeSeedValue(sessionProfile?.firstName),
+  lastName: normalizeSeedValue(sessionProfile?.lastName),
+  displayName: buildSeedDisplayName(sessionProfile ?? {}),
+});
+
+const isMissingOrPlaceholder = (value: string | undefined, placeholder?: string): boolean => {
+  const normalizedValue = normalizeSeedValue(value);
+  if (!normalizedValue) {
+    return true;
+  }
+  return placeholder !== undefined && normalizedValue === placeholder;
+};
+
+const shouldRepairProfileFromSession = (
+  detail: IamUserDetail | undefined,
+  sessionProfile: ReturnType<typeof buildNormalizedSessionProfile>
+): boolean => {
+  if (!detail) {
+    return false;
+  }
+
+  return (
+    (sessionProfile.username !== undefined && isMissingOrPlaceholder(detail.username)) ||
+    (sessionProfile.email !== undefined && isMissingOrPlaceholder(detail.email)) ||
+    (sessionProfile.firstName !== undefined && isMissingOrPlaceholder(detail.firstName)) ||
+    (sessionProfile.lastName !== undefined && isMissingOrPlaceholder(detail.lastName)) ||
+    (sessionProfile.displayName !== undefined &&
+      isMissingOrPlaceholder(detail.displayName, detail.keycloakSubject))
+  );
+};
+
 const PROFILE_SESSION_SEED_SAVEPOINT = 'iam_profile_session_seed';
 
 export const createProfileCommands = (deps: ProfileCommandsDeps) => {
@@ -183,11 +225,8 @@ export const createProfileCommands = (deps: ProfileCommandsDeps) => {
     keycloakSubject: string,
     sessionProfile: SessionProfileSeed | undefined
   ): Promise<void> => {
-    const username = normalizeSeedValue(sessionProfile?.username);
-    const email = normalizeSeedValue(sessionProfile?.email);
-    const firstName = normalizeSeedValue(sessionProfile?.firstName);
-    const lastName = normalizeSeedValue(sessionProfile?.lastName);
-    const displayName = buildSeedDisplayName(sessionProfile ?? {});
+    const { username, email, firstName, lastName, displayName } =
+      buildNormalizedSessionProfile(sessionProfile);
 
     if (!username && !email && !firstName && !lastName && !displayName) {
       return;
@@ -248,12 +287,15 @@ WHERE id = $1::uuid
     sessionProfile?: SessionProfileSeed
   ) => deps.withInstanceScopedDb(actor.instanceId, async (client) => {
     const accountId = await resolveOrProvisionAccountId(client, actor, keycloakSubject);
+    const normalizedSessionProfile = buildNormalizedSessionProfile(sessionProfile);
+    let sessionSeedFailed = false;
 
     try {
       await client.query(`SAVEPOINT ${PROFILE_SESSION_SEED_SAVEPOINT}`);
       await seedProfileFromSessionIfMissing(client, actor, accountId, keycloakSubject, sessionProfile);
       await client.query(`RELEASE SAVEPOINT ${PROFILE_SESSION_SEED_SAVEPOINT}`);
     } catch (error) {
+      sessionSeedFailed = true;
       await client.query(`ROLLBACK TO SAVEPOINT ${PROFILE_SESSION_SEED_SAVEPOINT}`);
       await client.query(`RELEASE SAVEPOINT ${PROFILE_SESSION_SEED_SAVEPOINT}`);
       deps.logger.warn('IAM profile session seed skipped after failure', {
@@ -264,11 +306,11 @@ WHERE id = $1::uuid
         actor_account_id_present: Boolean(actor.actorAccountId),
         seeded_account_id_present: Boolean(accountId),
         session_profile_claims_present: Boolean(
-          normalizeSeedValue(sessionProfile?.username) ||
-            normalizeSeedValue(sessionProfile?.email) ||
-            normalizeSeedValue(sessionProfile?.firstName) ||
-            normalizeSeedValue(sessionProfile?.lastName) ||
-            normalizeSeedValue(sessionProfile?.displayName)
+          normalizedSessionProfile.username ||
+            normalizedSessionProfile.email ||
+            normalizedSessionProfile.firstName ||
+            normalizedSessionProfile.lastName ||
+            normalizedSessionProfile.displayName
         ),
         error_name: error instanceof Error ? error.name : 'UnknownError',
         error_message: error instanceof Error ? error.message : String(error),
@@ -279,6 +321,18 @@ WHERE id = $1::uuid
       });
     }
 
+    const detail = await deps.resolveUserDetail(client, { instanceId: actor.instanceId, userId: accountId });
+    if (sessionSeedFailed || !shouldRepairProfileFromSession(detail, normalizedSessionProfile)) {
+      return detail;
+    }
+
+    await seedProfileFromSessionIfMissing(
+      client,
+      actor,
+      accountId,
+      keycloakSubject,
+      normalizedSessionProfile
+    );
     return deps.resolveUserDetail(client, { instanceId: actor.instanceId, userId: accountId });
   });
 

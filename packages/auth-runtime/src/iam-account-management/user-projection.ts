@@ -16,6 +16,7 @@ import {
   resolveRolesByExternalNames,
   trackKeycloakCall,
 } from './shared.js';
+import { markUserProjectionDegraded } from './projection-diagnostics.js';
 
 type ProjectedMainserverCredentialState = ReturnType<typeof resolveMainserverCredentialState>;
 
@@ -73,7 +74,7 @@ export const resolveProjectedUserDetail = async (input: {
   keycloakRoleNames: readonly string[] | null;
 }): Promise<IamUserDetail> => {
   if (input.keycloakRoleNames === null) {
-    return input.user;
+    return markUserProjectionDegraded(input.user);
   }
 
   const mappedRoles = await resolveRolesByExternalNames(input.client, {
@@ -113,6 +114,7 @@ export const applyCanonicalUserDetailProjection = async (input: {
   keycloakRoleNames?: readonly string[] | null;
   mainserverCredentialState?: ProjectedMainserverCredentialState;
 }): Promise<IamUserDetail> => {
+  let keycloakProjectionDegraded = false;
   const resolvedKeycloakRoleNames =
     input.keycloakRoleNames !== undefined
       ? input.keycloakRoleNames
@@ -120,6 +122,7 @@ export const applyCanonicalUserDetailProjection = async (input: {
           if (!isRecoverableUserProjectionError(error)) {
             throw error;
           }
+          keycloakProjectionDegraded = true;
           return null;
         });
   const resolvedMainserverCredentialState =
@@ -135,10 +138,8 @@ export const applyCanonicalUserDetailProjection = async (input: {
     keycloakRoleNames: resolvedKeycloakRoleNames,
   });
 
-  return mergeMainserverCredentialState(
-    projectedUser,
-    resolvedMainserverCredentialState
-  );
+  const mergedUser = mergeMainserverCredentialState(projectedUser, resolvedMainserverCredentialState);
+  return keycloakProjectionDegraded ? markUserProjectionDegraded(mergedUser) : mergedUser;
 };
 
 const buildProjectedRolesByExternalName = async (

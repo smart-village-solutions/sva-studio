@@ -31,6 +31,10 @@ describe('accountUiRouteGuards', () => {
     await expect(invoke(accountUiRouteGuards.accountPrivacy, ['editor'], '/account/privacy')).resolves.toBeUndefined();
   });
 
+  it('allows modules route for authenticated users without admin roles', async () => {
+    await expect(invoke(accountUiRouteGuards.modules, ['viewer'], '/modules')).resolves.toBeUndefined();
+  });
+
   it('allows content routes for editor role', async () => {
     await expect(invoke(accountUiRouteGuards.content, ['editor'], '/admin/content')).resolves.toBeUndefined();
     await expect(invoke(accountUiRouteGuards.contentCreate, ['editor'], '/admin/content/new')).resolves.toBeUndefined();

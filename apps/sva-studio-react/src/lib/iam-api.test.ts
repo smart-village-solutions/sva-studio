@@ -22,6 +22,7 @@ import {
   archiveInstance,
   assignOrganizationMembership,
   bulkDeactivateUsers,
+  createLegalText,
   createInstance,
   getAdminDeletionRules,
   getMyDeletionRules,
@@ -39,6 +40,7 @@ import {
   getInstanceKeycloakProvisioningRun,
   getInstanceKeycloakStatus,
   getRuntimeHealth,
+  getLatestAuthorizePerformanceRun,
   getMyDataSubjectRights,
   deactivateOrganization,
   getPluginOperationJob,
@@ -52,6 +54,7 @@ import {
   listInstances,
   listOrganizations,
   listPluginOperationJobs,
+  startAuthorizePerformanceRun,
   planInstanceKeycloakProvisioning,
   probeTenantIamAccess,
   reconcileRoles,
@@ -59,6 +62,7 @@ import {
   removeGroupMembership,
   removeGroupRole,
   requestDataExport,
+  requestLegalConsentExport,
   saveAdminDeletionRules,
   saveMyDeletionRulesContentPreference,
   revokeInstanceModule,
@@ -66,6 +70,7 @@ import {
   syncUsersFromKeycloak,
   removeOrganizationMembership,
   suspendInstance,
+  updateLegalText,
   updateMyProfile,
   updateMyOrganizationContext,
   updateGroup,
@@ -1183,6 +1188,22 @@ describe('iam-api profile helpers', () => {
     await getMyProfile();
     await updateMyProfile({ displayName: 'Alice Example' });
     await getMyPendingLegalTexts();
+    await createLegalText({
+      name: 'Datenschutz',
+      legalTextVersion: '2026-05',
+      locale: 'de-DE',
+      contentHtml: '<p>Datenschutz</p>',
+      status: 'draft',
+      targetRoleIds: ['11111111-1111-1111-1111-111111111111'],
+      targetGroupIds: [
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      ],
+    });
+    await updateLegalText('legal-1', {
+      targetRoleIds: ['22222222-2222-2222-2222-222222222222'],
+      targetGroupIds: ['cccccccc-cccc-cccc-cccc-cccccccccccc'],
+    });
     await bulkDeactivateUsers(['user-1', 'user-2']);
 
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -1202,6 +1223,36 @@ describe('iam-api profile helpers', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       4,
+      '/api/v1/iam/legal-texts',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Datenschutz',
+          legalTextVersion: '2026-05',
+          locale: 'de-DE',
+          contentHtml: '<p>Datenschutz</p>',
+          status: 'draft',
+          targetRoleIds: ['11111111-1111-1111-1111-111111111111'],
+          targetGroupIds: [
+            'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+          ],
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      '/api/v1/iam/legal-texts/legal-1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({
+          targetRoleIds: ['22222222-2222-2222-2222-222222222222'],
+          targetGroupIds: ['cccccccc-cccc-cccc-cccc-cccccccccccc'],
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      6,
       '/api/v1/iam/users/bulk-deactivate',
       expect.objectContaining({
         method: 'POST',
@@ -1266,6 +1317,64 @@ describe('iam-api transparency helpers', () => {
 
     await expect(requestDataExport({ format: 'csv', async: false })).resolves.toEqual({
       data: 'csv-export',
+    });
+  });
+
+  it('requests legal consent exports with query parameters and optional account ids', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('consent-export', {
+        status: 200,
+        headers: { 'content-type': 'text/csv' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      requestLegalConsentExport({
+        instanceId: 'inst-1',
+        format: 'csv',
+        accountId: 'account-7',
+      })
+    ).resolves.toEqual({
+      data: 'consent-export',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/iam/governance/legal-consents/export?instanceId=inst-1&format=csv&accountId=account-7',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Accept: 'application/json, text/plain, text/csv, application/xml',
+        }),
+        credentials: 'include',
+      })
+    );
+  });
+
+  it('parses legal consent JSON exports without assuming an API envelope', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            format: 'json',
+            rows: [{ accountId: 'account-7' }],
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }
+        )
+      )
+    );
+
+    await expect(
+      requestLegalConsentExport({
+        instanceId: 'inst-1',
+        format: 'json',
+      })
+    ).resolves.toEqual({
+      format: 'json',
+      rows: [{ accountId: 'account-7' }],
     });
   });
 
@@ -1364,5 +1473,102 @@ describe('iam-api transparency helpers', () => {
       id: 'job-1',
       status: 'running',
     });
+  });
+
+  it('loads the latest authorize performance run from monitoring', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            data: {
+              generatedAt: '2026-05-25T18:00:00.000Z',
+              measuredOn: 'server',
+              actor: {
+                instanceId: 'tenant-a',
+                keycloakSubject: 'kc-user-1',
+              },
+              request: {
+                action: 'content.read',
+                resourceType: 'content',
+              },
+              configuration: {
+                measuredRequests: 12,
+                warmupRequests: 2,
+              },
+              scenarios: [],
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      )
+    );
+
+    await expect(getLatestAuthorizePerformanceRun()).resolves.toMatchObject({
+      actor: {
+        instanceId: 'tenant-a',
+      },
+      request: {
+        action: 'content.read',
+      },
+    });
+  });
+
+  it('starts an authorize performance run through the monitoring endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            generatedAt: '2026-05-25T18:00:00.000Z',
+            measuredOn: 'server',
+            actor: {
+              instanceId: 'tenant-a',
+              keycloakSubject: 'kc-user-1',
+            },
+            request: {
+              action: 'content.read',
+              resourceType: 'content',
+              resourceId: 'article-1',
+            },
+            configuration: {
+              measuredRequests: 12,
+              warmupRequests: 2,
+            },
+            scenarios: [],
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      startAuthorizePerformanceRun({
+        action: 'content.read',
+        resourceType: 'content',
+        resourceId: 'article-1',
+        measuredRequests: 12,
+        warmupRequests: 2,
+      })
+    ).resolves.toMatchObject({
+      request: {
+        resourceId: 'article-1',
+      },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/authorize-performance',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'content.read',
+          resourceType: 'content',
+          resourceId: 'article-1',
+          measuredRequests: 12,
+          warmupRequests: 2,
+        }),
+        signal: expect.any(AbortSignal),
+      })
+    );
   });
 });

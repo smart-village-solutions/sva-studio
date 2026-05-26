@@ -32,6 +32,7 @@ import {
   resolveKeycloakRoleNames,
   resolveProjectedMainserverCredentialState,
 } from './user-projection.js';
+import { markUserProjectionDegraded } from './projection-diagnostics.js';
 
 type ProfileActorContext = {
   actor: ActorInfo;
@@ -309,7 +310,7 @@ const resolveProjectedProfileDetail = async (input: {
     resolveProjectedMainserverCredentialState(input.user.keycloakSubject, input.instanceId),
   ]);
 
-  return withInstanceScopedDb(input.instanceId, (client) =>
+  const projectedDetail = await withInstanceScopedDb(input.instanceId, (client) =>
     applyCanonicalUserDetailProjection({
       client,
       instanceId: input.instanceId,
@@ -322,6 +323,10 @@ const resolveProjectedProfileDetail = async (input: {
           : DEFAULT_MAINSERVER_CREDENTIAL_STATE,
     })
   );
+
+  return keycloakRoleNamesResult.status === 'rejected'
+    ? markUserProjectionDegraded(projectedDetail)
+    : projectedDetail;
 };
 
 const ensureIdentityProvider = async (

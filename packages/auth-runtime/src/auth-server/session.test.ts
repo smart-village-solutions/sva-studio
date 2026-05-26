@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SessionStoreUnavailableError } from '../runtime-errors.js';
 import type { Session, SessionAuthContext, SessionUser } from '../types.js';
 
 const state = vi.hoisted(() => ({
@@ -101,6 +100,7 @@ const createSession = (overrides: Partial<Session> = {}): Session => ({
 describe('auth server session resolution', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
     vi.spyOn(Date, 'now').mockReturnValue(5_000);
     state.getAuthConfig.mockReturnValue({
       ...auth,
@@ -154,6 +154,28 @@ describe('auth server session resolution', () => {
       kind: 'invalid',
       reason: 'invalid_session',
     });
+  });
+
+  it('revalidates authenticated session resolutions on every request', async () => {
+    state.getSession.mockResolvedValue(createSession({ expiresAt: 100_000 }));
+
+    const { resolveSessionUser } = await import('./session.js');
+
+    await expect(resolveSessionUser('session-1')).resolves.toEqual({
+      kind: 'authenticated',
+      user: completeUser,
+      expiresAt: 100_000,
+      freshReauthAt: 4_500,
+    });
+    await expect(resolveSessionUser('session-1')).resolves.toEqual({
+      kind: 'authenticated',
+      user: completeUser,
+      expiresAt: 100_000,
+      freshReauthAt: 4_500,
+    });
+
+    expect(state.getSession).toHaveBeenCalledTimes(2);
+    expect(state.getSessionControlState).toHaveBeenCalledTimes(2);
   });
 
   it('deletes disallowed sessions when control state invalidates them', async () => {
@@ -344,10 +366,13 @@ describe('auth server session resolution', () => {
   it('rethrows session store failures from the refresh path', async () => {
     const session = createSession({ expiresAt: 5_100, user: completeUser });
     state.getSession.mockResolvedValue(session);
-    state.refreshTokenGrant.mockRejectedValue(new SessionStoreUnavailableError('refresh_token'));
+    const { SessionStoreUnavailableError: RuntimeSessionStoreUnavailableError } = await import('../runtime-errors.js');
+    state.refreshTokenGrant.mockRejectedValue(
+      new RuntimeSessionStoreUnavailableError('refresh_token')
+    );
 
     const { getSessionUser } = await import('./session.js');
 
-    await expect(getSessionUser('session-1')).rejects.toBeInstanceOf(SessionStoreUnavailableError);
+    await expect(getSessionUser('session-1')).rejects.toBeInstanceOf(RuntimeSessionStoreUnavailableError);
   });
 });

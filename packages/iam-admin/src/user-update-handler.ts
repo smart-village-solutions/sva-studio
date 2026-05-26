@@ -44,6 +44,8 @@ export type UpdateUserPayloadShape = {
 export type UserUpdatePlanShape = {
   readonly existing: {
     readonly keycloakSubject: string;
+    readonly roles?: readonly { readonly roleId: string }[];
+    readonly groups?: readonly { readonly groupId: string }[];
   };
   readonly previousRoleNames: readonly string[];
   readonly nextRoleNames?: readonly string[];
@@ -110,6 +112,8 @@ export type UpdateUserHandlerDeps<
     readonly actorAccountId: string;
     readonly userId: string;
     readonly keycloakSubject: string;
+    readonly existingRoleIds?: readonly string[];
+    readonly existingGroupIds?: readonly string[];
     readonly payload: TPayload;
     readonly nextMainserverCredentialState: TIdentityState['nextMainserverCredentialState'];
   }) => Promise<unknown | undefined>;
@@ -262,6 +266,8 @@ const executeUserUpdate = async <
       actorAccountId: input.actor.actorAccountId,
       userId: input.userId,
       keycloakSubject: plan.existing.keycloakSubject,
+      existingRoleIds: plan.existing.roles?.map((role) => role.roleId),
+      existingGroupIds: plan.existing.groups?.map((group) => group.groupId),
       payload: input.payload,
       nextMainserverCredentialState: resolvedIdentityState.nextMainserverCredentialState,
     });

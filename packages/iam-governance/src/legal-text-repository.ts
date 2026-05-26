@@ -10,6 +10,7 @@ import {
   loadExistingLegalTextId,
   mapLegalTextListItem,
   mapPendingLegalTextItem,
+  normalizeTargetIds,
   type PendingLegalTextRow,
   resolveLegalTextUpdateState,
   type UpdateLegalTextInput,
@@ -111,6 +112,106 @@ const emitLegalTextDeletedActivityLog = (
     traceId: input.traceId,
   });
 
+const persistLegalTextTargetRoles = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    legalTextVersionId: string;
+    targetRoleIds: readonly string[];
+  }
+) => {
+  if (input.targetRoleIds.length === 0) {
+    return;
+  }
+
+  await client.query(
+    `
+INSERT INTO iam.legal_text_target_roles (
+  instance_id,
+  legal_text_version_id,
+  role_id
+)
+SELECT
+  $1,
+  $2::uuid,
+  role_id::uuid
+FROM unnest($3::text[]) AS role_id
+ON CONFLICT (instance_id, legal_text_version_id, role_id) DO NOTHING;
+`,
+    [input.instanceId, input.legalTextVersionId, input.targetRoleIds]
+  );
+};
+
+const persistLegalTextTargetGroups = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    legalTextVersionId: string;
+    targetGroupIds: readonly string[];
+  }
+) => {
+  if (input.targetGroupIds.length === 0) {
+    return;
+  }
+
+  await client.query(
+    `
+INSERT INTO iam.legal_text_target_groups (
+  instance_id,
+  legal_text_version_id,
+  group_id
+)
+SELECT
+  $1,
+  $2::uuid,
+  group_id::uuid
+FROM unnest($3::text[]) AS group_id
+ON CONFLICT (instance_id, legal_text_version_id, group_id) DO NOTHING;
+`,
+    [input.instanceId, input.legalTextVersionId, input.targetGroupIds]
+  );
+};
+
+const replaceLegalTextTargetRoles = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    legalTextVersionId: string;
+    targetRoleIds: readonly string[];
+  }
+) => {
+  await client.query(
+    `
+DELETE FROM iam.legal_text_target_roles
+WHERE instance_id = $1
+  AND legal_text_version_id = $2::uuid;
+`,
+    [input.instanceId, input.legalTextVersionId]
+  );
+
+  await persistLegalTextTargetRoles(client, input);
+};
+
+const replaceLegalTextTargetGroups = async (
+  client: QueryClient,
+  input: {
+    instanceId: string;
+    legalTextVersionId: string;
+    targetGroupIds: readonly string[];
+  }
+) => {
+  await client.query(
+    `
+DELETE FROM iam.legal_text_target_groups
+WHERE instance_id = $1
+  AND legal_text_version_id = $2::uuid;
+`,
+    [input.instanceId, input.legalTextVersionId]
+  );
+
+  await persistLegalTextTargetGroups(client, input);
+};
+
 const loadLegalTextByIdWithClient = async (
   client: QueryClient,
   instanceId: string,
@@ -120,7 +221,7 @@ const loadLegalTextByIdWithClient = async (
     `${LEGAL_TEXT_SELECT}
 WHERE version.instance_id = $1
   AND version.id = $2::uuid
-GROUP BY version.id
+GROUP BY version.id, role_targets.role_ids, group_targets.group_ids
 LIMIT 1;
 `,
     [instanceId, legalTextVersionId]
@@ -136,7 +237,7 @@ export const createLegalTextRepository = (deps: LegalTextRepositoryDeps) => ({
       const result = await client.query<LegalTextRow>(
         `${LEGAL_TEXT_SELECT}
 WHERE version.instance_id = $1
-GROUP BY version.id
+GROUP BY version.id, role_targets.role_ids, group_targets.group_ids
 ORDER BY version.name ASC, version.locale ASC, version.published_at DESC NULLS LAST, version.created_at DESC;
 `,
         [instanceId]
@@ -167,10 +268,54 @@ SELECT
   version.legal_text_version,
   version.locale,
   version.content_html,
-  version.published_at::text
+  version.published_at::text,
+  COALESCE(role_targets.role_ids, ARRAY[]::text[]) AS target_role_ids,
+  COALESCE(group_targets.group_ids, ARRAY[]::text[]) AS target_group_ids
 FROM iam.legal_text_versions version
+LEFT JOIN LATERAL (
+  SELECT array_agg(target.role_id::text ORDER BY target.role_id::text) AS role_ids
+  FROM iam.legal_text_target_roles target
+  WHERE target.instance_id = version.instance_id
+    AND target.legal_text_version_id = version.id
+) role_targets ON true
+LEFT JOIN LATERAL (
+  SELECT array_agg(target.group_id::text ORDER BY target.group_id::text) AS group_ids
+  FROM iam.legal_text_target_groups target
+  WHERE target.instance_id = version.instance_id
+    AND target.legal_text_version_id = version.id
+) group_targets ON true
 WHERE version.instance_id = $1
   AND version.status = 'valid'
+  AND (
+    (
+      COALESCE(array_length(role_targets.role_ids, 1), 0) = 0
+      AND COALESCE(array_length(group_targets.group_ids, 1), 0) = 0
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM iam.accounts account
+      LEFT JOIN iam.account_roles account_role
+        ON account_role.instance_id = version.instance_id
+       AND account_role.account_id = account.id
+       AND account_role.valid_from <= NOW()
+       AND (account_role.valid_to IS NULL OR account_role.valid_to > NOW())
+      LEFT JOIN iam.account_groups account_group
+        ON account_group.instance_id = version.instance_id
+       AND account_group.account_id = account.id
+       AND (account_group.valid_from IS NULL OR account_group.valid_from <= NOW())
+       AND (account_group.valid_until IS NULL OR account_group.valid_until > NOW())
+      LEFT JOIN iam.groups group_target
+        ON group_target.instance_id = account_group.instance_id
+       AND group_target.id = account_group.group_id
+       AND group_target.is_active IS TRUE
+      WHERE account.instance_id = version.instance_id
+        AND account.keycloak_subject = $2
+        AND (
+          account_role.role_id::text = ANY(COALESCE(role_targets.role_ids, ARRAY[]::text[]))
+          OR group_target.id::text = ANY(COALESCE(group_targets.group_ids, ARRAY[]::text[]))
+        )
+    )
+  )
   AND NOT EXISTS (
     SELECT 1
     FROM iam.legal_text_acceptances acceptance
@@ -194,6 +339,8 @@ ORDER BY version.published_at DESC NULLS LAST, version.created_at DESC;
       const sanitizedContentHtml = sanitizeLegalTextHtml(input.contentHtml);
       const derivedContentHash = hashLegalTextHtml(sanitizedContentHtml);
       const isActive = input.status === 'valid';
+      const targetRoleIds = normalizeTargetIds(input.targetRoleIds) ?? [];
+      const targetGroupIds = normalizeTargetIds(input.targetGroupIds) ?? [];
       const legalTextId =
         (await loadExistingLegalTextId(client, input.instanceId, input.name)) ?? deriveLegalTextId(input.name);
       const insert = await client.query<{ id: string }>(
@@ -249,6 +396,17 @@ RETURNING id;
         return undefined;
       }
 
+      await persistLegalTextTargetRoles(client, {
+        instanceId: input.instanceId,
+        legalTextVersionId,
+        targetRoleIds,
+      });
+      await persistLegalTextTargetGroups(client, {
+        instanceId: input.instanceId,
+        legalTextVersionId,
+        targetGroupIds,
+      });
+
       await emitLegalTextCreatedActivityLog(deps, client, input, legalTextVersionId);
 
       return legalTextVersionId;
@@ -263,6 +421,8 @@ RETURNING id;
 
       const { nextContentHash, nextContentHtml, nextPublishedAt, nextStatus } =
         resolveLegalTextUpdateState(current, input);
+      const targetRoleIds = normalizeTargetIds(input.targetRoleIds);
+      const targetGroupIds = normalizeTargetIds(input.targetGroupIds);
       const updateResult = await client.query<{ id: string }>(
         `
 UPDATE iam.legal_text_versions
@@ -297,6 +457,21 @@ RETURNING id;
       const updatedLegalTextVersionId = updateResult.rows[0]?.id;
       if (updatedLegalTextVersionId === undefined) {
         return undefined;
+      }
+
+      if (targetRoleIds !== undefined) {
+        await replaceLegalTextTargetRoles(client, {
+          instanceId: input.instanceId,
+          legalTextVersionId: updatedLegalTextVersionId,
+          targetRoleIds,
+        });
+      }
+      if (targetGroupIds !== undefined) {
+        await replaceLegalTextTargetGroups(client, {
+          instanceId: input.instanceId,
+          legalTextVersionId: updatedLegalTextVersionId,
+          targetGroupIds,
+        });
       }
 
       await emitLegalTextUpdatedActivityLog(

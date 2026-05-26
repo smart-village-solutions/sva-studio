@@ -1,4 +1,8 @@
-import type { IamPermissionEffect, IamUuid } from './authorization-contract';
+import type {
+  IamLegalTextTargeting,
+  IamPermissionEffect,
+  IamUuid,
+} from './authorization-contract';
 import type { WasteManagementSettingsRecord } from '../waste-management-contract.js';
 
 export type ApiErrorCode =
@@ -171,6 +175,13 @@ export type IamUserDirectPermissionAssignment = {
 
 export type IamUserPermissionTraceSourceKind = 'direct_permission' | 'direct_role' | 'group_role';
 export type IamUserPermissionTraceStatus = 'effective' | 'inactive' | 'expired' | 'disabled';
+export type IamUserPermissionTraceInactiveReason =
+  | 'assignment_not_started'
+  | 'assignment_expired'
+  | 'membership_not_started'
+  | 'membership_expired'
+  | 'group_disabled'
+  | 'hierarchy_restricted';
 
 export type IamUserPermissionTraceItem = {
   readonly permissionKey: string;
@@ -191,6 +202,10 @@ export type IamUserPermissionTraceItem = {
   readonly groupDisplayName?: string;
   readonly groupActive?: boolean;
   readonly assignmentOrigin?: IamGroupMembershipOrigin;
+  readonly inheritedFromOrganizationId?: IamUuid;
+  readonly inheritedFromGeoUnitId?: IamUuid;
+  readonly restrictedByGeoUnitId?: IamUuid;
+  readonly inactiveReason?: IamUserPermissionTraceInactiveReason;
   readonly validFrom?: string;
   readonly validTo?: string;
 };
@@ -367,6 +382,7 @@ export type IamLegalTextListItem = {
   readonly acceptanceCount: number;
   readonly activeAcceptanceCount: number;
   readonly lastAcceptedAt?: string;
+  readonly targets: IamLegalTextTargeting;
 };
 
 export type IamPendingLegalTextItem = {
@@ -377,6 +393,7 @@ export type IamPendingLegalTextItem = {
   readonly locale: string;
   readonly contentHtml: string;
   readonly publishedAt?: string;
+  readonly targets: IamLegalTextTargeting;
 };
 
 export type IamOrganizationType =

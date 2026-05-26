@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const guardSpies = vi.hoisted(() => ({
   account: vi.fn(async () => undefined),
   accountPrivacy: vi.fn(async () => undefined),
+  modules: vi.fn(async () => undefined),
   content: vi.fn(async () => undefined),
   contentCreate: vi.fn(async () => undefined),
   contentDetail: vi.fn(async () => undefined),
@@ -237,7 +238,7 @@ describe('app.routes', () => {
       expect.objectContaining({ href: '/admin/media/asset-1/usage' })
     );
     expect(guardSpies.adminUsers).toHaveBeenCalledWith({ href: '/admin/users' });
-    expect(guardSpies.adminInstances).toHaveBeenCalledWith({ href: '/modules' });
+    expect(guardSpies.modules).toHaveBeenCalledWith({ href: '/modules' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring/jobs' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring/jobs/job-1' });
@@ -246,7 +247,7 @@ describe('app.routes', () => {
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('media', undefined, '/admin/media/$mediaId/usage');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/admin/content');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminInstances', undefined, '/modules');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('modules', undefined, '/modules');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/monitoring');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/monitoring/jobs');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/monitoring/jobs/$jobId');

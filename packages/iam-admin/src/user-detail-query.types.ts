@@ -1,4 +1,5 @@
 import type {
+  IamUserPermissionTraceInactiveReason,
   IamUserPermissionTraceStatus,
 } from '@sva/core';
 
@@ -51,6 +52,10 @@ export type UserDetailPermissionTraceRow = {
   group_display_name: string | null;
   group_active: boolean | null;
   assignment_origin: 'manual' | 'seed' | 'sync' | null;
+  inherited_from_organization_id: string | null;
+  inherited_from_geo_unit_id: string | null;
+  restricted_by_geo_unit_id: string | null;
+  inactive_reason: IamUserPermissionTraceInactiveReason | null;
   valid_from: string | null;
   valid_to: string | null;
 };

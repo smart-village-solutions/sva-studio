@@ -73,6 +73,22 @@ const summarizeHtml = (value: string): string => {
   return `${plainText.slice(0, 117)}...`;
 };
 
+const summarizeTargets = (input: {
+  readonly roleIds?: readonly string[];
+  readonly groupIds?: readonly string[];
+}): string => {
+  const roleCount = input.roleIds?.length ?? 0;
+  const groupCount = input.groupIds?.length ?? 0;
+  if (roleCount === 0 && groupCount === 0) {
+    return t('admin.legalTexts.table.targetsAll');
+  }
+
+  return t('admin.legalTexts.table.targetSummary', {
+    roles: String(roleCount),
+    groups: String(groupCount),
+  });
+};
+
 export const LegalTextsPage = () => {
   const legalTextsApi = useLegalTexts();
   const [search, setSearch] = React.useState('');
@@ -192,6 +208,7 @@ export const LegalTextsPage = () => {
                 <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerVersion')}</th>
                 <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerLocale')}</th>
                 <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerStatus')}</th>
+                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerTargets')}</th>
                 <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerContent')}</th>
                 <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerPublished')}</th>
                 <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerCreated')}</th>
@@ -211,6 +228,7 @@ export const LegalTextsPage = () => {
                   <td className="px-3 py-3">
                     <Badge variant="outline">{t(statusLabelKeyByValue[item.status])}</Badge>
                   </td>
+                  <td className="px-3 py-3 text-sm text-foreground">{summarizeTargets(item.targets ?? {})}</td>
                   <td className="max-w-xs px-3 py-3 text-sm text-foreground">{summarizeHtml(item.contentHtml)}</td>
                   <td className="px-3 py-3 text-sm text-foreground">{formatLegalTextDateTime(item.publishedAt)}</td>
                   <td className="px-3 py-3 text-sm text-foreground">{formatLegalTextDateTime(item.createdAt)}</td>

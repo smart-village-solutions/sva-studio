@@ -116,6 +116,8 @@ Tabellen für Nachvollziehbarkeit, Freigaben und DSGVO-nahe Prozesse:
 - `iam.instance_deletion_rules`
 - `iam.account_deletion_content_preferences`
 - `iam.legal_text_versions`
+- `iam.legal_text_target_roles`
+- `iam.legal_text_target_groups`
 - `iam.legal_text_acceptances`
 - `iam.legal_holds`
 - `iam.data_subject_requests`

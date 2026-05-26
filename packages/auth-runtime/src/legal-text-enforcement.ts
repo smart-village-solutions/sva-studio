@@ -5,6 +5,7 @@ import { withInstanceDb } from './db.js';
 
 const logger = createSdkLogger({ component: 'iam-legal-compliance', level: 'info' });
 const DEFAULT_RETURN_TO = '/';
+const isAuthorizeTimingDebugEnabled = (): boolean => process.env.IAM_DEBUG_AUTHORIZE_TIMINGS === 'true';
 
 const sanitizeReturnTo = (value: string | null | undefined): string => {
   if (!value) {
@@ -66,9 +67,21 @@ export const withLegalTextCompliance = async (
   options?: { returnTo?: string }
 ): Promise<Response> => {
   const requestId = getWorkspaceContext().requestId;
+  const startedAt = performance.now();
 
   try {
     const check = await checkPendingLegalAcceptances(instanceId, keycloakSubject);
+    if (isAuthorizeTimingDebugEnabled()) {
+      logger.info('Legal text compliance timing diagnostics', {
+        operation: 'legal_compliance_timing',
+        instance_id: instanceId,
+        actor_keycloak_subject: keycloakSubject,
+        pending: check.pending,
+        pending_count: check.pending ? check.pendingCount : 0,
+        duration_ms: Number((performance.now() - startedAt).toFixed(2)),
+        request_id: requestId,
+      });
+    }
 
     if (check.pending) {
       logger.info('Legal text compliance check failed — pending acceptances', {

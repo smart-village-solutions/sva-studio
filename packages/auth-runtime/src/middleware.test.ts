@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type TestSessionUser = {
   id: string;
@@ -90,12 +90,10 @@ vi.mock('./auth-server/session.js', () => ({
 describe('auth-runtime withAuthenticatedUser', () => {
   let withAuthenticatedUser: typeof import('./middleware.js').withAuthenticatedUser;
 
-  beforeAll(async () => {
-    ({ withAuthenticatedUser } = await import('./middleware.js'));
-  }, 30_000);
-
   beforeEach(() => {
+    vi.resetModules();
     vi.resetAllMocks();
+    vi.unstubAllEnvs();
     authServerMocks.getAuthConfig.mockReturnValue({
       sessionCookieName: 'sva_auth_session',
     });
@@ -127,6 +125,10 @@ describe('auth-runtime withAuthenticatedUser', () => {
         instanceId: 'de-musterhausen',
       },
     });
+  });
+
+  beforeEach(async () => {
+    ({ withAuthenticatedUser } = await import('./middleware.js'));
   });
 
   it('rejects requests without a session cookie before reading the session store', async () => {
@@ -231,6 +233,26 @@ describe('auth-runtime withAuthenticatedUser', () => {
       expect.objectContaining({ id: 'user-1' })
     );
     expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalled();
+  });
+
+  it('logs middleware timing diagnostics when authorize timing debug is enabled', async () => {
+    vi.stubEnv('IAM_DEBUG_AUTHORIZE_TIMINGS', 'true');
+    const request = new Request('http://localhost/iam/authorize', {
+      headers: { cookie: 'sva_auth_session=session-2' },
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(200);
+    expect(middlewareLogger.info).toHaveBeenCalledWith(
+      'Auth middleware timing diagnostics',
+      expect.objectContaining({
+        operation: 'auth_middleware_timing',
+        endpoint: '/iam/authorize',
+        user_id: 'user-1',
+        instance_id: 'de-musterhausen',
+      })
+    );
   });
 
   it('fails closed when lifecycle enforcement cannot resolve the tenant account or IAM database', async () => {

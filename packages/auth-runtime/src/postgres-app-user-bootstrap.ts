@@ -7,6 +7,7 @@ import { getAppDbPassword } from './runtime-secrets.js';
 const logger = createSdkLogger({ component: 'iam-db-bootstrap', level: 'info' });
 
 let bootstrapPromise: Promise<boolean> | null = null;
+const BOOTSTRAP_RUNTIME_PROFILES = new Set(['studio', 'local-keycloak', 'local-builder']);
 
 const quoteIdentifier = (value: string): string => `"${value.replace(/"/g, '""')}"`;
 
@@ -35,12 +36,38 @@ const readPostgresSuperuserPasswords = (): readonly string[] => {
 };
 
 const shouldAttemptStudioBootstrap = (error: unknown): boolean => {
-  if (process.env.SVA_RUNTIME_PROFILE !== 'studio') {
+  const runtimeProfile = process.env.SVA_RUNTIME_PROFILE?.trim();
+  if (!runtimeProfile || !BOOTSTRAP_RUNTIME_PROFILES.has(runtimeProfile)) {
     return false;
   }
 
   const message = error instanceof Error ? error.message : String(error);
-  return message.includes('password authentication failed for user "sva_app"');
+  return (
+    message.includes('password authentication failed for user "sva_app"') ||
+    message.includes('permission denied for database')
+  );
+};
+
+const resolveBootstrapTarget = (): { host: string; port: number; database: string } => {
+  const explicitUrl = process.env.IAM_DATABASE_URL?.trim();
+  if (explicitUrl) {
+    try {
+      const parsed = new URL(explicitUrl);
+      return {
+        host: parsed.hostname,
+        port: parsed.port ? Number.parseInt(parsed.port, 10) || 5432 : 5432,
+        database: decodeURIComponent(parsed.pathname.replace(/^\//u, '')) || 'sva_studio',
+      };
+    } catch {
+      // Fall back to the explicit runtime env below.
+    }
+  }
+
+  return {
+    host: process.env.POSTGRES_HOST?.trim() || 'postgres',
+    port: Number.parseInt(process.env.POSTGRES_PORT?.trim() || '5432', 10) || 5432,
+    database: process.env.POSTGRES_DB?.trim() || 'sva_studio',
+  };
 };
 
 const runBootstrap = async (): Promise<boolean> => {
@@ -48,7 +75,8 @@ const runBootstrap = async (): Promise<boolean> => {
   const appDbPassword = getAppDbPassword();
   const appDbUser = process.env.APP_DB_USER?.trim() || 'sva_app';
   const postgresUser = process.env.POSTGRES_USER?.trim() || 'sva';
-  const postgresDb = process.env.POSTGRES_DB?.trim() || 'sva_studio';
+  const bootstrapTarget = resolveBootstrapTarget();
+  const postgresDb = bootstrapTarget.database;
 
   if (superuserPasswords.length === 0 || !appDbPassword) {
     return false;
@@ -56,14 +84,13 @@ const runBootstrap = async (): Promise<boolean> => {
 
   const quotedAppDbUser = quoteIdentifier(appDbUser);
   const quotedAppDbPassword = quoteLiteral(appDbPassword);
-  const quotedRoleName = quoteLiteral(appDbUser);
   const quotedPostgresDb = quoteIdentifier(postgresDb);
   let lastError: unknown;
 
   for (const superuserPassword of superuserPasswords) {
     const client = new Client({
-      host: 'postgres',
-      port: 5432,
+      host: bootstrapTarget.host,
+      port: bootstrapTarget.port,
       database: postgresDb,
       user: postgresUser,
       password: superuserPassword,
@@ -71,23 +98,16 @@ const runBootstrap = async (): Promise<boolean> => {
 
     try {
       await client.connect();
-      await client.query(
-        `
-DO $bootstrap$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${quotedRoleName}) THEN
-    EXECUTE format(
-      'CREATE ROLE ${quotedAppDbUser} LOGIN PASSWORD ${quotedAppDbPassword} NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT'
-    );
-  ELSE
-    EXECUTE format(
-      'ALTER ROLE ${quotedAppDbUser} WITH LOGIN PASSWORD ${quotedAppDbPassword} NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT'
-    );
-  END IF;
-END
-$bootstrap$;
-`
-      );
+      const existingRole = await client.query('SELECT 1 FROM pg_roles WHERE rolname = $1 LIMIT 1;', [appDbUser]);
+      if (existingRole.rowCount === 0) {
+        await client.query(
+          `CREATE ROLE ${quotedAppDbUser} LOGIN PASSWORD ${quotedAppDbPassword} NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT`
+        );
+      } else {
+        await client.query(
+          `ALTER ROLE ${quotedAppDbUser} WITH LOGIN PASSWORD ${quotedAppDbPassword} NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT`
+        );
+      }
       await client.query(`GRANT CONNECT ON DATABASE ${quotedPostgresDb} TO ${quotedAppDbUser}`);
       await client.query(`GRANT CREATE ON DATABASE ${quotedPostgresDb} TO ${quotedAppDbUser}`);
       await client.query(`GRANT USAGE, CREATE ON SCHEMA public TO ${quotedAppDbUser}`);

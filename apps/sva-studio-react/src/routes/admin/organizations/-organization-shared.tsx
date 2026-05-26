@@ -22,7 +22,9 @@ export type OrganizationFormValues = {
   contentAuthorPolicy: OrganizationContentAuthorPolicy;
 };
 
-type OrganizationParentOption = Pick<IamOrganizationListItem, 'id' | 'displayName'>;
+export type OrganizationParentOption = Pick<IamOrganizationListItem, 'id' | 'displayName' | 'organizationKey'>;
+
+const ORGANIZATION_PARENT_OPTIONS_PAGE_SIZE = 100;
 
 const ORGANIZATION_TYPE_KEYS = {
   county: 'admin.organizations.types.county',
@@ -65,11 +67,100 @@ export const toOrganizationMutationPayload = (values: OrganizationFormValues) =>
   contentAuthorPolicy: values.contentAuthorPolicy,
 });
 
+const normalizeOrganizationKeyBase = (value: string): string =>
+  value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+
+const buildOrganizationKeyCandidate = (baseKey: string, suffix: number): string =>
+  suffix <= 1 ? baseKey : `${baseKey}-${suffix}`;
+
+export const suggestOrganizationKey = (
+  displayName: string,
+  organizations: readonly OrganizationParentOption[],
+  excludeOrganizationId?: string
+): string => {
+  const baseKey = normalizeOrganizationKeyBase(displayName.trim());
+  if (!baseKey) {
+    return '';
+  }
+
+  const usedKeys = new Set(
+    organizations
+      .filter((organization) => organization.id !== excludeOrganizationId)
+      .map((organization) => organization.organizationKey.trim().toLocaleLowerCase())
+  );
+
+  for (let suffix = 1; ; suffix += 1) {
+    const candidate = buildOrganizationKeyCandidate(baseKey, suffix);
+    if (!usedKeys.has(candidate)) {
+      return candidate;
+    }
+  }
+};
+
 export const getOrganizationParentOptions = (
   organizations: readonly OrganizationParentOption[],
   excludeOrganizationId?: string
 ) =>
   organizations.filter((organization) => organization.id !== excludeOrganizationId);
+
+export const mergeOrganizationParentOptions = (
+  ...lists: readonly (readonly OrganizationParentOption[])[]
+): readonly OrganizationParentOption[] => {
+  const merged = new Map<string, OrganizationParentOption>();
+  for (const list of lists) {
+    for (const organization of list) {
+      merged.set(organization.id, organization);
+    }
+  }
+  return [...merged.values()];
+};
+
+export const areOrganizationParentOptionsEqual = (
+  left: readonly OrganizationParentOption[],
+  right: readonly OrganizationParentOption[]
+): boolean =>
+  left.length === right.length &&
+  left.every((organization, index) => {
+    const candidate = right[index];
+    return (
+      candidate !== undefined &&
+      candidate.id === organization.id &&
+      candidate.displayName === organization.displayName &&
+      candidate.organizationKey === organization.organizationKey
+    );
+  });
+
+export const loadAllOrganizationParentOptions = async (
+  loadPage: (input: {
+    readonly page: number;
+    readonly pageSize: number;
+  }) => Promise<{
+    readonly data: readonly OrganizationParentOption[];
+    readonly pagination: { readonly page: number; readonly pageSize: number; readonly total: number };
+  }>
+): Promise<readonly OrganizationParentOption[]> => {
+  const organizations: OrganizationParentOption[] = [];
+  let page = 1;
+
+  for (;;) {
+    const response = await loadPage({ page, pageSize: ORGANIZATION_PARENT_OPTIONS_PAGE_SIZE });
+    organizations.push(...response.data);
+
+    if (response.pagination.page * response.pagination.pageSize >= response.pagination.total) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return mergeOrganizationParentOptions(organizations);
+};
 
 export const organizationErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {
@@ -101,6 +192,8 @@ type OrganizationFormProps = {
   readonly excludeOrganizationId?: string;
   readonly organizations: readonly OrganizationParentOption[];
   readonly onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  readonly onDisplayNameChange?: (value: string) => void;
+  readonly onOrganizationKeyChange?: (value: string) => void;
   readonly setFormValues: React.Dispatch<React.SetStateAction<OrganizationFormValues>>;
   readonly submitLabel: string;
   readonly formValues: OrganizationFormValues;
@@ -111,6 +204,8 @@ export const OrganizationForm = ({
   excludeOrganizationId,
   organizations,
   onSubmit,
+  onDisplayNameChange,
+  onOrganizationKeyChange,
   setFormValues,
   submitLabel,
   formValues,
@@ -124,7 +219,11 @@ export const OrganizationForm = ({
         <Input
           id="organization-key"
           value={formValues.organizationKey}
-          onChange={(event) => setFormValues((current) => ({ ...current, organizationKey: event.target.value }))}
+          onChange={(event) =>
+            onOrganizationKeyChange
+              ? onOrganizationKeyChange(event.target.value)
+              : setFormValues((current) => ({ ...current, organizationKey: event.target.value }))
+          }
         />
       </div>
       <div className="grid gap-1 text-sm text-foreground">
@@ -132,7 +231,11 @@ export const OrganizationForm = ({
         <Input
           id="organization-name"
           value={formValues.displayName}
-          onChange={(event) => setFormValues((current) => ({ ...current, displayName: event.target.value }))}
+          onChange={(event) =>
+            onDisplayNameChange
+              ? onDisplayNameChange(event.target.value)
+              : setFormValues((current) => ({ ...current, displayName: event.target.value }))
+          }
         />
       </div>
       <div className="grid gap-1 text-sm text-foreground md:grid-cols-2 md:gap-4">

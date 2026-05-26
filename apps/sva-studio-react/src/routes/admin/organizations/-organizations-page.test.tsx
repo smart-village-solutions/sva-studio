@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -84,7 +84,21 @@ describe('OrganizationsPage', () => {
     expect(screen.getByRole('heading', { name: 'Organisationsverwaltung' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Organisation anlegen' }).getAttribute('href')).toBe('/admin/organizations/new');
     expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe('/admin/organizations/$organizationId');
+    expect(screen.getAllByRole('link', { name: 'Mitglieder verwalten' })[0]!.getAttribute('href')).toBe('/admin/organizations/$organizationId');
     expect(screen.getByText('1 Organisationen gefunden.')).toBeTruthy();
+  });
+
+  it('toggles the organization status inline', async () => {
+    const updateOrganization = vi.fn().mockResolvedValue({ id: 'org-1' });
+    useOrganizationsMock.mockReturnValue(createOrganizationsApiState({ updateOrganization }));
+
+    render(<OrganizationsPage />);
+
+    fireEvent.click(screen.getAllByRole('switch', { name: 'Aktivstatus für Landkreis Alpha' })[0]!);
+
+    await waitFor(() => {
+      expect(updateOrganization).toHaveBeenCalledWith('org-1', { isActive: false });
+    });
   });
 
   it('forwards filter and pagination actions', () => {
@@ -135,15 +149,54 @@ describe('OrganizationsPage', () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
-  it('deactivates organizations via the confirmation dialog', async () => {
+  it('shows dismissible mutation errors', () => {
+    const clearMutationError = vi.fn();
+    useOrganizationsMock.mockReturnValue(
+      createOrganizationsApiState({
+        mutationError: new IamHttpError({ status: 409, code: 'conflict', message: 'conflict' }),
+        clearMutationError,
+      })
+    );
+
+    render(<OrganizationsPage />);
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Die Organisationsänderung steht in Konflikt mit dem aktuellen Zustand.'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+    expect(clearMutationError).toHaveBeenCalledTimes(1);
+  });
+
+  it('deletes organizations via the confirmation dialog', async () => {
     const deactivateOrganization = vi.fn().mockResolvedValue(true);
     useOrganizationsMock.mockReturnValue(createOrganizationsApiState({ deactivateOrganization }));
 
     render(<OrganizationsPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Organisation löschen' })).toBeTruthy();
+    });
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => expect(deactivateOrganization).toHaveBeenCalledWith('org-1'));
+  });
+
+  it('closes the confirmation dialog after a failed deletion so the mutation error can be seen', async () => {
+    const deactivateOrganization = vi.fn().mockResolvedValue(false);
+    useOrganizationsMock.mockReturnValue(createOrganizationsApiState({ deactivateOrganization }));
+
+    render(<OrganizationsPage />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Organisation löschen' })).toBeTruthy();
+    });
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => expect(deactivateOrganization).toHaveBeenCalledWith('org-1'));
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'Organisation löschen' })).toBeNull();
+    });
   });
 });

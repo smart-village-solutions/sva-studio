@@ -10,9 +10,13 @@ describe('legal-text-schemas', () => {
         legalTextVersion: 'v1',
         locale: 'de',
         contentHtml: '<p>Hallo</p>',
+        targetRoleIds: ['11111111-1111-4111-8111-111111111111'],
+        targetGroupIds: ['22222222-2222-4222-8222-222222222222'],
       })
     ).toMatchObject({
       status: 'draft',
+      targetRoleIds: ['11111111-1111-4111-8111-111111111111'],
+      targetGroupIds: ['22222222-2222-4222-8222-222222222222'],
     });
   });
 
@@ -45,9 +49,31 @@ describe('legal-text-schemas', () => {
       updateLegalTextSchema.parse({
         status: 'archived',
         publishedAt: '2026-05-10T10:00:00.000Z',
+        targetRoleIds: ['33333333-3333-4333-8333-333333333333'],
+        targetGroupIds: ['44444444-4444-4444-8444-444444444444'],
       })
     ).toMatchObject({
       status: 'archived',
+      targetRoleIds: ['33333333-3333-4333-8333-333333333333'],
+      targetGroupIds: ['44444444-4444-4444-8444-444444444444'],
     });
+  });
+
+  it('rejects blank target ids in create and update payloads', () => {
+    expect(() =>
+      createLegalTextSchema.parse({
+        name: 'Datenschutz',
+        legalTextVersion: 'v1',
+        locale: 'de',
+        contentHtml: '<p>Hallo</p>',
+        targetRoleIds: ['11111111-1111-4111-8111-111111111111', ''],
+      })
+    ).toThrow();
+
+    expect(() =>
+      updateLegalTextSchema.parse({
+        targetGroupIds: ['22222222-2222-4222-8222-222222222222', '   '],
+      })
+    ).toThrow();
   });
 });

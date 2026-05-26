@@ -7,6 +7,10 @@ export {
   meHandler,
 } from './auth-route-handlers.js';
 export { authorizeHandler } from './iam-authorization/authorize.js';
+export {
+  getLatestAuthorizePerformanceRunHandler,
+  startAuthorizePerformanceRunHandler,
+} from './iam-authorization/authorize-performance.js';
 export { mePermissionsHandler } from './iam-authorization/me-permissions.js';
 export {
   assignGroupMembershipHandler,
@@ -33,6 +37,7 @@ export {
 export {
   getGovernanceCaseHandler,
   governanceComplianceExportHandler,
+  legalConsentExportHandler,
   permissionChangeSelfServiceRequestHandler,
   governanceWorkflowHandler,
   listGovernanceCasesHandler,

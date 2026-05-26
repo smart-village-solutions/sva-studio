@@ -2,6 +2,9 @@ import type {
   ApiErrorResponse,
   ApiItemResponse,
   ApiListResponse,
+  AuthorizePerformanceRequest,
+  AuthorizePerformanceRunResponse,
+  AuthorizePerformanceRunResult,
   CreateIamContentInput,
   IamAdminGroupDetail,
   IamAdminGroupListItem,
@@ -454,6 +457,8 @@ export type CreateLegalTextPayload = {
   readonly contentHtml: string;
   readonly status: 'draft' | 'valid' | 'archived';
   readonly publishedAt?: string;
+  readonly targetRoleIds?: readonly string[];
+  readonly targetGroupIds?: readonly string[];
 };
 
 export type UpdateLegalTextPayload = {
@@ -463,6 +468,8 @@ export type UpdateLegalTextPayload = {
   readonly contentHtml?: string;
   readonly status?: 'draft' | 'valid' | 'archived';
   readonly publishedAt?: string;
+  readonly targetRoleIds?: readonly string[];
+  readonly targetGroupIds?: readonly string[];
 };
 
 export type CreateContentPayload = CreateIamContentInput;
@@ -589,6 +596,7 @@ export type CreateOrganizationPayload = {
 
 export type UpdateOrganizationPayload = Partial<CreateOrganizationPayload> & {
   readonly parentOrganizationId?: string | null;
+  readonly isActive?: boolean;
 };
 
 export type AssignOrganizationMembershipPayload = {
@@ -1320,6 +1328,46 @@ export const getPluginOperationJob = async (
   return response.data;
 };
 
+export const getLatestAuthorizePerformanceRun = async (
+  options: IamRequestOptions = {}
+): Promise<AuthorizePerformanceRunResult | null> => {
+  const response = await requestJson<AuthorizePerformanceRunResponse>(
+    '/api/v1/iam/authorize-performance',
+    undefined,
+    {
+      signal: options.signal,
+      timeoutMs: options.timeoutMs ?? HEAVY_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );
+
+  return response.data;
+};
+
+export const startAuthorizePerformanceRun = async (
+  payload: AuthorizePerformanceRequest
+): Promise<AuthorizePerformanceRunResult> => {
+  const response = await requestJson<AuthorizePerformanceRunResponse>(
+    '/api/v1/iam/authorize-performance',
+    createJsonMutationRequestInit('POST', payload),
+    {
+      timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );
+
+  if (!response.data) {
+    throw new IamHttpError({
+      status: 500,
+      code: 'invalid_response',
+      message: 'http_500',
+      classification: 'unknown',
+      diagnosticStatus: 'degradiert',
+      recommendedAction: 'erneut_versuchen',
+    });
+  }
+
+  return response.data;
+};
+
 const toRuntimeDependencyStatus = (
   ready: boolean | undefined
 ): RuntimeDependencyHealth['status'] => {
@@ -1820,6 +1868,27 @@ export const requestDataExport = async (input: {
       timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
     }
   );
+};
+
+export const requestLegalConsentExport = async (input: {
+  readonly instanceId: string;
+  readonly format: 'json' | 'csv';
+  readonly accountId?: string;
+}): Promise<
+  | { data: string }
+  | {
+      readonly format: 'json';
+      readonly rows: readonly Record<string, unknown>[];
+    }
+> => {
+  const params = new URLSearchParams();
+  params.set('instanceId', input.instanceId);
+  params.set('format', input.format);
+  if (input.accountId) {
+    params.set('accountId', input.accountId);
+  }
+
+  return requestJsonOrText(`/iam/governance/legal-consents/export?${params.toString()}`);
 };
 
 export const getDataExportStatus = async (

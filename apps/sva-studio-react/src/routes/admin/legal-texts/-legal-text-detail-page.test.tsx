@@ -74,6 +74,10 @@ const legalTextFixture = {
   createdAt: '2026-04-01T08:00:00.000Z',
   updatedAt: '2026-04-01T09:00:00.000Z',
   publishedAt: '2026-04-02T10:00:00.000Z',
+  targets: {
+    roleIds: ['11111111-1111-1111-1111-111111111111'],
+    groupIds: ['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'],
+  },
 };
 
 const createState = (overrides: Record<string, unknown> = {}) => ({
@@ -127,6 +131,18 @@ describe('LegalTextDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' }), {
       target: { value: '2026-04-10T10:45' },
     });
+    fireEvent.change(screen.getByLabelText('Zielrollen-IDs', { selector: '#legal-text-edit-role-targets' }), {
+      target: {
+        value:
+          ' 33333333-3333-3333-3333-333333333333, 44444444-4444-4444-4444-444444444444 ,, 33333333-3333-3333-3333-333333333333 ',
+      },
+    });
+    fireEvent.change(screen.getByLabelText('Zielgruppen-IDs', { selector: '#legal-text-edit-group-targets' }), {
+      target: {
+        value:
+          ' cccccccc-cccc-cccc-cccc-cccccccccccc, dddddddd-dddd-dddd-dddd-dddddddddddd, cccccccc-cccc-cccc-cccc-cccccccccccc ',
+      },
+    });
     fireEvent.change(screen.getByLabelText('Inhalt', { selector: '#legal-text-edit-content' }), {
       target: { value: '<p>Neu</p>' },
     });
@@ -140,6 +156,14 @@ describe('LegalTextDetailPage', () => {
         contentHtml: '<p>Neu</p>',
         status: 'valid',
         publishedAt: '2026-04-10T08:45:00.000Z',
+        targetRoleIds: [
+          '33333333-3333-3333-3333-333333333333',
+          '44444444-4444-4444-4444-444444444444',
+        ],
+        targetGroupIds: [
+          'cccccccc-cccc-cccc-cccc-cccccccccccc',
+          'dddddddd-dddd-dddd-dddd-dddddddddddd',
+        ],
       });
     });
   });

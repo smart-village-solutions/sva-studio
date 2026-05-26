@@ -3,6 +3,7 @@ import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { t } from '../../../i18n';
+import { InstanceDetailModulesSection } from './-instance-detail-modules-section';
 import { getKeycloakStatusEntries, getSetupWorkflowSteps } from './-instance-detail-models';
 import { KeycloakStatusBadge, WorkflowStatusBadge } from './-instance-status-badges';
 import { TENANT_IAM_AXIS_TITLE_KEYS, TenantIamStatusBadge, type WorkflowAction } from './-instance-detail-view-shared';
@@ -49,45 +50,13 @@ const ModuleIamCard = ({
   selectedInstance,
   onSeedIamBaseline,
   statusLoading,
-}: Pick<OperationsSectionProps, 'selectedInstance' | 'onSeedIamBaseline' | 'statusLoading'>) =>
-  selectedInstance.moduleIamStatus ? (
-    <Card className="space-y-4 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <div className="font-medium text-foreground">{t('admin.instances.instanceModules.detail.title')}</div>
-          <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.detail.subtitle')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <TenantIamStatusBadge status={selectedInstance.moduleIamStatus.overall.status} />
-          <Button type="button" variant="outline" size="sm" onClick={() => void onSeedIamBaseline()} disabled={statusLoading}>
-            {t('admin.instances.instanceModules.actions.seedIamBaseline')}
-          </Button>
-        </div>
-      </div>
-      {selectedInstance.moduleIamStatus.modules.length > 0 ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          {selectedInstance.moduleIamStatus.modules.map((module) => (
-            <div key={module.moduleId} className="rounded-md border border-border bg-muted/20 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="font-medium text-foreground">{module.moduleId}</div>
-                <TenantIamStatusBadge status={module.status} />
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{module.summary}</p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {t('admin.instances.instanceModules.module.permissions', {
-                  value: module.permissionIds.join(', ') || '—',
-                })}
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
-          {t('admin.instances.instanceModules.assigned.empty')}
-        </div>
-      )}
-    </Card>
-  ) : null;
+}: Pick<OperationsSectionProps, 'selectedInstance' | 'onSeedIamBaseline' | 'statusLoading'>) => (
+  <InstanceDetailModulesSection
+    selectedInstance={selectedInstance}
+    onSeedIamBaseline={onSeedIamBaseline}
+    statusLoading={statusLoading}
+  />
+);
 
 const WorkflowCard = ({
   selectedInstance,

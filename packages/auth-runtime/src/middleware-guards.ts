@@ -88,27 +88,27 @@ export const ensureAccountLifecycleAllowsAccess = async (
     );
   }
 
-  const accountState = await withResolvedInstanceDb(() => pool, user.instanceId, async (client) => {
-    const result = await client.query<AccountLifecycleRow>(
-      `
+  const accountRow = await withResolvedInstanceDb(
+    () => pool,
+    user.instanceId,
+    async (client) => {
+      const result = await client.query<AccountLifecycleRow>(
+        `
 SELECT a.deletion_lifecycle_state
 FROM iam.accounts a
 WHERE a.instance_id = $1
   AND a.keycloak_subject = $2
 LIMIT 1;
 `,
-      [user.instanceId, user.id]
-    );
+        [user.instanceId, user.id]
+      );
 
-    return result.rows[0]?.deletion_lifecycle_state;
-  });
-
-  if (accountState === 'active') {
-    return null;
-  }
+      return result.rows[0] ?? null;
+    }
+  );
 
   const logContext = buildLogContext(user.instanceId, { includeTraceId: true });
-  if (!accountState) {
+  if (!accountRow) {
     logger.warn('Auth middleware rejected request because the tenant account could not be resolved', {
       endpoint: request.url,
       operation: 'auth_middleware',
@@ -126,6 +126,11 @@ LIMIT 1;
         reason_code: 'account_not_found',
       }
     );
+  }
+
+  const accountState = accountRow.deletion_lifecycle_state;
+  if (accountState === 'active') {
+    return null;
   }
 
   logger.warn('Auth middleware rejected request because the account lifecycle is blocked', {

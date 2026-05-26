@@ -26,4 +26,16 @@ describe('user-detail-permission-sql', () => {
     expect(sql).toContain("'allow'::text AS effect");
     expect(sql).toContain('NULL::jsonb AS scope');
   });
+
+  it('projects inheritance and inactive-reason fields into the permission trace', () => {
+    const sql = buildPermissionTraceRowsSql(true, true);
+
+    expect(sql).toContain("'inherited_from_organization_id'");
+    expect(sql).toContain("'inherited_from_geo_unit_id'");
+    expect(sql).toContain("'restricted_by_geo_unit_id'");
+    expect(sql).toContain("'inactive_reason'");
+    expect(sql).toContain("'group_disabled'");
+    expect(sql).toContain("'membership_not_started'");
+    expect(sql).toContain("'assignment_expired'");
+  });
 });

@@ -777,6 +777,7 @@ export default function Sidebar({
   const canAccessAdminPrivacy = canAccessAdminUsers;
   const canAccessInterfaces = isAuthenticated && isIamUiEnabled() && hasInterfacesAccessRole(user);
   const canAccessSystemTools = canAccessAdminRoles;
+  const canAccessTenantModules = isAuthenticated && isIamUiEnabled() && Boolean(user?.instanceId);
 
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [hasLoadedCollapsePreference, setHasLoadedCollapsePreference] = React.useState(false);
@@ -994,7 +995,7 @@ export default function Sidebar({
             },
           ]
         : []),
-      ...(canAccessSystemTools
+      ...((canAccessSystemTools || canAccessTenantModules)
         ? [
             {
               kind: 'link' as const,
@@ -1003,10 +1004,14 @@ export default function Sidebar({
               label: t('shell.sidebar.modules'),
               icon: IconPackages,
             },
+          ]
+        : []),
+      ...(canAccessSystemTools
+        ? [
             {
               kind: 'link' as const,
               id: 'monitoring',
-              to: '/monitoring/jobs',
+              to: '/monitoring',
               label: t('shell.sidebar.monitoring'),
               icon: IconActivityHeartbeat,
             },

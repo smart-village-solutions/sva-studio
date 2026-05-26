@@ -40,6 +40,7 @@ vi.mock('../i18n', () => ({
         'shell.sidebar.sections.system': 'System',
         'shell.sidebar.modules': 'Modules',
         'shell.sidebar.monitoring': 'Monitoring',
+        'monitoring.page.title': 'Monitoring',
         'monitoring.jobs.page.title': 'Monitoring Jobs',
         'monitoring.jobs.detail.title': 'Job Details',
         'shell.sidebar.help': 'Help',
@@ -223,6 +224,10 @@ vi.mock('../routes/interfaces/-interfaces-page', () => ({
 
 vi.mock('../routes/monitoring/-jobs-page', () => ({
   MonitoringJobsPage: () => <div data-testid="monitoring-jobs-page" />,
+}));
+
+vi.mock('../routes/monitoring/-overview-page', () => ({
+  MonitoringOverviewPage: () => <div data-testid="monitoring-overview-page" />,
 }));
 
 vi.mock('../routes/monitoring/-job-detail-page', () => ({
@@ -472,6 +477,10 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.newsDetail />);
     expect(screen.getByTestId('news-edit-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.monitoring />);
+    await waitFor(() => expect(screen.getByTestId('monitoring-overview-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.monitoringJobs />);

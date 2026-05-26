@@ -399,8 +399,7 @@ test.describe('news plugin', () => {
     await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
 
     await navigateClientSide(page, '/admin/content');
-    await expectContentOverviewUrl(page);
-    await expectPluginPageHeading(page, /Inhalte|content\.page\.title/);
+    await expectContentOverviewReady(page);
 
     await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
     await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
@@ -480,8 +479,7 @@ test.describe('news plugin', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|news\.actions\.delete/ }).click();
 
-    await expectContentOverviewUrl(page);
-    await expectPluginPageHeading(page, /Inhalte|content\.page\.title/);
+    await expectContentOverviewReady(page);
     expect(newsItems).toHaveLength(0);
   });
 
@@ -520,8 +518,7 @@ test.describe('news plugin', () => {
     await contentNavLink.focus();
     await page.keyboard.press('Enter');
 
-    await expectContentOverviewUrl(page);
-    await expectPluginPageHeading(page, /Inhalte|content\.page\.title/);
+    await expectContentOverviewReady(page);
   });
 
   test('blocks unauthenticated access to admin news routes', async ({ page }) => {

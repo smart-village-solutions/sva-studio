@@ -10,6 +10,39 @@ import { InstanceDetailWorkspaceSections } from './-instance-detail-sections';
 
 import type { ConfigurationSectionProps, OperationsSectionProps } from './-instance-detail-view-shared';
 
+const { mockStudioModuleIamContracts } = vi.hoisted(() => ({
+  mockStudioModuleIamContracts: [
+    {
+      moduleId: 'news',
+      namespace: 'news',
+      ownerPluginId: 'news',
+      descriptionKey: 'plugins.news.description',
+      permissionIds: ['news.read'],
+      systemRoles: [],
+    },
+    {
+      moduleId: 'events',
+      namespace: 'events',
+      ownerPluginId: 'events',
+      descriptionKey: 'plugins.missing.description',
+      permissionIds: ['events.read'],
+      systemRoles: [],
+    },
+    {
+      moduleId: 'poi',
+      namespace: 'poi',
+      ownerPluginId: 'poi',
+      descriptionKey: 'plugins.empty.description',
+      permissionIds: ['poi.read'],
+      systemRoles: [],
+    },
+  ],
+}));
+
+vi.mock('../../../lib/plugins', () => ({
+  studioModuleIamContracts: mockStudioModuleIamContracts,
+}));
+
 const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
   ({
     instanceId: 'demo',
@@ -342,7 +375,7 @@ describe('instance detail split sections', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Client-Secret rotieren' })[1] as HTMLButtonElement);
 
     expect(screen.getByText('Probe ausstehend')).toBeTruthy();
-    expect(screen.getByText('Berechtigungen fehlen')).toBeTruthy();
+    expect(screen.getByText('news')).toBeTruthy();
     expect(screen.getByText('Client anlegen')).toBeTruthy();
     expect(onSeedIamBaseline).toHaveBeenCalledOnce();
     expect(onTriggerWorkflowAction).toHaveBeenCalledWith('check_preflight');
@@ -353,6 +386,34 @@ describe('instance detail split sections', () => {
     expect(onExecuteProvisioning).toHaveBeenCalledWith('reset_tenant_admin');
     expect(onExecuteProvisioning).toHaveBeenCalledWith('rotate_client_secret');
     expect(latestValues.tenantAdminTemporaryPassword).toBe('TempPasswort123!');
+  });
+
+  it('renders the module transparency table with fallback descriptions for missing or empty translation values', () => {
+    render(
+      <InstanceDetailOperationsSection
+        selectedInstance={createDetailFixture({
+          assignedModules: ['news'],
+          moduleIamStatus: undefined,
+        })}
+        detailFormValues={createDetailFormValues()}
+        effectiveTenantIamStatus={createDetailFixture().tenantIamStatus}
+        mutationError={null}
+        statusLoading={false}
+        setDetailFormValues={vi.fn() as OperationsSectionProps['setDetailFormValues']}
+        onTriggerWorkflowAction={vi.fn().mockResolvedValue(undefined)}
+        onExecuteProvisioning={vi.fn().mockResolvedValue(undefined)}
+        onSeedIamBaseline={vi.fn().mockResolvedValue(undefined)}
+      />
+    );
+
+    expect(screen.getByText('news')).toBeTruthy();
+    expect(screen.getByText('events')).toBeTruthy();
+    expect(screen.getByText('poi')).toBeTruthy();
+    expect(screen.getAllByText('Aktiv')).toHaveLength(1);
+    expect(screen.getAllByText('Deaktiviert')).toHaveLength(2);
+    expect(screen.getByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.')).toBeTruthy();
+    expect(screen.getAllByText('Keine Modulbeschreibung hinterlegt.')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeNull();
   });
 
   it('renders the history split section and loads a selected run on demand', () => {

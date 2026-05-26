@@ -3,6 +3,7 @@ import * as graphileWorker from 'graphile-worker';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { resolvePool } from '../db.js';
+import { bootstrapStudioAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.js';
 import { createJobLifecycleOrchestrator } from './job-lifecycle-orchestrator.js';
 import { withStudioJobRepository } from './repository.js';
 import type { PluginOperationExecutionHandler } from './types.js';
@@ -95,14 +96,26 @@ const createGraphileWorkerRunner = async (): Promise<graphileWorker.Runner> => {
     throw new Error('plugin_operation_worker_database_unavailable');
   }
 
-  await graphileWorker.runMigrations({ pgPool: pool });
+  const startRunner = async (): Promise<graphileWorker.Runner> => {
+    await graphileWorker.runMigrations({ pgPool: pool });
 
-  return graphileWorker.run({
-    pgPool: pool,
-    taskList: createPluginOperationTaskList(getRegisteredPluginOperationExecutionRegistry),
-    concurrency: parseWorkerConcurrency(process.env.SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY),
-    noHandleSignals: true,
-  });
+    return graphileWorker.run({
+      pgPool: pool,
+      taskList: createPluginOperationTaskList(getRegisteredPluginOperationExecutionRegistry),
+      concurrency: parseWorkerConcurrency(process.env.SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY),
+      noHandleSignals: true,
+    });
+  };
+
+  try {
+    return await startRunner();
+  } catch (error) {
+    const bootstrapped = await bootstrapStudioAppDbUserIfNeeded(error);
+    if (!bootstrapped) {
+      throw error;
+    }
+    return startRunner();
+  }
 };
 
 export const ensurePluginOperationWorkerStarted = async (): Promise<void> => {

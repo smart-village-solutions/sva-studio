@@ -62,6 +62,8 @@ type ConsentExportRow = {
   accepted_at: string;
   revoked_at: string | null;
   action_type: string | null;
+  target_role_ids: readonly string[] | null;
+  target_group_ids: readonly string[] | null;
 };
 
 const mapConsentExportRecord = (row: ConsentExportRow): LegalConsentExportRecord => ({
@@ -73,6 +75,10 @@ const mapConsentExportRecord = (row: ConsentExportRow): LegalConsentExportRecord
   actionType: (row.action_type ?? 'accepted') as LegalAcceptanceActionType,
   acceptedAt: row.accepted_at,
   ...(row.revoked_at ? { revokedAt: row.revoked_at } : {}),
+  targets: {
+    roleIds: row.target_role_ids ?? [],
+    groupIds: row.target_group_ids ?? [],
+  },
 });
 
 const CONSENT_EXPORT_SELECT = `
@@ -84,13 +90,27 @@ SELECT
   ltv.legal_text_version,
   lta.accepted_at::text,
   lta.revoked_at::text,
-  lta.action_type
+  lta.action_type,
+  COALESCE(role_targets.role_ids, ARRAY[]::text[]) AS target_role_ids,
+  COALESCE(group_targets.group_ids, ARRAY[]::text[]) AS target_group_ids
 FROM iam.legal_text_acceptances lta
 JOIN iam.legal_text_versions ltv
   ON ltv.id = lta.legal_text_version_id
  AND ltv.instance_id = lta.instance_id
 LEFT JOIN iam.accounts a
   ON a.id = lta.account_id
+LEFT JOIN LATERAL (
+  SELECT array_agg(target.role_id::text ORDER BY target.role_id::text) AS role_ids
+  FROM iam.legal_text_target_roles target
+  WHERE target.instance_id = ltv.instance_id
+    AND target.legal_text_version_id = ltv.id
+) role_targets ON true
+LEFT JOIN LATERAL (
+  SELECT array_agg(target.group_id::text ORDER BY target.group_id::text) AS group_ids
+  FROM iam.legal_text_target_groups target
+  WHERE target.instance_id = ltv.instance_id
+    AND target.legal_text_version_id = ltv.id
+) group_targets ON true
 `;
 
 export const loadConsentExportRecords = async (

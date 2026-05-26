@@ -128,6 +128,67 @@ describe('profile-commands', () => {
     expect(deps.resolveUserDetail).toHaveBeenCalledTimes(1);
   });
 
+  it('repairs degraded local profile fields from session claims and reloads the detail', async () => {
+    const { client, deps } = createDeps();
+    deps.resolveUserDetail = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: 'account-1',
+        keycloakSubject: 'kc-1',
+        username: undefined,
+        displayName: 'kc-1',
+        email: undefined,
+        firstName: undefined,
+        lastName: undefined,
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      })
+      .mockResolvedValueOnce({
+        id: 'account-1',
+        keycloakSubject: 'kc-1',
+        username: 'jane.doe',
+        displayName: 'Jane Doe',
+        email: 'jane@example.com',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      });
+    const commands = createProfileCommands(deps);
+
+    const detail = await commands.loadMyProfileDetail(
+      {
+        instanceId: 'de-musterhausen',
+        requestId: 'req-profile',
+        traceId: 'trace-profile',
+      },
+      'kc-1',
+      {
+        username: 'jane.doe',
+        email: 'jane@example.com',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        displayName: 'Jane Doe',
+      }
+    );
+
+    expect(detail).toMatchObject({
+      username: 'jane.doe',
+      displayName: 'Jane Doe',
+      email: 'jane@example.com',
+    });
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE iam.accounts'), [
+      'account-1',
+      'de-musterhausen',
+      'enc:jane.doe',
+      'enc:jane@example.com',
+      'enc:Jane',
+      'enc:Doe',
+      'enc:Jane Doe',
+    ]);
+    expect(deps.resolveUserDetail).toHaveBeenCalledTimes(2);
+  });
+
   it('updates the local profile and emits an activity log', async () => {
     const { client, deps } = createDeps();
     const commands = createProfileCommands(deps);

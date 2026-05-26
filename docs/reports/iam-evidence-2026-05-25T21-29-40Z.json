@@ -1,0 +1,65 @@
+{
+  "cases": [
+    {
+      "packageId": "WP-006",
+      "title": "Blockierender Consent-Fall",
+      "status": "manual_review",
+      "details": "Privacy-Seite wurde archiviert; ein blockierender Consent-Dialog war im Lauf nicht automatisch sichtbar.",
+      "artifacts": [
+        {
+          "description": "WP-006 Privacy-Seite oder blockierender Consent-Dialog",
+          "kind": "screenshot",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-29-40Z/wp-006-privacy-consent.png"
+        }
+      ]
+    },
+    {
+      "packageId": "WP-006",
+      "title": "Erfolgreicher Export mit Berechtigung",
+      "status": "passed",
+      "details": "Consent-Export antwortete mit HTTP 200 und wurde als Artefakt archiviert.",
+      "artifacts": [
+        {
+          "description": "WP-006 positiver Consent-Export",
+          "kind": "export",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-29-40Z/wp-006-consent-export-positive.json"
+        },
+        {
+          "description": "WP-006 Metadaten des positiven Exports",
+          "kind": "json",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-29-40Z/wp-006-consent-export-positive.meta.json"
+        }
+      ]
+    },
+    {
+      "packageId": "WP-006",
+      "title": "Negativfall ohne Exportberechtigung",
+      "status": "failed",
+      "details": "Consent-Export ohne Berechtigung antwortete mit HTTP 200.",
+      "artifacts": [
+        {
+          "description": "WP-006 negativer Consent-Export ohne Berechtigung",
+          "kind": "json",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-29-40Z/wp-006-consent-export-negative.json"
+        },
+        {
+          "description": "WP-006 Metadaten des negativen Exports",
+          "kind": "json",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-29-40Z/wp-006-consent-export-negative.meta.json"
+        }
+      ]
+    }
+  ],
+  "generatedAt": "2026-05-25T21:29:40.551Z",
+  "summary": {
+    "failed": 1,
+    "manualReview": 1,
+    "passed": 1,
+    "skipped": 0,
+    "status": "failed"
+  },
+  "target": {
+    "baseUrl": "http://de-musterhausen.studio.localhost:3000",
+    "instanceId": "de-musterhausen"
+  }
+}

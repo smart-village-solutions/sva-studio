@@ -1,8 +1,8 @@
 {
   "meta": {
-    "version": "1.0.1",
-    "updatedAt": "2026-05-09",
-    "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; commissioned-Status am 2026-05-06 fachlich auf idea zurückgesetzt, Health weiterhin aus der Kostenschätzung als on_track abgeleitet"
+    "version": "1.0.5",
+    "updatedAt": "2026-05-25",
+    "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; commissioned-Status am 2026-05-06 fachlich auf idea zurückgesetzt; am 2026-05-25 manuell gegen den Repository-Stand abgeglichen, um schlanke Abnahmenachweise sowie IAM-bezogene Akzeptanzkriterien und ToDos erweitert; Health weiterhin aus der Kostenschätzung als on_track abgeleitet; am 2026-05-25 um ein feld featureSummary je Arbeitspaket fuer Mehrwerte, Funktionen und Features erweitert; am 2026-05-25 die featureSummary-Texte fuer M1 gegen die Konzeption unter concepts/konzeption-cms-v2 fachlich nachgeschaerft"
   },
   "statusModel": {
     "idea": 0,
@@ -43,9 +43,20 @@
           "area": "1. Rechte & Rollen",
           "priority": "must",
           "effortPt": 4,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "Dedizierter Keycloak-Realm und relevante Clients sind in der Testumgebung funktionsfähig eingerichtet.",
+            "Ein erfolgreicher Login-Flow mit Keycloak-Test-User ist nachweisbar.",
+            "Das ausgestellte OIDC-Token enthält die erwarteten initialen Claims.",
+            "Der Tenant-Scope wird im Auth-Pfad nicht verletzt."
+          ],
+          "todos": [
+            "Zielumgebungsnachweis für Realm-, Client- und Login-Flow vollständig festhalten.",
+            "Abnahmestand gegen aktuelle Runtime-Konfiguration erneut gegenprüfen."
+          ],
+          "featureSummary": "Dieses Arbeitspaket schafft die sichere und mandantenfaehige Eintrittsschicht des Studios. Nutzer melden sich ueber tenant-spezifische Login-Konfigurationen an, waehrend Mandantenkontext, Session und Redirects pro Instanz sauber getrennt bleiben. Damit bekommt das Studio eine belastbare Authentifizierungs- und Sicherheitsbasis, auf der weitere Rechte-, Rollen- und Verwaltungsfunktionen mandantensicher aufbauen koennen. Fail-closed-Pruefungen sorgen zusaetzlich dafuer, dass fehlender oder widerspruechlicher Tenant-Scope nicht in eine unsichere Sitzung uebergeht."
         },
         {
           "id": "WP-002",
@@ -53,9 +64,18 @@
           "area": "1. Rechte & Rollen",
           "priority": "must",
           "effortPt": 4,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "Accounts können im Tenant-Scope angelegt, gelesen, aktualisiert und deaktiviert werden.",
+            "Nach Login oder Registrierung wird die Keycloak-ID korrekt mit dem Account verknüpft.",
+            "Benutzer können einer Organisation zugeordnet und wieder entzogen werden.",
+            "Die Admin-UI bildet Benutzerliste, Benutzerdetail und Organisationszuordnung nachvollziehbar ab.",
+            "Der Profilpfad des angemeldeten Benutzers ist les- und schreibbar."
+          ],
+          "todos": [],
+          "featureSummary": "Dieses Arbeitspaket macht Benutzerkonten im Studio fachlich nutzbar und administrierbar. Accounts koennen mandantenbezogen angelegt, gepflegt und stabil mit der Login-Identitaet verknuepft werden, sodass Anmeldung und fachlicher Benutzer konsistent zusammengehoeren. Gleichzeitig werden Benutzer organisatorischen Einheiten zugeordnet, wodurch Zustaendigkeiten und Zusammenarbeit entlang der Organisationsstruktur nachvollziehbar abgebildet werden. Fuer angemeldete Nutzer ergaenzt das Arbeitspaket zudem einen Self-Service-Profilbereich, in dem persoenliche Profildaten sicher eingesehen und aktualisiert werden koennen."
         },
         {
           "id": "WP-003",
@@ -63,9 +83,20 @@
           "area": "1. Rechte & Rollen",
           "priority": "must",
           "effortPt": 4,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "Organisationen können mit Parent-Child-Beziehungen angelegt und bearbeitet werden.",
+            "Hierarchische Organisationsstrukturen werden tenant-sicher gespeichert und gelesen.",
+            "Mitgliedschaften und aktiver Organisationskontext verhalten sich konsistent über Hierarchiewechsel hinweg.",
+            "Die Admin-UI zeigt Organisationsstruktur und Hierarchie korrekt an."
+          ],
+          "todos": [
+            "Formalen Zielumgebungsnachweis für Parent-Child-Anlage und Re-Zuordnung abschließen.",
+            "Finalen Zielumgebungs-Smoke-Test für Tenant-Grenzen und Hierarchiepfade archivieren."
+          ],
+          "featureSummary": "Dieses Arbeitspaket schafft die organisatorische Grundstruktur des Studios. Verwaltungen koennen Organisationen hierarchisch aufbauen, Parent-Child-Beziehungen pflegen und diese Strukturen in der Admin-Oberflaeche verstaendlich darstellen. Dadurch wird das Studio auch fuer mehrstufige kommunale oder institutionelle Aufbauten praktisch nutzbar, weil Mandantentrennung, Mitgliedschaften und der aktive Organisationskontext konsistent zusammenspielen. Das Arbeitspaket legt damit die fachliche Grundlage fuer verwertbare Zustands-, Rollen- und Verantwortungsstrukturen im Tagesbetrieb."
         },
         {
           "id": "WP-004",
@@ -73,9 +104,20 @@
           "area": "1. Rechte & Rollen",
           "priority": "must",
           "effortPt": 5.5,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "Der zentrale Autorisierungs-Endpunkt liefert korrekte Entscheidungen für Rollen-, Gruppen- und Direktberechtigungen.",
+            "Permission-Snapshots werden nach Erstberechnung in Redis gespeichert und bei Folgeaufrufen wiederverwendet.",
+            "Cache-Invalidierung greift nach Rollen-, Gruppen- oder Benutzeränderungen.",
+            "Die Latenzanforderung von unter 100 ms im Cache-Hit-Szenario ist belastbar nachgewiesen."
+          ],
+          "todos": [
+            "Optionalen Zielumgebungslauf fuer den Authorize-Performance-Nachweis archivieren.",
+            "Optional ein separates operatives Invalidation-Testprotokoll als Delivery-Artefakt ablegen."
+          ],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentrale Entscheidungslogik fuer Zugriffe im Studio. Fachmodule muessen Berechtigungen nicht selbst interpretieren, sondern koennen sich auf einen einheitlichen Authorize-Pfad verlassen, in den Rollen, Gruppen, Direktrechte sowie Organisations- und Geo-Kontext konsistent einfliessen. Das reduziert Widersprueche zwischen Modulen und macht Zugriffsentscheidungen nachvollziehbar und wartbar. Durch Snapshot-Caching und gezielte Invalidierung bleiben die Pruefungen auch unter Last performant, waehrend Rechteaenderungen ohne manuelle Nacharbeit wirksam werden."
         },
         {
           "id": "WP-005",
@@ -83,9 +125,21 @@
           "area": "1. Rechte & Rollen",
           "priority": "must",
           "effortPt": 4,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "Systemrollen und mandantenspezifische Rollen können verwaltet und Accounts zugewiesen werden.",
+            "Gruppen bündeln Berechtigungen und können Accounts korrekt zugeordnet werden.",
+            "Vererbte Rollen und Berechtigungen werden über Organisationshierarchien korrekt aufgelöst.",
+            "Geo-bezogene Berechtigungen werden für untergeordnete geografische Entitäten korrekt vererbt.",
+            "Die Admin-UI zeigt direkte und vererbte Rollen nachvollziehbar an."
+          ],
+          "todos": [
+            "Finalen fachlichen Abnahmelauf für Gruppen-, Vererbungs- und Geo-Konfliktszenarien in Zielumgebung dokumentieren.",
+            "Normierte Zielumgebungs-Evidenz für Mehrfachherkunft, deaktivierte Gruppen und Geo-Child-Deny archivieren."
+          ],
+          "featureSummary": "Dieses Arbeitspaket macht das Rollen- und Rechtemodell des Studios fachlich nutzbar und administrierbar. Systemrollen, mandantenspezifische Rollen und Gruppen koennen gepflegt und Benutzern so zugeordnet werden, dass Verantwortlichkeiten nicht nur technisch hinterlegt, sondern im Verwaltungsalltag praktikabel steuerbar sind. Gleichzeitig sorgt das Arbeitspaket dafuer, dass vererbte Rechte ueber Organisations- und Geo-Hierarchien konsistent wirken und in der Admin-Oberflaeche nachvollziehbar werden. Damit schafft WP-005 die Grundlage fuer transparente Zuweisungen, verstaendliche Berechtigungswege und eine belastbare Rechtepflege ohne verdeckte Wirkmechanismen."
         },
         {
           "id": "WP-006",
@@ -93,9 +147,20 @@
           "area": "1. Rechte & Rollen",
           "priority": "must",
           "effortPt": 4,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "Relevante Datenschutz- und Compliance-Pfade sind im Tenant-Scope sauber abgesichert.",
+            "Rechtlich erforderliche Zustimmungen können technisch erzwungen und protokolliert werden.",
+            "Export- und Einsichtspfade für Zustimmungsnachweise sind berechtigungsgebunden.",
+            "PII wird in den relevanten IAM-Pfaden nicht unkontrolliert offengelegt."
+          ],
+          "todos": [
+            "Restabgleich zwischen Compliance-Scope und finalem Rechtstext-/Consent-Flow durchführen.",
+            "Offene End-to-End-Nachweise für Enforcement und Export im Abnahme-Set konsolidieren."
+          ],
+          "featureSummary": "Dieses Arbeitspaket verankert Datenschutz und Compliance als durchsetzbare Laufzeitregeln im Studio. Pflichtzustimmungen koennen vor geschuetzten Funktionen erzwungen, revisionssicher protokolliert und fuer berechtigte Stellen exportiert werden. Gleichzeitig bleiben Datenschutz-, Governance- und Loeschpfade sauber an den Mandantenkontext gebunden und personenbezogene Daten werden in Logs und Auditspuren geschuetzt behandelt. Damit schafft WP-006 die Grundlage fuer DSGVO-konforme Betriebsprozesse, belastbare Nachweise und kontrollierte Einsicht in sensible IAM-Vorgaenge."
         },
         {
           "id": "WP-007",
@@ -103,9 +168,10 @@
           "area": "1. Rechte & Rollen",
           "priority": "valuable",
           "effortPt": 2,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket schafft die revisionssichere Nachvollziehbarkeit aller sicherheits- und datenschutzrelevanten Vorgaenge im Studio. Administrative Eingriffe, Rechteaenderungen, Exporte und kritische Systemereignisse werden unveraenderlich protokolliert und fuer autorisierte Stellen auswertbar gemacht. Export- und Reporting-Pfade unterstuetzen Compliance-Berichte, interne Kontrollen und die Aufarbeitung von Vorfaellen. Damit wird aus technischer Aktivitaet ein belastbarer Nachweis fuer Governance, Datenschutz und Betrieb."
         },
         {
           "id": "WP-008",
@@ -113,9 +179,10 @@
           "area": "1. Rechte & Rollen",
           "priority": "valuable",
           "effortPt": 2,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket uebersetzt DSGVO-Anforderungen in konkrete Betriebsablaeufe des Studios. Loeschantraege koennen strukturiert bearbeitet, Abhaengigkeiten vor einer Loeschung bewertet und personenbezogene Daten je nach Rechtslage geloescht, anonymisiert oder mit Fristen archiviert werden. Automatisierte Routinen und Nachweisprotokolle sorgen dafuer, dass Datenschutz nicht nur als Richtlinie, sondern als steuerbarer Prozess im System verankert ist. So werden rechtssichere Datenpflege, pruefbare Entscheidungen und planbare Aufbewahrung zusammengefuehrt."
         },
         {
           "id": "WP-009",
@@ -123,9 +190,10 @@
           "area": "2. Datentypen",
           "priority": "must",
           "effortPt": 0.5,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert einen ersten schlanken Inhaltstyp fuer aktuelle Mitteilungen im neuen CMS. Redaktionen koennen Nachrichten strukturiert erfassen, kategorisieren und fuer die Ausspielung in App und weiteren Kanaelen vorbereiten, ohne bereits den gesamten spaeteren Modulumfang zu benoetigen. Als MVP schafft es einen fruehen, praxisnahen Bearbeitungspfad fuer Inhalte und dient zugleich als Referenz fuer Bedienbarkeit, Rechteintegration und redaktionelle Workflows. Damit wird der Uebergang von der IAM-Basis zu echter inhaltlicher Arbeit im Studio sichtbar."
         },
         {
           "id": "WP-010",
@@ -133,9 +201,21 @@
           "area": "2. Datentypen",
           "priority": "valuable",
           "effortPt": 4,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "acceptanceCriteria": [
+            "Mindestens zwei unterschiedliche Rechtstexte können versioniert angelegt und bearbeitet werden.",
+            "Benutzer mit offener Zustimmung werden beim Login zuverlässig zur Akzeptanz gezwungen.",
+            "Akzeptanzen werden mit Datum und Versionsbezug unveränderbar protokolliert.",
+            "Nachweise akzeptierter Rechtstexte können für berechtigte Benutzer exportiert werden.",
+            "Der Rücksprung nach erzwungener Akzeptanz bleibt auf interne Zielpfade begrenzt."
+          ],
+          "todos": [
+            "Blockierenden Akzeptanzflow in der Zielumgebung vollständig abnehmen.",
+            "Export- und Negativtests ohne Exportberechtigung als abschließende Evidenz nachziehen."
+          ],
+          "featureSummary": "Dieses Arbeitspaket macht rechtlich relevante Texte im Studio versionsfaehig, administrierbar und durchsetzbar. Nutzungsbedingungen, Datenschutzhinweise und vergleichbare Rechtstexte koennen gepflegt werden, waehrend offene Pflichtakzeptanzen Benutzer vor dem fachlichen Zugriff in einen kontrollierten Akzeptanzfluss fuehren. Jede Zustimmung wird mit Datum und Versionsbezug nachvollziehbar festgehalten und fuer berechtigte Stellen exportierbar gemacht. Damit verbindet WP-010 Rechtssicherheit, Bedienbarkeit und technische Enforcement-Logik in einem gemeinsamen Prozess."
         },
         {
           "id": "WP-011",
@@ -143,9 +223,10 @@
           "area": "3. Datenverwaltung",
           "priority": "must",
           "effortPt": 1.5,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket schafft die verlaessliche Arbeitsoberflaeche, in der Redakteure und Administratoren sich sicher und schnell bewegen koennen. Hauptnavigation, Breadcrumbs und konsistente Seitenstrukturen machen Module und Verwaltungsfunktionen auffindbar, waehrend responsive und barrierearme Patterns die Nutzung auch auf kleineren Geraeten erleichtern. Gleichzeitig bildet die Basis-UI die Integrationsflaeche fuer weitere Pakete, weil Menues, Seiten, Widgets und Aktionsflaechen einheitlich eingebunden werden koennen. Damit wird aus einzelnen Funktionen ein zusammenhaengendes CMS-Erlebnis."
         },
         {
           "id": "WP-012",
@@ -153,9 +234,10 @@
           "area": "4. Schnittstellen",
           "priority": "must",
           "effortPt": 0.5,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket stellt den verlaesslichen Versandkanal fuer transaktionale und administrative Kommunikation bereit. Passwort-Resets, Einladungen, Benachrichtigungen und Statusmeldungen koennen ueber eine definierte Server- und Absenderkonfiguration nachvollziehbar ausgeliefert werden. Dadurch werden Sicherheits- und Betriebsprozesse nicht von manueller Kommunikation abhaengig, sondern sauber in den Systemablauf eingebettet. Das Arbeitspaket schafft damit eine belastbare Grundlage fuer Alerts, Onboarding- und Freigabekommunikation."
         },
         {
           "id": "WP-013",
@@ -163,9 +245,10 @@
           "area": "4. Schnittstellen",
           "priority": "must",
           "effortPt": 0.5,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket bindet Keycloak als zentralen Identitaets- und Anmeldedienst des Studios ein. Realm-, Client- und Token-Konfigurationen sorgen dafuer, dass App und CMS denselben fachlichen Zugang nutzen koennen und externe Identity-Provider kontrolliert andockbar bleiben. Rollen, Claims und Login-Flows werden damit nicht isoliert pro Modul geloest, sondern ueber eine gemeinsame Authentifizierungsschicht bereitgestellt. Das ist die technische Voraussetzung fuer SSO, sichere Sessions und einheitliche Nutzeridentitaeten."
         },
         {
           "id": "WP-014",
@@ -173,9 +256,10 @@
           "area": "4. Schnittstellen",
           "priority": "must",
           "effortPt": 0.5,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket stellt die serverseitige Integrations- und Laufzeitschicht bereit, ueber die CMS, App und IAM-Funktionen zusammenarbeiten. API-Endpunkte, Tenant-Kontext, Laufzeitkonfiguration und Fachorchestrierung werden an einer zentralen Stelle gebuendelt, damit Authentifizierung, Berechtigungspruefung und Inhaltsoperationen stabil ineinandergreifen. Dadurch entsteht kein Flickenteppich aus Einzelservices, sondern ein kontrollierter Hauptpfad fuer produktive Anfragen. Das Arbeitspaket traegt damit die operative Klammer zwischen UI, Datenhaltung und externen Diensten."
         },
         {
           "id": "WP-015",
@@ -183,9 +267,10 @@
           "area": "4. Schnittstellen",
           "priority": "must",
           "effortPt": 0.5,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket verankert Observability direkt in der Laufzeit des Studios. Metriken, Traces und strukturierte Telemetriedaten machen sichtbar, wie sich Anfragen, Hintergrundprozesse und Integrationen unter Last oder im Fehlerfall verhalten. Dadurch koennen Performance-Probleme, Ausfaelle und kritische Pfade frueher erkannt und gezielter analysiert werden. OTEL bildet damit die technische Datengrundlage fuer Dashboards, Alarmierung und systematische Fehlersuche."
         },
         {
           "id": "WP-016",
@@ -193,9 +278,10 @@
           "area": "4. Schnittstellen",
           "priority": "valuable",
           "effortPt": 0.5,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket macht Betriebs- und Fachdaten in Dashboards unmittelbar nutzbar. Metriken aus System, Anwendung und gegebenenfalls angebundenen Fachdatenquellen koennen visualisiert, verglichen und fuer unterschiedliche Zielgruppen aufbereitet werden. Dadurch erhalten Betrieb, Management und Kommunen einen schnellen Blick auf Systemzustand, Lastentwicklung und relevante Kennzahlen. Grafana wird so zur sichtbaren Auswertungsschicht ueber den erhobenen Telemetrie- und Monitoringdaten."
         },
         {
           "id": "WP-017",
@@ -203,9 +289,10 @@
           "area": "4. Schnittstellen",
           "priority": "valuable",
           "effortPt": 0.5,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket buendelt die verteilten Laufzeitlogs des Studios in einer zentral durchsuchbaren Log-Ablage. Strukturierte Logdaten aus Anwendung, Integrationen und Infrastruktur lassen sich zeitlich korrelieren, filtern und fuer Fehleranalysen oder Betriebsnachweise auswerten. Dadurch wird Debugging deutlich schneller und sicherheits- oder compliance-relevante Vorfaelle koennen belastbarer rekonstruiert werden. Loki ergaenzt das Metrik- und Tracing-Bild um die konkrete Ereignisebene des laufenden Systems."
         },
         {
           "id": "WP-018",
@@ -213,9 +300,10 @@
           "area": "5. Module",
           "priority": "must",
           "effortPt": 2.5,
-          "status": "optimization",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert mit dem News-Modul den ersten vollwertigen redaktionellen Inhaltstyp des neuen CMS. Beitraege koennen erstellt, kategorisiert, terminiert, veroeffentlicht und archiviert werden, sodass Kommunen aktuelle Informationen strukturiert fuer App und weitere Ausspielkanaele pflegen koennen. Zusammen mit Suche, Filtern, Exporten und der Anbindung an Medien und Rechte entsteht ein praxisnaher Demonstrator fuer den kuenftigen Umgang mit Inhalten im Studio. Damit wird die Architektur nicht nur technisch, sondern im echten Redaktionsalltag erlebbar."
         },
         {
           "id": "WP-019",
@@ -223,9 +311,10 @@
           "area": "6. Allgemein",
           "priority": "must",
           "effortPt": 1,
-          "status": "optimization",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket macht die entwickelten Funktionen fuer Betrieb, Redaktion und Weiterentwicklung nachvollziehbar. Fachliche Ablaeufe, technische Entscheidungen, Bedienpfade und Abhaengigkeiten werden so dokumentiert, dass Einfuehrung, Schulung und spaetere Erweiterungen nicht vom impliziten Wissen einzelner Personen abhaengen. Dadurch sinken Einarbeitungsaufwand und Fehlbedienungsrisiken, waehrend Abnahmen und Betriebsuebergaenge leichter vorbereitet werden koennen. Die Dokumentation wird damit selbst zu einem Lieferbestandteil der Qualitaet."
         },
         {
           "id": "WP-020",
@@ -233,9 +322,10 @@
           "area": "6. Allgemein",
           "priority": "valuable",
           "effortPt": 3,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket schafft den uebergreifenden Blick auf Gesundheit, Auslastung und Stoerungen des Studios. Systemmetriken, Anwendungskennzahlen, Datenbankzustand und Alerting werden so zusammengefuehrt, dass Probleme frueh sichtbar werden und Verantwortliche gezielt reagieren koennen. Dashboards, Schwellwerte und Benachrichtigungskanaele unterstuetzen sowohl den laufenden Betrieb als auch die Kommunikation bei Vorfaellen. Das Monitoringsystem bildet damit die operative Sicherheitsleine fuer einen stabilen Produktivbetrieb."
         },
         {
           "id": "WP-021",
@@ -243,9 +333,10 @@
           "area": "7. Frontend",
           "priority": "funded_optional",
           "effortPt": 5,
-          "status": "testing",
+          "status": "acceptance",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket erweitert die App um echte redaktionelle Arbeitsfaehigkeit fuer berechtigte Nutzer. Inhalte wie Nachrichten, Orte oder Events koennen direkt in der App erstellt und bearbeitet werden, waehrend die vorhandene Rechtepruefung sicherstellt, dass nur zustaendige Personen auf die passenden Objekte zugreifen. Dadurch wird das CMS nicht nur ueber eine klassische Admin-Oberflaeche, sondern auch mobil und nah am Einsatzort nutzbar. Das beschleunigt dezentrale Redaktionsprozesse und verbindet Fachinhalt, Rollenmodell und mobile Nutzung in einem durchgaengigen Arbeitsfluss."
         }
       ]
     },
@@ -263,7 +354,8 @@
           "effortPt": 3,
           "status": "planned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Workflows für Freigaben im Bereich 1. Rechte & Rollen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-023",
@@ -273,7 +365,8 @@
           "effortPt": 2,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Onboarding/Offboarding im Bereich 1. Rechte & Rollen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-024",
@@ -283,7 +376,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Vertretungsrechte im Bereich 1. Rechte & Rollen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-025",
@@ -293,7 +387,8 @@
           "effortPt": 2,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Events im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-026",
@@ -303,7 +398,8 @@
           "effortPt": 1.5,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Nachrichten im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-027",
@@ -313,7 +409,8 @@
           "effortPt": 1.5,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für POI im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-028",
@@ -323,7 +420,8 @@
           "effortPt": 1,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Touren im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-029",
@@ -333,7 +431,8 @@
           "effortPt": 2,
           "status": "planned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Umfragen im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-030",
@@ -343,7 +442,8 @@
           "effortPt": 5,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Eigene Datentypen (eventuell auch schon durch SDK abgedeckt?) im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-031",
@@ -353,7 +453,8 @@
           "effortPt": 3,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Filterkriterien & -logiken im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-032",
@@ -363,7 +464,8 @@
           "effortPt": 5,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Medienverwaltung im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-033",
@@ -373,7 +475,8 @@
           "effortPt": 3,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Karten-Funktionen im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-034",
@@ -383,7 +486,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für QR-Codes im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-035",
@@ -393,7 +497,8 @@
           "effortPt": 2,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Serienevent Verbesserung? im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-036",
@@ -403,7 +508,8 @@
           "effortPt": 2.5,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Suche & Navigation: Standard-Suchfunktion in allen Listen im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-037",
@@ -413,7 +519,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für URL-Deeplinking im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-038",
@@ -423,7 +530,8 @@
           "effortPt": 0.5,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für OSM Tileserver im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-039",
@@ -433,7 +541,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für RSS / Importer im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-040",
@@ -443,7 +552,8 @@
           "effortPt": 3,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für TMB im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-041",
@@ -453,7 +563,8 @@
           "effortPt": 2,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Bildoptimierung im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-042",
@@ -463,7 +574,8 @@
           "effortPt": 2.5,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Meili Search im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-043",
@@ -473,7 +585,8 @@
           "effortPt": 3,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Anbindung externe Datenplattform im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-044",
@@ -483,7 +596,8 @@
           "effortPt": 1.5,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Masterportal im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-045",
@@ -493,7 +607,8 @@
           "effortPt": 1.5,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Nachrichten (Finalisierung) im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-046",
@@ -503,7 +618,8 @@
           "effortPt": 1.5,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für POI im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-047",
@@ -513,7 +629,8 @@
           "effortPt": 1,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Touren im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-048",
@@ -523,7 +640,8 @@
           "effortPt": 2,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Umfragen im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-049",
@@ -533,7 +651,8 @@
           "effortPt": 3,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Veranstaltungen im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-050",
@@ -543,7 +662,8 @@
           "effortPt": 4,
           "status": "prototype",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Abfallkalender im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-051",
@@ -553,7 +673,8 @@
           "effortPt": 1,
           "status": "prototype",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Dokumentation der Funktionalitäten und Entwicklungen des Moduls im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-052",
@@ -563,7 +684,8 @@
           "effortPt": 1.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Dashboard-Core • Aufgabenübersicht („Meine Aufgaben”): im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-053",
@@ -573,7 +695,8 @@
           "effortPt": 1.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Dashboard-Core • System-Status & Alerts im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-054",
@@ -583,7 +706,8 @@
           "effortPt": 1,
           "status": "testing",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Monitoringsystem im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-055",
@@ -593,7 +717,8 @@
           "effortPt": 1.5,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Ticketsystem im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         }
       ]
     },
@@ -611,7 +736,8 @@
           "effortPt": 5,
           "status": "testing",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Mandantenverwaltung im Bereich 1. Rechte & Rollen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-057",
@@ -621,7 +747,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Tags an Inhalte (\"liken\") im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-058",
@@ -631,7 +758,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für E-Mail-Konfiguration und -Verwaltung im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-059",
@@ -641,7 +769,8 @@
           "effortPt": 1,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Mehrsprachige Inhalte im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-060",
@@ -651,7 +780,8 @@
           "effortPt": 1,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Themes und Dark Mode für das Studio im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-061",
@@ -661,7 +791,8 @@
           "effortPt": 10,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für App-Konfiguration (Tabbar, Drawer, Kacheln, Listen, Social Sharing, Favoriten, ...) im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-062",
@@ -671,7 +802,8 @@
           "effortPt": 5,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für App-Suche im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-063",
@@ -681,7 +813,8 @@
           "effortPt": 2,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Rechtstexte-Aktionen im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-064",
@@ -691,7 +824,8 @@
           "effortPt": 0,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Individualisierung der App im CMS im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-065",
@@ -701,7 +835,8 @@
           "effortPt": 1,
           "status": "prototype",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Dokumentation der Funktionalitäten und Entwicklungen des Moduls im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-066",
@@ -711,7 +846,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Dashboard: Alerts im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-067",
@@ -721,7 +857,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Bereitstellung von Monitoringsystembausteinen für Redakteure im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-068",
@@ -731,7 +868,8 @@
           "effortPt": 1,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Sprachverwaltung und i18n-System im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-069",
@@ -741,7 +879,8 @@
           "effortPt": 1,
           "status": "prototype",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Dashboard-Core • Modul-Status & Verfügbarkeit: im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-070",
@@ -751,7 +890,8 @@
           "effortPt": 2,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Individualisierung der App durch Nutzer im Bereich 7. Frontend und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-071",
@@ -761,7 +901,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Like-Funktion im Bereich 7. Frontend und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         }
       ]
     },
@@ -779,7 +920,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Verwaltungsleistungen im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-073",
@@ -789,7 +931,8 @@
           "effortPt": 1,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Räume (Buchungsobjekte) im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-074",
@@ -799,7 +942,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Abgeordnete im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-075",
@@ -809,7 +953,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Gremien im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-076",
@@ -819,7 +964,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für ÖPNV-Abfahrten im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-077",
@@ -829,7 +975,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Organisationseinheiten im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-078",
@@ -839,7 +986,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Sitzungstermine im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-079",
@@ -849,7 +997,8 @@
           "effortPt": 2,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für API-Spezifikationen und Standards im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-080",
@@ -859,7 +1008,8 @@
           "effortPt": 0.25,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Erweiterte Datenverwaltung: Export-Funktionen für alle Tabellen im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-081",
@@ -869,7 +1019,8 @@
           "effortPt": 0.5,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Import im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-082",
@@ -879,7 +1030,8 @@
           "effortPt": 0.25,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Exportfunktionen im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-083",
@@ -889,7 +1041,8 @@
           "effortPt": 2,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Fahrradboxen im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-084",
@@ -899,7 +1052,8 @@
           "effortPt": 0.5,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Importfunktionen im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-085",
@@ -909,7 +1063,8 @@
           "effortPt": 5,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Schnittstellenmanager im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-086",
@@ -919,7 +1074,8 @@
           "effortPt": 1,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für SSO Biletado im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-087",
@@ -929,7 +1085,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für GBFS im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-088",
@@ -939,7 +1096,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für GeoJSON-Import im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-089",
@@ -949,7 +1107,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für GTFS im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-090",
@@ -959,7 +1118,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Matomo im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-091",
@@ -969,7 +1129,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für OpenWeatherMap im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-092",
@@ -979,7 +1140,8 @@
           "effortPt": 2,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für RIS/oParl -Schnittstellen einbinden im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-093",
@@ -989,7 +1151,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für SSO Consul im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-094",
@@ -999,7 +1162,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Postfach/ Feedback im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-095",
@@ -1009,7 +1173,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Zuständigkeitsfinder im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-096",
@@ -1019,7 +1184,8 @@
           "effortPt": 2,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Raum- /Fahrradbox-Öffnung (biletado) im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-097",
@@ -1029,7 +1195,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Car-/Bike-Sharing im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-098",
@@ -1039,7 +1206,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Consul im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-099",
@@ -1049,7 +1217,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für ÖPNV-Abfahrtszeiten im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-100",
@@ -1059,7 +1228,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Rats-Infos-System (RIS) im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-101",
@@ -1069,7 +1239,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Dokumentation der Funktionalitäten und Entwicklungen des Moduls im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-102",
@@ -1079,7 +1250,8 @@
           "effortPt": 1,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Monitoringsystem im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-103",
@@ -1089,7 +1261,8 @@
           "effortPt": 1,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Dashboard: Schnittstellen-Übersicht im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-104",
@@ -1099,7 +1272,8 @@
           "effortPt": 2,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Reporting im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         }
       ]
     },
@@ -1117,7 +1291,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Baustellen im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-106",
@@ -1127,7 +1302,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Fristen im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-107",
@@ -1137,7 +1313,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Gastro-Angebote/Speisekarten im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-108",
@@ -1147,7 +1324,8 @@
           "effortPt": 1.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Gutscheine im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-109",
@@ -1157,7 +1335,8 @@
           "effortPt": 1.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Mängelmeldungen im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-110",
@@ -1167,7 +1346,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Produkte / Dienstleistungen im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-111",
@@ -1177,7 +1357,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Stellenanzeigen im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-112",
@@ -1187,7 +1368,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Angebote/Gesuche im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-113",
@@ -1197,7 +1379,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für AR-Inhalte im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-114",
@@ -1207,7 +1390,8 @@
           "effortPt": 1.5,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Open311 im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-115",
@@ -1217,7 +1401,8 @@
           "effortPt": 1,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für HumHub im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-116",
@@ -1227,7 +1412,8 @@
           "effortPt": 1,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Hinweisgeber-Systeme im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-117",
@@ -1237,7 +1423,8 @@
           "effortPt": 2,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für App-Intro im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-118",
@@ -1247,7 +1434,8 @@
           "effortPt": 1,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Bilderslider im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-119",
@@ -1257,7 +1445,8 @@
           "effortPt": 0.5,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Feedback im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-120",
@@ -1267,7 +1456,8 @@
           "effortPt": 1,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Statische Seiten im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-121",
@@ -1277,7 +1467,8 @@
           "effortPt": 1,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Störer im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-122",
@@ -1287,7 +1478,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Baustellen im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-123",
@@ -1297,7 +1489,8 @@
           "effortPt": 1.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Gutscheine im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-124",
@@ -1307,7 +1500,8 @@
           "effortPt": 1.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Mängelmelder (einfach oder mit API) im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-125",
@@ -1317,7 +1511,8 @@
           "effortPt": 0.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Produkte/Dienstleistungen im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-126",
@@ -1327,7 +1522,8 @@
           "effortPt": 1.5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Schwarzes Brett im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-127",
@@ -1337,7 +1533,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Stellenanzeigen im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-128",
@@ -1347,7 +1544,8 @@
           "effortPt": 4.5,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Chatbot-Integration im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-129",
@@ -1357,7 +1555,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Fristenmelder im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-130",
@@ -1367,7 +1566,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Gastro-Angebote im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-131",
@@ -1377,7 +1577,8 @@
           "effortPt": 3,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Mitfahrbörse im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-132",
@@ -1387,7 +1588,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Smartes Trampen im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-133",
@@ -1397,7 +1599,8 @@
           "effortPt": 1.5,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Augmented Reality im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-134",
@@ -1407,7 +1610,8 @@
           "effortPt": 1,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Hinweisgebersystem im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-135",
@@ -1417,7 +1621,8 @@
           "effortPt": 3,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Humhub-Anbindung im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-136",
@@ -1427,7 +1632,8 @@
           "effortPt": 2,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Monitoringsystem im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-137",
@@ -1437,7 +1643,8 @@
           "effortPt": 3,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Analytics & Reporting im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-138",
@@ -1447,7 +1654,8 @@
           "effortPt": 1,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Dashboard: App-Nutzung im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-139",
@@ -1457,7 +1665,8 @@
           "effortPt": 1,
           "status": "prototype",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Real-Time Updates im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         }
       ]
     },
@@ -1475,7 +1684,8 @@
           "effortPt": 5,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Einführung eines flexiblen Modul-Frameworks und eines SDKs im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-141",
@@ -1485,7 +1695,8 @@
           "effortPt": 15,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für App-Instanzen-Verwaltung im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-142",
@@ -1495,7 +1706,8 @@
           "effortPt": 5,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Modul-Marktplatz mit Versionsverwaltung und Dependency-Check im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-143",
@@ -1505,7 +1717,8 @@
           "effortPt": 3,
           "status": "planned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Widget-System & Personalisierung im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         }
       ]
     },
@@ -1523,7 +1736,8 @@
           "effortPt": 5,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Performance-Optimierungen im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-145",
@@ -1533,7 +1747,8 @@
           "effortPt": 10,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Refactoring im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-146",
@@ -1543,7 +1758,8 @@
           "effortPt": 1.5,
           "status": "commissioned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Ticketsystem im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-147",
@@ -1553,7 +1769,8 @@
           "effortPt": 1,
           "status": "optimization",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Runbooks für Deployments und Entwicklung im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-148",
@@ -1563,7 +1780,8 @@
           "effortPt": 5,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Barrierefreiheitstest im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-149",
@@ -1573,7 +1791,8 @@
           "effortPt": 1,
           "status": "implementation",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Compliance-Erklärungen für BSI & Co im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-150",
@@ -1583,7 +1802,8 @@
           "effortPt": 5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Pen-Test im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-151",
@@ -1593,7 +1813,8 @@
           "effortPt": 1,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Verfahrensdokumentation für DSFA im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-152",
@@ -1603,7 +1824,8 @@
           "effortPt": 2.5,
           "status": "planned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Hilfe-Bereich / Wiki mit Suche im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-153",
@@ -1613,7 +1835,8 @@
           "effortPt": 0.5,
           "status": "planned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Darstellung der Release-Notes & Changelog im Studio im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-154",
@@ -1623,7 +1846,8 @@
           "effortPt": 0.5,
           "status": "planned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Darstellung der Roadmap im Studio im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-155",
@@ -1633,7 +1857,8 @@
           "effortPt": 1,
           "status": "planned",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Kontextbezogene Hilfetexte im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-156",
@@ -1643,7 +1868,8 @@
           "effortPt": 3,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Onboarding-Tour im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         }
       ]
     },
@@ -1661,7 +1887,8 @@
           "effortPt": 3,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für KI-gestützte Übersetzungsvorschläge vgl Mehrsprachigkeit und leichte Sprache im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-158",
@@ -1671,7 +1898,8 @@
           "effortPt": 3,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Automatische Erstellung von Wissens- und Hilfetexten im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-159",
@@ -1681,7 +1909,8 @@
           "effortPt": 5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Duplikatserkennung im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-160",
@@ -1691,7 +1920,8 @@
           "effortPt": 3,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für KI-gestützte Contenterstellung im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-161",
@@ -1701,7 +1931,8 @@
           "effortPt": 2,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Tagging & Kategorisierung im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-162",
@@ -1711,7 +1942,8 @@
           "effortPt": 2,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für LLM-Anbieter (OpenAI, Mistral, Gemini, lokale Modelle, ...) im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-163",
@@ -1721,7 +1953,8 @@
           "effortPt": 5,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für MCP im Bereich 4. Schnittstellen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-164",
@@ -1731,7 +1964,8 @@
           "effortPt": 3,
           "status": "idea",
           "health": "on_track",
-          "dependsOn": []
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für KI-Administration und Management im Bereich 6. Allgemein und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         }
       ]
     }

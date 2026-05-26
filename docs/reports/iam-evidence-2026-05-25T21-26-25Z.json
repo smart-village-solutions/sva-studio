@@ -1,0 +1,169 @@
+{
+  "cases": [
+    {
+      "packageId": "WP-003",
+      "title": "Organisationsübersicht der Zielumgebung",
+      "status": "passed",
+      "details": "Admin-UI für Organisationen war erreichbar und wurde mit Screenshot archiviert.",
+      "artifacts": [
+        {
+          "description": "WP-003 Organisationsübersicht",
+          "kind": "screenshot",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-003-organizations-overview.png"
+        }
+      ]
+    },
+    {
+      "packageId": "WP-003",
+      "title": "Seed-Hierarchie der Zielinstanz",
+      "status": "passed",
+      "details": "Root-Organisation und mindestens ein hierarchischer Nachfolger wurden in der IAM-Datenbank gefunden.",
+      "artifacts": [
+        {
+          "description": "WP-003 DB-Snapshot der Organisationshierarchie",
+          "kind": "json",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-003-organizations-db-snapshot.json"
+        }
+      ]
+    },
+    {
+      "packageId": "WP-003",
+      "title": "Parent-Child-Anlage und Re-Zuordnung",
+      "status": "manual_review",
+      "details": "Die Ablage ist vorbereitet. Führen Sie den Zielumgebungsfall aus und ergänzen Sie denselben Artefaktordner um Screenshots für Anlage und Re-Zuordnung.",
+      "artifacts": [
+        {
+          "description": "WP-003 Organisationsübersicht",
+          "kind": "screenshot",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-003-organizations-overview.png"
+        }
+      ]
+    },
+    {
+      "packageId": "WP-003",
+      "title": "Tenant-Grenzen oder Negativpfad",
+      "status": "manual_review",
+      "details": "Der Negativfall bleibt umgebungsabhängig. Der Bericht und der Artefaktordner sind normiert; ergänzen Sie dort den Sperr- oder Fehlermeldungsnachweis.",
+      "artifacts": [
+        {
+          "description": "WP-003 Organisationsübersicht",
+          "kind": "screenshot",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-003-organizations-overview.png"
+        }
+      ]
+    },
+    {
+      "packageId": "WP-005",
+      "title": "Mehrfachherkunft direkt plus Gruppe",
+      "status": "manual_review",
+      "details": "Benutzerdetail wurde archiviert; die Mehrfachherkunft muss im Screenshot manuell bestätigt werden.",
+      "artifacts": [
+        {
+          "description": "WP-005 Benutzerdetail mit permissionTrace",
+          "kind": "screenshot",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-005-user-detail-permission-trace.png"
+        }
+      ]
+    },
+    {
+      "packageId": "WP-005",
+      "title": "Deaktivierte oder soft-gelöschte Gruppe",
+      "status": "manual_review",
+      "details": "Detailansicht wurde archiviert; ein expliziter Inaktivitätsgrund war im Lauf nicht automatisch auffindbar.",
+      "artifacts": [
+        {
+          "description": "WP-005 Benutzerdetail mit permissionTrace",
+          "kind": "screenshot",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-005-user-detail-permission-trace.png"
+        }
+      ]
+    },
+    {
+      "packageId": "WP-005",
+      "title": "Gültigkeitsfenster einer Zuweisung",
+      "status": "manual_review",
+      "details": "Detailansicht wurde archiviert; Gültigkeitsfenster müssen anhand des Screenshots geprüft werden.",
+      "artifacts": [
+        {
+          "description": "WP-005 Benutzerdetail mit permissionTrace",
+          "kind": "screenshot",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-005-user-detail-permission-trace.png"
+        }
+      ]
+    },
+    {
+      "packageId": "WP-005",
+      "title": "Geo Parent-Allow mit Child-Deny",
+      "status": "manual_review",
+      "details": "Detailansicht wurde archiviert; der Geo-Konfliktfall muss anhand des Screenshots oder eines gezielten Beispieldatensatzes geprüft werden.",
+      "artifacts": [
+        {
+          "description": "WP-005 Benutzerdetail mit permissionTrace",
+          "kind": "screenshot",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-005-user-detail-permission-trace.png"
+        }
+      ]
+    },
+    {
+      "packageId": "WP-006",
+      "title": "Blockierender Consent-Fall",
+      "status": "manual_review",
+      "details": "Privacy-Seite wurde archiviert; ein blockierender Consent-Dialog war im Lauf nicht automatisch sichtbar.",
+      "artifacts": [
+        {
+          "description": "WP-006 Privacy-Seite oder blockierender Consent-Dialog",
+          "kind": "screenshot",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-006-privacy-consent.png"
+        }
+      ]
+    },
+    {
+      "packageId": "WP-006",
+      "title": "Erfolgreicher Export mit Berechtigung",
+      "status": "failed",
+      "details": "Consent-Export antwortete unerwartet mit HTTP 503.",
+      "artifacts": [
+        {
+          "description": "WP-006 positiver Consent-Export",
+          "kind": "export",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-006-consent-export-positive.json"
+        },
+        {
+          "description": "WP-006 Metadaten des positiven Exports",
+          "kind": "json",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-006-consent-export-positive.meta.json"
+        }
+      ]
+    },
+    {
+      "packageId": "WP-006",
+      "title": "Negativfall ohne Exportberechtigung",
+      "status": "failed",
+      "details": "Consent-Export ohne Berechtigung antwortete mit HTTP 503.",
+      "artifacts": [
+        {
+          "description": "WP-006 negativer Consent-Export ohne Berechtigung",
+          "kind": "json",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-006-consent-export-negative.json"
+        },
+        {
+          "description": "WP-006 Metadaten des negativen Exports",
+          "kind": "json",
+          "path": "artifacts/iam-evidence/iam-evidence-2026-05-25T21-26-25Z/wp-006-consent-export-negative.meta.json"
+        }
+      ]
+    }
+  ],
+  "generatedAt": "2026-05-25T21:26:25.485Z",
+  "summary": {
+    "failed": 2,
+    "manualReview": 7,
+    "passed": 2,
+    "skipped": 0,
+    "status": "failed"
+  },
+  "target": {
+    "baseUrl": "http://de-musterhausen.studio.localhost:3000",
+    "instanceId": "de-musterhausen"
+  }
+}

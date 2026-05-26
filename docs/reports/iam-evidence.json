@@ -1,0 +1,22 @@
+{
+  "cases": [
+    {
+      "packageId": "WP-003",
+      "title": "Runner-Ausführung",
+      "status": "failed",
+      "details": "Missing required acceptance env: IAM_ACCEPTANCE_ADMIN_USERNAME, IAM_ACCEPTANCE_ADMIN_PASSWORD, IAM_ACCEPTANCE_MEMBER_USERNAME, IAM_ACCEPTANCE_MEMBER_PASSWORD"
+    }
+  ],
+  "generatedAt": "2026-05-25T21:23:03.129Z",
+  "summary": {
+    "failed": 1,
+    "manualReview": 0,
+    "passed": 0,
+    "skipped": 0,
+    "status": "failed"
+  },
+  "target": {
+    "baseUrl": "http://de-musterhausen.studio.localhost:3000",
+    "instanceId": "de-musterhausen"
+  }
+}

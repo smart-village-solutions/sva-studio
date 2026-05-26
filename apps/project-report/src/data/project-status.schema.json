@@ -133,10 +133,19 @@
                   "type": "array",
                   "items": { "type": "string", "minLength": 1 }
                 },
-                "notes": { "type": "string" }
+                "acceptanceCriteria": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "todos": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "notes": { "type": "string" },
+                "featureSummary": { "type": "string" }
               }
             }
-          },
+          }
         }
       }
     }

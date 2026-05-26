@@ -33,6 +33,10 @@ export const resources = {
         health: 'Warnstufe',
         effort: 'PT',
         progress: 'Fortschritt',
+        showDetails: 'Details',
+        hideDetails: 'Weniger',
+        showDetailsAriaLabel: 'Details für {id} anzeigen',
+        hideDetailsAriaLabel: 'Weniger Details für {id}',
       },
       statuses: {
         idea: 'Idee',
@@ -69,4 +73,14 @@ const readLeaf = (path: string): LeafValue => {
   return current;
 };
 
-export const t = (path: string) => String(readLeaf(path));
+export const t = (path: string, params?: Readonly<Record<string, string | number>>) => {
+  const value = String(readLeaf(path));
+  if (!params) {
+    return value;
+  }
+
+  return value.replace(/\{([^}]+)\}/g, (match: string, key: string) => {
+    const replacement = params[key];
+    return replacement === undefined ? match : String(replacement);
+  });
+};

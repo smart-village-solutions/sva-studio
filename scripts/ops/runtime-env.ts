@@ -1915,6 +1915,32 @@ export const selectReleaseBlockingTenantTargets = (
   return tenantTargets.filter((target) => target.instanceId === 'de-studio-sandbox');
 };
 
+const shouldUseStudioReleaseBlockingTenantScope = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
+  runtimeProfile === 'studio' && (env.SVA_ACCEPTANCE_RELEASE_MODE?.trim().length ?? 0) > 0;
+
+export const selectSmokeTenantTargets = (
+  runtimeProfile: RuntimeProfile,
+  tenantTargets: readonly TenantRuntimeTarget[],
+  options: {
+    readonly env: NodeJS.ProcessEnv;
+    readonly source: TenantRuntimeTargetResolution['source'];
+  }
+): readonly TenantRuntimeTarget[] => {
+  if (!shouldUseStudioReleaseBlockingTenantScope(runtimeProfile, options.env)) {
+    return tenantTargets;
+  }
+
+  const blockingTargets = selectReleaseBlockingTenantTargets(runtimeProfile, tenantTargets);
+  if (blockingTargets.length > 0) {
+    return blockingTargets;
+  }
+
+  throw new Error(
+    `Release-blockierender Tenant de-studio-sandbox fehlt im Scope (${options.source}). ` +
+      'Pruefe Instanz-Registry oder Tenant-Scope-Konfiguration.'
+  );
+};
+
 const shouldUseJobBasedRemoteDbAssertions = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
   isRemoteRuntimeProfile(runtimeProfile) &&
   (env.SVA_REMOTE_DB_ASSERTIONS_MODE?.trim().toLowerCase() ?? 'job') === 'job';
@@ -4758,9 +4784,16 @@ const runExternalSmoke = async (
 ): Promise<readonly AcceptanceProbeResult[]> => {
   const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
   const base = new URL(baseUrl);
-  const tenantTargetResolution = await resolveTenantRuntimeTargets(runtimeProfile, env, { limit: 2 });
-  const blockingTenantTargets = selectReleaseBlockingTenantTargets(runtimeProfile, tenantTargetResolution.targets);
-  const tenantProbes = blockingTenantTargets.map((tenantTarget) =>
+  const tenantTargetResolution = await resolveTenantRuntimeTargets(
+    runtimeProfile,
+    env,
+    shouldUseStudioReleaseBlockingTenantScope(runtimeProfile, env) ? undefined : { limit: 2 }
+  );
+  const smokeTenantTargets = selectSmokeTenantTargets(runtimeProfile, tenantTargetResolution.targets, {
+    env,
+    source: tenantTargetResolution.source,
+  });
+  const tenantProbes = smokeTenantTargets.map((tenantTarget) =>
         runHttpProbe({
           name: `public-auth-login-${tenantTarget.instanceId}`,
           scope: 'external',

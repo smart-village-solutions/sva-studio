@@ -11,6 +11,7 @@ import {
   deriveInternalVerifyMaxAttempts,
   readStudioImageVerifyEvidence,
   resolveTenantRuntimeTargets,
+  selectReleaseBlockingTenantTargets,
   shouldRunLocalProvisioningWorker,
   runExternalSmokeWithWarmup,
   waitForRemoteSmokeWarmup,
@@ -633,6 +634,35 @@ describe('resolveTenantRuntimeTargets', () => {
         instanceId: 'demo2',
       },
     ]);
+  });
+});
+
+describe('selectReleaseBlockingTenantTargets', () => {
+  const tenantTargets = [
+    {
+      authRealm: 'saas-hb-meinquartier',
+      host: 'hb-meinquartier.studio.smart-village.app',
+      instanceId: 'hb-meinquartier',
+    },
+    {
+      authRealm: 'de-studio-sandbox',
+      host: 'de-studio-sandbox.studio.smart-village.app',
+      instanceId: 'de-studio-sandbox',
+    },
+  ] as const;
+
+  it('keeps only de-studio-sandbox as a release-blocking tenant on studio', () => {
+    expect(selectReleaseBlockingTenantTargets('studio', tenantTargets)).toEqual([
+      {
+        authRealm: 'de-studio-sandbox',
+        host: 'de-studio-sandbox.studio.smart-village.app',
+        instanceId: 'de-studio-sandbox',
+      },
+    ]);
+  });
+
+  it('keeps all tenant targets on non-studio profiles', () => {
+    expect(selectReleaseBlockingTenantTargets('local-keycloak', tenantTargets)).toEqual(tenantTargets);
   });
 });
 

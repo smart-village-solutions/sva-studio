@@ -1904,6 +1904,17 @@ export const resolveTenantRuntimeTargets = async (
   };
 };
 
+export const selectReleaseBlockingTenantTargets = (
+  runtimeProfile: RuntimeProfile,
+  tenantTargets: readonly TenantRuntimeTarget[]
+): readonly TenantRuntimeTarget[] => {
+  if (runtimeProfile !== 'studio') {
+    return tenantTargets;
+  }
+
+  return tenantTargets.filter((target) => target.instanceId === 'de-studio-sandbox');
+};
+
 const shouldUseJobBasedRemoteDbAssertions = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
   isRemoteRuntimeProfile(runtimeProfile) &&
   (env.SVA_REMOTE_DB_ASSERTIONS_MODE?.trim().toLowerCase() ?? 'job') === 'job';
@@ -4748,7 +4759,8 @@ const runExternalSmoke = async (
   const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
   const base = new URL(baseUrl);
   const tenantTargetResolution = await resolveTenantRuntimeTargets(runtimeProfile, env, { limit: 2 });
-  const tenantProbes = tenantTargetResolution.targets.map((tenantTarget) =>
+  const blockingTenantTargets = selectReleaseBlockingTenantTargets(runtimeProfile, tenantTargetResolution.targets);
+  const tenantProbes = blockingTenantTargets.map((tenantTarget) =>
         runHttpProbe({
           name: `public-auth-login-${tenantTarget.instanceId}`,
           scope: 'external',

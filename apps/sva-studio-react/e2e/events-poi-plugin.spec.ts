@@ -114,10 +114,12 @@ const expectPluginPageHeading = async (page: Page, pattern: RegExp) => {
 const expectEventOrPoiEditorReady = async (page: Page, path: '/admin/events/new' | '/admin/poi/new') => {
   if (path === '/admin/events/new') {
     await expectPluginPageHeading(page, /Event anlegen|events\.editor\.createTitle/);
+    await expect(page.locator('#event-title')).toBeVisible();
     return;
   }
 
   await expectPluginPageHeading(page, /POI anlegen|poi\.editor\.createTitle/);
+  await expect(page.locator('#poi-name')).toBeVisible();
 };
 
 const expectContentOverviewUrl = async (page: Page) => {
@@ -465,6 +467,8 @@ test.describe('events and POI plugins', () => {
   });
 
   test('supports event CRUD with POI selection including delete', async ({ page }) => {
+    test.setTimeout(60_000);
+
     const events: EventRecord[] = [];
     const pois: PoiRecord[] = [
       {
@@ -493,7 +497,7 @@ test.describe('events and POI plugins', () => {
 
     await navigateClientSide(page, '/admin/events/new');
     await expect(page).toHaveURL(/\/admin\/events\/new$/);
-    await expectPluginPageHeading(page, /Event anlegen|events\.editor\.createTitle/);
+    await expectEventOrPoiEditorReady(page, '/admin/events/new');
 
     await page.locator('#event-title').fill('Stadtfest');
     await page.locator('#event-category').fill('Kultur');

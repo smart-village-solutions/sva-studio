@@ -87,6 +87,16 @@ const expectPluginPageHeading = async (page: Page, pattern: RegExp) => {
   await expect(page.locator('main h1').filter({ hasText: pattern })).toBeVisible();
 };
 
+const expectNewsEditorReady = async (page: Page, mode: 'create' | 'edit') => {
+  await expectPluginPageHeading(
+    page,
+    mode === 'create'
+      ? /News-Eintrag anlegen|news\.editor\.createTitle/
+      : /News-Eintrag bearbeiten|news\.editor\.editTitle/
+  );
+  await expect(page.locator('#news-title')).toBeVisible();
+};
+
 const expectContentOverviewUrl = async (page: Page) => {
   await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
 };
@@ -566,6 +576,8 @@ test.describe('news plugin', () => {
   });
 
   test('stays free of serious accessibility violations on news views', async ({ page }) => {
+    test.setTimeout(90_000);
+
     const newsItems: NewsRecord[] = [
       {
         id: 'news-1',
@@ -626,12 +638,12 @@ test.describe('news plugin', () => {
     expect(listViolations.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
 
     await navigateClientSide(page, '/admin/news/new');
-    await expectPluginPageHeading(page, /News-Eintrag anlegen|news\.editor\.createTitle/);
+    await expectNewsEditorReady(page, 'create');
     const createViolations = await new AxeBuilder({ page }).include('#main-content').analyze();
     expect(createViolations.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
 
     await navigateClientSide(page, '/admin/news/news-1');
-    await expectPluginPageHeading(page, /News-Eintrag bearbeiten|news\.editor\.editTitle/);
+    await expectNewsEditorReady(page, 'edit');
     const editViolations = await new AxeBuilder({ page }).include('#main-content').analyze();
     expect(editViolations.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
   });

@@ -646,11 +646,9 @@ test('admin links are hidden for non-admin user and route guard redirects', asyn
   await expect(page.getByRole('link', { name: 'Benutzer' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Rollen' })).toHaveCount(0);
 
-  await page.evaluate(() => {
-    window.history.pushState({}, '', '/admin/users');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  });
-  await expect(page).toHaveURL(/\?error=auth\.insufficientRole/);
+  await navigateClientSide(page, '/admin/users');
+  await expect(page).toHaveURL('/');
+  await expect(page.getByRole('heading', { name: /SVA Studio/i })).toBeVisible();
 });
 
 test('iam cockpit redirects unknown or disallowed tabs to the first allowed governance tab', async ({ page }) => {

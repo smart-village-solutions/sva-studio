@@ -6427,27 +6427,11 @@ type TranslationNode = string | { [key: string]: TranslationNode };
 const isTranslationBranch = (value: unknown): value is Record<string, TranslationNode> =>
   typeof value === 'object' && value !== null && Array.isArray(value) === false;
 
-const collectTranslationLeafPaths = (
-  value: TranslationNode,
-  pathPrefix: string,
-  paths: Set<string>
-): void => {
-  if (isTranslationBranch(value)) {
-    for (const [key, child] of Object.entries(value)) {
-      const path = pathPrefix ? `${pathPrefix}.${key}` : key;
-      collectTranslationLeafPaths(child, path, paths);
-    }
-    return;
-  }
-
-  paths.add(pathPrefix);
-};
-
 const mergeTranslationBranch = (
   target: Record<string, TranslationNode>,
   source: Record<string, TranslationNode>,
   locale: string,
-  mergedPluginLeafPaths: Set<string>,
+  isRepeatedSource: boolean,
   pathPrefix = ''
 ): Record<string, TranslationNode> => {
   for (const [key, value] of Object.entries(source)) {
@@ -6457,53 +6441,56 @@ const mergeTranslationBranch = (
         { ...(target[key] as Record<string, TranslationNode>) },
         value,
         locale,
-        mergedPluginLeafPaths,
+        isRepeatedSource,
         path
       );
       continue;
     }
 
     if (target[key] !== undefined) {
-      if (mergedPluginLeafPaths.has(path) && target[key] === value) {
+      if (isRepeatedSource && target[key] === value) {
         continue;
       }
       throw new Error(`duplicate_i18n_key:${locale}:${path}`);
     }
 
     target[key] = value;
-    collectTranslationLeafPaths(value, path, mergedPluginLeafPaths);
   }
 
   return target;
 };
 
-const mergedPluginLeafPathsByLocale = Object.fromEntries(
-  Object.keys(i18nResources).map((locale) => [locale, new Set<string>()])
-) as Record<SupportedLocale, Set<string>>;
+const mergedPluginSourcesByLocale = Object.fromEntries(
+  Object.keys(i18nResources).map((locale) => [locale, new WeakSet<object>()])
+) as Record<SupportedLocale, WeakSet<object>>;
 
 export const mergeI18nResources = (
   resources: Readonly<Record<SupportedLocale, Readonly<Record<string, unknown>>>>
 ) => {
   const mutableResources = i18nResources as unknown as Record<SupportedLocale, Record<string, unknown>>;
-  const nextMergedPluginLeafPathsByLocale = Object.fromEntries(
-    Object.entries(mergedPluginLeafPathsByLocale).map(([locale, paths]) => [locale, new Set(paths)])
-  ) as Record<SupportedLocale, Set<string>>;
   const mergedResources = { ...mutableResources } as Record<SupportedLocale, Record<string, unknown>>;
+  const mergedSources: Array<readonly [SupportedLocale, object]> = [];
 
   for (const locale of Object.keys(resources) as SupportedLocale[]) {
     const source = resources[locale];
     const target = mutableResources[locale] as Record<string, TranslationNode>;
+    const sourceRecord = source as Record<string, TranslationNode>;
+    const isRepeatedSource = mergedPluginSourcesByLocale[locale].has(sourceRecord);
     mergedResources[locale] = mergeTranslationBranch(
       { ...target },
-      source as Record<string, TranslationNode>,
+      sourceRecord,
       locale,
-      nextMergedPluginLeafPathsByLocale[locale]
+      isRepeatedSource
     ) as Record<string, unknown>;
+    mergedSources.push([locale, sourceRecord]);
   }
 
   for (const locale of Object.keys(mergedResources) as SupportedLocale[]) {
     mutableResources[locale] = mergedResources[locale];
-    mergedPluginLeafPathsByLocale[locale] = nextMergedPluginLeafPathsByLocale[locale];
+  }
+
+  for (const [locale, source] of mergedSources) {
+    mergedPluginSourcesByLocale[locale].add(source);
   }
 };
 

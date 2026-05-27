@@ -83,7 +83,7 @@ const runCommand = (
     retries?: number;
   }>
 ): number => {
-  const retries = options?.retries ?? 0;
+  const retries = normalizeRetryCount(options?.retries);
   const startedAt = performance.now();
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
@@ -105,11 +105,21 @@ const runCommand = (
 
       const status = typeof error === 'object' && error !== null && 'status' in error ? error.status : 'unknown';
       const signal = typeof error === 'object' && error !== null && 'signal' in error ? error.signal : 'unknown';
-      console.warn(`Command failed with status=${String(status)} signal=${String(signal)}. Retrying once.`);
+      console.warn(
+        `Command failed with status=${String(status)} signal=${String(signal)}. Retrying command (${attempt + 1}/${retries}).`
+      );
     }
   }
 
   return performance.now() - startedAt;
+};
+
+export const normalizeRetryCount = (retries: number | undefined): number => {
+  if (Number.isFinite(retries) === false) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor(retries));
 };
 
 const getAffectedUnitProjects = (base: string, head: string): string[] => {

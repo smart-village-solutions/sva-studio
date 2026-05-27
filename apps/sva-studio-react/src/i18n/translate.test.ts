@@ -119,6 +119,44 @@ describe('translate', () => {
     });
   });
 
+  it('rejects duplicate plugin translation keys from a different merge source even when the value matches', () => {
+    mergeI18nResources({
+      de: {
+        pluginSourceProbe: {
+          navigation: {
+            title: 'Probe',
+          },
+        },
+      },
+      en: {
+        pluginSourceProbe: {
+          navigation: {
+            title: 'Probe',
+          },
+        },
+      },
+    });
+
+    expect(() =>
+      mergeI18nResources({
+        de: {
+          pluginSourceProbe: {
+            navigation: {
+              title: 'Probe',
+            },
+          },
+        },
+        en: {
+          pluginSourceProbe: {
+            navigation: {
+              title: 'Probe',
+            },
+          },
+        },
+      })
+    ).toThrow('duplicate_i18n_key:de:pluginSourceProbe.navigation.title');
+  });
+
   it('uses the active locale for global translations', () => {
     setActiveLocale('en');
 

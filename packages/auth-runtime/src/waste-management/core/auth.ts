@@ -63,7 +63,7 @@ export const authorizeWasteManagementAction = async (
     const session = await (deps.getSessionById ?? getSession)(ctx.sessionId);
     organizationId = session?.activeOrganizationId;
   } catch {
-    organizationId = undefined;
+    return createApiError(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.', requestId);
   }
 
   let permissions: readonly EffectivePermission[];

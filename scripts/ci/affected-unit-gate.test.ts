@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-gate.ts';
+import { buildAppUnitCommand, normalizeRetryCount, planAppUnitExecution } from './affected-unit-gate.ts';
 
 describe('affected-unit-gate', () => {
   it('skips app slicing when the app is not affected', () => {
@@ -87,5 +87,11 @@ describe('affected-unit-gate', () => {
     expect(buildAppUnitCommand('routes')).toBe(
       'pnpm exec vitest run --config apps/sva-studio-react/vitest.routes.config.ts --reporter=verbose'
     );
+  });
+
+  it('normalizes retry counts to non-negative integers', () => {
+    expect(normalizeRetryCount(undefined)).toBe(0);
+    expect(normalizeRetryCount(-3)).toBe(0);
+    expect(normalizeRetryCount(2.8)).toBe(2);
   });
 });

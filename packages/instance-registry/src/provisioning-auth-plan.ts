@@ -53,9 +53,18 @@ const readTenantAdminClientAlignment = (state: KeycloakReadState | undefined) =>
   const clientRepresentation = state?.tenantAdminClientRepresentation;
   return {
     clientRepresentation,
+    directAccessGrantsEnabledMatch: expectedClient
+      ? clientRepresentation?.directAccessGrantsEnabled === expectedClient.directAccessGrantsEnabled
+      : false,
     rootUrlMatch: expectedClient ? clientRepresentation?.rootUrl === expectedClient.rootUrl : false,
     redirectUrisMatch: expectedClient
       ? equalSets(clientRepresentation?.redirectUris ?? [], expectedClient.redirectUris)
+      : false,
+    serviceAccountsEnabledMatch: expectedClient
+      ? clientRepresentation?.serviceAccountsEnabled === expectedClient.serviceAccountsEnabled
+      : false,
+    standardFlowEnabledMatch: expectedClient
+      ? clientRepresentation?.standardFlowEnabled === expectedClient.standardFlowEnabled
       : false,
     logoutUrisMatch: expectedClient
       ? equalSets(readPostLogoutUris(clientRepresentation?.attributes), expectedClient.postLogoutRedirectUris)
@@ -103,13 +112,22 @@ const areClientUrisAligned = (input: {
 const buildTenantAdminClientStep = (input: {
   blocked: boolean;
   clientExists: boolean;
+  directAccessGrantsEnabledMatch: boolean;
   rootUrlMatch: boolean;
   redirectUrisMatch: boolean;
   logoutUrisMatch: boolean;
+  serviceAccountsEnabledMatch: boolean;
+  standardFlowEnabledMatch: boolean;
   webOriginsMatch: boolean;
 }): KeycloakTenantPlan['steps'][number] => {
   const fullyAligned =
-    input.rootUrlMatch && input.redirectUrisMatch && input.logoutUrisMatch && input.webOriginsMatch;
+    input.rootUrlMatch
+    && input.redirectUrisMatch
+    && input.logoutUrisMatch
+    && input.webOriginsMatch
+    && input.standardFlowEnabledMatch
+    && input.directAccessGrantsEnabledMatch
+    && input.serviceAccountsEnabledMatch;
 
   return {
     stepKey: 'tenant_admin_client',
@@ -123,9 +141,12 @@ const buildTenantAdminClientStep = (input: {
         : 'Der Tenant-Admin-Client wird auf Root-, Redirect-, Logout- und Origin-Werte abgeglichen.',
     details: {
       clientExists: input.clientExists,
+      directAccessGrantsEnabledMatch: input.directAccessGrantsEnabledMatch,
       rootUrlMatch: input.rootUrlMatch,
       redirectUrisMatch: input.redirectUrisMatch,
       logoutUrisMatch: input.logoutUrisMatch,
+      serviceAccountsEnabledMatch: input.serviceAccountsEnabledMatch,
+      standardFlowEnabledMatch: input.standardFlowEnabledMatch,
       webOriginsMatch: input.webOriginsMatch,
     },
   };
@@ -262,9 +283,12 @@ export const buildPlan = (input: {
     buildTenantAdminClientStep({
       blocked,
       clientExists: Boolean(tenantAdminClientAlignment.clientRepresentation),
+      directAccessGrantsEnabledMatch: tenantAdminClientAlignment.directAccessGrantsEnabledMatch,
       rootUrlMatch: tenantAdminClientAlignment.rootUrlMatch,
       redirectUrisMatch: tenantAdminClientAlignment.redirectUrisMatch,
       logoutUrisMatch: tenantAdminClientAlignment.logoutUrisMatch,
+      serviceAccountsEnabledMatch: tenantAdminClientAlignment.serviceAccountsEnabledMatch,
+      standardFlowEnabledMatch: tenantAdminClientAlignment.standardFlowEnabledMatch,
       webOriginsMatch: tenantAdminClientAlignment.webOriginsMatch,
     }),
     buildSecretStep(blocked, secretAligned),

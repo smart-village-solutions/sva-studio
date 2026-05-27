@@ -7,6 +7,7 @@ import {
   assertLoginFlow,
   buildKeycloakClientSecretCheck,
   buildLocalProvisioningWorkerCheck,
+  shouldCheckLocalInstanceRegistryDriftBeforeCommand,
   buildStudioImageVerifyEvidenceCheck,
   deriveInternalVerifyMaxAttempts,
   readStudioImageVerifyEvidence,
@@ -298,6 +299,15 @@ describe('shouldRunLocalProvisioningWorker', () => {
     expect(shouldRunLocalProvisioningWorker('local-keycloak')).toBe(true);
     expect(shouldRunLocalProvisioningWorker('local-builder')).toBe(false);
     expect(shouldRunLocalProvisioningWorker('studio')).toBe(false);
+  });
+});
+
+describe('shouldCheckLocalInstanceRegistryDriftBeforeCommand', () => {
+  it('keeps drift checks for read-only startup commands only', () => {
+    expect(shouldCheckLocalInstanceRegistryDriftBeforeCommand('up')).toBe(true);
+    expect(shouldCheckLocalInstanceRegistryDriftBeforeCommand('update')).toBe(true);
+    expect(shouldCheckLocalInstanceRegistryDriftBeforeCommand('reconcile')).toBe(false);
+    expect(shouldCheckLocalInstanceRegistryDriftBeforeCommand('migrate')).toBe(false);
   });
 });
 

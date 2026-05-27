@@ -13,7 +13,11 @@ const readWorkerClaimFilterFromEnv = (): {
   createdAtOrAfter?: string;
 } | undefined => {
   const createdAtOrAfter = process.env.SVA_KEYCLOAK_PROVISIONER_CLAIM_NOT_BEFORE?.trim();
-  return createdAtOrAfter ? { createdAtOrAfter } : undefined;
+  if (!createdAtOrAfter) {
+    return undefined;
+  }
+
+  return Number.isNaN(Date.parse(createdAtOrAfter)) ? undefined : { createdAtOrAfter };
 };
 
 export const createExecuteKeycloakProvisioningHandler = (deps: InstanceRegistryServiceDeps) =>

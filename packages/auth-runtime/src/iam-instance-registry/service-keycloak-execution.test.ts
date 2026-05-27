@@ -47,4 +47,16 @@ describe('iam-instance-registry service-keycloak-execution bindings', () => {
       { createdAtOrAfter: '2026-05-27T12:00:00.000Z' },
     );
   });
+
+  it('ignores an invalid startup claim cutoff value', async () => {
+    process.env.SVA_KEYCLOAK_PROVISIONER_CLAIM_NOT_BEFORE = 'not-a-timestamp';
+    const subject = await import('./service-keycloak-execution.js');
+
+    await expect(subject.processNextQueuedKeycloakProvisioningRun({ repository: {} } as never)).resolves.toBeNull();
+
+    expect(state.processTargetNextQueuedKeycloakProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({ repository: {}, enriched: true }),
+      undefined,
+    );
+  });
 });

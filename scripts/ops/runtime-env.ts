@@ -1655,6 +1655,10 @@ const checkLocalInstanceRegistryDrift = (runtimeProfile: RuntimeProfile, env: No
   }
 };
 
+export const shouldCheckLocalInstanceRegistryDriftBeforeCommand = (
+  runtimeCommand: Extract<RuntimeCommand, 'up' | 'update' | 'reconcile' | 'migrate'>
+) => runtimeCommand === 'up' || runtimeCommand === 'update';
+
 const reconcileLocalInstanceRegistry = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const input = buildLocalInstanceRegistryReconciliationInput(env);
   if (!input) {
@@ -3371,7 +3375,9 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       upLocalInfra(env);
       migrateLocalDatabase(env);
       bootstrapLocalAppUser(env);
-      checkLocalInstanceRegistryDrift(runtimeProfile, env);
+      if (shouldCheckLocalInstanceRegistryDriftBeforeCommand(runtimeCommand)) {
+        checkLocalInstanceRegistryDrift(runtimeProfile, env);
+      }
       await startLocalApp(runtimeProfile, env);
       if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
         startLocalProvisioningWorker(runtimeProfile, env);
@@ -3390,7 +3396,9 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       upLocalInfra(env);
       migrateLocalDatabase(env);
       bootstrapLocalAppUser(env);
-      checkLocalInstanceRegistryDrift(runtimeProfile, env);
+      if (shouldCheckLocalInstanceRegistryDriftBeforeCommand(runtimeCommand)) {
+        checkLocalInstanceRegistryDrift(runtimeProfile, env);
+      }
       stopLocalProvisioningWorker();
       stopLocalApp();
       await startLocalApp(runtimeProfile, env);
@@ -3424,9 +3432,8 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       return;
     case 'reconcile':
       assertRuntimeEnv(runtimeProfile, env);
-      checkLocalInstanceRegistryDrift(runtimeProfile, env);
       reconcileLocalInstanceRegistry(runtimeProfile, env);
-      console.log(`Lokale Instanz-Registry fuer ${runtimeProfile} reconciled.`);
+      console.log(`Lokale Instanz-Registry fuer ${runtimeProfile} abgeglichen.`);
       return;
     case 'doctor': {
       const report = await doctorRuntime(runtimeProfile, env);

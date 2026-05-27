@@ -1,6 +1,8 @@
 import { coreVersion } from '@sva/core';
 import { z } from 'zod';
 
+import { hashForLog } from './internal.js';
+
 export const dataClientVersion = '0.0.1';
 
 export type DataClientPackageRole = 'http-client' | 'schema-validation' | 'browser-cache';
@@ -38,19 +40,6 @@ export type DataClientOptions = {
 
 const isZodSchema = <T>(value: unknown): value is z.ZodType<T> =>
   !!value && typeof value === 'object' && typeof (value as { parse?: unknown }).parse === 'function';
-
-const hashForLog = (value: string): string => {
-  let hash = 0x811c9dc5;
-  for (const symbol of value) {
-    hash ^= symbol.codePointAt(0) ?? 0;
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0');
-};
-
-export const dataClientTestInternals = {
-  hashForLog,
-};
 
 const normalizeHeadersForCache = (headers: HeadersInit | undefined): string => {
   if (!headers) {

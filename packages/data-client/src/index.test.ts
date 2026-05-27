@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-import { createDataClient, dataClientPackageRoles, dataClientTestInternals, dataClientVersion } from './index.js';
+import { createDataClient, dataClientPackageRoles, dataClientVersion } from './index.js';
+import { hashForLog } from './internal.js';
 
 const state = vi.hoisted(() => ({
   logger: {
@@ -183,6 +184,6 @@ describe('@sva/data-client package scaffold', () => {
   });
 
   it('uses stable log hashes for astral unicode characters', async () => {
-    expect(dataClientTestInternals.hashForLog('team-😀')).toBe(dataClientTestInternals.hashForLog('team-\ud83d\ude00'));
+    expect(hashForLog('team-😀')).toBe('84d26289');
   });
 });

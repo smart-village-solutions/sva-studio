@@ -4,6 +4,7 @@ import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogFooter, 
 import React from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 
+import { applyCollectionLocationFormPatch, getCollectionLocationDialogText } from './waste-management.master-data-location-dialogs.helpers.js';
 import { useResetOnFormContextChange } from './waste-management.master-data-entity-dialogs.shared.js';
 import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
@@ -60,29 +61,21 @@ export const CollectionLocationDialog = ({ open, mode, form, regions, cities, st
   const filteredStreets = formValues.cityId ? streets.filter((street) => street.cityId === formValues.cityId) : [];
   const filteredHouseNumbers = formValues.streetId ? houseNumbers.filter((houseNumber) => houseNumber.streetId === formValues.streetId) : [];
   const handleFormChange = (patch: Partial<CollectionLocationFormState>) => {
-    for (const [key, value] of Object.entries(patch) as Array<[keyof CollectionLocationFormState, CollectionLocationFormState[keyof CollectionLocationFormState]]>) {
-      setValue(key, value, {
-        shouldDirty: true,
-        shouldTouch: true,
-        shouldValidate: true,
-      });
-    }
+    applyCollectionLocationFormPatch(setValue, patch);
     onChange(patch);
   };
   const submitForm = handleSubmit(async (values) => {
     await onSubmit(values);
   });
+  const { description, submitLabel, title } = getCollectionLocationDialogText(pt, mode, saving);
+  const activeLabel = formValues.active ? pt('common.active') : pt('common.inactive');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{mode === 'create' ? pt('masterData.collectionLocations.dialog.createTitle') : pt('masterData.collectionLocations.dialog.editTitle')}</DialogTitle>
-          <DialogDescription>
-            {mode === 'create'
-              ? pt('masterData.collectionLocations.dialog.createDescription')
-              : pt('masterData.collectionLocations.dialog.editDescription')}
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={submitForm}>
           <StatusNotice message={message} />
@@ -158,20 +151,14 @@ export const CollectionLocationDialog = ({ open, mode, form, regions, cities, st
                 ariaLabel={pt('masterData.collectionLocations.fields.active')}
                 onChange={(active) => handleFormChange({ active })}
               />
-              <span className="text-sm text-muted-foreground">{formValues.active ? pt('common.active') : pt('common.inactive')}</span>
+              <span className="text-sm text-muted-foreground">{activeLabel}</span>
             </div>
           </StudioFieldGroup>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {pt('masterData.collectionLocations.actions.cancel')}
             </Button>
-            <Button type="submit" disabled={saving}>
-              {saving
-                ? pt('masterData.collectionLocations.actions.saving')
-                : mode === 'create'
-                  ? pt('masterData.collectionLocations.actions.create')
-                  : pt('masterData.collectionLocations.actions.save')}
-            </Button>
+            <Button type="submit" disabled={saving}>{submitLabel}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -193,5 +180,69 @@ type BulkDialogProps = {
 
 export const BulkLocationAssignmentsDialog = ({ open, form, selectedLocations, tours, saving, message, onOpenChange, onChange, onSubmit }: BulkDialogProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>{pt('masterData.collectionLocations.bulk.dialog.title')}</DialogTitle><DialogDescription>{pt('masterData.collectionLocations.bulk.dialog.description', { value: selectedLocations.length })}</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={onSubmit}><StatusNotice message={message} /><StudioFieldGroup><StudioField id="waste-bulk-tour-link-tour-id" label={pt('masterData.collectionLocations.bulk.fields.tourId')}><Select id="waste-bulk-tour-link-tour-id" value={form.tourId} onChange={(event) => onChange({ tourId: event.target.value })}><option value="">{pt('masterData.collectionLocations.bulk.fields.tourUnset')}</option>{tours.map((tour) => <option key={tour.id} value={tour.id}>{tour.name}</option>)}</Select></StudioField><StudioField id="waste-bulk-tour-link-start-date" label={pt('masterData.collectionLocations.bulk.fields.startDate')}><Input id="waste-bulk-tour-link-start-date" type="date" value={form.startDate} onChange={(event) => onChange({ startDate: event.target.value })} /></StudioField><StudioField id="waste-bulk-tour-link-end-date" label={pt('masterData.collectionLocations.bulk.fields.endDate')}><Input id="waste-bulk-tour-link-end-date" type="date" value={form.endDate} onChange={(event) => onChange({ endDate: event.target.value })} /></StudioField></StudioFieldGroup><div className="space-y-2 rounded-md border border-border/60 p-3"><p className="text-sm font-medium">{pt('masterData.collectionLocations.bulk.selectedTitle')}</p><div className="flex flex-wrap gap-2">{selectedLocations.map((location) => <Badge key={location.id} variant="outline">{location.label}</Badge>)}</div></div><DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{pt('masterData.collectionLocations.bulk.actions.cancel')}</Button><Button type="submit" disabled={saving || selectedLocations.length === 0}>{saving ? pt('masterData.collectionLocations.bulk.actions.saving') : pt('masterData.collectionLocations.bulk.actions.assign')}</Button></DialogFooter></form></DialogContent></Dialog>;
+  const submitLabel = saving
+    ? pt('masterData.collectionLocations.bulk.actions.saving')
+    : pt('masterData.collectionLocations.bulk.actions.assign');
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{pt('masterData.collectionLocations.bulk.dialog.title')}</DialogTitle>
+          <DialogDescription>
+            {pt('masterData.collectionLocations.bulk.dialog.description', { value: selectedLocations.length })}
+          </DialogDescription>
+        </DialogHeader>
+        <form className="space-y-4" onSubmit={onSubmit}>
+          <StatusNotice message={message} />
+          <StudioFieldGroup>
+            <StudioField id="waste-bulk-tour-link-tour-id" label={pt('masterData.collectionLocations.bulk.fields.tourId')}>
+              <Select id="waste-bulk-tour-link-tour-id" value={form.tourId} onChange={(event) => onChange({ tourId: event.target.value })}>
+                <option value="">{pt('masterData.collectionLocations.bulk.fields.tourUnset')}</option>
+                {tours.map((tour) => (
+                  <option key={tour.id} value={tour.id}>
+                    {tour.name}
+                  </option>
+                ))}
+              </Select>
+            </StudioField>
+            <StudioField id="waste-bulk-tour-link-start-date" label={pt('masterData.collectionLocations.bulk.fields.startDate')}>
+              <Input
+                id="waste-bulk-tour-link-start-date"
+                type="date"
+                value={form.startDate}
+                onChange={(event) => onChange({ startDate: event.target.value })}
+              />
+            </StudioField>
+            <StudioField id="waste-bulk-tour-link-end-date" label={pt('masterData.collectionLocations.bulk.fields.endDate')}>
+              <Input
+                id="waste-bulk-tour-link-end-date"
+                type="date"
+                value={form.endDate}
+                onChange={(event) => onChange({ endDate: event.target.value })}
+              />
+            </StudioField>
+          </StudioFieldGroup>
+          <div className="space-y-2 rounded-md border border-border/60 p-3">
+            <p className="text-sm font-medium">{pt('masterData.collectionLocations.bulk.selectedTitle')}</p>
+            <div className="flex flex-wrap gap-2">
+              {selectedLocations.map((location) => (
+                <Badge key={location.id} variant="outline">
+                  {location.label}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {pt('masterData.collectionLocations.bulk.actions.cancel')}
+            </Button>
+            <Button type="submit" disabled={saving || selectedLocations.length === 0}>
+              {submitLabel}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 };

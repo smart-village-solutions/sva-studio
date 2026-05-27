@@ -374,6 +374,51 @@ describe('useUnifiedContentList', () => {
     });
   });
 
+  it('loads poi-only queries without touching unrelated mainserver sources', async () => {
+    const visibleTypes = ['news.article', 'events.event-record', 'poi.point-of-interest'] as const;
+    const query = {
+      page: 1,
+      pageSize: 25,
+      type: 'poi.point-of-interest',
+      sortBy: 'title',
+      sortDirection: 'asc',
+      visibleTypes,
+    } as const;
+
+    listNewsMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    listEventsMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    listPoiMock.mockResolvedValue({
+      data: [
+        {
+          id: 'poi-2',
+          name: 'Bergwerk',
+          contentType: 'poi.point-of-interest',
+          status: 'published',
+          createdAt: '2026-05-01T07:00:00.000Z',
+          updatedAt: '2026-05-03T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const { result } = renderHook(() => useUnifiedContentList(query, visibleTypes, 'de-musterhausen'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(listNewsMock).not.toHaveBeenCalled();
+    expect(listEventsMock).not.toHaveBeenCalled();
+    expect(listPoiMock).toHaveBeenCalledTimes(1);
+    expect(result.current.contents.map((item) => item.id)).toEqual(['poi-2']);
+  });
+
   it('reuses fetched source data across page and sort changes until refetch is requested', async () => {
     const visibleTypes = ['news.article', 'events.event-record', 'poi.point-of-interest'] as const;
     const permissionActions = ['news.read', 'events.read', 'poi.read'] as const;
@@ -476,5 +521,94 @@ describe('useUnifiedContentList', () => {
     });
     expect(listEventsMock).toHaveBeenCalledTimes(2);
     expect(listPoiMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('sorts by content type and exposes normalized fetch errors', async () => {
+    const visibleTypes = ['news.article', 'events.event-record'] as const;
+    const query = {
+      page: 1,
+      pageSize: 25,
+      sortBy: 'contentType',
+      sortDirection: 'asc',
+      visibleTypes,
+    } as const;
+
+    listNewsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'news-1',
+          title: 'News',
+          contentType: 'news.article',
+          status: 'published',
+          payload: {},
+          author: 'Redaktion',
+          createdAt: '2026-05-01T10:00:00.000Z',
+          updatedAt: '2026-05-03T10:00:00.000Z',
+          publishedAt: '2026-05-03T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    listEventsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'event-1',
+          title: 'Event',
+          contentType: 'events.event-record',
+          status: 'published',
+          createdAt: '2026-05-01T08:00:00.000Z',
+          updatedAt: '2026-05-04T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    listPoiMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    const { result, unmount } = renderHook(
+      ({ currentQuery }) => useUnifiedContentList(currentQuery, visibleTypes, 'de-musterhausen'),
+      {
+        initialProps: {
+          currentQuery: query,
+        },
+      }
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.contents.map((item) => item.id)).toEqual(['event-1', 'news-1']);
+
+    unmount();
+    listNewsMock.mockReset();
+    listEventsMock.mockReset();
+    listPoiMock.mockReset();
+    listEventsMock.mockRejectedValueOnce(new Error('mainserver down'));
+    const errorVisibleTypes = ['events.event-record'] as const;
+    const errorPermissionActions: readonly string[] = [];
+    const { result: errorResult } = renderHook(() =>
+      useUnifiedContentList(
+        {
+          ...query,
+          type: 'events.event-record',
+        },
+        errorVisibleTypes,
+        'de-musterhausen',
+        errorPermissionActions
+      )
+    );
+
+    await waitFor(() => {
+      expect(errorResult.current.error?.message).toBe('mainserver down');
+    });
+
+    expect(errorResult.current.contents).toEqual([]);
+    expect(errorResult.current.isLoading).toBe(false);
+    expect(errorResult.current.error?.name).toBe('IamHttpError');
+    expect(errorResult.current.error?.status).toBe(500);
+    expect(errorResult.current.error?.code).toBe('internal_error');
   });
 });

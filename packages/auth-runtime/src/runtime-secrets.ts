@@ -81,7 +81,7 @@ export const getMediaStoragePublicBaseUrl = (): string | undefined => {
 
 export const getMediaStorageSignedUrlTtlSeconds = (): number => {
   const raw = readFirstEnv('MEDIA_STORAGE_SIGNED_URL_TTL_SECONDS');
-  const parsed = raw ? Number(raw) : NaN;
+  const parsed = raw ? Number(raw) : Number.NaN;
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return 900;
   }

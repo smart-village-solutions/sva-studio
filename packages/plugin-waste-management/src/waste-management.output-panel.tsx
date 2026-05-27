@@ -30,6 +30,18 @@ const renderEmptyState = (translate: ReturnType<typeof usePluginTranslation>) =>
   </StudioEmptyState>
 );
 
+const resolveOutputGenerationMessage = (
+  translate: ReturnType<typeof usePluginTranslation>,
+  generationError: unknown
+): string => {
+  const code = resolveApiErrorCode(generationError);
+  if (code === 'forbidden') {
+    return translate('output.pdf.messages.generateForbidden');
+  }
+
+  return translate('output.pdf.messages.generateError');
+};
+
 export const WasteOutputPanel = () => {
   const pt = usePluginTranslation('wasteManagement');
   const { error, loading, locationData, outputOverview, setOutputOverview } = useWasteOutputPanelData(pt);
@@ -64,10 +76,9 @@ export const WasteOutputPanel = () => {
       setOutputOverview((current) => upsertGeneratedPdf(current, result));
       setMessage({ kind: 'success', text: pt('output.pdf.messages.generateSuccess') });
     } catch (generationError) {
-      const code = resolveApiErrorCode(generationError);
       setMessage({
         kind: 'error',
-        text: code === 'forbidden' ? pt('output.pdf.messages.generateForbidden') : pt('output.pdf.messages.generateError'),
+        text: resolveOutputGenerationMessage(pt, generationError),
       });
     } finally {
       setRunning(false);

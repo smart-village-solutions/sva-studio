@@ -92,6 +92,9 @@ export function IamDsrDetailPage({ caseId }: Readonly<{ caseId: string }>) {
   const cockpitEnabled = isIamCockpitEnabled();
   const canAccessCockpit = hasIamCockpitAccessRole(user);
   const allowedTabs = React.useMemo(() => getAllowedIamCockpitTabs(user), [user]);
+  const handleBackClick = React.useCallback(() => {
+    Promise.resolve(navigate({ to: '/admin/iam', search: { tab: 'dsr' } })).catch(() => undefined);
+  }, [navigate]);
 
   React.useEffect(() => {
     if (!cockpitEnabled || !canAccessCockpit || !allowedTabs.includes('dsr') || !caseId) {
@@ -102,7 +105,7 @@ export function IamDsrDetailPage({ caseId }: Readonly<{ caseId: string }>) {
     setIsLoading(true);
     setError(null);
 
-    void getAdminDsrCase(caseId, { signal: controller.signal })
+    getAdminDsrCase(caseId, { signal: controller.signal })
       .then((response) => {
         if (!controller.signal.aborted) {
           setItem(response.data);
@@ -156,7 +159,7 @@ export function IamDsrDetailPage({ caseId }: Readonly<{ caseId: string }>) {
       title={item?.title ?? t('admin.iam.dsr.detail.title')}
       description={t('admin.iam.dsr.detail.subtitle')}
       actions={
-        <Button type="button" variant="outline" onClick={() => void navigate({ to: '/admin/iam', search: { tab: 'dsr' } })}>
+        <Button type="button" variant="outline" onClick={handleBackClick}>
           {t('admin.iam.dsr.detail.back')}
         </Button>
       }

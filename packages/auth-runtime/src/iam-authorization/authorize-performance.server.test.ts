@@ -100,6 +100,8 @@ describe('authorize-performance.server', () => {
     expect(result.scenarios[2]?.observedCacheStatuses).toEqual(['recomputed', 'recomputed']);
     expect(result.report?.jsonPath).toContain('docs/reports/iam-authorize-performance-');
     expect(result.report?.markdownPath).toContain('docs/reports/iam-authorize-performance-');
+    expect(result.report?.jsonPath).not.toContain(':');
+    expect(result.report?.markdownPath).not.toContain(':');
 
     expect(state.authorizeHandler).toHaveBeenCalledTimes(12);
     expect(state.permissionSnapshotInvalidate).toHaveBeenCalledTimes(4);

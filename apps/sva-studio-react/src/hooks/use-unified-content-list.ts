@@ -164,6 +164,24 @@ const mapPoiItem = (
   access: createMainserverItemAccess(item.contentType, permissionActions),
 });
 
+const compareItemsBySortField = (
+  left: IamContentListItem,
+  right: IamContentListItem,
+  sortBy: IamContentListQuery['sortBy'],
+  collator: Intl.Collator
+): number => {
+  switch (sortBy) {
+    case 'contentType':
+      return collator.compare(left.contentType, right.contentType);
+    case 'title':
+      return collator.compare(left.title, right.title);
+    case 'status':
+      return collator.compare(left.status, right.status);
+    default:
+      return collator.compare(left.updatedAt, right.updatedAt);
+  }
+};
+
 const sortItems = (
   items: readonly IamContentListItem[],
   sortBy: IamContentListQuery['sortBy'],
@@ -173,14 +191,7 @@ const sortItems = (
   const collator = new Intl.Collator('de', { sensitivity: 'base', numeric: true });
 
   return [...items].sort((left, right) => {
-    const result =
-      sortBy === 'contentType'
-        ? collator.compare(left.contentType, right.contentType)
-        : sortBy === 'title'
-          ? collator.compare(left.title, right.title)
-          : sortBy === 'status'
-            ? collator.compare(left.status, right.status)
-            : collator.compare(left.updatedAt, right.updatedAt);
+    const result = compareItemsBySortField(left, right, sortBy, collator);
 
     if (result !== 0) {
       return result * direction;
@@ -232,6 +243,29 @@ const fetchAllPages = async <TItem>(
   return items;
 };
 
+const loadItemsForContentType = async (
+  contentType: (typeof studioContentTypeIds)[number],
+  instanceId: string,
+  permissionActions: readonly string[]
+): Promise<readonly IamContentListItem[]> => {
+  switch (contentType) {
+    case 'news.article':
+      return (await fetchAllPages(listNews)).map((item) => mapNewsItem(item, instanceId, permissionActions));
+    case 'events.event-record':
+      return (await fetchAllPages(listEvents)).map((item) => mapEventItem(item, instanceId, permissionActions));
+    case 'poi.point-of-interest':
+      return (await fetchAllPages(listPoi)).map((item) => mapPoiItem(item, instanceId, permissionActions));
+  }
+};
+
+const toIamHttpError = (error: unknown): IamHttpError =>
+  ({
+    name: 'IamHttpError',
+    message: error instanceof Error ? error.message : String(error),
+    status: 500,
+    code: 'internal_error',
+  }) as IamHttpError;
+
 export const useUnifiedContentList = (
   query: IamContentListQuery,
   visibleTypes: readonly string[],
@@ -251,7 +285,10 @@ export const useUnifiedContentList = (
       ),
     [query.type, visibleTypes]
   );
-  const permissionActionsKey = React.useMemo(() => [...permissionActions].sort().join('|'), [permissionActions]);
+  const permissionActionsKey = React.useMemo(
+    () => [...permissionActions].sort((left, right) => left.localeCompare(right)).join('|'),
+    [permissionActions]
+  );
   const fetchCacheKey = React.useMemo(
     () => [instanceId, normalizedVisibleTypes.join('|'), permissionActionsKey].join('::'),
     [instanceId, normalizedVisibleTypes, permissionActionsKey]
@@ -285,15 +322,7 @@ export const useUnifiedContentList = (
 
       try {
         const sources = await Promise.all(
-          normalizedVisibleTypes.map(async (contentType) => {
-            if (contentType === 'news.article') {
-              return (await fetchAllPages(listNews)).map((item) => mapNewsItem(item, instanceId, permissionActions));
-            }
-            if (contentType === 'events.event-record') {
-              return (await fetchAllPages(listEvents)).map((item) => mapEventItem(item, instanceId, permissionActions));
-            }
-            return (await fetchAllPages(listPoi)).map((item) => mapPoiItem(item, instanceId, permissionActions));
-          })
+          normalizedVisibleTypes.map((contentType) => loadItemsForContentType(contentType, instanceId, permissionActions))
         );
 
         if (!isActive) {
@@ -309,12 +338,7 @@ export const useUnifiedContentList = (
         }
 
         setSourceContents([]);
-        setError({
-          name: 'IamHttpError',
-          message: nextError instanceof Error ? nextError.message : String(nextError),
-          status: 500,
-          code: 'internal_error',
-        } as IamHttpError);
+        setError(toIamHttpError(nextError));
       } finally {
         if (isActive) {
           setIsLoading(false);

@@ -11,6 +11,8 @@ import { t } from '../../i18n';
 type PrivacyOverview = Awaited<ReturnType<typeof getMyDataSubjectRights>>['data'];
 
 const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
+const getErrorStatus = (error: unknown): unknown =>
+  typeof error === 'object' && error !== null && 'status' in error ? error.status : undefined;
 
 export const useAccountPrivacyState = () => {
   const [overview, setOverview] = React.useState<PrivacyOverview | null>(null);
@@ -41,7 +43,7 @@ export const useAccountPrivacyState = () => {
   }, []);
 
   React.useEffect(() => {
-    void loadOverview();
+    loadOverview().catch(() => undefined);
   }, [loadOverview]);
 
   const loadDeletionRules = React.useCallback(async () => {
@@ -55,7 +57,7 @@ export const useAccountPrivacyState = () => {
       setContentPreferenceDraft(response.contentPreference.effectiveStrategy);
     } catch (error) {
       setDeletionRules(null);
-      const status = typeof error === 'object' && error && 'status' in error ? (error as { status?: unknown }).status : undefined;
+      const status = getErrorStatus(error);
       if (status === 403) {
         setHasDeletionRulesAccess(false);
         setDeletionRulesError(null);
@@ -69,7 +71,7 @@ export const useAccountPrivacyState = () => {
   }, []);
 
   React.useEffect(() => {
-    void loadDeletionRules();
+    loadDeletionRules().catch(() => undefined);
   }, [loadDeletionRules]);
 
   const runAction = React.useCallback(

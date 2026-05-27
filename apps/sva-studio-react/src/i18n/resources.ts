@@ -6431,6 +6431,7 @@ const mergeTranslationBranch = (
   target: Record<string, TranslationNode>,
   source: Record<string, TranslationNode>,
   locale: string,
+  isRepeatedSource: boolean,
   pathPrefix = ''
 ): Record<string, TranslationNode> => {
   for (const [key, value] of Object.entries(source)) {
@@ -6440,12 +6441,16 @@ const mergeTranslationBranch = (
         { ...(target[key] as Record<string, TranslationNode>) },
         value,
         locale,
+        isRepeatedSource,
         path
       );
       continue;
     }
 
     if (target[key] !== undefined) {
+      if (isRepeatedSource && target[key] === value) {
+        continue;
+      }
       throw new Error(`duplicate_i18n_key:${locale}:${path}`);
     }
 
@@ -6455,19 +6460,37 @@ const mergeTranslationBranch = (
   return target;
 };
 
+const mergedPluginSourcesByLocale = Object.fromEntries(
+  Object.keys(i18nResources).map((locale) => [locale, new WeakSet<object>()])
+) as Record<SupportedLocale, WeakSet<object>>;
+
 export const mergeI18nResources = (
   resources: Readonly<Record<SupportedLocale, Readonly<Record<string, unknown>>>>
 ) => {
   const mutableResources = i18nResources as unknown as Record<SupportedLocale, Record<string, unknown>>;
+  const mergedResources = { ...mutableResources } as Record<SupportedLocale, Record<string, unknown>>;
+  const mergedSources: Array<readonly [SupportedLocale, object]> = [];
 
   for (const locale of Object.keys(resources) as SupportedLocale[]) {
     const source = resources[locale];
     const target = mutableResources[locale] as Record<string, TranslationNode>;
-    mutableResources[locale] = mergeTranslationBranch(
+    const sourceRecord = source as Record<string, TranslationNode>;
+    const isRepeatedSource = mergedPluginSourcesByLocale[locale].has(sourceRecord);
+    mergedResources[locale] = mergeTranslationBranch(
       { ...target },
-      source as Record<string, TranslationNode>,
-      locale
+      sourceRecord,
+      locale,
+      isRepeatedSource
     ) as Record<string, unknown>;
+    mergedSources.push([locale, sourceRecord]);
+  }
+
+  for (const locale of Object.keys(mergedResources) as SupportedLocale[]) {
+    mutableResources[locale] = mergedResources[locale];
+  }
+
+  for (const [locale, source] of mergedSources) {
+    mergedPluginSourcesByLocale[locale].add(source);
   }
 };
 

@@ -18,6 +18,25 @@ import type {
   WasteTourRecord,
 } from '@sva/core';
 import type { AuthenticatedRequestContext } from '../middleware.js';
+
+const sessionStore = vi.hoisted(() => ({
+  getSession: vi.fn(async () => ({
+    id: 'session-1',
+    userId: 'user-1',
+    user: {
+      id: 'user-1',
+      instanceId: 'tenant-a',
+      roles: ['system_admin'],
+    },
+    createdAt: Date.parse('2026-05-09T12:00:00.000Z'),
+    expiresAt: Date.parse('2026-05-09T13:00:00.000Z'),
+  })),
+}));
+
+vi.mock('../redis-session.js', () => ({
+  getSession: sessionStore.getSession,
+}));
+
 import { wasteManagementCoreHandlers } from './core.js';
 
 const {
@@ -2389,6 +2408,35 @@ describe('waste-management auth runtime handlers', () => {
 
     expect(response.status).toBe(403);
     expect(loadDefaultInterfaceRecord).not.toHaveBeenCalled();
+  });
+
+  it('returns database_unavailable when loading the actor session fails before permission resolution', async () => {
+    const resolvePermissions = vi.fn(async () => ({
+      ok: true as const,
+      permissions: allowPermission('waste-management.settings.manage'),
+    }));
+
+    const response = await getWasteManagementSettingsInternal(
+      new Request('https://studio.test/api/v1/waste-management/settings'),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        getSessionById: vi.fn(async () => {
+          throw new Error('redis_down');
+        }),
+        loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
+        resolvePermissions,
+      }
+    );
+
+    expect(response.status).toBe(503);
+    expect(resolvePermissions).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+      },
+      requestId: 'req-test',
+    });
   });
 
   it('rejects waste-fraction mutation without the dedicated master-data permission', async () => {

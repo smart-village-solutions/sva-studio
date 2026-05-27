@@ -77,14 +77,49 @@ const parseCliOptions = (args: readonly string[]): AffectedUnitGateOptions => {
   return { base, head };
 };
 
-const runCommand = (command: string): number => {
-  console.log(`\n$ ${command}`);
+const runCommand = (
+  command: string,
+  options?: Readonly<{
+    retries?: number;
+  }>
+): number => {
+  const retries = normalizeRetryCount(options?.retries);
   const startedAt = performance.now();
-  execSync(command, {
-    env: process.env,
-    stdio: 'inherit',
-  });
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    console.log(`\n$ ${command}`);
+    if (attempt > 0) {
+      console.warn(`Retrying command (${attempt}/${retries}) after previous failure.`);
+    }
+
+    try {
+      execSync(command, {
+        env: process.env,
+        stdio: 'inherit',
+      });
+      return performance.now() - startedAt;
+    } catch (error) {
+      if (attempt >= retries) {
+        throw error;
+      }
+
+      const status = typeof error === 'object' && error !== null && 'status' in error ? error.status : 'unknown';
+      const signal = typeof error === 'object' && error !== null && 'signal' in error ? error.signal : 'unknown';
+      console.warn(
+        `Command failed with status=${String(status)} signal=${String(signal)}. Retrying command (${attempt + 1}/${retries}).`
+      );
+    }
+  }
+
   return performance.now() - startedAt;
+};
+
+export const normalizeRetryCount = (retries: number | undefined): number => {
+  if (typeof retries !== 'number' || Number.isFinite(retries) === false) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor(retries));
 };
 
 const getAffectedUnitProjects = (base: string, head: string): string[] => {
@@ -236,7 +271,8 @@ export const runAffectedUnitGate = (
     recordDuration(
       'unit:affected-workspace',
       runCommand(
-        `env -u NO_COLOR pnpm nx affected --target=test:unit --base=${options.base} --head=${options.head} --parallel=1 --exclude=${APP_PROJECT} --output-style=stream`
+        `env -u NO_COLOR pnpm nx affected --target=test:unit --base=${options.base} --head=${options.head} --parallel=1 --exclude=${APP_PROJECT} --output-style=stream`,
+        { retries: 1 }
       )
     );
   }

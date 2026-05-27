@@ -65,7 +65,13 @@ const createRuntimeUuid = (): string => {
     return globalThis.crypto.randomUUID();
   }
 
-  return `wm-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    const randomValues = new Uint32Array(2);
+    globalThis.crypto.getRandomValues(randomValues);
+    return `wm-${randomValues[0]!.toString(36)}-${randomValues[1]!.toString(36)}`;
+  }
+
+  return `wm-${Date.now().toString(36)}-${performance.now().toString(36).replace('.', '')}`;
 };
 
 const createPlanningSummary = () => ({

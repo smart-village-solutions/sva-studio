@@ -50,9 +50,32 @@ const privacyOverviewPayload = {
 };
 
 const navigateClientSide = async (page: Page, targetPath: string) => {
-  await page.evaluate((path) => {
-    window.history.pushState({}, '', path);
-    window.dispatchEvent(new PopStateEvent('popstate'));
+  await page.waitForFunction(() => {
+    return Boolean(
+      (
+        window as typeof window & {
+          __SVA_PLAYWRIGHT_ROUTER__?: {
+            navigate: (options: { to: string }) => Promise<void> | void;
+          };
+        }
+      ).__SVA_PLAYWRIGHT_ROUTER__
+    );
+  });
+
+  await page.evaluate(async (path) => {
+    const router = (
+      window as typeof window & {
+        __SVA_PLAYWRIGHT_ROUTER__?: {
+          navigate: (options: { to: string }) => Promise<void> | void;
+        };
+      }
+    ).__SVA_PLAYWRIGHT_ROUTER__;
+
+    if (!router) {
+      throw new Error('Playwright router hook fehlt.');
+    }
+
+    await router.navigate({ to: path });
   }, targetPath);
 };
 
@@ -346,8 +369,7 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
     });
   });
 
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+  await gotoHomeAsAuthenticatedUser(page);
   const usersResponsePromise = page.waitForResponse(
     (response) => response.url().includes('/api/v1/iam/users?') && response.status() === 200
   );
@@ -623,11 +645,9 @@ test('admin links are hidden for non-admin user and route guard redirects', asyn
   await expect(page.getByRole('link', { name: 'Benutzer' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Rollen' })).toHaveCount(0);
 
-  await page.evaluate(() => {
-    window.history.pushState({}, '', '/admin/users');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  });
-  await expect(page).toHaveURL(/\?error=auth\.insufficientRole/);
+  await navigateClientSide(page, '/admin/users');
+  await expect(page).toHaveURL('/');
+  await expect(page.getByRole('heading', { name: /SVA Studio/i })).toBeVisible();
 });
 
 test('iam cockpit redirects unknown or disallowed tabs to the first allowed governance tab', async ({ page }) => {

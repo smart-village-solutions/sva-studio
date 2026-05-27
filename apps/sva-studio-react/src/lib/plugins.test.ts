@@ -13,6 +13,11 @@ const registerPluginTranslationResolverMock = vi.hoisted(() => vi.fn());
 const mergeI18nResourcesMock = vi.hoisted(() => vi.fn());
 const resetTranslatorCacheMock = vi.hoisted(() => vi.fn());
 const translateMock = vi.hoisted(() => vi.fn((key: string) => key));
+const i18nResourcesState = vi.hoisted(() => ({
+  current: {},
+}));
+const studioPluginTranslationsSignatureKey = Symbol.for('sva-studio.plugin-translations.signature');
+const studioPluginTranslationsResourcesKey = Symbol.for('sva-studio.plugin-translations.resources');
 
 vi.mock('@sva/plugin-sdk', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sva/plugin-sdk')>();
@@ -188,6 +193,9 @@ vi.mock('../../../../packages/plugin-waste-management/src/index.ts', () => ({
 }));
 
 vi.mock('../i18n', () => ({
+  get i18nResources() {
+    return i18nResourcesState.current;
+  },
   mergeI18nResources: mergeI18nResourcesMock,
   resetTranslatorCache: resetTranslatorCacheMock,
   t: translateMock,
@@ -203,6 +211,9 @@ describe('plugin action alias lookup', () => {
     mergeI18nResourcesMock.mockReset();
     resetTranslatorCacheMock.mockReset();
     translateMock.mockClear();
+    i18nResourcesState.current = {};
+    delete (globalThis as Record<PropertyKey, unknown>)[studioPluginTranslationsSignatureKey];
+    delete (globalThis as Record<PropertyKey, unknown>)[studioPluginTranslationsResourcesKey];
     vi.resetModules();
   });
 
@@ -285,6 +296,29 @@ describe('plugin action alias lookup', () => {
     expect(getStudioPluginAction('missing.action')).toBeUndefined();
     expect(browserLoggerMock.warn).toHaveBeenCalledTimes(1);
   }, 15000);
+
+  it('merges build-time plugin translations only once across module re-evaluations', async () => {
+    await import('./plugins');
+
+    expect(mergeI18nResourcesMock).toHaveBeenCalledTimes(1);
+
+    vi.resetModules();
+    await import('./plugins');
+
+    expect(mergeI18nResourcesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-merges plugin translations when the i18n resource object changes across module re-evaluations', async () => {
+    await import('./plugins');
+
+    expect(mergeI18nResourcesMock).toHaveBeenCalledTimes(1);
+
+    i18nResourcesState.current = {};
+    vi.resetModules();
+    await import('./plugins');
+
+    expect(mergeI18nResourcesMock).toHaveBeenCalledTimes(2);
+  });
 
   it('logs skipped and rejected plugin catalog issues deterministically', async () => {
     vi.doMock('./plugin-catalog-loader.js', () => ({

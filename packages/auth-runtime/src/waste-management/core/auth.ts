@@ -4,6 +4,7 @@ import { getWorkspaceContext } from '@sva/server-runtime';
 import { emitAuthAuditEvent } from '../../audit-events.js';
 import { resolveEffectivePermissions } from '../../iam-authorization/permission-store.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
+import { getSession } from '../../redis-session.js';
 import { createApiError } from '../../shared/request-helpers.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { requireActorInstanceId } from './utils.js';
@@ -57,11 +58,20 @@ export const authorizeWasteManagementAction = async (
     return instanceId;
   }
 
+  let organizationId: string | undefined;
+  try {
+    const session = await (deps.getSessionById ?? getSession)(ctx.sessionId);
+    organizationId = session?.activeOrganizationId;
+  } catch {
+    return createApiError(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.', requestId);
+  }
+
   let permissions: readonly EffectivePermission[];
   try {
     const resolved = await (deps.resolvePermissions ?? resolveEffectivePermissions)({
       instanceId,
       keycloakSubject: ctx.user.id,
+      organizationId,
     });
     if (!resolved.ok) {
       return createApiError(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.', requestId);
@@ -75,8 +85,14 @@ export const authorizeWasteManagementAction = async (
     {
       instanceId,
       action,
-      resource: { type: 'waste-management' },
-      context: requestId ? { requestId } : undefined,
+      resource: {
+        type: 'waste-management',
+        ...(organizationId ? { organizationId } : {}),
+      },
+      context: {
+        ...(organizationId ? { organizationId } : {}),
+        ...(requestId ? { requestId } : {}),
+      },
     },
     permissions
   );

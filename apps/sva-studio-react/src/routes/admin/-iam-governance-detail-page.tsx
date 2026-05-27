@@ -42,6 +42,9 @@ export function IamGovernanceDetailPage({ caseId }: Readonly<{ caseId: string }>
   const cockpitEnabled = isIamCockpitEnabled();
   const canAccessCockpit = hasIamCockpitAccessRole(user);
   const allowedTabs = React.useMemo(() => getAllowedIamCockpitTabs(user), [user]);
+  const handleBackClick = React.useCallback(() => {
+    Promise.resolve(navigate({ to: '/admin/iam', search: { tab: 'governance' } })).catch(() => undefined);
+  }, [navigate]);
 
   React.useEffect(() => {
     if (!cockpitEnabled || !canAccessCockpit || !allowedTabs.includes('governance') || !caseId) {
@@ -52,7 +55,7 @@ export function IamGovernanceDetailPage({ caseId }: Readonly<{ caseId: string }>
     setIsLoading(true);
     setError(null);
 
-    void getGovernanceCase(caseId, { signal: controller.signal })
+    getGovernanceCase(caseId, { signal: controller.signal })
       .then((response) => {
         if (!controller.signal.aborted) {
           setItem(response.data);
@@ -106,7 +109,7 @@ export function IamGovernanceDetailPage({ caseId }: Readonly<{ caseId: string }>
       title={item ? formatGovernanceTitle(item) : t('admin.iam.governance.detail.title')}
       description={t('admin.iam.governance.detail.subtitle')}
       actions={
-        <Button type="button" variant="outline" onClick={() => void navigate({ to: '/admin/iam', search: { tab: 'governance' } })}>
+        <Button type="button" variant="outline" onClick={handleBackClick}>
           {t('admin.iam.governance.detail.back')}
         </Button>
       }

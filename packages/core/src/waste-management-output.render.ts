@@ -1,69 +1,47 @@
 import type { WasteCalendarPdfDocument } from './waste-management-output.types.js';
 import { PdfBuilder } from './waste-management-output.pdf-builder.js';
-
-type RgbColor = readonly [red: number, green: number, blue: number];
+import {
+  abbreviateHolidayLabel,
+  getEntryLabelWidth,
+  pad2,
+  splitLegendLabel,
+  type RgbColor,
+} from './waste-management-output.render.helpers.js';
 
 const PAGE_WIDTH = 841.89;
 const PAGE_HEIGHT = 595.28;
 
-const splitLegendLabel = (label: string): readonly string[] => {
-  if (label.length <= 24) {
-    return [label];
-  }
+type TextDrawInput = Readonly<{
+  color?: RgbColor;
+  commands: string[];
+  fontName: 'F1' | 'F2';
+  fontSize: number;
+  text: string;
+  top: number;
+  x: number;
+}>;
 
-  const words = label.split(/\s+/);
-  const lines: string[] = [];
-  let current = '';
+type CenteredTextDrawInput = Readonly<{
+  color?: RgbColor;
+  commands: string[];
+  fontName: 'F1' | 'F2';
+  fontSize: number;
+  height: number;
+  text: string;
+  top: number;
+  width: number;
+  x: number;
+}>;
 
-  for (const word of words) {
-    const next = current.length === 0 ? word : `${current} ${word}`;
-    if (next.length > 24 && current.length > 0) {
-      lines.push(current);
-      current = word;
-      continue;
-    }
-    current = next;
-  }
+type RectangleDrawInput = Readonly<{
+  commands: string[];
+  height: number;
+  top: number;
+  width: number;
+  x: number;
+}>;
 
-  if (current.length > 0) {
-    lines.push(current);
-  }
-
-  return lines;
-};
-
-const pad2 = (value: number): string => value.toString().padStart(2, '0');
-
-const abbreviateHolidayLabel = (label: string): string => {
-  switch (label) {
-    case 'Christi Himmelfahrt':
-      return 'Christi Himmelf.';
-    case 'Tag der Deutschen Einheit':
-      return 'Tag d. Dt. Einheit';
-    default:
-      return label;
-  }
-};
-
-const getEntryLabelWidth = (code: string): number => {
-  if (code.length <= 2) {
-    return 18;
-  }
-  if (code.length === 3) {
-    return 22;
-  }
-  return 26;
-};
-
-const drawText = (
-  commands: string[],
-  x: number,
-  top: number,
-  fontSize: number,
-  text: string,
-  fontName: 'F1' | 'F2',
-  color: RgbColor = [0.15, 0.15, 0.15]
-): void => {
+const drawText = ({ commands, x, top, fontSize, text, fontName, color = [0.15, 0.15, 0.15] }: TextDrawInput): void => {
   const baselineY = PAGE_HEIGHT - top - fontSize;
   commands.push(
     `BT /${fontName} ${fontSize.toFixed(2)} Tf ${color[0].toFixed(3)} ${color[1].toFixed(3)} ${color[2].toFixed(
@@ -72,29 +50,25 @@ const drawText = (
   );
 };
 
-const drawCenteredText = (
-  commands: string[],
-  x: number,
-  top: number,
-  width: number,
-  height: number,
-  fontSize: number,
-  text: string,
-  fontName: 'F1' | 'F2',
-  color: RgbColor = [0.15, 0.15, 0.15]
-): void => {
+const drawCenteredText = ({
+  commands,
+  x,
+  top,
+  width,
+  height,
+  fontSize,
+  text,
+  fontName,
+  color = [0.15, 0.15, 0.15],
+}: CenteredTextDrawInput): void => {
   const estimatedWidth = text.length * fontSize * 0.48;
   const textX = x + (width - estimatedWidth) / 2;
   const textTop = top + (height - fontSize) / 2 + 1;
-  drawText(commands, textX, textTop, fontSize, text, fontName, color);
+  drawText({ commands, x: textX, top: textTop, fontSize, text, fontName, color });
 };
 
 const drawFilledRectangle = (
-  commands: string[],
-  x: number,
-  top: number,
-  width: number,
-  height: number,
+  { commands, x, top, width, height }: RectangleDrawInput,
   fillColor: RgbColor
 ): void => {
   const y = PAGE_HEIGHT - top - height;
@@ -106,11 +80,7 @@ const drawFilledRectangle = (
 };
 
 const drawStrokedRectangle = (
-  commands: string[],
-  x: number,
-  top: number,
-  width: number,
-  height: number,
+  { commands, x, top, width, height }: RectangleDrawInput,
   strokeColor: RgbColor,
   lineWidth: number
 ): void => {
@@ -123,11 +93,20 @@ const drawStrokedRectangle = (
 };
 
 const renderHeader = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
-  drawText(commands, 38, 40, 30, page.title, 'F2');
-  drawText(commands, 38, 92, 14, page.locationLabel, 'F1');
-  drawFilledRectangle(commands, 640, 28, 163, 62, [0.93, 0.95, 0.98]);
-  drawStrokedRectangle(commands, 640, 28, 163, 62, [0.55, 0.62, 0.7], 1);
-  drawCenteredText(commands, 640, 28, 163, 62, 11, page.brandingPlaceholderLabel, 'F2');
+  drawText({ commands, x: 38, top: 40, fontSize: 30, text: page.title, fontName: 'F2' });
+  drawText({ commands, x: 38, top: 92, fontSize: 14, text: page.locationLabel, fontName: 'F1' });
+  drawFilledRectangle({ commands, x: 640, top: 28, width: 163, height: 62 }, [0.93, 0.95, 0.98]);
+  drawStrokedRectangle({ commands, x: 640, top: 28, width: 163, height: 62 }, [0.55, 0.62, 0.7], 1);
+  drawCenteredText({
+    commands,
+    x: 640,
+    top: 28,
+    width: 163,
+    height: 62,
+    fontSize: 11,
+    text: page.brandingPlaceholderLabel,
+    fontName: 'F2',
+  });
 };
 
 const renderMonthGrid = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
@@ -140,37 +119,54 @@ const renderMonthGrid = (commands: string[], page: WasteCalendarPdfDocument['pag
 
   for (const [index, month] of page.months.entries()) {
     const x = monthLeft + index * (monthWidth + monthGap);
-    drawFilledRectangle(commands, x, monthTop, monthWidth, headerHeight, [0.16, 0.47, 0.74]);
-    drawStrokedRectangle(commands, x, monthTop, monthWidth, headerHeight, [0.15, 0.15, 0.15], 0.8);
-    drawCenteredText(commands, x, monthTop, monthWidth, headerHeight, 11, month.label, 'F2', [1, 1, 1]);
+    drawFilledRectangle({ commands, x, top: monthTop, width: monthWidth, height: headerHeight }, [0.16, 0.47, 0.74]);
+    drawStrokedRectangle({ commands, x, top: monthTop, width: monthWidth, height: headerHeight }, [0.15, 0.15, 0.15], 0.8);
+    drawCenteredText({
+      commands,
+      x,
+      top: monthTop,
+      width: monthWidth,
+      height: headerHeight,
+      fontSize: 11,
+      text: month.label,
+      fontName: 'F2',
+      color: [1, 1, 1],
+    });
 
     for (let rowIndex = 0; rowIndex < 31; rowIndex += 1) {
       const rowTop = monthTop + headerHeight + rowIndex * rowHeight;
       const day = month.days[rowIndex] ?? null;
       const hasWeekend = day !== null && (day.weekdayShort === 'Sa' || day.weekdayShort === 'So');
-      drawFilledRectangle(commands, x, rowTop, monthWidth, rowHeight, hasWeekend ? [0.94, 0.96, 0.99] : [1, 1, 1]);
-      drawStrokedRectangle(commands, x, rowTop, monthWidth, rowHeight, [0.2, 0.2, 0.2], 0.45);
+      drawFilledRectangle({ commands, x, top: rowTop, width: monthWidth, height: rowHeight }, hasWeekend ? [0.94, 0.96, 0.99] : [1, 1, 1]);
+      drawStrokedRectangle({ commands, x, top: rowTop, width: monthWidth, height: rowHeight }, [0.2, 0.2, 0.2], 0.45);
 
       if (day === null) {
         continue;
       }
 
       const dayTextTop = rowTop + 1.6;
-      drawText(commands, x + 4, dayTextTop, 8.5, pad2(day.dayOfMonth), 'F1');
-      drawText(commands, x + 24, dayTextTop, 8.5, day.weekdayShort, 'F1');
+      drawText({ commands, x: x + 4, top: dayTextTop, fontSize: 8.5, text: pad2(day.dayOfMonth), fontName: 'F1' });
+      drawText({ commands, x: x + 24, top: dayTextTop, fontSize: 8.5, text: day.weekdayShort, fontName: 'F1' });
 
       if (day.weekNumber !== null) {
-        drawText(commands, x - 12, dayTextTop, 8, String(day.weekNumber), 'F1');
+        drawText({ commands, x: x - 12, top: dayTextTop, fontSize: 8, text: String(day.weekNumber), fontName: 'F1' });
       }
       if (day.holidayLabel !== null) {
-        drawText(commands, x + 42, rowTop + 2.1, 6.8, abbreviateHolidayLabel(day.holidayLabel), 'F1');
+        drawText({
+          commands,
+          x: x + 42,
+          top: rowTop + 2.1,
+          fontSize: 6.8,
+          text: abbreviateHolidayLabel(day.holidayLabel),
+          fontName: 'F1',
+        });
       }
 
       let labelX = x + 42;
       for (const entry of day.entries) {
         const labelWidth = getEntryLabelWidth(entry.code);
-        drawFilledRectangle(commands, labelX, rowTop + 1.2, labelWidth, rowHeight - 2.5, entry.fillColor);
-        drawText(commands, labelX + 2.8, rowTop + 1.8, 7.5, entry.code, 'F1');
+        drawFilledRectangle({ commands, x: labelX, top: rowTop + 1.2, width: labelWidth, height: rowHeight - 2.5 }, entry.fillColor);
+        drawText({ commands, x: labelX + 2.8, top: rowTop + 1.8, fontSize: 7.5, text: entry.code, fontName: 'F1' });
         labelX += labelWidth + 2;
       }
     }
@@ -178,8 +174,8 @@ const renderMonthGrid = (commands: string[], page: WasteCalendarPdfDocument['pag
 };
 
 const renderNotes = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
-  drawText(commands, 38, 525, 10.2, page.notes[0] ?? '', 'F1');
-  drawText(commands, 38, 549, 10.2, page.notes[1] ?? '', 'F1');
+  drawText({ commands, x: 38, top: 525, fontSize: 10.2, text: page.notes[0] ?? '', fontName: 'F1' });
+  drawText({ commands, x: 38, top: 549, fontSize: 10.2, text: page.notes[1] ?? '', fontName: 'F1' });
 };
 
 const renderLegend = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
@@ -194,21 +190,21 @@ const renderLegend = (commands: string[], page: WasteCalendarPdfDocument['pages'
     const rowIndex = index % rowsPerColumn;
     const x = baseX + columnIndex * columnWidth;
     const y = baseY + rowIndex * rowGap;
-    drawFilledRectangle(commands, x, y, 22, 14, entry.fillColor);
-    drawText(commands, x + 4, y + 10.2, 7.8, entry.code, 'F1');
+    drawFilledRectangle({ commands, x, top: y, width: 22, height: 14 }, entry.fillColor);
+    drawText({ commands, x: x + 4, top: y + 10.2, fontSize: 7.8, text: entry.code, fontName: 'F1' });
     for (const [lineIndex, line] of splitLegendLabel(entry.label).entries()) {
-      drawText(commands, x + 30, y + 8.7 + lineIndex * 9, 8, line, 'F1');
+      drawText({ commands, x: x + 30, top: y + 8.7 + lineIndex * 9, fontSize: 8, text: line, fontName: 'F1' });
     }
   }
 };
 
 const renderFooter = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
-  drawText(commands, 38, 582, 9.6, page.footerLine, 'F1');
+  drawText({ commands, x: 38, top: 582, fontSize: 9.6, text: page.footerLine, fontName: 'F1' });
 };
 
 const renderPageCommands = (page: WasteCalendarPdfDocument['pages'][number]): string => {
   const commands: string[] = [];
-  drawFilledRectangle(commands, 0, 0, PAGE_WIDTH, PAGE_HEIGHT, [1, 1, 1]);
+  drawFilledRectangle({ commands, x: 0, top: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT }, [1, 1, 1]);
   renderHeader(commands, page);
   renderMonthGrid(commands, page);
   renderNotes(commands, page);

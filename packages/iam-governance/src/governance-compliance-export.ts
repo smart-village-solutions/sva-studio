@@ -81,7 +81,7 @@ const csvEscape = (value: string | number | null | undefined) => {
   }
   const raw = String(value);
   if (raw.includes(',') || raw.includes('"') || raw.includes('\n')) {
-    return `"${raw.replace(/"/g, '""')}"`;
+    return `"${raw.replaceAll('"', '""')}"`;
   }
   return raw;
 };

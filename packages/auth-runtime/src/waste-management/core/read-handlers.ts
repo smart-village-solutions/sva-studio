@@ -15,6 +15,28 @@ const wasteOutputPdfRequestSchema = z.object({
 const isWasteOutputLocationNotFoundError = (error: unknown): boolean =>
   error instanceof Error && error.message.startsWith('waste_output_location_not_found:');
 
+const toOptionalTrimmedSearchParam = (request: Request, key: string): string | undefined => {
+  const value = new URL(request.url).searchParams.get(key)?.trim();
+  return value ? value : undefined;
+};
+
+const resolveMasterDataOverview = async (
+  request: Request,
+  deps: WasteManagementHandlerDeps,
+  instanceId: string
+) => {
+  const scope = toOptionalTrimmedSearchParam(request, 'scope');
+  if (scope === 'fractions') {
+    return requireDeps(deps.loadMasterDataFractionsOverview, 'loadMasterDataFractionsOverview')(instanceId);
+  }
+
+  if (scope === 'locations') {
+    return requireDeps(deps.loadMasterDataLocationsOverview, 'loadMasterDataLocationsOverview')(instanceId);
+  }
+
+  return requireDeps(deps.loadMasterDataOverview, 'loadMasterDataOverview')(instanceId);
+};
+
 export const wasteManagementReadHandlers = {
   getWasteManagementSettingsInternal: async (
     _request: Request,
@@ -59,7 +81,7 @@ export const wasteManagementReadHandlers = {
     }
 
     const { page, pageSize } = readPage(request);
-    const search = new URL(request.url).searchParams.get('q')?.trim() || undefined;
+    const search = toOptionalTrimmedSearchParam(request, 'q');
 
     try {
       const overview = await requireDeps(deps.loadWasteHistoryOverview, 'loadWasteHistoryOverview')({
@@ -93,13 +115,7 @@ export const wasteManagementReadHandlers = {
     }
 
     try {
-      const scope = new URL(request.url).searchParams.get('scope')?.trim();
-      const overview =
-        scope === 'fractions'
-          ? await requireDeps(deps.loadMasterDataFractionsOverview, 'loadMasterDataFractionsOverview')(instanceId)
-          : scope === 'locations'
-            ? await requireDeps(deps.loadMasterDataLocationsOverview, 'loadMasterDataLocationsOverview')(instanceId)
-            : await requireDeps(deps.loadMasterDataOverview, 'loadMasterDataOverview')(instanceId);
+      const overview = await resolveMasterDataOverview(request, deps, instanceId);
       await updateWasteVisibleStatus(deps, instanceId, 'success');
       return new Response(JSON.stringify(asApiItem(overview, requestId)), {
         status: 200,

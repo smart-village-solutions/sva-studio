@@ -173,7 +173,7 @@ export const readOrganizationTypeFilter = (request: Request): IamOrganizationTyp
 };
 
 export const escapeIlikePattern = (value: string): string =>
-  value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+  value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
 
 export const chooseActiveOrganizationId = (input: {
   readonly storedActiveOrganizationId?: string;

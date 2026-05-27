@@ -50,6 +50,12 @@ export const OrganizationsPage = () => {
       setStatusMutationOrganizationIds((current) => current.filter((id) => id !== organizationId));
     }
   };
+  const handleRefetch = React.useCallback(() => {
+    Promise.resolve(organizationsApi.refetch()).catch(() => undefined);
+  }, [organizationsApi]);
+  const handleConfirmDeactivate = React.useCallback(() => {
+    Promise.resolve(onConfirmDeactivate()).catch(() => undefined);
+  }, [onConfirmDeactivate]);
 
   const organizationColumns = React.useMemo<readonly StudioColumnDef<(typeof organizationsApi.organizations)[number]>[]>(
     () => [
@@ -113,7 +119,7 @@ export const OrganizationsPage = () => {
                 name: organization.displayName,
               })}
               onCheckedChange={(checked) => {
-                void onStatusChange(organization.id, checked);
+                onStatusChange(organization.id, checked).catch(() => undefined);
               }}
             />
             <Badge variant="outline">
@@ -149,7 +155,7 @@ export const OrganizationsPage = () => {
             <AlertDescription className="flex flex-col gap-3">
               <span>{organizationErrorMessage(organizationsApi.error)}</span>
               <div>
-                <Button type="button" size="sm" variant="outline" onClick={() => void organizationsApi.refetch()}>
+                <Button type="button" size="sm" variant="outline" onClick={handleRefetch}>
                   {t('admin.organizations.actions.retry')}
                 </Button>
               </div>
@@ -312,7 +318,7 @@ export const OrganizationsPage = () => {
         description={t('admin.organizations.confirm.deactivateDescription')}
         confirmLabel={t('admin.organizations.actions.delete')}
         cancelLabel={t('account.actions.cancel')}
-        onConfirm={() => void onConfirmDeactivate()}
+        onConfirm={handleConfirmDeactivate}
         onCancel={() => setDeactivateOrganizationId(null)}
       />
     </section>

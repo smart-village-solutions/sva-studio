@@ -25,6 +25,9 @@ const actor: AuthenticatedRequestContext = {
 
 const createDeps = (action = 'waste-management.read') => ({
   getRequestId: () => 'req-test',
+  getSessionById: vi.fn(async () => ({
+    activeOrganizationId: 'org-1',
+  })),
   resolvePermissions: vi.fn(async () => ({
     ok: true as const,
     permissions: [
@@ -123,12 +126,53 @@ describe('waste-management read handlers', () => {
     expect(historyResponse.status).toBe(503);
   });
 
+  it('accepts organization-scoped read permissions when the session carries an active organization id', async () => {
+    const response = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/master-data'),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        getSessionById: vi.fn(async () => ({
+          id: 'session-1',
+          userId: 'user-1',
+          createdAt: Date.now(),
+          activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+        })),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [
+            {
+              action: 'waste-management.read',
+              resourceType: 'waste-management',
+              organizationId: '11111111-1111-4111-8111-111111111111',
+              effect: 'allow' as const,
+            },
+          ],
+        })),
+        loadMasterDataOverview: vi.fn(async () => ({
+          fractions: [],
+          regions: [],
+          cities: [],
+          streets: [],
+          houseNumbers: [],
+          collectionLocations: [],
+          locationTourLinks: [],
+        })),
+      }
+    );
+
+    expect(response.status).toBe(200);
+  });
+
   it('returns guard errors before overview loaders run', async () => {
     const forbiddenResponse = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
       new Request('https://studio.test/api/v1/waste-management/master-data'),
       actor,
       {
         getRequestId: () => 'req-test',
+        getSessionById: vi.fn(async () => ({
+          activeOrganizationId: 'org-1',
+        })),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
           permissions: [],

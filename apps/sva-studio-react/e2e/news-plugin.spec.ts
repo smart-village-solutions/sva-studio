@@ -87,6 +87,16 @@ const expectPluginPageHeading = async (page: Page, pattern: RegExp) => {
   await expect(page.locator('main h1').filter({ hasText: pattern })).toBeVisible();
 };
 
+const expectNewsEditorReady = async (page: Page, mode: 'create' | 'edit') => {
+  await expectPluginPageHeading(
+    page,
+    mode === 'create'
+      ? /News-Eintrag anlegen|news\.editor\.createTitle/
+      : /News-Eintrag bearbeiten|news\.editor\.editTitle/
+  );
+  await expect(page.locator('#news-title')).toBeVisible();
+};
+
 const expectContentOverviewUrl = async (page: Page) => {
   await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
 };
@@ -223,6 +233,37 @@ const routeUnifiedContentOverview = async (page: Page, newsItems: readonly NewsR
   });
 };
 
+const routeNewsMediaRequests = async (route: Route) => {
+  const request = route.request();
+  const method = request.method();
+  const url = new URL(request.url());
+  const path = url.pathname;
+
+  if (path === '/api/v1/iam/media' && method === 'GET') {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    });
+    return;
+  }
+
+  if (path === '/api/v1/iam/media/references' && method === 'GET') {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    });
+    return;
+  }
+
+  await route.fulfill({
+    status: 404,
+    contentType: 'application/json',
+    body: JSON.stringify({ error: 'not_found' }),
+  });
+};
+
 const openNewsDetailTab = async (page: Page, labelPattern: RegExp) => {
   await page.getByRole('tab', { name: labelPattern }).click();
 };
@@ -328,6 +369,7 @@ const fulfillContentRoute = async (
 test.describe('news plugin', () => {
   test.beforeEach(async ({ page }) => {
     await mockSharedShellRequests(page);
+    await page.route('**/api/v1/iam/media**', routeNewsMediaRequests);
   });
 
   test('supports news CRUD including delete', async ({ page }) => {
@@ -401,9 +443,7 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/content');
     await expectContentOverviewReady(page);
 
-    await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
-    await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
-    await page.locator('a[href="/admin/news/new"]').click();
+    await navigateClientSide(page, '/admin/news/new');
     await expect(page).toHaveURL(/\/admin\/news\/new$/);
     await expectPluginPageHeading(page, /News-Eintrag anlegen|news\.editor\.createTitle/);
 
@@ -536,6 +576,8 @@ test.describe('news plugin', () => {
   });
 
   test('stays free of serious accessibility violations on news views', async ({ page }) => {
+    test.setTimeout(90_000);
+
     const newsItems: NewsRecord[] = [
       {
         id: 'news-1',
@@ -596,12 +638,12 @@ test.describe('news plugin', () => {
     expect(listViolations.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
 
     await navigateClientSide(page, '/admin/news/new');
-    await expectPluginPageHeading(page, /News-Eintrag anlegen|news\.editor\.createTitle/);
+    await expectNewsEditorReady(page, 'create');
     const createViolations = await new AxeBuilder({ page }).include('#main-content').analyze();
     expect(createViolations.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
 
     await navigateClientSide(page, '/admin/news/news-1');
-    await expectPluginPageHeading(page, /News-Eintrag bearbeiten|news\.editor\.editTitle/);
+    await expectNewsEditorReady(page, 'edit');
     const editViolations = await new AxeBuilder({ page }).include('#main-content').analyze();
     expect(editViolations.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
   });

@@ -28,6 +28,9 @@ const actor: AuthenticatedRequestContext = {
 
 const createDeps = () => ({
   getRequestId: () => 'req-test',
+  getSessionById: vi.fn(async () => ({
+    activeOrganizationId: 'org-1',
+  })),
   emitAuditEvent: vi.fn(async () => undefined),
   resolveActorInfo: vi.fn(async () => ({
     actor: {

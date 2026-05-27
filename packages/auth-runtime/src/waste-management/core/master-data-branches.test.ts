@@ -33,6 +33,9 @@ const createHeaders = () => ({
 
 const createDeps = (action = 'waste-management.master-data.manage') => ({
   getRequestId: () => 'req-test',
+  getSessionById: vi.fn(async () => ({
+    activeOrganizationId: 'org-1',
+  })),
   emitAuditEvent: vi.fn(async () => undefined),
   resolvePermissions: vi.fn(async () => ({
     ok: true as const,

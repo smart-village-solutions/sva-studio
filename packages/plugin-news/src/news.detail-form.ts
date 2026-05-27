@@ -38,6 +38,13 @@ const defaultContentBlock = (): NewsContentBlockFormValue => ({
   mediaContents: [],
 });
 
+const defaultFallbackContentBlock = (item: NewsContentItem): NewsContentBlockFormValue => ({
+  title: '',
+  intro: item.payload.teaser ?? '',
+  body: item.payload.body ?? '',
+  mediaContents: item.payload.imageUrl ? [{ ...defaultMediaContent(), sourceUrl: { url: item.payload.imageUrl } }] : [],
+});
+
 const isValidDateString = (value: string): boolean => Number.isNaN(new Date(value).getTime()) === false;
 
 const isHttpsUrl = (value: string): boolean => {
@@ -220,17 +227,51 @@ export const createDefaultNewsDetailFormValues = (author = ''): NewsDetailFormVa
   pointOfInterestId: '',
 });
 
+const mapNewsItemCategories = (item: NewsContentItem): NewsDetailFormValues['categories'] => {
+  if (item.categories && item.categories.length > 0) {
+    return item.categories.map((category) => category.name);
+  }
+
+  return item.payload.category ? [item.payload.category] : [];
+};
+
+const mapNewsItemMediaContent = (
+  media: NonNullable<NonNullable<NewsContentItem['contentBlocks']>[number]['mediaContents']>[number]
+): NewsMediaContentFormValue => ({
+  captionText: media.captionText ?? '',
+  copyright: media.copyright ?? '',
+  contentType: media.contentType ?? 'image',
+  height: media.height !== undefined ? String(media.height) : '',
+  width: media.width !== undefined ? String(media.width) : '',
+  sourceUrl: {
+    url: media.sourceUrl?.url ?? '',
+    description: media.sourceUrl?.description ?? '',
+  },
+});
+
+const mapNewsItemContentBlock = (
+  block: NonNullable<NewsContentItem['contentBlocks']>[number]
+): NewsContentBlockFormValue => ({
+  title: block.title ?? '',
+  intro: block.intro ?? '',
+  body: block.body ?? '',
+  mediaContents: (block.mediaContents ?? []).map(mapNewsItemMediaContent),
+});
+
+const mapNewsItemContentBlocks = (item: NewsContentItem): NewsDetailFormValues['contentBlocks'] => {
+  if (item.contentBlocks && item.contentBlocks.length > 0) {
+    return item.contentBlocks.map(mapNewsItemContentBlock);
+  }
+
+  return [defaultFallbackContentBlock(item)];
+};
+
 export const mapNewsItemToDetailFormValues = (item: NewsContentItem): NewsDetailFormValues => ({
   ...createDefaultNewsDetailFormValues(),
   title: item.title,
   author: item.author ?? '',
   keywords: item.keywords ?? '',
-  categories:
-    item.categories && item.categories.length > 0
-      ? item.categories.map((category) => category.name)
-      : item.payload.category
-        ? [item.payload.category]
-        : [],
+  categories: mapNewsItemCategories(item),
   publishedAt: item.publishedAt,
   publicationDate: item.publicationDate ?? '',
   externalId: item.externalId ?? '',
@@ -241,32 +282,7 @@ export const mapNewsItemToDetailFormValues = (item: NewsContentItem): NewsDetail
       : '',
   fullVersion: item.fullVersion ?? false,
   showPublishDate: item.showPublishDate ?? true,
-  contentBlocks:
-    item.contentBlocks && item.contentBlocks.length > 0
-      ? item.contentBlocks.map((block) => ({
-          title: block.title ?? '',
-          intro: block.intro ?? '',
-          body: block.body ?? '',
-          mediaContents: (block.mediaContents ?? []).map((media) => ({
-            captionText: media.captionText ?? '',
-            copyright: media.copyright ?? '',
-            contentType: media.contentType ?? 'image',
-            height: media.height !== undefined ? String(media.height) : '',
-            width: media.width !== undefined ? String(media.width) : '',
-            sourceUrl: {
-              url: media.sourceUrl?.url ?? '',
-              description: media.sourceUrl?.description ?? '',
-            },
-          })),
-        }))
-      : [
-          {
-            title: '',
-            intro: item.payload.teaser ?? '',
-            body: item.payload.body ?? '',
-            mediaContents: item.payload.imageUrl ? [{ ...defaultMediaContent(), sourceUrl: { url: item.payload.imageUrl } }] : [],
-          },
-        ],
+  contentBlocks: mapNewsItemContentBlocks(item),
   sourceUrl: {
     url: item.sourceUrl?.url ?? item.payload.externalUrl ?? '',
     description: item.sourceUrl?.description ?? '',
@@ -289,6 +305,68 @@ const compactWebUrl = (value: NewsWebUrl): NewsWebUrl | undefined => {
   return description ? { url, description } : { url };
 };
 
+const buildCategoryMutation = (categories: NewsDetailFormValues['categories']): Pick<NewsFormInput, 'categories'> | undefined => {
+  if (categories.length === 0) {
+    return undefined;
+  }
+
+  return {
+    categories: Array.from(new Set(categories.map((entry) => entry.trim()).filter(Boolean))).map((name) => ({ name })),
+  };
+};
+
+const buildAddressMutation = (
+  address: NewsDetailFormValues['address']
+): Pick<NewsFormInput, 'address'> | undefined => {
+  const street = compactString(address.street);
+  const zip = compactString(address.zip);
+  const city = compactString(address.city);
+
+  if (!street && !zip && !city) {
+    return undefined;
+  }
+
+  return {
+    address: {
+      ...(street ? { street } : {}),
+      ...(zip ? { zip } : {}),
+      ...(city ? { city } : {}),
+    },
+  };
+};
+
+const buildMediaContentMutation = (media: NewsMediaContentFormValue) => {
+  const captionText = compactString(media.captionText);
+  const copyright = compactString(media.copyright);
+  const contentType = compactString(media.contentType);
+  const height = compactString(media.height);
+  const width = compactString(media.width);
+  const sourceUrl = compactWebUrl(media.sourceUrl);
+
+  return {
+    ...(captionText ? { captionText } : {}),
+    ...(copyright ? { copyright } : {}),
+    ...(contentType ? { contentType } : {}),
+    ...(height ? { height: Number(height) } : {}),
+    ...(width ? { width: Number(width) } : {}),
+    ...(sourceUrl ? { sourceUrl } : {}),
+  };
+};
+
+const buildContentBlockMutation = (block: NewsContentBlockFormValue) => {
+  const title = compactString(block.title);
+  const intro = compactString(block.intro);
+  const body = compactString(block.body);
+  const mediaContents = block.mediaContents.map(buildMediaContentMutation).filter((media) => Object.keys(media).length > 0);
+
+  return {
+    ...(title ? { title } : {}),
+    ...(intro ? { intro } : {}),
+    ...(body ? { body: block.body.trim() } : {}),
+    ...(mediaContents.length > 0 ? { mediaContents } : {}),
+  };
+};
+
 export const mapNewsDetailFormValuesToMutation = (
   values: NewsDetailFormValues,
   mode: 'create' | 'edit'
@@ -303,42 +381,10 @@ export const mapNewsDetailFormValuesToMutation = (
   ...(compactString(values.newsType) ? { newsType: compactString(values.newsType) } : {}),
   ...(compactString(values.publicationDate) ? { publicationDate: compactString(values.publicationDate) } : {}),
   ...(values.showPublishDate !== undefined ? { showPublishDate: values.showPublishDate } : {}),
-  ...(values.categories.length > 0
-    ? {
-        categories: Array.from(new Set(values.categories.map((entry) => entry.trim()).filter(Boolean))).map((name) => ({
-          name,
-        })),
-      }
-    : {}),
+  ...(buildCategoryMutation(values.categories) ?? {}),
   ...(compactWebUrl(values.sourceUrl) ? { sourceUrl: compactWebUrl(values.sourceUrl) } : {}),
-  ...((compactString(values.address.street) || compactString(values.address.zip) || compactString(values.address.city))
-    ? {
-        address: {
-          ...(compactString(values.address.street) ? { street: compactString(values.address.street) } : {}),
-          ...(compactString(values.address.zip) ? { zip: compactString(values.address.zip) } : {}),
-          ...(compactString(values.address.city) ? { city: compactString(values.address.city) } : {}),
-        },
-      }
-    : {}),
-  contentBlocks: values.contentBlocks.map((block) => ({
-    ...(compactString(block.title) ? { title: compactString(block.title) } : {}),
-    ...(compactString(block.intro) ? { intro: compactString(block.intro) } : {}),
-    ...(compactString(block.body) ? { body: block.body.trim() } : {}),
-    ...(block.mediaContents.length > 0
-      ? {
-          mediaContents: block.mediaContents
-            .map((media) => ({
-              ...(compactString(media.captionText) ? { captionText: compactString(media.captionText) } : {}),
-              ...(compactString(media.copyright) ? { copyright: compactString(media.copyright) } : {}),
-              ...(compactString(media.contentType) ? { contentType: compactString(media.contentType) } : {}),
-              ...(compactString(media.height) ? { height: Number(media.height) } : {}),
-              ...(compactString(media.width) ? { width: Number(media.width) } : {}),
-              ...(compactWebUrl(media.sourceUrl) ? { sourceUrl: compactWebUrl(media.sourceUrl) } : {}),
-            }))
-            .filter((media) => Object.keys(media).length > 0),
-        }
-      : {}),
-  })),
+  ...(buildAddressMutation(values.address) ?? {}),
+  contentBlocks: values.contentBlocks.map(buildContentBlockMutation),
   ...(compactString(values.pointOfInterestId) ? { pointOfInterestId: compactString(values.pointOfInterestId) } : {}),
   ...(mode === 'create' && values.pushNotification ? { pushNotification: true } : {}),
 });

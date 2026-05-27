@@ -76,7 +76,7 @@ const maybeDecryptField = (value: string | null | undefined, aad: string): strin
 
 const escapeCsv = (value: string): string => {
   if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-    return `"${value.replace(/"/g, '""')}"`;
+    return `"${value.replaceAll('"', '""')}"`;
   }
   return value;
 };
@@ -109,11 +109,11 @@ const toXmlNode = (name: string, value: unknown): string => {
   }
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     const escaped = String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&apos;');
     return `<${name}>${escaped}</${name}>`;
   }
   if (Array.isArray(value)) {

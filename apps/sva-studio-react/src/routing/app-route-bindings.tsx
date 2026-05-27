@@ -83,7 +83,7 @@ const useNewsCreateInitialAuthor = () => {
   );
   const organizationIdsKey = activeOrganizations
     .map((organization) => organization.organizationId)
-    .sort()
+    .sort((left, right) => left.localeCompare(right))
     .join('|');
 
   React.useEffect(() => {

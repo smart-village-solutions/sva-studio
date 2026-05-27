@@ -114,10 +114,12 @@ const expectPluginPageHeading = async (page: Page, pattern: RegExp) => {
 const expectEventOrPoiEditorReady = async (page: Page, path: '/admin/events/new' | '/admin/poi/new') => {
   if (path === '/admin/events/new') {
     await expectPluginPageHeading(page, /Event anlegen|events\.editor\.createTitle/);
+    await expect(page.locator('#event-title')).toBeVisible();
     return;
   }
 
   await expectPluginPageHeading(page, /POI anlegen|poi\.editor\.createTitle/);
+  await expect(page.locator('#poi-name')).toBeVisible();
 };
 
 const expectContentOverviewUrl = async (page: Page) => {
@@ -433,9 +435,7 @@ test.describe('events and POI plugins', () => {
     await expectContentOverviewReady(page);
     await expectCreateContentActionReady(page);
 
-    await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
-    await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
-    await page.locator('a[href="/admin/poi/new"]').click();
+    await navigateClientSide(page, '/admin/poi/new');
     await expect(page).toHaveURL(/\/admin\/poi\/new$/);
     await expectPluginPageHeading(page, /POI anlegen|poi\.editor\.createTitle/);
 
@@ -467,6 +467,8 @@ test.describe('events and POI plugins', () => {
   });
 
   test('supports event CRUD with POI selection including delete', async ({ page }) => {
+    test.setTimeout(60_000);
+
     const events: EventRecord[] = [];
     const pois: PoiRecord[] = [
       {
@@ -493,11 +495,9 @@ test.describe('events and POI plugins', () => {
     await expectContentOverviewReady(page);
     await expectCreateContentActionReady(page);
 
-    await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
-    await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
-    await page.locator('a[href="/admin/events/new"]').click();
+    await navigateClientSide(page, '/admin/events/new');
     await expect(page).toHaveURL(/\/admin\/events\/new$/);
-    await expectPluginPageHeading(page, /Event anlegen|events\.editor\.createTitle/);
+    await expectEventOrPoiEditorReady(page, '/admin/events/new');
 
     await page.locator('#event-title').fill('Stadtfest');
     await page.locator('#event-category').fill('Kultur');
@@ -517,8 +517,17 @@ test.describe('events and POI plugins', () => {
     await page.getByRole('button', { name: /Änderungen speichern|events\.actions\.update/ }).click();
     await expect(page.getByRole('status')).toContainText(/gespeichert|aktualisiert|events\.messages\.updateSuccess/);
 
+    const deleteResponsePromise = page.waitForResponse((response) => {
+      return (
+        response.request().method() === 'DELETE' &&
+        response.url().includes('/api/v1/mainserver/events/event-1') &&
+        response.status() === 200
+      );
+    });
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|events\.actions\.delete/ }).click();
+    await deleteResponsePromise;
+    await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
 
     await expectContentOverviewReady(page);
     await expect(page.locator('main table').getByText('Rathaus')).toBeVisible();

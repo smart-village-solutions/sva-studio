@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const workspaceRoot = process.cwd();
 const scriptPath = path.join(workspaceRoot, 'scripts/ci/run-workspace-node.sh');
+const requestedNodeVersion = readFileSync(path.join(workspaceRoot, '.nvmrc'), 'utf8').trim();
 
 const tempDirs: string[] = [];
 
@@ -32,7 +33,7 @@ describe('run-workspace-node.sh', () => {
     const tempHome = mkdtempSync(path.join(os.tmpdir(), 'run-workspace-node-home-'));
     tempDirs.push(tempHome);
 
-    const nvmBinDir = path.join(tempHome, '.nvm/versions/node/v22.13.0/bin');
+    const nvmBinDir = path.join(tempHome, `.nvm/versions/node/v${requestedNodeVersion}/bin`);
     mkdirSync(nvmBinDir, { recursive: true });
     makeExecutableNode(path.join(nvmBinDir, 'node'), 'nvm-node');
 

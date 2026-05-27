@@ -81,7 +81,7 @@ node --version
 Option A: Corepack (Node.js)
 ```bash
 corepack enable
-corepack prepare pnpm@9.12.2 --activate
+corepack prepare pnpm@11.3.0 --activate
 pnpm install
 ```
 

@@ -26,7 +26,7 @@
     "react-hook-form": "^7.76.0"
   },
   "peerDependencies": {
-    "@tanstack/react-router": "^1.168.10",
+    "@tanstack/react-router": "^1.170.8",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

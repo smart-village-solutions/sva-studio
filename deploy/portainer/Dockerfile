@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:24.15.0-alpine AS build
 
 WORKDIR /workspace
 
@@ -9,7 +9,7 @@ ENV NX_DAEMON=false
 ENV NX_ADD_PLUGINS=false
 
 RUN apk add --no-cache bash
-RUN npm install -g pnpm@9.12.2
+RUN npm install -g pnpm@11.3.0
 
 COPY . .
 
@@ -103,7 +103,7 @@ RUN find /workspace/.deploy/sva-studio-react/node_modules/.pnpm \
       fi; \
     done
 
-FROM node:22-alpine AS runtime
+FROM node:24.15.0-alpine AS runtime
 
 WORKDIR /app
 

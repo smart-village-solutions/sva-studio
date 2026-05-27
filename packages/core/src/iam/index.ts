@@ -100,6 +100,7 @@ export type {
   IamGeoNodeType,
   IamInstanceId,
   IamPermissionEffect,
+  IamRolePermissionAssignmentScope,
   IamPermissionProvenance,
   IamPermissionSourceKind,
   IamResourceRef,
@@ -149,3 +150,4 @@ export {
   iamTenantIamSources,
 } from './account-management-contract.js';
 export { allowReasonCodes, denyReasonCodes, iamApiErrorCodes } from './authorization-contract.js';
+export { iamRolePermissionAssignmentScopes } from './authorization-contract.js';

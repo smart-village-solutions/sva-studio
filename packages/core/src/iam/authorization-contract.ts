@@ -121,6 +121,8 @@ export type MatchedPermissionSummary = {
 };
 
 export type IamPermissionEffect = 'allow' | 'deny';
+export const iamRolePermissionAssignmentScopes = ['all', 'own', 'organization'] as const;
+export type IamRolePermissionAssignmentScope = (typeof iamRolePermissionAssignmentScopes)[number];
 
 export type EffectivePermission = {
   readonly action: IamAction;
@@ -129,6 +131,7 @@ export type EffectivePermission = {
   readonly organizationId?: IamUuid;
   readonly effect?: IamPermissionEffect;
   readonly scope?: Readonly<Record<string, unknown>>;
+  readonly accessScope?: IamRolePermissionAssignmentScope;
   readonly sourceUserIds?: readonly IamUuid[];
   readonly sourceRoleIds?: readonly IamUuid[];
   readonly sourceGroupIds?: readonly IamUuid[];

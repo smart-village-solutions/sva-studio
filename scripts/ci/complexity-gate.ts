@@ -2,6 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
@@ -104,6 +105,8 @@ interface ModuleSummary {
 export interface RunComplexityGateOptions {
   rootDir?: string;
   updateBaseline?: boolean;
+  baseRef?: string;
+  headRef?: string;
   stepSummaryPath?: string | null;
 }
 
@@ -255,6 +258,38 @@ function resolveComplexityPaths(rootDir: string): ComplexityPaths {
 
 function normalizePath(filePath: string): string {
   return filePath.split(path.sep).join('/');
+}
+
+function resolveChangedFiles(rootDir: string, baseRef: string, headRef: string): Set<string> {
+  const runDiff = (range: string): string =>
+    execFileSync('git', ['diff', '--name-only', '--diff-filter=ACDMR', range], {
+      cwd: rootDir,
+      encoding: 'utf8',
+    }).trim();
+
+  let output = '';
+
+  try {
+    output = runDiff(`${baseRef}...${headRef}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes('no merge base')) {
+      throw error;
+    }
+    output = runDiff(`${baseRef}..${headRef}`);
+  }
+
+  if (output.length === 0) {
+    return new Set<string>();
+  }
+
+  return new Set(
+    output
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map(normalizePath)
+  );
 }
 
 function globToRegExp(pattern: string): RegExp {
@@ -786,15 +821,17 @@ function writeSummary(stepSummaryPath: string | null, summaryBody: string): void
 export function runComplexityGate(options: RunComplexityGateOptions = {}): RunComplexityGateResult {
   const rootDir = options.rootDir ?? process.cwd();
   const updateBaseline = options.updateBaseline ?? false;
+  const baseRef = options.baseRef?.trim();
+  const headRef = options.headRef?.trim() || 'HEAD';
   const stepSummaryPath = options.stepSummaryPath ?? process.env.GITHUB_STEP_SUMMARY ?? null;
-  const { paths, policy, baseline, analyzedFiles } = loadComplexityData(rootDir);
+  const { paths, policy, baseline, analyzedFiles: allAnalyzedFiles } = loadComplexityData(rootDir);
 
-  if (analyzedFiles.length === 0) {
+  if (allAnalyzedFiles.length === 0) {
     throw new Error('No files matched the complexity policy');
   }
 
   if (updateBaseline) {
-    const nextBaseline = buildBaseline(analyzedFiles);
+    const nextBaseline = buildBaseline(allAnalyzedFiles);
     fs.writeFileSync(paths.baselinePath, JSON.stringify(nextBaseline, null, 2) + '\n', 'utf8');
     return {
       passed: true,
@@ -802,7 +839,33 @@ export function runComplexityGate(options: RunComplexityGateOptions = {}): RunCo
       summaryBody: '',
       trackedViolations: [],
       untrackedViolations: [],
-      analyzedFiles,
+      analyzedFiles: allAnalyzedFiles,
+    };
+  }
+
+  const changedFiles = baseRef && baseRef.length > 0 ? resolveChangedFiles(rootDir, baseRef, headRef) : null;
+  const analyzedFiles = changedFiles
+    ? allAnalyzedFiles.filter((analyzedFile) => changedFiles.has(analyzedFile.metrics.filePath))
+    : allAnalyzedFiles;
+
+  if (analyzedFiles.length === 0) {
+    const summaryBody = [
+      '## Complexity Summary',
+      '',
+      'Keine vom Diff betroffenen Dateien innerhalb des Complexity-Scopes gefunden.',
+      '',
+      'Ausgewertete Dateien: 0',
+      'Neue Findings: 0',
+      'Getrackte Findings: 0',
+    ].join('\n') + '\n';
+    writeSummary(stepSummaryPath, summaryBody);
+    return {
+      passed: true,
+      updatedBaseline: false,
+      summaryBody,
+      trackedViolations: [],
+      untrackedViolations: [],
+      analyzedFiles: [],
     };
   }
 
@@ -825,11 +888,17 @@ export function runComplexityGate(options: RunComplexityGateOptions = {}): RunCo
 export function main(): number {
   const rootDir = process.cwd();
   const updateBaseline = process.argv.includes('--update-baseline');
+  const baseIndex = process.argv.indexOf('--base');
+  const headIndex = process.argv.indexOf('--head');
+  const baseRef = baseIndex >= 0 ? process.argv[baseIndex + 1] : undefined;
+  const headRef = headIndex >= 0 ? process.argv[headIndex + 1] : undefined;
 
   try {
     const result = runComplexityGate({
       rootDir,
       updateBaseline,
+      baseRef,
+      headRef,
       stepSummaryPath: process.env.GITHUB_STEP_SUMMARY ?? null,
     });
 

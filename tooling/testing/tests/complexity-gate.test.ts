@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { analyzeFile, runComplexityGate } from '../../../scripts/ci/complexity-gate.ts';
@@ -63,6 +64,32 @@ function writeSourceFile(rootDir: string, fileName: string, source: string): str
   const filePath = path.join(rootDir, 'packages/iam-target/src', fileName);
   fs.writeFileSync(filePath, source);
   return filePath;
+}
+
+function runGit(rootDir: string, args: string[]): string {
+  return execFileSync('git', args, {
+    cwd: rootDir,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: 'Codex',
+      GIT_AUTHOR_EMAIL: 'codex@example.test',
+      GIT_COMMITTER_NAME: 'Codex',
+      GIT_COMMITTER_EMAIL: 'codex@example.test',
+    },
+  }).trim();
+}
+
+function initializeGitRepo(rootDir: string): void {
+  runGit(rootDir, ['init']);
+  runGit(rootDir, ['config', 'user.name', 'Codex']);
+  runGit(rootDir, ['config', 'user.email', 'codex@example.test']);
+}
+
+function commitAll(rootDir: string, message: string): string {
+  runGit(rootDir, ['add', '.']);
+  runGit(rootDir, ['commit', '-m', message]);
+  return runGit(rootDir, ['rev-parse', 'HEAD']);
 }
 
 afterEach(() => {
@@ -346,5 +373,70 @@ describe('complexity gate', () => {
     expect(baseline.files['packages/iam-target/src/baseline.ts'].fileLines).toBe(3);
     expect(baseline.files['packages/iam-target/src/baseline.ts'].functionLines).toBe(3);
     expect(baseline.files['packages/iam-target/src/baseline.ts'].cyclomaticComplexity).toBe(1);
+  });
+
+  it('ignores unchanged baseline violations when a base ref scopes the analysis to changed files', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir);
+    initializeGitRepo(rootDir);
+    writeSourceFile(
+      rootDir,
+      'legacy.ts',
+      [
+        'export function legacyHandler(input: string): string {',
+        '  const value = input.trim();',
+        "  if (value === '') {",
+        "    return 'fallback';",
+        '  }',
+        '  return value;',
+        '}',
+      ].join('\n')
+    );
+    writeSourceFile(rootDir, 'changed.ts', 'export const value = 1;\n');
+    const baseRef = commitAll(rootDir, 'base');
+
+    writeSourceFile(rootDir, 'changed.ts', 'export const value = 2;\n');
+    commitAll(rootDir, 'change-safe-file');
+
+    const result = runComplexityGate({ rootDir, baseRef, stepSummaryPath: null });
+
+    expect(result.passed).toBe(true);
+    expect(result.analyzedFiles).toHaveLength(1);
+    expect(result.analyzedFiles[0]?.metrics.filePath).toBe('packages/iam-target/src/changed.ts');
+    expect(result.untrackedViolations).toHaveLength(0);
+  });
+
+  it('still fails for new violations inside files changed since the provided base ref', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir);
+    initializeGitRepo(rootDir);
+    writeSourceFile(rootDir, 'changed.ts', 'export const value = 1;\n');
+    const baseRef = commitAll(rootDir, 'base');
+
+    writeSourceFile(
+      rootDir,
+      'changed.ts',
+      [
+        'export function changedHandler(input: string): string {',
+        '  const value = input.trim();',
+        "  if (value === '') {",
+        "    return 'fallback';",
+        '  }',
+        '  return value;',
+        '}',
+      ].join('\n')
+    );
+    commitAll(rootDir, 'introduce-violation');
+
+    const result = runComplexityGate({ rootDir, baseRef, stepSummaryPath: null });
+
+    expect(result.passed).toBe(false);
+    expect(result.untrackedViolations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          filePath: 'packages/iam-target/src/changed.ts',
+        }),
+      ])
+    );
   });
 });

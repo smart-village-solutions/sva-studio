@@ -204,9 +204,21 @@ jobs:
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
 
+      - name: Determine PR scope
+        id: scope
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
+
       - name: Evaluate complexity gates
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
-        run: pnpm complexity-gate
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            pnpm complexity-gate
+          elif [ "${{ steps.scope.outputs.quality_gate_mode }}" = "full" ]; then
+            pnpm complexity-gate
+          else
+            pnpm complexity-gate --base=${{ github.event.pull_request.base.sha }}
+          fi
 
       - name: Publish complexity summary
         if: always()
@@ -215,6 +227,11 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
             echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Scope: \`${{ steps.scope.outputs.quality_gate_mode }}\` gegen Base-SHA \`${{ github.event.pull_request.base.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Scope: voller Workspace-Lauf für main/schedule.' >> "$GITHUB_STEP_SUMMARY"
           fi
           echo 'Baseline und Policy stammen aus tooling/quality/complexity-*.json.' >> "$GITHUB_STEP_SUMMARY"
 

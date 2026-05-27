@@ -1659,12 +1659,19 @@ export const shouldCheckLocalInstanceRegistryDriftBeforeCommand = (
   runtimeCommand: Extract<RuntimeCommand, 'up' | 'update' | 'reconcile' | 'migrate'>
 ) => runtimeCommand === 'up' || runtimeCommand === 'update';
 
-const reconcileLocalInstanceRegistry = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+export const requireLocalInstanceRegistryReconciliationInput = (env: NodeJS.ProcessEnv) => {
   const input = buildLocalInstanceRegistryReconciliationInput(env);
-  if (!input) {
-    return;
+  if (input) {
+    return input;
   }
 
+  throw new Error(
+    'Lokaler Instanz-Registry-Abgleich erfordert SVA_PARENT_DOMAIN und SVA_ALLOWED_INSTANCE_IDS.'
+  );
+};
+
+const reconcileLocalInstanceRegistry = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+  const input = requireLocalInstanceRegistryReconciliationInput(env);
   const sql = buildLocalInstanceRegistryReconciliationSql(input);
   createDbSqlRunner(runtimeProfile, env)(sql);
 };

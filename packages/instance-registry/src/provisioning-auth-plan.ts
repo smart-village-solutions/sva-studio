@@ -53,25 +53,13 @@ const readTenantAdminClientAlignment = (state: KeycloakReadState | undefined) =>
   const clientRepresentation = state?.tenantAdminClientRepresentation;
   return {
     clientRepresentation,
-    directAccessGrantsEnabledMatch: expectedClient
-      ? clientRepresentation?.directAccessGrantsEnabled === expectedClient.directAccessGrantsEnabled
-      : false,
+    directAccessGrantsEnabledMatch: expectedClient ? clientRepresentation?.directAccessGrantsEnabled === expectedClient.directAccessGrantsEnabled : false,
     rootUrlMatch: expectedClient ? clientRepresentation?.rootUrl === expectedClient.rootUrl : false,
-    redirectUrisMatch: expectedClient
-      ? equalSets(clientRepresentation?.redirectUris ?? [], expectedClient.redirectUris)
-      : false,
-    serviceAccountsEnabledMatch: expectedClient
-      ? clientRepresentation?.serviceAccountsEnabled === expectedClient.serviceAccountsEnabled
-      : false,
-    standardFlowEnabledMatch: expectedClient
-      ? clientRepresentation?.standardFlowEnabled === expectedClient.standardFlowEnabled
-      : false,
-    logoutUrisMatch: expectedClient
-      ? equalSets(readPostLogoutUris(clientRepresentation?.attributes), expectedClient.postLogoutRedirectUris)
-      : false,
-    webOriginsMatch: expectedClient
-      ? equalSets(clientRepresentation?.webOrigins ?? [], expectedClient.webOrigins)
-      : false,
+    redirectUrisMatch: expectedClient ? equalSets(clientRepresentation?.redirectUris ?? [], expectedClient.redirectUris) : false,
+    serviceAccountsEnabledMatch: expectedClient ? clientRepresentation?.serviceAccountsEnabled === expectedClient.serviceAccountsEnabled : false,
+    standardFlowEnabledMatch: expectedClient ? clientRepresentation?.standardFlowEnabled === expectedClient.standardFlowEnabled : false,
+    logoutUrisMatch: expectedClient ? equalSets(readPostLogoutUris(clientRepresentation?.attributes), expectedClient.postLogoutRedirectUris) : false,
+    webOriginsMatch: expectedClient ? equalSets(clientRepresentation?.webOrigins ?? [], expectedClient.webOrigins) : false,
   };
 };
 
@@ -120,14 +108,7 @@ const buildTenantAdminClientStep = (input: {
   standardFlowEnabledMatch: boolean;
   webOriginsMatch: boolean;
 }): KeycloakTenantPlan['steps'][number] => {
-  const fullyAligned =
-    input.rootUrlMatch
-    && input.redirectUrisMatch
-    && input.logoutUrisMatch
-    && input.webOriginsMatch
-    && input.standardFlowEnabledMatch
-    && input.directAccessGrantsEnabledMatch
-    && input.serviceAccountsEnabledMatch;
+  const fullyAligned = input.rootUrlMatch && input.redirectUrisMatch && input.logoutUrisMatch && input.webOriginsMatch && input.standardFlowEnabledMatch && input.directAccessGrantsEnabledMatch && input.serviceAccountsEnabledMatch;
 
   return {
     stepKey: 'tenant_admin_client',
@@ -318,9 +299,7 @@ const resolveDriftSummary = (
     return 'Provisioning ist blockiert, bis die Vorbedingungen erfüllt sind.';
   }
 
-  const requiresChanges = steps.some(
-    (step: KeycloakTenantPlan['steps'][number]) => step.action !== 'verify' && step.action !== 'skip'
-  );
+  const requiresChanges = steps.some((step: KeycloakTenantPlan['steps'][number]) => step.action !== 'verify' && step.action !== 'skip');
   return requiresChanges
     ? 'Keycloak und Registry weisen Drift auf und werden beim nächsten Lauf abgeglichen.'
     : 'Keycloak entspricht bereits dem im Studio gepflegten Sollzustand.';

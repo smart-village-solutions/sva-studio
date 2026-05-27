@@ -7,6 +7,7 @@ import {
   assertLoginFlow,
   buildKeycloakClientSecretCheck,
   buildLocalProvisioningWorkerCheck,
+  requireLocalInstanceRegistryReconciliationInput,
   shouldCheckLocalInstanceRegistryDriftBeforeCommand,
   buildStudioImageVerifyEvidenceCheck,
   deriveInternalVerifyMaxAttempts,
@@ -308,6 +309,16 @@ describe('shouldCheckLocalInstanceRegistryDriftBeforeCommand', () => {
     expect(shouldCheckLocalInstanceRegistryDriftBeforeCommand('update')).toBe(true);
     expect(shouldCheckLocalInstanceRegistryDriftBeforeCommand('reconcile')).toBe(false);
     expect(shouldCheckLocalInstanceRegistryDriftBeforeCommand('migrate')).toBe(false);
+  });
+});
+
+describe('requireLocalInstanceRegistryReconciliationInput', () => {
+  it('throws when explicit reconcile config is incomplete', () => {
+    expect(() =>
+      requireLocalInstanceRegistryReconciliationInput({
+        SVA_PARENT_DOMAIN: 'studio.example.org',
+      }),
+    ).toThrow('Lokaler Instanz-Registry-Abgleich erfordert SVA_PARENT_DOMAIN und SVA_ALLOWED_INSTANCE_IDS.');
   });
 });
 

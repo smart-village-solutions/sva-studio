@@ -322,6 +322,37 @@ describe('service-keycloak-execution', () => {
     expect(repository.getKeycloakProvisioningRun).toHaveBeenCalledWith('instance-1', 'run-1');
   });
 
+  it('surfaces blocked preflight summaries before enqueuing reconcile runs', async () => {
+    const { createReconcileKeycloakHandler } = await import('./service-keycloak-execution.js');
+    const createQueuedRun = vi.fn();
+    state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
+    const handler = createReconcileKeycloakHandler({
+      repository: {} as never,
+      createQueuedRun,
+      getKeycloakPreflight: vi.fn().mockResolvedValue({
+        overallStatus: 'blocked',
+        checks: [
+          { status: 'blocked', summary: 'Realm fehlt.' },
+          { status: 'ok', summary: 'ignored' },
+          { status: 'blocked', summary: '' },
+          { status: 'blocked', summary: 'Client fehlt.' },
+        ],
+      }),
+      planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+    } as never);
+
+    await expect(
+      handler({
+        instanceId: 'instance-1',
+        idempotencyKey: 'idem-1',
+        actorId: 'actor-1',
+        requestId: 'request-1',
+      })
+    ).rejects.toThrow('registry_or_provisioning_drift_blocked:Realm fehlt. Client fehlt.');
+
+    expect(createQueuedRun).not.toHaveBeenCalled();
+  });
+
   it('claims the next queued run via the repository helper', async () => {
     const { processNextQueuedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
     const repository = {

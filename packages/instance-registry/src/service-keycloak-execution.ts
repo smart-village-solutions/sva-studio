@@ -95,10 +95,7 @@ const syncClientSecretAfterProvisioning = async (deps: InstanceRegistryServiceDe
   });
 };
 
-const buildProvisioningExecutionOptions = (intent: InstanceKeycloakProvisioningRun['intent']) => ({
-  reconcileAuthClient: intent !== 'reset_tenant_admin',
-  reconcileTenantAdminClient: intent !== 'reset_tenant_admin',
-});
+const buildProvisioningExecutionOptions = (intent: InstanceKeycloakProvisioningRun['intent']) => ({ reconcileAuthClient: intent !== 'reset_tenant_admin', reconcileTenantAdminClient: intent !== 'reset_tenant_admin' });
 
 const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>, tenantAdminTemporaryPassword: string | undefined, provisioningInput: ReturnType<typeof buildProvisioningInput>) => {
   const preflight = await appendPreflightSnapshot(deps, run, provisioningInput);
@@ -194,19 +191,12 @@ export const processClaimedKeycloakProvisioningRun = async (
   }
 };
 
-export const processNextQueuedKeycloakProvisioningRun = async (
-  deps: InstanceRegistryServiceDeps,
-  claimFilter?: {
-    createdAtOrAfter?: string;
-  }
-) =>
+export const processNextQueuedKeycloakProvisioningRun = async (deps: InstanceRegistryServiceDeps, claimFilter?: { createdAtOrAfter?: string }) =>
   processClaimedKeycloakProvisioningRun(
     deps,
     await (
       deps.repository as InstanceRegistryServiceDeps['repository'] & {
-        claimNextKeycloakProvisioningRun: (input?: {
-          createdAtOrAfter?: string;
-        }) => Promise<InstanceKeycloakProvisioningRun | null>;
+        claimNextKeycloakProvisioningRun: (input?: { createdAtOrAfter?: string }) => Promise<InstanceKeycloakProvisioningRun | null>;
       }
     ).claimNextKeycloakProvisioningRun(claimFilter)
   );

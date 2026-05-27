@@ -59,4 +59,16 @@ describe('iam-instance-registry service-keycloak-execution bindings', () => {
       undefined,
     );
   });
+
+  it('ignores an empty startup claim cutoff value after trimming', async () => {
+    process.env.SVA_KEYCLOAK_PROVISIONER_CLAIM_NOT_BEFORE = '   ';
+    const subject = await import('./service-keycloak-execution.js');
+
+    await expect(subject.processNextQueuedKeycloakProvisioningRun({ repository: {} } as never)).resolves.toBeNull();
+
+    expect(state.processTargetNextQueuedKeycloakProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({ repository: {}, enriched: true }),
+      undefined,
+    );
+  });
 });

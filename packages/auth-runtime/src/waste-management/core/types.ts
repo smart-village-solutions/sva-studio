@@ -30,9 +30,11 @@ import type { ResolvedWasteDataSource } from '@sva/server-runtime';
 
 import type { emitAuthAuditEvent } from '../../audit-events.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
+import type { Session } from '../../types.js';
 
 export type WasteManagementHandlerDeps = {
   readonly getRequestId?: () => string | undefined;
+  readonly getSessionById?: (sessionId: string) => Promise<Session | undefined>;
   readonly loadDefaultInterfaceRecord?: (
     instanceId: string,
     typeKey: string
@@ -44,6 +46,7 @@ export type WasteManagementHandlerDeps = {
   readonly resolvePermissions?: (input: {
     readonly instanceId: string;
     readonly keycloakSubject: string;
+    readonly organizationId?: string;
   }) => Promise<
     | {
         readonly ok: true;

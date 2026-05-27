@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildLocalInstanceRegistryIdentitySelectSql,
   buildLocalInstanceRegistryReconciliationInput,
   buildLocalInstanceRegistryReconciliationSql,
   evaluateLocalInstanceRegistryIdentityDrift,
@@ -83,6 +84,19 @@ describe('buildLocalInstanceRegistryReconciliationSql', () => {
     expect(sql).toContain("parent_domain = 'studio.localhost'");
     expect(sql).toContain("primary_hostname = 'de-musterhausen.studio.localhost'");
     expect(sql).toContain("auth_realm = 'de-musterhausen'");
+    expect(sql).toContain("auth_client_id = 'sva-studio-login'");
+    expect(sql).toContain("tenant_admin_client_id = 'sva-studio-realm-admin'");
+  });
+});
+
+describe('buildLocalInstanceRegistryIdentitySelectSql', () => {
+  it('loads all protected identity fields for read-only drift checks', () => {
+    const sql = buildLocalInstanceRegistryIdentitySelectSql({
+      allowedInstanceIds: ['de-musterhausen'],
+    });
+
+    expect(sql).toContain('SELECT id, parent_domain, primary_hostname, auth_client_id, auth_realm, tenant_admin_client_id');
+    expect(sql).toContain("WHERE id = ANY(ARRAY['de-musterhausen']::text[])");
   });
 });
 

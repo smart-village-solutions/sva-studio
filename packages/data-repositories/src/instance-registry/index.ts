@@ -257,7 +257,9 @@ export type InstanceRegistryRepository = {
   } | null>;
   listKeycloakProvisioningRuns(instanceId: string): Promise<readonly InstanceKeycloakProvisioningRun[]>;
   getKeycloakProvisioningRun(instanceId: string, runId: string): Promise<InstanceKeycloakProvisioningRun | null>;
-  claimNextKeycloakProvisioningRun(): Promise<InstanceKeycloakProvisioningRun | null>;
+  claimNextKeycloakProvisioningRun(input?: {
+    createdAtOrAfter?: string;
+  }): Promise<InstanceKeycloakProvisioningRun | null>;
   createInstance(input: {
     instanceId: string;
     displayName: string;
@@ -1331,7 +1333,9 @@ LIMIT 1;
     return mapKeycloakProvisioningRun(row, stepsByRunId[row.id] ?? []);
   },
 
-  async claimNextKeycloakProvisioningRun() {
+  async claimNextKeycloakProvisioningRun(input) {
+    const createdAtOrAfter = input?.createdAtOrAfter?.trim();
+    const createdAtFilter = createdAtOrAfter ? '    AND created_at >= $1::timestamptz\n' : '';
     const rows = await queryRows<KeycloakProvisioningRunRow>(
       executor,
       statement(
@@ -1340,6 +1344,7 @@ WITH next_run AS (
   SELECT id
   FROM iam.instance_keycloak_provisioning_runs
   WHERE overall_status = 'planned'
+${createdAtFilter}
   ORDER BY created_at ASC, id ASC
   FOR UPDATE SKIP LOCKED
   LIMIT 1
@@ -1365,7 +1370,7 @@ RETURNING
   runs.created_at::text,
   runs.updated_at::text;
 `,
-        []
+        createdAtOrAfter ? [createdAtOrAfter] : []
       )
     );
     const row = rows[0];

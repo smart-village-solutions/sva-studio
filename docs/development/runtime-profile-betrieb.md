@@ -122,6 +122,7 @@ pnpm env:smoke:local-keycloak
 pnpm env:migrate:local-keycloak
 pnpm env:update:local-keycloak
 pnpm env:down:local-keycloak
+pnpm env:reconcile:local-instance-registry
 ```
 
 Wichtig für den lokalen `local-keycloak`-Pfad:
@@ -131,12 +132,14 @@ Wichtig für den lokalen `local-keycloak`-Pfad:
 - Normale Tenant-Mutationen für Nutzer, Rollen und Gruppen laufen im lokalen Standardpfad strikt gegen denselben Tenant-Realm wie der Login-Flow, aber über den separaten `tenantAdminClient`.
 - `pnpm env:up:local-keycloak` startet neben dem Dev-Server auch den lokalen Keycloak-Provisioning-Worker. Dessen State und Log liegen unter `artifacts/runtime/`.
 - Fehlt der Worker oder ist sein Prozess stale, meldet `pnpm env:doctor:local-keycloak` einen sichtbaren `warn`-Check, damit Provisioning-Läufe nicht unbemerkt in `planned`/`queued` hängen bleiben.
+- Beim lokalen Worker-Start werden nur `planned`-Provisioning-Läufe übernommen, die nach diesem konkreten Start neu angelegt wurden. Ältere wartende Läufe werden nicht stillschweigend wieder aufgenommen.
 - `KEYCLOAK_ADMIN_REALM` und `KEYCLOAK_ADMIN_CLIENT_ID` beschreiben im lokalen Profil nur noch den Plattform-/Break-Glass-Pfad. Sie sind kein impliziter Fallback für Tenant-Alltagsverwaltung mehr.
 - Realm-Provisioning im lokalen Worker nutzt explizit `KEYCLOAK_PROVISIONER_*`, standardmäßig `master` plus `sva-studio-provisioner`. Fehlen diese Variablen, fällt der Worker weiterhin auf `KEYCLOAK_ADMIN_*` zurück; das ist für neue Tenant-Realms fachlich nicht gewollt.
 - Tenant-Logins laufen fail-closed, wenn für die aktive Instanz kein tenant-spezifisches `auth_client_secret` lesbar ist. Das globale Plattform-Secret bleibt nur für den Plattform-Host zulässig und ist kein stiller Tenant-Fallback.
 - Fehlen tenantlokaler Admin-Client oder tenantlokales Secret im Instanzdatensatz, schlagen Tenant-Mutationen fail-closed mit `tenant_admin_client_not_configured` oder `tenant_admin_client_secret_missing` fehl.
-- Die lokale Registry-Reconcile behandelt geschützte Identitätsfelder (`parent_domain`, `primary_hostname`, optional `auth_realm`) standardmäßig non-destructive. Abweichende bestehende Werte werden nur gewarnt und nicht still überschrieben.
-- Für neue lokale Umgebungen oder bewusst autoritative Korrekturen kann `SVA_LOCAL_INSTANCE_IDENTITY_RECONCILE_MODE=authoritative` gesetzt werden. Dann schreibt die Reconcile diese Identitätsfelder gezielt auf das lokale Sollbild.
+- `pnpm env:up:local-keycloak` und `pnpm env:update:local-keycloak` führen auf der Instanz-Registry nur noch einen read-only Drift-Check aus. Sie schreiben keine Hostname-/Realm-/Client-Identität mehr still zurück.
+- Die explizite lokale Registry-Korrektur läuft nur noch über `pnpm env:reconcile:local-instance-registry`.
+- Für neue lokale Umgebungen oder bewusst autoritative Korrekturen kann bei diesem expliziten Reconcile-Pfad `SVA_LOCAL_INSTANCE_IDENTITY_RECONCILE_MODE=authoritative` gesetzt werden. Dann schreibt die Reconcile diese Identitätsfelder gezielt auf das lokale Sollbild.
 - Ob erkannte lokale Identitätsdrift nur gewarnt oder hart geblockt wird, steuert `SVA_LOCAL_INSTANCE_IDENTITY_DRIFT_MODE=warn|fail`. Standard ist `warn`.
 - Wenn ein echter Tenant-Login lokal zwar funktioniert, Plugin- oder Admin-Zugriffe aber trotz sichtbarer Session-Rollen scheitern, liegt häufig Drift zwischen Keycloak-Subject und lokalem `iam.accounts`-Binding vor. `pnpm env:doctor:local-keycloak` meldet das mit `missing_actor_role_assignments` oder `missing_actor_organization_membership`, sobald `SVA_DOCTOR_KEYCLOAK_SUBJECT` und `SVA_DOCTOR_INSTANCE_ID` gesetzt sind.
 - Für gezielte Reparaturen steht `pnpm env:bind:local-user -- --instance-id=<instanz> --keycloak-subject=<subject> --copy-from-keycloak-subject=seed:system_admin` bereit. Alternativ können `--role-keys=...` und `--organization-ids=...` explizit gesetzt werden.
@@ -186,13 +189,21 @@ Der Container-Entrypoint kennt zusätzlich nur noch einen expliziten Legacy-Reco
 
 - lokale Profile starten Docker Compose für Redis/Postgres und optional den Monitoring-Stack
 - lokale Profile starten zusätzlich Adminer auf `http://127.0.0.1:8080`
+- lokale Profile führen dabei nur einen read-only Drift-Check auf der Instanz-Registry aus; schreibende Registry-Reconcile ist kein Teil des Regelbetriebs mehr
 - lokale Profile starten danach den Dev-Server für `sva-studio-react`
 - Remote-Profile (`studio`) nutzen stattdessen den kanonischen Releasepfad `deploy`; direkte Remote-Deploys über `up` sind gesperrt
 
 ### `update`
 
 - lokale Profile ziehen Compose-Images neu, starten Infrastruktur erneut und starten den Dev-Server kontrolliert neu
+- lokale Profile führen dabei nur einen read-only Drift-Check auf der Instanz-Registry aus; schreibende Registry-Reconcile ist kein Teil des Regelbetriebs mehr
 - Remote-Profile (`studio`) nutzen stattdessen den kanonischen Releasepfad `deploy`; direkte Remote-Redeploys über `update` sind gesperrt
+
+### `reconcile`
+
+- nur für lokale Profile vorgesehen
+- führt die lokale Instanz-Registry-Reconcile explizit und bewusst aus
+- ist für neue lokale Setups oder autoritative Korrekturen gedacht, nicht für den normalen Entwicklungsstart
 
 ### `down`
 

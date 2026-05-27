@@ -48,6 +48,21 @@ const readClientAlignment = (state: KeycloakReadState | undefined) => {
   };
 };
 
+const readTenantAdminClientAlignment = (state: KeycloakReadState | undefined) => {
+  const expectedClient = state?.expectedTenantAdminClient;
+  const clientRepresentation = state?.tenantAdminClientRepresentation;
+  return {
+    clientRepresentation,
+    directAccessGrantsEnabledMatch: expectedClient ? clientRepresentation?.directAccessGrantsEnabled === expectedClient.directAccessGrantsEnabled : false,
+    rootUrlMatch: expectedClient ? clientRepresentation?.rootUrl === expectedClient.rootUrl : false,
+    redirectUrisMatch: expectedClient ? equalSets(clientRepresentation?.redirectUris ?? [], expectedClient.redirectUris) : false,
+    serviceAccountsEnabledMatch: expectedClient ? clientRepresentation?.serviceAccountsEnabled === expectedClient.serviceAccountsEnabled : false,
+    standardFlowEnabledMatch: expectedClient ? clientRepresentation?.standardFlowEnabled === expectedClient.standardFlowEnabled : false,
+    logoutUrisMatch: expectedClient ? equalSets(readPostLogoutUris(clientRepresentation?.attributes), expectedClient.postLogoutRedirectUris) : false,
+    webOriginsMatch: expectedClient ? equalSets(clientRepresentation?.webOrigins ?? [], expectedClient.webOrigins) : false,
+  };
+};
+
 const buildClientStep = (input: {
   blocked: boolean;
   clientExists: boolean;
@@ -85,18 +100,38 @@ const areClientUrisAligned = (input: {
 const buildTenantAdminClientStep = (input: {
   blocked: boolean;
   clientExists: boolean;
-}): KeycloakTenantPlan['steps'][number] => ({
-  stepKey: 'tenant_admin_client',
-  title: 'Tenant-Admin-Client abgleichen',
-  action: input.clientExists ? 'verify' : 'create',
-  status: input.blocked ? 'blocked' : 'ready',
-  summary: input.clientExists
-    ? 'Der Tenant-Admin-Client entspricht bereits dem Sollzustand.'
-    : 'Der technische Tenant-Admin-Client wird angelegt oder ergänzt.',
-  details: {
-    clientExists: input.clientExists,
-  },
-});
+  directAccessGrantsEnabledMatch: boolean;
+  rootUrlMatch: boolean;
+  redirectUrisMatch: boolean;
+  logoutUrisMatch: boolean;
+  serviceAccountsEnabledMatch: boolean;
+  standardFlowEnabledMatch: boolean;
+  webOriginsMatch: boolean;
+}): KeycloakTenantPlan['steps'][number] => {
+  const fullyAligned = input.rootUrlMatch && input.redirectUrisMatch && input.logoutUrisMatch && input.webOriginsMatch && input.standardFlowEnabledMatch && input.directAccessGrantsEnabledMatch && input.serviceAccountsEnabledMatch;
+
+  return {
+    stepKey: 'tenant_admin_client',
+    title: 'Tenant-Admin-Client abgleichen',
+    action: !input.clientExists ? 'create' : fullyAligned ? 'verify' : 'update',
+    status: input.blocked ? 'blocked' : 'ready',
+    summary: !input.clientExists
+      ? 'Der technische Tenant-Admin-Client wird angelegt oder ergänzt.'
+      : fullyAligned
+        ? 'Der Tenant-Admin-Client entspricht bereits dem Sollzustand.'
+        : 'Der Tenant-Admin-Client wird auf Root-, Redirect-, Logout- und Origin-Werte abgeglichen.',
+    details: {
+      clientExists: input.clientExists,
+      directAccessGrantsEnabledMatch: input.directAccessGrantsEnabledMatch,
+      rootUrlMatch: input.rootUrlMatch,
+      redirectUrisMatch: input.redirectUrisMatch,
+      logoutUrisMatch: input.logoutUrisMatch,
+      serviceAccountsEnabledMatch: input.serviceAccountsEnabledMatch,
+      standardFlowEnabledMatch: input.standardFlowEnabledMatch,
+      webOriginsMatch: input.webOriginsMatch,
+    },
+  };
+};
 
 const buildSecretStep = (blocked: boolean, secretAligned: boolean): KeycloakTenantPlan['steps'][number] => ({
   stepKey: 'secret',
@@ -205,6 +240,7 @@ export const buildPlan = (input: {
 }): KeycloakTenantPlan => {
   const blocked = input.preflight.overallStatus === 'blocked';
   const alignment = readClientAlignment(input.state);
+  const tenantAdminClientAlignment = readTenantAdminClientAlignment(input.state);
   const secretAligned = Boolean(
     input.authClientSecret &&
       input.state?.keycloakClientSecret &&
@@ -227,7 +263,14 @@ export const buildPlan = (input: {
     }),
     buildTenantAdminClientStep({
       blocked,
-      clientExists: Boolean(input.state?.tenantAdminClientRepresentation),
+      clientExists: Boolean(tenantAdminClientAlignment.clientRepresentation),
+      directAccessGrantsEnabledMatch: tenantAdminClientAlignment.directAccessGrantsEnabledMatch,
+      rootUrlMatch: tenantAdminClientAlignment.rootUrlMatch,
+      redirectUrisMatch: tenantAdminClientAlignment.redirectUrisMatch,
+      logoutUrisMatch: tenantAdminClientAlignment.logoutUrisMatch,
+      serviceAccountsEnabledMatch: tenantAdminClientAlignment.serviceAccountsEnabledMatch,
+      standardFlowEnabledMatch: tenantAdminClientAlignment.standardFlowEnabledMatch,
+      webOriginsMatch: tenantAdminClientAlignment.webOriginsMatch,
     }),
     buildSecretStep(blocked, secretAligned),
     buildTenantAdminClientSecretStep(
@@ -256,7 +299,7 @@ const resolveDriftSummary = (
     return 'Provisioning ist blockiert, bis die Vorbedingungen erfüllt sind.';
   }
 
-  const requiresChanges = steps.some((step) => step.action !== 'verify' && step.action !== 'skip');
+  const requiresChanges = steps.some((step: KeycloakTenantPlan['steps'][number]) => step.action !== 'verify' && step.action !== 'skip');
   return requiresChanges
     ? 'Keycloak und Registry weisen Drift auf und werden beim nächsten Lauf abgeglichen.'
     : 'Keycloak entspricht bereits dem im Studio gepflegten Sollzustand.';

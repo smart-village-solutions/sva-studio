@@ -123,4 +123,70 @@ describe('provisioning-auth readers', () => {
     );
     await expect(plan(input)).resolves.toEqual(expect.objectContaining({ overallStatus: 'blocked' }));
   });
+
+  it('marks tenant admin client drift as an update in the plan preview', async () => {
+    const driftedReadState = vi.fn(async (): Promise<KeycloakReadState> => ({
+      ...(await readState(input)),
+      tenantAdminClientRepresentation: {
+        id: 'tenant-admin-client-1',
+        clientId: 'tenant-admin',
+        redirectUris: ['https://legacy.example.org/callback'],
+        attributes: {
+          'post.logout.redirect.uris': 'https://legacy.example.org/logout',
+        },
+        webOrigins: ['https://legacy.example.org'],
+        rootUrl: 'https://legacy.example.org',
+      },
+    }));
+    const preflight = createInstanceKeycloakPreflightReader(driftedReadState);
+    const plan = createInstanceKeycloakPlanReader(driftedReadState, preflight);
+
+    await expect(plan(input)).resolves.toEqual(
+      expect.objectContaining({
+        steps: expect.arrayContaining([
+          expect.objectContaining({
+            stepKey: 'tenant_admin_client',
+            action: 'update',
+            details: expect.objectContaining({
+              clientExists: true,
+              rootUrlMatch: false,
+              redirectUrisMatch: false,
+              logoutUrisMatch: false,
+              webOriginsMatch: false,
+            }),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it('marks tenant admin flow flag drift as an update in the plan preview', async () => {
+    const driftedReadState = vi.fn(async (): Promise<KeycloakReadState> => ({
+      ...(await readState(input)),
+      tenantAdminClientRepresentation: {
+        ...(await readState(input)).tenantAdminClientRepresentation,
+        directAccessGrantsEnabled: false,
+        serviceAccountsEnabled: false,
+        standardFlowEnabled: false,
+      },
+    }));
+    const preflight = createInstanceKeycloakPreflightReader(driftedReadState);
+    const plan = createInstanceKeycloakPlanReader(driftedReadState, preflight);
+
+    await expect(plan(input)).resolves.toEqual(
+      expect.objectContaining({
+        steps: expect.arrayContaining([
+          expect.objectContaining({
+            stepKey: 'tenant_admin_client',
+            action: 'update',
+            details: expect.objectContaining({
+              directAccessGrantsEnabledMatch: false,
+              serviceAccountsEnabledMatch: false,
+              standardFlowEnabledMatch: false,
+            }),
+          }),
+        ]),
+      })
+    );
+  });
 });

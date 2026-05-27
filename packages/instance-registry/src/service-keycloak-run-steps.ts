@@ -139,6 +139,15 @@ export const buildFinalRunSteps = (input: {
   intent: ExecuteInstanceKeycloakProvisioningInput['intent'];
   usedTemporaryPassword: boolean;
 }): CompletionStep[] => {
+  if (input.intent === 'reset_tenant_admin') {
+    return [
+      buildRealmCompletionStep(input.status),
+      buildRolesCompletionStep(input.status),
+      buildTenantAdminCompletionStep(input.status),
+      buildTenantAdminPasswordStep(input.usedTemporaryPassword),
+    ];
+  }
+
   const steps: CompletionStep[] = [
     buildRealmCompletionStep(input.status),
     buildClientCompletionStep(input.status),
@@ -149,7 +158,7 @@ export const buildFinalRunSteps = (input: {
     buildTenantAdminCompletionStep(input.status),
   ];
 
-  if (input.usedTemporaryPassword || input.intent === 'reset_tenant_admin') {
+  if (input.usedTemporaryPassword) {
     steps.push(buildTenantAdminPasswordStep(input.usedTemporaryPassword));
   }
 

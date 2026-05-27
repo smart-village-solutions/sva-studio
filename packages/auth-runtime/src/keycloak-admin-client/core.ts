@@ -1174,6 +1174,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
     const requiresUpdate =
       existing.rootUrl !== payload.rootUrl ||
+      existing.standardFlowEnabled !== payload.standardFlowEnabled ||
+      existing.directAccessGrantsEnabled !== payload.directAccessGrantsEnabled ||
+      existing.serviceAccountsEnabled !== payload.serviceAccountsEnabled ||
       !areStringSetsEqual(existing.redirectUris, payload.redirectUris) ||
       !areStringSetsEqual(existing.webOrigins, payload.webOrigins) ||
       !areStringSetsEqual(readPostLogoutRedirectUris(existing.attributes), postLogoutRedirectUris);

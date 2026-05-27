@@ -70,6 +70,7 @@ import {
 } from './runtime/goose.ts';
 import { runBootstrapJobAgainstAcceptance as runBootstrapJobAgainstAcceptanceWithDeps } from './runtime/bootstrap-job.ts';
 import {
+  buildLocalInstanceRegistryIdentitySelectSql,
   buildLocalInstanceRegistryReconciliationInput,
   buildLocalInstanceRegistryReconciliationSql,
   evaluateLocalInstanceRegistryIdentityDrift,
@@ -84,7 +85,18 @@ import {
 import { inspectRemoteServiceContract } from './runtime/remote-service-spec.ts';
 import { formatRemoteStackSnapshot, inspectRemoteStack, type RemoteStackSnapshot } from './runtime/remote-stack-state.ts';
 
-type RuntimeCommand = 'deploy' | 'doctor' | 'down' | 'migrate' | 'precheck' | 'reset' | 'smoke' | 'status' | 'up' | 'update';
+type RuntimeCommand =
+  | 'deploy'
+  | 'doctor'
+  | 'down'
+  | 'migrate'
+  | 'precheck'
+  | 'reconcile'
+  | 'reset'
+  | 'smoke'
+  | 'status'
+  | 'up'
+  | 'update';
 type DoctorCheckStatus = 'error' | 'ok' | 'skipped' | 'warn';
 
 type DoctorCheck = {
@@ -187,7 +199,7 @@ const composeBaseArgs = ['compose', '-f', 'docker-compose.yml'];
 const composeWithMonitoringArgs = ['compose', '-f', 'docker-compose.yml', '-f', 'docker-compose.monitoring.yml'];
 const usage = () => {
   console.error(
-    'Usage: tsx scripts/ops/runtime-env.ts <up|down|update|status|smoke|migrate|doctor|reset|precheck|deploy> <profile> [--json] [--local-override-file=<path>] [--release-mode=<app-only|schema-and-app>] [--image-digest=<sha256:...>] [--maintenance-window=<text>] [--rollback-hint=<text>]'
+    'Usage: tsx scripts/ops/runtime-env.ts <up|down|update|status|smoke|migrate|doctor|reconcile|reset|precheck|deploy> <profile> [--json] [--local-override-file=<path>] [--release-mode=<app-only|schema-and-app>] [--image-digest=<sha256:...>] [--maintenance-window=<text>] [--rollback-hint=<text>]'
   );
   process.exit(2);
 };
@@ -195,7 +207,9 @@ const usage = () => {
 const ensureKnownCommand = (value: RuntimeCommand | undefined): RuntimeCommand => {
   if (
     !value ||
-    !['up', 'down', 'update', 'status', 'smoke', 'migrate', 'doctor', 'reset', 'precheck', 'deploy'].includes(value)
+    !['up', 'down', 'update', 'status', 'smoke', 'migrate', 'doctor', 'reconcile', 'reset', 'precheck', 'deploy'].includes(
+      value
+    )
   ) {
     usage();
     throw new Error('Unreachable');
@@ -1619,19 +1633,14 @@ const migrateLocalDatabase = (env: NodeJS.ProcessEnv) => {
   run('pnpm', ['nx', 'run', 'data:db:migrate'], env);
 };
 
-const reconcileLocalInstanceRegistry = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+const checkLocalInstanceRegistryDrift = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const input = buildLocalInstanceRegistryReconciliationInput(env);
   if (!input) {
     return;
   }
 
   const rows = parseJsonFromCommandOutput<LocalInstanceRegistryIdentityRow[]>(
-    createDbSqlRunner(runtimeProfile, env)(`SELECT COALESCE(json_agg(row_to_json(instance_rows) ORDER BY instance_rows.id), '[]'::json)::text
-FROM (
-  SELECT id, parent_domain, primary_hostname, auth_realm
-  FROM iam.instances
-  WHERE id = ANY(ARRAY[${input.allowedInstanceIds.map((instanceId) => sqlLiteral(instanceId)).join(', ')}]::text[])
-) AS instance_rows;`)
+    createDbSqlRunner(runtimeProfile, env)(buildLocalInstanceRegistryIdentitySelectSql(input))
   );
   const drift = evaluateLocalInstanceRegistryIdentityDrift(input, rows);
   if (drift.length > 0) {
@@ -1644,7 +1653,25 @@ FROM (
     }
     process.stderr.write(`${message}\n`);
   }
+};
 
+export const shouldCheckLocalInstanceRegistryDriftBeforeCommand = (
+  runtimeCommand: Extract<RuntimeCommand, 'up' | 'update' | 'reconcile' | 'migrate'>
+) => runtimeCommand === 'up' || runtimeCommand === 'update';
+
+export const requireLocalInstanceRegistryReconciliationInput = (env: NodeJS.ProcessEnv) => {
+  const input = buildLocalInstanceRegistryReconciliationInput(env);
+  if (input) {
+    return input;
+  }
+
+  throw new Error(
+    'Lokaler Instanz-Registry-Abgleich erfordert SVA_PARENT_DOMAIN und SVA_ALLOWED_INSTANCE_IDS.'
+  );
+};
+
+const reconcileLocalInstanceRegistry = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+  const input = requireLocalInstanceRegistryReconciliationInput(env);
   const sql = buildLocalInstanceRegistryReconciliationSql(input);
   createDbSqlRunner(runtimeProfile, env)(sql);
 };
@@ -3355,7 +3382,9 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       upLocalInfra(env);
       migrateLocalDatabase(env);
       bootstrapLocalAppUser(env);
-      reconcileLocalInstanceRegistry(runtimeProfile, env);
+      if (shouldCheckLocalInstanceRegistryDriftBeforeCommand(runtimeCommand)) {
+        checkLocalInstanceRegistryDrift(runtimeProfile, env);
+      }
       await startLocalApp(runtimeProfile, env);
       if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
         startLocalProvisioningWorker(runtimeProfile, env);
@@ -3374,7 +3403,9 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       upLocalInfra(env);
       migrateLocalDatabase(env);
       bootstrapLocalAppUser(env);
-      reconcileLocalInstanceRegistry(runtimeProfile, env);
+      if (shouldCheckLocalInstanceRegistryDriftBeforeCommand(runtimeCommand)) {
+        checkLocalInstanceRegistryDrift(runtimeProfile, env);
+      }
       stopLocalProvisioningWorker();
       stopLocalApp();
       await startLocalApp(runtimeProfile, env);
@@ -3405,6 +3436,11 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
         }
       }
       console.log(`Migrationen fuer ${runtimeProfile} abgeschlossen.`);
+      return;
+    case 'reconcile':
+      assertRuntimeEnv(runtimeProfile, env);
+      reconcileLocalInstanceRegistry(runtimeProfile, env);
+      console.log(`Lokale Instanz-Registry fuer ${runtimeProfile} abgeglichen.`);
       return;
     case 'doctor': {
       const report = await doctorRuntime(runtimeProfile, env);
@@ -5303,8 +5339,9 @@ const runAcceptanceCommand = async (runtimeProfile: RemoteRuntimeProfile, runtim
   switch (runtimeCommand) {
     case 'up':
     case 'update':
+    case 'reconcile':
       throw new Error(
-        `Direkte Remote-Deploys ueber ${runtimeCommand} sind gesperrt. Nutze den kanonischen Pfad pnpm env:deploy:${runtimeProfile}.`
+        `Direkte Remote-Operationen ueber ${runtimeCommand} sind gesperrt. Nutze den kanonischen Pfad pnpm env:deploy:${runtimeProfile}.`
       );
     case 'down':
       assertDeterministicRemoteMutationContext(env, runtimeProfile, 'down');

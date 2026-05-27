@@ -222,6 +222,43 @@ describe('service-keycloak-execution', () => {
     expect(state.completeRun).toHaveBeenCalled();
   });
 
+  it('limits reset_tenant_admin runs to tenant-admin user reconciliation', async () => {
+    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const repository = {
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
+    };
+    const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
+    state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
+    state.readQueuedTemporaryPassword.mockReturnValue('tmp-password');
+
+    await expect(
+      processClaimedKeycloakProvisioningRun(
+        {
+          repository: repository as never,
+          provisionInstanceAuth,
+          getKeycloakStatus: vi.fn(),
+          getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
+          planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+        } as never,
+        createRun({
+          intent: 'reset_tenant_admin',
+          mode: 'existing',
+          steps: [{ stepKey: 'queued', details: {} }],
+        })
+      )
+    ).resolves.toEqual({ id: 'run-1', overallStatus: 'succeeded' });
+
+    expect(provisionInstanceAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantAdminTemporaryPassword: 'tmp-password',
+        reconcileAuthClient: false,
+        reconcileTenantAdminClient: false,
+      })
+    );
+    expect(state.syncProvisionedClientSecretToRegistry).not.toHaveBeenCalled();
+    expect(state.syncRotatedClientSecretToRegistry).not.toHaveBeenCalled();
+  });
+
   it('fails the run when execution throws and reloads the persisted run state', async () => {
     const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
     const repository = {
@@ -287,6 +324,37 @@ describe('service-keycloak-execution', () => {
     expect(repository.getKeycloakProvisioningRun).toHaveBeenCalledWith('instance-1', 'run-1');
   });
 
+  it('surfaces blocked preflight summaries before enqueuing reconcile runs', async () => {
+    const { createReconcileKeycloakHandler } = await import('./service-keycloak-execution.js');
+    const createQueuedRun = vi.fn();
+    state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
+    const handler = createReconcileKeycloakHandler({
+      repository: {} as never,
+      createQueuedRun,
+      getKeycloakPreflight: vi.fn().mockResolvedValue({
+        overallStatus: 'blocked',
+        checks: [
+          { status: 'blocked', summary: 'Realm fehlt.' },
+          { status: 'ok', summary: 'ignored' },
+          { status: 'blocked', summary: '' },
+          { status: 'blocked', summary: 'Client fehlt.' },
+        ],
+      }),
+      planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+    } as never);
+
+    await expect(
+      handler({
+        instanceId: 'instance-1',
+        idempotencyKey: 'idem-1',
+        actorId: 'actor-1',
+        requestId: 'request-1',
+      })
+    ).rejects.toThrow('registry_or_provisioning_drift_blocked:Realm fehlt. Client fehlt.');
+
+    expect(createQueuedRun).not.toHaveBeenCalled();
+  });
+
   it('claims the next queued run via the repository helper', async () => {
     const { processNextQueuedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
     const repository = {
@@ -300,5 +368,25 @@ describe('service-keycloak-execution', () => {
     ).resolves.toBeNull();
 
     expect(repository.claimNextKeycloakProvisioningRun).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes claim filters through to the repository helper', async () => {
+    const { processNextQueuedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const repository = {
+      claimNextKeycloakProvisioningRun: vi.fn().mockResolvedValue(null),
+    };
+
+    await expect(
+      processNextQueuedKeycloakProvisioningRun(
+        {
+          repository: repository as never,
+        } as never,
+        { createdAtOrAfter: '2026-05-27T12:00:00.000Z' }
+      )
+    ).resolves.toBeNull();
+
+    expect(repository.claimNextKeycloakProvisioningRun).toHaveBeenCalledWith({
+      createdAtOrAfter: '2026-05-27T12:00:00.000Z',
+    });
   });
 });

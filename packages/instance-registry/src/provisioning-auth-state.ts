@@ -117,6 +117,8 @@ type ProvisionInstanceAuthArtifactsInput = {
   tenantAdminBootstrap?: TenantAdminBootstrap;
   tenantAdminTemporaryPassword?: string;
   rotateClientSecret?: boolean;
+  reconcileAuthClient?: boolean;
+  reconcileTenantAdminClient?: boolean;
 };
 
 const isConflictRequestError = (error: unknown): boolean =>
@@ -286,6 +288,8 @@ export const createProvisionInstanceAuthArtifacts =
   ): Promise<void> => {
     const client = createClient(input.authRealm);
     const expectedClient = buildExpectedClientConfig(input.primaryHostname);
+    const reconcileAuthClient = input.reconcileAuthClient ?? true;
+    const reconcileTenantAdminClient = input.reconcileTenantAdminClient ?? true;
 
     if (input.realmMode === 'new') {
       await client.ensureRealm({ displayName: input.instanceId });
@@ -295,17 +299,19 @@ export const createProvisionInstanceAuthArtifacts =
         throw new Error(`Keycloak realm ${input.authRealm} does not exist`);
       }
     }
-    await client.ensureOidcClient({
-      clientId: input.authClientId,
-      redirectUris: expectedClient.redirectUris,
-      postLogoutRedirectUris: expectedClient.postLogoutRedirectUris,
-      webOrigins: expectedClient.webOrigins,
-      rootUrl: expectedClient.rootUrl,
-      clientSecret: input.authClientSecret,
-      rotateClientSecret: input.rotateClientSecret,
-    });
+    if (reconcileAuthClient) {
+      await client.ensureOidcClient({
+        clientId: input.authClientId,
+        redirectUris: expectedClient.redirectUris,
+        postLogoutRedirectUris: expectedClient.postLogoutRedirectUris,
+        webOrigins: expectedClient.webOrigins,
+        rootUrl: expectedClient.rootUrl,
+        clientSecret: input.authClientSecret,
+        rotateClientSecret: input.rotateClientSecret,
+      });
+    }
 
-    if (input.tenantAdminClient?.clientId) {
+    if (input.tenantAdminClient?.clientId && reconcileTenantAdminClient) {
       const expectedTenantAdminClient = buildExpectedTenantAdminClientConfig(input.primaryHostname);
       await client.ensureOidcClient({
         clientId: input.tenantAdminClient.clientId,

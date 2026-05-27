@@ -121,6 +121,15 @@ export const evaluateLocalInstanceRegistryIdentityDrift = (
   });
 };
 
+export const buildLocalInstanceRegistryIdentitySelectSql = (
+  input: Pick<LocalInstanceRegistryReconciliationInput, 'allowedInstanceIds'>
+): string => `SELECT COALESCE(json_agg(row_to_json(instance_rows) ORDER BY instance_rows.id), '[]'::json)::text
+FROM (
+  SELECT id, parent_domain, primary_hostname, auth_client_id, auth_realm, tenant_admin_client_id
+  FROM iam.instances
+  WHERE id = ANY(ARRAY[${input.allowedInstanceIds.map((instanceId) => sqlLiteral(instanceId)).join(', ')}]::text[])
+) AS instance_rows;`;
+
 export const buildLocalInstanceRegistryReconciliationSql = (
   input: LocalInstanceRegistryReconciliationInput
 ): string => {
@@ -140,14 +149,22 @@ export const buildLocalInstanceRegistryReconciliationSql = (
       input.reconcileMode === 'authoritative'
         ? `primary_hostname = ${sqlLiteral(primaryHostname)},`
         : `primary_hostname = COALESCE(NULLIF(primary_hostname, ''), ${sqlLiteral(primaryHostname)}),`;
+    const authClientIdAssignment =
+      input.reconcileMode === 'authoritative'
+        ? `auth_client_id = ${sqlLiteral(input.tenantAuthClientId)},`
+        : `auth_client_id = COALESCE(NULLIF(auth_client_id, ''), ${sqlLiteral(input.tenantAuthClientId)}),`;
+    const tenantAdminClientIdAssignment =
+      input.reconcileMode === 'authoritative'
+        ? `tenant_admin_client_id = ${sqlLiteral(input.tenantAdminClientId)},`
+        : `tenant_admin_client_id = COALESCE(NULLIF(tenant_admin_client_id, ''), ${sqlLiteral(input.tenantAdminClientId)}),`;
 
     return [
       `UPDATE iam.instances
 SET ${parentDomainAssignment}
     ${primaryHostnameAssignment}
     ${authRealmAssignment}
-    auth_client_id = COALESCE(NULLIF(auth_client_id, ''), ${sqlLiteral(input.tenantAuthClientId)}),
-    tenant_admin_client_id = COALESCE(NULLIF(tenant_admin_client_id, ''), ${sqlLiteral(input.tenantAdminClientId)}),
+    ${authClientIdAssignment}
+    ${tenantAdminClientIdAssignment}
     updated_at = NOW()
 WHERE id = ${sqlLiteral(instanceId)};`,
       `UPDATE iam.instance_hostnames

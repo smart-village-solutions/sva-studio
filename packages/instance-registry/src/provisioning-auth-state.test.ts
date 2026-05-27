@@ -172,6 +172,39 @@ describe('provisioning-auth-state', () => {
     expect(client.syncRoles).toHaveBeenCalledWith('user-1', ['system_admin']);
   });
 
+  it('skips client reconciliation for tenant-admin-only reset flows', async () => {
+    const client = createClient();
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await provision({
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      tenantAdminClient: {
+        clientId: 'tenant-admin',
+      },
+      tenantAdminClientSecret: 'tenant-secret',
+      tenantAdminBootstrap: {
+        username: 'tenant-admin',
+        email: 'tenant-admin@example.org',
+      },
+      tenantAdminTemporaryPassword: 'tmp-password',
+      reconcileAuthClient: false,
+      reconcileTenantAdminClient: false,
+    });
+
+    expect(client.ensureOidcClient).not.toHaveBeenCalled();
+    expect(client.ensureTenantAdminServiceAccess).not.toHaveBeenCalled();
+    expect(client.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        username: 'tenant-admin',
+      })
+    );
+    expect(client.setUserPassword).toHaveBeenCalledWith('user-1', 'tmp-password', true);
+  });
+
   it('recovers from conflicting tenant admin creation by updating the matching email user', async () => {
     const client = createClient({
       findUserByUsername: vi.fn(async () => null),

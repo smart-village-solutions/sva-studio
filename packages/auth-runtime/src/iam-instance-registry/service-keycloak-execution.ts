@@ -9,6 +9,17 @@ import type { InstanceRegistryServiceDeps } from '@sva/instance-registry/service
 
 import { withAuthInstanceRegistryDeps } from './instance-registry-deps.js';
 
+const readWorkerClaimFilterFromEnv = (): {
+  createdAtOrAfter?: string;
+} | undefined => {
+  const createdAtOrAfter = process.env.SVA_KEYCLOAK_PROVISIONER_CLAIM_NOT_BEFORE?.trim();
+  if (!createdAtOrAfter) {
+    return undefined;
+  }
+
+  return Number.isNaN(Date.parse(createdAtOrAfter)) ? undefined : { createdAtOrAfter };
+};
+
 export const createExecuteKeycloakProvisioningHandler = (deps: InstanceRegistryServiceDeps) =>
   createTargetExecuteKeycloakProvisioningHandler(withAuthInstanceRegistryDeps(deps));
 
@@ -21,4 +32,4 @@ export const processClaimedKeycloakProvisioningRun = (
 ) => processTargetClaimedKeycloakProvisioningRun(withAuthInstanceRegistryDeps(deps), run);
 
 export const processNextQueuedKeycloakProvisioningRun = (deps: InstanceRegistryServiceDeps) =>
-  processTargetNextQueuedKeycloakProvisioningRun(withAuthInstanceRegistryDeps(deps));
+  processTargetNextQueuedKeycloakProvisioningRun(withAuthInstanceRegistryDeps(deps), readWorkerClaimFilterFromEnv());

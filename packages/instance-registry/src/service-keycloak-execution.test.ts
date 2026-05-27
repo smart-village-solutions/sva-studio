@@ -255,6 +255,8 @@ describe('service-keycloak-execution', () => {
         reconcileTenantAdminClient: false,
       })
     );
+    expect(state.syncProvisionedClientSecretToRegistry).not.toHaveBeenCalled();
+    expect(state.syncRotatedClientSecretToRegistry).not.toHaveBeenCalled();
   });
 
   it('fails the run when execution throws and reloads the persisted run state', async () => {

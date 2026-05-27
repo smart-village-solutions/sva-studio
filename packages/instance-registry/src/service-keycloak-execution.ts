@@ -88,6 +88,9 @@ const syncClientSecretAfterProvisioning = async (deps: InstanceRegistryServiceDe
     });
     return;
   }
+  if (run.intent === 'reset_tenant_admin') {
+    return;
+  }
   await syncProvisionedClientSecretToRegistry(deps, {
     loaded,
     requestId: run.requestId,

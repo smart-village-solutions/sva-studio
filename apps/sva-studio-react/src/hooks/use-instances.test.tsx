@@ -802,8 +802,9 @@ describe('useInstances', () => {
       await result.current.loadInstance('demo');
     });
 
-    const mutationPromise = act(async () => {
-      await result.current.assignModule('demo', 'news');
+    let mutationPromise: Promise<unknown> | undefined;
+    act(() => {
+      mutationPromise = result.current.assignModule('demo', 'news');
     });
 
     await waitFor(() => {
@@ -828,7 +829,9 @@ describe('useInstances', () => {
       },
     });
 
-    await mutationPromise;
+    await act(async () => {
+      await mutationPromise;
+    });
 
     expect(result.current.selectedInstance?.assignedModules).toEqual(['news']);
   });

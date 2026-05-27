@@ -24,6 +24,11 @@ describe('managed-permissions', () => {
       moduleId: 'waste-management',
       description: 'Touren im Waste-Management verwalten',
     });
-    expect(getManagedPermissionMetadata('content.read')).toBeUndefined();
+    expect(getManagedPermissionMetadata('content.read')).toEqual({
+      permissionKey: 'content.read',
+      moduleId: 'content',
+      isScopeAssignable: true,
+      supportedAccessScopes: ['all', 'own', 'organization'],
+    });
   });
 });

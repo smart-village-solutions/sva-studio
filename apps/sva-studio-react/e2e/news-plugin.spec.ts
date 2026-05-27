@@ -223,6 +223,37 @@ const routeUnifiedContentOverview = async (page: Page, newsItems: readonly NewsR
   });
 };
 
+const routeNewsMediaRequests = async (route: Route) => {
+  const request = route.request();
+  const method = request.method();
+  const url = new URL(request.url());
+  const path = url.pathname;
+
+  if (path === '/api/v1/iam/media' && method === 'GET') {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    });
+    return;
+  }
+
+  if (path === '/api/v1/iam/media/references' && method === 'GET') {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    });
+    return;
+  }
+
+  await route.fulfill({
+    status: 404,
+    contentType: 'application/json',
+    body: JSON.stringify({ error: 'not_found' }),
+  });
+};
+
 const openNewsDetailTab = async (page: Page, labelPattern: RegExp) => {
   await page.getByRole('tab', { name: labelPattern }).click();
 };
@@ -328,6 +359,7 @@ const fulfillContentRoute = async (
 test.describe('news plugin', () => {
   test.beforeEach(async ({ page }) => {
     await mockSharedShellRequests(page);
+    await page.route('**/api/v1/iam/media**', routeNewsMediaRequests);
   });
 
   test('supports news CRUD including delete', async ({ page }) => {

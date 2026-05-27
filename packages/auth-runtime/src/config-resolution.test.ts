@@ -35,11 +35,15 @@ vi.mock('@sva/server-runtime', () => ({
   isCanonicalAuthHost: state.isCanonicalAuthHost,
 }));
 
-vi.mock('@sva/core', () => ({
-  classifyHost: state.classifyHost,
-  isTrafficEnabledInstanceStatus: state.isTrafficEnabledInstanceStatus,
-  normalizeHost: (value: string) => value.toLowerCase(),
-}));
+vi.mock('@sva/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/core')>();
+  return {
+    ...actual,
+    classifyHost: state.classifyHost,
+    isTrafficEnabledInstanceStatus: state.isTrafficEnabledInstanceStatus,
+    normalizeHost: (value: string) => value.toLowerCase(),
+  };
+});
 
 vi.mock('./config-request.js', () => ({
   assertActiveRegistryEntry: state.assertActiveRegistryEntry,

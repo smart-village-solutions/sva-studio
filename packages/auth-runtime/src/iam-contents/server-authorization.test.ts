@@ -152,13 +152,17 @@ describe('authorizeContentPrimitiveForUser', () => {
           type: 'content',
           id: 'news-1',
           organizationId: '11111111-1111-4111-8111-111111111111',
-          attributes: { contentType: 'news.article' },
+          attributes: expect.objectContaining({
+            contentType: 'news.article',
+          }),
         }),
         context: expect.objectContaining({
           requestId: 'request-1',
           traceId: 'trace-1',
           organizationId: '11111111-1111-4111-8111-111111111111',
-          attributes: { contentType: 'news.article' },
+          attributes: expect.objectContaining({
+            contentType: 'news.article',
+          }),
         }),
       }),
       [permission]

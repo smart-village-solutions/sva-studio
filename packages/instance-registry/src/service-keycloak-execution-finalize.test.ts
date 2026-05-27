@@ -176,4 +176,88 @@ describe('service-keycloak-execution-finalize', () => {
       })
     );
   });
+
+  it('keeps reset_tenant_admin runs successful when unrelated client drift remains', async () => {
+    const { completeRun } = await import('./service-keycloak-execution-finalize.js');
+    const status = {
+      realmExists: true,
+      clientExists: true,
+      redirectUrisMatch: false,
+      logoutUrisMatch: false,
+      webOriginsMatch: false,
+      clientSecretAligned: false,
+      tenantAdminClientExists: false,
+      tenantAdminClientSecretAligned: false,
+      tenantAdminHasSystemAdmin: true,
+      tenantAdminHasInstanceRegistryAdmin: false,
+      tenantAdminExists: true,
+    };
+    const repository = {
+      setInstanceStatus: vi.fn().mockResolvedValue(undefined),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+    };
+
+    state.buildProvisioningInput.mockReturnValue({ payload: 'provisioning' });
+    state.buildFinalRunSteps.mockReturnValue([
+      {
+        stepKey: 'realm',
+        title: 'Realm bearbeiten',
+        ok: true,
+        summary: 'ok',
+      },
+      {
+        stepKey: 'roles',
+        title: 'Realm-Rollen sicherstellen',
+        ok: true,
+        summary: 'ok',
+      },
+      {
+        stepKey: 'tenant_admin',
+        title: 'Tenant-Admin sicherstellen',
+        ok: true,
+        summary: 'ok',
+      },
+      {
+        stepKey: 'tenant_admin_password',
+        title: 'Temporäres Passwort setzen',
+        ok: true,
+        summary: 'ok',
+      },
+    ]);
+    state.areAllRequirementsSatisfied.mockReturnValue(false);
+    state.appendRunStep.mockResolvedValue(undefined);
+
+    const result = await completeRun(
+      {
+        repository: repository as never,
+        getKeycloakStatus: vi.fn().mockResolvedValue(status),
+      } as never,
+      {
+        loaded: {
+          instance: {
+            instanceId: 'instance-3',
+            status: 'draft',
+          },
+        } as never,
+        runId: 'run-3',
+        requestId: 'request-3',
+        actorId: 'actor-3',
+        intent: 'reset_tenant_admin',
+        tenantAdminTemporaryPassword: 'tmp-password',
+      }
+    );
+
+    expect(result).toBe('succeeded');
+    expect(repository.setInstanceStatus).toHaveBeenCalledWith({
+      instanceId: 'instance-3',
+      status: 'provisioning',
+      actorId: 'actor-3',
+      requestId: 'request-3',
+    });
+    expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalledWith({
+      runId: 'run-3',
+      overallStatus: 'succeeded',
+      driftSummary: 'Provisioning erfolgreich abgeschlossen.',
+    });
+  });
 });

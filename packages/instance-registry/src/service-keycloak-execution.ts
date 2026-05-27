@@ -255,11 +255,9 @@ const ensureReconcilePreconditions = async (
   const blockingSummary =
     preflight?.overallStatus === 'blocked'
       ? preflight.checks
-          .filter(
-            (check: NonNullable<typeof preflight>['checks'][number]) => check.status === 'blocked'
-          )
-          .map((check: NonNullable<typeof preflight>['checks'][number]) => check.summary)
-          .filter((summary: string): summary is string => typeof summary === 'string' && summary.length > 0)
+          .filter((check) => check.status === 'blocked')
+          .map((check) => check.summary)
+          .filter((summary) => summary.length > 0)
           .join(' ')
       : plan?.overallStatus === 'blocked'
         ? plan.driftSummary

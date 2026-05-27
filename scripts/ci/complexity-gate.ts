@@ -119,6 +119,17 @@ export interface RunComplexityGateResult {
   analyzedFiles: AnalyzedFile[];
 }
 
+export function readCliOptionValue(argv: readonly string[], optionName: string): string | undefined {
+  const directIndex = argv.indexOf(optionName);
+  if (directIndex >= 0) {
+    return argv[directIndex + 1];
+  }
+
+  const inlinePrefix = `${optionName}=`;
+  const inlineValue = argv.find((arg) => arg.startsWith(inlinePrefix));
+  return inlineValue ? inlineValue.slice(inlinePrefix.length) : undefined;
+}
+
 const ALLOWED_TRACKED_FINDING_STATUSES = new Set<TrackedFinding['status']>([
   'planned',
   'open',
@@ -888,10 +899,8 @@ export function runComplexityGate(options: RunComplexityGateOptions = {}): RunCo
 export function main(): number {
   const rootDir = process.cwd();
   const updateBaseline = process.argv.includes('--update-baseline');
-  const baseIndex = process.argv.indexOf('--base');
-  const headIndex = process.argv.indexOf('--head');
-  const baseRef = baseIndex >= 0 ? process.argv[baseIndex + 1] : undefined;
-  const headRef = headIndex >= 0 ? process.argv[headIndex + 1] : undefined;
+  const baseRef = readCliOptionValue(process.argv, '--base');
+  const headRef = readCliOptionValue(process.argv, '--head');
 
   try {
     const result = runComplexityGate({

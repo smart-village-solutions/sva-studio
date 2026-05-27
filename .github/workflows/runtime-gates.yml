@@ -217,7 +217,7 @@ jobs:
           elif [ "${{ steps.scope.outputs.quality_gate_mode }}" = "full" ]; then
             pnpm complexity-gate
           else
-            pnpm complexity-gate --base=${{ github.event.pull_request.base.sha }}
+            pnpm complexity-gate --base ${{ github.event.pull_request.base.sha }}
           fi
 
       - name: Publish complexity summary

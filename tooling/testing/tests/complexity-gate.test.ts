@@ -4,7 +4,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { analyzeFile, runComplexityGate } from '../../../scripts/ci/complexity-gate.ts';
+import { analyzeFile, readCliOptionValue, runComplexityGate } from '../../../scripts/ci/complexity-gate.ts';
 
 const createdDirs: string[] = [];
 
@@ -72,6 +72,9 @@ function runGit(rootDir: string, args: string[]): string {
     encoding: 'utf8',
     env: {
       ...process.env,
+      GIT_CONFIG_GLOBAL: os.devNull,
+      GIT_CONFIG_NOSYSTEM: '1',
+      GIT_TERMINAL_PROMPT: '0',
       GIT_AUTHOR_NAME: 'Codex',
       GIT_AUTHOR_EMAIL: 'codex@example.test',
       GIT_COMMITTER_NAME: 'Codex',
@@ -177,6 +180,12 @@ describe('complexity gate', () => {
     expect(metrics.maxFunctionLines).toBe(6);
     expect(metrics.maxCyclomaticComplexity).toBe(4);
     expect(metrics.publicExports).toBe(2);
+  });
+
+  it('reads CLI option values from spaced and inline argument forms', () => {
+    expect(readCliOptionValue(['node', 'complexity-gate', '--base', 'origin/main'], '--base')).toBe('origin/main');
+    expect(readCliOptionValue(['node', 'complexity-gate', '--base=origin/main'], '--base')).toBe('origin/main');
+    expect(readCliOptionValue(['node', 'complexity-gate'], '--base')).toBeUndefined();
   });
 
   it('fails when the policy file is missing', () => {

@@ -51,8 +51,10 @@ export const completeRun = async (
     });
   }
 
+  const completionSatisfied = completionSteps.every((step) => step.ok);
   const finalRunStatus =
-    completionSteps.every((step) => step.ok) && areAllInstanceKeycloakRequirementsSatisfied(status)
+    completionSatisfied &&
+    (input.intent === 'reset_tenant_admin' || areAllInstanceKeycloakRequirementsSatisfied(status))
       ? 'succeeded'
       : 'failed';
 

@@ -84,6 +84,8 @@ describe('buildLocalInstanceRegistryReconciliationSql', () => {
     expect(sql).toContain("parent_domain = 'studio.localhost'");
     expect(sql).toContain("primary_hostname = 'de-musterhausen.studio.localhost'");
     expect(sql).toContain("auth_realm = 'de-musterhausen'");
+    expect(sql).toContain("auth_client_id = 'sva-studio-login'");
+    expect(sql).toContain("tenant_admin_client_id = 'sva-studio-realm-admin'");
   });
 });
 

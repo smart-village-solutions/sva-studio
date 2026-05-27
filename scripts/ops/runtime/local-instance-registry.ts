@@ -149,14 +149,22 @@ export const buildLocalInstanceRegistryReconciliationSql = (
       input.reconcileMode === 'authoritative'
         ? `primary_hostname = ${sqlLiteral(primaryHostname)},`
         : `primary_hostname = COALESCE(NULLIF(primary_hostname, ''), ${sqlLiteral(primaryHostname)}),`;
+    const authClientIdAssignment =
+      input.reconcileMode === 'authoritative'
+        ? `auth_client_id = ${sqlLiteral(input.tenantAuthClientId)},`
+        : `auth_client_id = COALESCE(NULLIF(auth_client_id, ''), ${sqlLiteral(input.tenantAuthClientId)}),`;
+    const tenantAdminClientIdAssignment =
+      input.reconcileMode === 'authoritative'
+        ? `tenant_admin_client_id = ${sqlLiteral(input.tenantAdminClientId)},`
+        : `tenant_admin_client_id = COALESCE(NULLIF(tenant_admin_client_id, ''), ${sqlLiteral(input.tenantAdminClientId)}),`;
 
     return [
       `UPDATE iam.instances
 SET ${parentDomainAssignment}
     ${primaryHostnameAssignment}
     ${authRealmAssignment}
-    auth_client_id = COALESCE(NULLIF(auth_client_id, ''), ${sqlLiteral(input.tenantAuthClientId)}),
-    tenant_admin_client_id = COALESCE(NULLIF(tenant_admin_client_id, ''), ${sqlLiteral(input.tenantAdminClientId)}),
+    ${authClientIdAssignment}
+    ${tenantAdminClientIdAssignment}
     updated_at = NOW()
 WHERE id = ${sqlLiteral(instanceId)};`,
       `UPDATE iam.instance_hostnames

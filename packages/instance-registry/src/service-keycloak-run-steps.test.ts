@@ -106,7 +106,12 @@ describe('service-keycloak-run-steps', () => {
       usedTemporaryPassword: false,
     });
 
-    expect(steps.map((step) => step.stepKey)).toContain('tenant_admin_password');
+    expect(steps.map((step) => step.stepKey)).toEqual([
+      'realm',
+      'roles',
+      'tenant_admin',
+      'tenant_admin_password',
+    ]);
     expect(steps.find((step) => step.stepKey === 'tenant_admin_password')).toEqual(
       expect.objectContaining({ ok: false })
     );

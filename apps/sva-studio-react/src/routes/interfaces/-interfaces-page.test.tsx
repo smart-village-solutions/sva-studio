@@ -324,6 +324,21 @@ describe('InterfacesPage', () => {
     expect(screen.getByRole('radio', { name: /S3-kompatibler Object Storage/i })).toBeTruthy();
   });
 
+  it('keeps the whole picker card clickable through the description text', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+    fireEvent.click(document.getElementById('interface-type-supabase-description')!);
+
+    expect((screen.getByRole('radio', { name: /Supabase/i }) as HTMLInputElement).checked).toBe(true);
+  });
+
   it('deletes non-mainserver interfaces through the destructive confirm dialog', async () => {
     state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry, s3Entry]));
     state.deleteInterface.mockResolvedValue({ deleted: true });

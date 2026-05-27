@@ -40,7 +40,8 @@ export const TypePickerDialog = ({
             const inputId = `interface-type-${type}`;
             const descriptionId = `${inputId}-description`;
             return (
-              <div
+              <label
+                htmlFor={inputId}
                 key={type}
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition ${
                   selectedType === type
@@ -58,14 +59,14 @@ export const TypePickerDialog = ({
                   onChange={() => onSelectType(type)}
                 />
                 <div>
-                  <Label htmlFor={inputId} className="cursor-pointer font-medium text-foreground">
+                  <span className="font-medium text-foreground">
                     {t(meta.titleKey)}
-                  </Label>
+                  </span>
                   <p id={descriptionId} className="text-xs text-muted-foreground">
                     {t(meta.descriptionKey)}
                   </p>
                 </div>
-              </div>
+              </label>
             );
           })}
         </div>

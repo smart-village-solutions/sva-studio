@@ -277,10 +277,8 @@ describe('InstanceCreatePage', () => {
       expect(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' })).toBeTruthy();
     });
 
-    const newsCheckbox = screen.getByRole('checkbox', { name: /News/u });
-    const eventsCheckbox = screen.getByRole('checkbox', { name: /Events/u });
-    fireEvent.click(newsCheckbox);
-    fireEvent.click(eventsCheckbox);
+    fireEvent.click(screen.getByText(/news\.read/));
+    fireEvent.click(screen.getByText(/events\.read/));
     fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' }));
 
     await waitFor(() => {

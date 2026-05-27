@@ -12,7 +12,7 @@ import {
 import studioPluginCatalogConfig from '../../plugin-catalog.json';
 import { appAdminResources } from '../routing/admin-resources';
 
-import { mergeI18nResources, resetTranslatorCache, t } from '../i18n';
+import { i18nResources, mergeI18nResources, resetTranslatorCache, t } from '../i18n';
 import {
   createPluginBuildRegistries,
   resolvePluginModuleFromRegistry,
@@ -117,13 +117,21 @@ export const studioPluginSnapshot = studioPluginCatalogReport.snapshot;
 
 export const studioBuildTimeRegistry = studioPluginSnapshot.registry;
 const studioBuildTimeTranslationsSignature = JSON.stringify(studioBuildTimeRegistry.translations);
+const studioPluginTranslationsResourcesKey = Symbol.for('sva-studio.plugin-translations.resources');
 const globalPluginTranslationState = globalThis as typeof globalThis & {
   [studioPluginTranslationsSignatureKey]?: string;
+  [studioPluginTranslationsResourcesKey]?: unknown;
 };
+const translationResourcesChanged =
+  globalPluginTranslationState[studioPluginTranslationsResourcesKey] !== i18nResources;
 
-if (globalPluginTranslationState[studioPluginTranslationsSignatureKey] !== studioBuildTimeTranslationsSignature) {
+if (
+  translationResourcesChanged ||
+  globalPluginTranslationState[studioPluginTranslationsSignatureKey] !== studioBuildTimeTranslationsSignature
+) {
   mergeI18nResources(studioBuildTimeRegistry.translations);
   globalPluginTranslationState[studioPluginTranslationsSignatureKey] = studioBuildTimeTranslationsSignature;
+  globalPluginTranslationState[studioPluginTranslationsResourcesKey] = i18nResources;
 }
 
 export const studioPlugins = studioBuildTimeRegistry.plugins;

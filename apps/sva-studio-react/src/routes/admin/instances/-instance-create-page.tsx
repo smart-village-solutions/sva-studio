@@ -299,7 +299,8 @@ export const InstanceCreatePage = () => {
             const hintId = `${inputId}-hint`;
 
             return (
-              <div
+              <label
+                htmlFor={inputId}
                 key={module.moduleId}
                 className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${readModuleCardClassName(createdInstance)}`}
               >
@@ -312,16 +313,16 @@ export const InstanceCreatePage = () => {
                   onChange={() => toggleModuleSelection(module.moduleId)}
                 />
                 <span className="space-y-1">
-                  <Label htmlFor={inputId} className="block cursor-pointer font-medium text-foreground">
+                  <span className="block font-medium text-foreground">
                     {getModuleLabel(module.moduleId as keyof typeof adminBootstrapModuleLabels)}
-                  </Label>
+                  </span>
                   <span id={hintId} className="block text-muted-foreground">
                     {t('admin.instances.adminBootstrap.moduleHint', {
                       value: module.permissionIds.join(', '),
                     })}
                   </span>
                 </span>
-              </div>
+              </label>
             );
           })}
         </div>

@@ -115,7 +115,7 @@ const runCommand = (
 };
 
 export const normalizeRetryCount = (retries: number | undefined): number => {
-  if (Number.isFinite(retries) === false) {
+  if (typeof retries !== 'number' || Number.isFinite(retries) === false) {
     return 0;
   }
 

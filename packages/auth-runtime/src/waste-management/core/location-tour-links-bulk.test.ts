@@ -36,6 +36,9 @@ const createRequest = (body: Record<string, unknown>) =>
 
 const createDeps = () => ({
   getRequestId: () => 'req-test',
+  getSessionById: vi.fn(async () => ({
+    activeOrganizationId: 'org-1',
+  })),
   resolvePermissions: vi.fn(async () => ({
     ok: true as const,
     permissions: [

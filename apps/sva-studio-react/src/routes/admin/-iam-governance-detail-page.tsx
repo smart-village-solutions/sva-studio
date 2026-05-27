@@ -42,6 +42,9 @@ export function IamGovernanceDetailPage({ caseId }: Readonly<{ caseId: string }>
   const cockpitEnabled = isIamCockpitEnabled();
   const canAccessCockpit = hasIamCockpitAccessRole(user);
   const allowedTabs = React.useMemo(() => getAllowedIamCockpitTabs(user), [user]);
+  const handleBackClick = React.useCallback(() => {
+    Promise.resolve(navigate({ to: '/admin/iam', search: { tab: 'governance' } })).catch(() => undefined);
+  }, [navigate]);
 
   React.useEffect(() => {
     if (!cockpitEnabled || !canAccessCockpit || !allowedTabs.includes('governance') || !caseId) {
@@ -100,10 +103,6 @@ export function IamGovernanceDetailPage({ caseId }: Readonly<{ caseId: string }>
       </Alert>
     );
   }
-
-  const handleBackClick = React.useCallback(() => {
-    Promise.resolve(navigate({ to: '/admin/iam', search: { tab: 'governance' } })).catch(() => undefined);
-  }, [navigate]);
 
   return (
     <StudioDetailPageTemplate

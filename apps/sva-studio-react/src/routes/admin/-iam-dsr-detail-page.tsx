@@ -92,6 +92,9 @@ export function IamDsrDetailPage({ caseId }: Readonly<{ caseId: string }>) {
   const cockpitEnabled = isIamCockpitEnabled();
   const canAccessCockpit = hasIamCockpitAccessRole(user);
   const allowedTabs = React.useMemo(() => getAllowedIamCockpitTabs(user), [user]);
+  const handleBackClick = React.useCallback(() => {
+    Promise.resolve(navigate({ to: '/admin/iam', search: { tab: 'dsr' } })).catch(() => undefined);
+  }, [navigate]);
 
   React.useEffect(() => {
     if (!cockpitEnabled || !canAccessCockpit || !allowedTabs.includes('dsr') || !caseId) {
@@ -150,10 +153,6 @@ export function IamDsrDetailPage({ caseId }: Readonly<{ caseId: string }>) {
       </Alert>
     );
   }
-
-  const handleBackClick = React.useCallback(() => {
-    Promise.resolve(navigate({ to: '/admin/iam', search: { tab: 'dsr' } })).catch(() => undefined);
-  }, [navigate]);
 
   return (
     <StudioDetailPageTemplate

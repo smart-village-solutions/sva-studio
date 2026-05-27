@@ -4,10 +4,10 @@
   "description": "![Mockup 01 2026](docs/images/mockup-01-2026.png)",
   "private": true,
   "engines": {
-    "node": ">=22.0.0",
-    "pnpm": ">=9.12.2"
+    "node": ">=24.15.0",
+    "pnpm": ">=11.3.0"
   },
-  "packageManager": "pnpm@9.12.2",
+  "packageManager": "pnpm@11.3.0",
   "scripts": {
     "nx": "env -u NO_COLOR nx",
     "build": "pnpm clean:generated-source-artifacts && env -u NO_COLOR nx run-many -t build",
@@ -23,7 +23,7 @@
     "test:coverage:affected": "tsx scripts/ci/affected-coverage-gate.ts --base ${NX_BASE:-origin/main}",
     "test:coverage:pr": "pnpm test:coverage:affected && pnpm patch-coverage-gate --base=${NX_BASE:-origin/main} && pnpm sonar-new-code-gate --base=${NX_BASE:-origin/main}",
     "check:toolchain-consistency": "bash scripts/ci/run-workspace-node.sh --import tsx scripts/ci/check-toolchain-consistency.ts",
-    "check:bot-comment-handling": "tsx scripts/ci/check-bot-comment-handling.ts",
+    "check:bot-comment-handling": "node --experimental-strip-types scripts/ci/check-bot-comment-handling.ts",
     "check:plugin-ui-boundary": "tsx scripts/ci/check-plugin-ui-boundary.ts",
     "verify:runtime-artifact": "env -u NO_COLOR nx run sva-studio-react:verify:runtime-artifact",
     "test:release:studio": "pnpm test:pr && pnpm verify:runtime-artifact",
@@ -120,21 +120,5 @@
     "typescript-eslint": "8.59.0",
     "vite": "^8.0.5",
     "vitest": "^4.1.5"
-  },
-  "pnpm": {
-    "overrides": {
-      "@tanstack/react-router": "1.168.24",
-      "@tanstack/router-core": "1.168.16",
-      "h3": "2.0.1-rc.20",
-      "minimatch": "10.2.3",
-      "axios": "1.15.2",
-      "follow-redirects": "1.16.0",
-      "postcss": "8.5.11",
-      "protobufjs@<7.5.8": "7.5.8",
-      "rollup": "4.59.0",
-      "srvx": "0.11.15",
-      "solid-js": "1.9.11",
-      "seroval": "1.4.2"
-    }
   }
 }

@@ -241,7 +241,7 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
     -e KEYCLOAK_REALM=sva-studio \
     -e KEYCLOAK_BASE_URL="http://${KEYCLOAK_NAME}:38080" \
     -v "${KEYCLOAK_MOCK_SCRIPT}:/tmp/keycloak-verify-mock.cjs:ro" \
-    node:22-alpine \
+    node:24.15.0-alpine \
     node /tmp/keycloak-verify-mock.cjs >/dev/null
 
   if wait_for_container_http "${KEYCLOAK_NAME}" "http://127.0.0.1:38080/realms/sva-studio/.well-known/openid-configuration"; then

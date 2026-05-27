@@ -1,6 +1,40 @@
 cleanupUnusedCatalogs: true
 linkWorkspacePackages: true
 preferWorkspacePackages: true
+engineStrict: true
+nodeVersion: 24.15.0
+minimumReleaseAge: 1440
+minimumReleaseAgeIgnoreMissingTime: false
+minimumReleaseAgeStrict: true
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  # Legacy toolchains in the current Nx/Babel/TanStack plugin graph still resolve semver 6.3.1.
+  # Remove this exact-version exception once the transitive graph no longer requires semver 6.x.
+  - semver@6.3.1
+blockExoticSubdeps: true
+allowBuilds:
+  esbuild: true
+  msw: false
+  nx@22.7.1 || 22.7.4: true
+  protobufjs: false
+  sharp: true
+overrides:
+  "@tanstack/react-router": "1.170.8"
+  "@tanstack/router-core": "1.171.6"
+  "@tanstack/start-plugin-core": "1.171.6"
+  ast-v8-to-istanbul: "1.0.0"
+  tinyexec: "1.1.2"
+  h3: "2.0.1-rc.20"
+  minimatch: "10.2.3"
+  axios: "1.15.2"
+  follow-redirects: "1.16.0"
+  postcss: "8.5.11"
+  "protobufjs@<7.5.8": "7.5.8"
+  rollup: "4.59.0"
+  srvx: "0.11.15"
+  solid-js: "1.9.11"
+  seroval: "1.4.2"
+  "@types/node@22>undici-types": "6.18.2"
 
 packages:
   - apps/*

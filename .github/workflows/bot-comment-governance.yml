@@ -47,12 +47,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          filter: tree:0
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          persist-credentials: false
 
-      - name: Setup workspace
-        uses: ./.github/actions/setup-pnpm-workspace
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
 
       - name: Evaluate bot comment handling
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm check:bot-comment-handling
+        run: node --experimental-strip-types scripts/ci/check-bot-comment-handling.ts

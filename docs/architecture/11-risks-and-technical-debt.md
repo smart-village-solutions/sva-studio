@@ -20,97 +20,102 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: hoch
    - Maßnahme: finalen Runtime-Vertrag über `verify:runtime-artifact`, `test:release:studio`, runner-basiertes Image-Verify und Precheck-Evidenz zum Ziel-Digest erzwingen; `.nitro/vite/services/ssr/**` nur noch als Diagnosematerial behandeln
 
-1. Geheimnisse in lokalen Env-Dateien
+2. Geheimnisse in lokalen Env-Dateien
    - Impact: hoch (Credential Leak Risiko)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Secrets rotieren, lokale Env-Dateien strikt aus VCS halten, Secret-Scan in CI
 
-2. Uneinheitliche Testabdeckung
+3. Supply-Chain-Drift bei frischen oder vertrauensseitig auffälligen Dependency-Releases
+   - Impact: hoch (kompromittierte oder ungewöhnlich veröffentlichte Releases können Lockfile, CI und lokale Installs unbemerkt kippen)
+   - Wahrscheinlichkeit: mittel bis hoch
+   - Maßnahme: `pnpm@11.3.0` mit `minimumReleaseAge`, `trustPolicy`, expliziter Build-Allowlist und gezielten Overrides/Excludes als verbindlichen Resolver-Schutz nutzen; `pull_request_target`-Workflows ohne Workspace-Install betreiben und Ausnahmen dokumentationspflichtig halten
+
+4. Uneinheitliche Testabdeckung
    - Impact: mittel bis hoch (Regressionen spät erkannt)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: Exempt-Projekte schrittweise abbauen, Coverage-Floors erhöhen
 
-3. Routing-Komplexität durch dualen Ansatz (file-based + code-based)
+5. Routing-Komplexität durch dualen Ansatz (file-based + code-based)
    - Impact: mittel (Fehlkonfiguration/Bundling-Fehler)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: klare Source-of-Truth Regeln und mehr Routing-Tests; die produktive Auth-Registry ist inzwischen auf `packages/routing` konsolidiert, Rest-Risiko bleibt für generelle Route-Komposition
 
-4. Observability-Abhängigkeit von korrekter Initialisierung
+6. Observability-Abhängigkeit von korrekter Initialisierung
    - Impact: mittel (blinde Flecken im Betrieb)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: robuste Startup-Checks und automatische Verifikation der OTEL-Pipeline
 
-5. Dokumentationsdrift bei schnell wandelnden Architekturteilen
+7. Dokumentationsdrift bei schnell wandelnden Architekturteilen
    - Impact: mittel
    - Wahrscheinlichkeit: hoch
    - Maßnahme: Doku-Agent Reviews bei Proposal/PR verpflichtend nutzen
 
-6. Globaler Pending-basierter Initial-Loading-Zustand in der Root-Shell
+8. Globaler Pending-basierter Initial-Loading-Zustand in der Root-Shell
    - Impact: mittel (inkonsistente Wahrnehmung bei langsamen/ schnellen Backends)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Loading-Orchestrierung an echte Pending-/Datenzustände koppeln
 
-7. Statisch verdrahtete Shell-Navigation
+9. Statisch verdrahtete Shell-Navigation
    - Impact: mittel (höhere Kopplung, schlechtere Erweiterbarkeit)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Navigationsziele schrittweise über deklarative Route-/Plugin-Metadaten speisen
 
-8. i18n-Schulden in UI-Texten
+10. i18n-Schulden in UI-Texten
    - Impact: mittel (A11y-/Lokalisierungsqualität)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: UI-Texte konsistent über Übersetzungsschlüssel (`t('key')`) verwalten
 
-9. Governance-Workflow-Komplexität (Approval, Delegation, Impersonation)
+11. Governance-Workflow-Komplexität (Approval, Delegation, Impersonation)
    - Impact: hoch (Fehlfreigaben oder Restberechtigungen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: harte Gates, Negativtests, Ablauf-/Widerrufstests, verpflichtendes Runbook
 
-10. Keycloak-Integrationsdrift bei Claims/Sessionvalidierung
+12. Keycloak-Integrationsdrift bei Claims/Sessionvalidierung
    - Impact: hoch (inkonsistente Identitäts-/Autorisierungskette)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: stabile Claim-Mappings (`sub`, Rollen/Groups), Korrelation in Audit-Events, Integrationstests
 
-11. Scope-Bleeding zwischen IAM-Child-Changes
+13. Scope-Bleeding zwischen IAM-Child-Changes
    - Impact: hoch (unklare Verantwortlichkeit, Architekturdrift, regressionsanfällige Implementierung)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Child-spezifische Delta-Specs strikt einhalten, Scope im PR gegen Masterplan prüfen, Review-Gates vor Implementierungsstart erzwingen
 
-12. Frontend-Task-Drift zwischen Paket-Skripten und Nx-Targets
+14. Frontend-Task-Drift zwischen Paket-Skripten und Nx-Targets
    - Impact: mittel (uneinheitliche lokale Läufe, unvollständige Cache-Invalidierung, CI-Abweichungen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: `sva-studio-react`-Standard-Tasks ausschließlich über dokumentierte Nx-Targets betreiben und Änderungen an Vite/Vitest/Playwright-Konfiguration immer gegen `inputs`/`outputs` prüfen
 
-13. Hohe strukturelle Komplexität in zentralen IAM- und Routing-Modulen
+15. Hohe strukturelle Komplexität in zentralen IAM- und Routing-Modulen
    - Impact: hoch (Refactorings werden riskant, Sicherheits- und Routing-Fehler bleiben schwer lokalisierbar)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: `complexity-gate`, ticketpflichtige tracked findings, Hotspot-Coverage für kritische Dateien
 
-14. Registry-Cache aktuell nur als L1 im App-Prozess
+16. Registry-Cache aktuell nur als L1 im App-Prozess
    - Impact: mittel (mehr DB-Last oder inkonsistente Sicht bei mehreren Prozessen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Redis-L2-Cache oder NOTIFY-basierte Cross-Process-Invalidierung als Folgearbeit bewerten
 
-15. Re-Authentisierung für Instanzmutationen aktuell nur als schlanker technischer Nachweis modelliert
+17. Re-Authentisierung für Instanzmutationen aktuell nur als schlanker technischer Nachweis modelliert
    - Impact: mittel bis hoch (Sicherheitsniveau hängt an nachgelagerten Integrationsschritten)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Session-seitig frische Reauth-Zeitmarke und serverseitige Prüfung als nächste Härtung einführen
 
-14. Übergangsphase mit modularen Fassaden und verbleibenden `core.ts`-Hotspots
+18. Übergangsphase mit modularen Fassaden und verbleibenden `core.ts`-Hotspots
    - Impact: mittel bis hoch (Reviewer müssen zwischen stabiler API und Restschuld-Kern unterscheiden)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: Restschuld nur mit `QUAL-*`-Ticket, klare Doku der Modulgrenzen und inkrementelle Weiterzerlegung
 
-15. Gemischte Token- und Direktfarben im Frontend
+19. Gemischte Token- und Direktfarben im Frontend
    - Impact: mittel (visuelle Inkonsistenz, erschwerte Theme-Pflege)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: Shell zuerst vollständig auf semantische Tokens umstellen und Route-Flächen schrittweise nachziehen
 
-16. Theme-Drift zwischen `instanceId`-Auflösung und realem Branding-Bedarf
+20. Theme-Drift zwischen `instanceId`-Auflösung und realem Branding-Bedarf
    - Impact: mittel bis hoch (falsches Branding pro Instanz)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Theme-Mapping zentral halten, Unknown-Fallback definieren und Varianten nur kontrolliert erweitern
 
-17. Prozesslokale Cache-Skalierung in der Mainserver-Integration
+21. Prozesslokale Cache-Skalierung in der Mainserver-Integration
    - Impact: mittel bis hoch (uneinheitliche Warm-Path-Latenz, erhöhter Speicherverbrauch bei vielen Nutzern)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: LRU-begrenzte In-Memory-Caches, Debug-Logs für Hit/Miss, Benchmark vor Produktivbetrieb und ggf. Redis-basierter Shared Cache als Folgearbeit

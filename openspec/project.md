@@ -10,7 +10,7 @@ SVA Studio (ehemals "CMS 2.0") modernisiert das Redaktionssystem der Smart Villa
 - DSGVO-konform, sicher, erweiterbar durch Plugin-Architektur
 
 ## Tech Stack
-- **Monorepo:** Nx (Integrated Monorepo Setup) mit pnpm (>=9.12.2)
+- **Monorepo:** Nx (Integrated Monorepo Setup) mit pnpm (>=11.3.0)
 - **Runtime:** Node.js (LTS, empfohlen via `.nvmrc`/`.node-version`)
 - **Frontend:** TypeScript, React, Vite, TanStack Router, Tailwind CSS
 - **Backend:** Node.js, GraphQL API (externe Smart Village App Backend, wird punktuell erweitert)

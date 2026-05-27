@@ -4,7 +4,7 @@
 
 ### Voraussetzungen
 - Node.js (LTS, empfohlen über `.nvmrc` oder `.node-version`)
-- pnpm (>= 9.12.2)
+- pnpm (>= 11.3.0)
 
 ### Abhängigkeiten installieren (Repo-Root)
 

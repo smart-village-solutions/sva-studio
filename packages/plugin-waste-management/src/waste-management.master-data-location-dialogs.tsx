@@ -4,6 +4,7 @@ import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogFooter, 
 import React from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 
+import { applyCollectionLocationFormPatch, getCollectionLocationDialogText } from './waste-management.master-data-location-dialogs.helpers.js';
 import { useResetOnFormContextChange } from './waste-management.master-data-entity-dialogs.shared.js';
 import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
@@ -60,33 +61,14 @@ export const CollectionLocationDialog = ({ open, mode, form, regions, cities, st
   const filteredStreets = formValues.cityId ? streets.filter((street) => street.cityId === formValues.cityId) : [];
   const filteredHouseNumbers = formValues.streetId ? houseNumbers.filter((houseNumber) => houseNumber.streetId === formValues.streetId) : [];
   const handleFormChange = (patch: Partial<CollectionLocationFormState>) => {
-    for (const [key, value] of Object.entries(patch) as Array<[keyof CollectionLocationFormState, CollectionLocationFormState[keyof CollectionLocationFormState]]>) {
-      setValue(key, value, {
-        shouldDirty: true,
-        shouldTouch: true,
-        shouldValidate: true,
-      });
-    }
+    applyCollectionLocationFormPatch(setValue, patch);
     onChange(patch);
   };
   const submitForm = handleSubmit(async (values) => {
     await onSubmit(values);
   });
-  const title =
-    mode === 'create'
-      ? pt('masterData.collectionLocations.dialog.createTitle')
-      : pt('masterData.collectionLocations.dialog.editTitle');
-  const description =
-    mode === 'create'
-      ? pt('masterData.collectionLocations.dialog.createDescription')
-      : pt('masterData.collectionLocations.dialog.editDescription');
+  const { description, submitLabel, title } = getCollectionLocationDialogText(pt, mode, saving);
   const activeLabel = formValues.active ? pt('common.active') : pt('common.inactive');
-  let submitLabel = pt('masterData.collectionLocations.actions.save');
-  if (saving) {
-    submitLabel = pt('masterData.collectionLocations.actions.saving');
-  } else if (mode === 'create') {
-    submitLabel = pt('masterData.collectionLocations.actions.create');
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

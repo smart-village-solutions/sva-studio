@@ -25,6 +25,7 @@ Nicht verwenden für:
 
 - reguläre lokale Standardentwicklung gegen `de-musterhausen`
 - Acceptance- oder Swarm-Serverdeployments
+- normale tägliche `pnpm env:up:local-keycloak`-Starts gegen ein bereits fertig konfiguriertes System
 
 Für die reguläre lokale Standardentwicklung gilt stattdessen:
 
@@ -192,11 +193,12 @@ Der Login-Pfad der App liest den Ziel-Realm lokal trotzdem aus der Instanz-Regis
 
 Für Tenant-Hosts reicht die Registry-Auflösung allein nicht: Zusätzlich muss das tenant-spezifische `auth_client_secret` für die Zielinstanz vorhanden und lesbar sein. Fehlt dieses Secret, blockiert der Login-Pfad bewusst fail-closed statt auf das globale Plattform-Secret auszuweichen.
 
-Wenn dieselbe lokale Umgebung später über `pnpm env:up:local-keycloak` gegen `studio.localhost` reconciled wird, gilt für geschützte Identitätsfelder standardmäßig ein non-destruktiver Vertrag:
+Wenn dieselbe lokale Umgebung später regulär über `pnpm env:up:local-keycloak` gegen `studio.localhost` gestartet wird, gilt für die Instanz-Registry jetzt ein read-only Vertrag:
 
 - bestehende abweichende Werte werden nur als Drift gemeldet
-- fehlende Werte dürfen aufgefüllt werden
-- autoritative Korrekturen laufen nur explizit über `SVA_LOCAL_INSTANCE_IDENTITY_RECONCILE_MODE=authoritative`
+- der Standardstart schreibt keine Identitätsfelder und keine Hostname-Primärzuordnung mehr zurück
+- Korrekturen laufen nur explizit über `pnpm env:reconcile:local-instance-registry`
+- autoritative Korrekturen laufen dabei nur explizit über `SVA_LOCAL_INSTANCE_IDENTITY_RECONCILE_MODE=authoritative`
 - für staging-nahe oder CI-nahe lokale Prüfpfade kann `SVA_LOCAL_INSTANCE_IDENTITY_DRIFT_MODE=fail` gesetzt werden
 
 ## Empfohlene Optionen

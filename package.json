@@ -59,6 +59,7 @@
     "env:smoke:local-keycloak": "tsx scripts/ops/runtime-env.ts smoke local-keycloak",
     "env:migrate:local-keycloak": "tsx scripts/ops/runtime-env.ts migrate local-keycloak",
     "env:doctor:local-keycloak": "tsx scripts/ops/runtime-env.ts doctor local-keycloak",
+    "env:reconcile:local-instance-registry": "tsx scripts/ops/runtime-env.ts reconcile local-keycloak",
     "env:bind:local-user": "tsx scripts/ops/bind-local-user.ts",
     "env:bootstrap:local-instance-db": "tsx scripts/ops/bootstrap-local-instance-db.ts",
     "env:delete:local-instance-db": "tsx scripts/ops/delete-local-instance-db.ts",

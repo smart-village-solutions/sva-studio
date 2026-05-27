@@ -121,6 +121,15 @@ export const evaluateLocalInstanceRegistryIdentityDrift = (
   });
 };
 
+export const buildLocalInstanceRegistryIdentitySelectSql = (
+  input: Pick<LocalInstanceRegistryReconciliationInput, 'allowedInstanceIds'>
+): string => `SELECT COALESCE(json_agg(row_to_json(instance_rows) ORDER BY instance_rows.id), '[]'::json)::text
+FROM (
+  SELECT id, parent_domain, primary_hostname, auth_client_id, auth_realm, tenant_admin_client_id
+  FROM iam.instances
+  WHERE id = ANY(ARRAY[${input.allowedInstanceIds.map((instanceId) => sqlLiteral(instanceId)).join(', ')}]::text[])
+) AS instance_rows;`;
+
 export const buildLocalInstanceRegistryReconciliationSql = (
   input: LocalInstanceRegistryReconciliationInput
 ): string => {

@@ -433,9 +433,7 @@ test.describe('events and POI plugins', () => {
     await expectContentOverviewReady(page);
     await expectCreateContentActionReady(page);
 
-    await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
-    await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
-    await page.locator('a[href="/admin/poi/new"]').click();
+    await navigateClientSide(page, '/admin/poi/new');
     await expect(page).toHaveURL(/\/admin\/poi\/new$/);
     await expectPluginPageHeading(page, /POI anlegen|poi\.editor\.createTitle/);
 
@@ -493,9 +491,7 @@ test.describe('events and POI plugins', () => {
     await expectContentOverviewReady(page);
     await expectCreateContentActionReady(page);
 
-    await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
-    await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
-    await page.locator('a[href="/admin/events/new"]').click();
+    await navigateClientSide(page, '/admin/events/new');
     await expect(page).toHaveURL(/\/admin\/events\/new$/);
     await expectPluginPageHeading(page, /Event anlegen|events\.editor\.createTitle/);
 

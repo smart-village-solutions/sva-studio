@@ -50,9 +50,32 @@ const privacyOverviewPayload = {
 };
 
 const navigateClientSide = async (page: Page, targetPath: string) => {
-  await page.evaluate((path) => {
-    window.history.pushState({}, '', path);
-    window.dispatchEvent(new PopStateEvent('popstate'));
+  await page.waitForFunction(() => {
+    return Boolean(
+      (
+        window as typeof window & {
+          __SVA_PLAYWRIGHT_ROUTER__?: {
+            navigate: (options: { to: string }) => Promise<void> | void;
+          };
+        }
+      ).__SVA_PLAYWRIGHT_ROUTER__
+    );
+  });
+
+  await page.evaluate(async (path) => {
+    const router = (
+      window as typeof window & {
+        __SVA_PLAYWRIGHT_ROUTER__?: {
+          navigate: (options: { to: string }) => Promise<void> | void;
+        };
+      }
+    ).__SVA_PLAYWRIGHT_ROUTER__;
+
+    if (!router) {
+      throw new Error('Playwright router hook fehlt.');
+    }
+
+    await router.navigate({ to: path });
   }, targetPath);
 };
 

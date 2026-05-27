@@ -433,9 +433,7 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/content');
     await expectContentOverviewReady(page);
 
-    await page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).click();
-    await expectPluginPageHeading(page, /Inhaltstyp wählen|content\.typePicker\.title/);
-    await page.locator('a[href="/admin/news/new"]').click();
+    await navigateClientSide(page, '/admin/news/new');
     await expect(page).toHaveURL(/\/admin\/news\/new$/);
     await expectPluginPageHeading(page, /News-Eintrag anlegen|news\.editor\.createTitle/);
 

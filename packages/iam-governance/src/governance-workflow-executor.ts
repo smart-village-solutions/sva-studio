@@ -44,6 +44,11 @@ export type GovernanceWorkflowExecutorDeps = {
   readonly buildLogContext: (instanceId?: string) => Record<string, unknown>;
 };
 
+type GovernanceOperationResult = Readonly<{
+  eventType: string;
+  operation: GovernanceOperation;
+}>;
+
 const resolvePermissionKeyForRole = async (
   client: QueryClient,
   input: { instanceId: string; roleId: string }
@@ -80,6 +85,56 @@ const resolveActorAccountId = (
     instanceId: actor.instanceId,
     keycloakSubject: actor.keycloakSubject,
   });
+
+const resolvePermissionChangeDecision = (
+  approval: string
+): Readonly<{
+  nextStatus: 'approved' | 'rejected';
+  reasonCode: GovernanceWorkflowResponse['reasonCode'];
+  result: 'success' | 'failure';
+}> => {
+  if (approval === 'rejected') {
+    return {
+      nextStatus: 'rejected',
+      reasonCode: 'DENY_POLICY_CONFLICT_RESTRICTIVE_WINS',
+      result: 'failure',
+    };
+  }
+
+  return {
+    nextStatus: 'approved',
+    reasonCode: undefined,
+    result: 'success',
+  };
+};
+
+const resolveDelegationEventMetadata = (status: 'active' | 'requested') => {
+  if (status === 'active') {
+    return {
+      action: 'delegation_create',
+      eventType: 'governance_delegation_created',
+    };
+  }
+
+  return {
+    action: 'delegation_request',
+    eventType: 'governance_delegation_requested',
+  };
+};
+
+const resolveLegalAcceptanceMetadata = (revoked: boolean): GovernanceOperationResult => {
+  if (revoked) {
+    return {
+      operation: 'revoke_legal_acceptance',
+      eventType: 'governance_legal_acceptance_revoked',
+    };
+  }
+
+  return {
+    operation: 'accept_legal_text',
+    eventType: 'governance_legal_accepted',
+  };
+};
 
 const emitGovernanceAuditEvent = async (
   deps: GovernanceWorkflowExecutorDeps,
@@ -295,7 +350,7 @@ LIMIT 1;
     return { operation: 'approve_permission_change', status: 'error', reasonCode: 'invalid_request' };
   }
 
-  const nextStatus = approval === 'rejected' ? 'rejected' : 'approved';
+  const decision = resolvePermissionChangeDecision(approval);
   await client.query(
     `
 UPDATE iam.permission_change_requests
@@ -309,7 +364,7 @@ SET
 WHERE id = $1
   AND instance_id = $2;
 `,
-    [requestId, actor.instanceId, nextStatus, approverAccountId, readString(payload.reason) ?? null]
+    [requestId, actor.instanceId, decision.nextStatus, approverAccountId, readString(payload.reason) ?? null]
   );
 
   await emitGovernanceAuditEvent(deps, client, {
@@ -317,10 +372,10 @@ WHERE id = $1
     actorAccountId: approverAccountId,
     actorSubject: actor.keycloakSubject,
     targetRef: requestId,
-    eventType: `governance_permission_change_${nextStatus}`,
-    action: `permission_change_${nextStatus}`,
-    result: nextStatus === 'approved' ? 'success' : 'failure',
-    reasonCode: nextStatus === 'approved' ? undefined : 'DENY_POLICY_CONFLICT_RESTRICTIVE_WINS',
+    eventType: `governance_permission_change_${decision.nextStatus}`,
+    action: `permission_change_${decision.nextStatus}`,
+    result: decision.result,
+    reasonCode: decision.reasonCode,
     requestId: actor.requestId,
     traceId: actor.traceId,
   });
@@ -486,6 +541,7 @@ RETURNING id;
     return { operation: 'create_delegation', status: 'error', reasonCode: 'database_unavailable' };
   }
 
+  const delegationEvent = resolveDelegationEventMetadata(status);
   await emitGovernanceAuditEvent(deps, client, {
     instanceId: actor.instanceId,
     actorAccountId: delegatorAccountId,
@@ -493,15 +549,15 @@ RETURNING id;
     targetSubject: delegateeSubject,
     targetRef: workflowId,
     ticketId,
-    eventType: status === 'active' ? 'governance_delegation_created' : 'governance_delegation_requested',
-    action: status === 'active' ? 'delegation_create' : 'delegation_request',
+    eventType: delegationEvent.eventType,
+    action: delegationEvent.action,
     result: 'success',
     requestId: actor.requestId,
     traceId: actor.traceId,
   });
 
   deps.logWarn('Delegation workflow event', {
-    operation: status === 'active' ? 'delegation_create' : 'delegation_request',
+    operation: delegationEvent.action,
     delegation_id: workflowId,
     actor_pseudonym: pseudonymizeGovernanceSubject(delegatorSubject),
     target_pseudonym: pseudonymizeGovernanceSubject(delegateeSubject),
@@ -782,6 +838,74 @@ const calculateImpersonationDurationSeconds = (
   return Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 1000));
 };
 
+const resolveActiveImpersonationSession = async (
+  client: QueryClient,
+  input: {
+    actorAccountId: string;
+    instanceId: string;
+    targetAccountId: string;
+  }
+) =>
+  client.query<{ id: string; expires_at: string; ticket_id: string }>(
+    `
+SELECT id, expires_at, ticket_id
+FROM iam.impersonation_sessions
+WHERE instance_id = $1
+  AND actor_account_id = $2
+  AND target_account_id = $3
+  AND status = 'active'
+ORDER BY started_at DESC
+LIMIT 1;
+`,
+    [input.instanceId, input.actorAccountId, input.targetAccountId]
+  );
+
+const expireImpersonationSession = async (
+  deps: GovernanceWorkflowExecutorDeps,
+  client: QueryClient,
+  input: {
+    actorAccountId: string;
+    actorKeycloakSubject: string;
+    instanceId: string;
+    sessionId: string;
+    targetKeycloakSubject: string;
+    ticketId: string;
+  }
+): Promise<{ ok: false; reasonCode: 'DENY_IMPERSONATION_DURATION_EXCEEDED' }> => {
+  await client.query(
+    `
+UPDATE iam.impersonation_sessions
+SET status = 'expired', ended_at = now(), termination_reason = 'timeout', updated_at = now()
+WHERE id = $1
+  AND instance_id = $2;
+`,
+    [input.sessionId, input.instanceId]
+  );
+
+  deps.logWarn('Impersonation session expired', {
+    operation: 'impersonate_timeout',
+    ticket_id: input.ticketId,
+    ...deps.buildLogContext(input.instanceId),
+  });
+
+  await emitGovernanceAuditEvent(deps, client, {
+    instanceId: input.instanceId,
+    actorAccountId: input.actorAccountId,
+    actorSubject: input.actorKeycloakSubject,
+    targetSubject: input.targetKeycloakSubject,
+    targetRef: input.sessionId,
+    ticketId: input.ticketId,
+    eventType: 'governance_impersonation_expired',
+    action: 'impersonation_timeout',
+    result: 'failure',
+    reasonCode: 'DENY_IMPERSONATION_DURATION_EXCEEDED',
+    requestId: getWorkspaceContext().requestId,
+    traceId: getWorkspaceContext().traceId,
+  });
+
+  return { ok: false, reasonCode: 'DENY_IMPERSONATION_DURATION_EXCEEDED' };
+};
+
 type WorkflowHandler = (
   client: QueryClient,
   actor: GovernanceActor,
@@ -795,12 +919,13 @@ const acceptLegalText = async (
   payload: Record<string, unknown>,
   revoked: boolean
 ): Promise<GovernanceWorkflowResponse> => {
+  const legalAcceptance = resolveLegalAcceptanceMetadata(revoked);
   const legalTextId = readString(payload.legalTextId);
   const legalTextVersion = readString(payload.legalTextVersion);
   const locale = readString(payload.locale) ?? 'de-DE';
   if (!legalTextId || !legalTextVersion) {
     return {
-      operation: revoked ? 'revoke_legal_acceptance' : 'accept_legal_text',
+      operation: legalAcceptance.operation,
       status: 'error',
       reasonCode: 'invalid_request',
     };
@@ -812,7 +937,7 @@ const acceptLegalText = async (
   });
   if (!actorAccountId) {
     return {
-      operation: revoked ? 'revoke_legal_acceptance' : 'accept_legal_text',
+      operation: legalAcceptance.operation,
       status: 'error',
       reasonCode: 'unauthorized',
     };
@@ -835,7 +960,7 @@ LIMIT 1;
   const legalVersionId = versionLookup.rows[0]?.id;
   if (!legalVersionId) {
     return {
-      operation: revoked ? 'revoke_legal_acceptance' : 'accept_legal_text',
+      operation: legalAcceptance.operation,
       status: 'error',
       reasonCode: 'legal_text_version_not_active',
     };
@@ -887,21 +1012,19 @@ WHERE instance_id = $1
     );
   }
 
-  const operation = revoked ? 'revoke_legal_acceptance' : 'accept_legal_text';
-  const eventType = revoked ? 'governance_legal_acceptance_revoked' : 'governance_legal_accepted';
   await emitGovernanceAuditEvent(deps, client, {
     instanceId: actor.instanceId,
     actorAccountId,
     actorSubject: actor.keycloakSubject,
     targetRef: `${legalTextId}:${legalTextVersion}:${locale}`,
-    eventType,
-    action: operation,
+    eventType: legalAcceptance.eventType,
+    action: legalAcceptance.operation,
     result: 'success',
     requestId: actor.requestId,
     traceId: actor.traceId,
   });
 
-  return { operation, status: 'ok', workflowId: legalVersionId };
+  return { operation: legalAcceptance.operation, status: 'ok', workflowId: legalVersionId };
 };
 
 export const createGovernanceWorkflowExecutor = (deps: GovernanceWorkflowExecutorDeps) => ({
@@ -954,19 +1077,11 @@ export const createGovernanceWorkflowExecutor = (deps: GovernanceWorkflowExecuto
           return { ok: false, reasonCode: 'DENY_INSTANCE_SCOPE_MISMATCH' } as const;
         }
 
-        const active = await client.query<{ id: string; expires_at: string; ticket_id: string }>(
-          `
-SELECT id, expires_at, ticket_id
-FROM iam.impersonation_sessions
-WHERE instance_id = $1
-  AND actor_account_id = $2
-  AND target_account_id = $3
-  AND status = 'active'
-ORDER BY started_at DESC
-LIMIT 1;
-`,
-          [input.instanceId, actorAccountId, targetAccountId]
-        );
+        const active = await resolveActiveImpersonationSession(client, {
+          actorAccountId,
+          instanceId: input.instanceId,
+          targetAccountId,
+        });
         if (active.rowCount <= 0) {
           return { ok: false, reasonCode: 'DENY_TICKET_REQUIRED' } as const;
         }
@@ -977,38 +1092,14 @@ LIMIT 1;
 
         const expiresAt = new Date(session.expires_at);
         if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
-          await client.query(
-            `
-UPDATE iam.impersonation_sessions
-SET status = 'expired', ended_at = now(), termination_reason = 'timeout', updated_at = now()
-WHERE id = $1
-  AND instance_id = $2;
-`,
-            [session.id, input.instanceId]
-          );
-
-          deps.logWarn('Impersonation session expired', {
-            operation: 'impersonate_timeout',
-            ticket_id: session.ticket_id,
-            ...deps.buildLogContext(input.instanceId),
-          });
-
-          await emitGovernanceAuditEvent(deps, client, {
-            instanceId: input.instanceId,
+          return expireImpersonationSession(deps, client, {
             actorAccountId,
-            actorSubject: input.actorKeycloakSubject,
-            targetSubject: input.targetKeycloakSubject,
-            targetRef: session.id,
+            actorKeycloakSubject: input.actorKeycloakSubject,
+            instanceId: input.instanceId,
+            sessionId: session.id,
+            targetKeycloakSubject: input.targetKeycloakSubject,
             ticketId: session.ticket_id,
-            eventType: 'governance_impersonation_expired',
-            action: 'impersonation_timeout',
-            result: 'failure',
-            reasonCode: 'DENY_IMPERSONATION_DURATION_EXCEEDED',
-            requestId: getWorkspaceContext().requestId,
-            traceId: getWorkspaceContext().traceId,
           });
-
-          return { ok: false, reasonCode: 'DENY_IMPERSONATION_DURATION_EXCEEDED' } as const;
         }
 
         return { ok: true } as const;

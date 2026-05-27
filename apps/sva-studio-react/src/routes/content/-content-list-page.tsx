@@ -1,6 +1,7 @@
 import {
   withServerDeniedContentAccess,
   type IamContentAccessSummary,
+  type IamContentListItem,
   type IamContentListQuery,
 } from '@sva/core';
 import { deleteEvent } from '@sva/plugin-events';
@@ -49,6 +50,10 @@ type ContentListRouteState = Readonly<{
 type SortStateLike = Readonly<{
   field?: unknown;
   direction?: unknown;
+}>;
+type RegisteredContentRow = IamContentListItem & Readonly<{
+  typeLabel: string;
+  editPath: string;
 }>;
 
 const contentAdminResource = appAdminResources.find((resource) => resource.resourceId === 'content');
@@ -184,36 +189,44 @@ const normalizeSortState = (value: unknown): ContentListSortState | undefined =>
   return undefined;
 };
 
-const readNormalizedRouteState = (search: RouteSearchState): ContentListRouteState => {
-  const normalizedFilters = asRouteSearchState(search.filters);
-  const normalizedSearch = typeof search.search === 'string' ? search.search : typeof search.q === 'string' ? search.q : '';
-  const pageSizeDefault = contentPagination?.defaultPageSize ?? 25;
+const resolveRouteSearchText = (search: RouteSearchState): string => {
+  if (typeof search.search === 'string') {
+    return search.search;
+  }
+  return typeof search.q === 'string' ? search.q : '';
+};
 
-  const fallbackSort = contentSorting
+const resolveFallbackSortState = (): ContentListSortState | undefined =>
+  contentSorting
     ? {
         field: contentSorting.defaultField,
         direction: contentSorting.defaultDirection,
       }
     : undefined;
 
+const resolveRouteSortState = (search: RouteSearchState): ContentListSortState | undefined => {
+  const sortFromExplicitParams =
+    typeof search.sortBy === 'string'
+      ? normalizeSortState({
+          field: search.sortBy,
+          direction: search.sortDirection,
+        })
+      : undefined;
+
+  return sortFromExplicitParams ?? normalizeSortState(search.sort) ?? normalizeSortState(search.sorting);
+};
+
+const readNormalizedRouteState = (search: RouteSearchState): ContentListRouteState => {
+  const normalizedFilters = asRouteSearchState(search.filters);
+  const pageSizeDefault = contentPagination?.defaultPageSize ?? 25;
+
   return {
-    search: normalizedSearch,
+    search: resolveRouteSearchText(search),
     type: normalizeTypeFilter(normalizedFilters?.type ?? search.type),
     status: normalizeStatusFilter(normalizedFilters?.status ?? search.status),
     page: normalizePositiveInteger(search.page, 1),
     pageSize: normalizePositiveInteger(search.pageSize, pageSizeDefault),
-    sort:
-      normalizeSortState(
-        typeof search.sortBy === 'string'
-          ? {
-              field: search.sortBy,
-              direction: search.sortDirection,
-            }
-          : undefined
-      ) ??
-      normalizeSortState(search.sort) ??
-      normalizeSortState(search.sort ?? search.sorting) ??
-      fallbackSort,
+    sort: resolveRouteSortState(search) ?? resolveFallbackSortState(),
   };
 };
 
@@ -298,6 +311,93 @@ const deleteMainserverItem = async (contentType: string, contentId: string): Pro
   }
 };
 
+const resolveContentSortField = (routeSortField: string | undefined): IamContentListQuery['sortBy'] => {
+  switch (routeSortField) {
+    case 'contentType':
+    case 'title':
+    case 'status':
+    case 'updatedAt':
+      return routeSortField;
+    default:
+      return 'updatedAt';
+  }
+};
+
+const resolveRowActionIcon = (access: IamContentAccessSummary): React.ReactNode => {
+  if (access.canUpdate) {
+    return <IconEdit aria-hidden="true" className="h-4 w-4" />;
+  }
+  if (access.canRead) {
+    return <IconEye aria-hidden="true" className="h-4 w-4" />;
+  }
+  return <IconXboxX aria-hidden="true" className="h-4 w-4 text-destructive" />;
+};
+
+const ContentRowActions = ({
+  item,
+  listError,
+  permissionActions,
+  onDelete,
+}: Readonly<{
+  item: RegisteredContentRow;
+  listError: IamHttpError | null;
+  permissionActions: readonly string[] | undefined;
+  onDelete: (contentType: string, contentId: string) => Promise<void>;
+}>) => {
+  const access = resolveRowAccess(item.access, listError);
+  const actionLabel = resolveRowActionLabel(access);
+  const canDelete = canDeleteMainserverItem(item.contentType, permissionActions);
+  const actionIcon = resolveRowActionIcon(access);
+
+  const handleDelete = () => {
+    if (!canDelete || !window.confirm(t('content.actions.deleteConfirm'))) {
+      return;
+    }
+
+    void onDelete(item.contentType, item.id).catch(() => undefined);
+  };
+
+  return (
+    <>
+      {access.canRead ? (
+        <Button
+          asChild
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
+        >
+          <Link to={item.editPath} aria-label={actionLabel}>
+            {actionIcon}
+          </Link>
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
+          aria-label={actionLabel}
+          disabled
+        >
+          {actionIcon}
+        </Button>
+      )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
+        aria-label={t('content.actions.delete')}
+        disabled={!canDelete}
+        onClick={handleDelete}
+      >
+        <IconTrash aria-hidden="true" className="h-4 w-4 text-destructive" />
+      </Button>
+    </>
+  );
+};
+
 const ContentPaginationNav = ({
   page,
   pageCount,
@@ -365,14 +465,7 @@ export const ContentListPage = () => {
       ...(routeState.type !== 'all' ? { type: routeState.type } : {}),
       ...(routeState.status !== 'all' ? { status: routeState.status } : {}),
       visibleTypes: readableContentTypes.map((definition) => definition.contentType),
-      sortBy:
-        routeSortField === 'contentType'
-          ? 'contentType'
-          : routeSortField === 'title' ||
-              routeSortField === 'status' ||
-              routeSortField === 'updatedAt'
-            ? routeSortField
-            : 'updatedAt',
+      sortBy: resolveContentSortField(routeSortField),
       sortDirection: routeSortDirection ?? 'desc',
     }),
     [
@@ -431,7 +524,15 @@ export const ContentListPage = () => {
     [navigate]
   );
 
-  const contentColumns = React.useMemo<readonly StudioColumnDef<(typeof registeredContents)[number]>[]>(
+  const handleDeleteContent = React.useCallback(
+    async (contentType: string, contentId: string) => {
+      await deleteMainserverItem(contentType, contentId);
+      await contentsApi.refetch();
+    },
+    [contentsApi]
+  );
+
+  const contentColumns = React.useMemo<readonly StudioColumnDef<RegisteredContentRow>[]>(
     () => [
       {
         id: 'title',
@@ -618,65 +719,14 @@ export const ContentListPage = () => {
               />
             </div>
           }
-          rowActions={(item) => {
-            const access = resolveRowAccess(item.access, contentsApi.error);
-            const actionLabel = resolveRowActionLabel(access);
-            const canDelete = canDeleteMainserverItem(item.contentType, contentAccessApi.permissionActions);
-            const actionIcon = access.canUpdate ? (
-              <IconEdit aria-hidden="true" className="h-4 w-4" />
-            ) : access.canRead ? (
-              <IconEye aria-hidden="true" className="h-4 w-4" />
-            ) : (
-              <IconXboxX aria-hidden="true" className="h-4 w-4 text-destructive" />
-            );
-
-            return (
-              <>
-                {access.canRead ? (
-                  <Button
-                    asChild
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-                  >
-                    <Link to={item.editPath} aria-label={actionLabel}>
-                      {actionIcon}
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
-                    aria-label={actionLabel}
-                    disabled
-                  >
-                    {actionIcon}
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
-                  aria-label={t('content.actions.delete')}
-                  disabled={!canDelete}
-                  onClick={() => {
-                    if (!canDelete || !window.confirm(t('content.actions.deleteConfirm'))) {
-                      return;
-                    }
-                    void deleteMainserverItem(item.contentType, item.id)
-                      .then(() => contentsApi.refetch())
-                      .catch(() => undefined);
-                  }}
-                >
-                  <IconTrash aria-hidden="true" className="h-4 w-4 text-destructive" />
-                </Button>
-              </>
-            );
-          }}
+          rowActions={(item) => (
+            <ContentRowActions
+              item={item}
+              listError={contentsApi.error}
+              permissionActions={contentAccessApi.permissionActions}
+              onDelete={handleDeleteContent}
+            />
+          )}
         />
       </section>
     </section>

@@ -195,6 +195,55 @@ const createContentFormSchema = (originalPublishedAt?: string) =>
 const toDeniedAccess = (errorCode: IamHttpError['code'] | undefined): IamContentAccessSummary | null =>
   errorCode === 'forbidden' ? withServerDeniedContentAccess(undefined) : null;
 
+const resolveActiveAccess = ({
+  mode,
+  content,
+  detailErrorCode,
+  createAccess,
+  activeErrorCode,
+}: {
+  mode: ContentEditorPageProps['mode'];
+  content: ReturnType<typeof useContentDetail>['content'];
+  detailErrorCode: IamHttpError['code'] | undefined;
+  createAccess: IamContentAccessSummary | null | undefined;
+  activeErrorCode: IamHttpError['code'] | undefined;
+}): IamContentAccessSummary | null => {
+  if (mode === 'edit') {
+    return content?.access ?? toDeniedAccess(detailErrorCode);
+  }
+
+  return createAccess ?? toDeniedAccess(activeErrorCode);
+};
+
+const isEditorActionDisabled = ({
+  mode,
+  activeAccess,
+  activeErrorCode,
+}: {
+  mode: ContentEditorPageProps['mode'];
+  activeAccess: IamContentAccessSummary | null;
+  activeErrorCode: IamHttpError['code'] | undefined;
+}): boolean => {
+  if (mode === 'create') {
+    return activeAccess ? !activeAccess.canCreate : activeErrorCode === 'forbidden';
+  }
+
+  return !activeAccess?.canUpdate;
+};
+
+const resolveTabPanelBody = (
+  tabId: ContentEditorTabId,
+  mode: ContentEditorPageProps['mode'],
+  history: ReturnType<typeof useContentDetail>['history'],
+  renderGeneralTabPanel: () => React.JSX.Element
+): React.JSX.Element => {
+  if (tabId === 'general') {
+    return renderGeneralTabPanel();
+  }
+
+  return renderContentHistory({ mode, history });
+};
+
 const collectSummaryErrors = (
   fields: readonly ReturnType<typeof getStudioFormFieldProps>[]
 ): readonly StudioFormFieldError[] =>
@@ -287,21 +336,21 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
   const isLoading = mode === 'create' ? false : detailApi.isLoading;
   const content = detailApi.content;
 
-  const activeAccess = (() => {
-    if (mode === 'edit') {
-      return content?.access ?? toDeniedAccess(detailApi.error?.code);
-    }
-    return contentAccessApi.access ?? toDeniedAccess(activeError?.code);
-  })();
+  const activeAccess = resolveActiveAccess({
+    mode,
+    content,
+    detailErrorCode: detailApi.error?.code,
+    createAccess: contentAccessApi.access,
+    activeErrorCode: activeError?.code,
+  });
 
   const isReadOnly = mode === 'edit' && activeAccess?.canRead === true && activeAccess.canUpdate === false;
 
-  const actionsDisabled = (() => {
-    if (mode === 'create') {
-      return activeAccess ? !activeAccess.canCreate : activeError?.code === 'forbidden';
-    }
-    return !activeAccess?.canUpdate;
-  })();
+  const actionsDisabled = isEditorActionDisabled({
+    mode,
+    activeAccess,
+    activeErrorCode: activeError?.code,
+  });
 
   const statusValue = watch('status');
   const titleField = getStudioFormFieldProps({
@@ -600,12 +649,7 @@ export const ContentEditorPage = ({ mode, contentId, activeTab, onTabChange }: C
                         </div>
                       </section>
 
-                      {tabId === 'general'
-                        ? renderGeneralTabPanel()
-                        : renderContentHistory({
-                            mode,
-                            history: detailApi.history,
-                          })}
+                      {resolveTabPanelBody(tabId, mode, detailApi.history, renderGeneralTabPanel)}
                     </div>
                   </TabsContent>
                 );

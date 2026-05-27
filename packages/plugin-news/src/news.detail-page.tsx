@@ -106,6 +106,14 @@ const settingsFieldNames = [
   'fullVersion',
 ] as const;
 
+const fieldNamesByTab = {
+  basis: basisFieldNames,
+  content: contentFieldNames,
+  release: releaseFieldNames,
+  settings: settingsFieldNames,
+  history: [],
+} as const satisfies Record<NewsDetailTabId, readonly (keyof NewsDetailFormValues)[]>;
+
 const resolvePluginActionLabel = (
   pt: PluginTranslator,
   actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]
@@ -171,16 +179,27 @@ const formatDate = (value?: string) => {
   return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
-const getFieldNamesForTab = (tabId: NewsDetailTabId) =>
-  tabId === 'basis'
-    ? basisFieldNames
-    : tabId === 'content'
-      ? contentFieldNames
-      : tabId === 'release'
-        ? releaseFieldNames
-        : tabId === 'settings'
-          ? settingsFieldNames
-        : [];
+const getFieldNamesForTab = (tabId: NewsDetailTabId) => fieldNamesByTab[tabId];
+
+const getFieldsToValidate = (mode: 'create' | 'edit', tabId: NewsDetailTabId) =>
+  mode === 'create'
+    ? [...basisFieldNames, ...contentFieldNames, ...releaseFieldNames, ...settingsFieldNames]
+    : getFieldNamesForTab(tabId);
+
+const buildPartialMutationForTab = (tabId: NewsDetailTabId, values: NewsDetailFormValues) => {
+  switch (tabId) {
+    case 'basis':
+      return buildNewsBasisMutation(values);
+    case 'content':
+      return buildNewsContentMutation(values);
+    case 'release':
+      return buildNewsReleaseMutation(values);
+    case 'settings':
+      return buildNewsSettingsMutation(values);
+    case 'history':
+      return {};
+  }
+};
 
 const isDirtyFieldTree = (
   value: FieldNamesMarkedBoolean<NewsDetailFormValues> | undefined
@@ -451,10 +470,7 @@ export const NewsDetailPage = ({
   const saveTab = React.useCallback(
     async (tabId: NewsDetailTabId) => {
       setStatusMessage(null);
-      const fieldsToValidate =
-        mode === 'create'
-          ? [...basisFieldNames, ...contentFieldNames, ...releaseFieldNames, ...settingsFieldNames]
-          : getFieldNamesForTab(tabId);
+      const fieldsToValidate = getFieldsToValidate(mode, tabId);
       if (fieldsToValidate.length > 0) {
         const valid = await trigger(fieldsToValidate);
         if (!valid) {
@@ -490,16 +506,7 @@ export const NewsDetailPage = ({
           return;
         }
 
-        const mutation =
-          tabId === 'basis'
-            ? buildNewsBasisMutation(values)
-            : tabId === 'content'
-              ? buildNewsContentMutation(values)
-              : tabId === 'release'
-                ? buildNewsReleaseMutation(values)
-                : tabId === 'settings'
-                  ? buildNewsSettingsMutation(values)
-              : {};
+        const mutation = buildPartialMutationForTab(tabId, values);
 
         const hasMutationFields = Object.keys(mutation).length > 0;
         let targetId = contentId;

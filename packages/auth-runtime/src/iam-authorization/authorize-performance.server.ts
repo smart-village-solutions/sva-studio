@@ -146,8 +146,11 @@ const invalidateUserScope = async (actor: BenchmarkActor): Promise<void> => {
   await invalidateRedisPermissionSnapshots(actor.instanceId, actor.id);
 };
 
+const createFilesystemSafeIsoTimestamp = (value: Date): string =>
+  value.toISOString().replace(/:/g, '-').replace(/\.\d{3}Z$/, 'Z');
+
 const createReportBaseName = (generatedAt: Date): string =>
-  `iam-authorize-performance-${generatedAt.toISOString().replaceAll(':', '-').replace(/\.\d{3}Z$/, 'Z')}`;
+  `iam-authorize-performance-${createFilesystemSafeIsoTimestamp(generatedAt)}`;
 
 const writeReports = async (
   report: AuthorizePerformanceRunResult

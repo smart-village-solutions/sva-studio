@@ -92,6 +92,33 @@ describe('translate', () => {
     expect((i18nResources.de as Record<string, unknown>).pluginAtomicityProbe).toBe(previousPluginBranch);
   });
 
+  it('allows idempotent repeated merges of the same plugin-owned translation keys', () => {
+    const pluginProbeResources = {
+      de: {
+        pluginIdempotentProbe: {
+          navigation: {
+            title: 'Probe',
+          },
+        },
+      },
+      en: {
+        pluginIdempotentProbe: {
+          navigation: {
+            title: 'Probe',
+          },
+        },
+      },
+    } as const;
+
+    expect(() => mergeI18nResources(pluginProbeResources)).not.toThrow();
+    expect(() => mergeI18nResources(pluginProbeResources)).not.toThrow();
+    expect((i18nResources.de as Record<string, unknown>).pluginIdempotentProbe).toEqual({
+      navigation: {
+        title: 'Probe',
+      },
+    });
+  });
+
   it('uses the active locale for global translations', () => {
     setActiveLocale('en');
 

@@ -24,6 +24,47 @@ import type { TourAssignmentLocationOption } from './waste-management.tours.loca
 
 const matchesSearch = (value: string, query: string) => value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
 
+const renderLocationWorkspaceState = (
+  loading: boolean,
+  filteredLocations: readonly TourAssignmentLocationOption[],
+  pt: ReturnType<typeof usePluginTranslation>,
+  selectedLocationIds: readonly string[],
+  toggleSelectedLocation: (locationId: string, checked: boolean) => void
+) => {
+  if (loading) {
+    return <div className="p-4 text-sm text-muted-foreground">{pt('tours.table.loadingAssignments')}</div>;
+  }
+
+  if (filteredLocations.length === 0) {
+    return <div className="p-4 text-sm text-muted-foreground">{pt('tours.assignments.workspace.noLocations')}</div>;
+  }
+
+  return (
+    <div className="divide-y divide-border/50">
+      {filteredLocations.map((location) => {
+        const selected = selectedLocationIds.includes(location.id);
+        return (
+          <label key={location.id} className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-muted/20">
+            <Checkbox checked={selected} onChange={(event) => toggleSelectedLocation(location.id, event.currentTarget.checked)} />
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{location.label}</span>
+                {location.assignedLinkId ? <Badge>{pt('tours.assignments.workspace.assigned')}</Badge> : null}
+                {!location.active ? <Badge variant="outline">{pt('filters.status.inactive')}</Badge> : null}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {[location.regionName, location.cityName, location.streetName]
+                  .filter((value) => value.length > 0)
+                  .join(' / ')}
+              </p>
+            </div>
+          </label>
+        );
+      })}
+    </div>
+  );
+};
+
 export const TourAssignmentsDialog = ({
   open,
   mode,
@@ -158,6 +199,17 @@ export const TourAssignmentsDialog = ({
       checked ? (current.includes(locationId) ? current : [...current, locationId]) : current.filter((value) => value !== locationId)
     );
   };
+  const title =
+    mode === 'create' ? pt('tours.assignments.dialog.createTitle') : pt('tours.assignments.dialog.editTitle');
+  const description = tour
+    ? pt('tours.assignments.dialog.description', { value: tour.name })
+    : pt('tours.assignments.dialog.descriptionFallback');
+  let submitLabel = pt('tours.assignments.actions.save');
+  if (saving) {
+    submitLabel = pt('tours.assignments.actions.saving');
+  } else if (mode === 'create') {
+    submitLabel = pt('tours.assignments.actions.create');
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,8 +217,8 @@ export const TourAssignmentsDialog = ({
         <div className="flex max-h-[90vh] flex-col">
           <div className="border-b border-border/60 bg-background px-6 py-5">
             <DialogHeader className="space-y-2">
-              <DialogTitle>{mode === 'create' ? pt('tours.assignments.dialog.createTitle') : pt('tours.assignments.dialog.editTitle')}</DialogTitle>
-              <DialogDescription>{tour ? pt('tours.assignments.dialog.description', { value: tour.name }) : pt('tours.assignments.dialog.descriptionFallback')}</DialogDescription>
+              <DialogTitle>{title}</DialogTitle>
+              <DialogDescription>{description}</DialogDescription>
             </DialogHeader>
           </div>
 
@@ -301,31 +353,12 @@ export const TourAssignmentsDialog = ({
                   </div>
 
                   <div className="max-h-[420px] overflow-y-auto rounded-xl border border-border/60">
-                    {loading ? (
-                      <div className="p-4 text-sm text-muted-foreground">{pt('tours.table.loadingAssignments')}</div>
-                    ) : filteredLocations.length === 0 ? (
-                      <div className="p-4 text-sm text-muted-foreground">{pt('tours.assignments.workspace.noLocations')}</div>
-                    ) : (
-                      <div className="divide-y divide-border/50">
-                        {filteredLocations.map((location) => {
-                          const selected = selectedLocationIds.includes(location.id);
-                          return (
-                            <label key={location.id} className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-muted/20">
-                              <Checkbox checked={selected} onChange={(event) => toggleSelectedLocation(location.id, event.currentTarget.checked)} />
-                              <div className="min-w-0 flex-1 space-y-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="font-medium">{location.label}</span>
-                                  {location.assignedLinkId ? <Badge>{pt('tours.assignments.workspace.assigned')}</Badge> : null}
-                                  {!location.active ? <Badge variant="outline">{pt('filters.status.inactive')}</Badge> : null}
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                  {[location.regionName, location.cityName, location.streetName].filter((value) => value.length > 0).join(' / ')}
-                                </p>
-                              </div>
-                            </label>
-                          );
-                        })}
-                      </div>
+                    {renderLocationWorkspaceState(
+                      loading,
+                      filteredLocations,
+                      pt,
+                      selectedLocationIds,
+                      toggleSelectedLocation
                     )}
                   </div>
                 </div>
@@ -337,7 +370,7 @@ export const TourAssignmentsDialog = ({
                 {pt('tours.assignments.actions.cancel')}
               </Button>
               <Button type="submit" disabled={saving || (!selectedLocationIds.length && assignedLocationIds.length === 0)}>
-                {saving ? pt('tours.assignments.actions.saving') : mode === 'create' ? pt('tours.assignments.actions.create') : pt('tours.assignments.actions.save')}
+                {submitLabel}
               </Button>
             </DialogFooter>
           </form>

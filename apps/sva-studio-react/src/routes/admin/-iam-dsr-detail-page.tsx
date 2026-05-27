@@ -102,7 +102,7 @@ export function IamDsrDetailPage({ caseId }: Readonly<{ caseId: string }>) {
     setIsLoading(true);
     setError(null);
 
-    void getAdminDsrCase(caseId, { signal: controller.signal })
+    getAdminDsrCase(caseId, { signal: controller.signal })
       .then((response) => {
         if (!controller.signal.aborted) {
           setItem(response.data);
@@ -151,12 +151,16 @@ export function IamDsrDetailPage({ caseId }: Readonly<{ caseId: string }>) {
     );
   }
 
+  const handleBackClick = React.useCallback(() => {
+    Promise.resolve(navigate({ to: '/admin/iam', search: { tab: 'dsr' } })).catch(() => undefined);
+  }, [navigate]);
+
   return (
     <StudioDetailPageTemplate
       title={item?.title ?? t('admin.iam.dsr.detail.title')}
       description={t('admin.iam.dsr.detail.subtitle')}
       actions={
-        <Button type="button" variant="outline" onClick={() => void navigate({ to: '/admin/iam', search: { tab: 'dsr' } })}>
+        <Button type="button" variant="outline" onClick={handleBackClick}>
           {t('admin.iam.dsr.detail.back')}
         </Button>
       }

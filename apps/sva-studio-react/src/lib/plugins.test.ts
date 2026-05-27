@@ -13,6 +13,7 @@ const registerPluginTranslationResolverMock = vi.hoisted(() => vi.fn());
 const mergeI18nResourcesMock = vi.hoisted(() => vi.fn());
 const resetTranslatorCacheMock = vi.hoisted(() => vi.fn());
 const translateMock = vi.hoisted(() => vi.fn((key: string) => key));
+const studioPluginTranslationsSignatureKey = Symbol.for('sva-studio.plugin-translations.signature');
 
 vi.mock('@sva/plugin-sdk', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sva/plugin-sdk')>();
@@ -203,6 +204,7 @@ describe('plugin action alias lookup', () => {
     mergeI18nResourcesMock.mockReset();
     resetTranslatorCacheMock.mockReset();
     translateMock.mockClear();
+    delete (globalThis as Record<PropertyKey, unknown>)[studioPluginTranslationsSignatureKey];
     vi.resetModules();
   });
 
@@ -285,6 +287,17 @@ describe('plugin action alias lookup', () => {
     expect(getStudioPluginAction('missing.action')).toBeUndefined();
     expect(browserLoggerMock.warn).toHaveBeenCalledTimes(1);
   }, 15000);
+
+  it('merges build-time plugin translations only once across module re-evaluations', async () => {
+    await import('./plugins');
+
+    expect(mergeI18nResourcesMock).toHaveBeenCalledTimes(1);
+
+    vi.resetModules();
+    await import('./plugins');
+
+    expect(mergeI18nResourcesMock).toHaveBeenCalledTimes(1);
+  });
 
   it('logs skipped and rejected plugin catalog issues deterministically', async () => {
     vi.doMock('./plugin-catalog-loader.js', () => ({

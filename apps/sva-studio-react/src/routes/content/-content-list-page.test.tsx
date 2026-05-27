@@ -644,4 +644,35 @@ describe('ContentListPage', () => {
     expect(screen.getByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' })).toBeTruthy();
     expect(screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile content-1 auswählen' })).toHaveLength(2);
   });
+
+  it('normalizes legacy string sort params from route state before querying the unified list', () => {
+    searchState = {
+      q: 'archiv',
+      sort: '-title',
+    };
+
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    expect(useContentsMock).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 25,
+      q: 'archiv',
+      sortBy: 'title',
+      sortDirection: 'desc',
+      visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
+    }, ['news.article', 'events.event-record', 'poi.point-of-interest'], 'de-musterhausen', [
+      'news.read',
+      'news.create',
+      'news.update',
+      'news.delete',
+      'poi.read',
+      'poi.create',
+      'poi.delete',
+      'events.read',
+      'events.create',
+      'events.delete',
+    ]);
+  });
 });

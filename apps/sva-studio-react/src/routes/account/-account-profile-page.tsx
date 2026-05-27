@@ -168,8 +168,12 @@ export const AccountProfilePage = () => {
       return;
     }
 
-    void loadProfile();
+    loadProfile().catch(() => undefined);
   }, [hasResolvedSession, isAuthenticated, isAuthLoading, loadProfile]);
+
+  const handleRetryLoad = React.useCallback(() => {
+    loadProfile().catch(() => undefined);
+  }, [loadProfile]);
 
   React.useEffect(() => {
     if (Object.keys(validationErrors).length > 0) {
@@ -271,10 +275,10 @@ export const AccountProfilePage = () => {
                     <a href={loginHref}>{t('shell.header.login')}</a>
                   </Button>
                 ) : (
-                  <Button type="button" variant="outline" onClick={() => void loadProfile()}>
-                    {t('account.actions.retry')}
-                  </Button>
-                )}
+                    <Button type="button" variant="outline" onClick={handleRetryLoad}>
+                      {t('account.actions.retry')}
+                    </Button>
+                  )}
               </div>
             </div>
           </AlertDescription>

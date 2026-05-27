@@ -374,6 +374,51 @@ describe('useUnifiedContentList', () => {
     });
   });
 
+  it('loads poi-only queries without touching unrelated mainserver sources', async () => {
+    const visibleTypes = ['news.article', 'events.event-record', 'poi.point-of-interest'] as const;
+    const query = {
+      page: 1,
+      pageSize: 25,
+      type: 'poi.point-of-interest',
+      sortBy: 'title',
+      sortDirection: 'asc',
+      visibleTypes,
+    } as const;
+
+    listNewsMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    listEventsMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    listPoiMock.mockResolvedValue({
+      data: [
+        {
+          id: 'poi-2',
+          name: 'Bergwerk',
+          contentType: 'poi.point-of-interest',
+          status: 'published',
+          createdAt: '2026-05-01T07:00:00.000Z',
+          updatedAt: '2026-05-03T10:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const { result } = renderHook(() => useUnifiedContentList(query, visibleTypes, 'de-musterhausen'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(listNewsMock).not.toHaveBeenCalled();
+    expect(listEventsMock).not.toHaveBeenCalled();
+    expect(listPoiMock).toHaveBeenCalledTimes(1);
+    expect(result.current.contents.map((item) => item.id)).toEqual(['poi-2']);
+  });
+
   it('reuses fetched source data across page and sort changes until refetch is requested', async () => {
     const visibleTypes = ['news.article', 'events.event-record', 'poi.point-of-interest'] as const;
     const permissionActions = ['news.read', 'events.read', 'poi.read'] as const;

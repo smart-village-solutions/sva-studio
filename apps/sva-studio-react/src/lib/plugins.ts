@@ -31,6 +31,7 @@ const pluginLogger = createBrowserLogger({
   level: 'warn',
 });
 
+const studioPluginTranslationsSignatureKey = Symbol.for('sva-studio.plugin-translations.signature');
 const warnedDeprecatedPluginActionAliases = new Set<string>();
 
 const workspaceManifestModules = import.meta.glob('../../../../packages/plugin-*/plugin.manifest.json', {
@@ -115,8 +116,15 @@ export const studioPluginCatalogIssues = studioPluginCatalogReport.issues;
 export const studioPluginSnapshot = studioPluginCatalogReport.snapshot;
 
 export const studioBuildTimeRegistry = studioPluginSnapshot.registry;
+const studioBuildTimeTranslationsSignature = JSON.stringify(studioBuildTimeRegistry.translations);
+const globalPluginTranslationState = globalThis as typeof globalThis & {
+  [studioPluginTranslationsSignatureKey]?: string;
+};
 
-mergeI18nResources(studioBuildTimeRegistry.translations);
+if (globalPluginTranslationState[studioPluginTranslationsSignatureKey] !== studioBuildTimeTranslationsSignature) {
+  mergeI18nResources(studioBuildTimeRegistry.translations);
+  globalPluginTranslationState[studioPluginTranslationsSignatureKey] = studioBuildTimeTranslationsSignature;
+}
 
 export const studioPlugins = studioBuildTimeRegistry.plugins;
 export const studioPluginActionRegistry = studioBuildTimeRegistry.pluginActionRegistry;

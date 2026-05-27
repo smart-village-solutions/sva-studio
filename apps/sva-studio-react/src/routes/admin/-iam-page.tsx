@@ -306,7 +306,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
   const navigateToTab = React.useCallback(
     (tab: IamCockpitTabKey, focusActiveTab = false) => {
       shouldFocusActiveTabRef.current = focusActiveTab;
-      void navigate({ to: '/admin/iam', search: { tab } });
+      Promise.resolve(navigate({ to: '/admin/iam', search: { tab } })).catch(() => undefined);
     },
     [navigate]
   );
@@ -321,7 +321,9 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     }
     if (!allowedTabs.includes(activeTab)) {
       shouldFocusActiveTabRef.current = false;
-      void navigate({ to: '/admin/iam', search: { tab: getFirstAllowedTab(allowedTabs) }, replace: true });
+      Promise.resolve(
+        navigate({ to: '/admin/iam', search: { tab: getFirstAllowedTab(allowedTabs) }, replace: true })
+      ).catch(() => undefined);
     }
   }, [activeTab, allowedTabs, navigate]);
 
@@ -447,7 +449,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       setIsLoadingGovernance(true);
       setGovernanceError(null);
 
-      void listGovernanceCases(governanceRequestQuery, { signal: controller.signal })
+      listGovernanceCases(governanceRequestQuery, { signal: controller.signal })
         .then((response) => {
           if (controller.signal.aborted) {
             return;
@@ -502,7 +504,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
       setIsLoadingDsr(true);
       setDsrError(null);
 
-      void listAdminDsrCases(dsrRequestQuery, { signal: controller.signal })
+      listAdminDsrCases(dsrRequestQuery, { signal: controller.signal })
         .then((response) => {
           if (controller.signal.aborted) {
             return;
@@ -559,7 +561,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
     setIsLoadingDeletionRules(true);
     setDeletionRulesError(null);
 
-    void getAdminDeletionRules(instanceId)
+    getAdminDeletionRules(instanceId)
       .then((response) => {
         if (controller.signal.aborted) {
           return;

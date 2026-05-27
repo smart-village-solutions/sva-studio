@@ -85,12 +85,17 @@ export const MasterDataDialogHeader = ({
   readonly editDescription: string;
   readonly editTitle: string;
   readonly mode: 'create' | 'edit';
-}) => (
-  <DialogHeader>
-    <DialogTitle>{mode === 'create' ? createTitle : editTitle}</DialogTitle>
-    <DialogDescription>{mode === 'create' ? createDescription : editDescription}</DialogDescription>
-  </DialogHeader>
-);
+}) => {
+  const title = mode === 'create' ? createTitle : editTitle;
+  const description = mode === 'create' ? createDescription : editDescription;
+
+  return (
+    <DialogHeader>
+      <DialogTitle>{title}</DialogTitle>
+      <DialogDescription>{description}</DialogDescription>
+    </DialogHeader>
+  );
+};
 
 export const MasterDataDialogActions = ({
   cancelLabel,
@@ -108,13 +113,22 @@ export const MasterDataDialogActions = ({
   readonly submitCreateLabel: string;
   readonly submitEditLabel: string;
   readonly submitSavingLabel: string;
-}) => (
-  <DialogFooter>
-    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-      {cancelLabel}
-    </Button>
-    <Button type="submit" disabled={saving}>
-      {saving ? submitSavingLabel : mode === 'create' ? submitCreateLabel : submitEditLabel}
-    </Button>
-  </DialogFooter>
-);
+}) => {
+  let submitLabel = submitEditLabel;
+  if (saving) {
+    submitLabel = submitSavingLabel;
+  } else if (mode === 'create') {
+    submitLabel = submitCreateLabel;
+  }
+
+  return (
+    <DialogFooter>
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        {cancelLabel}
+      </Button>
+      <Button type="submit" disabled={saving}>
+        {submitLabel}
+      </Button>
+    </DialogFooter>
+  );
+};

@@ -52,7 +52,7 @@ export function IamGovernanceDetailPage({ caseId }: Readonly<{ caseId: string }>
     setIsLoading(true);
     setError(null);
 
-    void getGovernanceCase(caseId, { signal: controller.signal })
+    getGovernanceCase(caseId, { signal: controller.signal })
       .then((response) => {
         if (!controller.signal.aborted) {
           setItem(response.data);
@@ -101,12 +101,16 @@ export function IamGovernanceDetailPage({ caseId }: Readonly<{ caseId: string }>
     );
   }
 
+  const handleBackClick = React.useCallback(() => {
+    Promise.resolve(navigate({ to: '/admin/iam', search: { tab: 'governance' } })).catch(() => undefined);
+  }, [navigate]);
+
   return (
     <StudioDetailPageTemplate
       title={item ? formatGovernanceTitle(item) : t('admin.iam.governance.detail.title')}
       description={t('admin.iam.governance.detail.subtitle')}
       actions={
-        <Button type="button" variant="outline" onClick={() => void navigate({ to: '/admin/iam', search: { tab: 'governance' } })}>
+        <Button type="button" variant="outline" onClick={handleBackClick}>
           {t('admin.iam.governance.detail.back')}
         </Button>
       }

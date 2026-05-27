@@ -83,7 +83,7 @@ const sortedCopy = (values: readonly number[]): number[] => [...values].sort((a,
 const buildBenchmarkGeoHierarchyUuid = (runId: string, sampleIndex: number): string => {
   const seed = `${runId}-${sampleIndex}`;
   const hex = Array.from(seed)
-    .map((character) => character.charCodeAt(0).toString(16).padStart(2, '0'))
+    .map((character) => (character.codePointAt(0) ?? 0).toString(16).padStart(2, '0'))
     .join('')
     .padEnd(32, '0')
     .slice(0, 32);

@@ -9,9 +9,9 @@ const logger = createSdkLogger({ component: 'iam-db-bootstrap', level: 'info' })
 let bootstrapPromise: Promise<boolean> | null = null;
 const BOOTSTRAP_RUNTIME_PROFILES = new Set(['studio', 'local-keycloak', 'local-builder']);
 
-const quoteIdentifier = (value: string): string => `"${value.replace(/"/g, '""')}"`;
+const quoteIdentifier = (value: string): string => `"${value.replaceAll('"', '""')}"`;
 
-const quoteLiteral = (value: string): string => `'${value.replace(/'/g, "''")}'`;
+const quoteLiteral = (value: string): string => `'${value.replaceAll("'", "''")}'`;
 
 const readPasswordFile = (filePath: string | undefined): string | undefined => {
   if (!filePath) {

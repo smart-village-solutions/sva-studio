@@ -4,6 +4,7 @@
     "composite": true,
     "declaration": true,
     "declarationMap": true,
+    "lib": ["ES2021", "DOM"],
     "outDir": "dist",
     "rootDir": "src",
     "types": ["node"],

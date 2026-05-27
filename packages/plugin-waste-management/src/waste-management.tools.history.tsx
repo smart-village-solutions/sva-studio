@@ -44,7 +44,7 @@ const resolveImportProgressPercentage = (job: StudioJobResponse['data']) => {
   const totalSteps = structuredProgress?.totalRows ?? job.progress?.totalSteps ?? 0;
 
   if (totalSteps <= 0) {
-    return job.status === 'queued' ? 0 : 0;
+    return 0;
   }
 
   return clampPercentage((completedSteps / totalSteps) * 100);

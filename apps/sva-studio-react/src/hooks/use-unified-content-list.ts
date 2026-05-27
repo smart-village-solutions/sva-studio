@@ -251,7 +251,10 @@ export const useUnifiedContentList = (
       ),
     [query.type, visibleTypes]
   );
-  const permissionActionsKey = React.useMemo(() => [...permissionActions].sort().join('|'), [permissionActions]);
+  const permissionActionsKey = React.useMemo(
+    () => [...permissionActions].sort((left, right) => left.localeCompare(right)).join('|'),
+    [permissionActions]
+  );
   const fetchCacheKey = React.useMemo(
     () => [instanceId, normalizedVisibleTypes.join('|'), permissionActionsKey].join('::'),
     [instanceId, normalizedVisibleTypes, permissionActionsKey]

@@ -38,10 +38,10 @@ export const TypePickerDialog = ({
           {availableTypes.map((type) => {
             const meta = instanceInterfaceTypeMeta[type];
             const inputId = `interface-type-${type}`;
+            const descriptionId = `${inputId}-description`;
             return (
-              <label
+              <div
                 key={type}
-                htmlFor={inputId}
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition ${
                   selectedType === type
                     ? 'border-primary/60 bg-primary/5'
@@ -53,14 +53,19 @@ export const TypePickerDialog = ({
                   type="radio"
                   name="interface-type"
                   className="mt-1"
+                  aria-describedby={descriptionId}
                   checked={selectedType === type}
                   onChange={() => onSelectType(type)}
                 />
                 <div>
-                  <div className="font-medium text-foreground">{t(meta.titleKey)}</div>
-                  <p className="text-xs text-muted-foreground">{t(meta.descriptionKey)}</p>
+                  <Label htmlFor={inputId} className="cursor-pointer font-medium text-foreground">
+                    {t(meta.titleKey)}
+                  </Label>
+                  <p id={descriptionId} className="text-xs text-muted-foreground">
+                    {t(meta.descriptionKey)}
+                  </p>
                 </div>
-              </label>
+              </div>
             );
           })}
         </div>

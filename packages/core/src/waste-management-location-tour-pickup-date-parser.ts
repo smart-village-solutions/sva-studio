@@ -253,7 +253,7 @@ export const parseWasteLocationTourPickupDateCsv = (input: {
   readonly text: string;
   readonly delimiterOverride?: WasteManagementCsvDelimiter;
 }): WasteLocationTourPickupDateImportParseResult => {
-  const normalizedText = input.text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const normalizedText = input.text.replace(/^\uFEFF/, '').replaceAll('\r\n', '\n').replaceAll('\r', '\n');
   const lines = normalizedText.split('\n').filter((line, index, source) => !(index === source.length - 1 && line === ''));
   if (lines.length === 0) {
     return {

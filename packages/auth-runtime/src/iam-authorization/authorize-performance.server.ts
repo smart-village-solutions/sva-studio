@@ -147,7 +147,7 @@ const invalidateUserScope = async (actor: BenchmarkActor): Promise<void> => {
 };
 
 const createReportBaseName = (generatedAt: Date): string =>
-  `iam-authorize-performance-${generatedAt.toISOString().replace(/[:]/g, '-').replace(/\.\d{3}Z$/, 'Z')}`;
+  `iam-authorize-performance-${generatedAt.toISOString().replaceAll(':', '-').replace(/\.\d{3}Z$/, 'Z')}`;
 
 const writeReports = async (
   report: AuthorizePerformanceRunResult

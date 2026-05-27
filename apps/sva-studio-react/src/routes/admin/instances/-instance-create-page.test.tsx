@@ -223,6 +223,8 @@ describe('InstanceCreatePage', () => {
       expect(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' })).toBeTruthy();
     });
 
+    expect(screen.getByRole('checkbox', { name: /News/u })).toBeTruthy();
+
     fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' }));
 
     await waitFor(() => {
@@ -275,12 +277,10 @@ describe('InstanceCreatePage', () => {
       expect(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' })).toBeTruthy();
     });
 
-    const newsCheckbox = screen.getByText('News').closest('label')?.querySelector('input');
-    const eventsCheckbox = screen.getByText('Events').closest('label')?.querySelector('input');
-    expect(newsCheckbox instanceof HTMLInputElement).toBe(true);
-    expect(eventsCheckbox instanceof HTMLInputElement).toBe(true);
-    fireEvent.click(newsCheckbox as HTMLInputElement);
-    fireEvent.click(eventsCheckbox as HTMLInputElement);
+    const newsCheckbox = screen.getByRole('checkbox', { name: /News/u });
+    const eventsCheckbox = screen.getByRole('checkbox', { name: /Events/u });
+    fireEvent.click(newsCheckbox);
+    fireEvent.click(eventsCheckbox);
     fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' }));
 
     await waitFor(() => {

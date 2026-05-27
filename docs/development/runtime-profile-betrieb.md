@@ -132,6 +132,7 @@ Wichtig für den lokalen `local-keycloak`-Pfad:
 - Normale Tenant-Mutationen für Nutzer, Rollen und Gruppen laufen im lokalen Standardpfad strikt gegen denselben Tenant-Realm wie der Login-Flow, aber über den separaten `tenantAdminClient`.
 - `pnpm env:up:local-keycloak` startet neben dem Dev-Server auch den lokalen Keycloak-Provisioning-Worker. Dessen State und Log liegen unter `artifacts/runtime/`.
 - Fehlt der Worker oder ist sein Prozess stale, meldet `pnpm env:doctor:local-keycloak` einen sichtbaren `warn`-Check, damit Provisioning-Läufe nicht unbemerkt in `planned`/`queued` hängen bleiben.
+- Beim lokalen Worker-Start werden nur `planned`-Provisioning-Läufe übernommen, die nach diesem konkreten Start neu angelegt wurden. Ältere wartende Läufe werden nicht stillschweigend wieder aufgenommen.
 - `KEYCLOAK_ADMIN_REALM` und `KEYCLOAK_ADMIN_CLIENT_ID` beschreiben im lokalen Profil nur noch den Plattform-/Break-Glass-Pfad. Sie sind kein impliziter Fallback für Tenant-Alltagsverwaltung mehr.
 - Realm-Provisioning im lokalen Worker nutzt explizit `KEYCLOAK_PROVISIONER_*`, standardmäßig `master` plus `sva-studio-provisioner`. Fehlen diese Variablen, fällt der Worker weiterhin auf `KEYCLOAK_ADMIN_*` zurück; das ist für neue Tenant-Realms fachlich nicht gewollt.
 - Tenant-Logins laufen fail-closed, wenn für die aktive Instanz kein tenant-spezifisches `auth_client_secret` lesbar ist. Das globale Plattform-Secret bleibt nur für den Plattform-Host zulässig und ist kein stiller Tenant-Fallback.

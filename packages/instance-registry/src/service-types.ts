@@ -106,6 +106,8 @@ export type InstanceRegistryServiceDeps = {
     tenantAdminBootstrap?: TenantAdminBootstrap;
     tenantAdminTemporaryPassword?: string;
     rotateClientSecret?: boolean;
+    reconcileAuthClient?: boolean;
+    reconcileTenantAdminClient?: boolean;
   }) => Promise<void>;
   readonly getKeycloakPreflight?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantPreflight>;
   readonly planKeycloakProvisioning?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantPlan>;

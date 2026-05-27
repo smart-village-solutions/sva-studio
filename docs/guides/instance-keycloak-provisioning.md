@@ -113,6 +113,11 @@ Die UI trennt bewusst zwischen:
 
 Zusatzaktionen wie `Tenant-Admin zurücksetzen` oder `Client-Secret rotieren` laufen als benannte Provisioning-Intents und nicht mehr als unscharfer Sammel-Reconcile.
 
+Wichtig:
+
+- `Tenant-Admin zurücksetzen` ist ein User-Pfad. Dieser Intent korrigiert Tenant-Admin-Profil, Rollen und optional das temporäre Passwort, überschreibt aber nicht nebenbei Login- oder Tenant-Admin-Client-Konfigurationen.
+- Wenn der Plan beim Schritt `Tenant-Admin-Client` ein `update` meldet, würde ein expliziter Keycloak-Abgleich diesen technischen Client auf Root-, Redirect-, Logout- oder Origin-Werte zurückführen. Diese Drift ist in der Vorschau jetzt bewusst sichtbar.
+
 ## Kompakte Betriebs-Checkliste für neue Instanzen
 
 Diese Kurzfassung ist der empfohlene operative Standardpfad für neue oder zu reparierende Instanzen unter `/admin/instances`.

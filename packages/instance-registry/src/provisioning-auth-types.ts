@@ -4,8 +4,12 @@ import { buildExpectedClientConfig, buildExpectedTenantAdminClientConfig } from 
 
 export type KeycloakClientRepresentation = {
   readonly id?: string;
+  readonly rootUrl?: string;
   readonly redirectUris?: readonly string[];
   readonly webOrigins?: readonly string[];
+  readonly standardFlowEnabled?: boolean;
+  readonly directAccessGrantsEnabled?: boolean;
+  readonly serviceAccountsEnabled?: boolean;
   readonly attributes?: Readonly<Record<string, string>>;
 } | null;
 

@@ -16,6 +16,14 @@ type RunnerArgs = {
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const runnerCommand = [process.execPath, '--import', 'tsx', 'packages/auth-runtime/src/iam-instance-registry/worker.ts'] as const;
 
+export const buildLocalProvisioningWorkerChildEnv = (
+  baseEnv: NodeJS.ProcessEnv,
+  startedAt: string = new Date().toISOString(),
+): NodeJS.ProcessEnv => ({
+  ...baseEnv,
+  SVA_KEYCLOAK_PROVISIONER_CLAIM_NOT_BEFORE: startedAt,
+});
+
 export const parseLocalProvisioningWorkerRunnerArgs = (argv: readonly string[]): RunnerArgs => {
   const parsed = new Map<string, string>();
 
@@ -77,12 +85,13 @@ export const runLocalProvisioningWorkerRunner = async (argv: readonly string[]) 
   const logFd = openSync(logFile, 'a');
   let child: ChildProcess | null = null;
   let terminating = false;
+  const startedAt = new Date().toISOString();
 
   appendRunnerLogLine(logFile, `Starte Keycloak-Provisioning-Worker fuer Profil ${profile}.`);
 
   child = spawn(runnerCommand[0], [...runnerCommand.slice(1)], {
     cwd: rootDir,
-    env: process.env,
+    env: buildLocalProvisioningWorkerChildEnv(process.env, startedAt),
     stdio: ['ignore', logFd, logFd],
   });
 

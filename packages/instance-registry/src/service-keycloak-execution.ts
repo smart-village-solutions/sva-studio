@@ -95,6 +95,11 @@ const syncClientSecretAfterProvisioning = async (deps: InstanceRegistryServiceDe
   });
 };
 
+const buildProvisioningExecutionOptions = (intent: InstanceKeycloakProvisioningRun['intent']) => ({
+  reconcileAuthClient: intent !== 'reset_tenant_admin',
+  reconcileTenantAdminClient: intent !== 'reset_tenant_admin',
+});
+
 const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>, tenantAdminTemporaryPassword: string | undefined, provisioningInput: ReturnType<typeof buildProvisioningInput>) => {
   const preflight = await appendPreflightSnapshot(deps, run, provisioningInput);
   const plan = await appendPlanSnapshot(deps, run, provisioningInput);
@@ -120,6 +125,7 @@ const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: Instanc
     ...provisioningInput,
     tenantAdminTemporaryPassword,
     rotateClientSecret: run.intent === 'rotate_client_secret',
+    ...buildProvisioningExecutionOptions(run.intent),
   });
 
   await syncClientSecretAfterProvisioning(deps, run, loaded);
@@ -188,14 +194,21 @@ export const processClaimedKeycloakProvisioningRun = async (
   }
 };
 
-export const processNextQueuedKeycloakProvisioningRun = async (deps: InstanceRegistryServiceDeps) =>
+export const processNextQueuedKeycloakProvisioningRun = async (
+  deps: InstanceRegistryServiceDeps,
+  claimFilter?: {
+    createdAtOrAfter?: string;
+  }
+) =>
   processClaimedKeycloakProvisioningRun(
     deps,
     await (
       deps.repository as InstanceRegistryServiceDeps['repository'] & {
-        claimNextKeycloakProvisioningRun: () => Promise<InstanceKeycloakProvisioningRun | null>;
+        claimNextKeycloakProvisioningRun: (input?: {
+          createdAtOrAfter?: string;
+        }) => Promise<InstanceKeycloakProvisioningRun | null>;
       }
-    ).claimNextKeycloakProvisioningRun()
+    ).claimNextKeycloakProvisioningRun(claimFilter)
   );
 
 export const createExecuteKeycloakProvisioningHandler =
@@ -252,9 +265,11 @@ const ensureReconcilePreconditions = async (
   const blockingSummary =
     preflight?.overallStatus === 'blocked'
       ? preflight.checks
-          .filter((check) => check.status === 'blocked')
-          .map((check) => check.summary)
-          .filter((summary): summary is string => typeof summary === 'string' && summary.length > 0)
+          .filter(
+            (check: NonNullable<typeof preflight>['checks'][number]) => check.status === 'blocked'
+          )
+          .map((check: NonNullable<typeof preflight>['checks'][number]) => check.summary)
+          .filter((summary: string): summary is string => typeof summary === 'string' && summary.length > 0)
           .join(' ')
       : plan?.overallStatus === 'blocked'
         ? plan.driftSummary

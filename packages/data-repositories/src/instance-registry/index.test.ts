@@ -740,4 +740,21 @@ describe('instance registry repository', () => {
       })
     ).rejects.toThrow('keycloak_provisioning_run_idempotency_conflict');
   });
+
+  it('filters claimed keycloak provisioning runs by creation timestamp when requested', async () => {
+    const { executor, statements } = createQueuedExecutor([[keycloakRunRow], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.claimNextKeycloakProvisioningRun({
+        createdAtOrAfter: '2026-05-27T12:00:00.000Z',
+      })
+    ).resolves.toMatchObject({
+      id: 'kc-run-1',
+      instanceId: 'tenant-a',
+    });
+
+    expect(statements[0]?.text).toContain("AND created_at >= $1::timestamptz");
+    expect(statements[0]?.values).toEqual(['2026-05-27T12:00:00.000Z']);
+  });
 });

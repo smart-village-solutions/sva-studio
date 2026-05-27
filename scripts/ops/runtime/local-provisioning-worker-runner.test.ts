@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildLocalProvisioningWorkerChildEnv,
   clearLocalWorkerStateIfOwned,
   parseLocalProvisioningWorkerRunnerArgs,
 } from './local-provisioning-worker-runner.ts';
@@ -48,5 +49,19 @@ describe('clearLocalWorkerStateIfOwned', () => {
     clearLocalWorkerStateIfOwned(stateFile, 5678);
 
     expect(JSON.parse(readFileSync(stateFile, 'utf8'))).toEqual({ pid: 1234 });
+  });
+});
+
+describe('buildLocalProvisioningWorkerChildEnv', () => {
+  it('pins the worker to runs created after the current startup', () => {
+    const env = buildLocalProvisioningWorkerChildEnv(
+      {
+        PATH: process.env.PATH,
+      },
+      '2026-05-27T12:00:00.000Z',
+    );
+
+    expect(env.SVA_KEYCLOAK_PROVISIONER_CLAIM_NOT_BEFORE).toBe('2026-05-27T12:00:00.000Z');
+    expect(env.PATH).toBe(process.env.PATH);
   });
 });

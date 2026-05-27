@@ -517,8 +517,17 @@ test.describe('events and POI plugins', () => {
     await page.getByRole('button', { name: /Änderungen speichern|events\.actions\.update/ }).click();
     await expect(page.getByRole('status')).toContainText(/gespeichert|aktualisiert|events\.messages\.updateSuccess/);
 
+    const deleteResponsePromise = page.waitForResponse((response) => {
+      return (
+        response.request().method() === 'DELETE' &&
+        response.url().includes('/api/v1/mainserver/events/event-1') &&
+        response.status() === 200
+      );
+    });
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|events\.actions\.delete/ }).click();
+    await deleteResponsePromise;
+    await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
 
     await expectContentOverviewReady(page);
     await expect(page.locator('main table').getByText('Rathaus')).toBeVisible();

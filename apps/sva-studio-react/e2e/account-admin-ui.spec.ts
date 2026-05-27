@@ -369,8 +369,7 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
     });
   });
 
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+  await gotoHomeAsAuthenticatedUser(page);
   const usersResponsePromise = page.waitForResponse(
     (response) => response.url().includes('/api/v1/iam/users?') && response.status() === 200
   );

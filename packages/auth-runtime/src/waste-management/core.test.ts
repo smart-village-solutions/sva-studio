@@ -18,6 +18,25 @@ import type {
   WasteTourRecord,
 } from '@sva/core';
 import type { AuthenticatedRequestContext } from '../middleware.js';
+
+const sessionStore = vi.hoisted(() => ({
+  getSession: vi.fn(async () => ({
+    id: 'session-1',
+    userId: 'user-1',
+    user: {
+      id: 'user-1',
+      instanceId: 'tenant-a',
+      roles: ['system_admin'],
+    },
+    createdAt: Date.parse('2026-05-09T12:00:00.000Z'),
+    expiresAt: Date.parse('2026-05-09T13:00:00.000Z'),
+  })),
+}));
+
+vi.mock('../redis-session.js', () => ({
+  getSession: sessionStore.getSession,
+}));
+
 import { wasteManagementCoreHandlers } from './core.js';
 
 const {

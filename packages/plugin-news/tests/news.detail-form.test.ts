@@ -99,6 +99,43 @@ describe('news.detail-form', () => {
     });
   });
 
+  it('falls back to payload-derived content when structured content blocks are missing', () => {
+    expect(
+      mapNewsItemToDetailFormValues({
+        ...sampleItem,
+        title: ' ',
+        categories: [],
+        contentBlocks: undefined,
+        payload: {
+          ...sampleItem.payload,
+          teaser: 'Fallback teaser',
+          body: '<p>Fallback body</p>',
+          category: 'Fallback Kategorie',
+          imageUrl: 'https://example.org/fallback.jpg',
+        },
+      })
+    ).toMatchObject({
+      title: ' ',
+      categories: ['Fallback Kategorie'],
+      sourceUrl: {
+        url: 'https://example.org/news',
+        description: 'Quelle',
+      },
+      contentBlocks: [
+        {
+          title: '',
+          intro: 'Fallback teaser',
+          body: '<p>Fallback body</p>',
+          mediaContents: [
+            expect.objectContaining({
+              sourceUrl: { url: 'https://example.org/fallback.jpg' },
+            }),
+          ],
+        },
+      ],
+    });
+  });
+
   it('rejects invalid publishedAt values through the resolver schema', async () => {
     const resolver = zodResolver(newsDetailFormSchema);
     const result = await resolver(
@@ -111,6 +148,52 @@ describe('news.detail-form', () => {
     );
 
     expect(result.errors.publishedAt?.message).toBeTruthy();
+  });
+
+  it('rejects invalid publication dates and negative character limits', async () => {
+    const resolver = zodResolver(newsDetailFormSchema);
+    const result = await resolver(
+      {
+        ...mapNewsItemToDetailFormValues(sampleItem),
+        publicationDate: 'ungueltig',
+        charactersToBeShown: '-1',
+      },
+      undefined,
+      { fields: {}, shouldUseNativeValidation: false }
+    );
+
+    expect(result.errors.publicationDate?.message).toBeTruthy();
+    expect(result.errors.charactersToBeShown?.message).toBeTruthy();
+  });
+
+  it('rejects empty content blocks and oversized bodies', async () => {
+    const resolver = zodResolver(newsDetailFormSchema);
+    const emptyBlocksResult = await resolver(
+      {
+        ...mapNewsItemToDetailFormValues(sampleItem),
+        contentBlocks: [],
+      },
+      undefined,
+      { fields: {}, shouldUseNativeValidation: false }
+    );
+    const oversizedBodyResult = await resolver(
+      {
+        ...mapNewsItemToDetailFormValues(sampleItem),
+        contentBlocks: [
+          {
+            title: 'Lang',
+            intro: '',
+            body: 'A'.repeat(50_001),
+            mediaContents: [],
+          },
+        ],
+      },
+      undefined,
+      { fields: {}, shouldUseNativeValidation: false }
+    );
+
+    expect(emptyBlocksResult.errors.contentBlocks?.message).toBeTruthy();
+    expect(oversizedBodyResult.errors.contentBlocks?.message).toBeTruthy();
   });
 
   it('requires a body in at least one content block', async () => {

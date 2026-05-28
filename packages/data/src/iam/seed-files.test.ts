@@ -41,11 +41,10 @@ describe('iam seed sql contracts', () => {
   it('seeds de-musterhausen with the local-keycloak reference identity by default', () => {
     const sql = readSeed('0001_iam_personas.sql');
 
-    assert.match(sql, /'de-musterhausen'/);
-    assert.match(sql, /'studio\.localhost'/);
-    assert.match(sql, /'de-musterhausen\.studio\.localhost'/);
-    assert.match(sql, /'de-musterhausen'/);
-    assert.match(sql, /'sva-studio-realm-admin'/);
+    assert.match(
+      sql,
+      /VALUES\s*\(\s*'de-musterhausen',\s*'Seed Instance Default',\s*'active',\s*'studio\.localhost',\s*'de-musterhausen\.studio\.localhost',\s*'de-musterhausen',\s*'sva-studio',\s*'sva-studio-realm-admin',\s*'\{\}'::jsonb\s*\)/
+    );
     assert.doesNotMatch(sql, /'de-musterhausen\.studio\.smart-village\.app'/);
     assert.doesNotMatch(sql, /'svs-intern-studio-staging'/);
     assert.doesNotMatch(sql, /'sva-studio-admin'/);

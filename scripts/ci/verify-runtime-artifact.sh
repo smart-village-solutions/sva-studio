@@ -640,6 +640,7 @@ cat > "${SUMMARY_PATH}" <<EOF
 - \`redis-ready\`: \`${REDIS_READY_STATUS}\`
 - \`keycloak-ready\`: \`${KEYCLOAK_READY_STATUS}\`
 - \`artifact-contract\`: \`${ARTIFACT_CONTRACT_STATUS}\`
+- \`injected-workspace-sync\`: \`${INJECTED_WORKSPACE_SYNC_STATUS}\`
 - \`app-start\`: \`${APP_START_STATUS}\`
 - \`health-live\`: \`${HEALTH_LIVE_STATUS}\`
 - \`health-ready\`: \`${HEALTH_READY_STATUS}\`

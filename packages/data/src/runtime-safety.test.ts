@@ -121,11 +121,16 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(syncInjectedWorkspacePackages, /await cp\(workspacePackage\.distDir, targetDistDir, \{ force: true, recursive: true \}\)/);
   assert.match(syncInjectedWorkspacePackages, /if \(injectedCopy\.realDir === workspacePackage\.realDir\)/);
 
-  assert.match(studioProjectJson, /sync-injected-workspace-packages\.ts/);
   assert.match(
+    studioProjectJson,
+    /pnpm exec vite build && bash \.\.\/\.\.\/scripts\/ci\/run-workspace-node\.sh --import tsx \.\.\/\.\.\/scripts\/ci\/patch-runtime-artifact\.ts \./
+  );
+  assert.doesNotMatch(
     studioProjectJson,
     /patch-runtime-artifact\.ts \. && bash \.\.\/\.\.\/scripts\/ci\/run-workspace-node\.sh --import tsx \.\.\/\.\.\/scripts\/ci\/sync-injected-workspace-packages\.ts \./
   );
+  assert.match(runtimeVerifyScript, /"injected-workspace-sync": "\$\{INJECTED_WORKSPACE_SYNC_STATUS\}"/);
+  assert.match(runtimeVerifyScript, /- \\`injected-workspace-sync\\`: \\`\$\{INJECTED_WORKSPACE_SYNC_STATUS\}\\`/);
 });
 
 test('portable docker runtime guard only fails when a JSX dev runtime match is present', () => {

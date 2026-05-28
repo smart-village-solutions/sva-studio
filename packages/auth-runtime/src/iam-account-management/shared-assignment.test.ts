@@ -96,6 +96,9 @@ describe('shared assignment helpers', () => {
     expect(calls[0]?.sql).toContain('DELETE FROM iam.account_roles');
     expect(calls[0]?.params).toEqual(['instance-1', 'account-1', ['role-1', 'role-2']]);
     expect(calls[1]?.sql).toContain('ON CONFLICT (instance_id, account_id, role_id)');
+    expect(calls[1]?.sql).toContain('FROM unnest($4::uuid[]) AS role_id');
+    expect(calls[1]?.sql).toContain('WHERE TRUE');
+    expect(calls[1]?.sql).toContain('valid_to = NULL');
     expect(calls[1]?.params).toEqual(['instance-1', 'account-1', 'actor-1', ['role-1', 'role-2']]);
   });
 
@@ -114,6 +117,8 @@ describe('shared assignment helpers', () => {
     expect(calls[0]?.sql).toContain('DELETE FROM iam.account_groups');
     expect(calls[0]?.params).toEqual(['instance-1', 'account-1', ['group-1', 'group-2']]);
     expect(calls[1]?.sql).toContain('ON CONFLICT (instance_id, account_id, group_id)');
+    expect(calls[1]?.sql).toContain(') AS unique_group_ids');
+    expect(calls[1]?.sql).toContain('WHERE TRUE');
     expect(calls[1]?.params).toEqual(['instance-1', 'account-1', 'sync', ['group-1', 'group-2']]);
   });
 });

@@ -111,7 +111,9 @@ const expectContentOverviewReady = async (page: Page) => {
       })
       .first()
       .waitFor({ state: 'visible' }),
+    page.getByRole('button', { name: /Neuer Inhalt|content\.actions\.create/ }).waitFor({ state: 'visible' }),
     page.getByRole('link', { name: /Neuer Inhalt|content\.actions\.create/ }).waitFor({ state: 'visible' }),
+    page.getByRole('table', { name: /Inhalte|content\.table\.ariaLabel/ }).waitFor({ state: 'visible' }),
     page.getByText(/Noch keine Inhalte vorhanden|content\.empty\.title/).waitFor({ state: 'visible' }),
   ]);
 };
@@ -229,6 +231,20 @@ const routeUnifiedContentOverview = async (page: Page, newsItems: readonly NewsR
         data: mapNewsToUnifiedContent(newsItems),
         pagination: createPagination(newsItems.length),
       }),
+    });
+  });
+  await page.route('**/api/v1/mainserver/events**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [], pagination: createPagination(0) }),
+    });
+  });
+  await page.route('**/api/v1/mainserver/poi**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [], pagination: createPagination(0) }),
     });
   });
 };

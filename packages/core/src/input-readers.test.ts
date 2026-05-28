@@ -28,6 +28,7 @@ describe('input readers', () => {
     expect(readObject(null)).toBeUndefined();
     expect(readObject([])).toBeUndefined();
     expect(isUuid('00000000-0000-4000-8000-000000000001')).toBe(true);
+    expect(isUuid('22222222-2222-2222-2222-222222222222')).toBe(true);
     expect(isUuid('not-a-uuid')).toBe(false);
   });
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -79,6 +79,11 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
     resolve(testDirectory, '..', '..', '..', 'scripts/ci/patch-runtime-artifact.ts'),
     'utf8'
   );
+  const syncInjectedWorkspacePackages = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'scripts/ci/sync-injected-workspace-packages.ts'),
+    'utf8'
+  );
+  const studioProjectJson = readFileSync(resolve(testDirectory, '..', '..', '..', 'apps/sva-studio-react/project.json'), 'utf8');
 
   assert.match(imageVerifyScript, /docker pull "\$\{IMAGE_REF\}"/);
   assert.doesNotMatch(imageVerifyScript, /skipped-local/);
@@ -111,6 +116,21 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(patchRuntimeArtifact, /finalServerEntrySource\.includes\(nitroSsrRendererImportPath\)/);
   assert.doesNotMatch(patchRuntimeArtifact, /node_modules', '\.pnpm', 'node_modules'/);
   assert.doesNotMatch(patchRuntimeArtifact, /requireFromApp\.resolve/);
+
+  assert.match(syncInjectedWorkspacePackages, /node_modules', '\.pnpm'/);
+  assert.match(syncInjectedWorkspacePackages, /await cp\(workspacePackage\.distDir, targetDistDir, \{ force: true, recursive: true \}\)/);
+  assert.match(syncInjectedWorkspacePackages, /if \(injectedCopy\.realDir === workspacePackage\.realDir\)/);
+
+  assert.match(
+    studioProjectJson,
+    /pnpm exec vite build && bash \.\.\/\.\.\/scripts\/ci\/run-workspace-node\.sh --import tsx \.\.\/\.\.\/scripts\/ci\/patch-runtime-artifact\.ts \./
+  );
+  assert.doesNotMatch(
+    studioProjectJson,
+    /patch-runtime-artifact\.ts \. && bash \.\.\/\.\.\/scripts\/ci\/run-workspace-node\.sh --import tsx \.\.\/\.\.\/scripts\/ci\/sync-injected-workspace-packages\.ts \./
+  );
+  assert.match(runtimeVerifyScript, /"injected-workspace-sync": "\$\{INJECTED_WORKSPACE_SYNC_STATUS\}"/);
+  assert.match(runtimeVerifyScript, /- \\`injected-workspace-sync\\`: \\`\$\{INJECTED_WORKSPACE_SYNC_STATUS\}\\`/);
 });
 
 test('portable docker runtime guard only fails when a JSX dev runtime match is present', () => {
@@ -147,6 +167,45 @@ fi`;
         }),
       /Command failed/,
     );
+  } finally {
+    rmSync(tempRoot, { force: true, recursive: true });
+  }
+});
+
+test('injected workspace sync copies dist into pnpm store package copies', () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), 'sync-injected-workspace-'));
+  const appDir = resolve(tempRoot, 'apps', 'demo-app');
+  const sourcePackageDir = resolve(tempRoot, 'packages', 'demo-lib');
+  const sourceDistDir = resolve(sourcePackageDir, 'dist');
+  const injectedPackageDir = resolve(
+    tempRoot,
+    'node_modules',
+    '.pnpm',
+    '@sva+demo-lib@file+packages+demo-lib',
+    'node_modules',
+    '@sva',
+    'demo-lib'
+  );
+  const syncScriptPath = resolve(testDirectory, '..', '..', '..', 'scripts', 'ci', 'sync-injected-workspace-packages.ts');
+  const workspaceNodeScriptPath = resolve(testDirectory, '..', '..', '..', 'scripts', 'ci', 'run-workspace-node.sh');
+
+  try {
+    mkdirSync(sourceDistDir, { recursive: true });
+    mkdirSync(appDir, { recursive: true });
+    mkdirSync(injectedPackageDir, { recursive: true });
+
+    writeFileSync(resolve(tempRoot, 'pnpm-workspace.yaml'), 'packages:\n  - apps/*\n  - packages/*\n');
+    writeFileSync(resolve(appDir, 'package.json'), JSON.stringify({ name: 'demo-app' }));
+    writeFileSync(resolve(sourcePackageDir, 'package.json'), JSON.stringify({ name: '@sva/demo-lib', type: 'module' }));
+    writeFileSync(resolve(sourceDistDir, 'index.js'), 'export const synced = true;\n');
+    writeFileSync(resolve(injectedPackageDir, 'package.json'), JSON.stringify({ name: '@sva/demo-lib', type: 'module' }));
+
+    execFileSync('bash', [workspaceNodeScriptPath, '--import', 'tsx', syncScriptPath, appDir], {
+      cwd: resolve(testDirectory, '..', '..', '..'),
+      stdio: 'pipe',
+    });
+
+    assert.equal(readFileSync(resolve(injectedPackageDir, 'dist', 'index.js'), 'utf8'), 'export const synced = true;\n');
   } finally {
     rmSync(tempRoot, { force: true, recursive: true });
   }

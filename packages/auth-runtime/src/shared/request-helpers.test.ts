@@ -28,6 +28,7 @@ describe('shared request helpers', () => {
     expect(readObject([])).toBeUndefined();
     expect(readObject(null)).toBeUndefined();
     expect(isUuid('11111111-1111-4111-8111-111111111111')).toBe(true);
+    expect(isUuid('22222222-2222-2222-2222-222222222222')).toBe(true);
     expect(isUuid('not-a-uuid')).toBe(false);
   });
 

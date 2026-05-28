@@ -59,12 +59,13 @@ INSERT INTO iam.account_roles (
   valid_from
 )
 SELECT $1, $2::uuid, role_id, $3::uuid, NOW()
-FROM unnest($4::uuid[]) AS role_id;
+FROM unnest($4::uuid[]) AS role_id
+WHERE TRUE
 ON CONFLICT (instance_id, account_id, role_id)
 DO UPDATE
 SET assigned_by = EXCLUDED.assigned_by,
     valid_from = NOW(),
-    valid_until = NULL;
+    valid_to = NULL;
 `,
     [input.instanceId, input.accountId, input.assignedBy ?? null, diff.insertIds]
   );
@@ -130,7 +131,8 @@ SELECT $1, $2::uuid, group_id, $3, NOW()
 FROM (
   SELECT DISTINCT group_id
   FROM unnest($4::uuid[]) AS input_groups(group_id)
-) AS unique_group_ids;
+) AS unique_group_ids
+WHERE TRUE
 ON CONFLICT (instance_id, account_id, group_id)
 DO UPDATE
 SET origin = EXCLUDED.origin,

@@ -88,6 +88,7 @@ SCHEMA_MIGRATIONS_STATUS="pending"
 REDIS_READY_STATUS="pending"
 KEYCLOAK_READY_STATUS="pending"
 ARTIFACT_CONTRACT_STATUS="pending"
+INJECTED_WORKSPACE_SYNC_STATUS="pending"
 APP_START_STATUS="pending"
 HEALTH_LIVE_STATUS="pending"
 HEALTH_READY_STATUS="pending"
@@ -458,6 +459,17 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
 fi
 
 if [ "${VERIFY_STATUS}" = "ok" ]; then
+  if bash "${WORKSPACE_ROOT}/scripts/ci/run-workspace-node.sh" --import tsx "${WORKSPACE_ROOT}/scripts/ci/sync-injected-workspace-packages.ts" "${APP_DIR}" >/dev/null; then
+    set_phase_var INJECTED_WORKSPACE_SYNC_STATUS ok
+    mark_phase injected-workspace-sync ok
+  else
+    set_phase_var INJECTED_WORKSPACE_SYNC_STATUS error
+    mark_phase injected-workspace-sync error
+    fail_verify artifact-contract-failed injected-workspace-sync "Die injizierten Workspace-Pakete konnten fuer den Final-Artifact-Check nicht synchronisiert werden."
+  fi
+fi
+
+if [ "${VERIFY_STATUS}" = "ok" ]; then
   (
     cd "${APP_DIR}"
     env \
@@ -591,6 +603,7 @@ cat > "${REPORT_PATH}" <<EOF
     "redis-ready": "${REDIS_READY_STATUS}",
     "keycloak-ready": "${KEYCLOAK_READY_STATUS}",
     "artifact-contract": "${ARTIFACT_CONTRACT_STATUS}",
+    "injected-workspace-sync": "${INJECTED_WORKSPACE_SYNC_STATUS}",
     "app-start": "${APP_START_STATUS}",
     "health-live": "${HEALTH_LIVE_STATUS}",
     "health-ready": "${HEALTH_READY_STATUS}",
@@ -627,6 +640,7 @@ cat > "${SUMMARY_PATH}" <<EOF
 - \`redis-ready\`: \`${REDIS_READY_STATUS}\`
 - \`keycloak-ready\`: \`${KEYCLOAK_READY_STATUS}\`
 - \`artifact-contract\`: \`${ARTIFACT_CONTRACT_STATUS}\`
+- \`injected-workspace-sync\`: \`${INJECTED_WORKSPACE_SYNC_STATUS}\`
 - \`app-start\`: \`${APP_START_STATUS}\`
 - \`health-live\`: \`${HEALTH_LIVE_STATUS}\`
 - \`health-ready\`: \`${HEALTH_READY_STATUS}\`

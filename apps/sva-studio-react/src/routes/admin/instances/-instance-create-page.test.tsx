@@ -223,7 +223,11 @@ describe('InstanceCreatePage', () => {
       expect(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' })).toBeTruthy();
     });
 
-    expect(screen.getByRole('checkbox', { name: /News/u })).toBeTruthy();
+    const newsCheckbox = screen.getByRole('checkbox', { name: /News/u });
+    expect(newsCheckbox).toBeTruthy();
+    expect(newsCheckbox.closest('label')?.getAttribute('aria-labelledby')).toBe(
+      'instance-admin-bootstrap-module-news-title'
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' }));
 

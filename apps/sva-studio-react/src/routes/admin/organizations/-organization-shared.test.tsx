@@ -52,6 +52,10 @@ describe('organization shared helpers', () => {
     expect(suggestOrganizationKey('Städtische Werke Köln', [])).toBe('stadtische-werke-koln');
   });
 
+  it('collapses repeated separator runs while generating organization keys', () => {
+    expect(suggestOrganizationKey('  Alpha --- Beta / Gamma  ', [])).toBe('alpha-beta-gamma');
+  });
+
   it('adds a running suffix when the generated key already exists', () => {
     expect(
       suggestOrganizationKey('Landkreis Alpha', [

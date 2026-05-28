@@ -296,24 +296,28 @@ export const InstanceCreatePage = () => {
           {studioModuleIamContracts.map((module) => {
             const checked = selectedModuleIds.includes(module.moduleId);
             const inputId = `instance-admin-bootstrap-module-${module.moduleId}`;
+            const titleId = `${inputId}-title`;
             const hintId = `${inputId}-hint`;
 
             return (
               <label
                 htmlFor={inputId}
                 key={module.moduleId}
+                aria-labelledby={titleId}
+                aria-describedby={hintId}
                 className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${readModuleCardClassName(createdInstance)}`}
               >
                 <input
                   id={inputId}
                   type="checkbox"
+                  aria-labelledby={titleId}
                   aria-describedby={hintId}
                   checked={checked}
                   disabled={!createdInstance || isBootstrappingAdminStructure}
                   onChange={() => toggleModuleSelection(module.moduleId)}
                 />
                 <span className="space-y-1">
-                  <span className="block font-medium text-foreground">
+                  <span id={titleId} className="block font-medium text-foreground">
                     {getModuleLabel(module.moduleId as keyof typeof adminBootstrapModuleLabels)}
                   </span>
                   <span id={hintId} className="block text-muted-foreground">

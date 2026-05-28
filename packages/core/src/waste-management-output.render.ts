@@ -214,7 +214,7 @@ const renderPageCommands = (page: WasteCalendarPdfDocument['pages'][number]): st
 };
 
 const escapePdfText = (value: string): string =>
-  value.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  value.replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)');
 
 export const renderWasteCalendarPdf = (document: WasteCalendarPdfDocument): Buffer => {
   const pdf = new PdfBuilder();

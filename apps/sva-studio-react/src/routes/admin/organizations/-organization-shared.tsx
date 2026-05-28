@@ -74,8 +74,7 @@ const normalizeOrganizationKeyBase = (value: string): string =>
     .toLocaleLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+/g, '')
-    .replace(/-+$/g, '')
-    .replace(/-{2,}/g, '-');
+    .replace(/-+$/g, '');
 
 const buildOrganizationKeyCandidate = (baseKey: string, suffix: number): string =>
   suffix <= 1 ? baseKey : `${baseKey}-${suffix}`;

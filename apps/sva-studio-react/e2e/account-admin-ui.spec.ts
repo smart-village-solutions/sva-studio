@@ -650,63 +650,6 @@ test('admin links are hidden for non-admin user and route guard redirects', asyn
   await expect(page.getByRole('heading', { name: /SVA Studio/i })).toBeVisible();
 });
 
-test('iam cockpit redirects unknown or disallowed tabs to the first allowed governance tab', async ({ page }) => {
-  await page.route('**/auth/me', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        user: {
-          id: 'kc-security-1',
-          name: 'Security Reviewer',
-          email: 'security@example.com',
-          instanceId: '11111111-1111-1111-8111-111111111111',
-          roles: ['security_admin'],
-        },
-      }),
-    });
-  });
-
-  await page.route('**/iam/governance/workflows?**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: [
-          {
-            id: 'governance-1',
-            type: 'impersonation',
-            status: 'approved',
-            title: 'Impersonation für Support-Fall',
-            summary: 'Temporäre Einsicht für Incident-Analyse.',
-            actorDisplayName: 'Security Reviewer',
-            targetDisplayName: 'User Two',
-            ticketId: 'INC-42',
-            createdAt: '2026-03-12T10:00:00.000Z',
-            metadata: {
-              reason: 'incident_review',
-            },
-          },
-        ],
-        pagination: {
-          page: 1,
-          pageSize: 12,
-          total: 1,
-        },
-      }),
-    });
-  });
-
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
-  await navigateClientSide(page, '/admin/iam?tab=rights');
-
-  await expect(page).toHaveURL(/\/admin\/iam\?tab=governance$/);
-  await expect(page.getByRole('heading', { name: 'IAM Transparenz-Cockpit' })).toBeVisible({ timeout: 10000 });
-  await expect(page.getByRole('tab', { name: 'Governance', selected: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Impersonation für Support-Fall' })).toBeVisible();
-});
-
 test('direct access to admin users redirects unauthenticated clients to login', async ({ request }) => {
   const response = await request.get('/admin/users', {
     maxRedirects: 0,

@@ -64,6 +64,7 @@
         "frontendTooling",
         "frontendEnvBuild",
         "{workspaceRoot}/scripts/ci/patch-runtime-artifact.ts",
+        "{workspaceRoot}/scripts/ci/sync-injected-workspace-packages.ts",
         "{workspaceRoot}/scripts/ci/run-workspace-node.sh"
       ],
       "outputs": [
@@ -71,7 +72,7 @@
       ],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "bash ../../scripts/ci/run-workspace-node.sh -e \"require('node:fs').mkdirSync('.output/server',{recursive:true})\" && pnpm exec vite build && bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/patch-runtime-artifact.ts ."
+        "command": "bash ../../scripts/ci/run-workspace-node.sh -e \"require('node:fs').mkdirSync('.output/server',{recursive:true})\" && pnpm exec vite build && bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/patch-runtime-artifact.ts . && bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/sync-injected-workspace-packages.ts ."
       }
     },
     "check:toolchain-consistency": {

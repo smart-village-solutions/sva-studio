@@ -207,6 +207,20 @@ describe('redis-backed auth runtime session store', () => {
     await expect(getSessionControlState('user-a')).resolves.toEqual(controlState);
   });
 
+  it('persists session control state without redis expiry when no ttl is supplied', async () => {
+    const controlState: SessionControlState = {
+      minimumSessionVersion: 7,
+      forcedReauthAt: 456,
+    };
+
+    await setSessionControlState('user-persistent', controlState, null);
+
+    await expect(getSessionControlState('user-persistent')).resolves.toEqual(controlState);
+    const controlKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('session_control:user-persistent'));
+    expect(controlKey).toBeDefined();
+    expect(controlKey ? mocks.redis.expirations.has(controlKey) : false).toBe(false);
+  });
+
   it('returns undefined for expired sessions and rejects missing session updates', async () => {
     await createSession(
       'expired',

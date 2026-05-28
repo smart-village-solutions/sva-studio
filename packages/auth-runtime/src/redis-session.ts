@@ -503,12 +503,16 @@ export async function getSessionControlState(userId: string): Promise<SessionCon
 export async function setSessionControlState(
   userId: string,
   state: SessionControlState,
-  ttlSeconds: number = DEFAULT_SESSION_CONTROL_TTL
+  ttlSeconds: number | null = DEFAULT_SESSION_CONTROL_TTL
 ): Promise<void> {
   await runWithRequiredRedisSessionStore({
     operation: 'set_session_control_state',
     runAgainstRedis: async () => {
       const redis = getRedisClient();
+      if (ttlSeconds === null) {
+        await redis.set(sessionControlPrefix() + userId, JSON.stringify(state));
+        return;
+      }
       await redis.set(sessionControlPrefix() + userId, JSON.stringify(state), 'EX', ttlSeconds);
     },
     runInMemoryForTests: () => {

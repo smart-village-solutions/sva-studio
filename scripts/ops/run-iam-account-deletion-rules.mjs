@@ -62,13 +62,19 @@ const run = async () => {
     await client.query('SET LOCAL ROLE iam_app;');
     await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', options.instanceId]);
 
-    const { runDeletionRulesMaintenance } = await import(
-      new URL('../../packages/iam-governance/src/deletion-rules-maintenance.js', import.meta.url).href
-    );
+    const [{ runDeletionRulesMaintenance }, { revokeUserSessions }] = await Promise.all([
+      import(new URL('../../packages/iam-governance/src/deletion-rules-maintenance.js', import.meta.url).href),
+      import(new URL('../../packages/auth-runtime/src/session-revocation.js', import.meta.url).href),
+    ]);
 
     const summary = await runDeletionRulesMaintenance(client, {
       instanceId: options.instanceId,
       dryRun: options.dryRun,
+      revokeUserSessions: async ({ keycloakSubject }) =>
+        revokeUserSessions({
+          keycloakSubject,
+          reason: 'account_lifecycle_blocked',
+        }),
     });
 
     await client.query('COMMIT');

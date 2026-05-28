@@ -35,7 +35,8 @@ describe('session-revocation', () => {
       {
         minimumSessionVersion: 2,
         forcedReauthAt: 1_717_000_000_000,
-      }
+      },
+      null
     );
     expect(revocationMocks.deleteSession).toHaveBeenCalledTimes(2);
     expect(revocationMocks.deleteSession).toHaveBeenNthCalledWith(1, 'session-a');
@@ -59,7 +60,8 @@ describe('session-revocation', () => {
       {
         minimumSessionVersion: 5,
         forcedReauthAt: 1_717_000_000_000,
-      }
+      },
+      null
     );
   });
 });

@@ -1,4 +1,6 @@
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// PostgreSQL akzeptiert kanonische UUID-Literale unabhängig von RFC-Variant/Version-Bits.
+// Unsere Seeds und Testfixtures nutzen dieses breitere Format ebenfalls.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const readString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {

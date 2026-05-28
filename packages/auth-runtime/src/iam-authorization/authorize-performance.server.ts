@@ -147,7 +147,7 @@ const invalidateUserScope = async (actor: BenchmarkActor): Promise<void> => {
 };
 
 const createFilesystemSafeIsoTimestamp = (value: Date): string =>
-  value.toISOString().replace(/:/g, '-').replace(/\.\d{3}Z$/, 'Z');
+  value.toISOString().replaceAll(':', '-').replace(/\.\d{3}Z$/, 'Z');
 
 const createReportBaseName = (generatedAt: Date): string =>
   `iam-authorize-performance-${createFilesystemSafeIsoTimestamp(generatedAt)}`;

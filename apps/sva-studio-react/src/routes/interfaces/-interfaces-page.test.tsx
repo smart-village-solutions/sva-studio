@@ -320,7 +320,11 @@ describe('InterfacesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
 
     expect(screen.queryByRole('radio', { name: /Supabase/i })).toBeNull();
-    expect(screen.getByRole('radio', { name: /SVA Mainserver/i })).toBeTruthy();
+    const mainserverRadio = screen.getByRole('radio', { name: /SVA Mainserver/i });
+    expect(mainserverRadio).toBeTruthy();
+    expect(mainserverRadio.closest('label')?.getAttribute('aria-labelledby')).toBe(
+      'interface-type-mainserver-title'
+    );
     expect(screen.getByRole('radio', { name: /S3-kompatibler Object Storage/i })).toBeTruthy();
   });
 

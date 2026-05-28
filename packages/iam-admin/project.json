@@ -34,6 +34,7 @@
     },
     "test:types": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "options": {
         "command": "tsc -p packages/iam-admin/tsconfig.lib.json --noEmit"
       }

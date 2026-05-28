@@ -17,6 +17,11 @@ export type DeletionRulesMaintenanceInput = {
   instanceId: string;
   dryRun: boolean;
   now?: Date;
+  revokeUserSessions?: (input: {
+    keycloakSubject: string;
+    nextState: BlockingLifecycleState;
+    reason: 'account_lifecycle_blocked';
+  }) => Promise<void>;
 };
 
 export type DeletionRulesMaintenanceResult = {
@@ -37,6 +42,8 @@ const lifecycleOrder: Record<IamDeletionLifecycleState, number> = {
   deleted: 3,
 };
 
+type BlockingLifecycleState = Exclude<IamDeletionLifecycleState, 'active'>;
+
 const loadMaintenanceCandidates = async (
   client: QueryClient,
   input: { instanceId: string }
@@ -56,6 +63,7 @@ WITH last_login_events AS (
 )
 SELECT
   account.id::text AS id,
+  account.keycloak_subject,
   login_events.last_login_at,
   account.deletion_lifecycle_state,
   rules.deactivate_after_days,
@@ -88,7 +96,7 @@ const hasReachedThreshold = (lastLoginAt: string, days: number, now: Date): bool
 const resolveNextLifecycleState = (
   candidate: DeletionRulesMaintenanceCandidateRow,
   now: Date
-): IamDeletionLifecycleState | undefined => {
+): BlockingLifecycleState | undefined => {
   if (!candidate.last_login_at) {
     return undefined;
   }
@@ -272,6 +280,11 @@ export const runDeletionRulesMaintenance = async (
       instanceId: input.instanceId,
       accountId: candidate.row.id,
       nextState: candidate.nextState,
+    });
+    await input.revokeUserSessions?.({
+      keycloakSubject: candidate.row.keycloak_subject,
+      nextState: candidate.nextState,
+      reason: 'account_lifecycle_blocked',
     });
 
     const contentStrategy = resolveEffectiveDeletionContentStrategy(

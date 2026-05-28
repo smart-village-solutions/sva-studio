@@ -9,6 +9,7 @@ import type { QueryClient } from './query-client.js';
 
 type MaintenanceRow = {
   id: string;
+  keycloak_subject?: string;
   last_login_at: string | null;
   deletion_lifecycle_state: 'active' | 'deactivated' | 'pseudonymized' | 'deleted';
   deactivate_after_days: number | null;
@@ -24,7 +25,10 @@ const buildClient = (rows: readonly MaintenanceRow[], contentUpdates: readonly n
     if (sql.includes('FROM iam.accounts account')) {
       return {
         rowCount: rows.length,
-        rows,
+        rows: rows.map((row) => ({
+          ...row,
+          keycloak_subject: row.keycloak_subject ?? `kc-${row.id}`,
+        })),
       };
     }
 
@@ -123,6 +127,55 @@ describe('deletion-rules/maintenance', () => {
     expect(client.query.mock.calls[0]?.[0]).toContain('MAX(log.created_at)::text AS last_login_at');
     expect(client.query.mock.calls[0]?.[0]).toContain("log.event_type = 'login'");
     expect(client.query.mock.calls[0]?.[0]).toContain("log.result = 'success'");
+  });
+
+  it('revokes user sessions for persisted lifecycle transitions outside dry runs', async () => {
+    const client = buildClient([
+      {
+        id: 'account-1',
+        keycloak_subject: 'kc-user-1',
+        last_login_at: '2025-01-01T00:00:00.000Z',
+        deletion_lifecycle_state: 'active',
+        deactivate_after_days: 30,
+        pseudonymize_after_days: 60,
+        delete_after_days: 90,
+        default_content_strategy: 'retain',
+        allow_content_preference_override: true,
+        override_content_strategy: null,
+      },
+      {
+        id: 'account-2',
+        keycloak_subject: 'kc-user-2',
+        last_login_at: '2025-01-01T00:00:00.000Z',
+        deletion_lifecycle_state: 'deactivated',
+        deactivate_after_days: 30,
+        pseudonymize_after_days: 60,
+        delete_after_days: 90,
+        default_content_strategy: 'retain',
+        allow_content_preference_override: true,
+        override_content_strategy: null,
+      },
+    ]);
+    const revokeUserSessions = vi.fn(async () => undefined);
+
+    await runDeletionRulesMaintenance(client, {
+      instanceId: 'de-test',
+      dryRun: false,
+      now: new Date('2026-05-20T00:00:00.000Z'),
+      revokeUserSessions,
+    });
+
+    expect(revokeUserSessions).toHaveBeenCalledTimes(2);
+    expect(revokeUserSessions).toHaveBeenNthCalledWith(1, {
+      keycloakSubject: 'kc-user-1',
+      nextState: 'deactivated',
+      reason: 'account_lifecycle_blocked',
+    });
+    expect(revokeUserSessions).toHaveBeenNthCalledWith(2, {
+      keycloakSubject: 'kc-user-2',
+      nextState: 'pseudonymized',
+      reason: 'account_lifecycle_blocked',
+    });
   });
 
   it('marks due accounts as deactivated before pseudonymization when multiple thresholds are already exceeded', async () => {

@@ -434,6 +434,9 @@ test.describe('events and POI plugins', () => {
     const pois: PoiRecord[] = [];
     const events: EventRecord[] = [];
 
+    await page.route('**/api/v1/mainserver/events**', async (route) => {
+      await routeEvents(route, events);
+    });
     await page.route('**/api/v1/mainserver/poi**', async (route) => {
       await routePoi(route, pois);
     });

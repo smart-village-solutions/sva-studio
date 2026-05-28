@@ -10,6 +10,7 @@
     "build": "pnpm run check:i18n && pnpm run check:account-ui-foundation && vite build",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
+    "test:a11y": "vitest run --config vitest.a11y.config.ts --passWithNoTests",
     "test:e2e": "playwright test --config playwright.config.ts"
   },
   "dependencies": {
@@ -68,6 +69,7 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^4.1.5",
+    "axe-core": "^4.11.4",
     "jsdom": "^29.1.0",
     "tooling-testing": "workspace:*",
     "typescript": "^6.0.3",

@@ -17,6 +17,7 @@
     "test:types": "pnpm clean:generated-source-artifacts && env -u NO_COLOR nx run-many -t test:types --parallel=1 && env -u NO_COLOR nx run-many -t typecheck --parallel=1 && pnpm check:server-runtime && pnpm exec tsc -p tsconfig.scripts.json --noEmit",
     "test:types:affected": "pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected --target=test:types --base=${NX_BASE:-origin/main} --parallel=1 && env -u NO_COLOR nx affected --target=typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected && pnpm exec tsc -p tsconfig.scripts.json --noEmit",
     "test": "pnpm test:unit",
+    "test:a11y": "env -u NO_COLOR nx run sva-studio-react:test:a11y",
     "test:unit": "env -u NO_COLOR nx run-many -t test:unit --parallel=1",
     "test:unit:affected": "tsx scripts/ci/affected-unit-gate.ts --base ${NX_BASE:-origin/main}",
     "test:coverage": "env -u NO_COLOR nx run-many -t test:coverage",

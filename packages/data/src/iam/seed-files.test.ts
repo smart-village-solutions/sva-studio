@@ -30,12 +30,25 @@ describe('iam seed sql contracts', () => {
     assert.doesNotMatch(sql, /tenant_admin_client_id = EXCLUDED\.tenant_admin_client_id,/);
     assert.match(
       sql,
-      /instances\.primary_hostname = 'de-musterhausen\.studio\.smart-village\.app'/
+      /instances\.primary_hostname = 'de-musterhausen\.studio\.localhost'/
     );
     assert.match(
       sql,
       /AND instances\.primary_hostname = EXCLUDED\.hostname/
     );
+  });
+
+  it('seeds de-musterhausen with the local-keycloak reference identity by default', () => {
+    const sql = readSeed('0001_iam_personas.sql');
+
+    assert.match(sql, /'de-musterhausen'/);
+    assert.match(sql, /'studio\.localhost'/);
+    assert.match(sql, /'de-musterhausen\.studio\.localhost'/);
+    assert.match(sql, /'de-musterhausen'/);
+    assert.match(sql, /'sva-studio-realm-admin'/);
+    assert.doesNotMatch(sql, /'de-musterhausen\.studio\.smart-village\.app'/);
+    assert.doesNotMatch(sql, /'svs-intern-studio-staging'/);
+    assert.doesNotMatch(sql, /'sva-studio-admin'/);
   });
 
   it('keeps 0002 non-destructive for an already provisioned instance identity', () => {

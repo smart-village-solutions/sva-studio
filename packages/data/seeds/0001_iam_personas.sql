@@ -15,11 +15,11 @@ VALUES (
   'de-musterhausen',
   'Seed Instance Default',
   'active',
-  'studio.smart-village.app',
-  'de-musterhausen.studio.smart-village.app',
-  'svs-intern-studio-staging',
+  'studio.localhost',
+  'de-musterhausen.studio.localhost',
+  'de-musterhausen',
   'sva-studio',
-  'sva-studio-admin',
+  'sva-studio-realm-admin',
   '{}'::jsonb
 )
 ON CONFLICT (id) DO UPDATE
@@ -36,9 +36,9 @@ SET
 
 INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
 SELECT
-  'de-musterhausen.studio.smart-village.app',
+  'de-musterhausen.studio.localhost',
   'de-musterhausen',
-  instances.primary_hostname = 'de-musterhausen.studio.smart-village.app',
+  instances.primary_hostname = 'de-musterhausen.studio.localhost',
   'seed:0001_iam_personas'
 FROM iam.instances AS instances
 WHERE instances.id = 'de-musterhausen'

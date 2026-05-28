@@ -1,4 +1,5 @@
 cleanupUnusedCatalogs: true
+injectWorkspacePackages: true
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 engineStrict: true

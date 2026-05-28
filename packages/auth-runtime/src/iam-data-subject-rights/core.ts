@@ -24,6 +24,7 @@ import { validateCsrf } from '../iam-account-management/csrf.js';
 import { getAdminDsrCase, listAdminDsrCases, loadDsrSelfServiceOverview } from '@sva/iam-governance';
 import { DsrAccountSnapshotNotFoundError } from '@sva/iam-governance/dsr-read-models-internal';
 import { readPathSegment } from '../shared/request-helpers.js';
+import { revokeUserSessions } from '../session-revocation.js';
 
 const logger = createSdkLogger({ component: 'iam-dsr', level: 'info' });
 const isExportFormat = (value: string | undefined): value is ExportFormat =>
@@ -751,6 +752,7 @@ const performDeletionRequest = async (
     instanceId: string;
     requesterAccountId: string;
     targetAccountId: string;
+    keycloakSubject: string;
     payload: Record<string, unknown>;
   }
 ): Promise<{ requestId: string; status: string }> => {
@@ -821,6 +823,11 @@ WHERE id = $2::uuid;
       retentionHours,
       slaHours: DELETE_SLA_HOURS,
     },
+  });
+
+  await revokeUserSessions({
+    keycloakSubject: input.keycloakSubject,
+    reason: 'dsr_deletion_requested',
   });
 
   return { requestId, status: 'processing' };
@@ -961,6 +968,7 @@ export const dataSubjectRequestHandler = async (request: Request): Promise<Respo
               instanceId,
               requesterAccountId,
               targetAccountId: requesterAccountId,
+              keycloakSubject: user.id,
               payload,
             });
           } else if (requestType === 'restriction') {

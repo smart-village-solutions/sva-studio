@@ -72,6 +72,7 @@ const createDeps = (overrides: Partial<DeactivateUserHandlerDeps> = {}): Deactiv
       mainserverUserApplicationSecretSet: state.mainserverUserApplicationSecretSet,
     })),
     notifyPermissionInvalidation: vi.fn(async () => undefined),
+    revokeUserSessions: vi.fn(async () => undefined),
     notFoundResponse: vi.fn((requestId) => createJsonResponse(404, { error: { code: 'not_found' }, requestId })),
     resolveActorMaxRoleLevel: vi.fn(async () => 100),
     resolveDeactivateRequestContext: vi.fn(async () => ({
@@ -134,6 +135,10 @@ describe('createDeactivateUserHandlerInternal', () => {
         trigger: 'user_deactivated',
       }
     );
+    expect(deps.revokeUserSessions).toHaveBeenCalledWith({
+      keycloakSubject: 'kc-user-1',
+      reason: 'user_deactivated',
+    });
     expect(deps.trackKeycloakCall).toHaveBeenCalledWith('deactivate_user', expect.any(Function));
     expect(deps.iamUserOperationsCounter.add).toHaveBeenCalledWith(1, {
       action: 'deactivate_user',

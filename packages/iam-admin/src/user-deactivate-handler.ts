@@ -88,6 +88,10 @@ export type DeactivateUserHandlerDeps = {
       readonly trigger: 'user_deactivated';
     }
   ) => Promise<void>;
+  readonly revokeUserSessions: (input: {
+    readonly keycloakSubject: string;
+    readonly reason: 'user_deactivated';
+  }) => Promise<void>;
   readonly notFoundResponse: (requestId?: string) => Response;
   readonly resolveActorMaxRoleLevel: (
     client: QueryClient,
@@ -189,6 +193,10 @@ WHERE id = $1::uuid
       instanceId: input.actor.instanceId,
       keycloakSubject: existing.keycloakSubject,
       trigger: 'user_deactivated',
+    });
+    await deps.revokeUserSessions({
+      keycloakSubject: existing.keycloakSubject,
+      reason: 'user_deactivated',
     });
 
     return deps.resolveUserDetail(client, {

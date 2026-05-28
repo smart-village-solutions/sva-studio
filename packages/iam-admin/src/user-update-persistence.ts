@@ -66,6 +66,10 @@ export type UserUpdatePersistenceDeps = {
       readonly trigger: string;
     }
   ) => Promise<void>;
+  readonly revokeUserSessions: (input: {
+    readonly keycloakSubject: string;
+    readonly reason: 'user_status_inactivated';
+  }) => Promise<void>;
   readonly resolveUserDetail: (
     client: QueryClient,
     input: { readonly instanceId: string; readonly userId: string }
@@ -257,6 +261,12 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
         keycloakSubject: input.keycloakSubject,
         payload: input.payload,
       });
+      if (input.payload.status === 'inactive') {
+        await deps.revokeUserSessions({
+          keycloakSubject: input.keycloakSubject,
+          reason: 'user_status_inactivated',
+        });
+      }
 
       const detail = await deps.resolveUserDetail(client, {
         instanceId: input.instanceId,

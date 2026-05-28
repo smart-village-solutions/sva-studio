@@ -47,6 +47,7 @@ const createDeps = (overrides: Partial<BulkDeactivateHandlerDeps> = {}): BulkDea
       error: vi.fn(),
     },
     notifyPermissionInvalidation: vi.fn(async () => undefined),
+    revokeUserSessions: vi.fn(async () => undefined),
     resolveActorMaxRoleLevel: vi.fn(async () => 100),
     resolveBulkDeactivateContext: vi.fn(async () => ({
       actor,
@@ -115,6 +116,15 @@ describe('createBulkDeactivateHandlerInternal', () => {
       })
     );
     expect(deps.notifyPermissionInvalidation).toHaveBeenCalledTimes(2);
+    expect(deps.revokeUserSessions).toHaveBeenCalledTimes(2);
+    expect(deps.revokeUserSessions).toHaveBeenNthCalledWith(1, {
+      keycloakSubject: 'kc-user-1',
+      reason: 'user_bulk_deactivated',
+    });
+    expect(deps.revokeUserSessions).toHaveBeenNthCalledWith(2, {
+      keycloakSubject: 'kc-user-2',
+      reason: 'user_bulk_deactivated',
+    });
     expect(deps.trackKeycloakCall).toHaveBeenCalledTimes(2);
     expect(deps.iamUserOperationsCounter.add).toHaveBeenCalledWith(1, {
       action: 'bulk_deactivate',

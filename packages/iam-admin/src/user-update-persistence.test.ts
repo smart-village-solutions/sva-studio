@@ -25,6 +25,7 @@ const createDeps = (client: QueryClient) => ({
   assignRoles: vi.fn(async () => undefined),
   emitActivityLog: vi.fn(async () => undefined),
   notifyPermissionInvalidation: vi.fn(async () => undefined),
+  revokeUserSessions: vi.fn(async () => undefined),
   resolveUserDetail: vi.fn(async () => detail),
   withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (queryClient: QueryClient) => Promise<unknown>) =>
     work(client)
@@ -171,5 +172,33 @@ describe('user-update-persistence', () => {
         },
       })
     ).resolves.toBeUndefined();
+  });
+
+  it('revokes existing sessions when a user update deactivates the account', async () => {
+    const client: QueryClient = {
+      query: vi.fn(async () => ({ rowCount: 1, rows: [] })),
+    };
+    const deps = createDeps(client);
+    const persistence = createUserUpdatePersistence(deps);
+
+    await persistence.persistUpdatedUserDetail({
+      instanceId: 'inst-1',
+      actorAccountId: 'actor-1',
+      userId: 'user-1',
+      keycloakSubject: 'kc-1',
+      existingRoleIds: [],
+      existingGroupIds: [],
+      payload: {
+        status: 'inactive',
+      },
+      nextMainserverCredentialState: {
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    expect(deps.revokeUserSessions).toHaveBeenCalledWith({
+      keycloakSubject: 'kc-1',
+      reason: 'user_status_inactivated',
+    });
   });
 });

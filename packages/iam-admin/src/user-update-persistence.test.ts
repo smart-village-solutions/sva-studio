@@ -23,6 +23,7 @@ const detail = {
 const createDeps = (client: QueryClient) => ({
   assignGroups: vi.fn(async () => undefined),
   assignRoles: vi.fn(async () => undefined),
+  clearUserSessionLoginBlock: vi.fn(async () => undefined),
   emitActivityLog: vi.fn(async () => undefined),
   notifyPermissionInvalidation: vi.fn(async () => undefined),
   revokeUserSessions: vi.fn(async () => undefined),
@@ -200,5 +201,30 @@ describe('user-update-persistence', () => {
       keycloakSubject: 'kc-1',
       reason: 'user_status_inactivated',
     });
+  });
+
+  it('clears the reactivation login block when a user update activates the account', async () => {
+    const client: QueryClient = {
+      query: vi.fn(async () => ({ rowCount: 1, rows: [] })),
+    };
+    const deps = createDeps(client);
+    const persistence = createUserUpdatePersistence(deps);
+
+    await persistence.persistUpdatedUserDetail({
+      instanceId: 'inst-1',
+      actorAccountId: 'actor-1',
+      userId: 'user-1',
+      keycloakSubject: 'kc-1',
+      existingRoleIds: [],
+      existingGroupIds: [],
+      payload: {
+        status: 'active',
+      },
+      nextMainserverCredentialState: {
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    expect(deps.clearUserSessionLoginBlock).toHaveBeenCalledWith('kc-1');
   });
 });

@@ -54,6 +54,8 @@ const readClaimSubject = (claims: Record<string, unknown>): string => {
   return typeof subject === 'string' ? subject : '';
 };
 
+const isLoginBlocked = (state: Awaited<ReturnType<typeof getSessionControlState>>): boolean => state?.loginBlocked === true;
+
 const normalizeLoginState = (loginState: UntrustedLoginState): LoginState => {
   if (loginState.kind === 'instance' && typeof loginState.instanceId !== 'string') {
     throw new Error('Invalid login state: missing instanceId for instance scope');
@@ -142,6 +144,9 @@ const persistSession = async (input: {
   const issuedAt = Date.now();
   const { sessionTtlMs } = input.authConfig;
   const sessionControlState = await getSessionControlState(readClaimSubject(input.claims));
+  if (isLoginBlocked(sessionControlState)) {
+    throw new Error('Account is blocked from starting new sessions');
+  }
   const sessionVersion = Math.max(sessionControlState?.minimumSessionVersion ?? 1, 1);
   const expiresAt = resolveSessionExpiry({
     expiresInSeconds: undefined,

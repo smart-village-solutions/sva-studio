@@ -57,6 +57,7 @@ export type UserUpdatePersistenceDeps = {
       readonly assignedBy?: string;
     }
   ) => Promise<void>;
+  readonly clearUserSessionLoginBlock: (keycloakSubject: string) => Promise<void>;
   readonly emitActivityLog: (client: QueryClient, input: UserActivityLogInput) => Promise<void>;
   readonly notifyPermissionInvalidation: (
     client: QueryClient,
@@ -266,6 +267,8 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
           keycloakSubject: input.keycloakSubject,
           reason: 'user_status_inactivated',
         });
+      } else if (input.payload.status === 'active') {
+        await deps.clearUserSessionLoginBlock(input.keycloakSubject);
       }
 
       const detail = await deps.resolveUserDetail(client, {

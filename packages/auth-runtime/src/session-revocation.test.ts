@@ -60,6 +60,30 @@ describe('session-revocation', () => {
       {
         minimumSessionVersion: 5,
         forcedReauthAt: 1_717_000_000_000,
+        loginBlocked: true,
+        loginBlockedReason: 'account_lifecycle_blocked',
+      },
+      null
+    );
+  });
+
+  it('clears reactivatable login blocks when a user becomes active again', async () => {
+    revocationMocks.getSessionControlState.mockResolvedValue({
+      minimumSessionVersion: 5,
+      forcedReauthAt: 1_716_999_999_000,
+      loginBlocked: true,
+      loginBlockedReason: 'user_status_inactivated',
+    });
+
+    const { clearUserSessionLoginBlock } = await import('./session-revocation.js');
+
+    await clearUserSessionLoginBlock('kc-user-3');
+
+    expect(revocationMocks.setSessionControlState).toHaveBeenCalledWith(
+      'kc-user-3',
+      {
+        minimumSessionVersion: 5,
+        forcedReauthAt: 1_716_999_999_000,
       },
       null
     );

@@ -120,6 +120,32 @@ describe('handleCallback', () => {
     expect(mocks.authorizationCodeGrant).not.toHaveBeenCalled();
   });
 
+  it('rejects new sessions for subjects with a persistent login block', async () => {
+    const { handleCallback } = await import('./callback.js');
+
+    mocks.getSessionControlState.mockResolvedValueOnce({
+      minimumSessionVersion: 2,
+      loginBlocked: true,
+      loginBlockedReason: 'account_lifecycle_blocked',
+    });
+
+    await expect(
+      handleCallback({
+        code: 'code-1',
+        state: 'state-1',
+        authConfig,
+        loginState: {
+          kind: 'platform',
+          codeVerifier: 'verifier',
+          nonce: 'nonce',
+          createdAt: Date.now(),
+        },
+      })
+    ).rejects.toThrow('Account is blocked from starting new sessions');
+
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
   it('rejects instance login states without an instanceId', async () => {
     const { handleCallback } = await import('./callback.js');
 

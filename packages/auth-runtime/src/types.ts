@@ -63,6 +63,8 @@ export type LoginState = RuntimeScopeRef & {
 export type SessionControlState = {
   minimumSessionVersion: number;
   forcedReauthAt?: number;
+  loginBlocked?: boolean;
+  loginBlockedReason?: 'account_lifecycle_blocked' | 'dsr_deletion_requested' | 'user_status_inactivated';
 };
 
 export type ForceReauthInput = {

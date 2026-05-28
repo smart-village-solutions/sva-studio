@@ -3,6 +3,7 @@ lockfileVersion: '9.0'
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
+  injectWorkspacePackages: true
 
 overrides:
   '@tanstack/react-router': 1.170.8
@@ -207,19 +208,19 @@ importers:
         version: 1.1.13(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@sva/auth-runtime':
         specifier: workspace:*
-        version: link:../../packages/auth-runtime
+        version: file:packages/auth-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(typescript@6.0.3)
       '@sva/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@sva/data-repositories':
         specifier: workspace:*
-        version: link:../../packages/data-repositories
+        version: file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       '@sva/iam-admin':
         specifier: workspace:*
-        version: link:../../packages/iam-admin
+        version: file:packages/iam-admin(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       '@sva/iam-governance':
         specifier: workspace:*
-        version: link:../../packages/iam-governance
+        version: file:packages/iam-governance(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       '@sva/monitoring-client':
         specifier: workspace:*
         version: link:../../packages/monitoring-client
@@ -237,7 +238,7 @@ importers:
         version: link:../../packages/plugin-sdk
       '@sva/routing':
         specifier: workspace:*
-        version: link:../../packages/routing
+        version: file:packages/routing(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3)
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../../packages/server-runtime
@@ -249,7 +250,7 @@ importers:
         version: link:../../packages/studio-ui-react
       '@sva/sva-mainserver':
         specifier: workspace:*
-        version: link:../../packages/sva-mainserver
+        version: file:packages/sva-mainserver(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(typescript@6.0.3)
       '@tabler/icons-react':
         specifier: ^3.41.1
         version: 3.44.0(react@19.2.6)
@@ -397,7 +398,7 @@ importers:
         version: link:../plugin-sdk
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       '@sva/studio-module-iam':
         specifier: workspace:*
         version: link:../studio-module-iam
@@ -464,7 +465,7 @@ importers:
         version: link:../data-repositories
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       pg:
         specifier: ^8.20.0
         version: 8.21.0
@@ -505,7 +506,7 @@ importers:
         version: link:../core
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       pg:
         specifier: ^8.20.0
         version: 8.21.0
@@ -527,7 +528,7 @@ importers:
         version: link:../core
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       '@sva/studio-module-iam':
         specifier: workspace:*
         version: link:../studio-module-iam
@@ -562,7 +563,7 @@ importers:
         version: link:../core
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       postcss:
         specifier: 8.5.11
         version: 8.5.11
@@ -593,7 +594,7 @@ importers:
         version: link:../data-repositories
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -873,7 +874,7 @@ importers:
         version: link:../plugin-sdk
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -1002,7 +1003,7 @@ importers:
         version: link:../data-repositories
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -3918,6 +3919,48 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@sva/auth-runtime@file:packages/auth-runtime':
+    resolution: {directory: packages/auth-runtime, type: directory}
+
+  '@sva/core@file:packages/core':
+    resolution: {directory: packages/core, type: directory}
+
+  '@sva/data-repositories@file:packages/data-repositories':
+    resolution: {directory: packages/data-repositories, type: directory}
+
+  '@sva/iam-admin@file:packages/iam-admin':
+    resolution: {directory: packages/iam-admin, type: directory}
+
+  '@sva/iam-core@file:packages/iam-core':
+    resolution: {directory: packages/iam-core, type: directory}
+
+  '@sva/iam-governance@file:packages/iam-governance':
+    resolution: {directory: packages/iam-governance, type: directory}
+
+  '@sva/instance-registry@file:packages/instance-registry':
+    resolution: {directory: packages/instance-registry, type: directory}
+
+  '@sva/media@file:packages/media':
+    resolution: {directory: packages/media, type: directory}
+
+  '@sva/monitoring-client@file:packages/monitoring-client':
+    resolution: {directory: packages/monitoring-client, type: directory}
+
+  '@sva/plugin-sdk@file:packages/plugin-sdk':
+    resolution: {directory: packages/plugin-sdk, type: directory}
+
+  '@sva/routing@file:packages/routing':
+    resolution: {directory: packages/routing, type: directory}
+
+  '@sva/server-runtime@file:packages/server-runtime':
+    resolution: {directory: packages/server-runtime, type: directory}
+
+  '@sva/studio-module-iam@file:packages/studio-module-iam':
+    resolution: {directory: packages/studio-module-iam, type: directory}
+
+  '@sva/sva-mainserver@file:packages/sva-mainserver':
+    resolution: {directory: packages/sva-mainserver, type: directory}
 
   '@tabler/icons-react@3.44.0':
     resolution: {integrity: sha512-8+rvzBbVm/1Z3sG3x7GUNAaxIKxwgz8xaMhRs23nrCnMTKRFAhEC+82zAIFeAA0seXdrAGX5HFCkaLpGK2rVHg==}
@@ -9906,6 +9949,150 @@ snapshots:
       solid-js: 1.9.11
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@sva/auth-runtime@file:packages/auth-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(typescript@6.0.3)':
+    dependencies:
+      '@aws-sdk/client-s3': 3.1053.0
+      '@aws-sdk/s3-request-presigner': 3.1053.0
+      '@opentelemetry/api': 1.9.1
+      '@sva/core': file:packages/core
+      '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/iam-admin': file:packages/iam-admin(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/iam-core': file:packages/iam-core
+      '@sva/iam-governance': file:packages/iam-governance(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/instance-registry': file:packages/instance-registry(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/media': file:packages/media
+      '@sva/plugin-sdk': file:packages/plugin-sdk
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/studio-module-iam': file:packages/studio-module-iam
+      cookie-es: 3.1.1
+      file-type: 22.0.1
+      graphile-worker: 0.16.6(typescript@6.0.3)
+      ioredis: 5.11.0
+      openid-client: 6.8.4
+      pg: 8.21.0
+      postcss: 8.5.11
+      sanitize-html: 2.17.4
+      sharp: 0.34.5
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - pg-native
+      - supports-color
+      - typescript
+
+  '@sva/core@file:packages/core': {}
+
+  '@sva/data-repositories@file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
+    dependencies:
+      '@sva/core': file:packages/core
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      pg: 8.21.0
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - pg-native
+      - supports-color
+
+  '@sva/iam-admin@file:packages/iam-admin(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
+    dependencies:
+      '@sva/core': file:packages/core
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/studio-module-iam': file:packages/studio-module-iam
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - supports-color
+
+  '@sva/iam-core@file:packages/iam-core':
+    dependencies:
+      '@sva/core': file:packages/core
+
+  '@sva/iam-governance@file:packages/iam-governance(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
+    dependencies:
+      '@sva/core': file:packages/core
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      postcss: 8.5.11
+      sanitize-html: 2.17.4
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - supports-color
+
+  '@sva/instance-registry@file:packages/instance-registry(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
+    dependencies:
+      '@sva/core': file:packages/core
+      '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - pg-native
+      - supports-color
+
+  '@sva/media@file:packages/media': {}
+
+  '@sva/monitoring-client@file:packages/monitoring-client(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
+    dependencies:
+      '@opentelemetry/api': 1.9.1
+      '@opentelemetry/api-logs': 0.218.0
+      '@opentelemetry/auto-instrumentations-node': 0.76.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@opentelemetry/exporter-logs-otlp-http': 0.218.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/exporter-metrics-otlp-http': 0.218.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/resources': 2.7.1(@opentelemetry/api@1.9.1)
+      '@opentelemetry/sdk-logs': 0.218.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/sdk-metrics': 2.7.1(@opentelemetry/api@1.9.1)
+      '@opentelemetry/sdk-node': 0.218.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/semantic-conventions': 1.41.1
+      '@sva/core': file:packages/core
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - supports-color
+
+  '@sva/plugin-sdk@file:packages/plugin-sdk':
+    dependencies:
+      '@sva/core': file:packages/core
+
+  '@sva/routing@file:packages/routing(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3)':
+    dependencies:
+      '@sva/auth-runtime': file:packages/auth-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(typescript@6.0.3)
+      '@sva/plugin-sdk': file:packages/plugin-sdk
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@tanstack/react-router': 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - pg-native
+      - react
+      - react-dom
+      - supports-color
+      - typescript
+
+  '@sva/server-runtime@file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
+    dependencies:
+      '@opentelemetry/api': 1.9.1
+      '@opentelemetry/sdk-node': 0.218.0(@opentelemetry/api@1.9.1)
+      '@sva/core': file:packages/core
+      '@sva/monitoring-client': file:packages/monitoring-client(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      winston: 3.19.0
+      winston-transport: 4.9.0
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - supports-color
+
+  '@sva/studio-module-iam@file:packages/studio-module-iam': {}
+
+  '@sva/sva-mainserver@file:packages/sva-mainserver(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(typescript@6.0.3)':
+    dependencies:
+      '@opentelemetry/api': 1.9.1
+      '@sva/auth-runtime': file:packages/auth-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(typescript@6.0.3)
+      '@sva/core': file:packages/core
+      '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - pg-native
+      - supports-color
+      - typescript
 
   '@tabler/icons-react@3.44.0(react@19.2.6)':
     dependencies:

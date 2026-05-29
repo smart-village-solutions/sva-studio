@@ -577,15 +577,22 @@ describe('iam data subject rights handlers', () => {
 
   it('revokes active sessions when a deletion request enters processing', async () => {
     const { dataSubjectRequestHandler } = await import('./core.js');
+    const events: string[] = [];
 
-    mocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, _instanceId, work) =>
-      work(
+    mocks.revokeUserSessions.mockImplementationOnce(async () => {
+      events.push('revoke');
+    });
+    mocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, _instanceId, work) => {
+      events.push('tx:start');
+      const result = await work(
         buildDbClient({
           account: buildAccount({ id: 'account-77', keycloak_subject: 'kc-user-1' }),
           requestIds: ['deletion-request-1'],
         })
-      )
-    );
+      );
+      events.push('tx:end');
+      return result;
+    });
 
     const response = await dataSubjectRequestHandler(
       new Request('http://localhost/iam/me/data-subject-rights', {
@@ -604,6 +611,7 @@ describe('iam data subject rights handlers', () => {
       keycloakSubject: 'kc-user-1',
       reason: 'dsr_deletion_requested',
     });
+    expect(events).toEqual(['tx:start', 'tx:end', 'revoke']);
   });
 
   it('blocks optional processing when restriction or objection flags are active', async () => {

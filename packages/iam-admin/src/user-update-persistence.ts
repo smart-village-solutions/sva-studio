@@ -206,6 +206,9 @@ const invalidateUpdatedUserPermissions = async (
   });
 };
 
+const resolveUpdatedUserSessionAction = (status: UpdateUserPersistencePayload['status']) =>
+  status === 'inactive' ? ('revoke' as const) : status === 'active' ? ('clear' as const) : undefined;
+
 export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => {
   const persistUpdatedUserDetail = async (input: {
     readonly instanceId: string;
@@ -218,8 +221,8 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
     readonly existingGroupIds?: readonly string[];
     readonly payload: UpdateUserPersistencePayload;
     readonly nextMainserverCredentialState: UserMainserverCredentialState;
-  }) =>
-    deps.withInstanceScopedDb(input.instanceId, async (client) => {
+  }) => {
+    const persisted = await deps.withInstanceScopedDb(input.instanceId, async (client) => {
       if (input.payload.roleIds) {
         await deps.assignRoles(client, {
           instanceId: input.instanceId,
@@ -262,29 +265,39 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
         keycloakSubject: input.keycloakSubject,
         payload: input.payload,
       });
-      if (input.payload.status === 'inactive') {
-        await deps.revokeUserSessions({
-          keycloakSubject: input.keycloakSubject,
-          reason: 'user_status_inactivated',
-        });
-      } else if (input.payload.status === 'active') {
-        await deps.clearUserSessionLoginBlock(input.keycloakSubject);
-      }
-
       const detail = await deps.resolveUserDetail(client, {
         instanceId: input.instanceId,
         userId: input.userId,
       });
+      const sessionAction = resolveUpdatedUserSessionAction(input.payload.status);
       if (!detail) {
-        return undefined;
+        return {
+          detail: undefined,
+          sessionAction,
+        };
       }
 
       return {
-        ...detail,
-        mainserverUserApplicationId: input.nextMainserverCredentialState.mainserverUserApplicationId,
-        mainserverUserApplicationSecretSet: input.nextMainserverCredentialState.mainserverUserApplicationSecretSet,
+        detail: {
+          ...detail,
+          mainserverUserApplicationId: input.nextMainserverCredentialState.mainserverUserApplicationId,
+          mainserverUserApplicationSecretSet: input.nextMainserverCredentialState.mainserverUserApplicationSecretSet,
+        },
+        sessionAction,
       };
     });
+
+    if (persisted.sessionAction === 'revoke') {
+      await deps.revokeUserSessions({
+        keycloakSubject: input.keycloakSubject,
+        reason: 'user_status_inactivated',
+      });
+    } else if (persisted.sessionAction === 'clear') {
+      await deps.clearUserSessionLoginBlock(input.keycloakSubject);
+    }
+
+    return persisted.detail;
+  };
 
   return {
     persistUpdatedUserDetail,

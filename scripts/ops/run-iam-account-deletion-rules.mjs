@@ -66,18 +66,24 @@ const run = async () => {
       import(new URL('../../packages/iam-governance/src/deletion-rules-maintenance.js', import.meta.url).href),
       import(new URL('../../packages/auth-runtime/src/session-revocation.js', import.meta.url).href),
     ]);
+    const queuedSessionRevocations = [];
 
     const summary = await runDeletionRulesMaintenance(client, {
       instanceId: options.instanceId,
       dryRun: options.dryRun,
-      revokeUserSessions: async ({ keycloakSubject }) =>
-        revokeUserSessions({
-          keycloakSubject,
-          reason: 'account_lifecycle_blocked',
-        }),
+      queueUserSessionRevocation: async ({ keycloakSubject }) => {
+        queuedSessionRevocations.push(keycloakSubject);
+      },
     });
 
     await client.query('COMMIT');
+
+    for (const keycloakSubject of queuedSessionRevocations) {
+      await revokeUserSessions({
+        keycloakSubject,
+        reason: 'account_lifecycle_blocked',
+      });
+    }
     console.log(JSON.stringify(summary, null, 2));
   } catch (error) {
     if (client) {

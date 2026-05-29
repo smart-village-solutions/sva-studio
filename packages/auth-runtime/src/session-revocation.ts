@@ -14,7 +14,16 @@ export type SessionRevocationReason =
 
 type BlockingSessionRevocationReason = Extract<
   SessionRevocationReason,
-  'account_lifecycle_blocked' | 'dsr_deletion_requested' | 'user_status_inactivated'
+  | 'account_lifecycle_blocked'
+  | 'dsr_deletion_requested'
+  | 'user_bulk_deactivated'
+  | 'user_deactivated'
+  | 'user_status_inactivated'
+>;
+
+type ReactivatableSessionRevocationReason = Extract<
+  BlockingSessionRevocationReason,
+  'user_bulk_deactivated' | 'user_deactivated' | 'user_status_inactivated'
 >;
 
 const shouldPersistSessionControlState = (reason: SessionRevocationReason): boolean =>
@@ -30,6 +39,8 @@ const toBlockingSessionRevocationReason = (
   switch (reason) {
     case 'account_lifecycle_blocked':
     case 'dsr_deletion_requested':
+    case 'user_bulk_deactivated':
+    case 'user_deactivated':
     case 'user_status_inactivated':
       return reason;
     default:
@@ -37,19 +48,34 @@ const toBlockingSessionRevocationReason = (
   }
 };
 
+const isPersistentLoginBlockReason = (
+  reason: BlockingSessionRevocationReason | undefined
+): reason is Exclude<BlockingSessionRevocationReason, ReactivatableSessionRevocationReason> =>
+  reason === 'account_lifecycle_blocked' || reason === 'dsr_deletion_requested';
+
+const isReactivatableLoginBlockReason = (
+  reason: BlockingSessionRevocationReason | undefined
+): reason is ReactivatableSessionRevocationReason =>
+  reason === 'user_bulk_deactivated' || reason === 'user_deactivated' || reason === 'user_status_inactivated';
+
 export const revokeUserSessions = async (input: {
   readonly keycloakSubject: string;
   readonly reason: SessionRevocationReason;
 }): Promise<void> => {
   const currentState = await getSessionControlState(input.keycloakSubject);
   const blockingReason = toBlockingSessionRevocationReason(input.reason);
+  const currentBlockingReason =
+    currentState?.loginBlocked && currentState.loginBlockedReason ? currentState.loginBlockedReason : undefined;
+  const nextBlockingReason = isPersistentLoginBlockReason(currentBlockingReason)
+    ? currentBlockingReason
+    : blockingReason ?? currentBlockingReason;
   const nextState = {
     minimumSessionVersion: Math.max(currentState?.minimumSessionVersion ?? 1, 1) + 1,
     forcedReauthAt: Date.now(),
-    ...(blockingReason
+    ...(nextBlockingReason
       ? {
           loginBlocked: true,
-          loginBlockedReason: blockingReason,
+          loginBlockedReason: nextBlockingReason,
         }
       : {}),
   };
@@ -66,7 +92,7 @@ export const revokeUserSessions = async (input: {
 
 export const clearUserSessionLoginBlock = async (keycloakSubject: string): Promise<void> => {
   const currentState = await getSessionControlState(keycloakSubject);
-  if (!currentState || currentState.loginBlockedReason !== 'user_status_inactivated') {
+  if (!currentState || !isReactivatableLoginBlockReason(currentState.loginBlockedReason)) {
     return;
   }
 

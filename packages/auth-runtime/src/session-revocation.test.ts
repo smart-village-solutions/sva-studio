@@ -22,7 +22,7 @@ describe('session-revocation', () => {
     revocationMocks.getSessionControlState.mockResolvedValue(undefined);
   });
 
-  it('increments session control state and deletes all indexed sessions for the user', async () => {
+  it('increments session control state, blocks new sessions and deletes all indexed sessions for deactivated users', async () => {
     const { revokeUserSessions } = await import('./session-revocation.js');
 
     await revokeUserSessions({
@@ -35,6 +35,8 @@ describe('session-revocation', () => {
       {
         minimumSessionVersion: 2,
         forcedReauthAt: 1_717_000_000_000,
+        loginBlocked: true,
+        loginBlockedReason: 'user_deactivated',
       },
       null
     );
@@ -67,6 +69,32 @@ describe('session-revocation', () => {
     );
   });
 
+  it('preserves an existing persistent login block when a later reactivatable revocation runs', async () => {
+    revocationMocks.getSessionControlState.mockResolvedValue({
+      minimumSessionVersion: 7,
+      forcedReauthAt: 1_716_999_999_000,
+      loginBlocked: true,
+      loginBlockedReason: 'account_lifecycle_blocked',
+    });
+    const { revokeUserSessions } = await import('./session-revocation.js');
+
+    await revokeUserSessions({
+      keycloakSubject: 'kc-user-2',
+      reason: 'user_deactivated',
+    });
+
+    expect(revocationMocks.setSessionControlState).toHaveBeenCalledWith(
+      'kc-user-2',
+      {
+        minimumSessionVersion: 8,
+        forcedReauthAt: 1_717_000_000_000,
+        loginBlocked: true,
+        loginBlockedReason: 'account_lifecycle_blocked',
+      },
+      null
+    );
+  });
+
   it('clears reactivatable login blocks when a user becomes active again', async () => {
     revocationMocks.getSessionControlState.mockResolvedValue({
       minimumSessionVersion: 5,
@@ -81,6 +109,28 @@ describe('session-revocation', () => {
 
     expect(revocationMocks.setSessionControlState).toHaveBeenCalledWith(
       'kc-user-3',
+      {
+        minimumSessionVersion: 5,
+        forcedReauthAt: 1_716_999_999_000,
+      },
+      null
+    );
+  });
+
+  it('clears user deactivation login blocks when a user becomes active again', async () => {
+    revocationMocks.getSessionControlState.mockResolvedValue({
+      minimumSessionVersion: 5,
+      forcedReauthAt: 1_716_999_999_000,
+      loginBlocked: true,
+      loginBlockedReason: 'user_deactivated',
+    });
+
+    const { clearUserSessionLoginBlock } = await import('./session-revocation.js');
+
+    await clearUserSessionLoginBlock('kc-user-4');
+
+    expect(revocationMocks.setSessionControlState).toHaveBeenCalledWith(
+      'kc-user-4',
       {
         minimumSessionVersion: 5,
         forcedReauthAt: 1_716_999_999_000,

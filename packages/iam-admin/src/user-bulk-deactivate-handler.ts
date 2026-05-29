@@ -201,14 +201,6 @@ WHERE instance_id = $1
         })
       )
     );
-    await Promise.all(
-      users.map((user) =>
-        deps.revokeUserSessions({
-          keycloakSubject: user.keycloakSubject,
-          reason: 'user_bulk_deactivated',
-        })
-      )
-    );
 
     return users;
   });
@@ -228,6 +220,15 @@ export const createBulkDeactivateHandlerInternal =
         ctx,
         userIds: uniqueUserIds,
       });
+
+      await Promise.all(
+        details.map((detail) =>
+          deps.revokeUserSessions({
+            keycloakSubject: detail.keycloakSubject,
+            reason: 'user_bulk_deactivated',
+          })
+        )
+      );
 
       await Promise.all(
         details.map((detail) =>

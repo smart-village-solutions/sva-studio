@@ -156,22 +156,22 @@ describe('deletion-rules/maintenance', () => {
         override_content_strategy: null,
       },
     ]);
-    const revokeUserSessions = vi.fn(async () => undefined);
+    const queueUserSessionRevocation = vi.fn(async () => undefined);
 
     await runDeletionRulesMaintenance(client, {
       instanceId: 'de-test',
       dryRun: false,
       now: new Date('2026-05-20T00:00:00.000Z'),
-      revokeUserSessions,
+      queueUserSessionRevocation,
     });
 
-    expect(revokeUserSessions).toHaveBeenCalledTimes(2);
-    expect(revokeUserSessions).toHaveBeenNthCalledWith(1, {
+    expect(queueUserSessionRevocation).toHaveBeenCalledTimes(2);
+    expect(queueUserSessionRevocation).toHaveBeenNthCalledWith(1, {
       keycloakSubject: 'kc-user-1',
       nextState: 'deactivated',
       reason: 'account_lifecycle_blocked',
     });
-    expect(revokeUserSessions).toHaveBeenNthCalledWith(2, {
+    expect(queueUserSessionRevocation).toHaveBeenNthCalledWith(2, {
       keycloakSubject: 'kc-user-2',
       nextState: 'pseudonymized',
       reason: 'account_lifecycle_blocked',

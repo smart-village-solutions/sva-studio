@@ -17,7 +17,7 @@ export type DeletionRulesMaintenanceInput = {
   instanceId: string;
   dryRun: boolean;
   now?: Date;
-  revokeUserSessions?: (input: {
+  queueUserSessionRevocation?: (input: {
     keycloakSubject: string;
     nextState: BlockingLifecycleState;
     reason: 'account_lifecycle_blocked';
@@ -281,7 +281,7 @@ export const runDeletionRulesMaintenance = async (
       accountId: candidate.row.id,
       nextState: candidate.nextState,
     });
-    await input.revokeUserSessions?.({
+    await input.queueUserSessionRevocation?.({
       keycloakSubject: candidate.row.keycloak_subject,
       nextState: candidate.nextState,
       reason: 'account_lifecycle_blocked',

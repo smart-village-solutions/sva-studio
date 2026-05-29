@@ -140,6 +140,44 @@ describe('createBulkDeactivateHandlerInternal', () => {
     });
   });
 
+  it('revokes sessions only after the scoped db work has completed', async () => {
+    const events: string[] = [];
+    const deps = createDeps({
+      revokeUserSessions: vi.fn(async ({ keycloakSubject }) => {
+        events.push(`revoke:${keycloakSubject}`);
+      }),
+      trackKeycloakCall: vi.fn(async (_operation, work) => {
+        events.push('keycloak:start');
+        const result = await work();
+        events.push('keycloak:end');
+        return result;
+      }),
+      withInstanceScopedDb: vi.fn(async (_instanceId, work) => {
+        events.push('tx:start');
+        const result = await work({
+          query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
+        });
+        events.push('tx:end');
+        return result;
+      }),
+    });
+    const handler = createBulkDeactivateHandlerInternal(deps);
+
+    const response = await handler(new Request('http://localhost/api/v1/iam/users/bulk-deactivate'), ctx);
+
+    expect(response.status).toBe(200);
+    expect(events).toEqual([
+      'tx:start',
+      'tx:end',
+      'revoke:kc-user-1',
+      'revoke:kc-user-2',
+      'keycloak:start',
+      'keycloak:start',
+      'keycloak:end',
+      'keycloak:end',
+    ]);
+  });
+
   it('returns precondition responses without running mutation work', async () => {
     const preconditionResponse = createJsonResponse(409, { error: { code: 'idempotency_key_reuse' } });
     const deps = createDeps({

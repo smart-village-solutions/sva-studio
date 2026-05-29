@@ -179,7 +179,19 @@ describe('user-update-persistence', () => {
     const client: QueryClient = {
       query: vi.fn(async () => ({ rowCount: 1, rows: [] })),
     };
-    const deps = createDeps(client);
+    const events: string[] = [];
+    const deps = {
+      ...createDeps(client),
+      revokeUserSessions: vi.fn(async () => {
+        events.push('revoke');
+      }),
+      withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (queryClient: QueryClient) => Promise<unknown>) => {
+        events.push('tx:start');
+        const result = await work(client);
+        events.push('tx:end');
+        return result;
+      }),
+    };
     const persistence = createUserUpdatePersistence(deps);
 
     await persistence.persistUpdatedUserDetail({
@@ -201,13 +213,26 @@ describe('user-update-persistence', () => {
       keycloakSubject: 'kc-1',
       reason: 'user_status_inactivated',
     });
+    expect(events).toEqual(['tx:start', 'tx:end', 'revoke']);
   });
 
   it('clears the reactivation login block when a user update activates the account', async () => {
     const client: QueryClient = {
       query: vi.fn(async () => ({ rowCount: 1, rows: [] })),
     };
-    const deps = createDeps(client);
+    const events: string[] = [];
+    const deps = {
+      ...createDeps(client),
+      clearUserSessionLoginBlock: vi.fn(async () => {
+        events.push('clear');
+      }),
+      withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (queryClient: QueryClient) => Promise<unknown>) => {
+        events.push('tx:start');
+        const result = await work(client);
+        events.push('tx:end');
+        return result;
+      }),
+    };
     const persistence = createUserUpdatePersistence(deps);
 
     await persistence.persistUpdatedUserDetail({
@@ -226,5 +251,6 @@ describe('user-update-persistence', () => {
     });
 
     expect(deps.clearUserSessionLoginBlock).toHaveBeenCalledWith('kc-1');
+    expect(events).toEqual(['tx:start', 'tx:end', 'clear']);
   });
 });

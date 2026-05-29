@@ -24,6 +24,7 @@ import { validateCsrf } from '../iam-account-management/csrf.js';
 import { getAdminDsrCase, listAdminDsrCases, loadDsrSelfServiceOverview } from '@sva/iam-governance';
 import { DsrAccountSnapshotNotFoundError } from '@sva/iam-governance/dsr-read-models-internal';
 import { readPathSegment } from '../shared/request-helpers.js';
+import { revokeUserSessions } from '../session-revocation.js';
 
 const logger = createSdkLogger({ component: 'iam-dsr', level: 'info' });
 const isExportFormat = (value: string | undefined): value is ExportFormat =>
@@ -47,6 +48,15 @@ const DELETE_SLA_HOURS = 48;
 const DEFAULT_DELETE_RETENTION_HOURS = 24;
 
 type DsrRequestType = 'access' | 'deletion' | 'rectification' | 'restriction' | 'objection';
+
+type DsrRequestMutationResult = {
+  requestId: string;
+  status: string;
+  afterCommitRevocation?: {
+    keycloakSubject: string;
+    reason: 'dsr_deletion_requested';
+  };
+};
 
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
 const withInstanceScopedDb = async <T>(
@@ -751,9 +761,10 @@ const performDeletionRequest = async (
     instanceId: string;
     requesterAccountId: string;
     targetAccountId: string;
+    keycloakSubject: string;
     payload: Record<string, unknown>;
   }
-): Promise<{ requestId: string; status: string }> => {
+): Promise<DsrRequestMutationResult> => {
   const hasLegalHold = await isLegalHoldActive(client, {
     instanceId: input.instanceId,
     accountId: input.targetAccountId,
@@ -823,7 +834,14 @@ WHERE id = $2::uuid;
     },
   });
 
-  return { requestId, status: 'processing' };
+  return {
+    requestId,
+    status: 'processing',
+    afterCommitRevocation: {
+      keycloakSubject: input.keycloakSubject,
+      reason: 'dsr_deletion_requested' as const,
+    },
+  };
 };
 
 const performRestrictionRequest = async (
@@ -834,7 +852,7 @@ const performRestrictionRequest = async (
     targetAccountId: string;
     payload: Record<string, unknown>;
   }
-): Promise<{ requestId: string; status: string }> => {
+): Promise<DsrRequestMutationResult> => {
   const reason = readString(input.payload.reason) ?? 'restriction_requested';
   await client.query(
     `
@@ -883,7 +901,7 @@ const performObjectionRequest = async (
     targetAccountId: string;
     payload: Record<string, unknown>;
   }
-): Promise<{ requestId: string; status: string }> => {
+): Promise<DsrRequestMutationResult> => {
   await client.query(
     `
 UPDATE iam.accounts
@@ -945,22 +963,25 @@ export const dataSubjectRequestHandler = async (request: Request): Promise<Respo
       }
 
       try {
-        return await withInstanceScopedDb(instanceId, async (client) => {
+        const committedResult = await withInstanceScopedDb(instanceId, async (client) => {
           const requesterAccountId = await resolveRequesterAccountId(client, {
             instanceId,
             keycloakSubject: user.id,
           });
           if (!requesterAccountId) {
-            return jsonResponse(404, { error: 'account_not_found' });
+            return {
+              response: jsonResponse(404, { error: 'account_not_found' }),
+            };
           }
 
-          let result: { requestId: string; status: string };
+          let result: DsrRequestMutationResult;
 
           if (requestType === 'deletion') {
             result = await performDeletionRequest(client, {
               instanceId,
               requesterAccountId,
               targetAccountId: requesterAccountId,
+              keycloakSubject: user.id,
               payload,
             });
           } else if (requestType === 'restriction') {
@@ -1000,11 +1021,20 @@ export const dataSubjectRequestHandler = async (request: Request): Promise<Respo
             },
           });
 
-          return jsonResponse(200, {
-            requestId: result.requestId,
-            status: result.status,
-          });
+          return {
+            response: jsonResponse(200, {
+              requestId: result.requestId,
+              status: result.status,
+            }),
+            afterCommitRevocation: result.afterCommitRevocation,
+          };
         });
+
+        if (committedResult.afterCommitRevocation) {
+          await revokeUserSessions(committedResult.afterCommitRevocation);
+        }
+
+        return committedResult.response;
       } catch (error) {
         return handleJsonDatabaseError('DSR self request failed', 'self_request', instanceId, error);
       }

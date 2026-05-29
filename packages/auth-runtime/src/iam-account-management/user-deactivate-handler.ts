@@ -10,6 +10,7 @@ import { emitActivityLog, notifyPermissionInvalidation } from './shared-activity
 import { iamUserOperationsCounter, logger, trackKeycloakCall } from './shared-observability.js';
 import { withInstanceScopedDb } from './shared-runtime.js';
 import { resolveUserDetail } from './user-detail-query.js';
+import { revokeUserSessions } from '../session-revocation.js';
 import {
   isRecoverableUserProjectionError,
   mergeMainserverCredentialState,
@@ -42,6 +43,7 @@ export const deactivateUserInternal = createDeactivateUserHandlerInternal({
   logger,
   mergeMainserverCredentialState,
   notifyPermissionInvalidation,
+  revokeUserSessions,
   notFoundResponse: (requestId) => createApiError(404, 'not_found', 'Nutzer nicht gefunden.', requestId),
   resolveActorMaxRoleLevel,
   resolveDeactivateRequestContext,

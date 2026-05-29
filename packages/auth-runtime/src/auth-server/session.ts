@@ -41,6 +41,10 @@ const readSessionInvalidationReason = async (
     return null;
   }
 
+  if (state.loginBlocked === true) {
+    return 'forced_reauth';
+  }
+
   const sessionVersion = session.sessionVersion ?? 1;
   const issuedAt = session.issuedAt ?? session.createdAt;
 

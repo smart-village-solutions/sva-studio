@@ -72,6 +72,7 @@ const createDeps = (overrides: Partial<DeactivateUserHandlerDeps> = {}): Deactiv
       mainserverUserApplicationSecretSet: state.mainserverUserApplicationSecretSet,
     })),
     notifyPermissionInvalidation: vi.fn(async () => undefined),
+    revokeUserSessions: vi.fn(async () => undefined),
     notFoundResponse: vi.fn((requestId) => createJsonResponse(404, { error: { code: 'not_found' }, requestId })),
     resolveActorMaxRoleLevel: vi.fn(async () => 100),
     resolveDeactivateRequestContext: vi.fn(async () => ({
@@ -134,11 +135,44 @@ describe('createDeactivateUserHandlerInternal', () => {
         trigger: 'user_deactivated',
       }
     );
+    expect(deps.revokeUserSessions).toHaveBeenCalledWith({
+      keycloakSubject: 'kc-user-1',
+      reason: 'user_deactivated',
+    });
     expect(deps.trackKeycloakCall).toHaveBeenCalledWith('deactivate_user', expect.any(Function));
     expect(deps.iamUserOperationsCounter.add).toHaveBeenCalledWith(1, {
       action: 'deactivate_user',
       result: 'success',
     });
+  });
+
+  it('revokes sessions only after the scoped db work has completed', async () => {
+    const events: string[] = [];
+    const deps = createDeps({
+      revokeUserSessions: vi.fn(async () => {
+        events.push('revoke');
+      }),
+      trackKeycloakCall: vi.fn(async (_operation, work) => {
+        events.push('keycloak:start');
+        const result = await work();
+        events.push('keycloak:end');
+        return result;
+      }),
+      withInstanceScopedDb: vi.fn(async (_instanceId, work) => {
+        events.push('tx:start');
+        const result = await work({
+          query: vi.fn(async () => ({ rows: [], rowCount: 1 })),
+        });
+        events.push('tx:end');
+        return result;
+      }),
+    });
+    const handler = createDeactivateUserHandlerInternal(deps);
+
+    const response = await handler(new Request(`http://localhost/api/v1/iam/users/${userDetail.id}`), ctx);
+
+    expect(response.status).toBe(200);
+    expect(events).toEqual(['tx:start', 'tx:end', 'revoke', 'keycloak:start', 'keycloak:end']);
   });
 
   it('returns the precondition response without mutation work', async () => {

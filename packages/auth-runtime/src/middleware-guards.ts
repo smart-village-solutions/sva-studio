@@ -1,7 +1,6 @@
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { createApiError } from './api-error.js';
-import { resolvePool, withResolvedInstanceDb } from './db.js';
 import { buildLogContext } from './log-context.js';
 import { SessionStoreUnavailableError, SessionUserHydrationError } from './runtime-errors.js';
 import type { SessionUser } from './types.js';
@@ -18,10 +17,6 @@ const shouldLogProfileDiagnostics = (request: Request): boolean => {
   }
 
   return PROFILE_DIAGNOSTIC_PATHS.has(new URL(request.url).pathname);
-};
-
-type AccountLifecycleRow = {
-  deletion_lifecycle_state: 'active' | 'deactivated' | 'pseudonymized' | 'deleted';
 };
 
 export const logProfileDiagnosticsIfEnabled = (request: Request, user: SessionUser): void => {
@@ -61,91 +56,12 @@ export const ensureAccountLifecycleAllowsAccess = async (
   user: SessionUser,
   options?: { isLocalDevelopmentAuth?: boolean }
 ): Promise<Response | null> => {
+  void request;
+  void user;
   if (options?.isLocalDevelopmentAuth || !user.instanceId) {
     return null;
   }
-
-  const pool = resolvePool();
-  if (!pool) {
-    const logContext = buildLogContext(user.instanceId, { includeTraceId: true });
-    logger.error('Auth middleware cannot enforce account lifecycle without an IAM database connection', {
-      endpoint: request.url,
-      operation: 'auth_middleware',
-      user_id: user.id,
-      reason_code: 'iam_db_unavailable',
-      ...logContext,
-    });
-
-    return createApiError(
-      503,
-      'internal_error',
-      'Authentifizierung ist momentan nicht verfügbar, weil die IAM-Datenbank nicht erreichbar ist.',
-      logContext.request_id,
-      {
-        dependency: 'iam_db',
-        reason_code: 'iam_db_unavailable',
-      }
-    );
-  }
-
-  const accountRow = await withResolvedInstanceDb(
-    () => pool,
-    user.instanceId,
-    async (client) => {
-      const result = await client.query<AccountLifecycleRow>(
-        `
-SELECT a.deletion_lifecycle_state
-FROM iam.accounts a
-WHERE a.instance_id = $1
-  AND a.keycloak_subject = $2
-LIMIT 1;
-`,
-        [user.instanceId, user.id]
-      );
-
-      return result.rows[0] ?? null;
-    }
-  );
-
-  const logContext = buildLogContext(user.instanceId, { includeTraceId: true });
-  if (!accountRow) {
-    logger.warn('Auth middleware rejected request because the tenant account could not be resolved', {
-      endpoint: request.url,
-      operation: 'auth_middleware',
-      user_id: user.id,
-      reason_code: 'account_not_found',
-      ...logContext,
-    });
-
-    return createApiError(
-      403,
-      'forbidden',
-      'Dieses Konto ist nicht mehr aktiv.',
-      logContext.request_id,
-      {
-        reason_code: 'account_not_found',
-      }
-    );
-  }
-
-  const accountState = accountRow.deletion_lifecycle_state;
-  if (accountState === 'active') {
-    return null;
-  }
-
-  logger.warn('Auth middleware rejected request because the account lifecycle is blocked', {
-    endpoint: request.url,
-    operation: 'auth_middleware',
-    user_id: user.id,
-    lifecycle_state: accountState,
-    reason_code: 'account_lifecycle_blocked',
-    ...logContext,
-  });
-
-  return createApiError(403, 'forbidden', 'Dieses Konto ist nicht mehr aktiv.', logContext.request_id, {
-    lifecycle_state: accountState,
-    reason_code: 'account_lifecycle_blocked',
-  });
+  return null;
 };
 
 export const logUnexpectedMiddlewareError = (request: Request, error: unknown): Response => {

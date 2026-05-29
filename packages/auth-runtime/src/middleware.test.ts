@@ -232,7 +232,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
       request,
       expect.objectContaining({ id: 'user-1' })
     );
-    expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalled();
+    expect(dbMocks.withResolvedInstanceDb).not.toHaveBeenCalled();
   });
 
   it('logs middleware timing diagnostics when authorize timing debug is enabled', async () => {
@@ -255,45 +255,16 @@ describe('auth-runtime withAuthenticatedUser', () => {
     );
   });
 
-  it('fails closed when lifecycle enforcement cannot resolve the tenant account or IAM database', async () => {
+  it('does not depend on IAM lifecycle database checks for authenticated requests', async () => {
     const request = new Request('http://localhost/auth/me', {
       headers: { cookie: 'sva_auth_session=session-2' },
     });
 
     dbMocks.resolvePool.mockReturnValueOnce(null);
-    const unavailableResponse = await withAuthenticatedUser(request, () => new Response('ok'));
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
 
-    expect(unavailableResponse.status).toBe(503);
-    await expect(unavailableResponse.json()).resolves.toMatchObject({
-      error: {
-        code: 'internal_error',
-        details: {
-          dependency: 'iam_db',
-          reason_code: 'iam_db_unavailable',
-        },
-      },
-    });
-
-    dbMocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolvePool, _instanceId, work) =>
-      work({
-        query: vi.fn(async () => ({
-          rowCount: 0,
-          rows: [],
-        })),
-      })
-    );
-
-    const missingAccountResponse = await withAuthenticatedUser(request, () => new Response('ok'));
-
-    expect(missingAccountResponse.status).toBe(403);
-    await expect(missingAccountResponse.json()).resolves.toMatchObject({
-      error: {
-        code: 'forbidden',
-        details: {
-          reason_code: 'account_not_found',
-        },
-      },
-    });
+    expect(response.status).toBe(200);
+    expect(dbMocks.withResolvedInstanceDb).not.toHaveBeenCalled();
   });
 
   it('accepts requests with an active local dev auth cookie in dev auth mode', async () => {
@@ -322,43 +293,35 @@ describe('auth-runtime withAuthenticatedUser', () => {
     expect(dbMocks.withResolvedInstanceDb).not.toHaveBeenCalled();
   });
 
-  it('rejects authenticated tenant users whose account lifecycle is no longer active', async () => {
+  it('relies on revoked sessions instead of lifecycle row checks for blocked accounts', async () => {
     const request = new Request('http://localhost/auth/me', {
       headers: { cookie: 'sva_auth_session=session-4' },
     });
-    dbMocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolvePool, _instanceId, work) =>
-      work({
-        query: vi.fn(async () => ({
-          rowCount: 1,
-          rows: [{ deletion_lifecycle_state: 'deactivated' }],
-        })),
-      })
-    );
+    getSessionUserMock.mockResolvedValueOnce({ kind: 'invalid', reason: 'forced_reauth' });
 
     const response = await withAuthenticatedUser(request, () => new Response('ok'));
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({
       error: {
-        code: 'forbidden',
-        message: 'Dieses Konto ist nicht mehr aktiv.',
+        code: 'unauthorized',
+        message: 'Die Sitzung ist nicht mehr gültig.',
         safeDetails: {
-          reason_code: 'account_lifecycle_blocked',
+          reason_code: 'forced_reauth',
         },
         details: {
-          lifecycle_state: 'deactivated',
-          reason_code: 'account_lifecycle_blocked',
+          reason_code: 'forced_reauth',
         },
       },
       requestId: 'req-auth-runtime',
     });
     expect(middlewareLogger.warn).toHaveBeenCalledWith(
-      'Auth middleware rejected request because the account lifecycle is blocked',
+      'Auth middleware rejected request because the session requires reauthentication',
       expect.objectContaining({
-        lifecycle_state: 'deactivated',
-        reason_code: 'account_lifecycle_blocked',
+        reason_code: 'forced_reauth',
       })
     );
+    expect(dbMocks.withResolvedInstanceDb).not.toHaveBeenCalled();
   });
 
   it('runs protected handlers through legal text compliance for tenant users when required', async () => {

@@ -2,6 +2,8 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 
+import { gotoHomeAsAuthenticatedUser, gotoShellRoot } from './studio-shell.helpers';
+
 type NewsRecord = {
   id: string;
   title: string;
@@ -139,26 +141,6 @@ const expectLoginRedirect = async (page: Page, returnToPattern: RegExp) => {
   const authMode = loginUrl.searchParams.get('auth');
   expect(authMode === 'login' || authMode === 'dev-login' || authMode === 'mock-login' || authMode === null).toBe(true);
   expect(loginUrl.searchParams.get('returnTo')).toMatch(returnToPattern);
-};
-
-const gotoShellRoot = async (page: Page, attempts = 5) => {
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    try {
-      await page.goto('/');
-      return;
-    } catch (error) {
-      lastError = error;
-      const message = error instanceof Error ? error.message : String(error);
-      if (!message.includes('ERR_CONNECTION_REFUSED') || attempt === attempts) {
-        throw error;
-      }
-      await page.waitForTimeout(1_000);
-    }
-  }
-
-  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 };
 
 const mockSharedShellRequests = async (page: Page) => {
@@ -453,8 +435,7 @@ test.describe('news plugin', () => {
     });
     await routeUnifiedContentOverview(page, newsItems);
 
-    await gotoShellRoot(page);
-    await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
+    await gotoHomeAsAuthenticatedUser(page);
 
     await navigateClientSide(page, '/admin/content');
     await expectContentOverviewReady(page);
@@ -567,7 +548,7 @@ test.describe('news plugin', () => {
     });
     await routeUnifiedContentOverview(page, newsItems);
 
-    await gotoShellRoot(page);
+    await gotoHomeAsAuthenticatedUser(page);
     const contentNavLink = page.getByRole('link', { name: 'Inhalte öffnen' }).first();
     await expect(contentNavLink).toBeVisible();
 
@@ -647,7 +628,7 @@ test.describe('news plugin', () => {
     });
     await routeUnifiedContentOverview(page, newsItems);
 
-    await gotoShellRoot(page);
+    await gotoHomeAsAuthenticatedUser(page);
     await navigateClientSide(page, '/admin/content');
     await expectContentOverviewReady(page);
     const listViolations = await new AxeBuilder({ page }).include('#main-content').analyze();

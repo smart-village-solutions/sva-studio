@@ -11,6 +11,8 @@ import { emitActivityLog, notifyPermissionInvalidation } from './shared-activity
 import { trackKeycloakCall } from './shared-observability.js';
 import { withInstanceScopedDb, resolveIdentityProvider } from './shared-runtime.js';
 import { resolveUserDetail } from './user-detail-query.js';
+import { revokeUserSessions } from '../session-revocation.js';
+import { clearUserSessionLoginBlock } from '../session-revocation.js';
 import {
   buildIdentityAttributesForUserUpdate,
 } from './user-update-identity.js';
@@ -64,8 +66,10 @@ export const resolveUpdatedIdentityState = async (input: {
 export const { persistUpdatedUserDetail } = createUserUpdatePersistence({
   assignGroups,
   assignRoles,
+  clearUserSessionLoginBlock,
   emitActivityLog,
   notifyPermissionInvalidation,
+  revokeUserSessions,
   resolveUserDetail,
   withInstanceScopedDb,
 });

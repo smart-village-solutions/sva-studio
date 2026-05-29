@@ -191,6 +191,23 @@ describe('auth server session resolution', () => {
     expect(state.deleteSession).toHaveBeenCalledWith('session-1');
   });
 
+  it('deletes sessions when the subject is blocked from starting new sessions', async () => {
+    state.getSession.mockResolvedValue(createSession({ sessionVersion: 2 }));
+    state.getSessionControlState.mockResolvedValue({
+      minimumSessionVersion: 2,
+      loginBlocked: true,
+      loginBlockedReason: 'dsr_deletion_requested',
+    });
+
+    const { resolveSessionUser } = await import('./session.js');
+
+    await expect(resolveSessionUser('session-1')).resolves.toEqual({
+      kind: 'invalid',
+      reason: 'forced_reauth',
+    });
+    expect(state.deleteSession).toHaveBeenCalledWith('session-1');
+  });
+
   it('hydrates incomplete session users from the access token on fresh sessions', async () => {
     state.getSession.mockResolvedValue(
       createSession({ user: incompleteUser, refreshToken: undefined, expiresAt: 100_000 })

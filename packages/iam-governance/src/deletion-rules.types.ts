@@ -37,6 +37,7 @@ export type MyDeletionRulesRow = {
 
 export type DeletionRulesMaintenanceCandidateRow = {
   id: IamUuid;
+  keycloak_subject: string;
   last_login_at: string | null;
   deletion_lifecycle_state: IamDeletionLifecycleState;
   deactivate_after_days: number | null;

@@ -5,6 +5,7 @@ import { emitActivityLog, notifyPermissionInvalidation } from './shared-activity
 import { iamUserOperationsCounter, logger, trackKeycloakCall } from './shared-observability.js';
 import { withInstanceScopedDb } from './shared-runtime.js';
 import { resolveUsersForBulkDeactivation } from './user-bulk-query.js';
+import { revokeUserSessions } from '../session-revocation.js';
 import {
   completeBulkDeactivateFailure,
   completeBulkDeactivateSuccess,
@@ -19,6 +20,7 @@ export const bulkDeactivateInternal = createBulkDeactivateHandlerInternal({
   iamUserOperationsCounter,
   logger,
   notifyPermissionInvalidation,
+  revokeUserSessions,
   resolveActorMaxRoleLevel,
   resolveBulkDeactivateContext,
   resolveSystemAdminCount,

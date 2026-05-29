@@ -88,6 +88,10 @@ export type DeactivateUserHandlerDeps = {
       readonly trigger: 'user_deactivated';
     }
   ) => Promise<void>;
+  readonly revokeUserSessions: (input: {
+    readonly keycloakSubject: string;
+    readonly reason: 'user_deactivated';
+  }) => Promise<void>;
   readonly notFoundResponse: (requestId?: string) => Response;
   readonly resolveActorMaxRoleLevel: (
     client: QueryClient,
@@ -191,10 +195,13 @@ WHERE id = $1::uuid
       trigger: 'user_deactivated',
     });
 
-    return deps.resolveUserDetail(client, {
-      instanceId: input.actor.instanceId,
-      userId: input.userId,
-    });
+    return {
+      detail: await deps.resolveUserDetail(client, {
+        instanceId: input.actor.instanceId,
+        userId: input.userId,
+      }),
+      keycloakSubject: existing.keycloakSubject,
+    };
   });
 
 export const createDeactivateUserHandlerInternal =
@@ -206,15 +213,29 @@ export const createDeactivateUserHandlerInternal =
     }
 
     try {
-      const detail = await deactivateUserRecord(deps, { actor: resolved.actor, ctx, userId: resolved.userId });
+      const deactivated = await deactivateUserRecord(deps, {
+        actor: resolved.actor,
+        ctx,
+        userId: resolved.userId,
+      });
 
-      if (!detail) {
+      if (!deactivated) {
         return deps.notFoundResponse(resolved.actor.requestId);
       }
 
+      await deps.revokeUserSessions({
+        keycloakSubject: deactivated.keycloakSubject,
+        reason: 'user_deactivated',
+      });
+
       await deps.trackKeycloakCall('deactivate_user', () =>
-        resolved.identityProvider.provider.deactivateUser(detail.keycloakSubject)
+        resolved.identityProvider.provider.deactivateUser(deactivated.keycloakSubject)
       );
+
+      const detail = deactivated.detail;
+      if (!detail) {
+        return deps.notFoundResponse(resolved.actor.requestId);
+      }
 
       let projectedDetail = detail;
       try {

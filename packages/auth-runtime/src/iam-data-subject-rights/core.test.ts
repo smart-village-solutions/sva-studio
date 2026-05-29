@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => ({
   listAdminDsrCases: vi.fn(),
   getAdminDsrCase: vi.fn(),
   loadDsrSelfServiceOverview: vi.fn(),
+  revokeUserSessions: vi.fn(async () => undefined),
   parseFieldEncryptionConfigFromEnv: vi.fn(() => ({ keyId: 'enc-1' })),
   encryptFieldValue: vi.fn((value: string) => `enc:${value}`),
   requireIdempotencyKey: vi.fn(() => ({ key: 'idem-1' })),
@@ -112,6 +113,10 @@ vi.mock('../middleware.js', () => ({
 
 vi.mock('../runtime-secrets.js', () => ({
   getIamDatabaseUrl: vi.fn(() => 'postgres://db.example/sva'),
+}));
+
+vi.mock('../session-revocation.js', () => ({
+  revokeUserSessions: mocks.revokeUserSessions,
 }));
 
 vi.mock('../db.js', () => ({
@@ -567,6 +572,46 @@ describe('iam data subject rights handlers', () => {
       requestId: 'blocked-request-1',
       status: 'blocked_legal_hold',
     });
+    expect(mocks.revokeUserSessions).not.toHaveBeenCalled();
+  });
+
+  it('revokes active sessions when a deletion request enters processing', async () => {
+    const { dataSubjectRequestHandler } = await import('./core.js');
+    const events: string[] = [];
+
+    mocks.revokeUserSessions.mockImplementationOnce(async () => {
+      events.push('revoke');
+    });
+    mocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, _instanceId, work) => {
+      events.push('tx:start');
+      const result = await work(
+        buildDbClient({
+          account: buildAccount({ id: 'account-77', keycloak_subject: 'kc-user-1' }),
+          requestIds: ['deletion-request-1'],
+        })
+      );
+      events.push('tx:end');
+      return result;
+    });
+
+    const response = await dataSubjectRequestHandler(
+      new Request('http://localhost/iam/me/data-subject-rights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'deletion', payload: { reason: 'cleanup' } }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(expectJson(response)).resolves.toEqual({
+      requestId: 'deletion-request-1',
+      status: 'processing',
+    });
+    expect(mocks.revokeUserSessions).toHaveBeenCalledWith({
+      keycloakSubject: 'kc-user-1',
+      reason: 'dsr_deletion_requested',
+    });
+    expect(events).toEqual(['tx:start', 'tx:end', 'revoke']);
   });
 
   it('blocks optional processing when restriction or objection flags are active', async () => {

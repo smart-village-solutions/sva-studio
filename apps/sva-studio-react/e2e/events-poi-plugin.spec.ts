@@ -2,6 +2,8 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 
+import { gotoHomeAsAuthenticatedUser, gotoShellRoot } from './studio-shell.helpers';
+
 type EventRecord = {
   readonly id: string;
   title: string;
@@ -434,12 +436,15 @@ test.describe('events and POI plugins', () => {
     const pois: PoiRecord[] = [];
     const events: EventRecord[] = [];
 
+    await page.route('**/api/v1/mainserver/events**', async (route) => {
+      await routeEvents(route, events);
+    });
     await page.route('**/api/v1/mainserver/poi**', async (route) => {
       await routePoi(route, pois);
     });
     await routeUnifiedContentOverview(page, () => events, () => pois);
 
-    await page.goto('/');
+    await gotoHomeAsAuthenticatedUser(page);
     await navigateClientSide(page, '/admin/content');
     await expectContentOverviewReady(page);
     await expectCreateContentActionReady(page);
@@ -499,7 +504,7 @@ test.describe('events and POI plugins', () => {
     });
     await routeUnifiedContentOverview(page, () => events, () => pois);
 
-    await page.goto('/');
+    await gotoHomeAsAuthenticatedUser(page);
     await navigateClientSide(page, '/admin/content');
     await expectContentOverviewReady(page);
     await expectCreateContentActionReady(page);
@@ -547,7 +552,7 @@ test.describe('events and POI plugins', () => {
     await page.route('**/auth/me', async (route) => {
       await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unauthorized' }) });
     });
-    await page.goto('/');
+    await gotoShellRoot(page);
     await navigateClientSide(page, '/admin/content');
     await expectLoginRedirect(page, /^\/admin\/content(?:$|\?)/);
   });
@@ -558,7 +563,7 @@ test.describe('events and POI plugins', () => {
       await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unauthorized' }) });
     });
 
-    await page.goto('/');
+    await gotoShellRoot(page);
     await navigateClientSide(page, '/admin/poi/new');
     await expectLoginRedirect(page, /^\/admin\/poi\/new(?:$|\?)/);
   });

@@ -47,6 +47,7 @@ const createDeps = (overrides: Partial<BulkDeactivateHandlerDeps> = {}): BulkDea
       error: vi.fn(),
     },
     notifyPermissionInvalidation: vi.fn(async () => undefined),
+    revokeUserSessions: vi.fn(async () => undefined),
     resolveActorMaxRoleLevel: vi.fn(async () => 100),
     resolveBulkDeactivateContext: vi.fn(async () => ({
       actor,
@@ -115,6 +116,15 @@ describe('createBulkDeactivateHandlerInternal', () => {
       })
     );
     expect(deps.notifyPermissionInvalidation).toHaveBeenCalledTimes(2);
+    expect(deps.revokeUserSessions).toHaveBeenCalledTimes(2);
+    expect(deps.revokeUserSessions).toHaveBeenNthCalledWith(1, {
+      keycloakSubject: 'kc-user-1',
+      reason: 'user_bulk_deactivated',
+    });
+    expect(deps.revokeUserSessions).toHaveBeenNthCalledWith(2, {
+      keycloakSubject: 'kc-user-2',
+      reason: 'user_bulk_deactivated',
+    });
     expect(deps.trackKeycloakCall).toHaveBeenCalledTimes(2);
     expect(deps.iamUserOperationsCounter.add).toHaveBeenCalledWith(1, {
       action: 'bulk_deactivate',
@@ -128,6 +138,44 @@ describe('createBulkDeactivateHandlerInternal', () => {
         expect.objectContaining({ id: '22222222-2222-2222-8222-222222222222' }),
       ]),
     });
+  });
+
+  it('revokes sessions only after the scoped db work has completed', async () => {
+    const events: string[] = [];
+    const deps = createDeps({
+      revokeUserSessions: vi.fn(async ({ keycloakSubject }) => {
+        events.push(`revoke:${keycloakSubject}`);
+      }),
+      trackKeycloakCall: vi.fn(async (_operation, work) => {
+        events.push('keycloak:start');
+        const result = await work();
+        events.push('keycloak:end');
+        return result;
+      }),
+      withInstanceScopedDb: vi.fn(async (_instanceId, work) => {
+        events.push('tx:start');
+        const result = await work({
+          query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
+        });
+        events.push('tx:end');
+        return result;
+      }),
+    });
+    const handler = createBulkDeactivateHandlerInternal(deps);
+
+    const response = await handler(new Request('http://localhost/api/v1/iam/users/bulk-deactivate'), ctx);
+
+    expect(response.status).toBe(200);
+    expect(events).toEqual([
+      'tx:start',
+      'tx:end',
+      'revoke:kc-user-1',
+      'revoke:kc-user-2',
+      'keycloak:start',
+      'keycloak:start',
+      'keycloak:end',
+      'keycloak:end',
+    ]);
   });
 
   it('returns precondition responses without running mutation work', async () => {

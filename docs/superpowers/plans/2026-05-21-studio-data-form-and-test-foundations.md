@@ -56,6 +56,14 @@
 - Modify: `packages/plugin-poi/vitest.config.ts`
 - Modify: `packages/plugin-waste-management/vitest.config.ts`
 
+### Kleine Playwright-Bruecke vor breiterem Harness-Rollout
+
+- Modify: `apps/sva-studio-react/e2e/news-plugin.spec.ts`
+- Modify: `apps/sva-studio-react/e2e/events-poi-plugin.spec.ts`
+- Create: `apps/sva-studio-react/e2e/studio-shell.helpers.ts`
+
+Hinweis: Wenn ein akuter `App E2E`-CI-Befund aus Playwright-Shell-Boot, frueher clientseitiger Navigation oder duplizierten `auth/me`-Wartebedingungen entsteht, ist ein kleiner Shared-Helper in `apps/sva-studio-react/e2e/` als Zwischenstufe zulaessig. Diese Bruecke stabilisiert bestehende Playwright-Specs, ohne den spaeteren `msw`-basierten Foundation-Rollout in `tooling/testing` vorwegzunehmen oder zu ersetzen.
+
 ### Property-based Test Foundations
 
 - Modify: `packages/core/package.json`

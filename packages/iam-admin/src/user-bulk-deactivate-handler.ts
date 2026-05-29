@@ -76,6 +76,10 @@ export type BulkDeactivateHandlerDeps = {
       readonly trigger: 'user_bulk_deactivated';
     }
   ) => Promise<void>;
+  readonly revokeUserSessions: (input: {
+    readonly keycloakSubject: string;
+    readonly reason: 'user_bulk_deactivated';
+  }) => Promise<void>;
   readonly resolveActorMaxRoleLevel: (
     client: QueryClient,
     input: {
@@ -216,6 +220,15 @@ export const createBulkDeactivateHandlerInternal =
         ctx,
         userIds: uniqueUserIds,
       });
+
+      await Promise.all(
+        details.map((detail) =>
+          deps.revokeUserSessions({
+            keycloakSubject: detail.keycloakSubject,
+            reason: 'user_bulk_deactivated',
+          })
+        )
+      );
 
       await Promise.all(
         details.map((detail) =>

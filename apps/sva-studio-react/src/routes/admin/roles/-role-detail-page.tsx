@@ -25,6 +25,7 @@ import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details'
 import { roleErrorMessage, roleStatusLabel, roleTypeLabel } from './-roles-shared';
 
 type RoleDetailTab = 'general' | 'permissions' | 'assignments' | 'sync';
+type PermissionAccessScope = 'all' | 'own' | 'organization';
 
 type RoleDetailPageProps = Readonly<{
   roleId: string;
@@ -32,6 +33,7 @@ type RoleDetailPageProps = Readonly<{
 }>;
 
 const TABS: readonly RoleDetailTab[] = ['general', 'permissions', 'assignments', 'sync'];
+const ASSIGNABLE_PERMISSION_ACCESS_SCOPES: readonly PermissionAccessScope[] = ['all', 'own', 'organization'];
 
 const ROLE_PERMISSION_ACTION_LABELS = {
   read: 'admin.roles.permissionActions.read',
@@ -117,8 +119,8 @@ type RolePermissionTableRow = Readonly<{
   detailLabel: string;
   isAssigned: boolean;
   isScopeAssignable: boolean;
-  supportedAccessScopes: readonly ('all' | 'own' | 'organization')[];
-  accessScope: 'all' | 'own' | 'organization';
+  supportedAccessScopes: readonly PermissionAccessScope[];
+  accessScope: PermissionAccessScope;
 }>;
 
 const normalizePermissionSearch = (value: string) => value.trim().toLowerCase();
@@ -150,24 +152,71 @@ export const sortPermissionIdsByCatalog = (
 };
 
 const sortPermissionAssignmentsByCatalog = (
-  assignments: Readonly<Record<string, 'all' | 'own' | 'organization'>>,
-  catalog: readonly { id: string; permissionKey: string }[]
-) =>
-  sortPermissionIdsByCatalog(Object.keys(assignments), catalog).map((permissionId) => ({
-    permissionId,
-    accessScope: assignments[permissionId] ?? 'all',
-  }));
+  permissionIds: readonly string[],
+  assignments: Readonly<Record<string, PermissionAccessScope>>,
+  catalog: readonly {
+    id: string;
+    permissionKey: string;
+    isScopeAssignable?: boolean;
+    supportedAccessScopes?: readonly PermissionAccessScope[];
+  }[]
+) => {
+  const permissionById = new Map(catalog.map((permission) => [permission.id, permission] as const));
+
+  return sortPermissionIdsByCatalog(permissionIds, catalog).map((permissionId) => {
+    const permission = permissionById.get(permissionId);
+    const accessScope = normalizePermissionAccessScope(assignments[permissionId], permission);
+    return permission?.isScopeAssignable ? { permissionId, accessScope } : { permissionId };
+  });
+};
+
+const normalizeSupportedAccessScopes = (
+  scopes: readonly PermissionAccessScope[] | undefined
+): readonly PermissionAccessScope[] => {
+  const normalized = (scopes ?? []).filter((scope, index, values) => {
+    return ASSIGNABLE_PERMISSION_ACCESS_SCOPES.includes(scope) && values.indexOf(scope) === index;
+  });
+
+  return normalized.length > 0 ? normalized : ['all'];
+};
+
+const normalizePermissionAccessScope = (
+  accessScope: PermissionAccessScope | undefined,
+  permission:
+    | {
+        isScopeAssignable?: boolean;
+        supportedAccessScopes?: readonly PermissionAccessScope[];
+      }
+    | undefined
+): PermissionAccessScope => {
+  if (!permission?.isScopeAssignable) {
+    return 'all';
+  }
+
+  const supportedAccessScopes = normalizeSupportedAccessScopes(permission.supportedAccessScopes);
+  return accessScope && supportedAccessScopes.includes(accessScope) ? accessScope : 'all';
+};
 
 const buildPermissionScopeDraft = (
   role: NonNullable<ReturnType<typeof useRoles>['roles'][number]>,
-  catalog: readonly { id: string; permissionKey: string }[]
-): Record<string, 'all' | 'own' | 'organization'> => {
+  catalog: readonly {
+    id: string;
+    permissionKey: string;
+    isScopeAssignable?: boolean;
+    supportedAccessScopes?: readonly PermissionAccessScope[];
+  }[]
+): Record<string, PermissionAccessScope> => {
   const byAssignment = Object.fromEntries(
     (role.permissionAssignments ?? []).map((assignment) => [assignment.permissionId, assignment.accessScope] as const)
-  ) as Record<string, 'all' | 'own' | 'organization'>;
+  ) as Record<string, PermissionAccessScope>;
+  const permissionById = new Map(catalog.map((permission) => [permission.id, permission] as const));
 
-  return role.permissions.reduce<Record<string, 'all' | 'own' | 'organization'>>((acc, permission) => {
-    acc[permission.id] = byAssignment[permission.id] ?? permission.accessScope ?? 'all';
+  return role.permissions.reduce<Record<string, PermissionAccessScope>>((acc, permission) => {
+    acc[permission.id] = normalizePermissionAccessScope(byAssignment[permission.id] ?? permission.accessScope ?? 'all', {
+      isScopeAssignable: permission.isScopeAssignable ?? permissionById.get(permission.id)?.isScopeAssignable,
+      supportedAccessScopes:
+        permission.supportedAccessScopes ?? permissionById.get(permission.id)?.supportedAccessScopes,
+    });
     return acc;
   }, { ...Object.fromEntries(catalog.map((permission) => [permission.id, 'all'] as const)) });
 };
@@ -186,9 +235,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     roleLevel: '10',
   });
   const [permissionDraft, setPermissionDraft] = React.useState<string[]>([]);
-  const [permissionScopeDraft, setPermissionScopeDraft] = React.useState<Record<string, 'all' | 'own' | 'organization'>>(
-    {}
-  );
+  const [permissionScopeDraft, setPermissionScopeDraft] = React.useState<Record<string, PermissionAccessScope>>({});
   const [isSavingMeta, setIsSavingMeta] = React.useState(false);
   const [isSavingPermissions, setIsSavingPermissions] = React.useState(false);
   const [isUpdatingAssignmentsForUserIds, setIsUpdatingAssignmentsForUserIds] = React.useState<string[]>([]);
@@ -223,8 +270,10 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           detailLabel: summary.detailLabel,
           isAssigned: permissionDraft.includes(permission.id),
           isScopeAssignable: permission.isScopeAssignable ?? false,
-          supportedAccessScopes: (permission.supportedAccessScopes ?? ['all']) as readonly ('all' | 'own' | 'organization')[],
-          accessScope: permissionScopeDraft[permission.id] ?? 'all',
+          supportedAccessScopes: normalizeSupportedAccessScopes(permission.supportedAccessScopes as
+            | readonly PermissionAccessScope[]
+            | undefined),
+          accessScope: normalizePermissionAccessScope(permissionScopeDraft[permission.id], permission),
         };
       }),
     [permissionDraft, permissionScopeDraft, permissionsApi.permissions]
@@ -314,7 +363,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
               onChange={(event) =>
                 setPermissionScopeDraft((current) => ({
                   ...current,
-                  [permission.id]: event.target.value as 'all' | 'own' | 'organization',
+                  [permission.id]: event.target.value as PermissionAccessScope,
                 }))
               }
             >
@@ -353,7 +402,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   const assignAllPermissions = React.useCallback(() => {
     setPermissionDraft(sortPermissionIdsByCatalog(permissionsApi.permissions.map((permission) => permission.id), permissionsApi.permissions));
     setPermissionScopeDraft((current) =>
-      permissionsApi.permissions.reduce<Record<string, 'all' | 'own' | 'organization'>>((acc, permission) => {
+      permissionsApi.permissions.reduce<Record<string, PermissionAccessScope>>((acc, permission) => {
         acc[permission.id] = current[permission.id] ?? 'all';
         return acc;
       }, { ...current })
@@ -375,7 +424,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       });
       if (nextAssigned) {
         setPermissionScopeDraft((current) =>
-          permissionIds.reduce<Record<string, 'all' | 'own' | 'organization'>>((acc, permissionId) => {
+          permissionIds.reduce<Record<string, PermissionAccessScope>>((acc, permissionId) => {
             acc[permissionId] = current[permissionId] ?? 'all';
             return acc;
           }, { ...current })
@@ -453,7 +502,8 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     try {
       await rolesApi.updateRole(role.id, {
         permissionAssignments: sortPermissionAssignmentsByCatalog(
-          permissionDraft.reduce<Record<string, 'all' | 'own' | 'organization'>>((acc, permissionId) => {
+          permissionDraft,
+          permissionDraft.reduce<Record<string, PermissionAccessScope>>((acc, permissionId) => {
             acc[permissionId] = permissionScopeDraft[permissionId] ?? 'all';
             return acc;
           }, {}),

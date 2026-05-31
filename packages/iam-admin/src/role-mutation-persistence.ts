@@ -1,6 +1,7 @@
 import type { IamRolePermissionAssignmentScope } from '@sva/core';
 import type { ManagedRoleRow } from './types.js';
 
+import { getManagedPermissionMetadata } from './managed-permissions.js';
 import { loadRoleById, loadRoleListItemById } from './role-query.js';
 import type { QueryClient } from './query-client.js';
 
@@ -24,10 +25,15 @@ type RolePermissionAssignmentInput = {
   readonly accessScope?: IamRolePermissionAssignmentScope;
 };
 
+type StoredRolePermissionAssignment = {
+  readonly permissionId: string;
+  readonly accessScope: IamRolePermissionAssignmentScope;
+};
+
 const normalizeRolePermissionAssignments = (
   permissionIds: readonly string[] | undefined,
   permissionAssignments: readonly RolePermissionAssignmentInput[] | undefined
-): readonly { readonly permissionId: string; readonly accessScope: IamRolePermissionAssignmentScope }[] => {
+): readonly StoredRolePermissionAssignment[] => {
   if (permissionAssignments && permissionAssignments.length > 0) {
     return permissionAssignments.map((assignment) => ({
       permissionId: assignment.permissionId,
@@ -38,6 +44,58 @@ const normalizeRolePermissionAssignments = (
   return (permissionIds ?? []).map((permissionId) => ({
     permissionId,
     accessScope: 'all',
+  }));
+};
+
+const loadPermissionKeysById = async (
+  client: QueryClient,
+  instanceId: string,
+  permissionIds: readonly string[]
+): Promise<ReadonlyMap<string, string>> => {
+  if (permissionIds.length === 0) {
+    return new Map();
+  }
+
+  const result = await client.query<{ id: string; permission_key: string }>(
+    `
+SELECT id::text AS id, permission_key
+FROM iam.permissions
+WHERE instance_id = $1
+  AND id = ANY($2::uuid[]);
+`,
+    [instanceId, permissionIds]
+  );
+
+  return new Map(result.rows.map((row) => [row.id, row.permission_key] as const));
+};
+
+const normalizeStoredAccessScope = (
+  accessScope: IamRolePermissionAssignmentScope,
+  permissionKey: string | undefined
+): IamRolePermissionAssignmentScope => {
+  const metadata = permissionKey ? getManagedPermissionMetadata(permissionKey) : undefined;
+  if (!metadata?.isScopeAssignable) {
+    return 'all';
+  }
+
+  const supportedAccessScopes = metadata.supportedAccessScopes ?? ['all'];
+  return supportedAccessScopes.includes(accessScope) ? accessScope : 'all';
+};
+
+const normalizeAssignmentsForPersistence = async (
+  client: QueryClient,
+  instanceId: string,
+  assignments: readonly StoredRolePermissionAssignment[]
+): Promise<readonly StoredRolePermissionAssignment[]> => {
+  const permissionKeyById = await loadPermissionKeysById(
+    client,
+    instanceId,
+    assignments.map((assignment) => assignment.permissionId)
+  );
+
+  return assignments.map((assignment) => ({
+    permissionId: assignment.permissionId,
+    accessScope: normalizeStoredAccessScope(assignment.accessScope, permissionKeyById.get(assignment.permissionId)),
   }));
 };
 
@@ -143,9 +201,10 @@ RETURNING id;
         throw new Error('conflict');
       }
 
-      const permissionAssignments = normalizeRolePermissionAssignments(
-        input.permissionIds,
-        input.permissionAssignments
+      const permissionAssignments = await normalizeAssignmentsForPersistence(
+        client,
+        input.actor.instanceId,
+        normalizeRolePermissionAssignments(input.permissionIds, input.permissionAssignments)
       );
 
       if (permissionAssignments.length > 0) {
@@ -313,9 +372,10 @@ WHERE instance_id = $1
       );
 
       if (input.permissionIds || input.permissionAssignments) {
-        const permissionAssignments = normalizeRolePermissionAssignments(
-          input.permissionIds,
-          input.permissionAssignments
+        const permissionAssignments = await normalizeAssignmentsForPersistence(
+          client,
+          input.actor.instanceId,
+          normalizeRolePermissionAssignments(input.permissionIds, input.permissionAssignments)
         );
         await client.query('DELETE FROM iam.role_permissions WHERE instance_id = $1 AND role_id = $2::uuid;', [
           input.actor.instanceId,

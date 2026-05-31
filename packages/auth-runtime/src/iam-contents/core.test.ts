@@ -184,6 +184,28 @@ describe('content core authorization', () => {
     });
   });
 
+  it('passes the actor account id into list scope prechecks for own-scoped permissions', async () => {
+    loadContentListScopesMock.mockResolvedValue(['11111111-1111-4111-8111-111111111111']);
+    loadContentListItemsMock.mockResolvedValue({
+      items: [item('content-1', '11111111-1111-4111-8111-111111111111')],
+      total: 1,
+    });
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+
+    expect(response.status).toBe(200);
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      1,
+      actor,
+      'content.read',
+      expect.objectContaining({
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        createdByAccountId: 'account-1',
+      })
+    );
+  });
+
   it('forwards query filters and paginates after authorization', async () => {
     loadContentListScopesMock.mockResolvedValue(['11111111-1111-4111-8111-111111111111']);
     loadContentListItemsMock.mockResolvedValue({

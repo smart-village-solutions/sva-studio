@@ -14,7 +14,7 @@ Der öffentliche Einstiegspunkt ist `src/index.ts`. Er re-exportiert die API in 
 
 - Benutzerverwaltung: unter anderem Read-Handler, Create-/Update-/Deactivate-Handler, Bulk-Deaktivierung, Detail- und Listen-Queries sowie Import- und Synchronisationsbausteine für Benutzer.
 - Rollenverwaltung: Read-, Create-, Update- und Delete-Handler, Persistenz für Rollenmutationen, Rollenauflösung, Audit-Hilfen und Abgleichlogik für verwaltete Rollen.
-  - umfasst auch `permissionAssignments[]` mit optionalem `accessScope` fuer scope-faehige Datensatzrechte.
+  - umfasst auch `permissionAssignments[]` mit optionalem `accessScope` für scope-fähige Datensatzrechte.
 - Gruppen und Organisationen: Read- und Mutation-Handler, Query-Funktionen, Typen und Zod-Schemas für Gruppen, Legacy-Gruppen und Organisationen.
 - Querschnittsfunktionen: Actor-Autorisierung und -Auflösung, Profil-Kommandos, Verschlüsselungshilfen, Fehler- und Basistypen sowie SQL-Bausteine für Benutzerdetail-Berechtigungen.
 

@@ -178,8 +178,8 @@ Der Fehlervertrag bleibt additiv: `error` ist und bleibt der maschinenlesbare St
 
 - `context.attributes.geoUnitId` und `context.attributes.geoHierarchy` bilden den kanonischen Geo-Eingang für hierarchische Auswertung.
 - `resource.attributes.geoUnitId` und `resource.attributes.geoHierarchy` dürfen dieselben Informationen ressourcenspezifisch überschreiben.
-- Fuer scope-faehige Datensatzrechte sind `context.attributes.actorAccountId` sowie `resource.attributes.createdByAccountId` der kanonische Ownership-Kontext.
-- Fuer `organization`-Scope ist zusaetzlich `resource.attributes.organizationId` relevant; fehlt dieser Kontext, bleibt die Entscheidung fail-closed.
+- Für scope-fähige Datensatzrechte sind `context.attributes.actorAccountId` sowie `resource.attributes.createdByAccountId` der kanonische Ownership-Kontext.
+- Für `organization`-Scope ist zusätzlich `resource.attributes.organizationId` relevant; fehlt dieser Kontext, bleibt der Organisations-Match fail-closed, ein Own-Match kann jedoch weiterhin greifen.
 - `GET /iam/me/permissions` nutzt für denselben Zweck die Query-Parameter `geoUnitId` und `geoHierarchy`; beide Endpunkte verwenden damit denselben Geo-Snapshot-Scope.
 - `allowedGeoUnitIds` und `restrictedGeoUnitIds` werden gegenüber `allowedGeoScopes` priorisiert; String-Scopes bleiben nur als Kompatibilitäts-Fallback erhalten.
 - `AuthorizeResponse.provenance` benennt vererbende oder restriktive Geo-Units strukturiert und ersetzt keine fachlichen Fehlercodes.

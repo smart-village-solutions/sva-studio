@@ -64,6 +64,6 @@ Diese Referenz dokumentiert die stabilen `reason`-Codes für `POST /iam/authoriz
 
 - Bestehende Codes werden nicht semantisch umdefiniert.
 - Neue Codes werden nur additiv eingeführt.
-- `own` und `organization` fuehren bewusst nicht zu eigenen neuen Reason-Codes; negative Faelle bleiben unter `abac_condition_unmet`, fehlende Pflichtattribute unter `context_attribute_missing`.
+- `own` und `organization` führen bewusst nicht zu eigenen neuen Reason-Codes; negative oder unvollständige Ownership-/Organizationskontexte landen derzeit fail-closed unter `abac_condition_unmet`.
 - Technische Fehler im Fail-Closed-Pfad sind API-Fehler (`error`) und keine `reason`-Codes.
 - Änderungen am Katalog sind breaking für Consumer und benötigen OpenSpec-Delta + Review.

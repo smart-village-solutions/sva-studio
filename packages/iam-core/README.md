@@ -14,7 +14,7 @@ Die aktuelle API ist bewusst klein:
 - Zentrale IAM-Typen wie `AuthorizeRequest`, `AuthorizeResponse`, `IamAction` und `EffectivePermission` werden als Typ-Exports bereitgestellt.
 - `iamCoreVersion` dokumentiert die Paketversion im Code.
 - `iamCorePackageRoles` und `IamCorePackageRole` markieren die beabsichtigten Rollen des Pakets: `authorization-contracts`, `permission-engine`, `pii-invariants`.
-- Die Autorisierungsvertraege umfassen additive Rollen-Scopes fuer Datensatzrechte (`accessScope = all|own|organization`) sowie die dafuer benoetigten Resource-/Context-Attribute.
+- Die Autorisierungsverträge umfassen additive Rollen-Scopes für Datensatzrechte (`accessScope = all|own|organization`) sowie die dafür benötigten Resource-/Context-Attribute.
 
 ## Nutzung und Integration
 

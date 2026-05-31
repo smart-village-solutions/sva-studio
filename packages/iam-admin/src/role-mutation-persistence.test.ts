@@ -65,7 +65,12 @@ const createDeps = (client: QueryClient) => ({
 
 describe('role mutation persistence', () => {
   it('persists created roles with permissions, audit events and invalidation', async () => {
-    const { client, queries } = createClient([[{ id: roleId }], [], [roleListRow]]);
+    const { client, queries } = createClient([
+      [{ id: roleId }],
+      [{ id: 'permission-1', permission_key: 'content.updatePayload' }],
+      [],
+      [roleListRow],
+    ]);
     const deps = createDeps(client);
 
     await expect(
@@ -85,7 +90,8 @@ describe('role mutation persistence', () => {
     });
 
     expect(queries[0]?.text).toContain('INSERT INTO iam.roles');
-    expect(queries[1]?.text).toContain('INSERT INTO iam.role_permissions');
+    expect(queries[1]?.text).toContain('SELECT id::text AS id, permission_key');
+    expect(queries[2]?.text).toContain('INSERT INTO iam.role_permissions');
     expect(deps.emitRoleAuditEvent).toHaveBeenCalledTimes(2);
     expect(deps.emitActivityLog).toHaveBeenCalledWith(
       client,
@@ -143,7 +149,13 @@ describe('role mutation persistence', () => {
   });
 
   it('persists updated roles and replaces permissions when provided', async () => {
-    const { client, queries } = createClient([[], [], [], [roleListRow]]);
+    const { client, queries } = createClient([
+      [],
+      [{ id: 'permission-1', permission_key: 'content.updatePayload' }],
+      [],
+      [],
+      [roleListRow],
+    ]);
     const deps = createDeps(client);
 
     await expect(
@@ -161,13 +173,44 @@ describe('role mutation persistence', () => {
     ).resolves.toMatchObject({ id: roleId, roleName: 'Editor' });
 
     expect(queries[0]?.text).toContain('UPDATE iam.roles');
-    expect(queries[1]?.text).toContain('DELETE FROM iam.role_permissions');
-    expect(queries[2]?.text).toContain('INSERT INTO iam.role_permissions');
-    expect(queries[2]?.text).not.toContain('$1::uuid');
+    expect(queries[1]?.text).toContain('SELECT id::text AS id, permission_key');
+    expect(queries[2]?.text).toContain('DELETE FROM iam.role_permissions');
+    expect(queries[3]?.text).toContain('INSERT INTO iam.role_permissions');
+    expect(queries[3]?.text).not.toContain('$1::uuid');
     expect(deps.notifyPermissionInvalidation).toHaveBeenCalledWith(
       client,
       expect.objectContaining({ trigger: 'role_updated' })
     );
+  });
+
+  it('normalizes non-scope permission assignments to accessScope all before persisting', async () => {
+    const { client, queries } = createClient([
+      [{ id: roleId }],
+      [
+        { id: 'permission-1', permission_key: 'content.updatePayload' },
+        { id: 'permission-2', permission_key: 'iam.configure' },
+      ],
+      [],
+      [roleListRow],
+    ]);
+    const deps = createDeps(client);
+
+    await createRoleMutationPersistence(deps).persistCreatedRole({
+      actor,
+      roleKey: 'editor',
+      displayName: 'Editor',
+      externalRoleName: 'Editor',
+      description: 'Can edit',
+      roleLevel: 20,
+      permissionIds: [],
+      permissionAssignments: [
+        { permissionId: 'permission-1', accessScope: 'organization' },
+        { permissionId: 'permission-2', accessScope: 'own' },
+      ],
+    });
+
+    expect(queries[2]?.text).toContain('INSERT INTO iam.role_permissions');
+    expect(queries[2]?.values[3]).toEqual(['organization', 'all']);
   });
 
   it('protects delete resolution and deletes editable roles', async () => {

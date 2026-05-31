@@ -6,6 +6,7 @@ import {
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
+import { resolveActorAccountIdWithProvision } from '../iam-account-management/shared-actor-resolution-helpers.js';
 import { logger as accountLogger } from '../iam-account-management/shared.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 
@@ -48,6 +49,7 @@ const buildAuthorizeRequest = (input: {
   readonly keycloakSubject: string;
   readonly action: string;
   readonly resource: ContentPrimitiveAuthorizationResource;
+  readonly actorAccountId?: string;
   readonly requestId?: string;
   readonly traceId?: string;
 }): AuthorizeRequest => ({
@@ -73,6 +75,7 @@ const buildAuthorizeRequest = (input: {
       ...(input.traceId ? { traceId: input.traceId } : {}),
       attributes: {
         ...(input.resource.contentType ? { contentType: input.resource.contentType } : {}),
+        ...(input.actorAccountId ? { actorAccountId: input.actorAccountId } : {}),
       },
     },
   });
@@ -109,6 +112,35 @@ export const authorizeContentPrimitiveForUser = async (input: {
     ...input.resource,
     ...(organizationId ? { organizationId } : {}),
   };
+  let actorAccountId: string | undefined;
+
+  if (resource.createdByAccountId) {
+    try {
+      actorAccountId = await resolveActorAccountIdWithProvision({
+        instanceId,
+        keycloakSubject: input.ctx.user.id,
+        requestId: workspaceContext.requestId,
+        traceId: workspaceContext.traceId,
+        mayProvisionMissingActorMembership: false,
+      });
+    } catch (error) {
+      accountLogger.error('Content primitive authorization actor resolution failed', {
+        operation: 'content_primitive_authorize',
+        instance_id: instanceId,
+        request_id: workspaceContext.requestId,
+        trace_id: workspaceContext.traceId,
+        organization_id: organizationId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      return {
+        ok: false,
+        status: 503,
+        error: 'database_unavailable',
+        message: 'Berechtigungen konnten nicht geprüft werden.',
+      };
+    }
+  }
 
   let permissions: readonly EffectivePermission[];
   if (input.permissions) {
@@ -164,6 +196,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
     keycloakSubject: input.ctx.user.id,
     action,
     resource,
+    actorAccountId,
     requestId: workspaceContext.requestId,
     traceId: workspaceContext.traceId,
   });

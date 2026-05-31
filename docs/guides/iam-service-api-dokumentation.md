@@ -89,7 +89,7 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
   - `permissionIds: string[]` bleibt als Legacy-Payload zulässig und wird serverseitig als `accessScope = 'all'` interpretiert
 - `PATCH /api/v1/iam/roles/{roleId}`
   - akzeptiert dieselbe additive `permissionAssignments[]`-Struktur wie `POST`
-  - nicht scope-faehige Permissions duerfen keinen `accessScope` tragen; Verstoesse fuehren zu `invalid_request`
+  - nicht scope-fähige Permissions bleiben binäre Zuweisungen; ein mitgesendeter `accessScope` wird serverseitig auf `all` normalisiert
 - `DELETE /api/v1/iam/roles/{roleId}`
 
 ### Groups

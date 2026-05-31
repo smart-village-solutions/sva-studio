@@ -91,6 +91,7 @@ const resolveReadableContentScopes = async (
   for (const scope of scopes) {
     const authorizationError = await authorizeContentAction(actor, 'content.read', {
       ...(scope ? { organizationId: scope } : {}),
+      ...(actor.actorAccountId ? { createdByAccountId: actor.actorAccountId } : {}),
     });
 
     if (!authorizationError) {

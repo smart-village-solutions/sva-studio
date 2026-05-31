@@ -59,8 +59,22 @@ describe('RoleDetailPage', () => {
 
     useRolePermissionsMock.mockReturnValue({
       permissions: [
-        { id: 'perm-1', instanceId: 'de-musterhausen', permissionKey: 'content.read', description: 'Lesen' },
-        { id: 'perm-2', instanceId: 'de-musterhausen', permissionKey: 'content.updatePayload', description: 'Schreiben' },
+        {
+          id: 'perm-1',
+          instanceId: 'de-musterhausen',
+          permissionKey: 'content.read',
+          description: 'Lesen',
+          isScopeAssignable: true,
+          supportedAccessScopes: ['all', 'own', 'organization'],
+        },
+        {
+          id: 'perm-2',
+          instanceId: 'de-musterhausen',
+          permissionKey: 'content.updatePayload',
+          description: 'Schreiben',
+          isScopeAssignable: true,
+          supportedAccessScopes: ['all', 'own', 'organization'],
+        },
         { id: 'perm-3', instanceId: 'de-musterhausen', permissionKey: 'iam.configure', description: 'Konfigurieren' },
         { id: 'perm-4', instanceId: 'de-musterhausen', permissionKey: 'news.read', description: 'News lesen' },
       ],
@@ -252,6 +266,49 @@ describe('RoleDetailPage', () => {
           { permissionId: 'perm-1', accessScope: 'all' },
           { permissionId: 'perm-2', accessScope: 'all' },
         ],
+      });
+    });
+  });
+
+  it('sends binary permission assignments without accessScope for non-scope permissions', async () => {
+    const updateRole = vi.fn().mockResolvedValue(true);
+
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-2',
+          roleKey: 'editor',
+          roleName: 'Editor',
+          externalRoleName: 'editor',
+          managedBy: 'studio',
+          description: 'Editorial role',
+          isSystemRole: false,
+          roleLevel: 20,
+          memberCount: 3,
+          syncState: 'synced',
+          permissions: [{ id: 'perm-3', permissionKey: 'iam.configure', description: null }],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole,
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RoleDetailPage roleId="role-2" activeTab="permissions" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rechte speichern' }));
+
+    await waitFor(() => {
+      expect(updateRole).toHaveBeenCalledWith('role-2', {
+        permissionAssignments: [{ permissionId: 'perm-3' }],
       });
     });
   });
@@ -758,8 +815,22 @@ describe('RoleDetailPage', () => {
 
     useRolePermissionsMock.mockReturnValue({
       permissions: [
-        { id: 'perm-1', instanceId: 'de-musterhausen', permissionKey: 'content.read', description: 'Lesen' },
-        { id: 'perm-2', instanceId: 'de-musterhausen', permissionKey: 'content.updatePayload', description: 'Schreiben' },
+        {
+          id: 'perm-1',
+          instanceId: 'de-musterhausen',
+          permissionKey: 'content.read',
+          description: 'Lesen',
+          isScopeAssignable: true,
+          supportedAccessScopes: ['all', 'own', 'organization'],
+        },
+        {
+          id: 'perm-2',
+          instanceId: 'de-musterhausen',
+          permissionKey: 'content.updatePayload',
+          description: 'Schreiben',
+          isScopeAssignable: true,
+          supportedAccessScopes: ['all', 'own', 'organization'],
+        },
         { id: 'perm-3', instanceId: 'de-musterhausen', permissionKey: 'iam.configure', description: 'Konfigurieren' },
       ],
       isLoading: false,

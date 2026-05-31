@@ -244,6 +244,28 @@ const invalidCreateAction = 'create';
 
 ---
 
+## 1.6 Plan-Checkboxen und Umsetzungsstand
+
+### ✅ REQUIRED
+- Bei Plan-Dateien unter `docs/superpowers/plans/` müssen Checkboxen während der Umsetzung fortlaufend gepflegt werden.
+- Nach jedem abgeschlossenen Änderungsblock sind die zugehörigen Plan-Schritte im selben Arbeitszug auf `- [x]` zu setzen oder bei bewusst verworfenem Scope klar zu bereinigen.
+- Vor Commit, Push oder PR ist zu prüfen, ob der tatsächliche Umsetzungsstand und die Checkboxen im betroffenen Plan noch übereinstimmen.
+- Wenn eine Umsetzung inhaltlich abgeschlossen ist, darf kein Plan mit offensichtlich veraltetem offenen Checkbox-Stand zurückbleiben.
+- Vollständig abgeschlossene Pläne sind aus `docs/superpowers/plans/` nach `docs/superpowers/archived-plans/` zu verschieben.
+
+### ❌ FORBIDDEN
+- Plan-Schritte umzusetzen, ohne den Checkbox-Stand im Plan nachzuführen.
+- Gemergte oder pushbereite Änderungen mit sichtbar veraltetem Plan-Status als „fertig“ zu behandeln.
+- Plan-Checkboxen nachträglich pauschal abzuhaken, wenn der tatsächliche Umsetzungsstand nicht belastbar geprüft wurde.
+- Vollständig abgeschlossene Pläne dauerhaft im aktiven Plan-Ordner zu belassen.
+
+**Warum diese Regel wichtig ist:**
+- Veraltete Plan-Checkboxen erzeugen falschen Backlog und machen Folgearbeit unnötig teuer.
+- Der Plan ist nicht nur Entwurf, sondern auch Ausführungs- und Statusartefakt.
+- Dokumentationsdrift bei Plänen ist genauso problematisch wie Drift bei Architektur- oder Schema-Dokumentation.
+
+---
+
 ## 2. Translation System
 
 ### Process for UI Texts

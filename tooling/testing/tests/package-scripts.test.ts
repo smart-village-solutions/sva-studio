@@ -126,12 +126,17 @@ describe('workspace package scripts', () => {
     expect(releaseScript).toBe('pnpm test:pr && pnpm verify:runtime-artifact');
   });
 
-  it('keeps plugin UI boundary enforcement in PR and CI gates', () => {
+  it('keeps plugin boundary enforcement in PR and CI gates', () => {
     const packageJson = loadRootPackageJson();
 
     expect(packageJson.scripts?.['check:plugin-ui-boundary']).toBe('tsx scripts/ci/check-plugin-ui-boundary.ts');
+    expect(packageJson.scripts?.['check:plugin-architecture-boundary']).toBe(
+      'tsx scripts/ci/check-plugin-architecture-boundary.ts'
+    );
     expect(packageJson.scripts?.['test:eslint']).toContain('pnpm check:plugin-ui-boundary');
+    expect(packageJson.scripts?.['test:eslint']).toContain('pnpm check:plugin-architecture-boundary');
     expect(packageJson.scripts?.['test:ci']).toContain('pnpm check:plugin-ui-boundary');
+    expect(packageJson.scripts?.['test:ci']).toContain('pnpm check:plugin-architecture-boundary');
   });
 
   it('keeps the dedicated PR coverage command aligned with the patch gate', () => {
@@ -206,7 +211,7 @@ describe('workspace package scripts', () => {
     const packageJson = loadRootPackageJson();
 
     expect(packageJson.scripts?.['test:eslint:affected']).toBe(
-      'pnpm check:plugin-ui-boundary && env -u NO_COLOR nx affected --target=lint --base=${NX_BASE:-origin/main}'
+      'pnpm check:plugin-ui-boundary && pnpm check:plugin-architecture-boundary && env -u NO_COLOR nx affected --target=lint --base=${NX_BASE:-origin/main}'
     );
     expect(packageJson.scripts?.['test:unit:affected']).toBe('tsx scripts/ci/affected-unit-gate.ts --base ${NX_BASE:-origin/main}');
     expect(packageJson.scripts?.['test:types:affected']).toBe(

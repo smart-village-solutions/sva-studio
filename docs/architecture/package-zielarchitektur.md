@@ -11,7 +11,7 @@ Der harte Package-Schnitt ist durch den OpenSpec-Change `refactor-package-target
 - Fachliche Verantwortlichkeiten sollen pro Package klar erkennbar sein.
 - Framework-agnostische Kernlogik bleibt von React-, TanStack- und Node-Runtime-Bindings getrennt.
 - Serverseitig von Node geladene Packages bleiben ESM-strikt und verwenden explizite Runtime-Endungen.
-- Plugins konsumieren Host-Verträge nur über `@sva/plugin-sdk` und nicht direkt über interne Core- oder App-Module.
+- Plugins konsumieren Host-Vertraege nur ueber `@sva/plugin-sdk` und nicht direkt ueber interne Core-, Host- oder App-Module.
 - Host- und Plugin-Custom-Views konsumieren wiederverwendbare React-UI über `@sva/studio-ui-react` statt über App-interne Komponentenpfade.
 - Autorisierung, Routing, Datenzugriff, Runtime-Kontext und UI-Komposition bleiben getrennte Änderungsachsen.
 - Große IAM- und Instanz-Funktionalität liegt in den fachlichen Zielpackages und wächst nicht mehr in historischen Sammelpackages.
@@ -42,7 +42,7 @@ Die aktuelle Struktur trennt die vorherigen Sammelrollen in eigenständige Paket
 - `@sva/studio-ui-react` ist Owner der wiederverwendbaren Listen-/Template-UI; App-spezifische i18n-Labels bleiben Consumer-Verantwortung.
 - `@sva/sva-mainserver` kapselt die externe Mainserver-Integration und exportiert die kanonischen serverseitigen Host-Verträge für News, Events, POI und Mainserver-Schnittstellen.
 - `@sva/plugin-news` zeigt das Zielmuster für fachliche Plugins.
-- `@sva/plugin-waste-management` nutzt dasselbe freie Plugin-Muster für einen vollständig hostgeführten Fachbereich mit Settings, CRUD, Bulk-Flows sowie generischen Job- und Importpfaden.
+- `@sva/plugin-waste-management` ist aktuell ein Brownfield-Fall mit hostnahen Altkanten und kein sauberer Referenzbaustein fuer den Standard Path.
 - `apps/sva-studio-react` enthält UI, TanStack-Start-Runtime, Router-Wiring und nur noch dünne App-Adapter für Package-Verträge.
 
 Die größte frühere strukturelle Last aus `@sva/auth` ist fachlich aufgelöst. Das Package ist kein aktiver Workspace-Baustein mehr.
@@ -132,8 +132,8 @@ Die Zielrollen sind als Workspace-Packages vorhanden und werden über Nx-, ESLin
 | `@sva/routing` | Route-Verträge, Search-Param-Normalisierung, Route-Factories, Guard-Schnittstellen | `packages/routing` | Routing kennt Verträge und verdrahtet Runtime-Routen über `@sva/auth-runtime`. |
 | `@sva/studio-ui-react` | React-basierte Studio-UI-Bausteine für Host-Seiten und Plugin-Custom-Views | `packages/studio-ui-react` | UI-only Package; keine Plugin-Registry-, Routing-, IAM-, DB- oder Server-Runtime-Verantwortung. Wiederverwendbare Host-Tabellen und Seiten-Templates gehören hierher. |
 | `@sva/*-integration` | Downstream-Integrationen mit getrennten client-sicheren Typen und serverseitigen Adaptern | `packages/sva-mainserver` | Integrationspakete kapseln OAuth2, GraphQL, Secret-Lookups, Fehlerabbildung und kanonische serverseitige Host-Verträge. |
-| `@sva/plugin-*` | Fachliche Erweiterungen über Plugin-SDK-Verträge und gemeinsame Studio-UI | `packages/plugin-news` | Keine Direktimporte aus `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Modulen; Custom-Views nutzen `@sva/studio-ui-react`. |
-| `@sva/plugin-waste-management` | Freies Fachplugin für Waste-Management mit Search-Params, Audit-, Import- und Jobnutzung über den Host | `packages/plugin-waste-management` | Keine Supabase-Clients, keine `Newcms`-Runtime-Artefakte und keine direkte DB- oder Secret-Auflösung im Plugin; hostgeführte Zugriffe laufen nur über `/api/v1/waste-management/*`. |
+| `@sva/plugin-*` | Fachliche Erweiterungen ueber Plugin-SDK-Vertraege und gemeinsame Studio-UI | `packages/plugin-news` | Standard Path: nur `@sva/plugin-sdk` und optional `@sva/studio-ui-react`; keine Direktimporte aus `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data*`, `@sva/studio-module-iam` oder App-Modulen. Advanced Path nur ueber explizite oeffentliche Host-Vertraege. |
+| `@sva/plugin-waste-management` | Brownfield-Plugin mit dokumentierter Altlast fuer Waste-Management | `packages/plugin-waste-management` | Aktuelle Abweichungen duerfen nur ueber den Baseline-Report toleriert werden; das Package ist kein Freifahrtschein fuer weitere Plugin-Host-Kopplung. |
 | `apps/sva-studio-react` | UI, TanStack Start, Router-Wiring, App-Shell, Server-Funktionen als Adapter | `apps/sva-studio-react` | Keine dauerhafte Domänenlogik, keine rohen DB-/Keycloak-/GraphQL-Zugriffe im Browser-Bundle. |
 
 ## Erlaubte Abhängigkeitsrichtung
@@ -156,6 +156,7 @@ Nicht zulässig im Zielbild:
 
 - `@sva/routing` importiert historische Auth-Sammelpackages für Pfade oder Runtime-Handler.
 - Plugins importieren `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Code direkt.
+- Plugins importieren keine hostnahen Mischrollen wie `@sva/studio-module-iam`; guenstige Tags ersetzen keinen oeffentlichen Plugin-Vertrag.
 - Plugins koppeln ihren öffentlichen Vertrag an keine konkrete Worker-Technologie oder zentrale Hosttabelle.
 - App-lokale statische Plugin-Importlisten sind kein Zielbild für extern publizierbare Plugins; sie bleiben nur Übergangspfad bis Katalog und Loader eingeführt sind.
 - Plugins importieren wiederverwendbare UI aus `apps/sva-studio-react/src/**` oder definieren eigene Basis-Control-Systeme für Buttons, Inputs, Dialoge, Tabs oder Tabellen.
@@ -251,6 +252,7 @@ Die Zielarchitektur ist durch den harten OpenSpec-Schnitt umgesetzt. Für laufen
 - Kompatibilitaetsadapter in `@sva/data` duerfen keine neue Ownership begruenden; `@sva/auth` und `@sva/sdk` sind keine aktiven Kompatibilitaetspfade mehr.
 - Pro neuem oder geändertem serverseitigem Package bleiben `build`, `lint`, `test:unit`, `test:types` und `check:runtime` Teil des lokalen Gates.
 - Nx-`depConstraints`, `no-restricted-imports` und `check:server-runtime` sind die durchsetzenden Grenzen.
+- `check:plugin-ui-boundary` und `check:plugin-architecture-boundary` sind fuer `packages/plugin-*` die blockierenden Detail-Gates innerhalb dieses Zielbilds.
 - Architektur- und OpenSpec-Dokumentation werden im selben Change aktualisiert, wenn sich Package-Grenzen ändern.
 
 ## Entscheidungsregeln für neue Funktionalität

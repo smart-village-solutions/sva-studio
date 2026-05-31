@@ -6,9 +6,12 @@ describe('run-pr-gate', () => {
   it('formats a readable duration summary for gates and slices', () => {
     expect(
       formatDurationSummary([
+        { label: 'plugin-architecture-boundary', durationMs: 980 },
         { label: 'lint:affected', durationMs: 1_230 },
         { label: 'unit:app:routes', durationMs: 12_500 },
       ])
-    ).toBe(['- lint:affected: 1.23s', '- unit:app:routes: 12.50s'].join('\n'));
+    ).toBe(
+      ['- plugin-architecture-boundary: 0.98s', '- lint:affected: 1.23s', '- unit:app:routes: 12.50s'].join('\n')
+    );
   });
 });

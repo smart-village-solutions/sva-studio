@@ -239,6 +239,11 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: den deklarativen Runtime-Contract aus dem Job-Pfad auf `server`- und später `integrations`-Beiträge erweitern, ohne den fail-closed Host-Kontext aufzuweichen
 
+42. Plugin-Architekturdrift durch Brownfield-Ausnahmen und gemischte Package-Rollen
+   - Impact: hoch (weitere Plugin-Ausbauten koennen implizite Host-Kopplungen normalisieren und spaet teure Rueckbauten erzwingen)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: `check:plugin-architecture-boundary` blockierend einfuehren, Altfaelle nur ueber eine exakte Baseline tolerieren und Mischrollen wie `@sva/studio-module-iam` in einem separaten Folgechange oeffentlich neu schneiden oder pluginseitig verbieten
+
 42. Zentrale Job-Persistenz trägt fachneutrale JSON-Payloads mit begrenzter Schemastrenge
    - Impact: mittel (fachliche Payload-Drift oder unklare Ergebnis-/Fehlerdeutung wird erst in Plugin- oder Runtime-Pfaden sichtbar)
    - Wahrscheinlichkeit: mittel

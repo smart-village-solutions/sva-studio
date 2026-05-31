@@ -30,6 +30,44 @@ Zusätzlich für publishbare Plugins:
 - veröffentlichte Artefakte müssen mindestens `dist/` und `plugin.manifest.json` enthalten
 - `package.json` exportiert zusätzlich `./plugin.manifest.json`
 
+## Standard Path und Advanced Path
+
+Der verbindliche Zielvertrag fuer Studio-Plugins unterscheidet zwei Pfade:
+
+- `Standard Path` fuer typische fachliche Plugins mit deklarativen Beitraegen und optionalen React-Custom-Views
+- `Advanced Path` fuer bewusst freigegebene Sonderfaelle, in denen der Host zusaetzliche Runtime- oder Integrationsvertraege oeffentlich macht
+
+Beide Pfade gelten fuer interne und externe Plugins gleichermassen. Repository-Naehe, Teamzugehoerigkeit oder historischer Bestand erzeugen keinen stillschweigenden Sonderstatus.
+
+### Standard Path
+
+Der Standard Path ist der bevorzugte und review-arme Happy Path fuer neue Plugins.
+
+Verbindliche Regeln:
+
+- Workspace-Dependencies: `@sva/plugin-sdk`
+- bei React-Custom-Views zusaetzlich `@sva/studio-ui-react`
+- Peer Dependencies bleiben `react`, `react-dom`, `@tanstack/react-router`
+- `src/index.ts` exportiert genau ein fuehrendes `PluginDefinition`-Objekt
+- Plugins duerfen keine Workspace-Dependencies auf `@sva/core`, `@sva/auth-runtime`, `@sva/server-runtime`, `@sva/routing`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data`, `@sva/data-client`, `@sva/data-repositories`, `@sva/sva-mainserver`, `@sva/studio-module-iam`, `@sva/monitoring-client`, `@sva/media` oder App-Pfade einziehen
+- Plugins duerfen keine Imports aus `apps/*` oder aus nicht als oeffentlicher Plugin-Vertrag dokumentierten Host-Packages verwenden
+
+Der Standard Path ist auch dann massgeblich, wenn ein Plugin komplexe Fach-UI, Validierung, Search-Param-Modelle oder hostseitig persistierte CRUD-Flows beisteuert. Fachliche Tiefe rechtfertigt keine implizite Core- oder Host-Kopplung.
+
+### Advanced Path
+
+Der Advanced Path ist ein ausdruecklicher Escape Hatch fuer Sonderfaelle, aber kein freier Direktzugriff auf interne Host-Bausteine.
+
+Verbindliche Regeln:
+
+- Plugins duerfen erweiterte Faehigkeiten nur ueber explizite oeffentliche Host-Vertraege konsumieren, nie ueber zufaellige interne Packages
+- Browser-UI darf fachlich frei implementiert werden, solange die gemeinsame wiederverwendbare UI-Basis weiter `@sva/studio-ui-react` bleibt
+- pluginseitige Server-, Job- und Integrationsbeitraege laufen nur in host-owned Execution-Contexts
+- jede neue Advanced-Path-Faehigkeit braucht einen eigenen OpenSpec-Change oder eine explizite Erweiterung des fuehrenden Governance-Changes
+- jede aktive Advanced-Path-Ausnahme wird im Boundary-Baseline-Report mit Owner, Begruendung und Abbauziel dokumentiert
+
+Ein Advanced Path liegt nur dann vor, wenn der Host den dafuer benoetigten Vertrag bewusst als oeffentlichen Plugin-Eintrittspunkt beschreibt. Ein guenstiges Nx-Tag, ein historisches Package oder ein bereits vorhandener Importpfad zaehlt nicht als Freigabe.
+
 ## Standard-Content-Helfer aus dem Plugin-SDK
 
 Standardisierte CRUD-Content-Plugins sollen gemeinsame technische Muster bevorzugt über `@sva/plugin-sdk` beziehen statt sie lokal oder pluginübergreifend zu duplizieren.
@@ -45,6 +83,20 @@ Nicht erlaubt:
 - Shared-Code in einem eigenen pluginübergreifenden Workspace-Package nur für News, Events und POI
 - Direktimporte eines Plugins aus einem anderen Plugin
 - generische Editor-Abstraktionen, die fachliche Feldmodelle oder Validierung aus den Plugins herausziehen
+
+## Boundary-Governance
+
+Die Architekturgrenze fuer Plugins wird nicht nur review-seitig, sondern auch maschinell erzwungen.
+
+- `pnpm check:plugin-ui-boundary` prueft die gemeinsame UI-Basis gegen App-Importe und lokale Basis-Control-Duplikate
+- `pnpm check:plugin-architecture-boundary` prueft Workspace-Dependencies, Source-Imports, Host-Package-Nutzung und verdaechtige Dateistruktur-Signale in `packages/plugin-*`
+- neue Verstosse blockieren lokale Quality Gates und PR-Laeufe
+
+Bestandsfaelle werden nicht stillschweigend akzeptiert. Wenn ein bestehendes Plugin noch nicht auf dem Zielvertrag liegt, muss die Abweichung im Baseline-Report unter `docs/reports/plugin-architecture-boundary-baseline.md` stehen. Jede Ausnahme braucht:
+
+- einen verantwortlichen Owner
+- eine technische Begruendung
+- einen benannten Folgechange fuer den Abbau
 
 ## Pflicht-Export
 

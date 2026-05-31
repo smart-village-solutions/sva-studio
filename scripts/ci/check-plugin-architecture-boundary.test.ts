@@ -1,0 +1,211 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+import { afterEach, describe, expect, it } from 'vitest';
+
+import {
+  collectPluginArchitectureViolations,
+  diffViolationsAgainstBaseline,
+  parsePluginArchitectureBaseline,
+  type PluginArchitectureViolation,
+} from './check-plugin-architecture-boundary.ts';
+
+const tempDirs: string[] = [];
+
+const createTempWorkspace = (): string => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'plugin-architecture-boundary-'));
+  tempDirs.push(directory);
+  mkdirSync(path.join(directory, 'packages'), { recursive: true });
+  mkdirSync(path.join(directory, 'docs/reports'), { recursive: true });
+  return directory;
+};
+
+const writeJson = (filePath: string, value: unknown): void => {
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+};
+
+const writeText = (filePath: string, content: string): void => {
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  writeFileSync(filePath, content, 'utf8');
+};
+
+const createPluginPackage = (
+  workspaceRoot: string,
+  packageDirectoryName: string,
+  config: {
+    packageName: string;
+    dependencies?: Record<string, string>;
+    sourceFiles: Record<string, string>;
+  }
+): void => {
+  const packageRoot = path.join(workspaceRoot, 'packages', packageDirectoryName);
+  writeJson(path.join(packageRoot, 'package.json'), {
+    name: config.packageName,
+    version: '0.0.1',
+    private: true,
+    dependencies: config.dependencies ?? {
+      '@sva/plugin-sdk': 'workspace:*',
+    },
+  });
+
+  for (const [relativePath, sourceCode] of Object.entries(config.sourceFiles)) {
+    writeText(path.join(packageRoot, relativePath), sourceCode);
+  }
+};
+
+const sortViolations = (violations: readonly PluginArchitectureViolation[]): readonly PluginArchitectureViolation[] =>
+  [...violations].sort((left, right) =>
+    `${left.packageName}:${left.rule}:${left.subject}:${left.relativePath}`.localeCompare(
+      `${right.packageName}:${right.rule}:${right.subject}:${right.relativePath}`
+    )
+  );
+
+describe('check-plugin-architecture-boundary', () => {
+  afterEach(() => {
+    for (const directory of tempDirs.splice(0)) {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts standard-path plugins without violations', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createPluginPackage(workspaceRoot, 'plugin-clean', {
+      packageName: '@sva/plugin-clean',
+      dependencies: {
+        '@sva/plugin-sdk': 'workspace:*',
+        '@sva/studio-ui-react': 'workspace:*',
+      },
+      sourceFiles: {
+        'src/index.ts': `import type { PluginDefinition } from '@sva/plugin-sdk';
+
+export const pluginClean: PluginDefinition = {
+  id: 'clean',
+  displayName: 'Clean',
+  routes: [],
+  navigation: [],
+  permissions: [],
+  contentTypes: [],
+  adminResources: [],
+  auditEvents: [],
+  translations: {},
+};
+`,
+      },
+    });
+
+    await expect(collectPluginArchitectureViolations(workspaceRoot)).resolves.toEqual([]);
+  });
+
+  it('detects forbidden workspace dependencies, imports and path signals', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createPluginPackage(workspaceRoot, 'plugin-drift', {
+      packageName: '@sva/plugin-drift',
+      dependencies: {
+        '@sva/plugin-sdk': 'workspace:*',
+        '@sva/core': 'workspace:*',
+      },
+      sourceFiles: {
+        'src/index.ts': `import { authorize } from '@sva/core';
+export const pluginDrift = authorize;
+`,
+        'src/mainserver-news.ts': 'export const news = true;\n',
+        'src/server.ts': 'export const server = true;\n',
+      },
+    });
+
+    const violations = sortViolations(await collectPluginArchitectureViolations(workspaceRoot));
+
+    expect(violations).toHaveLength(4);
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          packageName: '@sva/plugin-drift',
+          relativePath: path.posix.join('packages', 'plugin-drift', 'package.json'),
+          rule: 'workspace-dependency',
+          subject: '@sva/core',
+        }),
+        expect.objectContaining({
+          packageName: '@sva/plugin-drift',
+          relativePath: path.posix.join('packages', 'plugin-drift', 'src', 'index.ts'),
+          rule: 'workspace-import',
+          subject: '@sva/core',
+        }),
+        expect.objectContaining({
+          packageName: '@sva/plugin-drift',
+          relativePath: path.posix.join('packages', 'plugin-drift', 'src', 'mainserver-news.ts'),
+          rule: 'forbidden-path-signal',
+          subject: 'mainserver-',
+        }),
+        expect.objectContaining({
+          packageName: '@sva/plugin-drift',
+          relativePath: path.posix.join('packages', 'plugin-drift', 'src', 'server.ts'),
+          rule: 'review-required-path-signal',
+          subject: 'server.ts',
+        }),
+      ])
+    );
+  });
+
+  it('parses the markdown baseline and filters documented brownfield violations', () => {
+    const baseline = parsePluginArchitectureBaseline(`# Plugin Architecture Boundary Baseline
+
+## Machine Readable Baseline
+
+\`\`\`json
+[
+  {
+    "packageName": "@sva/plugin-waste-management",
+    "rule": "workspace-import",
+    "subject": "@sva/studio-module-iam",
+    "owner": "studio-platform",
+    "justification": "Brownfield-IAM-Kopplung",
+    "removalChange": "refactor-studio-module-iam-public-contract"
+  }
+]
+\`\`\`
+`);
+
+    expect(baseline).toEqual([
+      {
+        packageName: '@sva/plugin-waste-management',
+        rule: 'workspace-import',
+        subject: '@sva/studio-module-iam',
+        owner: 'studio-platform',
+        justification: 'Brownfield-IAM-Kopplung',
+        removalChange: 'refactor-studio-module-iam-public-contract',
+      },
+    ]);
+
+    const unbaselined = diffViolationsAgainstBaseline(
+      [
+        {
+          packageName: '@sva/plugin-waste-management',
+          relativePath: 'packages/plugin-waste-management/src/plugin.tsx',
+          rule: 'workspace-import',
+          subject: '@sva/studio-module-iam',
+          message: 'legacy import',
+        },
+        {
+          packageName: '@sva/plugin-waste-management',
+          relativePath: 'packages/plugin-waste-management/package.json',
+          rule: 'workspace-dependency',
+          subject: '@sva/core',
+          message: 'legacy dependency',
+        },
+      ],
+      baseline
+    );
+
+    expect(unbaselined).toEqual([
+      {
+        packageName: '@sva/plugin-waste-management',
+        relativePath: 'packages/plugin-waste-management/package.json',
+        rule: 'workspace-dependency',
+        subject: '@sva/core',
+        message: 'legacy dependency',
+      },
+    ]);
+  });
+});

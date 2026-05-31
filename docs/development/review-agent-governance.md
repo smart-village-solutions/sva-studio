@@ -58,6 +58,7 @@ Die maschinelle Auswertung laeuft ueber `pnpm check:bot-comment-handling` im Wor
 
 - Immer: `Documentation`
 - Neue Architektur / Packages / strukturelle Entscheidungen: `Architecture`
+- Neue Plugin-Standard-/Advanced-Path-Faehigkeit, neue plugin-oeffentliche Host-Vertraege oder Baseline-Ausnahmen: `Architecture` + `Documentation` + `Code Quality`
 - IAM, Rollen-Sync, ABAC/RBAC, Data-Subject-Rights oder andere sicherheitskritische Domänenlogik: `Architecture` + `Documentation` + `Security & Privacy`
 - Auth, Sessions, Tokens, PII: `Security & Privacy`
 - UI, Formulare, Navigation: `UX & Accessibility`
@@ -74,6 +75,7 @@ Die maschinelle Auswertung laeuft ueber `pnpm check:bot-comment-handling` im Wor
 - Immer: `Documentation`
 - Jede Codeänderung: `Code Quality`
 - Verhaltensänderungen oder Coverage-/Test-Themen: `Test Quality`
+- Aenderungen an `docs/reports/plugin-architecture-boundary-baseline.md`, `scripts/ci/check-plugin-architecture-boundary.ts` oder plugin-oeffentlichen Host-Vertraegen: zusaetzlich `Architecture`
 - Wiederholte rote Test-/Coverage-Checks im PR-Verlauf: `Test Quality` mit expliziter Shift-left-Prozessbewertung
 - Relevante Bot-Kommentare von `Copilot` oder `chatgpt-codex-connector[bot]` muessen vor Merge einen gueltigen Bearbeitungsnachweis tragen
 - IAM, Rollen-Sync, ABAC/RBAC, Data-Subject-Rights oder andere architekturrelevante Security-/Domain-Änderungen: zusätzlich `Architecture` und `Security & Privacy`
@@ -115,6 +117,12 @@ Die maschinelle Auswertung laeuft ueber `pnpm check:bot-comment-handling` im Wor
 - Fachreviewer liefern ihre Perspektive getrennt.
 - Orchestratoren dürfen Konflikte zusammenführen und Entscheidungsoptionen formulieren.
 - Die finale Entscheidung bleibt beim Menschen.
+
+## Zusatzregeln fuer Plugin-Architektur
+
+- "Vorerst im Plugin" oder "nur intern" ist keine ausreichende Begruendung fuer Core- oder Host-Kopplung.
+- Jede temporaere Advanced-Path-Ausnahme braucht einen benannten Folgechange oder ein Sunset-Ziel.
+- Baseline-Eintraege ohne Owner, Begruendung und Abbauziel sind review-seitig nicht merge-faehig.
 
 ## Templates
 

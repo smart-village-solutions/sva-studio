@@ -163,6 +163,11 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Plugin-Custom-Views importieren gemeinsame UI aus `@sva/studio-ui-react` und keine App-internen Komponentenpfade
   - lokale Basis-Control-Duplikate für Button, Input, Select, Tabs, Dialog, Alert, Badge, Table oder DataTable in `packages/plugin-*` sind unzulässig
   - fachliche Wrapper bleiben zulässig, wenn sie Studio-Primitives komponieren und Accessibility-/Design-Token-Semantik erhalten
+- Plugin-Architecture-Boundary:
+  - `pnpm check:plugin-architecture-boundary` muss fuer Plugin-Packages gruen sein
+  - der Check blockiert neue Workspace-Dependencies, Source-Imports und Host-Signale ausserhalb des dokumentierten Plugin-Vertrags
+  - Brownfield-Abweichungen sind nur mit maschinenlesbarer Baseline unter `docs/reports/plugin-architecture-boundary-baseline.md` tolerierbar
+  - Baseline-Aenderungen und neue Advanced-Path-Faehigkeiten gelten als review-pflichtige Architekturereignisse
 - Medienmanagement:
   - `openspec validate add-media-management --strict` muss grün sein
   - `@sva/media` bleibt typstabil über `test:types`

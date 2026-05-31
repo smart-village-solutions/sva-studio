@@ -164,6 +164,7 @@ export const runPrGate = (args: readonly string[]): number => {
   recordDuration(durations, 'toolchain-consistency', runCommand('pnpm check:toolchain-consistency'));
   recordDuration(durations, 'clean-generated-source-artifacts', runCommand('pnpm clean:generated-source-artifacts'));
   recordDuration(durations, 'plugin-ui-boundary', runCommand('pnpm check:plugin-ui-boundary'));
+  recordDuration(durations, 'plugin-architecture-boundary', runCommand('pnpm check:plugin-architecture-boundary'));
 
   runQualityGates(options.base, options.head, decision.qualityGateMode, durations);
   runCoverageGate(options.base, decision.coverageMode, durations);

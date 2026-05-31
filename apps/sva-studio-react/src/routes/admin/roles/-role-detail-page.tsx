@@ -14,6 +14,7 @@ import { createStudioDataTableLabels } from '../../../components/studio-data-tab
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
+import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
 import { useRolePermissions } from '../../../hooks/use-role-permissions';
 import { useRoles } from '../../../hooks/use-roles';
@@ -115,6 +116,9 @@ type RolePermissionTableRow = Readonly<{
   actionLabel: string;
   detailLabel: string;
   isAssigned: boolean;
+  isScopeAssignable: boolean;
+  supportedAccessScopes: readonly ('all' | 'own' | 'organization')[];
+  accessScope: 'all' | 'own' | 'organization';
 }>;
 
 const normalizePermissionSearch = (value: string) => value.trim().toLowerCase();
@@ -145,6 +149,29 @@ export const sortPermissionIdsByCatalog = (
   });
 };
 
+const sortPermissionAssignmentsByCatalog = (
+  assignments: Readonly<Record<string, 'all' | 'own' | 'organization'>>,
+  catalog: readonly { id: string; permissionKey: string }[]
+) =>
+  sortPermissionIdsByCatalog(Object.keys(assignments), catalog).map((permissionId) => ({
+    permissionId,
+    accessScope: assignments[permissionId] ?? 'all',
+  }));
+
+const buildPermissionScopeDraft = (
+  role: NonNullable<ReturnType<typeof useRoles>['roles'][number]>,
+  catalog: readonly { id: string; permissionKey: string }[]
+): Record<string, 'all' | 'own' | 'organization'> => {
+  const byAssignment = Object.fromEntries(
+    (role.permissionAssignments ?? []).map((assignment) => [assignment.permissionId, assignment.accessScope] as const)
+  ) as Record<string, 'all' | 'own' | 'organization'>;
+
+  return role.permissions.reduce<Record<string, 'all' | 'own' | 'organization'>>((acc, permission) => {
+    acc[permission.id] = byAssignment[permission.id] ?? permission.accessScope ?? 'all';
+    return acc;
+  }, { ...Object.fromEntries(catalog.map((permission) => [permission.id, 'all'] as const)) });
+};
+
 export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   const rolesApi = useRoles();
   const permissionsApi = useRolePermissions();
@@ -159,6 +186,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     roleLevel: '10',
   });
   const [permissionDraft, setPermissionDraft] = React.useState<string[]>([]);
+  const [permissionScopeDraft, setPermissionScopeDraft] = React.useState<Record<string, 'all' | 'own' | 'organization'>>(
+    {}
+  );
   const [isSavingMeta, setIsSavingMeta] = React.useState(false);
   const [isSavingPermissions, setIsSavingPermissions] = React.useState(false);
   const [isUpdatingAssignmentsForUserIds, setIsUpdatingAssignmentsForUserIds] = React.useState<string[]>([]);
@@ -176,6 +206,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       roleLevel: String(role.roleLevel),
     });
     setPermissionDraft(sortPermissionIdsByCatalog(role.permissions.map((permission) => permission.id), permissionsApi.permissions));
+    setPermissionScopeDraft(buildPermissionScopeDraft(role, permissionsApi.permissions));
   }, [permissionsApi.permissions, role]);
 
   const permissionTableRows = React.useMemo<readonly RolePermissionTableRow[]>(
@@ -191,9 +222,12 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           actionLabel: summary.actionLabel,
           detailLabel: summary.detailLabel,
           isAssigned: permissionDraft.includes(permission.id),
+          isScopeAssignable: permission.isScopeAssignable ?? false,
+          supportedAccessScopes: (permission.supportedAccessScopes ?? ['all']) as readonly ('all' | 'own' | 'organization')[],
+          accessScope: permissionScopeDraft[permission.id] ?? 'all',
         };
       }),
-    [permissionDraft, permissionsApi.permissions]
+    [permissionDraft, permissionScopeDraft, permissionsApi.permissions]
   );
 
   const filteredPermissionTableRows = React.useMemo(() => {
@@ -269,6 +303,35 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
         sortable: true,
         sortValue: (permission) => permission.actionLabel.toLowerCase(),
       },
+      {
+        id: 'scope',
+        header: t('admin.iam.rights.columns.scope'),
+        cell: (permission) =>
+          permission.isAssigned && permission.isScopeAssignable ? (
+            <Select
+              value={permission.accessScope}
+              disabled={isReadOnly}
+              onChange={(event) =>
+                setPermissionScopeDraft((current) => ({
+                  ...current,
+                  [permission.id]: event.target.value as 'all' | 'own' | 'organization',
+                }))
+              }
+            >
+              {permission.supportedAccessScopes.map((scope) => (
+                <option key={scope} value={scope}>
+                  {humanizePermissionSegment(scope)}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              {permission.isAssigned ? humanizePermissionSegment(permission.accessScope) : '-'}
+            </span>
+          ),
+        sortable: true,
+        sortValue: (permission) => permission.accessScope,
+      },
       ...(showTechnicalDetails
         ? ([
             {
@@ -289,6 +352,12 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
 
   const assignAllPermissions = React.useCallback(() => {
     setPermissionDraft(sortPermissionIdsByCatalog(permissionsApi.permissions.map((permission) => permission.id), permissionsApi.permissions));
+    setPermissionScopeDraft((current) =>
+      permissionsApi.permissions.reduce<Record<string, 'all' | 'own' | 'organization'>>((acc, permission) => {
+        acc[permission.id] = current[permission.id] ?? 'all';
+        return acc;
+      }, { ...current })
+    );
   }, [permissionsApi.permissions]);
 
   const removeAllPermissions = React.useCallback(() => {
@@ -304,6 +373,14 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
 
         return sortPermissionIdsByCatalog(nextIds, permissionsApi.permissions);
       });
+      if (nextAssigned) {
+        setPermissionScopeDraft((current) =>
+          permissionIds.reduce<Record<string, 'all' | 'own' | 'organization'>>((acc, permissionId) => {
+            acc[permissionId] = current[permissionId] ?? 'all';
+            return acc;
+          }, { ...current })
+        );
+      }
     },
     [permissionsApi.permissions]
   );
@@ -375,7 +452,13 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     setIsSavingPermissions(true);
     try {
       await rolesApi.updateRole(role.id, {
-        permissionIds: permissionDraft,
+        permissionAssignments: sortPermissionAssignmentsByCatalog(
+          permissionDraft.reduce<Record<string, 'all' | 'own' | 'organization'>>((acc, permissionId) => {
+            acc[permissionId] = permissionScopeDraft[permissionId] ?? 'all';
+            return acc;
+          }, {}),
+          permissionsApi.permissions
+        ),
       });
     } finally {
       setIsSavingPermissions(false);
@@ -388,6 +471,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     }
 
     setPermissionDraft(sortPermissionIdsByCatalog(role.permissions.map((permission) => permission.id), permissionsApi.permissions));
+    setPermissionScopeDraft(buildPermissionScopeDraft(role, permissionsApi.permissions));
   };
 
   const updateRoleAssignment = async (userId: string, nextRoleIds: readonly string[]) => {
@@ -429,6 +513,10 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
 
       return sortPermissionIdsByCatalog(nextIds, permissionsApi.permissions);
     });
+    setPermissionScopeDraft((current) => ({
+      ...current,
+      [permissionId]: current[permissionId] ?? 'all',
+    }));
   };
 
   if (rolesApi.error) {

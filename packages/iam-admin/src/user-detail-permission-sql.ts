@@ -136,6 +136,7 @@ const buildDirectPermissionTraceSql = (includeStructuredPermissions: boolean): s
           NULL::text AS organization_id,
           ap.effect,
           ${projection.scope} AS scope,
+          NULL::text AS access_scope,
           TRUE AS is_effective,
           'effective'::text AS status,
           'direct_permission'::text AS source_kind,
@@ -179,6 +180,7 @@ const buildDirectRolePermissionTraceSql = (projection: ReturnType<typeof buildPe
           ao.organization_id::text AS organization_id,
           ${projection.effect} AS effect,
           ${projection.scope} AS scope,
+          rp.access_scope::text AS access_scope,
           (ar.valid_from <= NOW() AND (ar.valid_to IS NULL OR ar.valid_to > NOW())) AS is_effective,
           CASE
             WHEN ar.valid_from > NOW() THEN 'inactive'
@@ -238,6 +240,7 @@ const buildGroupRolePermissionTraceSql = (projection: ReturnType<typeof buildPer
           ao.organization_id::text AS organization_id,
           ${projection.effect} AS effect,
           ${projection.scope} AS scope,
+          rp.access_scope::text AS access_scope,
           (
             g.is_active = true
             AND (ag.valid_from IS NULL OR ag.valid_from <= NOW())
@@ -321,6 +324,7 @@ export const buildPermissionTraceRowsSql = (
           'organization_id', trace.organization_id,
           'effect', trace.effect,
           'scope', trace.scope,
+          'access_scope', trace.access_scope,
           'is_effective', trace.is_effective,
           'status', trace.status,
           'source_kind', trace.source_kind,

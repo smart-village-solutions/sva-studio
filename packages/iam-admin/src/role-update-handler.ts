@@ -1,3 +1,4 @@
+import type { IamRolePermissionAssignmentScope } from '@sva/core';
 import { getRoleDisplayName, getRoleExternalName } from './role-audit.js';
 
 export type UpdateRoleAuthenticatedRequestContext = {
@@ -32,6 +33,10 @@ export type UpdateRolePayloadShape = {
   readonly description?: string | null;
   readonly roleLevel?: number;
   readonly permissionIds?: readonly string[];
+  readonly permissionAssignments?: readonly {
+    readonly permissionId: string;
+    readonly accessScope?: IamRolePermissionAssignmentScope;
+  }[];
   readonly retrySync?: boolean;
 };
 
@@ -106,6 +111,10 @@ export type UpdateRoleHandlerDeps<
     readonly roleLevel: number;
     readonly externalRoleName: string;
     readonly permissionIds?: readonly string[];
+    readonly permissionAssignments?: readonly {
+      readonly permissionId: string;
+      readonly accessScope?: IamRolePermissionAssignmentScope;
+    }[];
     readonly operation: 'update' | 'retry';
   }) => Promise<TRoleItem>;
   readonly requireRoleId: (request: Request, requestId?: string) => string | Response;
@@ -221,6 +230,7 @@ export const createUpdateRoleHandlerInternal =
           roleLevel: nextRoleLevel,
           externalRoleName,
           permissionIds: parsed.data.permissionIds,
+          permissionAssignments: parsed.data.permissionAssignments,
           operation,
         });
         deps.iamRoleSyncCounter.add(1, { operation, result: 'success', error_code: 'none' });

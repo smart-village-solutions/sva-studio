@@ -22,7 +22,7 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 - **All data** must be fetched from the database
 - Use language keys (e.g., `t('navigation.dashboard')`) for all displayed text
 - **ALWAYS use translation keys** - no exceptions for "quick fixes" or "temporary solutions"
-- Translation keys must exist in **both German (de) and English (en)** in `src/lib/i18n.ts`
+- Translation keys must exist in **both German (de) and English (en)** in the active app translation resources
 
 ### ❌ FORBIDDEN - ZERO TOLERANCE
 - **Hardcoded text strings in components** (absolutely forbidden)
@@ -56,25 +56,12 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 
 **Enforcement:**
 - All PRs with hardcoded strings will be **rejected immediately**
-- AI assistants are instructed to **refuse** adding hardcoded strings
 - Code reviews must check for hardcoded text
 - If you find hardcoded text, create a ticket and fix it **immediately**
 
 ---
 
-## 1.1 Tooling: LSP Diagnostics
-
-### ✅ REQUIRED
-- Install the TypeScript language server globally for LSP diagnostics:
-  - `npm install -g typescript-language-server typescript`
-
-**Why this is required:**
-- The `lsp_diagnostics` tooling used in this workspace resolves `typescript-language-server` from the global PATH.
-- A local devDependency is not sufficient for the diagnostics tool.
-
----
-
-## 1.2 Repository File Placement (Enforced)
+## 1.1 Repository File Placement (Enforced)
 
 ### ✅ REQUIRED
 - Run `pnpm check:file-placement` before opening a PR
@@ -107,13 +94,14 @@ These rules are **NON-NEGOTIABLE** and must be followed in all development work.
 
 ---
 
-## 1.3 Server-Package-Runtime und Node-ESM
+## 1.2 Server-Package-Runtime und Node-ESM
 
 ### ✅ REQUIRED
 - Für Workspace-Packages, deren `dist/*.js` direkt von Node geladen wird, müssen relative Runtime-Imports und Re-Exports explizite Laufzeitendungen tragen, in der Regel `.js`.
 - Runtime-Imports auf andere Workspace-Packages müssen im jeweiligen `package.json` unter `dependencies` deklariert sein.
 - Vor PR und Push für Änderungen an serverseitigen Packages `pnpm check:server-runtime` ausführen; das Gate läuft zusätzlich in `pnpm test:types`.
 - Bei neuen Server-Packages denselben Guard früh mitdenken und als Nx-Target `check:runtime` integrieren.
+- Bei Änderungen an CI-/Workspace-Skripten unter `scripts/ci/` oder Root-TS-Skripten muss zusätzlich der Skript-Typecheck laufen: `pnpm exec tsc -p tsconfig.scripts.json --noEmit` oder ein Wrapper, der ihn sicher einschließt.
 
 ### ❌ FORBIDDEN
 - Relative Runtime-Imports wie `./server`, `../types` oder `export * from './foo'` in Node-ESM-relevanten Packages ohne Endung.
@@ -136,7 +124,7 @@ pnpm test:types
 
 ---
 
-## 1.3a Datenbankschema-Snapshot und Pflegepflicht
+## 1.2a Datenbankschema-Snapshot und Pflegepflicht
 
 ### ✅ REQUIRED
 - Das kanonische Soll-Datenbankschema des Repositories ist als Snapshot unter `docs/development/studio-db-schema-final.sql` präsent zu halten.
@@ -163,7 +151,7 @@ pnpm test:types
 
 ---
 
-## 1.4 Action-ID-Namensmodell und Namespace-Ownership
+## 1.3 Action-ID-Namensmodell und Namespace-Ownership
 
 ### ✅ REQUIRED
 - Alle autorisierbaren Action-IDs müssen langfristig das fully-qualified Format `<namespace>.<action>` verwenden.
@@ -201,7 +189,7 @@ const invalidCreateAction = 'create';
 
 ---
 
-## 1.5 Server-Orchestrierung und Routing-Verantwortung
+## 1.4 Server-Orchestrierung und Routing-Verantwortung
 
 ### ✅ REQUIRED
 - Das aktuelle Architekturmodell darf beibehalten werden:
@@ -230,7 +218,7 @@ const invalidCreateAction = 'create';
 
 ---
 
-## 1.6 Ausnahme: Explizit angeordnete Schnelliterationsphase
+## 1.5 Ausnahme: Explizit angeordnete Schnelliterationsphase
 
 ### ✅ REQUIRED
 - Bei ausdrücklich angeordneter Schnelliterationsphase dürfen betroffene Unit-, Type-, Lint- und E2E-Tests für einzelne kleinteilige Änderungsblöcke vorübergehend zurückgestellt werden.
@@ -450,6 +438,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Nach jedem abgeschlossenen Änderungsblock (Feature, Refactoring, Bugfix) sind mindestens die betroffenen Unit-Tests sofort auszuführen.
 - Vor jedem Push muss ein schneller lokaler Gate-Lauf für betroffene Projekte erfolgen.
 - Vor dem Commit ist sicherzustellen, dass neue oder geänderte Logik durch Tests abgedeckt ist.
+- Verifikation muss den kleinsten relevanten echten Gate-Pfad bevorzugen, nicht pauschal den größten Lauf.
 
 ### ❌ FORBIDDEN
 - „Big-bang“-Validierung erst am Ende der Umsetzung.
@@ -463,11 +452,34 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 4. Vor Push mindestens den schnellen Gate-Lauf ausführen:
   - `pnpm nx affected --target=test:unit --base=origin/main`
   - zusätzlich bei Bedarf `pnpm nx affected --target=test:types --base=origin/main`
-5. Vor PR weiterhin vollständige Qualitätsprüfung gemäß Abschnitt 5 und 5.1.
+5. Wenn die Änderung Skripte, CI-Wrapper oder Workspace-Tooling betrifft, zusätzlich den Skript-Typecheck ausführen:
+  - `pnpm exec tsc -p tsconfig.scripts.json --noEmit`
+  - oder den passenden Sammel-Wrapper wie `NX_BASE=origin/main pnpm test:types:affected`
+6. Vor PR weiterhin vollständige Qualitätsprüfung gemäß Abschnitt 5 und 5.1.
 
 ### Enforcement
 - Reviews können zurückgestellt werden, wenn eine Änderung ohne erkennbaren Shift-left-Testnachweis eingereicht wird.
 - Wiederholte späte Test-Fails gelten als Prozessabweichung und müssen mit konkreter Gegenmaßnahme im PR dokumentiert werden.
+
+## 5.2a Robuste Handler-Tests für Auth-, Session- und Permission-Logik (verbindlich)
+
+### ✅ REQUIRED
+- Handler-Tests in auth-, session- oder permission-kritischen Modulen müssen vollständige, wiederverwendbare Test-Fixtures oder Builder verwenden, wenn dieselben Runtime-Dependencies in mehreren Dateien vorkommen.
+- Neue Pflicht-Dependencies in sicherheitsrelevanten Handlern müssen an einer gemeinsamen Test-Factory oder einem gemeinsamen Test-Builder nachgezogen werden, nicht nur in einzelnen Ad-hoc-Testobjekten.
+- Guard-Verhalten und Business-Verhalten sind in Tests klar zu trennen:
+  - Guard-Tests prüfen fehlende Session, fehlende Permission, CSRF und vergleichbare Fail-Closed-Pfade gezielt.
+  - Business-Flow-Tests laufen mit explizit gültigem Auth-/Session-/Permission-Kontext.
+- Bei Änderungen an Guard-, Session- oder Permission-Semantik ist vor Push mindestens der kleinste CI-nahe affected-Unit-Lauf für das betroffene Projekt auszuführen.
+
+### ❌ FORBIDDEN
+- Wiederholte dateilokale `createDeps()`- oder Inline-Mock-Muster für dieselben sicherheitsrelevanten Handler-Abhängigkeiten, wenn dafür bereits gemeinsame Test-Fixtures existieren oder erforderlich sind.
+- Business-Flow-Tests implizit von fehlenden oder nur teilweise gemockten Auth-/Session-/Permission-Dependencies abhängig zu machen.
+- Guard-Änderungen ausschließlich mit Einzeldatei-Tests freizugeben, wenn das betroffene Projekt mehrere Handler- oder Branch-Tests über denselben Guard-Pfad besitzt.
+
+### Ziel der Regel
+- Wiederkehrende CI-Ausfälle nach Guard- oder Session-Änderungen früh abfangen.
+- Fehlende Pflicht-Dependencies in Tests zentral statt verteilt pflegen.
+- Fail-Closed-Semantik absichtlich testen, statt sie nur indirekt über unerwartete `503`-Antworten zu entdecken.
 
 ## 5.3 Test-Dateiplatzierung und Ownership (verbindlich)
 
@@ -793,120 +805,17 @@ logger.error('Auth failed', {
 
 ---
 
-## 10. Translation System Architecture
+## 10. Translation Key Management
 
-### How it works
-1. **Database**: `translations` table stores key-value pairs
-2. **Workspace-specific**: Each workspace can have custom translations
-3. **i18n Integration**: `src/lib/i18n.ts` provides base translations
-4. **Runtime Loading**: `useTranslations()` hook loads workspace translations
-5. **React Integration**: Use `useTranslation()` hook in components
+### Required Outcome
+- Neue Übersetzungsschlüssel müssen in den tatsächlich verwendeten Übersetzungsressourcen des betroffenen Apps oder Pakets ergänzt werden.
+- Für neue UI-Texte sind immer beide Zielsprachen zu pflegen.
+- Veraltete oder ungenutzte Schlüssel sollen bei passenden Änderungen mit bereinigt werden.
 
-### File Structure
-```
-src/
-├── lib/
-│   └── i18n.ts                    # i18next configuration and base translations
-├── hooks/
-│   ├── useTranslations.ts         # Hook to load workspace translations
-│   └── useWorkspaceTranslations.ts # Legacy hook (being phased out)
-└── contexts/
-    └── WorkspaceContext.tsx       # Workspace context with language
-```
-
----
-
-## 11. Translation Key Management
-
-### Finding Missing Translation Keys
-
-**Problem**: During development, translation keys may be used in code but not defined in `src/lib/i18n.ts`.
-
-**Solution**: Use the following process to identify and add missing keys:
-
-#### 1. Search for Translation Key Usage
-```bash
-# Search for all t('...') calls in the codebase
-grep -r "t('" src/ --include="*.tsx" --include="*.ts"
-```
-
-#### 2. Compare with Defined Keys
-Check `src/lib/i18n.ts` to see which keys are defined:
-- Look in the `resources` object
-- Check both `de` (German) and `en` (English) translations
-- Verify the key hierarchy matches usage
-
-#### 3. Add Missing Keys
-When adding new translation keys:
-
-```typescript
-// In src/lib/i18n.ts
-const resources = {
-  de: {
-    translation: {
-      // ... existing keys ...
-
-      // Add new keys with proper hierarchy
-      admin: {
-        newSection: {
-          title: "Neuer Bereich",
-          description: "Beschreibung des neuen Bereichs"
-        }
-      }
-    }
-  },
-  en: {
-    translation: {
-      // Mirror the German structure
-      admin: {
-        newSection: {
-          title: "New Section",
-          description: "Description of the new section"
-        }
-      }
-    }
-  }
-};
-```
-
-#### 4. Translation Key Naming Convention
-
-Follow this hierarchy for consistency:
-
-```
-section.subsection.component.element
-
-Examples:
-- admin.dashboard.stats.title
-- bg.invite.dialog.title
-- common.buttons.save
-- auth.login.form.email
-- navigation.main.cases
-```
-
-#### 5. Regular Maintenance
-
-**Recommended**: Check for missing translation keys regularly during development:
-
-1. Before committing new features
-2. After adding new UI components
-3. When reviewing PRs
-4. During sprint reviews
-
-#### 6. Automated Script (Optional)
-
-For large projects, use the extraction script:
-
-```bash
-# Run from project root
-bun run scripts/extract-translation-keys.ts
-```
-
-This script will:
-- Scan all TypeScript/TSX files
-- Extract all `t('...')` calls
-- Compare with defined keys in i18n.ts
-- Generate a report of missing keys
+### Recommended Process
+1. Suche die tatsächliche Übersetzungsquelle des betroffenen Apps oder Pakets.
+2. Ergänze neue Schlüssel dort in `de` und `en`.
+3. Prüfe die Verwendung mit den betroffenen Unit- oder UI-Tests statt mit einem separaten Legacy-Skript.
 
 ### Best Practices
 

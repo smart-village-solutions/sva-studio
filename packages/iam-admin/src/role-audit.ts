@@ -146,7 +146,12 @@ export const mapRoleListItem = (row: {
   sync_state: IamRoleSyncState;
   last_synced_at: string | null;
   last_error_code: string | null;
-  permission_rows: Array<{ id: string; permission_key: string; description: string | null }> | null;
+  permission_rows: Array<{
+    id: string;
+    permission_key: string;
+    description: string | null;
+    access_scope: 'all' | 'own' | 'organization' | null;
+  }> | null;
 }): IamRoleListItem => ({
   id: row.id,
   roleKey: row.role_key,
@@ -177,6 +182,18 @@ export const mapRoleListItem = (row: {
       id: permission.id,
       permissionKey: permission.permission_key,
       description: permission.description ?? getManagedPermissionMetadata(permission.permission_key)?.description,
+      ...(getManagedPermissionMetadata(permission.permission_key)?.isScopeAssignable
+        ? {
+            isScopeAssignable: true,
+            supportedAccessScopes: getManagedPermissionMetadata(permission.permission_key)?.supportedAccessScopes,
+            accessScope: permission.access_scope ?? 'all',
+          }
+        : {}),
+    })) ?? [],
+  permissionAssignments:
+    row.permission_rows?.map((permission) => ({
+      permissionId: permission.id,
+      accessScope: permission.access_scope ?? 'all',
     })) ?? [],
 });
 

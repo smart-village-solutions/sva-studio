@@ -93,6 +93,7 @@ export const authorizeUpdateContentActions = async (
       contentType: currentContent.contentType,
       domainCapability: action.domainCapability,
       organizationId: currentContent.organizationId,
+      createdByAccountId: currentContent.createdBy,
     }, { permissions: sourcePermissions.permissions });
     if (authorizationError) {
       return authorizationError;
@@ -112,6 +113,7 @@ export const authorizeUpdateContentActions = async (
         contentType: currentContent.contentType,
         domainCapability: action.domainCapability,
         organizationId: data.organizationId,
+        createdByAccountId: currentContent.createdBy,
       }, { permissions: destinationPermissions.permissions });
       if (destinationAuthorizationError) {
         return destinationAuthorizationError;

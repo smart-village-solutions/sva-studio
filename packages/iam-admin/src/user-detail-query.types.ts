@@ -1,4 +1,5 @@
 import type {
+  IamRolePermissionAssignmentScope,
   IamUserPermissionTraceInactiveReason,
   IamUserPermissionTraceStatus,
 } from '@sva/core';
@@ -41,6 +42,7 @@ export type UserDetailPermissionTraceRow = {
   organization_id: string | null;
   effect: 'allow' | 'deny';
   scope: Record<string, unknown> | null;
+  access_scope: IamRolePermissionAssignmentScope | null;
   is_effective: boolean;
   status: IamUserPermissionTraceStatus;
   source_kind: 'direct_permission' | 'direct_role' | 'group_role';

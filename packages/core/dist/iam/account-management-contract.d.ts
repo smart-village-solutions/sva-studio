@@ -1,4 +1,4 @@
-import type { IamLegalTextTargeting, IamPermissionEffect, IamUuid } from './authorization-contract';
+import type { IamLegalTextTargeting, IamPermissionEffect, IamRolePermissionAssignmentScope, IamUuid } from './authorization-contract';
 import type { WasteManagementSettingsRecord } from '../waste-management-contract.js';
 export type ApiErrorCode = 'unauthorized' | 'forbidden' | 'not_found' | 'invalid_request' | 'invalid_instance_id' | 'invalid_organization_id' | 'organization_inactive' | 'rate_limited' | 'csrf_validation_failed' | 'idempotency_key_required' | 'idempotency_key_reuse' | 'idempotency_in_progress' | 'keycloak_unavailable' | 'tenant_auth_client_secret_missing' | 'tenant_admin_client_not_configured' | 'tenant_admin_client_secret_missing' | 'encryption_not_configured' | 'database_unavailable' | 'last_admin_protection' | 'self_protection' | 'feature_disabled' | 'conflict' | 'legal_acceptance_required' | 'reauth_required' | 'internal_error';
 export declare const iamRuntimeDiagnosticClassifications: readonly ["auth_resolution", "oidc_discovery_or_exchange", "tenant_host_validation", "session_store_or_session_hydration", "actor_resolution_or_membership", "keycloak_dependency", "database_or_schema_drift", "database_mapping_or_membership_inconsistency", "registry_or_provisioning_drift", "keycloak_reconcile", "frontend_state_or_permission_staleness", "legacy_workaround_or_regression", "unknown"];
@@ -97,6 +97,7 @@ export type IamUserPermissionTraceItem = {
     readonly organizationId?: IamUuid;
     readonly effect: IamPermissionEffect;
     readonly scope?: Readonly<Record<string, unknown>>;
+    readonly accessScope?: IamRolePermissionAssignmentScope;
     readonly isEffective: boolean;
     readonly status: IamUserPermissionTraceStatus;
     readonly sourceKind: IamUserPermissionTraceSourceKind;
@@ -210,6 +211,13 @@ export type IamRoleListItem = {
         readonly id: IamUuid;
         readonly permissionKey: string;
         readonly description?: string;
+        readonly isScopeAssignable?: boolean;
+        readonly supportedAccessScopes?: readonly IamRolePermissionAssignmentScope[];
+        readonly accessScope?: IamRolePermissionAssignmentScope;
+    }[];
+    readonly permissionAssignments?: readonly {
+        readonly permissionId: IamUuid;
+        readonly accessScope: IamRolePermissionAssignmentScope;
     }[];
 };
 export type IamRoleReconcileEntry = {

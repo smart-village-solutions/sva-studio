@@ -13,6 +13,7 @@ export type ContentPrimitiveAuthorizationResource = {
   readonly contentId?: string;
   readonly contentType?: string;
   readonly organizationId?: string;
+  readonly createdByAccountId?: string;
 };
 
 export type ContentPrimitiveAuthorizationResult =
@@ -52,19 +53,29 @@ const buildAuthorizeRequest = (input: {
 }): AuthorizeRequest => ({
   instanceId: input.instanceId,
   action: input.action,
-  resource: {
-    type: input.action.split('.')[0] || 'content',
-    ...(input.resource.contentId ? { id: input.resource.contentId } : {}),
-    ...(input.resource.organizationId ? { organizationId: input.resource.organizationId } : {}),
-    ...(input.resource.contentType ? { attributes: { contentType: input.resource.contentType } } : {}),
-  },
-  context: {
-    ...(input.resource.organizationId ? { organizationId: input.resource.organizationId } : {}),
-    ...(input.requestId ? { requestId: input.requestId } : {}),
-    ...(input.traceId ? { traceId: input.traceId } : {}),
-    ...(input.resource.contentType ? { attributes: { contentType: input.resource.contentType } } : {}),
-  },
-});
+    resource: {
+      type: input.action.split('.')[0] || 'content',
+      ...(input.resource.contentId ? { id: input.resource.contentId } : {}),
+      ...(input.resource.organizationId ? { organizationId: input.resource.organizationId } : {}),
+      ...((input.resource.contentType || input.resource.createdByAccountId || input.resource.organizationId)
+        ? {
+            attributes: {
+              ...(input.resource.contentType ? { contentType: input.resource.contentType } : {}),
+              ...(input.resource.createdByAccountId ? { createdByAccountId: input.resource.createdByAccountId } : {}),
+              ...(input.resource.organizationId ? { organizationId: input.resource.organizationId } : {}),
+            },
+          }
+        : {}),
+    },
+    context: {
+      ...(input.resource.organizationId ? { organizationId: input.resource.organizationId } : {}),
+      ...(input.requestId ? { requestId: input.requestId } : {}),
+      ...(input.traceId ? { traceId: input.traceId } : {}),
+      attributes: {
+        ...(input.resource.contentType ? { contentType: input.resource.contentType } : {}),
+      },
+    },
+  });
 
 export const authorizeContentPrimitiveForUser = async (input: {
   readonly ctx: AuthenticatedRequestContext;

@@ -67,6 +67,7 @@ Außerhalb des Scopes:
 - Verwaltet Benutzerprofile, Rollenzuweisungen und Rollen-Lifecycle.
 - Nutzt eine IdP-Abstraktionsschicht für Keycloak-Admin-Operationen.
 - Führt schreibende Rollenoperationen Keycloak-first mit lokaler Persistenz und Compensation aus.
+- Verwaltet fuer scope-faehige Datensatzrechte additive Rollen-Permission-Zuordnungen als `permissionAssignments[]` mit `accessScope`.
 
 ### 3. Permission Engine
 
@@ -101,6 +102,7 @@ Außerhalb des Scopes:
 - angefragte `action`
 - angefragte `resource`
 - optionale ABAC-Attribute, z. B. `geoScope`, `timeWindow`, `actingAs`
+- fuer scope-faehige Datensatzrechte zusaetzlich `actorAccountId`, `createdByAccountId` und optional `resource.organizationId`
 
 ### Evaluationsreihenfolge
 
@@ -109,14 +111,18 @@ Außerhalb des Scopes:
 3. Validierung des Request-Modells
 4. Laden oder Berechnen des Permission-Snapshots
 5. RBAC-Basisentscheidung
-6. ABAC-Regelauswertung
-7. Hierarchie-Vererbung und Restriktionen
-8. Finale Entscheidung mit `allowed` und `reason`
+6. Assignment-Scope-Auswertung (`all|own|organization`) fuer scope-faehige Rollen-Permissions
+7. ABAC-Regelauswertung
+8. Hierarchie-Vererbung und Restriktionen
+9. Finale Entscheidung mit `allowed` und `reason`
 
 ### Entscheidungslogik
 
 - Ohne gültigen Instanzkontext wird verweigert.
 - RBAC liefert die stabile Basisentscheidung.
+- `all` behaelt die RBAC-/ABAC-Semantik unveraendert bei.
+- `own` verlangt Uebereinstimmung zwischen `actorAccountId` und `createdByAccountId`.
+- `organization` erlaubt eigene Datensaetze sowie Datensaetze der aktiven Session-Organisation.
 - ABAC erweitert oder beschränkt die Basisentscheidung gemäß Regeldefinition.
 - Restriktivere Regeln gewinnen bei Konflikten.
 - Fehlende Pflichtattribute oder inkonsistenter Kontext führen zu fail-closed.
@@ -142,7 +148,7 @@ Außerhalb des Scopes:
 | `iam.instance_memberships` | Instanzmitgliedschaften von Accounts |
 | `iam.account_organizations` | Organisationszuordnungen von Accounts |
 | `iam.account_roles` | Rollenzuweisungen zu Accounts |
-| `iam.role_permissions` | Zuordnung Rollen zu Permissions |
+| `iam.role_permissions` | Zuordnung Rollen zu Permissions inklusive optionalem Assignment-Scope `access_scope` |
 
 ### Modellierungsregeln
 
@@ -151,6 +157,7 @@ Außerhalb des Scopes:
 - `organizations` sind Untereinheiten einer Instanz, kein eigener Primär-Mandantenscope.
 - `role_key` ist die stabile technische Rollenidentität.
 - Anzeigenamen bleiben davon getrennt und dürfen editierbar sein.
+- `access_scope` auf `iam.role_permissions` modelliert den Rollen-Zugriffsmodus fuer scope-faehige Datensatzrechte getrennt vom generischen ABAC-Feld `iam.permissions.scope`.
 - Sensible PII-Felder werden als `*_ciphertext` gespeichert.
 - Auditdaten sind append-only und werden nicht fachlich überschrieben.
 

@@ -61,6 +61,7 @@ const mapPermissionTraceRows = (
     organizationId: entry.organization_id ?? undefined,
     effect: entry.effect,
     scope: entry.scope ?? undefined,
+    accessScope: entry.access_scope ?? undefined,
     isEffective: entry.is_effective,
     status: entry.status,
     sourceKind: entry.source_kind,

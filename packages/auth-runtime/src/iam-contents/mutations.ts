@@ -226,6 +226,7 @@ export const deleteContentResponse = async (
       contentType: currentContent.contentType,
       domainCapability: 'content.delete',
       organizationId: currentContent.organizationId,
+      createdByAccountId: currentContent.createdBy,
     });
     if (authorizationError) {
       return authorizationError;

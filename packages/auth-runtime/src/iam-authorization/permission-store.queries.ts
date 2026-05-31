@@ -40,6 +40,7 @@ SELECT DISTINCT
   p.resource_id,
   p.effect,
   p.scope,
+  rp.access_scope,
   source.role_id,
   source.group_id,
   source.group_key,

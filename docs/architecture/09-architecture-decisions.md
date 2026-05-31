@@ -206,6 +206,21 @@ Zuordnung:
 
 - Abschnitt 04/05/06/08/10/11: OpenSpec-Change `add-mainserver-plugin-list-pagination`
 
+### Fortschreibung 2026-05: Scoped Rollen-Permissions fuer Datensatzrechte ohne neue ADR
+
+- Für `add-iam-scoped-role-permissions` wurde keine neue ADR angelegt.
+- Maßgeblich bleiben:
+  - ADR-013 fuer das RBAC-/ABAC-Hybridmodell,
+  - ADR-022 fuer das gemeinsame IAM-Zielbild aus Rollen, Gruppen und Kontext,
+  - ADR-025 fuer die konservative Scope-Priorisierung,
+  - ADR-036 fuer den kanonischen Projektions- und Reconcile-Vertrag.
+- Der Change fuehrt kein paralleles Berechtigungssystem ein, sondern praezisiert die bestehende Rollen-Permission-Zuordnung um `access_scope` auf `iam.role_permissions`.
+- Die fachliche Wirkung bleibt auf explizit scope-faehige Datensatzrechte begrenzt; Admin-, System- und nicht ownership-faehige Rechte bleiben binaer.
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/10/11: OpenSpec-Change `add-iam-scoped-role-permissions`
+
 ### Fortschreibung 2026-05: Workflow-Orchestrierung für Hintergrundprozesse
 
 - `ADR-040-graphile-worker-als-standard-fuer-hintergrundprozesse.md`

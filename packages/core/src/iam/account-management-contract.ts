@@ -1,6 +1,7 @@
 import type {
   IamLegalTextTargeting,
   IamPermissionEffect,
+  IamRolePermissionAssignmentScope,
   IamUuid,
 } from './authorization-contract';
 import type { WasteManagementSettingsRecord } from '../waste-management-contract.js';
@@ -191,6 +192,7 @@ export type IamUserPermissionTraceItem = {
   readonly organizationId?: IamUuid;
   readonly effect: IamPermissionEffect;
   readonly scope?: Readonly<Record<string, unknown>>;
+  readonly accessScope?: IamRolePermissionAssignmentScope;
   readonly isEffective: boolean;
   readonly status: IamUserPermissionTraceStatus;
   readonly sourceKind: IamUserPermissionTraceSourceKind;
@@ -327,6 +329,13 @@ export type IamRoleListItem = {
     readonly id: IamUuid;
     readonly permissionKey: string;
     readonly description?: string;
+    readonly isScopeAssignable?: boolean;
+    readonly supportedAccessScopes?: readonly IamRolePermissionAssignmentScope[];
+    readonly accessScope?: IamRolePermissionAssignmentScope;
+  }[];
+  readonly permissionAssignments?: readonly {
+    readonly permissionId: IamUuid;
+    readonly accessScope: IamRolePermissionAssignmentScope;
   }[];
 };
 

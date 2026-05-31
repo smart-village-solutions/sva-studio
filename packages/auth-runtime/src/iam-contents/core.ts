@@ -71,12 +71,14 @@ const authorizeReadableContentItem = (
     readonly id: string;
     readonly contentType: string;
     readonly organizationId?: string;
+    readonly createdBy?: string;
   }
 ) =>
   authorizeContentAction(actor, 'content.read', {
     contentId: item.id,
     contentType: item.contentType,
     organizationId: item.organizationId,
+    createdByAccountId: item.createdBy,
   });
 
 const resolveReadableContentScopes = async (
@@ -250,6 +252,7 @@ export const getContentHistoryInternal = async (
       contentId: item.id,
       contentType: item.contentType,
       organizationId: item.organizationId,
+      createdByAccountId: item.createdBy,
     });
     if (authorizationError) {
       return authorizationError;

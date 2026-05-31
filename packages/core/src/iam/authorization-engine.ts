@@ -43,6 +43,18 @@ const readOrganizationScope = (request: AuthorizeRequest): string | undefined =>
   return request.context?.organizationId ?? request.resource.organizationId;
 };
 
+const readActorAccountId = (
+  contextAttributes: Readonly<Record<string, unknown>> | undefined
+): string | undefined => {
+  return readString(contextAttributes?.actorAccountId) ?? readString(contextAttributes?.effectiveAccountId);
+};
+
+const readCreatedByAccountId = (
+  resourceAttributes: Readonly<Record<string, unknown>> | undefined
+): string | undefined => {
+  return readString(resourceAttributes?.createdByAccountId);
+};
+
 const readGeoUnitId = (
   contextAttributes: Readonly<Record<string, unknown>> | undefined,
   resourceAttributes: Readonly<Record<string, unknown>> | undefined
@@ -185,6 +197,37 @@ const mergePermissionAttributes = (
 };
 
 const isPermissionActiveForScope = (
+  permission: EffectivePermission,
+  request: AuthorizeRequest,
+  targetOrganizationId: string | undefined,
+  contextAttributes: Readonly<Record<string, unknown>> | undefined,
+  resourceAttributes: Readonly<Record<string, unknown>> | undefined
+): { active: boolean; denyReason?: AuthorizeResponse['reason'] } => {
+  const actorAccountId = readActorAccountId(contextAttributes);
+  const createdByAccountId = readCreatedByAccountId(resourceAttributes);
+  const resourceOrganizationId = readString(resourceAttributes?.organizationId) ?? request.resource.organizationId;
+
+  if (permission.accessScope === 'own') {
+    if (!actorAccountId || !createdByAccountId || actorAccountId !== createdByAccountId) {
+      return { active: false };
+    }
+  }
+
+  if (permission.accessScope === 'organization') {
+    const ownMatch = Boolean(actorAccountId && createdByAccountId && actorAccountId === createdByAccountId);
+    const organizationMatch = Boolean(
+      targetOrganizationId && resourceOrganizationId && targetOrganizationId === resourceOrganizationId
+    );
+
+    if (!ownMatch && !organizationMatch) {
+      return { active: false };
+    }
+  }
+
+  return { active: true };
+};
+
+const isPermissionActiveForPolicyScope = (
   permission: EffectivePermission,
   request: AuthorizeRequest,
   targetOrganizationId: string | undefined,
@@ -482,7 +525,17 @@ export const evaluateAuthorizeDecision = (
       readGeoUnitId(contextAttributes, resourceAttributes),
       readGeoHierarchy(contextAttributes, resourceAttributes)
     );
-    const denyMatch = isPermissionActiveForScope(
+    const assignmentScopeMatch = isPermissionActiveForScope(
+      permission,
+      request,
+      targetOrganizationId,
+      contextAttributes,
+      resourceAttributes
+    );
+    if (!assignmentScopeMatch.active) {
+      continue;
+    }
+    const denyMatch = isPermissionActiveForPolicyScope(
       permission,
       request,
       targetOrganizationId,
@@ -513,15 +566,36 @@ export const evaluateAuthorizeDecision = (
   }
 
   // Stage 5: ABAC rules.
-  const abacResults = allowPermissions.map((permission) => ({
-    permission,
-    result: evaluateAbacRules(
+  const abacResults = allowPermissions.map((permission) => {
+    const scopeMatch = isPermissionActiveForScope(
+      permission,
       request,
-      mergePermissionAttributes(permission, contextAttributes, resourceAttributes),
       targetOrganizationId,
-      permission
-    ),
-  }));
+      contextAttributes,
+      resourceAttributes
+    );
+    if (!scopeMatch.active) {
+      return {
+        permission,
+        result: {
+          allowed: false,
+          reason: scopeMatch.denyReason ?? ('abac_condition_unmet' satisfies AuthorizeResponse['reason']),
+          hasActiveRules: true,
+          provenance: buildProvenance(permission),
+        },
+      };
+    }
+
+    return {
+      permission,
+      result: evaluateAbacRules(
+        request,
+        mergePermissionAttributes(permission, contextAttributes, resourceAttributes),
+        targetOrganizationId,
+        permission
+      ),
+    };
+  });
   const firstAllowedResult = abacResults.find((entry) => entry.result.allowed);
 
   if (!firstAllowedResult) {

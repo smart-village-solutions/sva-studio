@@ -248,7 +248,10 @@ describe('RoleDetailPage', () => {
 
     await waitFor(() => {
       expect(updateRole).toHaveBeenCalledWith('role-2', {
-        permissionIds: ['perm-1', 'perm-2'],
+        permissionAssignments: [
+          { permissionId: 'perm-1', accessScope: 'all' },
+          { permissionId: 'perm-2', accessScope: 'all' },
+        ],
       });
     });
   });
@@ -306,7 +309,7 @@ describe('RoleDetailPage', () => {
 
     await waitFor(() => {
       expect(updateRole).toHaveBeenCalledWith('role-2', {
-        permissionIds: [],
+        permissionAssignments: [],
       });
     });
   });
@@ -771,7 +774,10 @@ describe('RoleDetailPage', () => {
 
     await waitFor(() => {
       expect(updateRole).toHaveBeenLastCalledWith('role-2', {
-        permissionIds: ['perm-1', 'perm-2'],
+        permissionAssignments: [
+          { permissionId: 'perm-1', accessScope: 'all' },
+          { permissionId: 'perm-2', accessScope: 'all' },
+        ],
       });
     });
 
@@ -780,7 +786,7 @@ describe('RoleDetailPage', () => {
 
     await waitFor(() => {
       expect(updateRole).toHaveBeenLastCalledWith('role-2', {
-        permissionIds: [],
+        permissionAssignments: [],
       });
     });
   });

@@ -43,6 +43,7 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
       "resourceId": "article-1",
       "organizationId": "22222222-2222-2222-8222-222222222222",
       "effect": "allow",
+      "accessScope": "organization",
       "scope": {
         "allowedGeoUnitIds": ["geo-bw"],
         "restrictedGeoUnitIds": ["geo-bw-stuttgart"]
@@ -74,6 +75,7 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
 ### Zusätzliche Zusagen für Transparenz-UI
 
 - `resourceId`, `effect`, `scope`, `sourceRoleIds`, `sourceGroupIds`, `provenance` und `subject` sind Teil des stabilen Read-Modells für das Rights-Tab in `/admin/iam`.
+- `accessScope` ist ein additives Feld fuer scoped Rollen-Permissions und beschreibt den wirksamen Rollen-Zugriffsmodus (`all`, `own`, `organization`).
 - `snapshotVersion` und `cacheStatus` sind additive Diagnosefelder für Snapshot-Transparenz; bestehende Consumer dürfen diese Felder ignorieren.
 - `geoUnitId` und `geoHierarchy` beeinflussen nur die Snapshot-Dimension und Provenance-Auswertung, nicht die Session oder die Nutzeridentität.
 - Diagnosefelder bleiben allowlist-basiert. Die UI zeigt keine Roh-Policy-Dumps, Secrets oder Ciphertexte an.
@@ -106,7 +108,9 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
     "id": "article-1",
     "organizationId": "22222222-2222-2222-8222-222222222222",
     "attributes": {
-      "geoScope": "de-bw"
+      "geoScope": "de-bw",
+      "createdByAccountId": "aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa",
+      "organizationId": "22222222-2222-2222-8222-222222222222"
     }
   },
   "context": {
@@ -119,6 +123,7 @@ Führt eine deterministische Autorisierungsentscheidung für `action` + `resourc
         "11111111-1111-1111-8111-111111111111",
         "22222222-2222-2222-8222-222222222222"
       ],
+      "actorAccountId": "aaaaaaaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa",
       "geoUnitId": "geo-bw-stuttgart",
       "geoHierarchy": ["geo-de", "geo-bw", "geo-bw-stuttgart"],
       "allowedGeoScopes": ["de-bw"],
@@ -173,6 +178,8 @@ Der Fehlervertrag bleibt additiv: `error` ist und bleibt der maschinenlesbare St
 
 - `context.attributes.geoUnitId` und `context.attributes.geoHierarchy` bilden den kanonischen Geo-Eingang für hierarchische Auswertung.
 - `resource.attributes.geoUnitId` und `resource.attributes.geoHierarchy` dürfen dieselben Informationen ressourcenspezifisch überschreiben.
+- Fuer scope-faehige Datensatzrechte sind `context.attributes.actorAccountId` sowie `resource.attributes.createdByAccountId` der kanonische Ownership-Kontext.
+- Fuer `organization`-Scope ist zusaetzlich `resource.attributes.organizationId` relevant; fehlt dieser Kontext, bleibt die Entscheidung fail-closed.
 - `GET /iam/me/permissions` nutzt für denselben Zweck die Query-Parameter `geoUnitId` und `geoHierarchy`; beide Endpunkte verwenden damit denselben Geo-Snapshot-Scope.
 - `allowedGeoUnitIds` und `restrictedGeoUnitIds` werden gegenüber `allowedGeoScopes` priorisiert; String-Scopes bleiben nur als Kompatibilitäts-Fallback erhalten.
 - `AuthorizeResponse.provenance` benennt vererbende oder restriktive Geo-Units strukturiert und ersetzt keine fachlichen Fehlercodes.

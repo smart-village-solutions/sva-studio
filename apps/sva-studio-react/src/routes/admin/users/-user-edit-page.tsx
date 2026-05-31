@@ -213,6 +213,17 @@ const formatTraceValidity = (entry: Pick<IamUserPermissionTraceItem, 'validFrom'
 
 const buildPermissionTraceDetails = (entry: IamUserPermissionTraceItem): readonly string[] => {
   const details: string[] = [];
+  if (entry.accessScope) {
+    details.push(
+      t('admin.users.edit.permissionTrace.scope', {
+        value: entry.accessScope
+          .split(/[_-]+/)
+          .filter(Boolean)
+          .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+          .join(' '),
+      })
+    );
+  }
   if (entry.inheritedFromOrganizationId) {
     details.push(
       t('admin.users.edit.permissionTrace.inheritedOrganization', {

@@ -1220,8 +1220,10 @@ CREATE TABLE iam.role_permissions (
     permission_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     instance_id text NOT NULL,
+    access_scope text DEFAULT 'all'::text NOT NULL,
     grant_origin_kind text DEFAULT 'manual'::text NOT NULL,
     grant_origin_module_id text,
+    CONSTRAINT role_permissions_access_scope_check CHECK ((access_scope = ANY (ARRAY['all'::text, 'own'::text, 'organization'::text]))),
     CONSTRAINT role_permissions_grant_origin_kind_check CHECK ((grant_origin_kind = ANY (ARRAY['manual'::text, 'seed'::text, 'bootstrap'::text, 'module_sync'::text]))),
     CONSTRAINT role_permissions_grant_origin_module_check CHECK ((((grant_origin_kind = 'module_sync'::text) AND (grant_origin_module_id IS NOT NULL) AND (btrim(grant_origin_module_id) <> ''::text)) OR ((grant_origin_kind <> 'module_sync'::text) AND (grant_origin_module_id IS NULL))))
 );

@@ -64,6 +64,12 @@ Mindesterwartung vor Merge:
 - Fokuszustände und sichtbare Beschriftungen prüfen
 - offensichtliche Screenreader-Blocker und Kontrastprobleme ausschließen
 
+Automatisierte Prüfpfade:
+
+- `pnpm test:a11y` führt komponentennahe `axe-core`-Prüfungen für `apps/sva-studio-react` aus.
+- `pnpm nx run sva-studio-react:test:e2e` deckt zusätzlich zentrale UI-Flows mit `@axe-core/playwright` im Browser ab.
+- Komponenten-A11y-Tests dürfen isolierte Landmark-Regeln und visuelle Kontrastregeln im Test-Runner gezielt ausnehmen, wenn die Umgebung diese Aspekte nicht belastbar simulieren kann. Solche Ausnahmen sind knapp zu dokumentieren und dürfen keine Laufzeitprobleme kaschieren.
+
 ## Unterstützte Browser und Assistive Technologies
 
 Die verbindliche Matrix für Browser, Geräte und Screenreader liegt unter `../BROWSER-SUPPORT.md`. Diese Richtlinie dupliziert die Matrix bewusst nicht.

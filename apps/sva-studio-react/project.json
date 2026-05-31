@@ -105,19 +105,33 @@
       }
     },
     "test:unit": {
-      "executor": "nx:run-commands",
+      "executor": "nx:noop",
       "cache": true,
+      "dependsOn": [
+        {
+          "target": "test:unit:ui",
+          "params": "forward"
+        },
+        {
+          "target": "test:unit:routes",
+          "params": "forward"
+        },
+        {
+          "target": "test:unit:hooks",
+          "params": "forward"
+        },
+        {
+          "target": "test:unit:server",
+          "params": "forward"
+        }
+      ],
       "inputs": [
         "default",
         "^production",
         "testing",
         "frontendTooling"
       ],
-      "outputs": [],
-      "options": {
-        "cwd": "apps/sva-studio-react",
-        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
-      }
+      "outputs": []
     },
     "test:unit:ui": {
       "executor": "nx:run-commands",
@@ -177,6 +191,21 @@
       "options": {
         "cwd": "apps/sva-studio-react",
         "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.server.config.ts --passWithNoTests"
+      }
+    },
+    "test:a11y": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling"
+      ],
+      "outputs": [],
+      "options": {
+        "cwd": "apps/sva-studio-react",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.a11y.config.ts --passWithNoTests"
       }
     },
     "test:coverage": {

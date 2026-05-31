@@ -5,10 +5,12 @@ import {
   runWasteConnectionCheck,
   type ResolvedWasteDataSource,
 } from '@sva/server-runtime';
-import type {
-  ExternalInterfaceConnectionCheckRecord,
-  WasteManagementDataSourceRecord,
-  WasteManagementSettingsRecord,
+import {
+  wasteManagementDataSourceContract,
+  wasteManagementMasterDataContract,
+  type ExternalInterfaceConnectionCheckRecord,
+  type WasteManagementDataSourceRecord,
+  type WasteManagementSettingsRecord,
 } from '@sva/core';
 
 import type { WasteManagementHandlerDeps } from './types.js';
@@ -16,6 +18,18 @@ import type { WasteManagementHandlerDeps } from './types.js';
 const normalizeInterfaceWasteVisibleStatus = (
   status: 'not_configured' | 'unknown' | 'ok' | 'error' | 'disabled'
 ): WasteManagementDataSourceRecord['visibleStatus'] => (status === 'disabled' ? 'unknown' : status);
+
+const readHolidayStateCode = (publicConfig: Readonly<Record<string, unknown>>): WasteManagementSettingsRecord['holidayStateCode'] => {
+  const value = publicConfig.holidayStateCode;
+  return typeof value === 'string' && wasteManagementMasterDataContract.isWasteHolidayStateCode(value) ? value : undefined;
+};
+
+const readHolidaySyncStatus = (
+  publicConfig: Readonly<Record<string, unknown>>
+): WasteManagementSettingsRecord['lastHolidaySyncStatus'] => {
+  const value = publicConfig.lastHolidaySyncStatus;
+  return typeof value === 'string' && wasteManagementDataSourceContract.isHolidaySyncStatus(value) ? value : undefined;
+};
 
 const mapExternalInterfaceToWasteSettings = (
   record: Awaited<ReturnType<typeof loadDefaultExternalInterfaceRecord>>
@@ -40,7 +54,10 @@ const mapExternalInterfaceToWasteSettings = (
     lastCheckStatus: record.lastCheckStatus,
     lastCheckErrorCode: record.lastCheckErrorCode,
     lastCheckErrorMessage: record.lastCheckErrorMessage,
+    holidayStateCode: readHolidayStateCode(record.publicConfig),
+    lastHolidaySyncStatus: readHolidaySyncStatus(record.publicConfig),
     updatedAt: record.updatedAt,
+    customRecurrencePresets: [],
   };
 };
 
@@ -64,7 +81,10 @@ export const sanitizeWasteSettings = (
     lastCheckStatus: record.lastCheckStatus,
     lastCheckErrorCode: record.lastCheckErrorCode,
     lastCheckErrorMessage: record.lastCheckErrorMessage,
+    holidayStateCode: record.holidayStateCode,
+    lastHolidaySyncStatus: record.lastHolidaySyncStatus,
     updatedAt: record.updatedAt,
+    customRecurrencePresets: record.customRecurrencePresets ?? [],
   };
 };
 
@@ -73,7 +93,19 @@ export const loadConfiguredWasteSettings = async (
   instanceId: string
 ): Promise<WasteManagementSettingsRecord | null> => {
   const interfaceRecord = await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(instanceId, 'supabase');
-  return mapExternalInterfaceToWasteSettings(interfaceRecord);
+  const settings = mapExternalInterfaceToWasteSettings(interfaceRecord);
+  if (!settings) {
+    return null;
+  }
+
+  const customRecurrencePresets = deps.loadWasteCustomRecurrencePresets
+    ? await deps.loadWasteCustomRecurrencePresets(instanceId)
+    : [];
+
+  return {
+    ...settings,
+    customRecurrencePresets,
+  };
 };
 
 export const defaultRunConnectionProbe = async (dataSource: ResolvedWasteDataSource): Promise<void> => {

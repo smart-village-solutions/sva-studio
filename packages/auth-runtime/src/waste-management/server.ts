@@ -15,6 +15,7 @@ const {
   deleteWasteManagementFractionInternal,
   deleteWasteManagementGlobalDateShiftInternal,
   createWasteManagementGlobalDateShiftInternal,
+  updateWasteManagementHolidayRuleInternal,
   createWasteManagementHouseNumberInternal,
   createWasteManagementOutputPdfInternal,
   createWasteManagementLocationTourLinkInternal,
@@ -32,6 +33,7 @@ const {
   getWasteManagementSchedulingOverviewInternal,
   getWasteManagementSettingsInternal,
   getWasteManagementToursOverviewInternal,
+  runWasteManagementHolidaySyncInternal,
   startWasteManagementInitializeInternal,
   startWasteManagementImportInternal,
   previewWasteManagementLocationTourPickupDateImportInternal,
@@ -62,8 +64,25 @@ const {
   previewWasteLocationTourPickupDateImport,
 } = wasteManagementOverviewLoaders;
 const { generateWasteOutputPdf } = wasteManagementOutputLoaders;
-const { loadWasteCityById, loadWasteCollectionLocationById, loadWasteFractionById, loadWasteGlobalDateShiftById, loadWasteHouseNumberById, loadWasteLocationTourLinkById, loadWasteRegionById, loadWasteStreetById, loadWasteTourById, loadWasteTourDateShiftById } = wasteManagementEntityLoaders;
 const {
+  loadWasteCustomRecurrencePresets,
+  loadWasteCityById,
+  loadWasteCollectionLocationById,
+  loadWasteFractionById,
+  loadWasteGlobalDateShiftById,
+  loadWasteHolidayRuleById,
+  loadWasteHouseNumberById,
+  loadWasteLocationTourLinkById,
+  listWasteLocationTourLinksByTourId,
+  loadWasteRegionById,
+  loadWasteStreetById,
+  loadWasteTourById,
+  loadWasteTourDateShiftById,
+  listWasteTourDateShiftsByTourId,
+} = wasteManagementEntityLoaders;
+const {
+  saveWasteCustomRecurrencePresets,
+  syncWasteHolidayRules,
   saveWasteCity,
   saveWasteCollectionLocation,
   deleteWasteCollectionLocation,
@@ -71,6 +90,7 @@ const {
   deleteWasteFraction,
   deleteWasteGlobalDateShift,
   saveWasteGlobalDateShift,
+  saveWasteHolidayRule,
   saveWasteHouseNumber,
   deleteWasteLocationTourLink,
   saveWasteLocationTourLink,
@@ -123,11 +143,27 @@ export const wasteManagementHandlers = {
     ),
   getSettings: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      getWasteManagementSettingsInternal(nextRequest, ctx, sharedWasteManagementDeps)
+      getWasteManagementSettingsInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        loadWasteCustomRecurrencePresets,
+      })
     ),
   updateSettings: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      updateWasteManagementSettingsInternal(nextRequest, ctx, sharedWasteManagementDeps)
+      updateWasteManagementSettingsInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        loadWasteCustomRecurrencePresets,
+        saveWasteCustomRecurrencePresets,
+        syncWasteHolidayRules,
+      })
+    ),
+  runHolidaySync: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      runWasteManagementHolidaySyncInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        loadWasteCustomRecurrencePresets,
+        syncWasteHolidayRules,
+      })
     ),
   createFraction: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
@@ -285,6 +321,11 @@ export const wasteManagementHandlers = {
         ...sharedWasteManagementDeps,
         saveWasteTour,
         loadWasteTourById,
+        listWasteLocationTourLinksByTourId,
+        saveWasteLocationTourLink,
+        listWasteTourDateShiftsByTourId,
+        saveWasteTourDateShift,
+        deleteWasteTour,
       })
     ),
   updateTour: (request: Request): Promise<Response> =>
@@ -349,6 +390,14 @@ export const wasteManagementHandlers = {
         ...sharedWasteManagementDeps,
         saveWasteGlobalDateShift,
         loadWasteGlobalDateShiftById,
+      })
+    ),
+  updateHolidayRule: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      updateWasteManagementHolidayRuleInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        saveWasteHolidayRule,
+        loadWasteHolidayRuleById,
       })
     ),
   startMigrations: (request: Request): Promise<Response> =>

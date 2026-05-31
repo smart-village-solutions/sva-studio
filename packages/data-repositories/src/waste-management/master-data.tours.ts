@@ -10,6 +10,9 @@ type WasteTourRow = {
   readonly description: string | null;
   readonly waste_fraction_ids: readonly string[] | null;
   readonly recurrence: WasteTourRecord['recurrence'];
+  readonly custom_recurrence_id: string | null;
+  readonly custom_recurrence_name: string | null;
+  readonly custom_recurrence_interval_days: number | null;
   readonly first_date: string | null;
   readonly end_date: string | null;
   readonly custom_dates: unknown;
@@ -25,6 +28,9 @@ const mapWasteTourRow = (row: WasteTourRow): WasteTourRecord => ({
   description: row.description ?? undefined,
   wasteFractionIds: normalizeStringArray(row.waste_fraction_ids),
   recurrence: row.recurrence ?? null,
+  customRecurrenceId: row.custom_recurrence_id ?? undefined,
+  customRecurrenceName: row.custom_recurrence_name ?? undefined,
+  customRecurrenceIntervalDays: row.custom_recurrence_interval_days ?? undefined,
   firstDate: row.first_date ?? undefined,
   endDate: row.end_date ?? undefined,
   customDates: normalizeCustomDates(row.custom_dates),
@@ -66,6 +72,9 @@ SELECT
   t.description,
   t.waste_fraction_ids,
   t.recurrence,
+  t.custom_recurrence_id::text,
+  crp.name AS custom_recurrence_name,
+  crp.interval_days AS custom_recurrence_interval_days,
   t.first_date::text,
   t.end_date::text,
   t.custom_dates,
@@ -74,10 +83,12 @@ SELECT
   t.created_at::text,
   t.updated_at::text
 FROM waste_tours t
+LEFT JOIN waste_custom_recurrence_presets crp
+  ON crp.id = t.custom_recurrence_id
 LEFT JOIN waste_location_tour_links ltl
   ON ltl.tour_id = t.id
 ${conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''}
-GROUP BY t.id
+GROUP BY t.id, crp.id
 ORDER BY t.name ASC;
 `,
     values,
@@ -92,6 +103,9 @@ SELECT
   t.description,
   t.waste_fraction_ids,
   t.recurrence,
+  t.custom_recurrence_id::text,
+  crp.name AS custom_recurrence_name,
+  crp.interval_days AS custom_recurrence_interval_days,
   t.first_date::text,
   t.end_date::text,
   t.custom_dates,
@@ -100,10 +114,12 @@ SELECT
   t.created_at::text,
   t.updated_at::text
 FROM waste_tours t
+LEFT JOIN waste_custom_recurrence_presets crp
+  ON crp.id = t.custom_recurrence_id
 LEFT JOIN waste_location_tour_links ltl
   ON ltl.tour_id = t.id
 WHERE t.id = $1::uuid
-GROUP BY t.id
+GROUP BY t.id, crp.id
 LIMIT 1;
 `,
   values: [id],
@@ -117,17 +133,19 @@ INSERT INTO waste_tours (
   description,
   waste_fraction_ids,
   recurrence,
+  custom_recurrence_id,
   first_date,
   end_date,
   custom_dates,
   active
 )
-VALUES ($1::uuid, $2, $3, $4::text[], $5, $6::date, $7::date, $8::jsonb, $9)
+VALUES ($1::uuid, $2, $3, $4::text[], $5, $6::uuid, $7::date, $8::date, $9::jsonb, $10)
 ON CONFLICT (id) DO UPDATE
 SET name = EXCLUDED.name,
     description = EXCLUDED.description,
     waste_fraction_ids = EXCLUDED.waste_fraction_ids,
     recurrence = EXCLUDED.recurrence,
+    custom_recurrence_id = EXCLUDED.custom_recurrence_id,
     first_date = EXCLUDED.first_date,
     end_date = EXCLUDED.end_date,
     custom_dates = EXCLUDED.custom_dates,
@@ -140,6 +158,7 @@ SET name = EXCLUDED.name,
     input.description ?? null,
     input.wasteFractionIds,
     input.recurrence ?? null,
+    input.customRecurrenceId ?? null,
     input.firstDate ?? null,
     input.endDate ?? null,
     input.customDates ? JSON.stringify(input.customDates) : null,

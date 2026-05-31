@@ -1,16 +1,19 @@
 import type { FormEvent } from 'react';
 
-import type { WasteFractionRecord } from '@sva/plugin-sdk';
+import type { WasteCustomRecurrencePresetRecord, WasteFractionRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioPageHeader } from '@sva/studio-ui-react';
 
 import { WasteToursTourFields } from './waste-management.tours-tour-fields.js';
-import type { TourFormState } from './waste-management.tours.shared.js';
+import type { TourFormState } from './waste-management.tours.types.js';
 
 type WasteToursFormContentProps = {
   readonly mode: 'create' | 'edit';
   readonly form: TourFormState;
   readonly fractions: readonly WasteFractionRecord[];
+  readonly customRecurrencePresets: readonly WasteCustomRecurrencePresetRecord[];
+  readonly showDuplicationHint?: boolean;
+  readonly duplicateFromTourName?: string;
   readonly saving: boolean;
   readonly onChange: (patch: Partial<TourFormState>) => void;
   readonly onCancel: () => void;
@@ -21,6 +24,9 @@ export const WasteToursFormContent = ({
   mode,
   form,
   fractions,
+  customRecurrencePresets,
+  showDuplicationHint = false,
+  duplicateFromTourName,
   saving,
   onChange,
   onCancel,
@@ -49,7 +55,19 @@ export const WasteToursFormContent = ({
       />
 
       <form id="waste-tour-form" className="space-y-6" onSubmit={(event) => void onSubmit(event)}>
-        <WasteToursTourFields form={form} fractions={fractions} pt={pt} onChange={onChange} />
+        <WasteToursTourFields
+          form={form}
+          fractions={fractions}
+          customRecurrencePresets={customRecurrencePresets}
+          pt={pt}
+          onChange={onChange}
+        />
+
+        {showDuplicationHint ? (
+          <div className="rounded-2xl border border-info/40 bg-info/5 px-4 py-3 text-sm text-foreground">
+            {pt('tours.messages.duplicateHint', { sourceName: duplicateFromTourName ?? '' })}
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
           <Button type="submit" disabled={saving}>

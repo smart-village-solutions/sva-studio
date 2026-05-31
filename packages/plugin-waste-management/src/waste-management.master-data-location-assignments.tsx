@@ -171,7 +171,14 @@ export const LocationAssignmentsSection = ({
                         <p className="text-sm font-semibold text-foreground">{tour.name}</p>
                       </td>
                       <WasteToursRowFractionCell tourId={tour.id} fractionNames={fractionNames} />
-                      <td className="px-3 py-3 text-sm text-foreground">{formatTourRecurrence(pt, tour.recurrence)}</td>
+                      <td className="px-3 py-3 text-sm text-foreground">
+                        {formatTourRecurrence(
+                          pt,
+                          tour.recurrence,
+                          tour.customRecurrenceName,
+                          tour.customRecurrenceIntervalDays
+                        )}
+                      </td>
                     </tr>
                   );
                 })}

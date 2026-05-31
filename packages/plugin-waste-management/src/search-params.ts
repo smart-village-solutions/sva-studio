@@ -40,6 +40,7 @@ export type WasteManagementSearchParams = Readonly<{
   wasteFractionId?: string;
   collectionLocationId?: string;
   tourId?: string;
+  duplicateFromTourId?: string;
   tourDateShiftId?: string;
   globalDateShiftId?: string;
 }>;
@@ -156,6 +157,7 @@ export const normalizeWasteManagementSearchParams = (
     wasteFractionId: compactOptionalString(search.wasteFractionId),
     collectionLocationId: compactOptionalString(search.collectionLocationId),
     tourId: compactOptionalString(search.tourId),
+    duplicateFromTourId: compactOptionalString(search.duplicateFromTourId),
     tourDateShiftId: compactOptionalString(search.tourDateShiftId),
     globalDateShiftId: compactOptionalString(search.globalDateShiftId),
   };

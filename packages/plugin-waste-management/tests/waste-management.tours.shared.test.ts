@@ -37,6 +37,7 @@ describe('waste-management.tours.shared', () => {
       description: '',
       wasteFractionIds: [],
       recurrence: 'custom',
+      customRecurrenceId: '',
       firstDate: '',
       endDate: '',
       customDates: [],
@@ -82,6 +83,7 @@ describe('waste-management.tours.shared', () => {
       description: '',
       wasteFractionIds: ['fraction-1'],
       recurrence: 'custom',
+      customRecurrenceId: '',
       firstDate: '',
       endDate: '',
       customDates: [
@@ -89,6 +91,32 @@ describe('waste-management.tours.shared', () => {
         { date: '2026-06-01', description: '' },
       ],
       active: false,
+    });
+
+    expect(
+      mapTourToForm({
+        id: 'tour-2',
+        name: 'Ferien',
+        description: '',
+        wasteFractionIds: ['fraction-1'],
+        recurrence: null,
+        customRecurrenceId: 'preset-1',
+        firstDate: '2026-01-01',
+        endDate: '2026-02-01',
+        customDates: [],
+        active: true,
+      } as never)
+    ).toEqual({
+      id: 'tour-2',
+      name: 'Ferien',
+      description: '',
+      wasteFractionIds: ['fraction-1'],
+      recurrence: '',
+      customRecurrenceId: 'preset-1',
+      firstDate: '2026-01-01',
+      endDate: '2026-02-01',
+      customDates: [],
+      active: true,
     });
   });
 
@@ -130,6 +158,7 @@ describe('waste-management.tours.shared', () => {
       description: '  werktags  ',
       wasteFractionIds: ['fraction-1', 'fraction-2'],
       recurrence: 'custom',
+      customRecurrenceId: '',
       firstDate: ' 2026-01-02 ',
       endDate: ' ',
       customDates: [
@@ -145,6 +174,7 @@ describe('waste-management.tours.shared', () => {
       description: 'werktags',
       wasteFractionIds: ['fraction-1', 'fraction-2'],
       recurrence: 'custom',
+      customRecurrenceId: undefined,
       firstDate: undefined,
       endDate: undefined,
       customDates: [
@@ -165,8 +195,31 @@ describe('waste-management.tours.shared', () => {
       description: 'werktags',
       wasteFractionIds: ['fraction-1', 'fraction-2'],
       recurrence: 'weekly',
+      customRecurrenceId: undefined,
       firstDate: '2026-01-02',
       endDate: undefined,
+      customDates: undefined,
+      active: true,
+    });
+
+    expect(
+      toCreateTourInput({
+        ...form,
+        recurrence: '',
+        customRecurrenceId: 'preset-1',
+        firstDate: '2026-01-02',
+        endDate: '2026-02-01',
+        customDates: [{ date: '2026-05-01', description: 'ignored' }],
+      })
+    ).toEqual({
+      id: 'tour-2',
+      name: 'Biomüll Mitte',
+      description: 'werktags',
+      wasteFractionIds: ['fraction-1', 'fraction-2'],
+      recurrence: undefined,
+      customRecurrenceId: 'preset-1',
+      firstDate: '2026-01-02',
+      endDate: '2026-02-01',
       customDates: undefined,
       active: true,
     });
@@ -254,5 +307,21 @@ describe('waste-management.tours.shared', () => {
       { id: 'fraction-2', name: 'Papier' },
       { id: 'fraction-3', name: 'Bio' },
     ]);
+  });
+
+  it('includes duplicateFromTourId in create tour input mapping when present', () => {
+    const form = {
+      ...createDefaultTourForm(),
+      id: 'tour-copy-1',
+      name: 'Bio Nord (Kopie)',
+      wasteFractionIds: ['fraction-1'],
+    } as const;
+
+    expect(toCreateTourInput(form, 'tour-source-1')).toMatchObject({
+      id: 'tour-copy-1',
+      name: 'Bio Nord (Kopie)',
+      wasteFractionIds: ['fraction-1'],
+      duplicateFromTourId: 'tour-source-1',
+    });
   });
 });

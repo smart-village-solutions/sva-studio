@@ -8,9 +8,11 @@ type WasteToursController = ReturnType<typeof useWasteToursController>;
 export const WasteToursListView = ({
   controller,
   search,
+  canDuplicateTour = false,
 }: {
   readonly controller: WasteToursController;
   readonly search: WasteManagementSearchParams;
+  readonly canDuplicateTour?: boolean;
 }) => {
   const navigation = useWasteToursListNavigation(controller, search);
 
@@ -28,12 +30,14 @@ export const WasteToursListView = ({
       schedulingOverview={controller.schedulingOverview}
       onOpenCreateDialog={navigation.openCreate}
       onOpenEditDialog={navigation.openEdit}
+      onOpenDuplicateDialog={navigation.toDuplicate}
       onOpenCreateAssignmentsDialog={controller.openCreateAssignmentsDialog}
       onOpenEditAssignmentsDialog={controller.openEditAssignmentsDialog}
       onOpenCalendar={controller.openCalendar}
       onToggleTourStatus={controller.onToggleTourStatus}
       onDeleteTour={controller.onDeleteTour}
       onDeleteTours={controller.onDeleteTours}
+      canDuplicateTour={canDuplicateTour}
       saving={controller.saving}
       page={search.page}
       pageSize={search.pageSize}

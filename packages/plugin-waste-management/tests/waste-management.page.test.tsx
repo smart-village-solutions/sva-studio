@@ -36,6 +36,7 @@ vi.mock('../src/waste-management.ui-access.js', () => ({
     visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'],
     canAccessSettings: true,
     canAccessTools: true,
+    canDuplicateTour: true,
     canRunInitialize: true,
     canRunMigrations: true,
     canRunImport: true,
@@ -47,6 +48,7 @@ vi.mock('../src/waste-management.ui-access.js', () => ({
     visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'],
     canAccessSettings: true,
     canAccessTools: true,
+    canDuplicateTour: true,
     canRunInitialize: true,
     canRunMigrations: true,
     canRunImport: true,
@@ -1737,6 +1739,114 @@ describe('WasteManagementPage', () => {
 
     expect(screen.getAllByText('Feiertagsverschiebung').length).toBeGreaterThan(0);
     expect(screen.queryByText('Vorverlegt')).toBeNull();
+  });
+
+  it('shows the duplication hint and sends duplicateFromTourId during create submit', async () => {
+    searchMock.mockImplementation(() => ({
+      tab: 'tours',
+      masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'create',
+      locationsView: 'list',
+      schedulingView: 'list',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+      fractionsSortBy: 'name',
+      fractionsSortDirection: 'asc',
+      duplicateFromTourId: 'tour-source-1',
+    }));
+    wasteManagementApiMocks.getWasteManagementMasterDataOverview.mockResolvedValueOnce({
+      fractions: [
+        {
+          id: 'fraction-1',
+          name: 'Restmüll',
+          active: true,
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        },
+      ],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    });
+    wasteManagementApiMocks.getWasteManagementToursOverview
+      .mockResolvedValueOnce({
+        tours: [
+          {
+            id: 'tour-source-1',
+            name: 'Bio Nord',
+            wasteFractionIds: ['fraction-1'],
+            recurrence: 'weekly',
+            firstDate: '2026-05-19',
+            active: true,
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        tours: [
+          {
+            id: 'tour-copy-1',
+            name: 'Bio Nord (Kopie)',
+            wasteFractionIds: ['fraction-1'],
+            recurrence: 'weekly',
+            firstDate: '2026-05-19',
+            active: true,
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ],
+      });
+    wasteManagementApiMocks.createWasteManagementTour.mockReset();
+    wasteManagementApiMocks.createWasteManagementTour.mockImplementation(async () => ({
+      id: 'tour-copy-1',
+      name: 'Bio Nord (Kopie)',
+      wasteFractionIds: ['fraction-1'],
+      recurrence: 'weekly',
+      firstDate: '2026-05-19',
+      active: true,
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+    }));
+
+    render(<WasteManagementPage />);
+
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByText('wasteManagement.tours.messages.duplicateHint')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('wasteManagement.tours.fields.name'), {
+      target: { value: 'Bio Nord (Kopie)' },
+    });
+    fireEvent.change(screen.getByLabelText('wasteManagement.tours.fields.recurrence'), {
+      target: { value: 'weekly' },
+    });
+    fireEvent.change(screen.getByLabelText('wasteManagement.tours.fields.firstDate'), {
+      target: { value: '2026-05-19' },
+    });
+    fireEvent.click(screen.getByLabelText('Restmüll'));
+    fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.tours.actions.create' })[0]!);
+
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.createWasteManagementTour).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Bio Nord (Kopie)',
+          wasteFractionIds: ['fraction-1'],
+          recurrence: 'weekly',
+          firstDate: '2026-05-19',
+          duplicateFromTourId: 'tour-source-1',
+        })
+      );
+    });
   });
 
   it('creates a tour-related waste date shift from the scheduling dialog', async () => {

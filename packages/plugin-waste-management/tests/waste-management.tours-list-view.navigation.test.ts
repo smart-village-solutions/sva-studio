@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WasteManagementSearchParams } from '../src/search-params.js';
 import {
@@ -57,6 +57,13 @@ const createController = (
 describe('waste-management.tours-list-view.navigation', () => {
   beforeEach(() => {
     navigateMock.mockReset();
+    vi.stubGlobal('crypto', {
+      randomUUID: vi.fn().mockReturnValue('tour-copy-id'),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('builds create and edit search states for tours', () => {
@@ -118,6 +125,46 @@ describe('waste-management.tours-list-view.navigation', () => {
         page: 2,
       },
       replace: true,
+    });
+  });
+
+  it('prefills create flow from duplicate action with copied name suffix', () => {
+    const controller = createController();
+    const search = createSearch();
+    const { result } = renderHook(() => useWasteToursListNavigation(controller, search));
+
+    act(() => {
+      result.current.toDuplicate({
+        id: 'tour-7',
+        name: 'Bio Nord',
+        description: 'Montag',
+        wasteFractionIds: ['fraction-1'],
+        recurrence: 'weekly',
+        firstDate: '2026-01-07',
+        endDate: '2026-12-31',
+        customDates: [],
+        active: true,
+        createdAt: '',
+        updatedAt: '',
+      } as never);
+    });
+
+    expect(controller.setTourForm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'tour-copy-id',
+        name: 'Bio Nord (Kopie)',
+        recurrence: 'weekly',
+        firstDate: '2026-01-07',
+      })
+    );
+
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: expect.objectContaining({
+        toursView: 'create',
+        tourId: undefined,
+        duplicateFromTourId: 'tour-7',
+      }),
     });
   });
 });

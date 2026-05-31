@@ -1,7 +1,8 @@
-import { IconCalendarMonth, IconEdit, IconListDetails, IconTrash } from '@tabler/icons-react';
+import { IconCalendarMonth, IconCopy, IconEdit, IconListDetails, IconTrash } from '@tabler/icons-react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button, Checkbox, cn } from '@sva/studio-ui-react';
+import type { ReactNode } from 'react';
 
 const formatDisplayDate = (value: string) => {
   const parsed = new Date(`${value}T00:00:00Z`);
@@ -9,6 +10,59 @@ const formatDisplayDate = (value: string) => {
     ? value
     : new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeZone: 'UTC' }).format(parsed);
 };
+
+const RowActionButton = ({
+  ariaLabel,
+  children,
+  destructive = false,
+  onClick,
+}: {
+  readonly ariaLabel: string;
+  readonly children: ReactNode;
+  readonly destructive?: boolean;
+  readonly onClick: () => void;
+}) => (
+  <Button
+    type="button"
+    variant="ghost"
+    size="sm"
+    className={cn(
+      'h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground',
+      destructive ? 'hover:text-destructive' : null
+    )}
+    aria-label={ariaLabel}
+    onClick={onClick}
+  >
+    {children}
+  </Button>
+);
+
+const TourAssignmentsActionButton = ({
+  assignmentId,
+  tour,
+  pt,
+  onOpenCreateAssignmentsDialog,
+  onOpenEditAssignmentsDialog,
+}: {
+  readonly assignmentId?: string;
+  readonly tour: WasteTourRecord;
+  readonly pt: ReturnType<typeof usePluginTranslation>;
+  readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
+  readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
+}) => (
+  <RowActionButton
+    ariaLabel={pt('tours.actions.openAssignments')}
+    onClick={() => {
+      if (assignmentId) {
+        onOpenEditAssignmentsDialog(tour, assignmentId);
+        return;
+      }
+      onOpenCreateAssignmentsDialog(tour);
+    }}
+  >
+    <IconListDetails aria-hidden="true" className="h-4 w-4" />
+  </RowActionButton>
+);
 
 export const WasteToursRowSelectionCell = ({
   tour,
@@ -130,16 +184,20 @@ export const WasteToursRowActionsCell = ({
   assignmentId,
   onOpenCalendar,
   onOpenEditDialog,
+  onOpenDuplicateDialog,
   onOpenCreateAssignmentsDialog,
   onOpenEditAssignmentsDialog,
+  canDuplicateTour,
   onRequestDeleteTour,
 }: {
   readonly tour: WasteTourRecord;
   readonly assignmentId?: string;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
+  readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
+  readonly canDuplicateTour: boolean;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -147,52 +205,27 @@ export const WasteToursRowActionsCell = ({
   return (
     <td className="px-3 py-3">
       <div className="flex justify-end gap-1.5">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-          aria-label={pt('tours.actions.openCalendar')}
-          onClick={() => onOpenCalendar(tour)}
-        >
+        <RowActionButton ariaLabel={pt('tours.actions.openCalendar')} onClick={() => onOpenCalendar(tour)}>
           <IconCalendarMonth aria-hidden="true" className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-          aria-label={pt('tours.actions.openAssignments')}
-          onClick={() => {
-            if (assignmentId) {
-              onOpenEditAssignmentsDialog(tour, assignmentId);
-              return;
-            }
-            onOpenCreateAssignmentsDialog(tour);
-          }}
-        >
-          <IconListDetails aria-hidden="true" className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-          aria-label={pt('tours.actions.edit')}
-          onClick={() => onOpenEditDialog(tour)}
-        >
+        </RowActionButton>
+        <TourAssignmentsActionButton
+          assignmentId={assignmentId}
+          tour={tour}
+          pt={pt}
+          onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
+          onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
+        />
+        <RowActionButton ariaLabel={pt('tours.actions.edit')} onClick={() => onOpenEditDialog(tour)}>
           <IconEdit aria-hidden="true" className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
-          aria-label={pt('tours.actions.delete')}
-          onClick={() => onRequestDeleteTour(tour)}
-        >
+        </RowActionButton>
+        {canDuplicateTour ? (
+          <RowActionButton ariaLabel={pt('tours.actions.duplicate')} onClick={() => onOpenDuplicateDialog(tour)}>
+            <IconCopy aria-hidden="true" className="h-4 w-4" />
+          </RowActionButton>
+        ) : null}
+        <RowActionButton ariaLabel={pt('tours.actions.delete')} destructive onClick={() => onRequestDeleteTour(tour)}>
           <IconTrash aria-hidden="true" className="h-4 w-4 text-destructive" />
-        </Button>
+        </RowActionButton>
       </div>
     </td>
   );

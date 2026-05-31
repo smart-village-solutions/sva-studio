@@ -65,6 +65,7 @@ export type {
   ExternalInterfaceTypeDefinition,
   WasteCollectionLocationListFilter,
   WasteCollectionLocationRecord,
+  WasteCustomRecurrencePresetRecord,
   InstanceAuditEvent,
   InstanceProvisioningRun,
   InstanceRegistryRecord,

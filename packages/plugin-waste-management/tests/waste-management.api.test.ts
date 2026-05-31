@@ -26,8 +26,10 @@ import {
   startWasteManagementInitialize,
   startWasteManagementImport,
   startWasteManagementMigrations,
+  startWasteManagementHolidaySync,
   startWasteManagementReset,
   startWasteManagementSeed,
+  updateWasteManagementHolidayRule,
   updateWasteManagementFraction,
   updateWasteManagementCity,
   updateWasteManagementCollectionLocation,
@@ -79,6 +81,7 @@ describe('waste-management api client', () => {
             databaseUrlConfigured: true,
             serviceRoleKeyConfigured: true,
             visibleStatus: 'ok',
+            customRecurrencePresets: [],
           },
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -978,6 +981,7 @@ describe('waste-management api client', () => {
                 updatedAt: '2026-05-09T10:00:00.000Z',
               },
             ],
+            customRecurrencePresets: [],
           },
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -1037,6 +1041,7 @@ describe('waste-management api client', () => {
       name: 'Papier Mitte',
       wasteFractionIds: ['fraction-2'],
       recurrence: 'biweekly',
+      customRecurrenceId: undefined,
       firstDate: '2026-05-19',
       active: true,
     });
@@ -1044,6 +1049,7 @@ describe('waste-management api client', () => {
       name: 'Papier Mitte Plus',
       wasteFractionIds: ['fraction-2'],
       recurrence: 'biweekly',
+      customRecurrenceId: undefined,
       firstDate: '2026-05-19',
       active: true,
     });
@@ -1058,6 +1064,7 @@ describe('waste-management api client', () => {
           name: 'Papier Mitte',
           wasteFractionIds: ['fraction-2'],
           recurrence: 'biweekly',
+          customRecurrenceId: undefined,
           firstDate: '2026-05-19',
           active: true,
         }),
@@ -1072,6 +1079,7 @@ describe('waste-management api client', () => {
           name: 'Papier Mitte Plus',
           wasteFractionIds: ['fraction-2'],
           recurrence: 'biweekly',
+          customRecurrenceId: undefined,
           firstDate: '2026-05-19',
           active: true,
         }),
@@ -1303,6 +1311,7 @@ describe('waste-management api client', () => {
             databaseUrlConfigured: true,
             serviceRoleKeyConfigured: true,
             visibleStatus: 'ok',
+            customRecurrencePresets: [],
           },
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -1316,6 +1325,8 @@ describe('waste-management api client', () => {
       enabled: true,
       databaseUrl: 'postgres://db',
       serviceRoleKey: 'srv-key',
+      customRecurrencePresets: [],
+      deletedPresetFallbacks: {},
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -1329,6 +1340,8 @@ describe('waste-management api client', () => {
           enabled: true,
           databaseUrl: 'postgres://db',
           serviceRoleKey: 'srv-key',
+          customRecurrencePresets: [],
+          deletedPresetFallbacks: {},
         }),
         headers: expect.any(Headers),
       })
@@ -1339,6 +1352,84 @@ describe('waste-management api client', () => {
     const headers = init?.headers as Headers;
     expect(headers.get('Content-Type')).toBe('application/json');
     expect(headers.get('X-Requested-With')).toBe('XMLHttpRequest');
+  });
+
+  it('starts the waste holiday sync through the host facade', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            instanceId: 'tenant-a',
+            provider: 'supabase',
+            projectUrl: 'https://tenant-a.supabase.co',
+            schemaName: 'wm',
+            enabled: true,
+            databaseUrlConfigured: true,
+            serviceRoleKeyConfigured: true,
+            visibleStatus: 'ok',
+            holidayStateCode: 'NW',
+            lastHolidaySyncStatus: 'success',
+            customRecurrencePresets: [],
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await expect(startWasteManagementHolidaySync()).resolves.toMatchObject({
+      holidayStateCode: 'NW',
+      lastHolidaySyncStatus: 'success',
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/settings/holiday-sync',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+      })
+    );
+  });
+
+  it('updates a waste holiday rule through the host facade', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            id: 'holiday-rule-1',
+            holidayDate: '2026-01-01',
+            holidayName: 'Neujahr',
+            year: 2026,
+            stateCode: 'NW',
+            sourceStatus: 'confirmed',
+            configurationStatus: 'configured',
+            conflictStatus: 'none',
+            scope: 'holiday-only',
+            strategy: 'advance',
+            createdAt: '2026-05-10T10:00:00.000Z',
+            updatedAt: '2026-05-10T10:30:00.000Z',
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await expect(
+      updateWasteManagementHolidayRule('holiday-rule-1', {
+        scope: 'holiday-only',
+        strategy: 'advance',
+      })
+    ).resolves.toMatchObject({
+      id: 'holiday-rule-1',
+      configurationStatus: 'configured',
+      scope: 'holiday-only',
+      strategy: 'advance',
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/holiday-rules/holiday-rule-1',
+      expect.objectContaining({
+        method: 'PUT',
+        credentials: 'include',
+      })
+    );
   });
 
   it('starts initialize, migration, seed and reset jobs with idempotency keys', async () => {

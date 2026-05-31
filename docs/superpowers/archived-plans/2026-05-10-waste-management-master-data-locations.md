@@ -16,7 +16,7 @@
 - Modify: `packages/plugin-waste-management/src/search-params.ts`
 - Test: `packages/plugin-waste-management/tests/search-params.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 it('normalizes the master-data subtab and keeps valid deep links stable', () => {
@@ -42,12 +42,12 @@ it('normalizes the master-data subtab and keeps valid deep links stable', () => 
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm nx run plugin-waste-management:test:unit -- --runInBand tests/search-params.test.ts`
 Expected: FAIL because `masterDataTab` is not part of the normalized output yet.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```ts
 const wasteManagementMasterDataTabs = ['fractions', 'locations'] as const;
@@ -66,7 +66,7 @@ masterDataTab: WasteManagementMasterDataTabId;
 masterDataTab: normalizeMasterDataTab(search.masterDataTab),
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm nx run plugin-waste-management:test:unit -- --runInBand tests/search-params.test.ts`
 Expected: PASS
@@ -77,7 +77,7 @@ Expected: PASS
 - Create: `packages/plugin-waste-management/tests/waste-management.master-data-panel.test.tsx`
 - Modify: `packages/plugin-waste-management/src/waste-management.master-data-panel.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 it('switches between fractions and locations via the URL-synced masterDataTab', () => {
@@ -88,12 +88,12 @@ it('switches between fractions and locations via the URL-synced masterDataTab', 
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm nx run plugin-waste-management:test:unit -- --runInBand tests/waste-management.master-data-panel.test.tsx`
 Expected: FAIL because there are no secondary tabs and no locations workspace title.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```tsx
 <Tabs value={search.masterDataTab} onValueChange={...navigate with masterDataTab...}>
@@ -106,7 +106,7 @@ Expected: FAIL because there are no secondary tabs and no locations workspace ti
 </Tabs>
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm nx run plugin-waste-management:test:unit -- --runInBand tests/waste-management.master-data-panel.test.tsx`
 Expected: PASS
@@ -118,7 +118,7 @@ Expected: PASS
 - Modify: `packages/plugin-waste-management/src/waste-management.master-data-summary-content.tsx`
 - Modify: `packages/plugin-waste-management/src/waste-management.master-data-panel.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 it('shows fraction actions only in the fractions subtab', () => {
@@ -128,12 +128,12 @@ it('shows fraction actions only in the fractions subtab', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm nx run plugin-waste-management:test:unit -- --runInBand tests/waste-management.master-data-panel.test.tsx`
 Expected: FAIL because fractions and locations are still mixed together.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```tsx
 <TabsContent value="fractions">
@@ -144,7 +144,7 @@ Expected: FAIL because fractions and locations are still mixed together.
 </TabsContent>
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm nx run plugin-waste-management:test:unit -- --runInBand tests/waste-management.master-data-panel.test.tsx`
 Expected: PASS
@@ -158,7 +158,7 @@ Expected: PASS
 - Modify: `packages/plugin-waste-management/src/waste-management.master-data.derived.ts`
 - Test: `packages/plugin-waste-management/tests/waste-management.master-data-panel.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 it('renders the create menu, tour filter, bulk action and dense location table in the locations subtab', () => {
@@ -170,12 +170,12 @@ it('renders the create menu, tour filter, bulk action and dense location table i
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm nx run plugin-waste-management:test:unit -- --runInBand tests/waste-management.master-data-panel.test.tsx`
 Expected: FAIL because the locations subtab still uses the old card layout and has no create menu or tour filter.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```tsx
 <StudioActionMenu
@@ -189,7 +189,7 @@ Expected: FAIL because the locations subtab still uses the old card layout and h
 <StudioDataTable ... />
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm nx run plugin-waste-management:test:unit -- --runInBand tests/waste-management.master-data-panel.test.tsx`
 Expected: PASS
@@ -201,7 +201,7 @@ Expected: PASS
 - Modify: `packages/plugin-waste-management/src/plugin.translations.en.masterData.ts`
 - Modify: `packages/plugin-waste-management/tests/waste-management.page-shell.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 expect(
@@ -212,12 +212,12 @@ expect(
 ).toBe('locations');
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm nx run plugin-waste-management:test:unit -- --runInBand tests/search-params.test.ts tests/waste-management.page-shell.test.tsx`
 Expected: FAIL until the test fixtures and translations align with the new search param.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```ts
 "tabs": {
@@ -227,7 +227,7 @@ Expected: FAIL until the test fixtures and translations align with the new searc
 }
 ```
 
-- [ ] **Step 4: Run focused verification**
+- [x] **Step 4: Run focused verification**
 
 Run: `pnpm nx run plugin-waste-management:test:unit -- --runInBand tests/search-params.test.ts tests/waste-management.page-shell.test.tsx tests/waste-management.master-data-panel.test.tsx`
 Expected: PASS
@@ -237,12 +237,12 @@ Expected: PASS
 **Files:**
 - Test: `packages/plugin-waste-management/tests/**/*`
 
-- [ ] **Step 1: Run the affected unit suite**
+- [x] **Step 1: Run the affected unit suite**
 
 Run: `pnpm nx run plugin-waste-management:test:unit`
 Expected: PASS
 
-- [ ] **Step 2: Run the package type tests**
+- [x] **Step 2: Run the package type tests**
 
 Run: `pnpm nx run plugin-waste-management:test:types`
 Expected: PASS

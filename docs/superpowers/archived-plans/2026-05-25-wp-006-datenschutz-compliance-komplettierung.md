@@ -77,7 +77,7 @@
 - Modify: `packages/core/src/iam/authorization-contract.ts`
 - Test: `packages/iam-governance/src/legal-consent-export.test.ts`
 
-- [ ] **Step 1: Write the failing type-level and export expectations**
+- [x] **Step 1: Write the failing type-level and export expectations**
 
 Add target-aware expectations to `packages/iam-governance/src/legal-consent-export.test.ts`:
 
@@ -99,13 +99,13 @@ expect(allRecords).toEqual([
 ]);
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm nx run iam-governance:test:unit --testFiles=src/legal-consent-export.test.ts`
 
 Expected: FAIL because `targets` is not part of `LegalConsentExportRecord` and the query/mapping do not provide it.
 
-- [ ] **Step 3: Add the shared contract types and migration**
+- [x] **Step 3: Add the shared contract types and migration**
 
 Update `packages/core/src/iam/account-management-contract.ts`:
 
@@ -206,13 +206,13 @@ DROP TABLE IF EXISTS iam.legal_text_target_roles;
 -- +goose StatementEnd
 ```
 
-- [ ] **Step 4: Run the focused test again**
+- [x] **Step 4: Run the focused test again**
 
 Run: `pnpm nx run iam-governance:test:unit --testFiles=src/legal-consent-export.test.ts`
 
 Expected: FAIL still persists, but now only on repository/query implementation rather than missing type fields.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core/src/iam/account-management-contract.ts \
@@ -230,7 +230,7 @@ git commit -m "feat: add legal text targeting contracts"
 - Modify: `packages/iam-governance/src/legal-text-repository.test.ts`
 - Test: `packages/auth-runtime/src/legal-text-enforcement.test.ts`
 
-- [ ] **Step 1: Write failing repository tests for tenant-wide vs targeted texts**
+- [x] **Step 1: Write failing repository tests for tenant-wide vs targeted texts**
 
 Add to `packages/iam-governance/src/legal-text-repository.test.ts`:
 
@@ -262,13 +262,13 @@ it('returns only targeted pending legal texts for matching role or group members
 });
 ```
 
-- [ ] **Step 2: Run repository test to verify it fails**
+- [x] **Step 2: Run repository test to verify it fails**
 
 Run: `pnpm nx run iam-governance:test:unit --testFiles=src/legal-text-repository.test.ts`
 
 Expected: FAIL because target arrays are neither queried nor mapped.
 
-- [ ] **Step 3: Implement target-aware list and pending queries**
+- [x] **Step 3: Implement target-aware list and pending queries**
 
 Update `packages/iam-governance/src/legal-text-repository-shared.ts` row types and mapping:
 
@@ -349,7 +349,7 @@ WHERE version.instance_id = $1
   )
 ```
 
-- [ ] **Step 4: Run repository and enforcement tests**
+- [x] **Step 4: Run repository and enforcement tests**
 
 Run:
 
@@ -360,7 +360,7 @@ pnpm nx run auth-runtime:test:unit --testFiles=src/legal-text-enforcement.test.t
 
 Expected: repository test PASS; enforcement tests may still fail until the runtime query behavior is aligned in the next task.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/iam-governance/src/legal-text-repository-shared.ts \
@@ -379,7 +379,7 @@ git commit -m "feat: add target-aware legal text reads"
 - Modify: `packages/auth-runtime/src/runtime-routes.ts`
 - Modify: `packages/auth-runtime/src/iam-governance/core.test.ts`
 
-- [ ] **Step 1: Write failing tests for audit fields and export permission**
+- [x] **Step 1: Write failing tests for audit fields and export permission**
 
 Add to `packages/iam-governance/src/governance-workflow-executor.test.ts`:
 
@@ -412,7 +412,7 @@ const forbidden = await legalConsentExportHandler(
 expect(forbidden.status).toBe(403);
 ```
 
-- [ ] **Step 2: Run focused runtime/governance tests**
+- [x] **Step 2: Run focused runtime/governance tests**
 
 Run:
 
@@ -423,7 +423,7 @@ pnpm nx run auth-runtime:test:unit --testFiles=src/iam-governance/core.test.ts
 
 Expected: FAIL because audit fields are incomplete and no consent export handler exists.
 
-- [ ] **Step 3: Implement audit field writes and runtime export**
+- [x] **Step 3: Implement audit field writes and runtime export**
 
 Update `packages/iam-governance/src/governance-workflow-executor.ts` accept/revoke write:
 
@@ -517,7 +517,7 @@ export {
 } from './iam-governance/core.js';
 ```
 
-- [ ] **Step 4: Run focused tests again**
+- [x] **Step 4: Run focused tests again**
 
 Run:
 
@@ -528,7 +528,7 @@ pnpm nx run auth-runtime:test:unit --testFiles=src/iam-governance/core.test.ts
 
 Expected: PASS for these focused tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/iam-governance/src/governance-workflow-executor.ts \
@@ -553,7 +553,7 @@ git commit -m "feat: add consent audit and export runtime"
 - Modify: `apps/sva-studio-react/src/lib/iam-api.test.ts`
 - Modify: `apps/sva-studio-react/src/i18n/resources.ts`
 
-- [ ] **Step 1: Write failing UI tests for target editing and export access**
+- [x] **Step 1: Write failing UI tests for target editing and export access**
 
 Add to `apps/sva-studio-react/src/routes/admin/legal-texts/-legal-text-detail-page.test.tsx`:
 
@@ -587,7 +587,7 @@ expect(fetchMock).toHaveBeenCalledWith(
 );
 ```
 
-- [ ] **Step 2: Run focused frontend tests**
+- [x] **Step 2: Run focused frontend tests**
 
 Run:
 
@@ -597,7 +597,7 @@ pnpm nx run sva-studio-react:test:unit --testFiles=src/routes/admin/legal-texts/
 
 Expected: FAIL because the UI and client payloads do not support targets/export yet.
 
-- [ ] **Step 3: Implement API/client/UI payload changes**
+- [x] **Step 3: Implement API/client/UI payload changes**
 
 Update `apps/sva-studio-react/src/lib/iam-api.ts`:
 
@@ -653,7 +653,7 @@ const splitIds = (value: string) =>
     .filter(Boolean);
 ```
 
-- [ ] **Step 4: Run focused frontend tests again**
+- [x] **Step 4: Run focused frontend tests again**
 
 Run:
 
@@ -663,7 +663,7 @@ pnpm nx run sva-studio-react:test:unit --testFiles=src/routes/admin/legal-texts/
 
 Expected: PASS for the targeted UI/API suite.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/sva-studio-react/src/lib/iam-api.ts \
@@ -685,7 +685,7 @@ git commit -m "feat: add legal text targeting admin ui"
 - Modify: `docs/reports/wp-006-datenschutz-compliance-abnahme-2026-05-25.md`
 - Create: `docs/reports/wp-006-consent-enforcement-export-nachweis-2026-05-25.md`
 
-- [ ] **Step 1: Add failing end-to-end style tests for targeted enforcement**
+- [x] **Step 1: Add failing end-to-end style tests for targeted enforcement**
 
 Add to `packages/auth-runtime/src/legal-text-enforcement.test.ts`:
 
@@ -707,7 +707,7 @@ it('blocks only users matching legal text target roles', async () => {
 });
 ```
 
-- [ ] **Step 2: Run final focused and affected tests**
+- [x] **Step 2: Run final focused and affected tests**
 
 Run:
 
@@ -720,7 +720,7 @@ pnpm nx affected --target=test:types --base=origin/main
 
 Expected: all targeted suites PASS; affected type checks PASS.
 
-- [ ] **Step 3: Update reports with real outcomes**
+- [x] **Step 3: Update reports with real outcomes**
 
 Update `docs/reports/wp-006-datenschutz-compliance-abnahme-2026-05-25.md` with the newly implemented facts:
 
@@ -741,7 +741,7 @@ Create `docs/reports/wp-006-consent-enforcement-export-nachweis-2026-05-25.md`:
 - geprüfter Konsistenzpfad: Export enthält Audit- und Zielgruppenfelder
 ```
 
-- [ ] **Step 4: Run documentation sanity check**
+- [x] **Step 4: Run documentation sanity check**
 
 Run:
 
@@ -752,7 +752,7 @@ git diff -- docs/reports/wp-006-datenschutz-compliance-abnahme-2026-05-25.md doc
 
 Expected: file placement PASS; report diff contains only WP-006 evidence changes.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/auth-runtime/src/legal-text-enforcement.test.ts \
@@ -788,7 +788,7 @@ No spec gap remains uncovered in the plan.
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-05-25-wp-006-datenschutz-compliance-komplettierung.md`. Two execution options:
+Plan complete and saved to `docs/superpowers/archived-plans/2026-05-25-wp-006-datenschutz-compliance-komplettierung.md`. Two execution options:
 
 **1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
 

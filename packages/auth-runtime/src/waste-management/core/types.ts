@@ -5,8 +5,11 @@ import type {
   StudioJobStartRequest,
   WasteCityRecord,
   WasteCollectionLocationRecord,
+  WasteCustomRecurrencePresetRecord,
   WasteFractionRecord,
   WasteGlobalDateShiftRecord,
+  WasteHolidayRuleRecord,
+  WasteHolidayStateCode,
   WasteHouseNumberRecord,
   WasteLocationTourLinkBulkCreateInput,
   WasteLocationTourLinkRecord,
@@ -19,6 +22,7 @@ import type {
   WasteManagementOutputOverview,
   WasteManagementOutputPdfResult,
   WasteManagementSchedulingOverview,
+  WasteHolidaySyncStatus,
   WasteManagementToursOverview,
   WasteLocationTourPickupDateImportPreview,
   WasteRegionRecord,
@@ -32,6 +36,16 @@ import type { emitAuthAuditEvent } from '../../audit-events.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import type { Session } from '../../types.js';
 
+export type WasteCustomRecurrencePresetFallback = {
+  readonly kind: 'preset' | 'default';
+  readonly value: string;
+};
+
+export type SaveWasteCustomRecurrencePresetsInput = {
+  readonly nextItems: readonly Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>[];
+  readonly deletedPresetFallbacks: Readonly<Record<string, WasteCustomRecurrencePresetFallback>>;
+};
+
 export type WasteManagementHandlerDeps = {
   readonly getRequestId?: () => string | undefined;
   readonly getSessionById?: (sessionId: string) => Promise<Session | undefined>;
@@ -39,6 +53,7 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     typeKey: string
   ) => Promise<ExternalInterfaceRecord | null>;
+  readonly saveExternalInterfaceRecord?: (record: ExternalInterfaceRecord) => Promise<void>;
   readonly saveExternalInterfaceConnectionCheck?: (record: ExternalInterfaceConnectionCheckRecord) => Promise<void>;
   readonly protectSecret?: (value: string, aad: string) => string | null | undefined;
   readonly revealSecret?: (ciphertext: string | null | undefined, aad: string) => string | null | undefined;
@@ -91,6 +106,13 @@ export type WasteManagementHandlerDeps = {
   readonly loadWasteOutputOverview?: (instanceId: string) => Promise<WasteManagementOutputOverview>;
   readonly loadToursOverview?: (instanceId: string) => Promise<WasteManagementToursOverview>;
   readonly loadSchedulingOverview?: (instanceId: string) => Promise<WasteManagementSchedulingOverview>;
+  readonly syncWasteHolidayRules?: (
+    instanceId: string,
+    stateCode: WasteHolidayStateCode
+  ) => Promise<WasteHolidaySyncStatus>;
+  readonly loadWasteCustomRecurrencePresets?: (
+    instanceId: string
+  ) => Promise<readonly WasteCustomRecurrencePresetRecord[]>;
   readonly generateWasteOutputPdf?: (input: {
     readonly instanceId: string;
     readonly collectionLocationId: string;
@@ -140,10 +162,18 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     linkId: string
   ) => Promise<WasteLocationTourLinkRecord | null>;
+  readonly listWasteLocationTourLinksByTourId?: (
+    instanceId: string,
+    tourId: string
+  ) => Promise<readonly WasteLocationTourLinkRecord[]>;
   readonly deleteWasteLocationTourLink?: (instanceId: string, linkId: string) => Promise<void>;
   readonly saveWasteTour?: (instanceId: string, input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
   readonly loadWasteTourById?: (instanceId: string, tourId: string) => Promise<WasteTourRecord | null>;
   readonly deleteWasteTour?: (instanceId: string, tourId: string) => Promise<void>;
+  readonly saveWasteCustomRecurrencePresets?: (
+    instanceId: string,
+    input: SaveWasteCustomRecurrencePresetsInput
+  ) => Promise<void>;
   readonly saveWasteTourDateShift?: (
     instanceId: string,
     input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>
@@ -152,14 +182,26 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     shiftId: string
   ) => Promise<WasteTourDateShiftRecord | null>;
+  readonly listWasteTourDateShiftsByTourId?: (
+    instanceId: string,
+    tourId: string
+  ) => Promise<readonly WasteTourDateShiftRecord[]>;
   readonly deleteWasteTourDateShift?: (instanceId: string, shiftId: string) => Promise<void>;
   readonly saveWasteGlobalDateShift?: (
     instanceId: string,
     input: Omit<WasteGlobalDateShiftRecord, 'createdAt' | 'updatedAt'>
   ) => Promise<void>;
+  readonly saveWasteHolidayRule?: (
+    instanceId: string,
+    input: Omit<WasteHolidayRuleRecord, 'createdAt' | 'updatedAt'>
+  ) => Promise<void>;
   readonly loadWasteGlobalDateShiftById?: (
     instanceId: string,
     shiftId: string
   ) => Promise<WasteGlobalDateShiftRecord | null>;
+  readonly loadWasteHolidayRuleById?: (
+    instanceId: string,
+    ruleId: string
+  ) => Promise<WasteHolidayRuleRecord | null>;
   readonly deleteWasteGlobalDateShift?: (instanceId: string, shiftId: string) => Promise<void>;
 };

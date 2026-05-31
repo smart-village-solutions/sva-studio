@@ -75,7 +75,7 @@
 - Reference: `packages/plugin-sdk/src/standard-content-plugin.ts`
 - Reference: `packages/plugin-news/src/plugin.tsx`
 
-- [ ] **Step 1: Confirm that V1 does not need a new SDK registration contract**
+- [x] **Step 1: Confirm that V1 does not need a new SDK registration contract**
 
 Use the existing `ContentTypeDefinition` registration as the only content-type registration entry point for V1. Do not add a second registry for detail tabs.
 
@@ -89,7 +89,7 @@ type V1DetailIntegration = {
 };
 ```
 
-- [ ] **Step 2: Record the host/plugin split that the implementation must preserve**
+- [x] **Step 2: Record the host/plugin split that the implementation must preserve**
 
 Treat these responsibilities as fixed:
 
@@ -100,7 +100,7 @@ Treat these responsibilities as fixed:
 - apps/sva-studio-react: no news-specific form logic
 ```
 
-- [ ] **Step 3: Verify the current registration already carries the outer content entry contract**
+- [x] **Step 3: Verify the current registration already carries the outer content entry contract**
 
 Run:
 
@@ -113,10 +113,10 @@ rg -n "ContentTypeDefinition|studioContentType|createStandardContentTypeDefiniti
 
 Expected: The current content-type registration already owns `createPath` and `detailPath`, so V1 can reuse the unified content entry integration without new registry work.
 
-- [ ] **Step 4: Commit the architecture checkpoint**
+- [x] **Step 4: Commit the architecture checkpoint**
 
 ```bash
-git add docs/superpowers/plans/2026-05-24-content-detail-page-implementation.md
+git add docs/superpowers/archived-plans/2026-05-24-content-detail-page-implementation.md
 git commit -m "docs: add content detail page implementation plan"
 ```
 
@@ -129,7 +129,7 @@ git commit -m "docs: add content detail page implementation plan"
 - Reference: `packages/studio-ui-react/src/tabs.tsx`
 - Reference: `packages/studio-ui-react/src/studio-form-bridge.tsx`
 
-- [ ] **Step 1: Write the failing primitive tests first**
+- [x] **Step 1: Write the failing primitive tests first**
 
 Cover the reusable behavior before extracting UI:
 
@@ -141,7 +141,7 @@ it('renders panel header title, description, and actions slot', () => {});
 it('announces blocked tab switches through an accessible status surface', () => {});
 ```
 
-- [ ] **Step 2: Run the new studio-ui-react test file and verify it fails**
+- [x] **Step 2: Run the new studio-ui-react test file and verify it fails**
 
 Run:
 
@@ -151,7 +151,7 @@ pnpm nx run studio-ui-react:test:unit --testFiles=src/studio-detail-tabs.test.ts
 
 Expected: FAIL because `studio-detail-tabs.tsx` does not exist yet.
 
-- [ ] **Step 3: Implement the shared detail-tab workspace primitive**
+- [x] **Step 3: Implement the shared detail-tab workspace primitive**
 
 Build a small public contract, not a news-specific component:
 
@@ -179,7 +179,7 @@ The component must provide:
 - aria-live capable status slot for switch warnings or save feedback
 ```
 
-- [ ] **Step 4: Export the primitive through the public package entry**
+- [x] **Step 4: Export the primitive through the public package entry**
 
 Add exports in `packages/studio-ui-react/src/index.ts` for:
 
@@ -188,7 +188,7 @@ export type { StudioDetailTabDefinition } from './studio-detail-tabs.js';
 export { StudioDetailTabs } from './studio-detail-tabs.js';
 ```
 
-- [ ] **Step 5: Run the focused studio-ui-react tests**
+- [x] **Step 5: Run the focused studio-ui-react tests**
 
 Run:
 
@@ -198,7 +198,7 @@ pnpm nx run studio-ui-react:test:unit --testFiles=src/studio-detail-tabs.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the shared UI slice**
+- [x] **Step 6: Commit the shared UI slice**
 
 ```bash
 git add packages/studio-ui-react/src/studio-detail-tabs.tsx packages/studio-ui-react/src/studio-detail-tabs.test.tsx packages/studio-ui-react/src/index.ts
@@ -216,7 +216,7 @@ git commit -m "feat: add reusable studio detail tabs workspace"
 - Modify: `packages/plugin-news/src/news.types.ts`
 - Create: `packages/plugin-news/tests/news.detail-form.test.ts`
 
-- [ ] **Step 1: Add the foundations dependencies and shared test setup to plugin-news**
+- [x] **Step 1: Add the foundations dependencies and shared test setup to plugin-news**
 
 Mirror the proven package/test setup used by plugin-poi and waste-management:
 
@@ -240,7 +240,7 @@ test: {
 }
 ```
 
-- [ ] **Step 2: Write form-level failing tests for the new RHF/Zod model**
+- [x] **Step 2: Write form-level failing tests for the new RHF/Zod model**
 
 Cover the new form helpers independently from the page shell:
 
@@ -252,7 +252,7 @@ it('derives changed field groups for basis versus content tabs', () => {});
 it('builds live character metrics for title, intro, and body fields', () => {});
 ```
 
-- [ ] **Step 3: Run the focused plugin-news tests and verify failure**
+- [x] **Step 3: Run the focused plugin-news tests and verify failure**
 
 Run:
 
@@ -262,7 +262,7 @@ pnpm nx run plugin-news:test:unit --testFiles=tests/news.detail-form.test.ts
 
 Expected: FAIL because the new form module does not exist yet.
 
-- [ ] **Step 4: Introduce a dedicated detail-form module**
+- [x] **Step 4: Introduce a dedicated detail-form module**
 
 Move state/model logic out of `news.pages.tsx` into `news.detail-form.ts`:
 
@@ -300,7 +300,7 @@ The module should own:
 - dirty-tab derivation helpers
 ```
 
-- [ ] **Step 5: Thin down `news.pages.tsx` so it delegates**
+- [x] **Step 5: Thin down `news.pages.tsx` so it delegates**
 
 After extraction, keep `news.pages.tsx` as a route-facing wrapper:
 
@@ -309,7 +309,7 @@ export const NewsCreatePage = () => <NewsDetailPage mode="create" />;
 export const NewsEditPage = () => <NewsDetailPage mode="edit" contentId={resolveNewsContentId(...)} />;
 ```
 
-- [ ] **Step 6: Run the form-level tests**
+- [x] **Step 6: Run the form-level tests**
 
 Run:
 
@@ -320,7 +320,7 @@ pnpm nx run plugin-news:test:unit --testFiles=tests/news.validation.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit the form-foundation slice**
+- [x] **Step 7: Commit the form-foundation slice**
 
 ```bash
 git add packages/plugin-news/package.json packages/plugin-news/vitest.config.ts packages/plugin-news/src/news.pages.tsx packages/plugin-news/src/news.detail-page.tsx packages/plugin-news/src/news.detail-form.ts packages/plugin-news/src/news.types.ts packages/plugin-news/tests/news.detail-form.test.ts
@@ -337,7 +337,7 @@ git commit -m "refactor: move news detail form to rhf and zod"
 - Modify: `packages/plugin-news/src/news.api.ts`
 - Modify: `packages/plugin-news/tests/news.pages.test.tsx`
 
-- [ ] **Step 1: Write the integration tests for the new tab shell before implementation**
+- [x] **Step 1: Write the integration tests for the new tab shell before implementation**
 
 Add page-level cases for:
 
@@ -349,7 +349,7 @@ it('prompts before leaving a dirty tab', () => {});
 it('keeps entered content when returning to a visited tab', () => {});
 ```
 
-- [ ] **Step 2: Run the page suite against the existing monolith**
+- [x] **Step 2: Run the page suite against the existing monolith**
 
 Run:
 
@@ -359,7 +359,7 @@ pnpm nx run plugin-news:test:unit --testFiles=tests/news.pages.test.tsx
 
 Expected: FAIL on missing tab structure, counters, and dirty-tab behavior.
 
-- [ ] **Step 3: Build the News detail page host around the shared workspace primitive**
+- [x] **Step 3: Build the News detail page host around the shared workspace primitive**
 
 `news.detail-page.tsx` should orchestrate:
 
@@ -372,7 +372,7 @@ Expected: FAIL on missing tab structure, counters, and dirty-tab behavior.
 - create/edit mode differences
 ```
 
-- [ ] **Step 4: Implement `Basis` as a focused metadata panel**
+- [x] **Step 4: Implement `Basis` as a focused metadata panel**
 
 Move these fields into `news.detail-basis-tab.tsx`:
 
@@ -399,7 +399,7 @@ This tab must expose:
 - metadata summary header in edit mode
 ```
 
-- [ ] **Step 5: Implement `Inhalte` as the content/media panel**
+- [x] **Step 5: Implement `Inhalte` as the content/media panel**
 
 Move these concerns into `news.detail-content-tab.tsx`:
 
@@ -412,7 +412,7 @@ Move these concerns into `news.detail-content-tab.tsx`:
 - body/introduction character counters
 ```
 
-- [ ] **Step 6: Keep mutations tab-local without duplicating API mapping**
+- [x] **Step 6: Keep mutations tab-local without duplicating API mapping**
 
 `news.api.ts` should continue to own transport, but tab saves should call focused mutation builders:
 
@@ -423,7 +423,7 @@ export const buildNewsContentMutation = (values: NewsDetailFormValues): NewsForm
 
 Both builders should still reuse the same final `updateNews()` transport.
 
-- [ ] **Step 7: Run the focused plugin-news tests for Basis/Inhalte**
+- [x] **Step 7: Run the focused plugin-news tests for Basis/Inhalte**
 
 Run:
 
@@ -435,7 +435,7 @@ pnpm nx run plugin-news:test:unit --testFiles=tests/news.validation.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit the Basis/Inhalte migration**
+- [x] **Step 8: Commit the Basis/Inhalte migration**
 
 ```bash
 git add packages/plugin-news/src/news.detail-tabs.tsx packages/plugin-news/src/news.detail-basis-tab.tsx packages/plugin-news/src/news.detail-content-tab.tsx packages/plugin-news/src/news.detail-page.tsx packages/plugin-news/src/news.api.ts packages/plugin-news/tests/news.pages.test.tsx
@@ -451,7 +451,7 @@ git commit -m "feat: migrate news basis and content tabs"
 - Modify: `packages/plugin-news/tests/news.pages.test.tsx`
 - Modify: `packages/plugin-news/src/plugin.translations.ts`
 
-- [ ] **Step 1: Write failing tests for the release/workflow surface**
+- [x] **Step 1: Write failing tests for the release/workflow surface**
 
 Cover only what the current News contract can truthfully support:
 
@@ -462,7 +462,7 @@ it('shows read-only workflow hints for unsupported process steps', () => {});
 it('announces save success and save failure through the page status surface', () => {});
 ```
 
-- [ ] **Step 2: Run the focused page tests to verify failure**
+- [x] **Step 2: Run the focused page tests to verify failure**
 
 Run:
 
@@ -472,7 +472,7 @@ pnpm nx run plugin-news:test:unit --testFiles=tests/news.pages.test.tsx
 
 Expected: FAIL because no `Freigabe` tab exists yet.
 
-- [ ] **Step 3: Implement the tab around existing API-backed fields only**
+- [x] **Step 3: Implement the tab around existing API-backed fields only**
 
 Use the existing contract instead of inventing workflow state:
 
@@ -484,7 +484,7 @@ Use the existing contract instead of inventing workflow state:
 - read-only explanatory notes for workflow concepts not represented in the current API
 ```
 
-- [ ] **Step 4: Keep unsupported workflow steps explicit, not implicit**
+- [x] **Step 4: Keep unsupported workflow steps explicit, not implicit**
 
 Render a structured non-goal/read-only block such as:
 
@@ -494,7 +494,7 @@ Render a structured non-goal/read-only block such as:
 - no hidden status transitions outside current save contract
 ```
 
-- [ ] **Step 5: Run the release tab tests**
+- [x] **Step 5: Run the release tab tests**
 
 Run:
 
@@ -504,7 +504,7 @@ pnpm nx run plugin-news:test:unit --testFiles=tests/news.pages.test.tsx
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the release tab**
+- [x] **Step 6: Commit the release tab**
 
 ```bash
 git add packages/plugin-news/src/news.detail-release-tab.tsx packages/plugin-news/src/news.detail-page.tsx packages/plugin-news/src/news.detail-form.ts packages/plugin-news/src/plugin.translations.ts packages/plugin-news/tests/news.pages.test.tsx
@@ -524,7 +524,7 @@ git commit -m "feat: add news release tab"
 - Modify: `packages/plugin-news/src/news.detail-page.tsx`
 - Modify: `packages/plugin-news/tests/news.pages.test.tsx`
 
-- [ ] **Step 1: Prove the existing history path before adding code**
+- [x] **Step 1: Prove the existing history path before adding code**
 
 Run:
 
@@ -538,7 +538,7 @@ rg -n "/api/v1/iam/contents/.*/history|fetchContentHistory|IamContentHistoryEntr
 
 Expected: Existing IAM content history read path backed by persisted content history rows.
 
-- [ ] **Step 2: Write the failing shared-client and news-history tests**
+- [x] **Step 2: Write the failing shared-client and news-history tests**
 
 Add client-level cases:
 
@@ -557,7 +557,7 @@ it('renders a trustworthy empty state when no history exists', () => {});
 it('keeps Historie read-only and free of save actions', () => {});
 ```
 
-- [ ] **Step 3: Run the focused tests and verify failure**
+- [x] **Step 3: Run the focused tests and verify failure**
 
 Run:
 
@@ -568,7 +568,7 @@ pnpm nx run plugin-news:test:unit --testFiles=tests/news.history.test.ts --testF
 
 Expected: FAIL because the shared client and history tab do not exist yet.
 
-- [ ] **Step 4: Add a minimal shared history client to plugin-sdk**
+- [x] **Step 4: Add a minimal shared history client to plugin-sdk**
 
 Create a stable reusable helper instead of app-internal imports:
 
@@ -581,7 +581,7 @@ export const fetchIamContentHistory = async (
 };
 ```
 
-- [ ] **Step 5: Implement the News history adapter and read-only tab**
+- [x] **Step 5: Implement the News history adapter and read-only tab**
 
 `news.history.ts` should convert shared history records into UI-ready entries if needed:
 
@@ -606,7 +606,7 @@ export type NewsHistoryEntry = {
 - no mutation controls
 ```
 
-- [ ] **Step 6: Run the history-focused tests**
+- [x] **Step 6: Run the history-focused tests**
 
 Run:
 
@@ -617,7 +617,7 @@ pnpm nx run plugin-news:test:unit --testFiles=tests/news.history.test.ts --testF
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit the history slice**
+- [x] **Step 7: Commit the history slice**
 
 ```bash
 git add packages/plugin-sdk/src/content-history-client.ts packages/plugin-sdk/src/content-history-client.test.ts packages/plugin-sdk/src/public-api.ts packages/plugin-sdk/src/index.ts packages/plugin-news/src/news.history.ts packages/plugin-news/src/news.detail-history-tab.tsx packages/plugin-news/src/news.detail-page.tsx packages/plugin-news/tests/news.history.test.ts packages/plugin-news/tests/news.pages.test.tsx
@@ -633,7 +633,7 @@ git commit -m "feat: add reusable content history tab for news"
 - Modify: `docs/superpowers/specs/2026-05-24-content-detail-page-design.md` if implementation learning requires a small clarification
 - Modify: relevant docs under `docs/architecture/` only if the code cut materially changes package responsibilities
 
-- [ ] **Step 1: Add explicit accessibility regression coverage**
+- [x] **Step 1: Add explicit accessibility regression coverage**
 
 Extend tests to prove:
 
@@ -644,7 +644,7 @@ it('announces save and blocked-switch feedback through an accessible status regi
 it('exposes the dirty indicator in text or icon-plus-text form, not color only', () => {});
 ```
 
-- [ ] **Step 2: Verify route binding compatibility stays intact**
+- [x] **Step 2: Verify route binding compatibility stays intact**
 
 Run:
 
@@ -654,7 +654,7 @@ pnpm nx run sva-studio-react:test:unit --testFiles=src/routing/app-route-binding
 
 Expected: PASS with `newsDetail` and `newsEditor` still resolving through the refactored plugin exports.
 
-- [ ] **Step 3: Run the affected package-level validation suite**
+- [x] **Step 3: Run the affected package-level validation suite**
 
 Run:
 
@@ -669,7 +669,7 @@ pnpm nx run plugin-news:lint
 
 Expected: PASS.
 
-- [ ] **Step 4: Run the cross-project affected checks required by the repo rules**
+- [x] **Step 4: Run the cross-project affected checks required by the repo rules**
 
 Run:
 
@@ -681,7 +681,7 @@ pnpm check:file-placement
 
 Expected: PASS.
 
-- [ ] **Step 5: Run the preferred PR gate if time and resources allow**
+- [x] **Step 5: Run the preferred PR gate if time and resources allow**
 
 Run:
 
@@ -691,7 +691,7 @@ pnpm test:pr
 
 Expected: PASS. If this is not feasible, record the exact reason and keep the minimum affected checks from Step 4 as the push gate.
 
-- [ ] **Step 6: Commit the final integration pass**
+- [x] **Step 6: Commit the final integration pass**
 
 ```bash
 git add packages/plugin-news/src/index.ts packages/plugin-news/src/plugin.translations.ts packages/plugin-news/tests/news.pages.test.tsx apps/sva-studio-react/src/routing/app-route-bindings.test.tsx docs/superpowers/specs/2026-05-24-content-detail-page-design.md

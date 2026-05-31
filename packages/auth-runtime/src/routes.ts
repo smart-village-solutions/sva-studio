@@ -105,11 +105,13 @@ export type AuthRoutePath =
   | '/api/v1/waste-management/scheduling'
   | '/api/v1/waste-management/global-date-shifts'
   | '/api/v1/waste-management/global-date-shifts/$shiftId'
+  | '/api/v1/waste-management/holiday-rules/$holidayRuleId'
   | '/api/v1/waste-management/tour-date-shifts'
   | '/api/v1/waste-management/tour-date-shifts/$shiftId'
   | '/api/v1/waste-management/tours'
   | '/api/v1/waste-management/tours/$tourId'
   | '/api/v1/waste-management/settings'
+  | '/api/v1/waste-management/settings/holiday-sync'
   | '/api/v1/waste-management/tools/initialize'
   | '/api/v1/waste-management/tools/imports'
   | '/api/v1/waste-management/tools/imports/preview'
@@ -226,11 +228,13 @@ export const authRoutePaths = [
   '/api/v1/waste-management/scheduling',
   '/api/v1/waste-management/global-date-shifts',
   '/api/v1/waste-management/global-date-shifts/$shiftId',
+  '/api/v1/waste-management/holiday-rules/$holidayRuleId',
   '/api/v1/waste-management/tour-date-shifts',
   '/api/v1/waste-management/tour-date-shifts/$shiftId',
   '/api/v1/waste-management/tours',
   '/api/v1/waste-management/tours/$tourId',
   '/api/v1/waste-management/settings',
+  '/api/v1/waste-management/settings/holiday-sync',
   '/api/v1/waste-management/tools/initialize',
   '/api/v1/waste-management/tools/imports',
   '/api/v1/waste-management/tools/imports/preview',

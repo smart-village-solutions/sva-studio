@@ -16,6 +16,7 @@ describe('waste-management.tours.presentation', () => {
     expect(formatTourRecurrence(pt, 'yearly')).toBe('tours.recurrence.yearly');
     expect(formatTourRecurrence(pt, 'on-demand')).toBe('tours.recurrence.onDemand');
     expect(formatTourRecurrence(pt, 'custom')).toBe('tours.recurrence.custom');
+    expect(formatTourRecurrence(pt, undefined, 'Ferienmodus', 10)).toBe('tours.meta.customRecurrenceLabel');
     expect(formatTourDateRange({ firstDate: '2026-04-01', endDate: '2026-04-08' } as never)).toBe('2026-04-01 – 2026-04-08');
     expect(formatTourDateRange({ firstDate: '2026-04-01', endDate: undefined } as never)).toBe('2026-04-01');
     expect(formatTourDateRange({ firstDate: undefined, endDate: undefined } as never)).toBe('—');
@@ -123,6 +124,27 @@ describe('waste-management.tours.presentation', () => {
         } as never
       )
     ).toEqual([]);
+  });
+
+  it('supports custom recurrence presets with day-based intervals', () => {
+    expect(
+      calculateTourOccurrencesForYear(
+        {
+          id: 'tour-preset',
+          recurrence: undefined,
+          customRecurrenceName: 'Ferienmodus',
+          customRecurrenceIntervalDays: 10,
+          firstDate: '2026-01-05',
+          endDate: '2026-02-01',
+          customDates: [],
+        } as never,
+        2026,
+        {
+          tourDateShifts: [],
+          globalDateShifts: [],
+        } as never
+      )
+    ).toEqual(['2026-01-05', '2026-01-15', '2026-01-25']);
   });
 
   it('ignores unsupported recurrence strategies, undefined custom date arrays, and unrelated global shifts', () => {

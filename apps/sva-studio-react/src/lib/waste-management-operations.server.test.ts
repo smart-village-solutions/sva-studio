@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import type { SqlClient, WasteOperationSqlPool } from './waste-management-operations.types.js';
 
 import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
+import { applySchemaStatements } from './waste-management-operations.schema.js';
 import { resolveRuntimeDataSource } from './waste-management-operations.shared.js';
 
 const createInterfaceRecord = (schemaName = 'wm'): ExternalInterfaceRecord => ({
@@ -82,6 +83,18 @@ describe('waste management operations runtime', () => {
       },
     });
     expect(query).toHaveBeenCalledWith('SET search_path TO "wm", public;');
+  });
+
+  it('includes custom recurrence presets, holiday rules and tour preset references in schema statements', () => {
+    const statements = applySchemaStatements('wm').join('\n');
+    expect(statements).toContain('waste_custom_recurrence_presets');
+    expect(statements).toContain('waste_holiday_rules');
+    expect(statements).toContain('holiday_date DATE NOT NULL');
+    expect(statements).toContain('idx_waste_holiday_rules_state_year');
+    expect(statements).toContain('custom_recurrence_id UUID');
+    expect(statements).toContain('ALTER TABLE "wm".waste_tours ADD COLUMN IF NOT EXISTS custom_recurrence_id UUID');
+    expect(statements).toContain('waste_tours_custom_recurrence_id_fkey');
+    expect(statements).toContain('idx_waste_tours_custom_recurrence_id');
   });
 
   it('parses geography imports as a dry run from an xlsx workbook', async () => {
@@ -733,8 +746,10 @@ describe('waste management operations runtime', () => {
 const requiredTableRows = [
   { table_name: 'waste_cities' },
   { table_name: 'waste_collection_locations' },
+  { table_name: 'waste_custom_recurrence_presets' },
   { table_name: 'waste_fractions' },
   { table_name: 'waste_global_date_shifts' },
+  { table_name: 'waste_holiday_rules' },
   { table_name: 'waste_house_numbers' },
   { table_name: 'waste_location_tour_links' },
   { table_name: 'waste_location_tour_pickup_dates' },

@@ -14,7 +14,7 @@ export const WasteSchedulingListView = ({
 }) => {
   const navigation = useWasteSchedulingListNavigation(controller, search);
 
-  if (!controller.tourDateShifts.length && !controller.globalDateShifts.length) {
+  if (!controller.tourDateShifts.length && !controller.globalDateShifts.length && !controller.holidayRules.length) {
     return (
       <WasteSchedulingEmptyState
         onOpenCreateShiftDialog={navigation.openCreate}
@@ -27,11 +27,14 @@ export const WasteSchedulingListView = ({
       message={controller.message}
       globalDateShifts={controller.globalDateShifts}
       tourDateShifts={controller.tourDateShifts}
+      holidayRules={controller.holidayRules}
       availableTours={controller.availableTours}
       onOpenCreateShiftDialog={navigation.openCreate}
       onEditGlobalShiftDialog={navigation.openEditGlobal}
       onEditTourShiftDialog={navigation.openEditTour}
       onDeleteSchedulingRows={controller.onDeleteSchedulingRows}
+      onSaveHolidayRule={controller.onSaveHolidayRule}
+      onRunHolidaySync={controller.onRunHolidaySync}
       saving={controller.saving}
       page={search.page}
       pageSize={search.pageSize}

@@ -15,6 +15,7 @@ type PublicWasteLinkedTour = {
     readonly id: string;
     readonly name: string;
     readonly recurrence?: 'weekly' | 'biweekly' | 'fourweekly' | 'yearly' | 'on-demand' | 'custom' | null;
+    readonly customRecurrenceIntervalDays?: number;
     readonly firstDate?: string;
     readonly endDate?: string;
     readonly customDates?: readonly {
@@ -77,8 +78,12 @@ const addYearsUtc = (value: string, years: number): string => {
 };
 
 const resolveAdvanceStrategy = (
-  recurrence: PublicWasteLinkedTour['tour']['recurrence']
+  recurrence: PublicWasteLinkedTour['tour']['recurrence'],
+  customRecurrenceIntervalDays?: number
 ): ((current: Date) => void) | null => {
+  if (typeof customRecurrenceIntervalDays === 'number' && customRecurrenceIntervalDays > 0) {
+    return (current) => current.setUTCDate(current.getUTCDate() + customRecurrenceIntervalDays);
+  }
   if (recurrence === 'weekly') {
     return (current) => current.setUTCDate(current.getUTCDate() + 7);
   }
@@ -121,9 +126,9 @@ const calculateTourOccurrences = (
   const occurrences = new Map<string, string | null>();
 
   const recurringStartDate = normalizeDateOnly(tour.firstDate);
-  if (tour.recurrence && recurringStartDate) {
+  if ((tour.recurrence || tour.customRecurrenceIntervalDays) && recurringStartDate) {
     const recurringEndDate = normalizeDateOnly(tour.endDate) ?? windowEnd;
-    const advance = resolveAdvanceStrategy(tour.recurrence);
+    const advance = resolveAdvanceStrategy(tour.recurrence, tour.customRecurrenceIntervalDays);
     if (advance) {
       const current = parseDateOnlyUtc(recurringStartDate);
       const end = parseDateOnlyUtc(recurringEndDate);

@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 const deleteWasteManagementGlobalDateShiftMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteWasteManagementTourDateShiftMock = vi.hoisted(() => vi.fn(async () => undefined));
+const startWasteManagementHolidaySyncMock = vi.hoisted(() => vi.fn(async () => ({ lastHolidaySyncStatus: 'success' })));
+const updateWasteManagementHolidayRuleMock = vi.hoisted(() => vi.fn(async () => undefined));
 const WasteManagementApiErrorMock = vi.hoisted(
   () =>
     class WasteManagementApiError extends Error {
@@ -16,6 +18,8 @@ import { createWasteSchedulingSubmitHandlers } from '../src/waste-management.sch
 vi.mock('../src/waste-management.api.js', () => ({
   deleteWasteManagementGlobalDateShift: deleteWasteManagementGlobalDateShiftMock,
   deleteWasteManagementTourDateShift: deleteWasteManagementTourDateShiftMock,
+  startWasteManagementHolidaySync: startWasteManagementHolidaySyncMock,
+  updateWasteManagementHolidayRule: updateWasteManagementHolidayRuleMock,
   WasteManagementApiError: WasteManagementApiErrorMock,
 }));
 
@@ -88,6 +92,70 @@ describe('createWasteSchedulingSubmitHandlers', () => {
     expect(state.setMessage).toHaveBeenCalledWith({
       kind: 'error',
       text: 'scheduling.messages.deleteForbidden',
+    });
+  });
+
+  it('runs a manual holiday sync and reports the returned sync status', async () => {
+    const state = {
+      setSaving: vi.fn(),
+      setMessage: vi.fn(),
+      setLastOutcome: vi.fn(),
+    } as never;
+    const loadOverview = vi.fn(async () => undefined);
+    const handlers = createWasteSchedulingSubmitHandlers({
+      state,
+      pt: (key: string, values?: Record<string, string | number>) =>
+        values ? `${key}:${Object.values(values).join('|')}` : key,
+      loadOverview,
+    });
+
+    await handlers.onRunHolidaySync();
+
+    expect(startWasteManagementHolidaySyncMock).toHaveBeenCalledTimes(1);
+    expect(loadOverview).toHaveBeenCalledWith(true);
+    expect(state.setMessage).toHaveBeenCalledWith({
+      kind: 'success',
+      text: 'scheduling.holidayRules.syncSuccess:success',
+    });
+  });
+
+  it('persists holiday rule scope and strategy and reloads the overview', async () => {
+    const state = {
+      setSaving: vi.fn(),
+      setMessage: vi.fn(),
+      setLastOutcome: vi.fn(),
+    } as never;
+    const loadOverview = vi.fn(async () => undefined);
+    const handlers = createWasteSchedulingSubmitHandlers({
+      state,
+      pt: (key: string) => key,
+      loadOverview,
+    });
+
+    await handlers.onSaveHolidayRule({
+      id: 'holiday-rule-1',
+      holidayDate: '2026-01-01',
+      holidayName: 'Neujahr',
+      year: 2026,
+      stateCode: 'NW',
+      sourceStatus: 'confirmed',
+      configurationStatus: 'draft',
+      conflictStatus: 'none',
+      createdAt: '2026-05-10T10:00:00.000Z',
+      updatedAt: '2026-05-10T10:00:00.000Z',
+    } as never, {
+      scope: 'holiday-only',
+      strategy: 'advance',
+    });
+
+    expect(updateWasteManagementHolidayRuleMock).toHaveBeenCalledWith('holiday-rule-1', {
+      scope: 'holiday-only',
+      strategy: 'advance',
+    });
+    expect(loadOverview).toHaveBeenCalledWith(true);
+    expect(state.setMessage).toHaveBeenCalledWith({
+      kind: 'success',
+      text: 'scheduling.holidayRules.saveSuccess',
     });
   });
 });

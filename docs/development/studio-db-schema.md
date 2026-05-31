@@ -208,6 +208,24 @@ Kernidee:
 - `idempotency_keys` schützt mutierende Abläufe gegen Wiederholung.
 - `goose_db_version` dokumentiert den tatsächlich angewendeten Migrationsstand.
 
+### 9. Externe Waste-Fachdatenbank
+
+Die instanzbezogene Waste-Fachdatenbank ist technisch von der zentralen IAM-/Governance-Persistenz getrennt. Für die im Studio verwalteten Touren und Terminlogiken ist insbesondere folgende `waste_*`-Tabellenfamilie relevant:
+
+- `waste_tours`
+- `waste_custom_recurrence_presets`
+- `waste_location_tour_links`
+- `waste_location_tour_pickup_dates`
+- `waste_tour_date_shifts`
+- `waste_global_date_shifts`
+
+Kernidee:
+
+- `waste_tours` bleibt das führende Tourmodell und trägt weiterhin `first_date`, `end_date` und `custom_dates`.
+- `waste_custom_recurrence_presets` hält instanzbezogene zusätzliche Tagesabstände mit Name, optionaler Beschreibung und positiver Tagesanzahl.
+- `waste_tours.custom_recurrence_id` referenziert optional ein solches Preset; feste Default-Turnusse bleiben parallel über `recurrence` erhalten.
+- Datumsverschiebungen und ortsbezogene Zuordnungen bleiben in ihren bestehenden Tabellen und wenden die aufgelöste Tourserie lediglich fachlich an.
+
 ## Wichtige Beziehungen
 
 - Fast alle fachlichen Tabellen hängen direkt oder indirekt an `iam.instances`.

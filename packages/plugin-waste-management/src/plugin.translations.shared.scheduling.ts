@@ -22,6 +22,7 @@ type WasteManagementSchedulingScopeCopy = Readonly<{
 type WasteManagementSchedulingCopy = Readonly<{
   global: WasteManagementSchedulingScopeCopy;
   tour: WasteManagementSchedulingScopeCopy;
+  holidayRules?: Readonly<Record<string, unknown>>;
   actions: Readonly<Record<string, string>>;
   create: Readonly<Record<string, string>>;
   bulkDeleteDialog: Readonly<Record<string, string>>;
@@ -119,6 +120,7 @@ export const createWasteManagementSchedulingTranslations = <const TCopy extends 
     scheduling: {
       global: createSchedulingScopeTranslations(copy.global),
       tour: createSchedulingScopeTranslations(copy.tour),
+      holidayRules: copy.holidayRules,
       actions: copy.actions,
       create: copy.create,
       bulkDeleteDialog: copy.bulkDeleteDialog,

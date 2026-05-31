@@ -19,7 +19,7 @@ import {
 } from '@sva/studio-ui-react';
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
-import type { LocationTourLinkFormState } from './waste-management.tours.shared.js';
+import type { LocationTourLinkFormState } from './waste-management.tours.types.js';
 import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
 
 const matchesSearch = (value: string, query: string) => value.toLocaleLowerCase().includes(query.toLocaleLowerCase());

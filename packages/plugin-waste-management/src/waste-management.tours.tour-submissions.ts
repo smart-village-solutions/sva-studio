@@ -33,7 +33,8 @@ const setDeleteErrorMessage = (state: WasteToursState, pt: Translate, error: unk
 
 const createSubmitTourHandler = ({ state, pt, loadOverview }: WasteToursSubmissionContext) => async (
   event: FormEvent<HTMLFormElement>,
-  mode = state.dialogMode
+  mode = state.dialogMode,
+  duplicateFromTourId?: string,
 ) => {
   event.preventDefault();
   state.setSaving(true);
@@ -41,7 +42,7 @@ const createSubmitTourHandler = ({ state, pt, loadOverview }: WasteToursSubmissi
   state.setLastOutcome(null);
   try {
     if (mode === 'create') {
-      await createWasteManagementTour(toCreateTourInput(state.tourForm));
+      await createWasteManagementTour(toCreateTourInput(state.tourForm, duplicateFromTourId));
     } else {
       await updateWasteManagementTour(state.tourForm.id, toUpdateTourInput(state.tourForm));
     }

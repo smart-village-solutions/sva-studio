@@ -25,4 +25,13 @@ describe('waste-management-master-data', () => {
     expect(wasteManagementMasterDataContract.isTourDateShiftFollowUpMode('propagate-series')).toBe(true);
     expect(wasteManagementMasterDataContract.isTourDateShiftFollowUpMode('implicit')).toBe(false);
   });
+
+  it('defines supported waste holiday rule scopes, strategies and state codes', () => {
+    expect(wasteManagementMasterDataContract.holidayRuleScopes).toEqual(['holiday-only', 'full-week']);
+    expect(wasteManagementMasterDataContract.holidayRuleStrategies).toEqual(['advance', 'postpone']);
+    expect(wasteManagementMasterDataContract.isWasteHolidayRuleScope('holiday-only')).toBe(true);
+    expect(wasteManagementMasterDataContract.isWasteHolidayRuleStrategy('rollback')).toBe(false);
+    expect(wasteManagementMasterDataContract.holidayStateCodes).toContain('NW');
+    expect(wasteManagementMasterDataContract.isWasteHolidayStateCode('NW')).toBe(true);
+  });
 });

@@ -122,7 +122,7 @@
 **Files:**
 - Create or Modify: `docs/development/pnpm-supply-chain-hardening.md`
 - Modify: `docs/architecture/11-risks-and-technical-debt.md`
-- Modify: `docs/superpowers/plans/2026-05-27-tanstack-supply-chain-hardening.md`
+- Modify: `docs/superpowers/archived-plans/2026-05-27-tanstack-supply-chain-hardening.md`
 
 - [x] Eine kurze Fachdoku unter `docs/development/pnpm-supply-chain-hardening.md` anlegen oder aktualisieren, die erklärt:
   - warum `pnpm@11.3.0` eingeführt wurde
@@ -139,7 +139,7 @@
   pnpm test:types
   pnpm test:eslint
   ```
-- [ ] Wenn Laufzeit und Ressourcen es zulassen, zusätzlich das bevorzugte PR-Gate ausführen:
+- [x] Wenn Laufzeit und Ressourcen es zulassen, zusätzlich das bevorzugte PR-Gate ausführen:
   ```bash
   pnpm test:pr
   ```

@@ -64,6 +64,33 @@ const wasteTourDateSchema = z
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ungültiges Datum im Format JJJJ-MM-TT.');
 
+const wasteCustomRecurrencePresetSchema = z.object({
+  id: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  description: z.string().trim().min(1).optional(),
+  intervalDays: z.number().int().positive(),
+});
+
+const wasteHolidayStateCodeSchema = z.enum(wasteManagementMasterDataContract.holidayStateCodes);
+
+const updateWasteSettingsSchema = z.object({
+  provider: z.literal('supabase'),
+  projectUrl: z.string().trim(),
+  schemaName: z.string().trim().optional(),
+  enabled: z.boolean(),
+  holidayStateCode: wasteHolidayStateCodeSchema.optional(),
+  customRecurrencePresets: z.array(wasteCustomRecurrencePresetSchema).default([]),
+  deletedPresetFallbacks: z
+    .record(
+      z.string().trim().min(1),
+      z.object({
+        kind: z.enum(['preset', 'default']),
+        value: z.string().trim().min(1),
+      })
+    )
+    .default({}),
+});
+
 const createWasteLocationTourLinkSchema = z.object({
   id: z.string().trim().min(1),
   locationId: z.string().trim().min(1),
@@ -91,7 +118,9 @@ const createWasteTourSchema = z.object({
   name: z.string().trim().min(1),
   description: z.string().trim().min(1).optional(),
   wasteFractionIds: z.array(z.string().trim().min(1)).min(1),
+  duplicateFromTourId: z.string().trim().min(1).optional(),
   recurrence: wasteTourRecurrenceSchema.nullish(),
+  customRecurrenceId: z.string().trim().min(1).optional(),
   firstDate: wasteTourDateSchema.optional(),
   endDate: wasteTourDateSchema.optional(),
   customDates: z.array(wasteCustomTourDateSchema).optional(),
@@ -126,6 +155,11 @@ const createWasteGlobalDateShiftSchema = z.object({
 });
 
 const updateWasteGlobalDateShiftSchema = createWasteGlobalDateShiftSchema.omit({ id: true });
+
+const updateWasteHolidayRuleSchema = z.object({
+  scope: z.enum(wasteManagementMasterDataContract.holidayRuleScopes).optional(),
+  strategy: z.enum(wasteManagementMasterDataContract.holidayRuleStrategies).optional(),
+});
 
 const startMigrationsSchema = z.object({
   targetSchema: z.string().trim().min(1).optional(),
@@ -177,6 +211,11 @@ export const wasteManagementMasterDataSchemas = {
   updateWasteCollectionLocationSchema,
 } as const;
 
+export const wasteManagementSettingsSchemas = {
+  wasteCustomRecurrencePresetSchema,
+  updateWasteSettingsSchema,
+} as const;
+
 export const wasteManagementTourSchemas = {
   wasteCustomTourDateSchema,
   wasteTourDateSchema,
@@ -189,6 +228,7 @@ export const wasteManagementTourSchemas = {
   updateWasteTourDateShiftSchema,
   createWasteGlobalDateShiftSchema,
   updateWasteGlobalDateShiftSchema,
+  updateWasteHolidayRuleSchema,
 } as const;
 
 export const wasteManagementOperationSchemas = {

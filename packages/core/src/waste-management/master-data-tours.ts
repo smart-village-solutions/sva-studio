@@ -5,12 +5,24 @@ export type WasteCustomTourDate = {
   readonly description?: string;
 };
 
+export type WasteCustomRecurrencePresetRecord = {
+  readonly id: string;
+  readonly name: string;
+  readonly description?: string;
+  readonly intervalDays: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
 export type WasteTourRecord = {
   readonly id: string;
   readonly name: string;
   readonly description?: string;
   readonly wasteFractionIds: readonly string[];
   readonly recurrence?: WasteTourRecurrence | null;
+  readonly customRecurrenceId?: string;
+  readonly customRecurrenceName?: string;
+  readonly customRecurrenceIntervalDays?: number;
   readonly firstDate?: string;
   readonly endDate?: string;
   readonly customDates?: readonly WasteCustomTourDate[];
@@ -56,4 +68,5 @@ export type WasteLocationTourLinkBulkCreateResult = {
 
 export type WasteManagementToursOverview = {
   readonly tours: readonly WasteTourRecord[];
+  readonly customRecurrencePresets?: readonly WasteCustomRecurrencePresetRecord[];
 };

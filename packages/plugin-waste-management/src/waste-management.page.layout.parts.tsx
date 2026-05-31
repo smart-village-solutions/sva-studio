@@ -48,7 +48,7 @@ export const createWasteManagementTabContentMap = (
   access: WasteManagementUiAccess
 ): Record<WasteManagementTabId, ReactNode> => ({
   fractions: <WasteMasterDataPanel search={search} tab="fractions" />,
-  tours: <WasteToursPanel search={search} />,
+  tours: <WasteToursPanel search={search} canDuplicateTour={access.canDuplicateTour} />,
   locations: <WasteMasterDataPanel search={search} tab="locations" />,
   scheduling: <WasteSchedulingPanel search={search} />,
   output: <WasteOutputPanel />,

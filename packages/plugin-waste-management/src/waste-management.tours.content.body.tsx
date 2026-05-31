@@ -37,8 +37,10 @@ type WasteToursContentBodyProps = {
   readonly toggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
+  readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
+  readonly canDuplicateTour: boolean;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly setTourPendingDelete: Dispatch<SetStateAction<WasteTourRecord | null>>;
 };
@@ -80,8 +82,10 @@ export const WasteToursContentBody = (props: WasteToursContentBodyProps) => (
       onToggleSelectedTour={props.toggleSelectedTour}
       onOpenCalendar={props.onOpenCalendar}
       onOpenEditDialog={props.onOpenEditDialog}
+      onOpenDuplicateDialog={props.onOpenDuplicateDialog}
       onOpenCreateAssignmentsDialog={props.onOpenCreateAssignmentsDialog}
       onOpenEditAssignmentsDialog={props.onOpenEditAssignmentsDialog}
+      canDuplicateTour={props.canDuplicateTour}
       onToggleTourStatus={props.onToggleTourStatus}
       onRequestDeleteTour={props.setTourPendingDelete}
     />

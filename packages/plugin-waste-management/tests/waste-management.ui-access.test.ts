@@ -14,6 +14,7 @@ describe('waste-management.ui-access', () => {
     expect(access.canRunImport).toBe(false);
     expect(access.canRunSeed).toBe(false);
     expect(access.canRunReset).toBe(false);
+    expect(access.canDuplicateTour).toBe(false);
   });
 
   it('maps granular permissions to the matching settings and tools capabilities', () => {
@@ -32,5 +33,23 @@ describe('waste-management.ui-access', () => {
     expect(access.canRunImport).toBe(true);
     expect(access.canRunSeed).toBe(false);
     expect(access.canRunReset).toBe(true);
+    expect(access.canDuplicateTour).toBe(false);
+  });
+
+  it('shows duplicate action only when user can manage tours and scheduling', () => {
+    expect(
+      deriveWasteManagementUiAccess([
+        'waste-management.read',
+        'waste-management.tours.manage',
+      ]).canDuplicateTour
+    ).toBe(false);
+
+    expect(
+      deriveWasteManagementUiAccess([
+        'waste-management.read',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+      ]).canDuplicateTour
+    ).toBe(true);
   });
 });

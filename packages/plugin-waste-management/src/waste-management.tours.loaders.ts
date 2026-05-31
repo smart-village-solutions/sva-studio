@@ -17,6 +17,7 @@ export const useWasteToursDataLoading = (state: WasteToursState, pt: Translate) 
   const {
     setAssignmentContextLoading,
     setAvailableFractions,
+    setCustomRecurrencePresets,
     setError,
     setLoading,
     setMasterDataOverview,
@@ -33,6 +34,7 @@ export const useWasteToursDataLoading = (state: WasteToursState, pt: Translate) 
         ]);
         if (!isMountedRef.current) return;
         setOverview(toursResponse);
+        setCustomRecurrencePresets(toursResponse.customRecurrencePresets ?? []);
         setAvailableFractions(fractionsResponse.fractions);
         setMasterDataOverview(null);
         setAssignmentContextLoading(true);
@@ -52,6 +54,7 @@ export const useWasteToursDataLoading = (state: WasteToursState, pt: Translate) 
         if (!isMountedRef.current) return;
         const code = resolveApiErrorCode(loadError);
         setMasterDataOverview(null);
+        setCustomRecurrencePresets([]);
         setAssignmentContextLoading(false);
         setSchedulingOverview(null);
         setError(code === 'forbidden' ? ptRef.current('tours.messages.loadForbidden') : ptRef.current('tours.messages.loadError'));
@@ -62,6 +65,7 @@ export const useWasteToursDataLoading = (state: WasteToursState, pt: Translate) 
     [
       setAssignmentContextLoading,
       setAvailableFractions,
+      setCustomRecurrencePresets,
       setError,
       setLoading,
       setMasterDataOverview,

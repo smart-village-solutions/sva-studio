@@ -62,6 +62,7 @@ export const useWasteToursSuccessRedirect = ({
         ...latestSearch,
         toursView: 'list',
         tourId: undefined,
+        duplicateFromTourId: undefined,
       },
       replace: true,
     });

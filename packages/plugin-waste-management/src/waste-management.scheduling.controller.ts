@@ -18,6 +18,7 @@ export const useWasteSchedulingController = (pt: Translate, search: WasteManagem
 
   return {
     ...state,
+    holidayRules: state.overview?.holidayRules ?? [],
     tourDateShifts: filterTourDateShifts(state.overview?.tourDateShifts ?? [], search),
     globalDateShifts: filterGlobalDateShifts(state.overview?.globalDateShifts ?? [], search),
     ...actions,

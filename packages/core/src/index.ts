@@ -57,44 +57,17 @@ export {
 export { externalInterfaceContract } from './external-interfaces-contract.js';
 export { isUuid, readBoolean, readNumber, readNumberLike, readObject, readString } from './input-readers.js';
 export type {
-  ExternalInterfaceCategory,
-  ExternalInterfaceConnectionCheckRecord,
-  ExternalInterfaceOwnerKind,
-  ExternalInterfaceRecord,
-  ExternalInterfaceRuntimeErrorCode,
-  ExternalInterfaceSettingsRecord,
-  ExternalInterfaceStatusCheckKind,
-  ExternalInterfaceTypeDefinition,
-  ExternalInterfaceTypeKey,
-  ExternalInterfaceVisibleStatus,
-  ResolvedExternalInterface,
+  ExternalInterfaceCategory, ExternalInterfaceConnectionCheckRecord, ExternalInterfaceOwnerKind, ExternalInterfaceRecord,
+  ExternalInterfaceRuntimeErrorCode, ExternalInterfaceSettingsRecord, ExternalInterfaceStatusCheckKind,
+  ExternalInterfaceTypeDefinition, ExternalInterfaceTypeKey, ExternalInterfaceVisibleStatus, ResolvedExternalInterface,
 } from './external-interfaces-contract.js';
 export type {
-  StudioJobCancellationRequestInput,
-  StudioJobCreateInput,
-  StudioJobDetail,
-  StudioJobDetailResponse,
-  StudioJobError,
-  StudioJobEventCreateInput,
-  StudioJobEventDetails,
-  StudioJobEventHostDetails,
-  StudioJobEventPresentation,
-  StudioJobEventRecord,
-  StudioJobHeartbeatInput,
-  StudioJobListItem,
-  StudioJobListQuery,
-  StudioJobListResponse,
-  StudioJobProgressUpdateInput,
-  StudioJobResponse,
-  StudioJobProgress,
-  StudioJobResult,
-  StudioJobResultSummary,
-  StudioJobRecord,
-  StudioJobRuntimeDiagnostics,
-  StudioJobStartRequest,
-  StudioPluginOperationApiError,
-  StudioPluginOperationApiErrorResponse,
-  StudioJobUpdateInput,
+  StudioJobCancellationRequestInput, StudioJobCreateInput, StudioJobDetail, StudioJobDetailResponse, StudioJobError,
+  StudioJobEventCreateInput, StudioJobEventDetails, StudioJobEventHostDetails, StudioJobEventPresentation,
+  StudioJobEventRecord, StudioJobHeartbeatInput, StudioJobListItem, StudioJobListQuery, StudioJobListResponse,
+  StudioJobProgressUpdateInput, StudioJobResponse, StudioJobProgress, StudioJobResult, StudioJobResultSummary,
+  StudioJobRecord, StudioJobRuntimeDiagnostics, StudioJobStartRequest, StudioPluginOperationApiError,
+  StudioPluginOperationApiErrorResponse, StudioJobUpdateInput,
 } from './plugin-operations-contract.js';
 export { wasteManagementDataSourceContract } from './waste-management-contract.js';
 export type {
@@ -113,6 +86,7 @@ export type {
   WasteManagementDataSourceProvider,
   WasteManagementDataSourceRecord,
   WasteManagementDataSourceStatus,
+  WasteHolidaySyncStatus,
   WasteManagementSettingsRecord,
   WasteManagementTechnicalEventType,
 } from './waste-management-contract.js';
@@ -157,6 +131,15 @@ export type {
   WasteDateShiftReasonType,
   WasteCollectionLocationListFilter,
   WasteCollectionLocationRecord,
+  WasteHolidayRuleConflictStatus,
+  WasteHolidayRuleConfigurationStatus,
+  WasteHolidayRuleListFilter,
+  WasteHolidayRuleRecord,
+  WasteHolidayRuleScope,
+  WasteHolidayRuleSourceStatus,
+  WasteHolidayRuleStrategy,
+  WasteHolidayStateCode,
+  WasteCustomRecurrencePresetRecord,
   WasteCustomTourDate,
   WasteCityListFilter,
   WasteCityRecord,
@@ -190,13 +173,8 @@ export type {
 export { wasteManagementMasterDataContract } from './waste-management-master-data.js';
 export { buildWasteCalendarPdfDocument, renderWasteCalendarPdf } from './waste-management-output.js';
 export type {
-  WasteCalendarPdfDocument,
-  WasteManagementOutputOverview,
-  WasteManagementOutputPdfResult,
-  WasteOutputCollectionLocationArtifacts,
-  WasteOutputPdfArtifactRecord,
-  WasteOutputPickupEntry,
-  WasteOutputFraction,
+  WasteCalendarPdfDocument, WasteManagementOutputOverview, WasteManagementOutputPdfResult,
+  WasteOutputCollectionLocationArtifacts, WasteOutputPdfArtifactRecord, WasteOutputPickupEntry, WasteOutputFraction,
 } from './waste-management-output.types.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';

@@ -1,4 +1,4 @@
-import type { WasteFractionRecord } from '@sva/plugin-sdk';
+import type { WasteCustomRecurrencePresetRecord, WasteFractionRecord } from '@sva/plugin-sdk';
 import { Input, Select, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
 import type { ReactNode } from 'react';
 
@@ -32,18 +32,21 @@ const TourSection = ({
 export const WasteToursTourFields = ({
   form,
   fractions,
+  customRecurrencePresets,
   saving = false,
   pt,
   onChange,
 }: {
   readonly form: TourFormState;
   readonly fractions: readonly WasteFractionRecord[];
+  readonly customRecurrencePresets: readonly WasteCustomRecurrencePresetRecord[];
   readonly saving?: boolean;
   readonly pt: Translate;
   readonly onChange: (patch: Partial<TourFormState>) => void;
 }) => {
-  const showsDateRange = recurringTourRecurrences.has(form.recurrence);
-  const showsCustomDates = form.recurrence === 'custom';
+  const selectValue = form.customRecurrenceId ? `preset:${form.customRecurrenceId}` : form.recurrence;
+  const showsDateRange = Boolean(form.customRecurrenceId) || recurringTourRecurrences.has(form.recurrence);
+  const showsCustomDates = !form.customRecurrenceId && form.recurrence === 'custom';
 
   return (
     <div className="space-y-6">
@@ -76,14 +79,18 @@ export const WasteToursTourFields = ({
           <StudioField id="waste-tour-recurrence" label={pt('tours.fields.recurrence')} description={pt('tours.fieldHints.recurrence')}>
             <Select
               id="waste-tour-recurrence"
-              value={form.recurrence}
+              value={selectValue}
               onChange={(event) => {
-                const recurrence = event.target.value as TourFormState['recurrence'];
+                const rawValue = event.target.value;
+                const recurrence = rawValue.startsWith('preset:') ? '' : (rawValue as TourFormState['recurrence']);
+                const customRecurrenceId = rawValue.startsWith('preset:') ? rawValue.slice('preset:'.length) : '';
+                const keepsDateRange = Boolean(customRecurrenceId) || recurringTourRecurrences.has(recurrence);
                 onChange({
                   recurrence,
-                  firstDate: recurringTourRecurrences.has(recurrence) ? form.firstDate : '',
-                  endDate: recurringTourRecurrences.has(recurrence) ? form.endDate : '',
-                  customDates: recurrence === 'custom' ? form.customDates : [],
+                  customRecurrenceId,
+                  firstDate: keepsDateRange ? form.firstDate : '',
+                  endDate: keepsDateRange ? form.endDate : '',
+                  customDates: recurrence === 'custom' && !customRecurrenceId ? form.customDates : [],
                 });
               }}
             >
@@ -93,6 +100,15 @@ export const WasteToursTourFields = ({
               <option value="fourweekly">{pt('tours.recurrence.fourweekly')}</option>
               <option value="yearly">{pt('tours.recurrence.yearly')}</option>
               <option value="on-demand">{pt('tours.recurrence.onDemand')}</option>
+              {customRecurrencePresets.length > 0 ? (
+                <optgroup label={pt('tours.fields.customRecurrenceGroup')}>
+                  {customRecurrencePresets.map((preset) => (
+                    <option key={preset.id} value={`preset:${preset.id}`}>
+                      {pt('tours.meta.customRecurrenceOption', { name: preset.name, days: preset.intervalDays })}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
             </Select>
           </StudioField>
           {showsDateRange ? (

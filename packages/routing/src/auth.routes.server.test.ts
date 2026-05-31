@@ -159,8 +159,10 @@ const authServerMocks = vi.hoisted(() => {
       getSchedulingOverview: vi.fn(async () => response('getWasteManagementSchedulingOverviewHandler')),
       getToursOverview: vi.fn(async () => response('getWasteManagementToursOverviewHandler')),
       getSettings: vi.fn(async () => response('getWasteManagementSettingsHandler')),
+      runHolidaySync: vi.fn(async () => response('runWasteManagementHolidaySyncHandler')),
       startInitialize: vi.fn(async () => response('startWasteManagementInitializeHandler')),
       updateSettings: vi.fn(async () => response('updateWasteManagementSettingsHandler')),
+      updateHolidayRule: vi.fn(async () => response('updateWasteManagementHolidayRuleHandler')),
       deleteTour: vi.fn(async () => response('deleteWasteManagementTourHandler')),
       updateCity: vi.fn(async () => response('updateWasteManagementCityHandler')),
       updateCollectionLocation: vi.fn(async () => response('updateWasteManagementCollectionLocationHandler')),
@@ -453,9 +455,11 @@ describe('auth.routes.server', () => {
     const globalDateShiftDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/global-date-shifts/$shiftId');
     const tourDateShiftHandlers = resolveAuthHandlers('/api/v1/waste-management/tour-date-shifts');
     const tourDateShiftDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/tour-date-shifts/$shiftId');
+    const holidayRuleDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/holiday-rules/$holidayRuleId');
     const toursHandlers = resolveAuthHandlers('/api/v1/waste-management/tours');
     const tourDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/tours/$tourId');
     const settingsHandlers = resolveAuthHandlers('/api/v1/waste-management/settings');
+    const holidaySyncHandlers = resolveAuthHandlers('/api/v1/waste-management/settings/holiday-sync');
     const initializeHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/initialize');
     const migrationsHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/migrations');
     const importHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/imports');
@@ -483,11 +487,13 @@ describe('auth.routes.server', () => {
     expect(globalDateShiftDetailHandlers?.PUT).toBeDefined();
     expect(tourDateShiftHandlers?.POST).toBeDefined();
     expect(tourDateShiftDetailHandlers?.PUT).toBeDefined();
+    expect(holidayRuleDetailHandlers?.PUT).toBeDefined();
     expect(toursHandlers?.GET).toBeDefined();
     expect(toursHandlers?.POST).toBeDefined();
     expect(tourDetailHandlers?.PUT).toBeDefined();
     expect(settingsHandlers?.GET).toBeDefined();
     expect(settingsHandlers?.PUT).toBeDefined();
+    expect(holidaySyncHandlers?.POST).toBeDefined();
     expect(migrationsHandlers?.POST).toBeDefined();
     expect(importHandlers?.POST).toBeDefined();
     expect(seedHandlers?.POST).toBeDefined();
@@ -574,6 +580,11 @@ describe('auth.routes.server', () => {
         method: 'DELETE',
       }),
     });
+    await holidayRuleDetailHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/holiday-rules/holiday-rule-1', {
+        method: 'PUT',
+      }),
+    });
     await toursHandlers.GET?.({
       request: new Request('http://localhost/api/v1/waste-management/tours', { method: 'GET' }),
     });
@@ -591,6 +602,9 @@ describe('auth.routes.server', () => {
     });
     await settingsHandlers.PUT?.({
       request: new Request('http://localhost/api/v1/waste-management/settings', { method: 'PUT' }),
+    });
+    await holidaySyncHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/settings/holiday-sync', { method: 'POST' }),
     });
     await initializeHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/initialize', { method: 'POST' }),
@@ -630,6 +644,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.getSchedulingOverview).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createGlobalDateShift).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateGlobalDateShift).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateHolidayRule).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createTourDateShift).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateTourDateShift).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.deleteGlobalDateShift).toHaveBeenCalled();
@@ -640,6 +655,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.deleteTour).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.getSettings).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateSettings).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.runHolidaySync).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startInitialize).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startMigrations).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startImport).toHaveBeenCalled();

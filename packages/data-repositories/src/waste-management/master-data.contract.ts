@@ -3,10 +3,13 @@ import type {
   WasteCollectionLocationRecord,
   WasteCityListFilter,
   WasteCityRecord,
+  WasteCustomRecurrencePresetRecord,
   WasteFractionListFilter,
   WasteFractionRecord,
   WasteGlobalDateShiftListFilter,
   WasteGlobalDateShiftRecord,
+  WasteHolidayRuleListFilter,
+  WasteHolidayRuleRecord,
   WasteHouseNumberListFilter,
   WasteHouseNumberRecord,
   WasteLocationTourPickupDateListFilter,
@@ -64,12 +67,31 @@ export const wasteMasterDataRepositoryContract = {
     (input: Omit<WasteCollectionLocationRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
   >(),
   deleteWasteCollectionLocation: defineRepositoryMethod<(id: string) => Promise<void>>(),
+  listWasteHolidayRules: defineRepositoryMethod<
+    (filter?: WasteHolidayRuleListFilter) => Promise<readonly WasteHolidayRuleRecord[]>
+  >(),
+  upsertWasteHolidayRule: defineRepositoryMethod<
+    (input: Omit<WasteHolidayRuleRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
+  >(),
+  listWasteCustomRecurrencePresets: defineRepositoryMethod<
+    () => Promise<readonly WasteCustomRecurrencePresetRecord[]>
+  >(),
+  getWasteCustomRecurrencePresetById: defineRepositoryMethod<
+    (id: string) => Promise<WasteCustomRecurrencePresetRecord | null>
+  >(),
+  upsertWasteCustomRecurrencePreset: defineRepositoryMethod<
+    (input: Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
+  >(),
+  deleteWasteCustomRecurrencePreset: defineRepositoryMethod<(id: string) => Promise<void>>(),
   listWasteTours: defineRepositoryMethod<(filter?: WasteTourListFilter) => Promise<readonly WasteTourRecord[]>>(),
   getWasteTourById: defineRepositoryMethod<(id: string) => Promise<WasteTourRecord | null>>(),
   upsertWasteTour: defineRepositoryMethod<(input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => Promise<void>>(),
   deleteWasteTour: defineRepositoryMethod<(id: string) => Promise<void>>(),
   listWasteLocationTourLinks: defineRepositoryMethod<
     (filter?: WasteLocationTourLinkListFilter) => Promise<readonly WasteLocationTourLinkRecord[]>
+  >(),
+  listWasteLocationTourLinksByTourId: defineRepositoryMethod<
+    (tourId: string) => Promise<readonly WasteLocationTourLinkRecord[]>
   >(),
   getWasteLocationTourLinkById: defineRepositoryMethod<(id: string) => Promise<WasteLocationTourLinkRecord | null>>(),
   upsertWasteLocationTourLink: defineRepositoryMethod<
@@ -87,6 +109,9 @@ export const wasteMasterDataRepositoryContract = {
   >(),
   listWasteTourDateShifts: defineRepositoryMethod<
     (filter?: WasteTourDateShiftListFilter) => Promise<readonly WasteTourDateShiftRecord[]>
+  >(),
+  listWasteTourDateShiftsByTourId: defineRepositoryMethod<
+    (tourId: string) => Promise<readonly WasteTourDateShiftRecord[]>
   >(),
   getWasteTourDateShiftById: defineRepositoryMethod<(id: string) => Promise<WasteTourDateShiftRecord | null>>(),
   upsertWasteTourDateShift: defineRepositoryMethod<

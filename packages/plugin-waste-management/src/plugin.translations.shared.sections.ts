@@ -20,18 +20,8 @@ type WasteManagementSettingsCopy = Readonly<{
   }>;
   fields: Readonly<Record<string, string>>;
   meta: Readonly<Record<string, string>>;
-  actions: Readonly<{
-    save: string;
-    saving: string;
-  }>;
-  messages: Readonly<{
-    loading: string;
-    loadError: string;
-    loadForbidden: string;
-    saveSuccess: string;
-    saveError: string;
-    saveForbidden: string;
-  }>;
+  actions: Readonly<Record<string, string>>;
+  messages: Readonly<Record<string, string>>;
 }>;
 
 type WasteManagementOverviewCopy = Readonly<{

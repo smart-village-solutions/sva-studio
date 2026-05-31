@@ -1,4 +1,4 @@
-import type { WasteFractionRecord, WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteCustomRecurrencePresetRecord, WasteFractionRecord, WasteTourRecord } from '@sva/plugin-sdk';
 import { useState } from 'react';
 
 import type {
@@ -18,6 +18,7 @@ export const useWasteToursState = () => {
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<WasteManagementToursOverview | null>(null);
   const [availableFractions, setAvailableFractions] = useState<readonly WasteFractionRecord[]>([]);
+  const [customRecurrencePresets, setCustomRecurrencePresets] = useState<readonly WasteCustomRecurrencePresetRecord[]>([]);
   const [masterDataOverview, setMasterDataOverview] = useState<WasteManagementMasterDataOverview | null>(null);
   const [assignmentContextLoading, setAssignmentContextLoading] = useState(true);
   const [schedulingOverview, setSchedulingOverview] = useState<WasteManagementSchedulingOverview | null>(null);
@@ -38,6 +39,7 @@ export const useWasteToursState = () => {
     loading,
     overview,
     availableFractions,
+    customRecurrencePresets,
     masterDataOverview,
     assignmentContextLoading,
     schedulingOverview,
@@ -56,6 +58,7 @@ export const useWasteToursState = () => {
     setLoading,
     setOverview,
     setAvailableFractions,
+    setCustomRecurrencePresets,
     setMasterDataOverview,
     setAssignmentContextLoading,
     setSchedulingOverview,

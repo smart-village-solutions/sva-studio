@@ -138,7 +138,7 @@ git commit -m "spec: add waste tour duplication proposal"
 - Test: `packages/plugin-waste-management/tests/search-params.test.ts`
 - Test: `packages/plugin-waste-management/tests/waste-management.tours.shared.test.ts`
 
-- [ ] **Step 1: Failing Tests für `duplicateFromTourId` ergänzen**
+- [x] **Step 1: Failing Tests für `duplicateFromTourId` ergänzen**
 
 ```ts
 it('normalizes duplicateFromTourId as optional trimmed search param', () => {
@@ -168,12 +168,12 @@ it('includes duplicateFromTourId in create tour input mapping when present', () 
 });
 ```
 
-- [ ] **Step 2: Gezielte Plugin-Tests ausführen und rotes Verhalten bestätigen**
+- [x] **Step 2: Gezielte Plugin-Tests ausführen und rotes Verhalten bestätigen**
 
 Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/search-params.test.ts --testFiles=tests/waste-management.tours.shared.test.ts`  
 Expected: FAIL wegen fehlendem `duplicateFromTourId` in Typen, Normalisierung oder Mappern
 
-- [ ] **Step 3: Minimale Typ- und Mapper-Erweiterung implementieren**
+- [x] **Step 3: Minimale Typ- und Mapper-Erweiterung implementieren**
 
 ```ts
 export type WasteManagementSearchParams = Readonly<{
@@ -201,7 +201,7 @@ export const toCreateTourInput = (
 });
 ```
 
-- [ ] **Step 4: Tests erneut ausführen**
+- [x] **Step 4: Tests erneut ausführen**
 
 Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/search-params.test.ts --testFiles=tests/waste-management.tours.shared.test.ts`  
 Expected: PASS
@@ -233,7 +233,7 @@ git commit -m "feat: add waste tour duplication client contract"
 - Test: `packages/plugin-waste-management/tests/waste-management.tours-content.test.tsx`
 - Test: `packages/plugin-waste-management/tests/waste-management.ui-access.test.ts`
 
-- [ ] **Step 1: Failing UI- und Navigationstests ergänzen**
+- [x] **Step 1: Failing UI- und Navigationstests ergänzen**
 
 ```ts
 it('prefills create flow from duplicate action with copied name suffix', () => {
@@ -278,12 +278,12 @@ it('shows duplicate action only when user can manage tours and scheduling', () =
 });
 ```
 
-- [ ] **Step 2: Gezielte Tests ausführen**
+- [x] **Step 2: Gezielte Tests ausführen**
 
 Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.tours-list-view.navigation.test.ts --testFiles=tests/waste-management.tours-content.test.tsx --testFiles=tests/waste-management.ui-access.test.ts`  
 Expected: FAIL wegen fehlender `toDuplicate`-Navigation, fehlendem Access-Flag oder fehlender Tabellenaktion
 
-- [ ] **Step 3: Vorbelegung, Aktion und Rechte-Gating minimal implementieren**
+- [x] **Step 3: Vorbelegung, Aktion und Rechte-Gating minimal implementieren**
 
 ```ts
 openDuplicateDialog: (tour: WasteTourRecord) => {
@@ -314,7 +314,7 @@ return {
 };
 ```
 
-- [ ] **Step 4: Tests erneut ausführen**
+- [x] **Step 4: Tests erneut ausführen**
 
 Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.tours-list-view.navigation.test.ts --testFiles=tests/waste-management.tours-content.test.tsx --testFiles=tests/waste-management.ui-access.test.ts`  
 Expected: PASS
@@ -346,10 +346,10 @@ git commit -m "feat: add waste tour duplicate navigation"
 - Modify: `packages/plugin-waste-management/src/waste-management.api.operations.ts`
 - Modify: `packages/plugin-waste-management/src/plugin.translations.de.tours.ts`
 - Modify: `packages/plugin-waste-management/src/plugin.translations.en.tours.ts`
-- Test: `packages/plugin-waste-management/tests/waste-management.tours-panel.test.tsx`
-- Test: `packages/plugin-waste-management/tests/waste-management.tours-content.test.tsx`
+- Test: `packages/plugin-waste-management/tests/waste-management.tours-form-content.test.tsx`
+- Test: `packages/plugin-waste-management/tests/waste-management.page.test.tsx`
 
-- [ ] **Step 1: Failing Tests für Hinweistext und Submit-Payload ergänzen**
+- [x] **Step 1: Failing Tests für Hinweistext und Submit-Payload ergänzen**
 
 ```ts
 it('renders duplication hint only when duplicateFromTourId is set', () => {
@@ -378,12 +378,12 @@ it('sends duplicateFromTourId during create submit', async () => {
 });
 ```
 
-- [ ] **Step 2: Gezielte Tests ausführen**
+- [x] **Step 2: Gezielte Tests ausführen**
 
-Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.tours-panel.test.tsx --testFiles=tests/waste-management.tours-content.test.tsx`  
+Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.tours-form-content.test.tsx --testFiles=tests/waste-management.page.test.tsx`  
 Expected: FAIL wegen fehlendem Hinweisblock oder fehlender Submit-Weitergabe
 
-- [ ] **Step 3: Hint-Rendering und Submit-Weitergabe minimal implementieren**
+- [x] **Step 3: Hint-Rendering und Submit-Weitergabe minimal implementieren**
 
 ```tsx
 {showDuplicationHint ? (
@@ -405,9 +405,9 @@ const createSubmitTourHandler = ({ state, pt, loadOverview }: WasteToursSubmissi
 };
 ```
 
-- [ ] **Step 4: Tests erneut ausführen**
+- [x] **Step 4: Tests erneut ausführen**
 
-Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.tours-panel.test.tsx --testFiles=tests/waste-management.tours-content.test.tsx`  
+Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.tours-form-content.test.tsx --testFiles=tests/waste-management.page.test.tsx`  
 Expected: PASS
 
 - [ ] **Step 5: Teilfortschritt committen**
@@ -419,8 +419,8 @@ git add packages/plugin-waste-management/src/waste-management.tours-form-content
   packages/plugin-waste-management/src/waste-management.api.operations.ts \
   packages/plugin-waste-management/src/plugin.translations.de.tours.ts \
   packages/plugin-waste-management/src/plugin.translations.en.tours.ts \
-  packages/plugin-waste-management/tests/waste-management.tours-panel.test.tsx \
-  packages/plugin-waste-management/tests/waste-management.tours-content.test.tsx
+  packages/plugin-waste-management/tests/waste-management.tours-form-content.test.tsx \
+  packages/plugin-waste-management/tests/waste-management.page.test.tsx
 git commit -m "feat: add waste tour duplication form flow"
 ```
 
@@ -434,7 +434,7 @@ git commit -m "feat: add waste tour duplication form flow"
 - Modify: `packages/auth-runtime/src/waste-management/server-loaders.ts`
 - Modify: `packages/auth-runtime/src/waste-management/server-loaders.test.ts`
 
-- [ ] **Step 1: Failing Tests für listenbasierte Quell-Lader ergänzen**
+- [x] **Step 1: Failing Tests für listenbasierte Quell-Lader ergänzen**
 
 ```ts
 it('exposes loader helpers for location-tour-links and tour-date-shifts by tour id', () => {
@@ -447,13 +447,13 @@ it('exposes loader helpers for location-tour-links and tour-date-shifts by tour 
 });
 ```
 
-- [ ] **Step 2: Loader-Tests ausführen**
+- [x] **Step 2: Loader-Tests ausführen**
 
 Run: `pnpm nx run auth-runtime:test:unit --testFiles=src/waste-management/server-loaders.test.ts --testFiles=../data-repositories/src/waste-management/master-data.contract.test.ts`  
 Expected: FAIL wegen fehlender Repository-/Loader-Methoden  
 Note: Wenn Nx projektübergreifende `--testFiles` nicht akzeptiert, Tests getrennt ausführen.
 
-- [ ] **Step 3: Minimale Repository- und Loader-Erweiterung implementieren**
+- [x] **Step 3: Minimale Repository- und Loader-Erweiterung implementieren**
 
 ```ts
 listWasteLocationTourLinksByTourId: defineRepositoryMethod<
@@ -475,7 +475,7 @@ const listWasteTourDateShiftsByTourId = createLoader(
 );
 ```
 
-- [ ] **Step 4: Tests erneut ausführen**
+- [x] **Step 4: Tests erneut ausführen**
 
 Run: `pnpm nx run data-repositories:test:unit --testFiles=src/waste-management/master-data.contract.test.ts`  
 Expected: PASS  
@@ -505,7 +505,7 @@ git commit -m "feat: add waste tour duplication source loaders"
 - Test: `packages/auth-runtime/src/waste-management/core.test.ts`
 - Test: `packages/auth-runtime/src/waste-management/server.test.ts`
 
-- [ ] **Step 1: Failing Handler-Tests für Erfolg, Rechte und Fehlerpfade ergänzen**
+- [x] **Step 1: Failing Handler-Tests für Erfolg, Rechte und Fehlerpfade ergänzen**
 
 ```ts
 it('duplicates location-tour-links and tour-date-shifts when duplicateFromTourId is set', async () => {
@@ -538,12 +538,12 @@ it('removes created tour again when shift copy fails', async () => {
 });
 ```
 
-- [ ] **Step 2: Gezielte Auth-Runtime-Tests ausführen**
+- [x] **Step 2: Gezielte Auth-Runtime-Tests ausführen**
 
 Run: `pnpm nx run auth-runtime:test:unit --testFiles=src/waste-management/core.test.ts --testFiles=src/waste-management/server.test.ts`  
 Expected: FAIL wegen fehlendem Schema-Feld, fehlender Rechteverzweigung oder fehlender Kompensation
 
-- [ ] **Step 3: Minimalen Serverpfad mit Kopierorchestrierung implementieren**
+- [x] **Step 3: Minimalen Serverpfad mit Kopierorchestrierung implementieren**
 
 ```ts
 const createWasteTourSchema = z.object({
@@ -584,7 +584,7 @@ try {
 }
 ```
 
-- [ ] **Step 4: Tests erneut ausführen**
+- [x] **Step 4: Tests erneut ausführen**
 
 Run: `pnpm nx run auth-runtime:test:unit --testFiles=src/waste-management/core.test.ts --testFiles=src/waste-management/server.test.ts`  
 Expected: PASS
@@ -608,15 +608,18 @@ git commit -m "feat: add waste tour duplication server flow"
 - Verify: `docs/superpowers/specs/2026-05-27-waste-tour-duplication-design.md`
 - Verify: `openspec/changes/add-waste-tour-duplication/specs/waste-management/spec.md`
 
-- [ ] **Step 1: Vollständige fokussierte Testmatrix ausführen**
+- [x] **Step 1: Vollständige fokussierte Testmatrix ausführen**
 
-Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/search-params.test.ts --testFiles=tests/waste-management.tours.shared.test.ts --testFiles=tests/waste-management.tours-list-view.navigation.test.ts --testFiles=tests/waste-management.tours-content.test.tsx --testFiles=tests/waste-management.tours-panel.test.tsx --testFiles=tests/waste-management.ui-access.test.ts`  
+Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/search-params.test.ts --testFiles=tests/waste-management.tours.shared.test.ts --testFiles=tests/waste-management.tours-list-view.navigation.test.ts --testFiles=tests/waste-management.tours-content.test.tsx --testFiles=tests/waste-management.tours-form-content.test.tsx --testFiles=tests/waste-management.page.test.tsx --testFiles=tests/waste-management.ui-access.test.ts`  
 Expected: PASS
 
 Run: `pnpm nx run auth-runtime:test:unit --testFiles=src/waste-management/server-loaders.test.ts --testFiles=src/waste-management/core.test.ts --testFiles=src/waste-management/server.test.ts`  
 Expected: PASS
 
-- [ ] **Step 2: Typ- und Lint-Gates nachziehen**
+Run: `pnpm nx run data-repositories:test:unit --testFiles=src/waste-management/master-data.contract.test.ts`  
+Expected: PASS
+
+- [x] **Step 2: Typ- und Lint-Gates nachziehen**
 
 Run: `pnpm test:types`  
 Expected: PASS
@@ -629,7 +632,7 @@ Expected: PASS
 Run: `pnpm test:pr`  
 Expected: PASS oder dokumentierter Abbruchgrund
 
-- [ ] **Step 3: OpenSpec-Tasks als erledigt markieren und erneut validieren**
+- [x] **Step 3: OpenSpec-Tasks als erledigt markieren und erneut validieren**
 
 ```md
 ## 1. Implementation

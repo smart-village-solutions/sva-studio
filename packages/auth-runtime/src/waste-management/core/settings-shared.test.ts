@@ -56,7 +56,10 @@ describe('waste-management settings shared helpers', () => {
         lastCheckStatus: 'failed',
         lastCheckErrorCode: 'connection_failed',
         lastCheckErrorMessage: 'boom',
+        holidayStateCode: 'NW',
+        lastHolidaySyncStatus: 'partial_success',
         updatedAt: '2026-05-09T10:00:00.000Z',
+        customRecurrencePresets: [],
       })
     ).toEqual({
       instanceId: 'tenant-a',
@@ -71,7 +74,10 @@ describe('waste-management settings shared helpers', () => {
       lastCheckStatus: 'failed',
       lastCheckErrorCode: 'connection_failed',
       lastCheckErrorMessage: 'boom',
+      holidayStateCode: 'NW',
+      lastHolidaySyncStatus: 'partial_success',
       updatedAt: '2026-05-09T10:00:00.000Z',
+      customRecurrencePresets: [],
     });
   });
 
@@ -99,9 +105,20 @@ describe('waste-management settings shared helpers', () => {
           publicConfig: {
             projectUrl: 'https://tenant.example',
             schemaName: 'wm',
+            holidayStateCode: 'NW',
+            lastHolidaySyncStatus: 'success',
           },
           secretConfigCiphertext: 'cipher-secret',
         })),
+        loadWasteCustomRecurrencePresets: vi.fn(async () => [
+          {
+            id: 'preset-10',
+            name: '10 Tage',
+            intervalDays: 10,
+            createdAt: '2026-05-09T09:00:00.000Z',
+            updatedAt: '2026-05-09T09:30:00.000Z',
+          },
+        ]),
       },
       'tenant-a'
     );
@@ -119,7 +136,18 @@ describe('waste-management settings shared helpers', () => {
       lastCheckStatus: 'failed',
       lastCheckErrorCode: 'database_auth_failed',
       lastCheckErrorMessage: 'DB auth failed',
+      holidayStateCode: 'NW',
+      lastHolidaySyncStatus: 'success',
       updatedAt: '2026-05-09T11:00:00.000Z',
+      customRecurrencePresets: [
+        {
+          id: 'preset-10',
+          name: '10 Tage',
+          intervalDays: 10,
+          createdAt: '2026-05-09T09:00:00.000Z',
+          updatedAt: '2026-05-09T09:30:00.000Z',
+        },
+      ],
     });
   });
 

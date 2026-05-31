@@ -25,12 +25,14 @@ export const WasteToursContent = ({
   schedulingOverview,
   onOpenCreateDialog,
   onOpenEditDialog,
+  onOpenDuplicateDialog,
   onOpenCreateAssignmentsDialog,
   onOpenEditAssignmentsDialog,
   onOpenCalendar,
   onToggleTourStatus,
   onDeleteTour,
   onDeleteTours,
+  canDuplicateTour = false,
   saving = false,
   page,
   pageSize,
@@ -62,7 +64,12 @@ export const WasteToursContent = ({
         case 'name':
           return tour.name;
         case 'recurrence': {
-          const recurrenceValue = formatTourRecurrence(pt, tour.recurrence);
+          const recurrenceValue = formatTourRecurrence(
+            pt,
+            tour.recurrence,
+            tour.customRecurrenceName,
+            tour.customRecurrenceIntervalDays
+          );
           return recurrenceValue === '—' ? '' : recurrenceValue;
         }
         case 'locations':
@@ -139,8 +146,10 @@ export const WasteToursContent = ({
         toggleSelectedTour={toggleSelectedTour}
         onOpenCalendar={onOpenCalendar}
         onOpenEditDialog={onOpenEditDialog}
+        onOpenDuplicateDialog={onOpenDuplicateDialog}
         onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
+        canDuplicateTour={canDuplicateTour}
         onToggleTourStatus={onToggleTourStatus}
         setTourPendingDelete={setTourPendingDelete}
       />

@@ -10,6 +10,7 @@ import type {
   WasteCollectionLocationRecord,
   WasteFractionRecord,
   WasteGlobalDateShiftRecord,
+  WasteHolidayRuleRecord,
   WasteHouseNumberRecord,
   WasteLocationTourLinkRecord,
   WasteRegionRecord,
@@ -62,10 +63,12 @@ const {
   startWasteManagementMigrationsInternal,
   startWasteManagementResetInternal,
   startWasteManagementSeedInternal,
+  runWasteManagementHolidaySyncInternal,
   updateWasteManagementCityInternal,
   updateWasteManagementCollectionLocationInternal,
   updateWasteManagementFractionInternal,
   updateWasteManagementGlobalDateShiftInternal,
+  updateWasteManagementHolidayRuleInternal,
   updateWasteManagementHouseNumberInternal,
   updateWasteManagementLocationTourLinkInternal,
   updateWasteManagementRegionInternal,
@@ -100,6 +103,8 @@ const baseInterfaceRecord = {
   publicConfig: {
     projectUrl: 'https://tenant-a.supabase.co',
     schemaName: 'public',
+    holidayStateCode: 'NW',
+    lastHolidaySyncStatus: 'success',
   },
   secretConfigCiphertext: 'cipher-secret',
 };
@@ -157,6 +162,9 @@ describe('waste-management auth runtime handlers', () => {
         databaseUrlConfigured: true,
         serviceRoleKeyConfigured: true,
         visibleStatus: 'unknown',
+        holidayStateCode: 'NW',
+        lastHolidaySyncStatus: 'success',
+        customRecurrencePresets: [],
       },
       requestId: 'req-test',
     });
@@ -398,6 +406,20 @@ describe('waste-management auth runtime handlers', () => {
           updatedAt: '2026-05-09T10:00:00.000Z',
         },
       ],
+      holidayRules: [
+        {
+          id: 'holiday-rule-1',
+          holidayDate: '2026-01-01',
+          holidayName: 'Neujahr',
+          year: 2026,
+          stateCode: 'NW',
+          sourceStatus: 'confirmed',
+          configurationStatus: 'draft',
+          conflictStatus: 'none',
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        },
+      ],
     };
 
     const response = await getWasteManagementSchedulingOverviewInternal(
@@ -420,10 +442,25 @@ describe('waste-management auth runtime handlers', () => {
     });
   });
 
-  it('rejects legacy settings writes because interfaces are canonical', async () => {
+  it('saves custom recurrence presets through the settings mutation path', async () => {
 
     const saveExternalInterfaceConnectionCheck = vi.fn(async (_record: ExternalInterfaceConnectionCheckRecord) => undefined);
 
+    const saveWasteCustomRecurrencePresets = vi.fn(async () => undefined);
+    const saveExternalInterfaceRecord = vi.fn(async () => undefined);
+    const syncWasteHolidayRules = vi.fn(async () => 'success' as const);
+    const loadWasteCustomRecurrencePresets = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'preset-10',
+          name: '10 Tage',
+          intervalDays: 10,
+          createdAt: '2026-05-09T12:20:00.000Z',
+          updatedAt: '2026-05-09T12:20:00.000Z',
+        },
+      ]);
     const emitAuditEvent = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementSettingsInternal(
@@ -437,14 +474,22 @@ describe('waste-management auth runtime handlers', () => {
         body: JSON.stringify({
           provider: 'supabase',
           projectUrl: 'https://tenant-a.supabase.co',
-          schemaName: 'wm',
+          schemaName: 'public',
           enabled: true,
+          holidayStateCode: 'NW',
+          customRecurrencePresets: [{ id: 'preset-10', name: '10 Tage', intervalDays: 10 }],
+          deletedPresetFallbacks: {},
         }),
       }),
       actor,
       {
         getRequestId: () => 'req-test',
         saveExternalInterfaceConnectionCheck,
+        saveExternalInterfaceRecord,
+        loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
+        loadWasteCustomRecurrencePresets,
+        saveWasteCustomRecurrencePresets,
+        syncWasteHolidayRules,
         emitAuditEvent,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -453,13 +498,67 @@ describe('waste-management auth runtime handlers', () => {
       }
     );
 
-    expect(saveExternalInterfaceConnectionCheck).not.toHaveBeenCalled();
+    expect(saveWasteCustomRecurrencePresets).toHaveBeenCalledWith('tenant-a', {
+      nextItems: [{ id: 'preset-10', name: '10 Tage', intervalDays: 10 }],
+      deletedPresetFallbacks: {},
+    });
+    expect(syncWasteHolidayRules).toHaveBeenCalledWith('tenant-a', 'NW');
     expect(emitAuditEvent).toHaveBeenCalledTimes(1);
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      error: {
-        code: 'invalid_request',
-        message: 'Die Waste-Supabase wird ausschließlich über /interfaces verwaltet.',
+      data: {
+        holidayStateCode: 'NW',
+        lastHolidaySyncStatus: 'success',
+        customRecurrencePresets: [{ id: 'preset-10', name: '10 Tage', intervalDays: 10 }],
+      },
+      requestId: 'req-test',
+    });
+  });
+
+  it('runs a manual holiday resync through the dedicated settings endpoint', async () => {
+
+    const saveExternalInterfaceRecord = vi.fn(async () => undefined);
+    const syncWasteHolidayRules = vi.fn(async () => 'partial_success' as const);
+
+    const response = await runWasteManagementHolidaySyncInternal(
+      new Request('https://studio.test/api/v1/waste-management/settings/holiday-sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({}),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        saveExternalInterfaceRecord,
+        loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
+        loadWasteCustomRecurrencePresets: vi.fn(async () => []),
+        syncWasteHolidayRules,
+        emitAuditEvent: vi.fn(async () => undefined),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.settings.manage'),
+        })),
+      }
+    );
+
+    expect(syncWasteHolidayRules).toHaveBeenCalledWith('tenant-a', 'NW');
+    expect(saveExternalInterfaceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publicConfig: expect.objectContaining({
+          holidayStateCode: 'NW',
+          lastHolidaySyncStatus: 'partial_success',
+        }),
+      })
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        holidayStateCode: 'NW',
+        lastHolidaySyncStatus: 'partial_success',
       },
       requestId: 'req-test',
     });
@@ -1404,6 +1503,7 @@ describe('waste-management auth runtime handlers', () => {
       description: 'Zweiwöchentliche Tour',
       wasteFractionIds: ['fraction-2'],
       recurrence: 'biweekly',
+      customRecurrenceId: undefined,
       firstDate: '2026-05-19',
       endDate: undefined,
       customDates: [{ date: '2026-06-02', description: 'Sonderabfuhr' }],
@@ -1416,6 +1516,213 @@ describe('waste-management auth runtime handlers', () => {
       data: savedTour,
       requestId: 'req-test',
     });
+  });
+
+  it('duplicates tour links and date shifts after creating a duplicated waste tour', async () => {
+    const savedTour: WasteTourRecord = {
+      id: 'tour-copy-1',
+      name: 'Papier Mitte (Kopie)',
+      description: 'Zweiwöchentliche Tour',
+      wasteFractionIds: ['fraction-2'],
+      recurrence: 'biweekly',
+      firstDate: '2026-05-19',
+      customDates: [{ date: '2026-06-02', description: 'Sonderabfuhr' }],
+      active: true,
+      createdAt: '2026-05-09T12:00:00.000Z',
+      updatedAt: '2026-05-09T12:30:00.000Z',
+    };
+    const sourceLinks: readonly WasteLocationTourLinkRecord[] = [
+      {
+        id: 'link-source-1',
+        locationId: 'location-1',
+        tourId: 'tour-source-1',
+        startDate: '2026-05-01',
+        endDate: '2026-12-31',
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+    ];
+    const sourceShifts: readonly WasteTourDateShiftRecord[] = [
+      {
+        id: 'shift-source-1',
+        tourId: 'tour-source-1',
+        originalDate: '2026-12-24',
+        actualDate: '2026-12-23',
+        hasYear: true,
+        reasonType: 'holiday',
+        reasonKey: 'xmas-eve',
+        followUpMode: 'move_forward',
+        description: 'Vorverlegung',
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+    ];
+
+    const saveWasteTour = vi.fn(async () => undefined);
+    const loadWasteTourById = vi.fn(async () => savedTour);
+    const listWasteLocationTourLinksByTourId = vi.fn(async () => sourceLinks);
+    const saveWasteLocationTourLink = vi.fn(async () => undefined);
+    const listWasteTourDateShiftsByTourId = vi.fn(async () => sourceShifts);
+    const saveWasteTourDateShift = vi.fn(async () => undefined);
+    const deleteWasteTour = vi.fn(async () => undefined);
+
+    const response = await createWasteManagementTourInternal(
+      new Request('https://studio.test/api/v1/waste-management/tours', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          id: 'tour-copy-1',
+          name: 'Papier Mitte (Kopie)',
+          description: 'Zweiwöchentliche Tour',
+          wasteFractionIds: ['fraction-2'],
+          recurrence: 'biweekly',
+          firstDate: '2026-05-19',
+          customDates: [{ date: '2026-06-02', description: 'Sonderabfuhr' }],
+          duplicateFromTourId: 'tour-source-1',
+          active: true,
+        }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        saveWasteTour,
+        loadWasteTourById,
+        listWasteLocationTourLinksByTourId,
+        saveWasteLocationTourLink,
+        listWasteTourDateShiftsByTourId,
+        saveWasteTourDateShift,
+        deleteWasteTour,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [
+            ...allowPermission('waste-management.tours.manage'),
+            ...allowPermission('waste-management.scheduling.manage'),
+          ],
+        })),
+      }
+    );
+
+    expect(listWasteLocationTourLinksByTourId).toHaveBeenCalledWith('tenant-a', 'tour-source-1');
+    expect(saveWasteLocationTourLink).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({
+        locationId: 'location-1',
+        tourId: 'tour-copy-1',
+        startDate: '2026-05-01',
+        endDate: '2026-12-31',
+      })
+    );
+    expect(listWasteTourDateShiftsByTourId).toHaveBeenCalledWith('tenant-a', 'tour-source-1');
+    expect(saveWasteTourDateShift).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({
+        tourId: 'tour-copy-1',
+        originalDate: '2026-12-24',
+        actualDate: '2026-12-23',
+        hasYear: true,
+        reasonType: 'holiday',
+        reasonKey: 'xmas-eve',
+        followUpMode: 'move_forward',
+        description: 'Vorverlegung',
+      })
+    );
+    expect(deleteWasteTour).not.toHaveBeenCalled();
+    expect(response.status).toBe(201);
+  });
+
+  it('rejects duplicated waste tour creation without scheduling permission', async () => {
+    const saveWasteTour = vi.fn(async () => undefined);
+
+    const response = await createWasteManagementTourInternal(
+      new Request('https://studio.test/api/v1/waste-management/tours', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          id: 'tour-copy-2',
+          name: 'Papier Mitte (Kopie)',
+          wasteFractionIds: ['fraction-2'],
+          duplicateFromTourId: 'tour-source-1',
+          active: true,
+        }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        saveWasteTour,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.tours.manage'),
+        })),
+      }
+    );
+
+    expect(response.status).toBe(403);
+    expect(saveWasteTour).not.toHaveBeenCalled();
+  });
+
+  it('rolls back the created waste tour when duplicated relation copying fails', async () => {
+    const saveWasteTour = vi.fn(async () => undefined);
+    const loadWasteTourById = vi.fn(async () => null);
+    const listWasteLocationTourLinksByTourId = vi.fn(async () => [
+      {
+        id: 'link-source-1',
+        locationId: 'location-1',
+        tourId: 'tour-source-1',
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+    ] satisfies readonly WasteLocationTourLinkRecord[]);
+    const saveWasteLocationTourLink = vi.fn(async () => {
+      throw new Error('copy_failed');
+    });
+    const listWasteTourDateShiftsByTourId = vi.fn(async () => []);
+    const deleteWasteTour = vi.fn(async () => undefined);
+
+    const response = await createWasteManagementTourInternal(
+      new Request('https://studio.test/api/v1/waste-management/tours', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          id: 'tour-copy-3',
+          name: 'Papier Mitte (Kopie)',
+          wasteFractionIds: ['fraction-2'],
+          duplicateFromTourId: 'tour-source-1',
+          active: true,
+        }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        saveWasteTour,
+        loadWasteTourById,
+        listWasteLocationTourLinksByTourId,
+        saveWasteLocationTourLink,
+        listWasteTourDateShiftsByTourId,
+        deleteWasteTour,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [
+            ...allowPermission('waste-management.tours.manage'),
+            ...allowPermission('waste-management.scheduling.manage'),
+          ],
+        })),
+      }
+    );
+
+    expect(deleteWasteTour).toHaveBeenCalledWith('tenant-a', 'tour-copy-3');
+    expect(response.status).toBe(503);
   });
 
   it('updates a waste tour through the tours mutation path', async () => {
@@ -1479,6 +1786,7 @@ describe('waste-management auth runtime handlers', () => {
       description: 'Angepasste Route',
       wasteFractionIds: ['fraction-1'],
       recurrence: 'weekly',
+      customRecurrenceId: undefined,
       firstDate: '2026-05-12',
       endDate: undefined,
       customDates: undefined,
@@ -1490,6 +1798,65 @@ describe('waste-management auth runtime handlers', () => {
       data: updatedTour,
       requestId: 'req-test',
     });
+  });
+
+  it('normalizes tour writes to customRecurrenceId when a custom preset is selected', async () => {
+    const saveWasteTour = vi.fn(async () => undefined);
+    const loadWasteTourById = vi.fn(async () => ({
+      id: 'tour-custom',
+      name: 'Papier Intervall',
+      wasteFractionIds: ['fraction-2'],
+      recurrence: null,
+      customRecurrenceId: 'preset-10',
+      active: true,
+      createdAt: '2026-05-09T12:00:00.000Z',
+      updatedAt: '2026-05-09T12:30:00.000Z',
+    }));
+
+    const response = await createWasteManagementTourInternal(
+      new Request('https://studio.test/api/v1/waste-management/tours', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          id: 'tour-custom',
+          name: 'Papier Intervall',
+          wasteFractionIds: ['fraction-2'],
+          recurrence: 'weekly',
+          customRecurrenceId: 'preset-10',
+          firstDate: '2026-05-19',
+          active: true,
+        }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        saveWasteTour,
+        loadWasteTourById,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.tours.manage'),
+        })),
+      }
+    );
+
+    expect(saveWasteTour).toHaveBeenCalledWith('tenant-a', {
+      id: 'tour-custom',
+      name: 'Papier Intervall',
+      description: undefined,
+      wasteFractionIds: ['fraction-2'],
+      recurrence: null,
+      customRecurrenceId: 'preset-10',
+      firstDate: '2026-05-19',
+      endDate: undefined,
+      customDates: undefined,
+      active: true,
+      locationCount: undefined,
+    });
+    expect(response.status).toBe(201);
   });
 
   it('creates a tour-related waste date shift through the scheduling mutation path', async () => {
@@ -1771,6 +2138,77 @@ describe('waste-management auth runtime handlers', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       data: updatedShift,
+      requestId: 'req-test',
+    });
+  });
+
+  it('updates a holiday rule through the scheduling mutation path', async () => {
+    const existingRule: WasteHolidayRuleRecord = {
+      id: 'holiday-rule-1',
+      holidayDate: '2026-01-01',
+      holidayName: 'Neujahr',
+      year: 2026,
+      stateCode: 'NW',
+      sourceStatus: 'confirmed',
+      configurationStatus: 'draft',
+      conflictStatus: 'none',
+      createdAt: '2026-05-10T10:00:00.000Z',
+      updatedAt: '2026-05-10T10:00:00.000Z',
+    };
+    const updatedRule: WasteHolidayRuleRecord = {
+      ...existingRule,
+      scope: 'holiday-only',
+      strategy: 'advance',
+      configurationStatus: 'configured',
+      updatedAt: '2026-05-10T10:30:00.000Z',
+    };
+
+    const loadWasteHolidayRuleById = vi
+      .fn<(_: string, __: string) => Promise<WasteHolidayRuleRecord | null>>()
+      .mockResolvedValueOnce(existingRule)
+      .mockResolvedValueOnce(updatedRule);
+    const saveWasteHolidayRule = vi.fn(async () => undefined);
+
+    const response = await updateWasteManagementHolidayRuleInternal(
+      new Request('https://studio.test/api/v1/waste-management/holiday-rules/holiday-rule-1', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          scope: 'holiday-only',
+          strategy: 'advance',
+        }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        saveWasteHolidayRule,
+        loadWasteHolidayRuleById,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.scheduling.manage'),
+        })),
+      }
+    );
+
+    expect(saveWasteHolidayRule).toHaveBeenCalledWith('tenant-a', {
+      id: 'holiday-rule-1',
+      holidayDate: '2026-01-01',
+      holidayName: 'Neujahr',
+      year: 2026,
+      stateCode: 'NW',
+      sourceStatus: 'confirmed',
+      configurationStatus: 'configured',
+      conflictStatus: 'none',
+      scope: 'holiday-only',
+      strategy: 'advance',
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: updatedRule,
       requestId: 'req-test',
     });
   });

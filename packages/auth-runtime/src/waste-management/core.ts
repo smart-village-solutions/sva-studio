@@ -2,6 +2,7 @@ import { wasteManagementCityHandlers } from './core/cities.js';
 import { wasteManagementCollectionLocationHandlers } from './core/collection-locations.js';
 import { wasteManagementFractionHandlers } from './core/fractions.js';
 import { wasteManagementGlobalDateShiftHandlers } from './core/global-date-shifts.js';
+import { wasteManagementHolidayRuleHandlers } from './core/holiday-rules.js';
 import { wasteManagementHouseNumberHandlers } from './core/house-numbers.js';
 import { wasteManagementLocationTourLinkBulkHandlers } from './core/location-tour-links-bulk.js';
 import { wasteManagementLocationTourLinkHandlers } from './core/location-tour-links.js';
@@ -27,5 +28,6 @@ export const wasteManagementCoreHandlers = {
   ...wasteManagementTourHandlers,
   ...wasteManagementTourDateShiftHandlers,
   ...wasteManagementGlobalDateShiftHandlers,
+  ...wasteManagementHolidayRuleHandlers,
   ...wasteManagementOperationHandlers,
 };

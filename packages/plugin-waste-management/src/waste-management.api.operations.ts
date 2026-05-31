@@ -1,6 +1,7 @@
 import type {
   StudioJobDetail,
   WasteGlobalDateShiftRecord,
+  WasteHolidayRuleRecord,
   WasteManagementSettingsRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
@@ -17,6 +18,7 @@ import type {
   StartWasteManagementResetInput,
   StartWasteManagementSeedInput,
   UpdateWasteManagementGlobalDateShiftInput,
+  UpdateWasteManagementHolidayRuleInput,
   UpdateWasteManagementTourDateShiftInput,
   UpdateWasteManagementTourInput,
   WasteManagementSettingsInput,
@@ -79,6 +81,15 @@ export const updateWasteManagementSettings = async (
   input: WasteManagementSettingsInput
 ): Promise<WasteManagementSettingsRecord | null> =>
   requestWasteManagementMutation('/api/v1/waste-management/settings', input, 'PUT');
+
+export const startWasteManagementHolidaySync = async (): Promise<WasteManagementSettingsRecord | null> =>
+  requestWasteManagementMutation('/api/v1/waste-management/settings/holiday-sync', {}, 'POST');
+
+export const updateWasteManagementHolidayRule = async (
+  ruleId: string,
+  input: UpdateWasteManagementHolidayRuleInput
+): Promise<WasteHolidayRuleRecord> =>
+  requestWasteManagementMutation(`/api/v1/waste-management/holiday-rules/${encodeURIComponent(ruleId)}`, input, 'PUT');
 
 export const startWasteManagementInitialize = async (input: Readonly<{ targetSchema?: string }> = {}) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/initialize', input);

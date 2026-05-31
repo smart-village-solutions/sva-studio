@@ -145,10 +145,18 @@ export const createWasteTourDateShiftRepositoryPart = (
   executor: SqlExecutor
 ): Pick<
   WasteMasterDataRepository,
-  'listWasteTourDateShifts' | 'getWasteTourDateShiftById' | 'upsertWasteTourDateShift' | 'deleteWasteTourDateShift'
+  | 'listWasteTourDateShifts'
+  | 'listWasteTourDateShiftsByTourId'
+  | 'getWasteTourDateShiftById'
+  | 'upsertWasteTourDateShift'
+  | 'deleteWasteTourDateShift'
 > => ({
   async listWasteTourDateShifts(filter) {
     const result = await executor.execute<WasteTourDateShiftRow>(buildTourDateShiftListStatement(filter));
+    return result.rows.map(mapWasteTourDateShiftRow);
+  },
+  async listWasteTourDateShiftsByTourId(tourId) {
+    const result = await executor.execute<WasteTourDateShiftRow>(buildTourDateShiftListStatement({ tourId }));
     return result.rows.map(mapWasteTourDateShiftRow);
   },
   async getWasteTourDateShiftById(id) {

@@ -1,6 +1,10 @@
+import type { WasteHolidayStateCode } from './waste-management/master-data-contract.js';
+import type { WasteCustomRecurrencePresetRecord } from './waste-management/master-data-tours.js';
+
 const wasteManagementDataSourceProviders = ['supabase'] as const;
 const wasteManagementDataSourceStatuses = ['not_configured', 'unknown', 'ok', 'error'] as const;
 const wasteManagementConnectionCheckStatuses = ['succeeded', 'failed'] as const;
+const wasteHolidaySyncStatuses = ['success', 'partial_success', 'failed'] as const;
 const wasteManagementTechnicalEventTypes = [
   'datasource.reconfigured',
   'connection-check.succeeded',
@@ -22,12 +26,14 @@ const wasteManagementTechnicalEventTypes = [
 export type WasteManagementDataSourceProvider = (typeof wasteManagementDataSourceProviders)[number];
 export type WasteManagementDataSourceStatus = (typeof wasteManagementDataSourceStatuses)[number];
 export type WasteManagementConnectionCheckStatus = (typeof wasteManagementConnectionCheckStatuses)[number];
+export type WasteHolidaySyncStatus = (typeof wasteHolidaySyncStatuses)[number];
 export type WasteManagementTechnicalEventType = (typeof wasteManagementTechnicalEventTypes)[number];
 
 export const wasteManagementDataSourceContract = {
   providers: wasteManagementDataSourceProviders,
   statuses: wasteManagementDataSourceStatuses,
   checkStatuses: wasteManagementConnectionCheckStatuses,
+  holidaySyncStatuses: wasteHolidaySyncStatuses,
   technicalEventTypes: wasteManagementTechnicalEventTypes,
   isProvider: (value: string): value is WasteManagementDataSourceProvider =>
     (wasteManagementDataSourceProviders as readonly string[]).includes(value),
@@ -35,6 +41,8 @@ export const wasteManagementDataSourceContract = {
     (wasteManagementDataSourceStatuses as readonly string[]).includes(value),
   isCheckStatus: (value: string): value is WasteManagementConnectionCheckStatus =>
     (wasteManagementConnectionCheckStatuses as readonly string[]).includes(value),
+  isHolidaySyncStatus: (value: string): value is WasteHolidaySyncStatus =>
+    (wasteHolidaySyncStatuses as readonly string[]).includes(value),
   isTechnicalEventType: (value: string): value is WasteManagementTechnicalEventType =>
     (wasteManagementTechnicalEventTypes as readonly string[]).includes(value),
 } as const;
@@ -52,7 +60,10 @@ export type WasteManagementSettingsRecord = {
   readonly lastCheckStatus?: WasteManagementConnectionCheckStatus;
   readonly lastCheckErrorCode?: string;
   readonly lastCheckErrorMessage?: string;
+  readonly holidayStateCode?: WasteHolidayStateCode;
+  readonly lastHolidaySyncStatus?: WasteHolidaySyncStatus;
   readonly updatedAt?: string;
+  readonly customRecurrencePresets?: readonly WasteCustomRecurrencePresetRecord[];
 };
 
 export type WasteManagementDataSourceRecord = WasteManagementSettingsRecord & {

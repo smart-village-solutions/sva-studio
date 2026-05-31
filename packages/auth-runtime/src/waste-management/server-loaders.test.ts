@@ -168,10 +168,14 @@ const repositoryMocks = vi.hoisted(() => ({
   listWasteStreets: vi.fn(async () => [{ id: 'street-1' }]),
   listWasteHouseNumbers: vi.fn(async () => [{ id: 'house-1' }]),
   listWasteCollectionLocations: vi.fn(async () => [{ id: 'location-1' }]),
+  listWasteCustomRecurrencePresets: vi.fn(async () => [{ id: 'preset-1' }]),
   listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1' }]),
+  listWasteLocationTourLinksByTourId: vi.fn(async () => [{ id: 'link-1' }]),
   listWasteLocationTourPickupDates: vi.fn(async () => [{ id: 'pickup-date-1' }]),
+  listWasteHolidayRules: vi.fn(async () => [{ id: 'holiday-rule-1' }]),
   listWasteTours: vi.fn(async () => [{ id: 'tour-1' }]),
   listWasteTourDateShifts: vi.fn(async () => [{ id: 'shift-1' }]),
+  listWasteTourDateShiftsByTourId: vi.fn(async () => [{ id: 'shift-1' }]),
   listWasteGlobalDateShifts: vi.fn(async () => [{ id: 'global-shift-1' }]),
   getWasteFractionById: vi.fn(async (_id: string) => ({ id: 'fraction-1' })),
   upsertWasteFraction: vi.fn(async () => undefined),
@@ -189,6 +193,10 @@ const repositoryMocks = vi.hoisted(() => ({
   getWasteLocationTourLinkById: vi.fn(async (id: string) => ({ id, locationId: 'location-1', tourId: 'tour-1' })),
   upsertWasteLocationTourLink: vi.fn(async () => undefined),
   deleteWasteLocationTourLink: vi.fn(async () => undefined),
+  getWasteCustomRecurrencePresetById: vi.fn(async (_id: string) => ({ id: 'preset-1' })),
+  upsertWasteCustomRecurrencePreset: vi.fn(async () => undefined),
+  deleteWasteCustomRecurrencePreset: vi.fn(async () => undefined),
+  upsertWasteHolidayRule: vi.fn(async () => undefined),
   getWasteTourById: vi.fn(async (_id: string) => ({ id: 'tour-1' })),
   upsertWasteTour: vi.fn(async () => undefined),
   getWasteTourDateShiftById: vi.fn(async (_id: string) => ({ id: 'shift-1' })),
@@ -298,11 +306,15 @@ describe('waste-management server loaders', () => {
       collectionLocations: [{ id: 'location-1' }],
       locationTourLinks: [{ id: 'link-1' }],
     });
-    expect(toursOverview).toEqual({ tours: [{ id: 'tour-1' }] });
+    expect(toursOverview).toEqual({
+      tours: [{ id: 'tour-1' }],
+      customRecurrencePresets: [{ id: 'preset-1' }],
+    });
     expect(schedulingOverview).toEqual({
       locationTourPickupDates: [{ id: 'pickup-date-1' }],
       tourDateShifts: [{ id: 'shift-1' }],
       globalDateShifts: [{ id: 'global-shift-1' }],
+      holidayRules: [{ id: 'holiday-rule-1' }],
     });
     expect(withInstanceDbMock).toHaveBeenCalledTimes(3);
     expect(instanceDbQueryMock).toHaveBeenCalledWith(
@@ -645,6 +657,9 @@ describe('waste-management server loaders', () => {
   });
 
   it('delegates entity loaders, savers, and bulk link creation through the scoped repository', async () => {
+    await expect(wasteManagementEntityLoaders.loadWasteCustomRecurrencePresets('tenant-a')).resolves.toEqual([
+      { id: 'preset-1' },
+    ]);
     await expect(wasteManagementEntityLoaders.loadWasteFractionById('tenant-a', 'fraction-1')).resolves.toEqual({ id: 'fraction-1' });
     await expect(wasteManagementEntityLoaders.loadWasteRegionById('tenant-a', 'region-1')).resolves.toEqual({ id: 'region-1' });
     await expect(wasteManagementEntityLoaders.loadWasteCityById('tenant-a', 'city-1')).resolves.toEqual({ id: 'city-1' });
@@ -656,10 +671,20 @@ describe('waste-management server loaders', () => {
       locationId: 'location-1',
       tourId: 'tour-1',
     });
+    await expect(wasteManagementEntityLoaders.listWasteLocationTourLinksByTourId('tenant-a', 'tour-1')).resolves.toEqual([
+      { id: 'link-1' },
+    ]);
     await expect(wasteManagementEntityLoaders.loadWasteTourById('tenant-a', 'tour-1')).resolves.toEqual({ id: 'tour-1' });
     await expect(wasteManagementEntityLoaders.loadWasteTourDateShiftById('tenant-a', 'shift-1')).resolves.toEqual({ id: 'shift-1' });
+    await expect(wasteManagementEntityLoaders.listWasteTourDateShiftsByTourId('tenant-a', 'tour-1')).resolves.toEqual([
+      { id: 'shift-1' },
+    ]);
     await expect(wasteManagementEntityLoaders.loadWasteGlobalDateShiftById('tenant-a', 'global-shift-1')).resolves.toEqual({ id: 'global-shift-1' });
 
+    await wasteManagementEntitySavers.saveWasteCustomRecurrencePresets('tenant-a', {
+      nextItems: [{ id: 'preset-2', name: '14 Tage', intervalDays: 14 }],
+      deletedPresetFallbacks: {},
+    });
     await wasteManagementEntitySavers.saveWasteFraction('tenant-a', { id: 'fraction-2' } as never);
     await wasteManagementEntitySavers.saveWasteRegion('tenant-a', { id: 'region-2' } as never);
     await wasteManagementEntitySavers.saveWasteCity('tenant-a', { id: 'city-2' } as never);
@@ -682,6 +707,11 @@ describe('waste-management server loaders', () => {
       endDate: '2026-12-31',
     });
 
+    expect(repositoryMocks.upsertWasteCustomRecurrencePreset).toHaveBeenCalledWith({
+      id: 'preset-2',
+      name: '14 Tage',
+      intervalDays: 14,
+    });
     expect(repositoryMocks.upsertWasteFraction).toHaveBeenCalled();
     expect(repositoryMocks.upsertWasteRegion).toHaveBeenCalled();
     expect(repositoryMocks.upsertWasteCity).toHaveBeenCalled();
@@ -696,12 +726,45 @@ describe('waste-management server loaders', () => {
     expect(repositoryMocks.upsertWasteTourDateShift).toHaveBeenCalled();
     expect(repositoryMocks.deleteWasteGlobalDateShift).toHaveBeenCalledWith('global-shift-2');
     expect(repositoryMocks.upsertWasteGlobalDateShift).toHaveBeenCalled();
+    expect(repositoryMocks.listWasteLocationTourLinksByTourId).toHaveBeenCalledWith('tour-1');
+    expect(repositoryMocks.listWasteTourDateShiftsByTourId).toHaveBeenCalledWith('tour-1');
     expect(bulkResult).toHaveLength(2);
     expect(PoolMock).toHaveBeenCalledTimes(1);
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('BEGIN');
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('SET search_path TO "wm", public;');
     expect(poolFactoryInstances.at(-1)?.end).not.toHaveBeenCalled();
+  });
+
+  it('requires explicit fallback mappings before deleting referenced custom recurrence presets', async () => {
+    repositoryMocks.listWasteCustomRecurrencePresets.mockResolvedValueOnce([
+      {
+        id: 'preset-10',
+        name: '10 Tage',
+        intervalDays: 10,
+        createdAt: '2026-05-09T10:00:00.000Z',
+        updatedAt: '2026-05-09T10:00:00.000Z',
+      },
+    ]);
+    repositoryMocks.listWasteTours.mockResolvedValueOnce([
+      {
+        id: 'tour-1',
+        name: 'Tour Nord',
+        wasteFractionIds: ['fraction-1'],
+        recurrence: null,
+        customRecurrenceId: 'preset-10',
+        active: true,
+        createdAt: '2026-05-09T10:00:00.000Z',
+        updatedAt: '2026-05-09T10:00:00.000Z',
+      },
+    ]);
+
+    await expect(
+      wasteManagementEntitySavers.saveWasteCustomRecurrencePresets('tenant-a', {
+        nextItems: [],
+        deletedPresetFallbacks: {},
+      })
+    ).rejects.toThrowError('custom_recurrence_fallback_required:preset-10');
   });
 
   it('rolls back the bulk location-tour-link transaction when verification fails', async () => {
@@ -738,6 +801,7 @@ describe('waste-management server loaders', () => {
     await expect(wasteManagementOverviewLoaders.loadToursOverview('tenant-a')).rejects.toThrow('connect_failed');
     await expect(wasteManagementOverviewLoaders.loadToursOverview('tenant-a')).resolves.toEqual({
       tours: [{ id: 'tour-1' }],
+      customRecurrencePresets: [{ id: 'preset-1' }],
     });
 
     expect(connectCalls).toBe(1);
@@ -745,6 +809,92 @@ describe('waste-management server loaders', () => {
     expect(poolFactoryInstances).toHaveLength(2);
     expect(poolFactoryInstances[0]?.end).toHaveBeenCalledTimes(1);
     expect(poolFactoryInstances[1]?.end).not.toHaveBeenCalled();
+  });
+
+  it('marks missing holidays as not-confirmed and flags conflicts with manual global shifts during sync', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-15T08:00:00.000Z'));
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const year = Number(new URL(url).searchParams.get('jahr'));
+      return new Response(
+        JSON.stringify(
+          year === 2026
+            ? {
+                Neujahr: { datum: '2026-01-01', hinweis: '' },
+              }
+            : {}
+        ),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    });
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+
+    repositoryMocks.listWasteHolidayRules.mockResolvedValueOnce([
+      {
+        id: 'holiday-rule-existing',
+        holidayDate: '2026-01-01',
+        holidayName: 'Neujahr',
+        year: 2026,
+        stateCode: 'NW',
+        sourceStatus: 'confirmed',
+        configurationStatus: 'draft',
+        conflictStatus: 'none',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'holiday-rule-stale',
+        holidayDate: '2026-05-01',
+        holidayName: 'Tag der Arbeit',
+        year: 2026,
+        stateCode: 'NW',
+        sourceStatus: 'confirmed',
+        configurationStatus: 'draft',
+        conflictStatus: 'none',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+    repositoryMocks.listWasteGlobalDateShifts.mockResolvedValueOnce([
+      {
+        id: 'global-shift-1',
+        originalDate: '2026-01-01',
+        actualDate: '2026-01-02',
+        hasYear: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    try {
+      await expect(wasteManagementEntitySavers.syncWasteHolidayRules('tenant-a', 'NW')).resolves.toBe('success');
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.useRealTimers();
+    }
+
+    expect(repositoryMocks.upsertWasteHolidayRule).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'holiday-rule-existing',
+        holidayDate: '2026-01-01',
+        holidayName: 'Neujahr',
+        sourceStatus: 'confirmed',
+        conflictStatus: 'manual-global-rule',
+      })
+    );
+    expect(repositoryMocks.upsertWasteHolidayRule).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'holiday-rule-stale',
+        holidayDate: '2026-05-01',
+        holidayName: 'Tag der Arbeit',
+        sourceStatus: 'not-confirmed',
+      })
+    );
   });
 
   it('keeps technical history stable when jobs are unfinished or have unknown mappings', async () => {

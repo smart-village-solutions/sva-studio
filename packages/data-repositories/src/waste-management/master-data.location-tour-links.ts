@@ -109,10 +109,18 @@ export const createWasteLocationTourLinkRepositoryPart = (
   executor: SqlExecutor
 ): Pick<
   WasteMasterDataRepository,
-  'listWasteLocationTourLinks' | 'getWasteLocationTourLinkById' | 'upsertWasteLocationTourLink' | 'deleteWasteLocationTourLink'
+  | 'listWasteLocationTourLinks'
+  | 'listWasteLocationTourLinksByTourId'
+  | 'getWasteLocationTourLinkById'
+  | 'upsertWasteLocationTourLink'
+  | 'deleteWasteLocationTourLink'
 > => ({
   async listWasteLocationTourLinks(filter) {
     const result = await executor.execute<WasteLocationTourLinkRow>(buildLocationTourLinkListStatement(filter));
+    return result.rows.map(mapWasteLocationTourLinkRow);
+  },
+  async listWasteLocationTourLinksByTourId(tourId) {
+    const result = await executor.execute<WasteLocationTourLinkRow>(buildLocationTourLinkListStatement({ tourId }));
     return result.rows.map(mapWasteLocationTourLinkRow);
   },
   async getWasteLocationTourLinkById(id) {

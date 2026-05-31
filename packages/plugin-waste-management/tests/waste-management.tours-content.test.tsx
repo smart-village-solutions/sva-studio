@@ -74,6 +74,7 @@ describe('WasteToursContent', () => {
     ]);
 
     const onOpenEditDialog = vi.fn();
+    const onOpenDuplicateDialog = vi.fn();
     const onOpenCreateAssignmentsDialog = vi.fn();
     const onOpenEditAssignmentsDialog = vi.fn();
     const onOpenCalendar = vi.fn();
@@ -104,12 +105,14 @@ describe('WasteToursContent', () => {
         schedulingOverview={null}
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={onOpenEditDialog}
+        onOpenDuplicateDialog={onOpenDuplicateDialog}
         onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
         onOpenCalendar={onOpenCalendar}
         onToggleTourStatus={vi.fn(async () => undefined)}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
+        canDuplicateTour
         saving={false}
         page={1}
         pageSize={25}
@@ -140,10 +143,12 @@ describe('WasteToursContent', () => {
     expect(screen.getAllByTestId('badge')).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.edit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tours.actions.duplicate' }));
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openAssignments' }));
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openCalendar' }));
 
     expect(onOpenEditDialog).toHaveBeenCalledWith(tour);
+    expect(onOpenDuplicateDialog).toHaveBeenCalledWith(tour);
     expect(onOpenCalendar).toHaveBeenCalledWith(tour);
     expect(onOpenEditAssignmentsDialog).toHaveBeenCalledWith(tour, 'link-1');
     expect(onOpenCreateAssignmentsDialog).not.toHaveBeenCalled();
@@ -172,12 +177,14 @@ describe('WasteToursContent', () => {
         schedulingOverview={null}
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={vi.fn()}
+        onOpenDuplicateDialog={vi.fn()}
         onOpenCreateAssignmentsDialog={vi.fn()}
         onOpenEditAssignmentsDialog={vi.fn()}
         onOpenCalendar={vi.fn()}
         onToggleTourStatus={vi.fn(async () => undefined)}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
+        canDuplicateTour={false}
         saving={false}
         page={1}
         pageSize={25}

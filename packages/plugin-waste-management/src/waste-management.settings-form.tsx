@@ -1,16 +1,32 @@
-import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { usePluginTranslation, wasteManagementMasterDataContract, type WasteHolidayStateCode } from '@sva/plugin-sdk';
+import { Button, Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 import type { FormEvent } from 'react';
 
 import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
+import { WasteSettingsCustomRecurrenceSection } from './waste-management.settings-custom-recurrence-section.js';
 
-type SettingsFormState = {
+export type CustomRecurrencePresetInputState = {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly intervalDays: number;
+};
+
+export type DeletedPresetFallbackState = {
+  readonly kind: 'preset' | 'default';
+  readonly value: string;
+};
+
+export type SettingsFormState = {
   readonly provider: 'supabase';
   readonly projectUrl: string;
   readonly schemaName: string;
   readonly enabled: boolean;
+  readonly holidayStateCode: WasteHolidayStateCode | '';
   readonly databaseUrl: string;
   readonly serviceRoleKey: string;
+  readonly customRecurrencePresets: readonly CustomRecurrencePresetInputState[];
+  readonly deletedPresetFallbacks: Readonly<Record<string, DeletedPresetFallbackState>>;
 };
 
 export const WasteSettingsForm = ({
@@ -38,6 +54,7 @@ export const WasteSettingsForm = ({
             <Input
               id="waste-settings-project-url"
               value={form.projectUrl}
+              disabled
               onChange={(event) => onChange((current) => ({ ...current, projectUrl: event.target.value }))}
               placeholder="https://example.supabase.co"
             />
@@ -46,6 +63,7 @@ export const WasteSettingsForm = ({
             <Input
               id="waste-settings-schema-name"
               value={form.schemaName}
+              disabled
               onChange={(event) => onChange((current) => ({ ...current, schemaName: event.target.value }))}
               placeholder="public"
             />
@@ -54,6 +72,7 @@ export const WasteSettingsForm = ({
             <Input
               id="waste-settings-database-url"
               value={form.databaseUrl}
+              disabled
               onChange={(event) => onChange((current) => ({ ...current, databaseUrl: event.target.value }))}
               placeholder="postgresql://..."
             />
@@ -62,6 +81,7 @@ export const WasteSettingsForm = ({
             <Input
               id="waste-settings-service-role-key"
               value={form.serviceRoleKey}
+              disabled
               onChange={(event) => onChange((current) => ({ ...current, serviceRoleKey: event.target.value }))}
               placeholder="service-role-key"
             />
@@ -74,11 +94,44 @@ export const WasteSettingsForm = ({
             />
             <span className="text-sm text-muted-foreground">{form.enabled ? pt('common.active') : pt('common.inactive')}</span>
           </div>
+          <StudioField
+            id="waste-settings-holiday-state-code"
+            label={pt('settings.fields.holidayStateCode')}
+            description={pt('settings.messages.holidayStateDescription')}
+          >
+            <Select
+              id="waste-settings-holiday-state-code"
+              value={form.holidayStateCode}
+              onChange={(event) =>
+                onChange((current) => ({
+                  ...current,
+                  holidayStateCode: event.target.value as WasteHolidayStateCode | '',
+                }))
+              }
+            >
+              <option value="">{pt('settings.fields.holidayStateCodePlaceholder')}</option>
+              {wasteManagementMasterDataContract.holidayStateCodes.map((stateCode) => (
+                <option key={stateCode} value={stateCode}>
+                  {stateCode}
+                </option>
+              ))}
+            </Select>
+          </StudioField>
         </StudioFieldGroup>
+        <p className="text-xs text-muted-foreground">{pt('settings.messages.connectionManagedHint')}</p>
       </div>
-      <Button type="submit" disabled={saving}>
-        {saving ? pt('settings.actions.saving') : pt('settings.actions.save')}
-      </Button>
+      <WasteSettingsCustomRecurrenceSection
+        items={form.customRecurrencePresets}
+        deletedPresetFallbacks={form.deletedPresetFallbacks}
+        onChange={(customRecurrencePresets, deletedPresetFallbacks) =>
+          onChange((current) => ({ ...current, customRecurrencePresets, deletedPresetFallbacks }))
+        }
+      />
+      <div>
+        <Button type="submit" disabled={saving}>
+          {saving ? pt('settings.actions.saving') : pt('settings.actions.save')}
+        </Button>
+      </div>
     </form>
   );
 };

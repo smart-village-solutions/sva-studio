@@ -33,6 +33,7 @@ type CalendarEntryRow = {
   readonly tour_id: string;
   readonly tour_name: string;
   readonly tour_recurrence: 'weekly' | 'biweekly' | 'fourweekly' | 'yearly' | 'on-demand' | 'custom' | null;
+  readonly tour_custom_recurrence_interval_days: number | null;
   readonly tour_first_date: string | null;
   readonly tour_end_date: string | null;
   readonly tour_custom_dates: readonly { readonly date?: unknown; readonly description?: unknown }[] | null;
@@ -244,6 +245,7 @@ export const createPublicWasteRepository = (input: {
             t.id::text AS tour_id,
             t.name AS tour_name,
             t.recurrence AS tour_recurrence,
+            crp.interval_days AS tour_custom_recurrence_interval_days,
             t.first_date::text AS tour_first_date,
             t.end_date::text AS tour_end_date,
             t.custom_dates AS tour_custom_dates,
@@ -253,6 +255,7 @@ export const createPublicWasteRepository = (input: {
           FROM ${schemaName}.waste_collection_locations cl
           INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
           INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
+          LEFT JOIN ${schemaName}.waste_custom_recurrence_presets crp ON crp.id = t.custom_recurrence_id
           LEFT JOIN ${schemaName}.waste_fractions f ON f.id::text = ANY(t.waste_fraction_ids)
           WHERE cl.active = true
             AND t.active = true
@@ -315,6 +318,7 @@ export const createPublicWasteRepository = (input: {
                 readonly id: string;
                 readonly name: string;
                 readonly recurrence: CalendarEntryRow['tour_recurrence'];
+                readonly customRecurrenceIntervalDays?: number;
                 readonly firstDate?: string;
                 readonly endDate?: string;
                 readonly customDates: readonly { readonly date: string; readonly description?: string }[];
@@ -352,6 +356,9 @@ export const createPublicWasteRepository = (input: {
               id: row.tour_id,
               name: row.tour_name,
               recurrence: row.tour_recurrence,
+              ...(typeof row.tour_custom_recurrence_interval_days === 'number'
+                ? { customRecurrenceIntervalDays: row.tour_custom_recurrence_interval_days }
+                : {}),
               ...(row.tour_first_date ? { firstDate: row.tour_first_date } : {}),
               ...(row.tour_end_date ? { endDate: row.tour_end_date } : {}),
               customDates: normalizeCustomDates(row.tour_custom_dates),

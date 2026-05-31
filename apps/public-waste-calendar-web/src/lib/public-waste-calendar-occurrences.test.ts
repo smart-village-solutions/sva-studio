@@ -42,6 +42,22 @@ describe('public waste calendar occurrences', () => {
             fractions: [{ id: 'paper', label: 'Papier', color: '#0000FF' }],
           },
         },
+        {
+          linkId: 'link-3',
+          locationId: 'loc-1',
+          startDate: '2026-01-01',
+          endDate: '2026-12-31',
+          tour: {
+            id: 'tour-custom-preset',
+            name: 'Ferientour',
+            recurrence: null,
+            customRecurrenceIntervalDays: 10,
+            firstDate: '2026-05-19',
+            endDate: '2026-06-10',
+            customDates: [],
+            fractions: [{ id: 'rest', label: 'Restmüll', color: '#444444' }],
+          },
+        },
       ],
       tourDateShifts: [
         {
@@ -64,6 +80,14 @@ describe('public waste calendar occurrences', () => {
     });
 
     expect(entries).toEqual([
+      {
+        id: 'tour-custom-preset:2026-05-19:rest',
+        date: '2026-05-19',
+        fractionId: 'rest',
+        fractionLabel: 'Restmüll',
+        fractionColor: '#444444',
+        note: null,
+      },
       {
         id: 'tour-bio:2026-05-20:bio',
         date: '2026-05-20',
@@ -89,6 +113,14 @@ describe('public waste calendar occurrences', () => {
         note: null,
       },
       {
+        id: 'tour-custom-preset:2026-05-29:rest',
+        date: '2026-05-29',
+        fractionId: 'rest',
+        fractionLabel: 'Restmüll',
+        fractionColor: '#444444',
+        note: null,
+      },
+      {
         id: 'tour-bio:2026-06-04:bio',
         date: '2026-06-04',
         fractionId: 'bio',
@@ -103,6 +135,14 @@ describe('public waste calendar occurrences', () => {
         fractionLabel: 'Biotonne',
         fractionColor: '#00AA00',
         note: 'Zusatzleerung',
+      },
+      {
+        id: 'tour-custom-preset:2026-06-08:rest',
+        date: '2026-06-08',
+        fractionId: 'rest',
+        fractionLabel: 'Restmüll',
+        fractionColor: '#444444',
+        note: null,
       },
       {
         id: 'tour-bio:2026-06-17:bio',

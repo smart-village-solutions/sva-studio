@@ -11,6 +11,7 @@ export const WasteToursDialogs = ({ controller }: { readonly controller: Control
       mode={controller.dialogMode}
       form={controller.tourForm}
       fractions={controller.availableFractions}
+      customRecurrencePresets={controller.customRecurrencePresets}
       saving={controller.saving}
       message={controller.dialogOpen ? controller.message : null}
       onOpenChange={(open) => {

@@ -11,7 +11,13 @@ import {
 import { WasteToursFormView, WasteToursListView } from './waste-management.tours-panel.views.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
-export const WasteToursPanel = ({ search }: { readonly search: WasteManagementSearchParams }) => {
+export const WasteToursPanel = ({
+  search,
+  canDuplicateTour = false,
+}: {
+  readonly search: WasteManagementSearchParams;
+  readonly canDuplicateTour?: boolean;
+}) => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
   const controller = useWasteToursController(pt, search);
@@ -40,7 +46,7 @@ export const WasteToursPanel = ({ search }: { readonly search: WasteManagementSe
 
   return (
     <>
-      <WasteToursListView controller={controller} search={search} />
+      <WasteToursListView controller={controller} search={search} canDuplicateTour={canDuplicateTour} />
       {dialogs}
     </>
   );

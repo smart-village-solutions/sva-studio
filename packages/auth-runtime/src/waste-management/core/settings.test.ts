@@ -70,8 +70,44 @@ describe('waste-management settings handlers', () => {
     runWasteConnectionCheckMock.mockClear();
   });
 
-  it('rejects legacy waste settings writes because the supabase is managed via interfaces', async () => {
+  it('saves custom recurrence presets when the interface-managed fields stay unchanged', async () => {
     const deps = createDeps();
+    const loadDefaultInterfaceRecord = vi.fn(async () => ({
+      id: 'supabase-1',
+      instanceId: 'tenant-a',
+      typeKey: 'supabase',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Supabase',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'database',
+      statusCheckKind: 'supabase',
+      visibleStatus: 'ok',
+      publicConfig: {
+        projectUrl: 'https://tenant.example',
+        schemaName: 'wm',
+        holidayStateCode: 'BY',
+      },
+      secretConfigCiphertext: 'cipher-secret',
+    }));
+    const saveExternalInterfaceRecord = vi.fn(async () => undefined);
+    const saveWasteCustomRecurrencePresets = vi.fn(async () => undefined);
+    const syncWasteHolidayRules = vi.fn(async () => 'success' as const);
+    const loadWasteCustomRecurrencePresets = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'preset-10',
+          name: '10 Tage',
+          description: 'Ferien',
+          intervalDays: 10,
+          createdAt: '2026-05-10T10:00:00.000Z',
+          updatedAt: '2026-05-10T10:00:00.000Z',
+        },
+      ]);
 
     const response = await wasteManagementSettingsHandlers.updateWasteManagementSettingsInternal(
       createRequest({
@@ -79,34 +115,85 @@ describe('waste-management settings handlers', () => {
         projectUrl: 'https://tenant.example',
         schemaName: 'wm',
         enabled: true,
-        databaseUrl: 'postgres://waste',
-        serviceRoleKey: 'service-key',
+        holidayStateCode: 'NW',
+        customRecurrencePresets: [
+          { id: 'preset-10', name: '10 Tage', description: 'Ferien', intervalDays: 10 },
+        ],
+        deletedPresetFallbacks: {},
       }),
       actor,
-      deps
+      {
+        ...deps,
+        loadDefaultInterfaceRecord,
+        saveExternalInterfaceRecord,
+        loadWasteCustomRecurrencePresets,
+        saveWasteCustomRecurrencePresets,
+        syncWasteHolidayRules,
+      }
     );
 
-    expect(response.status).toBe(409);
-    expect(resolveWasteDataSourceMock).not.toHaveBeenCalled();
-    expect(runWasteConnectionCheckMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(saveExternalInterfaceRecord).toHaveBeenCalledWith({
+      id: 'supabase-1',
+      instanceId: 'tenant-a',
+      typeKey: 'supabase',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Supabase',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'database',
+      statusCheckKind: 'supabase',
+      visibleStatus: 'ok',
+      secretConfigCiphertext: 'cipher-secret',
+      publicConfig: {
+        projectUrl: 'https://tenant.example',
+        schemaName: 'wm',
+        holidayStateCode: 'NW',
+        lastHolidaySyncStatus: 'success',
+      },
+    });
+    expect(saveWasteCustomRecurrencePresets).toHaveBeenCalledWith('tenant-a', {
+      nextItems: [{ id: 'preset-10', name: '10 Tage', description: 'Ferien', intervalDays: 10 }],
+      deletedPresetFallbacks: {},
+    });
+    expect(syncWasteHolidayRules).toHaveBeenCalledWith('tenant-a', 'NW');
     expect(
       deps.emitAuditEvent.mock.calls.some(
         ([event]) =>
           event.pluginAction.actionId === 'waste-management.settings.updated' &&
-          event.pluginAction.result === 'failure' &&
-          event.pluginAction.reasonCode === 'managed_via_interfaces'
+          event.pluginAction.result === 'success'
       )
     ).toBe(true);
-    await expect(response.json()).resolves.toMatchObject({
-      error: {
-        code: 'invalid_request',
-        message: 'Die Waste-Supabase wird ausschließlich über /interfaces verwaltet.',
+    await expect(response.json()).resolves.toEqual({
+      data: {
+        instanceId: 'tenant-a',
+        provider: 'supabase',
+        projectUrl: 'https://tenant.example',
+        schemaName: 'wm',
+        enabled: true,
+        databaseUrlConfigured: true,
+        serviceRoleKeyConfigured: true,
+        visibleStatus: 'ok',
+        holidayStateCode: 'NW',
+        lastHolidaySyncStatus: 'success',
+        customRecurrencePresets: [
+          {
+            id: 'preset-10',
+            name: '10 Tage',
+            description: 'Ferien',
+            intervalDays: 10,
+            createdAt: '2026-05-10T10:00:00.000Z',
+            updatedAt: '2026-05-10T10:00:00.000Z',
+          },
+        ],
       },
       requestId: 'req-test',
     });
   });
 
-  it('rejects writes before touching persistence even for malformed payloads', async () => {
+  it('rejects writes when interface-managed fields differ from the persisted interface config', async () => {
     const deps = createDeps();
 
     const response = await wasteManagementSettingsHandlers.updateWasteManagementSettingsInternal(
@@ -117,7 +204,30 @@ describe('waste-management settings handlers', () => {
         enabled: true,
       }),
       actor,
-      deps
+      {
+        ...deps,
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
+          visibleStatus: 'ok',
+          publicConfig: {
+            projectUrl: 'https://tenant.example',
+            schemaName: 'wm',
+          },
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        loadWasteCustomRecurrencePresets: vi.fn(async () => []),
+        saveWasteCustomRecurrencePresets: vi.fn(async () => undefined),
+      }
     );
 
     expect(response.status).toBe(409);

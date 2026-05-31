@@ -1,4 +1,10 @@
-import type { WasteDateShiftReasonType, WasteTourDateShiftFollowUpMode } from './master-data-contract.js';
+import type {
+  WasteDateShiftReasonType,
+  WasteHolidayRuleScope,
+  WasteHolidayRuleStrategy,
+  WasteHolidayStateCode,
+  WasteTourDateShiftFollowUpMode,
+} from './master-data-contract.js';
 
 export type WasteTourDateShiftRecord = {
   readonly id: string;
@@ -52,8 +58,36 @@ export type WasteGlobalDateShiftListFilter = {
   readonly appliesToTourId?: string;
 };
 
+export type WasteHolidayRuleSourceStatus = 'confirmed' | 'not-confirmed';
+export type WasteHolidayRuleConfigurationStatus = 'draft' | 'configured';
+export type WasteHolidayRuleConflictStatus = 'none' | 'manual-global-rule';
+
+export type WasteHolidayRuleRecord = {
+  readonly id: string;
+  readonly holidayDate: string;
+  readonly holidayName: string;
+  readonly year: number;
+  readonly stateCode: WasteHolidayStateCode;
+  readonly sourceStatus: WasteHolidayRuleSourceStatus;
+  readonly configurationStatus: WasteHolidayRuleConfigurationStatus;
+  readonly conflictStatus: WasteHolidayRuleConflictStatus;
+  readonly scope?: WasteHolidayRuleScope;
+  readonly strategy?: WasteHolidayRuleStrategy;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type WasteHolidayRuleListFilter = {
+  readonly stateCode?: WasteHolidayStateCode;
+  readonly year?: number;
+  readonly sourceStatus?: WasteHolidayRuleSourceStatus;
+  readonly configurationStatus?: WasteHolidayRuleConfigurationStatus;
+  readonly conflictStatus?: WasteHolidayRuleConflictStatus;
+};
+
 export type WasteManagementSchedulingOverview = {
   readonly locationTourPickupDates: readonly WasteLocationTourPickupDateRecord[];
   readonly tourDateShifts: readonly WasteTourDateShiftRecord[];
   readonly globalDateShifts: readonly WasteGlobalDateShiftRecord[];
+  readonly holidayRules?: readonly WasteHolidayRuleRecord[];
 };

@@ -1,4 +1,4 @@
-import { IconCalendarMonth, IconEdit, IconListDetails, IconTrash } from '@tabler/icons-react';
+import { IconCalendarMonth, IconCopy, IconEdit, IconListDetails, IconTrash } from '@tabler/icons-react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button, Checkbox, cn } from '@sva/studio-ui-react';
@@ -130,16 +130,20 @@ export const WasteToursRowActionsCell = ({
   assignmentId,
   onOpenCalendar,
   onOpenEditDialog,
+  onOpenDuplicateDialog,
   onOpenCreateAssignmentsDialog,
   onOpenEditAssignmentsDialog,
+  canDuplicateTour,
   onRequestDeleteTour,
 }: {
   readonly tour: WasteTourRecord;
   readonly assignmentId?: string;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
+  readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
+  readonly canDuplicateTour: boolean;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -183,6 +187,18 @@ export const WasteToursRowActionsCell = ({
         >
           <IconEdit aria-hidden="true" className="h-4 w-4" />
         </Button>
+        {canDuplicateTour ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
+            aria-label={pt('tours.actions.duplicate')}
+            onClick={() => onOpenDuplicateDialog(tour)}
+          >
+            <IconCopy aria-hidden="true" className="h-4 w-4" />
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="ghost"

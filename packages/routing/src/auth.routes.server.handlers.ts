@@ -147,6 +147,9 @@ export const governanceAuthHandlerMap = {
     DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteGlobalDateShift),
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateGlobalDateShift),
   },
+  '/api/v1/waste-management/holiday-rules/$holidayRuleId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateHolidayRule),
+  },
   '/api/v1/waste-management/tour-date-shifts': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createTourDateShift),
   },
@@ -165,6 +168,9 @@ export const governanceAuthHandlerMap = {
   '/api/v1/waste-management/settings': {
     GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getSettings),
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateSettings),
+  },
+  '/api/v1/waste-management/settings/holiday-sync': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.runHolidaySync),
   },
   '/api/v1/waste-management/tools/initialize': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startInitialize),

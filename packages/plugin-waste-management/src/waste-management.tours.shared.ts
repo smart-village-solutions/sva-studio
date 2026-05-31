@@ -1,4 +1,10 @@
-import type { WasteCustomTourDate, WasteFractionRecord, WasteLocationTourLinkRecord, WasteTourRecord } from '@sva/plugin-sdk';
+import type {
+  WasteCustomRecurrencePresetRecord,
+  WasteCustomTourDate,
+  WasteFractionRecord,
+  WasteLocationTourLinkRecord,
+  WasteTourRecord,
+} from '@sva/plugin-sdk';
 
 import type {
   CreateWasteManagementLocationTourLinkInput,
@@ -23,6 +29,7 @@ export type TourFormState = {
   readonly description: string;
   readonly wasteFractionIds: readonly string[];
   readonly recurrence: NonNullable<WasteTourRecord['recurrence']> | '';
+  readonly customRecurrenceId: string;
   readonly firstDate: string;
   readonly endDate: string;
   readonly customDates: readonly WasteCustomTourDate[];
@@ -45,6 +52,7 @@ export const createDefaultTourForm = (): TourFormState => ({
   description: '',
   wasteFractionIds: [],
   recurrence: 'custom',
+  customRecurrenceId: '',
   firstDate: '',
   endDate: '',
   customDates: [],
@@ -64,7 +72,8 @@ export const mapTourToForm = (tour: WasteTourRecord): TourFormState => ({
   name: tour.name,
   description: tour.description ?? '',
   wasteFractionIds: tour.wasteFractionIds,
-  recurrence: tour.recurrence ?? 'custom',
+  recurrence: tour.customRecurrenceId ? '' : (tour.recurrence ?? 'custom'),
+  customRecurrenceId: tour.customRecurrenceId ?? '',
   firstDate: tour.firstDate ?? '',
   endDate: tour.endDate ?? '',
   customDates: [...(tour.customDates ?? [])].sort((left, right) => left.date.localeCompare(right.date)),
@@ -108,7 +117,7 @@ const isCustomDatesRecurrence = (
 ): recurrence is NonNullable<WasteTourRecord['recurrence']> => customDatesRecurrences.has(recurrence as NonNullable<WasteTourRecord['recurrence']>);
 
 const resolveRecurringDates = (form: TourFormState) =>
-  isRecurringTourRecurrence(form.recurrence)
+  form.customRecurrenceId || isRecurringTourRecurrence(form.recurrence)
     ? {
         firstDate: compactOptionalString(form.firstDate),
         endDate: compactOptionalString(form.endDate),
@@ -119,14 +128,16 @@ const resolveRecurringDates = (form: TourFormState) =>
       };
 
 const resolveCustomDates = (form: TourFormState) =>
-  isCustomDatesRecurrence(form.recurrence) ? normalizeCustomDates(form.customDates) : undefined;
+  !form.customRecurrenceId && isCustomDatesRecurrence(form.recurrence) ? normalizeCustomDates(form.customDates) : undefined;
 
-export const toCreateTourInput = (form: TourFormState): CreateWasteManagementTourInput => ({
+export const toCreateTourInput = (form: TourFormState, duplicateFromTourId?: string): CreateWasteManagementTourInput => ({
   id: form.id,
   name: form.name.trim(),
   description: compactOptionalString(form.description),
   wasteFractionIds: form.wasteFractionIds,
-  recurrence: form.recurrence || undefined,
+  duplicateFromTourId: duplicateFromTourId ? compactOptionalString(duplicateFromTourId) : undefined,
+  recurrence: form.customRecurrenceId ? undefined : (form.recurrence || undefined),
+  customRecurrenceId: compactOptionalString(form.customRecurrenceId),
   ...resolveRecurringDates(form),
   customDates: resolveCustomDates(form),
   active: form.active,
@@ -136,11 +147,17 @@ export const toUpdateTourInput = (form: TourFormState): UpdateWasteManagementTou
   name: form.name.trim(),
   description: compactOptionalString(form.description),
   wasteFractionIds: form.wasteFractionIds,
-  recurrence: form.recurrence || undefined,
+  recurrence: form.customRecurrenceId ? undefined : (form.recurrence || undefined),
+  customRecurrenceId: compactOptionalString(form.customRecurrenceId),
   ...resolveRecurringDates(form),
   customDates: resolveCustomDates(form),
   active: form.active,
 });
+
+export const resolveCustomRecurrencePreset = (
+  presets: readonly WasteCustomRecurrencePresetRecord[],
+  customRecurrenceId: string
+): WasteCustomRecurrencePresetRecord | undefined => presets.find((preset) => preset.id === customRecurrenceId);
 
 const matchesSearch = (value: string, query: string) => value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
 

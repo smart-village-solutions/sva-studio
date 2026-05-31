@@ -33,8 +33,10 @@ type WasteToursTableProps = {
   readonly onToggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
+  readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
+  readonly canDuplicateTour: boolean;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
 };
@@ -61,8 +63,10 @@ export const WasteToursTable = ({
   onToggleSelectedTour,
   onOpenCalendar,
   onOpenEditDialog,
+  onOpenDuplicateDialog,
   onOpenCreateAssignmentsDialog,
   onOpenEditAssignmentsDialog,
+  canDuplicateTour,
   onToggleTourStatus,
   onRequestDeleteTour,
 }: WasteToursTableProps) => {
@@ -98,8 +102,10 @@ export const WasteToursTable = ({
                 onToggleSelectedTour={onToggleSelectedTour}
                 onOpenCalendar={onOpenCalendar}
                 onOpenEditDialog={onOpenEditDialog}
+                onOpenDuplicateDialog={onOpenDuplicateDialog}
                 onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
                 onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
+                canDuplicateTour={canDuplicateTour}
                 onToggleTourStatus={onToggleTourStatus}
                 onRequestDeleteTour={onRequestDeleteTour}
               />

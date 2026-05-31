@@ -5,6 +5,14 @@ import {
   createWasteCollectionLocationRepositoryPart,
   wasteCollectionLocationStatements,
 } from './master-data.collection-locations.js';
+import {
+  createWasteHolidayRuleRepositoryPart,
+  wasteHolidayRuleStatements,
+} from './master-data.holiday-rules.js';
+import {
+  createWasteCustomRecurrencePresetRepositoryPart,
+  wasteCustomRecurrencePresetStatements,
+} from './master-data.custom-recurrence-presets.js';
 import { createWasteDateShiftRepositoryPart, wasteDateShiftStatements } from './master-data.date-shifts.js';
 import { createWasteFractionRepositoryPart, wasteFractionStatements } from './master-data.fractions.js';
 import {
@@ -37,6 +45,8 @@ export const createWasteMasterDataRepository = (executor: SqlExecutor): WasteMas
   ...createWasteRegionCityRepositoryPart(executor),
   ...createWasteStreetHouseNumberRepositoryPart(executor),
   ...createWasteCollectionLocationRepositoryPart(executor),
+  ...createWasteHolidayRuleRepositoryPart(executor),
+  ...createWasteCustomRecurrencePresetRepositoryPart(executor),
   ...createWasteTourRepositoryPart(executor),
   ...createWasteLocationTourLinkRepositoryPart(executor),
   ...createWasteLocationTourPickupDateRepositoryPart(executor),
@@ -50,6 +60,8 @@ export const wasteMasterDataStatements = {
   ...wasteRegionCityStatements,
   ...wasteStreetHouseNumberStatements,
   ...wasteCollectionLocationStatements,
+  ...wasteHolidayRuleStatements,
+  ...wasteCustomRecurrencePresetStatements,
   ...wasteTourStatements,
   ...wasteLocationTourLinkStatements,
   ...wasteLocationTourPickupDateStatements,

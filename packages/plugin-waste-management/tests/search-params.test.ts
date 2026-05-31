@@ -172,4 +172,36 @@ describe('waste-management search params', () => {
       globalDateShiftId: undefined,
     });
   });
+
+  it('normalizes duplicateFromTourId as optional trimmed search param', () => {
+    expect(
+      normalizeWasteManagementSearchParams({
+        tab: 'tours',
+        toursView: 'create',
+        duplicateFromTourId: '  tour-42  ',
+      })
+    ).toEqual({
+      tab: 'tours',
+      masterDataTab: 'locations',
+      fractionsView: 'list',
+      toursView: 'create',
+      locationsView: 'list',
+      schedulingView: 'list',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+      fractionsSortBy: 'name',
+      fractionsSortDirection: 'asc',
+      regionId: undefined,
+      cityId: undefined,
+      wasteFractionId: undefined,
+      collectionLocationId: undefined,
+      tourId: undefined,
+      duplicateFromTourId: 'tour-42',
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
+    });
+  });
 });

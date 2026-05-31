@@ -442,6 +442,9 @@ describe('waste master data repository', () => {
         description: 'Restmüll',
         waste_fraction_ids: ['fraction-1', 'fraction-2'],
         recurrence: 'custom',
+        custom_recurrence_id: null,
+        custom_recurrence_name: null,
+        custom_recurrence_interval_days: null,
         first_date: '2026-01-15',
         end_date: null,
         custom_dates: [{ date: '2026-01-15', description: 'Sonderleerung' }],
@@ -466,6 +469,9 @@ describe('waste master data repository', () => {
         description: 'Restmüll',
         wasteFractionIds: ['fraction-1', 'fraction-2'],
         recurrence: 'custom',
+        customRecurrenceId: undefined,
+        customRecurrenceName: undefined,
+        customRecurrenceIntervalDays: undefined,
         firstDate: '2026-01-15',
         endDate: undefined,
         customDates: [{ date: '2026-01-15', description: 'Sonderleerung' }],
@@ -487,6 +493,9 @@ describe('waste master data repository', () => {
         description: null,
         waste_fraction_ids: null,
         recurrence: null,
+        custom_recurrence_id: 'preset-10',
+        custom_recurrence_name: '10 Tage',
+        custom_recurrence_interval_days: 10,
         first_date: null,
         end_date: '2026-12-31',
         custom_dates: [{ invalid: true }],
@@ -503,6 +512,9 @@ describe('waste master data repository', () => {
       description: undefined,
       wasteFractionIds: [],
       recurrence: null,
+      customRecurrenceId: 'preset-10',
+      customRecurrenceName: '10 Tage',
+      customRecurrenceIntervalDays: 10,
       firstDate: undefined,
       endDate: '2026-12-31',
       customDates: [],
@@ -518,7 +530,10 @@ describe('waste master data repository', () => {
       name: 'Tour West',
       description: undefined,
       wasteFractionIds: ['fraction-3'],
-      recurrence: 'weekly',
+      recurrence: null,
+      customRecurrenceId: 'preset-14',
+      customRecurrenceName: '14 Tage',
+      customRecurrenceIntervalDays: 14,
       firstDate: '2026-02-01',
       endDate: undefined,
       customDates: [{ date: '2026-02-01' }],
@@ -531,12 +546,69 @@ describe('waste master data repository', () => {
       'Tour West',
       null,
       ['fraction-3'],
-      'weekly',
+      null,
+      'preset-14',
       '2026-02-01',
       null,
       JSON.stringify([{ date: '2026-02-01' }]),
       true,
     ]);
+  });
+
+  it('lists, reads and upserts custom recurrence presets', async () => {
+    const list = createExecutor([
+      {
+        id: 'preset-10',
+        name: '10 Tage',
+        description: 'Ferienmodus',
+        interval_days: 10,
+        created_at: '2026-05-31T10:00:00.000Z',
+        updated_at: '2026-05-31T10:00:00.000Z',
+      },
+    ]);
+
+    await expect(createWasteMasterDataRepository(list.executor).listWasteCustomRecurrencePresets()).resolves.toEqual([
+      {
+        id: 'preset-10',
+        name: '10 Tage',
+        description: 'Ferienmodus',
+        intervalDays: 10,
+        createdAt: '2026-05-31T10:00:00.000Z',
+        updatedAt: '2026-05-31T10:00:00.000Z',
+      },
+    ]);
+
+    expect(list.statements[0]?.text).toContain('FROM waste_custom_recurrence_presets');
+
+    const single = createExecutor([
+      {
+        id: 'preset-14',
+        name: '14 Tage',
+        description: null,
+        interval_days: 14,
+        created_at: '2026-05-31T10:00:00.000Z',
+        updated_at: '2026-05-31T10:00:00.000Z',
+      },
+    ]);
+
+    await expect(createWasteMasterDataRepository(single.executor).getWasteCustomRecurrencePresetById('preset-14')).resolves.toEqual({
+      id: 'preset-14',
+      name: '14 Tage',
+      description: undefined,
+      intervalDays: 14,
+      createdAt: '2026-05-31T10:00:00.000Z',
+      updatedAt: '2026-05-31T10:00:00.000Z',
+    });
+
+    const write = createExecutor();
+    await createWasteMasterDataRepository(write.executor).upsertWasteCustomRecurrencePreset({
+      id: 'preset-21',
+      name: '21 Tage',
+      description: undefined,
+      intervalDays: 21,
+    });
+
+    expect(write.statements[0]?.values).toEqual(['preset-21', '21 Tage', null, 21]);
   });
 
   it('lists, reads and upserts location-tour links with optional date windows', async () => {
@@ -824,5 +896,81 @@ describe('waste master data repository', () => {
       null,
       ['tour-3', 'tour-4'],
     ]);
+    });
   });
-});
+
+  it('lists and upserts holiday rule records with scope and strategy filters', async () => {
+    const write = createExecutor();
+    const writeRepository = createWasteMasterDataRepository(write.executor);
+
+    await writeRepository.upsertWasteHolidayRule({
+      id: 'holiday-rule-1',
+      holidayDate: '2026-01-01',
+      holidayName: 'Neujahr',
+      year: 2026,
+      stateCode: 'NW',
+      sourceStatus: 'confirmed',
+      configurationStatus: 'draft',
+      conflictStatus: 'none',
+      scope: 'holiday-only',
+      strategy: 'advance',
+      createdAt: '2026-05-31T10:00:00.000Z',
+      updatedAt: '2026-05-31T10:00:00.000Z',
+    });
+
+    expect(write.statements[0]?.text).toContain('waste_holiday_rules');
+    expect(write.statements[0]?.values).toEqual([
+      'holiday-rule-1',
+      '2026-01-01',
+      'Neujahr',
+      2026,
+      'NW',
+      'confirmed',
+      'draft',
+      'none',
+      'holiday-only',
+      'advance',
+    ]);
+
+    const list = createExecutor([
+      {
+        id: 'holiday-rule-1',
+        holiday_date: '2026-01-01',
+        holiday_name: 'Neujahr',
+        year: 2026,
+        state_code: 'NW',
+        source_status: 'confirmed',
+        configuration_status: 'configured',
+        conflict_status: 'manual-global-rule',
+        scope: 'full_week',
+        strategy: 'postpone',
+        created_at: '2026-05-31T10:00:00.000Z',
+        updated_at: '2026-05-31T11:00:00.000Z',
+      },
+    ]);
+
+    await expect(
+      createWasteMasterDataRepository(list.executor).listWasteHolidayRules({
+        stateCode: 'NW',
+        year: 2026,
+      })
+    ).resolves.toEqual([
+      {
+        id: 'holiday-rule-1',
+        holidayDate: '2026-01-01',
+        holidayName: 'Neujahr',
+        year: 2026,
+        stateCode: 'NW',
+        sourceStatus: 'confirmed',
+        configurationStatus: 'configured',
+        conflictStatus: 'manual-global-rule',
+        scope: 'full-week',
+        strategy: 'postpone',
+        createdAt: '2026-05-31T10:00:00.000Z',
+        updatedAt: '2026-05-31T11:00:00.000Z',
+      },
+    ]);
+
+    expect(list.statements[0]?.text).toContain('FROM waste_holiday_rules');
+    expect(list.statements[0]?.values).toEqual(['NW', 2026]);
+  });

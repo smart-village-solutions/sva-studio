@@ -1,5 +1,6 @@
 export type {
   WasteGlobalDateShiftRecord,
+  WasteHolidayRuleRecord,
   WasteManagementSettingsRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,

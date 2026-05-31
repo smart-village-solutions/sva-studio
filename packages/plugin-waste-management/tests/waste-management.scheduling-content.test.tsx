@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WasteSchedulingContent, WasteSchedulingEmptyState } from '../src/waste-management.scheduling-content.js';
 
 const shiftsTableMock = vi.hoisted(() => vi.fn());
+const holidayRulesListMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
@@ -26,6 +27,19 @@ vi.mock('../src/waste-management.scheduling-shifts-table.js', () => ({
   },
 }));
 
+vi.mock('../src/waste-management.holiday-rules-list.js', () => ({
+  WasteHolidayRulesList: (props: Record<string, unknown>) => {
+    holidayRulesListMock(props);
+    return (
+      <div data-testid="holiday-rules-list">
+        <button type="button" onClick={() => (props.onRunSync as () => void)()}>
+          run-holiday-sync
+        </button>
+      </div>
+    );
+  },
+}));
+
 vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
   useWasteTabPanelActions: vi.fn(),
 }));
@@ -33,6 +47,7 @@ vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
 afterEach(() => {
   cleanup();
   shiftsTableMock.mockReset();
+  holidayRulesListMock.mockReset();
 });
 
 describe('WasteSchedulingContent', () => {
@@ -60,17 +75,32 @@ describe('WasteSchedulingContent', () => {
     };
     const availableTours = [{ id: 'tour-1', name: 'Restmüll Nord' }];
     const onDeleteSchedulingRows = vi.fn(async () => undefined);
+    const onRunHolidaySync = vi.fn(async () => undefined);
+    const holidayRule = {
+      id: 'holiday-rule-1',
+      holidayDate: '2026-01-01',
+      holidayName: 'Neujahr',
+      year: 2026,
+      stateCode: 'NW',
+      sourceStatus: 'confirmed',
+      configurationStatus: 'draft',
+      conflictStatus: 'none',
+      createdAt: '2026-05-10T10:00:00.000Z',
+      updatedAt: '2026-05-10T10:00:00.000Z',
+    };
 
     render(
       <WasteSchedulingContent
         message={{ tone: 'info', text: 'shift message' } as never}
         globalDateShifts={[globalShift] as never}
         tourDateShifts={[tourShift] as never}
+        holidayRules={[holidayRule] as never}
         availableTours={availableTours as never}
         onOpenCreateShiftDialog={vi.fn()}
         onEditGlobalShiftDialog={vi.fn()}
         onEditTourShiftDialog={vi.fn()}
         onDeleteSchedulingRows={onDeleteSchedulingRows}
+        onRunHolidaySync={onRunHolidaySync}
         saving={false}
         page={2}
         pageSize={25}
@@ -82,6 +112,7 @@ describe('WasteSchedulingContent', () => {
 
     expect(screen.getByText('shift message')).toBeTruthy();
     expect(screen.getByTestId('shifts-table')).toBeTruthy();
+    expect(screen.getByTestId('holiday-rules-list')).toBeTruthy();
     expect(shiftsTableMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
         globalDateShifts: [globalShift],
@@ -92,6 +123,13 @@ describe('WasteSchedulingContent', () => {
         pageSize: 25,
       })
     );
+    expect(holidayRulesListMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        rules: [holidayRule],
+      })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'run-holiday-sync' }));
+    expect(onRunHolidaySync).toHaveBeenCalledTimes(1);
   });
 
   it('renders the unified create action in the empty state', () => {

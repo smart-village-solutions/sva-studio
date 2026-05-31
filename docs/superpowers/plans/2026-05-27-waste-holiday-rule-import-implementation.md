@@ -89,7 +89,7 @@
 - Reference: `docs/superpowers/specs/2026-05-27-waste-holiday-rule-import-design.md`
 - Reference: `openspec/specs/waste-management/spec.md`
 
-- [ ] **Step 1: Failing OpenSpec-Delta für Bundesland, Sync und Feiertagsentwürfe schreiben**
+- [x] **Step 1: Failing OpenSpec-Delta für Bundesland, Sync und Feiertagsentwürfe schreiben**
 
 ```md
 ## ADDED Requirements
@@ -116,7 +116,7 @@ Das System SHALL manuelle globale Date-Shifts nie durch automatisch importierte 
 - **AND** verändert die manuelle globale Regel nicht
 ```
 
-- [ ] **Step 2: Proposal und Task-Liste mit Governance-Hinweis anlegen**
+- [x] **Step 2: Proposal und Task-Liste mit Governance-Hinweis anlegen**
 
 ```md
 # Change: Feiertagsbasierte Regelentwürfe im Waste Management
@@ -136,7 +136,7 @@ Das Waste-Management benötigt einen nachvollziehbaren, bundeslandspezifischen F
 - Affected arc42 sections: keine Pflichtänderung, solange bestehende Settings/Host-Fassade architektonisch unverändert bleiben
 ```
 
-- [ ] **Step 3: OpenSpec validieren**
+- [x] **Step 3: OpenSpec validieren**
 
 Run: `openspec validate add-waste-holiday-rule-import --strict`  
 Expected: PASS ohne Delta- oder Scenario-Fehler
@@ -157,7 +157,7 @@ git commit -m "spec: add waste holiday rule import proposal"
 - Modify: `packages/core/src/waste-management-master-data.ts`
 - Test: `packages/core/src/waste-management-master-data.test.ts`
 
-- [ ] **Step 1: Failing Core-Tests für neue Typen ergänzen**
+- [x] **Step 1: Failing Core-Tests für neue Typen ergänzen**
 
 ```ts
 it('exposes supported waste holiday rule scopes and strategies', () => {
@@ -183,12 +183,12 @@ it('models waste settings with holiday state code and sync result', () => {
 });
 ```
 
-- [ ] **Step 2: Core-Tests ausführen**
+- [x] **Step 2: Core-Tests ausführen**
 
 Run: `pnpm nx run core:test:unit --testFiles=src/waste-management-master-data.test.ts`  
 Expected: FAIL wegen fehlender `holidayStateCode`, Sync-Status oder Vertragskonstanten
 
-- [ ] **Step 3: Minimale Vertrags- und Typ-Erweiterung implementieren**
+- [x] **Step 3: Minimale Vertrags- und Typ-Erweiterung implementieren**
 
 ```ts
 const wasteHolidayStateCodes = ['BW', 'BY', 'BE', 'BB', 'HB', 'HH', 'HE', 'MV', 'NI', 'NW', 'RP', 'SL', 'SN', 'ST', 'SH', 'TH'] as const;
@@ -212,7 +212,7 @@ export type WasteHolidayRuleRecord = {
 };
 ```
 
-- [ ] **Step 4: Tests erneut ausführen**
+- [x] **Step 4: Tests erneut ausführen**
 
 Run: `pnpm nx run core:test:unit --testFiles=src/waste-management-master-data.test.ts`  
 Expected: PASS
@@ -238,7 +238,7 @@ git commit -m "feat: add waste holiday rule core contracts"
 - Test: `packages/data-repositories/src/waste-management/master-data.contract.test.ts`
 - Test: `packages/data-repositories/src/waste-management/master-data.test.ts`
 
-- [ ] **Step 1: Failing Repository-Tests für Holiday-Rules ergänzen**
+- [x] **Step 1: Failing Repository-Tests für Holiday-Rules ergänzen**
 
 ```ts
 it('exposes holiday rule repository methods', () => {
@@ -263,12 +263,12 @@ it('lists and upserts holiday rule records', async () => {
 });
 ```
 
-- [ ] **Step 2: Repository-Tests ausführen**
+- [x] **Step 2: Repository-Tests ausführen**
 
 Run: `pnpm nx run data-repositories:test:unit --testFiles=src/waste-management/master-data.contract.test.ts --testFiles=src/waste-management/master-data.test.ts`  
 Expected: FAIL wegen fehlender Holiday-Rule-Methoden und SQL-Bausteine
 
-- [ ] **Step 3: Minimalen Holiday-Rule-Repository-Part implementieren**
+- [x] **Step 3: Minimalen Holiday-Rule-Repository-Part implementieren**
 
 ```ts
 export const wasteHolidayRuleStatements = {
@@ -289,7 +289,7 @@ export const createWasteHolidayRuleRepositoryPart = (
 });
 ```
 
-- [ ] **Step 4: Tests erneut ausführen**
+- [x] **Step 4: Tests erneut ausführen**
 
 Run: `pnpm nx run data-repositories:test:unit --testFiles=src/waste-management/master-data.contract.test.ts --testFiles=src/waste-management/master-data.test.ts`  
 Expected: PASS
@@ -320,7 +320,7 @@ git commit -m "feat: add waste holiday rule repository"
 - Test: `packages/plugin-waste-management/tests/waste-management.low-coverage-views.test.tsx`
 - Test: `packages/plugin-waste-management/tests/waste-management.page.test.tsx`
 
-- [ ] **Step 1: Failing Plugin-Tests für Bundesland und Sync-Status ergänzen**
+- [x] **Step 1: Failing Plugin-Tests für Bundesland und Sync-Status ergänzen**
 
 ```ts
 it('renders the holiday state code field and submits it', async () => {
@@ -338,12 +338,12 @@ it('shows save success with holiday sync status', async () => {
 });
 ```
 
-- [ ] **Step 2: Plugin-Tests ausführen**
+- [x] **Step 2: Plugin-Tests ausführen**
 
 Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.low-coverage-views.test.tsx --testFiles=tests/waste-management.page.test.tsx`  
 Expected: FAIL wegen fehlendem Feld oder falschem Response-Modell
 
-- [ ] **Step 3: Minimale Settings-Typen und Formularerweiterung implementieren**
+- [x] **Step 3: Minimale Settings-Typen und Formularerweiterung implementieren**
 
 ```ts
 type SettingsFormState = {
@@ -381,7 +381,7 @@ export type WasteManagementSettingsInput = Readonly<{
 </StudioField>
 ```
 
-- [ ] **Step 4: Tests erneut ausführen**
+- [x] **Step 4: Tests erneut ausführen**
 
 Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.low-coverage-views.test.tsx --testFiles=tests/waste-management.page.test.tsx`  
 Expected: PASS
@@ -415,7 +415,7 @@ git commit -m "feat: add waste holiday settings form contract"
 - Test: `packages/auth-runtime/src/waste-management/core.test.ts`
 - Test: `packages/auth-runtime/src/waste-management/server-loaders.test.ts`
 
-- [ ] **Step 1: Failing Auth-Runtime-Tests für synchronen 10-Jahres-Sync ergänzen**
+- [x] **Step 1: Failing Auth-Runtime-Tests für synchronen 10-Jahres-Sync ergänzen**
 
 ```ts
 it('persists holiday state code and returns success sync result when all years load', async () => {
@@ -442,12 +442,12 @@ it('returns partial_success when one year fetch fails', async () => {
 });
 ```
 
-- [ ] **Step 2: Auth-Runtime-Tests ausführen**
+- [x] **Step 2: Auth-Runtime-Tests ausführen**
 
 Run: `pnpm nx run auth-runtime:test:unit --testFiles=src/waste-management/core/settings.test.ts --testFiles=src/waste-management/core.test.ts --testFiles=src/waste-management/server-loaders.test.ts`  
 Expected: FAIL, weil Settings aktuell noch `managed_via_interfaces` mit `409` zurückgeben
 
-- [ ] **Step 3: Minimalen Sync-Connector und Settings-Handler implementieren**
+- [x] **Step 3: Minimalen Sync-Connector und Settings-Handler implementieren**
 
 ```ts
 export const syncWasteHolidayRules = async ({
@@ -480,7 +480,7 @@ return new Response(JSON.stringify(asApiItem({ ...settings, lastHolidaySyncStatu
 });
 ```
 
-- [ ] **Step 4: Tests erneut ausführen**
+- [x] **Step 4: Tests erneut ausführen**
 
 Run: `pnpm nx run auth-runtime:test:unit --testFiles=src/waste-management/core/settings.test.ts --testFiles=src/waste-management/core.test.ts --testFiles=src/waste-management/server-loaders.test.ts`  
 Expected: PASS
@@ -510,7 +510,7 @@ git commit -m "feat: add waste holiday settings sync"
 - Test: `packages/auth-runtime/src/waste-management/core/operations.test.ts`
 - Test: `packages/auth-runtime/src/waste-management/core.test.ts`
 
-- [ ] **Step 1: Failing Tests für append-only, Konflikte und manuellen Sync ergänzen**
+- [x] **Step 1: Failing Tests für append-only, Konflikte und manuellen Sync ergänzen**
 
 ```ts
 it('marks missing holidays as not-confirmed instead of deleting them', async () => {
@@ -527,12 +527,12 @@ it('runs manual holiday resync through a dedicated operation', async () => {
 });
 ```
 
-- [ ] **Step 2: Gezielte Runtime-Tests ausführen**
+- [x] **Step 2: Gezielte Runtime-Tests ausführen**
 
 Run: `pnpm nx run auth-runtime:test:unit --testFiles=src/waste-management/core/operations.test.ts --testFiles=src/waste-management/core.test.ts`  
 Expected: FAIL wegen fehlender Holiday-Rule-Synchronisierung und fehlendem manuellen Sync-Pfad
 
-- [ ] **Step 3: Minimalen Persistenz- und Konfliktpfad implementieren**
+- [x] **Step 3: Minimalen Persistenz- und Konfliktpfad implementieren**
 
 ```ts
 export const reconcileWasteHolidayRules = async ({
@@ -557,7 +557,7 @@ if (request.url.endsWith('/settings/holiday-sync')) {
 }
 ```
 
-- [ ] **Step 4: Tests erneut ausführen**
+- [x] **Step 4: Tests erneut ausführen**
 
 Run: `pnpm nx run auth-runtime:test:unit --testFiles=src/waste-management/core/operations.test.ts --testFiles=src/waste-management/core.test.ts`  
 Expected: PASS
@@ -590,7 +590,7 @@ git commit -m "feat: add waste holiday rule reconciliation"
 - Test: `packages/plugin-waste-management/tests/waste-management.scheduling-panel.test.tsx`
 - Test: `packages/plugin-waste-management/tests/waste-management.scheduling.submissions.test.ts`
 
-- [ ] **Step 1: Failing Scheduling-Tests für Feiertagsliste und Pflege ergänzen**
+- [x] **Step 1: Failing Scheduling-Tests für Feiertagsliste und Pflege ergänzen**
 
 ```ts
 it('renders holiday rules grouped by year and exposes scope/strategy controls', () => {
@@ -622,12 +622,12 @@ it('triggers manual holiday resync from scheduling area', async () => {
 });
 ```
 
-- [ ] **Step 2: Scheduling-Tests ausführen**
+- [x] **Step 2: Scheduling-Tests ausführen**
 
 Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.scheduling-content.test.tsx --testFiles=tests/waste-management.scheduling-panel.test.tsx --testFiles=tests/waste-management.scheduling.submissions.test.ts`  
 Expected: FAIL wegen fehlender Holiday-Rule-UI und fehlender Resync-Aktion
 
-- [ ] **Step 3: Minimale Holiday-Rule-UI und Submission-Pfade implementieren**
+- [x] **Step 3: Minimale Holiday-Rule-UI und Submission-Pfade implementieren**
 
 ```tsx
 <section className="space-y-4">
@@ -656,7 +656,7 @@ onRunHolidaySync: async () => {
 };
 ```
 
-- [ ] **Step 4: Tests erneut ausführen**
+- [x] **Step 4: Tests erneut ausführen**
 
 Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.scheduling-content.test.tsx --testFiles=tests/waste-management.scheduling-panel.test.tsx --testFiles=tests/waste-management.scheduling.submissions.test.ts`  
 Expected: PASS
@@ -686,7 +686,7 @@ git commit -m "feat: add waste holiday rule scheduling ui"
 - Verify: `docs/superpowers/specs/2026-05-27-waste-holiday-rule-import-design.md`
 - Verify: `openspec/changes/add-waste-holiday-rule-import/specs/waste-management/spec.md`
 
-- [ ] **Step 1: Fokussierte Testmatrix vollständig ausführen**
+- [x] **Step 1: Fokussierte Testmatrix vollständig ausführen**
 
 Run: `pnpm nx run core:test:unit --testFiles=src/waste-management-master-data.test.ts`  
 Expected: PASS
@@ -700,7 +700,7 @@ Expected: PASS
 Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.low-coverage-views.test.tsx --testFiles=tests/waste-management.page.test.tsx --testFiles=tests/waste-management.scheduling-content.test.tsx --testFiles=tests/waste-management.scheduling-panel.test.tsx --testFiles=tests/waste-management.scheduling.submissions.test.ts`  
 Expected: PASS
 
-- [ ] **Step 2: Typ-, Lint- und Server-Runtime-Gates nachziehen**
+- [x] **Step 2: Typ-, Lint- und Server-Runtime-Gates nachziehen**
 
 Run: `pnpm check:server-runtime`  
 Expected: PASS
@@ -716,7 +716,7 @@ Expected: PASS
 Run: `pnpm test:pr`  
 Expected: PASS oder dokumentierter Abbruchgrund
 
-- [ ] **Step 3: OpenSpec-Tasks abhaken und validieren**
+- [x] **Step 3: OpenSpec-Tasks abhaken und validieren**
 
 ```md
 ## 1. Implementation

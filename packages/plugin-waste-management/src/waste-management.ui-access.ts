@@ -9,6 +9,7 @@ export type WasteManagementUiAccess = Readonly<{
   visibleTabIds: readonly WasteManagementTabId[];
   canAccessSettings: boolean;
   canAccessTools: boolean;
+  canDuplicateTour: boolean;
   canRunInitialize: boolean;
   canRunMigrations: boolean;
   canRunImport: boolean;
@@ -28,6 +29,8 @@ export const deriveWasteManagementUiAccess = (
   const canRunImport = grantedPermissions.has('waste-management.import.execute');
   const canRunSeed = grantedPermissions.has('waste-management.seed.execute');
   const canRunReset = grantedPermissions.has('waste-management.reset.execute');
+  const canManageTours = grantedPermissions.has('waste-management.tours.manage');
+  const canManageScheduling = grantedPermissions.has('waste-management.scheduling.manage');
   const canAccessTools = canRunInitialize || canRunMigrations || canRunImport || canRunSeed || canRunReset;
   const visibleTabIds: WasteManagementTabId[] = [...readOnlyTabIds];
 
@@ -47,6 +50,7 @@ export const deriveWasteManagementUiAccess = (
     visibleTabIds,
     canAccessSettings,
     canAccessTools,
+    canDuplicateTour: canManageTours && canManageScheduling,
     canRunInitialize,
     canRunMigrations,
     canRunImport,

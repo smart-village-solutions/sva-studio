@@ -35,11 +35,13 @@ export const requiredWasteTables = [
   'waste_house_numbers',
   'waste_collection_locations',
   'waste_fractions',
+  'waste_custom_recurrence_presets',
   'waste_tours',
   'waste_location_tour_links',
   'waste_location_tour_pickup_dates',
   'waste_tour_date_shifts',
   'waste_global_date_shifts',
+  'waste_holiday_rules',
 ] as const;
 
 export const quoteIdentifier = (value: string): string => {

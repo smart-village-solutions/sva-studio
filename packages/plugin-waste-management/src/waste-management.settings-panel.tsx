@@ -15,23 +15,18 @@ import {
 } from './waste-management.page.support.js';
 import { WasteSettingsForm } from './waste-management.settings-form.js';
 import { WasteSettingsStatusPanel } from './waste-management.settings-status-panel.js';
-
-type SettingsFormState = {
-  readonly provider: 'supabase';
-  readonly projectUrl: string;
-  readonly schemaName: string;
-  readonly enabled: boolean;
-  readonly databaseUrl: string;
-  readonly serviceRoleKey: string;
-};
+import type { CustomRecurrencePresetInputState, SettingsFormState } from './waste-management.settings-form.js';
 
 const createDefaultSettingsForm = (): SettingsFormState => ({
   provider: 'supabase',
   projectUrl: '',
   schemaName: 'public',
   enabled: false,
+  holidayStateCode: '',
   databaseUrl: '',
   serviceRoleKey: '',
+  customRecurrencePresets: [],
+  deletedPresetFallbacks: {},
 });
 
 const mapSettingsToForm = (settings: WasteManagementSettingsRecord | null): SettingsFormState =>
@@ -41,8 +36,16 @@ const mapSettingsToForm = (settings: WasteManagementSettingsRecord | null): Sett
         projectUrl: settings.projectUrl,
         schemaName: settings.schemaName ?? 'public',
         enabled: settings.enabled,
+        holidayStateCode: settings.holidayStateCode ?? '',
         databaseUrl: '',
         serviceRoleKey: '',
+        customRecurrencePresets: (settings.customRecurrencePresets ?? []).map<CustomRecurrencePresetInputState>((preset) => ({
+          id: preset.id,
+          name: preset.name,
+          description: preset.description ?? '',
+          intervalDays: preset.intervalDays,
+        })),
+        deletedPresetFallbacks: {},
       }
     : createDefaultSettingsForm();
 
@@ -51,8 +54,16 @@ const toSettingsInput = (form: SettingsFormState): WasteManagementSettingsInput 
   projectUrl: form.projectUrl.trim(),
   schemaName: compactOptionalString(form.schemaName),
   enabled: form.enabled,
+  holidayStateCode: form.holidayStateCode || undefined,
   databaseUrl: compactOptionalString(form.databaseUrl),
   serviceRoleKey: compactOptionalString(form.serviceRoleKey),
+  customRecurrencePresets: form.customRecurrencePresets.map((preset) => ({
+    id: preset.id,
+    name: preset.name.trim(),
+    description: compactOptionalString(preset.description),
+    intervalDays: preset.intervalDays,
+  })),
+  deletedPresetFallbacks: form.deletedPresetFallbacks,
 });
 
 const useWasteSettingsState = (pt: ReturnType<typeof usePluginTranslation>) => {
@@ -100,9 +111,12 @@ const persistWasteSettings = async (
 ): Promise<{ readonly message: StatusMessage; readonly settings: WasteManagementSettingsRecord | null }> => {
   try {
     const response = await updateWasteManagementSettings(toSettingsInput(form));
+    const messageText = response?.lastHolidaySyncStatus
+      ? pt('settings.messages.saveSuccessWithHolidaySync', { status: response.lastHolidaySyncStatus })
+      : pt('settings.messages.saveSuccess');
     return {
       settings: response,
-      message: { kind: 'success', text: pt('settings.messages.saveSuccess') },
+      message: { kind: 'success', text: messageText },
     };
   } catch (saveError) {
     const code = resolveApiErrorCode(saveError);

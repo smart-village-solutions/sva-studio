@@ -812,6 +812,7 @@ describe('waste management helper modules', () => {
 
     expect(formatTourRecurrence(pt, undefined)).toBe('—');
     expect(formatTourRecurrence(pt, 'on-demand')).toBe('tours.recurrence.onDemand');
+    expect(formatTourRecurrence(pt, undefined, 'Ferienmodus', 10)).toBe('tours.meta.customRecurrenceLabel');
     expect(formatTourDateRange({ firstDate: '2026-01-01', endDate: '2026-12-31' } as never)).toBe('2026-01-01 – 2026-12-31');
     expect(formatTourDateRange({ firstDate: undefined, endDate: '2026-12-31' } as never)).toBe('2026-12-31');
 

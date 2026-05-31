@@ -1,4 +1,4 @@
-import type { WasteFractionRecord } from '@sva/plugin-sdk';
+import type { WasteCustomRecurrencePresetRecord, WasteFractionRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@sva/studio-ui-react';
 import type { FormEvent } from 'react';
@@ -12,6 +12,7 @@ export const TourDialog = ({
   mode,
   form,
   fractions,
+  customRecurrencePresets,
   saving,
   message,
   onOpenChange,
@@ -22,6 +23,7 @@ export const TourDialog = ({
   readonly mode: 'create' | 'edit';
   readonly form: TourFormState;
   readonly fractions: readonly WasteFractionRecord[];
+  readonly customRecurrencePresets: readonly WasteCustomRecurrencePresetRecord[];
   readonly saving: boolean;
   readonly message: StatusMessage | null;
   readonly onOpenChange: (open: boolean) => void;
@@ -39,7 +41,14 @@ export const TourDialog = ({
         </DialogHeader>
         <form className="space-y-4" onSubmit={onSubmit}>
           <StatusNotice message={message} />
-          <WasteToursTourFields form={form} fractions={fractions} saving={saving} pt={pt} onChange={onChange} />
+          <WasteToursTourFields
+            form={form}
+            fractions={fractions}
+            customRecurrencePresets={customRecurrencePresets}
+            saving={saving}
+            pt={pt}
+            onChange={onChange}
+          />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{pt('tours.actions.cancel')}</Button>
             <Button type="submit" disabled={saving}>{saving ? pt('tours.actions.saving') : mode === 'create' ? pt('tours.actions.create') : pt('tours.actions.save')}</Button>

@@ -18,6 +18,9 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, variables?: Record<string, string | number>) =>
     variables ? `${key}:${JSON.stringify(variables)}` : key,
+  wasteManagementMasterDataContract: {
+    holidayStateCodes: ['BW', 'BY', 'NW'],
+  },
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
@@ -52,6 +55,9 @@ vi.mock('@sva/studio-ui-react', () => ({
   }: React.ComponentProps<'input'>) => (
     <input id={id} value={value} onChange={onChange} placeholder={placeholder} type={type} />
   ),
+  Textarea: ({ id, value, onChange }: React.ComponentProps<'textarea'>) => (
+    <textarea id={id} value={value} onChange={onChange} />
+  ),
   Select: ({
     id,
     value,
@@ -63,6 +69,12 @@ vi.mock('@sva/studio-ui-react', () => ({
       {children}
     </select>
   ),
+  Dialog: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   StudioActionMenu: ({
     items,
   }: {
@@ -158,6 +170,8 @@ describe('waste-management low coverage views', () => {
           enabled: true,
           databaseUrl: 'postgresql://db',
           serviceRoleKey: 'secret',
+          customRecurrencePresets: [],
+          deletedPresetFallbacks: {},
         }}
         saving={false}
         onSubmit={onSubmit}
@@ -165,22 +179,11 @@ describe('waste-management low coverage views', () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText('settings.fields.projectUrl'), {
-      target: { value: 'https://tenant-b.supabase.co' },
-    });
-    fireEvent.change(screen.getByLabelText('settings.fields.schemaName'), {
-      target: { value: 'custom' },
-    });
-    fireEvent.change(screen.getByLabelText('settings.fields.databaseUrl'), {
-      target: { value: 'postgresql://db-next' },
-    });
-    fireEvent.change(screen.getByLabelText('settings.fields.serviceRoleKey'), {
-      target: { value: 'secret-next' },
-    });
     fireEvent.click(screen.getByRole('switch', { name: 'settings.fields.enabled' }));
+    fireEvent.click(screen.getByRole('button', { name: 'settings.actions.addCustomRecurrence' }));
     fireEvent.submit(screen.getByRole('button', { name: 'settings.actions.save' }).closest('form')!);
 
-    expect(onChange).toHaveBeenCalledTimes(5);
+    expect(onChange).toHaveBeenCalledTimes(1);
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(screen.getByText('common.active')).toBeTruthy();
   });

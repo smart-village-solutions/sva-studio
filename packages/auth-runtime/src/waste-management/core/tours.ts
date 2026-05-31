@@ -36,19 +36,72 @@ export const wasteManagementTourHandlers = {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
 
+    if (parsed.data.duplicateFromTourId) {
+      const schedulingAuthError = await authorizeWasteManagementAction(
+        ctx,
+        'waste-management.scheduling.manage',
+        deps,
+        requestId
+      );
+      if (schedulingAuthError) {
+        return schedulingAuthError;
+      }
+    }
+
     try {
       await requireDeps(deps.saveWasteTour, 'saveWasteTour')(instanceId, {
         id: parsed.data.id,
         name: parsed.data.name.trim(),
         description: normalizeOptionalString(parsed.data.description),
         wasteFractionIds: parsed.data.wasteFractionIds.map((value) => value.trim()),
-        recurrence: parsed.data.recurrence ?? undefined,
+        recurrence: parsed.data.customRecurrenceId ? null : (parsed.data.recurrence ?? undefined),
+        customRecurrenceId: parsed.data.customRecurrenceId,
         firstDate: parsed.data.firstDate,
         endDate: parsed.data.endDate,
         customDates: normalizeCustomTourDates(parsed.data.customDates),
         active: parsed.data.active,
         locationCount: undefined,
       });
+
+      if (parsed.data.duplicateFromTourId) {
+        try {
+          const sourceLinks = await requireDeps(
+            deps.listWasteLocationTourLinksByTourId,
+            'listWasteLocationTourLinksByTourId'
+          )(instanceId, parsed.data.duplicateFromTourId);
+          const sourceShifts = await requireDeps(
+            deps.listWasteTourDateShiftsByTourId,
+            'listWasteTourDateShiftsByTourId'
+          )(instanceId, parsed.data.duplicateFromTourId);
+
+          for (const sourceLink of sourceLinks) {
+            await requireDeps(deps.saveWasteLocationTourLink, 'saveWasteLocationTourLink')(instanceId, {
+              id: crypto.randomUUID(),
+              locationId: sourceLink.locationId,
+              tourId: parsed.data.id,
+              startDate: sourceLink.startDate,
+              endDate: sourceLink.endDate,
+            });
+          }
+
+          for (const sourceShift of sourceShifts) {
+            await requireDeps(deps.saveWasteTourDateShift, 'saveWasteTourDateShift')(instanceId, {
+              id: crypto.randomUUID(),
+              tourId: parsed.data.id,
+              originalDate: sourceShift.originalDate,
+              actualDate: sourceShift.actualDate,
+              hasYear: sourceShift.hasYear,
+              reasonType: sourceShift.reasonType,
+              reasonKey: sourceShift.reasonKey,
+              followUpMode: sourceShift.followUpMode,
+              description: sourceShift.description,
+            });
+          }
+        } catch (error) {
+          await requireDeps(deps.deleteWasteTour, 'deleteWasteTour')(instanceId, parsed.data.id);
+          throw error;
+        }
+      }
 
       const saved = await requireDeps(deps.loadWasteTourById, 'loadWasteTourById')(instanceId, parsed.data.id);
       if (!saved) {
@@ -140,7 +193,8 @@ export const wasteManagementTourHandlers = {
         name: parsed.data.name.trim(),
         description: normalizeOptionalString(parsed.data.description),
         wasteFractionIds: parsed.data.wasteFractionIds.map((value) => value.trim()),
-        recurrence: parsed.data.recurrence ?? undefined,
+        recurrence: parsed.data.customRecurrenceId ? null : (parsed.data.recurrence ?? undefined),
+        customRecurrenceId: parsed.data.customRecurrenceId,
         firstDate: parsed.data.firstDate,
         endDate: parsed.data.endDate,
         customDates: normalizeCustomTourDates(parsed.data.customDates),

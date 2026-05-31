@@ -11,6 +11,7 @@ export const toCreateTourSearch = (search: WasteManagementSearchParams): WasteMa
   ...search,
   toursView: 'create',
   tourId: undefined,
+  duplicateFromTourId: undefined,
 });
 
 export const toEditTourSearch = (
@@ -20,6 +21,17 @@ export const toEditTourSearch = (
   ...search,
   toursView: 'edit',
   tourId,
+  duplicateFromTourId: undefined,
+});
+
+export const toDuplicateTourSearch = (
+  search: WasteManagementSearchParams,
+  duplicateFromTourId: string,
+): WasteManagementSearchParams => ({
+  ...search,
+  toursView: 'create',
+  tourId: undefined,
+  duplicateFromTourId,
 });
 
 export const toToursPageSearch = (
@@ -80,6 +92,16 @@ export const useWasteToursListNavigation = (
       resetToursFormState(controller);
       controller.setTourForm(mapTourToForm(tour));
       void navigate({ to: '/plugins/waste-management', search: toEditTourSearch(search, tour.id) });
+    },
+    toDuplicate: (tour: WasteTourRecord) => {
+      controller.setDialogMode('create');
+      resetToursFormState(controller);
+      controller.setTourForm({
+        ...mapTourToForm(tour),
+        id: createDefaultTourForm().id,
+        name: `${tour.name} (Kopie)`,
+      });
+      void navigate({ to: '/plugins/waste-management', search: toDuplicateTourSearch(search, tour.id) });
     },
     setPage: (page: number) => {
       void navigate({ to: '/plugins/waste-management', search: toToursPageSearch(search, page) });

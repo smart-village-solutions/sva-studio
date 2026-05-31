@@ -4,9 +4,21 @@ import type {
 } from './waste-management.api.js';
 
 export const formatTourRecurrence = (
-  pt: (key: string) => string,
-  value: WasteTourRecord['recurrence'] | undefined
+  pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string,
+  value: WasteTourRecord['recurrence'] | undefined,
+  customRecurrenceName?: string,
+  customRecurrenceIntervalDays?: number
 ) => {
+  if (customRecurrenceName) {
+    if (typeof customRecurrenceIntervalDays === 'number' && customRecurrenceIntervalDays > 0) {
+      return pt('tours.meta.customRecurrenceLabel', {
+        name: customRecurrenceName,
+        days: customRecurrenceIntervalDays,
+      });
+    }
+    return customRecurrenceName;
+  }
+
   if (!value) {
     return '—';
   }
@@ -51,7 +63,13 @@ const parseDateOnlyUtc = (value: string): Date => new Date(`${value}T00:00:00Z`)
 
 const formatUtcDate = (value: Date): string => value.toISOString().slice(0, 10);
 
-const resolveAdvanceStrategy = (recurrence: WasteTourRecord['recurrence']) => {
+const resolveAdvanceStrategy = (
+  recurrence: WasteTourRecord['recurrence'],
+  customRecurrenceIntervalDays?: number
+) => {
+  if (typeof customRecurrenceIntervalDays === 'number' && customRecurrenceIntervalDays > 0) {
+    return (current: Date) => current.setUTCDate(current.getUTCDate() + customRecurrenceIntervalDays);
+  }
   if (recurrence === 'weekly') {
     return (current: Date) => current.setUTCDate(current.getUTCDate() + 7);
   }
@@ -68,7 +86,7 @@ const resolveAdvanceStrategy = (recurrence: WasteTourRecord['recurrence']) => {
 };
 
 const collectScheduledTourDates = (results: Set<string>, tour: WasteTourRecord, year: number) => {
-  if (!tour.recurrence || !tour.firstDate) {
+  if (!tour.firstDate) {
     return;
   }
   const start = parseDateOnlyUtc(tour.firstDate);
@@ -76,7 +94,7 @@ const collectScheduledTourDates = (results: Set<string>, tour: WasteTourRecord, 
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return;
   }
-  const advance = resolveAdvanceStrategy(tour.recurrence);
+  const advance = resolveAdvanceStrategy(tour.recurrence, tour.customRecurrenceIntervalDays);
   if (advance) {
     addRecurringDates(results, year, start, end, advance);
   }

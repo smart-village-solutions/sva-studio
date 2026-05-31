@@ -14,12 +14,14 @@ export type WasteToursContentProps = {
   readonly schedulingOverview: WasteManagementSchedulingOverview | null;
   readonly onOpenCreateDialog: () => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
+  readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
   readonly onDeleteTours: (tourIds: readonly string[]) => Promise<void>;
+  readonly canDuplicateTour?: boolean;
   readonly saving?: boolean;
   readonly page: number;
   readonly pageSize: number;

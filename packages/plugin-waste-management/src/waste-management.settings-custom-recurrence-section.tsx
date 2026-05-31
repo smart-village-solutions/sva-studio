@@ -57,11 +57,15 @@ const removeCustomRecurrencePreset = ({
   readonly deletingItem: CustomRecurrencePresetInputState;
   readonly fallback: DeletedPresetFallbackState | undefined;
 }) => {
-  const nextDeletedFallbacks = { ...deletedPresetFallbacks };
+  const nextDeletedFallbacks = Object.fromEntries(
+    Object.entries(deletedPresetFallbacks).filter(
+      ([presetId, currentFallback]) =>
+        presetId !== deletingItem.id &&
+        !(currentFallback.kind === 'preset' && currentFallback.value === deletingItem.id)
+    )
+  ) as Record<string, DeletedPresetFallbackState>;
   if (fallback) {
     nextDeletedFallbacks[deletingItem.id] = fallback;
-  } else {
-    delete nextDeletedFallbacks[deletingItem.id];
   }
 
   return {

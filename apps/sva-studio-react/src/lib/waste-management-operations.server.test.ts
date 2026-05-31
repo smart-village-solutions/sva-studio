@@ -92,6 +92,8 @@ describe('waste management operations runtime', () => {
     expect(statements).toContain('holiday_date DATE NOT NULL');
     expect(statements).toContain('idx_waste_holiday_rules_state_year');
     expect(statements).toContain('custom_recurrence_id UUID');
+    expect(statements).toContain('ALTER TABLE "wm".waste_tours ADD COLUMN IF NOT EXISTS custom_recurrence_id UUID');
+    expect(statements).toContain('waste_tours_custom_recurrence_id_fkey');
     expect(statements).toContain('idx_waste_tours_custom_recurrence_id');
   });
 

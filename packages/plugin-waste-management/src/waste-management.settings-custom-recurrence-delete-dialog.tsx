@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
@@ -66,10 +66,18 @@ export const WasteSettingsCustomRecurrenceDeleteDialog = ({
   readonly onConfirm: (fallback: DeletedPresetFallbackState | undefined) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-  const [selection, setSelection] = useState<string>(formatDeletedPresetFallback(initialFallback));
+  const initialSelection = formatDeletedPresetFallback(initialFallback);
+  const [selection, setSelection] = useState<string>(initialSelection);
 
   const fallbackOptions = useMemo(() => createDeletedPresetFallbackOptions(availableFallbacks, pt), [availableFallbacks, pt]);
-  const resetSelection = () => setSelection(formatDeletedPresetFallback(initialFallback));
+  const resetSelection = () => setSelection(initialSelection);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setSelection(initialSelection);
+  }, [initialSelection, open, preset?.id]);
 
   return (
     <Dialog

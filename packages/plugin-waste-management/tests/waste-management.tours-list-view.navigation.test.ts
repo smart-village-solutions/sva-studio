@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WasteManagementSearchParams } from '../src/search-params.js';
 import {
@@ -60,6 +60,10 @@ describe('waste-management.tours-list-view.navigation', () => {
     vi.stubGlobal('crypto', {
       randomUUID: vi.fn().mockReturnValue('tour-copy-id'),
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('builds create and edit search states for tours', () => {

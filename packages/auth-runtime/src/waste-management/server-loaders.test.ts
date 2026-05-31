@@ -767,6 +767,55 @@ describe('waste-management server loaders', () => {
     ).rejects.toThrowError('custom_recurrence_fallback_required:preset-10');
   });
 
+  it('validates custom recurrence fallback targets before persisting updated presets', async () => {
+    repositoryMocks.listWasteCustomRecurrencePresets.mockResolvedValueOnce([
+      {
+        id: 'preset-10',
+        name: '10 Tage',
+        intervalDays: 10,
+        createdAt: '2026-05-09T10:00:00.000Z',
+        updatedAt: '2026-05-09T10:00:00.000Z',
+      },
+      {
+        id: 'preset-20',
+        name: '14 Tage',
+        intervalDays: 14,
+        createdAt: '2026-05-09T10:00:00.000Z',
+        updatedAt: '2026-05-09T10:00:00.000Z',
+      },
+    ]);
+    repositoryMocks.listWasteTours.mockResolvedValueOnce([
+      {
+        id: 'tour-1',
+        name: 'Tour Nord',
+        wasteFractionIds: ['fraction-1'],
+        recurrence: null,
+        customRecurrenceId: 'preset-10',
+        active: true,
+        createdAt: '2026-05-09T10:00:00.000Z',
+        updatedAt: '2026-05-09T10:00:00.000Z',
+      },
+    ]);
+
+    await expect(
+      wasteManagementEntitySavers.saveWasteCustomRecurrencePresets('tenant-a', {
+        nextItems: [{ id: 'preset-20', name: '14 Tage (neu)', intervalDays: 21 }],
+        deletedPresetFallbacks: {
+          'preset-10': {
+            kind: 'preset',
+            value: 'preset-999',
+          },
+        },
+      })
+    ).rejects.toThrowError('custom_recurrence_fallback_invalid:preset-10');
+
+    expect(repositoryMocks.upsertWasteCustomRecurrencePreset).not.toHaveBeenCalledWith({
+      id: 'preset-20',
+      name: '14 Tage (neu)',
+      intervalDays: 21,
+    });
+  });
+
   it('rolls back the bulk location-tour-link transaction when verification fails', async () => {
     repositoryMocks.getWasteLocationTourLinkById.mockResolvedValueOnce(null);
 

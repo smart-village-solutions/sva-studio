@@ -300,6 +300,42 @@ const saveWasteCustomRecurrencePresets = async (
     const nextPresetMap = new Map<string, Omit<WasteCustomRecurrencePresetRecord, 'createdAt' | 'updatedAt'>>(
       input.nextItems.map((preset) => [preset.id, preset])
     );
+    const deletedPresetIds = [...currentPresetIds].filter((presetId) => !nextPresetMap.has(presetId));
+
+    if (deletedPresetIds.length > 0) {
+      const tours = await measureWasteRepositoryStep(
+        instanceId,
+        'save_waste_custom_recurrence_presets',
+        'list_waste_tours',
+        () => repository.listWasteTours()
+      );
+      const affectedToursByPresetId = new Map(
+        deletedPresetIds.map((presetId) => [presetId, tours.filter((tour) => tour.customRecurrenceId === presetId)])
+      );
+
+      for (const presetId of deletedPresetIds) {
+        const affectedTours = affectedToursByPresetId.get(presetId) ?? [];
+        if (affectedTours.length === 0) {
+          continue;
+        }
+
+        const fallback = input.deletedPresetFallbacks[presetId];
+        if (!fallback) {
+          throw new Error(`custom_recurrence_fallback_required:${presetId}`);
+        }
+
+        if (fallback.kind === 'preset') {
+          if (!nextPresetMap.has(fallback.value)) {
+            throw new Error(`custom_recurrence_fallback_invalid:${presetId}`);
+          }
+          continue;
+        }
+
+        if (!isWasteTourRecurrence(fallback.value)) {
+          throw new Error(`custom_recurrence_fallback_invalid:${presetId}`);
+        }
+      }
+    }
 
     for (const preset of input.nextItems) {
       await measureWasteRepositoryStep(
@@ -310,7 +346,6 @@ const saveWasteCustomRecurrencePresets = async (
       );
     }
 
-    const deletedPresetIds = [...currentPresetIds].filter((presetId) => !nextPresetMap.has(presetId));
     if (deletedPresetIds.length === 0) {
       return;
     }

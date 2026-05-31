@@ -244,28 +244,28 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: hoch
    - Maßnahme: `check:plugin-architecture-boundary` blockierend einfuehren, Altfaelle nur ueber eine exakte Baseline tolerieren und Mischrollen wie `@sva/studio-module-iam` in einem separaten Folgechange oeffentlich neu schneiden oder pluginseitig verbieten
 
-42. Zentrale Job-Persistenz trägt fachneutrale JSON-Payloads mit begrenzter Schemastrenge
+43. Zentrale Job-Persistenz trägt fachneutrale JSON-Payloads mit begrenzter Schemastrenge
    - Impact: mittel (fachliche Payload-Drift oder unklare Ergebnis-/Fehlerdeutung wird erst in Plugin- oder Runtime-Pfaden sichtbar)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: generische Hostfelder für Progress, Fehlerkategorien, Heartbeat und Event-History stabil halten; pluginfachliche Payload-Schemas weiterhin am Rand validieren
 
-43. Hostinterner Plugin-Operations-Verlauf nutzt vorerst Polling statt Push
+44. Hostinterner Plugin-Operations-Verlauf nutzt vorerst Polling statt Push
    - Impact: mittel (UI-Reaktionszeit und Infrastrukturkosten steigen bei häufigem Polling; Echtzeitwahrnehmung bleibt begrenzt)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: denselben technischen Eventvertrag später hinter Outbox, SSE/WebSocket oder Broker wiederverwenden; vorerst Polling-Frequenz und History-Umfang kontrollieren
 
-44. n8n-/ETL-Integration ist architektonisch vorbereitet, aber noch nicht aus dem Job-Backbone heraus veröffentlicht
+45. n8n-/ETL-Integration ist architektonisch vorbereitet, aber noch nicht aus dem Job-Backbone heraus veröffentlicht
    - Impact: mittel bis hoch (Integrationen könnten vorschnell auf interne Tabellen oder Runner-Details zugreifen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Integrationsgrenze später über explizite Outbox-/Event-Verträge öffnen; keine direkte Kopplung an Graphile- oder Tabelleninterna zulassen
    - Maßnahme: generische Grundfelder stabil halten, plugin-spezifische Payloads an registrierte Jobtypen und Importprofile binden und Validierung vor Start sowie bei Worker-Updates kontrolliert ausbauen
 
-45. Stale-Detection für Plugin-Worker ist bisher nur diagnostisch und ohne automatische Recovery
+46. Stale-Detection für Plugin-Worker ist bisher nur diagnostisch und ohne automatische Recovery
    - Impact: mittel bis hoch (hängende oder verwaiste Jobs werden sichtbar, aber noch nicht aktiv bereinigt oder neu angestoßen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: die aktuelle Host-Diagnostik über `heartbeatAt`, `lastProgressAt` und `runtime.staleState` als Operator-Signal nutzen; Recovery-, Requeue- oder Dead-Letter-Strategie erst in einem getrennten Folgechange einführen
 
-46. Demo-Runtime der öffentlichen Waste-App kann vom späteren produktiven Read-Pfad abweichen
+47. Demo-Runtime der öffentlichen Waste-App kann vom späteren produktiven Read-Pfad abweichen
    - Impact: mittel bis hoch (grüne lokale Auswahl- und E2E-Flows beweisen noch nicht den finalen Server-/Datenpfad)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: vor Produktivsetzung denselben Bürgerfluss gegen die echten öffentlichen Read-Endpunkte und die finale Konfiguration erneut als Integrations- und E2E-Gate absichern

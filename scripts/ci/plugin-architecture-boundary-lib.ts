@@ -3,10 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as ts from 'typescript';
 
-import {
-  diffViolationsAgainstBaseline,
-  parsePluginArchitectureBaseline,
-} from './plugin-architecture-boundary-baseline.ts';
+import { diffViolationsAgainstBaseline, parsePluginArchitectureBaseline } from './plugin-architecture-boundary-baseline.ts';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '../..');
@@ -37,9 +34,7 @@ const REVIEW_REQUIRED_PATH_SIGNALS = ['server.ts', 'plugin-operations.ts', '.con
 
 export type PluginArchitectureViolationRule = 'workspace-dependency' | 'workspace-import' | 'forbidden-path-signal' | 'review-required-path-signal';
 export type PluginArchitectureViolation = { packageName: string; relativePath: string; rule: PluginArchitectureViolationRule; subject: string; message: string };
-export type PluginArchitectureBaselineEntry = {
-  packageName: string; relativePath: string; rule: PluginArchitectureViolationRule; subject: string; owner: string; justification: string; removalChange: string;
-};
+export type PluginArchitectureBaselineEntry = { packageName: string; relativePath: string; rule: PluginArchitectureViolationRule; subject: string; owner: string; justification: string; removalChange: string };
 type PackageJson = { name?: string; dependencies?: Record<string, string>; devDependencies?: Record<string, string>; optionalDependencies?: Record<string, string> };
 type PluginPackage = { packageName: string; packageDir: string; packageJson: PackageJson };
 
@@ -105,21 +100,40 @@ const readPluginPackages = async (projectRoot: string): Promise<readonly PluginP
 const isWorkspaceDependency = (packageName: string, version: string): boolean =>
   packageName.startsWith('@sva/') && version.startsWith('workspace:');
 
-const normalizeWorkspaceModuleSpecifier = (moduleSpecifier: string): string | null => {
-  if (moduleSpecifier.startsWith('@sva/')) {
-    return moduleSpecifier;
-  }
-
+const normalizeWorkspaceModuleSpecifier = async (
+  moduleSpecifier: string,
+  importerPath: string,
+  packageDir: string,
+  projectRoot: string
+): Promise<string | null> => {
+  if (moduleSpecifier.startsWith('@sva/')) return moduleSpecifier;
   const normalized = path.posix.normalize(moduleSpecifier.replaceAll('\\', '/'));
   const withoutRelativePrefix = normalized.replace(/^(?:(?:\.\.\/)|(?:\.\/))+/, '');
-  return withoutRelativePrefix.startsWith('apps/') ? withoutRelativePrefix : null;
+  if (withoutRelativePrefix.startsWith('apps/')) return withoutRelativePrefix;
+  if (!normalized.startsWith('.')) return null;
+  const resolvedPath = path.resolve(path.dirname(importerPath), moduleSpecifier);
+  const pluginPackagePrefix = `${packageDir}${path.sep}`;
+  if (resolvedPath === packageDir || resolvedPath.startsWith(pluginPackagePrefix)) return null;
+  const projectRootPrefix = `${projectRoot}${path.sep}`;
+  if (!resolvedPath.startsWith(projectRootPrefix)) return null;
+  const resolvedRelativePath = toPosixRelativePath(projectRoot, resolvedPath);
+  if (resolvedRelativePath.startsWith('apps/')) return resolvedRelativePath;
+  if (!resolvedRelativePath.startsWith('packages/')) return null;
+  let currentDirectory = path.dirname(resolvedPath);
+  while (currentDirectory === projectRoot || currentDirectory.startsWith(projectRootPrefix)) {
+    const packageJsonPath = path.join(currentDirectory, 'package.json');
+    if (await pathExists(packageJsonPath)) {
+      const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as PackageJson;
+      return packageJson.name ?? resolvedRelativePath;
+    }
+    if (currentDirectory === projectRoot) break;
+    currentDirectory = path.dirname(currentDirectory);
+  }
+  return resolvedRelativePath;
 };
 
 const getWorkspacePackageName = (moduleSpecifier: string): string | null => {
-  if (!moduleSpecifier.startsWith('@sva/')) {
-    return null;
-  }
-
+  if (!moduleSpecifier.startsWith('@sva/')) return null;
   const [scope, packageName] = moduleSpecifier.split('/');
   return scope && packageName ? `${scope}/${packageName}` : null;
 };
@@ -139,10 +153,7 @@ const getWorkspaceImportSubject = (moduleSpecifier: string): string =>
 
 const matchesReviewRequiredPathSignal = (relativePath: string, signal: string): boolean => {
   const normalizedPath = relativePath.toLowerCase();
-  if (signal === 'server.ts' || signal === 'plugin-operations.ts') {
-    return path.posix.basename(normalizedPath) === signal;
-  }
-
+  if (signal === 'server.ts' || signal === 'plugin-operations.ts') return path.posix.basename(normalizedPath) === signal;
   return normalizedPath.includes(signal);
 };
 
@@ -210,7 +221,12 @@ const collectPackageViolations = async (
     const sourceFile = ts.createSourceFile(filePath, await readFile(filePath, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 
     for (const rawModuleSpecifier of getModuleSpecifiers(sourceFile)) {
-      const moduleSpecifier = normalizeWorkspaceModuleSpecifier(rawModuleSpecifier);
+      const moduleSpecifier = await normalizeWorkspaceModuleSpecifier(
+        rawModuleSpecifier,
+        filePath,
+        pluginPackage.packageDir,
+        projectRoot
+      );
       if (!moduleSpecifier || isAllowedWorkspaceModuleSpecifier(moduleSpecifier)) {
         continue;
       }

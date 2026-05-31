@@ -55,6 +55,26 @@ const createPluginPackage = (
   }
 };
 
+const createWorkspacePackage = (
+  workspaceRoot: string,
+  packageDirectoryName: string,
+  config: {
+    packageName: string;
+    sourceFiles: Record<string, string>;
+  }
+): void => {
+  const packageRoot = path.join(workspaceRoot, 'packages', packageDirectoryName);
+  writeJson(path.join(packageRoot, 'package.json'), {
+    name: config.packageName,
+    version: '0.0.1',
+    private: true,
+  });
+
+  for (const [relativePath, sourceCode] of Object.entries(config.sourceFiles)) {
+    writeText(path.join(packageRoot, relativePath), sourceCode);
+  }
+};
+
 const sortViolations = (violations: readonly PluginArchitectureViolation[]): readonly PluginArchitectureViolation[] =>
   [...violations].sort((left, right) =>
     `${left.packageName}:${left.rule}:${left.subject}:${left.relativePath}`.localeCompare(
@@ -99,6 +119,45 @@ export const adminResources: readonly AdminResourceDefinition[] = [];
     });
 
     await expect(collectPluginArchitectureViolations(workspaceRoot)).resolves.toEqual([]);
+  });
+
+  it('detects relative imports into other workspace packages and apps', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createWorkspacePackage(workspaceRoot, 'core', {
+      packageName: '@sva/core',
+      sourceFiles: {
+        'src/public-api.ts': 'export const authorize = () => true;\n',
+      },
+    });
+    writeText(path.join(workspaceRoot, 'apps', 'sva-studio-react', 'src', 'app-shell.ts'), 'export const appShell = true;\n');
+    createPluginPackage(workspaceRoot, 'plugin-relative-drift', {
+      packageName: '@sva/plugin-relative-drift',
+      sourceFiles: {
+        'src/index.ts': `export { authorize } from '../../core/src/public-api.js';
+export { appShell } from '../../../apps/sva-studio-react/src/app-shell.js';
+`,
+      },
+    });
+
+    const violations = await collectPluginArchitectureViolations(workspaceRoot);
+
+    expect(violations).toHaveLength(2);
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          packageName: '@sva/plugin-relative-drift',
+          relativePath: path.posix.join('packages', 'plugin-relative-drift', 'src', 'index.ts'),
+          rule: 'workspace-import',
+          subject: '@sva/core',
+        }),
+        expect.objectContaining({
+          packageName: '@sva/plugin-relative-drift',
+          relativePath: path.posix.join('packages', 'plugin-relative-drift', 'src', 'index.ts'),
+          rule: 'workspace-import',
+          subject: path.posix.join('apps', 'sva-studio-react', 'src', 'app-shell.js'),
+        }),
+      ])
+    );
   });
 
   it('detects forbidden workspace dependencies, imports and path signals', async () => {

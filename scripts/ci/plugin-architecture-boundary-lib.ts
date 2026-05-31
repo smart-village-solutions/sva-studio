@@ -33,7 +33,7 @@ const REVIEW_REQUIRED_PATH_SIGNALS = ['server.ts', 'plugin-operations.ts', '.con
 export type PluginArchitectureViolationRule = 'workspace-dependency' | 'workspace-import' | 'forbidden-path-signal' | 'review-required-path-signal';
 export type PluginArchitectureViolation = { packageName: string; relativePath: string; rule: PluginArchitectureViolationRule; subject: string; message: string };
 export type PluginArchitectureBaselineEntry = {
-  packageName: string; rule: PluginArchitectureViolationRule; subject: string; owner: string; justification: string; removalChange: string;
+  packageName: string; relativePath: string; rule: PluginArchitectureViolationRule; subject: string; owner: string; justification: string; removalChange: string;
 };
 type PackageJson = { name?: string; dependencies?: Record<string, string>; devDependencies?: Record<string, string>; optionalDependencies?: Record<string, string> };
 type PluginPackage = { packageName: string; packageDir: string; packageJson: PackageJson };
@@ -111,6 +111,37 @@ const normalizeWorkspaceModuleSpecifier = (moduleSpecifier: string): string | nu
   return withoutRelativePrefix.startsWith('apps/') ? withoutRelativePrefix : null;
 };
 
+const getWorkspacePackageName = (moduleSpecifier: string): string | null => {
+  if (!moduleSpecifier.startsWith('@sva/')) {
+    return null;
+  }
+
+  const [scope, packageName] = moduleSpecifier.split('/');
+  return scope && packageName ? `${scope}/${packageName}` : null;
+};
+
+const isAllowedWorkspaceModuleSpecifier = (moduleSpecifier: string): boolean => {
+  const workspacePackageName = getWorkspacePackageName(moduleSpecifier);
+  return workspacePackageName ? ALLOWED_WORKSPACE_DEPENDENCIES.has(workspacePackageName) : false;
+};
+
+const isForbiddenHostWorkspaceModuleSpecifier = (moduleSpecifier: string): boolean => {
+  const workspacePackageName = getWorkspacePackageName(moduleSpecifier);
+  return workspacePackageName ? FORBIDDEN_HOST_WORKSPACE_PACKAGES.has(workspacePackageName) : false;
+};
+
+const getWorkspaceImportSubject = (moduleSpecifier: string): string =>
+  getWorkspacePackageName(moduleSpecifier) ?? moduleSpecifier;
+
+const matchesReviewRequiredPathSignal = (relativePath: string, signal: string): boolean => {
+  const normalizedPath = relativePath.toLowerCase();
+  if (signal === 'server.ts' || signal === 'plugin-operations.ts') {
+    return path.posix.basename(normalizedPath) === signal;
+  }
+
+  return normalizedPath.includes(signal);
+};
+
 const getModuleSpecifiers = (sourceFile: ts.SourceFile): readonly string[] => {
   const moduleSpecifiers = new Set<string>();
   const visit = (node: ts.Node): void => {
@@ -176,15 +207,16 @@ const collectPackageViolations = async (
 
     for (const rawModuleSpecifier of getModuleSpecifiers(sourceFile)) {
       const moduleSpecifier = normalizeWorkspaceModuleSpecifier(rawModuleSpecifier);
-      if (!moduleSpecifier || ALLOWED_WORKSPACE_DEPENDENCIES.has(moduleSpecifier)) {
+      if (!moduleSpecifier || isAllowedWorkspaceModuleSpecifier(moduleSpecifier)) {
         continue;
       }
+      const subject = getWorkspaceImportSubject(moduleSpecifier);
       const message = moduleSpecifier.startsWith('apps/')
         ? `${pluginPackage.packageName} importiert App-Code statt eines oeffentlichen Plugin-Vertrags`
-        : FORBIDDEN_HOST_WORKSPACE_PACKAGES.has(moduleSpecifier)
-          ? `${pluginPackage.packageName} importiert das interne Host-Package ${moduleSpecifier}`
-          : `${pluginPackage.packageName} importiert mit ${moduleSpecifier} einen nicht freigegebenen Workspace-Vertrag`;
-      violations.push(createViolation(pluginPackage.packageName, relativePath, 'workspace-import', moduleSpecifier, message));
+        : isForbiddenHostWorkspaceModuleSpecifier(moduleSpecifier)
+          ? `${pluginPackage.packageName} importiert das interne Host-Package ${subject}`
+          : `${pluginPackage.packageName} importiert mit ${subject} einen nicht freigegebenen Workspace-Vertrag`;
+      violations.push(createViolation(pluginPackage.packageName, relativePath, 'workspace-import', subject, message));
     }
 
     const normalizedPath = relativePath.toLowerCase();
@@ -203,7 +235,7 @@ const collectPackageViolations = async (
     }
 
     for (const signal of REVIEW_REQUIRED_PATH_SIGNALS) {
-      if (normalizedPath.includes(signal)) {
+      if (matchesReviewRequiredPathSignal(relativePath, signal)) {
         violations.push(
           createViolation(
             pluginPackage.packageName,
@@ -236,9 +268,10 @@ export const parsePluginArchitectureBaseline = (markdown: string): readonly Plug
       throw new Error(`Baseline-Eintrag ${index} ist kein Objekt.`);
     }
     const candidate = entry as Record<string, unknown>;
-    const { packageName, rule, subject, owner, justification, removalChange } = candidate;
+    const { packageName, relativePath, rule, subject, owner, justification, removalChange } = candidate;
     if (
       typeof packageName !== 'string' ||
+      typeof relativePath !== 'string' ||
       typeof rule !== 'string' ||
       typeof subject !== 'string' ||
       typeof owner !== 'string' ||
@@ -252,6 +285,7 @@ export const parsePluginArchitectureBaseline = (markdown: string): readonly Plug
     }
     return {
       packageName,
+      relativePath,
       rule: rule as PluginArchitectureViolationRule,
       subject,
       owner,
@@ -261,8 +295,8 @@ export const parsePluginArchitectureBaseline = (markdown: string): readonly Plug
   });
 };
 
-const getViolationKey = (violation: Pick<PluginArchitectureViolation, 'packageName' | 'rule' | 'subject'>): string =>
-  `${violation.packageName}::${violation.rule}::${violation.subject}`;
+const getViolationKey = (violation: Pick<PluginArchitectureViolation, 'packageName' | 'relativePath' | 'rule' | 'subject'>): string =>
+  `${violation.packageName}::${violation.relativePath}::${violation.rule}::${violation.subject}`;
 
 export const diffViolationsAgainstBaseline = (
   violations: readonly PluginArchitectureViolation[],

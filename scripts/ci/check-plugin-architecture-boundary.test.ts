@@ -79,6 +79,7 @@ describe('check-plugin-architecture-boundary', () => {
       },
       sourceFiles: {
         'src/index.ts': `import type { PluginDefinition } from '@sva/plugin-sdk';
+import type { AdminResourceDefinition } from '@sva/plugin-sdk/admin-resources';
 
 export const pluginClean: PluginDefinition = {
   id: 'clean',
@@ -91,6 +92,8 @@ export const pluginClean: PluginDefinition = {
   auditEvents: [],
   translations: {},
 };
+
+export const adminResources: readonly AdminResourceDefinition[] = [];
 `,
       },
     });
@@ -148,6 +151,20 @@ export const pluginDrift = authorize;
     );
   });
 
+  it('anchors exact review-required file signals to the basename', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createPluginPackage(workspaceRoot, 'plugin-path-signals', {
+      packageName: '@sva/plugin-path-signals',
+      sourceFiles: {
+        'src/dev-server.ts': 'export const devServer = true;\n',
+        'src/apiserver.ts': 'export const apiServer = true;\n',
+        'src/plugin-operations.helper.ts': 'export const helper = true;\n',
+      },
+    });
+
+    await expect(collectPluginArchitectureViolations(workspaceRoot)).resolves.toEqual([]);
+  });
+
   it('parses the markdown baseline and filters documented brownfield violations', () => {
     const baseline = parsePluginArchitectureBaseline(`# Plugin Architecture Boundary Baseline
 
@@ -157,6 +174,7 @@ export const pluginDrift = authorize;
 [
   {
     "packageName": "@sva/plugin-waste-management",
+    "relativePath": "packages/plugin-waste-management/src/plugin.tsx",
     "rule": "workspace-import",
     "subject": "@sva/studio-module-iam",
     "owner": "studio-platform",
@@ -170,6 +188,7 @@ export const pluginDrift = authorize;
     expect(baseline).toEqual([
       {
         packageName: '@sva/plugin-waste-management',
+        relativePath: 'packages/plugin-waste-management/src/plugin.tsx',
         rule: 'workspace-import',
         subject: '@sva/studio-module-iam',
         owner: 'studio-platform',
@@ -189,6 +208,13 @@ export const pluginDrift = authorize;
         },
         {
           packageName: '@sva/plugin-waste-management',
+          relativePath: 'packages/plugin-waste-management/src/other.tsx',
+          rule: 'workspace-import',
+          subject: '@sva/studio-module-iam',
+          message: 'new import',
+        },
+        {
+          packageName: '@sva/plugin-waste-management',
           relativePath: 'packages/plugin-waste-management/package.json',
           rule: 'workspace-dependency',
           subject: '@sva/core',
@@ -199,6 +225,13 @@ export const pluginDrift = authorize;
     );
 
     expect(unbaselined).toEqual([
+      {
+        packageName: '@sva/plugin-waste-management',
+        relativePath: 'packages/plugin-waste-management/src/other.tsx',
+        rule: 'workspace-import',
+        subject: '@sva/studio-module-iam',
+        message: 'new import',
+      },
       {
         packageName: '@sva/plugin-waste-management',
         relativePath: 'packages/plugin-waste-management/package.json',

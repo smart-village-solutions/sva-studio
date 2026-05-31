@@ -159,6 +159,7 @@ export type PluginArchitectureViolation = {
 
 export type PluginArchitectureBaselineEntry = {
   packageName: string;
+  relativePath: string;
   rule: PluginArchitectureViolationRule;
   subject: string;
   owner: string;
@@ -311,7 +312,8 @@ Die Baseline-Datei soll bestehende Altlasten sichtbar machen, statt sie zu verst
 [
   {
     "packageName": "@sva/plugin-waste-management",
-    "rule": "workspace-dependency",
+    "relativePath": "packages/plugin-waste-management/src/plugin.tsx",
+    "rule": "workspace-import",
     "subject": "@sva/studio-module-iam",
     "owner": "@sva-studio/core-maintainers",
     "justification": "waste-management konsumiert noch die host-owned studioModuleIamRegistry direkt",
@@ -336,7 +338,7 @@ Für jeden Eintrag festhalten:
 Der Check soll nicht nur absolute Regeln prüfen, sondern zusätzlich unterscheiden zwischen:
 
 ```md
-- bereits bekanntem Altverstoß mit exakt gleichem `packageName`, `rule` und `subject`
+- bereits bekanntem Altverstoß mit exakt gleichem `packageName`, `relativePath`, `rule` und `subject`
 - neu eingeführtem oder vergrößertem Verstoß
 ```
 
@@ -373,7 +375,7 @@ Run:
 pnpm check:plugin-architecture-boundary
 ```
 
-Expected: Der Check bleibt nur dann grün, wenn die bekannten Altverstöße exakt in `docs/reports/plugin-architecture-boundary-baseline.md` beschrieben sind.
+Expected: Der Check bleibt nur dann grün, wenn die bekannten Altverstöße exakt in `docs/reports/plugin-architecture-boundary-baseline.md` beschrieben sind, inklusive `relativePath`.
 
 ## Task 4: Tag-/Ownership-Schlupflöcher schließen
 
@@ -495,7 +497,7 @@ Expected: Der neue Check ist in den Lint-/PR-Pfad integriert, Script-Tests bleib
 - Negativfall lokal verifizieren: künstliche zusätzliche Workspace-Dependency in einem Fixture-Plugin führt zu blockierendem Fehler
 - Negativfall lokal verifizieren: künstlicher `@sva/studio-module-iam`-Import in einem Temp-Plugin führt zu blockierendem Fehler
 - Negativfall lokal verifizieren: verbotenes Struktur-Signal in einem Temp-Plugin führt zu blockierendem Fehler
-- Regressionsfall verifizieren: bekannter Baseline-Eintrag bleibt nur solange grün, wie `packageName`, `rule` und `subject` exakt übereinstimmen
+- Regressionsfall verifizieren: bekannter Baseline-Eintrag bleibt nur solange grün, wie `packageName`, `relativePath`, `rule` und `subject` exakt übereinstimmen
 - Optional vor Merge: `pnpm test:pr`
 
 ## Assumptions

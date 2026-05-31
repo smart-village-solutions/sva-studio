@@ -6,7 +6,7 @@ export default mergeConfig(
   sharedVitestConfig,
   defineConfig({
     test: {
-      include: ['src/**/*.a11y.test.{ts,tsx}', 'src/**/*.a11y.spec.{ts,tsx}'],
+      include: ['src/**/*.a11y.test.{ts,tsx}', 'src/**/*.a11y.spec.{ts,tsx}', 'src/test/a11y.test.ts'],
     },
   })
 );

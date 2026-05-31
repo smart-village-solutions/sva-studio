@@ -9,6 +9,7 @@ export default mergeConfig(
       include: [
         'src/hooks/**/*.{test,spec}.{ts,tsx}',
         'src/lib/**/*.{test,spec}.{ts,tsx}',
+        'src/test/**/*.{test,spec}.{ts,tsx}',
       ],
       exclude: [
         'src/**/*.server.test.{ts,tsx}',

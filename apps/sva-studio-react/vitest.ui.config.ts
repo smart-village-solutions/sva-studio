@@ -11,6 +11,7 @@ export default mergeConfig(
         'src/providers/**/*.{test,spec}.{ts,tsx}',
         'src/i18n/**/*.{test,spec}.{ts,tsx}',
       ],
+      exclude: ['src/**/*.a11y.test.{ts,tsx}', 'src/**/*.a11y.spec.{ts,tsx}'],
     },
   })
 );

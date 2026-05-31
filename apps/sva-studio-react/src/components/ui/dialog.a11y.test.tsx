@@ -1,4 +1,4 @@
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, it } from 'vitest';
 
 import { expectNoA11yViolations } from '@/test/a11y';
@@ -11,7 +11,7 @@ afterEach(() => {
 
 describe('ui/dialog accessibility', () => {
   it('renders an accessible dialog with title and description', async () => {
-    const { container } = render(
+    render(
       <Dialog open>
         <DialogContent>
           <DialogTitle>Dialogtitel</DialogTitle>
@@ -20,6 +20,6 @@ describe('ui/dialog accessibility', () => {
       </Dialog>
     );
 
-    await expectNoA11yViolations(container);
+    await expectNoA11yViolations(screen.getByRole('dialog'));
   });
 });

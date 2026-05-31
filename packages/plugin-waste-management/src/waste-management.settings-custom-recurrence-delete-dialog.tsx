@@ -12,9 +12,43 @@ import {
   StudioField,
 } from '@sva/studio-ui-react';
 
-import type { CustomRecurrencePresetInputState, DeletedPresetFallbackState } from './waste-management.settings-form.js';
+import {
+  createDeletedPresetFallbackOptions,
+  formatDeletedPresetFallback,
+  parseDeletedPresetFallback,
+} from './waste-management.settings-custom-recurrence.support.js';
+import type { CustomRecurrencePresetInputState, DeletedPresetFallbackState } from './waste-management.settings.shared.js';
 
-const defaultRecurrenceFallbacks = ['weekly', 'biweekly', 'fourweekly', 'yearly', 'on-demand', 'custom'] as const;
+const DeleteFallbackField = ({
+  selection,
+  options,
+  pt,
+  onSelectionChange,
+}: {
+  readonly selection: string;
+  readonly options: readonly { readonly key: string; readonly label: string }[];
+  readonly pt: (key: string) => string;
+  readonly onSelectionChange: (value: string) => void;
+}) => (
+  <StudioField
+    id="waste-settings-custom-recurrence-fallback"
+    label={pt('settings.fields.customRecurrenceFallback')}
+    description={pt('settings.messages.customRecurrenceFallbackHint')}
+  >
+    <Select
+      id="waste-settings-custom-recurrence-fallback"
+      value={selection}
+      onChange={(event) => onSelectionChange(event.target.value)}
+    >
+      <option value="">{pt('settings.messages.customRecurrenceFallbackPlaceholder')}</option>
+      {options.map((option) => (
+        <option key={option.key} value={option.key}>
+          {option.label}
+        </option>
+      ))}
+    </Select>
+  </StudioField>
+);
 
 export const WasteSettingsCustomRecurrenceDeleteDialog = ({
   open,
@@ -32,30 +66,17 @@ export const WasteSettingsCustomRecurrenceDeleteDialog = ({
   readonly onConfirm: (fallback: DeletedPresetFallbackState | undefined) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-  const [selection, setSelection] = useState<string>(
-    initialFallback ? `${initialFallback.kind}:${initialFallback.value}` : ''
-  );
+  const [selection, setSelection] = useState<string>(formatDeletedPresetFallback(initialFallback));
 
-  const fallbackOptions = useMemo(
-    () => [
-      ...availableFallbacks.map((candidate) => ({
-        key: `preset:${candidate.id}`,
-        label: pt('tours.meta.customRecurrenceOption', { name: candidate.name, days: candidate.intervalDays }),
-      })),
-      ...defaultRecurrenceFallbacks.map((candidate) => ({
-        key: `default:${candidate}`,
-        label: pt(`tours.recurrence.${candidate === 'on-demand' ? 'onDemand' : candidate}`),
-      })),
-    ],
-    [availableFallbacks, pt]
-  );
+  const fallbackOptions = useMemo(() => createDeletedPresetFallbackOptions(availableFallbacks, pt), [availableFallbacks, pt]);
+  const resetSelection = () => setSelection(formatDeletedPresetFallback(initialFallback));
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) {
-          setSelection(initialFallback ? `${initialFallback.kind}:${initialFallback.value}` : '');
+          resetSelection();
         }
         onOpenChange(nextOpen);
       }}
@@ -68,24 +89,7 @@ export const WasteSettingsCustomRecurrenceDeleteDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <StudioField
-          id="waste-settings-custom-recurrence-fallback"
-          label={pt('settings.fields.customRecurrenceFallback')}
-          description={pt('settings.messages.customRecurrenceFallbackHint')}
-        >
-          <Select
-            id="waste-settings-custom-recurrence-fallback"
-            value={selection}
-            onChange={(event) => setSelection(event.target.value)}
-          >
-            <option value="">{pt('settings.messages.customRecurrenceFallbackPlaceholder')}</option>
-            {fallbackOptions.map((option) => (
-              <option key={option.key} value={option.key}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </StudioField>
+        <DeleteFallbackField selection={selection} options={fallbackOptions} pt={pt} onSelectionChange={setSelection} />
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
@@ -94,10 +98,7 @@ export const WasteSettingsCustomRecurrenceDeleteDialog = ({
           <Button
             type="button"
             variant="destructive"
-            onClick={() => {
-              const [kind, value] = selection.split(':', 2);
-              onConfirm(kind && value ? ({ kind: kind as 'preset' | 'default', value } satisfies DeletedPresetFallbackState) : undefined);
-            }}
+            onClick={() => onConfirm(parseDeletedPresetFallback(selection))}
           >
             {pt('settings.actions.deleteCustomRecurrence')}
           </Button>

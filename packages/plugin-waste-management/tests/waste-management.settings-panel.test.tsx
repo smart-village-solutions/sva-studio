@@ -11,6 +11,9 @@ const capturedForms = vi.hoisted(() => [] as unknown[]);
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, variables?: Record<string, string | number>) =>
     variables ? `${key}:${JSON.stringify(variables)}` : key,
+  wasteManagementMasterDataContract: {
+    isWasteHolidayStateCode: (value: string): value is string => value.length > 0,
+  },
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({

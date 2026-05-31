@@ -4,8 +4,9 @@ import { asApiItem, createApiError, parseRequestBody, readPathSegment } from '..
 import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
+import { createWasteManagementTourAfterValidation, createWasteTourWriteInput } from './tours-write-support.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-import { getRequestId, normalizeCustomTourDates, normalizeOptionalString, requireActorInstanceId, requireDeps } from './utils.js';
+import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 
 const { createWasteTourSchema, updateWasteTourSchema } = wasteManagementTourSchemas;
 
@@ -49,89 +50,15 @@ export const wasteManagementTourHandlers = {
     }
 
     try {
-      await requireDeps(deps.saveWasteTour, 'saveWasteTour')(instanceId, {
-        id: parsed.data.id,
-        name: parsed.data.name.trim(),
-        description: normalizeOptionalString(parsed.data.description),
-        wasteFractionIds: parsed.data.wasteFractionIds.map((value) => value.trim()),
-        recurrence: parsed.data.customRecurrenceId ? null : (parsed.data.recurrence ?? undefined),
-        customRecurrenceId: parsed.data.customRecurrenceId,
-        firstDate: parsed.data.firstDate,
-        endDate: parsed.data.endDate,
-        customDates: normalizeCustomTourDates(parsed.data.customDates),
-        active: parsed.data.active,
-        locationCount: undefined,
-      });
-
-      if (parsed.data.duplicateFromTourId) {
-        try {
-          const sourceLinks = await requireDeps(
-            deps.listWasteLocationTourLinksByTourId,
-            'listWasteLocationTourLinksByTourId'
-          )(instanceId, parsed.data.duplicateFromTourId);
-          const sourceShifts = await requireDeps(
-            deps.listWasteTourDateShiftsByTourId,
-            'listWasteTourDateShiftsByTourId'
-          )(instanceId, parsed.data.duplicateFromTourId);
-
-          for (const sourceLink of sourceLinks) {
-            await requireDeps(deps.saveWasteLocationTourLink, 'saveWasteLocationTourLink')(instanceId, {
-              id: crypto.randomUUID(),
-              locationId: sourceLink.locationId,
-              tourId: parsed.data.id,
-              startDate: sourceLink.startDate,
-              endDate: sourceLink.endDate,
-            });
-          }
-
-          for (const sourceShift of sourceShifts) {
-            await requireDeps(deps.saveWasteTourDateShift, 'saveWasteTourDateShift')(instanceId, {
-              id: crypto.randomUUID(),
-              tourId: parsed.data.id,
-              originalDate: sourceShift.originalDate,
-              actualDate: sourceShift.actualDate,
-              hasYear: sourceShift.hasYear,
-              reasonType: sourceShift.reasonType,
-              reasonKey: sourceShift.reasonKey,
-              followUpMode: sourceShift.followUpMode,
-              description: sourceShift.description,
-            });
-          }
-        } catch (error) {
-          await requireDeps(deps.deleteWasteTour, 'deleteWasteTour')(instanceId, parsed.data.id);
-          throw error;
-        }
-      }
-
-      const saved = await requireDeps(deps.loadWasteTourById, 'loadWasteTourById')(instanceId, parsed.data.id);
-      if (!saved) {
-        await emitWasteAuditEvent({
-          deps,
-          ctx,
-          instanceId,
-          actionId: 'waste-management.tour.created',
-          result: 'failure',
-          reasonCode: 'verification_failed',
-          resourceType: 'waste_tour',
-          resourceId: parsed.data.id,
-        });
-        return createApiError(503, 'database_unavailable', 'Die Waste-Tour konnte nicht verifiziert werden.', requestId);
-      }
-
-      await emitWasteAuditEvent({
+      return await createWasteManagementTourAfterValidation({
         deps,
         ctx,
         instanceId,
-        actionId: 'waste-management.tour.created',
-        result: 'success',
-        resourceType: 'waste_tour',
-        resourceId: saved.id,
-      });
-
-      await updateWasteVisibleStatus(deps, instanceId, 'success');
-      return new Response(JSON.stringify(asApiItem(saved, requestId)), {
-        status: 201,
-        headers: { 'Content-Type': 'application/json' },
+        requestId,
+        input: {
+          ...parsed.data,
+          locationCount: undefined,
+        },
       });
     } catch (error) {
       if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
@@ -189,17 +116,11 @@ export const wasteManagementTourHandlers = {
       }
 
       await requireDeps(deps.saveWasteTour, 'saveWasteTour')(instanceId, {
-        id: tourId,
-        name: parsed.data.name.trim(),
-        description: normalizeOptionalString(parsed.data.description),
-        wasteFractionIds: parsed.data.wasteFractionIds.map((value) => value.trim()),
-        recurrence: parsed.data.customRecurrenceId ? null : (parsed.data.recurrence ?? undefined),
-        customRecurrenceId: parsed.data.customRecurrenceId,
-        firstDate: parsed.data.firstDate,
-        endDate: parsed.data.endDate,
-        customDates: normalizeCustomTourDates(parsed.data.customDates),
-        active: parsed.data.active,
-        locationCount: existing.locationCount,
+        ...createWasteTourWriteInput({
+          ...parsed.data,
+          id: tourId,
+          locationCount: existing.locationCount,
+        }),
       });
 
       const saved = await requireDeps(deps.loadWasteTourById, 'loadWasteTourById')(instanceId, tourId);

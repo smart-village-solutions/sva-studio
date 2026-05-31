@@ -18,6 +18,49 @@ const resolveTourShiftCount = (tour: WasteTourRecord, schedulingOverview: WasteM
     (shift) => shift.tourIds == null || shift.tourIds.length === 0 || shift.tourIds.includes(tour.id)
   ).length;
 
+const WasteToursRowSummaryCell = ({
+  name,
+  description,
+}: {
+  readonly name: string;
+  readonly description?: string | null;
+}) => (
+  <td className="w-[150px] px-3 py-3">
+    <div className="space-y-1">
+      <p className="font-semibold">{name}</p>
+      {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+    </div>
+  </td>
+);
+
+const WasteToursRowShiftCountCell = ({ label }: { readonly label: string }) => (
+  <td className="w-[168px] px-3 py-3">
+    <span className="text-sm text-muted-foreground">{label}</span>
+  </td>
+);
+
+const WasteToursRowAssignmentCountCell = ({
+  assignmentContextLoading,
+  assignmentCount,
+  pt,
+  tourId,
+}: {
+  readonly assignmentContextLoading: boolean;
+  readonly assignmentCount: number;
+  readonly pt: ReturnType<typeof usePluginTranslation>;
+  readonly tourId: string;
+}) => (
+  <td className="w-[94px] px-3 py-3">
+    {assignmentContextLoading ? (
+      <span className="text-sm text-muted-foreground">{pt('tours.table.loadingAssignments')}</span>
+    ) : (
+      <span data-testid={`tour-assignment-count-${tourId}`} className="text-sm">
+        {assignmentCount}
+      </span>
+    )}
+  </td>
+);
+
 export const WasteToursTableRow = ({
   tour,
   fractionsById,
@@ -67,31 +110,22 @@ export const WasteToursTableRow = ({
     .filter((value): value is string => typeof value === 'string' && value.length > 0);
   const shiftCount = resolveTourShiftCount(tour, schedulingOverview);
   const firstAssignmentId = assignmentItems[0]?.id;
+  const shiftCountLabel = shiftCount > 0 ? pt('tours.meta.shiftCount', { value: shiftCount }) : pt('tours.table.noShifts');
 
   return (
     <tr className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20 last:border-b-0">
       <WasteToursRowSelectionCell tour={tour} selected={selected} onToggleSelectedTour={onToggleSelectedTour} />
-      <td className="w-[150px] px-3 py-3">
-        <div className="space-y-1">
-          <p className="font-semibold">{tour.name}</p>
-          {tour.description ? <p className="text-sm text-muted-foreground">{tour.description}</p> : null}
-        </div>
-      </td>
+      <WasteToursRowSummaryCell name={tour.name} description={tour.description} />
       <WasteToursRowFractionCell tourId={tour.id} fractionNames={fractionNames} />
       <td className="w-[132px] px-3 py-3 text-sm">{recurrenceLabel}</td>
       <WasteToursRowDatesCell firstDate={tour.firstDate} endDate={tour.endDate} />
-      <td className="w-[168px] px-3 py-3">
-        <span className="text-sm text-muted-foreground">
-          {shiftCount > 0 ? pt('tours.meta.shiftCount', { value: shiftCount }) : pt('tours.table.noShifts')}
-        </span>
-      </td>
-      <td className="w-[94px] px-3 py-3">
-        {assignmentContextLoading ? (
-          <span className="text-sm text-muted-foreground">{pt('tours.table.loadingAssignments')}</span>
-        ) : (
-          <span data-testid={`tour-assignment-count-${tour.id}`} className="text-sm">{assignmentItems.length}</span>
-        )}
-      </td>
+      <WasteToursRowShiftCountCell label={shiftCountLabel} />
+      <WasteToursRowAssignmentCountCell
+        assignmentContextLoading={assignmentContextLoading}
+        assignmentCount={assignmentItems.length}
+        pt={pt}
+        tourId={tour.id}
+      />
       <WasteToursRowStatusCell tour={tour} disabled={assignmentContextLoading || saving} onToggleTourStatus={onToggleTourStatus} />
       <WasteToursRowActionsCell
         tour={tour}

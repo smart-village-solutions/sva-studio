@@ -5,7 +5,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioPageHeader } from '@sva/studio-ui-react';
 
 import { WasteToursTourFields } from './waste-management.tours-tour-fields.js';
-import type { TourFormState } from './waste-management.tours.shared.js';
+import type { TourFormState } from './waste-management.tours.types.js';
 
 type WasteToursFormContentProps = {
   readonly mode: 'create' | 'edit';

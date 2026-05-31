@@ -1,5 +1,5 @@
 import { startTransition, useEffect, useRef, useState, type FormEvent } from 'react';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { usePluginTranslation, wasteManagementMasterDataContract } from '@sva/plugin-sdk';
 import {
   StudioErrorState,
   StudioLoadingState,
@@ -54,7 +54,9 @@ const toSettingsInput = (form: SettingsFormState): WasteManagementSettingsInput 
   projectUrl: form.projectUrl.trim(),
   schemaName: compactOptionalString(form.schemaName),
   enabled: form.enabled,
-  holidayStateCode: form.holidayStateCode || undefined,
+  holidayStateCode: wasteManagementMasterDataContract.isWasteHolidayStateCode(form.holidayStateCode)
+    ? form.holidayStateCode
+    : undefined,
   databaseUrl: compactOptionalString(form.databaseUrl),
   serviceRoleKey: compactOptionalString(form.serviceRoleKey),
   customRecurrencePresets: form.customRecurrencePresets.map((preset) => ({

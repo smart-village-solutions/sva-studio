@@ -10,9 +10,8 @@ import type { StatusMessage } from './waste-management.page.support.js';
 import {
   createDefaultLocationTourLinkForm,
   createDefaultTourForm,
-  type LocationTourLinkFormState,
-  type TourFormState,
 } from './waste-management.tours.shared.js';
+import type { LocationTourLinkFormState, TourFormState } from './waste-management.tours.types.js';
 
 export const useWasteToursState = () => {
   const [loading, setLoading] = useState(true);

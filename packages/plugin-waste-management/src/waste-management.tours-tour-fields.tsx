@@ -2,14 +2,19 @@ import type { WasteCustomRecurrencePresetRecord, WasteFractionRecord } from '@sv
 import { Input, Select, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
 import type { ReactNode } from 'react';
 
+import {
+  createCustomRecurrenceOptions,
+  createTourRecurrencePatch,
+  createTourRecurrenceSelectValue,
+  shouldShowTourCustomDates,
+  shouldShowTourDateRangeFields,
+} from './waste-management.tours-form.support.js';
 import { WasteToursCustomDatesField } from './waste-management.tours-custom-dates.js';
 import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 import { WasteToursFractionSelection } from './waste-management.tours.fractions.js';
-import type { TourFormState } from './waste-management.tours.shared.js';
+import type { TourFormState } from './waste-management.tours.types.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
-
-const recurringTourRecurrences = new Set<NonNullable<TourFormState['recurrence']>>(['weekly', 'biweekly', 'fourweekly', 'yearly']);
 
 const TourSection = ({
   title,
@@ -44,9 +49,10 @@ export const WasteToursTourFields = ({
   readonly pt: Translate;
   readonly onChange: (patch: Partial<TourFormState>) => void;
 }) => {
-  const selectValue = form.customRecurrenceId ? `preset:${form.customRecurrenceId}` : form.recurrence;
-  const showsDateRange = Boolean(form.customRecurrenceId) || recurringTourRecurrences.has(form.recurrence);
-  const showsCustomDates = !form.customRecurrenceId && form.recurrence === 'custom';
+  const selectValue = createTourRecurrenceSelectValue(form);
+  const showsDateRange = shouldShowTourDateRangeFields(form);
+  const showsCustomDates = shouldShowTourCustomDates(form);
+  const customRecurrenceOptions = createCustomRecurrenceOptions(customRecurrencePresets, pt);
 
   return (
     <div className="space-y-6">
@@ -80,19 +86,7 @@ export const WasteToursTourFields = ({
             <Select
               id="waste-tour-recurrence"
               value={selectValue}
-              onChange={(event) => {
-                const rawValue = event.target.value;
-                const recurrence = rawValue.startsWith('preset:') ? '' : (rawValue as TourFormState['recurrence']);
-                const customRecurrenceId = rawValue.startsWith('preset:') ? rawValue.slice('preset:'.length) : '';
-                const keepsDateRange = Boolean(customRecurrenceId) || recurringTourRecurrences.has(recurrence);
-                onChange({
-                  recurrence,
-                  customRecurrenceId,
-                  firstDate: keepsDateRange ? form.firstDate : '',
-                  endDate: keepsDateRange ? form.endDate : '',
-                  customDates: recurrence === 'custom' && !customRecurrenceId ? form.customDates : [],
-                });
-              }}
+              onChange={(event) => onChange(createTourRecurrencePatch(event.target.value, form))}
             >
               <option value="custom">{pt('tours.recurrence.custom')}</option>
               <option value="weekly">{pt('tours.recurrence.weekly')}</option>
@@ -100,11 +94,11 @@ export const WasteToursTourFields = ({
               <option value="fourweekly">{pt('tours.recurrence.fourweekly')}</option>
               <option value="yearly">{pt('tours.recurrence.yearly')}</option>
               <option value="on-demand">{pt('tours.recurrence.onDemand')}</option>
-              {customRecurrencePresets.length > 0 ? (
+              {customRecurrenceOptions.length > 0 ? (
                 <optgroup label={pt('tours.fields.customRecurrenceGroup')}>
-                  {customRecurrencePresets.map((preset) => (
-                    <option key={preset.id} value={`preset:${preset.id}`}>
-                      {pt('tours.meta.customRecurrenceOption', { name: preset.name, days: preset.intervalDays })}
+                  {customRecurrenceOptions.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
                     </option>
                   ))}
                 </optgroup>

@@ -4,7 +4,7 @@ import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogH
 import type { FormEvent } from 'react';
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
-import type { TourFormState } from './waste-management.tours.shared.js';
+import type { TourFormState } from './waste-management.tours.types.js';
 import { WasteToursTourFields } from './waste-management.tours-tour-fields.js';
 
 export const TourDialog = ({

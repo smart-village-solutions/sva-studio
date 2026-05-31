@@ -1,6 +1,5 @@
 import type {
   WasteCustomRecurrencePresetRecord,
-  WasteCustomTourDate,
   WasteFractionRecord,
   WasteLocationTourLinkRecord,
   WasteTourRecord,
@@ -14,27 +13,7 @@ import type {
 } from './waste-management.api.js';
 import { compactOptionalString } from './waste-management.page.support.js';
 import type { WasteManagementSearchParams } from './search-params.js';
-
-export type LocationTourLinkFormState = {
-  readonly id: string;
-  readonly locationId: string;
-  readonly tourId: string;
-  readonly startDate: string;
-  readonly endDate: string;
-};
-
-export type TourFormState = {
-  readonly id: string;
-  readonly name: string;
-  readonly description: string;
-  readonly wasteFractionIds: readonly string[];
-  readonly recurrence: NonNullable<WasteTourRecord['recurrence']> | '';
-  readonly customRecurrenceId: string;
-  readonly firstDate: string;
-  readonly endDate: string;
-  readonly customDates: readonly WasteCustomTourDate[];
-  readonly active: boolean;
-};
+import type { LocationTourLinkFormState, TourFormState } from './waste-management.tours.types.js';
 
 const createId = () => crypto.randomUUID();
 
@@ -95,7 +74,7 @@ export const toUpdateLocationTourLinkInput = (form: LocationTourLinkFormState): 
   endDate: compactOptionalString(form.endDate),
 });
 
-const normalizeCustomDates = (value: readonly WasteCustomTourDate[]): CreateWasteManagementTourInput['customDates'] => {
+const normalizeCustomDates = (value: TourFormState['customDates']): CreateWasteManagementTourInput['customDates'] => {
   const entries = [...value]
     .filter((entry) => entry.date.trim().length > 0)
     .sort((left, right) => left.date.localeCompare(right.date))

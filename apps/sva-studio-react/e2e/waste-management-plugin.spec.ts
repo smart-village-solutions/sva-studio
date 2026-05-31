@@ -10,6 +10,16 @@ type WasteSettingsState = {
   serviceRoleKeyConfigured: boolean;
   visibleStatus: 'ok' | 'error' | 'unknown' | 'not_configured';
   lastCheckedAt?: string;
+  customRecurrencePresets?: WasteCustomRecurrencePresetState[];
+};
+
+type WasteCustomRecurrencePresetState = {
+  id: string;
+  name: string;
+  description?: string;
+  intervalDays: number;
+  createdAt: string;
+  updatedAt: string;
 };
 
 type WasteFractionState = {
@@ -27,7 +37,10 @@ type WasteTourState = {
   id: string;
   name: string;
   wasteFractionIds: readonly string[];
-  recurrence?: 'weekly' | 'biweekly' | 'custom';
+  recurrence?: 'weekly' | 'biweekly' | 'fourweekly' | 'yearly' | 'on-demand' | 'custom';
+  customRecurrenceId?: string;
+  customRecurrenceName?: string;
+  customRecurrenceIntervalDays?: number;
   firstDate?: string;
   endDate?: string;
   active: boolean;
@@ -101,6 +114,7 @@ type WasteHarness = {
   readonly requests: {
     settingsUpdates: Array<Record<string, unknown>>;
     createdFractions: Array<Record<string, unknown>>;
+    createdTours: Array<Record<string, unknown>>;
     startedJobTypes: string[];
   };
 };
@@ -188,6 +202,7 @@ const mockWasteFacade = async (page: Page, input: {
   readonly allowFractionCreate?: boolean;
 }) : Promise<WasteHarness> => {
   const settingsState: WasteSettingsState = { ...input.settings };
+  settingsState.customRecurrencePresets = [...(input.settings.customRecurrencePresets ?? [])];
   const fractionsState = [...input.fractions];
   const toursState = [...input.tours];
   const regionsState = [...(input.regions ?? [])];
@@ -204,6 +219,7 @@ const mockWasteFacade = async (page: Page, input: {
   const requests = {
     settingsUpdates: [] as Array<Record<string, unknown>>,
     createdFractions: [] as Array<Record<string, unknown>>,
+    createdTours: [] as Array<Record<string, unknown>>,
     startedJobTypes: [] as string[],
   };
 
@@ -328,6 +344,7 @@ const mockWasteFacade = async (page: Page, input: {
         contentType: 'application/json',
         body: createApiItem({
           tours: toursState,
+          customRecurrencePresets: settingsState.customRecurrencePresets ?? [],
         }),
       });
       return;
@@ -364,10 +381,99 @@ const mockWasteFacade = async (page: Page, input: {
       settingsState.serviceRoleKeyConfigured = true;
       settingsState.visibleStatus = 'ok';
       settingsState.lastCheckedAt = '2026-05-10T12:20:00.000Z';
+      const nextPresets = Array.isArray(body.customRecurrencePresets)
+        ? body.customRecurrencePresets.map((preset) => {
+            const currentPreset = (settingsState.customRecurrencePresets ?? []).find(
+              (candidate) => candidate.id === String((preset as Record<string, unknown>).id)
+            );
+            return {
+              id: String((preset as Record<string, unknown>).id),
+              name: String((preset as Record<string, unknown>).name),
+              description:
+                typeof (preset as Record<string, unknown>).description === 'string'
+                  ? String((preset as Record<string, unknown>).description)
+                  : undefined,
+              intervalDays: Number((preset as Record<string, unknown>).intervalDays),
+              createdAt: currentPreset?.createdAt ?? '2026-05-10T12:20:00.000Z',
+              updatedAt: '2026-05-10T12:20:00.000Z',
+            } satisfies WasteCustomRecurrencePresetState;
+          })
+        : (settingsState.customRecurrencePresets ?? []);
+      const nextPresetMap = new Map(nextPresets.map((preset) => [preset.id, preset] as const));
+      const deletedPresetFallbacks =
+        typeof body.deletedPresetFallbacks === 'object' && body.deletedPresetFallbacks
+          ? (body.deletedPresetFallbacks as Record<string, { kind?: string; value?: string }>)
+          : {};
+
+      for (const tour of toursState) {
+        if (!tour.customRecurrenceId) {
+          continue;
+        }
+        const resolvedPreset = nextPresetMap.get(tour.customRecurrenceId);
+        if (resolvedPreset) {
+          tour.customRecurrenceName = resolvedPreset.name;
+          tour.customRecurrenceIntervalDays = resolvedPreset.intervalDays;
+          continue;
+        }
+
+        const fallback = deletedPresetFallbacks[tour.customRecurrenceId];
+        if (!fallback) {
+          tour.customRecurrenceId = undefined;
+          tour.customRecurrenceName = undefined;
+          tour.customRecurrenceIntervalDays = undefined;
+          continue;
+        }
+
+        if (fallback.kind === 'preset') {
+          const fallbackPreset = nextPresetMap.get(String(fallback.value));
+          tour.customRecurrenceId = fallbackPreset?.id;
+          tour.customRecurrenceName = fallbackPreset?.name;
+          tour.customRecurrenceIntervalDays = fallbackPreset?.intervalDays;
+          tour.recurrence = undefined;
+          continue;
+        }
+
+        tour.customRecurrenceId = undefined;
+        tour.customRecurrenceName = undefined;
+        tour.customRecurrenceIntervalDays = undefined;
+        tour.recurrence = String(fallback.value) as WasteTourState['recurrence'];
+      }
+
+      settingsState.customRecurrencePresets = nextPresets;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: createApiItem(settingsState),
+      });
+      return;
+    }
+
+    if (method === 'POST' && path === '/api/v1/waste-management/tours') {
+      const body = request.postDataJSON() as Record<string, unknown>;
+      requests.createdTours.push(body);
+      const preset =
+        typeof body.customRecurrenceId === 'string'
+          ? (settingsState.customRecurrencePresets ?? []).find((candidate) => candidate.id === body.customRecurrenceId)
+          : undefined;
+      const created: WasteTourState = {
+        id: String(body.id),
+        name: String(body.name),
+        wasteFractionIds: Array.isArray(body.wasteFractionIds) ? body.wasteFractionIds.map(String) : [],
+        recurrence: typeof body.recurrence === 'string' ? (body.recurrence as WasteTourState['recurrence']) : undefined,
+        customRecurrenceId: typeof body.customRecurrenceId === 'string' ? body.customRecurrenceId : undefined,
+        customRecurrenceName: preset?.name,
+        customRecurrenceIntervalDays: preset?.intervalDays,
+        firstDate: typeof body.firstDate === 'string' ? body.firstDate : undefined,
+        endDate: typeof body.endDate === 'string' ? body.endDate : undefined,
+        active: body.active !== false,
+        createdAt: '2026-05-10T12:30:00.000Z',
+        updatedAt: '2026-05-10T12:30:00.000Z',
+      };
+      toursState.unshift(created);
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: createApiItem(created),
       });
       return;
     }
@@ -684,5 +790,128 @@ test.describe('waste management plugin', () => {
     await page.locator('#waste-fraction-color-text').fill('#123456');
     await page.locator('#waste-fraction-create-form').getByRole('button', { name: 'Abfallart speichern' }).click();
     await expect(page.getByText('Für das Speichern von Waste-Fraktionen fehlt die Berechtigung.').first()).toBeVisible();
+  });
+
+  test('supports custom recurrence preset creation, tour selection, editing and fallback deletion', async ({ page }) => {
+    await mockSharedShellRequests(page, {
+      instanceId: 'de-recurring',
+      permissionActions: [
+        'waste-management.read',
+        'waste-management.settings.manage',
+        'waste-management.tours.manage',
+      ],
+    });
+
+    const harness = await mockWasteFacade(page, {
+      instanceId: 'de-recurring',
+      settings: {
+        provider: 'supabase',
+        projectUrl: 'https://tenant-c.supabase.co',
+        schemaName: 'waste_custom',
+        enabled: true,
+        databaseUrlConfigured: true,
+        serviceRoleKeyConfigured: true,
+        visibleStatus: 'ok',
+        lastCheckedAt: '2026-05-10T14:00:00.000Z',
+        customRecurrencePresets: [],
+      },
+      fractions: [
+        {
+          id: 'fraction-1',
+          name: 'Restmüll',
+          color: '#111111',
+          active: true,
+          createdAt: '2026-05-10T11:00:00.000Z',
+          updatedAt: '2026-05-10T11:00:00.000Z',
+        },
+      ],
+      tours: [],
+    });
+
+    await openWastePlugin(page);
+    await page.getByRole('tab', { name: 'Einstellungen' }).click();
+
+    await page.getByRole('button', { name: 'Abstand hinzufügen' }).click();
+    await page.locator('#waste-settings-custom-recurrence-name').fill('Ferien 10 Tage');
+    await page.locator('#waste-settings-custom-recurrence-interval-days').fill('10');
+    await page.locator('#waste-settings-custom-recurrence-description').fill('Saisonaler Sommerturnus');
+    await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
+
+    await page.getByRole('button', { name: 'Abstand hinzufügen' }).click();
+    await page.locator('#waste-settings-custom-recurrence-name').fill('14 Tage Fallback');
+    await page.locator('#waste-settings-custom-recurrence-interval-days').fill('14');
+    await page.locator('#waste-settings-custom-recurrence-description').fill('Fallback für entfernte Sommerturnusse');
+    await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
+
+    await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
+    await expect(page.getByText('Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+
+    const createdPresetIds = (
+      (harness.requests.settingsUpdates[0]?.customRecurrencePresets as Array<Record<string, unknown>> | undefined) ?? []
+    ).map((preset) => String(preset.id));
+    expect(createdPresetIds).toHaveLength(2);
+
+    await page.getByRole('tab', { name: 'Touren' }).click();
+    await page.getByRole('button', { name: 'Neue Tour' }).click();
+    await page.locator('#waste-tour-name').fill('Ferienroute');
+    await page.getByLabel('Restmüll').click();
+    await page.locator('#waste-tour-recurrence').selectOption({ label: 'Ferien 10 Tage (alle 10 Tage)' });
+    await page.locator('#waste-tour-first-date').fill('2026-06-01');
+    await page.locator('#waste-tour-end-date').fill('2026-08-31');
+    await page
+      .locator('#waste-tour-form')
+      .getByRole('button', { name: 'Tour speichern' })
+      .click();
+
+    await expect.poll(() => harness.requests.createdTours.length).toBe(1);
+    expect(harness.requests.createdTours[0]).toMatchObject({
+      name: 'Ferienroute',
+      wasteFractionIds: ['fraction-1'],
+      customRecurrenceId: createdPresetIds[0],
+      firstDate: '2026-06-01',
+      endDate: '2026-08-31',
+      active: true,
+    });
+    expect(harness.requests.createdTours[0]).not.toHaveProperty('recurrence');
+
+    await expect(page.getByRole('row', { name: /Ferienroute.*Ferien 10 Tage \(alle 10 Tage\)/ })).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Einstellungen' }).click();
+    const presetCards = page.locator('div.rounded-2xl.border.border-border.bg-background');
+    const editedPresetCard = presetCards.filter({ hasText: 'Ferien 10 Tage' }).first();
+    await editedPresetCard.getByRole('button', { name: 'Bearbeiten' }).click();
+    await page.locator('#waste-settings-custom-recurrence-name').fill('Ferien 12 Tage');
+    await page.locator('#waste-settings-custom-recurrence-interval-days').fill('12');
+    await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
+    await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
+
+    await expect(page.getByText('Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Touren' }).click();
+    await expect(page.getByRole('row', { name: /Ferienroute.*Ferien 12 Tage \(alle 12 Tage\)/ })).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Einstellungen' }).click();
+    const presetCardToDelete = presetCards.filter({ hasText: 'Ferien 12 Tage' }).first();
+    await presetCardToDelete.getByRole('button', { name: 'Löschen' }).click();
+    await page.locator('#waste-settings-custom-recurrence-fallback').selectOption({
+      label: '14 Tage Fallback (alle 14 Tage)',
+    });
+    await page.getByRole('button', { name: 'Löschen' }).click();
+    await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
+
+    await expect(page.getByText('Die Waste-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+
+    const finalSettingsUpdate = harness.requests.settingsUpdates.at(-1) as
+      | {
+          deletedPresetFallbacks?: Record<string, { kind: string; value: string }>;
+        }
+      | undefined;
+    expect(finalSettingsUpdate?.deletedPresetFallbacks?.[createdPresetIds[0]]).toEqual({
+      kind: 'preset',
+      value: createdPresetIds[1],
+    });
+
+    await page.getByRole('tab', { name: 'Touren' }).click();
+    await expect(page.getByRole('row', { name: /Ferienroute.*14 Tage Fallback \(alle 14 Tage\)/ })).toBeVisible();
   });
 });

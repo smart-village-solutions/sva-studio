@@ -40,8 +40,11 @@ export const WasteSettingsCustomRecurrenceDialog = ({
   const [draft, setDraft] = useState<CustomRecurrencePresetInputState>(value ?? createEmptyPreset());
 
   useEffect(() => {
+    if (!open) {
+      return;
+    }
     setDraft(value ?? createEmptyPreset());
-  }, [value]);
+  }, [open, value]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -18,5 +18,5 @@
 
 ## 5. Verifikation
 - [x] 5.1 Relevante Unit- und Type-Tests für Repository, Auth-Runtime, Plugin und Public-Waste grün ausführen
-- [ ] 5.2 Waste-E2E für Preset-Anlage, Tour-Auswahl, Bearbeitung und Fallback-Löschung grün ausführen
+- [x] 5.2 Waste-E2E für Preset-Anlage, Tour-Auswahl, Bearbeitung und Fallback-Löschung grün ausführen
 - [x] 5.3 Checkliste auf den tatsächlichen Umsetzungsstand aktualisieren

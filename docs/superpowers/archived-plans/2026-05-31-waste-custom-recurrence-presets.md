@@ -1,5 +1,9 @@
 # Waste Custom Recurrence Presets Implementation Plan
 
+## Status
+
+Stand 2026-05-31: Die fachliche Umsetzung ist abgeschlossen und die Verifikationsschritte sind inklusive Waste-E2E grün. Offen bleiben in diesem Plan nur bewusst nicht ausgeführte Commit-Schritte; die früheren Step-Checkboxen weiter oben sind historischer Arbeitsstand und nicht mehr die führende Statusquelle.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Waste-Management soll instanzbezogene benutzerdefinierte Abstandspresets in den Einstellungen pflegen, diese im Tour-Formular zusätzlich zu den festen Default-Turnussen anbieten und bei Terminberechnung, Bearbeitung und Fallback-Löschung konsistent verwenden.
@@ -744,7 +748,7 @@ if (tour.customRecurrenceIntervalDays && recurringStartDate) {
 }
 ```
 
-- [ ] **Step 4: Waste-E2E um Preset-Anlage, Tour-Auswahl, Bearbeitung und Fallback-Löschung ergänzen**
+- [x] **Step 4: Waste-E2E um Preset-Anlage, Tour-Auswahl, Bearbeitung und Fallback-Löschung ergänzen**
 
 ```ts
 await page.getByRole('tab', { name: /Einstellungen|settings/i }).click();
@@ -782,7 +786,7 @@ git commit -m "feat: resolve waste custom recurrences in calendars"
 - Modify: `openspec/changes/add-waste-custom-recurrence-presets/tasks.md`
 - Modify: `docs/superpowers/plans/2026-05-31-waste-custom-recurrence-presets.md`
 
-- [ ] **Step 1: Kleinsten relevanten Unit-Gate-Pfad pro betroffenen Bereich ausführen**
+- [x] **Step 1: Kleinsten relevanten Unit-Gate-Pfad pro betroffenen Bereich ausführen**
 
 Run: `pnpm nx run data-repositories:test:unit --testFiles=src/waste-management/master-data.contract.test.ts --testFiles=src/waste-management/master-data.test.ts`  
 Expected: PASS
@@ -793,7 +797,7 @@ Expected: PASS
 Run: `pnpm nx run plugin-waste-management:test:unit --testFiles=tests/waste-management.page.test.tsx --testFiles=tests/waste-management.tours.shared.test.ts --testFiles=tests/waste-management.tours-form-content.test.tsx --testFiles=tests/waste-management.tours.presentation.test.ts --testFiles=tests/waste-management.api.test.ts`  
 Expected: PASS
 
-- [ ] **Step 2: Server-Runtime- und Typ-Gates nachziehen**
+- [x] **Step 2: Server-Runtime- und Typ-Gates nachziehen**
 
 Run: `pnpm check:server-runtime`  
 Expected: PASS ohne endungslose Runtime-Imports oder fehlende Workspace-Dependencies
@@ -801,7 +805,7 @@ Expected: PASS ohne endungslose Runtime-Imports oder fehlende Workspace-Dependen
 Run: `pnpm nx affected --target=test:types --base=origin/main`  
 Expected: PASS für die durch Core/Auth/Plugin/Public-Web betroffenen Projekte
 
-- [ ] **Step 3: E2E- und PR-relevanten Gate-Pfad ausführen**
+- [x] **Step 3: E2E- und PR-relevanten Gate-Pfad ausführen**
 
 Run: `pnpm nx run sva-studio-react:test:e2e --testFiles=e2e/waste-management-plugin.spec.ts`  
 Expected: PASS
@@ -809,7 +813,7 @@ Expected: PASS
 Run: `pnpm nx affected --target=test:unit --base=origin/main`  
 Expected: PASS
 
-- [ ] **Step 4: OpenSpec-Taskliste und Implementierungsplan auf Ist-Stand aktualisieren**
+- [x] **Step 4: OpenSpec-Taskliste und Implementierungsplan auf Ist-Stand aktualisieren**
 
 ```md
 - [x] 1.1 Proposal, Design und Delta angelegt

@@ -1,4 +1,4 @@
-import type { ApiErrorResponse } from '@sva/core';
+import type { ApiErrorResponse, IamRolePermissionAssignmentScope } from '@sva/core';
 
 import type { IdempotencyReserveResult } from './types.js';
 
@@ -24,6 +24,10 @@ export type CreateRolePayloadShape = {
   readonly description?: string | null;
   readonly roleLevel: number;
   readonly permissionIds: readonly string[];
+  readonly permissionAssignments?: readonly {
+    readonly permissionId: string;
+    readonly accessScope?: IamRolePermissionAssignmentScope;
+  }[];
 };
 
 export type CreateRoleIdentityProvider<TAttributes = unknown> = {
@@ -94,6 +98,10 @@ export type CreateRoleHandlerDeps<
     readonly description?: string;
     readonly roleLevel: number;
     readonly permissionIds: readonly string[];
+    readonly permissionAssignments?: readonly {
+      readonly permissionId: string;
+      readonly accessScope?: IamRolePermissionAssignmentScope;
+    }[];
   }) => Promise<TRole>;
   readonly requireIdempotencyKey: (
     request: Request,
@@ -249,6 +257,7 @@ export const createCreateRoleHandlerInternal =
         description: parsed.data.description ?? undefined,
         roleLevel: parsed.data.roleLevel,
         permissionIds: parsed.data.permissionIds,
+        permissionAssignments: parsed.data.permissionAssignments,
       });
 
       deps.iamUserOperationsCounter.add(1, { action: 'create_role', result: 'success' });

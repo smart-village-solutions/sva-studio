@@ -3,14 +3,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EffectivePermission } from '@sva/core';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 
-const { accountLogger, evaluateAuthorizeDecisionMock, getWorkspaceContextMock, resolveEffectivePermissionsMock } =
-  vi.hoisted(() => ({
+const {
+  accountLogger,
+  evaluateAuthorizeDecisionMock,
+  getWorkspaceContextMock,
+  resolveActorAccountIdWithProvisionMock,
+  resolveEffectivePermissionsMock,
+} = vi.hoisted(() => ({
     accountLogger: {
       error: vi.fn(),
       warn: vi.fn(),
     },
     evaluateAuthorizeDecisionMock: vi.fn(),
     getWorkspaceContextMock: vi.fn(),
+    resolveActorAccountIdWithProvisionMock: vi.fn(),
     resolveEffectivePermissionsMock: vi.fn(),
   }));
 
@@ -28,6 +34,10 @@ vi.mock('@sva/server-runtime', () => ({
 
 vi.mock('../iam-authorization/permission-store.js', () => ({
   resolveEffectivePermissions: resolveEffectivePermissionsMock,
+}));
+
+vi.mock('../iam-account-management/shared-actor-resolution-helpers.js', () => ({
+  resolveActorAccountIdWithProvision: resolveActorAccountIdWithProvisionMock,
 }));
 
 vi.mock('../iam-account-management/shared.js', () => ({
@@ -60,9 +70,11 @@ describe('authorizeContentPrimitiveForUser', () => {
     accountLogger.warn.mockReset();
     evaluateAuthorizeDecisionMock.mockReset();
     getWorkspaceContextMock.mockReset();
+    resolveActorAccountIdWithProvisionMock.mockReset();
     resolveEffectivePermissionsMock.mockReset();
 
     getWorkspaceContextMock.mockReturnValue({ requestId: 'request-1', traceId: 'trace-1' });
+    resolveActorAccountIdWithProvisionMock.mockResolvedValue('account-1');
     resolveEffectivePermissionsMock.mockResolvedValue({ ok: true, permissions: [permission] });
     evaluateAuthorizeDecisionMock.mockReturnValue({ allowed: true });
   });
@@ -169,6 +181,46 @@ describe('authorizeContentPrimitiveForUser', () => {
     );
   });
 
+  it('adds the resolved actorAccountId for ownership-based authorization checks', async () => {
+    await expect(
+      authorizeContentPrimitiveForUser({
+        ctx: createCtx(),
+        action: 'content.read',
+        resource: {
+          contentType: 'news.article',
+          createdByAccountId: 'account-1',
+        },
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      permissions: [permission],
+    });
+
+    expect(resolveActorAccountIdWithProvisionMock).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      keycloakSubject: 'subject-1',
+      requestId: 'request-1',
+      traceId: 'trace-1',
+      mayProvisionMissingActorMembership: false,
+    });
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resource: expect.objectContaining({
+          attributes: expect.objectContaining({
+            createdByAccountId: 'account-1',
+          }),
+        }),
+        context: expect.objectContaining({
+          attributes: expect.objectContaining({
+            actorAccountId: 'account-1',
+            contentType: 'news.article',
+          }),
+        }),
+      }),
+      [permission]
+    );
+  });
+
   it('uses provided permissions without resolving them again', async () => {
     await expect(
       authorizeContentPrimitiveForUser({
@@ -219,6 +271,30 @@ describe('authorizeContentPrimitiveForUser', () => {
       'Content primitive authorization failed',
       expect.objectContaining({ error: 'connection lost' })
     );
+  });
+
+  it('maps actor account lookup errors to database_unavailable when ownership context is required', async () => {
+    resolveActorAccountIdWithProvisionMock.mockRejectedValueOnce(new Error('lookup failed'));
+
+    await expect(
+      authorizeContentPrimitiveForUser({
+        ctx: createCtx(),
+        action: 'content.read',
+        resource: {
+          createdByAccountId: 'account-1',
+        },
+      })
+    ).resolves.toMatchObject({
+      ok: false,
+      status: 503,
+      error: 'database_unavailable',
+    });
+
+    expect(accountLogger.error).toHaveBeenCalledWith(
+      'Content primitive authorization actor resolution failed',
+      expect.objectContaining({ error: 'lookup failed' })
+    );
+    expect(evaluateAuthorizeDecisionMock).not.toHaveBeenCalled();
   });
 
   it('returns forbidden when the core authorization decision denies the action', async () => {

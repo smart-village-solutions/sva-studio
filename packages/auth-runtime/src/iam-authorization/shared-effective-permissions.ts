@@ -1,4 +1,8 @@
-import type { EffectivePermission, IamPermissionEffect } from '@sva/core';
+import type {
+  EffectivePermission,
+  IamPermissionEffect,
+  IamRolePermissionAssignmentScope,
+} from '@sva/core';
 
 export type PermissionRow = {
   permission_key: string;
@@ -7,6 +11,7 @@ export type PermissionRow = {
   resource_id?: string | null;
   effect?: IamPermissionEffect | null;
   scope?: Record<string, unknown> | null;
+  access_scope?: IamRolePermissionAssignmentScope | null;
   account_id?: string | null;
   role_id?: string | null;
   organization_id: string | null;
@@ -63,6 +68,7 @@ type NormalizedPermissionRow = {
   resourceId?: string;
   effect: 'allow' | 'deny';
   scope?: Record<string, unknown>;
+  accessScope?: IamRolePermissionAssignmentScope;
   groupId?: string;
   groupKey?: string;
   bucketKey: string;
@@ -74,12 +80,14 @@ const normalizePermissionRow = (row: PermissionRow): NormalizedPermissionRow => 
   const resourceId = row.resource_id?.trim() || undefined;
   const effect = row.effect ?? 'allow';
   const scope = row.scope ?? undefined;
+  const accessScope = row.access_scope ?? undefined;
   return {
     action,
     resourceType,
     resourceId,
     effect,
     scope,
+    accessScope,
     groupId: row.group_id ?? undefined,
     groupKey: row.group_key ?? undefined,
     bucketKey: JSON.stringify({
@@ -89,6 +97,7 @@ const normalizePermissionRow = (row: PermissionRow): NormalizedPermissionRow => 
       organizationId: row.organization_id ?? '',
       effect,
       scope,
+      accessScope,
     }),
   };
 };
@@ -100,6 +109,7 @@ const createPermissionBucket = (row: PermissionRow, normalized: NormalizedPermis
   organizationId: row.organization_id ?? undefined,
   effect: normalized.effect,
   scope: normalized.scope,
+  accessScope: normalized.accessScope,
   ...(row.account_id ? { sourceUserIds: [row.account_id] } : {}),
   ...(row.role_id ? { sourceRoleIds: [row.role_id] } : {}),
   ...(normalized.groupId ? { sourceGroupIds: [normalized.groupId] } : {}),

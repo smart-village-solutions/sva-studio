@@ -30,11 +30,14 @@
 - **Komplette CI-Suite:** `pnpm test:ci`
 - **ESLint ausführen:** `pnpm lint`
 - **Shift-left (verbindlich):** Nach jedem abgeschlossenen Änderungsblock sofort die betroffenen Tests ausführen (nicht erst am Ende der Umsetzung)
-- **Ausnahme Schnelliterationsphase:** Bei ausdrücklich angeordneter Schnelliterationsphase dürfen betroffene Tests für einzelne kleinteilige Änderungsblöcke vorübergehend zurückgestellt werden; vor Commit, Push oder PR müssen alle regulären Prüfungen vollständig nachgezogen werden.
-- **Grenzen der Ausnahme:** Nicht anwendbar für Security-, Auth-, Validierungs-, DB-Schema-, Migrations- oder server-runtime-kritische Änderungen; `pnpm check:server-runtime` bleibt für betroffene Packages verpflichtend.
-- **Transparenzpflicht:** Während der Schnelliterationsphase darf kein grüner Teststand behauptet werden; ausgesetzte Prüfungen sind im Arbeitskontext klar zu benennen.
+- **Schnelliterationsphase:** Details, Grenzen und Transparenzpflichten stehen kanonisch in [DEVELOPMENT_RULES.md](./DEVELOPMENT_RULES.md); hier nur anwenden, nicht doppelt ausdefinieren
 - **Push-Gate (Mindestanforderung):** Wenn `pnpm test:pr` aus Zeit- oder Ressourcen-Gründen nicht läuft, vor jedem Push mindestens `pnpm nx affected --target=test:unit --base=origin/main` ausführen; bei Typänderungen zusätzlich `pnpm nx affected --target=test:types --base=origin/main`
 - **Arbeitsregel:** Keine weitere Implementierung auf bekannt rotem Teststand
+- **Kleinster echte Gate-Pfad zuerst:** Vor Commit oder Push immer den kleinsten tatsächlich relevanten Gate-Pfad ausführen, nicht reflexartig die Vollsuite. Beispiele:
+  - UI-/Hook-Fix: betroffener Unit-Run plus `pnpm nx affected --target=test:unit --base=origin/main`
+  - Typänderung: `pnpm nx affected --target=test:types --base=origin/main`
+  - Skript-/CI-Datei unter `scripts/ci/` oder Root-TS-Skripten: zusätzlich `pnpm exec tsc -p tsconfig.scripts.json --noEmit` oder den passenden Wrapper wie `NX_BASE=origin/main pnpm test:types:affected`
+  - Server-Runtime-relevante Änderung: früh `pnpm check:server-runtime`
 - **Effizienter, zielgerichteter Test-Workflow:**
   1. **Nur affected:** `pnpm nx affected --target=test:unit` (vergleicht mit `main`-Branch)
   2. **Spezifische Packages:** `pnpm nx run sva-studio-react:test:unit`
@@ -51,7 +54,9 @@
 
 - Für die PR-Vorbereitung bevorzugt immer `pnpm test:pr` statt nur einzelner Teilchecks ausführen
 - Wenn nur Coverage/Change-Risk für den PR geprüft werden soll, `pnpm test:coverage:pr` verwenden
-- Vor dem Commit immer `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint` und `pnpm test:e2e` ausführen
+- Vor Commit und Push den kleinsten relevanten Gate-Pfad gemäß Test-Anweisungen ausführen; `pnpm test:pr` ist der bevorzugte breite Lauf vor PR oder bei unsicherem Änderungsbild
+- Bei PR-Fixing und roten CI-Checks ist GitHub die führende Wahrheit: zuerst `gh pr checks <nr>` bzw. die roten Job-Logs prüfen, dann lokal gezielt reproduzieren und nur den kleinsten relevanten Gate-Pfad nachziehen
+- Nach jedem Push bei aktivem PR-Fixing den Check-Status erneut prüfen und den nächsten Blocker selbstständig ableiten; Commit und Push dabei nie parallel starten
 - Änderungen an den relevanten Stellen testen
 - Bei neuen Features die passende Doku im Verzeichnis `docs/` aktualisieren
 - Bei Architektur-/Systemänderungen die relevanten arc42-Abschnitte unter `docs/architecture/` aktualisieren und im PR verlinken

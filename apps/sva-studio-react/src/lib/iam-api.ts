@@ -29,6 +29,7 @@ import type {
   IamOrganizationType,
   IamMyDeletionRulesOverview,
   IamPermission,
+  IamRolePermissionAssignmentScope,
   IamRoleListItem,
   IamRoleReconcileReport,
   IamTenantDeletionRulesOverview,
@@ -414,6 +415,10 @@ export type CreateRolePayload = {
   readonly description?: string;
   readonly roleLevel?: number;
   readonly permissionIds?: readonly string[];
+  readonly permissionAssignments?: readonly {
+    readonly permissionId: string;
+    readonly accessScope?: IamRolePermissionAssignmentScope;
+  }[];
 };
 
 export type UpdateRolePayload = {
@@ -421,6 +426,10 @@ export type UpdateRolePayload = {
   readonly description?: string;
   readonly roleLevel?: number;
   readonly permissionIds?: readonly string[];
+  readonly permissionAssignments?: readonly {
+    readonly permissionId: string;
+    readonly accessScope?: IamRolePermissionAssignmentScope;
+  }[];
   readonly retrySync?: boolean;
 };
 

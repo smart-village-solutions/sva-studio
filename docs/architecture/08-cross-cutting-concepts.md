@@ -105,6 +105,9 @@ gleichzeitig beeinflussen.
 - Keycloak ist führend für Authentifizierung; Postgres ist führend für Studio-verwaltete IAM-Fachdaten
 - Autorisierungspfade erzwingen `instanceId`-Filterung vor Rollen-/Policy-Evaluation
 - Effektive Berechtigungen aggregieren direkte Nutzerrechte, direkte Rollen und gruppenvermittelte Rollen; die Provenance hält `direct_user`, `direct_role` und `group_role` als strukturierte Quelle fest
+- Rollen-Permission-Zuordnungen koennen fuer explizit scope-faehige Datensatzrechte zusaetzlich einen Assignment-Scope `all|own|organization` tragen; dieser Scope lebt auf `iam.role_permissions.access_scope` und nicht im generischen `iam.permissions.scope`
+- `all` bedeutet unveraenderte globale Freigabe innerhalb des Instanzkontexts; `own` bindet die Freigabe an `createdByAccountId`; `organization` erweitert `own` um Datensaetze der aktiven Session-Organisation
+- Scope-faehige Fachmodule muessen fuer Authorize-Entscheidungen die kanonischen Resource-Attribute `createdByAccountId` und bei organisationsrelevanten Datensaetzen `organizationId` liefern; fehlt dieser Kontext, bleibt die Entscheidung fail-closed
 - Gruppen sind instanzgebundene Rollenbündel (`group_type = role_bundle`); direkte Gruppen-Permissions sind bewusst nicht Teil des ersten Schnitts
 - Direkte Nutzerrechte werden in `iam.account_permissions` mit eigenem `effect` (`allow|deny`) persistiert und bewusst von Rollen-/Gruppenmitgliedschaften getrennt gepflegt
 - Konfliktregel für direkte Nutzerrechte bleibt konservativ: direkte Nutzer-Denies schlagen alle Allows; direkte Nutzer-Allows ergänzen nur, wenn kein restriktiver Konflikt greift

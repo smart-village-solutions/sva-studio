@@ -214,6 +214,23 @@ Fehlerpfad:
 - wiederholter Keycloak-Request mit identischem `Idempotency-Key` und identischer stabiler Payload -> kein zweiter Run; abweichende Payload im selben Scope -> `409 idempotency_key_reuse`.
 - fehlt nur der Tenant-Admin-Client, darf Reconcile gezielt `provision_admin_client` nachziehen, ohne den Login-Pfad zu veraendern.
 
+### Szenario 2d: Datensatzautorisierung mit Rollen-Scope
+
+1. Ein Benutzer ruft eine datensatzbezogene Lese- oder Mutationsroute auf, deren Permission als scope-faehig modelliert ist.
+2. `packages/auth-runtime` laedt die effektiven Rollen-Permissions inklusive `accessScope` aus dem Snapshot- oder Recompute-Pfad.
+3. Die Fachroute baut einen kanonischen `AuthorizeRequest` mit `actorAccountId` im Kontext sowie `createdByAccountId` und optional `organizationId` am Resource-Objekt.
+4. Die Authorization-Engine wertet zuerst den Assignment-Scope aus und kombiniert ihn danach mit den bestehenden RBAC-/ABAC-Regeln.
+5. Bei `all` bleibt die bisherige Freigabe unveraendert.
+6. Bei `own` wird der Zugriff nur freigegeben, wenn `createdByAccountId` dem aktuellen Actor entspricht.
+7. Bei `organization` wird der Zugriff freigegeben, wenn der Actor den Datensatz selbst erstellt hat oder der Datensatz zur aktiven Session-Organisation gehoert.
+8. Die Rollen-UI schreibt denselben Scope als `permissionAssignments[]`, und die Nutzeransicht zeigt den wirksamen Scope read-only im Permission-Trace.
+
+Fehlerpfad:
+
+- Fehlen fuer einen scope-faehigen Datensatz die kanonischen Resource-Attribute, entscheidet die Engine fail-closed.
+- Nicht scope-faehige Permissions duerfen keinen Assignment-Scope tragen; Mutationen werden serverseitig validiert und bei Verstoessen abgewiesen.
+- Ein Organisationswechsel in der Session veraendert nur Entscheidungen fuer `organization`, nicht fuer `all` oder `own`.
+
 ### Szenario 2a: Silent Session-Recovery nach `401`
 
 1. `AuthProvider` ruft `/auth/me` auf und erhält `401`.

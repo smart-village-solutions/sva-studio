@@ -32,7 +32,7 @@ describe('role-query', () => {
     ]);
 
     await expect(loadRoleListItems(client, 'de-musterhausen')).resolves.toEqual([
-      {
+      expect.objectContaining({
         id: 'role-1',
         roleKey: 'editor',
         roleName: 'Editor',
@@ -45,8 +45,18 @@ describe('role-query', () => {
         memberCount: 3,
         syncState: 'synced',
         lastSyncedAt: '2026-04-24T12:00:00.000Z',
-        permissions: [{ id: 'perm-1', permissionKey: 'content.updatePayload', description: undefined }],
-      },
+        permissions: [
+          {
+            id: 'perm-1',
+            permissionKey: 'content.updatePayload',
+            description: undefined,
+            isScopeAssignable: true,
+            supportedAccessScopes: ['all', 'own', 'organization'],
+            accessScope: 'all',
+          },
+        ],
+        permissionAssignments: [{ permissionId: 'perm-1', accessScope: 'all' }],
+      }),
     ]);
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('WHERE r.instance_id = $1'), [
       'de-musterhausen',

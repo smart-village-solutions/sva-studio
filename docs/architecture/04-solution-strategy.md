@@ -60,6 +60,7 @@ Architekturprinzipien auf IST-Basis.
 - Transparenz im IAM über getypte Read-Modelle statt Roh-JSON-Ausgaben in Admin- und Self-Service-Views
 - Gruppen werden als eigenständige IAM-Entität mit eigener API, eigener UI und eigener Event-Invalidierung modelliert statt als implizite Rollenbeimischung
 - Direkte Nutzerrechte werden als explizite Ausnahme zum Rollen- und Gruppenmodell behandelt: fachlich nur für gezielte Einzelabweichungen, technisch mit klarer Herkunft `direct_user` und konservativer Konfliktregel `deny vor allow`
+- Datensatzbezogene Rollenrechte werden nicht über neue Rollenfamilien vervielfacht, sondern über additive Assignment-Scopes pro Rollen-Permission (`all`, `own`, `organization`) konkretisiert
 
 ### Zielkonflikte (aktuell sichtbar)
 

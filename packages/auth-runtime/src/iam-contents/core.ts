@@ -71,12 +71,14 @@ const authorizeReadableContentItem = (
     readonly id: string;
     readonly contentType: string;
     readonly organizationId?: string;
+    readonly createdBy?: string;
   }
 ) =>
   authorizeContentAction(actor, 'content.read', {
     contentId: item.id,
     contentType: item.contentType,
     organizationId: item.organizationId,
+    createdByAccountId: item.createdBy,
   });
 
 const resolveReadableContentScopes = async (
@@ -89,6 +91,7 @@ const resolveReadableContentScopes = async (
   for (const scope of scopes) {
     const authorizationError = await authorizeContentAction(actor, 'content.read', {
       ...(scope ? { organizationId: scope } : {}),
+      ...(actor.actorAccountId ? { createdByAccountId: actor.actorAccountId } : {}),
     });
 
     if (!authorizationError) {
@@ -250,6 +253,7 @@ export const getContentHistoryInternal = async (
       contentId: item.id,
       contentType: item.contentType,
       organizationId: item.organizationId,
+      createdByAccountId: item.createdBy,
     });
     if (authorizationError) {
       return authorizationError;

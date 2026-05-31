@@ -82,8 +82,14 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
   - Rollenlisten verwenden Keycloak-Pagination und Keycloak-Count, wenn der aktive Scope das unterstützt.
   - Keycloak-Built-in-Rollen bleiben sichtbar, werden aber als Rollenobjekte read-only markiert.
   - Listeneinträge können additiv `editability` und `diagnostics[]` enthalten.
+  - Rollenobjekte können additiv `permissionAssignments[]` enthalten. Jeder Eintrag trägt mindestens `permissionId` und optional `accessScope`.
+  - Einträge in `permissions[]` können additiv `isScopeAssignable`, `supportedAccessScopes` und `accessScope` liefern, damit die Rollen-UI die Scope-Auswahl ohne zweiten Katalogvertrag rendern kann.
 - `POST /api/v1/iam/roles`
+  - akzeptiert additiv `permissionAssignments: { permissionId: string; accessScope?: 'all' | 'own' | 'organization' }[]`
+  - `permissionIds: string[]` bleibt als Legacy-Payload zulässig und wird serverseitig als `accessScope = 'all'` interpretiert
 - `PATCH /api/v1/iam/roles/{roleId}`
+  - akzeptiert dieselbe additive `permissionAssignments[]`-Struktur wie `POST`
+  - nicht scope-fähige Permissions bleiben binäre Zuweisungen; ein mitgesendeter `accessScope` wird serverseitig auf `all` normalisiert
 - `DELETE /api/v1/iam/roles/{roleId}`
 
 ### Groups
@@ -141,6 +147,16 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
 - Objektbezogene Diagnosen werden als stabile Codes übertragen, zum Beispiel `missing_instance_attribute`, `mapping_missing`, `forbidden_role_mapping`, `read_only_federated_field` und `idp_forbidden`.
 - Sync- und Reconcile-Reports verwenden die Abschlusszustände `success`, `partial_failure`, `blocked` und `failed` und dürfen betroffene Objektlisten sowie Zähler additiv enthalten.
 - Keycloak-Fehler werden differenziert gemappt; insbesondere `403` aus Keycloak wird als IdP-Berechtigungsproblem (`IDP_FORBIDDEN` beziehungsweise API-Diagnose `idp_forbidden`) sichtbar.
+
+## Wichtige Vertragszusagen fuer scoped Rollen-Permissions
+
+- `accessScope` lebt auf der Rollen-Permission-Zuordnung und nicht auf der Permission-Definition selbst.
+- Die stabilen Scope-Werte sind:
+  - `all`: Zugriff auf alle passenden Datensaetze im Instanzkontext
+  - `own`: Zugriff nur auf selbst erstellte Datensaetze
+  - `organization`: Zugriff auf eigene Datensaetze plus Datensaetze der aktiven Session-Organisation
+- V1 gilt nur fuer explizit scope-faehige Datensatzrechte. Admin-, System- und reine Betriebsrechte bleiben binaer.
+- Read-Modelle fuer Rollen und Nutzer duerfen Scope-Information additiv transportieren; bestehende Consumer muessen unbekannte Felder ignorieren koennen.
 
 ## Wichtige Vertragszusagen für Gruppen
 

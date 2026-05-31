@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { iamRolePermissionAssignmentScopes } from '@sva/core';
 
 import { uuidLikeString } from '../shared/validators.js';
 import { USER_STATUS } from './types.js';
@@ -21,6 +22,11 @@ const uniqueUuidArray = (maxLength: number) =>
 const userDirectPermissionAssignmentSchema = z.object({
   permissionId: uuidLikeString('Ungültige ID.'),
   effect: z.enum(['allow', 'deny']),
+});
+
+const rolePermissionAssignmentSchema = z.object({
+  permissionId: uuidLikeString('Ungültige ID.'),
+  accessScope: z.enum(iamRolePermissionAssignmentScopes).optional(),
 });
 
 export const createUserSchema = z.object({
@@ -99,6 +105,14 @@ export const createRoleSchema = z.object({
   displayName: z.string().trim().min(1).max(120).optional(),
   description: z.string().trim().max(500).optional(),
   permissionIds: z.array(uuidLikeString('Ungültige ID.')).max(100).default([]),
+  permissionAssignments: z
+    .array(rolePermissionAssignmentSchema)
+    .max(100)
+    .refine(
+      (value) => new Set(value.map((entry) => entry.permissionId)).size === value.length,
+      'Berechtigungen müssen eindeutig sein.'
+    )
+    .optional(),
   roleLevel: z.number().int().min(0).max(100).default(0),
 });
 
@@ -107,6 +121,14 @@ export const updateRoleSchema = z
     displayName: z.string().trim().min(1).max(120).optional(),
     description: z.string().trim().max(500).optional(),
     permissionIds: z.array(uuidLikeString('Ungültige ID.')).max(100).optional(),
+    permissionAssignments: z
+      .array(rolePermissionAssignmentSchema)
+      .max(100)
+      .refine(
+        (value) => new Set(value.map((entry) => entry.permissionId)).size === value.length,
+        'Berechtigungen müssen eindeutig sein.'
+      )
+      .optional(),
     roleLevel: z.number().int().min(0).max(100).optional(),
     retrySync: z.boolean().optional(),
   })

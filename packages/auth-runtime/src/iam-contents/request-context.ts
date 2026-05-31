@@ -36,6 +36,7 @@ type ContentAuthorizationResource = {
   readonly contentType?: string;
   readonly domainCapability?: IamContentDomainCapability;
   readonly organizationId?: string;
+  readonly createdByAccountId?: string;
 };
 
 type ContentAuthorizationOptions = {
@@ -58,13 +59,24 @@ const buildContentAuthorizeRequest = (
       type: 'content',
       ...(resource.contentId ? { id: resource.contentId } : {}),
       ...(organizationId ? { organizationId } : {}),
-      ...(resource.contentType ? { attributes: { contentType: resource.contentType } } : {}),
+      ...((resource.contentType || resource.createdByAccountId || organizationId)
+        ? {
+            attributes: {
+              ...(resource.contentType ? { contentType: resource.contentType } : {}),
+              ...(resource.createdByAccountId ? { createdByAccountId: resource.createdByAccountId } : {}),
+              ...(organizationId ? { organizationId } : {}),
+            },
+          }
+        : {}),
     },
     context: {
       ...(organizationId ? { organizationId } : {}),
       ...(actor.requestId ? { requestId: actor.requestId } : {}),
       ...(actor.traceId ? { traceId: actor.traceId } : {}),
-      ...(resource.contentType ? { attributes: { contentType: resource.contentType } } : {}),
+      attributes: {
+        ...(resource.contentType ? { contentType: resource.contentType } : {}),
+        ...(actor.actorAccountId ? { actorAccountId: actor.actorAccountId } : {}),
+      },
     },
   };
 };

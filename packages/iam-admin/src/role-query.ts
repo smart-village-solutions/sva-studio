@@ -41,7 +41,12 @@ type RoleListItemRow = {
   sync_state: IamRoleSyncState;
   last_synced_at: string | null;
   last_error_code: string | null;
-  permission_rows: Array<{ id: string; permission_key: string; description: string | null }> | null;
+  permission_rows: Array<{
+    id: string;
+    permission_key: string;
+    description: string | null;
+    access_scope: 'all' | 'own' | 'organization' | null;
+  }> | null;
 };
 
 const ROLE_LIST_ITEM_SELECT_SQL = `
@@ -64,7 +69,8 @@ SELECT
       DISTINCT jsonb_build_object(
         'id', p.id,
         'permission_key', p.permission_key,
-        'description', p.description
+        'description', p.description,
+        'access_scope', rp.access_scope
       )
     ) FILTER (WHERE p.id IS NOT NULL),
     '[]'::json

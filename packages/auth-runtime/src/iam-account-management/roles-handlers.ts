@@ -43,6 +43,12 @@ ORDER BY p.permission_key ASC;
     ...((row.description ?? getManagedPermissionMetadata(row.permission_key)?.description)
       ? { description: row.description ?? getManagedPermissionMetadata(row.permission_key)?.description }
       : {}),
+    ...(getManagedPermissionMetadata(row.permission_key)?.isScopeAssignable
+      ? {
+          isScopeAssignable: true,
+          supportedAccessScopes: getManagedPermissionMetadata(row.permission_key)?.supportedAccessScopes,
+        }
+      : {}),
   }));
 };
 

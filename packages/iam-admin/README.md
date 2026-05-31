@@ -14,6 +14,7 @@ Der öffentliche Einstiegspunkt ist `src/index.ts`. Er re-exportiert die API in 
 
 - Benutzerverwaltung: unter anderem Read-Handler, Create-/Update-/Deactivate-Handler, Bulk-Deaktivierung, Detail- und Listen-Queries sowie Import- und Synchronisationsbausteine für Benutzer.
 - Rollenverwaltung: Read-, Create-, Update- und Delete-Handler, Persistenz für Rollenmutationen, Rollenauflösung, Audit-Hilfen und Abgleichlogik für verwaltete Rollen.
+  - umfasst auch `permissionAssignments[]` mit optionalem `accessScope` für scope-fähige Datensatzrechte.
 - Gruppen und Organisationen: Read- und Mutation-Handler, Query-Funktionen, Typen und Zod-Schemas für Gruppen, Legacy-Gruppen und Organisationen.
 - Querschnittsfunktionen: Actor-Autorisierung und -Auflösung, Profil-Kommandos, Verschlüsselungshilfen, Fehler- und Basistypen sowie SQL-Bausteine für Benutzerdetail-Berechtigungen.
 
@@ -34,6 +35,8 @@ const roleHandlers = createRoleReadHandlers(/* abhängige Services */);
 ```
 
 Für Identity-Provider-Integrationen definiert `src/identity-provider-port.ts` das erwartete Port-Interface, einschließlich Benutzer- und Rollenoperationen. Für Datenbankabfragen nutzt das Package einen kleinen `QueryClient`-Vertrag aus `src/query-client.ts`.
+
+Bei Rollenmutationen akzeptiert das Package sowohl den Legacy-Pfad `permissionIds[]` als auch den neuen Vertrag `permissionAssignments[]`. Legacy-Zuordnungen werden intern deterministisch als `accessScope = 'all'` normalisiert.
 
 ## Projektstruktur
 

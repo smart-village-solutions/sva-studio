@@ -151,6 +151,109 @@ describe('evaluateAuthorizeDecision', () => {
     expect(deniedResult.reason).toBe('permission_missing');
   });
 
+  it('allows own-scoped permissions only for records created by the acting account', () => {
+    const request: AuthorizeRequest = {
+      ...baseRequest(),
+      resource: {
+        ...baseRequest().resource,
+        attributes: {
+          createdByAccountId: 'account-1',
+          organizationId: 'org-child',
+        },
+      },
+      context: {
+        ...baseRequest().context,
+        attributes: {
+          organizationHierarchy: ['org-root', 'org-child'],
+          actorAccountId: 'account-1',
+        },
+      },
+    };
+
+    const allowedResult = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        accessScope: 'own',
+      },
+    ]);
+    const deniedResult = evaluateAuthorizeDecision(
+      {
+        ...request,
+        resource: {
+          ...request.resource,
+          attributes: {
+            createdByAccountId: 'account-2',
+            organizationId: 'org-child',
+          },
+        },
+      },
+      [
+        {
+          ...basePermission(),
+          accessScope: 'own',
+        },
+      ]
+    );
+
+    expect(allowedResult.allowed).toBe(true);
+    expect(deniedResult.allowed).toBe(false);
+    expect(deniedResult.reason).toBe('abac_condition_unmet');
+  });
+
+  it('allows organization-scoped permissions for records in the active organization', () => {
+    const request: AuthorizeRequest = {
+      ...baseRequest(),
+      resource: {
+        ...baseRequest().resource,
+        attributes: {
+          createdByAccountId: 'account-2',
+          organizationId: 'org-child',
+        },
+      },
+      context: {
+        ...baseRequest().context,
+        attributes: {
+          organizationHierarchy: ['org-root', 'org-child'],
+          actorAccountId: 'account-1',
+        },
+      },
+    };
+
+    const allowedResult = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        accessScope: 'organization',
+      },
+    ]);
+    const deniedResult = evaluateAuthorizeDecision(
+      {
+        ...request,
+        resource: {
+          ...request.resource,
+          organizationId: 'org-other',
+          attributes: {
+            createdByAccountId: 'account-2',
+            organizationId: 'org-other',
+          },
+        },
+        context: {
+          ...request.context,
+          organizationId: 'org-child',
+        },
+      },
+      [
+        {
+          ...basePermission(),
+          accessScope: 'organization',
+        },
+      ]
+    );
+
+    expect(allowedResult.allowed).toBe(true);
+    expect(deniedResult.allowed).toBe(false);
+    expect(deniedResult.reason).toBe('abac_condition_unmet');
+  });
+
   it('allows globally scoped permissions without an organization id', () => {
     const result = evaluateAuthorizeDecision(baseRequest(), [
       {

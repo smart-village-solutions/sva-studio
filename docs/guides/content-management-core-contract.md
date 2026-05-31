@@ -49,6 +49,19 @@ Content-Operationen verwenden keine groben Schreibrechte mehr. Kanonisch sind:
 - History-Lesen prüft `content.readHistory`.
 - Delete prüft `content.delete`.
 
+## Scoped Rollen-Permissions fuer Content
+
+- Die datensatzbezogenen Content-Rechte koennen ueber Rollen additiv mit `accessScope` eingeschraenkt werden:
+  - `all`: keine zusaetzliche Einschraenkung
+  - `own`: nur Datensaetze mit passendem `createdBy`
+  - `organization`: eigene Datensaetze plus Datensaetze der aktiven Session-Organisation
+- Diese Scope-Information lebt auf `iam.role_permissions.access_scope`, nicht auf `iam.permissions.scope`.
+- Der Content-Autorisierungspfad liefert dafuer kanonisch:
+  - `resource.attributes.createdByAccountId`
+  - `resource.attributes.organizationId`, wenn der Datensatz organisationsrelevant ist
+  - `context.attributes.actorAccountId`
+- Fehlt dieser Kontext fuer ein scope-faehiges Content-Recht, bleibt die Entscheidung fail-closed.
+
 ## Audit und History
 
 History darf Snapshot- und Diff-nahe Daten für Revisionen behalten. Audit-Events speichern dagegen nur stabile Core-Metadaten wie Content-ID, Content-Type, Action, Actor, Ergebnis sowie Request- und Trace-Korrelation.

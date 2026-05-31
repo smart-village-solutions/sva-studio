@@ -39,11 +39,12 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0043_iam_tenant_account_deletion_rules.sql`
+- Repo-Migrationen vorhanden bis: `0045_iam_role_permission_assignment_scope.sql`
 
 Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0042`:
 
 - auf `iam.role_permissions` die Ownership-/Origin-Felder `grant_origin_kind` und `grant_origin_module_id` samt Check-Constraints und Index `idx_role_permissions_origin_module`
+- auf `iam.role_permissions` das Assignment-Scope-Feld `access_scope` samt Constraint `role_permissions_access_scope_check`
 - die Tabellen `iam.plugin_operation_jobs` und `iam.plugin_operation_job_events` sowie die ergänzten Runtime-Felder aus `0040_plugin_operation_job_runtime_fields.sql`
 - der External-Interface-Katalog mit `iam.external_interface_types` und `iam.instance_external_interfaces`
 - die tenantbezogenen Löschregel-Tabellen `iam.instance_deletion_rules` und `iam.account_deletion_content_preferences`
@@ -88,6 +89,7 @@ Kernidee:
 - `accounts` hält Nutzerstammdaten.
 - `organizations` modelliert fachliche Organisationsstrukturen pro Instanz.
 - Rollen und Rechte werden über `account_roles` und `role_permissions` zugewiesen.
+- `role_permissions.access_scope` ergänzt für datensatzbezogene Rechte den Zugriffsmodus einer Rollen-Rechte-Zuordnung (`all`, `own`, `organization`).
 
 ### 2. Gruppen und direkte Rechte
 

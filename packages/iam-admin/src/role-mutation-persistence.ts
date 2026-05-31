@@ -1,5 +1,7 @@
+import type { IamRolePermissionAssignmentScope } from '@sva/core';
 import type { ManagedRoleRow } from './types.js';
 
+import { getManagedPermissionMetadata } from './managed-permissions.js';
 import { loadRoleById, loadRoleListItemById } from './role-query.js';
 import type { QueryClient } from './query-client.js';
 
@@ -16,6 +18,85 @@ export type MutableRole = ManagedRoleRow & {
   readonly role_level: number;
   readonly role_key: string;
   readonly description: string | null;
+};
+
+type RolePermissionAssignmentInput = {
+  readonly permissionId: string;
+  readonly accessScope?: IamRolePermissionAssignmentScope;
+};
+
+type StoredRolePermissionAssignment = {
+  readonly permissionId: string;
+  readonly accessScope: IamRolePermissionAssignmentScope;
+};
+
+const normalizeRolePermissionAssignments = (
+  permissionIds: readonly string[] | undefined,
+  permissionAssignments: readonly RolePermissionAssignmentInput[] | undefined
+): readonly StoredRolePermissionAssignment[] => {
+  if (permissionAssignments && permissionAssignments.length > 0) {
+    return permissionAssignments.map((assignment) => ({
+      permissionId: assignment.permissionId,
+      accessScope: assignment.accessScope ?? 'all',
+    }));
+  }
+
+  return (permissionIds ?? []).map((permissionId) => ({
+    permissionId,
+    accessScope: 'all',
+  }));
+};
+
+const loadPermissionKeysById = async (
+  client: QueryClient,
+  instanceId: string,
+  permissionIds: readonly string[]
+): Promise<ReadonlyMap<string, string>> => {
+  if (permissionIds.length === 0) {
+    return new Map();
+  }
+
+  const result = await client.query<{ id: string; permission_key: string }>(
+    `
+SELECT id::text AS id, permission_key
+FROM iam.permissions
+WHERE instance_id = $1
+  AND id = ANY($2::uuid[]);
+`,
+    [instanceId, permissionIds]
+  );
+
+  return new Map(result.rows.map((row) => [row.id, row.permission_key] as const));
+};
+
+const normalizeStoredAccessScope = (
+  accessScope: IamRolePermissionAssignmentScope,
+  permissionKey: string | undefined
+): IamRolePermissionAssignmentScope => {
+  const metadata = permissionKey ? getManagedPermissionMetadata(permissionKey) : undefined;
+  if (!metadata?.isScopeAssignable) {
+    return 'all';
+  }
+
+  const supportedAccessScopes = metadata.supportedAccessScopes ?? ['all'];
+  return supportedAccessScopes.includes(accessScope) ? accessScope : 'all';
+};
+
+const normalizeAssignmentsForPersistence = async (
+  client: QueryClient,
+  instanceId: string,
+  assignments: readonly StoredRolePermissionAssignment[]
+): Promise<readonly StoredRolePermissionAssignment[]> => {
+  const permissionKeyById = await loadPermissionKeysById(
+    client,
+    instanceId,
+    assignments.map((assignment) => assignment.permissionId)
+  );
+
+  return assignments.map((assignment) => ({
+    permissionId: assignment.permissionId,
+    accessScope: normalizeStoredAccessScope(assignment.accessScope, permissionKeyById.get(assignment.permissionId)),
+  }));
 };
 
 type RoleAuditEventInput = {
@@ -83,6 +164,7 @@ export const createRoleMutationPersistence = (deps: RoleMutationPersistenceDeps)
     readonly description?: string;
     readonly roleLevel: number;
     readonly permissionIds: readonly string[];
+    readonly permissionAssignments?: readonly RolePermissionAssignmentInput[];
   }) =>
     deps.withInstanceScopedDb(input.actor.instanceId, async (client) => {
       const inserted = await client.query<{ readonly id: string }>(
@@ -119,15 +201,26 @@ RETURNING id;
         throw new Error('conflict');
       }
 
-      if (input.permissionIds.length > 0) {
+      const permissionAssignments = await normalizeAssignmentsForPersistence(
+        client,
+        input.actor.instanceId,
+        normalizeRolePermissionAssignments(input.permissionIds, input.permissionAssignments)
+      );
+
+      if (permissionAssignments.length > 0) {
         await client.query(
           `
-INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
-SELECT $1, $2::uuid, permission_id
-FROM unnest($3::uuid[]) AS permission_id
+INSERT INTO iam.role_permissions (instance_id, role_id, permission_id, access_scope)
+SELECT $1, $2::uuid, permission_id, access_scope
+FROM unnest($3::uuid[], $4::text[]) AS permission_assignment(permission_id, access_scope)
 ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
 `,
-          [input.actor.instanceId, roleId, input.permissionIds]
+          [
+            input.actor.instanceId,
+            roleId,
+            permissionAssignments.map((assignment) => assignment.permissionId),
+            permissionAssignments.map((assignment) => assignment.accessScope),
+          ]
         );
       }
 
@@ -257,6 +350,7 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
     readonly roleLevel: number;
     readonly externalRoleName: string;
     readonly permissionIds?: readonly string[];
+    readonly permissionAssignments?: readonly RolePermissionAssignmentInput[];
     readonly operation: 'update' | 'retry';
   }) =>
     deps.withInstanceScopedDb(input.actor.instanceId, async (client) => {
@@ -277,20 +371,30 @@ WHERE instance_id = $1
         [input.actor.instanceId, input.roleId, input.displayName, input.description ?? null, input.roleLevel]
       );
 
-      if (input.permissionIds) {
+      if (input.permissionIds || input.permissionAssignments) {
+        const permissionAssignments = await normalizeAssignmentsForPersistence(
+          client,
+          input.actor.instanceId,
+          normalizeRolePermissionAssignments(input.permissionIds, input.permissionAssignments)
+        );
         await client.query('DELETE FROM iam.role_permissions WHERE instance_id = $1 AND role_id = $2::uuid;', [
           input.actor.instanceId,
           input.roleId,
         ]);
-        if (input.permissionIds.length > 0) {
+        if (permissionAssignments.length > 0) {
           await client.query(
             `
-INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
-SELECT $1, $2::uuid, permission_id
-FROM unnest($3::uuid[]) AS permission_id
+INSERT INTO iam.role_permissions (instance_id, role_id, permission_id, access_scope)
+SELECT $1, $2::uuid, permission_id, access_scope
+FROM unnest($3::uuid[], $4::text[]) AS permission_assignment(permission_id, access_scope)
 ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
 `,
-            [input.actor.instanceId, input.roleId, input.permissionIds]
+            [
+              input.actor.instanceId,
+              input.roleId,
+              permissionAssignments.map((assignment) => assignment.permissionId),
+              permissionAssignments.map((assignment) => assignment.accessScope),
+            ]
           );
         }
       }

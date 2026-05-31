@@ -168,6 +168,23 @@ Abhängigkeiten des aktuellen Systems.
 - Der SVA-Mainserver bleibt fachliche Source of Truth für seine GraphQL-Daten; Studio hält nur Endpunktkonfiguration und kurzlebige Laufzeit-Caches für Credentials und Access-Tokens.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.
 
+### Fortschreibung 2026-05: Scoped Rollen-Permissions fuer Datensatzrechte
+
+1. `packages/core`
+   - erweitert den kanonischen IAM-Vertrag um `IamRolePermissionAssignmentScope = all|own|organization` sowie UI-Metadaten fuer scope-faehige Permissions.
+   - trennt bewusst zwischen generischem `permission.scope` fuer bestehende ABAC-Faelle und dem neuen Assignment-Scope auf Rollen-Permission-Zuordnungen.
+2. `packages/iam-admin`
+   - liest und schreibt Rollen-Permission-Zuordnungen als `permissionAssignments[]` mit `accessScope`.
+   - validiert serverseitig, dass nur explizit scope-faehige Datensatzrechte einen Assignment-Scope tragen.
+3. `packages/auth-runtime`
+   - erweitert die effektive Permission-Aufloesung und den Authorize-Pfad um `accessScope`.
+   - verwendet fuer scope-faehige Datensatzentscheidungen kanonische Resource-Attribute wie `createdByAccountId` und `organizationId`.
+4. `packages/data` und `packages/data-repositories`
+   - versionieren `iam.role_permissions.access_scope` SQL-first als Teil des fuehrenden IAM-Schemas.
+5. `apps/sva-studio-react`
+   - erweitert die Rollen-Detailseite um Scope-Pflege pro Permission-Zuweisung.
+   - zeigt in der Nutzeransicht die resultierenden effektiven Scopes read-only als Transparenzsignal.
+
 ### Fortschreibung 2026-05: Monitoring-Einstieg fuer IAM-Authorize-Performance
 
 1. `@sva/core`

@@ -18,7 +18,7 @@ Diese Referenz dokumentiert die stabilen `reason`-Codes für `POST /iam/authoriz
 | `permission_missing` | Keine effektive Permission passt zum angefragten Zugriff. | Rolle/Permission für `action` und `resource.type` fehlt oder Org-Filter greift nicht. |
 | `instance_scope_mismatch` | Angefragte Instanz passt nicht zum authentifizierten Benutzerkontext. | Session-Instanz und Request-`instanceId` weichen voneinander ab. |
 | `context_attribute_missing` | Pflichtattribute für die Entscheidung fehlen. | ABAC-Regel verlangt Kontextdaten (z. B. Acting-As oder Geo), die nicht geliefert wurden. |
-| `abac_condition_unmet` | ABAC-Bedingungen sind nicht erfüllt. | Geo-Scope oder Zeitfenster verletzt. |
+| `abac_condition_unmet` | ABAC-Bedingungen oder Rollen-Scope-Bedingungen sind nicht erfüllt. | Geo-Scope, Zeitfenster, `own`-Match oder `organization`-Match verletzt. |
 | `hierarchy_restriction` | Hierarchieregel blockiert den Zugriff. | Untergeordnete Restriktionen heben geerbte Berechtigungen auf. |
 | `policy_conflict_restrictive_wins` | Konflikt zwischen Regeln wurde restriktiv aufgelöst. | Erlaubnis und Verbot treffen gleichzeitig zu; Deny gewinnt deterministisch. |
 
@@ -64,5 +64,6 @@ Diese Referenz dokumentiert die stabilen `reason`-Codes für `POST /iam/authoriz
 
 - Bestehende Codes werden nicht semantisch umdefiniert.
 - Neue Codes werden nur additiv eingeführt.
+- `own` und `organization` führen bewusst nicht zu eigenen neuen Reason-Codes; negative oder unvollständige Ownership-/Organizationskontexte landen derzeit fail-closed unter `abac_condition_unmet`.
 - Technische Fehler im Fail-Closed-Pfad sind API-Fehler (`error`) und keine `reason`-Codes.
 - Änderungen am Katalog sind breaking für Consumer und benötigen OpenSpec-Delta + Review.

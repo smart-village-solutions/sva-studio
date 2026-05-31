@@ -14,6 +14,7 @@ Die aktuelle API ist bewusst klein:
 - Zentrale IAM-Typen wie `AuthorizeRequest`, `AuthorizeResponse`, `IamAction` und `EffectivePermission` werden als Typ-Exports bereitgestellt.
 - `iamCoreVersion` dokumentiert die Paketversion im Code.
 - `iamCorePackageRoles` und `IamCorePackageRole` markieren die beabsichtigten Rollen des Pakets: `authorization-contracts`, `permission-engine`, `pii-invariants`.
+- Die Autorisierungsverträge umfassen additive Rollen-Scopes für Datensatzrechte (`accessScope = all|own|organization`) sowie die dafür benötigten Resource-/Context-Attribute.
 
 ## Nutzung und Integration
 
@@ -27,7 +28,20 @@ import { evaluateAuthorizeDecision, type AuthorizeRequest } from '@sva/iam-core'
 const request: AuthorizeRequest = {
   instanceId: 'inst-1',
   action: 'content.read',
-  resource: { type: 'content', id: 'content-1' },
+  resource: {
+    type: 'content',
+    id: 'content-1',
+    attributes: {
+      createdByAccountId: 'account-1',
+      organizationId: 'org-1',
+    },
+  },
+  context: {
+    organizationId: 'org-1',
+    attributes: {
+      actorAccountId: 'account-1',
+    },
+  },
 };
 
 const result = evaluateAuthorizeDecision(request, []);

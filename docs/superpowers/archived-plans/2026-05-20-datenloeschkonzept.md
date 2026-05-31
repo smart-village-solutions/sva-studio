@@ -98,7 +98,7 @@
 - Create: `openspec/changes/add-tenant-account-deletion-rules/specs/iam-auditing/spec.md`
 - Test: `openspec/changes/add-tenant-account-deletion-rules/**/*`
 
-- [ ] **Step 1: Write the failing OpenSpec delta set**
+- [x] **Step 1: Write the failing OpenSpec delta set**
 
 ```markdown
 # Change: tenant account deletion rules
@@ -117,7 +117,7 @@ Inactive tenant accounts need a tenant-managed lifecycle with deactivation, pseu
 - Affected arc42 sections: `05-building-block-view`, `08-cross-cutting-concepts`
 ```
 
-- [ ] **Step 2: Add concrete requirement deltas for UI, access control, DSR split, and auditing**
+- [x] **Step 2: Add concrete requirement deltas for UI, access control, DSR split, and auditing**
 
 ```markdown
 ## ADDED Requirements
@@ -133,7 +133,7 @@ The system SHALL provide a `deletion-rules` tab under `/admin/iam` for tenant-sc
 The system SHALL derive inactivity lifecycle thresholds from `last_login_at` and SHALL NOT require a new generic activity-tracking subsystem in v1.
 ```
 
-- [ ] **Step 3: Run strict OpenSpec validation**
+- [x] **Step 3: Run strict OpenSpec validation**
 
 Run:
 
@@ -143,7 +143,7 @@ openspec validate add-tenant-account-deletion-rules --strict
 
 Expected: `Validation passed` or only actionable formatting/spec errors to fix before implementation.
 
-- [ ] **Step 4: Commit the approved OpenSpec change scaffold**
+- [x] **Step 4: Commit the approved OpenSpec change scaffold**
 
 ```bash
 git add openspec/changes/add-tenant-account-deletion-rules
@@ -164,7 +164,7 @@ git commit -m "spec: add tenant account deletion rules"
 - Test: `packages/data/src/iam/seed-plan.vitest.test.ts`
 - Test: `packages/data/src/iam/seed-files.test.ts`
 
-- [ ] **Step 1: Write failing seed and schema tests for the new persistence objects**
+- [x] **Step 1: Write failing seed and schema tests for the new persistence objects**
 
 ```ts
 it('includes deletion-rules defaults in the seed plan', () => {
@@ -178,7 +178,7 @@ it('expects the deletion-rules seed to create tenant defaults', () => {
 });
 ```
 
-- [ ] **Step 2: Run the targeted data tests and confirm they fail first**
+- [x] **Step 2: Run the targeted data tests and confirm they fail first**
 
 Run:
 
@@ -188,7 +188,7 @@ pnpm nx run data:test:coverage --testFiles=src/iam/seed-plan.vitest.test.ts --te
 
 Expected: FAIL with missing seed file and missing seed-plan entry.
 
-- [ ] **Step 3: Implement the migration with dedicated rule tables and lifecycle columns**
+- [x] **Step 3: Implement the migration with dedicated rule tables and lifecycle columns**
 
 ```sql
 CREATE TABLE iam.instance_deletion_rules (
@@ -226,7 +226,7 @@ ALTER TABLE iam.contents
   ADD COLUMN IF NOT EXISTS deletion_lifecycle_changed_at TIMESTAMPTZ;
 ```
 
-- [ ] **Step 4: Add the seed file and wire it into the seed plan**
+- [x] **Step 4: Add the seed file and wire it into the seed plan**
 
 ```sql
 INSERT INTO iam.instance_deletion_rules (
@@ -247,7 +247,7 @@ SET
   updated_at = NOW();
 ```
 
-- [ ] **Step 5: Update schema snapshots and rerun the data verification commands**
+- [x] **Step 5: Update schema snapshots and rerun the data verification commands**
 
 Run:
 
@@ -259,7 +259,7 @@ pnpm nx run data:test:coverage --testFiles=src/iam/seed-plan.vitest.test.ts --te
 
 Expected: migration validation passes, seed smoke test passes, targeted tests PASS.
 
-- [ ] **Step 6: Commit the schema and seed slice**
+- [x] **Step 6: Commit the schema and seed slice**
 
 ```bash
 git add packages/data/migrations/0043_iam_tenant_account_deletion_rules.sql \
@@ -287,7 +287,7 @@ git commit -m "feat: add tenant deletion rule schema"
 - Create: `packages/iam-governance/src/deletion-rules-read-models.test.ts`
 - Create: `packages/iam-governance/src/deletion-rules-maintenance.test.ts`
 
-- [ ] **Step 1: Write failing contract and governance tests**
+- [x] **Step 1: Write failing contract and governance tests**
 
 ```ts
 it('exports tenant deletion rules overview types', () => {
@@ -318,7 +318,7 @@ it('marks due accounts as deactivated before pseudonymization', async () => {
 });
 ```
 
-- [ ] **Step 2: Run targeted governance tests and confirm the new module is missing**
+- [x] **Step 2: Run targeted governance tests and confirm the new module is missing**
 
 Run:
 
@@ -328,7 +328,7 @@ pnpm nx run iam-governance:test:unit --testFiles=src/deletion-rules-read-models.
 
 Expected: FAIL with missing module imports and unresolved exported types.
 
-- [ ] **Step 3: Add shared contract types for admin and self-service consumption**
+- [x] **Step 3: Add shared contract types for admin and self-service consumption**
 
 ```ts
 export type IamDeletionContentStrategy =
@@ -361,7 +361,7 @@ export type IamMyDeletionRulesOverview = {
 };
 ```
 
-- [ ] **Step 4: Implement governance read models and maintenance with explicit stage ordering**
+- [x] **Step 4: Implement governance read models and maintenance with explicit stage ordering**
 
 ```ts
 const resolveEffectiveContentStrategy = (
@@ -383,7 +383,7 @@ const pseudonymLabelByState: Record<Extract<IamDeletionLifecycleState, 'pseudony
 };
 ```
 
-- [ ] **Step 5: Include the `iam.contents` tombstone updates in the maintenance flow**
+- [x] **Step 5: Include the `iam.contents` tombstone updates in the maintenance flow**
 
 ```ts
 await client.query(
@@ -404,7 +404,7 @@ WHERE instance_id = $1
 );
 ```
 
-- [ ] **Step 6: Run governance unit tests, typecheck, and runtime check**
+- [x] **Step 6: Run governance unit tests, typecheck, and runtime check**
 
 Run:
 
@@ -416,7 +416,7 @@ pnpm nx run iam-governance:check:runtime
 
 Expected: all PASS.
 
-- [ ] **Step 7: Commit the governance/core slice**
+- [x] **Step 7: Commit the governance/core slice**
 
 ```bash
 git add packages/core/src/iam/transparency-contract.ts \
@@ -446,7 +446,7 @@ git commit -m "feat: add deletion rules governance core"
 - Create: `scripts/ops/run-iam-account-deletion-rules.mjs`
 - Modify: `package.json`
 
-- [ ] **Step 1: Write failing tests for login projection and HTTP handlers**
+- [x] **Step 1: Write failing tests for login projection and HTTP handlers**
 
 ```ts
 it('updates accounts.last_login_at on successful tenant login events', async () => {
@@ -474,7 +474,7 @@ it('stores a self-service content preference override', async () => {
 });
 ```
 
-- [ ] **Step 2: Run the targeted auth-runtime and routing tests first**
+- [x] **Step 2: Run the targeted auth-runtime and routing tests first**
 
 Run:
 
@@ -485,7 +485,7 @@ pnpm nx run routing:test:unit --testFiles=src/auth.routes.server.test.ts --testF
 
 Expected: FAIL with missing handlers/routes and missing `last_login_at` projection.
 
-- [ ] **Step 3: Extend the audit sink to persist `last_login_at` for successful tenant logins**
+- [x] **Step 3: Extend the audit sink to persist `last_login_at` for successful tenant logins**
 
 ```ts
 if (scope.kind === 'instance' && event.eventType === 'login' && event.outcome === 'success' && ensured.accountId) {
@@ -501,7 +501,7 @@ WHERE id = $1::uuid
 }
 ```
 
-- [ ] **Step 4: Implement dedicated runtime handlers rather than overloading DSR core**
+- [x] **Step 4: Implement dedicated runtime handlers rather than overloading DSR core**
 
 ```ts
 export const deletionRulesAdminHandler = async (request: Request): Promise<Response> => {
@@ -522,7 +522,7 @@ export const myDeletionRulesOverviewHandler = async (request: Request): Promise<
   });
 ```
 
-- [ ] **Step 5: Add the maintenance script and root command**
+- [x] **Step 5: Add the maintenance script and root command**
 
 ```js
 #!/usr/bin/env node
@@ -539,7 +539,7 @@ console.log(JSON.stringify(await runDeletionRulesMaintenance(client, { instanceI
 }
 ```
 
-- [ ] **Step 6: Run targeted runtime, routing, type, and runtime checks**
+- [x] **Step 6: Run targeted runtime, routing, type, and runtime checks**
 
 Run:
 
@@ -552,7 +552,7 @@ pnpm nx run sva-studio-react:test:types
 
 Expected: PASS for auth-runtime checks; app types stay green after route contract additions.
 
-- [ ] **Step 7: Commit the runtime/API slice**
+- [x] **Step 7: Commit the runtime/API slice**
 
 ```bash
 git add packages/auth-runtime/src/audit-db-sink.ts \
@@ -588,7 +588,7 @@ git commit -m "feat: add deletion rules runtime endpoints"
 - Modify: `apps/sva-studio-react/src/i18n/resources.ts`
 - Modify: `apps/sva-studio-react/e2e/account-admin-ui.spec.ts`
 
-- [ ] **Step 1: Write the failing frontend tests first**
+- [x] **Step 1: Write the failing frontend tests first**
 
 ```ts
 it('accepts deletion-rules as a valid IAM cockpit tab', () => {
@@ -608,7 +608,7 @@ it('renders the current deletion-rule defaults and content override in the priva
 });
 ```
 
-- [ ] **Step 2: Run targeted app tests to confirm the missing tab and API client gaps**
+- [x] **Step 2: Run targeted app tests to confirm the missing tab and API client gaps**
 
 Run:
 
@@ -618,7 +618,7 @@ pnpm nx run sva-studio-react:test:unit --testFiles=src/lib/iam-viewer-access.tes
 
 Expected: FAIL with invalid tab normalization, missing API helpers, and missing UI copy.
 
-- [ ] **Step 3: Extend the route/tab contract and API client**
+- [x] **Step 3: Extend the route/tab contract and API client**
 
 ```ts
 export type IamCockpitTabKey = 'rights' | 'governance' | 'dsr' | 'deletion-rules';
@@ -637,7 +637,7 @@ export const saveAdminDeletionRules = async (payload: {
 }) => requestJson<IamTenantDeletionRulesOverview>('/iam/admin/deletion-rules', { method: 'POST', body: JSON.stringify(payload) });
 ```
 
-- [ ] **Step 4: Add the admin tab panel and the self-service rule section**
+- [x] **Step 4: Add the admin tab panel and the self-service rule section**
 
 ```tsx
 {activeTab === 'deletion-rules' ? (
@@ -660,7 +660,7 @@ export const saveAdminDeletionRules = async (payload: {
 </Card>
 ```
 
-- [ ] **Step 5: Add i18n keys instead of hard-coded strings**
+- [x] **Step 5: Add i18n keys instead of hard-coded strings**
 
 ```ts
 deletionRules: {
@@ -675,7 +675,7 @@ deletionRules: {
 }
 ```
 
-- [ ] **Step 6: Run frontend unit, types, and focused e2e verification**
+- [x] **Step 6: Run frontend unit, types, and focused e2e verification**
 
 Run:
 
@@ -687,7 +687,7 @@ pnpm nx run sva-studio-react:test:e2e
 
 Expected: unit tests PASS, app typecheck PASS, e2e suite remains green or fails only on genuinely related regressions to fix immediately.
 
-- [ ] **Step 7: Commit the UI slice**
+- [x] **Step 7: Commit the UI slice**
 
 ```bash
 git add packages/routing/src/route-search.ts \
@@ -718,7 +718,7 @@ git commit -m "feat: add admin and self-service deletion rules ui"
 - Modify: `docs/architecture/iam-service-architektur.md`
 - Modify: `docs/superpowers/specs/2026-05-20-datenloeschkonzept-design.md`
 
-- [ ] **Step 1: Update the runbooks and architecture notes with the final implementation shape**
+- [x] **Step 1: Update the runbooks and architecture notes with the final implementation shape**
 
 ```markdown
 ## Inaktive Tenant-Accounts
@@ -729,7 +729,7 @@ git commit -m "feat: add admin and self-service deletion rules ui"
 - Physische Löschung: keine; finale Stufe ist ein Tombstone-Soft-Delete
 ```
 
-- [ ] **Step 2: Add the operational command and expected output to the new runbook**
+- [x] **Step 2: Add the operational command and expected output to the new runbook**
 
 ```bash
 pnpm iam:account-deletion-rules:run --instanceId=de-musterhausen --dryRun
@@ -748,7 +748,7 @@ Expected output:
 }
 ```
 
-- [ ] **Step 3: Run the repository-level verification gates**
+- [x] **Step 3: Run the repository-level verification gates**
 
 Run:
 
@@ -761,7 +761,7 @@ pnpm test:pr
 
 Expected: all PASS. If `pnpm test:pr` is too heavy for the active machine, document the failure cause and at minimum keep the two affected Nx gates green before any push.
 
-- [ ] **Step 4: Commit the docs and verification slice**
+- [x] **Step 4: Commit the docs and verification slice**
 
 ```bash
 git add docs/guides/iam-data-subject-rights-runbook.md \

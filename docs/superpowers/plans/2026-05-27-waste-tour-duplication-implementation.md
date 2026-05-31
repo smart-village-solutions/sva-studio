@@ -69,7 +69,7 @@
 - Reference: `docs/superpowers/specs/2026-05-27-waste-tour-duplication-design.md`
 - Reference: `openspec/specs/waste-management/spec.md`
 
-- [ ] **Step 1: OpenSpec-Delta als failing spec formulieren**
+- [x] **Step 1: OpenSpec-Delta als failing spec formulieren**
 
 ```md
 ## ADDED Requirements
@@ -97,7 +97,7 @@ Das System SHALL Abholort-Zuordnungen und tourbezogene Datumsverschiebungen erst
 - **AND** Teilerfolge sind nicht zulässig
 ```
 
-- [ ] **Step 2: Proposal, Design-Verweis und Task-Liste anlegen**
+- [x] **Step 2: Proposal, Design-Verweis und Task-Liste anlegen**
 
 ```md
 # Change: Tour-Duplizierung im Waste Management
@@ -117,7 +117,7 @@ Redakteure können heute Touren nur manuell neu anlegen oder bearbeiten. Wiederk
 - Affected arc42 sections: keine fachliche Architekturänderung; im Proposal als explizite Nicht-Änderung dokumentieren
 ```
 
-- [ ] **Step 3: OpenSpec validieren**
+- [x] **Step 3: OpenSpec validieren**
 
 Run: `openspec validate add-waste-tour-duplication --strict`  
 Expected: PASS ohne Schema- oder Scenario-Fehler

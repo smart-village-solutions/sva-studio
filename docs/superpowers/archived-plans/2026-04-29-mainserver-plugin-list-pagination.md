@@ -35,8 +35,8 @@
 
 ## Umsetzungsbloecke
 
-- [ ] Test- und Typ-Basis fuer paginierte List-Contracts zuerst ergaenzen
-- [ ] Mainserver- und Host-Vertrag anschliessend umstellen
-- [ ] Plugin-API-Wrapper migrieren
-- [ ] Plugin-Pages auf `StudioDataTable` + Prev/Next umstellen
-- [ ] Unit-, Typ- und E2E-Gates grün ziehen
+- [x] Test- und Typ-Basis fuer paginierte List-Contracts zuerst ergaenzen
+- [x] Mainserver- und Host-Vertrag anschliessend umstellen
+- [x] Plugin-API-Wrapper migrieren
+- [x] Plugin-Pages auf `StudioDataTable` + Prev/Next umstellen
+- [x] Unit-, Typ- und E2E-Gates grün ziehen

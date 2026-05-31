@@ -256,7 +256,7 @@ Run: `pnpm nx run public-waste-calendar-web:test:types`
 
 Expected: PASS
 
-- [ ] **Step 6: Commit the app-local domain layer**
+- [x] **Step 6: Commit the app-local domain layer**
 
 ```bash
 git add apps/public-waste-calendar-web/src/lib
@@ -504,13 +504,13 @@ Run: `pnpm nx run public-waste-calendar-web:test:unit && pnpm nx run public-wast
 
 Expected: PASS before setting the corresponding OpenSpec checkboxes to `- [x]`.
 
-- [ ] **Step 5: Run the final local gate for touched projects**
+- [x] **Step 5: Run the final local gate for touched projects**
 
 Run: `pnpm nx run public-waste-calendar-web:test:unit && pnpm nx run public-waste-calendar-web:test:e2e && pnpm nx run public-waste-calendar-web:test:types`
 
 Expected: PASS
 
-- [ ] **Step 6: Commit tests and docs**
+- [x] **Step 6: Commit tests and docs**
 
 ```bash
 git add apps/public-waste-calendar-web/tests openspec/changes/add-public-waste-calendar-web-app/tasks.md docs/architecture

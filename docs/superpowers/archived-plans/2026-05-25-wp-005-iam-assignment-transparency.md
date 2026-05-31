@@ -66,7 +66,7 @@
 - Create: `openspec/changes/refactor-wp-005-iam-assignment-transparency/specs/iam-core/spec.md`
 - Test: `openspec validate refactor-wp-005-iam-assignment-transparency --strict`
 
-- [ ] **Step 1: Entwurf für die OpenSpec-Änderung als Delta schreiben**
+- [x] **Step 1: Entwurf für die OpenSpec-Änderung als Delta schreiben**
 
 ```md
 # Change: WP-005 IAM-Zuweisungen und Vererbungs-Transparenz abschließen
@@ -81,7 +81,7 @@ Die aktuelle IAM-Administration verliert beim Bearbeiten von Rollen- und Gruppen
 - normierte Konflikt- und Abnahmefälle für WP-005
 ```
 
-- [ ] **Step 2: Spec-Deltas mit mindestens je einem Szenario pro Requirement schreiben**
+- [x] **Step 2: Spec-Deltas mit mindestens je einem Szenario pro Requirement schreiben**
 
 ```md
 ## MODIFIED Requirements
@@ -93,7 +93,7 @@ Das System SHALL im Benutzerdetail nicht nur Quellen, sondern auch organisations
 - **THEN** zeigt das Benutzerdetail sowohl die geerbte Herkunft als auch den blockierenden Restriktionsgrund
 ```
 
-- [ ] **Step 3: OpenSpec-Änderung validieren**
+- [x] **Step 3: OpenSpec-Änderung validieren**
 
 Run:
 
@@ -107,7 +107,7 @@ Expected:
 Validation passed
 ```
 
-- [ ] **Step 4: Deutsches WP-005-Abnahmedokument als Stub anlegen**
+- [x] **Step 4: Deutsches WP-005-Abnahmedokument als Stub anlegen**
 
 ```md
 # WP-005 Abnahme: Rollen- und Rechtemanagement via Keycloak
@@ -121,7 +121,7 @@ Validation passed
 - instanzfremde Gruppen- oder Geo-Daten
 ```
 
-- [ ] **Step 5: Änderungen committen**
+- [x] **Step 5: Änderungen committen**
 
 ```bash
 git add openspec/changes/refactor-wp-005-iam-assignment-transparency docs/reports/wp-005-rollen-rechte-keycloak-abnahme-2026-05-25.md
@@ -140,7 +140,7 @@ git commit -m "spec: formalize wp-005 assignment transparency change"
 - Test: `packages/core/src/iam/account-management-contract.test.ts`
 - Test: `packages/iam-admin/src/user-detail-permission-sql.test.ts`
 
-- [ ] **Step 1: Failing Contract-Test für neue Transparenzfelder ergänzen**
+- [x] **Step 1: Failing Contract-Test für neue Transparenzfelder ergänzen**
 
 ```ts
 it('supports inheritance and restriction metadata on permission trace items', () => {
@@ -163,7 +163,7 @@ it('supports inheritance and restriction metadata on permission trace items', ()
 });
 ```
 
-- [ ] **Step 2: SQL-Test für die neue Projektion schreiben**
+- [x] **Step 2: SQL-Test für die neue Projektion schreiben**
 
 ```ts
 it('projects inheritance and inactive-reason fields into the permission trace', () => {
@@ -176,7 +176,7 @@ it('projects inheritance and inactive-reason fields into the permission trace', 
 });
 ```
 
-- [ ] **Step 3: Vertrag und Mapping minimal erweitern**
+- [x] **Step 3: Vertrag und Mapping minimal erweitern**
 
 ```ts
 export type IamUserPermissionTraceItem = {
@@ -194,7 +194,7 @@ export type IamUserPermissionTraceItem = {
 };
 ```
 
-- [ ] **Step 4: SQL-Projektion und Mapping auf die neuen Felder umstellen**
+- [x] **Step 4: SQL-Projektion und Mapping auf die neuen Felder umstellen**
 
 ```ts
 const mapPermissionTraceRows = (
@@ -215,7 +215,7 @@ const mapPermissionTraceRows = (
   })) ?? [];
 ```
 
-- [ ] **Step 5: Gezielte Tests grün laufen lassen**
+- [x] **Step 5: Gezielte Tests grün laufen lassen**
 
 Run:
 
@@ -231,7 +231,7 @@ PASS  packages/core/src/iam/account-management-contract.test.ts
 PASS  packages/iam-admin/src/user-detail-permission-sql.test.ts
 ```
 
-- [ ] **Step 6: Änderungen committen**
+- [x] **Step 6: Änderungen committen**
 
 ```bash
 git add packages/core/src/iam/account-management-contract.ts packages/core/src/iam/account-management-contract.test.ts packages/iam-admin/src/user-detail-query.types.ts packages/iam-admin/src/user-detail-permission-sql.ts packages/iam-admin/src/user-detail-permission-sql.test.ts packages/iam-admin/src/user-detail-query.mapping.ts
@@ -252,7 +252,7 @@ git commit -m "feat: extend wp-005 permission transparency contract"
 - Test: `packages/auth-runtime/src/iam-account-management/shared-assignment.test.ts`
 - Test: `packages/iam-admin/src/user-update-persistence.test.ts`
 
-- [ ] **Step 1: Failing Planner-Test für Erhalt identischer Gruppenzuweisungen schreiben**
+- [x] **Step 1: Failing Planner-Test für Erhalt identischer Gruppenzuweisungen schreiben**
 
 ```ts
 it('keeps an unchanged group assignment instead of deleting and recreating it', async () => {
@@ -271,7 +271,7 @@ it('keeps an unchanged group assignment instead of deleting and recreating it', 
 });
 ```
 
-- [ ] **Step 2: Failing Persistence-Test gegen den alten Replace-All-Pfad ergänzen**
+- [x] **Step 2: Failing Persistence-Test gegen den alten Replace-All-Pfad ergänzen**
 
 ```ts
 it('does not issue DELETE FROM iam.account_groups when the requested group set is unchanged', async () => {
@@ -290,7 +290,7 @@ it('does not issue DELETE FROM iam.account_groups when the requested group set i
 });
 ```
 
-- [ ] **Step 3: Minimalen Planner und nicht-destruktive Persistenzfunktion implementieren**
+- [x] **Step 3: Minimalen Planner und nicht-destruktive Persistenzfunktion implementieren**
 
 ```ts
 export const buildGroupAssignmentPlan = (input: {
@@ -308,7 +308,7 @@ export const buildGroupAssignmentPlan = (input: {
 };
 ```
 
-- [ ] **Step 4: User-Update-Persistenz auf Planner statt Replace-All umstellen**
+- [x] **Step 4: User-Update-Persistenz auf Planner statt Replace-All umstellen**
 
 ```ts
 if (input.payload.groupIds) {
@@ -322,7 +322,7 @@ if (input.payload.groupIds) {
 }
 ```
 
-- [ ] **Step 5: Gezielte Tests und frühe Runtime-/Type-Gates ausführen**
+- [x] **Step 5: Gezielte Tests und frühe Runtime-/Type-Gates ausführen**
 
 Run:
 
@@ -342,7 +342,7 @@ PASS  packages/auth-runtime/src/iam-account-management/shared-assignment.test.ts
 PASS  packages/iam-admin/src/user-update-persistence.test.ts
 ```
 
-- [ ] **Step 6: Änderungen committen**
+- [x] **Step 6: Änderungen committen**
 
 ```bash
 git add packages/auth-runtime/src/iam-account-management/assignment-diff.ts packages/auth-runtime/src/iam-account-management/assignment-diff.test.ts packages/auth-runtime/src/iam-account-management/shared-assignment.ts packages/auth-runtime/src/iam-account-management/shared-assignment.test.ts packages/auth-runtime/src/iam-account-management/user-update-plan.ts packages/iam-admin/src/user-update-persistence.ts packages/iam-admin/src/user-update-persistence.test.ts
@@ -359,7 +359,7 @@ git commit -m "feat: preserve wp-005 user assignments with diff planning"
 - Test: `packages/auth-runtime/src/iam-account-management/user-update-plan.test.ts`
 - Test: `packages/iam-admin/src/user-update-handler.test.ts`
 
-- [ ] **Step 1: Failing Plan-Test für fail-closed bei nicht abbildbarer Assignment-Änderung schreiben**
+- [x] **Step 1: Failing Plan-Test für fail-closed bei nicht abbildbarer Assignment-Änderung schreiben**
 
 ```ts
 it('rejects updates that would overwrite protected assignment metadata without an explicit mapping rule', async () => {
@@ -375,7 +375,7 @@ it('rejects updates that would overwrite protected assignment metadata without a
 });
 ```
 
-- [ ] **Step 2: Handler-Test für den neuen Update-Pfad ergänzen**
+- [x] **Step 2: Handler-Test für den neuen Update-Pfad ergänzen**
 
 ```ts
 it('returns the updated detail with preserved group metadata after a user update', async () => {
@@ -394,7 +394,7 @@ it('returns the updated detail with preserved group metadata after a user update
 });
 ```
 
-- [ ] **Step 3: Update-Plan und Handler minimal verdrahten**
+- [x] **Step 3: Update-Plan und Handler minimal verdrahten**
 
 ```ts
 export type UserUpdatePlan = {
@@ -405,7 +405,7 @@ export type UserUpdatePlan = {
 };
 ```
 
-- [ ] **Step 4: End-to-end-Tests laufen lassen**
+- [x] **Step 4: End-to-end-Tests laufen lassen**
 
 Run:
 
@@ -422,7 +422,7 @@ PASS  packages/auth-runtime/src/iam-account-management/user-update-plan.test.ts
 PASS  packages/iam-admin/src/user-update-handler.test.ts
 ```
 
-- [ ] **Step 5: Änderungen committen**
+- [x] **Step 5: Änderungen committen**
 
 ```bash
 git add packages/auth-runtime/src/iam-account-management/user-update-handler.ts packages/auth-runtime/src/iam-account-management/user-update-plan.ts packages/auth-runtime/src/iam-account-management/user-update-plan.test.ts packages/iam-admin/src/user-update-handler.test.ts
@@ -440,7 +440,7 @@ git commit -m "feat: wire wp-005 assignment-preserving update flow"
 - Test: `apps/sva-studio-react/src/routes/admin/users/-user-edit-page.test.tsx`
 - Test: `apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.test.tsx`
 
-- [ ] **Step 1: Failing UI-Test für Vererbungs- und Restriktionshinweise schreiben**
+- [x] **Step 1: Failing UI-Test für Vererbungs- und Restriktionshinweise schreiben**
 
 ```tsx
 it('renders inherited and blocked permission paths with explicit reasons', () => {
@@ -483,7 +483,7 @@ it('renders inherited and blocked permission paths with explicit reasons', () =>
 });
 ```
 
-- [ ] **Step 2: Failing UI-Test für sichtbare bestehende Assignment-Metadaten schreiben**
+- [x] **Step 2: Failing UI-Test für sichtbare bestehende Assignment-Metadaten schreiben**
 
 ```tsx
 it('shows preserved group membership metadata in the management section', () => {
@@ -496,7 +496,7 @@ it('shows preserved group membership metadata in the management section', () => 
 });
 ```
 
-- [ ] **Step 3: User-Detail in getrennte Transparenzblöcke umstrukturieren**
+- [x] **Step 3: User-Detail in getrennte Transparenzblöcke umstrukturieren**
 
 ```tsx
 const effectiveInheritedTrace = effectivePermissionTrace.filter(
@@ -507,7 +507,7 @@ const blockedTrace = inactivePermissionTrace.filter(
 );
 ```
 
-- [ ] **Step 4: Group-Detail als Membership-Feinpflegepfad klarer markieren**
+- [x] **Step 4: Group-Detail als Membership-Feinpflegepfad klarer markieren**
 
 ```tsx
 <p className="text-sm text-muted-foreground">
@@ -515,7 +515,7 @@ const blockedTrace = inactivePermissionTrace.filter(
 </p>
 ```
 
-- [ ] **Step 5: Route-Tests und Type-Check ausführen**
+- [x] **Step 5: Route-Tests und Type-Check ausführen**
 
 Run:
 
@@ -532,7 +532,7 @@ PASS  apps/sva-studio-react/src/routes/admin/users/-user-edit-page.test.tsx
 PASS  apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.test.tsx
 ```
 
-- [ ] **Step 6: Änderungen committen**
+- [x] **Step 6: Änderungen committen**
 
 ```bash
 git add apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx apps/sva-studio-react/src/routes/admin/users/-user-edit-page.test.tsx apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.tsx apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.test.tsx apps/sva-studio-react/src/i18n/resources.ts
@@ -549,14 +549,14 @@ git commit -m "feat: clarify wp-005 assignment and inheritance ui"
 - Modify: `docs/reports/wp-005-rollen-rechte-keycloak-abnahme-2026-05-25.md`
 - Test: affected Nx unit/type targets
 
-- [ ] **Step 1: Architekturstellen mit dem neuen Assignment- und Transparenzpfad aktualisieren**
+- [x] **Step 1: Architekturstellen mit dem neuen Assignment- und Transparenzpfad aktualisieren**
 
 ```md
 - Benutzer-Assignments werden im IAM-Update-Pfad diff-basiert geplant und nur gezielt mutiert.
 - Das Benutzerdetail liefert strukturierte Transparenzdaten für direkte, vererbte und blockierte Rechte.
 ```
 
-- [ ] **Step 2: WP-005-Abnahmedokument mit den normierten Nachweisen füllen**
+- [x] **Step 2: WP-005-Abnahmedokument mit den normierten Nachweisen füllen**
 
 ```md
 ## Abgedeckte Konfliktfälle
@@ -568,7 +568,7 @@ git commit -m "feat: clarify wp-005 assignment and inheritance ui"
 - instanzfremde Gruppen- oder Geo-Daten: negativer Server-Test vorhanden
 ```
 
-- [ ] **Step 3: Vollständige betroffene Gates ausführen**
+- [x] **Step 3: Vollständige betroffene Gates ausführen**
 
 Run:
 
@@ -596,7 +596,7 @@ Runtime checks PASS
 I18n check PASS
 ```
 
-- [ ] **Step 4: Optionales PR-Gate für den finalen Push nachziehen**
+- [x] **Step 4: Optionales PR-Gate für den finalen Push nachziehen**
 
 Run:
 
@@ -610,7 +610,7 @@ Expected:
 PR gate finished successfully
 ```
 
-- [ ] **Step 5: Abschlusscommit erstellen**
+- [x] **Step 5: Abschlusscommit erstellen**
 
 ```bash
 git add docs/architecture/05-building-block-view.md docs/architecture/06-runtime-view.md docs/architecture/08-cross-cutting-concepts.md docs/architecture/10-quality-requirements.md docs/reports/wp-005-rollen-rechte-keycloak-abnahme-2026-05-25.md

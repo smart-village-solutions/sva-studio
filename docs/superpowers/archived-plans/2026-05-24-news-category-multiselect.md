@@ -23,10 +23,10 @@
 - Modify: `apps/sva-studio-react/src/server.ts`
 - Create: `apps/sva-studio-react/src/lib/mainserver-categories-api.server.ts`
 
-- [ ] Failing Tests für den neuen `/api/v1/mainserver/categories`-Read-Endpoint schreiben.
-- [ ] Minimalen GraphQL-Read für `categories(order: name_ASC)` implementieren und auf `SvaMainserverCategory[]` mappen.
-- [ ] Endpoint über Studio-Server durchverdrahten.
-- [ ] Betroffene Server-Tests grün ziehen.
+- [x] Failing Tests für den neuen `/api/v1/mainserver/categories`-Read-Endpoint schreiben.
+- [x] Minimalen GraphQL-Read für `categories(order: name_ASC)` implementieren und auf `SvaMainserverCategory[]` mappen.
+- [x] Endpoint über Studio-Server durchverdrahten.
+- [x] Betroffene Server-Tests grün ziehen.
 
 ### Task 2: News-Plugin auf neue Kategorienquelle und neues Formularmodell umstellen
 
@@ -38,10 +38,10 @@
 - Modify: `packages/plugin-news/src/plugin.translations.ts`
 - Test: `packages/plugin-news/tests/news.detail-form.test.ts`
 
-- [ ] Failing Tests für das neue Formularmodell schreiben: keine `categoryName`/`categoriesText` mehr, stattdessen ausgewählte Kategorienliste.
-- [ ] Kategorien-Ladefunktion im Plugin ergänzen.
-- [ ] Formular-Mapping und Mutation so umbauen, dass nur noch `categories: [{ name }]` geschrieben wird.
-- [ ] Validierung und Dirty-State auf das neue Feld umstellen.
+- [x] Failing Tests für das neue Formularmodell schreiben: keine `categoryName`/`categoriesText` mehr, stattdessen ausgewählte Kategorienliste.
+- [x] Kategorien-Ladefunktion im Plugin ergänzen.
+- [x] Formular-Mapping und Mutation so umbauen, dass nur noch `categories: [{ name }]` geschrieben wird.
+- [x] Validierung und Dirty-State auf das neue Feld umstellen.
 
 ### Task 3: Suchbares Auswahlfeld mit Entfernen und Hinzufügen bauen
 
@@ -50,22 +50,22 @@
 - Modify: `packages/plugin-news/src/news.detail-page.tsx`
 - Test: `packages/plugin-news/tests/news.pages.test.tsx`
 
-- [ ] Failing UI-Tests schreiben für:
+- [x] Failing UI-Tests schreiben für:
   - Laden der Kategorie-Vorschläge
   - Filtern per Suche
   - Hinzufügen einer Kategorie
   - Entfernen einer Kategorie
   - Hinzufügen mehrerer Kategorien
-- [ ] Lokalen Multi-Select mit Input, Vorschlags-Dropdown/Datalist, Chips und `Kategorie hinzufügen` implementieren.
-- [ ] Basis-Tab auf den neuen Baustein umstellen.
-- [ ] Speichern/Create/Edit-Tests grün ziehen.
+- [x] Lokalen Multi-Select mit Input, Vorschlags-Dropdown/Datalist, Chips und `Kategorie hinzufügen` implementieren.
+- [x] Basis-Tab auf den neuen Baustein umstellen.
+- [x] Speichern/Create/Edit-Tests grün ziehen.
 
 ### Task 4: Verifikation
 
 **Files:**
 - Test only
 
-- [ ] `pnpm nx run sva-mainserver:test:unit --testFiles=src/server/categories-route.test.ts`
-- [ ] `pnpm nx run plugin-news:test:unit --testFiles=tests/news.detail-form.test.ts --testFiles=tests/news.pages.test.tsx`
-- [ ] `pnpm nx run plugin-news:test:types`
-- [ ] Falls Typgrenzen betroffen sind: `pnpm nx run sva-mainserver:test:types`
+- [x] `pnpm nx run sva-mainserver:test:unit --testFiles=src/server/categories-route.test.ts`
+- [x] `pnpm nx run plugin-news:test:unit --testFiles=tests/news.detail-form.test.ts --testFiles=tests/news.pages.test.tsx`
+- [x] `pnpm nx run plugin-news:test:types`
+- [x] Falls Typgrenzen betroffen sind: `pnpm nx run sva-mainserver:test:types`

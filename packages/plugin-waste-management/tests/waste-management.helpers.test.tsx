@@ -37,6 +37,8 @@ import {
 import { createWasteToursActions } from '../src/waste-management.tours.actions.js';
 import { createWasteToursAssignmentSubmitHandlers } from '../src/waste-management.tours.assignments-submissions.js';
 
+const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 vi.mock('../src/waste-management.api.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/waste-management.api.js')>();
   return {
@@ -359,11 +361,11 @@ describe('waste management helper modules', () => {
   });
 
   it('uses cryptographically secure ids for master-data defaults', () => {
-    const randomUUID = vi.fn(() => 'secure-region-id');
+    const randomUUID = vi.fn(() => '11111111-1111-4111-8111-111111111111');
     vi.stubGlobal('crypto', { randomUUID });
 
     expect(wasteMasterDataFormDefaults.createRegion()).toEqual({
-      id: 'fraction-secure-region-id',
+      id: '11111111-1111-4111-8111-111111111111',
       name: '',
     });
   });
@@ -376,7 +378,16 @@ describe('waste management helper modules', () => {
     vi.stubGlobal('crypto', { getRandomValues });
 
     expect(wasteMasterDataFormDefaults.createRegion()).toEqual({
-      id: 'fraction-000102030405060708090a0b0c0d0e0f',
+      id: '00010203-0405-4607-8809-0a0b0c0d0e0f',
+      name: '',
+    });
+  });
+
+  it('falls back to a UUID-v4-shaped local id when crypto is unavailable', () => {
+    vi.stubGlobal('crypto', undefined);
+
+    expect(wasteMasterDataFormDefaults.createRegion()).toEqual({
+      id: expect.stringMatching(UUID_V4_PATTERN),
       name: '',
     });
   });

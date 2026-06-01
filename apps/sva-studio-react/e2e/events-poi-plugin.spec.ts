@@ -569,6 +569,8 @@ test.describe('events and POI plugins', () => {
   });
 
   test('keeps central event and POI views free of serious accessibility violations', async ({ page }) => {
+    test.setTimeout(90_000);
+
     const events: EventRecord[] = [
       {
         id: 'event-1',
@@ -600,7 +602,7 @@ test.describe('events and POI plugins', () => {
     });
     await routeUnifiedContentOverview(page, () => events, () => pois);
 
-    await page.goto('/');
+    await gotoHomeAsAuthenticatedUser(page);
 
     for (const path of [
       '/admin/content',

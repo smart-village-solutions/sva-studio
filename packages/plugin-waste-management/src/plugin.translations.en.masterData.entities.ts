@@ -143,6 +143,7 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       updateSuccess: 'The waste collection location was updated.',
       deleteSuccess: 'The waste collection location was deleted.',
       saveError: 'The waste collection location could not be saved.',
+      saveErrorWithReason: 'The waste collection location could not be saved: {{reason}}',
       saveForbidden: 'Missing permission to save waste collection locations.',
       deleteError: 'The waste collection location could not be deleted.',
       deleteForbidden: 'Missing permission to delete waste collection locations.',

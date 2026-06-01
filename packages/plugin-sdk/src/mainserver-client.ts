@@ -28,7 +28,7 @@ type ApiItemResponse<T> = Readonly<{
 }>;
 
 type ApiErrorResponse = Readonly<{
-  error?: string;
+  error?: string | Readonly<{ code?: string; message?: string }>;
   message?: string;
 }>;
 
@@ -111,8 +111,21 @@ export async function requestMainserverJson<T, TError extends Error = Mainserver
       if (!isApiErrorResponse(body)) {
         throw new Error('invalid_mainserver_error_response');
       }
-      errorCode = typeof body.error === 'string' && body.error.length > 0 ? body.error : errorCode;
-      message = typeof body.message === 'string' && body.message.length > 0 ? body.message : errorCode;
+      errorCode =
+        typeof body.error === 'string' && body.error.length > 0
+          ? body.error
+          : typeof body.error === 'object' && body.error !== null && typeof body.error.code === 'string' && body.error.code.length > 0
+            ? body.error.code
+            : errorCode;
+      message =
+        typeof body.message === 'string' && body.message.length > 0
+          ? body.message
+          : typeof body.error === 'object' &&
+              body.error !== null &&
+              typeof body.error.message === 'string' &&
+              body.error.message.length > 0
+            ? body.error.message
+            : errorCode;
     } catch {
       // Keep the deterministic HTTP fallback when the server returns no JSON error envelope.
     }

@@ -32,8 +32,23 @@ vi.mock('../src/waste-management.tours.content.parts.js', () => ({
     return {
       selectedTourIds,
       setSelectedTourIds,
-      filtersOpen: false,
-      setFiltersOpen: vi.fn(),
+      filterDialogOpen: false,
+      setFilterDialogOpen: vi.fn(),
+      draftQuery: '',
+      setDraftQuery: vi.fn(),
+      draftStatus: 'all',
+      setDraftStatus: vi.fn(),
+      draftTourWasteFractionId: undefined,
+      setDraftTourWasteFractionId: vi.fn(),
+      draftFirstDateFrom: undefined,
+      setDraftFirstDateFrom: vi.fn(),
+      draftFirstDateTo: undefined,
+      setDraftFirstDateTo: vi.fn(),
+      draftEndDateFrom: undefined,
+      setDraftEndDateFrom: vi.fn(),
+      draftEndDateTo: undefined,
+      setDraftEndDateTo: vi.fn(),
+      hasActiveFilters: false,
       tourPendingDelete,
       setTourPendingDelete,
       bulkDeleteOpen,
@@ -147,6 +162,11 @@ describe('WasteToursContent sorting and delete flows', () => {
         pageSize={25}
         query=""
         status="all"
+        tourWasteFractionId={undefined}
+        firstDateFrom={undefined}
+        firstDateTo={undefined}
+        endDateFrom={undefined}
+        endDateTo={undefined}
         onPageChange={vi.fn()}
         onSyncPageChange={vi.fn()}
         onPageSizeChange={vi.fn()}

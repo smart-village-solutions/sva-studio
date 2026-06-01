@@ -12,7 +12,9 @@ vi.mock('./runtime/process.ts', async () => {
   };
 });
 
-import { resolveTenantRuntimeTargets } from './runtime-env.ts';
+import { runtimeEnvRemoteVerification } from './runtime-env.ts';
+
+const { resolveTenantRuntimeTargets } = runtimeEnvRemoteVerification;
 
 describe('resolveTenantRuntimeTargets remote registry scope', () => {
   it('parses registry-backed remote tenant targets from the marked SQL payload', async () => {

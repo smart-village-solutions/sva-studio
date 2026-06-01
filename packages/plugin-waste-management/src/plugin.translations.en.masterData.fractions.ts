@@ -43,6 +43,20 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     description: 'Description',
     active: 'Status',
   },
+  filters: {
+    open: 'Filter',
+    reset: 'Reset filters',
+    title: 'Filter fractions',
+    description: 'Choose which fractions should be shown in the list.',
+    statusLabel: 'Status',
+    apply: 'Apply',
+    cancel: 'Cancel',
+    status: {
+      all: 'All',
+      active: 'Active fractions',
+      inactive: 'Inactive fractions',
+    },
+  },
   createView: {
     title: 'Create new waste type',
     description: 'Create a new waste type. The details will later be used in lists, tours, and the waste calendar.',

@@ -3,9 +3,10 @@ const wasteManagementMasterDataTabs = ['fractions', 'locations'] as const;
 const wasteManagementFractionsViews = ['list', 'create', 'edit'] as const;
 const wasteManagementToursViews = ['list', 'create', 'edit'] as const;
 const wasteManagementLocationsViews = ['list', 'create', 'edit'] as const;
-const wasteManagementSchedulingViews = ['list', 'create', 'create-global', 'edit-global', 'create-tour', 'edit-tour'] as const;
+const wasteManagementSchedulingViews = ['list', 'create', 'edit'] as const;
 const wasteManagementStatusFilters = ['all', 'active', 'inactive'] as const;
-const wasteManagementShiftContexts = ['all', 'global', 'tour'] as const;
+const wasteManagementShiftContexts = ['all', 'holiday', 'global', 'tour'] as const;
+const wasteManagementSchedulingEntryTypes = ['holiday-rule', 'global-shift', 'tour-shift'] as const;
 const wasteManagementFractionSortFields = ['name', 'containerSize', 'color', 'description', 'status'] as const;
 const wasteManagementFractionSortDirections = ['asc', 'desc'] as const;
 const allowedPageSizes = new Set([10, 25, 50, 100]);
@@ -15,9 +16,10 @@ export type WasteManagementMasterDataTabId = (typeof wasteManagementMasterDataTa
 type WasteManagementFractionsView = (typeof wasteManagementFractionsViews)[number];
 type WasteManagementToursView = (typeof wasteManagementToursViews)[number];
 type WasteManagementLocationsView = (typeof wasteManagementLocationsViews)[number];
-type WasteManagementSchedulingView = (typeof wasteManagementSchedulingViews)[number];
-type WasteManagementStatusFilter = (typeof wasteManagementStatusFilters)[number];
-type WasteManagementShiftContext = (typeof wasteManagementShiftContexts)[number];
+export type WasteManagementSchedulingView = (typeof wasteManagementSchedulingViews)[number];
+export type WasteManagementStatusFilter = (typeof wasteManagementStatusFilters)[number];
+export type WasteManagementShiftContext = (typeof wasteManagementShiftContexts)[number];
+export type WasteManagementSchedulingEntryType = (typeof wasteManagementSchedulingEntryTypes)[number];
 export type WasteManagementFractionSortField = (typeof wasteManagementFractionSortFields)[number];
 export type WasteManagementFractionSortDirection = (typeof wasteManagementFractionSortDirections)[number];
 
@@ -31,6 +33,7 @@ export type WasteManagementSearchParams = Readonly<{
   q: string;
   page: number;
   pageSize: number;
+  fractionsStatus?: WasteManagementStatusFilter;
   status: WasteManagementStatusFilter;
   shiftContext: WasteManagementShiftContext;
   fractionsSortBy: WasteManagementFractionSortField;
@@ -38,9 +41,16 @@ export type WasteManagementSearchParams = Readonly<{
   regionId?: string;
   cityId?: string;
   wasteFractionId?: string;
+  tourWasteFractionId?: string;
   collectionLocationId?: string;
   tourId?: string;
   duplicateFromTourId?: string;
+  firstDateFrom?: string;
+  firstDateTo?: string;
+  endDateFrom?: string;
+  endDateTo?: string;
+  schedulingEntryType?: WasteManagementSchedulingEntryType;
+  schedulingEntryId?: string;
   tourDateShiftId?: string;
   globalDateShiftId?: string;
 }>;
@@ -51,6 +61,15 @@ const compactOptionalString = (value: unknown): string | undefined => {
   }
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : undefined;
+};
+
+const normalizeOptionalIsoDate = (value: unknown): string | undefined => {
+  const normalized = compactOptionalString(value);
+  if (!normalized || !/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return undefined;
+  }
+  const date = new Date(`${normalized}T00:00:00Z`);
+  return Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== normalized ? undefined : normalized;
 };
 
 const normalizeTab = (value: unknown): WasteManagementTabId =>
@@ -88,10 +107,20 @@ const normalizeStatus = (value: unknown): WasteManagementStatusFilter =>
     ? (value as WasteManagementStatusFilter)
     : 'all';
 
+const normalizeFractionsStatus = (value: unknown): WasteManagementStatusFilter =>
+  typeof value === 'string' && wasteManagementStatusFilters.includes(value as WasteManagementStatusFilter)
+    ? (value as WasteManagementStatusFilter)
+    : 'all';
+
 const normalizeShiftContext = (value: unknown): WasteManagementShiftContext =>
   typeof value === 'string' && wasteManagementShiftContexts.includes(value as WasteManagementShiftContext)
     ? (value as WasteManagementShiftContext)
     : 'all';
+
+const normalizeSchedulingEntryType = (value: unknown): WasteManagementSchedulingEntryType | undefined =>
+  typeof value === 'string' && wasteManagementSchedulingEntryTypes.includes(value as WasteManagementSchedulingEntryType)
+    ? (value as WasteManagementSchedulingEntryType)
+    : undefined;
 
 const normalizeFractionsSortBy = (value: unknown): WasteManagementFractionSortField =>
   typeof value === 'string' && wasteManagementFractionSortFields.includes(value as WasteManagementFractionSortField)
@@ -148,6 +177,7 @@ export const normalizeWasteManagementSearchParams = (
     q: compactOptionalString(search.q) ?? '',
     page: normalizePositiveInteger(search.page, 1),
     pageSize,
+    fractionsStatus: normalizeFractionsStatus(search.fractionsStatus),
     status: normalizeStatus(search.status),
     shiftContext: normalizeShiftContext(search.shiftContext),
     fractionsSortBy: normalizeFractionsSortBy(search.fractionsSortBy),
@@ -155,11 +185,18 @@ export const normalizeWasteManagementSearchParams = (
     regionId: compactOptionalString(search.regionId),
     cityId: compactOptionalString(search.cityId),
     wasteFractionId: compactOptionalString(search.wasteFractionId),
+    tourWasteFractionId: compactOptionalString(search.tourWasteFractionId),
     collectionLocationId: compactOptionalString(search.collectionLocationId),
     tourId: compactOptionalString(search.tourId),
     duplicateFromTourId: compactOptionalString(search.duplicateFromTourId),
-    tourDateShiftId: compactOptionalString(search.tourDateShiftId),
-    globalDateShiftId: compactOptionalString(search.globalDateShiftId),
+    firstDateFrom: normalizeOptionalIsoDate(search.firstDateFrom),
+    firstDateTo: normalizeOptionalIsoDate(search.firstDateTo),
+    endDateFrom: normalizeOptionalIsoDate(search.endDateFrom),
+    endDateTo: normalizeOptionalIsoDate(search.endDateTo),
+    schedulingEntryType: normalizeSchedulingEntryType(search.schedulingEntryType),
+    schedulingEntryId: compactOptionalString(search.schedulingEntryId),
+    tourDateShiftId: undefined,
+    globalDateShiftId: undefined,
   };
 };
 

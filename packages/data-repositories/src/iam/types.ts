@@ -27,6 +27,8 @@ export type PermissionKey =
   | 'iam.role.write'
   | 'iam.org.read'
   | 'iam.org.write'
+  | 'app.read'
+  | 'cockpit.read'
   | 'content.read'
   | 'content.create'
   | 'content.updateMetadata'

@@ -29,7 +29,7 @@ const findHouseNumberValue = (houseNumbers: readonly WasteHouseNumberRecord[], h
 export const wasteMasterDataPresentation = {
   filterFractions: (fractions: readonly WasteFractionRecord[], search: WasteManagementSearchParams): readonly WasteFractionRecord[] =>
     fractions.filter((fraction) => {
-      if (!matchesStatusFilter(search.status, fraction.active)) {
+      if (!matchesStatusFilter(search.fractionsStatus ?? 'all', fraction.active)) {
         return false;
       }
       return !search.q

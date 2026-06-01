@@ -147,6 +147,20 @@ const matchesStatusFilter = (status: WasteManagementSearchParams['status'], acti
   return status === 'active' ? active : !active;
 };
 
+const matchesDateLowerBound = (value: string | null | undefined, lowerBound: string | undefined): boolean => {
+  if (!lowerBound) {
+    return true;
+  }
+  return typeof value === 'string' && value >= lowerBound;
+};
+
+const matchesDateUpperBound = (value: string | null | undefined, upperBound: string | undefined): boolean => {
+  if (!upperBound) {
+    return true;
+  }
+  return typeof value === 'string' && value <= upperBound;
+};
+
 export const filterTours = (
   tours: readonly WasteTourRecord[],
   search: WasteManagementSearchParams
@@ -158,7 +172,19 @@ export const filterTours = (
     if (!matchesStatusFilter(search.status, tour.active)) {
       return false;
     }
-    if (search.wasteFractionId && !tour.wasteFractionIds.includes(search.wasteFractionId)) {
+    if (search.tourWasteFractionId && !tour.wasteFractionIds.includes(search.tourWasteFractionId)) {
+      return false;
+    }
+    if (!matchesDateLowerBound(tour.firstDate, search.firstDateFrom)) {
+      return false;
+    }
+    if (!matchesDateUpperBound(tour.firstDate, search.firstDateTo)) {
+      return false;
+    }
+    if (!matchesDateLowerBound(tour.endDate, search.endDateFrom)) {
+      return false;
+    }
+    if (!matchesDateUpperBound(tour.endDate, search.endDateTo)) {
       return false;
     }
     if (!search.q) {

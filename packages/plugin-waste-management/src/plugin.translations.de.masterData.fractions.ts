@@ -43,6 +43,20 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     description: 'Beschreibung',
     active: 'Status',
   },
+  filters: {
+    open: 'Filtern',
+    reset: 'Filter zurücksetzen',
+    title: 'Fraktionen filtern',
+    description: 'Wählen Sie aus, welche Fraktionen in der Liste angezeigt werden sollen.',
+    statusLabel: 'Status',
+    apply: 'Anwenden',
+    cancel: 'Abbrechen',
+    status: {
+      all: 'Alle',
+      active: 'Aktive Fraktionen',
+      inactive: 'Inaktive Fraktionen',
+    },
+  },
   createView: {
     title: 'Neue Abfallart anlegen',
     description: 'Legen Sie eine neue Abfallart an. Die Angaben werden später in Listen, Touren und im Abfallkalender verwendet.',

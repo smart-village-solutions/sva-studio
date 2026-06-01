@@ -1,5 +1,9 @@
 import { createSdkLogger, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
-import { saveExternalInterfaceConnectionCheck, saveExternalInterfaceRecord } from '@sva/data-repositories/server';
+import {
+  loadDefaultExternalInterfaceRecord,
+  saveExternalInterfaceConnectionCheck,
+  saveExternalInterfaceRecord,
+} from '@sva/data-repositories/server';
 
 import { protectField, revealField } from '../iam-account-management/encryption.js';
 import { buildLogContext } from '../log-context.js';
@@ -33,6 +37,7 @@ export const withAuthenticatedWasteManagementHandler = (
   });
 
 export const sharedWasteManagementDeps = {
+  loadDefaultInterfaceRecord: loadDefaultExternalInterfaceRecord,
   saveExternalInterfaceRecord,
   saveExternalInterfaceConnectionCheck,
   protectSecret: protectField,

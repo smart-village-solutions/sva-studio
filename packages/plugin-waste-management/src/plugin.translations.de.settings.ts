@@ -40,6 +40,8 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
   actions: {
     save: 'Einstellungen speichern',
     saving: 'Speichert…',
+    runHolidaySync: 'Feiertage neu synchronisieren',
+    runningHolidaySync: 'Synchronisiert Feiertage…',
     addCustomRecurrence: 'Abstand hinzufügen',
     editCustomRecurrence: 'Bearbeiten',
     deleteCustomRecurrence: 'Löschen',
@@ -53,6 +55,9 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
     saveSuccessWithHolidaySync: 'Die Waste-Einstellungen wurden gespeichert. Feiertagssync: {{status}}.',
     saveError: 'Die Waste-Einstellungen konnten nicht gespeichert werden.',
     saveForbidden: 'Für das Speichern der Waste-Einstellungen fehlt die Berechtigung.',
+    holidaySyncSuccess: 'Feiertagssync abgeschlossen: {{status}}.',
+    holidaySyncError: 'Die Feiertage konnten nicht neu synchronisiert werden.',
+    holidaySyncForbidden: 'Für das erneute Synchronisieren der Feiertage fehlt die Berechtigung.',
     connectionManagedHint: 'Die Verbindungsdaten bleiben führend über /interfaces verwaltet und werden hier nur gespiegelt.',
     holidayStateDescription: 'Beim Speichern werden Feiertage für die nächsten zehn Jahre für das gewählte Bundesland synchronisiert.',
     customRecurrencesTitle: 'Eigene Abstände',

@@ -96,6 +96,7 @@ Der neue Standardpfad ist:
 pnpm env:bootstrap:local-instance-db -- \
   --create-db \
   --import-schema \
+  --approve-dangerous=bootstrap-local-instance-db:demo2 \
   --target-instance-id=demo2 \
   --target-display-name="Demo 2" \
   --target-realm=demo2 \
@@ -105,6 +106,8 @@ pnpm env:bootstrap:local-instance-db -- \
   --keycloak-admin-client-id=sva-studio-iam-service \
   --keycloak-admin-client-secret='<secret>'
 ```
+
+Ohne `--approve-dangerous=bootstrap-local-instance-db:<target-instance-id>` bleibt der Bootstrap absichtlich gesperrt. Das verhindert, dass Neuaufbau- oder Reimport-Pfade versehentlich gegen eine bestehende lokale Datenbank laufen.
 
 Das Skript führt in Reihenfolge aus:
 
@@ -200,6 +203,35 @@ Wenn dieselbe lokale Umgebung später regulär über `pnpm env:up:local-keycloak
 - Korrekturen laufen nur explizit über `pnpm env:reconcile:local-instance-registry`
 - autoritative Korrekturen laufen dabei nur explizit über `SVA_LOCAL_INSTANCE_IDENTITY_RECONCILE_MODE=authoritative`
 - für staging-nahe oder CI-nahe lokale Prüfpfade kann `SVA_LOCAL_INSTANCE_IDENTITY_DRIFT_MODE=fail` gesetzt werden
+
+Für den täglichen lokalen Betrieb gilt damit die feste Reihenfolge:
+
+```text
+pnpm env:up:local-keycloak
+-> pnpm env:doctor:local-keycloak
+-> pnpm env:repair:local-keycloak
+-> pnpm env:reset:local-keycloak nur fuer echte Hard-Fail-Faelle
+```
+
+`pnpm env:repair:local-keycloak` ist der kanonische lokale Heilpfad und fuehrt hoechstens diese Schritte aus:
+
+- Migrationen nachziehen, wenn die lokale Runtime Schema-Drift meldet
+- die lokale Instanz-Registry explizit reconciliieren, standardmaessig im Preserve-Modus
+- tenant-spezifische Auth- und Tenant-Admin-Secrets ueber die vorhandene Keycloak-/Registry-Mechanik gegen den Live-Zustand abgleichen
+
+Wenn bestehende lokale Identitaetswerte bewusst ueberschrieben werden sollen, ist der autoritative Pfad:
+
+```bash
+pnpm env:repair:local-keycloak -- --authoritative --approve-dangerous=local-keycloak:repair:authoritative
+```
+
+Snapshot-Drift wird bewusst getrennt behandelt:
+
+```bash
+pnpm env:verify:db-schema-snapshot
+```
+
+Der Snapshot-Check bewertet `docs/development/studio-db-schema-final.sql` als abgeleitetes Artefakt gegen den aktuellen migrationsbasierten lokalen DB-Stand. Runtime-/Infra-Schemata wie `graphile_worker` bleiben dabei ausgeschlossen.
 
 ## Empfohlene Optionen
 

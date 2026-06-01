@@ -117,7 +117,7 @@ Für Browser-Tests sollten diese Bereiche aktuell nur auf Erreichbarkeit, korrek
 
 ## Rollenabhängigkeit
 
-Die Navigation ist nicht statisch. Sichtbarkeit und Erreichbarkeit einzelner Bereiche hängen von Authentifizierung, Rollen und Feature-Flags ab.
+Die Navigation ist nicht statisch. Sichtbarkeit und Erreichbarkeit einzelner Bereiche hängen von Authentifizierung, Rollen, effektiven Berechtigungen und Feature-Flags ab.
 
 Für Browser-Tests ist deshalb zwischen mindestens drei Nutzungsarten zu unterscheiden:
 

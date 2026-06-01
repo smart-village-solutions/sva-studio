@@ -173,7 +173,7 @@ describe('Sidebar', () => {
         organizationIds: [],
         sourceKinds: ['direct_role'],
       },
-      permissionActions: ['news.read'],
+      permissionActions: ['news.read', 'app.read', 'cockpit.read'],
       isLoading: false,
       error: null,
     });
@@ -588,6 +588,99 @@ describe('Sidebar', () => {
 
     expect(screen.getByRole('link', { name: 'Medien' }).getAttribute('href')).toBe('/admin/media');
     expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
+  });
+
+  it('zeigt im Bereich Anwendungen nur den App-Link mit app.read-Berechtigung', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-3',
+        name: 'App Reader',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'read_only',
+        canRead: true,
+        canCreate: false,
+        canUpdate: false,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['app.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.getByText('Anwendungen')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'App' }).getAttribute('href')).toBe('/app');
+    expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
+  });
+
+  it('zeigt im Bereich Anwendungen nur den Cockpit-Link mit cockpit.read-Berechtigung', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-4',
+        name: 'Cockpit Reader',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'read_only',
+        canRead: true,
+        canCreate: false,
+        canUpdate: false,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['cockpit.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.getByText('Anwendungen')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('href')).toBe(COCKPIT_URL);
+  });
+
+  it('blendet den Bereich Anwendungen komplett aus, wenn weder app.read noch cockpit.read vorhanden ist', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-5',
+        name: 'Restricted User',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'read_only',
+        canRead: true,
+        canCreate: false,
+        canUpdate: false,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['news.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.queryByText('Anwendungen')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
   });
 
   it('rendert benutzerdefinierte Plugin-Navigation innerhalb der Datenverwaltung und markiert sie als aktiv', () => {

@@ -43,7 +43,7 @@ export const usePagedRouteSync = ({
 };
 
 export const WastePanelTableTopBar = ({ children }: { readonly children?: ReactNode }) => (
-  <div className="flex min-h-16 items-center justify-between gap-3 border-b border-border px-4 py-4">
+  <div className="flex min-h-16 items-center justify-between gap-3 border-b border-border bg-card px-4 py-4">
     <div className="flex w-full flex-wrap items-center gap-2">{children}</div>
   </div>
 );

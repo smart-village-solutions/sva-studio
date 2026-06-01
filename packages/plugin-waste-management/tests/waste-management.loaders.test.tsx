@@ -166,6 +166,33 @@ describe('waste management data loaders', () => {
     expect(apiMocks.getWasteManagementOutputOverview).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps locations available when only the output overview request fails', async () => {
+    apiMocks.getWasteManagementMasterDataOverview.mockResolvedValue({
+      fractions: [],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    });
+    apiMocks.getWasteManagementOutputOverview.mockRejectedValue(new Error('output unavailable'));
+    apiMocks.getWasteManagementToursOverview.mockResolvedValue({ tours: [] });
+
+    render(<LocationsMasterDataLoaderHarness />);
+
+    await waitFor(() => {
+      expect(screen.getByText('loaded')).toBeTruthy();
+    });
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(1);
+    });
+
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({ scope: 'locations' });
+    expect(apiMocks.getWasteManagementOutputOverview).toHaveBeenCalledTimes(1);
+  });
+
   it('reloads the master-data overview when the active tab scope changes', async () => {
     apiMocks.getWasteManagementMasterDataOverview
       .mockResolvedValueOnce({

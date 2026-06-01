@@ -136,7 +136,7 @@ export const WasteToursTable = ({
   usePagedRouteSync({ page, safePage: pagedTours.safePage, onPageChange, onSyncPageChange });
 
   return (
-    <section className="overflow-hidden rounded-none border-y border-border bg-card shadow-shell">
+    <>
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse">
           <caption className="sr-only">{pt('tours.table.caption')}</caption>
@@ -177,6 +177,6 @@ export const WasteToursTable = ({
         onPageChange={onPageChange}
         onPageSizeChange={onPageSizeChange}
       />
-    </section>
+    </>
   );
 };

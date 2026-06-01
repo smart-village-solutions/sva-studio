@@ -54,6 +54,32 @@ test('self-service permission change migration keeps admin inserts and rollback 
   assert.doesNotMatch(sql, /ALTER TABLE iam\.permission_change_requests\s+ALTER COLUMN role_id SET NOT NULL;[\s\S]*ALTER TABLE iam\.permission_change_requests\s+ALTER COLUMN request_note DROP NOT NULL/);
 });
 
+test('sidebar application permission migration adds navigation permissions for existing roles', () => {
+  const sql = readRepoFile('data/migrations/0046_iam_sidebar_application_permissions.sql');
+
+  assert.match(sql, /'app\.read', 'app\.read', 'app', 'Show the app link in the sidebar'/);
+  assert.match(sql, /'cockpit\.read', 'cockpit\.read', 'cockpit', 'Show the cockpit link in the sidebar'/);
+  assert.match(
+    sql,
+    /WHERE role_key IN \('system_admin', 'instance_registry_admin', 'app_manager', 'feature-manager', 'interface-manager', 'designer', 'editor', 'moderator'\)/
+  );
+  assert.match(sql, /grant_origin_kind,\s*access_scope/);
+  assert.match(sql, /'seed',\s*'all'/);
+  assert.match(sql, /DELETE FROM iam\.role_permissions[\s\S]*permission_key IN \('app\.read', 'cockpit\.read'\)/);
+  assert.match(sql, /DELETE FROM iam\.permissions[\s\S]*permission_key IN \('app\.read', 'cockpit\.read'\)/);
+});
+
+test('sidebar application permission cache invalidation migration notifies affected instances', () => {
+  const sql = readRepoFile('data/migrations/0047_iam_sidebar_application_permission_cache_invalidation.sql');
+
+  assert.match(sql, /iam_permission_snapshot_invalidation/);
+  assert.match(sql, /json_build_object\(/);
+  assert.match(sql, /'instanceId',\s*instance_id/);
+  assert.match(sql, /'reason',\s*'sidebar_application_permissions_migrated'/);
+  assert.match(sql, /'reason',\s*'sidebar_application_permissions_rolled_back'/);
+  assert.match(sql, /SELECT pg_notify/);
+});
+
 test('runtime artifact verification runs workspace node helper via bash', () => {
   const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
 

@@ -28,7 +28,9 @@ export type AcceptanceFailureCategory =
   | 'dependency';
 
 export type RuntimeCliOptions = {
+  approvalToken?: string;
   actor?: string;
+  authoritative?: boolean;
   grafanaUrl?: string;
   imageDigest?: string;
   imageTag?: string;
@@ -300,6 +302,11 @@ export const parseRuntimeCliOptions = (rawOptions: readonly string[]): RuntimeCl
       continue;
     }
 
+    if (rawOption === '--authoritative') {
+      parsed.authoritative = true;
+      continue;
+    }
+
     if (!rawOption.startsWith('--')) {
       throw new Error(`Unbekannte Option: ${rawOption}`);
     }
@@ -309,6 +316,9 @@ export const parseRuntimeCliOptions = (rawOptions: readonly string[]): RuntimeCl
     index = nextIndex;
 
     switch (optionName) {
+      case '--approve-dangerous':
+        parsed.approvalToken = value;
+        break;
       case '--release-mode':
         if (value !== 'app-only' && value !== 'schema-and-app') {
           throw new Error(`Ungueltiger Release-Modus: ${value}`);

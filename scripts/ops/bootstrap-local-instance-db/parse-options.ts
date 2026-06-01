@@ -1,4 +1,5 @@
 export type CliOptions = {
+  approvalToken?: string;
   createDb: boolean;
   importSchema: boolean;
   keycloakAdminClientId: string;
@@ -50,6 +51,7 @@ export const renderUsage = (): string => `Usage: tsx scripts/ops/bootstrap-local
   [--page-size=200] \\
   [--create-db] \\
   [--import-schema] \\
+  [--approve-dangerous=bootstrap-local-instance-db:<target-instance-id>] \\
   [--skip-app-user-bootstrap] \\
   [--skip-catalog-sync] \\
   [--skip-keycloak-user-sync]
@@ -100,6 +102,7 @@ export const parseBootstrapLocalInstanceDbArgs = (args: readonly string[]): CliO
   const targetInstanceId = readRequired('target-instance-id');
 
   return {
+    approvalToken: values.get('approve-dangerous'),
     createDb: flags.has('create-db'),
     importSchema: flags.has('import-schema'),
     keycloakAdminClientId: readRequired('keycloak-admin-client-id'),

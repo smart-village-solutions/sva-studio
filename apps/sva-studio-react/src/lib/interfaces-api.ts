@@ -54,6 +54,28 @@ const isSvaMainserverInstanceConfig = (value: unknown): value is SvaMainserverIn
   );
 };
 
+const isInstanceInterfaceType = (value: unknown): value is InstanceInterfaceType =>
+  value === 'mainserver' || value === 's3' || value === 'supabase';
+
+const isListInstanceInterfacesResponse = (
+  value: unknown
+): value is Readonly<{
+  instanceId: string;
+  availableTypes: readonly InstanceInterfaceType[];
+  entries: readonly InstanceInterface[];
+}> => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.instanceId === 'string' &&
+    Array.isArray(value.availableTypes) &&
+    value.availableTypes.every(isInstanceInterfaceType) &&
+    Array.isArray(value.entries)
+  );
+};
+
 const isErrorPayload = (value: unknown): value is ErrorPayload => {
   if (!isRecord(value)) {
     return false;
@@ -233,7 +255,8 @@ const DEFAULT_AVAILABLE_INTERFACE_TYPES: readonly InstanceInterfaceType[] = ['ma
 const resolveAvailableInterfaceTypes = async (instanceId: string): Promise<readonly InstanceInterfaceType[]> => {
   const { loadInstanceById } = await import('@sva/data-repositories/server');
   const instance = await loadInstanceById(instanceId);
-  if (!instance?.assignedModules.includes(WASTE_MANAGEMENT_MODULE_ID)) {
+  const assignedModules = Array.isArray(instance?.assignedModules) ? instance.assignedModules : [];
+  if (!assignedModules.includes(WASTE_MANAGEMENT_MODULE_ID)) {
     return DEFAULT_AVAILABLE_INTERFACE_TYPES;
   }
 
@@ -570,7 +593,7 @@ export const listInstanceInterfacesServerFn = createServerFn().handler(
   async (): Promise<ListInstanceInterfacesResponse> => {
     const dependencies = await loadInterfacesRequestDependencies();
 
-    return runWithAuthenticatedInterfacesUser({
+    const result = await runWithAuthenticatedInterfacesUser({
       request: dependencies.request,
       fallbackMessage: 'Schnittstellen konnten nicht geladen werden.',
       run: async (user) => {
@@ -635,6 +658,16 @@ export const listInstanceInterfacesServerFn = createServerFn().handler(
       };
       },
     });
+
+    if (!isListInstanceInterfacesResponse(result)) {
+      dependencies.logger.error('List interfaces produced an invalid payload', {
+        operation: 'list_interfaces',
+        invalid_payload_type: typeof result,
+      });
+      throw new Error('invalid_interfaces_payload');
+    }
+
+    return result;
   }
 );
 

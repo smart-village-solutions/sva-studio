@@ -143,6 +143,7 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
       updateSuccess: 'Der Waste-Abholort wurde aktualisiert.',
       deleteSuccess: 'Der Waste-Abholort wurde gelöscht.',
       saveError: 'Der Waste-Abholort konnte nicht gespeichert werden.',
+      saveErrorWithReason: 'Der Waste-Abholort konnte nicht gespeichert werden: {{reason}}',
       saveForbidden: 'Für das Speichern von Waste-Abholorten fehlt die Berechtigung.',
       deleteError: 'Der Waste-Abholort konnte nicht gelöscht werden.',
       deleteForbidden: 'Für das Löschen von Waste-Abholorten fehlt die Berechtigung.',

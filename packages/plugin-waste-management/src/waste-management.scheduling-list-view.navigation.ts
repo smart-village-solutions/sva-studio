@@ -1,13 +1,21 @@
-import type { WasteGlobalDateShiftRecord, WasteTourDateShiftRecord } from '@sva/plugin-sdk';
+import type {
+  WasteGlobalDateShiftRecord,
+  WasteHolidayRuleRecord,
+  WasteTourDateShiftRecord,
+} from '@sva/plugin-sdk';
 import { useNavigate } from '@tanstack/react-router';
 
-import type { WasteManagementSearchParams } from './search-params.js';
+import type {
+  WasteManagementSchedulingEntryType,
+  WasteManagementSearchParams,
+} from './search-params.js';
 import { useWasteSchedulingController } from './waste-management.scheduling.controller.js';
 import {
   createDefaultGlobalDateShiftForm,
   createDefaultTourDateShiftForm,
   mapGlobalDateShiftToForm,
   mapTourDateShiftToForm,
+  resolveSchedulingEntryTypeFromShiftContext,
 } from './waste-management.scheduling.shared.js';
 
 type WasteSchedulingController = ReturnType<typeof useWasteSchedulingController>;
@@ -15,51 +23,32 @@ type WasteSchedulingController = ReturnType<typeof useWasteSchedulingController>
 export const resolveSingleTourId = (tours: readonly { readonly id: string }[]) =>
   tours.length === 1 ? tours[0]?.id ?? '' : '';
 
-export const toCreateGlobalShiftSearch = (
+const clearSchedulingEntrySearch = (
   search: WasteManagementSearchParams,
 ): WasteManagementSearchParams => ({
   ...search,
-  schedulingView: 'create-global',
-  globalDateShiftId: undefined,
-  tourDateShiftId: undefined,
+  schedulingEntryType: undefined,
+  schedulingEntryId: undefined,
 });
 
-export const toCreateShiftSearch = (
+export const toCreateSchedulingEntrySearch = (
   search: WasteManagementSearchParams,
+  schedulingEntryType: Exclude<WasteManagementSchedulingEntryType, 'holiday-rule'>,
 ): WasteManagementSearchParams => ({
-  ...search,
+  ...clearSchedulingEntrySearch(search),
   schedulingView: 'create',
-  globalDateShiftId: undefined,
-  tourDateShiftId: undefined,
+  schedulingEntryType,
 });
 
-export const toCreateTourShiftSearch = (
+export const toEditSchedulingEntrySearch = (
   search: WasteManagementSearchParams,
+  schedulingEntryType: WasteManagementSchedulingEntryType,
+  schedulingEntryId: string,
 ): WasteManagementSearchParams => ({
-  ...search,
-  schedulingView: 'create-tour',
-  globalDateShiftId: undefined,
-  tourDateShiftId: undefined,
-});
-
-export const toEditGlobalShiftSearch = (
-  search: WasteManagementSearchParams,
-  globalDateShiftId: string,
-): WasteManagementSearchParams => ({
-  ...search,
-  schedulingView: 'edit-global',
-  globalDateShiftId,
-  tourDateShiftId: undefined,
-});
-
-export const toEditTourShiftSearch = (
-  search: WasteManagementSearchParams,
-  tourDateShiftId: string,
-): WasteManagementSearchParams => ({
-  ...search,
-  schedulingView: 'edit-tour',
-  globalDateShiftId: undefined,
-  tourDateShiftId,
+  ...clearSchedulingEntrySearch(search),
+  schedulingView: 'edit',
+  schedulingEntryType,
+  schedulingEntryId,
 });
 
 export const toSchedulingPageSearch = (
@@ -84,6 +73,31 @@ const resetSchedulingViewState = (controller: WasteSchedulingController) => {
   controller.setLastOutcome(null);
 };
 
+const resetSchedulingCreateForms = (
+  controller: WasteSchedulingController,
+  availableTours: readonly { readonly id: string }[],
+) => {
+  controller.setDialogOpen(false);
+  controller.setGlobalDialogOpen(false);
+  controller.setTourShiftForm({
+    ...createDefaultTourDateShiftForm(),
+    tourId: resolveSingleTourId(availableTours),
+  });
+  controller.setGlobalShiftForm(createDefaultGlobalDateShiftForm());
+};
+
+const navigateToSchedulingSearch = (
+  navigate: ReturnType<typeof useNavigate>,
+  search: WasteManagementSearchParams,
+  nextSearch: WasteManagementSearchParams,
+  options?: { readonly replace?: boolean },
+) =>
+  navigate({
+    to: '/plugins/waste-management',
+    search: nextSearch,
+    ...(options?.replace ? { replace: true } : {}),
+  });
+
 export const useWasteSchedulingListNavigation = (
   controller: WasteSchedulingController,
   search: WasteManagementSearchParams,
@@ -92,24 +106,22 @@ export const useWasteSchedulingListNavigation = (
 
   return {
     openCreate: () => {
+      const schedulingEntryType = resolveSchedulingEntryTypeFromShiftContext(
+        search.shiftContext,
+        controller.availableTours,
+      );
       controller.setDialogMode('create');
       controller.setGlobalDialogMode('create');
-      controller.setDialogOpen(false);
-      controller.setGlobalDialogOpen(false);
-      controller.setTourShiftForm({
-        ...createDefaultTourDateShiftForm(),
-        tourId: resolveSingleTourId(controller.availableTours),
-      });
-      controller.setGlobalShiftForm(createDefaultGlobalDateShiftForm());
+      resetSchedulingCreateForms(controller, controller.availableTours);
       resetSchedulingViewState(controller);
-      void navigate({ to: '/plugins/waste-management', search: toCreateShiftSearch(search) });
+      void navigateToSchedulingSearch(navigate, search, toCreateSchedulingEntrySearch(search, schedulingEntryType));
     },
     openCreateGlobal: () => {
       controller.setGlobalDialogMode('create');
       controller.setGlobalDialogOpen(false);
       controller.setGlobalShiftForm(createDefaultGlobalDateShiftForm());
       resetSchedulingViewState(controller);
-      void navigate({ to: '/plugins/waste-management', search: toCreateGlobalShiftSearch(search) });
+      void navigateToSchedulingSearch(navigate, search, toCreateSchedulingEntrySearch(search, 'global-shift'));
     },
     openCreateTour: () => {
       controller.setDialogMode('create');
@@ -119,36 +131,34 @@ export const useWasteSchedulingListNavigation = (
         tourId: resolveSingleTourId(controller.availableTours),
       });
       resetSchedulingViewState(controller);
-      void navigate({ to: '/plugins/waste-management', search: toCreateTourShiftSearch(search) });
+      void navigateToSchedulingSearch(navigate, search, toCreateSchedulingEntrySearch(search, 'tour-shift'));
+    },
+    openEditHoliday: (rule: WasteHolidayRuleRecord) => {
+      resetSchedulingViewState(controller);
+      void navigateToSchedulingSearch(navigate, search, toEditSchedulingEntrySearch(search, 'holiday-rule', rule.id));
     },
     openEditGlobal: (shift: WasteGlobalDateShiftRecord) => {
       controller.setGlobalDialogMode('edit');
       controller.setGlobalDialogOpen(false);
       controller.setGlobalShiftForm(mapGlobalDateShiftToForm(shift));
-      controller.setMessage(null);
-      controller.setLastOutcome(null);
-      void navigate({ to: '/plugins/waste-management', search: toEditGlobalShiftSearch(search, shift.id) });
+      resetSchedulingViewState(controller);
+      void navigateToSchedulingSearch(navigate, search, toEditSchedulingEntrySearch(search, 'global-shift', shift.id));
     },
     openEditTour: (shift: WasteTourDateShiftRecord) => {
       controller.setDialogMode('edit');
       controller.setDialogOpen(false);
       controller.setTourShiftForm(mapTourDateShiftToForm(shift));
-      controller.setMessage(null);
-      controller.setLastOutcome(null);
-      void navigate({ to: '/plugins/waste-management', search: toEditTourShiftSearch(search, shift.id) });
+      resetSchedulingViewState(controller);
+      void navigateToSchedulingSearch(navigate, search, toEditSchedulingEntrySearch(search, 'tour-shift', shift.id));
     },
     setPage: (page: number) => {
-      void navigate({ to: '/plugins/waste-management', search: toSchedulingPageSearch(search, page) });
+      void navigateToSchedulingSearch(navigate, search, toSchedulingPageSearch(search, page));
     },
     syncPage: (page: number) => {
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toSchedulingPageSearch(search, page),
-        replace: true,
-      });
+      void navigateToSchedulingSearch(navigate, search, toSchedulingPageSearch(search, page), { replace: true });
     },
     setPageSize: (pageSize: number) => {
-      void navigate({ to: '/plugins/waste-management', search: toSchedulingPageSizeSearch(search, pageSize) });
+      void navigateToSchedulingSearch(navigate, search, toSchedulingPageSizeSearch(search, pageSize));
     },
   };
 };

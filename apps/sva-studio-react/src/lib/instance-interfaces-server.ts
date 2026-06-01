@@ -173,6 +173,7 @@ const buildS3Record = (input: {
   readonly previousSecrets: Record<string, string>;
 }): ExternalInterfaceRecord => {
   const nextSecretAccessKey = input.draft.config.secretAccessKey || input.previousSecrets.secretAccessKey || '';
+  const existingPublicConfig = input.existing?.publicConfig ?? {};
 
   return {
     id: input.interfaceId,
@@ -188,6 +189,7 @@ const buildS3Record = (input: {
     baseUrl: input.draft.config.endpoint.trim(),
     authMode: 'access_key',
     publicConfig: {
+      ...existingPublicConfig,
       endpoint: input.draft.config.endpoint.trim(),
       region: input.draft.config.region.trim(),
       bucket: input.draft.config.bucket.trim(),
@@ -221,6 +223,7 @@ const buildSupabaseRecord = (input: {
     databaseUrl: input.draft.config.databaseUrl || input.previousSecrets.databaseUrl || '',
     serviceRoleKey: input.draft.config.serviceRoleKey || input.previousSecrets.serviceRoleKey || '',
   };
+  const existingPublicConfig = input.existing?.publicConfig ?? {};
 
   return {
     id: input.interfaceId,
@@ -236,6 +239,7 @@ const buildSupabaseRecord = (input: {
     baseUrl: input.draft.config.projectUrl.trim(),
     authMode: 'service_role',
     publicConfig: {
+      ...existingPublicConfig,
       projectUrl: input.draft.config.projectUrl.trim(),
       schemaName: input.draft.config.schemaName.trim() || 'public',
     },

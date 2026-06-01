@@ -71,6 +71,8 @@ const PERMISSION_RESOURCE_TRANSLATION_KEY_BY_VALUE = {
   organizations: 'admin.iam.rights.permissionResources.organizations',
   organization: 'admin.iam.rights.permissionResources.organizations',
   legal: 'admin.iam.rights.permissionResources.legal',
+  app: 'admin.iam.rights.permissionResources.app',
+  cockpit: 'admin.iam.rights.permissionResources.cockpit',
   interfaces: 'admin.iam.rights.permissionResources.interfaces',
   instance: 'admin.iam.rights.permissionResources.instance',
   integration: 'admin.iam.rights.permissionResources.integration',

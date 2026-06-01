@@ -78,8 +78,9 @@ export const WasteSettingsManagedFields = ({
       >
         <Select
           id="waste-settings-holiday-state-code"
+          name="holidayStateCode"
           value={form.holidayStateCode}
-          onChange={(event) => updateField('holidayStateCode', event.target.value as WasteHolidayStateCode | '')}
+          onChange={(event) => updateField('holidayStateCode', event.currentTarget.value as WasteHolidayStateCode | '')}
         >
           <option value="">{pt('settings.fields.holidayStateCodePlaceholder')}</option>
           {wasteManagementMasterDataContract.holidayStateCodes.map((stateCode) => (

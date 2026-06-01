@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { createWasteManagementPluginTranslationLocale } from '../src/plugin.translations.shared.base.js';
+import { wasteManagementPluginTranslationsDEMasterData } from '../src/plugin.translations.de.masterData.js';
+import { wasteManagementPluginTranslationsDETours } from '../src/plugin.translations.de.tours.js';
 import { createMasterDataEntityTranslations } from '../src/plugin.translations.shared.master-data.js';
 import { createWasteManagementToursTranslations } from '../src/plugin.translations.shared.scheduling.js';
 import { createWasteManagementTabsTranslations } from '../src/plugin.translations.shared.sections.js';
@@ -224,6 +226,66 @@ describe('waste-management translation builders', () => {
       })
     ).toMatchObject({
       regionId: 'Region ID: {{value}}',
+    });
+  });
+
+  it('keeps fraction filter labels at their public translation paths', () => {
+    expect(
+      createWasteManagementPluginTranslationLocale([wasteManagementPluginTranslationsDEMasterData])
+    ).toMatchObject({
+      wasteManagement: {
+        masterData: {
+          fractions: {
+            filters: {
+              open: 'Filtern',
+              reset: 'Filter zurücksetzen',
+              title: 'Fraktionen filtern',
+              description: 'Wählen Sie aus, welche Fraktionen in der Liste angezeigt werden sollen.',
+              statusLabel: 'Status',
+              apply: 'Anwenden',
+              cancel: 'Abbrechen',
+              status: {
+                all: 'Alle',
+                active: 'Aktive Fraktionen',
+                inactive: 'Inaktive Fraktionen',
+              },
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it('keeps tour filter labels at their public translation paths', () => {
+    expect(
+      createWasteManagementPluginTranslationLocale([wasteManagementPluginTranslationsDETours])
+    ).toMatchObject({
+      wasteManagement: {
+        tours: {
+          filters: {
+            open: 'Filtern',
+            reset: 'Filter zurücksetzen',
+            title: 'Touren filtern',
+            description: 'Legen Sie fest, welche Touren in der Liste angezeigt werden sollen.',
+            nameLabel: 'Name',
+            namePlaceholder: 'Nach Name suchen',
+            statusLabel: 'Status',
+            fractionLabel: 'Abfallart',
+            fractionAll: 'Alle',
+            firstDateFromLabel: 'Erster Termin von',
+            firstDateToLabel: 'Erster Termin bis',
+            endDateFromLabel: 'Letzter Termin von',
+            endDateToLabel: 'Letzter Termin bis',
+            cancel: 'Abbrechen',
+            apply: 'Anwenden',
+            status: {
+              all: 'Alle',
+              active: 'Aktive Touren',
+              inactive: 'Inaktive Touren',
+            },
+          },
+        },
+      },
     });
   });
 });

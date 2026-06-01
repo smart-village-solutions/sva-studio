@@ -65,6 +65,8 @@ const ROLE_PERMISSION_RESOURCE_LABELS = {
   organizations: 'admin.roles.permissionResources.organizations',
   organization: 'admin.roles.permissionResources.organizations',
   legal: 'admin.roles.permissionResources.legal',
+  app: 'admin.roles.permissionResources.app',
+  cockpit: 'admin.roles.permissionResources.cockpit',
   interfaces: 'admin.roles.permissionResources.interfaces',
   media: 'admin.roles.permissionResources.media',
   news: 'admin.roles.permissionResources.news',

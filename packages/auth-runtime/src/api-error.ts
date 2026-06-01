@@ -1,19 +1,6 @@
 import type { ApiErrorCode, ApiErrorResponse } from '@sva/core';
 import { deriveIamRuntimeDiagnostics } from '@sva/core';
-
-export const jsonResponse = (
-  status: number,
-  payload: unknown,
-  headers?: HeadersInit
-): Response => {
-  const responseHeaders = new Headers(headers);
-  responseHeaders.set('Content-Type', 'application/json');
-
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: responseHeaders,
-  });
-};
+import { jsonResponse } from './db.js';
 
 export const createApiError = (
   status: number,

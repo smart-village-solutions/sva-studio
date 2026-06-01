@@ -113,6 +113,15 @@ const buildGroupReadLogMeta = (
   ...details,
 });
 
+const buildGroupListResultPreview = (
+  groups: readonly { readonly id: string; readonly groupKey: string }[],
+  paginated: readonly { readonly id: string; readonly groupKey: string }[]
+) => ({
+  returned_group_ids: paginated.map((group) => group.id),
+  returned_group_keys: paginated.map((group) => group.groupKey),
+  total_group_count: groups.length,
+});
+
 const resolveSchemaObjectForGroupDetailStage = (
   stage: 'group_detail' | 'group_memberships' | 'group_roles'
 ): 'iam.groups' | 'iam.accounts' | 'iam.group_roles' => {
@@ -202,6 +211,15 @@ export const createGroupReadHandlers = (deps: GroupReadHandlerDeps) => {
         loadGroupListItems(client, actor.instanceId)
       );
       const paginated = groups.slice((page - 1) * pageSize, page * pageSize);
+      deps.logger.info(
+        'Group list loaded',
+        buildGroupReadLogMeta(actor, {
+          operation: 'group_list',
+          page,
+          page_size: pageSize,
+          ...buildGroupListResultPreview(groups, paginated),
+        })
+      );
       return deps.jsonResponse(
         200,
         deps.asApiList(paginated, { page, pageSize, total: groups.length }, actor.requestId)

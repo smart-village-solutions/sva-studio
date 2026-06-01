@@ -14,15 +14,38 @@ export type QueryClient = {
   ): Promise<QueryResult<TRow>>;
 };
 
+const JSON_RESPONSE_CACHE_CONTROL = 'private, no-store';
+
+const mergeVaryHeaderValue = (currentValue: string | null, nextToken: string): string => {
+  const tokens = (currentValue ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  if (tokens.some((entry) => entry.toLowerCase() === nextToken.toLowerCase())) {
+    return tokens.join(', ');
+  }
+
+  return [...tokens, nextToken].join(', ');
+};
+
 export const jsonResponse = (
   status: number,
   payload: unknown,
   headers?: Record<string, string>
-): Response =>
-  new Response(JSON.stringify(payload), {
+): Response => {
+  const responseHeaders = new Headers(headers);
+  responseHeaders.set('Content-Type', 'application/json');
+  if (!responseHeaders.has('Cache-Control')) {
+    responseHeaders.set('Cache-Control', JSON_RESPONSE_CACHE_CONTROL);
+  }
+  responseHeaders.set('Vary', mergeVaryHeaderValue(responseHeaders.get('Vary'), 'Cookie'));
+
+  return new Response(JSON.stringify(payload), {
     status,
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: responseHeaders,
   });
+};
 
 export const textResponse = (status: number, body: string, contentType: string): Response =>
   new Response(body, {

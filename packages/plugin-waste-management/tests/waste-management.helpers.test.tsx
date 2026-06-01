@@ -363,7 +363,7 @@ describe('waste management helper modules', () => {
     vi.stubGlobal('crypto', { randomUUID });
 
     expect(wasteMasterDataFormDefaults.createRegion()).toEqual({
-      id: 'fraction-secure-region-id',
+      id: 'secure-region-id',
       name: '',
     });
   });
@@ -376,7 +376,7 @@ describe('waste management helper modules', () => {
     vi.stubGlobal('crypto', { getRandomValues });
 
     expect(wasteMasterDataFormDefaults.createRegion()).toEqual({
-      id: 'fraction-000102030405060708090a0b0c0d0e0f',
+      id: '00010203-0405-4607-8809-0a0b0c0d0e0f',
       name: '',
     });
   });

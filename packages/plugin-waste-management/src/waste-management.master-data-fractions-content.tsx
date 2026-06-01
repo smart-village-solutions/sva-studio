@@ -109,6 +109,7 @@ export const WasteMasterDataFractionsContent = ({
         onFractionsSortChange={(nextSortBy, nextSortDirection) => {
           setSortField(nextSortBy);
           setSortDirection(nextSortDirection);
+          onFractionsSortChange(nextSortBy, nextSortDirection);
         }}
         fractionsStatus={fractionsStatus}
         filterDialogOpen={filterDialogOpen}

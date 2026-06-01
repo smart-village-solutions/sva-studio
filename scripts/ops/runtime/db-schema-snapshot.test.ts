@@ -13,6 +13,7 @@ describe('extractSchemaSnapshotObjects', () => {
         AS $$ SELECT 'demo'::text; $$;
       CREATE POLICY examples_isolation_policy ON iam.examples USING (true);
       ALTER TABLE ONLY iam.examples FORCE ROW LEVEL SECURITY;
+      CREATE TRIGGER trg_examples_updated_at BEFORE UPDATE ON iam.examples FOR EACH ROW EXECUTE FUNCTION iam.touch_updated_at();
       CREATE INDEX idx_examples_instance_id ON iam.examples USING btree (instance_id);
       CREATE TABLE graphile_worker.jobs (
         id bigint NOT NULL
@@ -25,6 +26,7 @@ describe('extractSchemaSnapshotObjects', () => {
       'policy:iam.examples.examples_isolation_policy',
       'rls:force:iam.examples',
       'table:public.example_table',
+      'trigger:iam.examples.trg_examples_updated_at',
     ]);
   });
 
@@ -44,6 +46,7 @@ describe('diffSchemaSnapshots', () => {
       CREATE TABLE public.expected_table (
         id uuid NOT NULL
       );
+      CREATE TRIGGER trg_expected BEFORE UPDATE ON iam.expected_table FOR EACH ROW EXECUTE FUNCTION iam.touch_updated_at();
       ALTER TABLE ONLY iam.legal_text_targets FORCE ROW LEVEL SECURITY;
     `;
     const actualSql = `
@@ -54,7 +57,7 @@ describe('diffSchemaSnapshots', () => {
 
     expect(diffSchemaSnapshots(actualSql, expectedSql)).toEqual({
       ignoredSchemas: ['graphile_worker'],
-      missingObjects: ['rls:force:iam.legal_text_targets', 'table:public.expected_table'],
+      missingObjects: ['rls:force:iam.legal_text_targets', 'table:public.expected_table', 'trigger:iam.expected_table.trg_expected'],
       unexpectedObjects: ['table:public.actual_table'],
     });
   });

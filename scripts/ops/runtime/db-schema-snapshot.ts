@@ -107,6 +107,20 @@ const extractRlsObject = (line: string, ignoredSchemas: readonly string[]): stri
   return `rls:${mode}:${schema}.${table}`;
 };
 
+const extractTriggerObject = (line: string, ignoredSchemas: readonly string[]): string | null => {
+  const match = line.match(
+    /^CREATE TRIGGER (?<trigger>"?[^"\s]+"?) .+ ON (?<schema>"?[^".\s]+"?)\.(?<table>"?[^"\s]+"?) /u,
+  );
+  const trigger = match?.groups?.trigger ? normalizeIdentifier(match.groups.trigger) : '';
+  const schema = match?.groups?.schema ? normalizeIdentifier(match.groups.schema) : '';
+  const table = match?.groups?.table ? normalizeIdentifier(match.groups.table) : '';
+  if (!trigger || !schema || !table || isIgnoredSchema(schema, ignoredSchemas)) {
+    return null;
+  }
+
+  return `trigger:${schema}.${table}.${trigger}`;
+};
+
 const extractIndexObject = (line: string, ignoredSchemas: readonly string[]): string | null => {
   const match = line.match(
     /^CREATE (?:UNIQUE )?INDEX (?<index>"?[^"\s]+"?) ON (?<schema>"?[^".\s]+"?)\.(?<table>"?[^"\s(]+"?)/u,
@@ -141,6 +155,7 @@ export const extractSchemaSnapshotObjects = (
       extractConstraintObject(line, ignoredSchemas) ??
       extractPolicyObject(line, ignoredSchemas) ??
       extractRlsObject(line, ignoredSchemas) ??
+      extractTriggerObject(line, ignoredSchemas) ??
       extractIndexObject(line, ignoredSchemas);
 
     if (extracted) {

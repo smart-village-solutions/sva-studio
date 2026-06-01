@@ -16,9 +16,9 @@ import {
   type InstanceInterfaceType,
 } from '../../lib/instance-interfaces';
 
-const DEFAULT_AVAILABLE_TYPES: readonly InstanceInterfaceType[] = ['mainserver', 's3'];
+export const DEFAULT_AVAILABLE_TYPES: readonly InstanceInterfaceType[] = ['mainserver', 's3'];
 
-const isInstanceInterfacesResponse = (
+export const isInstanceInterfacesResponse = (
   value: unknown,
 ): value is Readonly<{
   instanceId: string;
@@ -68,7 +68,7 @@ export const draftFromEntry = (entry: InstanceInterface): InstanceInterfaceDraft
   };
 };
 
-const translateInterfacesErrorMessage = (error: unknown, fallback: string): string => {
+export const translateInterfacesErrorMessage = (error: unknown, fallback: string): string => {
   const message = readErrorMessage(error, fallback);
 
   switch (message) {
@@ -95,7 +95,7 @@ const translateInterfacesErrorMessage = (error: unknown, fallback: string): stri
   }
 };
 
-const buildUpsertPayload = (
+export const buildUpsertPayload = (
   instanceId: string,
   editState: Extract<EditState, { mode: 'create' | 'edit' }>,
 ) => ({

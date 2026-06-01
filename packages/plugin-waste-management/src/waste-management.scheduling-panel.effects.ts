@@ -120,8 +120,12 @@ export const useWasteSchedulingEditRouteHydration = ({
       return;
     }
 
+    if (controller.loading || !controller.overview) {
+      return;
+    }
+
     if (search.schedulingEntryType === 'holiday-rule') {
-      const routeRule = controller.overview?.holidayRules.find((rule) => rule.id === search.schedulingEntryId);
+      const routeRule = controller.overview.holidayRules.find((rule) => rule.id === search.schedulingEntryId);
       if (!routeRule) {
         void navigateToSchedulingList(navigate, search);
       }
@@ -136,6 +140,7 @@ export const useWasteSchedulingEditRouteHydration = ({
     syncGlobalShiftRoute(controller, navigate, search);
   }, [
     controller.globalShiftForm.id,
+    controller.loading,
     controller.overview,
     controller.setDialogMode,
     controller.setGlobalDialogMode,

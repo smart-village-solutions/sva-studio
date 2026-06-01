@@ -27,6 +27,15 @@ describe('extractSchemaSnapshotObjects', () => {
       'table:public.example_table',
     ]);
   });
+
+  it('ignores indexes that target ignored schemas', () => {
+    const sql = `
+      CREATE INDEX idx_jobs_locked_at ON graphile_worker.jobs USING btree (locked_at);
+      CREATE UNIQUE INDEX idx_public_examples_slug ON public.examples USING btree (slug);
+    `;
+
+    expect(extractSchemaSnapshotObjects(sql)).toEqual(['index:idx_public_examples_slug']);
+  });
 });
 
 describe('diffSchemaSnapshots', () => {

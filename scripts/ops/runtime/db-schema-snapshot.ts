@@ -107,10 +107,13 @@ const extractRlsObject = (line: string, ignoredSchemas: readonly string[]): stri
   return `rls:${mode}:${schema}.${table}`;
 };
 
-const extractIndexObject = (line: string): string | null => {
-  const match = line.match(/^CREATE (?:UNIQUE )?INDEX (?<index>"?[^"\s]+"?) ON /u);
+const extractIndexObject = (line: string, ignoredSchemas: readonly string[]): string | null => {
+  const match = line.match(
+    /^CREATE (?:UNIQUE )?INDEX (?<index>"?[^"\s]+"?) ON (?<schema>"?[^".\s]+"?)\.(?<table>"?[^"\s(]+"?)/u,
+  );
   const indexName = match?.groups?.index ? normalizeIdentifier(match.groups.index) : '';
-  if (!indexName) {
+  const schema = match?.groups?.schema ? normalizeIdentifier(match.groups.schema) : '';
+  if (!indexName || !schema || isIgnoredSchema(schema, ignoredSchemas)) {
     return null;
   }
 
@@ -138,7 +141,7 @@ export const extractSchemaSnapshotObjects = (
       extractConstraintObject(line, ignoredSchemas) ??
       extractPolicyObject(line, ignoredSchemas) ??
       extractRlsObject(line, ignoredSchemas) ??
-      extractIndexObject(line);
+      extractIndexObject(line, ignoredSchemas);
 
     if (extracted) {
       objects.add(extracted);

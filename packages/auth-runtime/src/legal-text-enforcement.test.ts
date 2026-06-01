@@ -7,6 +7,11 @@ vi.mock('@sva/server-runtime', () => ({
 }));
 
 vi.mock('./db', () => ({
+  jsonResponse: vi.fn((status: number, payload: unknown, headers?: Record<string, string>) => {
+    const responseHeaders = new Headers(headers);
+    responseHeaders.set('Content-Type', 'application/json');
+    return new Response(JSON.stringify(payload), { status, headers: responseHeaders });
+  }),
   withInstanceDb: vi.fn(),
   requireRoles: vi.fn(() => null),
   emitActivityLog: vi.fn(),

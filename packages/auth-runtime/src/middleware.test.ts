@@ -41,6 +41,11 @@ const authServerMocks = vi.hoisted(() => ({
   ),
 }));
 const dbMocks = vi.hoisted(() => ({
+  jsonResponse: vi.fn((status: number, payload: unknown, headers?: Record<string, string>) => {
+    const responseHeaders = new Headers(headers);
+    responseHeaders.set('Content-Type', 'application/json');
+    return new Response(JSON.stringify(payload), { status, headers: responseHeaders });
+  }),
   resolvePool: vi.fn(() => ({}) as object),
   withResolvedInstanceDb: vi.fn(),
 }));
@@ -72,6 +77,7 @@ vi.mock('./config.js', () => ({
 }));
 
 vi.mock('./db.js', () => ({
+  jsonResponse: dbMocks.jsonResponse,
   resolvePool: dbMocks.resolvePool,
   withResolvedInstanceDb: dbMocks.withResolvedInstanceDb,
 }));

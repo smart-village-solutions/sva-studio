@@ -81,8 +81,13 @@ export const toPayloadHash = (rawBody: string): string =>
 
 export const readPage = (request: Request): { page: number; pageSize: number } => {
   const url = new URL(request.url);
-  const page = Math.max(1, readNumber(Number(url.searchParams.get('page'))) ?? 1);
-  const pageSize = Math.max(1, Math.min(100, readNumber(Number(url.searchParams.get('pageSize'))) ?? 25));
+  const pageParam = url.searchParams.get('page');
+  const pageSizeParam = url.searchParams.get('pageSize');
+  const page = Math.max(1, readNumber(pageParam === null ? Number.NaN : Number(pageParam)) ?? 1);
+  const pageSize = Math.max(
+    1,
+    Math.min(100, readNumber(pageSizeParam === null ? Number.NaN : Number(pageSizeParam)) ?? 25)
+  );
   return { page, pageSize };
 };
 

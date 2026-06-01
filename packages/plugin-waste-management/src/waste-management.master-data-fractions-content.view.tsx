@@ -47,6 +47,32 @@ type WasteMasterDataFractionsTableSectionProps = {
   readonly onPageSizeChange: (pageSize: number) => void;
 };
 
+const renderFractionRowActions = (
+  fraction: WasteFractionRecord,
+  onOpenEditFraction: (fraction: WasteFractionRecord) => void,
+  onRequestDeleteFraction: (fraction: WasteFractionRecord) => void,
+) => (
+  <FractionRowActions
+    fraction={fraction}
+    onOpenEditFraction={onOpenEditFraction}
+    onRequestDeleteFraction={onRequestDeleteFraction}
+  />
+);
+
+const resolveNextFractionSorting = (
+  nextSorting: readonly {
+    readonly id: string;
+    readonly desc: boolean;
+  }[],
+): readonly [WasteManagementFractionSortField, WasteManagementFractionSortDirection] => {
+  const current = nextSorting[0];
+  if (!current) {
+    return ['name', 'asc'];
+  }
+
+  return [sortFieldByColumnId[current.id] ?? 'name', current.desc ? 'desc' : 'asc'];
+};
+
 export const WasteMasterDataFractionsTableSection = ({
   fractions,
   page,
@@ -101,20 +127,10 @@ export const WasteMasterDataFractionsTableSection = ({
         emptyState={<p className="text-sm text-muted-foreground">{pt('masterData.messages.emptyBody')}</p>}
         sorting={sorting}
         onSortingChange={(nextSorting) => {
-          const current = nextSorting[0];
-          if (!current) {
-            onFractionsSortChange('name', 'asc');
-            return;
-          }
-          onFractionsSortChange(sortFieldByColumnId[current.id] ?? 'name', current.desc ? 'desc' : 'asc');
+          const [sortBy, sortDirection] = resolveNextFractionSorting(nextSorting);
+          onFractionsSortChange(sortBy, sortDirection);
         }}
-        rowActions={(fraction) => (
-          <FractionRowActions
-            fraction={fraction}
-            onOpenEditFraction={onOpenEditFraction}
-            onRequestDeleteFraction={onRequestDeleteFraction}
-          />
-        )}
+        rowActions={(fraction) => renderFractionRowActions(fraction, onOpenEditFraction, onRequestDeleteFraction)}
       />
       <WastePanelTableBottomBar
         pt={pt}

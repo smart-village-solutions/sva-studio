@@ -14,6 +14,59 @@ const clearSchedulingEntryRoute = (search: WasteManagementSearchParams): WasteMa
   schedulingEntryId: undefined,
 });
 
+const navigateToSchedulingList = (
+  navigate: ReturnType<typeof useNavigate>,
+  search: WasteManagementSearchParams,
+) =>
+  navigate({
+    to: '/plugins/waste-management',
+    search: clearSchedulingEntryRoute(search),
+    replace: true,
+  });
+
+const resetSchedulingEditState = (controller: WasteSchedulingController) => {
+  controller.setMessage(null);
+  controller.setLastOutcome(null);
+};
+
+const syncTourShiftRoute = (
+  controller: WasteSchedulingController,
+  navigate: ReturnType<typeof useNavigate>,
+  search: WasteManagementSearchParams,
+) => {
+  const routeShift = controller.overview?.tourDateShifts.find((shift) => shift.id === search.schedulingEntryId);
+  if (!routeShift) {
+    void navigateToSchedulingList(navigate, search);
+    return;
+  }
+  if (controller.tourShiftForm.id === routeShift.id) {
+    return;
+  }
+
+  controller.setDialogMode('edit');
+  controller.setTourShiftForm(mapTourDateShiftToForm(routeShift));
+  resetSchedulingEditState(controller);
+};
+
+const syncGlobalShiftRoute = (
+  controller: WasteSchedulingController,
+  navigate: ReturnType<typeof useNavigate>,
+  search: WasteManagementSearchParams,
+) => {
+  const routeShift = controller.overview?.globalDateShifts.find((shift) => shift.id === search.schedulingEntryId);
+  if (!routeShift) {
+    void navigateToSchedulingList(navigate, search);
+    return;
+  }
+  if (controller.globalShiftForm.id === routeShift.id) {
+    return;
+  }
+
+  controller.setGlobalDialogMode('edit');
+  controller.setGlobalShiftForm(mapGlobalDateShiftToForm(routeShift));
+  resetSchedulingEditState(controller);
+};
+
 export const useWasteSchedulingSuccessRedirect = ({
   controller,
   navigate,
@@ -35,11 +88,7 @@ export const useWasteSchedulingSuccessRedirect = ({
     controller.resetTourShiftForm();
     controller.resetGlobalShiftForm();
     controller.setLastOutcome(null);
-    void navigate({
-      to: '/plugins/waste-management',
-      search: clearSchedulingEntryRoute(search),
-      replace: true,
-    });
+    void navigateToSchedulingList(navigate, search);
   }, [
     controller.resetGlobalShiftForm,
     controller.resetTourShiftForm,
@@ -67,64 +116,24 @@ export const useWasteSchedulingEditRouteHydration = ({
     }
 
     if (!search.schedulingEntryType || !search.schedulingEntryId) {
-      void navigate({
-        to: '/plugins/waste-management',
-        search: clearSchedulingEntryRoute(search),
-        replace: true,
-      });
+      void navigateToSchedulingList(navigate, search);
       return;
     }
 
     if (search.schedulingEntryType === 'holiday-rule') {
       const routeRule = controller.overview?.holidayRules.find((rule) => rule.id === search.schedulingEntryId);
       if (!routeRule) {
-        void navigate({
-          to: '/plugins/waste-management',
-          search: clearSchedulingEntryRoute(search),
-          replace: true,
-        });
+        void navigateToSchedulingList(navigate, search);
       }
       return;
     }
 
     if (search.schedulingEntryType === 'tour-shift') {
-      const routeShift = controller.overview?.tourDateShifts.find((shift) => shift.id === search.schedulingEntryId);
-      if (!routeShift) {
-        void navigate({
-          to: '/plugins/waste-management',
-          search: clearSchedulingEntryRoute(search),
-          replace: true,
-        });
-        return;
-      }
-      if (controller.tourShiftForm.id === routeShift.id) {
-        return;
-      }
-
-      controller.setDialogMode('edit');
-      controller.setTourShiftForm(mapTourDateShiftToForm(routeShift));
-      controller.setMessage(null);
-      controller.setLastOutcome(null);
+      syncTourShiftRoute(controller, navigate, search);
       return;
     }
 
-    const routeShift = controller.overview?.globalDateShifts.find((shift) => shift.id === search.schedulingEntryId);
-    if (!routeShift) {
-      void navigate({
-        to: '/plugins/waste-management',
-        search: clearSchedulingEntryRoute(search),
-        replace: true,
-      });
-      return;
-    }
-    if (controller.globalShiftForm.id === routeShift.id) {
-      return;
-    }
-
-    controller.setGlobalDialogMode('edit');
-    controller.setGlobalShiftForm(mapGlobalDateShiftToForm(routeShift));
-    controller.setMessage(null);
-    controller.setLastOutcome(null);
+    syncGlobalShiftRoute(controller, navigate, search);
   }, [
     controller.globalShiftForm.id,
     controller.overview,

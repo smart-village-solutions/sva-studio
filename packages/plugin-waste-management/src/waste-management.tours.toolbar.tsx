@@ -3,39 +3,7 @@ import { Button } from '@sva/studio-ui-react';
 
 import { WasteToursToolbarActions, WasteToursToolbarFilters } from './waste-management.tours.toolbar.parts.js';
 
-export const WasteToursToolbar = ({
-  filterDialogOpen,
-  selectedCount,
-  query,
-  status,
-  fractions,
-  tourWasteFractionId,
-  firstDateFrom,
-  firstDateTo,
-  endDateFrom,
-  endDateTo,
-  draftQuery,
-  draftStatus,
-  draftTourWasteFractionId,
-  draftFirstDateFrom,
-  draftFirstDateTo,
-  draftEndDateFrom,
-  draftEndDateTo,
-  hasActiveFilters,
-  onOpenCreateDialog,
-  onOpenFilterDialog,
-  onFilterDialogOpenChange,
-  onOpenBulkDelete,
-  onDraftQueryChange,
-  onDraftStatusChange,
-  onDraftTourWasteFractionIdChange,
-  onDraftFirstDateFromChange,
-  onDraftFirstDateToChange,
-  onDraftEndDateFromChange,
-  onDraftEndDateToChange,
-  onApplyFilters,
-  onResetFilters,
-}: {
+type WasteToursToolbarProps = {
   readonly filterDialogOpen: boolean;
   readonly selectedCount: number;
   readonly query: string;
@@ -67,47 +35,91 @@ export const WasteToursToolbar = ({
   readonly onDraftEndDateToChange: (value: string | undefined) => void;
   readonly onApplyFilters: () => void;
   readonly onResetFilters: () => void;
-}) => {
+};
+
+const toWasteToursToolbarActionsProps = ({
+  selectedCount,
+  filterDialogOpen,
+  hasActiveFilters,
+  onOpenBulkDelete,
+  onOpenFilterDialog,
+  onResetFilters,
+}: WasteToursToolbarProps) => ({
+  selectedCount,
+  filterDialogOpen,
+  hasActiveFilters,
+  onOpenBulkDelete,
+  onOpenFilterDialog,
+  onResetFilters,
+});
+
+const toWasteToursToolbarFiltersProps = ({
+  filterDialogOpen,
+  query,
+  status,
+  fractions,
+  tourWasteFractionId,
+  firstDateFrom,
+  firstDateTo,
+  endDateFrom,
+  endDateTo,
+  draftQuery,
+  draftStatus,
+  draftTourWasteFractionId,
+  draftFirstDateFrom,
+  draftFirstDateTo,
+  draftEndDateFrom,
+  draftEndDateTo,
+  onFilterDialogOpenChange,
+  onDraftQueryChange,
+  onDraftStatusChange,
+  onDraftTourWasteFractionIdChange,
+  onDraftFirstDateFromChange,
+  onDraftFirstDateToChange,
+  onDraftEndDateFromChange,
+  onDraftEndDateToChange,
+  onApplyFilters,
+}: WasteToursToolbarProps) => ({
+  filterDialogOpen,
+  query,
+  status,
+  fractions,
+  tourWasteFractionId,
+  firstDateFrom,
+  firstDateTo,
+  endDateFrom,
+  endDateTo,
+  draftQuery,
+  draftStatus,
+  draftTourWasteFractionId,
+  draftFirstDateFrom,
+  draftFirstDateTo,
+  draftEndDateFrom,
+  draftEndDateTo,
+  onFilterDialogOpenChange,
+  onDraftQueryChange,
+  onDraftStatusChange,
+  onDraftTourWasteFractionIdChange,
+  onDraftFirstDateFromChange,
+  onDraftFirstDateToChange,
+  onDraftEndDateFromChange,
+  onDraftEndDateToChange,
+  onApplyFilters,
+});
+
+export const WasteToursToolbar = (props: WasteToursToolbarProps) => {
+  const {
+    onOpenCreateDialog,
+  } = props;
+  const actionsProps = toWasteToursToolbarActionsProps(props);
+  const filtersProps = toWasteToursToolbarFiltersProps(props);
   const pt = usePluginTranslation('wasteManagement');
 
   return (
     <div className="flex w-full flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
       <div className="flex flex-1 flex-col gap-3">
-        <WasteToursToolbarActions
-          selectedCount={selectedCount}
-          filterDialogOpen={filterDialogOpen}
-          hasActiveFilters={hasActiveFilters}
-          onOpenBulkDelete={onOpenBulkDelete}
-          onOpenFilterDialog={onOpenFilterDialog}
-          onResetFilters={onResetFilters}
-        />
-        <WasteToursToolbarFilters
-          filterDialogOpen={filterDialogOpen}
-          query={query}
-          status={status}
-          fractions={fractions}
-          tourWasteFractionId={tourWasteFractionId}
-          firstDateFrom={firstDateFrom}
-          firstDateTo={firstDateTo}
-          endDateFrom={endDateFrom}
-          endDateTo={endDateTo}
-          draftQuery={draftQuery}
-          draftStatus={draftStatus}
-          draftTourWasteFractionId={draftTourWasteFractionId}
-          draftFirstDateFrom={draftFirstDateFrom}
-          draftFirstDateTo={draftFirstDateTo}
-          draftEndDateFrom={draftEndDateFrom}
-          draftEndDateTo={draftEndDateTo}
-          onFilterDialogOpenChange={onFilterDialogOpenChange}
-          onDraftQueryChange={onDraftQueryChange}
-          onDraftStatusChange={onDraftStatusChange}
-          onDraftTourWasteFractionIdChange={onDraftTourWasteFractionIdChange}
-          onDraftFirstDateFromChange={onDraftFirstDateFromChange}
-          onDraftFirstDateToChange={onDraftFirstDateToChange}
-          onDraftEndDateFromChange={onDraftEndDateFromChange}
-          onDraftEndDateToChange={onDraftEndDateToChange}
-          onApplyFilters={onApplyFilters}
-        />
+        <WasteToursToolbarActions {...actionsProps} />
+        <WasteToursToolbarFilters {...filtersProps} />
       </div>
       <div className="flex justify-end">
         <Button type="button" onClick={onOpenCreateDialog} className="rounded-lg">

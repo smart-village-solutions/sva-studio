@@ -1060,7 +1060,7 @@ const resolveHealthReadyReasonCode = (check: DoctorCheck): DoctorReasonCode | un
     : undefined;
 };
 
-export const decorateDoctorCheck = (check: DoctorCheck): DoctorCheck => {
+const decorateDoctorCheck = (check: DoctorCheck): DoctorCheck => {
   const derivedHealthReason = resolveHealthReadyReasonCode(check);
   if (derivedHealthReason) {
     return {
@@ -1208,7 +1208,7 @@ const readLocalStudioImageVerifyEvidence = (imageDigest?: string): StudioImageVe
   return undefined;
 };
 
-export const tryReadGithubStudioImageVerifyEvidence = (
+const tryReadGithubStudioImageVerifyEvidence = (
   imageDigest?: string,
   options?: GithubVerifyEvidenceOptions,
 ): StudioImageVerifyEvidence | undefined => {
@@ -1323,7 +1323,7 @@ export const tryReadGithubStudioImageVerifyEvidence = (
   }
 };
 
-export const readStudioImageVerifyEvidence = (
+const readStudioImageVerifyEvidence = (
   imageDigest?: string,
   options?: {
     readonly imageTag?: string;
@@ -1332,7 +1332,7 @@ export const readStudioImageVerifyEvidence = (
   readLocalStudioImageVerifyEvidence(imageDigest) ??
   tryReadGithubStudioImageVerifyEvidence(imageDigest, { imageTag: options?.imageTag });
 
-export const buildStudioImageVerifyEvidenceCheck = (
+const buildStudioImageVerifyEvidenceCheck = (
   runtimeProfile: RemoteRuntimeProfile,
   env: NodeJS.ProcessEnv,
   options?: AcceptanceDeployOptions
@@ -1743,7 +1743,7 @@ const startLocalProvisioningWorker = (runtimeProfile: RuntimeProfile, env: NodeJ
   );
 };
 
-export const buildLocalProvisioningWorkerCheck = (
+const buildLocalProvisioningWorkerCheck = (
   runtimeProfile: RuntimeProfile,
   workerState: LocalState | null,
   isAlive: (pid: number) => boolean = isProcessAlive,
@@ -1796,7 +1796,7 @@ export const buildLocalProvisioningWorkerCheck = (
   );
 };
 
-export const shouldRunLocalProvisioningWorker = (runtimeProfile: RuntimeProfile) =>
+const shouldRunLocalProvisioningWorker = (runtimeProfile: RuntimeProfile) =>
   getRuntimeProfileDefinition(runtimeProfile).isLocal && !isMockAuthRuntimeProfile(runtimeProfile);
 
 const waitForHttpOk = async (url: string, timeoutMs: number) => {
@@ -1855,11 +1855,11 @@ const checkLocalInstanceRegistryDrift = (runtimeProfile: RuntimeProfile, env: No
   }
 };
 
-export const shouldCheckLocalInstanceRegistryDriftBeforeCommand = (
+const shouldCheckLocalInstanceRegistryDriftBeforeCommand = (
   runtimeCommand: Extract<RuntimeCommand, 'up' | 'update' | 'reconcile' | 'migrate'>
 ) => runtimeCommand === 'up' || runtimeCommand === 'update';
 
-export const requireLocalInstanceRegistryReconciliationInput = (env: NodeJS.ProcessEnv) => {
+const requireLocalInstanceRegistryReconciliationInput = (env: NodeJS.ProcessEnv) => {
   const input = buildLocalInstanceRegistryReconciliationInput(env);
   if (input) {
     return input;
@@ -2055,7 +2055,7 @@ const createLocalSchemaDumpRunner = (env: NodeJS.ProcessEnv) => {
   };
 };
 
-export const verifyDbSchemaSnapshot = (
+const verifyDbSchemaSnapshot = (
   actualSql: string,
   expectedSql: string,
 ): SchemaSnapshotVerificationReport => {
@@ -2246,7 +2246,7 @@ FROM (
   );
 };
 
-export const resolveTenantRuntimeTargets = async (
+const resolveTenantRuntimeTargets = async (
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv,
   options?: {
@@ -2295,7 +2295,7 @@ export const resolveTenantRuntimeTargets = async (
   };
 };
 
-export const selectReleaseBlockingTenantTargets = (
+const selectReleaseBlockingTenantTargets = (
   runtimeProfile: RuntimeProfile,
   tenantTargets: readonly TenantRuntimeTarget[]
 ): readonly TenantRuntimeTarget[] => {
@@ -2309,7 +2309,7 @@ export const selectReleaseBlockingTenantTargets = (
 const shouldUseStudioReleaseBlockingTenantScope = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
   runtimeProfile === 'studio' && (env.SVA_ACCEPTANCE_RELEASE_MODE?.trim().length ?? 0) > 0;
 
-export const selectSmokeTenantTargets = (
+const selectSmokeTenantTargets = (
   runtimeProfile: RuntimeProfile,
   tenantTargets: readonly TenantRuntimeTarget[],
   options: {
@@ -3578,7 +3578,7 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   return finalizeDoctorReport(runtimeProfile, checks);
 };
 
-export const assertLoginFlow = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+const assertLoginFlow = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const loginUrl = new URL('/auth/login', env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000').toString();
   const response = await fetch(loginUrl, { redirect: 'manual' });
   const location = response.headers.get('location') ?? '';
@@ -3723,7 +3723,7 @@ const probeOidcClientSecret = async (probe: OidcClientSecretProbe): Promise<Oidc
   );
 };
 
-export const buildKeycloakClientSecretCheck = async (
+const buildKeycloakClientSecretCheck = async (
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv,
 ): Promise<DoctorCheck> => {
@@ -3993,7 +3993,7 @@ const isBlockingRepairFailure = (check: DoctorCheck): boolean => {
   return check.status === 'error';
 };
 
-export const repairLocalRuntimeWithDeps = async (
+const repairLocalRuntimeWithDeps = async (
   deps: LocalRuntimeRepairDeps,
   options: {
     authoritative: boolean;
@@ -4069,7 +4069,7 @@ type DangerousApprovalRequirement = Readonly<{
   readonly token: string;
 }>;
 
-export const assertDangerousOperationApproved = (input: {
+const assertDangerousOperationApproved = (input: {
   readonly actualApprovalToken?: string;
   readonly expectedApprovalToken: string;
   readonly reason: string;
@@ -4083,7 +4083,7 @@ export const assertDangerousOperationApproved = (input: {
   );
 };
 
-export const resolveLocalDangerousApprovalRequirement = (
+const resolveLocalDangerousApprovalRequirement = (
   runtimeProfile: RuntimeProfile,
   runtimeCommand: Extract<RuntimeCommand, 'repair' | 'reconcile'>,
   options: {
@@ -4103,7 +4103,7 @@ export const resolveLocalDangerousApprovalRequirement = (
   return { reason, token };
 };
 
-export const resolveRemoteDangerousApprovalRequirement = (
+const resolveRemoteDangerousApprovalRequirement = (
   runtimeProfile: RemoteRuntimeProfile,
   runtimeCommand: Extract<RuntimeCommand, 'deploy' | 'down' | 'migrate' | 'reset'>,
   options: {
@@ -5445,7 +5445,7 @@ const buildSwarmServicePresenceProbe = (env: NodeJS.ProcessEnv): AcceptanceProbe
   });
 };
 
-export const waitForPostDeployStabilization = async (
+const waitForPostDeployStabilization = async (
   env: NodeJS.ProcessEnv,
   waitFn: (ms: number) => Promise<unknown> = wait,
 ) => {
@@ -5459,7 +5459,7 @@ export const waitForPostDeployStabilization = async (
   return stabilizationDelayMs;
 };
 
-export const deriveInternalVerifyMaxAttempts = (input: {
+const deriveInternalVerifyMaxAttempts = (input: {
   readonly retryDelayMs: number;
   readonly warmupWindowMs: number;
 }) => {
@@ -5545,7 +5545,7 @@ const checkContainsRetryableWarmupSignal = (check: DoctorCheck, retryableWarmupS
   return typeof payload === 'string' && retryableWarmupSignals.some((signal) => payload.toLowerCase().includes(signal));
 };
 
-export const shouldRetryInternalVerify = (
+const shouldRetryInternalVerify = (
   doctorReport: DoctorReport,
   retryableWarmupChecks: ReadonlySet<string> = new Set([
     'health-live',
@@ -5571,7 +5571,7 @@ export const shouldRetryInternalVerify = (
   });
 };
 
-export const shouldRetryInternalVerifyAttempt = ({
+const shouldRetryInternalVerifyAttempt = ({
   doctorReport,
   probes,
   retryableWarmupChecks = new Set([
@@ -5607,7 +5607,7 @@ export const shouldRetryInternalVerifyAttempt = ({
   return hasRetryableWarmupOnlyErrors && hasRetryableWarmupOnlyProbeFailures;
 };
 
-export const shouldRetryInternalProbeFailure = (probe: AcceptanceProbeResult) => {
+const shouldRetryInternalProbeFailure = (probe: AcceptanceProbeResult) => {
   if (probe.status !== 'error' || probe.name !== 'swarm-app-task') {
     return false;
   }
@@ -5634,7 +5634,7 @@ export const shouldRetryInternalProbeFailure = (probe: AcceptanceProbeResult) =>
   );
 };
 
-export const waitForRemoteSmokeWarmup = async (
+const waitForRemoteSmokeWarmup = async (
   env: NodeJS.ProcessEnv,
   options?: {
     readonly maxAttempts?: number;
@@ -5786,7 +5786,7 @@ const retryableExternalWarmupProbeNames = new Set([
 
 const retryableExternalWarmupSignals = ['404', '502', '503', '504', 'timeout', 'timed out', 'gateway'];
 
-export const shouldRetryExternalSmoke = (probes: readonly AcceptanceProbeResult[]) => {
+const shouldRetryExternalSmoke = (probes: readonly AcceptanceProbeResult[]) => {
   const failingProbes = probes.filter((probe) => probe.status === 'error');
   if (failingProbes.length === 0) {
     return false;
@@ -5802,7 +5802,7 @@ export const shouldRetryExternalSmoke = (probes: readonly AcceptanceProbeResult[
   });
 };
 
-export const runExternalSmokeWithWarmup = async (
+const runExternalSmokeWithWarmup = async (
   env: NodeJS.ProcessEnv,
   options?: {
     readonly maxAttempts?: number;
@@ -5839,6 +5839,41 @@ export const runExternalSmokeWithWarmup = async (
 
   return lastProbes;
 };
+
+export const runtimeEnvDangerousOperations = {
+  assertDangerousOperationApproved,
+  resolveLocalDangerousApprovalRequirement,
+  resolveRemoteDangerousApprovalRequirement,
+} as const;
+
+export const runtimeEnvRemoteVerification = {
+  assertLoginFlow,
+  buildKeycloakClientSecretCheck,
+  buildLocalProvisioningWorkerCheck,
+  buildStudioImageVerifyEvidenceCheck,
+  decorateDoctorCheck,
+  readStudioImageVerifyEvidence,
+  repairLocalRuntimeWithDeps,
+  requireLocalInstanceRegistryReconciliationInput,
+  resolveTenantRuntimeTargets,
+  selectReleaseBlockingTenantTargets,
+  selectSmokeTenantTargets,
+  shouldCheckLocalInstanceRegistryDriftBeforeCommand,
+  shouldRunLocalProvisioningWorker,
+  tryReadGithubStudioImageVerifyEvidence,
+  verifyDbSchemaSnapshot,
+  waitForPostDeployStabilization,
+} as const;
+
+export const runtimeEnvSmokeWarmup = {
+  deriveInternalVerifyMaxAttempts,
+  runExternalSmokeWithWarmup,
+  shouldRetryExternalSmoke,
+  shouldRetryInternalProbeFailure,
+  shouldRetryInternalVerify,
+  shouldRetryInternalVerifyAttempt,
+  waitForRemoteSmokeWarmup,
+} as const;
 
 const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => {
   const options = resolveAcceptanceDeployOptions(env, cliOptions, runtimeProfile);

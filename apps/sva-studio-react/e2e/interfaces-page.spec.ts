@@ -138,7 +138,9 @@ test('interfaces page uses the real /_server transport for overview load', async
       { timeout: 20_000 }
     )
     .toBe(200);
-  await expect(page.getByRole('heading', { name: 'Schnittstellen' })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('heading', { name: 'Schnittstellen', exact: true, level: 1 })).toBeVisible({
+    timeout: 20_000,
+  });
 
   const loadResponse = serverFnResponses.find((response) => response.method === 'GET');
   expect(loadResponse?.url).toContain('/_server/');

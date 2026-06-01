@@ -3,36 +3,44 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  assertLoginFlow,
+import { runtimeEnvDangerousOperations, runtimeEnvRemoteVerification, runtimeEnvSmokeWarmup } from './runtime-env.ts';
+import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
+import { parseRuntimeCliOptions } from './runtime-env.shared.ts';
+
+const {
   assertDangerousOperationApproved,
-  buildKeycloakClientSecretCheck,
-  buildLocalProvisioningWorkerCheck,
-  decorateDoctorCheck,
   resolveLocalDangerousApprovalRequirement,
   resolveRemoteDangerousApprovalRequirement,
-  requireLocalInstanceRegistryReconciliationInput,
-  repairLocalRuntimeWithDeps,
-  shouldCheckLocalInstanceRegistryDriftBeforeCommand,
+} = runtimeEnvDangerousOperations;
+
+const {
+  assertLoginFlow,
+  buildKeycloakClientSecretCheck,
+  buildLocalProvisioningWorkerCheck,
   buildStudioImageVerifyEvidenceCheck,
-  deriveInternalVerifyMaxAttempts,
+  decorateDoctorCheck,
   readStudioImageVerifyEvidence,
+  repairLocalRuntimeWithDeps,
+  requireLocalInstanceRegistryReconciliationInput,
   resolveTenantRuntimeTargets,
   selectReleaseBlockingTenantTargets,
   selectSmokeTenantTargets,
+  shouldCheckLocalInstanceRegistryDriftBeforeCommand,
   shouldRunLocalProvisioningWorker,
-  runExternalSmokeWithWarmup,
+  tryReadGithubStudioImageVerifyEvidence,
   verifyDbSchemaSnapshot,
-  waitForRemoteSmokeWarmup,
+  waitForPostDeployStabilization,
+} = runtimeEnvRemoteVerification;
+
+const {
+  deriveInternalVerifyMaxAttempts,
+  runExternalSmokeWithWarmup,
   shouldRetryExternalSmoke,
   shouldRetryInternalProbeFailure,
-  shouldRetryInternalVerifyAttempt,
   shouldRetryInternalVerify,
-  tryReadGithubStudioImageVerifyEvidence,
-  waitForPostDeployStabilization,
-} from './runtime-env.ts';
-import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
-import { parseRuntimeCliOptions } from './runtime-env.shared.ts';
+  shouldRetryInternalVerifyAttempt,
+  waitForRemoteSmokeWarmup,
+} = runtimeEnvSmokeWarmup;
 
 const createProbe = (overrides: Partial<AcceptanceProbeResult>): AcceptanceProbeResult => ({
   durationMs: 10,

@@ -73,6 +73,31 @@ const resetSchedulingViewState = (controller: WasteSchedulingController) => {
   controller.setLastOutcome(null);
 };
 
+const resetSchedulingCreateForms = (
+  controller: WasteSchedulingController,
+  availableTours: readonly { readonly id: string }[],
+) => {
+  controller.setDialogOpen(false);
+  controller.setGlobalDialogOpen(false);
+  controller.setTourShiftForm({
+    ...createDefaultTourDateShiftForm(),
+    tourId: resolveSingleTourId(availableTours),
+  });
+  controller.setGlobalShiftForm(createDefaultGlobalDateShiftForm());
+};
+
+const navigateToSchedulingSearch = (
+  navigate: ReturnType<typeof useNavigate>,
+  search: WasteManagementSearchParams,
+  nextSearch: WasteManagementSearchParams,
+  options?: { readonly replace?: boolean },
+) =>
+  navigate({
+    to: '/plugins/waste-management',
+    search: nextSearch,
+    ...(options?.replace ? { replace: true } : {}),
+  });
+
 export const useWasteSchedulingListNavigation = (
   controller: WasteSchedulingController,
   search: WasteManagementSearchParams,
@@ -87,28 +112,16 @@ export const useWasteSchedulingListNavigation = (
       );
       controller.setDialogMode('create');
       controller.setGlobalDialogMode('create');
-      controller.setDialogOpen(false);
-      controller.setGlobalDialogOpen(false);
-      controller.setTourShiftForm({
-        ...createDefaultTourDateShiftForm(),
-        tourId: resolveSingleTourId(controller.availableTours),
-      });
-      controller.setGlobalShiftForm(createDefaultGlobalDateShiftForm());
+      resetSchedulingCreateForms(controller, controller.availableTours);
       resetSchedulingViewState(controller);
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toCreateSchedulingEntrySearch(search, schedulingEntryType),
-      });
+      void navigateToSchedulingSearch(navigate, search, toCreateSchedulingEntrySearch(search, schedulingEntryType));
     },
     openCreateGlobal: () => {
       controller.setGlobalDialogMode('create');
       controller.setGlobalDialogOpen(false);
       controller.setGlobalShiftForm(createDefaultGlobalDateShiftForm());
       resetSchedulingViewState(controller);
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toCreateSchedulingEntrySearch(search, 'global-shift'),
-      });
+      void navigateToSchedulingSearch(navigate, search, toCreateSchedulingEntrySearch(search, 'global-shift'));
     },
     openCreateTour: () => {
       controller.setDialogMode('create');
@@ -118,50 +131,34 @@ export const useWasteSchedulingListNavigation = (
         tourId: resolveSingleTourId(controller.availableTours),
       });
       resetSchedulingViewState(controller);
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toCreateSchedulingEntrySearch(search, 'tour-shift'),
-      });
+      void navigateToSchedulingSearch(navigate, search, toCreateSchedulingEntrySearch(search, 'tour-shift'));
     },
     openEditHoliday: (rule: WasteHolidayRuleRecord) => {
       resetSchedulingViewState(controller);
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toEditSchedulingEntrySearch(search, 'holiday-rule', rule.id),
-      });
+      void navigateToSchedulingSearch(navigate, search, toEditSchedulingEntrySearch(search, 'holiday-rule', rule.id));
     },
     openEditGlobal: (shift: WasteGlobalDateShiftRecord) => {
       controller.setGlobalDialogMode('edit');
       controller.setGlobalDialogOpen(false);
       controller.setGlobalShiftForm(mapGlobalDateShiftToForm(shift));
       resetSchedulingViewState(controller);
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toEditSchedulingEntrySearch(search, 'global-shift', shift.id),
-      });
+      void navigateToSchedulingSearch(navigate, search, toEditSchedulingEntrySearch(search, 'global-shift', shift.id));
     },
     openEditTour: (shift: WasteTourDateShiftRecord) => {
       controller.setDialogMode('edit');
       controller.setDialogOpen(false);
       controller.setTourShiftForm(mapTourDateShiftToForm(shift));
       resetSchedulingViewState(controller);
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toEditSchedulingEntrySearch(search, 'tour-shift', shift.id),
-      });
+      void navigateToSchedulingSearch(navigate, search, toEditSchedulingEntrySearch(search, 'tour-shift', shift.id));
     },
     setPage: (page: number) => {
-      void navigate({ to: '/plugins/waste-management', search: toSchedulingPageSearch(search, page) });
+      void navigateToSchedulingSearch(navigate, search, toSchedulingPageSearch(search, page));
     },
     syncPage: (page: number) => {
-      void navigate({
-        to: '/plugins/waste-management',
-        search: toSchedulingPageSearch(search, page),
-        replace: true,
-      });
+      void navigateToSchedulingSearch(navigate, search, toSchedulingPageSearch(search, page), { replace: true });
     },
     setPageSize: (pageSize: number) => {
-      void navigate({ to: '/plugins/waste-management', search: toSchedulingPageSizeSearch(search, pageSize) });
+      void navigateToSchedulingSearch(navigate, search, toSchedulingPageSizeSearch(search, pageSize));
     },
   };
 };

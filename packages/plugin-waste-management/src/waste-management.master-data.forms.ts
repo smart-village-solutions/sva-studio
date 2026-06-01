@@ -96,9 +96,9 @@ const createId = (): string => {
     const shift = BigInt((7 - index) * 8);
     fallbackBytes[index] = Number((timestamp >> shift) & 0xffn);
   }
-  fallbackBytes[8] = (localIdCounter >> 24) & 0xff;
-  fallbackBytes[9] = (localIdCounter >> 16) & 0xff;
-  fallbackBytes[10] = (localIdCounter >> 8) & 0xff;
+  fallbackBytes[8] = (localIdCounter >>> 24) & 0xff;
+  fallbackBytes[9] = (localIdCounter >>> 16) & 0xff;
+  fallbackBytes[10] = (localIdCounter >>> 8) & 0xff;
   fallbackBytes[11] = localIdCounter & 0xff;
   fallbackBytes[12] = 0xaa;
   fallbackBytes[13] = 0xbb;

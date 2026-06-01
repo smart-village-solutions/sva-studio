@@ -4,6 +4,11 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioConfirmDialog } from '@sva/studio-ui-react';
 
 import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
+import type { WasteManagementSearchParams } from './search-params.js';
+
+type WasteToursFilterStatus = WasteManagementSearchParams['status'];
+type WasteToursFilterDate = WasteManagementSearchParams['firstDateFrom'];
+type WasteToursFilterFraction = WasteManagementSearchParams['tourWasteFractionId'];
 
 export type WasteToursContentProps = {
   readonly assignmentContextLoading: boolean;
@@ -26,12 +31,26 @@ export type WasteToursContentProps = {
   readonly page: number;
   readonly pageSize: number;
   readonly query: string;
-  readonly status: 'all' | 'active' | 'inactive';
+  readonly status: WasteToursFilterStatus;
+  readonly tourWasteFractionId: WasteToursFilterFraction;
+  readonly firstDateFrom: WasteToursFilterDate;
+  readonly firstDateTo: WasteToursFilterDate;
+  readonly endDateFrom: WasteToursFilterDate;
+  readonly endDateTo: WasteToursFilterDate;
   readonly onPageChange: (page: number) => void;
   readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
   readonly onQueryChange: (value: string) => void;
-  readonly onStatusChange: (value: 'all' | 'active' | 'inactive') => void;
+  readonly onStatusChange: (value: WasteToursFilterStatus) => void;
+  readonly onFiltersChange?: (
+    query: string,
+    status: WasteToursFilterStatus,
+    tourWasteFractionId: WasteToursFilterFraction,
+    firstDateFrom: WasteToursFilterDate,
+    firstDateTo: WasteToursFilterDate,
+    endDateFrom: WasteToursFilterDate,
+    endDateTo: WasteToursFilterDate,
+  ) => void;
 };
 
 type UseWasteToursSelectionStateArgs = {
@@ -39,7 +58,12 @@ type UseWasteToursSelectionStateArgs = {
   readonly page: number;
   readonly pageSize: number;
   readonly query: string;
-  readonly status: 'all' | 'active' | 'inactive';
+  readonly status: WasteToursFilterStatus;
+  readonly tourWasteFractionId: WasteToursFilterFraction;
+  readonly firstDateFrom: WasteToursFilterDate;
+  readonly firstDateTo: WasteToursFilterDate;
+  readonly endDateFrom: WasteToursFilterDate;
+  readonly endDateTo: WasteToursFilterDate;
 };
 
 export const useWasteToursSelectionState = ({
@@ -48,14 +72,34 @@ export const useWasteToursSelectionState = ({
   pageSize,
   query,
   status,
+  tourWasteFractionId,
+  firstDateFrom,
+  firstDateTo,
+  endDateFrom,
+  endDateTo,
 }: UseWasteToursSelectionStateArgs) => {
   const [selectedTourIds, setSelectedTourIds] = useState<readonly string[]>([]);
-  const [filtersOpen, setFiltersOpen] = useState(query.trim().length > 0 || status !== 'all');
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [draftQuery, setDraftQuery] = useState(query);
+  const [draftStatus, setDraftStatus] = useState(status);
+  const [draftTourWasteFractionId, setDraftTourWasteFractionId] = useState<WasteToursFilterFraction>(tourWasteFractionId);
+  const [draftFirstDateFrom, setDraftFirstDateFrom] = useState<WasteToursFilterDate>(firstDateFrom);
+  const [draftFirstDateTo, setDraftFirstDateTo] = useState<WasteToursFilterDate>(firstDateTo);
+  const [draftEndDateFrom, setDraftEndDateFrom] = useState<WasteToursFilterDate>(endDateFrom);
+  const [draftEndDateTo, setDraftEndDateTo] = useState<WasteToursFilterDate>(endDateTo);
   const [tourPendingDelete, setTourPendingDelete] = useState<WasteTourRecord | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const visibleTourIds = useMemo(() => tours.slice((page - 1) * pageSize, page * pageSize).map((tour) => tour.id), [page, pageSize, tours]);
   const allVisibleSelected = visibleTourIds.length > 0 && visibleTourIds.every((tourId) => selectedTourIds.includes(tourId));
   const someVisibleSelected = visibleTourIds.some((tourId) => selectedTourIds.includes(tourId));
+  const hasActiveFilters =
+    query.trim().length > 0 ||
+    status !== 'all' ||
+    tourWasteFractionId !== undefined ||
+    firstDateFrom !== undefined ||
+    firstDateTo !== undefined ||
+    endDateFrom !== undefined ||
+    endDateTo !== undefined;
 
   useEffect(() => {
     const availableIds = new Set(tours.map((tour) => tour.id));
@@ -63,10 +107,16 @@ export const useWasteToursSelectionState = ({
   }, [tours]);
 
   useEffect(() => {
-    if (query.trim().length > 0 || status !== 'all') {
-      setFiltersOpen(true);
+    if (!filterDialogOpen) {
+      setDraftQuery(query);
+      setDraftStatus(status);
+      setDraftTourWasteFractionId(tourWasteFractionId);
+      setDraftFirstDateFrom(firstDateFrom);
+      setDraftFirstDateTo(firstDateTo);
+      setDraftEndDateFrom(endDateFrom);
+      setDraftEndDateTo(endDateTo);
     }
-  }, [query, status]);
+  }, [endDateFrom, endDateTo, filterDialogOpen, firstDateFrom, firstDateTo, query, status, tourWasteFractionId]);
 
   const toggleSelectAllVisible = (checked: boolean) => {
     setSelectedTourIds((current) => {
@@ -87,8 +137,23 @@ export const useWasteToursSelectionState = ({
   return {
     selectedTourIds,
     setSelectedTourIds,
-    filtersOpen,
-    setFiltersOpen,
+    filterDialogOpen,
+    setFilterDialogOpen,
+    draftQuery,
+    setDraftQuery,
+    draftStatus,
+    setDraftStatus,
+    draftTourWasteFractionId,
+    setDraftTourWasteFractionId,
+    draftFirstDateFrom,
+    setDraftFirstDateFrom,
+    draftFirstDateTo,
+    setDraftFirstDateTo,
+    draftEndDateFrom,
+    setDraftEndDateFrom,
+    draftEndDateTo,
+    setDraftEndDateTo,
+    hasActiveFilters,
     tourPendingDelete,
     setTourPendingDelete,
     bulkDeleteOpen,

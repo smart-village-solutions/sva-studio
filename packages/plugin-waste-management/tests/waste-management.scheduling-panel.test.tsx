@@ -8,8 +8,20 @@ const navigateMock = vi.fn();
 const controllerMock = vi.hoisted(() => ({
   loading: false,
   error: null,
-  lastOutcome: 'create-tour-success' as const,
+  lastOutcome: 'create-success' as const,
   overview: null as null | {
+    holidayRules?: readonly {
+      id: string;
+      holidayDate: string;
+      holidayName: string;
+      year: number;
+      stateCode: string;
+      sourceStatus: string;
+      configurationStatus: string;
+      conflictStatus: string;
+      createdAt: string;
+      updatedAt: string;
+    }[];
     globalDateShifts: readonly {
       id: string;
       originalDate: string;
@@ -71,6 +83,7 @@ vi.mock('../src/waste-management.scheduling-panel.views.js', () => ({
   WasteSchedulingCreateFormView: () => <div>create-form</div>,
   WasteSchedulingDialogs: () => <div>dialogs</div>,
   WasteSchedulingGlobalFormView: () => <div>global-form</div>,
+  WasteSchedulingHolidayFormView: () => <div>holiday-form</div>,
   WasteSchedulingListView: () => <div>list</div>,
   WasteSchedulingTourFormView: () => <div>tour-form</div>,
 }));
@@ -90,7 +103,7 @@ describe('WasteSchedulingPanel', () => {
     controllerMock.setLastOutcome.mockReset();
     controllerMock.loading = false;
     controllerMock.error = null;
-    controllerMock.lastOutcome = 'create-tour-success';
+    controllerMock.lastOutcome = 'create-success';
     controllerMock.overview = null;
     controllerMock.tourShiftForm = { id: 'tour-form-1' };
     controllerMock.globalShiftForm = { id: 'global-form-1' };
@@ -105,7 +118,7 @@ describe('WasteSchedulingPanel', () => {
           fractionsView: 'list',
           toursView: 'list',
           locationsView: 'list',
-          schedulingView: 'create-tour',
+          schedulingView: 'create',
           q: '',
           page: 1,
           pageSize: 25,
@@ -117,6 +130,8 @@ describe('WasteSchedulingPanel', () => {
           cityId: undefined,
           wasteFractionId: undefined,
           tourId: undefined,
+          schedulingEntryType: 'tour-shift',
+          schedulingEntryId: undefined,
           tourDateShiftId: undefined,
           globalDateShiftId: undefined,
         }}
@@ -131,8 +146,8 @@ describe('WasteSchedulingPanel', () => {
       to: '/plugins/waste-management',
       search: expect.objectContaining({
         schedulingView: 'list',
-        tourDateShiftId: undefined,
-        globalDateShiftId: undefined,
+        schedulingEntryType: undefined,
+        schedulingEntryId: undefined,
       }),
       replace: true,
     });
@@ -142,6 +157,7 @@ describe('WasteSchedulingPanel', () => {
     controllerMock.lastOutcome = null;
     controllerMock.overview = {
       globalDateShifts: [],
+      holidayRules: [],
       tourDateShifts: [
         {
           id: 'tour-shift-99',
@@ -165,7 +181,7 @@ describe('WasteSchedulingPanel', () => {
           fractionsView: 'list',
           toursView: 'list',
           locationsView: 'list',
-          schedulingView: 'edit-tour',
+          schedulingView: 'edit',
           q: '',
           page: 1,
           pageSize: 25,
@@ -177,6 +193,8 @@ describe('WasteSchedulingPanel', () => {
           cityId: undefined,
           wasteFractionId: undefined,
           tourId: undefined,
+          schedulingEntryType: 'tour-shift',
+          schedulingEntryId: 'tour-shift-99',
           tourDateShiftId: 'tour-shift-99',
           globalDateShiftId: undefined,
         }}
@@ -216,17 +234,20 @@ describe('WasteSchedulingPanel', () => {
           cityId: undefined,
           wasteFractionId: undefined,
           tourId: undefined,
+          schedulingEntryType: 'tour-shift',
+          schedulingEntryId: undefined,
           tourDateShiftId: undefined,
           globalDateShiftId: undefined,
         }}
       />
     );
 
-    expect(view.getByText('create-form')).toBeTruthy();
+    expect(view.getAllByText('create-form').length).toBeGreaterThan(0);
   });
 
-  it('navigates back to the list when the global edit route misses the shift id', () => {
+  it('navigates back to the list when the shared edit route misses the entry id', () => {
     controllerMock.lastOutcome = null;
+    controllerMock.overview = { holidayRules: [], globalDateShifts: [], tourDateShifts: [] };
 
     render(
       <WasteSchedulingPanel
@@ -236,7 +257,7 @@ describe('WasteSchedulingPanel', () => {
           fractionsView: 'list',
           toursView: 'list',
           locationsView: 'list',
-          schedulingView: 'edit-global',
+          schedulingView: 'edit',
           q: '',
           page: 1,
           pageSize: 25,
@@ -248,6 +269,8 @@ describe('WasteSchedulingPanel', () => {
           cityId: undefined,
           wasteFractionId: undefined,
           tourId: undefined,
+          schedulingEntryType: 'global-shift',
+          schedulingEntryId: undefined,
           tourDateShiftId: undefined,
           globalDateShiftId: undefined,
         }}
@@ -258,8 +281,8 @@ describe('WasteSchedulingPanel', () => {
       to: '/plugins/waste-management',
       search: expect.objectContaining({
         schedulingView: 'list',
-        tourDateShiftId: undefined,
-        globalDateShiftId: undefined,
+        schedulingEntryType: undefined,
+        schedulingEntryId: undefined,
       }),
       replace: true,
     });

@@ -142,6 +142,8 @@ const createBaseSearch = () => ({
   cityId: undefined,
   wasteFractionId: undefined,
   tourId: undefined,
+  schedulingEntryType: undefined,
+  schedulingEntryId: undefined,
   tourDateShiftId: undefined,
   globalDateShiftId: undefined,
 });
@@ -168,6 +170,7 @@ describe('waste-management low coverage views', () => {
           projectUrl: 'https://tenant-a.supabase.co',
           schemaName: 'wm',
           enabled: true,
+          holidayStateCode: '',
           databaseUrl: 'postgresql://db',
           serviceRoleKey: 'secret',
           customRecurrencePresets: [],
@@ -186,6 +189,57 @@ describe('waste-management low coverage views', () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(screen.getByText('common.active')).toBeTruthy();
+  });
+
+  it('updates the holiday state selection through the settings form reducer', () => {
+    const onChange = vi.fn();
+
+    render(
+      <WasteSettingsForm
+        form={{
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          schemaName: 'wm',
+          enabled: true,
+          holidayStateCode: '',
+          databaseUrl: 'postgresql://db',
+          serviceRoleKey: 'secret',
+          customRecurrencePresets: [],
+          deletedPresetFallbacks: {},
+        }}
+        saving={false}
+        onSubmit={(event) => event.preventDefault()}
+        onChange={onChange}
+      />
+    );
+
+    const holidayStateSelect = document.getElementById('waste-settings-holiday-state-code');
+    expect(holidayStateSelect).toBeTruthy();
+
+    fireEvent.change(holidayStateSelect as Element, {
+      target: { value: 'NW' },
+    });
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const updater = onChange.mock.calls[0]?.[0];
+    expect(typeof updater).toBe('function');
+    expect(
+      updater({
+        provider: 'supabase',
+        projectUrl: 'https://tenant-a.supabase.co',
+        schemaName: 'wm',
+        enabled: true,
+        holidayStateCode: '',
+        databaseUrl: 'postgresql://db',
+        serviceRoleKey: 'secret',
+        customRecurrencePresets: [],
+        deletedPresetFallbacks: {},
+      })
+    ).toEqual(
+      expect.objectContaining({
+        holidayStateCode: 'NW',
+      })
+    );
   });
 
   it('renders the disabled switch branch and toggles an unchecked switch directly', () => {
@@ -325,8 +379,8 @@ describe('waste-management low coverage views', () => {
       to: '/plugins/waste-management',
       search: expect.objectContaining({
         schedulingView: 'list',
-        globalDateShiftId: undefined,
-        tourDateShiftId: undefined,
+        schedulingEntryType: undefined,
+        schedulingEntryId: undefined,
       }),
     });
   });
@@ -357,7 +411,7 @@ describe('waste-management low coverage views', () => {
 
     expect(screen.getByText('variant:tour')).toBeTruthy();
     fireEvent.change(screen.getByRole('combobox'), {
-      target: { value: 'global' },
+      target: { value: 'global-shift' },
     });
 
     expect(screen.getByText('variant:global')).toBeTruthy();

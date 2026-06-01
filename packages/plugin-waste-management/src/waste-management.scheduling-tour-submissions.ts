@@ -36,7 +36,7 @@ export const createWasteSchedulingTourSubmitHandlers = ({
       await loadOverview(true);
       startTransition(() => {
         state.setDialogOpen(false);
-        state.setLastOutcome(mode === 'create' ? 'create-tour-success' : 'update-tour-success');
+        state.setLastOutcome(mode === 'create' ? 'create-success' : 'update-success');
         state.setMessage({
           kind: 'success',
           text:

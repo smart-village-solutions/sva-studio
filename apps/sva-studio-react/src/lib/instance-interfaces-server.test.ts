@@ -238,6 +238,72 @@ describe('instance-interfaces-server', () => {
     );
   });
 
+  it('preserves waste-specific supabase public config fields on interface updates', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'existing-supabase-id',
+      instanceId: 'de-test',
+      typeKey: 'supabase',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Existing Supabase',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'database',
+      baseUrl: 'https://tenant.supabase.co',
+      authMode: 'service_role',
+      publicConfig: {
+        projectUrl: 'https://tenant.supabase.co',
+        schemaName: 'wm',
+        holidayStateCode: 'NW',
+        lastHolidaySyncStatus: 'success',
+      },
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:existing-supabase-id:{"databaseUrl":"postgres://db","serviceRoleKey":"service-key"}',
+      statusCheckKind: 'supabase',
+      visibleStatus: 'ok',
+      createdAt: '2026-05-12T08:00:00.000Z',
+      updatedAt: '2026-05-12T08:00:00.000Z',
+    });
+
+    const { upsertStoredInterface } = await import('./instance-interfaces-server');
+
+    await expect(
+      upsertStoredInterface(
+        'de-test',
+        {
+          type: 'supabase',
+          name: 'Updated Supabase',
+          enabled: true,
+          config: {
+            projectUrl: 'https://tenant.supabase.co',
+            schemaName: 'wm',
+            databaseUrl: '',
+            serviceRoleKey: '',
+          },
+        },
+        'existing-supabase-id'
+      )
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'existing-supabase-id',
+        type: 'supabase',
+      })
+    );
+
+    expect(state.saveExternalInterfaceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'existing-supabase-id',
+        publicConfig: expect.objectContaining({
+          projectUrl: 'https://tenant.supabase.co',
+          schemaName: 'wm',
+          holidayStateCode: 'NW',
+          lastHolidaySyncStatus: 'success',
+        }),
+      })
+    );
+  });
+
   it('fails closed when existing secrets can no longer be decrypted during updates', async () => {
     state.loadExternalInterfaceRecordById.mockResolvedValue({
       id: 'existing-interface-id',

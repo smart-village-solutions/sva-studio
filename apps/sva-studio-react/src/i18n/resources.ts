@@ -6448,7 +6448,7 @@ const mergeTranslationBranch = (
     }
 
     if (target[key] !== undefined) {
-      if (isRepeatedSource && target[key] === value) {
+      if (target[key] === value) {
         continue;
       }
       throw new Error(`duplicate_i18n_key:${locale}:${path}`);
@@ -6463,6 +6463,9 @@ const mergeTranslationBranch = (
 const mergedPluginSourcesByLocale = Object.fromEntries(
   Object.keys(i18nResources).map((locale) => [locale, new WeakSet<object>()])
 ) as Record<SupportedLocale, WeakSet<object>>;
+const mergedPluginSourceSignaturesByLocale = Object.fromEntries(
+  Object.keys(i18nResources).map((locale) => [locale, new Set<string>()])
+) as Record<SupportedLocale, Set<string>>;
 
 export const mergeI18nResources = (
   resources: Readonly<Record<SupportedLocale, Readonly<Record<string, unknown>>>>
@@ -6475,7 +6478,10 @@ export const mergeI18nResources = (
     const source = resources[locale];
     const target = mutableResources[locale] as Record<string, TranslationNode>;
     const sourceRecord = source as Record<string, TranslationNode>;
-    const isRepeatedSource = mergedPluginSourcesByLocale[locale].has(sourceRecord);
+    const sourceSignature = JSON.stringify(sourceRecord);
+    const isRepeatedSource =
+      mergedPluginSourcesByLocale[locale].has(sourceRecord) ||
+      mergedPluginSourceSignaturesByLocale[locale].has(sourceSignature);
     mergedResources[locale] = mergeTranslationBranch(
       { ...target },
       sourceRecord,
@@ -6491,6 +6497,7 @@ export const mergeI18nResources = (
 
   for (const [locale, source] of mergedSources) {
     mergedPluginSourcesByLocale[locale].add(source);
+    mergedPluginSourceSignaturesByLocale[locale].add(JSON.stringify(source));
   }
 };
 

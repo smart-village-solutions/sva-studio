@@ -18,12 +18,14 @@ export const WasteMasterDataFractionsContent = ({
   fractions,
   fractionsSortBy,
   fractionsSortDirection,
+  fractionsStatus,
   onOpenCreateFraction,
   onOpenEditFraction,
   onOpenDeleteFraction,
   onDeleteFractions,
   onToggleFractionStatus,
   onFractionsSortChange,
+  onFractionsStatusChange,
   page,
   pageSize,
   onPageChange,
@@ -32,12 +34,19 @@ export const WasteMasterDataFractionsContent = ({
   saving,
 }: WasteFractionsContentProps) => {
   const [fractionPendingDelete, setFractionPendingDelete] = useState<WasteFractionRecord | null>(null);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [draftFractionsStatus, setDraftFractionsStatus] = useState(fractionsStatus);
   const [sortField, setSortField] = useState(fractionsSortBy);
   const [sortDirection, setSortDirection] = useState(fractionsSortDirection);
   useEffect(() => {
     setSortField(fractionsSortBy);
     setSortDirection(fractionsSortDirection);
   }, [fractionsSortBy, fractionsSortDirection]);
+  useEffect(() => {
+    if (!filterDialogOpen) {
+      setDraftFractionsStatus(fractionsStatus);
+    }
+  }, [filterDialogOpen, fractionsStatus]);
   const sortedFractions = useMemo(() => {
     const getSortValue = (fraction: WasteFractionRecord, field: typeof sortField): string => {
       switch (field) {
@@ -100,6 +109,22 @@ export const WasteMasterDataFractionsContent = ({
         onFractionsSortChange={(nextSortBy, nextSortDirection) => {
           setSortField(nextSortBy);
           setSortDirection(nextSortDirection);
+        }}
+        fractionsStatus={fractionsStatus}
+        filterDialogOpen={filterDialogOpen}
+        draftFractionsStatus={draftFractionsStatus}
+        onOpenFilterDialog={() => {
+          setDraftFractionsStatus(fractionsStatus);
+          setFilterDialogOpen(true);
+        }}
+        onFilterDialogOpenChange={setFilterDialogOpen}
+        onDraftFractionsStatusChange={setDraftFractionsStatus}
+        onApplyFractionsStatus={() => {
+          onFractionsStatusChange(draftFractionsStatus);
+          setFilterDialogOpen(false);
+        }}
+        onResetFractionsStatus={() => {
+          onFractionsStatusChange('all');
         }}
         onPageChange={onPageChange}
         onPageSizeChange={onPageSizeChange}

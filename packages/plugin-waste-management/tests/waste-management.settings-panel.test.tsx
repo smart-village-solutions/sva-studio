@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WasteSettingsPanel } from '../src/waste-management.settings-panel.js';
 
 const getWasteManagementSettingsMock = vi.hoisted(() => vi.fn());
+const startWasteManagementHolidaySyncMock = vi.hoisted(() => vi.fn());
 const updateWasteManagementSettingsMock = vi.hoisted(() => vi.fn());
 const capturedForms = vi.hoisted(() => [] as unknown[]);
 
@@ -17,12 +18,14 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
+  Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
   StudioErrorState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('../src/waste-management.api.js', () => ({
   getWasteManagementSettings: getWasteManagementSettingsMock,
+  startWasteManagementHolidaySync: startWasteManagementHolidaySyncMock,
   updateWasteManagementSettings: updateWasteManagementSettingsMock,
 }));
 
@@ -63,6 +66,7 @@ afterEach(() => {
   cleanup();
   capturedForms.length = 0;
   getWasteManagementSettingsMock.mockReset();
+  startWasteManagementHolidaySyncMock.mockReset();
   updateWasteManagementSettingsMock.mockReset();
 });
 
@@ -109,6 +113,49 @@ describe('WasteSettingsPanel', () => {
     });
     await waitFor(() => {
       expect(screen.getByText('settings.messages.saveSuccessWithHolidaySync:{"status":"partial_success"}')).toBeTruthy();
+    });
+  });
+
+  it('runs the manual holiday sync from the settings tab and refreshes the local settings state', async () => {
+    getWasteManagementSettingsMock.mockResolvedValueOnce({
+      instanceId: 'tenant-a',
+      provider: 'supabase',
+      projectUrl: 'https://tenant-a.supabase.co',
+      schemaName: 'wm',
+      enabled: true,
+      databaseUrlConfigured: true,
+      serviceRoleKeyConfigured: true,
+      visibleStatus: 'ok',
+      holidayStateCode: 'BB',
+      customRecurrencePresets: [],
+    });
+    startWasteManagementHolidaySyncMock.mockResolvedValueOnce({
+      instanceId: 'tenant-a',
+      provider: 'supabase',
+      projectUrl: 'https://tenant-a.supabase.co',
+      schemaName: 'wm',
+      enabled: true,
+      databaseUrlConfigured: true,
+      serviceRoleKeyConfigured: true,
+      visibleStatus: 'ok',
+      holidayStateCode: 'BB',
+      lastHolidaySyncStatus: 'success',
+      customRecurrencePresets: [],
+    });
+
+    render(<WasteSettingsPanel />);
+
+    await waitFor(() => {
+      expect(capturedForms.at(-1)).toEqual(expect.objectContaining({ holidayStateCode: 'BB' }));
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'settings.actions.runHolidaySync' }));
+
+    await waitFor(() => {
+      expect(startWasteManagementHolidaySyncMock).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(screen.getByText('settings.messages.holidaySyncSuccess:{"status":"success"}')).toBeTruthy();
     });
   });
 });

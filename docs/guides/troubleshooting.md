@@ -72,6 +72,15 @@ Dieses Dokument bündelt typische Störungen und schnelle Diagnosepfade für lok
 
 **Typische Ursache:** Realm und Redirects stimmen bereits, aber Studio kennt das tenant-spezifische Client-Secret noch nicht und faellt deshalb auf `SVA_AUTH_CLIENT_SECRET` zurueck.
 
+**Kanonischer Fix lokal:**
+
+```bash
+pnpm env:doctor:local-keycloak --json
+pnpm env:repair:local-keycloak -- --json
+```
+
+Wenn der Doctor danach weiter `tenant_auth_client_secret_missing` oder `tenant_admin_client_secret_missing` meldet, liegt kein normal reparierbarer lokaler Driftfall mehr vor, sondern ein fehlender oder in Keycloak nicht lesbarer Tenant-Client-Vertrag.
+
 ### 2. OIDC-State oder CSRF schlägt fehl
 
 **Symptom:** Login startet, endet aber mit `state invalid`, Session- oder CSRF-Fehler.

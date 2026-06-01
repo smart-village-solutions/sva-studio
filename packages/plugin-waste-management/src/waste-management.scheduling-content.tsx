@@ -1,10 +1,9 @@
-import type { WasteGlobalDateShiftRecord, WasteHolidayRuleRecord, WasteTourDateShiftRecord, WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioEmptyState } from '@sva/studio-ui-react';
 
-import { WasteHolidayRulesList } from './waste-management.holiday-rules-list.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { WasteSchedulingShiftsTable } from './waste-management.scheduling-shifts-table.js';
+import type { WasteSchedulingTableEntry } from './waste-management.scheduling.shared.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
 
 export const WasteSchedulingEmptyState = ({
@@ -31,16 +30,12 @@ export const WasteSchedulingEmptyState = ({
 
 export const WasteSchedulingContent = ({
   message,
-  globalDateShifts,
-  tourDateShifts,
-  holidayRules,
-  availableTours,
+  schedulingEntries,
   onOpenCreateShiftDialog,
+  onEditHolidayRule,
   onEditGlobalShiftDialog,
   onEditTourShiftDialog,
   onDeleteSchedulingRows,
-  onSaveHolidayRule,
-  onRunHolidaySync,
   saving,
   page,
   pageSize,
@@ -49,22 +44,12 @@ export const WasteSchedulingContent = ({
   onPageSizeChange,
 }: {
   readonly message: StatusMessage | null;
-  readonly globalDateShifts: readonly WasteGlobalDateShiftRecord[];
-  readonly tourDateShifts: readonly WasteTourDateShiftRecord[];
-  readonly holidayRules: readonly WasteHolidayRuleRecord[];
-  readonly availableTours: readonly WasteTourRecord[];
+  readonly schedulingEntries: readonly WasteSchedulingTableEntry[];
   readonly onOpenCreateShiftDialog: () => void;
-  readonly onEditGlobalShiftDialog: (shift: WasteGlobalDateShiftRecord) => void;
-  readonly onEditTourShiftDialog: (shift: WasteTourDateShiftRecord) => void;
-  readonly onDeleteSchedulingRows: (rows: readonly import('./waste-management.scheduling.shared.js').WasteSchedulingTableRow[]) => Promise<void>;
-  readonly onSaveHolidayRule: (
-    rule: WasteHolidayRuleRecord,
-    input: {
-      readonly scope?: WasteHolidayRuleRecord['scope'];
-      readonly strategy?: WasteHolidayRuleRecord['strategy'];
-    }
-  ) => Promise<void>;
-  readonly onRunHolidaySync: () => Promise<void>;
+  readonly onEditHolidayRule: (rule: import('@sva/plugin-sdk').WasteHolidayRuleRecord) => void;
+  readonly onEditGlobalShiftDialog: (shift: import('@sva/plugin-sdk').WasteGlobalDateShiftRecord) => void;
+  readonly onEditTourShiftDialog: (shift: import('@sva/plugin-sdk').WasteTourDateShiftRecord) => void;
+  readonly onDeleteSchedulingRows: (rows: readonly WasteSchedulingTableEntry[]) => Promise<void>;
   readonly saving: boolean;
   readonly page: number;
   readonly pageSize: number;
@@ -77,17 +62,10 @@ export const WasteSchedulingContent = ({
   return (
     <div className="space-y-4">
       <StatusNotice message={message} />
-      <WasteHolidayRulesList
-        rules={holidayRules}
-        saving={saving}
-        onRunSync={onRunHolidaySync}
-        onSaveRule={onSaveHolidayRule}
-      />
       <WasteSchedulingShiftsTable
-        globalDateShifts={globalDateShifts}
-        tourDateShifts={tourDateShifts}
-        availableTours={availableTours}
+        entries={schedulingEntries}
         onOpenCreateShiftDialog={onOpenCreateShiftDialog}
+        onEditHolidayRule={onEditHolidayRule}
         onEditGlobalShiftDialog={onEditGlobalShiftDialog}
         onEditTourShiftDialog={onEditTourShiftDialog}
         onDeleteSchedulingRows={onDeleteSchedulingRows}

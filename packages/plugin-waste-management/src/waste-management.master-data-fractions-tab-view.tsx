@@ -44,6 +44,7 @@ export const WasteMasterDataFractionsTabView = ({
       fractions={controller.filteredFractions}
       fractionsSortBy={search.fractionsSortBy}
       fractionsSortDirection={search.fractionsSortDirection}
+      fractionsStatus={search.fractionsStatus ?? 'all'}
       onOpenCreateFraction={() => {
         controller.setDialogMode('create');
         controller.setDialogOpen(false);
@@ -73,6 +74,12 @@ export const WasteMasterDataFractionsTabView = ({
         void navigate({
           to: '/plugins/waste-management',
           search: { ...search, fractionsSortBy: sortBy, fractionsSortDirection: sortDirection },
+        });
+      }}
+      onFractionsStatusChange={(fractionsStatus) => {
+        void navigate({
+          to: '/plugins/waste-management',
+          search: { ...search, fractionsStatus, page: 1 },
         });
       }}
       page={search.page}

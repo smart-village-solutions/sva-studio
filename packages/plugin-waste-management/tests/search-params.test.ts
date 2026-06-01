@@ -25,6 +25,7 @@ describe('waste-management search params', () => {
       q: '',
       page: 1,
       pageSize: 25,
+      fractionsStatus: 'all',
       status: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',
@@ -32,8 +33,16 @@ describe('waste-management search params', () => {
       regionId: undefined,
       cityId: undefined,
       wasteFractionId: undefined,
+      tourWasteFractionId: undefined,
       collectionLocationId: undefined,
       tourId: undefined,
+      duplicateFromTourId: undefined,
+      firstDateFrom: undefined,
+      firstDateTo: undefined,
+      endDateFrom: undefined,
+      endDateTo: undefined,
+      schedulingEntryType: undefined,
+      schedulingEntryId: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -47,6 +56,7 @@ describe('waste-management search params', () => {
         q: 'Bio',
         page: '3',
         pageSize: '50',
+        fractionsStatus: 'inactive',
         status: 'active',
         shiftContext: 'tour',
         fractionsSortBy: 'color',
@@ -54,10 +64,15 @@ describe('waste-management search params', () => {
         regionId: 'region-1',
         cityId: 'city-1',
         wasteFractionId: 'fraction-1',
+        tourWasteFractionId: 'fraction-2',
         collectionLocationId: 'location-1',
         tourId: 'tour-1',
-        tourDateShiftId: 'tour-shift-1',
-        globalDateShiftId: 'global-shift-1',
+        firstDateFrom: '2026-01-01',
+        firstDateTo: '2026-03-31',
+        endDateFrom: '2026-10-01',
+        endDateTo: '2026-12-31',
+        schedulingEntryType: 'tour-shift',
+        schedulingEntryId: 'tour-shift-1',
       })
     ).toEqual({
       tab: 'locations',
@@ -69,6 +84,7 @@ describe('waste-management search params', () => {
       q: 'Bio',
       page: 3,
       pageSize: 50,
+      fractionsStatus: 'inactive',
       status: 'active',
       shiftContext: 'tour',
       fractionsSortBy: 'color',
@@ -76,10 +92,18 @@ describe('waste-management search params', () => {
       regionId: 'region-1',
       cityId: 'city-1',
       wasteFractionId: 'fraction-1',
+      tourWasteFractionId: 'fraction-2',
       collectionLocationId: 'location-1',
       tourId: 'tour-1',
-      tourDateShiftId: 'tour-shift-1',
-      globalDateShiftId: 'global-shift-1',
+      duplicateFromTourId: undefined,
+      firstDateFrom: '2026-01-01',
+      firstDateTo: '2026-03-31',
+      endDateFrom: '2026-10-01',
+      endDateTo: '2026-12-31',
+      schedulingEntryType: 'tour-shift',
+      schedulingEntryId: 'tour-shift-1',
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
     });
   });
 
@@ -99,6 +123,7 @@ describe('waste-management search params', () => {
       q: '',
       page: 1,
       pageSize: 25,
+      fractionsStatus: 'all',
       status: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',
@@ -106,8 +131,16 @@ describe('waste-management search params', () => {
       regionId: undefined,
       cityId: undefined,
       wasteFractionId: undefined,
+      tourWasteFractionId: undefined,
       collectionLocationId: undefined,
       tourId: undefined,
+      duplicateFromTourId: undefined,
+      firstDateFrom: undefined,
+      firstDateTo: undefined,
+      endDateFrom: undefined,
+      endDateTo: undefined,
+      schedulingEntryType: undefined,
+      schedulingEntryId: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -129,6 +162,7 @@ describe('waste-management search params', () => {
       q: '',
       page: 1,
       pageSize: 25,
+      fractionsStatus: 'all',
       status: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',
@@ -136,8 +170,16 @@ describe('waste-management search params', () => {
       regionId: undefined,
       cityId: undefined,
       wasteFractionId: undefined,
+      tourWasteFractionId: undefined,
       collectionLocationId: undefined,
       tourId: undefined,
+      duplicateFromTourId: undefined,
+      firstDateFrom: undefined,
+      firstDateTo: undefined,
+      endDateFrom: undefined,
+      endDateTo: undefined,
+      schedulingEntryType: undefined,
+      schedulingEntryId: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -159,6 +201,7 @@ describe('waste-management search params', () => {
       q: '',
       page: 3,
       pageSize: 25,
+      fractionsStatus: 'all',
       status: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',
@@ -166,8 +209,16 @@ describe('waste-management search params', () => {
       regionId: undefined,
       cityId: undefined,
       wasteFractionId: undefined,
+      tourWasteFractionId: undefined,
       collectionLocationId: undefined,
       tourId: undefined,
+      duplicateFromTourId: undefined,
+      firstDateFrom: undefined,
+      firstDateTo: undefined,
+      endDateFrom: undefined,
+      endDateTo: undefined,
+      schedulingEntryType: undefined,
+      schedulingEntryId: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -190,6 +241,7 @@ describe('waste-management search params', () => {
       q: '',
       page: 1,
       pageSize: 25,
+      fractionsStatus: 'all',
       status: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',
@@ -197,11 +249,102 @@ describe('waste-management search params', () => {
       regionId: undefined,
       cityId: undefined,
       wasteFractionId: undefined,
+      tourWasteFractionId: undefined,
       collectionLocationId: undefined,
       tourId: undefined,
       duplicateFromTourId: 'tour-42',
+      firstDateFrom: undefined,
+      firstDateTo: undefined,
+      endDateFrom: undefined,
+      endDateTo: undefined,
+      schedulingEntryType: undefined,
+      schedulingEntryId: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
+  });
+
+  it('falls back to all for invalid fractionsStatus values and keeps recognized values stable', () => {
+    expect(
+      normalizeWasteManagementSearchParams({
+        tab: 'fractions',
+        masterDataTab: 'fractions',
+        fractionsStatus: 'bogus',
+      })
+    ).toEqual({
+      tab: 'fractions',
+      masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      fractionsStatus: 'all',
+      status: 'all',
+      shiftContext: 'all',
+      fractionsSortBy: 'name',
+      fractionsSortDirection: 'asc',
+      regionId: undefined,
+      cityId: undefined,
+      wasteFractionId: undefined,
+      tourWasteFractionId: undefined,
+      collectionLocationId: undefined,
+      tourId: undefined,
+      duplicateFromTourId: undefined,
+      firstDateFrom: undefined,
+      firstDateTo: undefined,
+      endDateFrom: undefined,
+      endDateTo: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
+    });
+
+    expect(
+      normalizeWasteManagementSearchParams({
+        tab: 'fractions',
+        masterDataTab: 'fractions',
+        fractionsStatus: 'inactive',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        fractionsStatus: 'inactive',
+      })
+    );
+  });
+
+  it('normalizes optional date range filters as trimmed ISO dates only', () => {
+    expect(
+      normalizeWasteManagementSearchParams({
+        tab: 'tours',
+        firstDateFrom: ' 2026-01-01 ',
+        firstDateTo: '2026-02-30',
+        endDateFrom: 'bogus',
+        endDateTo: '2026-12-31',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        firstDateFrom: '2026-01-01',
+        firstDateTo: undefined,
+        endDateFrom: undefined,
+        endDateTo: '2026-12-31',
+      })
+    );
+  });
+
+  it('normalizes tourWasteFractionId as a dedicated optional trimmed search param', () => {
+    expect(
+      normalizeWasteManagementSearchParams({
+        tab: 'tours',
+        wasteFractionId: 'fraction-master-data',
+        tourWasteFractionId: '  fraction-tour-filter  ',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        wasteFractionId: 'fraction-master-data',
+        tourWasteFractionId: 'fraction-tour-filter',
+      })
+    );
   });
 });

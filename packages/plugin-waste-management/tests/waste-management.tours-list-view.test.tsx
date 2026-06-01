@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteToursListView } from '../src/waste-management.tours-list-view.js';
 import type { WasteManagementSearchParams } from '../src/search-params.js';
@@ -69,6 +69,7 @@ const createController = (
 ): WasteToursController =>
   ({
     tours: [],
+    overview: null,
     assignmentContextLoading: false,
     message: null,
     availableFractions: [],
@@ -92,6 +93,10 @@ const createController = (
 describe('WasteToursListView', () => {
   beforeEach(() => {
     navigateMock.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it('clears stale success state before opening the create form', () => {
@@ -122,5 +127,19 @@ describe('WasteToursListView', () => {
       to: '/plugins/waste-management',
       search: expect.objectContaining({ toursView: 'edit', tourId: 'tour-1' }),
     });
+  });
+
+  it('keeps the tours list view visible when filters hide all tours but overview data still exists', () => {
+    const controller = createController({
+      tours: [],
+      overview: {
+        tours: [{ id: 'tour-1', name: 'Tour 1' }],
+      },
+    });
+
+    render(<WasteToursListView controller={controller} search={createSearch()} />);
+
+    expect(screen.getByRole('button', { name: 'open-create' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'empty-create' })).toBeNull();
   });
 });

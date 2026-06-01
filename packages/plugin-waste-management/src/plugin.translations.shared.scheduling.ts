@@ -59,6 +59,28 @@ type WasteManagementToursYearCalendarCopy = Readonly<{
 type WasteManagementToursCopy = Readonly<{
   actions: CrudActionsCopy;
   fields: Readonly<Record<string, string>>;
+  filters?: Readonly<{
+    open: string;
+    reset: string;
+    title: string;
+    description: string;
+    nameLabel: string;
+    namePlaceholder: string;
+    statusLabel: string;
+    fractionLabel: string;
+    fractionAll: string;
+    firstDateFromLabel: string;
+    firstDateToLabel: string;
+    endDateFromLabel: string;
+    endDateToLabel: string;
+    cancel: string;
+    apply: string;
+    status: Readonly<{
+      all: string;
+      active: string;
+      inactive: string;
+    }>;
+  }>;
   sections?: Readonly<Record<string, string>>;
   fieldHints?: Readonly<Record<string, string>>;
   statusHints?: Readonly<Record<string, string>>;
@@ -139,6 +161,7 @@ export const createWasteManagementToursTranslations = <const TCopy extends Waste
         {
           actions: createCrudActions(copy.actions),
           fields: copy.fields,
+          filters: copy.filters,
           sections: copy.sections,
           fieldHints: copy.fieldHints,
           statusHints: copy.statusHints,

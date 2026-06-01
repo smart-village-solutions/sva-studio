@@ -33,12 +33,15 @@ describe('waste-management.master-data.presentation', () => {
         q: 'hauptstraße',
         page: 1,
         pageSize: 25,
+        fractionsStatus: 'all',
         status: 'all',
         shiftContext: 'all',
         regionId: undefined,
         cityId: undefined,
         wasteFractionId: undefined,
         tourId: undefined,
+        fractionsSortBy: 'name',
+        fractionsSortDirection: 'asc',
       },
       {
         fractions: [],
@@ -101,5 +104,54 @@ describe('waste-management.master-data.presentation', () => {
 
     expect(locations).toHaveLength(1);
     expect(locations[0]?.id).toBe('location-1');
+  });
+
+  it('filters fractions by fractionsStatus without depending on the global status filter', () => {
+    const fractions = wasteMasterDataPresentation.filterFractions(
+      [
+        {
+          id: 'fraction-1',
+          name: 'Bio',
+          color: '#16A34A',
+          active: true,
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        },
+        {
+          id: 'fraction-2',
+          name: 'Papier',
+          color: '#2563EB',
+          active: false,
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        },
+      ],
+      {
+        tab: 'fractions',
+        masterDataTab: 'fractions',
+        fractionsView: 'list',
+        toursView: 'list',
+        locationsView: 'list',
+        schedulingView: 'list',
+        q: '',
+        page: 1,
+        pageSize: 25,
+        fractionsStatus: 'inactive',
+        status: 'all',
+        shiftContext: 'all',
+        fractionsSortBy: 'name',
+        fractionsSortDirection: 'asc',
+        regionId: undefined,
+        cityId: undefined,
+        wasteFractionId: undefined,
+        collectionLocationId: undefined,
+        tourId: undefined,
+        tourDateShiftId: undefined,
+        globalDateShiftId: undefined,
+      }
+    );
+
+    expect(fractions).toHaveLength(1);
+    expect(fractions[0]?.id).toBe('fraction-2');
   });
 });

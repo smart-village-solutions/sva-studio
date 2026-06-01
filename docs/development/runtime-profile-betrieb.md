@@ -118,11 +118,15 @@ Der lokale Dev-Auth-Modus ist unter `./lokaler-dev-auth-modus.md` dokumentiert. 
 pnpm env:up:local-keycloak
 pnpm env:status:local-keycloak
 pnpm env:doctor:local-keycloak
+pnpm env:repair:local-keycloak
+pnpm env:repair:local-keycloak -- --authoritative --approve-dangerous=local-keycloak:repair:authoritative
+pnpm env:verify:db-schema-snapshot
 pnpm env:smoke:local-keycloak
 pnpm env:migrate:local-keycloak
 pnpm env:update:local-keycloak
 pnpm env:down:local-keycloak
 pnpm env:reconcile:local-instance-registry
+pnpm env:reconcile:local-instance-registry -- --authoritative --approve-dangerous=local-keycloak:reconcile:authoritative
 ```
 
 Wichtig für den lokalen `local-keycloak`-Pfad:
@@ -139,10 +143,23 @@ Wichtig für den lokalen `local-keycloak`-Pfad:
 - Fehlen tenantlokaler Admin-Client oder tenantlokales Secret im Instanzdatensatz, schlagen Tenant-Mutationen fail-closed mit `tenant_admin_client_not_configured` oder `tenant_admin_client_secret_missing` fehl.
 - `pnpm env:up:local-keycloak` und `pnpm env:update:local-keycloak` führen auf der Instanz-Registry nur noch einen read-only Drift-Check aus. Sie schreiben keine Hostname-/Realm-/Client-Identität mehr still zurück.
 - Die explizite lokale Registry-Korrektur läuft nur noch über `pnpm env:reconcile:local-instance-registry`.
+- `pnpm env:repair:local-keycloak` ist der autoritative lokale Heilpfad fuer Drift in Migration, Registry-Identitaet und tenant-spezifischen Secrets. Er bleibt idempotent und fuehrt weder `down` noch `reset` noch einen kompletten Rebootstrap implizit aus.
+- Der Repair-Pfad nutzt im Default den Preserve-Modus fuer die lokale Instanz-Identitaet. Fuer bewusstes Ueberschreiben bestehender Werte steht `pnpm env:repair:local-keycloak -- --authoritative` zur Verfuegung.
+- Gefaehrliche Runtime-Pfade bleiben ohne explizites `--approve-dangerous=<token>` gesperrt. Fuer lokale autoritative Eingriffe sind aktuell mindestens `local-keycloak:repair:authoritative` und `local-keycloak:reconcile:authoritative` relevant.
 - Für neue lokale Umgebungen oder bewusst autoritative Korrekturen kann bei diesem expliziten Reconcile-Pfad `SVA_LOCAL_INSTANCE_IDENTITY_RECONCILE_MODE=authoritative` gesetzt werden. Dann schreibt die Reconcile diese Identitätsfelder gezielt auf das lokale Sollbild.
 - Ob erkannte lokale Identitätsdrift nur gewarnt oder hart geblockt wird, steuert `SVA_LOCAL_INSTANCE_IDENTITY_DRIFT_MODE=warn|fail`. Standard ist `warn`.
+- `pnpm env:verify:db-schema-snapshot` vergleicht den eingecheckten Snapshot `docs/development/studio-db-schema-final.sql` mit dem aktuellen lokalen migrationsbasierten DB-Stand. Runtime-/Infra-Schemata wie `graphile_worker` bleiben bewusst aus diesem Vergleich ausgeschlossen.
 - Wenn ein echter Tenant-Login lokal zwar funktioniert, Plugin- oder Admin-Zugriffe aber trotz sichtbarer Session-Rollen scheitern, liegt häufig Drift zwischen Keycloak-Subject und lokalem `iam.accounts`-Binding vor. `pnpm env:doctor:local-keycloak` meldet das mit `missing_actor_role_assignments` oder `missing_actor_organization_membership`, sobald `SVA_DOCTOR_KEYCLOAK_SUBJECT` und `SVA_DOCTOR_INSTANCE_ID` gesetzt sind.
 - Für gezielte Reparaturen steht `pnpm env:bind:local-user -- --instance-id=<instanz> --keycloak-subject=<subject> --copy-from-keycloak-subject=seed:system_admin` bereit. Alternativ können `--role-keys=...` und `--organization-ids=...` explizit gesetzt werden.
+
+Der kanonische Eskalationspfad fuer `local-keycloak` lautet damit:
+
+```text
+pnpm env:up:local-keycloak
+-> pnpm env:doctor:local-keycloak
+-> pnpm env:repair:local-keycloak
+-> pnpm env:reset:local-keycloak nur fuer echte Hard-Fail-Faelle
+```
 
 Für zusätzliche lokale Instanzen oder weitere lokale Datenbanken ist `../guides/lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
 
@@ -169,6 +186,14 @@ pnpm env:status:studio
 pnpm env:doctor:studio
 pnpm env:migrate:studio
 pnpm env:down:studio
+```
+
+Gefaehrliche Remote-Mutationen benoetigen zusaetzlich einen passenden Approval-Token, zum Beispiel:
+
+```bash
+pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint="Vorherigen Digest erneut deployen" --approve-dangerous=studio:deploy:app-only
+pnpm env:migrate:studio -- --approve-dangerous=studio:migrate
+pnpm env:down:studio -- --approve-dangerous=studio:down
 ```
 
 Der kanonische Pfad für `studio` ist jetzt geteilt:
@@ -349,6 +374,9 @@ Ausgabeformat pro Check:
 
 - `status`: `ok | warn | error | skipped`
 - `code`: stabiler Maschinen-Code
+- `reasonCode`: normalisierte Drift- oder Fehlerklasse fuer Repair- und Runbook-Entscheidungen
+- `repairable`: `true`, wenn der lokale Standard-Repair einen klaren Heilpfad besitzt
+- `recommendedAction`: kanonischer Folgepfad wie `env:migrate:local-keycloak`, `env:repair:local-keycloak` oder `env:verify:db-schema-snapshot`
 - `message`: menschenlesbare Kurzbeschreibung
 - `details`: nicht-sensitive Zusatzdiagnose
 
@@ -363,6 +391,8 @@ Beispiele für `details`:
 - `configDrift=["SVA_PARENT_DOMAIN","APP_DB_USER"]`
 - `channel="portainer-api"`
 - `appDbUser="sva_app"`
+- `reasonCode="tenant_auth_client_secret_missing"`
+- `recommendedAction="env:repair:local-keycloak"`
 
 ## Deploy-Reports
 
@@ -438,6 +468,8 @@ Für den produktionsnahen `studio`-Betrieb gilt:
 - `doctor` meldet `missing_actor_account` oder `missing_instance_membership`: Actor-/Membership-Kontext per `SVA_DOCTOR_KEYCLOAK_SUBJECT` gegen die Zielinstanz prüfen
 - bei neuer lokaler Instanz-DB zuerst `pnpm env:bootstrap:local-instance-db -- ...` verwenden statt manuell Tabellen oder User aus einer anderen Instanz zu kopieren
 - `doctor` oder `/health/ready` melden `schema_drift`: zuerst `pnpm env:migrate:<profil>`, dann `pnpm env:doctor:<profil>`
+- `doctor` meldet `tenant_auth_client_secret_missing` oder `tenant_admin_client_secret_missing`: zuerst `pnpm env:repair:local-keycloak`, erst danach einzelne Registry-Eintraege oder Keycloak-Clients manuell untersuchen
+- `doctor` meldet `schema_snapshot_drift`: `pnpm env:verify:db-schema-snapshot` ausfuehren; das ist Snapshot-Governance, kein Laufzeitblocker fuer `local-keycloak`
 - Tenant-Login scheitert mit `unauthorized_client` oder allgemeinem Tenant-Auth-Fehler: zuerst prüfen, ob für die Instanz ein tenant-spezifisches `auth_client_secret` in `iam.instances` hinterlegt und lesbar ist; der Plattform-Secret-Fallback greift für Tenant-Hosts bewusst nicht mehr
 - Remote-Deploy scheitert: unvollständige Portainer-Variablen in `deploy/portainer/.env.example`
 - Remote-Migration findet keinen lokalen `postgres`-Container: erwartbar bei Remote-Swarm; der Befehl startet stattdessen den dedizierten Swarm-Migrationsjob

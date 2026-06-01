@@ -127,4 +127,43 @@ describe('waste-management collection location handlers', () => {
     expect(deleteResponse.status).toBe(200);
     expect(deleteWasteCollectionLocation).toHaveBeenCalledWith('tenant-a', 'location-1');
   });
+
+  it('returns a specific persistence hint when the data source rejects collection locations without street references', async () => {
+    const response =
+      await wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal(
+        new Request('https://studio.test/api/v1/waste-management/collection-locations', {
+          method: 'POST',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            id: 'location-2',
+            cityId: 'city-1',
+            active: true,
+          }),
+        }),
+        actor,
+        {
+          ...createDeps(),
+          saveWasteCollectionLocation: vi.fn(async () => {
+            const error = new Error('null value in column "street_id"');
+            Object.assign(error, {
+              code: '23502',
+              table: 'waste_collection_locations',
+              column: 'street_id',
+            });
+            throw error;
+          }),
+          loadWasteCollectionLocationById: vi.fn(async () => null),
+        }
+      );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+        message:
+          'Der Waste-Abholort konnte nicht gespeichert werden, weil die angebundene Waste-Datenquelle derzeit eine Straße verlangt. "Alle Straßen" ist dort aktuell nicht zulässig.',
+      },
+      requestId: 'req-test',
+    });
+  });
 });

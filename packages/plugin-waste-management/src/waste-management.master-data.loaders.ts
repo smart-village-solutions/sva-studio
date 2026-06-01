@@ -24,13 +24,19 @@ export const useWasteMasterDataDataLoading = (
   const loadOverview = useCallback(
     async () => {
       try {
-        const [overviewResponse, outputResponse] = await Promise.all([
-          getWasteManagementMasterDataOverview(
-            tab === 'fractions' ? { scope: 'fractions' } : tab === 'locations' ? { scope: 'locations' } : undefined
-          ),
-          tab === 'locations' ? getWasteManagementOutputOverview() : Promise.resolve(null),
-        ]);
+        const overviewResponse = await getWasteManagementMasterDataOverview(
+          tab === 'fractions' ? { scope: 'fractions' } : tab === 'locations' ? { scope: 'locations' } : undefined
+        );
         if (!isMountedRef.current) return;
+        let outputResponse = null;
+        if (tab === 'locations') {
+          try {
+            outputResponse = await getWasteManagementOutputOverview();
+          } catch {
+            outputResponse = null;
+          }
+          if (!isMountedRef.current) return;
+        }
         setOverview(overviewResponse);
         setOutputOverview(outputResponse);
         setError(null);

@@ -7,7 +7,7 @@ import {
 } from '@sva/studio-ui-react';
 
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { Alert, AlertDescription } from '../../components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -25,6 +25,30 @@ import { createEmptyInstanceInterfaceDraft, instanceInterfaceTypeMeta, type Inst
 import { InterfaceForm, TypePickerDialog } from './-interfaces-page.dialogs';
 
 const DEFAULT_AVAILABLE_TYPES: readonly InstanceInterfaceType[] = ['mainserver', 's3'];
+
+const isInstanceInterfacesResponse = (
+  value: unknown
+): value is Readonly<{
+  instanceId: string;
+  availableTypes: readonly InstanceInterfaceType[];
+  entries: readonly InstanceInterface[];
+}> => {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const candidate = value as {
+    instanceId?: unknown;
+    availableTypes?: unknown;
+    entries?: unknown;
+  };
+
+  return (
+    typeof candidate.instanceId === 'string' &&
+    Array.isArray(candidate.availableTypes) &&
+    Array.isArray(candidate.entries)
+  );
+};
 
 const statusBadgeClass: Record<InstanceInterface['status'], string> = {
   connected: 'border-primary/40 bg-primary/15 text-primary',
@@ -83,6 +107,8 @@ const translateInterfacesErrorMessage = (error: unknown, fallback: string): stri
   const message = readErrorMessage(error, fallback);
 
   switch (message) {
+    case 'invalid_interfaces_payload':
+      return t('interfaces.messages.loadError');
     case 'custom_interfaces_not_supported':
       return t('interfaces.errors.customInterfacesNotSupported');
     case 'interface_not_found':
@@ -173,6 +199,9 @@ export const InterfacesPage = () => {
     setErrorMessage(null);
     try {
       const result = await listInterfacesRef.current();
+      if (!isInstanceInterfacesResponse(result)) {
+        throw new Error('invalid_interfaces_payload');
+      }
       const nextAvailableTypes =
         result.availableTypes.length > 0 ? result.availableTypes : DEFAULT_AVAILABLE_TYPES;
       setInstanceId(result.instanceId);
@@ -302,6 +331,11 @@ export const InterfacesPage = () => {
     []
   );
 
+  const hasLoadedInterfacesContext = instanceId.length > 0 || interfaces.length > 0;
+  const showBlockingLoadError = errorMessage !== null && !isLoading && !hasLoadedInterfacesContext;
+  const blockingLoadErrorDescription =
+    errorMessage === t('interfaces.messages.loadError') ? null : errorMessage;
+
   return (
     <div className="flex flex-col gap-6 text-foreground">
       <header className="flex flex-col gap-2">
@@ -319,12 +353,27 @@ export const InterfacesPage = () => {
           <AlertDescription>{statusMessage}</AlertDescription>
         </Alert>
       ) : null}
-      {errorMessage ? (
+      {errorMessage && !showBlockingLoadError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
       ) : null}
 
+      {showBlockingLoadError ? (
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+          <AlertTitle>{t('interfaces.messages.loadError')}</AlertTitle>
+          <AlertDescription className="mt-3">
+            <div className="space-y-3">
+              {blockingLoadErrorDescription ? <p>{blockingLoadErrorDescription}</p> : null}
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" variant="outline" onClick={() => void refresh()}>
+                  {t('interfaces.actions.reload')}
+                </Button>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      ) : (
       <StudioDataTable
         ariaLabel={t('interfaces.table.ariaLabel')}
         labels={labels}
@@ -352,6 +401,7 @@ export const InterfacesPage = () => {
           renderInterfaceRowActions(row, setEditState, setPendingDelete)
         )}
       />
+      )}
 
       {editState.mode !== 'closed' ? (
         <Card>

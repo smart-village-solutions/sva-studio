@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createDefaultGlobalDateShiftForm,
   createDefaultTourDateShiftForm,
-  combineSchedulingTableRows,
+  createSchedulingTableEntries,
   filterGlobalDateShifts,
   filterTourDateShifts,
   mapGlobalDateShiftToForm,
@@ -306,7 +306,8 @@ describe('waste-management scheduling shared helpers', () => {
   });
 
   it('combines global and tour shifts into a date-sorted table model with resolved tour labels', () => {
-    const rows = combineSchedulingTableRows({
+    const rows = createSchedulingTableEntries({
+      holidayRules: [],
       globalDateShifts: [
         {
           id: 'global-1',

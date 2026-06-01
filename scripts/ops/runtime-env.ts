@@ -36,6 +36,7 @@ import {
   type AcceptanceDeployStep,
   type AcceptanceFailureCategory,
   type AcceptanceProbeResult,
+  type AcceptanceReleaseMode,
   type AcceptanceReleaseManifest,
   type RemoteRuntimeProfile,
 } from './runtime-env.shared.ts';
@@ -68,6 +69,7 @@ import {
   listGooseMigrationFiles as listGooseMigrationFilesFromDir,
   runLocalGooseStatus as runLocalGooseStatusWithDeps,
 } from './runtime/goose.ts';
+import { diffSchemaSnapshots } from './runtime/db-schema-snapshot.ts';
 import { runBootstrapJobAgainstAcceptance as runBootstrapJobAgainstAcceptanceWithDeps } from './runtime/bootstrap-job.ts';
 import {
   buildLocalInstanceRegistryIdentitySelectSql,
@@ -84,6 +86,9 @@ import {
 } from './runtime/migration-job.ts';
 import { inspectRemoteServiceContract } from './runtime/remote-service-spec.ts';
 import { formatRemoteStackSnapshot, inspectRemoteStack, type RemoteStackSnapshot } from './runtime/remote-stack-state.ts';
+import { withRegistryProvisioningWorkerDeps } from '../../packages/auth-runtime/src/iam-instance-registry/repository.ts';
+import { loadInstanceWithSecret } from '../../packages/auth-runtime/src/iam-instance-registry/service-keycloak.ts';
+import { syncProvisionedClientSecretToRegistry } from '../../packages/auth-runtime/src/iam-instance-registry/service-keycloak-execution-shared.ts';
 
 type RuntimeCommand =
   | 'deploy'
@@ -91,20 +96,47 @@ type RuntimeCommand =
   | 'down'
   | 'migrate'
   | 'precheck'
+  | 'repair'
   | 'reconcile'
   | 'reset'
   | 'smoke'
   | 'status'
   | 'up'
-  | 'update';
+  | 'update'
+  | 'verify-schema-snapshot';
 type DoctorCheckStatus = 'error' | 'ok' | 'skipped' | 'warn';
+type DoctorReasonCode =
+  | 'actor_binding_drift'
+  | 'instance_identity_drift'
+  | 'schema_manual_drift'
+  | 'schema_migration_drift'
+  | 'schema_snapshot_drift'
+  | 'tenant_admin_client_secret_missing'
+  | 'tenant_admin_client_secret_unreadable'
+  | 'tenant_auth_client_secret_missing'
+  | 'tenant_auth_client_secret_unreadable'
+  | 'worker_unavailable';
+type DoctorRecommendedAction =
+  | 'env:bind:local-user'
+  | 'env:doctor:local-keycloak'
+  | 'env:migrate:local-keycloak'
+  | 'env:up:local-keycloak'
+  | 'env:reconcile:local-instance-registry'
+  | 'env:repair:local-keycloak'
+  | 'env:verify:db-schema-snapshot'
+  | 'manual_investigation';
+type RuntimeDriftClass = 'actor_binding' | 'instance_identity' | 'schema' | 'schema_snapshot' | 'tenant_secrets' | 'worker';
 
 type DoctorCheck = {
   code: string;
   details?: Readonly<Record<string, unknown>>;
   message: string;
   name: string;
+  reasonCode?: DoctorReasonCode;
+  recommendedAction?: DoctorRecommendedAction;
+  repairable?: boolean;
   status: DoctorCheckStatus;
+  driftClass?: RuntimeDriftClass;
 };
 
 type DoctorReport = {
@@ -163,6 +195,30 @@ type LocalState = {
   startedAt: string;
 };
 
+type LocalTenantSecretState = Readonly<{
+  authClientSecretConfigured: boolean;
+  authClientSecretReadable: boolean;
+  instanceId: string;
+  tenantAdminClientConfigured: boolean;
+  tenantAdminClientSecretConfigured: boolean;
+  tenantAdminClientSecretReadable: boolean;
+}>;
+
+type LocalTenantSecretSyncSummary = Readonly<{
+  attemptedInstanceIds: readonly string[];
+  errors: readonly string[];
+  healedInstanceIds: readonly string[];
+  remainingAuthSecretInstanceIds: readonly string[];
+  remainingTenantAdminSecretInstanceIds: readonly string[];
+}>;
+
+type SchemaSnapshotVerificationReport = Readonly<{
+  ignoredSchemas: readonly string[];
+  missingObjects: readonly string[];
+  status: 'drift' | 'ok';
+  unexpectedObjects: readonly string[];
+}>;
+
 const [, , rawCommand, rawProfile, ...rawOptions] = process.argv;
 
 const command = rawCommand as RuntimeCommand | undefined;
@@ -199,7 +255,7 @@ const composeBaseArgs = ['compose', '-f', 'docker-compose.yml'];
 const composeWithMonitoringArgs = ['compose', '-f', 'docker-compose.yml', '-f', 'docker-compose.monitoring.yml'];
 const usage = () => {
   console.error(
-    'Usage: tsx scripts/ops/runtime-env.ts <up|down|update|status|smoke|migrate|doctor|reconcile|reset|precheck|deploy> <profile> [--json] [--local-override-file=<path>] [--release-mode=<app-only|schema-and-app>] [--image-digest=<sha256:...>] [--maintenance-window=<text>] [--rollback-hint=<text>]'
+    'Usage: tsx scripts/ops/runtime-env.ts <up|down|update|status|smoke|migrate|doctor|repair|reconcile|reset|precheck|deploy|verify-schema-snapshot> <profile> [--json] [--authoritative] [--local-override-file=<path>] [--release-mode=<app-only|schema-and-app>] [--image-digest=<sha256:...>] [--maintenance-window=<text>] [--rollback-hint=<text>]'
   );
   process.exit(2);
 };
@@ -207,7 +263,7 @@ const usage = () => {
 const ensureKnownCommand = (value: RuntimeCommand | undefined): RuntimeCommand => {
   if (
     !value ||
-    !['up', 'down', 'update', 'status', 'smoke', 'migrate', 'doctor', 'reconcile', 'reset', 'precheck', 'deploy'].includes(
+    !['up', 'down', 'update', 'status', 'smoke', 'migrate', 'doctor', 'repair', 'reconcile', 'reset', 'precheck', 'deploy', 'verify-schema-snapshot'].includes(
       value
     )
   ) {
@@ -411,6 +467,22 @@ const buildProfileEnv = (runtimeProfile: RuntimeProfile): NodeJS.ProcessEnv => {
   env.SVA_MAINSERVER_DEV_API_SECRET = env.SVA_MAINSERVER_CLIENT_SECRET;
 
   return env;
+};
+
+const withTemporaryProcessEnv = async <T>(env: NodeJS.ProcessEnv, work: () => Promise<T>): Promise<T> => {
+  const previousEnv = { ...process.env };
+  Object.assign(process.env, env);
+
+  try {
+    return await work();
+  } finally {
+    for (const key of Object.keys(process.env)) {
+      if (!(key in previousEnv)) {
+        delete process.env[key];
+      }
+    }
+    Object.assign(process.env, previousEnv);
+  }
 };
 
 const assertRuntimeEnv = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
@@ -952,13 +1024,132 @@ const toDoctorCheck = (
   code: string,
   message: string,
   details?: Readonly<Record<string, unknown>>
-): DoctorCheck => ({
+): DoctorCheck => decorateDoctorCheck({
   name,
   status,
   code,
   message,
   ...(details ? { details } : {}),
 });
+
+const resolveHealthReadyReasonCode = (check: DoctorCheck): DoctorReasonCode | undefined => {
+  if (check.name !== 'health-ready') {
+    return undefined;
+  }
+
+  const payload = check.details?.payload;
+  if (!payload || typeof payload !== 'object') {
+    return undefined;
+  }
+
+  const checks = (payload as Record<string, unknown>).checks;
+  if (!checks || typeof checks !== 'object') {
+    return undefined;
+  }
+
+  const diagnostics = (checks as Record<string, unknown>).diagnostics;
+  const auth = diagnostics && typeof diagnostics === 'object'
+    ? (diagnostics as Record<string, unknown>).auth
+    : undefined;
+  const rawReasonCode = auth && typeof auth === 'object'
+    ? (auth as Record<string, unknown>).reason_code
+    : undefined;
+
+  return rawReasonCode === 'tenant_auth_client_secret_missing' || rawReasonCode === 'tenant_auth_client_secret_unreadable'
+    ? rawReasonCode
+    : undefined;
+};
+
+export const decorateDoctorCheck = (check: DoctorCheck): DoctorCheck => {
+  const derivedHealthReason = resolveHealthReadyReasonCode(check);
+  if (derivedHealthReason) {
+    return {
+      ...check,
+      driftClass: 'tenant_secrets',
+      reasonCode: derivedHealthReason,
+      recommendedAction: 'env:repair:local-keycloak',
+      repairable: true,
+    };
+  }
+
+  switch (check.code) {
+    case 'goose_status_failed':
+    case 'goose_status_unavailable':
+      return {
+        ...check,
+        driftClass: 'schema',
+        reasonCode: 'schema_migration_drift',
+        recommendedAction: 'env:migrate:local-keycloak',
+        repairable: true,
+      };
+    case 'schema_drift':
+    case 'schema_check_failed':
+      return {
+        ...check,
+        driftClass: 'schema',
+        reasonCode: 'schema_manual_drift',
+        recommendedAction: 'env:migrate:local-keycloak',
+        repairable: false,
+      };
+    case 'local_keycloak_provisioning_worker_missing':
+    case 'local_keycloak_provisioning_worker_stale':
+      return {
+        ...check,
+        driftClass: 'worker',
+        reasonCode: 'worker_unavailable',
+        recommendedAction: 'env:up:local-keycloak',
+        repairable: false,
+      };
+    case 'missing_actor_account':
+    case 'missing_instance_membership':
+    case 'missing_actor_role_assignments':
+    case 'missing_actor_organization_membership':
+    case 'actor_diagnosis_failed':
+      return {
+        ...check,
+        driftClass: 'actor_binding',
+        reasonCode: 'actor_binding_drift',
+        recommendedAction: 'env:bind:local-user',
+        repairable: false,
+      };
+    case 'local_instance_identity_drift':
+      return {
+        ...check,
+        driftClass: 'instance_identity',
+        reasonCode: 'instance_identity_drift',
+        recommendedAction: 'env:reconcile:local-instance-registry',
+        repairable: true,
+      };
+    case 'tenant_auth_client_secret_missing':
+    case 'tenant_auth_client_secret_unreadable':
+      return {
+        ...check,
+        driftClass: 'tenant_secrets',
+        reasonCode: check.code,
+        recommendedAction: 'env:repair:local-keycloak',
+        repairable: true,
+      };
+    case 'tenant_admin_client_secret_missing':
+    case 'tenant_admin_client_secret_unreadable':
+      return {
+        ...check,
+        driftClass: 'tenant_secrets',
+        reasonCode: check.code,
+        recommendedAction: 'env:repair:local-keycloak',
+        repairable: true,
+      };
+    case 'schema_snapshot_drift':
+      return {
+        ...check,
+        driftClass: 'schema_snapshot',
+        reasonCode: 'schema_snapshot_drift',
+        recommendedAction: 'env:verify:db-schema-snapshot',
+        repairable: false,
+      };
+    default:
+      return check;
+  }
+};
 
 type StudioImageVerifyEvidence = Readonly<{
   imageRef?: string;
@@ -1198,6 +1389,15 @@ const printDoctorReport = (report: DoctorReport) => {
   console.log(`Diagnose fuer ${report.profile}: ${report.status}`);
   for (const check of report.checks) {
     console.log(`[${check.status.toUpperCase()}] ${check.name}: ${check.message}`);
+    if (check.reasonCode || check.recommendedAction || typeof check.repairable === 'boolean') {
+      console.log(
+        `  ${JSON.stringify({
+          reasonCode: check.reasonCode,
+          recommendedAction: check.recommendedAction,
+          repairable: check.repairable,
+        })}`,
+      );
+    }
     if (check.details && Object.keys(check.details).length > 0) {
       console.log(`  ${JSON.stringify(check.details)}`);
     }
@@ -1670,10 +1870,20 @@ export const requireLocalInstanceRegistryReconciliationInput = (env: NodeJS.Proc
   );
 };
 
-const reconcileLocalInstanceRegistry = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
-  const input = requireLocalInstanceRegistryReconciliationInput(env);
+const reconcileLocalInstanceRegistry = (
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv,
+  options?: {
+    authoritative?: boolean;
+  },
+) => {
+  const effectiveEnv =
+    options?.authoritative
+      ? { ...env, SVA_LOCAL_INSTANCE_IDENTITY_RECONCILE_MODE: 'authoritative' }
+      : env;
+  const input = requireLocalInstanceRegistryReconciliationInput(effectiveEnv);
   const sql = buildLocalInstanceRegistryReconciliationSql(input);
-  createDbSqlRunner(runtimeProfile, env)(sql);
+  createDbSqlRunner(runtimeProfile, effectiveEnv)(sql);
 };
 
 const downLocalInfra = (env: NodeJS.ProcessEnv) => {
@@ -1810,6 +2020,160 @@ const createDbSqlRunner = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEn
 
   return (sql: string) => (isRemoteRuntimeProfile(runtimeProfile) ? runAcceptanceSql(sql) : runLocalSql(sql));
 };
+
+const createLocalSchemaDumpRunner = (env: NodeJS.ProcessEnv) => {
+  const postgresUser = env.POSTGRES_USER ?? 'sva';
+  const postgresDb = env.POSTGRES_DB ?? 'sva_studio';
+  const localPostgresContainerName = env.SVA_LOCAL_POSTGRES_CONTAINER_NAME?.trim() || 'sva-studio-postgres';
+
+  return () => {
+    const localContainerId = runCaptureDetailed(
+      'docker',
+      ['ps', '--filter', `name=^/${localPostgresContainerName}$`, '--format', '{{.ID}}'],
+      env,
+    ).stdout.trim();
+
+    if (localContainerId.length === 0) {
+      throw new Error(`Lokaler Postgres-Container ${localPostgresContainerName} nicht gefunden.`);
+    }
+
+    const result = spawnSync(
+      'docker',
+      ['exec', localContainerId, 'pg_dump', '--schema-only', '--no-owner', '--no-privileges', '-U', postgresUser, '-d', postgresDb],
+      {
+        cwd: rootDir,
+        env,
+        encoding: 'utf8',
+      },
+    );
+
+    if (result.status !== 0) {
+      throw new Error(result.stderr?.trim() || result.stdout.trim() || 'Schema-Dump gegen lokalen Postgres fehlgeschlagen.');
+    }
+
+    return result.stdout;
+  };
+};
+
+export const verifyDbSchemaSnapshot = (
+  actualSql: string,
+  expectedSql: string,
+): SchemaSnapshotVerificationReport => {
+  const diff = diffSchemaSnapshots(actualSql, expectedSql);
+  const hasDrift = diff.missingObjects.length > 0 || diff.unexpectedObjects.length > 0;
+
+  return {
+    ignoredSchemas: diff.ignoredSchemas,
+    missingObjects: diff.missingObjects,
+    status: hasDrift ? 'drift' : 'ok',
+    unexpectedObjects: diff.unexpectedObjects,
+  };
+};
+
+const verifyLocalDbSchemaSnapshot = (env: NodeJS.ProcessEnv): SchemaSnapshotVerificationReport => {
+  const actualSql = createLocalSchemaDumpRunner(env)();
+  const expectedSql = readFileSync(resolve(rootDir, 'docs/development/studio-db-schema-final.sql'), 'utf8');
+  return verifyDbSchemaSnapshot(actualSql, expectedSql);
+};
+
+const collectLocalInstanceIdentityDrift = (
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv,
+) => {
+  const input = buildLocalInstanceRegistryReconciliationInput(env);
+  if (!input) {
+    return [] as ReturnType<typeof evaluateLocalInstanceRegistryIdentityDrift>;
+  }
+
+  const rows = parseJsonFromCommandOutput<LocalInstanceRegistryIdentityRow[]>(
+    createDbSqlRunner(runtimeProfile, env)(buildLocalInstanceRegistryIdentitySelectSql(input)),
+  );
+  return evaluateLocalInstanceRegistryIdentityDrift(input, rows);
+};
+
+const loadActiveLocalTenantSecretStates = async (env: NodeJS.ProcessEnv): Promise<readonly LocalTenantSecretState[]> =>
+  withTemporaryProcessEnv(env, async () =>
+    withRegistryProvisioningWorkerDeps(async (deps) => {
+      const instances = await deps.repository.listInstances({ status: 'active' });
+      const states: LocalTenantSecretState[] = [];
+
+    for (const instance of instances) {
+      const loaded = await loadInstanceWithSecret(deps, instance.instanceId);
+      if (!loaded) {
+        continue;
+      }
+
+      states.push({
+        instanceId: loaded.instance.instanceId,
+        authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
+        authClientSecretReadable: Boolean(loaded.authClientSecret),
+        tenantAdminClientConfigured: Boolean(loaded.instance.tenantAdminClient?.clientId),
+        tenantAdminClientSecretConfigured: Boolean(loaded.instance.tenantAdminClient?.secretConfigured),
+        tenantAdminClientSecretReadable: Boolean(loaded.tenantAdminClientSecret),
+      });
+    }
+
+      return states;
+    }),
+  );
+
+const syncLocalTenantSecretsToRegistry = async (env: NodeJS.ProcessEnv): Promise<LocalTenantSecretSyncSummary> =>
+  withTemporaryProcessEnv(env, async () =>
+    withRegistryProvisioningWorkerDeps(async (deps) => {
+      const before = await loadActiveLocalTenantSecretStates(env);
+      const targetInstanceIds = before
+        .filter(
+        (state) =>
+          !state.authClientSecretReadable
+          || !state.authClientSecretConfigured
+          || (state.tenantAdminClientConfigured
+            && (!state.tenantAdminClientSecretConfigured || !state.tenantAdminClientSecretReadable)),
+      )
+      .map((state) => state.instanceId);
+
+    const healedInstanceIds = new Set<string>();
+    const errors: string[] = [];
+
+    for (const instanceId of targetInstanceIds) {
+      try {
+        const loaded = await loadInstanceWithSecret(deps, instanceId);
+        if (!loaded) {
+          errors.push(`${instanceId}: instance_not_found`);
+          continue;
+        }
+
+        await syncProvisionedClientSecretToRegistry(deps, {
+          actorId: 'runtime-env-repair',
+          loaded,
+          requestId: `runtime-env-repair-${Date.now()}`,
+        });
+        healedInstanceIds.add(instanceId);
+      } catch (error) {
+        errors.push(`${instanceId}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+      const after = await loadActiveLocalTenantSecretStates(env);
+      const remainingAuthSecretInstanceIds = after
+        .filter((state) => !state.authClientSecretConfigured || !state.authClientSecretReadable)
+        .map((state) => state.instanceId);
+      const remainingTenantAdminSecretInstanceIds = after
+        .filter(
+          (state) =>
+            state.tenantAdminClientConfigured
+            && (!state.tenantAdminClientSecretConfigured || !state.tenantAdminClientSecretReadable),
+        )
+        .map((state) => state.instanceId);
+
+      return {
+        attemptedInstanceIds: targetInstanceIds,
+        errors,
+        healedInstanceIds: [...healedInstanceIds].sort((left, right) => left.localeCompare(right, 'de')),
+        remainingAuthSecretInstanceIds,
+        remainingTenantAdminSecretInstanceIds,
+      };
+    }),
+  );
 
 const buildTenantTargetsFromInstanceIds = (
   instanceIds: readonly string[],
@@ -2780,6 +3144,236 @@ const buildMigrationStatusCheck = (runtimeProfile: RuntimeProfile, env: NodeJS.P
   }
 };
 
+const buildSchemaSnapshotCheck = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): DoctorCheck => {
+  if (!getRuntimeProfileDefinition(runtimeProfile).isLocal || runtimeProfile === 'local-builder') {
+    return toDoctorCheck(
+      'schema-snapshot',
+      'skipped',
+      'schema_snapshot_not_applicable',
+      'Schema-Snapshot-Abgleich ist fuer dieses Runtime-Profil nicht anwendbar.',
+    );
+  }
+
+  try {
+    const report = verifyLocalDbSchemaSnapshot(env);
+    if (report.status === 'ok') {
+      return toDoctorCheck(
+        'schema-snapshot',
+        'ok',
+        'schema_snapshot_ok',
+        'Der DB-Schema-Snapshot entspricht dem migrationsbasierten lokalen Datenbankstand.',
+        {
+          ignoredSchemas: report.ignoredSchemas,
+        },
+      );
+    }
+
+    return toDoctorCheck(
+      'schema-snapshot',
+      'warn',
+      'schema_snapshot_drift',
+      'Der eingecheckte DB-Schema-Snapshot driftet vom aktuellen lokalen Datenbankstand ab.',
+      {
+        ignoredSchemas: report.ignoredSchemas,
+        missingObjects: report.missingObjects,
+        unexpectedObjects: report.unexpectedObjects,
+      },
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'schema-snapshot',
+      'warn',
+      'schema_snapshot_check_failed',
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+};
+
+const buildLocalInstanceIdentityDoctorCheck = (
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv,
+): DoctorCheck => {
+  if (runtimeProfile !== 'local-keycloak') {
+    return toDoctorCheck(
+      'instance-identity',
+      'skipped',
+      'local_instance_identity_not_applicable',
+      'Lokale Instanz-Identitaetspruefung ist fuer dieses Runtime-Profil nicht anwendbar.',
+    );
+  }
+
+  const input = buildLocalInstanceRegistryReconciliationInput(env);
+  if (!input) {
+    return toDoctorCheck(
+      'instance-identity',
+      'skipped',
+      'local_instance_identity_scope_missing',
+      'Lokale Instanz-Identitaetspruefung erfordert SVA_PARENT_DOMAIN und SVA_ALLOWED_INSTANCE_IDS.',
+    );
+  }
+
+  try {
+    const drift = collectLocalInstanceIdentityDrift(runtimeProfile, env);
+    if (drift.length === 0) {
+      return toDoctorCheck(
+        'instance-identity',
+        'ok',
+        'local_instance_identity_ready',
+        'Die lokale Instanz-Identitaet entspricht dem Zielbild.',
+        {
+          reconcileMode: input.reconcileMode,
+          targetInstanceIds: input.allowedInstanceIds,
+        },
+      );
+    }
+
+    return toDoctorCheck(
+      'instance-identity',
+      'warn',
+      'local_instance_identity_drift',
+      'Mindestens eine lokale Instanz driftet in geschuetzten Identitaetsfeldern vom Zielbild ab.',
+      {
+        drift,
+        reconcileMode: input.reconcileMode,
+        targetInstanceIds: input.allowedInstanceIds,
+      },
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'instance-identity',
+      'warn',
+      'local_instance_identity_check_failed',
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+};
+
+const buildTenantAuthSecretContractCheck = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): Promise<DoctorCheck> => {
+  if (!getRuntimeProfileDefinition(runtimeProfile).isLocal || runtimeProfile === 'local-builder') {
+    return toDoctorCheck(
+      'tenant-auth-secret-contract',
+      'skipped',
+      'tenant_auth_secret_not_applicable',
+      'Tenant-Auth-Secret-Pruefung ist fuer dieses Runtime-Profil nicht anwendbar.',
+    );
+  }
+
+  try {
+    const states = await loadActiveLocalTenantSecretStates(env);
+    const unreadableInstanceIds = states
+      .filter((state) => state.authClientSecretConfigured && !state.authClientSecretReadable)
+      .map((state) => state.instanceId);
+    if (unreadableInstanceIds.length > 0) {
+      return toDoctorCheck(
+        'tenant-auth-secret-contract',
+        'error',
+        'tenant_auth_client_secret_unreadable',
+        'Mindestens ein aktiver Tenant hat ein konfiguriertes, aber lokal nicht lesbares Auth-Secret.',
+        {
+          unreadableInstanceIds,
+        },
+      );
+    }
+
+    const missingInstanceIds = states
+      .filter((state) => !state.authClientSecretConfigured)
+      .map((state) => state.instanceId);
+    if (missingInstanceIds.length > 0) {
+      return toDoctorCheck(
+        'tenant-auth-secret-contract',
+        'error',
+        'tenant_auth_client_secret_missing',
+        'Mindestens ein aktiver Tenant hat kein tenant-spezifisches Auth-Secret in der Registry.',
+        {
+          missingInstanceIds,
+        },
+      );
+    }
+
+    return toDoctorCheck(
+      'tenant-auth-secret-contract',
+      'ok',
+      'tenant_auth_client_secret_ready',
+      'Alle aktiven Tenants besitzen lesbare tenant-spezifische Auth-Secrets.',
+      {
+        checkedActiveInstanceCount: states.length,
+      },
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'tenant-auth-secret-contract',
+      'error',
+      'tenant_auth_secret_check_failed',
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+};
+
+const buildTenantAdminSecretContractCheck = async (
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv,
+): Promise<DoctorCheck> => {
+  if (!getRuntimeProfileDefinition(runtimeProfile).isLocal || runtimeProfile === 'local-builder') {
+    return toDoctorCheck(
+      'tenant-admin-secret-contract',
+      'skipped',
+      'tenant_admin_secret_not_applicable',
+      'Tenant-Admin-Secret-Pruefung ist fuer dieses Runtime-Profil nicht anwendbar.',
+    );
+  }
+
+  try {
+    const states = await loadActiveLocalTenantSecretStates(env);
+    const relevantStates = states.filter((state) => state.tenantAdminClientConfigured);
+    const unreadableInstanceIds = relevantStates
+      .filter((state) => state.tenantAdminClientSecretConfigured && !state.tenantAdminClientSecretReadable)
+      .map((state) => state.instanceId);
+    if (unreadableInstanceIds.length > 0) {
+      return toDoctorCheck(
+        'tenant-admin-secret-contract',
+        'error',
+        'tenant_admin_client_secret_unreadable',
+        'Mindestens ein aktiver Tenant hat ein konfiguriertes, aber lokal nicht lesbares Tenant-Admin-Secret.',
+        {
+          unreadableInstanceIds,
+        },
+      );
+    }
+
+    const missingInstanceIds = relevantStates
+      .filter((state) => !state.tenantAdminClientSecretConfigured)
+      .map((state) => state.instanceId);
+    if (missingInstanceIds.length > 0) {
+      return toDoctorCheck(
+        'tenant-admin-secret-contract',
+        'error',
+        'tenant_admin_client_secret_missing',
+        'Mindestens ein aktiver Tenant hat kein tenant-spezifisches Tenant-Admin-Secret in der Registry.',
+        {
+          missingInstanceIds,
+        },
+      );
+    }
+
+    return toDoctorCheck(
+      'tenant-admin-secret-contract',
+      'ok',
+      'tenant_admin_client_secret_ready',
+      'Alle aktiven Tenants mit Tenant-Admin-Client besitzen lesbare Tenant-Admin-Secrets.',
+      {
+        checkedActiveInstanceCount: relevantStates.length,
+      },
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'tenant-admin-secret-contract',
+      'error',
+      'tenant_admin_secret_check_failed',
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+};
+
 const precheckAcceptance = async (
   runtimeProfile: RemoteRuntimeProfile,
   env: NodeJS.ProcessEnv,
@@ -2970,10 +3564,14 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   checks.push(buildFeatureFlagCheck(env));
   checks.push(buildMigrationStatusCheck(runtimeProfile, env));
   checks.push(buildSchemaGuardCheck(runtimeProfile, env));
+  checks.push(buildSchemaSnapshotCheck(runtimeProfile, env));
   if (runtimeProfile !== 'local-builder') {
     checks.push(buildInstanceAuthConfigCheck(runtimeProfile, env));
     checks.push(buildTenantAdminClientContractCheck(runtimeProfile, env));
     checks.push(await buildInstanceHostnameMappingCheck(runtimeProfile, env));
+    checks.push(buildLocalInstanceIdentityDoctorCheck(runtimeProfile, env));
+    checks.push(await buildTenantAuthSecretContractCheck(runtimeProfile, env));
+    checks.push(await buildTenantAdminSecretContractCheck(runtimeProfile, env));
   }
   checks.push(buildActorDoctorCheck(runtimeProfile, env));
 
@@ -3373,6 +3971,176 @@ const smokeRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessE
   }
 };
 
+type LocalRuntimeRepairDeps = Readonly<{
+  postflightDoctor: () => Promise<DoctorReport>;
+  preflightDoctor: () => Promise<DoctorReport>;
+  reconcileInstanceRegistry: () => Promise<void>;
+  runActorBindingRepair?: () => Promise<void>;
+  runMigrate: () => Promise<void>;
+  syncTenantSecrets: () => Promise<LocalTenantSecretSyncSummary>;
+}>;
+
+const hasBlockingReasonCode = (
+  report: DoctorReport,
+  reasonCode: DoctorReasonCode,
+) => report.checks.some((check) => check.reasonCode === reasonCode);
+
+const isBlockingRepairFailure = (check: DoctorCheck): boolean => {
+  if (check.status === 'warn') {
+    return check.reasonCode === 'instance_identity_drift';
+  }
+
+  return check.status === 'error';
+};
+
+export const repairLocalRuntimeWithDeps = async (
+  deps: LocalRuntimeRepairDeps,
+  options: {
+    authoritative: boolean;
+  },
+): Promise<{
+  postflightReport: DoctorReport;
+  preflightReport: DoctorReport;
+  tenantSecretSync: LocalTenantSecretSyncSummary;
+}> => {
+  const preflightReport = await deps.preflightDoctor();
+
+  if (
+    hasBlockingReasonCode(preflightReport, 'schema_migration_drift')
+    || hasBlockingReasonCode(preflightReport, 'schema_manual_drift')
+  ) {
+    await deps.runMigrate();
+  }
+
+  await deps.reconcileInstanceRegistry();
+  const tenantSecretSync = await deps.syncTenantSecrets();
+
+  if (deps.runActorBindingRepair && hasBlockingReasonCode(preflightReport, 'actor_binding_drift')) {
+    await deps.runActorBindingRepair();
+  }
+
+  const postflightReport = await deps.postflightDoctor();
+
+  if (hasBlockingReasonCode(postflightReport, 'schema_manual_drift')) {
+    throw new Error('Lokaler Repair kann die erkannte Schema-Drift nicht automatisch heilen. Bitte Umgebung oder Snapshot manuell untersuchen.');
+  }
+
+  if (!options.authoritative && hasBlockingReasonCode(postflightReport, 'instance_identity_drift')) {
+    throw new Error(
+      'Lokale Instanz-Identitaetsdrift bleibt im Preserve-Modus bestehen. Fuer eine autoritative Korrektur env:repair:local-keycloak --authoritative erneut ausfuehren.',
+    );
+  }
+
+  const blockingChecks = postflightReport.checks.filter(isBlockingRepairFailure);
+  if (blockingChecks.length > 0) {
+    const summary = blockingChecks
+      .map((check) => `${check.reasonCode ?? check.code}: ${check.message}`)
+      .join(' | ');
+    throw new Error(`Lokaler Runtime-Repair bleibt nach dem Reparaturlauf blockiert: ${summary}`);
+  }
+
+  return {
+    postflightReport,
+    preflightReport,
+    tenantSecretSync,
+  };
+};
+
+const repairActorBindingFromEnv = async (env: NodeJS.ProcessEnv): Promise<void> => {
+  const templateSubject = env.SVA_DOCTOR_BIND_COPY_FROM_KEYCLOAK_SUBJECT?.trim();
+  const instanceId = env.SVA_DOCTOR_INSTANCE_ID?.trim();
+  const keycloakSubject = env.SVA_DOCTOR_KEYCLOAK_SUBJECT?.trim();
+
+  if (!templateSubject || !instanceId || !keycloakSubject) {
+    return;
+  }
+
+  run('pnpm', [
+    'env:bind:local-user',
+    '--',
+    `--instance-id=${instanceId}`,
+    `--keycloak-subject=${keycloakSubject}`,
+    `--copy-from-keycloak-subject=${templateSubject}`,
+  ], env);
+};
+
+type DangerousApprovalRequirement = Readonly<{
+  readonly reason: string;
+  readonly token: string;
+}>;
+
+export const assertDangerousOperationApproved = (input: {
+  readonly actualApprovalToken?: string;
+  readonly expectedApprovalToken: string;
+  readonly reason: string;
+}) => {
+  if (input.actualApprovalToken?.trim() === input.expectedApprovalToken) {
+    return;
+  }
+
+  throw new Error(
+    `${input.reason} Gefaehrlicher Pfad bleibt gesperrt. Erneut mit --approve-dangerous=${input.expectedApprovalToken} ausfuehren.`,
+  );
+};
+
+export const resolveLocalDangerousApprovalRequirement = (
+  runtimeProfile: RuntimeProfile,
+  runtimeCommand: Extract<RuntimeCommand, 'repair' | 'reconcile'>,
+  options: {
+    authoritative: boolean;
+  },
+): DangerousApprovalRequirement | null => {
+  if (!options.authoritative) {
+    return null;
+  }
+
+  const token = `${runtimeProfile}:${runtimeCommand}:authoritative`;
+  const reason =
+    runtimeCommand === 'repair'
+      ? 'Autoritativer lokaler Repair kann geschuetzte Identitaetsfelder bewusst ueberschreiben.'
+      : 'Autoritativer lokaler Registry-Reconcile kann geschuetzte Identitaetsfelder bewusst ueberschreiben.';
+
+  return { reason, token };
+};
+
+export const resolveRemoteDangerousApprovalRequirement = (
+  runtimeProfile: RemoteRuntimeProfile,
+  runtimeCommand: Extract<RuntimeCommand, 'deploy' | 'down' | 'migrate' | 'reset'>,
+  options: {
+    releaseMode?: AcceptanceReleaseMode;
+  },
+): DangerousApprovalRequirement => {
+  if (runtimeCommand === 'deploy') {
+    const releaseMode = options.releaseMode ?? 'app-only';
+    return {
+      reason:
+        releaseMode === 'schema-and-app'
+          ? 'Remote-Deploy im Modus schema-and-app mutiert Laufzeit und Datenbankschema.'
+          : 'Remote-Deploy mutiert den Ziel-Stack.',
+      token: `${runtimeProfile}:deploy:${releaseMode}`,
+    };
+  }
+
+  if (runtimeCommand === 'down') {
+    return {
+      reason: 'Remote-Down entfernt den Ziel-Stack.',
+      token: `${runtimeProfile}:down`,
+    };
+  }
+
+  if (runtimeCommand === 'migrate') {
+    return {
+      reason: 'Remote-Migrate mutiert das Datenbankschema der Zielumgebung.',
+      token: `${runtimeProfile}:migrate`,
+    };
+  }
+
+  return {
+    reason: 'Remote-Reset setzt Postgres und Redis der Zielumgebung zurueck.',
+    token: `${runtimeProfile}:reset`,
+  };
+};
+
 const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: RuntimeCommand) => {
   const env = buildProfileEnv(runtimeProfile);
 
@@ -3437,15 +4205,104 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       }
       console.log(`Migrationen fuer ${runtimeProfile} abgeschlossen.`);
       return;
+    case 'repair': {
+      assertRuntimeEnv(runtimeProfile, env);
+      {
+        const approvalRequirement = resolveLocalDangerousApprovalRequirement(runtimeProfile, 'repair', {
+          authoritative: Boolean(cliOptions.authoritative),
+        });
+        if (approvalRequirement) {
+          assertDangerousOperationApproved({
+            actualApprovalToken: cliOptions.approvalToken,
+            expectedApprovalToken: approvalRequirement.token,
+            reason: approvalRequirement.reason,
+          });
+        }
+      }
+      const repairResult = await repairLocalRuntimeWithDeps(
+        {
+          preflightDoctor: () => doctorRuntime(runtimeProfile, env),
+          postflightDoctor: () => doctorRuntime(runtimeProfile, env),
+          runMigrate: async () => {
+            migrateLocalDatabase(env);
+            bootstrapLocalAppUser(env);
+          },
+          reconcileInstanceRegistry: async () => {
+            reconcileLocalInstanceRegistry(runtimeProfile, env, { authoritative: cliOptions.authoritative });
+          },
+          syncTenantSecrets: () => syncLocalTenantSecretsToRegistry(env),
+          runActorBindingRepair:
+            env.SVA_DOCTOR_BIND_COPY_FROM_KEYCLOAK_SUBJECT?.trim()
+              ? () => repairActorBindingFromEnv(env)
+              : undefined,
+        },
+        {
+          authoritative: Boolean(cliOptions.authoritative),
+        },
+      );
+
+      if (jsonOutput) {
+        console.log(
+          JSON.stringify(
+            {
+              authoritative: Boolean(cliOptions.authoritative),
+              postflightReport: repairResult.postflightReport,
+              preflightReport: repairResult.preflightReport,
+              tenantSecretSync: repairResult.tenantSecretSync,
+            },
+            null,
+            2,
+          ),
+        );
+      } else {
+        console.log(`Lokaler Runtime-Repair fuer ${runtimeProfile} abgeschlossen.`);
+        console.log(`  Tenant-Secrets geheilt: ${repairResult.tenantSecretSync.healedInstanceIds.join(', ') || 'keine'}`);
+        if (repairResult.tenantSecretSync.errors.length > 0) {
+          console.log(`  Secret-Fehler: ${repairResult.tenantSecretSync.errors.join(' | ')}`);
+        }
+        printDoctorReport(repairResult.postflightReport);
+      }
+      return;
+    }
     case 'reconcile':
       assertRuntimeEnv(runtimeProfile, env);
-      reconcileLocalInstanceRegistry(runtimeProfile, env);
+      {
+        const approvalRequirement = resolveLocalDangerousApprovalRequirement(runtimeProfile, 'reconcile', {
+          authoritative: Boolean(cliOptions.authoritative),
+        });
+        if (approvalRequirement) {
+          assertDangerousOperationApproved({
+            actualApprovalToken: cliOptions.approvalToken,
+            expectedApprovalToken: approvalRequirement.token,
+            reason: approvalRequirement.reason,
+          });
+        }
+      }
+      reconcileLocalInstanceRegistry(runtimeProfile, env, { authoritative: cliOptions.authoritative });
       console.log(`Lokale Instanz-Registry fuer ${runtimeProfile} abgeglichen.`);
       return;
     case 'doctor': {
       const report = await doctorRuntime(runtimeProfile, env);
       printDoctorReport(report);
       if (report.status === 'error') {
+        process.exitCode = 1;
+      }
+      return;
+    }
+    case 'verify-schema-snapshot': {
+      assertRuntimeEnv(runtimeProfile, env);
+      const report = verifyLocalDbSchemaSnapshot(env);
+      if (jsonOutput) {
+        console.log(JSON.stringify(report, null, 2));
+      } else if (report.status === 'ok') {
+        console.log('Der DB-Schema-Snapshot entspricht dem aktuellen lokalen Datenbankstand.');
+      } else {
+        console.log('Der DB-Schema-Snapshot driftet vom aktuellen lokalen Datenbankstand ab.');
+        console.log(`  Fehlende Objekte: ${report.missingObjects.join(', ') || 'keine'}`);
+        console.log(`  Unerwartete Objekte: ${report.unexpectedObjects.join(', ') || 'keine'}`);
+      }
+
+      if (report.status === 'drift') {
         process.exitCode = 1;
       }
       return;
@@ -5339,12 +6196,24 @@ const runAcceptanceCommand = async (runtimeProfile: RemoteRuntimeProfile, runtim
   switch (runtimeCommand) {
     case 'up':
     case 'update':
+    case 'repair':
     case 'reconcile':
+    case 'verify-schema-snapshot':
       throw new Error(
         `Direkte Remote-Operationen ueber ${runtimeCommand} sind gesperrt. Nutze den kanonischen Pfad pnpm env:deploy:${runtimeProfile}.`
       );
     case 'down':
       assertDeterministicRemoteMutationContext(env, runtimeProfile, 'down');
+      {
+        const approvalRequirement = resolveRemoteDangerousApprovalRequirement(runtimeProfile, 'down', {
+          releaseMode: cliOptions.releaseMode,
+        });
+        assertDangerousOperationApproved({
+          actualApprovalToken: cliOptions.approvalToken,
+          expectedApprovalToken: approvalRequirement.token,
+          reason: approvalRequirement.reason,
+        });
+      }
       run('docker', ['stack', 'rm', stackName], env);
       console.log(`Stack ${stackName} entfernt.`);
       return;
@@ -5370,6 +6239,16 @@ const runAcceptanceCommand = async (runtimeProfile: RemoteRuntimeProfile, runtim
     case 'deploy':
       assertRuntimeEnv(runtimeProfile, env);
       assertDeterministicRemoteMutationContext(env, runtimeProfile, 'deploy');
+      {
+        const approvalRequirement = resolveRemoteDangerousApprovalRequirement(runtimeProfile, 'deploy', {
+          releaseMode: cliOptions.releaseMode,
+        });
+        assertDangerousOperationApproved({
+          actualApprovalToken: cliOptions.approvalToken,
+          expectedApprovalToken: approvalRequirement.token,
+          reason: approvalRequirement.reason,
+        });
+      }
       env.QUANTUM_ENVIRONMENT = env.QUANTUM_ENVIRONMENT?.trim() || runtimeProfile;
       await runAcceptanceDeploy(runtimeProfile, env);
       return;
@@ -5380,12 +6259,32 @@ const runAcceptanceCommand = async (runtimeProfile: RemoteRuntimeProfile, runtim
       return;
     case 'migrate':
       assertDeterministicRemoteMutationContext(env, runtimeProfile, 'migrate');
+      {
+        const approvalRequirement = resolveRemoteDangerousApprovalRequirement(runtimeProfile, 'migrate', {
+          releaseMode: cliOptions.releaseMode,
+        });
+        assertDangerousOperationApproved({
+          actualApprovalToken: cliOptions.approvalToken,
+          expectedApprovalToken: approvalRequirement.token,
+          reason: approvalRequirement.reason,
+        });
+      }
       await migrateAcceptance(runtimeProfile, env);
       console.log(`Migrationen fuer ${runtimeProfile} abgeschlossen.`);
       return;
     case 'reset':
       assertRuntimeEnv(runtimeProfile, env);
       assertDeterministicRemoteMutationContext(env, runtimeProfile, 'reset');
+      {
+        const approvalRequirement = resolveRemoteDangerousApprovalRequirement(runtimeProfile, 'reset', {
+          releaseMode: cliOptions.releaseMode,
+        });
+        assertDangerousOperationApproved({
+          actualApprovalToken: cliOptions.approvalToken,
+          expectedApprovalToken: approvalRequirement.token,
+          reason: approvalRequirement.reason,
+        });
+      }
       await resetAcceptance(runtimeProfile, env);
       console.log(`Postgres und Redis fuer ${runtimeProfile} wurden zurueckgesetzt.`);
       return;

@@ -15,10 +15,15 @@ export const useWasteToursController = (pt: Translate, search: WasteManagementSe
   const loadOverview = useWasteToursDataLoading(state, pt);
   const actions = createWasteToursActions(state);
   const submissions = createWasteToursSubmitHandlers({ state, pt, loadOverview });
+  const availableFractionIds = new Set(state.availableFractions.map((fraction) => fraction.id));
+  const effectiveSearch =
+    search.tourWasteFractionId && !availableFractionIds.has(search.tourWasteFractionId)
+      ? { ...search, tourWasteFractionId: undefined }
+      : search;
 
   return {
     ...state,
-    tours: filterTours(state.overview?.tours ?? [], search),
+    tours: filterTours(state.overview?.tours ?? [], effectiveSearch),
     locationOptions: resolveTourLocationOptions(pt, state.masterDataOverview),
     assignmentLocationOptions: resolveTourAssignmentLocationOptions(pt, state.masterDataOverview, state.selectedTour?.id),
     ...actions,

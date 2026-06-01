@@ -1,21 +1,21 @@
 import { useMemo, useRef, useState } from 'react';
-import type { WasteGlobalDateShiftRecord, WasteTourDateShiftRecord, WasteTourRecord } from '@sva/plugin-sdk';
+import type {
+  WasteGlobalDateShiftRecord,
+  WasteHolidayRuleRecord,
+  WasteTourDateShiftRecord,
+} from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { IconEdit } from '@tabler/icons-react';
+import { IconEdit, IconTrash } from '@tabler/icons-react';
 import {
   Badge,
   Button,
   StudioConfirmDialog,
-  type StudioBulkAction,
   type StudioColumnDef,
   type StudioDataTableLabels,
   StudioDataTable,
 } from '@sva/studio-ui-react';
 
-import {
-  combineSchedulingTableRows,
-  type WasteSchedulingTableRow,
-} from './waste-management.scheduling.shared.js';
+import type { WasteSchedulingTableEntry } from './waste-management.scheduling.shared.js';
 import { WasteSchedulingMissingValue } from './waste-management.scheduling-list.parts.js';
 import {
   createPagedItems,
@@ -24,13 +24,12 @@ import {
 } from './waste-management.table-frame.js';
 
 type WasteSchedulingShiftsTableProps = {
-  readonly globalDateShifts: readonly WasteGlobalDateShiftRecord[];
-  readonly tourDateShifts: readonly WasteTourDateShiftRecord[];
-  readonly availableTours: readonly WasteTourRecord[];
+  readonly entries: readonly WasteSchedulingTableEntry[];
   readonly onOpenCreateShiftDialog: () => void;
+  readonly onEditHolidayRule: (rule: WasteHolidayRuleRecord) => void;
   readonly onEditGlobalShiftDialog: (shift: WasteGlobalDateShiftRecord) => void;
   readonly onEditTourShiftDialog: (shift: WasteTourDateShiftRecord) => void;
-  readonly onDeleteSchedulingRows: (rows: readonly WasteSchedulingTableRow[]) => Promise<void>;
+  readonly onDeleteSchedulingRows: (rows: readonly WasteSchedulingTableEntry[]) => Promise<void>;
   readonly saving: boolean;
   readonly page: number;
   readonly pageSize: number;
@@ -43,22 +42,17 @@ const formatDisplayDate = (value: string) => {
   const parsed = new Date(`${value}T00:00:00Z`);
   return Number.isNaN(parsed.getTime())
     ? value
-    : new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeZone: 'UTC' }).format(parsed);
+    : new Intl.DateTimeFormat('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: 'UTC',
+      }).format(parsed);
 };
 
 const WasteSchedulingTableMeta = ({ children }: { readonly children: string }) => (
   <span className="text-xs leading-5 text-muted-foreground">{children}</span>
 );
-
-const WasteSchedulingTableScopeBadge = ({ kind }: { readonly kind: WasteSchedulingTableRow['kind'] }) => {
-  const pt = usePluginTranslation('wasteManagement');
-
-  return (
-    <Badge variant="outline" className="rounded-full border-border/70 bg-transparent px-2 py-0.5 text-[11px] font-medium">
-      {kind === 'global' ? pt('scheduling.table.scopeGlobal') : pt('scheduling.table.scopeTour')}
-    </Badge>
-  );
-};
 
 const joinMetaItems = (values: readonly string[]) => values.filter((value) => value.length > 0).join(' · ');
 
@@ -85,39 +79,61 @@ const useSchedulingColumns = () => {
           header: pt('scheduling.table.originalDate'),
           className: 'whitespace-nowrap',
           headerClassName: 'whitespace-nowrap',
-          cell: (row) => <span className="font-medium tabular-nums">{formatDisplayDate(row.shift.originalDate)}</span>,
+          cell: (row) => <span className="font-medium tabular-nums">{formatDisplayDate(row.originalDate)}</span>,
         },
         {
           id: 'actualDate',
           header: pt('scheduling.table.actualDate'),
           className: 'whitespace-nowrap',
           headerClassName: 'whitespace-nowrap',
-          cell: (row) => <span className="font-medium tabular-nums">{formatDisplayDate(row.shift.actualDate)}</span>,
+          cell: (row) =>
+            row.actualDate ? (
+              <span className="font-medium tabular-nums">{formatDisplayDate(row.actualDate)}</span>
+            ) : (
+              <WasteSchedulingMissingValue />
+            ),
         },
         {
           id: 'scope',
           header: pt('scheduling.table.scope'),
-          className: 'w-[110px]',
-          headerClassName: 'w-[110px]',
-          cell: (row) => <WasteSchedulingTableScopeBadge kind={row.kind} />,
+          className: 'w-[150px]',
+          headerClassName: 'w-[150px]',
+          cell: (row) => (
+            <Badge variant="outline" className="rounded-full border-border/70 bg-transparent px-2 py-0.5 text-[11px] font-medium">
+              {pt(
+                row.kind === 'holiday'
+                  ? 'scheduling.table.scopeHoliday'
+                  : row.kind === 'global'
+                    ? 'scheduling.table.scopeGlobal'
+                    : 'scheduling.table.scopeTour',
+              )}
+            </Badge>
+          ),
         },
         {
-          id: 'validity',
-          header: pt('scheduling.table.validity'),
+          id: 'context',
+          header: pt('scheduling.table.context'),
           className: 'min-w-[220px]',
           headerClassName: 'min-w-[220px]',
           cell: (row) => {
-            const scopeMeta = joinMetaItems([
-              `${pt('scheduling.table.hasYear')}: ${row.shift.hasYear ? pt('common.yes') : pt('common.no')}`,
-              'followUpMode' in row.shift && row.shift.followUpMode
-                ? `${pt('scheduling.table.followUpMode')}: ${pt(`scheduling.followUpModes.${row.shift.followUpMode}`)}`
-                : '',
-            ]);
+            const meta =
+              row.kind === 'holiday'
+                ? joinMetaItems([
+                    `${pt('scheduling.table.stateCode')}: ${row.rule.stateCode}`,
+                    `${pt('scheduling.table.year')}: ${String(row.rule.year)}`,
+                    pt(`scheduling.holidayRules.sourceStatus.${row.rule.sourceStatus}`),
+                  ])
+                : joinMetaItems([
+                    `${pt('scheduling.table.hasYear')}: ${row.shift.hasYear ? pt('common.yes') : pt('common.no')}`,
+                    row.kind === 'tour' && row.shift.followUpMode
+                      ? `${pt('scheduling.table.followUpMode')}: ${pt(`scheduling.followUpModes.${row.shift.followUpMode}`)}`
+                      : '',
+                  ]);
 
             return (
               <div className="space-y-1">
                 <p className="text-sm font-medium">{row.contextLabel}</p>
-                {scopeMeta ? <WasteSchedulingTableMeta>{scopeMeta}</WasteSchedulingTableMeta> : null}
+                {meta ? <WasteSchedulingTableMeta>{meta}</WasteSchedulingTableMeta> : null}
               </div>
             );
           },
@@ -125,11 +141,23 @@ const useSchedulingColumns = () => {
         {
           id: 'description',
           header: pt('scheduling.table.descriptionColumn'),
-          className: 'min-w-[260px]',
-          headerClassName: 'min-w-[260px]',
+          className: 'min-w-[280px]',
+          headerClassName: 'min-w-[280px]',
           cell: (row) => {
+            if (row.kind === 'holiday') {
+              const summary = joinMetaItems([
+                row.rule.scope ? `${pt('scheduling.holidayRules.scopeLabel')}: ${pt(`scheduling.holidayRules.scopeOptions.${row.rule.scope === 'holiday-only' ? 'holidayOnly' : 'fullWeek'}`)}` : '',
+                row.rule.strategy
+                  ? `${pt('scheduling.holidayRules.strategyLabel')}: ${pt(`scheduling.holidayRules.strategyOptions.${row.rule.strategy === 'advance' ? 'advance' : 'postpone'}`)}`
+                  : '',
+                pt(`scheduling.holidayRules.conflictStatus.${row.rule.conflictStatus}`),
+              ]);
+
+              return summary ? <WasteSchedulingTableMeta>{summary}</WasteSchedulingTableMeta> : <WasteSchedulingMissingValue />;
+            }
+
             const reasonLabel = row.shift.reasonType ? pt(`scheduling.reasonTypes.${row.shift.reasonType}`) : '';
-            const descriptionMeta = joinMetaItems([
+            const meta = joinMetaItems([
               reasonLabel ? `${pt('scheduling.table.reason')}: ${reasonLabel}` : '',
               row.shift.reasonKey ? `${pt('scheduling.table.reasonKey')}: ${row.shift.reasonKey}` : '',
             ]);
@@ -137,23 +165,34 @@ const useSchedulingColumns = () => {
             return (
               <div className="space-y-1">
                 {row.shift.description ? <p className="text-sm">{row.shift.description}</p> : <WasteSchedulingMissingValue />}
-                {descriptionMeta ? <WasteSchedulingTableMeta>{descriptionMeta}</WasteSchedulingTableMeta> : null}
+                {meta ? <WasteSchedulingTableMeta>{meta}</WasteSchedulingTableMeta> : null}
               </div>
             );
           },
         },
-      ] satisfies readonly StudioColumnDef<WasteSchedulingTableRow>[],
-    [pt]
+      ] satisfies readonly StudioColumnDef<WasteSchedulingTableEntry>[],
+    [pt],
   );
 };
 
-const noopClearSelection = () => undefined;
+const resolveEditLabel = (
+  pt: ReturnType<typeof usePluginTranslation>,
+  row: WasteSchedulingTableEntry,
+) => {
+  switch (row.kind) {
+    case 'holiday':
+      return pt('scheduling.holidayRules.editAction');
+    case 'global':
+      return pt('scheduling.global.actions.edit');
+    case 'tour':
+      return pt('scheduling.tour.actions.edit');
+  }
+};
 
 export const WasteSchedulingShiftsTable = ({
-  globalDateShifts,
-  tourDateShifts,
-  availableTours,
+  entries,
   onOpenCreateShiftDialog,
+  onEditHolidayRule,
   onEditGlobalShiftDialog,
   onEditTourShiftDialog,
   onDeleteSchedulingRows,
@@ -165,36 +204,11 @@ export const WasteSchedulingShiftsTable = ({
   onPageSizeChange,
 }: WasteSchedulingShiftsTableProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const [bulkDeleteRows, setBulkDeleteRows] = useState<readonly WasteSchedulingTableRow[]>([]);
-  const clearSelectionRef = useRef<() => void>(noopClearSelection);
+  const [pendingDeleteRows, setPendingDeleteRows] = useState<readonly WasteSchedulingTableEntry[]>([]);
+  const clearSelectionRef = useRef<() => void>(() => undefined);
   const labels = useSchedulingTableLabels();
   const columns = useSchedulingColumns();
-  const rows = useMemo(
-    () =>
-      combineSchedulingTableRows({
-        globalDateShifts,
-        tourDateShifts,
-        availableTours,
-        t: pt,
-      }),
-    [availableTours, globalDateShifts, pt, tourDateShifts]
-  );
-  const pagedRows = useMemo(() => createPagedItems({ items: rows, page, pageSize }), [page, pageSize, rows]);
-  const bulkActions = useMemo(
-    () =>
-      [
-        {
-          id: 'delete-selected',
-          label: pt('scheduling.table.deleteSelected'),
-          disabled: saving,
-          onClick: ({ selectedRows, clearSelection }) => {
-            clearSelectionRef.current = clearSelection;
-            setBulkDeleteRows(selectedRows);
-          },
-        },
-      ] satisfies readonly StudioBulkAction<WasteSchedulingTableRow>[],
-    [pt, saving],
-  );
+  const pagedRows = useMemo(() => createPagedItems({ items: entries, page, pageSize }), [entries, page, pageSize]);
 
   usePagedRouteSync({ page, safePage: pagedRows.safePage, onPageChange, onSyncPageChange });
 
@@ -207,25 +221,50 @@ export const WasteSchedulingShiftsTable = ({
         data={pagedRows.items}
         columns={columns}
         getRowId={(row) => `${row.kind}:${row.id}`}
-        bulkActions={bulkActions}
         toolbarEnd={
           <Button type="button" className="rounded-lg" onClick={onOpenCreateShiftDialog}>
             {pt('scheduling.actions.openCreate')}
           </Button>
         }
-        selectionMode="multiple"
         emptyState={<p className="text-sm text-muted-foreground">{pt('scheduling.messages.emptyBody')}</p>}
         rowActions={(row) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-            aria-label={row.kind === 'global' ? pt('scheduling.global.actions.edit') : pt('scheduling.tour.actions.edit')}
-            onClick={() => (row.kind === 'global' ? onEditGlobalShiftDialog(row.shift) : onEditTourShiftDialog(row.shift))}
-          >
-            <IconEdit aria-hidden="true" className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
+              aria-label={resolveEditLabel(pt, row)}
+              onClick={() => {
+                if (row.kind === 'holiday') {
+                  onEditHolidayRule(row.rule);
+                  return;
+                }
+                if (row.kind === 'global') {
+                  onEditGlobalShiftDialog(row.shift);
+                  return;
+                }
+                onEditTourShiftDialog(row.shift);
+              }}
+            >
+              <IconEdit aria-hidden="true" className="h-4 w-4" />
+            </Button>
+            {row.canDelete ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
+                aria-label={pt('scheduling.actions.delete')}
+                onClick={() => {
+                  clearSelectionRef.current = () => undefined;
+                  setPendingDeleteRows([row]);
+                }}
+              >
+                <IconTrash aria-hidden="true" className="h-4 w-4" />
+              </Button>
+            ) : null}
+          </div>
         )}
       />
       <WastePanelTableBottomBar
@@ -238,16 +277,16 @@ export const WasteSchedulingShiftsTable = ({
         onPageSizeChange={onPageSizeChange}
       />
       <StudioConfirmDialog
-        open={bulkDeleteRows.length > 0}
+        open={pendingDeleteRows.length > 0}
         title={pt('scheduling.bulkDeleteDialog.title')}
-        description={pt('scheduling.bulkDeleteDialog.description', { value: bulkDeleteRows.length })}
+        description={pt('scheduling.bulkDeleteDialog.description', { value: pendingDeleteRows.length })}
         confirmLabel={pt('scheduling.bulkDeleteDialog.confirm')}
         cancelLabel={pt('scheduling.bulkDeleteDialog.cancel')}
-        onCancel={() => setBulkDeleteRows([])}
+        onCancel={() => setPendingDeleteRows([])}
         onConfirm={() => {
-          void Promise.resolve(onDeleteSchedulingRows(bulkDeleteRows)).finally(() => {
+          void Promise.resolve(onDeleteSchedulingRows(pendingDeleteRows)).finally(() => {
             clearSelectionRef.current();
-            setBulkDeleteRows([]);
+            setPendingDeleteRows([]);
           });
         }}
       />

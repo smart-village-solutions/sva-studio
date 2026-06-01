@@ -22,9 +22,7 @@ export const useWasteSchedulingState = () => {
   const [globalDialogMode, setGlobalDialogMode] = useState<'create' | 'edit'>('create');
   const [globalShiftForm, setGlobalShiftForm] = useState<GlobalDateShiftFormState>(createDefaultGlobalDateShiftForm());
   const [message, setMessage] = useState<StatusMessage | null>(null);
-  const [lastOutcome, setLastOutcome] = useState<
-    'create-tour-success' | 'update-tour-success' | 'create-global-success' | 'update-global-success' | null
-  >(null);
+  const [lastOutcome, setLastOutcome] = useState<'create-success' | 'update-success' | null>(null);
   const [saving, setSaving] = useState(false);
 
   return {

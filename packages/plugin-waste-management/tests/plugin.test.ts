@@ -38,6 +38,7 @@ describe('pluginWasteManagement contract', () => {
       q: '',
       page: 2,
       pageSize: 25,
+      fractionsStatus: 'all',
       status: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',
@@ -45,7 +46,11 @@ describe('pluginWasteManagement contract', () => {
       regionId: undefined,
       cityId: undefined,
       wasteFractionId: undefined,
+      collectionLocationId: undefined,
       tourId: undefined,
+      duplicateFromTourId: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
     });
     expect(pluginWasteManagement.routes[0]?.validateSearch?.({})).toEqual({
       tab: 'fractions',
@@ -57,6 +62,7 @@ describe('pluginWasteManagement contract', () => {
       q: '',
       page: 1,
       pageSize: 25,
+      fractionsStatus: 'all',
       status: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',
@@ -64,7 +70,11 @@ describe('pluginWasteManagement contract', () => {
       regionId: undefined,
       cityId: undefined,
       wasteFractionId: undefined,
+      collectionLocationId: undefined,
       tourId: undefined,
+      duplicateFromTourId: undefined,
+      tourDateShiftId: undefined,
+      globalDateShiftId: undefined,
     });
     expect(pluginWasteManagement.jobTypes?.map((jobType) => jobType.jobTypeId)).toEqual([
       'waste-management.initialize-data-source',

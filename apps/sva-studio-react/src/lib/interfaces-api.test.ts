@@ -227,6 +227,68 @@ describe('interfaces app adapter', () => {
     });
   });
 
+  it('fails closed to default interface types when assigned modules are missing at runtime', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['interface_manager'],
+          },
+        })
+    );
+    state.loadSvaMainserverInterfacesOverview.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      config: null,
+      status: {
+        status: 'connected',
+        checkedAt: '2026-05-03T17:00:00.000Z',
+      },
+    });
+    state.listStoredInterfaces.mockResolvedValue([]);
+    state.loadInstanceById.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+    });
+
+    const { listInstanceInterfacesServerFn } = await import('./interfaces-api');
+
+    await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
+      instanceId: 'de-musterhausen',
+      availableTypes: ['mainserver', 's3'],
+      entries: [],
+    });
+  });
+
+  it('rejects malformed authenticated interface list payloads before they reach the UI', async () => {
+    state.withAuthenticatedUser.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          result: {
+            instanceId: 'de-musterhausen',
+            entries: [],
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+    );
+
+    const { listInstanceInterfacesServerFn } = await import('./interfaces-api');
+
+    await expect(listInstanceInterfacesServerFn()).rejects.toThrow('invalid_interfaces_payload');
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'List interfaces produced an invalid payload',
+      expect.objectContaining({
+        operation: 'list_interfaces',
+        invalid_payload_type: 'object',
+      })
+    );
+  });
+
   it('rejects list requests from users without interfaces permissions before reading stored entries', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>

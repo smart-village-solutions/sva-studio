@@ -38,11 +38,17 @@ export const WasteToursContent = ({
   pageSize,
   query,
   status,
+  tourWasteFractionId,
+  firstDateFrom,
+  firstDateTo,
+  endDateFrom,
+  endDateTo,
   onPageChange,
   onSyncPageChange,
   onPageSizeChange,
   onQueryChange,
   onStatusChange,
+  onFiltersChange,
 }: WasteToursContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const [sortField, setSortField] = useState<WasteToursSortField | null>(null);
@@ -92,8 +98,23 @@ export const WasteToursContent = ({
   const {
     selectedTourIds,
     setSelectedTourIds,
-    filtersOpen,
-    setFiltersOpen,
+    filterDialogOpen,
+    setFilterDialogOpen,
+    draftQuery,
+    setDraftQuery,
+    draftStatus,
+    setDraftStatus,
+    draftTourWasteFractionId,
+    setDraftTourWasteFractionId,
+    draftFirstDateFrom,
+    setDraftFirstDateFrom,
+    draftFirstDateTo,
+    setDraftFirstDateTo,
+    draftEndDateFrom,
+    setDraftEndDateFrom,
+    draftEndDateTo,
+    setDraftEndDateTo,
+    hasActiveFilters,
     tourPendingDelete,
     setTourPendingDelete,
     bulkDeleteOpen,
@@ -102,7 +123,18 @@ export const WasteToursContent = ({
     someVisibleSelected,
     toggleSelectAllVisible,
     toggleSelectedTour,
-  } = useWasteToursSelectionState({ tours: sortedTours, page, pageSize, query, status });
+  } = useWasteToursSelectionState({
+    tours: sortedTours,
+    page,
+    pageSize,
+    query,
+    status,
+    tourWasteFractionId,
+    firstDateFrom,
+    firstDateTo,
+    endDateFrom,
+    endDateTo,
+  });
 
   useWasteTabPanelActions(null);
 
@@ -110,8 +142,7 @@ export const WasteToursContent = ({
     <div className="space-y-4">
       <StatusNotice message={message} />
       <WasteToursContentBody
-        filtersOpen={filtersOpen}
-        setFiltersOpen={setFiltersOpen}
+        filterDialogOpen={filterDialogOpen}
         setBulkDeleteOpen={setBulkDeleteOpen}
         tours={sortedTours}
         fractions={fractions}
@@ -128,7 +159,31 @@ export const WasteToursContent = ({
         pageSize={pageSize}
         query={query}
         status={status}
+        tourWasteFractionId={tourWasteFractionId}
+        firstDateFrom={firstDateFrom}
+        firstDateTo={firstDateTo}
+        endDateFrom={endDateFrom}
+        endDateTo={endDateTo}
+        draftQuery={draftQuery}
+        draftStatus={draftStatus}
+        draftTourWasteFractionId={draftTourWasteFractionId}
+        draftFirstDateFrom={draftFirstDateFrom}
+        draftFirstDateTo={draftFirstDateTo}
+        draftEndDateFrom={draftEndDateFrom}
+        draftEndDateTo={draftEndDateTo}
+        hasActiveFilters={hasActiveFilters}
         onOpenCreateDialog={onOpenCreateDialog}
+        onOpenFilterDialog={() => {
+          setDraftQuery(query);
+          setDraftStatus(status);
+          setDraftTourWasteFractionId(tourWasteFractionId);
+          setDraftFirstDateFrom(firstDateFrom);
+          setDraftFirstDateTo(firstDateTo);
+          setDraftEndDateFrom(endDateFrom);
+          setDraftEndDateTo(endDateTo);
+          setFilterDialogOpen(true);
+        }}
+        onFilterDialogOpenChange={setFilterDialogOpen}
         onPageChange={onPageChange}
         onSyncPageChange={onSyncPageChange}
         onPageSizeChange={onPageSizeChange}
@@ -140,8 +195,39 @@ export const WasteToursContent = ({
           setSortField(field);
           setSortDirection('asc');
         }}
-        onQueryChange={onQueryChange}
-        onStatusChange={onStatusChange}
+        onDraftQueryChange={setDraftQuery}
+        onDraftStatusChange={setDraftStatus}
+        onDraftTourWasteFractionIdChange={setDraftTourWasteFractionId}
+        onDraftFirstDateFromChange={setDraftFirstDateFrom}
+        onDraftFirstDateToChange={setDraftFirstDateTo}
+        onDraftEndDateFromChange={setDraftEndDateFrom}
+        onDraftEndDateToChange={setDraftEndDateTo}
+        onApplyFilters={() => {
+          if (onFiltersChange) {
+            onFiltersChange(
+              draftQuery,
+              draftStatus,
+              draftTourWasteFractionId,
+              draftFirstDateFrom,
+              draftFirstDateTo,
+              draftEndDateFrom,
+              draftEndDateTo,
+            );
+            setFilterDialogOpen(false);
+            return;
+          }
+          onQueryChange(draftQuery);
+          onStatusChange(draftStatus);
+          setFilterDialogOpen(false);
+        }}
+        onResetFilters={() => {
+          if (onFiltersChange) {
+            onFiltersChange('', 'all', undefined, undefined, undefined, undefined, undefined);
+            return;
+          }
+          onQueryChange('');
+          onStatusChange('all');
+        }}
         toggleSelectAllVisible={toggleSelectAllVisible}
         toggleSelectedTour={toggleSelectedTour}
         onOpenCalendar={onOpenCalendar}

@@ -11,6 +11,7 @@ export const wasteManagementPluginTranslationsDEFilters = {
     },
     "shiftContext": {
       "all": "Alle Kontexte",
+      "holiday": "Feiertagsregeln",
       "global": "Globale Ausweichtermine",
       "tour": "Tourbezogene Ausweichtermine"
     }

@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WasteSchedulingContent, WasteSchedulingEmptyState } from '../src/waste-management.scheduling-content.js';
 
 const shiftsTableMock = vi.hoisted(() => vi.fn());
-const holidayRulesListMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
@@ -27,19 +26,6 @@ vi.mock('../src/waste-management.scheduling-shifts-table.js', () => ({
   },
 }));
 
-vi.mock('../src/waste-management.holiday-rules-list.js', () => ({
-  WasteHolidayRulesList: (props: Record<string, unknown>) => {
-    holidayRulesListMock(props);
-    return (
-      <div data-testid="holiday-rules-list">
-        <button type="button" onClick={() => (props.onRunSync as () => void)()}>
-          run-holiday-sync
-        </button>
-      </div>
-    );
-  },
-}));
-
 vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
   useWasteTabPanelActions: vi.fn(),
 }));
@@ -47,7 +33,6 @@ vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
 afterEach(() => {
   cleanup();
   shiftsTableMock.mockReset();
-  holidayRulesListMock.mockReset();
 });
 
 describe('WasteSchedulingContent', () => {
@@ -73,9 +58,7 @@ describe('WasteSchedulingContent', () => {
       reasonKey: 'ops.roadwork',
       followUpMode: 'propagate-series',
     };
-    const availableTours = [{ id: 'tour-1', name: 'Restmüll Nord' }];
     const onDeleteSchedulingRows = vi.fn(async () => undefined);
-    const onRunHolidaySync = vi.fn(async () => undefined);
     const holidayRule = {
       id: 'holiday-rule-1',
       holidayDate: '2026-01-01',
@@ -92,15 +75,46 @@ describe('WasteSchedulingContent', () => {
     render(
       <WasteSchedulingContent
         message={{ tone: 'info', text: 'shift message' } as never}
-        globalDateShifts={[globalShift] as never}
-        tourDateShifts={[tourShift] as never}
-        holidayRules={[holidayRule] as never}
-        availableTours={availableTours as never}
+        schedulingEntries={[
+          {
+            id: 'holiday-rule-1',
+            entryType: 'holiday-rule',
+            kind: 'holiday',
+            originalDate: '2026-01-01',
+            actualDate: undefined,
+            contextLabel: 'Neujahr',
+            sortLabel: 'Neujahr',
+            canDelete: false,
+            rule: holidayRule,
+          },
+          {
+            id: 'global-1',
+            entryType: 'global-shift',
+            kind: 'global',
+            originalDate: '2026-01-01',
+            actualDate: '2026-01-02',
+            contextLabel: 'Restmüll Nord',
+            sortLabel: 'Restmüll Nord',
+            canDelete: true,
+            shift: globalShift,
+          },
+          {
+            id: 'tour-shift-1',
+            entryType: 'tour-shift',
+            kind: 'tour',
+            originalDate: '2026-02-01',
+            actualDate: '2026-02-03',
+            contextLabel: 'Restmüll Nord',
+            sortLabel: 'Restmüll Nord',
+            canDelete: true,
+            shift: tourShift,
+          },
+        ] as never}
         onOpenCreateShiftDialog={vi.fn()}
+        onEditHolidayRule={vi.fn()}
         onEditGlobalShiftDialog={vi.fn()}
         onEditTourShiftDialog={vi.fn()}
         onDeleteSchedulingRows={onDeleteSchedulingRows}
-        onRunHolidaySync={onRunHolidaySync}
         saving={false}
         page={2}
         pageSize={25}
@@ -112,24 +126,18 @@ describe('WasteSchedulingContent', () => {
 
     expect(screen.getByText('shift message')).toBeTruthy();
     expect(screen.getByTestId('shifts-table')).toBeTruthy();
-    expect(screen.getByTestId('holiday-rules-list')).toBeTruthy();
     expect(shiftsTableMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
-        globalDateShifts: [globalShift],
-        tourDateShifts: [tourShift],
-        availableTours,
+        entries: [
+          expect.objectContaining({ kind: 'holiday', id: 'holiday-rule-1' }),
+          expect.objectContaining({ kind: 'global', id: 'global-1' }),
+          expect.objectContaining({ kind: 'tour', id: 'tour-shift-1' }),
+        ],
         onDeleteSchedulingRows,
         page: 2,
         pageSize: 25,
       })
     );
-    expect(holidayRulesListMock.mock.calls[0]?.[0]).toEqual(
-      expect.objectContaining({
-        rules: [holidayRule],
-      })
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'run-holiday-sync' }));
-    expect(onRunHolidaySync).toHaveBeenCalledTimes(1);
   });
 
   it('renders the unified create action in the empty state', () => {

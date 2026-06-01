@@ -18,7 +18,7 @@ export const WasteSchedulingGlobalFormView = ({
   return (
     <WasteSchedulingFormContent
       variant="global"
-      mode={search.schedulingView === 'edit-global' ? 'edit' : 'create'}
+      mode="edit"
       form={controller.globalShiftForm}
       tours={controller.availableTours}
       saving={controller.saving}
@@ -29,10 +29,15 @@ export const WasteSchedulingGlobalFormView = ({
         controller.setMessage(null);
         void navigate({
           to: '/plugins/waste-management',
-          search: { ...search, schedulingView: 'list', globalDateShiftId: undefined, tourDateShiftId: undefined },
+          search: {
+            ...search,
+            schedulingView: 'list',
+            schedulingEntryType: undefined,
+            schedulingEntryId: undefined,
+          },
         });
       }}
-      onSubmit={(event) => controller.onSubmitGlobalShift(event, search.schedulingView === 'edit-global' ? 'edit' : 'create')}
+      onSubmit={(event) => controller.onSubmitGlobalShift(event, 'edit')}
     />
   );
 };

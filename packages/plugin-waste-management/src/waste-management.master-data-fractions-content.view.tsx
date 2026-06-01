@@ -9,6 +9,7 @@ import {
   sortFieldByColumnId,
   type useFractionBulkActions,
   type useFractionTableLabels,
+  WasteFractionsFilterAction,
   type WasteFractionsContentProps,
 } from './waste-management.master-data-fractions-content.parts.js';
 import type { useFractionColumns } from './waste-management.master-data-fractions-content.columns.js';
@@ -34,6 +35,14 @@ type WasteMasterDataFractionsTableSectionProps = {
     sortBy: WasteManagementFractionSortField,
     sortDirection: WasteManagementFractionSortDirection
   ) => void;
+  readonly fractionsStatus: WasteFractionsContentProps['fractionsStatus'];
+  readonly filterDialogOpen: boolean;
+  readonly draftFractionsStatus: WasteFractionsContentProps['fractionsStatus'];
+  readonly onOpenFilterDialog: () => void;
+  readonly onFilterDialogOpenChange: (open: boolean) => void;
+  readonly onDraftFractionsStatusChange: (status: WasteFractionsContentProps['fractionsStatus']) => void;
+  readonly onApplyFractionsStatus: () => void;
+  readonly onResetFractionsStatus: () => void;
   readonly onPageChange: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
 };
@@ -52,6 +61,14 @@ export const WasteMasterDataFractionsTableSection = ({
   onOpenEditFraction,
   onRequestDeleteFraction,
   onFractionsSortChange,
+  fractionsStatus,
+  filterDialogOpen,
+  draftFractionsStatus,
+  onOpenFilterDialog,
+  onFilterDialogOpenChange,
+  onDraftFractionsStatusChange,
+  onApplyFractionsStatus,
+  onResetFractionsStatus,
   onPageChange,
   onPageSizeChange,
 }: WasteMasterDataFractionsTableSectionProps) => {
@@ -67,6 +84,18 @@ export const WasteMasterDataFractionsTableSection = ({
         columns={columns}
         getRowId={(fraction) => fraction.id}
         bulkActions={bulkActions}
+        toolbarStart={
+          <WasteFractionsFilterAction
+            fractionsStatus={fractionsStatus}
+            filterDialogOpen={filterDialogOpen}
+            draftFractionsStatus={draftFractionsStatus}
+            onOpenFilterDialog={onOpenFilterDialog}
+            onFilterDialogOpenChange={onFilterDialogOpenChange}
+            onDraftFractionsStatusChange={onDraftFractionsStatusChange}
+            onApplyFractionsStatus={onApplyFractionsStatus}
+            onResetFractionsStatus={onResetFractionsStatus}
+          />
+        }
         toolbarEnd={<FractionPrimaryAction onOpenCreateFraction={onOpenCreateFraction} />}
         selectionMode="multiple"
         emptyState={<p className="text-sm text-muted-foreground">{pt('masterData.messages.emptyBody')}</p>}

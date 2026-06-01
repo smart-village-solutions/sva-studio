@@ -69,6 +69,27 @@ export const toToursStatusSearch = (
   page: 1,
 });
 
+export const toToursFiltersSearch = (
+  search: WasteManagementSearchParams,
+  q: string,
+  status: WasteManagementSearchParams['status'],
+  tourWasteFractionId: WasteManagementSearchParams['tourWasteFractionId'],
+  firstDateFrom: WasteManagementSearchParams['firstDateFrom'],
+  firstDateTo: WasteManagementSearchParams['firstDateTo'],
+  endDateFrom: WasteManagementSearchParams['endDateFrom'],
+  endDateTo: WasteManagementSearchParams['endDateTo'],
+): WasteManagementSearchParams => ({
+  ...search,
+  q,
+  status,
+  tourWasteFractionId,
+  firstDateFrom,
+  firstDateTo,
+  endDateFrom,
+  endDateTo,
+  page: 1,
+});
+
 const resetToursFormState = (controller: WasteToursController) => {
   controller.setMessage(null);
   controller.setLastOutcome(null);
@@ -117,6 +138,29 @@ export const useWasteToursListNavigation = (
     },
     setStatus: (status: WasteManagementSearchParams['status']) => {
       void navigate({ to: '/plugins/waste-management', search: toToursStatusSearch(search, status) });
+    },
+    setFilters: (
+      q: string,
+      status: WasteManagementSearchParams['status'],
+      tourWasteFractionId: WasteManagementSearchParams['tourWasteFractionId'],
+      firstDateFrom: WasteManagementSearchParams['firstDateFrom'],
+      firstDateTo: WasteManagementSearchParams['firstDateTo'],
+      endDateFrom: WasteManagementSearchParams['endDateFrom'],
+      endDateTo: WasteManagementSearchParams['endDateTo'],
+    ) => {
+      void navigate({
+        to: '/plugins/waste-management',
+        search: toToursFiltersSearch(
+          search,
+          q,
+          status,
+          tourWasteFractionId,
+          firstDateFrom,
+          firstDateTo,
+          endDateFrom,
+          endDateTo,
+        ),
+      });
     },
   };
 };

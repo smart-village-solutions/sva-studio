@@ -11,6 +11,7 @@ export const wasteManagementPluginTranslationsENFilters = {
     },
     "shiftContext": {
       "all": "All contexts",
+      "holiday": "Holiday rules",
       "global": "Global shifts",
       "tour": "Tour shifts"
     }

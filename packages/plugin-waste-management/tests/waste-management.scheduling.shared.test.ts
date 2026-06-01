@@ -4,10 +4,14 @@ import {
   createDefaultGlobalDateShiftForm,
   createDefaultTourDateShiftForm,
   createSchedulingTableEntries,
+  filterHolidayRules,
+  filterSchedulingTableEntries,
   filterGlobalDateShifts,
   filterTourDateShifts,
+  findSchedulingTableEntry,
   mapGlobalDateShiftToForm,
   mapTourDateShiftToForm,
+  resolveSchedulingEntryTypeFromShiftContext,
   toCreateGlobalDateShiftInput,
   toCreateTourDateShiftInput,
   toUpdateGlobalDateShiftInput,
@@ -356,5 +360,162 @@ describe('waste-management scheduling shared helpers', () => {
         contextLabel: 'Bio Süd',
       }),
     ]);
+  });
+
+  it('filters holiday rules by context, rejects tour-specific holiday searches, and resolves entry types', () => {
+    const rules = [
+      {
+        id: 'holiday-1',
+        holidayDate: '2026-12-25',
+        holidayName: 'Erster Weihnachtstag',
+        stateCode: 'BB',
+        year: 2026,
+        shiftStrategy: 'next-working-day',
+        scope: 'global',
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+    ] as const;
+
+    expect(resolveSchedulingEntryTypeFromShiftContext('global', [{ id: 'tour-1' }])).toBe(
+      'global-shift'
+    );
+    expect(resolveSchedulingEntryTypeFromShiftContext('tour', [{ id: 'tour-1' }])).toBe(
+      'tour-shift'
+    );
+    expect(resolveSchedulingEntryTypeFromShiftContext('tour', [])).toBe('global-shift');
+
+    expect(
+      filterHolidayRules(rules, {
+        tab: 'scheduling',
+        q: '',
+        shiftContext: 'tour',
+        tourId: '',
+        settingsTab: 'source',
+      })
+    ).toEqual([]);
+    expect(
+      filterHolidayRules(rules, {
+        tab: 'scheduling',
+        q: '',
+        shiftContext: 'holiday',
+        tourId: 'tour-1',
+        settingsTab: 'source',
+      })
+    ).toEqual([]);
+    expect(
+      filterHolidayRules(rules, {
+        tab: 'scheduling',
+        q: '',
+        shiftContext: 'holiday',
+        tourId: '',
+        settingsTab: 'source',
+      })
+    ).toEqual(rules);
+    expect(
+      filterHolidayRules(rules, {
+        tab: 'scheduling',
+        q: 'bb',
+        shiftContext: 'all',
+        tourId: '',
+        settingsTab: 'source',
+      })
+    ).toEqual(rules);
+  });
+
+  it('filters scheduling table entries across holiday, global, and tour branches and finds matching entries', () => {
+    const entries = createSchedulingTableEntries({
+      holidayRules: [
+        {
+          id: 'holiday-1',
+          holidayDate: '2026-12-25',
+          holidayName: 'Erster Weihnachtstag',
+          stateCode: 'BB',
+          year: 2026,
+          shiftStrategy: 'next-working-day',
+          scope: 'global',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      ],
+      globalDateShifts: [
+        {
+          id: 'global-1',
+          originalDate: '2026-12-26',
+          actualDate: '2026-12-27',
+          hasYear: true,
+          reasonType: 'holiday',
+          reasonKey: 'boxing-day',
+          description: 'Folgeschicht',
+          tourIds: ['tour-1'],
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      ],
+      tourDateShifts: [
+        {
+          id: 'tour-shift-1',
+          tourId: 'tour-2',
+          originalDate: '2026-12-28',
+          actualDate: '2026-12-29',
+          hasYear: true,
+          reasonType: 'weather',
+          reasonKey: 'snow',
+          description: 'Schnee',
+          followUpMode: 'skip',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      ],
+      availableTours: [
+        { id: 'tour-1', name: 'Bio Süd' },
+        { id: 'tour-2', name: 'Rest Nord' },
+      ] as never,
+      t: (key: string) => key,
+    });
+
+    expect(
+      filterSchedulingTableEntries(entries, {
+        tab: 'scheduling',
+        q: '',
+        shiftContext: 'holiday',
+        tourId: 'tour-1',
+        settingsTab: 'source',
+      })
+    ).toEqual([]);
+    expect(
+      filterSchedulingTableEntries(entries, {
+        tab: 'scheduling',
+        q: '',
+        shiftContext: 'holiday',
+        tourId: '',
+        settingsTab: 'source',
+      })
+    ).toEqual([expect.objectContaining({ id: 'holiday-1', kind: 'holiday' })]);
+    expect(
+      filterSchedulingTableEntries(entries, {
+        tab: 'scheduling',
+        q: 'bb',
+        shiftContext: 'holiday',
+        tourId: '',
+        settingsTab: 'source',
+      })
+    ).toEqual([expect.objectContaining({ id: 'holiday-1', kind: 'holiday' })]);
+    expect(
+      filterSchedulingTableEntries(entries, {
+        tab: 'scheduling',
+        q: '',
+        shiftContext: 'all',
+        tourId: 'tour-x',
+        settingsTab: 'source',
+      })
+    ).toEqual([]);
+    expect(
+      findSchedulingTableEntry({
+        entries,
+        schedulingEntryType: 'tour-shift',
+        schedulingEntryId: 'tour-shift-1',
+      })
+    ).toEqual(expect.objectContaining({ id: 'tour-shift-1', kind: 'tour' }));
   });
 });

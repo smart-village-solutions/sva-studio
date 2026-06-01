@@ -112,6 +112,8 @@ const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-stu
 const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
 const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio/issues/2';
 const COCKPIT_URL = 'https://cockpit.guben.de';
+const APP_LINK_PERMISSION = 'app.read';
+const COCKPIT_LINK_PERMISSION = 'cockpit.read';
 const sidebarLogger = createOperationLogger('sidebar', 'debug');
 
 const pluginIconBySection = {
@@ -778,6 +780,12 @@ export default function Sidebar({
   const canAccessInterfaces = isAuthenticated && isIamUiEnabled() && hasInterfacesAccessRole(user);
   const canAccessSystemTools = canAccessAdminRoles;
   const canAccessTenantModules = isAuthenticated && isIamUiEnabled() && Boolean(user?.instanceId);
+  const canAccessApplicationLink =
+    canAccessWorkspace &&
+    hasPermissionAction(APP_LINK_PERMISSION, contentAccessApi.permissionActions, contentAccessApi.isLoading);
+  const canAccessCockpitLink =
+    canAccessWorkspace &&
+    hasPermissionAction(COCKPIT_LINK_PERMISSION, contentAccessApi.permissionActions, contentAccessApi.isLoading);
 
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [hasLoadedCollapsePreference, setHasLoadedCollapsePreference] = React.useState(false);
@@ -876,25 +884,31 @@ export default function Sidebar({
       ...pluginDataManagementItems,
     ];
 
-    const applicationItems: SidebarItem[] = canAccessWorkspace
-      ? [
-          {
-            kind: 'link',
-            id: 'app',
-            to: '/app',
-            label: t('shell.sidebar.app'),
-            icon: IconAppWindow,
-          },
-          {
-            kind: 'link',
-            id: 'cockpit',
-            href: COCKPIT_URL,
-            label: t('shell.sidebar.cockpit'),
-            icon: IconGauge,
-          },
-          ...pluginApplicationItems,
-        ]
-      : [...pluginApplicationItems];
+    const applicationItems: SidebarItem[] = [
+      ...(canAccessApplicationLink
+        ? [
+            {
+              kind: 'link' as const,
+              id: 'app',
+              to: '/app',
+              label: t('shell.sidebar.app'),
+              icon: IconAppWindow,
+            },
+          ]
+        : []),
+      ...(canAccessCockpitLink
+        ? [
+            {
+              kind: 'link' as const,
+              id: 'cockpit',
+              href: COCKPIT_URL,
+              label: t('shell.sidebar.cockpit'),
+              icon: IconGauge,
+            },
+          ]
+        : []),
+      ...pluginApplicationItems,
+    ];
 
     const userChildren: SidebarLeafItem[] = [
       ...(canAccessAdminUsers
@@ -1051,10 +1065,11 @@ export default function Sidebar({
     canAccessAdminPrivacy,
     canAccessAdminRoles,
     canAccessAdminUsers,
+    canAccessApplicationLink,
+    canAccessCockpitLink,
     canAccessInterfaces,
     canAccessMedia,
     canAccessSystemTools,
-    canAccessWorkspace,
     canAccessContent,
     contentAccessApi.access,
     contentAccessApi.isLoading,

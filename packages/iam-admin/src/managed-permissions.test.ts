@@ -7,6 +7,14 @@ describe('managed-permissions', () => {
     expect(listManagedPermissionMetadata()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          permissionKey: 'app.read',
+          moduleId: 'app',
+        }),
+        expect.objectContaining({
+          permissionKey: 'cockpit.read',
+          moduleId: 'cockpit',
+        }),
+        expect.objectContaining({
           permissionKey: 'waste-management.read',
           moduleId: 'waste-management',
         }),
@@ -29,6 +37,11 @@ describe('managed-permissions', () => {
       moduleId: 'content',
       isScopeAssignable: true,
       supportedAccessScopes: ['all', 'own', 'organization'],
+    });
+    expect(getManagedPermissionMetadata('app.read')).toEqual({
+      permissionKey: 'app.read',
+      moduleId: 'app',
+      description: 'App-Link in der Sidebar anzeigen',
     });
   });
 });

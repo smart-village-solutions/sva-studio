@@ -9,7 +9,7 @@ describe('iam seed plan', () => {
   });
 
   it('keeps the canonical permission catalog in sync with the seed integration expectations', () => {
-    assert.equal(iamSeedPlan.permissions.length, 38);
+    assert.equal(iamSeedPlan.permissions.length, 40);
   });
 
   it('uses unique role slugs and keycloak subjects', () => {
@@ -35,6 +35,8 @@ describe('iam seed plan', () => {
     assert.deepEqual(editor.permissionKeys, [
       'content.read',
       'content.readHistory',
+      'app.read',
+      'cockpit.read',
       'content.create',
       'content.updateMetadata',
       'content.updatePayload',
@@ -84,6 +86,8 @@ describe('iam seed plan', () => {
     );
     assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'media.read')?.resourceType, 'media');
     assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'news.update')?.resourceType, 'news');
+    assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'app.read')?.resourceType, 'app');
+    assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'cockpit.read')?.resourceType, 'cockpit');
   });
 
   it('throws for unknown persona keys', () => {

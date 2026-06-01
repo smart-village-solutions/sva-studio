@@ -14,6 +14,8 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111121', 'content.manageRevisions', 'Manage content revisions'],
   ['40111111-1111-1111-1111-111111111122', 'integration.manage', 'Manage integrations'],
   ['40111111-1111-1111-1111-111111111123', 'feature.toggle', 'Toggle feature flags'],
+  ['40111111-1111-1111-1111-111111111149', 'app.read', 'Show the app link in the sidebar'],
+  ['40111111-1111-1111-1111-111111111150', 'cockpit.read', 'Show the cockpit link in the sidebar'],
   ['40111111-1111-1111-1111-111111111124', 'instance.registry.manage', 'Manage instance registry and provisioning'],
   ['40111111-1111-1111-1111-111111111125', 'content.updatePayload', 'Update content payload'],
   ['40111111-1111-1111-1111-111111111126', 'content.changeStatus', 'Change content status'],
@@ -29,6 +31,7 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111148', 'media.deliver.protected', 'Deliver protected media'],
 ] as const satisfies readonly [string, PermissionKey, string][];
 
+const applicationReadPermissions = ['app.read', 'cockpit.read'] as const;
 const mediaReadPermissions = ['media.read'] as const;
 const mediaManagePermissions = ['media.read', 'media.create', 'media.update', 'media.reference.manage', 'media.delete'] as const;
 
@@ -53,7 +56,7 @@ const personas: readonly PersonaSeed[] = [
     displayName: 'Instance Registry Administrator',
     scopeDefault: 'instance',
     mfaPolicy: 'required',
-    permissionKeys: ['instance.registry.manage', 'feature.toggle', 'integration.manage'],
+    permissionKeys: ['instance.registry.manage', 'feature.toggle', 'integration.manage', ...applicationReadPermissions],
     accountId: '50888888-8888-8888-8888-888888888888',
     keycloakSubject: 'seed:instance_registry_admin',
     seedEmailPlaceholder: 'seed.instance_registry_admin@sva.local',
@@ -73,6 +76,7 @@ const personas: readonly PersonaSeed[] = [
       'iam.org.write',
       'content.read',
       'content.readHistory',
+      ...applicationReadPermissions,
       ...mediaReadPermissions,
       'feature.toggle',
     ],
@@ -91,6 +95,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...applicationReadPermissions,
       'content.updateMetadata',
       'content.updatePayload',
       'content.changeStatus',
@@ -109,7 +114,14 @@ const personas: readonly PersonaSeed[] = [
     displayName: 'Interface Manager',
     scopeDefault: 'instance',
     mfaPolicy: 'recommended',
-    permissionKeys: ['iam.org.read', 'content.read', 'content.readHistory', ...mediaReadPermissions, 'integration.manage'],
+    permissionKeys: [
+      'iam.org.read',
+      'content.read',
+      'content.readHistory',
+      ...applicationReadPermissions,
+      ...mediaReadPermissions,
+      'integration.manage',
+    ],
     accountId: '50444444-4444-4444-4444-444444444444',
     keycloakSubject: 'seed:interface_manager',
     seedEmailPlaceholder: 'seed.interface-manager@sva.local',
@@ -122,7 +134,15 @@ const personas: readonly PersonaSeed[] = [
     displayName: 'Designer',
     scopeDefault: 'org',
     mfaPolicy: 'optional',
-    permissionKeys: ['content.read', 'content.readHistory', 'content.updateMetadata', 'content.updatePayload', 'media.read', 'media.update'],
+    permissionKeys: [
+      'content.read',
+      'content.readHistory',
+      ...applicationReadPermissions,
+      'content.updateMetadata',
+      'content.updatePayload',
+      'media.read',
+      'media.update',
+    ],
     accountId: '50555555-5555-5555-5555-555555555555',
     keycloakSubject: 'seed:designer',
     seedEmailPlaceholder: 'seed.designer@sva.local',
@@ -138,6 +158,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...applicationReadPermissions,
       'content.create',
       'content.updateMetadata',
       'content.updatePayload',
@@ -163,6 +184,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...applicationReadPermissions,
       'content.changeStatus',
       'content.publish',
       'content.archive',

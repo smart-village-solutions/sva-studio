@@ -289,6 +289,32 @@ describe('interfaces app adapter', () => {
     );
   });
 
+  it('rejects non-object authenticated interface list payloads before they reach the UI', async () => {
+    state.withAuthenticatedUser.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          result: null,
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+    );
+
+    const { listInstanceInterfacesServerFn } = await import('./interfaces-api');
+
+    await expect(listInstanceInterfacesServerFn()).rejects.toThrow('invalid_interfaces_payload');
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'List interfaces produced an invalid payload',
+      expect.objectContaining({
+        operation: 'list_interfaces',
+        invalid_payload_type: 'object',
+      })
+    );
+  });
+
   it('rejects list requests from users without interfaces permissions before reading stored entries', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>

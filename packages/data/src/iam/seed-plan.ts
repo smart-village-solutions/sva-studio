@@ -14,6 +14,8 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111121', 'content.manageRevisions', 'Manage content revisions'],
   ['40111111-1111-1111-1111-111111111122', 'integration.manage', 'Manage integrations'],
   ['40111111-1111-1111-1111-111111111123', 'feature.toggle', 'Toggle feature flags'],
+  ['40111111-1111-1111-1111-111111111149', 'app.read', 'Show the app link in the sidebar'],
+  ['40111111-1111-1111-1111-111111111150', 'cockpit.read', 'Show the cockpit link in the sidebar'],
   ['40111111-1111-1111-1111-111111111124', 'instance.registry.manage', 'Manage instance registry and provisioning'],
   ['40111111-1111-1111-1111-111111111125', 'content.updatePayload', 'Update content payload'],
   ['40111111-1111-1111-1111-111111111126', 'content.changeStatus', 'Change content status'],
@@ -40,6 +42,7 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111141', 'poi.update', 'Update POI plugin content'],
   ['40111111-1111-1111-1111-111111111142', 'poi.delete', 'Delete POI plugin content'],
 ] as const satisfies readonly [string, PermissionKey, string][];
+const applicationReadPermissions = ['app.read', 'cockpit.read'] as const;
 const pluginReadPermissions = ['news.read', 'events.read', 'poi.read'] as const;
 const mediaReadPermissions = ['media.read'] as const;
 const pluginWritePermissions = [
@@ -77,7 +80,7 @@ const personas: readonly PersonaSeed[] = [
     displayName: 'Instance Registry Administrator',
     scopeDefault: 'instance',
     mfaPolicy: 'required',
-    permissionKeys: ['instance.registry.manage', 'feature.toggle', 'integration.manage'],
+    permissionKeys: ['instance.registry.manage', 'feature.toggle', 'integration.manage', ...applicationReadPermissions],
     accountId: '50888888-8888-8888-8888-888888888888',
     keycloakSubject: 'seed:instance_registry_admin',
     seedEmailPlaceholder: 'seed.instance_registry_admin@sva.local',
@@ -97,6 +100,7 @@ const personas: readonly PersonaSeed[] = [
       'iam.org.write',
       'content.read',
       'content.readHistory',
+      ...applicationReadPermissions,
       ...mediaReadPermissions,
       ...pluginReadPermissions,
       'feature.toggle',
@@ -116,6 +120,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...applicationReadPermissions,
       'content.updateMetadata',
       'content.updatePayload',
       'content.changeStatus',
@@ -139,6 +144,7 @@ const personas: readonly PersonaSeed[] = [
       'iam.org.read',
       'content.read',
       'content.readHistory',
+      ...applicationReadPermissions,
       ...mediaReadPermissions,
       ...pluginReadPermissions,
       'integration.manage',
@@ -158,6 +164,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...applicationReadPermissions,
       'content.updateMetadata',
       'content.updatePayload',
       'media.read',
@@ -182,6 +189,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...applicationReadPermissions,
       'content.create',
       'content.updateMetadata',
       'content.updatePayload',
@@ -208,6 +216,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...applicationReadPermissions,
       'content.changeStatus',
       'content.publish',
       'content.archive',

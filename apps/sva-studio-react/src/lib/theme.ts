@@ -31,6 +31,21 @@ export const resolveThemeMode = (
   return prefersDarkMode ? 'dark' : 'light';
 };
 
+export const createThemeBootstrapScript = (): string =>
+  [
+    '(function(){',
+    'var root=document.documentElement;',
+    `var storageKey=${JSON.stringify(THEME_MODE_STORAGE_KEY)};`,
+    'var persistedMode=null;',
+    'try{persistedMode=window.localStorage.getItem(storageKey);}catch{}',
+    "var prefersDarkMode=typeof window.matchMedia==='function'&&window.matchMedia('(prefers-color-scheme: dark)').matches;",
+    "var mode=persistedMode==='light'||persistedMode==='dark'?persistedMode:(prefersDarkMode?'dark':'light');",
+    'root.dataset.themeMode=mode;',
+    'root.style.colorScheme=mode;',
+    "root.classList.toggle('dark',mode==='dark');",
+    '})();',
+  ].join('');
+
 // Visual payload changes to KERN-derived tokens, not the public runtime contract.
 export const getThemeDisplayName = (themeName: AppThemeName): string => {
   switch (themeName) {

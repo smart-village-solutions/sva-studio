@@ -16,6 +16,7 @@ type ThemeProviderProps = Readonly<{
 }>;
 
 const ThemeContext = React.createContext<ThemeContextValue | null>(null);
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect;
 
 const getSystemDarkModePreference = (): boolean => {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -49,7 +50,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     return resolveThemeMode(persistedMode, getSystemDarkModePreference());
   });
 
-  React.useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     applyThemeToDocument(themeName, mode);
   }, [mode, themeName]);
 

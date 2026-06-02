@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_THEME_NAME, getThemeDisplayName, resolveThemeMode, resolveThemeName } from './theme';
+import {
+  createThemeBootstrapScript,
+  DEFAULT_THEME_NAME,
+  getThemeDisplayName,
+  resolveThemeMode,
+  resolveThemeName,
+  THEME_MODE_STORAGE_KEY,
+} from './theme';
 
 describe('theme helpers', () => {
   it('keeps stable internal theme ids during the KERN phase-1 reskin', () => {
@@ -25,6 +32,14 @@ describe('theme helpers', () => {
   it('uses system preference when no persisted theme mode exists', () => {
     expect(resolveThemeMode(null, true)).toBe('dark');
     expect(resolveThemeMode(undefined, false)).toBe('light');
+  });
+
+  it('creates a bootstrap script that applies the persisted or system mode before hydration', () => {
+    const bootstrapScript = createThemeBootstrapScript();
+
+    expect(bootstrapScript).toContain(THEME_MODE_STORAGE_KEY);
+    expect(bootstrapScript).toContain('root.dataset.themeMode=mode;');
+    expect(bootstrapScript).toContain("root.classList.toggle('dark',mode==='dark');");
   });
 
   it('uses KERN-facing display names for the shell toggle and metadata', () => {

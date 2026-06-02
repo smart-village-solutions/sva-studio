@@ -23,6 +23,7 @@ Die Layout-Shell von `apps/sva-studio-react` verwendet semantische Design-Tokens
 - Phase 1 ist eine visuelle Annäherung der Studio-Shell an KERN 2 im Light-Theme, keine technische Migration auf eine zweite UI-Laufzeit.
 - Die internen Theme-IDs `sva-default` und `sva-forest` bleiben stabil; geändert werden nur die sichtbaren Anzeigenamen und die zugrunde liegenden semantischen Token.
 - `apps/sva-studio-react/src/styles.css` bleibt die führende Quelle für Shell-Token. KERN-nahe Farben, Radien, Schatten und Flächen werden dort in die bestehenden semantischen Variablen übersetzt.
+- Das Default-Light-Theme nutzt dabei eine KERN-nahe blaue Action- und Accent-Palette; `sva-forest` bleibt bewusst eine separate grüne Variantenlinie.
 - `@kern-ux/native` wird in Phase 1 nicht als globaler CSS-Reset oder als konkurrierende Komponentenbibliothek eingebunden.
 - Root-Dokument, `AppShell`, `Header` und `Sidebar` konsumieren ausschließlich semantische Tokens. Neue Shell-Flächen sollen keine direkten KERN-Farbcodes oder projektspezifischen Utility-Farben einführen.
 

@@ -132,6 +132,24 @@ select {
   padding: 20px;
 }
 
+.panel-message {
+  margin: 14px 0 0;
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.panel-message--info {
+  background: rgba(29, 159, 115, 0.08);
+  color: var(--accent-dark);
+}
+
+.panel-message--error {
+  background: rgba(182, 70, 70, 0.12);
+  color: var(--risk);
+}
+
 .tabs {
   display: inline-flex;
   gap: 8px;
@@ -338,6 +356,16 @@ select {
   margin-top: 6px;
   color: var(--text-muted);
   font-size: 0.88rem;
+}
+
+.table-inline-select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(23, 36, 29, 0.12);
+  border-radius: 12px;
+  background: white;
+  color: var(--text-strong);
+  padding: 0 12px;
 }
 
 .table-title-row {

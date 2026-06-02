@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import reportData from './data/project-status.json';
+import { getEditableWorkPackageOptions, isLocalProjectStatusHost, updateWorkPackageAssignment } from './lib/local-editing';
 import { validateProjectStatusReport, type ProjectHealth, type ProjectPriority, type ProjectStatus } from './lib/project-status';
 import { t } from './lib/i18n';
 import { createProjectReportModel, type ProjectStatusReport } from './lib/report-model';
@@ -18,6 +19,8 @@ if (validationErrors.length > 0) {
 }
 
 const projectReport = reportData as ProjectStatusReport;
+const localProjectStatusUrl = '/__local/project-status';
+const localProjectStatusWorkPackageUrl = '/__local/project-status/work-package';
 
 const healthClassNameByValue: Record<ProjectHealth, string> = {
   on_track: 'status-pill status-pill--on-track',
@@ -70,6 +73,52 @@ const ProgressBar = ({ value }: Readonly<{ value: number }>) => (
   />
 );
 
+type LocalProjectStatusPatchRequest = Readonly<{
+  workPackageId: string;
+  milestoneId: string;
+  priority: ProjectPriority;
+  status: ProjectStatus;
+}>;
+
+const parseProjectStatusReport = (value: unknown): ProjectStatusReport => {
+  const validationErrors = validateProjectStatusReport(value);
+  if (validationErrors.length > 0) {
+    throw new Error(`Invalid project report payload:\n${validationErrors.join('\n')}`);
+  }
+
+  return value as ProjectStatusReport;
+};
+
+const loadLocalProjectStatusReport = async (): Promise<ProjectStatusReport> => {
+  const response = await fetch(localProjectStatusUrl);
+
+  if (!response.ok) {
+    throw new Error(`Failed to load local project status: ${response.status}`);
+  }
+
+  return parseProjectStatusReport(await response.json());
+};
+
+const saveLocalProjectStatusUpdate = async (
+  payload: LocalProjectStatusPatchRequest
+): Promise<ProjectStatusReport> => {
+  const response = await fetch(localProjectStatusWorkPackageUrl, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to save local project status: ${response.status}`);
+  }
+
+  const body = (await response.json()) as {
+    report?: unknown;
+  };
+
+  return parseProjectStatusReport(body.report);
+};
+
 const FilterSelect = ({
   label,
   value,
@@ -95,8 +144,20 @@ const FilterSelect = ({
 
 const WorkPackageTable = ({
   rows,
+  isLocalEditingEnabled,
+  isSaving,
+  editableMilestones,
+  editableStatuses,
+  editablePriorities,
+  onUpdateWorkPackage,
 }: Readonly<{
   rows: ReturnType<typeof createProjectReportModel>['workPackages'];
+  isLocalEditingEnabled: boolean;
+  isSaving: boolean;
+  editableMilestones: readonly { id: string; label: string }[];
+  editableStatuses: readonly { id: ProjectStatus }[];
+  editablePriorities: readonly { id: ProjectPriority }[];
+  onUpdateWorkPackage: (payload: LocalProjectStatusPatchRequest) => void;
 }>) => {
   const [expandedRows, setExpandedRows] = React.useState<ReadonlySet<string>>(() => new Set());
 
@@ -166,9 +227,84 @@ const WorkPackageTable = ({
                     </div>
                     <div className="table-secondary">{entry.area}</div>
                   </td>
-                  <td>{entry.milestoneTitle}</td>
-                  <td>{entry.priorityLabel}</td>
-                  <td>{getStatusLabel(entry.status)}</td>
+                  <td>
+                    {isLocalEditingEnabled ? (
+                      <select
+                        className="table-inline-select"
+                        aria-label={t('app.workPackageTable.editMilestoneAriaLabel', { id: entry.id })}
+                        value={entry.milestoneId}
+                        disabled={isSaving}
+                        onChange={(event) =>
+                          onUpdateWorkPackage({
+                            workPackageId: entry.id,
+                            milestoneId: event.target.value,
+                            priority: entry.priority,
+                            status: entry.status,
+                          })
+                        }
+                      >
+                        {editableMilestones.map((milestone) => (
+                          <option key={milestone.id} value={milestone.id}>
+                            {milestone.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      entry.milestoneTitle
+                    )}
+                  </td>
+                  <td>
+                    {isLocalEditingEnabled ? (
+                      <select
+                        className="table-inline-select"
+                        aria-label={t('app.workPackageTable.editPriorityAriaLabel', { id: entry.id })}
+                        value={entry.priority}
+                        disabled={isSaving}
+                        onChange={(event) =>
+                          onUpdateWorkPackage({
+                            workPackageId: entry.id,
+                            milestoneId: entry.milestoneId,
+                            priority: event.target.value as ProjectPriority,
+                            status: entry.status,
+                          })
+                        }
+                      >
+                        {editablePriorities.map((priority) => (
+                          <option key={priority.id} value={priority.id}>
+                            {projectReport.priorityModel[priority.id]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      entry.priorityLabel
+                    )}
+                  </td>
+                  <td>
+                    {isLocalEditingEnabled ? (
+                      <select
+                        className="table-inline-select"
+                        aria-label={t('app.workPackageTable.editStatusAriaLabel', { id: entry.id })}
+                        value={entry.status}
+                        disabled={isSaving}
+                        onChange={(event) =>
+                          onUpdateWorkPackage({
+                            workPackageId: entry.id,
+                            milestoneId: entry.milestoneId,
+                            priority: entry.priority,
+                            status: event.target.value as ProjectStatus,
+                          })
+                        }
+                      >
+                        {editableStatuses.map((status) => (
+                          <option key={status.id} value={status.id}>
+                            {getStatusLabel(status.id)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      getStatusLabel(entry.status)
+                    )}
+                  </td>
                   <td>
                     {entry.health !== 'on_track' && (
                       <span className={healthClassNameByValue[entry.health]}>{entry.health}</span>
@@ -196,8 +332,45 @@ const WorkPackageTable = ({
 
 export function App() {
   const [filters, updateFilters] = useFilterState();
+  const [report, setReport] = React.useState<ProjectStatusReport>(projectReport);
+  const [localEditingMessage, setLocalEditingMessage] = React.useState<string | null>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const isLocalEditingEnabled = React.useMemo(() => isLocalProjectStatusHost(globalThis.location.hostname), []);
+  const confirmedReportRef = React.useRef(projectReport);
 
-  const model = React.useMemo(() => createProjectReportModel(projectReport, filters), [filters]);
+  const model = React.useMemo(() => createProjectReportModel(report, filters), [report, filters]);
+  const editableOptions = React.useMemo(() => getEditableWorkPackageOptions(report), [report]);
+
+  React.useEffect(() => {
+    if (!isLocalEditingEnabled) {
+      return;
+    }
+
+    let isDisposed = false;
+    setLocalEditingMessage(t('app.localEditing.loading'));
+
+    void loadLocalProjectStatusReport()
+      .then((nextReport) => {
+        if (isDisposed) {
+          return;
+        }
+
+        confirmedReportRef.current = nextReport;
+        setReport(nextReport);
+        setLocalEditingMessage(t('app.localEditing.active'));
+      })
+      .catch(() => {
+        if (isDisposed) {
+          return;
+        }
+
+        setLocalEditingMessage(t('app.localEditing.loadError'));
+      });
+
+    return () => {
+      isDisposed = true;
+    };
+  }, [isLocalEditingEnabled]);
 
   const handleFilterChange = <TKey extends keyof ReportFilterState>(key: TKey, value: ReportFilterState[TKey]) => {
     updateFilters((current) => ({
@@ -205,6 +378,37 @@ export function App() {
       [key]: value,
     }));
   };
+
+  const handleLocalWorkPackageUpdate = React.useCallback(
+    (payload: LocalProjectStatusPatchRequest) => {
+      if (!isLocalEditingEnabled || isSaving) {
+        return;
+      }
+
+      const previousReport = confirmedReportRef.current;
+      const optimisticReport = updateWorkPackageAssignment(previousReport, payload);
+
+      setIsSaving(true);
+      setLocalEditingMessage(t('app.localEditing.active'));
+      setReport(optimisticReport);
+
+      void saveLocalProjectStatusUpdate(payload)
+        .then((nextReport) => {
+          confirmedReportRef.current = nextReport;
+          setReport(nextReport);
+          setLocalEditingMessage(t('app.localEditing.active'));
+        })
+        .catch(() => {
+          confirmedReportRef.current = previousReport;
+          setReport(previousReport);
+          setLocalEditingMessage(t('app.localEditing.saveError'));
+        })
+        .finally(() => {
+          setIsSaving(false);
+        });
+    },
+    [isLocalEditingEnabled, isSaving]
+  );
 
   return (
     <main className="page-shell">
@@ -217,7 +421,7 @@ export function App() {
         <dl className="hero__meta">
           <div>
             <dt>{t('app.updatedAt')}</dt>
-            <dd>{projectReport.meta.updatedAt}</dd>
+            <dd>{report.meta.updatedAt}</dd>
           </div>
         </dl>
       </section>
@@ -259,10 +463,10 @@ export function App() {
             onChange={(value) => handleFilterChange('milestone', value)}
           />
           <FilterSelect
-            label={t('app.filters.health')}
-            value={filters.health}
-            options={model.availableHealthStates}
-            onChange={(value) => handleFilterChange('health', value as ProjectHealth | 'all')}
+            label={t('app.filters.status')}
+            value={filters.status}
+            options={model.availableStatuses}
+            onChange={(value) => handleFilterChange('status', value as ProjectStatus | 'all')}
           />
           <FilterSelect
             label={t('app.filters.priority')}
@@ -271,6 +475,23 @@ export function App() {
             onChange={(value) => handleFilterChange('priority', value as ProjectPriority | 'all')}
           />
         </div>
+
+        {isLocalEditingEnabled && localEditingMessage && (
+          <p
+            className={
+              localEditingMessage === t('app.localEditing.saveError') || localEditingMessage === t('app.localEditing.loadError')
+                ? 'panel-message panel-message--error'
+                : 'panel-message panel-message--info'
+            }
+            role={
+              localEditingMessage === t('app.localEditing.saveError') || localEditingMessage === t('app.localEditing.loadError')
+                ? 'alert'
+                : undefined
+            }
+          >
+            {localEditingMessage}
+          </p>
+        )}
       </section>
 
       {filters.view === 'milestones' ? (
@@ -308,7 +529,15 @@ export function App() {
       ) : model.workPackages.length === 0 ? (
         <p className="empty-state">{t('app.emptyState')}</p>
       ) : (
-        <WorkPackageTable rows={model.workPackages} />
+        <WorkPackageTable
+          rows={model.workPackages}
+          isLocalEditingEnabled={isLocalEditingEnabled}
+          isSaving={isSaving}
+          editableMilestones={editableOptions.milestones}
+          editableStatuses={editableOptions.statuses}
+          editablePriorities={editableOptions.priorities}
+          onUpdateWorkPackage={handleLocalWorkPackageUpdate}
+        />
       )}
     </main>
   );

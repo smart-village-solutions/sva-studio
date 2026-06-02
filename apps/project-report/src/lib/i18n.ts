@@ -7,6 +7,12 @@ export const resources = {
       updatedAt: 'Stand',
       source: 'Quelle',
       emptyState: 'Für die aktuellen Filter gibt es keine Einträge.',
+      localEditing: {
+        active: 'Lokale Bearbeitung aktiv. Änderungen werden direkt in die lokale JSON-Datei geschrieben.',
+        loading: 'Lokalen Projektstatus laden…',
+        loadError: 'Lokaler Projektstatus konnte nicht geladen werden.',
+        saveError: 'Lokale Projektstatus-Änderung konnte nicht gespeichert werden.',
+      },
       tabs: {
         milestones: 'Meilensteine',
         workPackages: 'Arbeitspakete',
@@ -37,6 +43,9 @@ export const resources = {
         hideDetails: 'Weniger',
         showDetailsAriaLabel: 'Details für {id} anzeigen',
         hideDetailsAriaLabel: 'Weniger Details für {id}',
+        editMilestoneAriaLabel: 'Meilenstein für {id} bearbeiten',
+        editPriorityAriaLabel: 'Priorität für {id} bearbeiten',
+        editStatusAriaLabel: 'Status für {id} bearbeiten',
       },
       statuses: {
         idea: 'Idee',

@@ -1,6 +1,7 @@
 import type { ApiErrorCode } from '@sva/core';
 import type { z } from 'zod';
 
+import type { OrganizationMainserverCredentialState } from './organization-mainserver-credentials.js';
 import {
   assignOrganizationMembershipSchema,
   createOrganizationSchema,
@@ -123,6 +124,10 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
     client: QueryClient,
     input: { readonly instanceId: string; readonly organizationId: string }
   ) => Promise<unknown | undefined>;
+  readonly loadOrganizationMainserverCredentialState: (
+    client: QueryClient,
+    input: { readonly instanceId: string; readonly organizationId: string }
+  ) => Promise<OrganizationMainserverCredentialState>;
   readonly logger: {
     readonly info: (message: string, meta: Readonly<Record<string, unknown>>) => void;
     readonly error: (message: string, meta: Readonly<Record<string, unknown>>) => void;
@@ -177,6 +182,16 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
     input: { readonly instanceId: string; readonly organizationId?: string; readonly parentOrganizationId?: string | null }
   ) => Promise<HierarchyResolution>;
   readonly toPayloadHash: (rawBody: string) => string;
+  readonly upsertOrganizationMainserverCredentials: (
+    client: QueryClient,
+    input: {
+      readonly instanceId: string;
+      readonly organizationId: string;
+      readonly actorAccountId?: string;
+      readonly mainserverApplicationId?: string;
+      readonly mainserverApplicationSecret?: string;
+    }
+  ) => Promise<OrganizationMainserverCredentialState>;
   readonly updateSession: (sessionId: string, patch: { readonly activeOrganizationId?: string }) => Promise<void>;
   readonly validateCsrf: (request: Request, requestId?: string) => Response | null;
   readonly withInstanceScopedDb: <T>(
@@ -364,6 +379,13 @@ RETURNING id;
         );
 
         const createdOrganizationId = inserted.rows[0]?.id ?? organizationId;
+        await deps.upsertOrganizationMainserverCredentials(client, {
+          instanceId: actor.instanceId,
+          organizationId: createdOrganizationId,
+          actorAccountId: actor.actorAccountId,
+          mainserverApplicationId: parsed.data.mainserverApplicationId,
+          mainserverApplicationSecret: parsed.data.mainserverApplicationSecret,
+        });
         await deps.emitActivityLog(client, {
           instanceId: actor.instanceId,
           accountId: actor.actorAccountId,
@@ -536,6 +558,13 @@ WHERE instance_id = $1
             hierarchy.depth,
           ]
         );
+        await deps.upsertOrganizationMainserverCredentials(client, {
+          instanceId: actor.instanceId,
+          organizationId,
+          actorAccountId: actor.actorAccountId,
+          mainserverApplicationId: parsed.data.mainserverApplicationId,
+          mainserverApplicationSecret: parsed.data.mainserverApplicationSecret,
+        });
 
         await deps.rebuildOrganizationSubtree(client, { instanceId: actor.instanceId, organizationId });
         await deps.emitActivityLog(client, {

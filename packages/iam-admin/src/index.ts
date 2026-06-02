@@ -297,7 +297,9 @@ export {
 
 export {
   buildOrganizationMainserverSecretAad,
+  loadOrganizationMainserverCredentialState,
   projectOrganizationMainserverCredentialState,
+  upsertOrganizationMainserverCredentials,
   type OrganizationMainserverCredentialRow,
   type OrganizationMainserverCredentialState,
 } from './organization-mainserver-credentials.js';

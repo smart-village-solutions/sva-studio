@@ -5,6 +5,7 @@ import {
   createOrganizationMutationHandlers,
   createOrganizationReadHandlers,
   isHierarchyError,
+  loadOrganizationMainserverCredentialState,
   loadContextOptions,
   loadOrganizationById,
   loadOrganizationDetail,
@@ -13,6 +14,7 @@ import {
   readStatusFilter,
   rebuildOrganizationSubtree,
   resolveHierarchyFields,
+  upsertOrganizationMainserverCredentials,
 } from '@sva/iam-admin';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
@@ -88,6 +90,7 @@ const organizationMutationHandlers = createOrganizationMutationHandlers({
   loadContextOptions,
   loadOrganizationById,
   loadOrganizationDetail,
+  loadOrganizationMainserverCredentialState,
   logger,
   notifyPermissionInvalidation,
   parseRequestBody,
@@ -100,6 +103,7 @@ const organizationMutationHandlers = createOrganizationMutationHandlers({
   resolveActorInfo,
   resolveHierarchyFields,
   toPayloadHash,
+  upsertOrganizationMainserverCredentials,
   updateSession,
   validateCsrf,
   withInstanceScopedDb,

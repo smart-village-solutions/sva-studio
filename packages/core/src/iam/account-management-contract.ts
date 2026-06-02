@@ -651,6 +651,8 @@ export type IamOrganizationDetail = IamOrganizationListItem & {
   readonly metadata: Readonly<Record<string, unknown>>;
   readonly memberships: readonly IamOrganizationMembership[];
   readonly children: readonly IamOrganizationChildItem[];
+  readonly mainserverApplicationId?: string;
+  readonly mainserverApplicationSecretSet: boolean;
 };
 
 export type IamOrganizationContextOption = {

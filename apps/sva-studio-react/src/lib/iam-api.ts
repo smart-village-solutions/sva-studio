@@ -600,6 +600,8 @@ export type CreateOrganizationPayload = {
   readonly parentOrganizationId?: string;
   readonly organizationType: IamOrganizationType;
   readonly contentAuthorPolicy: 'org_only' | 'org_or_personal';
+  readonly mainserverApplicationId?: string;
+  readonly mainserverApplicationSecret?: string;
   readonly metadata?: Readonly<Record<string, unknown>>;
 };
 

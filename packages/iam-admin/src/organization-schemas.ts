@@ -12,6 +12,8 @@ export const createOrganizationSchema = z.object({
   parentOrganizationId: z.uuid().optional(),
   organizationType: organizationTypeSchema.default('other'),
   contentAuthorPolicy: contentAuthorPolicySchema.default('org_only'),
+  mainserverApplicationId: z.string().trim().optional(),
+  mainserverApplicationSecret: z.string().trim().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -22,6 +24,8 @@ export const updateOrganizationSchema = z
     parentOrganizationId: z.uuid().nullable().optional(),
     organizationType: organizationTypeSchema.optional(),
     contentAuthorPolicy: contentAuthorPolicySchema.optional(),
+    mainserverApplicationId: z.string().trim().optional(),
+    mainserverApplicationSecret: z.string().trim().optional(),
     isActive: z.boolean().optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
@@ -32,6 +36,8 @@ export const updateOrganizationSchema = z
       value.parentOrganizationId !== undefined ||
       value.organizationType !== undefined ||
       value.contentAuthorPolicy !== undefined ||
+      value.mainserverApplicationId !== undefined ||
+      value.mainserverApplicationSecret !== undefined ||
       value.isActive !== undefined ||
       value.metadata !== undefined,
     { message: 'at_least_one_field_required' }

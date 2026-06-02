@@ -1,3 +1,11 @@
+## RENAMED Requirements
+
+- FROM: `### Requirement: News Mutations Preserve Per-User Delegation`
+- TO: `### Requirement: News Mutations Preserve Policy-Driven Mainserver Delegation`
+
+- FROM: `### Requirement: Event And POI Mutations Preserve Per-User Delegation`
+- TO: `### Requirement: Event And POI Mutations Preserve Policy-Driven Mainserver Delegation`
+
 ## MODIFIED Requirements
 
 ### Requirement: Typed News GraphQL Adapters
@@ -54,7 +62,7 @@ The system SHALL map Mainserver News integration failures to deterministic Studi
 - **THEN** the adapter returns a deterministic GraphQL error classification
 - **AND** the Plugin UI can render an i18n-backed error state
 
-### Requirement: News Mutations Preserve Per-User Delegation
+### Requirement: News Mutations Preserve Policy-Driven Mainserver Delegation
 
 The system SHALL execute News create, update, archive, and delete mutations with the effective Mainserver credentials resolved for the active organization context. For `org_only`, the mutation path uses only the active organization's credentials. For `org_or_personal`, the mutation path prefers the active organization's credentials and falls back to the current user's Keycloak-backed credentials only when the organization has no complete credential set.
 
@@ -126,7 +134,7 @@ The adapters SHALL use the policy-driven SVA Mainserver credential resolution ch
 - **AND** the adapter executes the `pointOfInterest(id: ID!)` GraphQL query with typed variables
 - **AND** missing or invalid response data is mapped to a deterministic integration error
 
-### Requirement: Event And POI Mutations Preserve Per-User Delegation
+### Requirement: Event And POI Mutations Preserve Policy-Driven Mainserver Delegation
 
 The system SHALL execute Event and POI create, update, archive, and delete mutations with the effective Mainserver credentials resolved for the active organization context. For `org_only`, the mutation path uses only the active organization's credentials. For `org_or_personal`, the mutation path prefers the active organization's credentials and falls back to the current user's Keycloak-backed credentials only when the organization has no complete credential set.
 

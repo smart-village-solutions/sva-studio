@@ -1,6 +1,11 @@
+## RENAMED Requirements
+
+- FROM: `### Requirement: Per-User-Delegation an den SVA-Mainserver`
+- TO: `### Requirement: Delegation an den SVA-Mainserver im aktiven Organisationskontext`
+
 ## MODIFIED Requirements
 
-### Requirement: Per-User-Delegation an den SVA-Mainserver
+### Requirement: Delegation an den SVA-Mainserver im aktiven Organisationskontext
 
 Das System SHALL Zugriffe auf den externen SVA-Mainserver serverseitig delegieren und die effektiven Mainserver-Credentials anhand der `contentAuthorPolicy` der aktiven Organisation auflösen. Organisationsgebundene Credentials werden aus der Studio-Datenbank für `instanceId + activeOrganizationId` gelesen; Benutzer-Credentials bleiben in Keycloak-User-Attributen des aktuellen Benutzers. Credentials und Access-Tokens werden weder im Browser noch in Sessions exponiert.
 

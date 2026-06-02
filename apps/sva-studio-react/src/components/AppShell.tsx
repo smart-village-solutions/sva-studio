@@ -142,7 +142,7 @@ export default function AppShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex min-h-0 flex-1 flex-col bg-background px-4 pb-6 pt-3 sm:px-6 sm:pb-8 sm:pt-4 lg:px-8"
+          className="flex min-h-0 flex-1 flex-col bg-background px-4 pb-6 pt-4 sm:px-6 sm:pb-8 sm:pt-5 lg:px-8 lg:pt-6"
           aria-busy={isLoading}
         >
           {isLoading ? (
@@ -163,7 +163,7 @@ export default function AppShell({
               <React.Suspense fallback={null}>
                 <LazyPermissionsDegradedBanner />
               </React.Suspense>
-              {children}
+              <div className="space-y-4">{children}</div>
               {runtimeHealthIndicatorEnabled ? (
                 <React.Suspense fallback={null}>
                   <LazyRuntimeHealthIndicator />

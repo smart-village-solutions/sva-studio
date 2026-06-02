@@ -1,3 +1,4 @@
+@import "@kern-ux/native/dist/fonts/fira-sans.css";
 @import "tailwindcss";
 @source "../../../packages";
 
@@ -49,34 +50,34 @@
 
 @layer base {
   :root {
-    --background: 250 250 243;
-    --foreground: 16 16 11;
+    --background: 246 248 251;
+    --foreground: 27 39 56;
     --card: 255 255 255;
-    --card-foreground: 16 16 11;
+    --card-foreground: 27 39 56;
     --popover: 255 255 255;
-    --popover-foreground: 16 16 11;
-    --primary: 78 188 65;
-    --primary-foreground: 16 16 11;
-    --secondary: 19 194 150;
-    --secondary-foreground: 16 16 11;
-    --muted: 244 244 237;
-    --muted-foreground: 99 115 129;
-    --accent: 247 251 246;
-    --accent-foreground: 16 16 11;
+    --popover-foreground: 27 39 56;
+    --primary: 0 90 158;
+    --primary-foreground: 255 255 255;
+    --secondary: 233 240 249;
+    --secondary-foreground: 27 39 56;
+    --muted: 239 243 248;
+    --muted-foreground: 82 95 114;
+    --accent: 233 240 249;
+    --accent-foreground: 27 39 56;
     --destructive: 176 0 32;
     --destructive-foreground: 255 255 255;
-    --border: 230 230 223;
-    --input: 230 230 223;
-    --ring: 78 188 65;
-    --sidebar: 255 255 255;
-    --sidebar-foreground: 99 115 129;
-    --sidebar-primary: 78 188 65;
-    --sidebar-primary-foreground: 16 16 11;
-    --sidebar-accent: 247 251 246;
-    --sidebar-accent-foreground: 16 16 11;
-    --sidebar-border: 230 230 223;
-    --sidebar-ring: 78 188 65;
-    --waste-panel-surface: 232 232 216;
+    --border: 210 220 232;
+    --input: 210 220 232;
+    --ring: 0 90 158;
+    --sidebar: 249 251 253;
+    --sidebar-foreground: 44 58 77;
+    --sidebar-primary: 0 90 158;
+    --sidebar-primary-foreground: 255 255 255;
+    --sidebar-accent: 233 240 249;
+    --sidebar-accent-foreground: 27 39 56;
+    --sidebar-border: 210 220 232;
+    --sidebar-ring: 0 90 158;
+    --waste-panel-surface: 240 244 249;
     --waste-panel-overlay: 255 255 255;
     --font-weight-normal: 400;
     --font-weight-medium: 500;
@@ -91,17 +92,17 @@
     --text-xs: 12px;
     --radius: 6px;
     --radius-card: 8px;
-    --radius-modal: 20px;
-    --elevation-sm: 0px 1px 3px 0px rgba(166, 175, 195, 0.4);
+    --radius-modal: 12px;
+    --elevation-sm: 0px 6px 18px 0px rgba(38, 47, 56, 0.08);
   }
 
   html[data-theme='sva-forest'] {
-    --primary: 19 194 150;
-    --ring: 19 194 150;
-    --accent: 235 249 246;
-    --sidebar-primary: 19 194 150;
-    --sidebar-ring: 19 194 150;
-    --sidebar-accent: 235 249 246;
+    --primary: 18 122 96;
+    --ring: 18 122 96;
+    --accent: 226 236 225;
+    --sidebar-primary: 18 122 96;
+    --sidebar-ring: 18 122 96;
+    --sidebar-accent: 226 236 225;
   }
 
   html.dark,
@@ -162,8 +163,8 @@
     background-color: rgb(var(--background));
     color: rgb(var(--foreground));
     font-family:
-      -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
-      'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
+      'Cantarell', 'Droid Sans', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -196,10 +197,10 @@
     /* 2. Input-Glow: Subtiler ausfahrender Ring */
     @keyframes input-glow {
       from {
-        box-shadow: 0 0 0 0 rgba(78, 188, 65, 0.15);
+        box-shadow: 0 0 0 0 rgba(0, 90, 158, 0.14);
       }
       to {
-        box-shadow: 0 0 0 3px rgba(78, 188, 65, 0.1);
+        box-shadow: 0 0 0 3px rgba(0, 90, 158, 0.12);
       }
     }
 

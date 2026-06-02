@@ -3,6 +3,8 @@ import { StudioListPageTemplate } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
+import { StudioSummaryCard } from '../../components/StudioSummaryCard';
+import { StudioTableSurface } from '../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -69,48 +71,52 @@ const AuthorizeResultTable = ({
 }>) => (
   <div className="space-y-4">
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('monitoring.authorize.summary.actorTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-1 text-sm text-muted-foreground">
+      <StudioSummaryCard
+        eyebrow={t('monitoring.authorize.summary.actorTitle')}
+        value={result.actor.instanceId}
+        valueClassName="text-lg"
+      >
+        <div className="space-y-1 text-sm text-muted-foreground">
           <p>{t('monitoring.authorize.summary.instanceId', { value: result.actor.instanceId })}</p>
           <p>{t('monitoring.authorize.summary.subject', { value: result.actor.keycloakSubject })}</p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('monitoring.authorize.summary.requestTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-1 text-sm text-muted-foreground">
+        </div>
+      </StudioSummaryCard>
+      <StudioSummaryCard
+        eyebrow={t('monitoring.authorize.summary.requestTitle')}
+        value={result.request.action}
+        valueClassName="text-lg"
+      >
+        <div className="space-y-1 text-sm text-muted-foreground">
           <p>{t('monitoring.authorize.summary.action', { value: result.request.action })}</p>
           <p>{t('monitoring.authorize.summary.resourceType', { value: result.request.resourceType })}</p>
           <p>{t('monitoring.authorize.summary.resourceId', { value: result.request.resourceId ?? t('monitoring.authorize.values.notAvailable') })}</p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('monitoring.authorize.summary.configurationTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-1 text-sm text-muted-foreground">
+        </div>
+      </StudioSummaryCard>
+      <StudioSummaryCard
+        eyebrow={t('monitoring.authorize.summary.configurationTitle')}
+        value={result.configuration.measuredRequests}
+        valueClassName="text-lg"
+      >
+        <div className="space-y-1 text-sm text-muted-foreground">
           <p>{t('monitoring.authorize.summary.samples', { value: result.configuration.measuredRequests })}</p>
           <p>{t('monitoring.authorize.summary.warmup', { value: result.configuration.warmupRequests })}</p>
           <p>{t('monitoring.authorize.summary.generatedAt', { value: result.generatedAt })}</p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('monitoring.authorize.summary.reportTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-1 text-sm text-muted-foreground">
+        </div>
+      </StudioSummaryCard>
+      <StudioSummaryCard
+        eyebrow={t('monitoring.authorize.summary.reportTitle')}
+        value={t('monitoring.authorize.summary.measuredOnServer')}
+        valueClassName="text-lg"
+      >
+        <div className="space-y-1 text-sm text-muted-foreground">
           <p>{t('monitoring.authorize.summary.measuredOnServer')}</p>
           <p>{t('monitoring.authorize.summary.reportJson', { value: result.report?.jsonPath ?? t('monitoring.authorize.values.notAvailable') })}</p>
           <p>{t('monitoring.authorize.summary.reportMarkdown', { value: result.report?.markdownPath ?? t('monitoring.authorize.values.notAvailable') })}</p>
-        </CardContent>
-      </Card>
+        </div>
+      </StudioSummaryCard>
     </div>
 
-    <div className="overflow-x-auto rounded-lg border">
+    <StudioTableSurface tone="background">
       <table className="min-w-full text-sm">
         <caption className="sr-only">{t('monitoring.authorize.table.caption')}</caption>
         <thead className="bg-muted/40 text-left">
@@ -138,7 +144,7 @@ const AuthorizeResultTable = ({
           ))}
         </tbody>
       </table>
-    </div>
+    </StudioTableSurface>
   </div>
 );
 

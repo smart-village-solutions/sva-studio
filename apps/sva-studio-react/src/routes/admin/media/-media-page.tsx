@@ -2,6 +2,7 @@ import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@
 import { Link, useLocation, useNavigate, useParams } from '@tanstack/react-router';
 import React from 'react';
 
+import { StudioFilterSurface } from '../../../components/StudioFilterSurface';
 import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
@@ -250,7 +251,7 @@ const MediaLibraryPage = () => {
           </Alert>
         ) : null}
 
-        <div className="grid gap-4 rounded-lg border bg-card p-4 md:grid-cols-2">
+        <StudioFilterSurface className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="media-search">{t('media.filters.searchLabel')}</Label>
             <Input
@@ -278,7 +279,7 @@ const MediaLibraryPage = () => {
               <option value="protected">{t(mediaVisibilityKeyByValue.protected)}</option>
             </Select>
           </div>
-        </div>
+        </StudioFilterSurface>
 
         {mediaApi.isLoading ? <p className="text-sm text-muted-foreground">{t('media.messages.loading')}</p> : null}
 
@@ -295,7 +296,7 @@ const MediaLibraryPage = () => {
           getRowId={(asset) => asset.id}
         />
 
-        <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 md:flex-row md:items-end md:justify-between">
+        <StudioFilterSurface className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
             <Label htmlFor="media-page-size">{t('content.pagination.pageSizeLabel')}</Label>
             <Select
@@ -336,7 +337,7 @@ const MediaLibraryPage = () => {
               {t('content.pagination.next')}
             </Button>
           </div>
-        </div>
+        </StudioFilterSurface>
 
         {!mediaApi.isLoading && mediaApi.assets.length === 0 ? (
           <Alert>

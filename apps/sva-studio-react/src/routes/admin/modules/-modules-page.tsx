@@ -1,6 +1,8 @@
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import { StudioFilterSurface } from '../../../components/StudioFilterSurface';
+import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -28,7 +30,7 @@ const TenantModulesPage = ({
       </header>
 
       <Card className="space-y-4 p-4">
-        <div className="overflow-x-auto rounded-md border border-border">
+        <StudioTableSurface tone="background">
           <table className="min-w-full border-collapse text-sm">
             <thead className="bg-muted/30">
               <tr>
@@ -57,7 +59,7 @@ const TenantModulesPage = ({
               ))}
             </tbody>
           </table>
-        </div>
+        </StudioTableSurface>
       </Card>
     </section>
   );
@@ -120,7 +122,7 @@ const AdminModulesPage = () => {
         </Alert>
       ) : null}
 
-      <Card className="space-y-4 p-4">
+      <StudioFilterSurface className="space-y-4">
         <div className="space-y-1">
           <div className="font-medium text-foreground">{t('admin.instances.instanceModules.instanceSelect.label')}</div>
           <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.instanceSelect.hint')}</p>
@@ -137,7 +139,7 @@ const AdminModulesPage = () => {
             </option>
           ))}
         </select>
-      </Card>
+      </StudioFilterSurface>
 
       {selectedInstance ? (
         <div className="grid gap-5 lg:grid-cols-2">

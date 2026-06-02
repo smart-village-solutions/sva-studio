@@ -362,8 +362,11 @@ gleichzeitig beeinflussen.
 ### UI-Theming, Design-Tokens und Shell-Verhalten
 
 - Die Shell verwendet semantische CSS-Tokens (`background`, `foreground`, `card`, `sidebar`, `primary`, `border`, `ring`, `destructive`) statt direkter Tailwind-Farbwerte
+- Das Default-Light-Theme ist aktuell als KERN-2-nahe blau-graue Foundation umgesetzt; die grüne Linie bleibt als separate Instanzvariante `sva-forest` erhalten
 - Light- und Dark-Mode werden über denselben Token-Satz aufgelöst; der aktive Modus wird im Frontend per `ThemeProvider` auf das Dokument angewendet
+- Der initiale Theme-Modus wird zusätzlich schon im Root-Dokument per Bootstrap-Skript gesetzt, damit die Shell vor der Hydration nicht erst im Fallback-Farbschema rendert
 - Theme-Varianten sind instanzfähig vorbereitet: `instanceId` kann eine Theme-Auswahl beeinflussen, ohne die Shell-Komponenten selbst zu verzweigen
+- `@kern-ux/native` dient in Phase 1 nur als gebündelte Font-Quelle (`Fira Sans`), nicht als globaler CSS-Reset oder konkurrierende Komponentenlaufzeit
 - Mobile Navigation nutzt ein zugängliches Drawer-/`Sheet`-Muster statt projektspezifischer Spezialinteraktionen
 - Komplexe Alt-Muster wie kollabierte Flyout-Submenüs oder pixelgenaue Active-Indikatoren bleiben bewusst außerhalb des Initial-Scope
 

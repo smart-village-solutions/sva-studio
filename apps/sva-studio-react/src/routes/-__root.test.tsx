@@ -118,6 +118,11 @@ describe('root route document', () => {
       expect(document.getElementById('main-content')).toBe(document.activeElement);
     });
 
+    expect(document.body.className).toContain('bg-background');
+    expect(document.body.className).toContain('text-foreground');
+    expect(skipLink.className).toContain('bg-card');
+    expect(skipLink.className).toContain('border-border');
+    expect(document.head.querySelector('script[data-theme-bootstrap="true"]')).not.toBeNull();
     expect(document.head.querySelector('style[data-app-styles="true"]')).not.toBeNull();
   });
 
@@ -186,6 +191,7 @@ describe('root route document', () => {
     );
 
     expect(markup).toContain('data-is-loading="false"');
+    expect(markup).toContain('data-theme-bootstrap="true"');
   });
 
   it('keeps the shell mounted with the current pathname during route-level pending navigation', async () => {

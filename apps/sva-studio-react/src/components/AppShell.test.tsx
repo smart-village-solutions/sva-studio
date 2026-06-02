@@ -106,19 +106,20 @@ beforeEach(() => {
 describe('AppShell', () => {
   it('rendert Sidebar und Main-Landmark', async () => {
     render(
-      <AppShell currentPathname="/admin/users/123">
-        <div>Inhalt</div>
-      </AppShell>
+      <AppShell currentPathname="/admin/users/123">Inhalt</AppShell>
     );
 
     expect(await screen.findByLabelText('Seitenleiste')).toBeTruthy();
     expect(screen.getByRole('main')).toBeTruthy();
+    expect(screen.getByRole('main').className).toContain('bg-background');
+    expect(screen.getByRole('main').className).toContain('px-4');
     const breadcrumbNavigation = screen.getByRole('navigation', { name: 'Brotkrumen-Navigation' });
     expect(breadcrumbNavigation).toBeTruthy();
     expect(within(breadcrumbNavigation).getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');
     expect(within(breadcrumbNavigation).getByRole('link', { name: 'Benutzerverwaltung' }).getAttribute('href')).toBe('/admin/users');
     expect(within(breadcrumbNavigation).getByText('Nutzer bearbeiten')).toBeTruthy();
     expect(screen.getByText('Inhalt')).toBeTruthy();
+    expect(screen.getByText('Inhalt').closest('div')?.className).toContain('space-y-4');
     expect(screen.queryByTestId('runtime-health-indicator')).toBeNull();
   });
 

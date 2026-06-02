@@ -63,6 +63,9 @@ describe('HomePage', () => {
         .getAllByRole('link', { name: 'Inhalte öffnen' })
         .some((link) => link.getAttribute('href') === '/admin/content')
     ).toBe(true);
+    expect(screen.getByRole('heading', { name: 'SVA Studio' }).closest('section')?.className).toContain(
+      'rgba(0,90,158,0.18)'
+    );
   });
 
   it('shows signed-out copy without exposing role diagnostics', () => {
@@ -86,6 +89,9 @@ describe('HomePage', () => {
     expect(screen.queryByRole('link', { name: 'Zum Login' })).toBeNull();
     expect(screen.queryByText('Direkte Einstiege')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Inhalte öffnen' })).toBeNull();
+    expect(screen.getByText('Willkommen').parentElement?.className).toContain(
+      'shadow-[0_24px_70px_rgba(0,90,158,0.1)]'
+    );
   });
 
   it('shows loading state while auth is resolving', () => {

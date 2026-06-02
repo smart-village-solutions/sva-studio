@@ -4,6 +4,7 @@ import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
+import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -297,7 +298,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
               </div>
             </form>
 
-            <div className="overflow-x-auto rounded-xl border border-border bg-background">
+            <StudioTableSurface tone="background">
               <table className="min-w-full border-collapse" aria-label={t('admin.groups.memberships.tableAriaLabel')}>
                 <caption className="sr-only">{t('admin.groups.memberships.caption')}</caption>
                 <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -357,7 +358,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
                   )}
                 </tbody>
               </table>
-            </div>
+            </StudioTableSurface>
           </section>
         </>
       ) : null}

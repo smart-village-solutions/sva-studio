@@ -76,6 +76,9 @@ Optional und nur bei klarer Notwendigkeit:
 - einzelne app-interne UI-Helfer, wenn sie direkt die Shell-Optik brechen
 - minimale Dokumentationsanpassungen zu UI-Shell-Theming und Design-Tokens
 
+Architekturreferenz für die spätere Synchronisierung:
+
+- `docs/architecture/08-cross-cutting-concepts.md` im Abschnitt `UI-Shell, Responsivität und Skeleton UX`
 ## Umsetzungsansatz
 
 ### Schritt 1: KERN-2-Foundation ableiten

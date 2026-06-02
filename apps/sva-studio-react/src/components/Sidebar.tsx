@@ -235,13 +235,13 @@ const isGroupActive = (pathname: string, item: SidebarGroupItem) =>
 
 const getLinkClasses = (isActive: boolean, isCollapsed: boolean, isChild = false) =>
   [
-    'flex items-center rounded-xl border text-sidebar-foreground transition',
+    'flex items-center rounded-lg border text-sidebar-foreground transition',
     isChild
       ? 'gap-2.5 px-3 py-2 text-xs font-medium'
       : `gap-3 ${isCollapsed ? 'justify-center px-0 py-3' : 'px-3 py-2.5 text-sm font-medium'}`,
     isActive
       ? 'border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-shell'
-      : 'border-transparent bg-sidebar hover:border-sidebar-primary hover:bg-sidebar-primary hover:text-sidebar-primary-foreground',
+      : 'border-transparent bg-sidebar hover:border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
   ].join(' ');
 
 type SidebarLeafLinkProps = Readonly<{
@@ -319,7 +319,7 @@ const SidebarGroupFlyout = ({
   return (
     <div
       id={`sidebar-group-${item.id}`}
-      className="absolute left-full top-0 z-[100] w-64 rounded-2xl border border-sidebar-border bg-card p-3 shadow-[0_20px_50px_rgba(15,23,42,0.18)]"
+      className="absolute left-full top-0 z-[100] w-64 rounded-lg border border-sidebar-border bg-card p-3 shadow-shell"
     >
       <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
         {item.label}

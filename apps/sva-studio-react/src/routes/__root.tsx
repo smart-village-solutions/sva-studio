@@ -12,6 +12,7 @@ import DevelopmentLogConsole from '../components/DevelopmentLogConsole';
 import ErrorFallback from '../components/ErrorFallback';
 import NotFound from '../components/NotFound';
 import { resolveBreadcrumbItems } from '../lib/breadcrumbs';
+import { createThemeBootstrapScript } from '../lib/theme';
 import { AuthProvider } from '../providers/auth-provider';
 import { LocaleProvider } from '../providers/locale-provider';
 import { ThemeProvider } from '../providers/theme-provider';
@@ -22,6 +23,7 @@ import appCssText from '../styles.css?inline';
 
 const tanstackDevtoolsEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_TANSTACK_DEVTOOLS === 'true';
 const playwrightDevRuntimeDisabled = import.meta.env.VITE_PLAYWRIGHT_TEST === 'true';
+const themeBootstrapScript = createThemeBootstrapScript();
 
 export const ensureRootSdkInitialized = createServerOnlyFn(async () => {
   const { ensureSdkInitialized } = await import('../lib/init-sdk.server');
@@ -120,9 +122,10 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
     <html lang="de" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} data-theme-bootstrap="true" />
         {import.meta.env.DEV ? <style dangerouslySetInnerHTML={{ __html: appCssText }} data-app-styles="true" /> : null}
       </head>
-      <body className="flex min-h-screen flex-col bg-background text-foreground" suppressHydrationWarning>
+      <body className="flex min-h-screen flex-col bg-background text-foreground antialiased" suppressHydrationWarning>
         <AuthProvider>
           <LocaleProvider>
             <a
@@ -133,7 +136,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
                   mainElement.focus();
                 }
               }}
-              className="sr-only left-3 top-3 z-50 rounded-md bg-card px-3 py-2 text-sm font-medium text-foreground shadow-shell focus:not-sr-only focus:absolute"
+              className="sr-only left-3 top-3 z-50 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-shell focus:not-sr-only focus:absolute"
             >
               {t('shell.skipToContent')}
             </a>

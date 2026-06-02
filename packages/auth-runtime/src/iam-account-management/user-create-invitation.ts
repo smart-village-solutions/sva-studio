@@ -18,6 +18,7 @@ const INVITATION_READINESS_RETRY_DELAYS_MS = [200, 500, 1_000] as const;
 const INVITATION_DELIVERY_RETRY_DELAYS_MS = [250, 750] as const;
 const INVITATION_NOT_READY_MESSAGE =
   'Der Nutzer wurde in Keycloak angelegt, war aber für den Einladungsversand noch nicht bereit.';
+const INVITATION_DELIVERY_FAILED_MESSAGE = 'Einladungs-E-Mail konnte nicht versendet werden.';
 
 const sleep = async (ms: number) =>
   new Promise<void>((resolve) => {
@@ -152,7 +153,7 @@ export const buildInvitationFailure = (error: unknown): InvitationResult => {
               }
             : {
                 code: 'internal_error',
-                message: error instanceof Error ? error.message : String(error),
+                message: INVITATION_DELIVERY_FAILED_MESSAGE,
                 retryable: false,
               };
 

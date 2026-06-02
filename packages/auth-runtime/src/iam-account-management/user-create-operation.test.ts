@@ -179,7 +179,7 @@ describe('executeCreateUser', () => {
         status: 'failed',
         error: {
           code: 'internal_error',
-          message: 'smtp failed',
+          message: 'Einladungs-E-Mail konnte nicht versendet werden.',
           retryable: false,
         },
       },

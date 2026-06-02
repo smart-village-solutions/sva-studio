@@ -117,8 +117,10 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/iam-admin` (User-, Rollen-, Gruppen-, Organisations-, Actor-, Reconcile- und Keycloak-Admin-Orchestrierung)
   - `user-projection.ts` ist der gemeinsame Projektionskern für Self-Service-Profile und Admin-Reads; spezialisierte UI-Pfade dürfen darauf nur noch darstellerisch aufsetzen
   - `reconcile-core.ts` und `user-import-sync-handler.ts` liefern deterministische Abschlusszustände (`success`, `partial_failure`, `blocked`, `failed`) mit Zählwerten für `checked`, `corrected`, `failed` und `manualReview`
-- Per-User-Credential-Lesen für Downstream-Integrationen:
-  - `packages/auth-runtime` liest die Mainserver-Credential-Projektion runtime-nah und stellt sie Integrationspaketen bereit.
+- Mainserver-Credential-Auflösung für Downstream-Integrationen:
+  - `packages/iam-admin` hält den organisationsgebundenen Credential-Speicher, die Write-only-Secret-Pflege und die read-safe Projektionslogik für Organisationen.
+  - `packages/auth-runtime` liefert den aktiven Session- und Organisationskontext und stellt die Laufzeitgrenze für Mainserver-Aufrufe bereit.
+  - `packages/sva-mainserver` löst daraus die effektive Credential-Quelle policy-gesteuert auf; persönliche Keycloak-Credentials bleiben nur Fallback bei `org_or_personal`.
 - Autorisierung (RBAC/ABAC) und Laufzeitentscheidungen:
   - `packages/iam-core` für zentrale Autorisierungsverträge und Entscheidungen; Runtime-Adapter liegen in `packages/auth-runtime`.
 - Organisations- und Mandantenkontext (`instanceId`) inkl. RLS-nahe Datenmodelle:
@@ -393,6 +395,7 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
   - `.output/server/index.mjs` plus `.output/server/chunks/build/server.mjs` bilden den verbindlichen Runtime-Output fuer Build-, Verify- und Release-Gates
   - `ThemeProvider` löst im App-Layer das aktive Shell-Theme aus `instanceId` auf und kombiniert es mit einem separaten Light-/Dark-Mode
   - Mainserver-Aufrufe werden in TanStack-Start-Server-Funktionen gekapselt; rohe OAuth- oder GraphQL-Aufrufe bleiben außerhalb des Browser-Bundles
+  - der Host pflegt organisationsgebundene Mainserver-Credentials nur read-safe über den IAM-Organisationsvertrag; das Secret bleibt write-only und verlässt den Server nie
 
 Referenzen:
 
@@ -400,8 +403,12 @@ Referenzen:
 - `packages/routing/src/index.ts`
 - `packages/auth-runtime/src/index.server.ts`
 - `packages/auth-runtime/src/audit-db-sink.server.ts`
+- `packages/iam-admin/src/organization-mainserver-credentials.ts`
+  - hält den dedizierten organisationsgebundenen Credential-Speicher inklusive AAD-Bildung, write-only Secret-Update und read-safe Zustandsprojektion
 - `packages/auth-runtime/src/mainserver-credentials.server.ts`
-  - liest und kanonisiert die Keycloak-Attribute `mainserverUserApplicationId` und `mainserverUserApplicationSecret`; Legacy-Namen bleiben als Fallback lesbar
+  - liest und kanonisiert persönliche Keycloak-Attribute `mainserverUserApplicationId` und `mainserverUserApplicationSecret`; dieser Pfad bleibt persönlicher Fallback statt globalem Primärmodell
+- `packages/data/migrations/0048_iam_organization_mainserver_credentials.sql`
+  - versioniert den organisationsgebundenen Mainserver-Credential-Speicher im IAM-Schema
 - `packages/server-runtime/src/index.ts`
 - `packages/data/migrations/0001_iam_core.sql` (historischer Migrationsort)
 - `packages/data/migrations/0013_iam_instance_integrations.sql` (historischer Migrationsort)

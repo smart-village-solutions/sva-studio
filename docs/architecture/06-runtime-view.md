@@ -138,8 +138,8 @@ Fehlerpfad:
 3. Beim Aufruf der Route wendet der Host den registrierten Plugin-Guard an, zum Beispiel `news.read`, `events.read` oder `poi.read`, und rendert optional die spezialisierte Plugin-Fläche innerhalb der Host-Shell.
 4. Die Fachlisten rufen ihre Host-Fassaden auf: `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi`; lokale IAM-Contents werden nicht mehr produktiv gelesen.
 5. Die Editoren senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
-6. Die App-Fassade prüft Session, `instanceId`, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.
-7. `@sva/sva-mainserver/server` lädt über getrennte interne Provider Endpunktkonfiguration, Benutzer-Credentials, OAuth2-Token und den GraphQL-Transport.
+6. Die App-Fassade prüft Session, `instanceId`, aktiven Organisationskontext, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.
+7. `@sva/sva-mainserver/server` lädt über getrennte interne Provider Endpunktkonfiguration, organisationsgebundene oder persönliche Credentials, OAuth2-Token und den GraphQL-Transport.
 8. Ressourcenspezifische Operations-Module für News, Events und POI rufen denselben Transport-Port auf; News nutzt das vollständige Mainserver-Modell mit dedizierten Feldern, Events und POI nutzen eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug.
 9. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
 10. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
@@ -677,20 +677,21 @@ Fehlerpfad:
 - Fehlende Pflicht-Env oder fehlende Testbenutzer beenden den Lauf vor dem Browserstart.
 - Nicht bereite Dependencies oder fehlerhafte Laufzeitnachweise erzeugen deterministische Failure-Codes im Bericht.
 
-### Szenario 15: Serverseitige Mainserver-Diagnostik mit Per-User-Delegation
+### Szenario 15: Serverseitige Mainserver-Diagnostik mit organisationsbezogener Delegation
 
 1. Ein berechtigter Studio-Benutzer löst eine serverseitige Mainserver-Funktion aus.
 2. Die App prüft lokal Rollen und aktiven `instanceId`-Kontext, bevor ein Upstream-Call gestartet wird.
 3. `@sva/sva-mainserver/server` lädt die aktive Endpunktkonfiguration für die Instanz aus `iam.instance_integrations`.
-4. Ein dedizierter Credential-Provider liest `mainserverUserApplicationId` und `mainserverUserApplicationSecret` aus Keycloak-User-Attributen des aktuellen Benutzers; Legacy-Attribute werden nur noch als Fallback berücksichtigt.
-5. Ein separater Token-Provider fordert per OAuth2-Client-Credentials ein Access-Token an und cached es kurzlebig pro `(instanceId, keycloakSubject, apiKey)`.
+4. Ein dedizierter Credential-Resolver prüft `contentAuthorPolicy` und den aktiven Organisationskontext: bei `org_only` werden ausschließlich organisationsgebundene Credentials geladen, bei `org_or_personal` sind persönliche Keycloak-Attribute nur Fallback.
+5. Ein separater Token-Provider fordert per OAuth2-Client-Credentials ein Access-Token an und cached es kurzlebig pro `(instanceId, keycloakSubject, activeOrganizationId, credentialSignature)`.
 6. Ein eigener GraphQL-Transportbaustein sendet danach den serverseitigen Request an den SVA-Mainserver; `request_id` und `trace_id` werden als Korrelation weitergereicht.
 7. Die Server-Funktion gibt ein kuratiertes Diagnose-Read-Model an die App zurück; Credentials oder rohe Upstream-Fehlerdetails verlassen den Server nicht.
 
 Fehlerpfad:
 
 - Fehlende lokale Studio-Berechtigung blockiert den Aufruf vor dem Upstream-Zugriff.
-- Fehlende Keycloak-Attribute liefern einen stabilen Fehlerzustand `missing_credentials`.
+- Fehlende organisationsgebundene Credentials bei `org_only` liefern einen stabilen Fehlerzustand wie `organization_mainserver_credentials_missing`.
+- Fehlende persönliche Keycloak-Attribute liefern nur dann `missing_credentials`, wenn auch kein zulässiger organisationsgebundener Pfad greift.
 - `401`/`403` vom Mainserver werden in deterministische Integrationsfehler übersetzt; Netzwerk- oder Tokenfehler bleiben fail-closed.
 
 ### Ergänzung 2026-03: Strukturierte Permission-Vererbung im Recompute-Pfad

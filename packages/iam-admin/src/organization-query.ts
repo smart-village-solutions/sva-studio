@@ -8,6 +8,7 @@ import type {
 } from '@sva/core';
 
 import { revealField } from './encryption.js';
+import { loadOrganizationMainserverCredentialState } from './organization-mainserver-credentials.js';
 import type { QueryClient } from './query-client.js';
 import { resolveUserDisplayName } from './user-mapping.js';
 
@@ -350,6 +351,7 @@ ORDER BY display_name ASC;
 `,
     [input.instanceId, input.organizationId]
   );
+  const credentials = await loadOrganizationMainserverCredentialState(client, input);
 
   return {
     ...mapOrganizationListItem(organization),
@@ -361,6 +363,8 @@ ORDER BY display_name ASC;
       displayName: row.display_name,
       isActive: row.is_active,
     })),
+    mainserverApplicationId: credentials.mainserverApplicationId,
+    mainserverApplicationSecretSet: credentials.mainserverApplicationSecretSet,
   };
 };
 

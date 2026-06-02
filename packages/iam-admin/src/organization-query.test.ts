@@ -189,6 +189,17 @@ describe('organization query helpers', () => {
             rows: [{ id: 'org-child', organization_key: 'child', display_name: 'Child', is_active: true }],
           };
         }
+        if (text.includes('FROM iam.organization_mainserver_credentials')) {
+          return {
+            rowCount: 1,
+            rows: [
+              {
+                mainserver_application_id: 'org-app-1',
+                mainserver_application_secret_ciphertext: 'enc:v1:payload',
+              },
+            ],
+          };
+        }
         return {
           rowCount: 1,
           rows: [
@@ -211,6 +222,8 @@ describe('organization query helpers', () => {
         metadata: { source: 'test' },
         memberships: [expect.objectContaining({ accountId: 'acc-1' })],
         children: [expect.objectContaining({ organizationKey: 'child' })],
+        mainserverApplicationId: 'org-app-1',
+        mainserverApplicationSecretSet: true,
       })
     );
     await expect(loadContextOptions(client, { instanceId: 'de-musterhausen', accountId: 'acc-1' })).resolves.toEqual([

@@ -102,6 +102,7 @@ describe('executeCreateUser', () => {
       provider: {
         createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
         syncRoles: vi.fn(async () => undefined),
+        listUsers: vi.fn(async () => [{ externalId: 'kc-user-1', email: 'alice@example.com' }]),
         assertWriteAvailability: vi.fn(),
         executeActionsEmail,
       },
@@ -142,6 +143,7 @@ describe('executeCreateUser', () => {
       provider: {
         createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
         syncRoles: vi.fn(async () => undefined),
+        listUsers: vi.fn(async () => [{ externalId: 'kc-user-1', email: 'alice@example.com' }]),
         executeActionsEmail: vi.fn(async () => {
           throw new Error('smtp failed');
         }),
@@ -172,13 +174,126 @@ describe('executeCreateUser', () => {
     });
 
     expect(result.user.id).toBe('account-1');
-    expect(result.invitation.status).toBe('failed');
+    expect(result).toMatchObject({
+      invitation: {
+        status: 'failed',
+        error: {
+          code: 'internal_error',
+          message: 'Einladungs-E-Mail konnte nicht versendet werden.',
+          retryable: false,
+        },
+      },
+    });
     expect(state.logger.error).toHaveBeenCalledWith(
       'IAM user invitation email failed',
       expect.objectContaining({
         workspace_id: 'instance-1',
       })
     );
+  });
+
+  it('waits until the created Keycloak user is queryable before sending the invitation email', async () => {
+    vi.useFakeTimers();
+    const listUsers = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ externalId: 'kc-user-1', email: 'alice@example.com' }]);
+    const executeActionsEmail = vi.fn(async () => undefined);
+    const identityProvider = {
+      provider: {
+        createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        syncRoles: vi.fn(async () => undefined),
+        listUsers,
+        executeActionsEmail,
+      },
+      realm: 'tenant-realm',
+      source: 'instance' as const,
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin' as const,
+    };
+
+    const { executeCreateUser } = await import('./user-create-operation.js');
+    const resultPromise = executeCreateUser({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+      },
+      actorSubject: 'kc-actor-1',
+      identityProvider,
+      payload: {
+        email: 'alice@example.com',
+        firstName: 'Alice',
+        roleIds: [],
+        sendPasswordSetupEmail: true,
+      },
+    });
+
+    await vi.runAllTimersAsync();
+    const result = await resultPromise;
+
+    expect(result.invitation.status).toBe('sent');
+    expect(listUsers).toHaveBeenCalledTimes(2);
+    expect(listUsers).toHaveBeenNthCalledWith(1, { email: 'alice@example.com' });
+    expect(listUsers).toHaveBeenNthCalledWith(2, { email: 'alice@example.com' });
+    expect(executeActionsEmail).toHaveBeenCalledWith('kc-user-1', {
+      actions: ['UPDATE_PASSWORD'],
+      clientId: 'sva-studio',
+      redirectUri: 'https://tenant.example.test/auth/callback',
+    });
+
+    vi.useRealTimers();
+  });
+
+  it('returns a precise invitation failure when the created user does not become queryable in Keycloak in time', async () => {
+    vi.useFakeTimers();
+    const identityProvider = {
+      provider: {
+        createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        syncRoles: vi.fn(async () => undefined),
+        listUsers: vi.fn(async () => []),
+        executeActionsEmail: vi.fn(async () => undefined),
+      },
+      realm: 'tenant-realm',
+      source: 'instance' as const,
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin' as const,
+    };
+
+    const { executeCreateUser } = await import('./user-create-operation.js');
+    const resultPromise = executeCreateUser({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
+      actorSubject: 'kc-actor-1',
+      identityProvider,
+      payload: {
+        email: 'alice@example.com',
+        firstName: 'Alice',
+        roleIds: [],
+        sendPasswordSetupEmail: true,
+      },
+    });
+
+    await vi.runAllTimersAsync();
+    const result = await resultPromise;
+
+    expect(result).toMatchObject({
+      invitation: {
+        status: 'failed',
+        error: {
+          code: 'keycloak_user_not_ready',
+          retryable: true,
+        },
+      },
+    });
+    expect(identityProvider.provider.executeActionsEmail).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
   });
 
   it('ensures managed realm roles exist before syncing mapped roles to the created identity user', async () => {

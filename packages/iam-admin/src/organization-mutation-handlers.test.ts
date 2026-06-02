@@ -50,6 +50,7 @@ const notifyPermissionInvalidation = vi.fn();
 const updateSession = vi.fn();
 const loggerInfo = vi.fn();
 const loggerError = vi.fn();
+const upsertOrganizationMainserverCredentials = vi.fn();
 
 const json = async (response: Response) => response.json() as Promise<Record<string, unknown>>;
 
@@ -102,6 +103,7 @@ const buildDeps = (): OrganizationMutationHandlerDeps => ({
   resolveActorInfo: vi.fn(async () => state.actorResolution),
   resolveHierarchyFields: vi.fn(async () => ({ ok: true, hierarchyPath: [], depth: 0 })),
   toPayloadHash: vi.fn(() => 'hash-org-1'),
+  upsertOrganizationMainserverCredentials,
   updateSession,
   validateCsrf: vi.fn(() => null),
   withInstanceScopedDb: vi.fn(async (_instanceId, work) => {
@@ -162,6 +164,7 @@ describe('organization mutation handlers', () => {
       id: '11111111-1111-1111-8111-111111111111',
       organizationKey: 'alpha',
     };
+    upsertOrganizationMainserverCredentials.mockReset();
   });
 
   it('creates organizations and completes idempotency', async () => {
@@ -315,8 +318,13 @@ describe('organization mutation handlers', () => {
     deps.parseRequestBody = vi.fn(async () => ({
       ok: true as const,
       data: {
+        organizationKey: 'alpha-2',
         displayName: 'Alpha 2',
+        organizationType: 'district',
+        contentAuthorPolicy: 'org_or_personal',
         parentOrganizationId: null,
+        mainserverApplicationId: 'org-app-2',
+        mainserverApplicationSecret: 'org-secret-2',
         metadata: { stage: 'beta' },
       },
       rawBody: '{}',
@@ -338,17 +346,24 @@ describe('organization mutation handlers', () => {
       [
         'de-musterhausen',
         '11111111-1111-1111-8111-111111111111',
-        null,
+        'alpha-2',
         'Alpha 2',
         null,
-        null,
-        null,
+        'district',
+        'org_or_personal',
         null,
         JSON.stringify({ stage: 'beta' }),
         [],
         0,
       ]
     );
+    expect(upsertOrganizationMainserverCredentials).toHaveBeenCalledWith(expect.anything(), {
+      actorAccountId: 'account-1',
+      instanceId: 'de-musterhausen',
+      mainserverApplicationId: 'org-app-2',
+      mainserverApplicationSecret: 'org-secret-2',
+      organizationId: '11111111-1111-1111-8111-111111111111',
+    });
     expect(deps.rebuildOrganizationSubtree).toHaveBeenCalledWith(expect.anything(), {
       instanceId: 'de-musterhausen',
       organizationId: '11111111-1111-1111-8111-111111111111',
@@ -363,6 +378,36 @@ describe('organization mutation handlers', () => {
         },
       })
     );
+  });
+
+  it('does not touch organization mainserver credentials when the update payload omits those fields', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
+    deps.parseRequestBody = vi.fn(async () => ({
+      ok: true as const,
+      data: {
+        organizationKey: 'alpha-2',
+        displayName: 'Alpha 2',
+        organizationType: 'district',
+        contentAuthorPolicy: 'org_or_personal',
+        parentOrganizationId: null,
+        metadata: { stage: 'beta' },
+      },
+      rawBody: '{}',
+    }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.updateOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
+        method: 'PATCH',
+        body: '{}',
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(upsertOrganizationMainserverCredentials).not.toHaveBeenCalled();
   });
 
   it('returns conflict when updating an organization reuses an existing key', async () => {

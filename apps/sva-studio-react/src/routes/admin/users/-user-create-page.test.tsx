@@ -222,6 +222,11 @@ describe('UserCreatePage', () => {
       },
       invitation: {
         status: 'failed',
+        error: {
+          code: 'keycloak_user_not_ready',
+          message: 'Der Nutzer wurde angelegt, aber Keycloak war fuer den Einladungsversand noch nicht bereit.',
+          retryable: true,
+        },
       },
     });
     useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
@@ -255,7 +260,11 @@ describe('UserCreatePage', () => {
       expect(navigateMock).toHaveBeenCalledWith({
         to: '/admin/users/$userId',
         params: { userId: 'user-1' },
-        search: { invite: 'failed' },
+        search: {
+          invite: 'failed',
+          inviteCode: 'keycloak_user_not_ready',
+          inviteMessage: 'Der Nutzer wurde angelegt, aber Keycloak war fuer den Einladungsversand noch nicht bereit.',
+        },
       })
     );
   });
@@ -380,6 +389,54 @@ describe('UserCreatePage', () => {
         to: '/admin/users/$userId',
         params: { userId: 'user-2' },
         search: undefined,
+      })
+    );
+  });
+
+  it('forwards precise invitation failure details to the detail route after a successful user creation', async () => {
+    const createUser = vi.fn().mockResolvedValue({
+      user: {
+        id: 'user-3',
+        keycloakSubject: 'subject-3',
+        displayName: 'Cara Example',
+        status: 'pending',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+      invitation: {
+        status: 'failed',
+        error: {
+          code: 'internal_error',
+          message: 'smtp failed',
+          retryable: false,
+        },
+      },
+    });
+    useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
+
+    const { container } = render(<UserCreatePage />);
+    const emailInput = container.querySelector<HTMLInputElement>('#create-user-email');
+    const firstNameInput = container.querySelector<HTMLInputElement>('#create-user-first-name');
+    const lastNameInput = container.querySelector<HTMLInputElement>('#create-user-last-name');
+
+    if (!emailInput || !firstNameInput || !lastNameInput) {
+      throw new Error('Expected create-user form inputs to be present');
+    }
+
+    fireEvent.change(emailInput, { target: { value: 'cara@example.com' } });
+    fireEvent.change(firstNameInput, { target: { value: 'Cara' } });
+    fireEvent.change(lastNameInput, { target: { value: 'Example' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/users/$userId',
+        params: { userId: 'user-3' },
+        search: {
+          invite: 'failed',
+          inviteCode: 'internal_error',
+          inviteMessage: 'smtp failed',
+        },
       })
     );
   });

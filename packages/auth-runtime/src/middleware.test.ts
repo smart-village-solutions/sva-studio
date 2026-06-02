@@ -222,9 +222,17 @@ describe('auth-runtime withAuthenticatedUser', () => {
     const request = new Request('http://localhost/auth/me', {
       headers: { cookie: 'sva_auth_session=session-2' },
     });
+    dbMocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolvePool, _instanceId, work) =>
+      work({
+        query: vi.fn(async () => ({
+          rowCount: 1,
+          rows: [{ role_key: 'system_admin' }],
+        })),
+      })
+    );
 
     const response = await withAuthenticatedUser(request, ({ sessionId, sessionExpiresAt, freshReauthAt, user }) =>
-      Response.json({ sessionId, sessionExpiresAt, freshReauthAt, userId: user.id })
+      Response.json({ sessionId, sessionExpiresAt, freshReauthAt, userId: user.id, roles: user.roles })
     );
 
     expect(response.status).toBe(200);
@@ -233,12 +241,13 @@ describe('auth-runtime withAuthenticatedUser', () => {
       sessionExpiresAt: 1_800_000_000_000,
       freshReauthAt: 1_700_000_000_000,
       userId: 'user-1',
+      roles: ['admin', 'system_admin'],
     });
     expect(authServerMocks.resolveSessionUser).toHaveBeenCalledWith(
       request,
       expect.objectContaining({ id: 'user-1' })
     );
-    expect(dbMocks.withResolvedInstanceDb).not.toHaveBeenCalled();
+    expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalledTimes(1);
   });
 
   it('logs middleware timing diagnostics when authorize timing debug is enabled', async () => {
@@ -261,16 +270,18 @@ describe('auth-runtime withAuthenticatedUser', () => {
     );
   });
 
-  it('does not depend on IAM lifecycle database checks for authenticated requests', async () => {
+  it('keeps authenticated requests alive when effective role hydration fails', async () => {
     const request = new Request('http://localhost/auth/me', {
       headers: { cookie: 'sva_auth_session=session-2' },
     });
 
-    dbMocks.resolvePool.mockReturnValueOnce(null);
+    dbMocks.withResolvedInstanceDb.mockImplementationOnce(async () => {
+      throw new Error('IAM database not configured');
+    });
     const response = await withAuthenticatedUser(request, () => new Response('ok'));
 
     expect(response.status).toBe(200);
-    expect(dbMocks.withResolvedInstanceDb).not.toHaveBeenCalled();
+    expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalledTimes(1);
   });
 
   it('accepts requests with an active local dev auth cookie in dev auth mode', async () => {

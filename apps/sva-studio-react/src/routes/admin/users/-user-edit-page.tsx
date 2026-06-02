@@ -23,6 +23,7 @@ import { userErrorMessage } from './-user-error-message';
 type UserEditPageProps = {
   readonly userId: string;
   readonly invitationStatus?: 'failed';
+  readonly invitationErrorMessage?: string;
 };
 
 type UserEditTabKey = 'personal' | 'management' | 'permissions' | 'history';
@@ -277,7 +278,7 @@ export const hasUserFormChanges = (baseline: UserFormValues, current: UserFormVa
   baseline.mainserverUserApplicationSecret !== current.mainserverUserApplicationSecret ||
   baseline.mainserverUserApplicationSecretSet !== current.mainserverUserApplicationSecretSet;
 
-export const UserEditPage = ({ userId, invitationStatus }: UserEditPageProps) => {
+export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage }: UserEditPageProps) => {
   const userApi = useUser(userId);
   const rolesApi = useRoles();
   const groupsApi = useGroups();
@@ -996,7 +997,7 @@ export const UserEditPage = ({ userId, invitationStatus }: UserEditPageProps) =>
         ) : null}
         {invitationStatus === 'failed' ? (
           <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
-            <AlertDescription>{t('admin.users.edit.invitationWarning')}</AlertDescription>
+            <AlertDescription>{invitationErrorMessage ?? t('admin.users.edit.invitationWarning')}</AlertDescription>
           </Alert>
         ) : null}
         {saveSuccess ? (

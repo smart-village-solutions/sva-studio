@@ -1121,6 +1121,23 @@ CREATE TABLE iam.organizations (
 
 
 --
+-- Name: organization_mainserver_credentials; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.organization_mainserver_credentials (
+    instance_id text NOT NULL,
+    organization_id uuid NOT NULL,
+    mainserver_application_id text,
+    mainserver_application_secret_ciphertext text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by_account_id uuid
+);
+
+ALTER TABLE ONLY iam.organization_mainserver_credentials FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: permission_change_requests; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -1765,6 +1782,14 @@ ALTER TABLE ONLY iam.organizations
 
 ALTER TABLE ONLY iam.organizations
     ADD CONSTRAINT organizations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: organization_mainserver_credentials organization_mainserver_credentials_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.organization_mainserver_credentials
+    ADD CONSTRAINT organization_mainserver_credentials_pkey PRIMARY KEY (instance_id, organization_id);
 
 
 --
@@ -3192,6 +3217,22 @@ ALTER TABLE ONLY iam.organizations
 
 
 --
+-- Name: organization_mainserver_credentials organization_mainserver_credentials_org_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.organization_mainserver_credentials
+    ADD CONSTRAINT organization_mainserver_credentials_org_fk FOREIGN KEY (instance_id, organization_id) REFERENCES iam.organizations(instance_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: organization_mainserver_credentials organization_mainserver_credentials_updated_by_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.organization_mainserver_credentials
+    ADD CONSTRAINT organization_mainserver_credentials_updated_by_fk FOREIGN KEY (updated_by_account_id) REFERENCES iam.accounts(id) ON DELETE SET NULL;
+
+
+--
 -- Name: permission_change_requests permission_change_requests_approver_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3534,6 +3575,19 @@ CREATE POLICY legal_text_target_roles_isolation_policy ON iam.legal_text_target_
 --
 
 CREATE POLICY organizations_isolation_policy ON iam.organizations USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: organization_mainserver_credentials; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.organization_mainserver_credentials ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: organization_mainserver_credentials organization_mainserver_credentials_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY organization_mainserver_credentials_isolation_policy ON iam.organization_mainserver_credentials USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
 
 
 --

@@ -1,5 +1,4 @@
 import type { IamCreateUserResult } from '@sva/core';
-import { resolveAuthConfigForInstance } from '../config.js';
 import {
   logger,
   resolveIdentityProviderForInstance,
@@ -8,28 +7,24 @@ import {
 } from './shared.js';
 import { ensureManagedRealmRolesExist } from './shared-managed-role-sync.js';
 import type { IdentityProviderResolution } from './shared-runtime.js';
+import {
+  buildInvitationFailure,
+  logInvitationFailure,
+  sendPasswordSetupInvitation,
+  type CreateUserActorInfo,
+} from './user-create-invitation.js';
 import type { CreateUserPayload } from './user-create-persistence.js';
 import { persistCreatedUser } from './user-create-persistence.js';
 import { maskEmail } from './user-mapping.js';
 
-type CreateUserActorInfo = {
-  instanceId: string;
-  actorAccountId: string;
-  actorRoles?: readonly string[];
-  requestId?: string;
-  traceId?: string;
-};
-
-type InvitationStatus = IamCreateUserResult['invitation']['status'];
+type InvitationResult = IamCreateUserResult['invitation'];
 
 const buildCreateUserResult = (
   user: IamCreateUserResult['user'],
-  invitationStatus: InvitationStatus
+  invitation: InvitationResult
 ): IamCreateUserResult => ({
   user,
-  invitation: {
-    status: invitationStatus,
-  },
+  invitation,
 });
 
 const logCreateUserFailure = (input: {
@@ -68,25 +63,6 @@ const logCreateUserCompensationFailure = (input: {
   });
 };
 
-const logInvitationFailure = (input: {
-  actor: CreateUserActorInfo;
-  keycloakSubject: string;
-  error: unknown;
-}) => {
-  logger.error('IAM user invitation email failed', {
-    workspace_id: input.actor.instanceId,
-    context: {
-      operation: 'execute_actions_email',
-      instance_id: input.actor.instanceId,
-      keycloak_subject: input.keycloakSubject,
-      request_id: input.actor.requestId,
-      trace_id: input.actor.traceId,
-      actor_account_id: input.actor.actorAccountId,
-      error: input.error instanceof Error ? input.error.message : String(input.error),
-    },
-  });
-};
-
 const syncUserRolesIfNeeded = async (input: {
   actor: CreateUserActorInfo;
   identityProvider: IdentityProviderResolution;
@@ -108,30 +84,6 @@ const syncUserRolesIfNeeded = async (input: {
   await trackKeycloakCall('sync_roles', () =>
     input.identityProvider.provider.syncRoles(input.keycloakSubject, input.roleNames)
   );
-};
-
-const sendPasswordSetupInvitation = async (input: {
-  actor: CreateUserActorInfo;
-  identityProvider: IdentityProviderResolution;
-  keycloakSubject: string;
-}): Promise<InvitationStatus> => {
-  const executeActionsEmail = input.identityProvider.provider.executeActionsEmail?.bind(
-    input.identityProvider.provider
-  );
-  if (!executeActionsEmail) {
-    throw new Error('execute_actions_email_not_supported');
-  }
-
-  const authConfig = await resolveAuthConfigForInstance(input.actor.instanceId);
-  await trackKeycloakCall('execute_actions_email', async () => {
-    await executeActionsEmail(input.keycloakSubject, {
-      actions: ['UPDATE_PASSWORD'],
-      clientId: authConfig.clientId,
-      redirectUri: authConfig.redirectUri,
-    });
-  });
-
-  return 'sent';
 };
 
 const deactivateCreatedExternalUser = async (input: {
@@ -192,23 +144,24 @@ export const executeCreateUser = async (input: {
     });
 
     if (payload.sendPasswordSetupEmail !== true) {
-      return buildCreateUserResult(result.responseData, 'not_requested');
+      return buildCreateUserResult(result.responseData, { status: 'not_requested' });
     }
 
     try {
-      const invitationStatus = await sendPasswordSetupInvitation({
+      const invitation = await sendPasswordSetupInvitation({
         actor,
         identityProvider,
+        email: payload.email,
         keycloakSubject: result.responseData.keycloakSubject,
       });
-      return buildCreateUserResult(result.responseData, invitationStatus);
+      return buildCreateUserResult(result.responseData, invitation);
     } catch (error) {
       logInvitationFailure({
         actor,
         keycloakSubject: result.responseData.keycloakSubject,
         error,
       });
-      return buildCreateUserResult(result.responseData, 'failed');
+      return buildCreateUserResult(result.responseData, buildInvitationFailure(error));
     }
   } catch (error) {
     logCreateUserFailure({

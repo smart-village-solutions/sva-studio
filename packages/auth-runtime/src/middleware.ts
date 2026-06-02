@@ -16,6 +16,7 @@ import {
 } from './middleware-hosts.js';
 import { resolveSessionUser as resolveStoredSessionUser } from './auth-server/session.js';
 import { getAuthConfig } from './config.js';
+import { enrichSessionUserWithEffectiveRoles } from './effective-session-roles.js';
 import { buildLogContext } from './log-context.js';
 import { createMockSessionUser, hasActiveMockAuthSession, isMockAuthEnabled } from './mock-auth.js';
 import type { SessionUser } from './types.js';
@@ -148,6 +149,7 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
 
   const runtimeSessionHydrationStartedAt = performance.now();
   const runtimeSessionUser = await resolveRuntimeSessionUser(request, sessionResolution.user);
+  const effectiveSessionUser = await enrichSessionUserWithEffectiveRoles(runtimeSessionUser);
   const runtimeSessionHydrationMs = performance.now() - runtimeSessionHydrationStartedAt;
 
   return {
@@ -158,7 +160,7 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
     freshReauthAt: sessionResolution.freshReauthAt,
     sessionId,
     sessionExpiresAt: sessionResolution.expiresAt,
-    user: runtimeSessionUser,
+    user: effectiveSessionUser,
   };
 };
 

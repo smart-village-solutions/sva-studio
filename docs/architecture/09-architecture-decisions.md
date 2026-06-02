@@ -48,6 +48,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-041-plugin-plattform-v2-fuer-externe-distribution.md`
 - [ADR-043 formular foundation mit react-hook-form und zodResolver](../adr/ADR-043-formular-foundation-mit-react-hook-form-und-zodresolver.md)
 - [ADR-044 frontend-test-foundation mit MSW und selektivem fast-check](../adr/ADR-044-frontend-test-foundation-mit-msw-und-selektivem-fast-check.md)
+- [ADR-045 organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation](../adr/ADR-045-organisationsgebundene-mainserver-credentials-und-policy-gesteuerte-delegation.md)
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -72,6 +73,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-040
 - Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-041
 - Abschnitt 05/08/09/10 (Bausteine/Querschnitt/Entscheidungen/Qualität): ADR-043, ADR-044
+- Abschnitt 04/05/06/08/09/10/11/12 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken/Glossar): ADR-045
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
@@ -113,6 +115,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-042: Externe Schnittstellen als host-owned Registry mit zentralem Secret-Store, Default-Auflösung und plugin-konsumierbarem Typkatalog (Abschnitt 03, 05, 08, 09, 11, 12)
 - ADR-043: Formular-Foundation mit `react-hook-form` und `zodResolver` als verbindlichem Standardpfad für neue oder grundlegend überarbeitete Formular-Flows (Abschnitt 05, 08, 09, 10)
 - ADR-044: Frontend-Test-Foundation mit `msw` für HTTP-nahe Tests und selektivem `fast-check` für kritische Kernlogik (Abschnitt 05, 08, 09, 10)
+- ADR-045: Organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation über `contentAuthorPolicy`; persönliche Keycloak-Credentials bleiben nur Fallback bei `org_or_personal` (Abschnitt 04, 05, 06, 08, 09, 10, 11, 12)
 
 ### Pflege-Regel
 

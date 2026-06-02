@@ -14,3 +14,4 @@ Die aktuelle Mainserver-Integration geht fachlich und technisch davon aus, dass 
 - Affected specs: `iam-core`, `iam-organizations`, `account-ui`, `sva-mainserver-integration`
 - Affected code: `packages/data/migrations`, `packages/iam-admin`, `packages/auth-runtime`, `packages/sva-mainserver`, `apps/sva-studio-react`
 - Affected arc42 sections: `03-context-and-scope`, `05-building-block-view`, `06-runtime-view`, `08-cross-cutting-concepts`, `12-glossary`
+- Affected ADRs: `ADR-021-per-user-sva-mainserver-delegation`, `ADR-045-organisationsgebundene-mainserver-credentials-und-policy-gesteuerte-delegation`

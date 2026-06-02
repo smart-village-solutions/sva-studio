@@ -496,16 +496,17 @@ Referenzen:
 - **Secrets-Klassifizierung:** Vertrauliche Werte (Auth-Secrets, DB-Passwörter, Encryption-Keys) werden im Acceptance-Swarm als geschützte Stack-Umgebungsvariablen betrieben. Das Entrypoint-Skript (`entrypoint.sh`) validiert und normalisiert diese Werte, protokolliert sie aber nie. Nicht-vertrauliche Konfiguration bleibt ebenfalls als Stack-Umgebungsvariable versioniert beschrieben.
 - **Startup-Validierung:** Lokale oder migrationsbezogene Fallback-Scopes über `SVA_ALLOWED_INSTANCE_IDS` werden beim Startup gegen ein Regex validiert (fail-fast). Ungültige Einträge oder IDN/Punycode-Labels führen in diesen Pfaden zum sofortigen Abbruch.
 
-### Ergänzung 2026-03: Per-User-SVA-Mainserver-Integration
+### Ergänzung 2026-06: Organisationsgebundene SVA-Mainserver-Integration
 
 - Die Mainserver-Integration ist eine reine Server-Side-Integration; es gibt keinen generischen Browser-Proxy auf den externen GraphQL-Endpunkt.
 - Fachadapter wie News stellen getypte, eng zugeschnittene Fassaden bereit; Browser-Plugins sprechen nur hosteigene HTTP-Endpunkte und importieren keine Mainserver-Servermodule.
 - Events und POI folgen demselben Host-Fassadenmuster. Der Event-Editor bezieht POI-Auswahldaten über `/api/v1/mainserver/poi`, nicht über einen direkten Import von `@sva/plugin-poi`.
 - `apps/sva-studio-react` bleibt bewusst Host für TanStack-`createServerFn`-Bindings, Request-Matching und die Dispatch-Reihenfolge im Server-Entry. Diese Transport- und Framework-Bindung ist keine fachliche Package-Ownership.
-- Per-User-Credentials liegen ausschließlich in Keycloak-User-Attributen (`mainserverUserApplicationId`, `mainserverUserApplicationSecret`) und werden serverseitig on demand gelesen; die bisherigen Namen `sva_mainserver_api_key` und `sva_mainserver_api_secret` bleiben nur als Legacy-Fallback lesbar.
+- Organisationsgebundene Mainserver-Credentials werden verschlüsselt in einem dedizierten IAM-Speicher gehalten; persönliche Keycloak-Credentials (`mainserverUserApplicationId`, `mainserverUserApplicationSecret`) bleiben nur Fallback bei `org_or_personal`.
 - Die Studio-Datenbank hält nur instanzbezogene Endpunktkonfiguration (`graphql_base_url`, `oauth_token_url`, Prüfstatus) in `iam.instance_integrations`.
+- Der Credential-Resolver verwendet ausschließlich den aktiven Organisationskontext aus der Session; es gibt keinen impliziten Fallback auf andere Mitgliedsorganisationen.
 - Credential-Caching bleibt kurzlebig im Prozessspeicher; Access-Tokens werden ebenfalls nur in-memory und vor Ablauf mit Skew erneuert.
-- OAuth-Token werden pro `(instanceId, keycloakSubject, apiKey)` gecacht; eine Persistenz in Session, Redis oder Postgres ist ausgeschlossen.
+- OAuth-Token werden pro `(instanceId, keycloakSubject, activeOrganizationId, credentialSignature)` gecacht; eine Persistenz in Session, Redis oder Postgres ist ausgeschlossen.
 - Downstream-Headers propagieren `X-Request-Id` und Tracing-Kontext, damit Studio- und Mainserver-Logs korrelierbar bleiben.
 
 ### Ergänzung 2026-03: IAM-Transparenz-UI und Privacy-Self-Service

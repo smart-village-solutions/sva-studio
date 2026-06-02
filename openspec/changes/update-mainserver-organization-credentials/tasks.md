@@ -4,5 +4,5 @@
 - [ ] 1.3 Laufzeitauflösung in `@sva/auth-runtime` anhand `contentAuthorPolicy` und `activeOrganizationId` implementieren
 - [ ] 1.4 `@sva/sva-mainserver` um Organisationskontext, neue Fehlercodes und Cache-Key-Isolation erweitern
 - [ ] 1.5 Organisations-Detailseite um Mainserver-Credential-Pflege ergänzen
-- [ ] 1.6 ADR, Runbook und betroffene arc42-Abschnitte aktualisieren
+- [x] 1.6 ADR, Runbook und betroffene arc42-Abschnitte aktualisieren
 - [ ] 1.7 `openspec validate update-mainserver-organization-credentials --strict`

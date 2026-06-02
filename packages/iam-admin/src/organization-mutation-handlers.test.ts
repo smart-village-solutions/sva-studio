@@ -85,10 +85,6 @@ const buildDeps = (): OrganizationMutationHandlerDeps => ({
     membership_count: 0,
   })),
   loadOrganizationDetail: vi.fn(async () => state.detail),
-  loadOrganizationMainserverCredentialState: vi.fn(async () => ({
-    mainserverApplicationId: 'org-app-1',
-    mainserverApplicationSecretSet: true,
-  })),
   logger: {
     info: loggerInfo,
     error: loggerError,
@@ -382,6 +378,36 @@ describe('organization mutation handlers', () => {
         },
       })
     );
+  });
+
+  it('does not touch organization mainserver credentials when the update payload omits those fields', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
+    deps.parseRequestBody = vi.fn(async () => ({
+      ok: true as const,
+      data: {
+        organizationKey: 'alpha-2',
+        displayName: 'Alpha 2',
+        organizationType: 'district',
+        contentAuthorPolicy: 'org_or_personal',
+        parentOrganizationId: null,
+        metadata: { stage: 'beta' },
+      },
+      rawBody: '{}',
+    }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.updateOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
+        method: 'PATCH',
+        body: '{}',
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(upsertOrganizationMainserverCredentials).not.toHaveBeenCalled();
   });
 
   it('returns conflict when updating an organization reuses an existing key', async () => {

@@ -124,10 +124,6 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
     client: QueryClient,
     input: { readonly instanceId: string; readonly organizationId: string }
   ) => Promise<unknown | undefined>;
-  readonly loadOrganizationMainserverCredentialState: (
-    client: QueryClient,
-    input: { readonly instanceId: string; readonly organizationId: string }
-  ) => Promise<OrganizationMainserverCredentialState>;
   readonly logger: {
     readonly info: (message: string, meta: Readonly<Record<string, unknown>>) => void;
     readonly error: (message: string, meta: Readonly<Record<string, unknown>>) => void;
@@ -267,6 +263,12 @@ const readOrganizationId = <TFeatureFlags>(
   }
   return organizationId;
 };
+
+const hasOwn = <TObject extends object>(value: TObject, key: PropertyKey): boolean =>
+  Object.prototype.hasOwnProperty.call(value, key);
+
+const hasMainserverCredentialPatch = (value: z.infer<typeof updateOrganizationSchema>): boolean =>
+  hasOwn(value, 'mainserverApplicationId') || hasOwn(value, 'mainserverApplicationSecret');
 
 const completeFailedIdempotency = async <TFeatureFlags>(
   deps: Pick<OrganizationMutationHandlerDeps<TFeatureFlags>, 'completeIdempotency' | 'jsonResponse'>,
@@ -558,13 +560,15 @@ WHERE instance_id = $1
             hierarchy.depth,
           ]
         );
-        await deps.upsertOrganizationMainserverCredentials(client, {
-          instanceId: actor.instanceId,
-          organizationId,
-          actorAccountId: actor.actorAccountId,
-          mainserverApplicationId: parsed.data.mainserverApplicationId,
-          mainserverApplicationSecret: parsed.data.mainserverApplicationSecret,
-        });
+        if (hasMainserverCredentialPatch(parsed.data)) {
+          await deps.upsertOrganizationMainserverCredentials(client, {
+            instanceId: actor.instanceId,
+            organizationId,
+            actorAccountId: actor.actorAccountId,
+            mainserverApplicationId: parsed.data.mainserverApplicationId,
+            mainserverApplicationSecret: parsed.data.mainserverApplicationSecret,
+          });
+        }
 
         await deps.rebuildOrganizationSubtree(client, { instanceId: actor.instanceId, organizationId });
         await deps.emitActivityLog(client, {

@@ -120,7 +120,7 @@ ON CONFLICT (instance_id, organization_id) DO UPDATE
 SET
   mainserver_application_id = EXCLUDED.mainserver_application_id,
   mainserver_application_secret_ciphertext = EXCLUDED.mainserver_application_secret_ciphertext,
-  updated_by_account_id = EXCLUDED.updated_by_account_id,
+  updated_by_account_id = COALESCE(EXCLUDED.updated_by_account_id, iam.organization_mainserver_credentials.updated_by_account_id),
   updated_at = NOW();
 `,
     [input.instanceId, input.organizationId, nextApplicationId, nextSecretCiphertext, input.actorAccountId ?? null]

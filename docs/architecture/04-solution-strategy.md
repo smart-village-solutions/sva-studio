@@ -29,9 +29,9 @@ Architekturprinzipien auf IST-Basis.
 - Redis-Permission-Snapshots sind der primäre Shared-Read-Path für effektive IAM-Berechtigungen; der lokale In-Memory-Cache dient nur als L1
 - `instanceId` ist der kanonische Mandanten-Scope für IAM-Datenzugriff und Autorisierung und wird als fachlicher String-Schlüssel geführt
 - Für tenant-spezifische Logins stammt `instanceId` aus Host, Registry und dem zugeordneten Realm-Scope; ein benutzerbezogener OIDC-Claim ist nur Interop-/Diagnoseartefakt und kein zweites Login-Gate
-- Externe SVA-Mainserver-Zugriffe laufen strikt serverseitig und per User delegiert; Browser-Code erhält nur Studio-eigene Server-Funktionsverträge
+- Externe SVA-Mainserver-Zugriffe laufen strikt serverseitig; Credentials werden policy-gesteuert aus aktivem Organisationskontext oder aus dem persönlichen Benutzerkontext aufgelöst
 - Der SVA-Mainserver wird über ein dediziertes Integrationspaket mit client-sicheren Root-Exports und serverseitigem `./server`-Subpfad angebunden
-- Instanzbezogene Upstream-Endpunkte liegen in Postgres, per-User-Credentials ausschließlich in Keycloak-Attributen
+- Instanzbezogene Upstream-Endpunkte liegen in Postgres; Mainserver-Credentials liegen organisationsgebunden in Postgres oder personenbezogen in Keycloak, abhängig vom fachlichen Organisationskontext
 - Datenbankmigrationen bleiben SQL-first und werden über einen repository-lokalen, versionsgepinn­ten `goose`-Pfad statt über ad-hoc SQL-Ausführung standardisiert
 - IAM-Server-Module folgen der Package-Zielarchitektur: Auth-Runtime, IAM-Core, IAM-Admin, IAM-Governance und Instance-Registry haben getrennte Ownership.
 - HTTP-spezifische Fehlerantworten werden nicht im Core modelliert, sondern serverseitig über gemeinsame Utilities in `@sva/server-runtime`
@@ -84,7 +84,7 @@ Architekturprinzipien auf IST-Basis.
 - IAM-IdP-Abstraktion für Keycloak-Admin-Pfade: `ADR-016`
 - IAM-Server-Modularisierung und Restschuld-Führung: `ADR-017`
 - Session-Lifecycle, Forced Reauth und kontrolliertes Silent SSO: `ADR-023`
-- Per-User-Mainserver-Delegation und Integrationsgrenze: `ADR-021`
+- Mainserver-Delegation und Integrationsgrenze: `ADR-021`, `ADR-045`
 - OSS-Standard für SQL-Migrationen: `ADR-029`
 - Standard für Hintergrundprozess-Orchestrierung: `ADR-040`
 - Registry-basierte Instanzfreigabe und gemeinsamer Provisioning-Vertrag: `ADR-030`
@@ -107,6 +107,7 @@ Referenzen:
 - `../adr/ADR-017-modulare-iam-server-bausteine.md`
 - `../adr/ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md`
 - `../adr/ADR-021-per-user-sva-mainserver-delegation.md`
+- `../adr/ADR-045-organisationsgebundene-mainserver-credentials-und-policy-gesteuerte-delegation.md`
 - `../adr/ADR-030-registry-basierte-instance-freigabe-und-provisioning.md`
 - `../adr/ADR-040-graphile-worker-als-standard-fuer-hintergrundprozesse.md`
 

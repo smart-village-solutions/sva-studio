@@ -227,13 +227,13 @@ export const HomePage = () => {
 
   return (
     <div className="min-h-full bg-background text-foreground">
-      <section className="bg-[radial-gradient(circle_at_top,_rgba(168,193,160,0.22),_transparent_34%),linear-gradient(to_bottom,_rgba(245,243,232,0.95),_rgba(255,255,255,0.98)_44%,_rgb(var(--background))_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(88,120,106,0.18),_transparent_28%),linear-gradient(to_bottom,_rgba(14,18,17,1),_rgba(17,21,20,0.98)_38%,_rgb(var(--background))_100%)]">
+      <section className="bg-[radial-gradient(circle_at_top,_rgba(0,90,158,0.18),_transparent_34%),linear-gradient(to_bottom,_rgba(241,246,252,0.98),_rgba(255,255,255,0.99)_44%,_rgb(var(--background))_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(74,132,188,0.22),_transparent_30%),linear-gradient(to_bottom,_rgba(10,16,24,1),_rgba(13,20,30,0.98)_38%,_rgb(var(--background))_100%)]">
         <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 pb-16 pt-16 sm:pb-20 sm:pt-20">
           <div
             className={
               isAuthenticated
                 ? 'flex flex-col gap-6 lg:max-w-3xl'
-                : 'flex flex-col items-center gap-8 rounded-[2rem] border border-border/50 bg-background/75 px-6 py-10 text-center shadow-[0_24px_70px_rgba(70,80,70,0.08)] backdrop-blur-sm dark:border-border/60 dark:bg-card/70 dark:shadow-[0_30px_80px_rgba(0,0,0,0.32)] sm:px-10 sm:py-12'
+                : 'flex flex-col items-center gap-8 rounded-[2rem] border border-border/50 bg-background/80 px-6 py-10 text-center shadow-[0_24px_70px_rgba(0,90,158,0.1)] backdrop-blur-sm dark:border-border/60 dark:bg-card/75 dark:shadow-[0_30px_80px_rgba(4,16,32,0.42)] sm:px-10 sm:py-12'
             }
           >
             <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">

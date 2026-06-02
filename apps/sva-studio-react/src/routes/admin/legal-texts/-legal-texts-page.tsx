@@ -1,6 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
+import { StudioFilterSurface } from '../../../components/StudioFilterSurface';
+import { StudioSummaryCard } from '../../../components/StudioSummaryCard';
 import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
@@ -127,25 +129,25 @@ export const LegalTextsPage = () => {
       </header>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Card className="space-y-2 p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.legalTexts.metrics.total')}</p>
-          <p className="text-3xl font-semibold text-foreground">{metrics.total}</p>
-        </Card>
-        <Card className="space-y-2 p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.legalTexts.metrics.valid')}</p>
-          <p className="text-3xl font-semibold text-foreground">{metrics.valid}</p>
-        </Card>
-        <Card className="space-y-2 p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.legalTexts.metrics.locales')}</p>
-          <p className="text-3xl font-semibold text-foreground">{metrics.locales}</p>
-        </Card>
-        <Card className="space-y-2 p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.legalTexts.metrics.acceptances')}</p>
-          <p className="text-3xl font-semibold text-foreground">{metrics.acceptances}</p>
-        </Card>
+        <StudioSummaryCard
+          eyebrow={t('admin.legalTexts.metrics.total')}
+          value={metrics.total}
+        />
+        <StudioSummaryCard
+          eyebrow={t('admin.legalTexts.metrics.valid')}
+          value={metrics.valid}
+        />
+        <StudioSummaryCard
+          eyebrow={t('admin.legalTexts.metrics.locales')}
+          value={metrics.locales}
+        />
+        <StudioSummaryCard
+          eyebrow={t('admin.legalTexts.metrics.acceptances')}
+          value={metrics.acceptances}
+        />
       </div>
 
-      <Card className="grid gap-3 p-4 lg:grid-cols-[1fr_14rem_auto]">
+      <StudioFilterSurface className="grid gap-3 lg:grid-cols-[1fr_14rem_auto]">
         <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
           <Label htmlFor="legal-texts-search">{t('admin.legalTexts.filters.searchLabel')}</Label>
           <Input
@@ -173,7 +175,7 @@ export const LegalTextsPage = () => {
             <Link to="/admin/legal-texts/new">{t('admin.legalTexts.actions.create')}</Link>
           </Button>
         </div>
-      </Card>
+      </StudioFilterSurface>
 
       {legalTextsApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">

@@ -10,6 +10,8 @@ import { StudioDataTable, type StudioColumnDef } from '@sva/studio-ui-react';
 import { useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
+import { StudioFilterSurface } from '../../components/StudioFilterSurface';
+import { StudioSummaryCard } from '../../components/StudioSummaryCard';
 import { createStudioDataTableLabels } from '../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
@@ -973,14 +975,13 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           aria-labelledby={getTabId('rights')}
           className="space-y-4"
         >
-          <Card className="grid gap-3 p-4 lg:grid-cols-4">
+          <StudioFilterSurface className="grid gap-3 lg:grid-cols-4">
             <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
               <Label htmlFor="iam-organization-filter">{t('admin.iam.rights.filters.organization')}</Label>
               <Select
                 id="iam-organization-filter"
                 value={organizationId}
                 onChange={(event) => setOrganizationId(event.target.value)}
-                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
               >
                 <option value="">{t('admin.iam.shared.all')}</option>
                 {organizationSelectOptions.map((option) => (
@@ -1006,16 +1007,18 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                 onChange={(event) => setQueryText(event.target.value)}
               />
             </div>
-            <Card className="bg-background px-3 py-2 shadow-none">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.subject.title')}</p>
-              <p>{permissionSubject ? permissionSubject.effectiveUserId : '—'}</p>
+            <StudioSummaryCard
+              eyebrow={t('admin.iam.rights.subject.title')}
+              value={permissionSubject ? permissionSubject.effectiveUserId : '—'}
+              valueClassName="text-lg"
+            >
               <p className="text-xs text-muted-foreground">
                 {permissionSubject?.isImpersonating
                   ? t('admin.iam.rights.subject.impersonating', { actor: permissionSubject.actorUserId })
                   : t('admin.iam.rights.subject.self')}
               </p>
-            </Card>
-          </Card>
+            </StudioSummaryCard>
+          </StudioFilterSurface>
 
           {organizationOptions.length > 0 ? (
             <div className="flex flex-wrap gap-2">
@@ -1048,100 +1051,135 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
             <PermissionTable permissions={filteredPermissions} />
           </Card>
 
-          <Card>
-            <form onSubmit={handleAuthorizeSubmit} className="grid gap-3 p-4 lg:grid-cols-4">
-            <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-              <Label htmlFor="iam-authorize-action">{t('admin.iam.rights.authorize.action')}</Label>
-              <Input
-                id="iam-authorize-action"
-                value={authorizeAction}
-                onChange={(event) => setAuthorizeAction(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-              <Label htmlFor="iam-authorize-resource-type">{t('admin.iam.rights.authorize.resourceType')}</Label>
-              <Input
-                id="iam-authorize-resource-type"
-                value={authorizeResourceType}
-                onChange={(event) => setAuthorizeResourceType(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-              <Label htmlFor="iam-authorize-resource-id">{t('admin.iam.rights.authorize.resourceId')}</Label>
-              <Input
-                id="iam-authorize-resource-id"
-                value={authorizeResourceId}
-                onChange={(event) => setAuthorizeResourceId(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-              <Label htmlFor="iam-authorize-organization-id">{t('admin.iam.rights.authorize.organizationId')}</Label>
-              <Select
-                id="iam-authorize-organization-id"
-                value={authorizeOrganizationId}
-                onChange={(event) => setAuthorizeOrganizationId(event.target.value)}
-                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-              >
-                <option value="">{t('admin.iam.shared.all')}</option>
-                {organizationSelectOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="lg:col-span-4 flex items-center gap-3">
-              <Button type="submit" disabled={isAuthorizing}>
-                {isAuthorizing ? t('admin.iam.rights.authorize.running') : t('admin.iam.rights.authorize.run')}
-              </Button>
-              {authorizeError ? <p className="text-sm text-destructive">{authorizeError}</p> : null}
-            </div>
-            {authorizeDecision ? (
-              <Card className="lg:col-span-4 bg-background p-3 shadow-none">
-                <p className="font-semibold text-foreground">
-                  {authorizeDecision.allowed ? t('admin.iam.rights.authorize.allowed') : t('admin.iam.rights.authorize.denied')}
-                </p>
-                <dl className="mt-3 grid gap-2 text-sm">
-                  <div>
-                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.authorize.summary.action')}</dt>
-                    <dd className="text-foreground">{authorizeAction.trim() || '—'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.authorize.summary.resource')}</dt>
-                    <dd className="text-foreground">
-                      {[authorizeResourceType.trim(), authorizeResourceId.trim()].filter(Boolean).join(' / ') || '—'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.authorize.summary.organization')}</dt>
-                    <dd className="text-foreground">{authorizeOrganizationId.trim() || organizationId.trim() || '—'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.authorize.summary.cause')}</dt>
-                    <dd className="text-foreground">{authorizeDecision.reasonCode ?? authorizeDecision.reason}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t('admin.iam.rights.authorize.summary.origin')}</dt>
-                    <dd className="text-foreground">
-                      {authorizeDecision.provenance?.sourceKinds && authorizeDecision.provenance.sourceKinds.length > 0
-                        ? formatPermissionSourceKindLabels(authorizeDecision.provenance.sourceKinds)
-                        : authorizeDecision.matchedPermissions && authorizeDecision.matchedPermissions.length > 0
-                          ? formatPermissionSourceKindLabels([
-                              ...new Set(authorizeDecision.matchedPermissions.map((permission) => permission.source)),
-                            ] as readonly string[])
-                          : '—'}
-                    </dd>
-                  </div>
-                </dl>
-                {authorizeDecision.diagnostics ? (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {formatObjectEntries(authorizeDecision.diagnostics)}
+          <StudioFilterSurface>
+            <form onSubmit={handleAuthorizeSubmit} className="grid gap-3 lg:grid-cols-4">
+              <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="iam-authorize-action">{t('admin.iam.rights.authorize.action')}</Label>
+                <Input
+                  id="iam-authorize-action"
+                  value={authorizeAction}
+                  onChange={(event) => setAuthorizeAction(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="iam-authorize-resource-type">
+                  {t('admin.iam.rights.authorize.resourceType')}
+                </Label>
+                <Input
+                  id="iam-authorize-resource-type"
+                  value={authorizeResourceType}
+                  onChange={(event) => setAuthorizeResourceType(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="iam-authorize-resource-id">
+                  {t('admin.iam.rights.authorize.resourceId')}
+                </Label>
+                <Input
+                  id="iam-authorize-resource-id"
+                  value={authorizeResourceId}
+                  onChange={(event) => setAuthorizeResourceId(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                <Label htmlFor="iam-authorize-organization-id">
+                  {t('admin.iam.rights.authorize.organizationId')}
+                </Label>
+                <Select
+                  id="iam-authorize-organization-id"
+                  value={authorizeOrganizationId}
+                  onChange={(event) => setAuthorizeOrganizationId(event.target.value)}
+                >
+                  <option value="">{t('admin.iam.shared.all')}</option>
+                  {organizationSelectOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="lg:col-span-4 flex items-center gap-3">
+                <Button type="submit" disabled={isAuthorizing}>
+                  {isAuthorizing
+                    ? t('admin.iam.rights.authorize.running')
+                    : t('admin.iam.rights.authorize.run')}
+                </Button>
+                {authorizeError ? <p className="text-sm text-destructive">{authorizeError}</p> : null}
+              </div>
+              {authorizeDecision ? (
+                <Card className="lg:col-span-4 bg-background p-3 shadow-none">
+                  <p className="font-semibold text-foreground">
+                    {authorizeDecision.allowed
+                      ? t('admin.iam.rights.authorize.allowed')
+                      : t('admin.iam.rights.authorize.denied')}
                   </p>
-                ) : null}
-              </Card>
-            ) : null}
+                  <dl className="mt-3 grid gap-2 text-sm">
+                    <div>
+                      <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {t('admin.iam.rights.authorize.summary.action')}
+                      </dt>
+                      <dd className="text-foreground">{authorizeAction.trim() || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {t('admin.iam.rights.authorize.summary.resource')}
+                      </dt>
+                      <dd className="text-foreground">
+                        {[authorizeResourceType.trim(), authorizeResourceId.trim()]
+                          .filter(Boolean)
+                          .join(' / ') || '—'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {t('admin.iam.rights.authorize.summary.organization')}
+                      </dt>
+                      <dd className="text-foreground">
+                        {authorizeOrganizationId.trim() || organizationId.trim() || '—'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {t('admin.iam.rights.authorize.summary.cause')}
+                      </dt>
+                      <dd className="text-foreground">
+                        {authorizeDecision.reasonCode ?? authorizeDecision.reason}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {t('admin.iam.rights.authorize.summary.origin')}
+                      </dt>
+                      <dd className="text-foreground">
+                        {authorizeDecision.provenance?.sourceKinds &&
+                        authorizeDecision.provenance.sourceKinds.length > 0
+                          ? formatPermissionSourceKindLabels(
+                              authorizeDecision.provenance.sourceKinds
+                            )
+                          : authorizeDecision.matchedPermissions &&
+                              authorizeDecision.matchedPermissions.length > 0
+                            ? formatPermissionSourceKindLabels(
+                                [
+                                  ...new Set(
+                                    authorizeDecision.matchedPermissions.map(
+                                      (permission) => permission.source
+                                    )
+                                  ),
+                                ] as readonly string[]
+                              )
+                            : '—'}
+                      </dd>
+                    </div>
+                  </dl>
+                  {authorizeDecision.diagnostics ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {formatObjectEntries(authorizeDecision.diagnostics)}
+                    </p>
+                  ) : null}
+                </Card>
+              ) : null}
             </form>
-          </Card>
+          </StudioFilterSurface>
         </div>
       ) : null}
 
@@ -1152,7 +1190,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           aria-labelledby={getTabId('governance')}
           className="space-y-4"
         >
-          <Card className="grid gap-3 p-4">
+          <StudioFilterSurface className="grid gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.exportHint')}</p>
               {instanceId && canExportGovernanceCompliance ? (
@@ -1184,7 +1222,6 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                       type: (event.target.value || undefined) as GovernanceCasesQuery['type'],
                     }))
                   }
-                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="">{t('admin.iam.shared.all')}</option>
                   {governanceTypeOptions.map((option) => (
@@ -1206,7 +1243,6 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                       status: event.target.value || undefined,
                     }))
                   }
-                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="">{t('admin.iam.shared.all')}</option>
                   {governanceStatusOptions.map((option) => (
@@ -1217,7 +1253,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                 </Select>
               </div>
             </div>
-          </Card>
+          </StudioFilterSurface>
           {governanceError ? (
             <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
               <AlertDescription>{governanceError}</AlertDescription>
@@ -1245,7 +1281,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           aria-labelledby={getTabId('dsr')}
           className="space-y-4"
         >
-          <Card className="grid gap-3 p-4 md:grid-cols-3">
+          <StudioFilterSurface className="grid gap-3 md:grid-cols-3">
               <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
                 <Label htmlFor="iam-dsr-search">{t('admin.iam.dsr.filters.search')}</Label>
                 <Input
@@ -1266,7 +1302,6 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                       type: (event.target.value || undefined) as DsrAdminCasesQuery['type'],
                     }))
                   }
-                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="">{t('admin.iam.shared.all')}</option>
                   {dsrTypeOptions.map((option) => (
@@ -1288,7 +1323,6 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                       status: (event.target.value || undefined) as DsrAdminCasesQuery['status'],
                     }))
                   }
-                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="">{t('admin.iam.shared.all')}</option>
                   {dsrStatusOptions.map((option) => (
@@ -1298,7 +1332,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
                   ))}
                 </Select>
               </div>
-          </Card>
+          </StudioFilterSurface>
           {dsrError ? (
             <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
               <AlertDescription>{dsrError}</AlertDescription>

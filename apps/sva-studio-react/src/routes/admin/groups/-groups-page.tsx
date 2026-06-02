@@ -4,6 +4,7 @@ import type { IamAdminGroupDetail } from '@sva/core';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import { StudioFilterSurface } from '../../../components/StudioFilterSurface';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -147,7 +148,7 @@ export const GroupsPage = () => {
         <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.groups.page.subtitle')}</p>
       </header>
 
-      <Card className="grid gap-3 p-4 lg:grid-cols-[1fr_auto_auto]" role="search">
+      <StudioFilterSurface className="grid gap-3 lg:grid-cols-[1fr_auto_auto]" role="search">
         <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
           <Label htmlFor="groups-search">{t('admin.groups.filters.searchLabel')}</Label>
           <Input
@@ -167,7 +168,7 @@ export const GroupsPage = () => {
         <Button asChild type="button">
           <Link to="/admin/groups/new">{t('admin.groups.actions.create')}</Link>
         </Button>
-      </Card>
+      </StudioFilterSurface>
 
       {!hasInstanceContext ? (
         <Alert>

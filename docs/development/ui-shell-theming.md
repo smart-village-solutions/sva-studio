@@ -26,6 +26,8 @@ Die Layout-Shell von `apps/sva-studio-react` verwendet semantische Design-Tokens
 - Das Default-Light-Theme nutzt dabei eine KERN-nahe blaue Action- und Accent-Palette; `sva-forest` bleibt bewusst eine separate grüne Variantenlinie.
 - Große Shell-Flächen wie Cards, Dialoge, Flyouts und Tabellen-Wrapper verwenden bewusst restriktivere Radien als Chips, Icon-Buttons oder pill-förmige Status-/Filterelemente.
 - Plain-Table-Flächen ohne eigenes `StudioDataTable`-Primitive sollen bevorzugt den Shared-Baustein `StudioTableSurface` verwenden. Der Wrapper orientiert sich am Waste-Management-Plugin mit `overflow-hidden`, `rounded-none`, `border-y` und einer klar getrennten horizontalen Scroll-Ebene.
+- Filter- und Toolbar-Flächen auf Listen-/Admin-Seiten sollen bevorzugt `StudioFilterSurface` verwenden, damit Suchfelder, Selects, Primäraktionen und Paginationsleisten dieselbe Shell-Fläche teilen.
+- Kennzahlen- und Statuskarten sollen bevorzugt `StudioSummaryCard` verwenden, damit Eyebrow, Titelhierarchie, Radius und Flächenwirkung zwischen Monitoring-, Cockpit- und Admin-Seiten konsistent bleiben.
 - `@kern-ux/native` wird in Phase 1 nicht als globaler CSS-Reset oder als konkurrierende Komponentenbibliothek eingebunden.
 - Root-Dokument, `AppShell`, `Header` und `Sidebar` konsumieren ausschließlich semantische Tokens. Neue Shell-Flächen sollen keine direkten KERN-Farbcodes oder projektspezifischen Utility-Farben einführen.
 

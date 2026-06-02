@@ -177,9 +177,11 @@ describe('Header auth actions', () => {
     expect(screen.getByRole('menuitem', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
     expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
-    expect(screen.getAllByDisplayValue(/Suche|Assistenten|Prompt|Studio|KERN/i)[0]?.className ?? '').toContain(
-      'bg-[rgb(var(--waste-panel-surface))]'
-    );
+    expect(
+      screen
+        .getAllByRole('textbox')
+        .some((element) => element.className.includes('bg-[rgb(var(--waste-panel-surface))]'))
+    ).toBe(true);
     expect(screen.getByRole('menu').className).toContain('rounded-lg');
 
     const logoutForm = document.querySelector('form[action="/auth/logout"]');

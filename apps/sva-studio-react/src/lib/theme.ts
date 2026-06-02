@@ -37,7 +37,7 @@ export const createThemeBootstrapScript = (): string =>
     'var root=document.documentElement;',
     `var storageKey=${JSON.stringify(THEME_MODE_STORAGE_KEY)};`,
     'var persistedMode=null;',
-    'try{persistedMode=window.localStorage.getItem(storageKey);}catch{}',
+    'try{persistedMode=window.localStorage.getItem(storageKey);}catch(error){}',
     "var prefersDarkMode=typeof window.matchMedia==='function'&&window.matchMedia('(prefers-color-scheme: dark)').matches;",
     "var mode=persistedMode==='light'||persistedMode==='dark'?persistedMode:(prefersDarkMode?'dark':'light');",
     'root.dataset.themeMode=mode;',

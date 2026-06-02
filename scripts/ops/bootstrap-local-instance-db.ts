@@ -26,6 +26,22 @@ type RunBootstrapLocalInstanceDbDeps = {
   readonly write?: (chunk: string) => void;
 };
 
+export const buildBootstrapLocalInstanceDbApprovalToken = (targetInstanceId: string) =>
+  `bootstrap-local-instance-db:${targetInstanceId}`;
+
+export const assertBootstrapLocalInstanceDbApproved = (
+  options: Pick<CliOptions, 'approvalToken' | 'targetInstanceId'>,
+): void => {
+  const expectedApprovalToken = buildBootstrapLocalInstanceDbApprovalToken(options.targetInstanceId);
+  if (options.approvalToken?.trim() === expectedApprovalToken) {
+    return;
+  }
+
+  throw new Error(
+    `Lokaler Instanz-DB-Bootstrap bleibt als gefaehrlicher Pfad gesperrt. Erneut mit --approve-dangerous=${expectedApprovalToken} ausfuehren.`,
+  );
+};
+
 export const runBootstrapLocalInstanceDb = async (
   argv: readonly string[],
   deps: RunBootstrapLocalInstanceDbDeps = {}
@@ -48,6 +64,8 @@ export const runBootstrapLocalInstanceDb = async (
   const dockerPsqlQuietImpl = deps.dockerPsqlQuietImpl ?? dockerPsqlQuiet;
   const logStepImpl = deps.logStepImpl ?? logStep;
   const write = deps.write ?? ((chunk: string) => process.stdout.write(chunk));
+
+  assertBootstrapLocalInstanceDbApproved(options);
 
   if (options.createDb) {
     recreateDatabase(options, runImpl, logStepImpl);

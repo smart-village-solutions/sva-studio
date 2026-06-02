@@ -59,6 +59,13 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm env:feedback:studio` muss nach jedem Lauf eine Trend-Zusammenfassung und einen Review-Entwurf erzeugen
   - fuer `studio` muessen `doctor` und `precheck` zusaetzlich `app-db-principal` als `ok` ausweisen; `db`, `redis` und `keycloak` muessen dabei aus Sicht des laufenden `APP_DB_USER` bereit sein
   - wenn ein Rollout ein bereits live laufendes Ziel-Digest wiederverwendet, muss der Deploy-Report diese Live-Paritaet fuer dasselbe Digest explizit ausweisen
+- Lokale Runtime-Drift-Reparatur:
+  - `pnpm env:up:local-keycloak` bleibt read-only und darf bestehende lokale Instanz-Identitaet oder tenant-spezifische Secrets nicht still ueberschreiben
+  - `pnpm env:doctor:local-keycloak --json` liefert fuer lokale Driftklassen stabile `reasonCode`-, `repairable`- und `recommendedAction`-Felder
+  - `pnpm env:repair:local-keycloak` muss Migration, Registry-Reconcile und tenant-spezifischen Secret-Sync idempotent ausfuehren koennen
+  - repo-gesteuerte gefaehrliche Ops-Pfade bleiben ohne passendes `--approve-dangerous=<token>` blockiert
+  - `pnpm env:verify:db-schema-snapshot` muss Snapshot-Drift gegen den lokalen migrationsbasierten Datenbankstand sichtbar machen und Runtime-/Infra-Schemata wie `graphile_worker` ausklammern
+  - `docs/development/studio-db-schema-final.sql` wird als abgeleitetes Artefakt behandelt; `packages/data/migrations/*.sql` bleiben die fuehrende Schema-Quelle
 - IAM Authorize Performance:
   - P95 für `POST /iam/authorize` < 50 ms (mindestens 100 RPS / 500 gleichzeitige Nutzer als Zielprofil)
 - IAM Gruppenverwaltung:

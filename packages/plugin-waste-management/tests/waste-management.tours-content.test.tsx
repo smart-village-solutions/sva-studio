@@ -39,6 +39,12 @@ vi.mock('@sva/studio-ui-react', () => ({
   },
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
   Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
+  Dialog: ({ open, children }: { readonly open?: boolean; readonly children: React.ReactNode }) => (open ? <div>{children}</div> : null),
+  DialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   StudioConfirmDialog: ({ open }: { readonly open: boolean }) => (open ? <div data-testid="confirm-dialog" /> : null),
   StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="empty-state">{children}</div>,
   cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(' '),
@@ -118,6 +124,11 @@ describe('WasteToursContent', () => {
         pageSize={25}
         query=""
         status="all"
+        tourWasteFractionId={undefined}
+        firstDateFrom={undefined}
+        firstDateTo={undefined}
+        endDateFrom={undefined}
+        endDateTo={undefined}
         onPageChange={vi.fn()}
         onPageSizeChange={vi.fn()}
         onQueryChange={vi.fn()}
@@ -127,6 +138,10 @@ describe('WasteToursContent', () => {
 
     expect(screen.getByText('tour message')).toBeTruthy();
     expect(screen.getByRole('table', { name: 'tours.table.caption' })).toBeTruthy();
+    const filterButtonCard = screen.getByRole('button', { name: 'tours.filters.open' }).closest('section.bg-card');
+    const toursTableCard = screen.getByRole('table', { name: 'tours.table.caption' }).closest('section.bg-card');
+    expect(filterButtonCard).toBeTruthy();
+    expect(filterButtonCard).toBe(toursTableCard);
     expect(screen.getByRole('columnheader', { name: 'tours.table.name none' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.status none' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.recurrence none' })).toBeTruthy();
@@ -172,7 +187,7 @@ describe('WasteToursContent', () => {
             active: true,
           },
         ] as never}
-        fractions={[] as never}
+        fractions={[{ id: 'fraction-1', name: 'Papier' }] as never}
         masterDataOverview={null}
         schedulingOverview={null}
         onOpenCreateDialog={vi.fn()}
@@ -190,6 +205,11 @@ describe('WasteToursContent', () => {
         pageSize={25}
         query=""
         status="all"
+        tourWasteFractionId={undefined}
+        firstDateFrom={undefined}
+        firstDateTo={undefined}
+        endDateFrom={undefined}
+        endDateTo={undefined}
         onPageChange={vi.fn()}
         onPageSizeChange={vi.fn()}
         onQueryChange={vi.fn()}
@@ -198,5 +218,165 @@ describe('WasteToursContent', () => {
     );
 
     expect(screen.getByText('tours.table.loadingAssignments')).toBeTruthy();
+  });
+
+  it('keeps tour filter edits local until the modal applies them', () => {
+    resolveTourAssignmentItemsMock.mockReturnValue([]);
+
+    const onFiltersChange = vi.fn();
+
+    render(
+      <WasteToursContent
+        assignmentContextLoading={false}
+        message={null}
+        tours={[
+          {
+            id: 'tour-1',
+            name: 'Restmüll Nord',
+            recurrence: 'weekly',
+            wasteFractionIds: [],
+            locationCount: 0,
+            customDates: [],
+            active: true,
+          },
+        ] as never}
+        fractions={[{ id: 'fraction-1', name: 'Papier' }, { id: 'fraction-2', name: 'Bio' }] as never}
+        masterDataOverview={null}
+        schedulingOverview={null}
+        onOpenCreateDialog={vi.fn()}
+        onOpenEditDialog={vi.fn()}
+        onOpenDuplicateDialog={vi.fn()}
+        onOpenCreateAssignmentsDialog={vi.fn()}
+        onOpenEditAssignmentsDialog={vi.fn()}
+        onOpenCalendar={vi.fn()}
+        onToggleTourStatus={vi.fn(async () => undefined)}
+        onDeleteTour={vi.fn(async () => undefined)}
+        onDeleteTours={vi.fn(async () => undefined)}
+        canDuplicateTour={false}
+        saving={false}
+        page={1}
+        pageSize={25}
+        query=""
+        status="all"
+        tourWasteFractionId={undefined}
+        firstDateFrom={undefined}
+        firstDateTo={undefined}
+        endDateFrom={undefined}
+        endDateTo={undefined}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+        onQueryChange={vi.fn()}
+        onStatusChange={vi.fn()}
+        onFiltersChange={onFiltersChange}
+      />
+    );
+
+    expect(screen.queryByText('tours.filters.title')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'tours.table.filtersTitle' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.filters.open' }));
+    expect(screen.getByText('tours.filters.title')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('tours.filters.nameLabel'), {
+      target: { value: 'Papier' },
+    });
+    fireEvent.change(screen.getByLabelText('tours.filters.statusLabel'), {
+      target: { value: 'inactive' },
+    });
+    fireEvent.change(screen.getByLabelText('tours.filters.fractionLabel'), {
+      target: { value: 'fraction-1' },
+    });
+    fireEvent.change(screen.getByLabelText('tours.filters.firstDateFromLabel'), {
+      target: { value: '2026-02-01' },
+    });
+    fireEvent.change(screen.getByLabelText('tours.filters.endDateToLabel'), {
+      target: { value: '2026-10-31' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'tours.filters.cancel' }));
+
+    expect(onFiltersChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.filters.open' }));
+    fireEvent.change(screen.getByLabelText('tours.filters.nameLabel'), {
+      target: { value: 'Papier' },
+    });
+    fireEvent.change(screen.getByLabelText('tours.filters.statusLabel'), {
+      target: { value: 'inactive' },
+    });
+    fireEvent.change(screen.getByLabelText('tours.filters.fractionLabel'), {
+      target: { value: 'fraction-1' },
+    });
+    fireEvent.change(screen.getByLabelText('tours.filters.firstDateFromLabel'), {
+      target: { value: '2026-02-01' },
+    });
+    fireEvent.change(screen.getByLabelText('tours.filters.endDateToLabel'), {
+      target: { value: '2026-10-31' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'tours.filters.apply' }));
+
+    expect(onFiltersChange).toHaveBeenCalledWith(
+      'Papier',
+      'inactive',
+      'fraction-1',
+      '2026-02-01',
+      undefined,
+      undefined,
+      '2026-10-31'
+    );
+  });
+
+  it('shows a direct reset action for active tour filters', () => {
+    resolveTourAssignmentItemsMock.mockReturnValue([]);
+
+    const onFiltersChange = vi.fn();
+
+    render(
+      <WasteToursContent
+        assignmentContextLoading={false}
+        message={null}
+        tours={[
+          {
+            id: 'tour-1',
+            name: 'Restmüll Nord',
+            recurrence: 'weekly',
+            wasteFractionIds: [],
+            locationCount: 0,
+            customDates: [],
+            active: true,
+          },
+        ] as never}
+        fractions={[] as never}
+        masterDataOverview={null}
+        schedulingOverview={null}
+        onOpenCreateDialog={vi.fn()}
+        onOpenEditDialog={vi.fn()}
+        onOpenDuplicateDialog={vi.fn()}
+        onOpenCreateAssignmentsDialog={vi.fn()}
+        onOpenEditAssignmentsDialog={vi.fn()}
+        onOpenCalendar={vi.fn()}
+        onToggleTourStatus={vi.fn(async () => undefined)}
+        onDeleteTour={vi.fn(async () => undefined)}
+        onDeleteTours={vi.fn(async () => undefined)}
+        canDuplicateTour={false}
+        saving={false}
+        page={1}
+        pageSize={25}
+        query="Bio"
+        status="active"
+        tourWasteFractionId={'fraction-2'}
+        firstDateFrom={'2026-01-01'}
+        firstDateTo={undefined}
+        endDateFrom={undefined}
+        endDateTo={undefined}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+        onQueryChange={vi.fn()}
+        onStatusChange={vi.fn()}
+        onFiltersChange={onFiltersChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.filters.reset' }));
+    expect(onFiltersChange).toHaveBeenCalledWith('', 'all', undefined, undefined, undefined, undefined, undefined);
   });
 });

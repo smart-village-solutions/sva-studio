@@ -5,6 +5,7 @@ import type { WasteManagementSearchParams } from '../src/search-params.js';
 import {
   toCreateTourSearch,
   toEditTourSearch,
+  toToursFiltersSearch,
   toToursPageSearch,
   toToursPageSizeSearch,
   toToursQuerySearch,
@@ -30,6 +31,11 @@ const createSearch = (): WasteManagementSearchParams => ({
   page: 3,
   pageSize: 25,
   status: 'active',
+  tourWasteFractionId: 'fraction-1',
+  firstDateFrom: '2026-01-01',
+  firstDateTo: undefined,
+  endDateFrom: undefined,
+  endDateTo: '2026-12-31',
   shiftContext: 'all',
   fractionsSortBy: 'name',
   fractionsSortDirection: 'asc',
@@ -105,6 +111,48 @@ describe('waste-management.tours-list-view.navigation', () => {
     expect(toToursStatusSearch(search, 'inactive')).toEqual({
       ...search,
       status: 'inactive',
+      page: 1,
+    });
+
+    expect(
+      toToursFiltersSearch(
+        search,
+        'papier',
+        'inactive',
+        search.tourWasteFractionId,
+        search.firstDateFrom,
+        search.firstDateTo,
+        search.endDateFrom,
+        search.endDateTo
+      )
+    ).toEqual({
+      ...search,
+      q: 'papier',
+      status: 'inactive',
+      tourWasteFractionId: 'fraction-1',
+      page: 1,
+    });
+
+    expect(
+      toToursFiltersSearch(
+        search,
+        'papier',
+        'inactive',
+        'fraction-2',
+        '2026-02-01',
+        '2026-03-31',
+        '2026-10-01',
+        '2026-11-30'
+      )
+    ).toEqual({
+      ...search,
+      q: 'papier',
+      status: 'inactive',
+      tourWasteFractionId: 'fraction-2',
+      firstDateFrom: '2026-02-01',
+      firstDateTo: '2026-03-31',
+      endDateFrom: '2026-10-01',
+      endDateTo: '2026-11-30',
       page: 1,
     });
   });

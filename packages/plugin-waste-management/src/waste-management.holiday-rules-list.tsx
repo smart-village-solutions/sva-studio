@@ -1,6 +1,5 @@
 import type { WasteHolidayRuleRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button } from '@sva/studio-ui-react';
 
 import { WasteHolidayRuleForm } from './waste-management.holiday-rules-form.js';
 
@@ -20,12 +19,10 @@ const groupHolidayRulesByYear = (rules: readonly WasteHolidayRuleRecord[]) => {
 export const WasteHolidayRulesList = ({
   rules,
   saving,
-  onRunSync,
   onSaveRule,
 }: {
   readonly rules: readonly WasteHolidayRuleRecord[];
   readonly saving: boolean;
-  readonly onRunSync: () => Promise<void>;
   readonly onSaveRule: (
     rule: WasteHolidayRuleRecord,
     input: {
@@ -39,14 +36,9 @@ export const WasteHolidayRulesList = ({
 
   return (
     <section className="space-y-4 rounded-lg border p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <h3 className="text-sm font-semibold">{pt('scheduling.holidayRules.title')}</h3>
-          <p className="text-sm text-muted-foreground">{pt('scheduling.holidayRules.description')}</p>
-        </div>
-        <Button type="button" disabled={saving} onClick={() => void onRunSync()}>
-          {pt('scheduling.holidayRules.syncAction')}
-        </Button>
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold">{pt('scheduling.holidayRules.title')}</h3>
+        <p className="text-sm text-muted-foreground">{pt('scheduling.holidayRules.description')}</p>
       </div>
       {yearGroups.length === 0 ? (
         <p className="text-sm text-muted-foreground">{pt('scheduling.holidayRules.empty')}</p>

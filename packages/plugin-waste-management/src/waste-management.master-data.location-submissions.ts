@@ -4,6 +4,7 @@ import {
   deleteWasteManagementCollectionLocation,
   createWasteManagementLocationTourLinksBulk,
   updateWasteManagementCollectionLocation,
+  WasteManagementApiError,
 } from './waste-management.api.js';
 import { wasteMasterDataInputMappers } from './waste-management.master-data.forms.js';
 import { applySuccess, type WasteMasterDataState } from './waste-management.master-data.state.js';
@@ -11,6 +12,17 @@ import { resolveApiErrorCode } from './waste-management.page.support.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
+
+const resolveLocationSaveErrorMessage = (error: unknown, pt: Translate) => {
+  const code = resolveApiErrorCode(error);
+  if (code === 'forbidden') {
+    return pt('masterData.collectionLocations.messages.saveForbidden');
+  }
+  if (error instanceof WasteManagementApiError && error.message.length > 0 && error.message !== error.code) {
+    return pt('masterData.collectionLocations.messages.saveErrorWithReason', { reason: error.message });
+  }
+  return pt('masterData.collectionLocations.messages.saveError');
+};
 
 export const createWasteMasterDataLocationSubmissions = ({
   state,
@@ -48,8 +60,7 @@ export const createWasteMasterDataLocationSubmissions = ({
         () => state.setLastOutcome(mode === 'create' ? 'location-create-success' : 'location-update-success')
       );
     } catch (saveError) {
-      const code = resolveApiErrorCode(saveError);
-      state.setMessage({ kind: 'error', text: code === 'forbidden' ? pt('masterData.collectionLocations.messages.saveForbidden') : pt('masterData.collectionLocations.messages.saveError') });
+      state.setMessage({ kind: 'error', text: resolveLocationSaveErrorMessage(saveError, pt) });
     } finally {
       state.setSaving(false);
     }

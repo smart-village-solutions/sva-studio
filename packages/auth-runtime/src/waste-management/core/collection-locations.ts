@@ -9,6 +9,29 @@ import { getRequestId, normalizeOptionalString, requireDeps } from './utils.js';
 
 const { createWasteCollectionLocationSchema, updateWasteCollectionLocationSchema } = wasteManagementMasterDataSchemas;
 
+type PgLikeError = Error & {
+  code?: string;
+  column?: string;
+  table?: string;
+};
+
+const mapCollectionLocationPersistenceErrorMessage = (error: unknown): string | undefined => {
+  const pgError = error as PgLikeError;
+  if (pgError?.code !== '23502' || pgError.table !== 'waste_collection_locations') {
+    return undefined;
+  }
+
+  if (pgError.column === 'street_id') {
+    return 'Der Waste-Abholort konnte nicht gespeichert werden, weil die angebundene Waste-Datenquelle derzeit eine Straße verlangt. "Alle Straßen" ist dort aktuell nicht zulässig.';
+  }
+
+  if (pgError.column === 'house_number_id') {
+    return 'Der Waste-Abholort konnte nicht gespeichert werden, weil die angebundene Waste-Datenquelle derzeit eine Hausnummer verlangt. "Alle Hausnummern" ist dort aktuell nicht zulässig.';
+  }
+
+  return undefined;
+};
+
 const toCollectionLocationInput = (
   id: string,
   data: {
@@ -64,6 +87,7 @@ export const wasteManagementCollectionLocationHandlers = {
       messages: {
         verificationFailed: 'Der Waste-Abholort konnte nicht verifiziert werden.',
         persistenceFailed: 'Der Waste-Abholort konnte nicht gespeichert werden.',
+        mapPersistenceErrorMessage: mapCollectionLocationPersistenceErrorMessage,
       },
       save: () =>
         requireDeps(deps.saveWasteCollectionLocation, 'saveWasteCollectionLocation')(
@@ -122,6 +146,7 @@ export const wasteManagementCollectionLocationHandlers = {
         notFound: 'Der Waste-Abholort wurde nicht gefunden.',
         verificationFailed: 'Der Waste-Abholort konnte nicht verifiziert werden.',
         persistenceFailed: 'Der Waste-Abholort konnte nicht gespeichert werden.',
+        mapPersistenceErrorMessage: mapCollectionLocationPersistenceErrorMessage,
       },
       loadExisting: () => loadCollectionLocation(instanceId, locationId),
       save: () => saveCollectionLocation(instanceId, toCollectionLocationInput(locationId, parsed.data)),

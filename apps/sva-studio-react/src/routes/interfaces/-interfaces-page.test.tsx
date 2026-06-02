@@ -155,6 +155,25 @@ describe('InterfacesPage', () => {
     expect(screen.getByText('Schnittstellen-Einstellungen wurden gespeichert.')).toBeTruthy();
   });
 
+  it('shows a blocking load error instead of the empty state when the interfaces payload is malformed', async () => {
+    state.listInterfaces.mockResolvedValueOnce(undefined).mockResolvedValueOnce(createListResponse([mainserverEntry]));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Schnittstellen konnten nicht geladen werden.')).toBeTruthy();
+    });
+
+    expect(screen.queryByText('0 Schnittstelle(n)')).toBeNull();
+    expect(screen.queryByText('Für diese Instanz sind noch keine Schnittstellen hinterlegt.')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neu laden' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+  });
+
   it('creates an s3 interface through the picker dialog and upsert endpoint', async () => {
     state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
     state.upsertInterface.mockResolvedValue({

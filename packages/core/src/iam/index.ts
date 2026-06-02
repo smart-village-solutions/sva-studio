@@ -58,6 +58,8 @@ export type {
   IamUserDetail,
   IamUserDirectPermissionAssignment,
   IamUserGroupAssignment,
+  IamUserInvitationError,
+  IamUserInvitationErrorCode,
   IamUserInvitationStatus,
   IamUserImportSyncReport,
   IamUserListItem,

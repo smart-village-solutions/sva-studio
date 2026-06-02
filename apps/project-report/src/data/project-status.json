@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": "1.0.5",
-    "updatedAt": "2026-05-25",
+    "updatedAt": "2026-06-02",
     "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; commissioned-Status am 2026-05-06 fachlich auf idea zurückgesetzt; am 2026-05-25 manuell gegen den Repository-Stand abgeglichen, um schlanke Abnahmenachweise sowie IAM-bezogene Akzeptanzkriterien und ToDos erweitert; Health weiterhin aus der Kostenschätzung als on_track abgeleitet; am 2026-05-25 um ein feld featureSummary je Arbeitspaket fuer Mehrwerte, Funktionen und Features erweitert; am 2026-05-25 die featureSummary-Texte fuer M1 gegen die Konzeption unter concepts/konzeption-cms-v2 fachlich nachgeschaerft"
   },
   "statusModel": {
@@ -429,21 +429,10 @@
           "area": "2. Datentypen",
           "priority": "must",
           "effortPt": 2,
-          "status": "planned",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": [],
           "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Umfragen im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
-        },
-        {
-          "id": "WP-030",
-          "title": "Eigene Datentypen (eventuell auch schon durch SDK abgedeckt?)",
-          "area": "2. Datentypen",
-          "priority": "requested",
-          "effortPt": 5,
-          "status": "commissioned",
-          "health": "on_track",
-          "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Eigene Datentypen (eventuell auch schon durch SDK abgedeckt?) im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-031",
@@ -451,7 +440,7 @@
           "area": "3. Datenverwaltung",
           "priority": "replacement_required",
           "effortPt": 3,
-          "status": "idea",
+          "status": "planned",
           "health": "on_track",
           "dependsOn": [],
           "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Filterkriterien & -logiken im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
@@ -466,17 +455,6 @@
           "health": "on_track",
           "dependsOn": [],
           "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Medienverwaltung im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
-        },
-        {
-          "id": "WP-033",
-          "title": "Karten-Funktionen",
-          "area": "3. Datenverwaltung",
-          "priority": "requested",
-          "effortPt": 3,
-          "status": "commissioned",
-          "health": "on_track",
-          "dependsOn": [],
-          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Karten-Funktionen im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
         },
         {
           "id": "WP-034",
@@ -728,6 +706,17 @@
       "plannedEffortPt": 33.5,
       "sortOrder": 3,
       "workPackages": [
+        {
+          "id": "WP-033",
+          "title": "Karten-Funktionen",
+          "area": "3. Datenverwaltung",
+          "priority": "requested",
+          "effortPt": 3,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Karten-Funktionen im Bereich 3. Datenverwaltung und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+        },
         {
           "id": "WP-056",
           "title": "Mandantenverwaltung",
@@ -1676,6 +1665,17 @@
       "plannedEffortPt": 28,
       "sortOrder": 6,
       "workPackages": [
+        {
+          "id": "WP-030",
+          "title": "Eigene Datentypen (eventuell auch schon durch SDK abgedeckt?)",
+          "area": "2. Datentypen",
+          "priority": "requested",
+          "effortPt": 5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": [],
+          "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Eigene Datentypen (eventuell auch schon durch SDK abgedeckt?) im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
+        },
         {
           "id": "WP-140",
           "title": "Einführung eines flexiblen Modul-Frameworks und eines SDKs.",

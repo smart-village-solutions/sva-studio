@@ -66,6 +66,10 @@ describe('shared request helpers', () => {
   it('reads pagination, path, instance and idempotency values', async () => {
     const request = new Request('https://example.test/api/v1/items/item-1?page=-1&pageSize=200&instanceId= instance-1 ');
     expect(readPage(request)).toEqual({ page: 1, pageSize: 100 });
+    expect(readPage(new Request('https://example.test/api/v1/items/item-1'))).toEqual({
+      page: 1,
+      pageSize: 25,
+    });
     expect(readInstanceIdFromRequest(request, 'fallback')).toBe('instance-1');
     expect(readInstanceIdFromRequest(new Request('https://example.test/api'), 'fallback')).toBe('fallback');
     expect(readPathSegment(request, 2)).toBe('items');

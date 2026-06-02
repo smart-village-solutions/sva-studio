@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import { StatusNotice } from './waste-management.page.support.js';
@@ -11,7 +10,13 @@ import {
   useWasteToursSelectionState,
 } from './waste-management.tours.content.parts.js';
 import { WasteToursEmptyState } from './waste-management.tours.empty-state.js';
-import { formatTourRecurrence } from './waste-management.tours.presentation.js';
+import {
+  applyWasteToursFilters,
+  createLocationCountByTourId,
+  resetWasteToursFilters,
+  sortWasteTours,
+  updateWasteToursSorting,
+} from './waste-management.tours.content.helpers.js';
 import type { WasteToursSortDirection, WasteToursSortField } from './waste-management.tours.table.parts.js';
 
 export { WasteToursEmptyState };
@@ -38,62 +43,50 @@ export const WasteToursContent = ({
   pageSize,
   query,
   status,
+  tourWasteFractionId,
+  firstDateFrom,
+  firstDateTo,
+  endDateFrom,
+  endDateTo,
   onPageChange,
   onSyncPageChange,
   onPageSizeChange,
   onQueryChange,
   onStatusChange,
+  onFiltersChange,
 }: WasteToursContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const [sortField, setSortField] = useState<WasteToursSortField | null>(null);
   const [sortDirection, setSortDirection] = useState<WasteToursSortDirection>('asc');
-  const locationCountByTourId = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const link of masterDataOverview?.locationTourLinks ?? []) {
-      counts.set(link.tourId, (counts.get(link.tourId) ?? 0) + 1);
-    }
-    return counts;
-  }, [masterDataOverview?.locationTourLinks]);
-  const sortedTours = useMemo(() => {
-    if (!sortField) {
-      return tours;
-    }
-
-    const resolveSortValue = (tour: WasteTourRecord): string => {
-      switch (sortField) {
-        case 'name':
-          return tour.name;
-        case 'recurrence': {
-          const recurrenceValue = formatTourRecurrence(
-            pt,
-            tour.recurrence,
-            tour.customRecurrenceName,
-            tour.customRecurrenceIntervalDays
-          );
-          return recurrenceValue === '—' ? '' : recurrenceValue;
-        }
-        case 'locations':
-          return String(locationCountByTourId.get(tour.id) ?? 0).padStart(6, '0');
-        case 'status':
-          return tour.active ? 'active' : 'inactive';
-        default:
-          return '';
-      }
-    };
-
-    return [...tours].sort((left, right) => {
-      const comparison = resolveSortValue(left).localeCompare(resolveSortValue(right), 'de', {
-        numeric: true,
-        sensitivity: 'base',
-      });
-      return sortDirection === 'asc' ? comparison : comparison * -1;
-    });
-  }, [locationCountByTourId, pt, sortDirection, sortField, tours]);
+  const locationCountByTourId = useMemo(
+    () => createLocationCountByTourId(masterDataOverview?.locationTourLinks),
+    [masterDataOverview?.locationTourLinks],
+  );
+  const sortedTours = useMemo(
+    () => sortWasteTours({ tours, sortField, sortDirection, locationCountByTourId, pt }),
+    [locationCountByTourId, pt, sortDirection, sortField, tours],
+  );
   const {
     selectedTourIds,
     setSelectedTourIds,
-    filtersOpen,
-    setFiltersOpen,
+    filterDialogOpen,
+    setFilterDialogOpen,
+    draftQuery,
+    setDraftQuery,
+    draftStatus,
+    setDraftStatus,
+    draftTourWasteFractionId,
+    setDraftTourWasteFractionId,
+    draftFirstDateFrom,
+    setDraftFirstDateFrom,
+    draftFirstDateTo,
+    setDraftFirstDateTo,
+    draftEndDateFrom,
+    setDraftEndDateFrom,
+    draftEndDateTo,
+    setDraftEndDateTo,
+    hasActiveFilters,
+    syncDraftFilters,
     tourPendingDelete,
     setTourPendingDelete,
     bulkDeleteOpen,
@@ -102,7 +95,18 @@ export const WasteToursContent = ({
     someVisibleSelected,
     toggleSelectAllVisible,
     toggleSelectedTour,
-  } = useWasteToursSelectionState({ tours: sortedTours, page, pageSize, query, status });
+  } = useWasteToursSelectionState({
+    tours: sortedTours,
+    page,
+    pageSize,
+    query,
+    status,
+    tourWasteFractionId,
+    firstDateFrom,
+    firstDateTo,
+    endDateFrom,
+    endDateTo,
+  });
 
   useWasteTabPanelActions(null);
 
@@ -110,8 +114,7 @@ export const WasteToursContent = ({
     <div className="space-y-4">
       <StatusNotice message={message} />
       <WasteToursContentBody
-        filtersOpen={filtersOpen}
-        setFiltersOpen={setFiltersOpen}
+        filterDialogOpen={filterDialogOpen}
         setBulkDeleteOpen={setBulkDeleteOpen}
         tours={sortedTours}
         fractions={fractions}
@@ -128,20 +131,51 @@ export const WasteToursContent = ({
         pageSize={pageSize}
         query={query}
         status={status}
+        tourWasteFractionId={tourWasteFractionId}
+        firstDateFrom={firstDateFrom}
+        firstDateTo={firstDateTo}
+        endDateFrom={endDateFrom}
+        endDateTo={endDateTo}
+        draftQuery={draftQuery}
+        draftStatus={draftStatus}
+        draftTourWasteFractionId={draftTourWasteFractionId}
+        draftFirstDateFrom={draftFirstDateFrom}
+        draftFirstDateTo={draftFirstDateTo}
+        draftEndDateFrom={draftEndDateFrom}
+        draftEndDateTo={draftEndDateTo}
+        hasActiveFilters={hasActiveFilters}
         onOpenCreateDialog={onOpenCreateDialog}
+        onOpenFilterDialog={() => {
+          syncDraftFilters();
+          setFilterDialogOpen(true);
+        }}
+        onFilterDialogOpenChange={setFilterDialogOpen}
         onPageChange={onPageChange}
         onSyncPageChange={onSyncPageChange}
         onPageSizeChange={onPageSizeChange}
-        onSortChange={(field) => {
-          if (field === sortField) {
-            setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
-            return;
-          }
-          setSortField(field);
-          setSortDirection('asc');
-        }}
-        onQueryChange={onQueryChange}
-        onStatusChange={onStatusChange}
+        onSortChange={(field) => updateWasteToursSorting({ field, sortField, setSortField, setSortDirection })}
+        onDraftQueryChange={setDraftQuery}
+        onDraftStatusChange={setDraftStatus}
+        onDraftTourWasteFractionIdChange={setDraftTourWasteFractionId}
+        onDraftFirstDateFromChange={setDraftFirstDateFrom}
+        onDraftFirstDateToChange={setDraftFirstDateTo}
+        onDraftEndDateFromChange={setDraftEndDateFrom}
+        onDraftEndDateToChange={setDraftEndDateTo}
+        onApplyFilters={() =>
+          applyWasteToursFilters({
+            onFiltersChange,
+            onQueryChange,
+            onStatusChange,
+            setFilterDialogOpen,
+            draftQuery,
+            draftStatus,
+            draftTourWasteFractionId,
+            draftFirstDateFrom,
+            draftFirstDateTo,
+            draftEndDateFrom,
+            draftEndDateTo,
+          })}
+        onResetFilters={() => resetWasteToursFilters({ onFiltersChange, onQueryChange, onStatusChange })}
         toggleSelectAllVisible={toggleSelectAllVisible}
         toggleSelectedTour={toggleSelectedTour}
         onOpenCalendar={onOpenCalendar}

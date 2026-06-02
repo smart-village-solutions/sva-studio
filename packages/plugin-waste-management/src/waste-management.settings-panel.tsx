@@ -1,12 +1,18 @@
 import { startTransition, useEffect, useRef, useState, type FormEvent } from 'react';
 import { usePluginTranslation, wasteManagementMasterDataContract } from '@sva/plugin-sdk';
 import {
+  Button,
   StudioErrorState,
   StudioLoadingState,
 } from '@sva/studio-ui-react';
 import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
 
-import { getWasteManagementSettings, updateWasteManagementSettings, type WasteManagementSettingsInput } from './waste-management.api.js';
+import {
+  getWasteManagementSettings,
+  startWasteManagementHolidaySync,
+  updateWasteManagementSettings,
+  type WasteManagementSettingsInput,
+} from './waste-management.api.js';
 import {
   StatusNotice,
   compactOptionalString,
@@ -128,6 +134,28 @@ const persistWasteSettings = async (
   }
 };
 
+const runWasteHolidaySync = async (
+  pt: ReturnType<typeof usePluginTranslation>
+): Promise<{ readonly message: StatusMessage; readonly settings: WasteManagementSettingsRecord | null }> => {
+  try {
+    const response = await startWasteManagementHolidaySync();
+    return {
+      settings: response,
+      message: {
+        kind: 'success',
+        text: pt('settings.messages.holidaySyncSuccess', { status: response?.lastHolidaySyncStatus ?? 'success' }),
+      },
+    };
+  } catch (syncError) {
+    const code = resolveApiErrorCode(syncError);
+    const error = new Error(
+      code === 'forbidden' ? pt('settings.messages.holidaySyncForbidden') : pt('settings.messages.holidaySyncError')
+    );
+    (error as Error & { cause?: unknown }).cause = syncError;
+    throw error;
+  }
+};
+
 export const WasteSettingsPanel = () => {
   const pt = usePluginTranslation('wasteManagement');
   const [saving, setSaving] = useState(false);
@@ -161,10 +189,41 @@ export const WasteSettingsPanel = () => {
     }
   };
 
+  const onRunHolidaySync = async () => {
+    if (!settings?.holidayStateCode) {
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      const result = await runWasteHolidaySync(pt);
+      const nextSettings = result.settings ?? settings;
+      startTransition(() => {
+        setSettings(nextSettings);
+        setForm(mapSettingsToForm(nextSettings));
+        setMessage(result.message);
+      });
+    } catch (syncError) {
+      setMessage({
+        kind: 'error',
+        text: syncError instanceof Error ? syncError.message : pt('settings.messages.holidaySyncError'),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <StatusNotice message={message} />
       <WasteSettingsStatusPanel settings={settings} />
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" disabled={saving || !settings?.holidayStateCode} onClick={() => void onRunHolidaySync()}>
+          {saving ? pt('settings.actions.runningHolidaySync') : pt('settings.actions.runHolidaySync')}
+        </Button>
+      </div>
       <WasteSettingsForm form={form} saving={saving} onSubmit={onSubmit} onChange={setForm} />
     </div>
   );

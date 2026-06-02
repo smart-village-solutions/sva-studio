@@ -32,6 +32,30 @@ describe('organization-schemas', () => {
     });
   });
 
+  it('accepts trimmed mainserver credential fields on create and update payloads', () => {
+    expect(
+      createOrganizationSchema.parse({
+        organizationKey: 'stadtwerke',
+        displayName: 'Stadtwerke',
+        mainserverApplicationId: '  org-app-1  ',
+        mainserverApplicationSecret: '  org-secret-1  ',
+      })
+    ).toMatchObject({
+      mainserverApplicationId: 'org-app-1',
+      mainserverApplicationSecret: 'org-secret-1',
+    });
+
+    expect(
+      updateOrganizationSchema.parse({
+        mainserverApplicationId: '  org-app-2  ',
+        mainserverApplicationSecret: '  ',
+      })
+    ).toMatchObject({
+      mainserverApplicationId: 'org-app-2',
+      mainserverApplicationSecret: '',
+    });
+  });
+
   it('validates membership and context payload ids', () => {
     expect(() =>
       assignOrganizationMembershipSchema.parse({

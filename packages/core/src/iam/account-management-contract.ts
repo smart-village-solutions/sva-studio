@@ -246,11 +246,23 @@ export type IamUserDetail = IamUserListItem & {
 };
 
 export type IamUserInvitationStatus = 'not_requested' | 'sent' | 'failed';
+export type IamUserInvitationErrorCode =
+  | 'keycloak_user_not_ready'
+  | 'keycloak_unavailable'
+  | 'execute_actions_email_not_supported'
+  | 'internal_error';
+
+export type IamUserInvitationError = {
+  readonly code: IamUserInvitationErrorCode;
+  readonly message: string;
+  readonly retryable: boolean;
+};
 
 export type IamCreateUserResult = {
   readonly user: IamUserDetail;
   readonly invitation: {
     readonly status: IamUserInvitationStatus;
+    readonly error?: IamUserInvitationError;
   };
 };
 
@@ -651,6 +663,8 @@ export type IamOrganizationDetail = IamOrganizationListItem & {
   readonly metadata: Readonly<Record<string, unknown>>;
   readonly memberships: readonly IamOrganizationMembership[];
   readonly children: readonly IamOrganizationChildItem[];
+  readonly mainserverApplicationId?: string;
+  readonly mainserverApplicationSecretSet: boolean;
 };
 
 export type IamOrganizationContextOption = {

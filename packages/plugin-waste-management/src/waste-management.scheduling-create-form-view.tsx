@@ -5,23 +5,77 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { useWasteSchedulingController } from './waste-management.scheduling.controller.js';
 import { WasteSchedulingFormContent } from './waste-management.scheduling-form-content.js';
+import { resolveSchedulingEntryTypeFromShiftContext } from './waste-management.scheduling.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
 type WasteSchedulingController = ReturnType<typeof useWasteSchedulingController>;
-type WasteSchedulingCreateVariant = 'global' | 'tour';
+type WasteSchedulingCreateVariant = 'global-shift' | 'tour-shift';
 
 const resolveDefaultCreateVariant = (
   search: WasteManagementSearchParams,
   availableTours: readonly { readonly id: string }[],
 ): WasteSchedulingCreateVariant => {
-  if (search.shiftContext === 'global') {
-    return 'global';
+  if (search.schedulingEntryType === 'global-shift' || search.schedulingEntryType === 'tour-shift') {
+    return search.schedulingEntryType;
   }
-  if (search.shiftContext === 'tour' && availableTours.length > 0) {
-    return 'tour';
-  }
-  return availableTours.length > 0 ? 'tour' : 'global';
+  return resolveSchedulingEntryTypeFromShiftContext(search.shiftContext, availableTours);
 };
+
+const createSchedulingListSearch = (search: WasteManagementSearchParams): WasteManagementSearchParams => ({
+  ...search,
+  schedulingView: 'list',
+  schedulingEntryType: undefined,
+  schedulingEntryId: undefined,
+});
+
+const createSchedulingVariantSearch = (
+  search: WasteManagementSearchParams,
+  variant: WasteSchedulingCreateVariant,
+): WasteManagementSearchParams => ({
+  ...search,
+  schedulingView: 'create',
+  schedulingEntryType: variant,
+  schedulingEntryId: undefined,
+});
+
+const WasteSchedulingCreateVariantField = ({
+  pt,
+  search,
+  variant,
+  setVariant,
+  navigate,
+}: {
+  readonly pt: ReturnType<typeof usePluginTranslation>;
+  readonly search: WasteManagementSearchParams;
+  readonly variant: WasteSchedulingCreateVariant;
+  readonly setVariant: (variant: WasteSchedulingCreateVariant) => void;
+  readonly navigate: ReturnType<typeof useNavigate>;
+}) => (
+  <StudioFieldGroup>
+    <StudioField
+      id="waste-scheduling-create-variant"
+      label={pt('scheduling.create.scope')}
+      description={pt('scheduling.create.scopeHint')}
+    >
+      <Select
+        id="waste-scheduling-create-variant"
+        value={variant}
+        onChange={(event) => {
+          const nextVariant = event.target.value as WasteSchedulingCreateVariant;
+          setVariant(nextVariant);
+          void navigate({
+            to: '/plugins/waste-management',
+            search: createSchedulingVariantSearch(search, nextVariant),
+            replace: true,
+          });
+        }}
+      >
+        <option value="tour-shift">{pt('scheduling.create.scopeTour')}</option>
+        <option value="global-shift">{pt('scheduling.create.scopeGlobal')}</option>
+      </Select>
+    </StudioField>
+  </StudioFieldGroup>
+);
 
 export const WasteSchedulingCreateFormView = ({
   controller,
@@ -44,30 +98,21 @@ export const WasteSchedulingCreateFormView = ({
     controller.setMessage(null);
     void navigate({
       to: '/plugins/waste-management',
-      search: { ...search, schedulingView: 'list', globalDateShiftId: undefined, tourDateShiftId: undefined },
+      search: createSchedulingListSearch(search),
     });
   };
 
   const variantField = (
-    <StudioFieldGroup>
-      <StudioField
-        id="waste-scheduling-create-variant"
-        label={pt('scheduling.create.scope')}
-        description={pt('scheduling.create.scopeHint')}
-      >
-        <Select
-          id="waste-scheduling-create-variant"
-          value={variant}
-          onChange={(event) => setVariant(event.target.value as WasteSchedulingCreateVariant)}
-        >
-          <option value="tour">{pt('scheduling.create.scopeTour')}</option>
-          <option value="global">{pt('scheduling.create.scopeGlobal')}</option>
-        </Select>
-      </StudioField>
-    </StudioFieldGroup>
+    <WasteSchedulingCreateVariantField
+      pt={pt}
+      search={search}
+      variant={variant}
+      setVariant={setVariant}
+      navigate={navigate}
+    />
   );
 
-  if (variant === 'global') {
+  if (variant === 'global-shift') {
     return (
       <WasteSchedulingFormContent
         variant="global"

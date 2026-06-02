@@ -1,315 +1,44 @@
 import * as React from 'react';
 
-import reportData from './data/project-status.json';
-import { validateProjectStatusReport, type ProjectHealth, type ProjectPriority, type ProjectStatus } from './lib/project-status';
-import { t } from './lib/i18n';
-import { createProjectReportModel, type ProjectStatusReport } from './lib/report-model';
-import {
-  parseFilterStateFromSearchParams,
-  stringifyFilterStateToSearchParams,
-  type ReportFilterState,
-  type ReportView,
-} from './lib/url-state';
-
-const validationErrors = validateProjectStatusReport(reportData);
-
-if (validationErrors.length > 0) {
-  throw new Error(`Invalid project report fixture:\n${validationErrors.join('\n')}`);
-}
-
-const projectReport = reportData as ProjectStatusReport;
-
-const healthClassNameByValue: Record<ProjectHealth, string> = {
-  on_track: 'status-pill status-pill--on-track',
-  needs_attention: 'status-pill status-pill--needs-attention',
-  at_risk: 'status-pill status-pill--at-risk',
-  blocked: 'status-pill status-pill--blocked',
-};
-
-const getStatusLabel = (status: ProjectStatus): string => {
-  const statusKey = `app.statuses.${status}` as const;
-  return t(statusKey);
-};
-
-const viewTabs: readonly { value: ReportView; label: string }[] = [
-  { value: 'milestones', label: t('app.tabs.milestones') },
-  { value: 'work-packages', label: t('app.tabs.workPackages') },
-] as const;
-
-const subscribeToLocation = (onStoreChange: () => void) => {
-  globalThis.addEventListener('popstate', onStoreChange);
-  return () => globalThis.removeEventListener('popstate', onStoreChange);
-};
-
-const readLocationSearch = () => globalThis.location.search;
-
-const useFilterState = (): [ReportFilterState, (updater: (current: ReportFilterState) => ReportFilterState) => void] => {
-  const locationSearch = React.useSyncExternalStore(subscribeToLocation, readLocationSearch, () => '');
-  const filterState = React.useMemo(
-    () => parseFilterStateFromSearchParams(new URLSearchParams(locationSearch)),
-    [locationSearch]
-  );
-
-  const updateState = React.useCallback((updater: (current: ReportFilterState) => ReportFilterState) => {
-    const nextState = updater(parseFilterStateFromSearchParams(new URLSearchParams(globalThis.location.search)));
-    const params = stringifyFilterStateToSearchParams(nextState);
-    const search = params.toString();
-    const nextUrl = search.length > 0 ? `${globalThis.location.pathname}?${search}` : globalThis.location.pathname;
-    globalThis.history.pushState({}, '', nextUrl);
-    globalThis.dispatchEvent(new PopStateEvent('popstate'));
-  }, []);
-
-  return [filterState, updateState];
-};
-
-const ProgressBar = ({ value }: Readonly<{ value: number }>) => (
-  <div
-    className="progress-shell"
-    style={{ '--progress-width': value } as React.CSSProperties & { '--progress-width': number }}
-    aria-label={`${t('app.milestone.progress')}: ${value}%`}
-  />
-);
-
-const FilterSelect = ({
-  label,
-  value,
-  options,
-  onChange,
-}: Readonly<{
-  label: string;
-  value: string;
-  options: readonly { id: string; label: string }[];
-  onChange: (value: string) => void;
-}>) => (
-  <label className="field">
-    <span className="field__label">{label}</span>
-    <select className="field__control" value={value} onChange={(event) => onChange(event.target.value)}>
-      {options.map((option) => (
-        <option key={option.id} value={option.id}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  </label>
-);
-
-const WorkPackageTable = ({
-  rows,
-}: Readonly<{
-  rows: ReturnType<typeof createProjectReportModel>['workPackages'];
-}>) => {
-  const [expandedRows, setExpandedRows] = React.useState<ReadonlySet<string>>(() => new Set());
-
-  const toggleRow = React.useCallback((id: string) => {
-    setExpandedRows((current) => {
-      const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  return (
-    <div className="table-shell">
-      <table className="report-table">
-        <thead>
-          <tr>
-            <th>{t('app.workPackageTable.id')}</th>
-            <th>{t('app.workPackageTable.title')}</th>
-            <th>{t('app.workPackageTable.milestone')}</th>
-            <th>{t('app.workPackageTable.priority')}</th>
-            <th>{t('app.workPackageTable.status')}</th>
-            <th>{t('app.workPackageTable.health')}</th>
-            <th>{t('app.workPackageTable.effort')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((entry) => {
-            const isExpanded = expandedRows.has(entry.id);
-            const detailId = `work-package-summary-${entry.id}`;
-            const hasFeatureSummary = typeof entry.featureSummary === 'string' && entry.featureSummary.trim().length > 0;
-            const detailToggleLabel = isExpanded
-              ? t('app.workPackageTable.hideDetails')
-              : t('app.workPackageTable.showDetails');
-
-            return (
-              <React.Fragment key={entry.id}>
-                <tr className="table-row-progress">
-                  <td colSpan={7}>
-                    <ProgressBar value={entry.progressPercent} />
-                  </td>
-                </tr>
-                <tr>
-                  <td>{entry.id}</td>
-                  <td>
-                    <div className="table-title-row">
-                      <strong>{entry.title}</strong>
-                      {hasFeatureSummary && (
-                        <button
-                          type="button"
-                          className="table-detail-toggle"
-                          aria-expanded={isExpanded}
-                          aria-controls={detailId}
-                          aria-label={
-                            isExpanded
-                              ? t('app.workPackageTable.hideDetailsAriaLabel', { id: entry.id })
-                              : t('app.workPackageTable.showDetailsAriaLabel', { id: entry.id })
-                          }
-                          onClick={() => toggleRow(entry.id)}
-                        >
-                          {detailToggleLabel}
-                        </button>
-                      )}
-                    </div>
-                    <div className="table-secondary">{entry.area}</div>
-                  </td>
-                  <td>{entry.milestoneTitle}</td>
-                  <td>{entry.priorityLabel}</td>
-                  <td>{getStatusLabel(entry.status)}</td>
-                  <td>
-                    {entry.health !== 'on_track' && (
-                      <span className={healthClassNameByValue[entry.health]}>{entry.health}</span>
-                    )}
-                  </td>
-                  <td>{entry.effortPt}</td>
-                </tr>
-                {hasFeatureSummary && isExpanded && (
-                  <tr className="table-detail-row" id={detailId}>
-                    <td colSpan={7}>
-                      <div className="table-detail-card">
-                        <p className="table-detail-text">{entry.featureSummary}</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-};
+import { ProjectReportPage } from './components/project-report-page';
+import { useFilterState } from './hooks/use-filter-state';
+import { useLocalProjectStatus } from './hooks/use-local-project-status';
+import { projectReport } from './lib/project-report-fixture';
+import { createProjectReportModel } from './lib/report-model';
+import type { ReportFilterState } from './lib/url-state';
 
 export function App() {
   const [filters, updateFilters] = useFilterState();
-
-  const model = React.useMemo(() => createProjectReportModel(projectReport, filters), [filters]);
-
-  const handleFilterChange = <TKey extends keyof ReportFilterState>(key: TKey, value: ReportFilterState[TKey]) => {
-    updateFilters((current) => ({
-      ...current,
-      [key]: value,
-    }));
-  };
+  const {
+    editableOptions,
+    isLocalEditingEnabled,
+    isSaving,
+    localEditingNotice,
+    report,
+    updateLocalWorkPackage,
+  } = useLocalProjectStatus(projectReport);
+  const model = React.useMemo(() => createProjectReportModel(report, filters), [report, filters]);
+  const handleFilterChange = React.useCallback(
+    function handleFilterChange<TKey extends keyof ReportFilterState>(key: TKey, value: ReportFilterState[TKey]) {
+      updateFilters((current) => ({
+        ...current,
+        [key]: value,
+      }));
+    },
+    [updateFilters]
+  );
 
   return (
-    <main className="page-shell">
-      <section className="hero">
-        <div className="hero__content">
-          <p className="hero__eyebrow">SVA Studio Meta View</p>
-          <h1>{t('app.title')}</h1>
-          <p className="hero__subtitle">{t('app.subtitle')}</p>
-        </div>
-        <dl className="hero__meta">
-          <div>
-            <dt>{t('app.updatedAt')}</dt>
-            <dd>{projectReport.meta.updatedAt}</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className="panel">
-        <div className="tabs" role="tablist" aria-label={t('app.title')}>
-          {viewTabs.map((tab) => {
-            const selected = filters.view === tab.value;
-            return (
-              <button
-                key={tab.value}
-                className={selected ? 'tab-button tab-button--active' : 'tab-button'}
-                role="tab"
-                aria-selected={selected}
-                onClick={() => handleFilterChange('view', tab.value)}
-                type="button"
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="filter-grid">
-          <label className="field field--search">
-            <span className="field__label">{t('app.filters.search')}</span>
-            <input
-              className="field__control"
-              type="search"
-              value={filters.q}
-              placeholder={t('app.filters.searchPlaceholder')}
-              onChange={(event) => handleFilterChange('q', event.target.value)}
-            />
-          </label>
-          <FilterSelect
-            label={t('app.filters.milestone')}
-            value={filters.milestone}
-            options={model.availableMilestones}
-            onChange={(value) => handleFilterChange('milestone', value)}
-          />
-          <FilterSelect
-            label={t('app.filters.health')}
-            value={filters.health}
-            options={model.availableHealthStates}
-            onChange={(value) => handleFilterChange('health', value as ProjectHealth | 'all')}
-          />
-          <FilterSelect
-            label={t('app.filters.priority')}
-            value={filters.priority}
-            options={model.availablePriorities}
-            onChange={(value) => handleFilterChange('priority', value as ProjectPriority | 'all')}
-          />
-        </div>
-      </section>
-
-      {filters.view === 'milestones' ? (
-        <section className="milestone-grid">
-          {model.milestones.length === 0 ? (
-            <p className="empty-state">{t('app.emptyState')}</p>
-          ) : (
-            model.milestones.map((entry) => (
-              <article className="milestone-card" key={entry.id}>
-                <div className="milestone-card__header">
-                  <div>
-                    <p className="milestone-card__id">{entry.id}</p>
-                    <h2>{entry.title}</h2>
-                  </div>
-                </div>
-                <ProgressBar value={entry.completionPercent} />
-                <dl className="milestone-stats">
-                  <div>
-                    <dt>{t('app.milestone.progress')}</dt>
-                    <dd>{entry.completionPercent}%</dd>
-                  </div>
-                  <div>
-                    <dt>{t('app.milestone.estimatedEffort')}</dt>
-                    <dd>{entry.scheduledEffortPt}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('app.milestone.workPackages')}</dt>
-                    <dd>{entry.workPackageCount}</dd>
-                  </div>
-                </dl>
-              </article>
-            ))
-          )}
-        </section>
-      ) : model.workPackages.length === 0 ? (
-        <p className="empty-state">{t('app.emptyState')}</p>
-      ) : (
-        <WorkPackageTable rows={model.workPackages} />
-      )}
-    </main>
+    <ProjectReportPage
+      filters={filters}
+      model={model}
+      report={report}
+      editableOptions={editableOptions}
+      isLocalEditingEnabled={isLocalEditingEnabled}
+      isSaving={isSaving}
+      localEditingNotice={localEditingNotice}
+      onFilterChange={handleFilterChange}
+      onUpdateWorkPackage={updateLocalWorkPackage}
+    />
   );
 }

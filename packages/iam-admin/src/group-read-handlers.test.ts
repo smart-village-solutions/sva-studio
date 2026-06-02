@@ -104,6 +104,20 @@ describe('createGroupReadHandlers', () => {
     });
     expect(deps.requireRoles).toHaveBeenCalledWith(ctx, expect.any(Set), 'req-workspace');
     expect(deps.withInstanceScopedDb).toHaveBeenCalledWith('inst-g', expect.any(Function));
+    expect(deps.logger.info).toHaveBeenCalledWith(
+      'Group list loaded',
+      expect.objectContaining({
+        operation: 'group_list',
+        workspace_id: 'inst-g',
+        page: 1,
+        page_size: 1,
+        total_group_count: 2,
+        returned_group_ids: [groupRow.id],
+        returned_group_keys: ['admins'],
+        request_id: 'req-groups',
+        trace_id: 'trace-groups',
+      })
+    );
   });
 
   it('returns role guard errors before touching the database', async () => {

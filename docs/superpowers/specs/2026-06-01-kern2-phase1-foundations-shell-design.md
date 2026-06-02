@@ -79,7 +79,6 @@ Optional und nur bei klarer Notwendigkeit:
 Architekturreferenz für die spätere Synchronisierung:
 
 - `docs/architecture/08-cross-cutting-concepts.md` im Abschnitt `UI-Shell, Responsivität und Skeleton UX`
-
 ## Umsetzungsansatz
 
 ### Schritt 1: KERN-2-Foundation ableiten

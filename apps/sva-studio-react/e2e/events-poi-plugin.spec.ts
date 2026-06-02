@@ -276,6 +276,50 @@ const routeUnifiedContentOverview = async (
   });
 };
 
+const createA11yEvents = (): EventRecord[] => [
+  {
+    id: 'event-1',
+    title: 'A11y Event',
+    contentType: 'events.event-record',
+    status: 'published',
+    createdAt,
+    updatedAt: createdAt,
+    dates: [{ dateStart: '2026-04-14T09:30:00.000Z' }],
+  },
+];
+
+const createA11yPois = (): PoiRecord[] => [
+  {
+    id: 'poi-1',
+    name: 'A11y POI',
+    contentType: 'poi.point-of-interest',
+    status: 'published',
+    createdAt,
+    updatedAt: createdAt,
+    active: true,
+  },
+];
+
+const prepareEventAndPoiA11yViews = async (page: Page) => {
+  const events = createA11yEvents();
+  const pois = createA11yPois();
+
+  await page.route('**/api/v1/mainserver/events**', async (route) => {
+    await routeEvents(route, events);
+  });
+  await page.route('**/api/v1/mainserver/poi**', async (route) => {
+    await routePoi(route, pois);
+  });
+  await routeUnifiedContentOverview(page, () => events, () => pois);
+
+  await gotoHomeAsAuthenticatedUser(page);
+};
+
+const expectNoSeriousAccessibilityViolations = async (page: Page) => {
+  const result = await new AxeBuilder({ page }).include('#main-content').analyze();
+  expect(result.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
+};
+
 const routeEvents = async (route: Route, events: EventRecord[]) => {
   const request = route.request();
   const method = request.method();
@@ -568,54 +612,30 @@ test.describe('events and POI plugins', () => {
     await expectLoginRedirect(page, /^\/admin\/poi\/new(?:$|\?)/);
   });
 
-  test('keeps central event and POI views free of serious accessibility violations', async ({ page }) => {
-    const events: EventRecord[] = [
-      {
-        id: 'event-1',
-        title: 'A11y Event',
-        contentType: 'events.event-record',
-        status: 'published',
-        createdAt,
-        updatedAt: createdAt,
-        dates: [{ dateStart: '2026-04-14T09:30:00.000Z' }],
-      },
-    ];
-    const pois: PoiRecord[] = [
-      {
-        id: 'poi-1',
-        name: 'A11y POI',
-        contentType: 'poi.point-of-interest',
-        status: 'published',
-        createdAt,
-        updatedAt: createdAt,
-        active: true,
-      },
-    ];
+  test('keeps the central content overview free of serious accessibility violations', async ({ page }) => {
+    await prepareEventAndPoiA11yViews(page);
 
-    await page.route('**/api/v1/mainserver/events**', async (route) => {
-      await routeEvents(route, events);
-    });
-    await page.route('**/api/v1/mainserver/poi**', async (route) => {
-      await routePoi(route, pois);
-    });
-    await routeUnifiedContentOverview(page, () => events, () => pois);
+    await navigateClientSide(page, '/admin/content');
+    await expect(page.locator('#main-content')).toBeVisible();
+    await expectContentOverviewReady(page);
+    await expectNoSeriousAccessibilityViolations(page);
+  });
 
-    await page.goto('/');
+  test('keeps the event create view free of serious accessibility violations', async ({ page }) => {
+    await prepareEventAndPoiA11yViews(page);
 
-    for (const path of [
-      '/admin/content',
-      '/admin/events/new',
-      '/admin/poi/new',
-    ] as const) {
-      await navigateClientSide(page, path);
-      await expect(page.locator('#main-content')).toBeVisible();
-      if (path === '/admin/content') {
-        await expectContentOverviewReady(page);
-      } else {
-        await expectEventOrPoiEditorReady(page, path);
-      }
-      const result = await new AxeBuilder({ page }).include('#main-content').analyze();
-      expect(result.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
-    }
+    await navigateClientSide(page, '/admin/events/new');
+    await expect(page.locator('#main-content')).toBeVisible();
+    await expectEventOrPoiEditorReady(page, '/admin/events/new');
+    await expectNoSeriousAccessibilityViolations(page);
+  });
+
+  test('keeps the POI create view free of serious accessibility violations', async ({ page }) => {
+    await prepareEventAndPoiA11yViews(page);
+
+    await navigateClientSide(page, '/admin/poi/new');
+    await expect(page.locator('#main-content')).toBeVisible();
+    await expectEventOrPoiEditorReady(page, '/admin/poi/new');
+    await expectNoSeriousAccessibilityViolations(page);
   });
 });

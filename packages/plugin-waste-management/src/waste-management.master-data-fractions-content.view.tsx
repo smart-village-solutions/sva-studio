@@ -9,6 +9,7 @@ import {
   sortFieldByColumnId,
   type useFractionBulkActions,
   type useFractionTableLabels,
+  WasteFractionsFilterAction,
   type WasteFractionsContentProps,
 } from './waste-management.master-data-fractions-content.parts.js';
 import type { useFractionColumns } from './waste-management.master-data-fractions-content.columns.js';
@@ -34,8 +35,42 @@ type WasteMasterDataFractionsTableSectionProps = {
     sortBy: WasteManagementFractionSortField,
     sortDirection: WasteManagementFractionSortDirection
   ) => void;
+  readonly fractionsStatus: WasteFractionsContentProps['fractionsStatus'];
+  readonly filterDialogOpen: boolean;
+  readonly draftFractionsStatus: WasteFractionsContentProps['fractionsStatus'];
+  readonly onOpenFilterDialog: () => void;
+  readonly onFilterDialogOpenChange: (open: boolean) => void;
+  readonly onDraftFractionsStatusChange: (status: WasteFractionsContentProps['fractionsStatus']) => void;
+  readonly onApplyFractionsStatus: () => void;
+  readonly onResetFractionsStatus: () => void;
   readonly onPageChange: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
+};
+
+const renderFractionRowActions = (
+  fraction: WasteFractionRecord,
+  onOpenEditFraction: (fraction: WasteFractionRecord) => void,
+  onRequestDeleteFraction: (fraction: WasteFractionRecord) => void,
+) => (
+  <FractionRowActions
+    fraction={fraction}
+    onOpenEditFraction={onOpenEditFraction}
+    onRequestDeleteFraction={onRequestDeleteFraction}
+  />
+);
+
+const resolveNextFractionSorting = (
+  nextSorting: readonly {
+    readonly id: string;
+    readonly desc: boolean;
+  }[],
+): readonly [WasteManagementFractionSortField, WasteManagementFractionSortDirection] => {
+  const current = nextSorting[0];
+  if (!current) {
+    return ['name', 'asc'];
+  }
+
+  return [sortFieldByColumnId[current.id] ?? 'name', current.desc ? 'desc' : 'asc'];
 };
 
 export const WasteMasterDataFractionsTableSection = ({
@@ -52,6 +87,14 @@ export const WasteMasterDataFractionsTableSection = ({
   onOpenEditFraction,
   onRequestDeleteFraction,
   onFractionsSortChange,
+  fractionsStatus,
+  filterDialogOpen,
+  draftFractionsStatus,
+  onOpenFilterDialog,
+  onFilterDialogOpenChange,
+  onDraftFractionsStatusChange,
+  onApplyFractionsStatus,
+  onResetFractionsStatus,
   onPageChange,
   onPageSizeChange,
 }: WasteMasterDataFractionsTableSectionProps) => {
@@ -67,25 +110,27 @@ export const WasteMasterDataFractionsTableSection = ({
         columns={columns}
         getRowId={(fraction) => fraction.id}
         bulkActions={bulkActions}
+        toolbarStart={
+          <WasteFractionsFilterAction
+            fractionsStatus={fractionsStatus}
+            filterDialogOpen={filterDialogOpen}
+            draftFractionsStatus={draftFractionsStatus}
+            onOpenFilterDialog={onOpenFilterDialog}
+            onFilterDialogOpenChange={onFilterDialogOpenChange}
+            onDraftFractionsStatusChange={onDraftFractionsStatusChange}
+            onApplyFractionsStatus={onApplyFractionsStatus}
+            onResetFractionsStatus={onResetFractionsStatus}
+          />
+        }
         toolbarEnd={<FractionPrimaryAction onOpenCreateFraction={onOpenCreateFraction} />}
         selectionMode="multiple"
         emptyState={<p className="text-sm text-muted-foreground">{pt('masterData.messages.emptyBody')}</p>}
         sorting={sorting}
         onSortingChange={(nextSorting) => {
-          const current = nextSorting[0];
-          if (!current) {
-            onFractionsSortChange('name', 'asc');
-            return;
-          }
-          onFractionsSortChange(sortFieldByColumnId[current.id] ?? 'name', current.desc ? 'desc' : 'asc');
+          const [sortBy, sortDirection] = resolveNextFractionSorting(nextSorting);
+          onFractionsSortChange(sortBy, sortDirection);
         }}
-        rowActions={(fraction) => (
-          <FractionRowActions
-            fraction={fraction}
-            onOpenEditFraction={onOpenEditFraction}
-            onRequestDeleteFraction={onRequestDeleteFraction}
-          />
-        )}
+        rowActions={(fraction) => renderFractionRowActions(fraction, onOpenEditFraction, onRequestDeleteFraction)}
       />
       <WastePanelTableBottomBar
         pt={pt}

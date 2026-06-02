@@ -8,8 +8,20 @@ const navigateMock = vi.fn();
 const controllerMock = vi.hoisted(() => ({
   loading: false,
   error: null,
-  lastOutcome: 'create-tour-success' as const,
+  lastOutcome: 'create-success' as const,
   overview: null as null | {
+    holidayRules?: readonly {
+      id: string;
+      holidayDate: string;
+      holidayName: string;
+      year: number;
+      stateCode: string;
+      sourceStatus: string;
+      configurationStatus: string;
+      conflictStatus: string;
+      createdAt: string;
+      updatedAt: string;
+    }[];
     globalDateShifts: readonly {
       id: string;
       originalDate: string;
@@ -71,6 +83,7 @@ vi.mock('../src/waste-management.scheduling-panel.views.js', () => ({
   WasteSchedulingCreateFormView: () => <div>create-form</div>,
   WasteSchedulingDialogs: () => <div>dialogs</div>,
   WasteSchedulingGlobalFormView: () => <div>global-form</div>,
+  WasteSchedulingHolidayFormView: () => <div>holiday-form</div>,
   WasteSchedulingListView: () => <div>list</div>,
   WasteSchedulingTourFormView: () => <div>tour-form</div>,
 }));
@@ -90,7 +103,7 @@ describe('WasteSchedulingPanel', () => {
     controllerMock.setLastOutcome.mockReset();
     controllerMock.loading = false;
     controllerMock.error = null;
-    controllerMock.lastOutcome = 'create-tour-success';
+    controllerMock.lastOutcome = 'create-success';
     controllerMock.overview = null;
     controllerMock.tourShiftForm = { id: 'tour-form-1' };
     controllerMock.globalShiftForm = { id: 'global-form-1' };
@@ -105,7 +118,7 @@ describe('WasteSchedulingPanel', () => {
           fractionsView: 'list',
           toursView: 'list',
           locationsView: 'list',
-          schedulingView: 'create-tour',
+          schedulingView: 'create',
           q: '',
           page: 1,
           pageSize: 25,
@@ -117,6 +130,8 @@ describe('WasteSchedulingPanel', () => {
           cityId: undefined,
           wasteFractionId: undefined,
           tourId: undefined,
+          schedulingEntryType: 'tour-shift',
+          schedulingEntryId: undefined,
           tourDateShiftId: undefined,
           globalDateShiftId: undefined,
         }}
@@ -131,8 +146,8 @@ describe('WasteSchedulingPanel', () => {
       to: '/plugins/waste-management',
       search: expect.objectContaining({
         schedulingView: 'list',
-        tourDateShiftId: undefined,
-        globalDateShiftId: undefined,
+        schedulingEntryType: undefined,
+        schedulingEntryId: undefined,
       }),
       replace: true,
     });
@@ -142,6 +157,7 @@ describe('WasteSchedulingPanel', () => {
     controllerMock.lastOutcome = null;
     controllerMock.overview = {
       globalDateShifts: [],
+      holidayRules: [],
       tourDateShifts: [
         {
           id: 'tour-shift-99',
@@ -165,7 +181,7 @@ describe('WasteSchedulingPanel', () => {
           fractionsView: 'list',
           toursView: 'list',
           locationsView: 'list',
-          schedulingView: 'edit-tour',
+          schedulingView: 'edit',
           q: '',
           page: 1,
           pageSize: 25,
@@ -177,6 +193,8 @@ describe('WasteSchedulingPanel', () => {
           cityId: undefined,
           wasteFractionId: undefined,
           tourId: undefined,
+          schedulingEntryType: 'tour-shift',
+          schedulingEntryId: 'tour-shift-99',
           tourDateShiftId: 'tour-shift-99',
           globalDateShiftId: undefined,
         }}
@@ -216,17 +234,20 @@ describe('WasteSchedulingPanel', () => {
           cityId: undefined,
           wasteFractionId: undefined,
           tourId: undefined,
+          schedulingEntryType: 'tour-shift',
+          schedulingEntryId: undefined,
           tourDateShiftId: undefined,
           globalDateShiftId: undefined,
         }}
       />
     );
 
-    expect(view.getByText('create-form')).toBeTruthy();
+    expect(view.getAllByText('create-form').length).toBeGreaterThan(0);
   });
 
-  it('navigates back to the list when the global edit route misses the shift id', () => {
+  it('navigates back to the list when the shared edit route misses the entry id', () => {
     controllerMock.lastOutcome = null;
+    controllerMock.overview = { holidayRules: [], globalDateShifts: [], tourDateShifts: [] };
 
     render(
       <WasteSchedulingPanel
@@ -236,7 +257,7 @@ describe('WasteSchedulingPanel', () => {
           fractionsView: 'list',
           toursView: 'list',
           locationsView: 'list',
-          schedulingView: 'edit-global',
+          schedulingView: 'edit',
           q: '',
           page: 1,
           pageSize: 25,
@@ -248,6 +269,8 @@ describe('WasteSchedulingPanel', () => {
           cityId: undefined,
           wasteFractionId: undefined,
           tourId: undefined,
+          schedulingEntryType: 'global-shift',
+          schedulingEntryId: undefined,
           tourDateShiftId: undefined,
           globalDateShiftId: undefined,
         }}
@@ -258,12 +281,159 @@ describe('WasteSchedulingPanel', () => {
       to: '/plugins/waste-management',
       search: expect.objectContaining({
         schedulingView: 'list',
-        tourDateShiftId: undefined,
-        globalDateShiftId: undefined,
+        schedulingEntryType: undefined,
+        schedulingEntryId: undefined,
       }),
       replace: true,
     });
     expect(controllerMock.setGlobalDialogMode).not.toHaveBeenCalled();
     expect(controllerMock.setGlobalShiftForm).not.toHaveBeenCalled();
+  });
+
+  it('waits for the scheduling overview before evaluating a deep-linked edit route', () => {
+    controllerMock.lastOutcome = null;
+    controllerMock.loading = true;
+    controllerMock.overview = null;
+
+    render(
+      <WasteSchedulingPanel
+        search={{
+          tab: 'scheduling',
+          masterDataTab: 'fractions',
+          fractionsView: 'list',
+          toursView: 'list',
+          locationsView: 'list',
+          schedulingView: 'edit',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: undefined,
+          tourId: undefined,
+          schedulingEntryType: 'tour-shift',
+          schedulingEntryId: 'tour-shift-99',
+          tourDateShiftId: undefined,
+          globalDateShiftId: undefined,
+        }}
+      />
+    );
+
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(controllerMock.setDialogMode).not.toHaveBeenCalled();
+    expect(controllerMock.setTourShiftForm).not.toHaveBeenCalled();
+  });
+
+  it('hydrates the global shift edit form from the route entry id after a reload', () => {
+    controllerMock.lastOutcome = null;
+    controllerMock.overview = {
+      globalDateShifts: [
+        {
+          id: 'global-shift-7',
+          originalDate: '2026-12-31',
+          actualDate: '2027-01-02',
+          hasYear: true,
+          description: 'Nachgeholt',
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        },
+      ],
+      holidayRules: [],
+      tourDateShifts: [],
+    };
+    controllerMock.globalShiftForm = { id: 'stale-global-shift' };
+
+    render(
+      <WasteSchedulingPanel
+        search={{
+          tab: 'scheduling',
+          masterDataTab: 'fractions',
+          fractionsView: 'list',
+          toursView: 'list',
+          locationsView: 'list',
+          schedulingView: 'edit',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: undefined,
+          tourId: undefined,
+          schedulingEntryType: 'global-shift',
+          schedulingEntryId: 'global-shift-7',
+          tourDateShiftId: undefined,
+          globalDateShiftId: 'global-shift-7',
+        }}
+      />
+    );
+
+    expect(controllerMock.setGlobalDialogMode).toHaveBeenCalledWith('edit');
+    expect(controllerMock.setGlobalShiftForm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'global-shift-7',
+        originalDate: '2026-12-31',
+        actualDate: '2027-01-02',
+      })
+    );
+  });
+
+  it('keeps a valid holiday-rule edit route intact once the overview is loaded', () => {
+    controllerMock.lastOutcome = null;
+    controllerMock.overview = {
+      globalDateShifts: [],
+      holidayRules: [
+        {
+          id: 'holiday-rule-1',
+          holidayDate: '2026-12-25',
+          holidayName: 'Weihnachten',
+          year: 2026,
+          stateCode: 'BY',
+          sourceStatus: 'configured',
+          configurationStatus: 'configured',
+          conflictStatus: 'none',
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        },
+      ],
+      tourDateShifts: [],
+    };
+
+    render(
+      <WasteSchedulingPanel
+        search={{
+          tab: 'scheduling',
+          masterDataTab: 'fractions',
+          fractionsView: 'list',
+          toursView: 'list',
+          locationsView: 'list',
+          schedulingView: 'edit',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'holiday',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: undefined,
+          tourId: undefined,
+          schedulingEntryType: 'holiday-rule',
+          schedulingEntryId: 'holiday-rule-1',
+          tourDateShiftId: undefined,
+          globalDateShiftId: undefined,
+        }}
+      />
+    );
+
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 });

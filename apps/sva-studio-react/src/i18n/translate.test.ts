@@ -119,7 +119,7 @@ describe('translate', () => {
     });
   });
 
-  it('rejects duplicate plugin translation keys from a different merge source even when the value matches', () => {
+  it('allows idempotent repeated merges from a new object with identical plugin-owned translation content', () => {
     mergeI18nResources({
       de: {
         pluginSourceProbe: {
@@ -137,24 +137,62 @@ describe('translate', () => {
       },
     });
 
+    const clonedResources = {
+      de: {
+        pluginSourceProbe: {
+          navigation: {
+            title: 'Probe',
+          },
+        },
+      },
+      en: {
+        pluginSourceProbe: {
+          navigation: {
+            title: 'Probe',
+          },
+        },
+      },
+    } as const;
+
+    expect(() => mergeI18nResources(clonedResources)).not.toThrow();
+  });
+
+  it('rejects duplicate plugin translation keys when a later merge changes an existing value', () => {
+    mergeI18nResources({
+      de: {
+        pluginConflictProbe: {
+          navigation: {
+            title: 'Probe',
+          },
+        },
+      },
+      en: {
+        pluginConflictProbe: {
+          navigation: {
+            title: 'Probe',
+          },
+        },
+      },
+    });
+
     expect(() =>
       mergeI18nResources({
         de: {
-          pluginSourceProbe: {
+          pluginConflictProbe: {
             navigation: {
-              title: 'Probe',
+              title: 'Abweichend',
             },
           },
         },
         en: {
-          pluginSourceProbe: {
+          pluginConflictProbe: {
             navigation: {
-              title: 'Probe',
+              title: 'Different',
             },
           },
         },
       })
-    ).toThrow('duplicate_i18n_key:de:pluginSourceProbe.navigation.title');
+    ).toThrow('duplicate_i18n_key:de:pluginConflictProbe.navigation.title');
   });
 
   it('uses the active locale for global translations', () => {

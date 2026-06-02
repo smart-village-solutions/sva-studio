@@ -22,6 +22,9 @@ vi.mock('../src/waste-management.master-data-fractions-content.js', () => ({
         >
           sort-color-desc
         </button>
+        <button type="button" onClick={() => (props.onFractionsStatusChange as (status: string) => void)('inactive')}>
+          filter-inactive
+        </button>
       </div>
     );
   },
@@ -45,7 +48,7 @@ describe('WasteMasterDataTabContent', () => {
     vi.clearAllMocks();
   });
 
-  it('passes persistent fraction sort state into the fractions content and writes sort changes back into search params', () => {
+  it('passes persistent fraction state into the fractions content and writes sort plus filter changes back into search params', () => {
     const controller = {
       filteredFractions: [
         {
@@ -108,6 +111,7 @@ describe('WasteMasterDataTabContent', () => {
       q: '',
       page: 1,
       pageSize: 25,
+      fractionsStatus: 'all',
       status: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',
@@ -124,6 +128,7 @@ describe('WasteMasterDataTabContent', () => {
 
     expect(fractionsContentMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        fractionsStatus: 'all',
         fractionsSortBy: 'name',
         fractionsSortDirection: 'asc',
       })
@@ -137,6 +142,17 @@ describe('WasteMasterDataTabContent', () => {
         ...search,
         fractionsSortBy: 'color',
         fractionsSortDirection: 'desc',
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'filter-inactive' }));
+
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: {
+        ...search,
+        page: 1,
+        fractionsStatus: 'inactive',
       },
     });
   });
@@ -214,6 +230,7 @@ describe('WasteMasterDataTabContent', () => {
           q: '',
           page: 1,
           pageSize: 25,
+          fractionsStatus: 'all',
           status: 'all',
           shiftContext: 'all',
           fractionsSortBy: 'name',

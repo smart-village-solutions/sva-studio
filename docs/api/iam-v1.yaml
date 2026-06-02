@@ -1578,6 +1578,18 @@ components:
                 status:
                   type: string
                   enum: [not_requested, sent, failed]
+                error:
+                  type: object
+                  required: [code, message, retryable]
+                  properties:
+                    code:
+                      type: string
+                      enum:
+                        [keycloak_user_not_ready, keycloak_unavailable, execute_actions_email_not_supported, internal_error]
+                    message:
+                      type: string
+                    retryable:
+                      type: boolean
     SendPasswordSetupEmailResponse:
       type: object
       required: [data]

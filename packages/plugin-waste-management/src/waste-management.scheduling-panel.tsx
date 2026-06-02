@@ -4,14 +4,14 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { useWasteSchedulingController } from './waste-management.scheduling.controller.js';
 import {
-  useWasteGlobalShiftEditRouteHydration,
+  useWasteSchedulingEditRouteHydration,
   useWasteSchedulingSuccessRedirect,
-  useWasteTourShiftEditRouteHydration,
 } from './waste-management.scheduling-panel.effects.js';
 import {
   WasteSchedulingCreateFormView,
   WasteSchedulingDialogs,
   WasteSchedulingGlobalFormView,
+  WasteSchedulingHolidayFormView,
   WasteSchedulingListView,
   WasteSchedulingTourFormView,
 } from './waste-management.scheduling-panel.views.js';
@@ -22,8 +22,7 @@ export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagem
   const navigate = useNavigate();
   const controller = useWasteSchedulingController(pt, search);
   useWasteSchedulingSuccessRedirect({ controller, navigate, search });
-  useWasteTourShiftEditRouteHydration({ controller, navigate, search });
-  useWasteGlobalShiftEditRouteHydration({ controller, navigate, search });
+  useWasteSchedulingEditRouteHydration({ controller, navigate, search });
 
   if (controller.loading) {
     return <StudioLoadingState>{pt('scheduling.messages.loading')}</StudioLoadingState>;
@@ -44,19 +43,16 @@ export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagem
     );
   }
 
-  if (search.schedulingView === 'create-global' || search.schedulingView === 'edit-global') {
+  if (search.schedulingView === 'edit') {
     return (
       <>
-        <WasteSchedulingGlobalFormView controller={controller} search={search} />
-        {dialogs}
-      </>
-    );
-  }
-
-  if (search.schedulingView === 'create-tour' || search.schedulingView === 'edit-tour') {
-    return (
-      <>
-        <WasteSchedulingTourFormView controller={controller} search={search} />
+        {search.schedulingEntryType === 'holiday-rule' ? (
+          <WasteSchedulingHolidayFormView controller={controller} search={search} />
+        ) : search.schedulingEntryType === 'global-shift' ? (
+          <WasteSchedulingGlobalFormView controller={controller} search={search} />
+        ) : (
+          <WasteSchedulingTourFormView controller={controller} search={search} />
+        )}
         {dialogs}
       </>
     );

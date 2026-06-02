@@ -26,8 +26,8 @@ Es kombiniert:
 - Der Live-Dump enthält aktuell **47 Tabellen**.
 - Davon liegen **46 Tabellen im Schema `iam`**.
 - Zusätzlich existiert `public.goose_db_version` als Migrationshistorie.
-- Der aktuelle Repo-Soll-Snapshot enthält **53 Tabellen**.
-- Davon liegen **52 Tabellen im Schema `iam`**.
+- Der aktuelle Repo-Soll-Snapshot enthält **54 Tabellen**.
+- Davon liegen **53 Tabellen im Schema `iam`**.
 - Im Live-Schema sind aktuell mindestens diese DB-Funktionen vorhanden:
   - `iam.check_geo_hierarchy_depth()`
   - `iam.current_instance_id()`
@@ -39,7 +39,7 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0045_iam_role_permission_assignment_scope.sql`
+- Repo-Migrationen vorhanden bis: `0048_iam_organization_mainserver_credentials.sql`
 
 Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0042`:
 
@@ -62,8 +62,8 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält explizit die Repo-Migrationen bis `0043_iam_tenant_account_deletion_rules.sql`
-- Aktueller Soll-Stand: **53 Tabellen**, davon **52 im Schema `iam`**
+- Enthält explizit die Repo-Migrationen bis `0048_iam_organization_mainserver_credentials.sql`
+- Aktueller Soll-Stand: **54 Tabellen**, davon **53 im Schema `iam`**
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
 
@@ -76,6 +76,7 @@ Zentrale Identitäts- und Berechtigungsstruktur:
 - `iam.instances`
 - `iam.accounts`
 - `iam.organizations`
+- `iam.organization_mainserver_credentials`
 - `iam.roles`
 - `iam.permissions`
 - `iam.instance_memberships`
@@ -88,8 +89,17 @@ Kernidee:
 - `instances` ist der Mandantenanker.
 - `accounts` hält Nutzerstammdaten.
 - `organizations` modelliert fachliche Organisationsstrukturen pro Instanz.
+- `organization_mainserver_credentials` hält organisationsgebundene Mainserver-Application-IDs und verschlüsselte Secrets getrennt vom normalen Organisations-Read-Modell.
 - Rollen und Rechte werden über `account_roles` und `role_permissions` zugewiesen.
 - `role_permissions.access_scope` ergänzt für datensatzbezogene Rechte den Zugriffsmodus einer Rollen-Rechte-Zuordnung (`all`, `own`, `organization`).
+
+### `iam.organization_mainserver_credentials`
+
+Speichert organisationsgebundene Mainserver-Zugangsdaten pro `instance_id` und `organization_id`.
+
+- `mainserver_application_id` ist im Read-Modell sichtbar.
+- `mainserver_application_secret_ciphertext` enthält ausschließlich verschlüsselte Werte.
+- API- und UI-Modelle geben nie das Secret zurück, sondern nur `mainserverApplicationSecretSet: boolean`.
 
 ### 2. Gruppen und direkte Rechte
 

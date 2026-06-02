@@ -29,17 +29,19 @@ export const WasteMasterDataPanel = ({
   const dialogs = <WasteMasterDataDialogs controller={controller} />;
   const showFractionFormView = tab === 'fractions' && search.fractionsView !== 'list';
   const showLocationFormView = tab === 'locations' && search.locationsView !== 'list';
+  const hasAnyMasterData = Boolean(
+    controller.overview &&
+      (
+        controller.overview.fractions.length > 0 ||
+        controller.overview.regions.length > 0 ||
+        controller.overview.cities.length > 0 ||
+        controller.overview.streets.length > 0 ||
+        controller.overview.houseNumbers.length > 0 ||
+        controller.overview.collectionLocations.length > 0
+      )
+  );
 
-  if (
-    !showFractionFormView &&
-    !showLocationFormView &&
-    !controller.filteredFractions.length &&
-    !controller.filteredRegions.length &&
-    !controller.filteredCities.length &&
-    !controller.filteredStreets.length &&
-    !controller.filteredHouseNumbers.length &&
-    !controller.filteredCollectionLocations.length
-  ) {
+  if (!showFractionFormView && !showLocationFormView && !hasAnyMasterData) {
     return (
       <>
         <WasteMasterDataPanelEmptyState controller={controller} search={search} />

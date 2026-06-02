@@ -233,6 +233,8 @@ describe('waste-management.tours.shared', () => {
         description: 'Montag',
         wasteFractionIds: ['fraction-1'],
         active: true,
+        firstDate: '2026-01-10',
+        endDate: '2026-12-20',
       },
       {
         id: 'tour-inactive',
@@ -240,6 +242,8 @@ describe('waste-management.tours.shared', () => {
         description: 'Dienstag',
         wasteFractionIds: ['fraction-2'],
         active: false,
+        firstDate: '2026-03-01',
+        endDate: '2026-09-30',
       },
       {
         id: 'tour-unknown',
@@ -247,6 +251,8 @@ describe('waste-management.tours.shared', () => {
         description: '',
         wasteFractionIds: ['fraction-1', 'fraction-3'],
         active: undefined,
+        firstDate: undefined,
+        endDate: undefined,
       },
     ] as never;
 
@@ -267,9 +273,36 @@ describe('waste-management.tours.shared', () => {
         page: 1,
         pageSize: 25,
         status: 'inactive',
-        wasteFractionId: 'fraction-2',
+        tourWasteFractionId: 'fraction-2',
       } as never).map((tour) => tour.id)
     ).toEqual(['tour-inactive']);
+
+    expect(
+      filterTours(tours, {
+        tab: 'tours',
+        q: '',
+        page: 1,
+        pageSize: 25,
+        status: 'all',
+        firstDateFrom: '2026-02-01',
+        firstDateTo: '2026-03-31',
+        endDateFrom: '2026-09-01',
+        endDateTo: '2026-10-31',
+      } as never).map((tour) => tour.id)
+    ).toEqual(['tour-inactive']);
+
+    expect(
+      filterTours(tours, {
+        tab: 'tours',
+        q: '',
+        page: 1,
+        pageSize: 25,
+        status: 'all',
+        firstDateFrom: '2026-01-10',
+        firstDateTo: '2026-01-31',
+        endDateTo: '2026-12-20',
+      } as never).map((tour) => tour.id)
+    ).toEqual(['tour-active']);
 
     expect(
       filterTours(tours, {

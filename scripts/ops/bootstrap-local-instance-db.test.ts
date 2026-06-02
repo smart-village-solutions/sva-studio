@@ -9,7 +9,11 @@ import {
   renderUsage,
 } from './bootstrap-local-instance-db/parse-options.ts';
 import { summarizeTargetState } from './bootstrap-local-instance-db/summary.ts';
-import { runBootstrapLocalInstanceDb } from './bootstrap-local-instance-db.ts';
+import {
+  assertBootstrapLocalInstanceDbApproved,
+  buildBootstrapLocalInstanceDbApprovalToken,
+  runBootstrapLocalInstanceDb,
+} from './bootstrap-local-instance-db.ts';
 
 describe('parseBootstrapLocalInstanceDbArgs', () => {
   it('parses required args and defaults', () => {
@@ -44,6 +48,45 @@ describe('parseBootstrapLocalInstanceDbArgs', () => {
 
   it('renders usage text for required options', () => {
     expect(renderUsage()).toContain('--target-instance-id');
+  });
+
+  it('parses the dangerous approval token', () => {
+    expect(
+      parseBootstrapLocalInstanceDbArgs([
+        '--target-instance-id=hb-demo',
+        '--target-realm=saas-hb-demo',
+        '--keycloak-admin-client-id=sva-studio-iam-service',
+        '--keycloak-admin-client-secret=secret',
+        '--target-db-container=sva-studio-postgres-hb',
+        '--approve-dangerous=bootstrap-local-instance-db:hb-demo',
+      ]),
+    ).toMatchObject({
+      approvalToken: 'bootstrap-local-instance-db:hb-demo',
+    });
+  });
+});
+
+describe('bootstrap dangerous approval', () => {
+  it('builds the canonical approval token', () => {
+    expect(buildBootstrapLocalInstanceDbApprovalToken('hb-demo')).toBe('bootstrap-local-instance-db:hb-demo');
+  });
+
+  it('rejects missing approval for bootstrap mutations', () => {
+    expect(() =>
+      assertBootstrapLocalInstanceDbApproved({
+        approvalToken: undefined,
+        targetInstanceId: 'hb-demo',
+      }),
+    ).toThrow('--approve-dangerous=bootstrap-local-instance-db:hb-demo');
+  });
+
+  it('accepts the matching approval token', () => {
+    expect(() =>
+      assertBootstrapLocalInstanceDbApproved({
+        approvalToken: 'bootstrap-local-instance-db:hb-demo',
+        targetInstanceId: 'hb-demo',
+      }),
+    ).not.toThrow();
   });
 });
 
@@ -195,6 +238,7 @@ describe('runBootstrapLocalInstanceDb', () => {
           '--keycloak-admin-client-id=sva-studio-iam-service',
           '--keycloak-admin-client-secret=secret',
           '--target-db-container=sva-studio-postgres-hb',
+          '--approve-dangerous=bootstrap-local-instance-db:hb-demo',
           '--create-db',
           '--import-schema',
         ],
@@ -220,6 +264,28 @@ describe('runBootstrapLocalInstanceDb', () => {
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     await expect(runBootstrapLocalInstanceDb([])).resolves.toBe(2);
     stderrSpy.mockRestore();
+  });
+
+  it('fails early when the explicit dangerous approval token is missing', async () => {
+    await expect(
+      runBootstrapLocalInstanceDb(
+        [
+          '--target-instance-id=hb-demo',
+          '--target-realm=saas-hb-demo',
+          '--keycloak-admin-client-id=sva-studio-iam-service',
+          '--keycloak-admin-client-secret=secret',
+          '--target-db-container=sva-studio-postgres-hb',
+        ],
+        {
+          dockerPsqlImpl: vi.fn(() => ''),
+          dockerPsqlQuietImpl: vi.fn(),
+          fetchImpl: vi.fn<typeof fetch>(),
+          logStepImpl: vi.fn(),
+          runImpl: vi.fn(() => ''),
+          write: vi.fn(),
+        },
+      ),
+    ).rejects.toThrow('--approve-dangerous=bootstrap-local-instance-db:hb-demo');
   });
 
   it('throws structured cli errors for missing required options', () => {

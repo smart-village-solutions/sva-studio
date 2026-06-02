@@ -127,6 +127,26 @@ describe('mainserver-client', () => {
     });
   });
 
+  it('parses structured host error envelopes with nested code and message fields', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            code: 'database_unavailable',
+            message: 'Die Waste-Datenquelle verlangt derzeit eine Straße.',
+          },
+        }),
+        { status: 503 },
+      )
+    );
+
+    await expect(requestMainserverJson({ url: '/broken', fetch: fetchMock as typeof fetch })).rejects.toMatchObject({
+      code: 'database_unavailable',
+      message: 'Die Waste-Datenquelle verlangt derzeit eine Straße.',
+      name: 'MainserverApiError',
+    });
+  });
+
   it('preserves tuple and Headers instances when merging request headers', async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'news-1', title: 'Erste' } }), { status: 200 }));
     const headerClient = createMainserverCrudClient<

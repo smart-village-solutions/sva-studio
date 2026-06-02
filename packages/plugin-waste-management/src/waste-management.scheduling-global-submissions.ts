@@ -36,7 +36,7 @@ export const createWasteSchedulingGlobalSubmitHandlers = ({
       await loadOverview(true);
       startTransition(() => {
         state.setGlobalDialogOpen(false);
-        state.setLastOutcome(mode === 'create' ? 'create-global-success' : 'update-global-success');
+        state.setLastOutcome(mode === 'create' ? 'create-success' : 'update-success');
         state.setMessage({
           kind: 'success',
           text:

@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 const deleteWasteManagementGlobalDateShiftMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteWasteManagementTourDateShiftMock = vi.hoisted(() => vi.fn(async () => undefined));
-const startWasteManagementHolidaySyncMock = vi.hoisted(() => vi.fn(async () => ({ lastHolidaySyncStatus: 'success' })));
 const updateWasteManagementHolidayRuleMock = vi.hoisted(() => vi.fn(async () => undefined));
 const WasteManagementApiErrorMock = vi.hoisted(
   () =>
@@ -18,7 +17,6 @@ import { createWasteSchedulingSubmitHandlers } from '../src/waste-management.sch
 vi.mock('../src/waste-management.api.js', () => ({
   deleteWasteManagementGlobalDateShift: deleteWasteManagementGlobalDateShiftMock,
   deleteWasteManagementTourDateShift: deleteWasteManagementTourDateShiftMock,
-  startWasteManagementHolidaySync: startWasteManagementHolidaySyncMock,
   updateWasteManagementHolidayRule: updateWasteManagementHolidayRuleMock,
   WasteManagementApiError: WasteManagementApiErrorMock,
 }));
@@ -38,17 +36,25 @@ describe('createWasteSchedulingSubmitHandlers', () => {
     await handlers.onDeleteSchedulingRows([
       {
         id: 'global-1',
+        entryType: 'global-shift',
         kind: 'global',
+        originalDate: '2026-01-01',
+        actualDate: '2026-01-02',
         shift: {} as never,
         contextLabel: 'alle Touren',
         sortLabel: 'alle Touren',
+        canDelete: true,
       },
       {
         id: 'tour-shift-1',
+        entryType: 'tour-shift',
         kind: 'tour',
+        originalDate: '2026-02-01',
+        actualDate: '2026-02-03',
         shift: {} as never,
         contextLabel: 'Restmüll Nord',
         sortLabel: 'Restmüll Nord',
+        canDelete: true,
       },
     ]);
 
@@ -82,40 +88,20 @@ describe('createWasteSchedulingSubmitHandlers', () => {
     await handlers.onDeleteSchedulingRows([
       {
         id: 'global-1',
+        entryType: 'global-shift',
         kind: 'global',
+        originalDate: '2026-01-01',
+        actualDate: '2026-01-02',
         shift: {} as never,
         contextLabel: 'alle Touren',
         sortLabel: 'alle Touren',
+        canDelete: true,
       },
     ]);
 
-    expect(state.setMessage).toHaveBeenCalledWith({
+    expect(state.setMessage).toHaveBeenLastCalledWith({
       kind: 'error',
       text: 'scheduling.messages.deleteForbidden',
-    });
-  });
-
-  it('runs a manual holiday sync and reports the returned sync status', async () => {
-    const state = {
-      setSaving: vi.fn(),
-      setMessage: vi.fn(),
-      setLastOutcome: vi.fn(),
-    } as never;
-    const loadOverview = vi.fn(async () => undefined);
-    const handlers = createWasteSchedulingSubmitHandlers({
-      state,
-      pt: (key: string, values?: Record<string, string | number>) =>
-        values ? `${key}:${Object.values(values).join('|')}` : key,
-      loadOverview,
-    });
-
-    await handlers.onRunHolidaySync();
-
-    expect(startWasteManagementHolidaySyncMock).toHaveBeenCalledTimes(1);
-    expect(loadOverview).toHaveBeenCalledWith(true);
-    expect(state.setMessage).toHaveBeenCalledWith({
-      kind: 'success',
-      text: 'scheduling.holidayRules.syncSuccess:success',
     });
   });
 

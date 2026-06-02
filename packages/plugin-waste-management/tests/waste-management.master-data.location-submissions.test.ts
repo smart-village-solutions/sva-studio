@@ -168,6 +168,44 @@ describe('createWasteMasterDataLocationSubmissions', () => {
     });
   });
 
+  it('surfaces a backend save reason for collection-location create failures when one is available', async () => {
+    createWasteManagementCollectionLocationMock.mockRejectedValueOnce(
+      new WasteManagementApiError(
+        'database_unavailable',
+        'Die Waste-Datenquelle verlangt derzeit eine Straße. "Alle Straßen" kann nicht gespeichert werden.'
+      )
+    );
+    const state = createState();
+    const loadOverview = vi.fn(async () => undefined);
+    const handlers = createWasteMasterDataLocationSubmissions({
+      state,
+      pt: (key: string) => key,
+      search: {
+        ...createSearch(),
+        locationsView: 'create',
+      },
+      loadOverview,
+      selectedCollectionLocationIds: [],
+    });
+
+    await handlers.onSubmitLocation(
+      {
+        id: 'location-1',
+        regionId: 'region-1',
+        cityId: 'city-1',
+        streetId: '',
+        houseNumberId: '',
+        active: true,
+      },
+      'create'
+    );
+
+    expect(state.setMessage).toHaveBeenCalledWith({
+      kind: 'error',
+      text: 'masterData.collectionLocations.messages.saveErrorWithReason',
+    });
+  });
+
   it('maps delete branches for single and bulk deletions', async () => {
     const state = createState();
     const loadOverview = vi.fn(async () => undefined);

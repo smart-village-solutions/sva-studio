@@ -12,6 +12,7 @@ type MutationAuditConfig = Readonly<{
 type MutationMessages = Readonly<{
   verificationFailed: string;
   persistenceFailed: string;
+  mapPersistenceErrorMessage?: (error: unknown) => string | undefined;
 }>;
 
 type UpdateMutationMessages = MutationMessages &
@@ -121,7 +122,12 @@ export const runWasteCreateMutation = async <TSaved>({
       resourceId,
     });
     await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
-    return createApiError(503, 'database_unavailable', messages.persistenceFailed, requestId);
+    return createApiError(
+      503,
+      'database_unavailable',
+      messages.mapPersistenceErrorMessage?.(error) ?? messages.persistenceFailed,
+      requestId
+    );
   }
 };
 
@@ -191,7 +197,12 @@ export const runWasteUpdateMutation = async <TSaved>({
       resourceId,
     });
     await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
-    return createApiError(503, 'database_unavailable', messages.persistenceFailed, requestId);
+    return createApiError(
+      503,
+      'database_unavailable',
+      messages.mapPersistenceErrorMessage?.(error) ?? messages.persistenceFailed,
+      requestId
+    );
   }
 };
 

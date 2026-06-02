@@ -4,11 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WasteManagementSearchParams } from '../src/search-params.js';
 import {
   resolveSingleTourId,
-  toCreateShiftSearch,
-  toCreateGlobalShiftSearch,
-  toCreateTourShiftSearch,
-  toEditGlobalShiftSearch,
-  toEditTourShiftSearch,
+  toCreateSchedulingEntrySearch,
+  toEditSchedulingEntrySearch,
   toSchedulingPageSearch,
   toSchedulingPageSizeSearch,
   useWasteSchedulingListNavigation,
@@ -38,6 +35,8 @@ const createSearch = (): WasteManagementSearchParams => ({
   cityId: undefined,
   wasteFractionId: undefined,
   tourId: undefined,
+  schedulingEntryType: undefined,
+  schedulingEntryId: undefined,
   tourDateShiftId: undefined,
   globalDateShiftId: undefined,
 });
@@ -56,39 +55,32 @@ describe('waste-management.scheduling-list-view.navigation', () => {
   it('builds create and edit search states for scheduling views', () => {
     const search = createSearch();
 
-    expect(toCreateShiftSearch(search)).toEqual({
+    expect(toCreateSchedulingEntrySearch(search, 'global-shift')).toEqual({
       ...search,
       schedulingView: 'create',
-      globalDateShiftId: undefined,
-      tourDateShiftId: undefined,
+      schedulingEntryType: 'global-shift',
+      schedulingEntryId: undefined,
     });
 
-    expect(toCreateGlobalShiftSearch(search)).toEqual({
+    expect(toCreateSchedulingEntrySearch(search, 'tour-shift')).toEqual({
       ...search,
-      schedulingView: 'create-global',
-      globalDateShiftId: undefined,
-      tourDateShiftId: undefined,
+      schedulingView: 'create',
+      schedulingEntryType: 'tour-shift',
+      schedulingEntryId: undefined,
     });
 
-    expect(toCreateTourShiftSearch(search)).toEqual({
+    expect(toEditSchedulingEntrySearch(search, 'global-shift', 'global-1')).toEqual({
       ...search,
-      schedulingView: 'create-tour',
-      globalDateShiftId: undefined,
-      tourDateShiftId: undefined,
+      schedulingView: 'edit',
+      schedulingEntryType: 'global-shift',
+      schedulingEntryId: 'global-1',
     });
 
-    expect(toEditGlobalShiftSearch(search, 'global-1')).toEqual({
+    expect(toEditSchedulingEntrySearch(search, 'tour-shift', 'tour-shift-1')).toEqual({
       ...search,
-      schedulingView: 'edit-global',
-      globalDateShiftId: 'global-1',
-      tourDateShiftId: undefined,
-    });
-
-    expect(toEditTourShiftSearch(search, 'tour-shift-1')).toEqual({
-      ...search,
-      schedulingView: 'edit-tour',
-      globalDateShiftId: undefined,
-      tourDateShiftId: 'tour-shift-1',
+      schedulingView: 'edit',
+      schedulingEntryType: 'tour-shift',
+      schedulingEntryId: 'tour-shift-1',
     });
   });
 
@@ -131,7 +123,7 @@ describe('waste-management.scheduling-list-view.navigation', () => {
     );
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
-      search: expect.objectContaining({ schedulingView: 'create' }),
+      search: expect.objectContaining({ schedulingView: 'create', schedulingEntryType: 'tour-shift' }),
     });
 
     result.current.openCreateGlobal();
@@ -145,6 +137,18 @@ describe('waste-management.scheduling-list-view.navigation', () => {
     expect(controller.setGlobalShiftForm).toHaveBeenCalled();
     expect(controller.setMessage).toHaveBeenCalledWith(null);
     expect(controller.setLastOutcome).toHaveBeenCalledWith(null);
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: expect.objectContaining({ schedulingView: 'create', schedulingEntryType: 'global-shift' }),
+    });
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: expect.objectContaining({ schedulingView: 'edit', schedulingEntryType: 'global-shift', schedulingEntryId: 'global-1' }),
+    });
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: expect.objectContaining({ schedulingView: 'edit', schedulingEntryType: 'tour-shift', schedulingEntryId: 'tour-shift-1' }),
+    });
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
       search: expect.objectContaining({ page: 2 }),

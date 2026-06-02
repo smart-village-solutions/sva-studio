@@ -2,8 +2,8 @@ import { createWasteSchedulingActions } from './waste-management.scheduling.acti
 import { useWasteSchedulingDataLoading } from './waste-management.scheduling.loaders.js';
 import { createWasteSchedulingSubmitHandlers } from './waste-management.scheduling.submissions.js';
 import {
-  filterGlobalDateShifts,
-  filterTourDateShifts,
+  createSchedulingTableEntries,
+  filterSchedulingTableEntries,
 } from './waste-management.scheduling.shared.js';
 import { useWasteSchedulingState } from './waste-management.scheduling.state.js';
 import type { WasteManagementSearchParams } from './search-params.js';
@@ -15,12 +15,19 @@ export const useWasteSchedulingController = (pt: Translate, search: WasteManagem
   const loadOverview = useWasteSchedulingDataLoading(state, pt);
   const actions = createWasteSchedulingActions(state);
   const submissions = createWasteSchedulingSubmitHandlers({ state, pt, loadOverview });
+  const allSchedulingEntries = createSchedulingTableEntries({
+    holidayRules: state.overview?.holidayRules ?? [],
+    globalDateShifts: state.overview?.globalDateShifts ?? [],
+    tourDateShifts: state.overview?.tourDateShifts ?? [],
+    availableTours: state.availableTours,
+    t: pt,
+  });
 
   return {
     ...state,
     holidayRules: state.overview?.holidayRules ?? [],
-    tourDateShifts: filterTourDateShifts(state.overview?.tourDateShifts ?? [], search),
-    globalDateShifts: filterGlobalDateShifts(state.overview?.globalDateShifts ?? [], search),
+    allSchedulingEntries,
+    schedulingEntries: filterSchedulingTableEntries(allSchedulingEntries, search),
     ...actions,
     ...submissions,
   };

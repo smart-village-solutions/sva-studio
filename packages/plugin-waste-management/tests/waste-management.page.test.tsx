@@ -1852,7 +1852,8 @@ describe('WasteManagementPage', () => {
   it('creates a tour-related waste date shift from the scheduling dialog', async () => {
     searchMock.mockImplementation(() => ({
       tab: 'scheduling',
-      schedulingView: 'create-tour',
+      schedulingView: 'create',
+      schedulingEntryType: 'tour-shift',
       q: '',
       page: 1,
       pageSize: 25,
@@ -1933,7 +1934,8 @@ describe('WasteManagementPage', () => {
   it('creates a global waste date shift from the scheduling dialog', async () => {
     searchMock.mockImplementation(() => ({
       tab: 'scheduling',
-      schedulingView: 'create-global',
+      schedulingView: 'create',
+      schedulingEntryType: 'global-shift',
       q: '',
       page: 1,
       pageSize: 25,

@@ -1,6 +1,7 @@
 import type { ApiErrorCode } from '@sva/core';
 import type { z } from 'zod';
 
+import type { OrganizationMainserverCredentialState } from './organization-mainserver-credentials.js';
 import {
   assignOrganizationMembershipSchema,
   createOrganizationSchema,
@@ -177,6 +178,16 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
     input: { readonly instanceId: string; readonly organizationId?: string; readonly parentOrganizationId?: string | null }
   ) => Promise<HierarchyResolution>;
   readonly toPayloadHash: (rawBody: string) => string;
+  readonly upsertOrganizationMainserverCredentials: (
+    client: QueryClient,
+    input: {
+      readonly instanceId: string;
+      readonly organizationId: string;
+      readonly actorAccountId?: string;
+      readonly mainserverApplicationId?: string;
+      readonly mainserverApplicationSecret?: string;
+    }
+  ) => Promise<OrganizationMainserverCredentialState>;
   readonly updateSession: (sessionId: string, patch: { readonly activeOrganizationId?: string }) => Promise<void>;
   readonly validateCsrf: (request: Request, requestId?: string) => Response | null;
   readonly withInstanceScopedDb: <T>(
@@ -252,6 +263,12 @@ const readOrganizationId = <TFeatureFlags>(
   }
   return organizationId;
 };
+
+const hasOwn = <TObject extends object>(value: TObject, key: PropertyKey): boolean =>
+  Object.prototype.hasOwnProperty.call(value, key);
+
+const hasMainserverCredentialPatch = (value: z.infer<typeof updateOrganizationSchema>): boolean =>
+  hasOwn(value, 'mainserverApplicationId') || hasOwn(value, 'mainserverApplicationSecret');
 
 const completeFailedIdempotency = async <TFeatureFlags>(
   deps: Pick<OrganizationMutationHandlerDeps<TFeatureFlags>, 'completeIdempotency' | 'jsonResponse'>,
@@ -364,6 +381,13 @@ RETURNING id;
         );
 
         const createdOrganizationId = inserted.rows[0]?.id ?? organizationId;
+        await deps.upsertOrganizationMainserverCredentials(client, {
+          instanceId: actor.instanceId,
+          organizationId: createdOrganizationId,
+          actorAccountId: actor.actorAccountId,
+          mainserverApplicationId: parsed.data.mainserverApplicationId,
+          mainserverApplicationSecret: parsed.data.mainserverApplicationSecret,
+        });
         await deps.emitActivityLog(client, {
           instanceId: actor.instanceId,
           accountId: actor.actorAccountId,
@@ -536,6 +560,15 @@ WHERE instance_id = $1
             hierarchy.depth,
           ]
         );
+        if (hasMainserverCredentialPatch(parsed.data)) {
+          await deps.upsertOrganizationMainserverCredentials(client, {
+            instanceId: actor.instanceId,
+            organizationId,
+            actorAccountId: actor.actorAccountId,
+            mainserverApplicationId: parsed.data.mainserverApplicationId,
+            mainserverApplicationSecret: parsed.data.mainserverApplicationSecret,
+          });
+        }
 
         await deps.rebuildOrganizationSubtree(client, { instanceId: actor.instanceId, organizationId });
         await deps.emitActivityLog(client, {

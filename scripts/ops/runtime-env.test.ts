@@ -3,29 +3,44 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import {
+import { runtimeEnvDangerousOperations, runtimeEnvRemoteVerification, runtimeEnvSmokeWarmup } from './runtime-env.ts';
+import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
+import { parseRuntimeCliOptions } from './runtime-env.shared.ts';
+
+const {
+  assertDangerousOperationApproved,
+  resolveLocalDangerousApprovalRequirement,
+  resolveRemoteDangerousApprovalRequirement,
+} = runtimeEnvDangerousOperations;
+
+const {
   assertLoginFlow,
   buildKeycloakClientSecretCheck,
   buildLocalProvisioningWorkerCheck,
-  requireLocalInstanceRegistryReconciliationInput,
-  shouldCheckLocalInstanceRegistryDriftBeforeCommand,
   buildStudioImageVerifyEvidenceCheck,
-  deriveInternalVerifyMaxAttempts,
+  decorateDoctorCheck,
   readStudioImageVerifyEvidence,
+  repairLocalRuntimeWithDeps,
+  requireLocalInstanceRegistryReconciliationInput,
   resolveTenantRuntimeTargets,
   selectReleaseBlockingTenantTargets,
   selectSmokeTenantTargets,
+  shouldCheckLocalInstanceRegistryDriftBeforeCommand,
   shouldRunLocalProvisioningWorker,
+  tryReadGithubStudioImageVerifyEvidence,
+  verifyDbSchemaSnapshot,
+  waitForPostDeployStabilization,
+} = runtimeEnvRemoteVerification;
+
+const {
+  deriveInternalVerifyMaxAttempts,
   runExternalSmokeWithWarmup,
-  waitForRemoteSmokeWarmup,
   shouldRetryExternalSmoke,
   shouldRetryInternalProbeFailure,
-  shouldRetryInternalVerifyAttempt,
   shouldRetryInternalVerify,
-  tryReadGithubStudioImageVerifyEvidence,
-  waitForPostDeployStabilization,
-} from './runtime-env.ts';
-import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
+  shouldRetryInternalVerifyAttempt,
+  waitForRemoteSmokeWarmup,
+} = runtimeEnvSmokeWarmup;
 
 const createProbe = (overrides: Partial<AcceptanceProbeResult>): AcceptanceProbeResult => ({
   durationMs: 10,
@@ -213,6 +228,67 @@ describe('deriveInternalVerifyMaxAttempts', () => {
   });
 });
 
+describe('dangerous runtime operation approval', () => {
+  it('parses the dangerous approval token from runtime cli options', () => {
+    expect(parseRuntimeCliOptions(['--approve-dangerous=studio:reset'])).toMatchObject({
+      approvalToken: 'studio:reset',
+    });
+  });
+
+  it('requires an exact approval token for dangerous commands', () => {
+    expect(() =>
+      assertDangerousOperationApproved({
+        actualApprovalToken: undefined,
+        expectedApprovalToken: 'local-keycloak:repair:authoritative',
+        reason: 'Autoritativer lokaler Repair kann geschuetzte Identitaetsfelder bewusst ueberschreiben.',
+      }),
+    ).toThrow('--approve-dangerous=local-keycloak:repair:authoritative');
+  });
+
+  it('accepts the matching dangerous approval token', () => {
+    expect(() =>
+      assertDangerousOperationApproved({
+        actualApprovalToken: 'studio:reset',
+        expectedApprovalToken: 'studio:reset',
+        reason: 'Remote-Reset setzt Postgres und Redis der Zielumgebung zurueck.',
+      }),
+    ).not.toThrow();
+  });
+
+  it('marks only authoritative local mutations as dangerous', () => {
+    expect(
+      resolveLocalDangerousApprovalRequirement('local-keycloak', 'repair', {
+        authoritative: false,
+      }),
+    ).toBeNull();
+
+    expect(
+      resolveLocalDangerousApprovalRequirement('local-keycloak', 'repair', {
+        authoritative: true,
+      }),
+    ).toEqual({
+      reason: 'Autoritativer lokaler Repair kann geschuetzte Identitaetsfelder bewusst ueberschreiben.',
+      token: 'local-keycloak:repair:authoritative',
+    });
+  });
+
+  it('derives canonical tokens for dangerous remote mutations', () => {
+    expect(resolveRemoteDangerousApprovalRequirement('studio', 'reset', {})).toEqual({
+      reason: 'Remote-Reset setzt Postgres und Redis der Zielumgebung zurueck.',
+      token: 'studio:reset',
+    });
+
+    expect(
+      resolveRemoteDangerousApprovalRequirement('studio', 'deploy', {
+        releaseMode: 'schema-and-app',
+      }),
+    ).toEqual({
+      reason: 'Remote-Deploy im Modus schema-and-app mutiert Laufzeit und Datenbankschema.',
+      token: 'studio:deploy:schema-and-app',
+    });
+  });
+});
+
 describe('assertLoginFlow', () => {
   it('includes the HTTP status when login warmup returns a non-redirect response', async () => {
     const originalFetch = globalThis.fetch;
@@ -291,6 +367,177 @@ describe('buildLocalProvisioningWorkerCheck', () => {
     ).toMatchObject({
       code: 'local_keycloak_provisioning_worker_running',
       status: 'ok',
+    });
+  });
+});
+
+describe('decorateDoctorCheck', () => {
+  it('derives tenant secret repair metadata from readiness diagnostics', () => {
+    expect(
+      decorateDoctorCheck({
+        code: 'ready_failed',
+        details: {
+          payload: {
+            checks: {
+              diagnostics: {
+                auth: {
+                  invalid_secret_instance_ids: ['de-musterhausen'],
+                  reason_code: 'tenant_auth_client_secret_missing',
+                },
+              },
+            },
+          },
+        },
+        message: 'Readiness antwortet mit 503.',
+        name: 'health-ready',
+        status: 'error',
+      }),
+    ).toMatchObject({
+      driftClass: 'tenant_secrets',
+      reasonCode: 'tenant_auth_client_secret_missing',
+      recommendedAction: 'env:repair:local-keycloak',
+      repairable: true,
+    });
+  });
+
+  it('marks local identity drift as repairable with reconcile guidance', () => {
+    expect(
+      decorateDoctorCheck({
+        code: 'local_instance_identity_drift',
+        message: 'Identity drift',
+        name: 'instance-identity',
+        status: 'warn',
+      }),
+    ).toMatchObject({
+      driftClass: 'instance_identity',
+      reasonCode: 'instance_identity_drift',
+      recommendedAction: 'env:reconcile:local-instance-registry',
+      repairable: true,
+    });
+  });
+});
+
+describe('repairLocalRuntimeWithDeps', () => {
+  it('runs migrate, reconcile, secret sync and postflight doctor in order', async () => {
+    const calls: string[] = [];
+
+    const result = await repairLocalRuntimeWithDeps(
+      {
+        preflightDoctor: async () => {
+          calls.push('preflight');
+          return {
+            checks: [
+              {
+                code: 'goose_status_failed',
+                message: 'pending',
+                name: 'migration-status',
+                reasonCode: 'schema_migration_drift',
+                repairable: true,
+                recommendedAction: 'env:migrate:local-keycloak',
+                status: 'error',
+              },
+            ],
+            generatedAt: '2026-05-31T12:00:00.000Z',
+            profile: 'local-keycloak',
+            status: 'error',
+          };
+        },
+        runMigrate: async () => {
+          calls.push('migrate');
+        },
+        reconcileInstanceRegistry: async () => {
+          calls.push('reconcile');
+        },
+        syncTenantSecrets: async () => {
+          calls.push('sync-secrets');
+          return {
+            attemptedInstanceIds: ['de-musterhausen'],
+            errors: [],
+            healedInstanceIds: ['de-musterhausen'],
+            remainingAuthSecretInstanceIds: [],
+            remainingTenantAdminSecretInstanceIds: [],
+          };
+        },
+        postflightDoctor: async () => {
+          calls.push('postflight');
+          return {
+            checks: [],
+            generatedAt: '2026-05-31T12:01:00.000Z',
+            profile: 'local-keycloak',
+            status: 'ok',
+          };
+        },
+      },
+      { authoritative: false },
+    );
+
+    expect(calls).toEqual(['preflight', 'migrate', 'reconcile', 'sync-secrets', 'postflight']);
+    expect(result.postflightReport.status).toBe('ok');
+    expect(result.tenantSecretSync.healedInstanceIds).toEqual(['de-musterhausen']);
+  });
+
+  it('fails with a targeted message when identity drift remains in preserve mode', async () => {
+    await expect(
+      repairLocalRuntimeWithDeps(
+        {
+          preflightDoctor: async () => ({
+            checks: [],
+            generatedAt: '2026-05-31T12:00:00.000Z',
+            profile: 'local-keycloak',
+            status: 'ok',
+          }),
+          runMigrate: async () => {},
+          reconcileInstanceRegistry: async () => {},
+          syncTenantSecrets: async () => ({
+            attemptedInstanceIds: [],
+            errors: [],
+            healedInstanceIds: [],
+            remainingAuthSecretInstanceIds: [],
+            remainingTenantAdminSecretInstanceIds: [],
+          }),
+          postflightDoctor: async () => ({
+            checks: [
+              {
+                code: 'local_instance_identity_drift',
+                message: 'drift remains',
+                name: 'instance-identity',
+                reasonCode: 'instance_identity_drift',
+                recommendedAction: 'env:reconcile:local-instance-registry',
+                repairable: true,
+                status: 'warn',
+              },
+            ],
+            generatedAt: '2026-05-31T12:01:00.000Z',
+            profile: 'local-keycloak',
+            status: 'warn',
+          }),
+        },
+        { authoritative: false },
+      ),
+    ).rejects.toThrow('--authoritative');
+  });
+});
+
+describe('verifyDbSchemaSnapshot', () => {
+  it('detects missing and unexpected schema objects', () => {
+    expect(
+      verifyDbSchemaSnapshot(
+        `
+          CREATE TABLE public.actual_table (
+            id uuid NOT NULL
+          );
+        `,
+        `
+          CREATE TABLE public.expected_table (
+            id uuid NOT NULL
+          );
+        `,
+      ),
+    ).toEqual({
+      ignoredSchemas: ['graphile_worker'],
+      missingObjects: ['table:public.expected_table'],
+      status: 'drift',
+      unexpectedObjects: ['table:public.actual_table'],
     });
   });
 });

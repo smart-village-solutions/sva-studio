@@ -368,7 +368,6 @@ expect(screen.getByDisplayValue('Suche').className).toContain('bg-[rgb(var(--was
 ```
 
 If the test should stay locale-agnostic, query the field via role/label instead of matching invented prompt text.
-
 - [ ] **Step 2: Run the Header test in isolation**
 
 Run:

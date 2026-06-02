@@ -3,12 +3,11 @@ import { createWasteSchedulingTourSubmitHandlers } from './waste-management.sche
 import {
   deleteWasteManagementGlobalDateShift,
   deleteWasteManagementTourDateShift,
-  startWasteManagementHolidaySync,
   updateWasteManagementHolidayRule,
 } from './waste-management.api.js';
 import type { WasteHolidayRuleRecord } from '@sva/plugin-sdk';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
-import type { WasteSchedulingTableRow } from './waste-management.scheduling.shared.js';
+import type { WasteSchedulingTableEntry } from './waste-management.scheduling.shared.js';
 import type { WasteSchedulingState } from './waste-management.scheduling.state.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
@@ -29,8 +28,11 @@ const createSchedulingErrorMessage = (
   text: code === 'forbidden' ? pt(forbiddenKey) : pt(fallbackKey),
 });
 
-const deleteSchedulingRows = async (rows: readonly WasteSchedulingTableRow[]) => {
+const deleteSchedulingRows = async (rows: readonly WasteSchedulingTableEntry[]) => {
   for (const row of rows) {
+    if (!row.canDelete) {
+      throw new Error('holiday_rule_delete_not_supported');
+    }
     if (row.kind === 'global') {
       await deleteWasteManagementGlobalDateShift(row.id);
       continue;
@@ -58,6 +60,7 @@ const createSaveHolidayRuleHandler = ({
   try {
     await updateWasteManagementHolidayRule(rule.id, input);
     await loadOverview(true);
+    state.setLastOutcome('update-success');
     state.setMessage({
       kind: 'success',
       text: pt('scheduling.holidayRules.saveSuccess'),
@@ -76,37 +79,6 @@ const createSaveHolidayRuleHandler = ({
   }
 };
 
-const createRunHolidaySyncHandler = ({
-  state,
-  pt,
-  loadOverview,
-}: {
-  readonly state: WasteSchedulingState;
-  readonly pt: Translate;
-  readonly loadOverview: (active?: boolean) => Promise<void>;
-}) => async () => {
-  resetSchedulingFeedback(state);
-  try {
-    const response = await startWasteManagementHolidaySync();
-    await loadOverview(true);
-    state.setMessage({
-      kind: 'success',
-      text: pt('scheduling.holidayRules.syncSuccess', { value: response?.lastHolidaySyncStatus ?? 'success' }),
-    });
-  } catch (error) {
-    state.setMessage(
-      createSchedulingErrorMessage(
-        pt,
-        resolveApiErrorCode(error),
-        'scheduling.holidayRules.syncError',
-        'scheduling.holidayRules.syncForbidden'
-      )
-    );
-  } finally {
-    state.setSaving(false);
-  }
-};
-
 const createDeleteSchedulingRowsHandler = ({
   state,
   pt,
@@ -115,7 +87,7 @@ const createDeleteSchedulingRowsHandler = ({
   readonly state: WasteSchedulingState;
   readonly pt: Translate;
   readonly loadOverview: (active?: boolean) => Promise<void>;
-}) => async (rows: readonly WasteSchedulingTableRow[]) => {
+}) => async (rows: readonly WasteSchedulingTableEntry[]) => {
   resetSchedulingFeedback(state);
   try {
     await deleteSchedulingRows(rows);
@@ -150,6 +122,5 @@ export const createWasteSchedulingSubmitHandlers = ({
   ...createWasteSchedulingTourSubmitHandlers({ state, pt, loadOverview }),
   ...createWasteSchedulingGlobalSubmitHandlers({ state, pt, loadOverview }),
   onSaveHolidayRule: createSaveHolidayRuleHandler({ state, pt, loadOverview }),
-  onRunHolidaySync: createRunHolidaySyncHandler({ state, pt, loadOverview }),
   onDeleteSchedulingRows: createDeleteSchedulingRowsHandler({ state, pt, loadOverview }),
 });

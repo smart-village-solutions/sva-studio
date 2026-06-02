@@ -40,6 +40,8 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
   actions: {
     save: 'Save settings',
     saving: 'Saving…',
+    runHolidaySync: 'Resynchronize holidays',
+    runningHolidaySync: 'Synchronizing holidays…',
     addCustomRecurrence: 'Add interval',
     editCustomRecurrence: 'Edit',
     deleteCustomRecurrence: 'Delete',
@@ -53,6 +55,9 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
     saveSuccessWithHolidaySync: 'Waste settings were saved. Holiday sync: {{status}}.',
     saveError: 'Waste settings could not be saved.',
     saveForbidden: 'Missing permission to save waste settings.',
+    holidaySyncSuccess: 'Holiday sync completed: {{status}}.',
+    holidaySyncError: 'Holidays could not be synchronized again.',
+    holidaySyncForbidden: 'Missing permission to rerun the holiday sync.',
     connectionManagedHint: 'Connection details remain managed through /interfaces and are mirrored here read-only.',
     holidayStateDescription: 'Saving the settings synchronizes holidays for the selected state for the next ten years.',
     customRecurrencesTitle: 'Custom intervals',

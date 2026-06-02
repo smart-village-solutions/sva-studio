@@ -34,6 +34,8 @@ const isRecordScopedPermission = (permissionKey: string): boolean =>
   RECORD_SCOPED_PERMISSION_KEY_SET.has(permissionKey);
 
 const managedPermissionDescriptions = {
+  'app.read': 'App-Link in der Sidebar anzeigen',
+  'cockpit.read': 'Cockpit-Link in der Sidebar anzeigen',
   'waste-management.read': 'Lesezugriff auf das Waste-Management-Modul',
   'waste-management.master-data.manage': 'Stammdaten im Waste-Management verwalten',
   'waste-management.tours.manage': 'Touren im Waste-Management verwalten',
@@ -45,6 +47,16 @@ const managedPermissionDescriptions = {
 } as const satisfies Record<string, string>;
 
 const managedPermissionMetadata = [
+  {
+    permissionKey: 'app.read',
+    moduleId: 'app',
+    description: managedPermissionDescriptions['app.read'],
+  },
+  {
+    permissionKey: 'cockpit.read',
+    moduleId: 'cockpit',
+    description: managedPermissionDescriptions['cockpit.read'],
+  },
   ...studioModuleIamContracts.flatMap((contract) =>
     contract.permissionIds.flatMap((permissionKey) => {
       const description = managedPermissionDescriptions[permissionKey as keyof typeof managedPermissionDescriptions];

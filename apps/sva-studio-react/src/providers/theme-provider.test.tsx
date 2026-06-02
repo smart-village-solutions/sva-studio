@@ -87,9 +87,10 @@ describe('ThemeProvider', () => {
     });
 
     expect(screen.getByTestId('theme-mode').textContent).toBe('dark');
-    expect(screen.getByTestId('theme-label').textContent).toBe('SVA Forest');
+    expect(screen.getByTestId('theme-label').textContent).toBe('KERN Studio Wald');
     expect(document.documentElement.dataset.theme).toBe('sva-forest');
     expect(document.documentElement.dataset.themeMode).toBe('dark');
+    expect(document.documentElement.style.colorScheme).toBe('dark');
     expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 

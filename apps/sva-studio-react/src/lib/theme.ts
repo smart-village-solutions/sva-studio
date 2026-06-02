@@ -1,5 +1,6 @@
 export type ThemeMode = 'light' | 'dark';
 
+// Phase 1 keeps the existing runtime theme ids to avoid wide churn.
 export type AppThemeName = 'sva-default' | 'sva-forest';
 
 export const THEME_MODE_STORAGE_KEY = 'sva-studio.theme-mode';
@@ -30,12 +31,13 @@ export const resolveThemeMode = (
   return prefersDarkMode ? 'dark' : 'light';
 };
 
+// Visual payload changes to KERN-derived tokens, not the public runtime contract.
 export const getThemeDisplayName = (themeName: AppThemeName): string => {
   switch (themeName) {
     case 'sva-forest':
-      return 'SVA Forest';
+      return 'KERN Studio Wald';
     case 'sva-default':
     default:
-      return 'SVA Studio';
+      return 'KERN Studio';
   }
 };

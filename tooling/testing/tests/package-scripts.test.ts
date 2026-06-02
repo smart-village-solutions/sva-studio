@@ -247,13 +247,13 @@ describe('workspace package scripts', () => {
     expect(runtimeWorkflow).toContain('name: Runtime Gates');
     expect(e2eWorkflow).toContain('name: App E2E');
     expect(qualityWorkflow).toContain(
-      'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
+      'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
     expect(runtimeWorkflow).toContain(
-      'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
+      'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
     expect(e2eWorkflow).toContain(
-      'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
+      'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
     expect(e2eWorkflow).toContain('pull_request:');
   });
@@ -276,7 +276,7 @@ describe('workspace package scripts', () => {
 
     expect(mainBuildWorkflow).toContain('pull_request:');
     expect(mainBuildWorkflow).toContain(
-      'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
+      'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
     expect(mainBuildWorkflow).toContain("steps.scope.outputs.app_build_mode != 'skip'");
     expect(mainBuildWorkflow).toContain("steps.scope.outputs.runtime_verify_mode != 'skip'");

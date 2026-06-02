@@ -163,7 +163,7 @@ Der Mehrwert kommt aus korrekter Triggerung der vorhandenen Jobs in `main-build.
 Run:
 
 ```bash
-pnpm exec tsx scripts/ci/pr-scope.ts --base origin/main --json
+pnpm exec tsx scripts/ci/pr-scope.cli.ts --base origin/main --json
 ```
 
 Expected: Der CLI-Pfad bleibt funktionsfaehig. Die neue Plugin-UI-Klassifikation ist ueber die roten und danach gruenen `pr-scope`-Tests abgesichert; der reine CLI-Lauf gegen `origin/main...HEAD` zeigt im uncommitteten Arbeitsstand weiterhin `changedFiles: []`.

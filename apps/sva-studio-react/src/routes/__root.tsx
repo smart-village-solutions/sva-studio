@@ -122,7 +122,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
         <HeadContent />
         {import.meta.env.DEV ? <style dangerouslySetInnerHTML={{ __html: appCssText }} data-app-styles="true" /> : null}
       </head>
-      <body className="flex min-h-screen flex-col bg-background text-foreground" suppressHydrationWarning>
+      <body className="flex min-h-screen flex-col bg-background text-foreground antialiased" suppressHydrationWarning>
         <AuthProvider>
           <LocaleProvider>
             <a
@@ -133,7 +133,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
                   mainElement.focus();
                 }
               }}
-              className="sr-only left-3 top-3 z-50 rounded-md bg-card px-3 py-2 text-sm font-medium text-foreground shadow-shell focus:not-sr-only focus:absolute"
+              className="sr-only left-3 top-3 z-50 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-shell focus:not-sr-only focus:absolute"
             >
               {t('shell.skipToContent')}
             </a>

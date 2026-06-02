@@ -31,13 +31,29 @@ Die Layout-Shell von `apps/sva-studio-react` verwendet semantische Design-Tokens
 - `@kern-ux/native` wird in Phase 1 nicht als globaler CSS-Reset oder als konkurrierende Komponentenbibliothek eingebunden.
 - Root-Dokument, `AppShell`, `Header` und `Sidebar` konsumieren ausschließlich semantische Tokens. Neue Shell-Flächen sollen keine direkten KERN-Farbcodes oder projektspezifischen Utility-Farben einführen.
 
+### Aktueller Stand 2026-06-02
+
+- Das Default-Light-Theme (`sva-default`) nutzt jetzt eine KERN-nahe blau-graue Foundation mit semantischen Tokens für `background`, `foreground`, `primary`, `ring`, `sidebar`, `muted`, `border` und `waste-panel-*`.
+- Die restriktivere Shell-Geometrie ist umgesetzt: `--radius` 6px, `--radius-card` 8px und `--radius-modal` 12px bilden die Basis für Shell-Flächen, Dialoge und Karten.
+- Die grüne Linie bleibt über `sva-forest` als separate Instanzvariante erhalten; die öffentlichen Runtime-Theme-IDs wurden bewusst nicht umbenannt.
+- `@kern-ux/native` ist aktuell ausschließlich als Font-Quelle eingebunden. Verwendet wird nur `@kern-ux/native/dist/fonts/fira-sans.css`; ein globaler KERN-CSS-Reset oder KERN-Komponenten-CSS wird weiterhin nicht geladen.
+- Das Root-Dokument setzt den Theme-Modus vor dem ersten Paint per Bootstrap-Skript. Der `ThemeProvider` synchronisiert `data-theme`, `data-theme-mode`, `color-scheme` und die `dark`-Klasse anschließend per Layout-Effekt, um den initialen Theme-Flicker zu vermeiden.
+- Die Shell-Bausteine `__root.tsx`, `AppShell`, `Header` und `Sidebar` sowie die Shared-Flächen `StudioFilterSurface`, `StudioSummaryCard` und `StudioTableSurface` verwenden den semantischen Token-Satz bereits produktiv.
+- Die KERN-2-Phase-1-Anpassung ist damit für Foundations, Shell und ausgewählte Admin-/Monitoring-Flächen umgesetzt. Dark-Mode bleibt funktional und regressionssicher, ist aber noch keine vollständige KERN-2-Dunkelvariante.
+- Nicht Teil von Phase 1 bleiben vorerst das vollständige Reskinning aller Shared Form-Primitives sowie tiefe fachliche Detailseiten außerhalb des Shell-nahen Bereichs.
+
 ## Relevante Dateien
 
 - `apps/sva-studio-react/src/styles.css`
 - `apps/sva-studio-react/src/lib/theme.ts`
 - `apps/sva-studio-react/src/providers/theme-provider.tsx`
+- `apps/sva-studio-react/src/routes/__root.tsx`
+- `apps/sva-studio-react/src/components/AppShell.tsx`
 - `apps/sva-studio-react/src/components/Header.tsx`
 - `apps/sva-studio-react/src/components/Sidebar.tsx`
+- `apps/sva-studio-react/src/components/StudioFilterSurface.tsx`
+- `apps/sva-studio-react/src/components/StudioSummaryCard.tsx`
+- `apps/sva-studio-react/src/components/StudioTableSurface.tsx`
 - `apps/sva-studio-react/src/components/ui/sheet.tsx`
 
 ## Erweiterungsregeln

@@ -296,6 +296,13 @@ export {
 } from './organization-query.js';
 
 export {
+  buildOrganizationMainserverSecretAad,
+  projectOrganizationMainserverCredentialState,
+  type OrganizationMainserverCredentialRow,
+  type OrganizationMainserverCredentialState,
+} from './organization-mainserver-credentials.js';
+
+export {
   buildDirectPermissionRowsSql,
   buildPermissionRowsSql,
   buildPermissionTraceRowsSql,

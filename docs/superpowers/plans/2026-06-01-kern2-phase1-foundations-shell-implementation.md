@@ -144,7 +144,7 @@ git commit -m "feat: stabilize kern phase 1 theme contract"
 
 - [ ] **Step 1: Capture the token groups that must change**
 
-Implement the foundation as these concrete token groups, not ad-hoc values:
+Implement the foundation as these concrete token groups, not ad-hoc values. The snippet below is intentionally only an excerpt: the existing semantic token contract in `styles.css` must stay complete, including tokens such as `--popover`, `--input`, `--secondary`, `--accent`, `--destructive`, `--sidebar-primary`, `--sidebar-accent-foreground`, and `--sidebar-ring`.
 
 ```css
 :root {
@@ -186,7 +186,7 @@ Then import fonts only, not the full component CSS:
 
 - [ ] **Step 3: Replace the current light-mode token payload with KERN-derived values**
 
-Edit `apps/sva-studio-react/src/styles.css` so the light theme is driven by KERN-like foundations instead of the current SVA palette:
+Edit `apps/sva-studio-react/src/styles.css` so the light theme is driven by KERN-like foundations instead of the current SVA palette. Update the values inside the existing `:root` contract; do not shrink the token set or drop semantically exposed variables that the app already consumes.
 
 ```css
 :root {
@@ -364,8 +364,10 @@ expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }).classNam
 Add one assertion for the prompt-field wrapper if it is rendered:
 
 ```ts
-expect(screen.getAllByDisplayValue(/KERN|Studio|Prompt/i)[0]?.className ?? '').toContain('bg-[rgb(var(--waste-panel-surface))]');
+expect(screen.getByDisplayValue('Suche').className).toContain('bg-[rgb(var(--waste-panel-surface))]');
 ```
+
+If the test should stay locale-agnostic, query the field via role/label instead of matching invented prompt text.
 
 - [ ] **Step 2: Run the Header test in isolation**
 

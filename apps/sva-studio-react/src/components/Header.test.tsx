@@ -132,6 +132,8 @@ describe('Header auth actions', () => {
       '/auth/login?returnTo=%2Faccount%3Ftab%3Dprofile'
     );
     expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }).className).toContain('rounded-full');
+    expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }).className).toContain('text-muted-foreground');
     expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
   });
 
@@ -175,6 +177,10 @@ describe('Header auth actions', () => {
     expect(screen.getByRole('menuitem', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
     expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
+    expect(screen.getAllByDisplayValue(/Suche|Assistenten|Prompt|Studio|KERN/i)[0]?.className ?? '').toContain(
+      'bg-[rgb(var(--waste-panel-surface))]'
+    );
+    expect(screen.getByRole('menu').className).toContain('rounded-2xl');
 
     const logoutForm = document.querySelector('form[action="/auth/logout"]');
     const logoutIntent = logoutForm?.querySelector('input[name="logoutIntent"]');

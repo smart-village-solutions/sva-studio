@@ -37,7 +37,7 @@ type HeaderDropdownItem = Readonly<{
 }>;
 
 const iconButtonClassName =
-  'h-9 w-9 rounded-full border-0 bg-transparent px-0 text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground';
+  'h-10 w-10 rounded-full border border-transparent bg-transparent px-0 text-muted-foreground shadow-none hover:border-border hover:bg-card hover:text-foreground';
 
 const resolveUserDisplayName = (user: { readonly id: string }) => {
   const candidate = user as { readonly name?: string; readonly displayName?: string };
@@ -105,7 +105,7 @@ const HeaderDropdownMenu = ({
           aria-label={menuLabel}
           aria-orientation="vertical"
           className={cn(
-            'absolute top-full z-50 mt-2 min-w-56 overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-md',
+            'absolute top-full z-50 mt-2 min-w-56 overflow-hidden rounded-2xl border border-border bg-popover p-1.5 shadow-md',
             align === 'right' ? 'right-0' : 'left-0'
           )}
         >
@@ -192,7 +192,7 @@ const HeaderPromptField = ({
       readOnly
       disabled
       aria-label={label}
-      className="h-11 rounded-full border-border/70 bg-[rgb(var(--waste-panel-surface))] pl-11 pr-11 text-sm text-muted-foreground disabled:bg-[rgb(var(--waste-panel-surface))] disabled:text-muted-foreground disabled:opacity-100"
+      className="h-11 rounded-full border-border bg-[rgb(var(--waste-panel-surface))] pl-11 pr-11 text-sm text-muted-foreground disabled:bg-[rgb(var(--waste-panel-surface))] disabled:text-muted-foreground disabled:opacity-100"
     />
     <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-muted-foreground">
       <SendHorizontal className="h-4 w-4" />

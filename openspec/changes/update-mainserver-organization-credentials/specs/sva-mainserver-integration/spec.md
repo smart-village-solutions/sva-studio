@@ -19,6 +19,20 @@ The system SHALL resolve effective SVA Mainserver credentials from the active or
 - **THEN** the adapter falls back to the current user's Keycloak-backed credentials
 - **AND** it continues to reject shared instance credentials or browser-provided credentials
 
+#### Scenario: No active organization context blocks org-scoped credential lookup
+
+- **GIVEN** a server-side Mainserver adapter resolves credentials for a request without `activeOrganizationId`
+- **WHEN** credential resolution starts
+- **THEN** the adapter does not trigger an organization-scoped lookup
+- **AND** it does not search across other memberships, hierarchy nodes, or previously active organization contexts for organization credentials
+
+#### Scenario: No active organization context keeps the org-only path fail-closed
+
+- **GIVEN** a server-side Mainserver adapter resolves credentials for a request without `activeOrganizationId`
+- **WHEN** the org-scoped `org_only` resolution path is required
+- **THEN** no upstream token or GraphQL request is started
+- **AND** the adapter propagates the resolver error code `organization_mainserver_credentials_missing` without remapping it
+
 #### Scenario: Adapter propagates the org-scoped resolver error unchanged
 
 - **GIVEN** a server-side Mainserver adapter resolves credentials for a request with `activeOrganizationId`

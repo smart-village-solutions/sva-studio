@@ -18,6 +18,19 @@ Das System SHALL Zugriffe auf den externen SVA-Mainserver serverseitig delegiere
 - **THEN** prüft das System zuerst vollständige Organisations-Credentials der aktiven Organisation
 - **AND** verwendet nur bei unvollständiger Organisationskonfiguration die Keycloak-basierten Benutzer-Credentials des aktuellen Benutzers
 
+#### Scenario: Ohne `activeOrganizationId` erfolgt kein organisationsbezogener Lookup
+
+- **WHEN** eine serverseitige Studio-Funktion einen Mainserver-Aufruf ohne `activeOrganizationId` in der Session ausführt
+- **THEN** führt das System keinen organisationsbezogenen Credential-Lookup aus
+- **AND** es sucht nicht implizit über andere Organisationsmitgliedschaften, Hierarchien oder frühere Kontexte nach Organisations-Credentials
+
+#### Scenario: `org_only` bleibt ohne `activeOrganizationId` fail-closed
+
+- **WHEN** eine serverseitige Studio-Funktion einen Mainserver-Aufruf ohne `activeOrganizationId` in der Session ausführt
+- **AND** der organisationsgebundene Pfad `org_only` für die Credential-Auflösung maßgeblich ist
+- **THEN** wird kein Upstream-Aufruf gestartet
+- **AND** der gemeinsame Resolver-Vertrag liefert den stabilen Fehlercode `organization_mainserver_credentials_missing`
+
 #### Scenario: Benutzerpfad bleibt für Bestandsbenutzer kompatibel
 
 - **WHEN** der Resolver im Benutzerpfad arbeitet

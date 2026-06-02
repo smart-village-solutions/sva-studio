@@ -15,5 +15,12 @@ Das System MUST in der Organisationsverwaltung eine abgesicherte Pflege organisa
 
 - **WENN** ein Administrator in der Organisationsdetailansicht eine `Mainserver Application-ID` und optional ein neues Secret speichert
 - **DANN** sendet die UI nur die eingegebenen Änderungswerte an den vorgesehenen Organisations-Endpunkt
+- **UND** ein leer gelassenes Secret-Feld wird nicht als Löschsignal gesendet, sondern bedeutet „bestehendes Secret beibehalten"
 - **UND** nach erfolgreichem Speichern zeigt die Oberfläche den aktualisierten Application-ID-Wert und den Secret-Status an
 - **UND** kein Klartext-Secret wird im UI-State oder in Responses angezeigt
+
+#### Scenario: UI bietet keinen impliziten Secret-Revoke-Pfad an
+
+- **WENN** ein Administrator die Organisationsdetailansicht ohne neues Secret absendet
+- **DANN** behandelt die UI dies nicht als Secret-Löschung
+- **UND** die Oberfläche sendet keinen leeren oder `null`-basierten Secret-Wert als impliziten Revoke-Request

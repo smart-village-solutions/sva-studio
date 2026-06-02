@@ -39,13 +39,20 @@ Alternativen:
 
 Application-ID und Secret werden als organisationsgebundene Daten serverseitig in der Studio-Datenbank modelliert. Das Secret wird ausschließlich als Ciphertext gespeichert; Read-Models und API-Responses liefern nur `mainserverApplicationId` und `mainserverApplicationSecretSet`.
 
+Der Update-Vertrag ist deterministisch:
+- eine ausgelassene Secret-Eingabe bedeutet, dass der bestehende Secret-Ciphertext unverändert bleibt
+- nur ein explizit übermittelter nicht-leerer Secret-Wert ersetzt den bestehenden Ciphertext
+- ein Clear-/Revoke-Pfad für bestehende Organisations-Secrets ist nicht Teil dieses Changes; leere oder explizite Löschwerte werden daher nicht als implizite Secret-Löschung interpretiert
+
 Alternativen:
 - Speicherung in `iam.organizations.metadata`: verworfen, weil `metadata` kein Secret-Speicher ist und generische Responses unnötig verbreitert
 - Speicherung in Keycloak-Organisationsattributen: verworfen, weil der freigegebene Scope organisationsgebundene Secrets in der Studio-DB verlangt
 
 ### Decision: Laufzeitauflösung bleibt fail-closed und cache-isoliert
 
-`org_only` verlangt vollständige Credentials der aktiven Organisation und liefert bei Fehlen einen deterministischen organisationsbezogenen Fehler. `org_or_personal` prüft zuerst die aktive Organisation und fällt nur dann auf Benutzer-Credentials zurück. Credential- und Token-Caches berücksichtigen mindestens `instanceId`, `keycloakSubject`, `activeOrganizationId` und die effektive Credential-Quelle.
+`org_only` verlangt vollständige Credentials der aktiven Organisation und liefert bei Fehlen den normativen Resolver-Fehler `organization_mainserver_credentials_missing`. `org_or_personal` prüft zuerst die aktive Organisation und fällt nur dann auf Benutzer-Credentials zurück; fehlen beide Quellen, liefert der Resolver den normativen Fehler `missing_credentials`.
+
+Credential- und Token-Caches berücksichtigen mindestens `instanceId`, `keycloakSubject`, `activeOrganizationId` und die effektive Credential-Quelle oder eine äquivalente Credential-Signatur. Damit bleibt Token-Wiederverwendung zwischen zwei Organisationskontexten desselben Benutzers ausgeschlossen, auch wenn beide Kontexte dieselbe Instanz teilen.
 
 Alternativen:
 - stiller Fallback von `org_only` auf Benutzer-Credentials: verworfen, weil dies die Policy semantisch entwertet

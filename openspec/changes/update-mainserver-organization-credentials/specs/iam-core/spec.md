@@ -1,6 +1,6 @@
 ## MODIFIED Requirements
 
-### Requirement: Per-User-Delegation an den SVA-Mainserver
+### Requirement: Effektive Credential-Auflösung und Delegation an den SVA-Mainserver
 
 Das System SHALL Zugriffe auf den externen SVA-Mainserver serverseitig delegieren und die effektiven Mainserver-Credentials anhand der `contentAuthorPolicy` der aktiven Organisation auflösen. Organisationsgebundene Credentials werden aus der Studio-Datenbank für `instanceId + activeOrganizationId` gelesen; Benutzer-Credentials bleiben in Keycloak-User-Attributen des aktuellen Benutzers. Credentials und Access-Tokens werden weder im Browser noch in Sessions exponiert.
 
@@ -30,7 +30,7 @@ Das System SHALL Zugriffe auf den externen SVA-Mainserver serverseitig delegiere
 - **WHEN** `contentAuthorPolicy = org_only`
 - **AND** die aktive Organisation keine vollständigen Mainserver-Credentials hat
 - **THEN** wird kein Upstream-Aufruf gestartet
-- **AND** das System liefert den stabilen Fehlerzustand `organization_mainserver_credentials_missing`
+- **AND** der gemeinsame Resolver-Vertrag liefert den stabilen Fehlercode `organization_mainserver_credentials_missing`
 
 #### Scenario: Weder Organisation noch Benutzer liefern vollständige Credentials
 
@@ -38,4 +38,4 @@ Das System SHALL Zugriffe auf den externen SVA-Mainserver serverseitig delegiere
 - **AND** die aktive Organisation keine vollständigen Mainserver-Credentials hat
 - **AND** für den aktuellen Benutzer weder aktuelle noch Legacy-Credentials vollständig vorhanden sind
 - **THEN** wird kein Upstream-Aufruf gestartet
-- **AND** das System liefert den stabilen Fehlerzustand `missing_credentials`
+- **AND** der gemeinsame Resolver-Vertrag liefert den stabilen Fehlercode `missing_credentials`

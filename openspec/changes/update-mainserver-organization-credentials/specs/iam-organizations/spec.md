@@ -40,3 +40,22 @@ Das System SHALL organisationsgebundene Mainserver-Credentials in einem dedizier
 - **WHEN** ein berechtigter Administrator das Organisationsdetail lädt
 - **THEN** enthält das Read-Model höchstens `mainserverApplicationId` und `mainserverApplicationSecretSet`
 - **AND** der Response enthält kein Klartext-Secret und keinen generischen Secret-Dump
+
+#### Scenario: Ausgelassenes Secret erhält den bestehenden Secret-Ciphertext
+
+- **WHEN** ein berechtigter Administrator Organisations-Credentials aktualisiert
+- **AND** der Update-Payload keine neue Secret-Eingabe enthält
+- **THEN** bleibt der bestehende Secret-Ciphertext unverändert gespeichert
+- **AND** nur die übrigen übermittelten Felder wie `mainserverApplicationId` werden aktualisiert
+
+#### Scenario: Secret-Rotation ersetzt den bestehenden Ciphertext explizit
+
+- **WHEN** ein berechtigter Administrator einen neuen nicht-leeren Secret-Wert für eine Organisation speichert
+- **THEN** ersetzt das System den bestehenden Secret-Ciphertext atomar durch den neu verschlüsselten Wert
+- **AND** das Read-Model exponiert weiterhin nur `mainserverApplicationSecretSet`
+
+#### Scenario: Implizites Secret-Clearing ist nicht Teil des Vertrags
+
+- **WHEN** ein Client versucht, ein Organisations-Secret durch einen leeren String, `null` oder einen äquivalenten Löschwert zu entfernen
+- **THEN** interpretiert das System diesen Request nicht als Secret-Löschung
+- **AND** der bestehende Secret-Ciphertext bleibt unverändert oder der Request wird als ungültig abgewiesen

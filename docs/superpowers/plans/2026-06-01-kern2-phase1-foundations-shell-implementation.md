@@ -148,23 +148,23 @@ Implement the foundation as these concrete token groups, not ad-hoc values. The 
 
 ```css
 :root {
-  --background: 248 246 240;
-  --foreground: 28 33 41;
+  --background: 246 248 251;
+  --foreground: 27 39 56;
   --card: 255 255 255;
-  --card-foreground: 28 33 41;
-  --primary: 0 102 79;
+  --card-foreground: 27 39 56;
+  --primary: 0 90 158;
   --primary-foreground: 255 255 255;
-  --muted: 240 237 229;
-  --muted-foreground: 83 92 104;
-  --border: 214 210 198;
-  --ring: 0 102 79;
-  --sidebar: 252 250 246;
-  --sidebar-foreground: 47 55 66;
-  --sidebar-accent: 236 241 234;
-  --sidebar-border: 214 210 198;
-  --radius: 8px;
-  --radius-card: 12px;
-  --radius-modal: 24px;
+  --muted: 239 243 248;
+  --muted-foreground: 82 95 114;
+  --border: 210 220 232;
+  --ring: 0 90 158;
+  --sidebar: 249 251 253;
+  --sidebar-foreground: 44 58 77;
+  --sidebar-accent: 233 240 249;
+  --sidebar-border: 210 220 232;
+  --radius: 6px;
+  --radius-card: 8px;
+  --radius-modal: 12px;
   --elevation-sm: 0px 6px 18px 0px rgba(38, 47, 56, 0.08);
 }
 ```
@@ -190,23 +190,23 @@ Edit `apps/sva-studio-react/src/styles.css` so the light theme is driven by KERN
 
 ```css
 :root {
-  --background: 248 246 240;
-  --foreground: 28 33 41;
+  --background: 246 248 251;
+  --foreground: 27 39 56;
   --card: 255 255 255;
-  --card-foreground: 28 33 41;
-  --primary: 0 102 79;
+  --card-foreground: 27 39 56;
+  --primary: 0 90 158;
   --primary-foreground: 255 255 255;
-  --muted: 240 237 229;
-  --muted-foreground: 83 92 104;
-  --border: 214 210 198;
-  --ring: 0 102 79;
-  --sidebar: 252 250 246;
-  --sidebar-foreground: 47 55 66;
-  --sidebar-accent: 236 241 234;
-  --sidebar-border: 214 210 198;
-  --radius: 8px;
-  --radius-card: 12px;
-  --radius-modal: 24px;
+  --muted: 239 243 248;
+  --muted-foreground: 82 95 114;
+  --border: 210 220 232;
+  --ring: 0 90 158;
+  --sidebar: 249 251 253;
+  --sidebar-foreground: 44 58 77;
+  --sidebar-accent: 233 240 249;
+  --sidebar-border: 210 220 232;
+  --radius: 6px;
+  --radius-card: 8px;
+  --radius-modal: 12px;
 }
 ```
 
@@ -216,17 +216,17 @@ Update the shell-only derived tokens and animation colors:
 
 ```css
 :root {
-  --waste-panel-surface: 242 239 232;
+  --waste-panel-surface: 240 244 249;
   --waste-panel-overlay: 255 255 255;
   --elevation-sm: 0px 6px 18px 0px rgba(38, 47, 56, 0.08);
 }
 
 @keyframes input-glow {
   from {
-    box-shadow: 0 0 0 0 rgba(0, 102, 79, 0.14);
+    box-shadow: 0 0 0 0 rgba(0, 90, 158, 0.14);
   }
   to {
-    box-shadow: 0 0 0 3px rgba(0, 102, 79, 0.12);
+    box-shadow: 0 0 0 3px rgba(0, 90, 158, 0.12);
   }
 }
 ```

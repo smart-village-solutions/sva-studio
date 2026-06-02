@@ -105,7 +105,7 @@ const HeaderDropdownMenu = ({
           aria-label={menuLabel}
           aria-orientation="vertical"
           className={cn(
-            'absolute top-full z-50 mt-2 min-w-56 overflow-hidden rounded-2xl border border-border bg-popover p-1.5 shadow-md',
+            'absolute top-full z-50 mt-2 min-w-56 overflow-hidden rounded-lg border border-border bg-popover p-1.5 shadow-md',
             align === 'right' ? 'right-0' : 'left-0'
           )}
         >

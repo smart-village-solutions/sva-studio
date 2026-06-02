@@ -297,7 +297,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
               </div>
             </form>
 
-            <div className="overflow-x-auto rounded-xl border border-border bg-background">
+            <div className="overflow-x-auto rounded-lg border border-border bg-background">
               <table className="min-w-full border-collapse" aria-label={t('admin.groups.memberships.tableAriaLabel')}>
                 <caption className="sr-only">{t('admin.groups.memberships.caption')}</caption>
                 <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">

@@ -183,7 +183,7 @@ describe('Sidebar', () => {
     expect(screen.getByText('Datenverwaltung')).toBeTruthy();
     expect(screen.getByText('Anwendungen')).toBeTruthy();
     expect(screen.getByText('System')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Übersicht' }).className).toContain('rounded-xl');
+    expect(screen.getByRole('link', { name: 'Übersicht' }).className).toContain('rounded-lg');
     expect(screen.getByRole('link', { name: 'Übersicht' }).className).toContain('text-sidebar-foreground');
     expect(screen.getByRole('link', { name: 'Übersicht' }).getAttribute('aria-current')).toBe('page');
     expect(screen.getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');

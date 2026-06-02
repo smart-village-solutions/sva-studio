@@ -19,4 +19,10 @@ describe('styles foundation tokens', () => {
     expect(stylesSource).toContain('--primary: 18 122 96;');
     expect(stylesSource).toContain('--sidebar-primary: 18 122 96;');
   });
+
+  it('uses tighter radii for larger shell surfaces while keeping small controls differentiated', () => {
+    expect(stylesSource).toContain('--radius: 6px;');
+    expect(stylesSource).toContain('--radius-card: 8px;');
+    expect(stylesSource).toContain('--radius-modal: 12px;');
+  });
 });

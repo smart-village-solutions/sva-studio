@@ -110,7 +110,7 @@ const AuthorizeResultTable = ({
       </Card>
     </div>
 
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto rounded-md border">
       <table className="min-w-full text-sm">
         <caption className="sr-only">{t('monitoring.authorize.table.caption')}</caption>
         <thead className="bg-muted/40 text-left">

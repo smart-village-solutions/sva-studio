@@ -198,7 +198,7 @@ export const LegalTextsPage = () => {
           </div>
         </Card>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-shell">
+        <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-shell">
           <table className="min-w-full border-collapse" aria-label={t('admin.legalTexts.table.ariaLabel')}>
             <caption className="sr-only">{t('admin.legalTexts.table.caption')}</caption>
             <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">

@@ -89,9 +89,9 @@
     --text-base: 16px;
     --text-sm: 14px;
     --text-xs: 12px;
-    --radius: 8px;
-    --radius-card: 12px;
-    --radius-modal: 24px;
+    --radius: 6px;
+    --radius-card: 8px;
+    --radius-modal: 12px;
     --elevation-sm: 0px 6px 18px 0px rgba(38, 47, 56, 0.08);
   }
 

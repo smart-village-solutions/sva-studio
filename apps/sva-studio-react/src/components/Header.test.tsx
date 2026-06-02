@@ -180,7 +180,7 @@ describe('Header auth actions', () => {
     expect(screen.getAllByDisplayValue(/Suche|Assistenten|Prompt|Studio|KERN/i)[0]?.className ?? '').toContain(
       'bg-[rgb(var(--waste-panel-surface))]'
     );
-    expect(screen.getByRole('menu').className).toContain('rounded-2xl');
+    expect(screen.getByRole('menu').className).toContain('rounded-lg');
 
     const logoutForm = document.querySelector('form[action="/auth/logout"]');
     const logoutIntent = logoutForm?.querySelector('input[name="logoutIntent"]');

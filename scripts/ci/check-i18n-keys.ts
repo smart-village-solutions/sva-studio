@@ -6,20 +6,44 @@ import { DEFAULT_LOCALE, i18nResources } from '../../apps/sva-studio-react/src/i
 import { pluginEventsTranslations } from '../../packages/plugin-events/src/plugin.translations';
 import { pluginNewsTranslations } from '../../packages/plugin-news/src/plugin.translations';
 import { pluginPoiTranslations } from '../../packages/plugin-poi/src/plugin.translations';
+import { wasteManagementPluginTranslations } from '../../packages/plugin-waste-management/src/plugin.translations';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '../..');
-const APP_SOURCE_DIR = path.join(PROJECT_ROOT, 'apps/sva-studio-react/src');
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
-const I18N_USAGE_PATTERN = /\bt\(\s*(['"`])([^'"`]+)\1/g;
+const I18N_USAGE_PATTERN = /\b(?:t|pt)\(\s*(['"`])([^'"`]+)\1/g;
+
+export const SOURCE_ROOTS = [
+  'apps/sva-studio-react/src',
+  'packages/plugin-news/src',
+  'packages/plugin-events/src',
+  'packages/plugin-poi/src',
+  'packages/plugin-waste-management/src',
+] as const;
+
+const SOURCE_ROOT_CONFIGS = [
+  { relativeRoot: 'apps/sva-studio-react/src', namespace: null },
+  { relativeRoot: 'packages/plugin-news/src', namespace: 'news' },
+  { relativeRoot: 'packages/plugin-events/src', namespace: 'events' },
+  { relativeRoot: 'packages/plugin-poi/src', namespace: 'poi' },
+  { relativeRoot: 'packages/plugin-waste-management/src', namespace: 'wasteManagement' },
+] as const;
 
 const pluginTranslationResources = [
   pluginNewsTranslations,
   pluginEventsTranslations,
   pluginPoiTranslations,
+  wasteManagementPluginTranslations,
 ] as const;
 
 type TranslationNode = Readonly<Record<string, unknown>>;
+type SourceFileContext = Readonly<{
+  filePath: string;
+  namespace: string | null;
+}>;
+type TranslationKeyExtractionOptions = Readonly<{
+  namespace?: string | null;
+}>;
 
 const flattenTranslationKeys = (input: TranslationNode, prefix = ''): string[] => {
   const keys: string[] = [];
@@ -40,15 +64,17 @@ const flattenTranslationKeys = (input: TranslationNode, prefix = ''): string[] =
   return keys;
 };
 
-const collectSourceFiles = async (directory: string): Promise<string[]> => {
+const isTestSourceFile = (fileName: string): boolean => /\.(?:test|spec)\.[jt]sx?$/u.test(fileName);
+
+const collectSourceFiles = async (directory: string, namespace: string | null): Promise<SourceFileContext[]> => {
   const entries = await readdir(directory, { withFileTypes: true });
-  const files: string[] = [];
+  const files: SourceFileContext[] = [];
 
   for (const entry of entries) {
     const entryPath = path.join(directory, entry.name);
 
     if (entry.isDirectory()) {
-      files.push(...(await collectSourceFiles(entryPath)));
+      files.push(...(await collectSourceFiles(entryPath, namespace)));
       continue;
     }
 
@@ -60,25 +86,50 @@ const collectSourceFiles = async (directory: string): Promise<string[]> => {
       continue;
     }
 
-    files.push(entryPath);
+    if (isTestSourceFile(entry.name)) {
+      continue;
+    }
+
+    files.push({ filePath: entryPath, namespace });
   }
 
   return files;
 };
 
-const collectUsedTranslationKeys = async (files: readonly string[]): Promise<Map<string, Set<string>>> => {
+const resolveSourceRoot = (relativeRoot: string): string => path.join(PROJECT_ROOT, relativeRoot);
+
+export const collectTranslationKeysFromSource = (
+  sourceCode: string,
+  options: TranslationKeyExtractionOptions = {}
+): Set<string> => {
+  const keyMatches = new Set<string>();
+
+  for (const match of sourceCode.matchAll(I18N_USAGE_PATTERN)) {
+    const functionName = match[0]?.startsWith('pt(') ? 'pt' : 't';
+    const key = match[2]?.trim();
+    if (!key || key.includes('${')) {
+      continue;
+    }
+
+    if (functionName === 'pt' && options.namespace) {
+      keyMatches.add(`${options.namespace}.${key}`);
+      continue;
+    }
+
+    keyMatches.add(key);
+  }
+
+  return keyMatches;
+};
+
+const collectUsedTranslationKeys = async (
+  files: readonly SourceFileContext[]
+): Promise<Map<string, Set<string>>> => {
   const usedByFile = new Map<string, Set<string>>();
 
-  for (const filePath of files) {
+  for (const { filePath, namespace } of files) {
     const sourceCode = await readFile(filePath, 'utf8');
-    const keyMatches = new Set<string>();
-
-    for (const match of sourceCode.matchAll(I18N_USAGE_PATTERN)) {
-      const key = match[2]?.trim();
-      if (key) {
-        keyMatches.add(key);
-      }
-    }
+    const keyMatches = collectTranslationKeysFromSource(sourceCode, { namespace });
 
     if (keyMatches.size > 0) {
       usedByFile.set(filePath, keyMatches);
@@ -120,7 +171,7 @@ const ensureLocaleParity = (): string[] => {
   return problems;
 };
 
-const collectAvailableKeys = (): Set<string> => {
+export const collectAvailableKeys = (): Set<string> => {
   const availableKeys = new Set(flattenTranslationKeys(i18nResources[DEFAULT_LOCALE]));
 
   for (const resources of pluginTranslationResources) {
@@ -135,7 +186,10 @@ const collectAvailableKeys = (): Set<string> => {
 const run = async (): Promise<void> => {
   const parityProblems = ensureLocaleParity();
 
-  const files = await collectSourceFiles(APP_SOURCE_DIR);
+  const fileGroups = await Promise.all(
+    SOURCE_ROOT_CONFIGS.map(({ relativeRoot, namespace }) => collectSourceFiles(resolveSourceRoot(relativeRoot), namespace))
+  );
+  const files = fileGroups.flat();
   const usedByFile = await collectUsedTranslationKeys(files);
 
   const availableKeys = collectAvailableKeys();

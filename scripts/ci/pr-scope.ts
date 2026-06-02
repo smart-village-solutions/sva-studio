@@ -11,6 +11,8 @@ export interface PrScopeDecision {
   coverageMode: GateMode;
   integrationMode: GateMode;
   e2eMode: GateMode;
+  a11yMode: GateMode;
+  runtimeVerifyMode: GateMode;
   appBuildMode: GateMode;
   escalationReasons: string[];
 }
@@ -59,9 +61,24 @@ const integrationEscalationPatterns = [
   /^\.github\/workflows\/(?:app-e2e|runtime-gates|quality-gates)\.yml$/u,
 ];
 
+const pluginUiBuildRelevantPatterns = [
+  /^packages\/plugin-news\/src\/.*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-events\/src\/.*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-poi\/src\/.*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-waste-management\/src\/.*\.(?:ts|tsx)$/u,
+];
+
+const pluginUiE2eRelevantPatterns = [
+  /^packages\/plugin-news\/src\/.*\.tsx$/u,
+  /^packages\/plugin-events\/src\/.*\.tsx$/u,
+  /^packages\/plugin-poi\/src\/.*\.tsx$/u,
+  /^packages\/plugin-waste-management\/src\/.*\.tsx$/u,
+];
+
 const e2eRelevantPatterns = [
   /^apps\/sva-studio-react\//u,
   /^packages\/(?:auth-runtime|routing|server-runtime|sva-mainserver|studio-ui-react)\//u,
+  ...pluginUiE2eRelevantPatterns,
 ];
 
 const e2eEscalationPatterns = [
@@ -72,9 +89,36 @@ const e2eEscalationPatterns = [
   /^\.github\/workflows\/app-e2e\.yml$/u,
 ];
 
+const a11yRelevantPatterns = [
+  /^apps\/sva-studio-react\/src\/(?:components|routes|providers)\//u,
+  /^packages\/routing\//u,
+  /^packages\/studio-ui-react\/src\/.*\.(?:ts|tsx)$/u,
+  ...pluginUiE2eRelevantPatterns,
+];
+
+const a11yEscalationPatterns = [
+  /^apps\/sva-studio-react\/(?:package\.json|vitest\.a11y\.config\.ts|vitest\.config\.ts)$/u,
+  /^packages\/studio-ui-react\/(?:package\.json|vite\.config\.ts|vitest\.config\.ts)$/u,
+  /^scripts\/ci\//u,
+  /^\.github\/workflows\/quality-gates\.yml$/u,
+];
+
+const runtimeVerifyRelevantPatterns = [
+  /^apps\/sva-studio-react\/src\/server\.ts$/u,
+  /^apps\/sva-studio-react\/src\/lib\/.+\.server\.ts$/u,
+  /^apps\/sva-studio-react\/package\.json$/u,
+  /^apps\/sva-studio-react\/vite\.config\.ts$/u,
+];
+
+const runtimeVerifyEscalationPatterns = [
+  /^scripts\/ci\/verify-runtime-artifact\.sh$/u,
+  /^\.github\/workflows\/main-build\.yml$/u,
+];
+
 const appBuildRelevantPatterns = [
   /^apps\/sva-studio-react\//u,
   /^packages\/(?:routing|studio-ui-react)\//u,
+  ...pluginUiBuildRelevantPatterns,
 ];
 
 const appBuildEscalationPatterns = [
@@ -109,6 +153,8 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
       coverageMode: 'skip',
       integrationMode: 'skip',
       e2eMode: 'skip',
+      a11yMode: 'skip',
+      runtimeVerifyMode: 'skip',
       appBuildMode: 'skip',
       escalationReasons: [],
     };
@@ -132,6 +178,20 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
     : codeRelevantFiles.some((file) => matchesAnyPattern(file, e2eRelevantPatterns))
       ? 'affected'
       : 'skip';
+  const a11yMode: GateMode = codeRelevantFiles.some((file) =>
+    matchesAnyPattern(file, a11yEscalationPatterns)
+  )
+    ? 'full'
+    : codeRelevantFiles.some((file) => matchesAnyPattern(file, a11yRelevantPatterns))
+      ? 'affected'
+      : 'skip';
+  const runtimeVerifyMode: GateMode = codeRelevantFiles.some((file) =>
+    matchesAnyPattern(file, runtimeVerifyEscalationPatterns)
+  )
+    ? 'full'
+    : codeRelevantFiles.some((file) => matchesAnyPattern(file, runtimeVerifyRelevantPatterns))
+      ? 'affected'
+      : 'skip';
   const appBuildMode: GateMode = codeRelevantFiles.some((file) =>
     matchesAnyPattern(file, appBuildEscalationPatterns)
   )
@@ -147,6 +207,8 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
     coverageMode,
     integrationMode,
     e2eMode,
+    a11yMode,
+    runtimeVerifyMode,
     appBuildMode,
     escalationReasons,
   };
@@ -262,6 +324,8 @@ const appendGithubOutput = (decision: PrScopeDecision, base: string, head: strin
     `coverage_mode=${decision.coverageMode}`,
     `integration_mode=${decision.integrationMode}`,
     `e2e_mode=${decision.e2eMode}`,
+    `a11y_mode=${decision.a11yMode}`,
+    `runtime_verify_mode=${decision.runtimeVerifyMode}`,
     `app_build_mode=${decision.appBuildMode}`,
     `escalation_reasons=${decision.escalationReasons.join(',')}`,
   ];

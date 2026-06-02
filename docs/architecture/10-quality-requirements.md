@@ -42,11 +42,17 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - neue oder grundlegend überarbeitete HTTP-nahe Frontend-Tests nutzen `msw`; reine Modul-Mocks sind dort kein ausreichender Qualitätsnachweis
   - für geänderte kritische framework-agnostische Hotspots muss eine `fast-check`-Property oder eine dokumentierte Gegenbegründung reviewbar vorliegen
   - neue oder grundlegend überarbeitete Formular-Flows müssen dem RHF-/`zodResolver`-Standardpfad folgen oder als Ausnahme dokumentiert sein
+- Accessibility-Gate:
+  - `Quality Gates / A11y` läuft auf allen Pull Requests und auf `main`
+  - Pull Requests ohne UI-relevante Änderungen enden bewusst als erfolgreicher No-op
+  - UI-relevante Änderungen an `apps/sva-studio-react`, `packages/routing`, `packages/studio-ui-react` und Plugin-UI blockieren den Merge erst nach einem grünen `pnpm test:a11y`
+  - der A11y-Pfad bleibt ein eigener Signaltyp und darf Build-, E2E- oder i18n-Gates nicht doppelt ausführen
 - IAM-Acceptance-Gate:
   - `pnpm nx run sva-studio-react:test:acceptance` läuft als separates Delivery-Gate gegen die Testumgebung
   - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben
   - `/health/ready` sowie Login-, JIT-, Organisations- und Membership-Nachweise müssen im Bericht als `passed` erscheinen
 - Produktionsnahe Release-Validierung:
+  - `Main Build / App Build` fuehrt `pnpm verify:runtime-artifact` nur fuer runtime-kritische Pull Requests aus; regulaere UI- oder Content-PRs bleiben bewusst auf dem leichteren Build-Pfad
   - `Studio Image Build` muss genau einen Manifest-Digest für `linux/amd64` liefern
   - `Studio Image Verify` muss denselben Digest gegen `/health/live`, `/health/ready` und `/` erfolgreich pruefen
   - `pnpm test:release:studio` muss `pnpm test:pr` und `pnpm verify:runtime-artifact` in dieser Reihenfolge ausführen

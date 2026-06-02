@@ -941,44 +941,6 @@ CREATE TABLE iam.legal_text_target_groups (
 
 
 --
--- Name: waste_custom_recurrence_presets; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.waste_custom_recurrence_presets (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    name text NOT NULL,
-    description text,
-    interval_days integer NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT waste_custom_recurrence_presets_interval_days_positive_chk CHECK ((interval_days > 0)),
-    CONSTRAINT waste_custom_recurrence_presets_name_unique UNIQUE (name)
-);
-
-
---
--- Name: waste_tours; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.waste_tours (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    name text NOT NULL,
-    description text,
-    waste_fraction_ids text[] DEFAULT '{}'::text[] NOT NULL,
-    recurrence text,
-    custom_recurrence_id uuid,
-    first_date date,
-    end_date date,
-    custom_dates jsonb,
-    active boolean DEFAULT true NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT waste_tours_recurrence_chk CHECK ((recurrence = ANY (ARRAY['weekly'::text, 'biweekly'::text, 'fourweekly'::text, 'yearly'::text, 'on-demand'::text, 'custom'::text]))),
-    CONSTRAINT waste_tours_custom_recurrence_fk FOREIGN KEY (custom_recurrence_id) REFERENCES public.waste_custom_recurrence_presets(id)
-);
-
-
---
 -- Name: legal_text_target_roles; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -3554,6 +3516,20 @@ CREATE POLICY legal_text_acceptances_isolation_policy ON iam.legal_text_acceptan
 --
 
 CREATE POLICY legal_text_versions_isolation_policy ON iam.legal_text_versions USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: legal_text_target_groups; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_target_groups FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: legal_text_target_roles; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_target_roles FORCE ROW LEVEL SECURITY;
 
 
 --

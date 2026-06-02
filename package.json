@@ -30,7 +30,7 @@
     "verify:runtime-artifact": "env -u NO_COLOR nx run sva-studio-react:verify:runtime-artifact",
     "test:release:studio": "pnpm test:pr && pnpm verify:runtime-artifact",
     "test:pr": "tsx scripts/ci/run-pr-gate.ts",
-    "test:integration": "env -u NO_COLOR nx run-many -t test:integration",
+    "test:integration": "tsx scripts/ci/run-integration-gate.ts --mode full",
     "test:e2e": "env -u NO_COLOR nx run sva-studio-react:test:e2e",
     "test:acceptance:iam": "env -u NO_COLOR nx run sva-studio-react:test:acceptance",
     "test:evidence:iam": "env -u NO_COLOR nx run sva-studio-react:test:evidence",

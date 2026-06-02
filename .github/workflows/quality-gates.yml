@@ -197,3 +197,61 @@ jobs:
           else
             echo 'Scope: voller Workspace-Lauf für main.' >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  a11y:
+    name: A11y
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          filter: tree:0
+          fetch-depth: 0
+
+      - name: Detect relevant PR changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            relevant:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.github/agents/**'
+              - '!.github/prompts/**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/PULL_REQUEST_TEMPLATE.md'
+
+      - name: Setup workspace
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Determine PR scope
+        id: scope
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
+
+      - name: Run a11y gate
+        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.a11y_mode != 'skip')
+        run: pnpm test:a11y
+
+      - name: Publish a11y summary
+        if: always()
+        run: |
+          echo 'A11y-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
+            echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.scope.outputs.a11y_mode }}" = "skip" ]; then
+            echo 'Scope: kein UI-relevanter App-/Routing-/Studio-UI- oder Plugin-Änderungsblock im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Scope: \`${{ steps.scope.outputs.a11y_mode }}\` gegen Base-SHA \`${{ github.event.pull_request.base.sha }}\`." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Scope: voller A11y-Lauf für main.' >> "$GITHUB_STEP_SUMMARY"
+          fi

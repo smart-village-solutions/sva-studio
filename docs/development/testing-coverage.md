@@ -55,7 +55,7 @@ Das Kommando führt dieselben betroffenen Coverage-Targets wie der PR-Workflow a
 pnpm test:pr
 ```
 
-Das Kommando bildet den blockierenden GitHub-PR-Workflow für lokale Vorprüfung nach:
+Das Kommando bildet den blockierenden GitHub-PR-Pfad fuer lokale Vorpruefung weitgehend nach:
 
 - `check:file-placement`
 - `affected` oder `full` für `lint`, `test:unit` und `test:types` abhängig vom PR-Scope
@@ -63,8 +63,12 @@ Das Kommando bildet den blockierenden GitHub-PR-Workflow für lokale Vorprüfung
 - bei isolierten App-only-Änderungen führt der Unit-Pfad nur die betroffenen `sva-studio-react`-Slices aus; unklare oder gemischte Änderungen nutzen den sicheren Aggregat-Fallback
 - `patch-coverage-gate --base=origin/main`, `sonar-new-code-gate` und `coverage-gate` nur dann, wenn der PR-Scope auch einen Coverage-Lauf ausführt
 - `complexity-gate`
-- `affected`, `full` oder No-op für `test:integration`
+- `affected`, `full` oder No-op für die allgemeinen echten Integrationsziele via `test:integration`
 - relevanten React-App-Build und relevanten `App E2E`
+- `pnpm verify:runtime-artifact` bleibt bewusst ausserhalb von `pnpm test:pr`; der schwere Runtime-Pfad laeuft nur im GitHub-Job `App Build` fuer runtime-kritische Pull Requests und weiterhin voll im Release-Pfad `pnpm test:release:studio`
+  - lokaler Benchmark am `2. Juni 2026`: `pnpm verify:runtime-artifact` trotz `21/23` Nx-Cache-Treffern bei ca. `220.98s` und damit oberhalb der internen Aktivierungsgrenze fuer generische PR-Gates
+- i18n für `apps/sva-studio-react` und Plugin-UI läuft bewusst über den vorhandenen Build-Vorcheck `sva-studio-react:check:i18n`; es gibt dafür absichtlich keinen zweiten parallelen PR-Job, um denselben Signaltyp nicht doppelt auszuführen
+- das selektive GitHub-Gate `Quality Gates / A11y` bleibt ein eigener UI-spezifischer Signalpfad; lokal wird es bei UI-relevanten PRs gezielt mit `pnpm test:a11y` vorgeprüft, statt jeden `test:pr`-Lauf pauschal zu verlängern
 
 Nicht Bestandteil von `pnpm test:pr` sind externe Plattform-Auswertungen wie SonarCloud, Codecov oder CodeQL. Die lokale New-Code-/Patch-Coverage wird aber jetzt bereits vor dem Push geprüft, sodass die häufigste Abweichung zwischen lokalem PR-Gate und Sonar früher sichtbar wird.
 
@@ -147,7 +151,7 @@ Workflow: `.github/workflows/runtime-gates.yml`
 - Pull Requests:
   - Job `Coverage`: für reguläre PRs bewusster No-op; nur Coverage-/CI-kritische Änderungen triggern `full` für `test:coverage`, Patch-Coverage und New-Code-Gates
   - Job `Complexity`: separates, blockierendes Komplexitäts-Gate
-  - Job `PR Integration`: `affected`, `full` oder bewusster No-op für `test:integration`, exklusive `monitoring-client`
+  - Job `PR Integration`: `affected`, `full` oder bewusster No-op für die allgemeinen echten Integrationsziele; Monitoring-spezifische Läufe bleiben bewusst im separaten Workflow `monitoring-stack`
   - Reine Doku-/Meta-PRs starten die Workflows weiterhin, beenden die betroffenen Jobs aber bewusst früh als erfolgreicher No-op, damit Required Checks nicht im Status `expected` hängen bleiben
 - Workflow- und CI-Dateiänderungen werden über `tooling-testing` targeted abgesichert und eskalieren Quality-/Coverage-Läufe nicht automatisch auf den vollen Produkt-Workspace
 - Main + Nightly:
@@ -161,12 +165,15 @@ Workflow: `.github/workflows/runtime-gates.yml`
 | --- | --- | --- |
 | `Runtime Gates / Coverage` | No-op für normale PRs, voller Coverage-Lauf für Coverage-/CI-kritische PRs sowie `main`/nightly | alle PRs, `main`, nightly |
 | `Runtime Gates / Complexity` | Repository-weites Komplexitäts-Gate | alle PRs, `main`, nightly |
-| `Runtime Gates / PR Integration` | scoped `test:integration` außer Monitoring-Stack | Pull Requests |
-| `Runtime Gates / Integration` | voller Integrationslauf | `main`, nightly |
+| `Quality Gates / A11y` | selektiver Accessibility-Check nur für UI-relevante PRs, voller Lauf auf `main` | alle PRs, `main` |
+| `Runtime Gates / PR Integration` | scoped allgemeine echte Integrationsziele ohne Monitoring-Stack-Duplikat | Pull Requests |
+| `Runtime Gates / Integration` | voller Lauf der allgemeinen echten Integrationsziele | `main`, nightly |
+| `Main Build / App Build` | relevanter App-Build für PRs und `main`, inklusive selektivem `verify:runtime-artifact` nur für runtime-kritische Pull Requests | alle PRs, `main` |
 | `App E2E / App E2E` | Browser-Smoke für App-Routen mit No-op bei Nicht-Relevanz | alle PRs, nightly, manuell |
 | `monitoring-stack` | Monitoring-spezifische Docker-/Stack-Checks | pfadbasiert |
 | `Schema Diff Gate` | Schema-Diff gegen Staging | pfadbasiert |
 | `Repository Hygiene / File Placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
+| `Repository Hygiene / DB Schema Snapshot` | migrationsbasierter Soll-Ist-Abgleich gegen `studio-db-schema-final.sql` mit No-op ausserhalb relevanter Pfade | alle PRs und `main` |
 
 ### Recommended Branch-Protection-Checks
 
@@ -176,6 +183,7 @@ Empfehlung für `main`:
   - `Quality Gates / Lint`
   - `Quality Gates / Unit`
   - `Quality Gates / Types`
+  - `Quality Gates / A11y`
   - `Runtime Gates / Coverage`
   - `Runtime Gates / Complexity`
   - `Runtime Gates / PR Integration` für Pull Requests
@@ -185,10 +193,24 @@ Empfehlung für `main`:
   - `App E2E / App E2E`
   - `monitoring-stack`
   - `Schema Diff Gate`
+  - `Repository Hygiene / DB Schema Snapshot`
 
 ### CI-Summaries und Artefakte
 
 Die wichtigsten Workflows schreiben eine kurze `GITHUB_STEP_SUMMARY` mit Scope, Ergebnis und Artefaktname. Ziel ist, dass Reviews die relevanten Nachweise direkt im PR-UI finden, ohne zuerst in die kompletten Logs zu wechseln.
+
+### Echte Integrationsziele
+
+`test:integration` steht nur fuer echte infra-abhaengige Targets. Aktuell gehoert dazu im allgemeinen Gate nur `data:test:integration`. Bekannte Platzhalter wie `sva-studio-react`, `core`, `media`, `studio-module-iam`, `tooling-testing` und die Plugin-Pakete werden dort bewusst nicht mehr als gruene Integrationssignale mitgezaehlt. `monitoring-client:test:integration` bleibt ein echtes Stack-Signal, wird aber dedupliziert ueber den separaten Workflow `Monitoring Stack` abgesichert.
+
+### DB-Snapshot-Gate
+
+Das Gate `Repository Hygiene / DB Schema Snapshot` vergleicht einen sauberen migrationsbasierten Postgres-Schema-Dump mit `docs/development/studio-db-schema-final.sql`. Der Job laeuft nur fuer relevante Pfade wie `packages/data/migrations/**`, die Snapshot-Dokumente und den Check selbst; alle anderen PRs enden bewusst als erfolgreicher No-op.
+
+Aktivierungskriterium:
+
+- blockierend nur solange die relevante Median-Mehrlast im CI-Pfad bei hoechstens `2 Minuten` liegt
+- initialer lokaler Benchmark am `2. Juni 2026`: bestehender Runtime-Pfad `pnpm env:verify:db-schema-snapshot` ca. `10.82s`, dedizierter CI-Check gegen einen sauberen Migrationsstand ca. `18.07s`
 
 ## Nx-Remote-Cache: sichere Aktivierung vorbereiten
 

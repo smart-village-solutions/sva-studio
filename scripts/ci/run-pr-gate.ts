@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 
 import { classifyPrScope, resolveChangedFiles, type GateMode } from './pr-scope.ts';
 import { runAffectedUnitGate, type DurationEntry } from './affected-unit-gate.ts';
+import { runIntegrationGate as runSelectedIntegrationGate } from './run-integration-gate.ts';
 
 interface RunPrGateOptions {
   base: string;
@@ -97,7 +98,7 @@ const runCoverageGate = (base: string, mode: GateMode, durations: DurationEntry[
   recordDuration(durations, 'complexity', runCommand('pnpm complexity-gate'));
 };
 
-const runIntegrationGate = (base: string, mode: GateMode, durations: DurationEntry[]): void => {
+const runIntegrationStage = (base: string, mode: GateMode, durations: DurationEntry[]): void => {
   if (mode === 'full') {
     recordDuration(durations, 'integration', runCommand('pnpm test:integration'));
     return;
@@ -107,9 +108,11 @@ const runIntegrationGate = (base: string, mode: GateMode, durations: DurationEnt
     recordDuration(
       durations,
       'integration:affected',
-      runCommand(
-        `env -u NO_COLOR pnpm nx affected --target=test:integration --base=${base} --exclude=monitoring-client --output-style=stream`
-      )
+      (() => {
+        const startedAt = performance.now();
+        runSelectedIntegrationGate(['--mode', 'affected', '--base', base]);
+        return performance.now() - startedAt;
+      })()
     );
   }
 };
@@ -168,7 +171,7 @@ export const runPrGate = (args: readonly string[]): number => {
 
   runQualityGates(options.base, options.head, decision.qualityGateMode, durations);
   runCoverageGate(options.base, decision.coverageMode, durations);
-  runIntegrationGate(options.base, decision.integrationMode, durations);
+  runIntegrationStage(options.base, decision.integrationMode, durations);
   runOpsGate(durations);
   runAppBuildGate(decision.appBuildMode, durations);
   runE2EGate(decision.e2eMode, durations);

@@ -192,6 +192,7 @@ export const wasteManagementPluginTranslationsDEScheduling = createWasteManageme
     description: 'Feiertagsregeln, globale und tourbezogene Ausweichtermine in einer gemeinsamen Tabelle.',
     ariaLabel: 'Tabelle der Waste-Ausweichtermine',
     caption: 'Tabelle der Feiertagsregeln sowie globalen und tourbezogenen Waste-Ausweichtermine mit Kontext und Aktionen.',
+    selection: 'Auswahl',
     scope: 'Typ',
     context: 'Bezug',
     scopeHoliday: 'Feiertagsregel',

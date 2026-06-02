@@ -36,3 +36,47 @@ jobs:
         run: |
           echo 'File-Placement-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Validierung: `pnpm check:file-placement`.' >> "$GITHUB_STEP_SUMMARY"
+
+  check-db-schema-snapshot:
+    name: DB Schema Snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          filter: tree:0
+          fetch-depth: 0
+
+      - name: Detect schema snapshot relevant changes
+        id: changes
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            relevant:
+              - 'packages/data/migrations/**'
+              - 'docs/development/studio-db-schema-final.sql'
+              - 'docs/development/studio-db-schema.md'
+              - 'scripts/ci/check-db-schema-snapshot.ts'
+              - 'scripts/ops/runtime/db-schema-snapshot.ts'
+              - '.github/workflows/repository-hygiene.yml'
+
+      - name: Setup workspace
+        if: steps.changes.outputs.relevant == 'true'
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Validate DB schema snapshot
+        if: steps.changes.outputs.relevant == 'true'
+        run: pnpm exec tsx scripts/ci/check-db-schema-snapshot.ts
+
+      - name: Publish DB schema snapshot summary
+        if: always()
+        run: |
+          echo 'DB-Schema-Snapshot-Gate abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
+            echo 'Scope: keine migrations-/snapshot-relevanten Aenderungen, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo 'Validierung: migrationsbasierter Schema-Dump gegen `docs/development/studio-db-schema-final.sql`.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Aktivierungskriterium: blockierend nur solange die relevante Median-Mehrlast <= 2 Minuten bleibt.' >> "$GITHUB_STEP_SUMMARY"

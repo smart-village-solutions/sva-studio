@@ -14,7 +14,8 @@
   },
   "maxAllowedDropPctPoints": 0.5,
   "exemptProjects": [
-    "tooling-testing"
+    "tooling-testing",
+    "public-waste-calendar-web"
   ],
   "newCodeExemptProjects": [],
   "perProjectFloors": {

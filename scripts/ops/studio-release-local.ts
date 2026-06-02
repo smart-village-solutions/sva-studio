@@ -28,7 +28,7 @@ const rootDir = resolve(dirname(scriptPath), '../..');
 
 const usage = () => {
   process.stderr.write(
-    'Usage: tsx scripts/ops/studio-release-local.ts --image-digest=<sha256:...> --release-mode=<app-only|schema-and-app> --rollback-hint=<text> [--image-tag=<tag>] [--maintenance-window=<text>]\n',
+    'Usage: tsx scripts/ops/studio-release-local.ts --image-digest=<sha256:...> --release-mode=<app-only|schema-and-app> --rollback-hint=<text> [--image-tag=<tag>] [--maintenance-window=<text>] [--approve-dangerous=<token>]\n',
   );
 };
 
@@ -99,6 +99,10 @@ export const buildLocalStudioReleasePlan = (
 
   if (options.imageTag) {
     deployArgs.push(`--image-tag=${options.imageTag}`);
+  }
+
+  if (cliOptions.approvalToken) {
+    deployArgs.push(`--approve-dangerous=${cliOptions.approvalToken}`);
   }
 
   return {

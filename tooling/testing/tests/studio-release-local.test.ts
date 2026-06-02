@@ -84,6 +84,17 @@ describe('studio-release-local', () => {
     expect(plan.steps[0]?.env.SVA_REMOTE_OPERATOR_CONTEXT).toBe('local-operator');
   });
 
+  it('forwards the dangerous approval token to the deploy step', () => {
+    const plan = buildLocalStudioReleasePlan([
+      '--image-digest=sha256:abc',
+      '--release-mode=app-only',
+      '--rollback-hint=Redeploy previous digest',
+      '--approve-dangerous=studio:deploy:app-only',
+    ]);
+
+    expect(plan.steps[1]?.args).toContain('--approve-dangerous=studio:deploy:app-only');
+  });
+
   it('runs feedback even when a primary step fails', () => {
     const plan = buildLocalStudioReleasePlan([
       '--image-digest=sha256:abc',

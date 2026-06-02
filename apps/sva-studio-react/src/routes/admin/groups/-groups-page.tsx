@@ -5,6 +5,7 @@ import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
+import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -193,7 +194,7 @@ export const GroupsPage = () => {
         </Alert>
       ) : null}
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-shell">
+      <StudioTableSurface>
         <table
           className="min-w-full border-collapse"
           aria-label={t('admin.groups.table.ariaLabel')}
@@ -292,7 +293,7 @@ export const GroupsPage = () => {
             })}
           </tbody>
         </table>
-      </div>
+      </StudioTableSurface>
 
       {hasInstanceContext && !groupsApi.isLoading && filteredGroups.length === 0 ? (
         <Card className="p-5 text-sm text-muted-foreground" role="status">

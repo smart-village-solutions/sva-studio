@@ -3,6 +3,7 @@ import { StudioListPageTemplate } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
+import { StudioTableSurface } from '../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -110,7 +111,7 @@ const AuthorizeResultTable = ({
       </Card>
     </div>
 
-    <div className="overflow-x-auto rounded-md border">
+    <StudioTableSurface tone="background">
       <table className="min-w-full text-sm">
         <caption className="sr-only">{t('monitoring.authorize.table.caption')}</caption>
         <thead className="bg-muted/40 text-left">
@@ -138,7 +139,7 @@ const AuthorizeResultTable = ({
           ))}
         </tbody>
       </table>
-    </div>
+    </StudioTableSurface>
   </div>
 );
 

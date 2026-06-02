@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -28,7 +29,7 @@ const TenantModulesPage = ({
       </header>
 
       <Card className="space-y-4 p-4">
-        <div className="overflow-x-auto rounded-md border border-border">
+        <StudioTableSurface tone="background">
           <table className="min-w-full border-collapse text-sm">
             <thead className="bg-muted/30">
               <tr>
@@ -57,7 +58,7 @@ const TenantModulesPage = ({
               ))}
             </tbody>
           </table>
-        </div>
+        </StudioTableSurface>
       </Card>
     </section>
   );

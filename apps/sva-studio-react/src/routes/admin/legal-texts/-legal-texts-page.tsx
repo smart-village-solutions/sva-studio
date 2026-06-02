@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
+import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -198,7 +199,7 @@ export const LegalTextsPage = () => {
           </div>
         </Card>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-shell">
+        <StudioTableSurface>
           <table className="min-w-full border-collapse" aria-label={t('admin.legalTexts.table.ariaLabel')}>
             <caption className="sr-only">{t('admin.legalTexts.table.caption')}</caption>
             <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -251,7 +252,7 @@ export const LegalTextsPage = () => {
               ))}
             </tbody>
           </table>
-        </div>
+        </StudioTableSurface>
       )}
     </section>
   );

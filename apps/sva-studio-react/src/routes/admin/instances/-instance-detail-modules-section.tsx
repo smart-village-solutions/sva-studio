@@ -1,3 +1,4 @@
+import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { t } from '../../../i18n';
@@ -16,7 +17,7 @@ const ModuleTransparencyTable = ({ selectedInstance }: { selectedInstance: Selec
   }));
 
   return (
-    <div className="overflow-x-auto rounded-md border border-border">
+    <StudioTableSurface tone="background">
       <table className="min-w-full border-collapse text-sm">
         <thead className="bg-muted/30">
           <tr>
@@ -45,7 +46,7 @@ const ModuleTransparencyTable = ({ selectedInstance }: { selectedInstance: Selec
           ))}
         </tbody>
       </table>
-    </div>
+    </StudioTableSurface>
   );
 };
 

@@ -135,6 +135,40 @@ describe('UserEditPage', () => {
     ).toBeTruthy();
   });
 
+  it('shows the precise invitation warning when the create flow forwarded a specific delivery failure', () => {
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(
+      <UserEditPage
+        userId="user-1"
+        invitationStatus="failed"
+        invitationErrorMessage="Der Nutzer wurde angelegt, aber Keycloak war fuer den Einladungsversand noch nicht bereit."
+      />
+    );
+
+    expect(
+      screen.getByText(
+        'Der Nutzer wurde angelegt, aber Keycloak war fuer den Einladungsversand noch nicht bereit.'
+      )
+    ).toBeTruthy();
+  });
+
   it('resends the password setup email and shows a success notice', async () => {
     const resendPasswordSetupEmail = vi.fn(async () => true);
     useUserMock.mockReturnValue({

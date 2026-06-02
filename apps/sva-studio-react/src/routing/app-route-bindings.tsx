@@ -273,9 +273,14 @@ const LazyUserEditPage = React.lazy(async () => {
 const UserEditRoutePage = () => {
   const params = useParams({ strict: false });
   const search = useSearch({ strict: false });
+  const invitationErrorMessage =
+    typeof search.inviteMessage === 'string' && search.inviteMessage.trim().length > 0
+      ? search.inviteMessage
+      : undefined;
   return renderLazyPage(LazyUserEditPage, {
     userId: readStringParam(params.userId),
     invitationStatus: search.invite === 'failed' ? 'failed' : undefined,
+    invitationErrorMessage,
   });
 };
 

@@ -217,10 +217,19 @@ export const UserCreatePage = () => {
       return;
     }
 
+    const invitationSearch =
+      created.invitation.status === 'failed'
+        ? ({
+            invite: 'failed',
+            ...(created.invitation.error?.code ? { inviteCode: created.invitation.error.code } : {}),
+            ...(created.invitation.error?.message ? { inviteMessage: created.invitation.error.message } : {}),
+          } as const)
+        : undefined;
+
     await navigate({
       to: '/admin/users/$userId',
       params: { userId: created.user.id },
-      search: created.invitation.status === 'failed' ? ({ invite: 'failed' } as const) : undefined,
+      search: invitationSearch,
     });
   });
 

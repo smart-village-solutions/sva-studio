@@ -66,6 +66,7 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
   - akzeptiert weiterhin optionale direkte `roleIds: string[]` als additive Sonderfälle
   - akzeptiert additiv `sendPasswordSetupEmail?: boolean`
   - liefert bei erfolgreicher Anlage `data.user` plus `data.invitation.status` mit `not_requested`, `sent` oder `failed`
+  - bei `data.invitation.status = failed` enthält `data.invitation.error` additiv `code`, `message` und `retryable`, damit UI und Betrieb zwischen reiner Einladungsstörung und eigentlichem Anlagefehler unterscheiden können
 - `POST /api/v1/iam/users/{userId}/send-password-setup-email`
   - sendet die Keycloak-Einladung zum Passwort setzen erneut
   - benötigt `Idempotency-Key`

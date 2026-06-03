@@ -1,8 +1,8 @@
 import { useLocation, useParams } from '@tanstack/react-router';
 
-import { MediaCreatePage } from './-media-create-page.js';
-import { MediaDetailPage } from './-media-detail-page.js';
-import { MediaLibraryPage } from './-media-library-page.js';
+import MediaCreatePage from './-media-create-page.js';
+import MediaDetailPage from './-media-detail-page.js';
+import MediaLibraryPage from './-media-library-page.js';
 
 export const MediaPage = () => {
   const { pathname } = useLocation();

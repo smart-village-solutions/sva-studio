@@ -64,6 +64,7 @@ function MediaLibraryProbe(props: { readonly search?: string; readonly visibilit
   const media = useMediaLibrary(props);
   const firstAsset = media.assets[0];
   const firstUsageCount = firstAsset ? media.usageByAssetId[firstAsset.id] : null;
+  const firstUsageStatus = firstAsset ? media.usageStatusByAssetId[firstAsset.id] ?? 'none' : 'none';
 
   return (
     <div>
@@ -71,6 +72,7 @@ function MediaLibraryProbe(props: { readonly search?: string; readonly visibilit
       <span data-testid="usage-loading">{String(media.isUsageLoading)}</span>
       <span data-testid="asset-count">{String(media.assets.length)}</span>
       <span data-testid="usage-count">{firstUsageCount === null ? 'unknown' : String(firstUsageCount)}</span>
+      <span data-testid="usage-status">{firstUsageStatus}</span>
       <span data-testid="error-code">{media.error?.code ?? 'none'}</span>
       <button type="button" onClick={() => void media.refetch()}>
         refetch
@@ -202,6 +204,7 @@ describe('useMediaLibrary', () => {
       expect(screen.getByTestId('usage-loading').textContent).toBe('false');
       expect(screen.getByTestId('asset-count').textContent).toBe('1');
       expect(screen.getByTestId('usage-count').textContent).toBe('3');
+      expect(screen.getByTestId('usage-status').textContent).toBe('ready');
     });
 
     expect(listMediaMock).toHaveBeenCalledWith({ search: 'hero', visibility: 'public' });
@@ -227,6 +230,7 @@ describe('useMediaLibrary', () => {
       expect(screen.getByTestId('usage-loading').textContent).toBe('false');
       expect(screen.getByTestId('asset-count').textContent).toBe('0');
       expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
+      expect(screen.getByTestId('usage-status').textContent).toBe('none');
       expect(screen.getByTestId('error-code').textContent).toBe(protectedError.code);
     });
 
@@ -269,6 +273,7 @@ describe('useMediaLibrary', () => {
       expect(screen.getByTestId('usage-loading').textContent).toBe('false');
       expect(screen.getByTestId('asset-count').textContent).toBe('1');
       expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
+      expect(screen.getByTestId('usage-status').textContent).toBe('unavailable');
       expect(screen.getByTestId('error-code').textContent).toBe('none');
     });
 
@@ -324,6 +329,7 @@ describe('useMediaLibrary', () => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
       expect(screen.getByTestId('usage-loading').textContent).toBe('true');
       expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
+      expect(screen.getByTestId('usage-status').textContent).toBe('loading');
     });
 
     firstUsage.resolve({
@@ -337,11 +343,80 @@ describe('useMediaLibrary', () => {
     await waitFor(() => {
       expect(screen.getByTestId('usage-count').textContent).toBe('3');
       expect(screen.getByTestId('usage-loading').textContent).toBe('true');
+      expect(screen.getByTestId('usage-status').textContent).toBe('ready');
     });
 
     secondUsage.resolve({
       data: {
         assetId: 'asset-2',
+        totalReferences: 1,
+        references: [],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('usage-loading').textContent).toBe('false');
+    });
+  });
+
+  it('marks failed asset usage as unavailable while other enrichment requests are still loading', async () => {
+    const secondUsage = createDeferred<MediaUsageResponse>();
+
+    listMediaMock.mockResolvedValue({
+      data: [
+        {
+          id: 'asset-unavailable',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-unavailable',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 1024,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {},
+          technical: {},
+        },
+        {
+          id: 'asset-pending',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-pending',
+          mediaType: 'image',
+          mimeType: 'image/png',
+          byteSize: 2048,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {},
+          technical: {},
+        },
+      ],
+      pagination: {
+        page: 1,
+        pageSize: 25,
+        total: 2,
+      },
+    });
+    getMediaUsageMock
+      .mockRejectedValueOnce({
+        status: 503,
+        code: 'database_unavailable',
+        message: 'Usage unavailable',
+      })
+      .mockImplementationOnce(() => secondUsage.promise);
+
+    render(<MediaLibraryProbe />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('false');
+      expect(screen.getByTestId('usage-loading').textContent).toBe('true');
+      expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
+      expect(screen.getByTestId('usage-status').textContent).toBe('unavailable');
+    });
+
+    secondUsage.resolve({
+      data: {
+        assetId: 'asset-pending',
         totalReferences: 1,
         references: [],
       },
@@ -387,6 +462,7 @@ describe('useMediaLibrary', () => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
       expect(screen.getByTestId('usage-loading').textContent).toBe('false');
       expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
+      expect(screen.getByTestId('usage-status').textContent).toBe('unavailable');
       expect(screen.getByTestId('error-code').textContent).toBe('none');
     });
 

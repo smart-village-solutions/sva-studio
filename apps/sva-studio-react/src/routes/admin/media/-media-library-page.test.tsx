@@ -114,6 +114,13 @@ describe('MediaLibraryPage', () => {
         'asset-unused': 0,
         'asset-pdf': 4,
       },
+      usageStatusByAssetId: {
+        'asset-ready': 'ready',
+        'asset-blocked': 'ready',
+        'asset-new': 'ready',
+        'asset-unused': 'ready',
+        'asset-pdf': 'ready',
+      },
       isUsageLoading: false,
       isLoading: false,
       error: null,
@@ -158,6 +165,7 @@ describe('MediaLibraryPage', () => {
     useMediaLibraryMock.mockReturnValue({
       assets: [],
       usageByAssetId: {},
+      usageStatusByAssetId: {},
       isUsageLoading: false,
       isLoading: false,
       error: null,
@@ -180,6 +188,7 @@ describe('MediaLibraryPage', () => {
     useMediaLibraryMock.mockReturnValue({
       assets: [],
       usageByAssetId: {},
+      usageStatusByAssetId: {},
       isUsageLoading: false,
       isLoading: false,
       error: { code: 'database_unavailable' },
@@ -221,6 +230,9 @@ describe('MediaLibraryPage', () => {
       usageByAssetId: {
         'asset-unknown': null,
       },
+      usageStatusByAssetId: {
+        'asset-unknown': 'unavailable',
+      },
       isUsageLoading: false,
       isLoading: false,
       error: null,
@@ -259,6 +271,9 @@ describe('MediaLibraryPage', () => {
       usageByAssetId: {
         'asset-loading': null,
       },
+      usageStatusByAssetId: {
+        'asset-loading': 'loading',
+      },
       isUsageLoading: true,
       isLoading: false,
       error: null,
@@ -270,6 +285,65 @@ describe('MediaLibraryPage', () => {
 
     render(<MediaLibraryPage />);
 
+    expect(screen.getByText('Nutzung wird geladen')).toBeTruthy();
+  });
+
+  it('renders unavailable usage for one asset while another asset is still loading', () => {
+    useMediaLibraryMock.mockReturnValue({
+      assets: [
+        {
+          id: 'asset-unavailable',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-unavailable',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 256_000,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {
+            title: 'Asset ohne Usage-Antwort',
+            altText: 'Fehlgeschlagene Enrichment-Antwort',
+          },
+          technical: {},
+        },
+        {
+          id: 'asset-pending',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-pending',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 256_000,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {
+            title: 'Asset mit laufendem Enrichment',
+            altText: 'Noch nicht abgeschlossene Usage-Antwort',
+          },
+          technical: {},
+        },
+      ],
+      usageByAssetId: {
+        'asset-unavailable': null,
+        'asset-pending': null,
+      },
+      usageStatusByAssetId: {
+        'asset-unavailable': 'unavailable',
+        'asset-pending': 'loading',
+      },
+      isUsageLoading: true,
+      isLoading: false,
+      error: null,
+      page: 1,
+      pageSize: 25,
+      total: 2,
+      refetch: vi.fn(),
+    });
+
+    render(<MediaLibraryPage />);
+
+    expect(screen.getByText('Nutzung nicht verfügbar')).toBeTruthy();
     expect(screen.getByText('Nutzung wird geladen')).toBeTruthy();
   });
 });

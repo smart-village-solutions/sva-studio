@@ -29,7 +29,11 @@ const mediaErrorMessage = (error: IamHttpError | null): string => {
 
 export const MediaLibraryPage = () => {
   const mediaApi = useMediaLibrary();
-  const priorityBuckets = countMediaPriorityBuckets(mediaApi.assets, mediaApi.usageByAssetId);
+  const priorityBuckets = countMediaPriorityBuckets(
+    mediaApi.assets,
+    mediaApi.usageByAssetId,
+    mediaApi.usageStatusByAssetId
+  );
 
   if (mediaApi.isLoading) {
     return (
@@ -76,7 +80,7 @@ export const MediaLibraryPage = () => {
         <MediaAssetGrid
           assets={mediaApi.assets}
           usageByAssetId={mediaApi.usageByAssetId}
-          isUsageLoading={mediaApi.isUsageLoading}
+          usageStatusByAssetId={mediaApi.usageStatusByAssetId}
         />
       ) : (
         <Alert>

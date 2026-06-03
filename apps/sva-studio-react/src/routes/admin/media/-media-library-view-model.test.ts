@@ -50,10 +50,11 @@ describe('resolveMediaCardState', () => {
   });
 
   it('distinguishes unused, new, and ready assets', () => {
-    expect(resolveMediaCardState(createAsset(), 0)).toBe('unused');
-    expect(resolveMediaCardState(createAsset({}, { title: 'Hero', altText: '' }), 2)).toBe('new');
-    expect(resolveMediaCardState(createAsset(), 2)).toBe('ready');
-    expect(resolveMediaCardState(createAsset(), null)).toBe('ready');
+    expect(resolveMediaCardState(createAsset(), 0, 'ready')).toBe('unused');
+    expect(resolveMediaCardState(createAsset({}, { title: 'Hero', altText: '' }), 2, 'ready')).toBe('new');
+    expect(resolveMediaCardState(createAsset(), 2, 'ready')).toBe('ready');
+    expect(resolveMediaCardState(createAsset(), null, 'loading')).toBe('ready');
+    expect(resolveMediaCardState(createAsset(), null, 'unavailable')).toBe('ready');
   });
 });
 
@@ -74,6 +75,11 @@ describe('countMediaPriorityBuckets', () => {
         fresh: 1,
         unused: 0,
         ready: 3,
+      }, {
+        blocked: 'ready',
+        fresh: 'ready',
+        unused: 'ready',
+        ready: 'ready',
       })
     ).toEqual({
       blocked: 1,
@@ -88,6 +94,8 @@ describe('countMediaPriorityBuckets', () => {
     expect(
       countMediaPriorityBuckets([uncertain], {
         uncertain: null,
+      }, {
+        uncertain: 'unavailable',
       })
     ).toEqual({
       blocked: 0,

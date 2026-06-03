@@ -15,7 +15,8 @@ const trimMetadataValue = (value: string | undefined): string | null => {
 
 export const resolveMediaCardState = (
   asset: IamMediaAsset,
-  referenceCount: number | null
+  referenceCount: number | null,
+  usageStatus: 'loading' | 'ready' | 'unavailable' = 'ready'
 ): MediaLibraryCardState => {
   if (
     asset.processingStatus === 'failed' ||
@@ -25,7 +26,7 @@ export const resolveMediaCardState = (
     return 'blocked';
   }
 
-  if (referenceCount === 0) {
+  if (usageStatus === 'ready' && referenceCount === 0) {
     return 'unused';
   }
 
@@ -38,12 +39,14 @@ export const resolveMediaCardState = (
 
 export const countMediaPriorityBuckets = (
   assets: readonly IamMediaAsset[],
-  usageByAssetId: Readonly<Record<string, number | null>>
+  usageByAssetId: Readonly<Record<string, number | null>>,
+  usageStatusByAssetId: Readonly<Record<string, 'loading' | 'ready' | 'unavailable'>>
 ): MediaPriorityBuckets =>
   assets.reduce<MediaPriorityBuckets>(
     (counts, asset) => {
       const referenceCount = usageByAssetId[asset.id] ?? null;
-      const state = resolveMediaCardState(asset, referenceCount);
+      const usageStatus = usageStatusByAssetId[asset.id] ?? 'unavailable';
+      const state = resolveMediaCardState(asset, referenceCount, usageStatus);
 
       return {
         blocked: counts.blocked + (state === 'blocked' ? 1 : 0),

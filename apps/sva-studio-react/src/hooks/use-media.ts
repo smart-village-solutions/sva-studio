@@ -29,6 +29,7 @@ import { useAuth } from '../providers/auth-provider';
 type UseMediaLibraryResult = {
   readonly assets: readonly IamMediaAsset[];
   readonly usageByAssetId: Readonly<Record<string, number | null>>;
+  readonly usageStatusByAssetId: Readonly<Record<string, 'loading' | 'ready' | 'unavailable'>>;
   readonly isUsageLoading: boolean;
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
@@ -64,6 +65,9 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
   const { invalidatePermissions } = useAuth();
   const [assets, setAssets] = React.useState<readonly IamMediaAsset[]>([]);
   const [usageByAssetId, setUsageByAssetId] = React.useState<Readonly<Record<string, number | null>>>({});
+  const [usageStatusByAssetId, setUsageStatusByAssetId] = React.useState<
+    Readonly<Record<string, 'loading' | 'ready' | 'unavailable'>>
+  >({});
   const [isUsageLoading, setIsUsageLoading] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
@@ -82,6 +86,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
     });
     setIsLoading(true);
     setIsUsageLoading(false);
+    setUsageStatusByAssetId({});
     setError(null);
 
     try {
@@ -92,8 +97,12 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       const initialUsageByAssetId = Object.fromEntries(
         response.data.map((asset) => [asset.id, null] as const)
       );
+      const initialUsageStatusByAssetId = Object.fromEntries(
+        response.data.map((asset) => [asset.id, 'loading'] as const)
+      );
       setAssets(response.data);
       setUsageByAssetId(initialUsageByAssetId);
+      setUsageStatusByAssetId(initialUsageStatusByAssetId);
       setPage(response.pagination.page);
       setPageSize(response.pagination.pageSize);
       setTotal(response.pagination.total);
@@ -122,6 +131,10 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
               ...current,
               [asset.id]: usageResponse.data.totalReferences,
             }));
+            setUsageStatusByAssetId((current) => ({
+              ...current,
+              [asset.id]: 'ready',
+            }));
           })
           .catch(async (cause) => {
             const resolvedError = asIamError(cause);
@@ -136,6 +149,15 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
             logBrowserOperationFailure(mediaLogger, 'media_library_usage_load_failed', resolvedError, {
               operation: 'get_media_usage',
             });
+
+            if (requestId !== latestRequestRef.current) {
+              return;
+            }
+
+            setUsageStatusByAssetId((current) => ({
+              ...current,
+              [asset.id]: 'unavailable',
+            }));
           })
           .finally(() => {
             if (requestId !== latestRequestRef.current) {
@@ -155,6 +177,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       }
       setAssets([]);
       setUsageByAssetId({});
+      setUsageStatusByAssetId({});
       setIsUsageLoading(false);
       setTotal(0);
       setError(resolvedError);
@@ -172,6 +195,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
   return {
     assets,
     usageByAssetId,
+    usageStatusByAssetId,
     isUsageLoading,
     isLoading,
     error,

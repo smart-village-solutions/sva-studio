@@ -9,7 +9,7 @@ import { resolveMediaCardState } from './-media-library-view-model.js';
 type MediaAssetCardProps = Readonly<{
   asset: IamMediaAsset;
   referenceCount: number | null;
-  isUsageLoading: boolean;
+  usageStatus: 'loading' | 'ready' | 'unavailable';
 }>;
 
 const stateVariantByValue = {
@@ -60,9 +60,12 @@ const isVisualPreview = (mimeType: string): boolean => mimeType.startsWith('imag
 
 const getAssetLabel = (asset: IamMediaAsset): string => asset.metadata.title?.trim() || asset.id;
 
-const usageCountLabel = (count: number | null, isUsageLoading: boolean): string => {
+const usageCountLabel = (
+  count: number | null,
+  usageStatus: 'loading' | 'ready' | 'unavailable'
+): string => {
   if (count === null) {
-    return isUsageLoading
+    return usageStatus === 'loading'
       ? t('media.library.usageCountLoading')
       : t('media.library.usageCountUnknown');
   }
@@ -72,9 +75,9 @@ const usageCountLabel = (count: number | null, isUsageLoading: boolean): string 
     : t('media.library.usageCountOther', { count });
 };
 
-export const MediaAssetCard = ({ asset, referenceCount, isUsageLoading }: MediaAssetCardProps) => {
+export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAssetCardProps) => {
   const label = getAssetLabel(asset);
-  const state = resolveMediaCardState(asset, referenceCount);
+  const state = resolveMediaCardState(asset, referenceCount, usageStatus);
   const fileType = formatFileType(asset.mimeType);
 
   return (
@@ -113,7 +116,7 @@ export const MediaAssetCard = ({ asset, referenceCount, isUsageLoading }: MediaA
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Badge variant="outline">{fileType}</Badge>
           <span>{formatByteSize(asset.byteSize)}</span>
-          <span>{usageCountLabel(referenceCount, isUsageLoading)}</span>
+          <span>{usageCountLabel(referenceCount, usageStatus)}</span>
         </div>
       </CardContent>
     </Card>

@@ -151,6 +151,7 @@ describe('MediaLibraryPage', () => {
 
     expect(screen.getByText('Stadtfest 2024 - Hauptbühne')).toBeTruthy();
     expect(screen.getByText('3 Verwendungen')).toBeTruthy();
+    expect(screen.getByText('1 Verwendung')).toBeTruthy();
     expect(screen.getByText('bereit')).toBeTruthy();
   });
 

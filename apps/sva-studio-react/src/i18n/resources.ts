@@ -734,7 +734,8 @@ export const i18nResources = {
           blocked: 'blockiert',
           unused: 'ungenutzt',
         },
-        usageCount: '{{count}} Verwendungen',
+        usageCountOne: '1 Verwendung',
+        usageCountOther: '{{count}} Verwendungen',
         assetCard: {
           preview: 'Bildvorschau',
           document: 'Dokument',
@@ -4172,7 +4173,8 @@ export const i18nResources = {
           blocked: 'blocked',
           unused: 'unused',
         },
-        usageCount: '{{count}} uses',
+        usageCountOne: '1 use',
+        usageCountOther: '{{count}} uses',
         assetCard: {
           preview: 'Image preview',
           document: 'Document',

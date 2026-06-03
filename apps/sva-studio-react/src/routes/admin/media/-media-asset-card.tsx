@@ -1,6 +1,6 @@
 import { Badge } from '../../../components/ui/badge';
 import { Card, CardContent } from '../../../components/ui/card';
-import { t } from '../../../i18n';
+import { getActiveLocale, t } from '../../../i18n';
 import type { IamMediaAsset } from '../../../lib/iam-api';
 import { cn } from '../../../lib/utils';
 
@@ -39,7 +39,9 @@ const formatByteSize = (byteSize: number): string => {
     unitIndex += 1;
   }
 
-  return `${new Intl.NumberFormat('de-DE', {
+  const locale = getActiveLocale() === 'de' ? 'de-DE' : 'en-US';
+
+  return `${new Intl.NumberFormat(locale, {
     maximumFractionDigits: value >= 10 ? 0 : 1,
   }).format(value)} ${units[unitIndex]}`;
 };
@@ -56,6 +58,9 @@ const formatFileType = (mimeType: string): string => {
 const isVisualPreview = (mimeType: string): boolean => mimeType.startsWith('image/');
 
 const getAssetLabel = (asset: IamMediaAsset): string => asset.metadata.title?.trim() || asset.id;
+
+const usageCountLabel = (count: number): string =>
+  count === 1 ? t('media.library.usageCountOne') : t('media.library.usageCountOther', { count });
 
 export const MediaAssetCard = ({ asset, referenceCount }: MediaAssetCardProps) => {
   const label = getAssetLabel(asset);
@@ -98,7 +103,7 @@ export const MediaAssetCard = ({ asset, referenceCount }: MediaAssetCardProps) =
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Badge variant="outline">{fileType}</Badge>
           <span>{formatByteSize(asset.byteSize)}</span>
-          <span>{t('media.library.usageCount', { count: referenceCount })}</span>
+          <span>{usageCountLabel(referenceCount)}</span>
         </div>
       </CardContent>
     </Card>

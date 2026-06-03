@@ -3,15 +3,13 @@ import { createSdkLogger } from '@sva/server-runtime';
 import { z } from 'zod';
 
 import { getAuthConfig } from '../config.js';
-import { withInstanceDb } from '../db.js';
-import { jitProvisionAccount } from '../jit-provisioning.js';
 import { buildLogContext } from '../log-context.js';
 import { client, getOidcConfig, invalidateOidcConfig } from '../oidc.js';
 import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.js';
 import { isRetryableTokenExchangeError } from '../error-guards.js';
-import { notifyPermissionInvalidation } from '../iam-account-management/shared-activity.js';
 import { getScopeFromAuthConfig } from '../scope.js';
 import type { AuthConfig, InstanceScopeRef, LoginState, PlatformScopeRef, ScopeKind } from '../types.js';
+import { runPostLoginTasks } from './post-login-tasks.js';
 import { buildSessionUser, resolveSessionExpiry } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
@@ -192,44 +190,6 @@ const persistSession = async (input: {
   return { sessionId, user, expiresAt };
 };
 
-const syncJitProvisioning = async (instanceId: string | undefined, keycloakSubject: string) => {
-  try {
-    await jitProvisionAccount({ instanceId, keycloakSubject });
-  } catch (error) {
-    logger.error('JIT provisioning failed after callback', {
-      operation: 'jit_provision',
-      user_id: keycloakSubject,
-      instance_id: instanceId,
-      error: error instanceof Error ? error.message : String(error),
-      ...buildLogContext(instanceId),
-    });
-  }
-};
-
-const invalidatePermissionSnapshotAfterLogin = async (instanceId: string | undefined, keycloakSubject: string) => {
-  if (!instanceId) {
-    return;
-  }
-
-  try {
-    await withInstanceDb(instanceId, (client) =>
-      notifyPermissionInvalidation(client, {
-        instanceId,
-        keycloakSubject,
-        trigger: 'user_login',
-      })
-    );
-  } catch (error) {
-    logger.error('Permission snapshot invalidation failed after callback', {
-      operation: 'permission_invalidation',
-      user_id: keycloakSubject,
-      instance_id: instanceId,
-      error: error instanceof Error ? error.message : String(error),
-      ...buildLogContext(instanceId),
-    });
-  }
-};
-
 const exchangeAuthorizationCode = async (input: {
   authConfig: AuthConfig;
   callbackUrl: URL;
@@ -315,8 +275,7 @@ export const handleCallback = async (params: {
     }),
   });
 
-  await syncJitProvisioning(persisted.user.instanceId, persisted.user.id);
-  await invalidatePermissionSnapshotAfterLogin(persisted.user.instanceId, persisted.user.id);
+  await runPostLoginTasks(persisted.user.instanceId, persisted.user.id);
 
   logger.debug('Session created for authenticated user', {
     operation: 'session_create',

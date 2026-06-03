@@ -173,6 +173,18 @@ const readGroupIdOrError = (
   return groupId;
 };
 
+const invalidateMembershipPermissionSnapshot = (
+  deps: GroupMutationHandlerDeps,
+  client: GroupQueryClient,
+  actor: GroupMutationActor,
+  keycloakSubject: string
+) =>
+  deps.notifyPermissionInvalidation(client, {
+    instanceId: actor.instanceId,
+    keycloakSubject,
+    trigger: 'user_group_changed',
+  });
+
 const resolveAccountId = async (
   client: GroupQueryClient,
   input: { readonly instanceId: string; readonly keycloakSubject: string }
@@ -657,11 +669,7 @@ ON CONFLICT (instance_id, account_id, group_id) DO UPDATE
           traceId: actor.traceId,
         });
 
-        await deps.notifyPermissionInvalidation(client, {
-          instanceId: actor.instanceId,
-          keycloakSubject: body.data.keycloakSubject,
-          trigger: 'user_group_changed',
-        });
+        await invalidateMembershipPermissionSnapshot(deps, client, actor, body.data.keycloakSubject);
       });
 
       deps.logger.info('Group membership assigned', {
@@ -751,11 +759,7 @@ WHERE instance_id = $1
           traceId: actor.traceId,
         });
 
-        await deps.notifyPermissionInvalidation(client, {
-          instanceId: actor.instanceId,
-          keycloakSubject: body.data.keycloakSubject,
-          trigger: 'user_group_changed',
-        });
+        await invalidateMembershipPermissionSnapshot(deps, client, actor, body.data.keycloakSubject);
       });
 
       deps.logger.info('Group membership removed', {

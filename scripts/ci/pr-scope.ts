@@ -59,11 +59,18 @@ const pluginUiBuildRelevantPatterns = [
   /^packages\/plugin-waste-management\/src\/.*\.(?:ts|tsx)$/u,
 ];
 
-const pluginUiE2eRelevantPatterns = [
+const pluginUiA11yRelevantPatterns = [
   /^packages\/plugin-news\/src\/.*\.tsx$/u,
   /^packages\/plugin-events\/src\/.*\.tsx$/u,
   /^packages\/plugin-poi\/src\/.*\.tsx$/u,
   /^packages\/plugin-waste-management\/src\/.*\.tsx$/u,
+];
+
+const pluginUiE2eRelevantPatterns = [
+  /^packages\/plugin-news\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-events\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-poi\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-waste-management\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
 ];
 
 const e2eRelevantPatterns = [
@@ -84,7 +91,7 @@ const a11yRelevantPatterns = [
   /^apps\/sva-studio-react\/src\/(?:components|routes|providers)\//u,
   /^packages\/routing\//u,
   /^packages\/studio-ui-react\/src\/.*\.(?:ts|tsx)$/u,
-  ...pluginUiE2eRelevantPatterns,
+  ...pluginUiA11yRelevantPatterns,
 ];
 
 const a11yEscalationPatterns = [

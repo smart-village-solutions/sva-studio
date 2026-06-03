@@ -20,7 +20,7 @@ describe('check-db-schema-snapshot', () => {
     `;
 
     expect(createSchemaSnapshotVerificationReport(actualSql, expectedSql)).toEqual({
-      contentDrift: true,
+      contentDrift: false,
       ignoredSchemas: ['graphile_worker'],
       missingObjects: ['rls:force:iam.examples', 'table:public.expected_table'],
       status: 'drift',

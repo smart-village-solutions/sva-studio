@@ -102,6 +102,38 @@ describe('normalizeSchemaSnapshotSql', () => {
 });
 
 describe('compareSchemaSnapshots', () => {
+  it('treats matching schema sections as equal even when pg_dump orders them differently', () => {
+    const expectedSql = `
+      -- Name: legal_text_versions; Type: TABLE; Schema: iam; Owner: -
+      CREATE TABLE iam.legal_text_versions (
+        id uuid NOT NULL
+      );
+
+      -- Name: legal_text_target_groups; Type: TABLE; Schema: iam; Owner: -
+      CREATE TABLE iam.legal_text_target_groups (
+        id uuid NOT NULL
+      );
+    `;
+    const actualSql = `
+      -- Name: legal_text_target_groups; Type: TABLE; Schema: iam; Owner: -
+      CREATE TABLE iam.legal_text_target_groups (
+        id uuid NOT NULL
+      );
+
+      -- Name: legal_text_versions; Type: TABLE; Schema: iam; Owner: -
+      CREATE TABLE iam.legal_text_versions (
+        id uuid NOT NULL
+      );
+    `;
+
+    expect(compareSchemaSnapshots(actualSql, expectedSql)).toEqual({
+      contentMatches: true,
+      ignoredSchemas: ['graphile_worker'],
+      missingObjects: [],
+      unexpectedObjects: [],
+    });
+  });
+
   it('detects definition drift even when object names stay stable', () => {
     const expectedSql = `
       -- Name: examples; Type: TABLE; Schema: iam; Owner: -

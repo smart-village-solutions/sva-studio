@@ -65,6 +65,22 @@ describe('pr-scope', () => {
     });
   });
 
+  it('classifies plugin ui ts changes as app-build and e2e relevant', () => {
+    const decision = classifyPrScope([
+      'packages/plugin-waste-management/src/waste-management.scheduling.table-entries.ts',
+    ]);
+
+    expectDecision(decision, {
+      codeRelevant: true,
+      qualityGateMode: 'affected',
+      coverageMode: 'skip',
+      integrationMode: 'skip',
+      a11yMode: 'skip',
+      e2eMode: 'affected',
+      appBuildMode: 'affected',
+    });
+  });
+
   it('classifies plugin translation changes as app-build relevant', () => {
     const decision = classifyPrScope([
       'packages/plugin-news/src/plugin.translations.ts',

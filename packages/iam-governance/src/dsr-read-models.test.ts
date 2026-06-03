@@ -77,7 +77,7 @@ describe('iam-data-subject-rights/read-models', () => {
             status: 'failed_export',
             error_message: 'upstream_timeout',
             target_account_id: 'account-1',
-            requested_by_account_id: 'requester-1',
+            requested_by_account_id: 'account-1',
             created_at: '2026-03-16T09:00:00.000Z',
             completed_at: null,
             target_display_name_ciphertext: 'Target User',
@@ -190,7 +190,7 @@ describe('iam-data-subject-rights/read-models', () => {
             status: 'sent',
             error_message: null,
             target_account_id: 'account-1',
-            requested_by_account_id: 'requester-1',
+            requested_by_account_id: 'account-1',
             created_at: '2026-03-17T09:00:00.000Z',
             completed_at: '2026-03-17T09:02:00.000Z',
             target_display_name_ciphertext: 'Target User',
@@ -246,6 +246,49 @@ describe('iam-data-subject-rights/read-models', () => {
         locale: 'de',
       },
     });
+  });
+
+  it('hides admin-created export jobs from the self-service overview and detail view', async () => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('FROM iam.accounts')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'account-1',
+              processing_restricted_at: null,
+              processing_restriction_reason: null,
+              non_essential_processing_opt_out_at: null,
+            },
+          ],
+        };
+      }
+
+      if (sql.includes('FROM iam.data_subject_export_jobs job')) {
+        expect(sql).toContain('AND job.requested_by_account_id = $2::uuid');
+      }
+
+      return { rowCount: 0, rows: [] };
+    });
+
+    const client = { query };
+
+    const overview = await loadDsrSelfServiceOverview(client as never, {
+      instanceId: 'de-test',
+      accountId: 'account-1',
+    });
+
+    expect(overview.exportJobs).toEqual([]);
+    expect(overview.activityItems).toEqual([]);
+
+    const item = await getSelfServiceActivityItem(client as never, {
+      instanceId: 'de-test',
+      accountId: 'account-1',
+      caseId: 'exp-admin-1',
+    });
+
+    expect(item).toBeNull();
+    expect(query).toHaveBeenCalled();
   });
 
   it('loads a self-service activity detail by case id across all supported sources', async () => {

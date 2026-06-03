@@ -89,6 +89,7 @@ LEFT JOIN iam.accounts requester
   ON requester.id = job.requested_by_account_id
 WHERE job.instance_id = $1
   AND job.target_account_id = $2::uuid
+  AND job.requested_by_account_id = $2::uuid
 ORDER BY job.created_at DESC
 LIMIT 50;
 `,
@@ -226,6 +227,7 @@ LEFT JOIN iam.accounts requester
   ON requester.id = job.requested_by_account_id
 WHERE job.instance_id = $1
   AND job.target_account_id = $2::uuid
+  AND job.requested_by_account_id = $2::uuid
   AND job.id = $3::uuid
 LIMIT 1;
 `,

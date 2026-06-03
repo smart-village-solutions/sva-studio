@@ -50,6 +50,7 @@ const createDeps = (
       error: vi.fn(),
       info: vi.fn(),
     },
+    notifyPermissionInvalidation: vi.fn(async () => undefined),
     parseRequestBody: vi.fn(async () => ({
       ok: true as const,
       data: {
@@ -501,6 +502,14 @@ describe('createGroupMutationHandlers', () => {
         payload: { group_id: groupId, account_id: 'account-1' },
       })
     );
+    expect(deps.notifyPermissionInvalidation).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        instanceId: 'inst-g',
+        keycloakSubject: 'kc-user-1',
+        trigger: 'user_group_changed',
+      })
+    );
   });
 
   it('logs and maps unexpected membership assignment failures', async () => {
@@ -577,6 +586,14 @@ describe('createGroupMutationHandlers', () => {
       expect.objectContaining({
         eventType: 'iam_group_member_removed',
         payload: { group_id: groupId, account_id: 'account-1' },
+      })
+    );
+    expect(deps.notifyPermissionInvalidation).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        instanceId: 'inst-g',
+        keycloakSubject: 'kc-user-1',
+        trigger: 'user_group_changed',
       })
     );
   });

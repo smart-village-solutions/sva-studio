@@ -102,6 +102,14 @@ export type GroupMutationHandlerDeps = {
   readonly isUuid: (value: string) => boolean;
   readonly jsonResponse: (status: number, payload: unknown) => Response;
   readonly logger: GroupMutationLogger;
+  readonly notifyPermissionInvalidation: (
+    client: GroupQueryClient,
+    input: {
+      readonly instanceId: string;
+      readonly keycloakSubject?: string;
+      readonly trigger: 'user_group_changed';
+    }
+  ) => Promise<void>;
   readonly parseRequestBody: <TData>(
     request: Request,
     schema: z.ZodType<TData>
@@ -164,6 +172,18 @@ const readGroupIdOrError = (
   }
   return groupId;
 };
+
+const invalidateMembershipPermissionSnapshot = (
+  deps: GroupMutationHandlerDeps,
+  client: GroupQueryClient,
+  actor: GroupMutationActor,
+  keycloakSubject: string
+) =>
+  deps.notifyPermissionInvalidation(client, {
+    instanceId: actor.instanceId,
+    keycloakSubject,
+    trigger: 'user_group_changed',
+  });
 
 const resolveAccountId = async (
   client: GroupQueryClient,
@@ -648,6 +668,8 @@ ON CONFLICT (instance_id, account_id, group_id) DO UPDATE
           requestId: actor.requestId,
           traceId: actor.traceId,
         });
+
+        await invalidateMembershipPermissionSnapshot(deps, client, actor, body.data.keycloakSubject);
       });
 
       deps.logger.info('Group membership assigned', {
@@ -736,6 +758,8 @@ WHERE instance_id = $1
           requestId: actor.requestId,
           traceId: actor.traceId,
         });
+
+        await invalidateMembershipPermissionSnapshot(deps, client, actor, body.data.keycloakSubject);
       });
 
       deps.logger.info('Group membership removed', {

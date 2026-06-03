@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   getScopeFromAuthConfig: vi.fn(),
   buildSessionUser: vi.fn(),
   resolveSessionExpiry: vi.fn(),
+  runPostLoginTasks: vi.fn(),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -31,6 +32,10 @@ vi.mock('../config.js', () => ({
 
 vi.mock('../jit-provisioning.js', () => ({
   jitProvisionAccount: mocks.jitProvisionAccount,
+}));
+
+vi.mock('./post-login-tasks.js', () => ({
+  runPostLoginTasks: mocks.runPostLoginTasks,
 }));
 
 vi.mock('../log-context.js', () => ({
@@ -85,6 +90,7 @@ const authConfig = {
 describe('handleCallback', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
 
     mocks.getAuthConfig.mockReturnValue(authConfig);
     mocks.getOidcConfig.mockResolvedValue({ issuer: authConfig.issuer });
@@ -99,6 +105,7 @@ describe('handleCallback', () => {
     });
     mocks.createSession.mockResolvedValue(undefined);
     mocks.jitProvisionAccount.mockResolvedValue(undefined);
+    mocks.runPostLoginTasks.mockResolvedValue(undefined);
     mocks.authorizationCodeGrant.mockResolvedValue({
       access_token: 'access-token',
       refresh_token: 'refresh-token',
@@ -222,19 +229,14 @@ describe('handleCallback', () => {
         freshReauthAt: undefined,
       })
     );
-    expect(mocks.jitProvisionAccount).toHaveBeenCalledWith({
-      instanceId: 'de-test',
-      keycloakSubject: 'kc-user-1',
-    });
+    expect(mocks.runPostLoginTasks).toHaveBeenCalledWith('de-test', 'kc-user-1');
     expect(result.retryPerformed).toBe(true);
     expect(result.sessionId).toBeTypeOf('string');
     expect(result.loginState).toMatchObject({ kind: 'platform', silent: true });
   });
 
-  it('logs and swallows jit provisioning failures after session creation', async () => {
+  it('returns the authenticated session after post-login tasks were triggered', async () => {
     const { handleCallback } = await import('./callback.js');
-
-    mocks.jitProvisionAccount.mockRejectedValueOnce(new Error('jit unavailable'));
 
     const result = await handleCallback({
       code: 'code-1',
@@ -255,15 +257,25 @@ describe('handleCallback', () => {
         freshReauthAt: undefined,
       })
     );
-    expect(mocks.logger.error).toHaveBeenCalledWith(
-      'JIT provisioning failed after callback',
-      expect.objectContaining({
-        operation: 'jit_provision',
-        user_id: 'kc-user-1',
-        instance_id: 'de-test',
-        error: 'jit unavailable',
-      })
-    );
+    expect(mocks.runPostLoginTasks).toHaveBeenCalledWith('de-test', 'kc-user-1');
+  });
+
+  it('runs post-login tasks for the authenticated subject after a successful callback', async () => {
+    const { handleCallback } = await import('./callback.js');
+
+    await handleCallback({
+      code: 'code-1',
+      state: 'state-1',
+      authConfig,
+      loginState: {
+        kind: 'platform',
+        codeVerifier: 'verifier',
+        nonce: 'nonce',
+        createdAt: Date.now(),
+      },
+    });
+
+    expect(mocks.runPostLoginTasks).toHaveBeenCalledWith('de-test', 'kc-user-1');
   });
 
   it('stamps fresh reauth only for explicit reauth callbacks with a fresh auth_time claim', async () => {

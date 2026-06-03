@@ -2102,6 +2102,7 @@ export const i18nResources = {
           create: 'Nutzer anlegen',
           creating: 'Nutzer wird angelegt ...',
           edit: 'Bearbeiten',
+          activate: 'Aktivieren',
           deactivate: 'Deaktivieren',
           bulkDeactivate: 'Auswahl deaktivieren',
           syncKeycloak: 'Aus Keycloak synchronisieren',
@@ -2137,6 +2138,8 @@ export const i18nResources = {
           sendPasswordSetupEmail: 'Einladungs-E-Mail zum Passwort setzen senden',
         },
         confirm: {
+          activateTitle: 'Nutzer aktivieren',
+          activateDescription: 'Die ausgewählte Person wird wieder aktiviert.',
           singleTitle: 'Nutzer deaktivieren',
           singleDescription: 'Die ausgewählte Person wird deaktiviert.',
           bulkTitle: 'Mehrere Nutzer deaktivieren',
@@ -5306,6 +5309,7 @@ export const i18nResources = {
           create: 'Create user',
           creating: 'Creating user ...',
           edit: 'Edit',
+          activate: 'Activate',
           deactivate: 'Deactivate',
           bulkDeactivate: 'Deactivate selection',
           syncKeycloak: 'Sync from Keycloak',
@@ -5340,6 +5344,8 @@ export const i18nResources = {
           sendPasswordSetupEmail: 'Send invitation email to set password',
         },
         confirm: {
+          activateTitle: 'Activate user',
+          activateDescription: 'The selected user will be activated again.',
           singleTitle: 'Deactivate user',
           singleDescription: 'The selected user will be deactivated.',
           bulkTitle: 'Deactivate multiple users',

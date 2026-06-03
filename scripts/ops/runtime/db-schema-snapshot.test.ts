@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { diffSchemaSnapshots, extractSchemaSnapshotObjects } from './db-schema-snapshot.ts';
+import {
+  compareSchemaSnapshots,
+  diffSchemaSnapshots,
+  extractSchemaSnapshotObjects,
+  normalizeSchemaSnapshotSql,
+} from './db-schema-snapshot.ts';
 
 describe('extractSchemaSnapshotObjects', () => {
   it('extracts supported schema objects and ignores graphile_worker by default', () => {
@@ -59,6 +64,65 @@ describe('diffSchemaSnapshots', () => {
       ignoredSchemas: ['graphile_worker'],
       missingObjects: ['rls:force:iam.legal_text_targets', 'table:public.expected_table', 'trigger:iam.expected_table.trg_expected'],
       unexpectedObjects: ['table:public.actual_table'],
+    });
+  });
+});
+
+describe('normalizeSchemaSnapshotSql', () => {
+  it('removes volatile dump preamble lines and ignored schema sections', () => {
+    const sql = `
+      --
+      -- PostgreSQL database dump
+      --
+      \\restrict token
+
+      -- Name: graphile_worker; Type: SCHEMA; Schema: -; Owner: -
+      --
+
+      CREATE SCHEMA graphile_worker;
+
+
+      -- Name: jobs; Type: TABLE; Schema: graphile_worker; Owner: -
+      --
+
+      CREATE TABLE graphile_worker.jobs (
+        id bigint NOT NULL
+      );
+
+      -- Name: examples; Type: TABLE; Schema: iam; Owner: -
+      --
+
+      CREATE TABLE iam.examples (
+        id uuid NOT NULL
+      );
+    `;
+
+    expect(normalizeSchemaSnapshotSql(sql)).toBe(`CREATE TABLE iam.examples (\n        id uuid NOT NULL\n      );`);
+  });
+});
+
+describe('compareSchemaSnapshots', () => {
+  it('detects definition drift even when object names stay stable', () => {
+    const expectedSql = `
+      -- Name: examples; Type: TABLE; Schema: iam; Owner: -
+      CREATE TABLE iam.examples (
+        id uuid NOT NULL,
+        label text NOT NULL DEFAULT ''::text
+      );
+    `;
+    const actualSql = `
+      -- Name: examples; Type: TABLE; Schema: iam; Owner: -
+      CREATE TABLE iam.examples (
+        id uuid NOT NULL,
+        label text
+      );
+    `;
+
+    expect(compareSchemaSnapshots(actualSql, expectedSql)).toEqual({
+      contentMatches: false,
+      ignoredSchemas: ['graphile_worker'],
+      missingObjects: [],
+      unexpectedObjects: [],
     });
   });
 });

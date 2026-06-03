@@ -55,7 +55,7 @@ Das Kommando führt dieselben betroffenen Coverage-Targets wie der PR-Workflow a
 pnpm test:pr
 ```
 
-Das Kommando bildet den blockierenden GitHub-PR-Pfad fuer lokale Vorpruefung weitgehend nach:
+Das Kommando bildet den blockierenden GitHub-PR-Pfad für lokale Vorprüfung weitgehend nach:
 
 - `check:file-placement`
 - `affected` oder `full` für `lint`, `test:unit` und `test:types` abhängig vom PR-Scope
@@ -65,8 +65,8 @@ Das Kommando bildet den blockierenden GitHub-PR-Pfad fuer lokale Vorpruefung wei
 - `complexity-gate`
 - `affected`, `full` oder No-op für die allgemeinen echten Integrationsziele via `test:integration`
 - relevanten React-App-Build und relevanten `App E2E`
-- `pnpm verify:runtime-artifact` bleibt bewusst ausserhalb von `pnpm test:pr`; der schwere Runtime-Pfad laeuft nur im GitHub-Job `App Build` fuer runtime-kritische Pull Requests und weiterhin voll im Release-Pfad `pnpm test:release:studio`
-  - lokaler Benchmark am `2. Juni 2026`: `pnpm verify:runtime-artifact` trotz `21/23` Nx-Cache-Treffern bei ca. `220.98s` und damit oberhalb der internen Aktivierungsgrenze fuer generische PR-Gates
+- `pnpm verify:runtime-artifact` bleibt bewusst außerhalb von `pnpm test:pr`; der schwere Runtime-Pfad läuft nur im GitHub-Job `App Build` für runtime-kritische Pull Requests und weiterhin voll im Release-Pfad `pnpm test:release:studio`
+  - lokaler Benchmark am `2. Juni 2026`: `pnpm verify:runtime-artifact` trotz `21/23` Nx-Cache-Treffern bei ca. `220.98s` und damit oberhalb der internen Aktivierungsgrenze für generische PR-Gates
 - i18n für `apps/sva-studio-react` und Plugin-UI läuft bewusst über den vorhandenen Build-Vorcheck `sva-studio-react:check:i18n`; es gibt dafür absichtlich keinen zweiten parallelen PR-Job, um denselben Signaltyp nicht doppelt auszuführen
 - das selektive GitHub-Gate `Quality Gates / A11y` bleibt ein eigener UI-spezifischer Signalpfad; lokal wird es bei UI-relevanten PRs gezielt mit `pnpm test:a11y` vorgeprüft, statt jeden `test:pr`-Lauf pauschal zu verlängern
 
@@ -173,7 +173,7 @@ Workflow: `.github/workflows/runtime-gates.yml`
 | `monitoring-stack` | Monitoring-spezifische Docker-/Stack-Checks | pfadbasiert |
 | `Schema Diff Gate` | Schema-Diff gegen Staging | pfadbasiert |
 | `Repository Hygiene / File Placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
-| `Repository Hygiene / DB Schema Snapshot` | migrationsbasierter Soll-Ist-Abgleich gegen `studio-db-schema-final.sql` mit No-op ausserhalb relevanter Pfade | alle PRs und `main` |
+| `Repository Hygiene / DB Schema Snapshot` | migrationsbasierter Soll-Ist-Abgleich gegen `studio-db-schema-final.sql` mit No-op außerhalb relevanter Pfade | alle PRs und `main` |
 
 ### Recommended Branch-Protection-Checks
 
@@ -201,15 +201,15 @@ Die wichtigsten Workflows schreiben eine kurze `GITHUB_STEP_SUMMARY` mit Scope, 
 
 ### Echte Integrationsziele
 
-`test:integration` steht nur fuer echte infra-abhaengige Targets. Aktuell gehoert dazu im allgemeinen Gate nur `data:test:integration`. Bekannte Platzhalter wie `sva-studio-react`, `core`, `media`, `studio-module-iam`, `tooling-testing` und die Plugin-Pakete werden dort bewusst nicht mehr als gruene Integrationssignale mitgezaehlt. `monitoring-client:test:integration` bleibt ein echtes Stack-Signal, wird aber dedupliziert ueber den separaten Workflow `Monitoring Stack` abgesichert.
+`test:integration` steht nur für echte infra-abhängige Targets. Aktuell gehört dazu im allgemeinen Gate nur `data:test:integration`. Bekannte Platzhalter wie `sva-studio-react`, `core`, `media`, `studio-module-iam`, `tooling-testing` und die Plugin-Pakete werden dort bewusst nicht mehr als grüne Integrationssignale mitgezählt. `monitoring-client:test:integration` bleibt ein echtes Stack-Signal, wird aber dedupliziert über den separaten Workflow `Monitoring Stack` abgesichert.
 
 ### DB-Snapshot-Gate
 
-Das Gate `Repository Hygiene / DB Schema Snapshot` vergleicht einen sauberen migrationsbasierten Postgres-Schema-Dump mit `docs/development/studio-db-schema-final.sql`. Der Job laeuft nur fuer relevante Pfade wie `packages/data/migrations/**`, die Snapshot-Dokumente und den Check selbst; alle anderen PRs enden bewusst als erfolgreicher No-op.
+Das Gate `Repository Hygiene / DB Schema Snapshot` vergleicht einen sauberen migrationsbasierten Postgres-Schema-Dump mit `docs/development/studio-db-schema-final.sql`. Der Job läuft nur für relevante Pfade wie `packages/data/migrations/**`, die Snapshot-Dokumente und den Check selbst; alle anderen PRs enden bewusst als erfolgreicher No-op.
 
 Aktivierungskriterium:
 
-- blockierend nur solange die relevante Median-Mehrlast im CI-Pfad bei hoechstens `2 Minuten` liegt
+- blockierend nur solange die relevante Median-Mehrlast im CI-Pfad bei höchstens `2 Minuten` liegt
 - initialer lokaler Benchmark am `2. Juni 2026`: bestehender Runtime-Pfad `pnpm env:verify:db-schema-snapshot` ca. `10.82s`, dedizierter CI-Check gegen einen sauberen Migrationsstand ca. `18.07s`
 
 ## Nx-Remote-Cache: sichere Aktivierung vorbereiten
@@ -222,16 +222,16 @@ Empfohlene Reihenfolge:
    ```bash
    pnpm nx connect
    ```
-2. Den erzeugten `nxCloudId`-Patch nach `nx.json` uebernehmen.
+2. Den erzeugten `nxCloudId`-Patch nach `nx.json` übernehmen.
 3. In GitHub Actions ein Secret `NX_CLOUD_ENCRYPTION_KEY` anlegen.
 4. Das Secret in den relevanten Workflows als Environment-Variable durchreichen.
-5. Fuer echte Deploy-Artefakte den Cache bewusst umgehen, wenn ein Lauf ein produktiv ausgerolltes Artefakt erzeugt.
+5. Für echte Deploy-Artefakte den Cache bewusst umgehen, wenn ein Lauf ein produktiv ausgerolltes Artefakt erzeugt.
 
 Wichtig:
 
-- Keine DIY-Bucket- oder Shared-FS-Remote-Caches fuer PR-Schreibzugriffe einfuehren. Nx weist aktuell explizit auf Cache-Poisoning-Risiken bei self-hosted Bucket-Loesungen hin.
+- Keine DIY-Bucket- oder Shared-FS-Remote-Caches für PR-Schreibzugriffe einführen. Nx weist aktuell explizit auf Cache-Poisoning-Risiken bei self-hosted Bucket-Lösungen hin.
 - Solange kein `nxCloudId` vorliegt, bleibt das Repository absichtlich bei lokalem Cache plus `affected`.
-- Die Aktivierung ist ein kleiner, separater Follow-up, weil dafuer ein echter Nx-Cloud-Workspace benoetigt wird.
+- Die Aktivierung ist ein kleiner, separater Follow-up, weil dafür ein echter Nx-Cloud-Workspace benötigt wird.
 
 ### Codecov-Schwellenwerte
 

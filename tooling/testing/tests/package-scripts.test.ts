@@ -249,9 +249,11 @@ describe('workspace package scripts', () => {
     expect(qualityWorkflow).toContain(
       'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
+    expect(qualityWorkflow).not.toContain('tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output');
     expect(runtimeWorkflow).toContain(
       'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
+    expect(runtimeWorkflow).not.toContain('tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output');
     expect(e2eWorkflow).toContain(
       'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );

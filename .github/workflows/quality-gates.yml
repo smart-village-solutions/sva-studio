@@ -110,7 +110,7 @@ jobs:
       - name: Determine PR scope
         id: scope
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
+        run: pnpm exec tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
       - name: Run unit gate
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
@@ -171,7 +171,7 @@ jobs:
       - name: Determine PR scope
         id: scope
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
+        run: pnpm exec tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
       - name: Run types gate
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
@@ -232,7 +232,7 @@ jobs:
       - name: Determine PR scope
         id: scope
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
+        run: pnpm exec tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
       - name: Run a11y gate
         if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.a11y_mode != 'skip')

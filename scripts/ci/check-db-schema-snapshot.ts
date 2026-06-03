@@ -2,16 +2,17 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
+  compareSchemaSnapshots,
   DEFAULT_IGNORED_SCHEMA_NAMES,
-  diffSchemaSnapshots,
 } from '../ops/runtime/db-schema-snapshot.ts';
 
 export const DEFAULT_CI_SCHEMA_SNAPSHOT_DB = 'sva_schema_snapshot_ci';
 
 export interface SchemaSnapshotVerificationReport {
+  contentDrift: boolean;
   ignoredSchemas: readonly string[];
   missingObjects: readonly string[];
   status: 'drift' | 'ok';
@@ -22,7 +23,7 @@ interface CliOptions {
   json: boolean;
 }
 
-const rootDir = resolve(new URL('../..', import.meta.url).pathname);
+const rootDir = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
 const parseCliOptions = (args: readonly string[]): CliOptions => ({
   json: args.includes('--json'),
@@ -134,14 +135,16 @@ export const createSchemaSnapshotVerificationReport = (
   actualSql: string,
   expectedSql: string,
 ): SchemaSnapshotVerificationReport => {
-  const diff = diffSchemaSnapshots(actualSql, expectedSql, DEFAULT_IGNORED_SCHEMA_NAMES);
-  const hasDrift = diff.missingObjects.length > 0 || diff.unexpectedObjects.length > 0;
+  const comparison = compareSchemaSnapshots(actualSql, expectedSql, DEFAULT_IGNORED_SCHEMA_NAMES);
+  const hasDrift =
+    !comparison.contentMatches || comparison.missingObjects.length > 0 || comparison.unexpectedObjects.length > 0;
 
   return {
-    ignoredSchemas: diff.ignoredSchemas,
-    missingObjects: diff.missingObjects,
+    contentDrift: !comparison.contentMatches,
+    ignoredSchemas: comparison.ignoredSchemas,
+    missingObjects: comparison.missingObjects,
     status: hasDrift ? 'drift' : 'ok',
-    unexpectedObjects: diff.unexpectedObjects,
+    unexpectedObjects: comparison.unexpectedObjects,
   };
 };
 
@@ -166,6 +169,7 @@ export const runDbSchemaSnapshotCheck = (args: readonly string[]): number => {
     );
   } else {
     console.log('Der DB-Schema-Snapshot driftet vom migrationsbasierten Referenzstand ab.');
+    console.log(`  Definitionsdrift: ${report.contentDrift ? 'ja' : 'nein'}`);
     console.log(`  Fehlende Objekte: ${report.missingObjects.join(', ') || 'keine'}`);
     console.log(`  Unerwartete Objekte: ${report.unexpectedObjects.join(', ') || 'keine'}`);
     console.log(`  Laufzeit: ${(durationMs / 1000).toFixed(2)}s`);

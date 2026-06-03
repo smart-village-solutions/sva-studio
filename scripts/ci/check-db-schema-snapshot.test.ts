@@ -20,10 +20,36 @@ describe('check-db-schema-snapshot', () => {
     `;
 
     expect(createSchemaSnapshotVerificationReport(actualSql, expectedSql)).toEqual({
+      contentDrift: true,
       ignoredSchemas: ['graphile_worker'],
       missingObjects: ['rls:force:iam.examples', 'table:public.expected_table'],
       status: 'drift',
       unexpectedObjects: ['table:public.actual_table'],
+    });
+  });
+
+  it('reports definition drift even when the object set stays stable', () => {
+    const expectedSql = `
+      -- Name: examples; Type: TABLE; Schema: iam; Owner: -
+      CREATE TABLE iam.examples (
+        id uuid NOT NULL,
+        label text NOT NULL DEFAULT ''::text
+      );
+    `;
+    const actualSql = `
+      -- Name: examples; Type: TABLE; Schema: iam; Owner: -
+      CREATE TABLE iam.examples (
+        id uuid NOT NULL,
+        label text
+      );
+    `;
+
+    expect(createSchemaSnapshotVerificationReport(actualSql, expectedSql)).toEqual({
+      contentDrift: true,
+      ignoredSchemas: ['graphile_worker'],
+      missingObjects: [],
+      status: 'drift',
+      unexpectedObjects: [],
     });
   });
 

@@ -69,7 +69,7 @@ import {
   listGooseMigrationFiles as listGooseMigrationFilesFromDir,
   runLocalGooseStatus as runLocalGooseStatusWithDeps,
 } from './runtime/goose.ts';
-import { diffSchemaSnapshots } from './runtime/db-schema-snapshot.ts';
+import { compareSchemaSnapshots } from './runtime/db-schema-snapshot.ts';
 import { runBootstrapJobAgainstAcceptance as runBootstrapJobAgainstAcceptanceWithDeps } from './runtime/bootstrap-job.ts';
 import {
   buildLocalInstanceRegistryIdentitySelectSql,
@@ -213,6 +213,7 @@ type LocalTenantSecretSyncSummary = Readonly<{
 }>;
 
 type SchemaSnapshotVerificationReport = Readonly<{
+  contentDrift: boolean;
   ignoredSchemas: readonly string[];
   missingObjects: readonly string[];
   status: 'drift' | 'ok';
@@ -2059,14 +2060,16 @@ const verifyDbSchemaSnapshot = (
   actualSql: string,
   expectedSql: string,
 ): SchemaSnapshotVerificationReport => {
-  const diff = diffSchemaSnapshots(actualSql, expectedSql);
-  const hasDrift = diff.missingObjects.length > 0 || diff.unexpectedObjects.length > 0;
+  const comparison = compareSchemaSnapshots(actualSql, expectedSql);
+  const hasDrift =
+    !comparison.contentMatches || comparison.missingObjects.length > 0 || comparison.unexpectedObjects.length > 0;
 
   return {
-    ignoredSchemas: diff.ignoredSchemas,
-    missingObjects: diff.missingObjects,
+    contentDrift: !comparison.contentMatches,
+    ignoredSchemas: comparison.ignoredSchemas,
+    missingObjects: comparison.missingObjects,
     status: hasDrift ? 'drift' : 'ok',
-    unexpectedObjects: diff.unexpectedObjects,
+    unexpectedObjects: comparison.unexpectedObjects,
   };
 };
 

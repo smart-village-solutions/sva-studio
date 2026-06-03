@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript, React, TanStack Router, Vitest, Nx, `@sva/studio-ui-react`
 
+**Archivstatus:** Inhaltlich umgesetzt im Waste-Management-Filter-Slice auf `main`; die Checkboxen wurden für die Archivierung auf den tatsächlichen Stand nachgezogen.
+
 ---
 
 ### Task 1: Search-Param-Vertrag und Fractions-Praesentation erweitern
@@ -18,10 +20,10 @@
 - Test: `packages/plugin-waste-management/tests/search-params.test.ts`
 - Test: `packages/plugin-waste-management/tests/waste-management.master-data-presentation.test.ts`
 
-- [ ] Step 1: Failing Tests fuer `fractionsStatus` und Fraktionen-Filterung schreiben
-- [ ] Step 2: Gezielte Testfiles per Nx ausfuehren und rote Faelle bestaetigen
-- [ ] Step 3: `fractionsStatus` typisiert normalisieren und Fraktionen-Praesentation auf den neuen Param umstellen
-- [ ] Step 4: Dieselben Testfiles erneut ausfuehren und gruen bestaetigen
+- [x] Step 1: Failing Tests fuer `fractionsStatus` und Fraktionen-Filterung schreiben
+- [x] Step 2: Gezielte Testfiles per Nx ausfuehren und rote Faelle bestaetigen
+- [x] Step 3: `fractionsStatus` typisiert normalisieren und Fraktionen-Praesentation auf den neuen Param umstellen
+- [x] Step 4: Dieselben Testfiles erneut ausfuehren und gruen bestaetigen
 
 ### Task 2: Fraktionen-Toolbar mit Filter-Modal umsetzen
 
@@ -33,10 +35,10 @@
 - Test: `packages/plugin-waste-management/tests/waste-management.master-data-fractions-content.test.tsx`
 - Test: `packages/plugin-waste-management/tests/waste-management.master-data-tab-content.test.tsx`
 
-- [ ] Step 1: Failing UI-Tests fuer `Filtern`-Button, Modal und Search-Param-Writeback schreiben
-- [ ] Step 2: Gezielte Testfiles per Nx ausfuehren und rote Faelle bestaetigen
-- [ ] Step 3: Minimalen Toolbar-/Modal-Pfad implementieren und Router-Writeback verdrahten
-- [ ] Step 4: Dieselben Testfiles erneut ausfuehren und gruen bestaetigen
+- [x] Step 1: Failing UI-Tests fuer `Filtern`-Button, Modal und Search-Param-Writeback schreiben
+- [x] Step 2: Gezielte Testfiles per Nx ausfuehren und rote Faelle bestaetigen
+- [x] Step 3: Minimalen Toolbar-/Modal-Pfad implementieren und Router-Writeback verdrahten
+- [x] Step 4: Dieselben Testfiles erneut ausfuehren und gruen bestaetigen
 
 ### Task 3: Uebersetzungen und betroffener Gate-Pfad
 
@@ -48,7 +50,7 @@
 - Verify: `packages/plugin-waste-management/tests/waste-management.master-data-fractions-content.test.tsx`
 - Verify: `packages/plugin-waste-management/tests/waste-management.master-data-tab-content.test.tsx`
 
-- [ ] Step 1: i18n-Keys fuer Button, Modal und Statusoptionen ergaenzen
-- [ ] Step 2: Kleinsten relevanten Unit-Gate-Pfad per Nx ausfuehren
-- [ ] Step 3: Type-Gate fuer das betroffene Package per Nx ausfuehren
-- [ ] Step 4: Plan-Check gegen Spec und Diff abschliessen
+- [x] Step 1: i18n-Keys fuer Button, Modal und Statusoptionen ergaenzen
+- [x] Step 2: Kleinsten relevanten Unit-Gate-Pfad per Nx ausfuehren
+- [x] Step 3: Type-Gate fuer das betroffene Package per Nx ausfuehren
+- [x] Step 4: Plan-Check gegen Spec und Diff abschliessen

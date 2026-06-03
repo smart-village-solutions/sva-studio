@@ -70,19 +70,28 @@ const renderDiagnosticCodes = (diagnostics: readonly IamKeycloakObjectDiagnostic
     </span>
   ) : null;
 
+type StatusActionDialogState =
+  | {
+      action: 'activate';
+      mode: 'single';
+      userId: string;
+    }
+  | {
+      action: 'deactivate';
+      mode: 'single';
+      userId: string;
+    }
+  | {
+      action: 'deactivate';
+      mode: 'bulk';
+      userIds: string[];
+    };
+
 export const UserListPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const usersApi = useUsers();
 
-  const [statusActionDialog, setStatusActionDialog] = React.useState<
-    | {
-        action: 'activate' | 'deactivate';
-        mode: 'single' | 'bulk';
-        userId?: string;
-        userIds?: string[];
-      }
-    | null
-  >(null);
+  const [statusActionDialog, setStatusActionDialog] = React.useState<StatusActionDialogState | null>(null);
   const [syncStatus, setSyncStatus] = React.useState<'idle' | 'pending' | 'success' | 'empty' | 'error'>('idle');
   const [syncResult, setSyncResult] = React.useState<IamUserImportSyncReport | null>(null);
   const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
@@ -98,19 +107,17 @@ export const UserListPage = () => {
       return;
     }
 
-    if (action.action === 'activate' && action.mode === 'single' && action.userId) {
+    if (action.action === 'activate') {
       await usersApi.updateUser(action.userId, { status: 'active' });
       return;
     }
 
-    if (action.action === 'deactivate' && action.mode === 'single' && action.userId) {
+    if (action.mode === 'single') {
       await usersApi.deactivateUser(action.userId);
       return;
     }
 
-    if (action.action === 'deactivate' && action.mode === 'bulk' && action.userIds) {
-      await usersApi.bulkDeactivate(action.userIds);
-    }
+    await usersApi.bulkDeactivate(action.userIds);
   };
 
   const onSyncUsers = async () => {

@@ -25,15 +25,11 @@ export type DsrExportPayload = {
     generatedAt: string;
     instanceId: string;
     format: DsrExportFormat;
-    subject: string;
   };
   account: {
     id: string;
-    keycloakSubject: string;
     email?: string;
     displayName?: string;
-    encryptedEmail?: string | null;
-    encryptedDisplayName?: string | null;
     isBlocked: boolean;
     softDeletedAt?: string | null;
     deleteAfter?: string | null;
@@ -46,6 +42,15 @@ export type DsrExportPayload = {
   };
   organizations: Array<{ id: string; organizationKey: string; displayName: string }>;
   roles: Array<{ id: string; roleName: string; description: string | null }>;
+  groups: Array<{
+    groupId: string;
+    groupKey: string;
+    displayName: string;
+    groupType: string;
+    origin: string;
+    validFrom?: string;
+    validTo?: string;
+  }>;
   legalHolds: Array<{ id: string; active: boolean; holdReason: string; holdUntil: string | null; createdAt: string }>;
   dsrRequests: Array<{
     id: string;
@@ -53,6 +58,16 @@ export type DsrExportPayload = {
     status: string;
     requestAcceptedAt: string;
     completedAt: string | null;
+  }>;
+  legalAcceptances: Array<{
+    id: string;
+    legalTextId: string;
+    legalTextVersion: string;
+    name: string;
+    locale: string;
+    acceptedAt: string;
+    revokedAt?: string;
+    actionType: string;
   }>;
   consents: {
     nonEssentialProcessingAllowed: boolean;
@@ -179,6 +194,38 @@ LIMIT 20;
     [input.instanceId, input.account.id]
   );
 
+  const groupRows = await client.query<{
+    group_id: string;
+    group_key: string;
+    display_name: string;
+    group_type: string;
+    origin: string;
+    valid_from: string | null;
+    valid_until: string | null;
+  }>(
+    `
+SELECT
+  g.id AS group_id,
+  g.group_key,
+  g.display_name,
+  g.group_type,
+  ag.origin,
+  ag.valid_from::text,
+  ag.valid_until::text
+FROM iam.account_groups ag
+JOIN iam.groups g
+  ON g.instance_id = ag.instance_id
+ AND g.id = ag.group_id
+WHERE ag.instance_id = $1
+  AND ag.account_id = $2::uuid
+  AND g.is_active = true
+  AND (ag.valid_from IS NULL OR ag.valid_from <= NOW())
+  AND (ag.valid_until IS NULL OR ag.valid_until > NOW())
+ORDER BY g.display_name ASC, g.group_key ASC;
+`,
+    [input.instanceId, input.account.id]
+  );
+
   const requestRows = await client.query<{
     id: string;
     request_type: string;
@@ -192,6 +239,38 @@ FROM iam.data_subject_requests
 WHERE instance_id = $1
   AND target_account_id = $2::uuid
 ORDER BY request_accepted_at DESC
+LIMIT 50;
+`,
+    [input.instanceId, input.account.id]
+  );
+
+  const legalAcceptanceRows = await client.query<{
+    id: string;
+    legal_text_id: string;
+    legal_text_version: string;
+    name: string;
+    locale: string;
+    accepted_at: string;
+    revoked_at: string | null;
+    action_type: string | null;
+  }>(
+    `
+SELECT
+  lta.id,
+  ltv.legal_text_id,
+  ltv.legal_text_version,
+  ltv.name,
+  ltv.locale,
+  lta.accepted_at::text,
+  lta.revoked_at::text,
+  lta.action_type
+FROM iam.legal_text_acceptances lta
+JOIN iam.legal_text_versions ltv
+  ON ltv.id = lta.legal_text_version_id
+ AND ltv.instance_id = lta.instance_id
+WHERE lta.instance_id = $1
+  AND lta.account_id = $2::uuid
+ORDER BY lta.accepted_at DESC
 LIMIT 50;
 `,
     [input.instanceId, input.account.id]
@@ -211,15 +290,11 @@ LIMIT 50;
       generatedAt: new Date().toISOString(),
       instanceId: input.instanceId,
       format: input.format,
-      subject: input.account.keycloak_subject,
     },
     account: {
       id: input.account.id,
-      keycloakSubject: input.account.keycloak_subject,
       email: emailDecrypted,
       displayName: displayNameDecrypted,
-      encryptedEmail: input.account.email_ciphertext,
-      encryptedDisplayName: input.account.display_name_ciphertext,
       isBlocked: input.account.is_blocked,
       softDeletedAt: input.account.soft_deleted_at,
       deleteAfter: input.account.delete_after,
@@ -240,6 +315,15 @@ LIMIT 50;
       roleName: row.role_name,
       description: row.description,
     })),
+    groups: groupRows.rows.map((row) => ({
+      groupId: row.group_id,
+      groupKey: row.group_key,
+      displayName: row.display_name,
+      groupType: row.group_type,
+      origin: row.origin,
+      ...(row.valid_from ? { validFrom: row.valid_from } : {}),
+      ...(row.valid_until ? { validTo: row.valid_until } : {}),
+    })),
     legalHolds: holdRows.rows.map((row) => ({
       id: row.id,
       active: row.active,
@@ -253,6 +337,16 @@ LIMIT 50;
       status: row.status,
       requestAcceptedAt: row.request_accepted_at,
       completedAt: row.completed_at,
+    })),
+    legalAcceptances: legalAcceptanceRows.rows.map((row) => ({
+      id: row.id,
+      legalTextId: row.legal_text_id,
+      legalTextVersion: row.legal_text_version,
+      name: row.name,
+      locale: row.locale,
+      acceptedAt: row.accepted_at,
+      ...(row.revoked_at ? { revokedAt: row.revoked_at } : {}),
+      actionType: row.action_type ?? 'accepted',
     })),
     consents: {
       nonEssentialProcessingAllowed: !input.account.non_essential_processing_opt_out_at,

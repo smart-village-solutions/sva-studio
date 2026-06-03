@@ -73,7 +73,11 @@ export const MediaLibraryPage = () => {
         total={mediaApi.total}
       />
       {mediaApi.assets.length > 0 ? (
-        <MediaAssetGrid assets={mediaApi.assets} usageByAssetId={mediaApi.usageByAssetId} />
+        <MediaAssetGrid
+          assets={mediaApi.assets}
+          usageByAssetId={mediaApi.usageByAssetId}
+          isUsageLoading={mediaApi.isUsageLoading}
+        />
       ) : (
         <Alert>
           <AlertDescription>{t('media.empty.body')}</AlertDescription>

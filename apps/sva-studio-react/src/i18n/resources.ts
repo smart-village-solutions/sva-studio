@@ -736,6 +736,7 @@ export const i18nResources = {
         },
         usageCountOne: '1 Verwendung',
         usageCountOther: '{{count}} Verwendungen',
+        usageCountLoading: 'Nutzung wird geladen',
         usageCountUnknown: 'Nutzung nicht verfügbar',
         assetCard: {
           preview: 'Bildvorschau',
@@ -4176,6 +4177,7 @@ export const i18nResources = {
         },
         usageCountOne: '1 use',
         usageCountOther: '{{count}} uses',
+        usageCountLoading: 'Usage loading',
         usageCountUnknown: 'Usage unavailable',
         assetCard: {
           preview: 'Image preview',

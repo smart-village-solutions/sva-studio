@@ -48,6 +48,7 @@ function MediaLibraryProbe(props: { readonly search?: string; readonly visibilit
   return (
     <div>
       <span data-testid="loading">{String(media.isLoading)}</span>
+      <span data-testid="usage-loading">{String(media.isUsageLoading)}</span>
       <span data-testid="asset-count">{String(media.assets.length)}</span>
       <span data-testid="usage-count">{firstUsageCount === null ? 'unknown' : String(firstUsageCount)}</span>
       <span data-testid="error-code">{media.error?.code ?? 'none'}</span>
@@ -178,6 +179,7 @@ describe('useMediaLibrary', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
+      expect(screen.getByTestId('usage-loading').textContent).toBe('false');
       expect(screen.getByTestId('asset-count').textContent).toBe('1');
       expect(screen.getByTestId('usage-count').textContent).toBe('3');
     });
@@ -202,6 +204,7 @@ describe('useMediaLibrary', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
+      expect(screen.getByTestId('usage-loading').textContent).toBe('false');
       expect(screen.getByTestId('asset-count').textContent).toBe('0');
       expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
       expect(screen.getByTestId('error-code').textContent).toBe(protectedError.code);
@@ -243,6 +246,7 @@ describe('useMediaLibrary', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
+      expect(screen.getByTestId('usage-loading').textContent).toBe('false');
       expect(screen.getByTestId('asset-count').textContent).toBe('1');
       expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
       expect(screen.getByTestId('error-code').textContent).toBe('none');

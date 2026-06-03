@@ -29,6 +29,7 @@ import { useAuth } from '../providers/auth-provider';
 type UseMediaLibraryResult = {
   readonly assets: readonly IamMediaAsset[];
   readonly usageByAssetId: Readonly<Record<string, number | null>>;
+  readonly isUsageLoading: boolean;
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
   readonly page: number;
@@ -63,6 +64,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
   const { invalidatePermissions } = useAuth();
   const [assets, setAssets] = React.useState<readonly IamMediaAsset[]>([]);
   const [usageByAssetId, setUsageByAssetId] = React.useState<Readonly<Record<string, number | null>>>({});
+  const [isUsageLoading, setIsUsageLoading] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [page, setPage] = React.useState(query.page ?? 1);
@@ -79,6 +81,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       visibility: query.visibility ?? null,
     });
     setIsLoading(true);
+    setIsUsageLoading(false);
     setError(null);
 
     try {
@@ -95,6 +98,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       setPageSize(response.pagination.pageSize);
       setTotal(response.pagination.total);
       setIsLoading(false);
+      setIsUsageLoading(response.data.length > 0);
       logBrowserOperationSuccess(mediaLogger, 'media_library_refetch_succeeded', {
         operation: 'list_media',
         item_count: response.data.length,
@@ -139,6 +143,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       }
 
       setUsageByAssetId(resolvedUsageByAssetId);
+      setIsUsageLoading(false);
     } catch (cause) {
       const resolvedError = asIamError(cause);
       if (resolvedError.status === 401 || resolvedError.status === 403) {
@@ -146,6 +151,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       }
       setAssets([]);
       setUsageByAssetId({});
+      setIsUsageLoading(false);
       setTotal(0);
       setError(resolvedError);
       setIsLoading(false);
@@ -162,6 +168,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
   return {
     assets,
     usageByAssetId,
+    isUsageLoading,
     isLoading,
     error,
     page,

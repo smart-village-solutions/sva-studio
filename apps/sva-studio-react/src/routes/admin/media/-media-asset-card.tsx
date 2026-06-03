@@ -9,6 +9,7 @@ import { resolveMediaCardState } from './-media-library-view-model.js';
 type MediaAssetCardProps = Readonly<{
   asset: IamMediaAsset;
   referenceCount: number | null;
+  isUsageLoading: boolean;
 }>;
 
 const stateVariantByValue = {
@@ -59,9 +60,11 @@ const isVisualPreview = (mimeType: string): boolean => mimeType.startsWith('imag
 
 const getAssetLabel = (asset: IamMediaAsset): string => asset.metadata.title?.trim() || asset.id;
 
-const usageCountLabel = (count: number | null): string => {
+const usageCountLabel = (count: number | null, isUsageLoading: boolean): string => {
   if (count === null) {
-    return t('media.library.usageCountUnknown');
+    return isUsageLoading
+      ? t('media.library.usageCountLoading')
+      : t('media.library.usageCountUnknown');
   }
 
   return count === 1
@@ -69,7 +72,7 @@ const usageCountLabel = (count: number | null): string => {
     : t('media.library.usageCountOther', { count });
 };
 
-export const MediaAssetCard = ({ asset, referenceCount }: MediaAssetCardProps) => {
+export const MediaAssetCard = ({ asset, referenceCount, isUsageLoading }: MediaAssetCardProps) => {
   const label = getAssetLabel(asset);
   const state = resolveMediaCardState(asset, referenceCount);
   const fileType = formatFileType(asset.mimeType);
@@ -110,7 +113,7 @@ export const MediaAssetCard = ({ asset, referenceCount }: MediaAssetCardProps) =
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Badge variant="outline">{fileType}</Badge>
           <span>{formatByteSize(asset.byteSize)}</span>
-          <span>{usageCountLabel(referenceCount)}</span>
+          <span>{usageCountLabel(referenceCount, isUsageLoading)}</span>
         </div>
       </CardContent>
     </Card>

@@ -114,6 +114,7 @@ describe('MediaLibraryPage', () => {
         'asset-unused': 0,
         'asset-pdf': 4,
       },
+      isUsageLoading: false,
       isLoading: false,
       error: null,
       page: 1,
@@ -157,6 +158,7 @@ describe('MediaLibraryPage', () => {
     useMediaLibraryMock.mockReturnValue({
       assets: [],
       usageByAssetId: {},
+      isUsageLoading: false,
       isLoading: false,
       error: null,
       page: 1,
@@ -178,6 +180,7 @@ describe('MediaLibraryPage', () => {
     useMediaLibraryMock.mockReturnValue({
       assets: [],
       usageByAssetId: {},
+      isUsageLoading: false,
       isLoading: false,
       error: { code: 'database_unavailable' },
       page: 1,
@@ -218,6 +221,7 @@ describe('MediaLibraryPage', () => {
       usageByAssetId: {
         'asset-unknown': null,
       },
+      isUsageLoading: false,
       isLoading: false,
       error: null,
       page: 1,
@@ -230,5 +234,42 @@ describe('MediaLibraryPage', () => {
 
     expect(screen.getByText('Nutzung nicht verfügbar')).toBeTruthy();
     expect(screen.getByText('bereit')).toBeTruthy();
+  });
+
+  it('renders the loading usage label while enrichment is still in flight', () => {
+    useMediaLibraryMock.mockReturnValue({
+      assets: [
+        {
+          id: 'asset-loading',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-loading',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 512_000,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {
+            title: 'Noch ladende Nutzungsdaten',
+            altText: 'Asset mit laufender Usage-Anreicherung',
+          },
+          technical: {},
+        },
+      ],
+      usageByAssetId: {
+        'asset-loading': null,
+      },
+      isUsageLoading: true,
+      isLoading: false,
+      error: null,
+      page: 1,
+      pageSize: 25,
+      total: 1,
+      refetch: vi.fn(),
+    });
+
+    render(<MediaLibraryPage />);
+
+    expect(screen.getByText('Nutzung wird geladen')).toBeTruthy();
   });
 });

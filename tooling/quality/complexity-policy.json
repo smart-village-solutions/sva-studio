@@ -518,6 +518,18 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-data-subject-rights/core.ts)"
     },
+    "auth-runtime:packages/auth-runtime/src/iam-data-subject-rights/export-worker.ts:fileLines": {
+      "ticketId": "QUAL-DSR-EXPORT-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "DSR-Export-Worker in kleinere Queue-, Persistenz- und Abschlussbausteine aufteilen (packages/auth-runtime/src/iam-data-subject-rights/export-worker.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-data-subject-rights/export-worker.ts:functionLines": {
+      "ticketId": "QUAL-DSR-EXPORT-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange DSR-Export-Worker-Handler in kleinere Lade-, Persistenz- und Fehlerpfade zerlegen (packages/auth-runtime/src/iam-data-subject-rights/export-worker.ts)"
+    },
     "auth-runtime:packages/auth-runtime/src/iam-media/core.ts:cyclomaticComplexity": {
       "ticketId": "baseline-auth-runtime-src-iam-media-core-ts",
       "ticketSystem": "policy-baseline",
@@ -895,6 +907,12 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/account/-account-privacy-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routing/app-route-bindings.tsx:fileLines": {
+      "ticketId": "QUAL-ACCOUNT-UI-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Route-Bindings in kleinere Lazy-Loader-, Placeholder- und Detail-Resolver-Module aufteilen (apps/sva-studio-react/src/routing/app-route-bindings.tsx)"
     },
     "frontend-app:apps/sva-studio-react/src/routes/account/-account-profile-page.tsx:cyclomaticComplexity": {
       "ticketId": "baseline-sva-studio-react-src-routes-account-account-profile-page-tsx",
@@ -1400,6 +1418,12 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-governance/src/dsr-export-flows.ts)"
     },
+    "iam-governance:packages/iam-governance/src/dsr-export-payload.ts:fileLines": {
+      "ticketId": "baseline-iam-governance-src-dsr-export-payload-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/dsr-export-payload.ts)"
+    },
     "iam-governance:packages/iam-governance/src/dsr-export-payload.ts:functionLines": {
       "ticketId": "baseline-iam-governance-src-dsr-export-payload-ts",
       "ticketSystem": "policy-baseline",
@@ -1423,6 +1447,18 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/iam-governance/src/dsr-read-models-internal.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/dsr-read-models.mappers.ts:fileLines": {
+      "ticketId": "QUAL-IAM-DSR-READ-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "DSR-Mapper in kleinere Self-Service-, Admin- und Aktivitaetsprojektionen aufteilen (packages/iam-governance/src/dsr-read-models.mappers.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/dsr-read-models.self-service-queries.ts:fileLines": {
+      "ticketId": "QUAL-IAM-DSR-READ-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Self-Service-DSR-Queries in kleinere Query-Builder und Detail-Resolver zerlegen (packages/iam-governance/src/dsr-read-models.self-service-queries.ts)"
     },
     "iam-governance:packages/iam-governance/src/governance-workflow-executor.ts:cyclomaticComplexity": {
       "ticketId": "baseline-iam-governance-src-governance-workflow-executor-ts",
@@ -2078,11 +2114,29 @@
       "status": "open",
       "summary": "Plugin-Operations-Repository in kleinere Query-, Mapping- und Mutation-Module zerlegen"
     },
+    "packages-default:packages/data-repositories/src/plugin-operations/index.ts:functionLines": {
+      "ticketId": "QUAL-PLUGIN-OPS-005",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Laengere Plugin-Operations-Repository-Funktionen in kleinere Filter-, Query- und Paging-Helfer zerlegen"
+    },
+    "packages-default:packages/data-repositories/src/plugin-operations/index.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-OPS-005",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Plugin-Operations-Repository-Verzweigungen in kleinere Where-Clause- und Query-Builder zerlegen"
+    },
     "plugin-sdk:packages/plugin-sdk/src/plugin-operations.ts:fileLines": {
       "ticketId": "QUAL-PLUGIN-OPS-006",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Plugin-SDK fuer Operations in kleinere Registrierungs- und Vertragshilfen aufteilen"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-operations/runner.ts:publicExports": {
+      "ticketId": "QUAL-PLUGIN-OPS-007",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Runner-API in kuratierte Host- und Plugin-Entrypoints segmentieren (packages/auth-runtime/src/plugin-operations/runner.ts)"
     },
     "routing:packages/routing/src/auth.routes.server.ts:fileLines": {
       "ticketId": "QUAL-109",

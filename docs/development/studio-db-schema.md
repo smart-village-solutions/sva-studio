@@ -18,7 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
-- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-05-20`
+- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-06-03`
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung
@@ -39,13 +39,13 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0048_iam_organization_mainserver_credentials.sql`
+- Repo-Migrationen vorhanden bis: `0049_studio_jobs_and_dsr_export_worker.sql`
 
-Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0042`:
+Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0049`:
 
 - auf `iam.role_permissions` die Ownership-/Origin-Felder `grant_origin_kind` und `grant_origin_module_id` samt Check-Constraints und Index `idx_role_permissions_origin_module`
 - auf `iam.role_permissions` das Assignment-Scope-Feld `access_scope` samt Constraint `role_permissions_access_scope_check`
-- die Tabellen `iam.plugin_operation_jobs` und `iam.plugin_operation_job_events` sowie die ergänzten Runtime-Felder aus `0040_plugin_operation_job_runtime_fields.sql`
+- die Tabellen `iam.studio_jobs` und `iam.studio_job_events`, das Quellfeld `source` für Host- und Plugin-Jobs sowie die Verknüpfung `iam.data_subject_export_jobs.studio_job_id` aus `0049_studio_jobs_and_dsr_export_worker.sql`
 - der External-Interface-Katalog mit `iam.external_interface_types` und `iam.instance_external_interfaces`
 - die tenantbezogenen Löschregel-Tabellen `iam.instance_deletion_rules` und `iam.account_deletion_content_preferences`
 - die Lifecycle-Spalten `last_login_at`, `deletion_lifecycle_state`, `deactivated_at`, `pseudonymized_at`, `deletion_marked_at` auf `iam.accounts`
@@ -62,7 +62,7 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält explizit die Repo-Migrationen bis `0048_iam_organization_mainserver_credentials.sql`
+- Enthält explizit die Repo-Migrationen bis `0049_studio_jobs_and_dsr_export_worker.sql`
 - Aktueller Soll-Stand: **54 Tabellen**, davon **53 im Schema `iam`**
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.

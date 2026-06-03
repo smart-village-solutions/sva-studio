@@ -5,6 +5,7 @@ import { createDsrExportFlows } from '@sva/iam-governance/dsr-export-flows';
 import { createDsrExportStatusHandlers } from '@sva/iam-governance/dsr-export-status';
 import type { DsrExportAccountSnapshot as AccountSnapshot, DsrExportFormat as ExportFormat } from '@sva/iam-governance/dsr-export-payload';
 import { runDsrMaintenance } from '@sva/iam-governance/dsr-maintenance';
+import { createAndQueueDsrExportStudioJob } from './export-worker.js';
 
 import { withAuthenticatedUser } from '../middleware.js';
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
@@ -21,7 +22,12 @@ import { dataSubjectRightsRequestSchema } from '../shared/schemas.js';
 import { asApiItem, asApiList, createApiError, readPage, requireIdempotencyKey, toPayloadHash } from '../iam-account-management/api-helpers.js';
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
-import { getAdminDsrCase, listAdminDsrCases, loadDsrSelfServiceOverview } from '@sva/iam-governance';
+import {
+  getAdminDsrCase,
+  getSelfServiceActivityItem,
+  listAdminDsrCases,
+  loadDsrSelfServiceOverview,
+} from '@sva/iam-governance';
 import { DsrAccountSnapshotNotFoundError } from '@sva/iam-governance/dsr-read-models-internal';
 import { readPathSegment } from '../shared/request-helpers.js';
 import { revokeUserSessions } from '../session-revocation.js';
@@ -33,6 +39,7 @@ const dsrExportFlows = createDsrExportFlows({
   reserveIdempotency,
   completeIdempotency,
   toPayloadHash,
+  createAsyncStudioJob: createAndQueueDsrExportStudioJob,
   jsonResponse,
   textResponse,
 });
@@ -1083,6 +1090,61 @@ export const getMyDataSubjectRightsHandler = async (request: Request): Promise<R
           instanceId,
           error,
           'DSR-Daten konnten nicht geladen werden.'
+        );
+      }
+    });
+  });
+};
+
+export const getMyDataSubjectRightsCaseHandler = async (request: Request): Promise<Response> => {
+  return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    return withAuthenticatedUser(request, async ({ user }) => {
+      const instanceScope = resolveApiScopedInstance({
+        request,
+        fallback: user.instanceId,
+        userInstanceId: user.instanceId,
+        missingMessage: 'Instanzkontext fehlt.',
+        mismatchMessage: 'Instanzkontext unzulässig.',
+      });
+      const caseId = readPathSegment(request, 4);
+
+      if (!instanceScope.ok) {
+        return instanceScope.response;
+      }
+      if (!caseId || !isUuid(caseId)) {
+        return createApiError(400, 'invalid_request', 'Ungültige Datenschutzfall-ID.', getRequestId());
+      }
+
+      const { instanceId } = instanceScope;
+
+      try {
+        return await withInstanceScopedDb(instanceId, async (client) => {
+          const requesterAccountId = await resolveRequesterAccountId(client, {
+            instanceId,
+            keycloakSubject: user.id,
+          });
+          if (!requesterAccountId) {
+            return createApiError(404, 'not_found', 'Konto nicht gefunden.', getRequestId());
+          }
+
+          const item = await getSelfServiceActivityItem(client, {
+            instanceId,
+            accountId: requesterAccountId,
+            caseId,
+          });
+          if (!item) {
+            return createApiError(404, 'not_found', 'Datenschutzfall wurde nicht gefunden.', getRequestId());
+          }
+
+          return jsonResponse(200, asApiItem(item, getRequestId()));
+        });
+      } catch (error) {
+        return handleApiDatabaseError(
+          'DSR self case detail failed',
+          'self_case_detail',
+          instanceId,
+          error,
+          'DSR-Fall konnte nicht geladen werden.'
         );
       }
     });

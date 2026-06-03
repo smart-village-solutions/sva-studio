@@ -1,99 +1,43 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { AnchorHTMLAttributes } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AccountPrivacyPage } from './-account-privacy-page';
 
 const getMyDataSubjectRightsMock = vi.fn();
-const getMyDeletionRulesMock = vi.fn();
 const requestDataExportMock = vi.fn();
 const createDataSubjectRequestMock = vi.fn();
 const checkOptionalProcessingMock = vi.fn();
 const requestPermissionChangeMock = vi.fn();
-const saveMyDeletionRulesContentPreferenceMock = vi.fn();
 
 vi.mock('../../lib/iam-api', () => ({
   getMyDataSubjectRights: (...args: unknown[]) => getMyDataSubjectRightsMock(...args),
-  getMyDeletionRules: (...args: unknown[]) => getMyDeletionRulesMock(...args),
   requestDataExport: (...args: unknown[]) => requestDataExportMock(...args),
   createDataSubjectRequest: (...args: unknown[]) => createDataSubjectRequestMock(...args),
   checkOptionalProcessing: (...args: unknown[]) => checkOptionalProcessingMock(...args),
   requestPermissionChange: (...args: unknown[]) => requestPermissionChangeMock(...args),
-  saveMyDeletionRulesContentPreference: (...args: unknown[]) =>
-    saveMyDeletionRulesContentPreferenceMock(...args),
+  buildMyDataExportDownloadUrl: (jobId: string, format: string) =>
+    `/iam/me/data-export/status?jobId=${jobId}&download=${format}`,
+}));
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => <a {...props}>{children}</a>,
 }));
 
 describe('AccountPrivacyPage', () => {
   beforeEach(() => {
     getMyDataSubjectRightsMock.mockReset();
-    getMyDeletionRulesMock.mockReset();
     requestDataExportMock.mockReset();
     createDataSubjectRequestMock.mockReset();
     checkOptionalProcessingMock.mockReset();
     requestPermissionChangeMock.mockReset();
-    saveMyDeletionRulesContentPreferenceMock.mockReset();
-
-    getMyDeletionRulesMock.mockResolvedValue({
-      instanceId: 'de-musterhausen',
-      lastLoginAt: '2026-03-20T10:00:00.000Z',
-      lifecycleState: 'active',
-      rules: {
-        instanceId: 'de-musterhausen',
-        deactivateAfterDays: 90,
-        pseudonymizeAfterDays: 180,
-        deleteAfterDays: 365,
-        defaultContentStrategy: 'retain',
-        allowContentPreferenceOverride: true,
-        canEdit: false,
-      },
-      contentPreference: {
-        isOverridden: false,
-        effectiveStrategy: 'retain',
-      },
-    });
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it('renders self-service overview with canonical DSR status labels', async () => {
-    getMyDataSubjectRightsMock.mockResolvedValue({
-      data: {
-        instanceId: 'de-musterhausen',
-        accountId: 'account-1',
-        nonEssentialProcessingAllowed: false,
-        processingRestrictedAt: '2026-03-15T10:00:00.000Z',
-        processingRestrictionReason: 'legal_hold',
-        nonEssentialProcessingOptOutAt: '2026-03-14T10:00:00.000Z',
-        requests: [
-          {
-            id: 'req-1',
-            type: 'request',
-            canonicalStatus: 'in_progress',
-            rawStatus: 'processing',
-            title: 'Auskunftsersuchen',
-            summary: 'Auskunft zu Profil- und Organisationsdaten',
-            createdAt: '2026-03-15T10:00:00.000Z',
-            metadata: {},
-          },
-        ],
-        exportJobs: [],
-        legalHolds: [],
-      },
-    });
-
-    render(<AccountPrivacyPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Datenschutz & Transparenz' })).toBeTruthy();
-      expect(screen.getByText('Auskunftsersuchen')).toBeTruthy();
-      expect(screen.getByText('In Bearbeitung')).toBeTruthy();
-      expect(screen.getByText('Rohstatus: processing')).toBeTruthy();
-      expect(screen.getByText('Eingeschränkt')).toBeTruthy();
-    });
-  });
-
-  it('shows empty state and submits the CTA request', async () => {
+  it('renders six action cards with title description and CTA', async () => {
     getMyDataSubjectRightsMock.mockResolvedValue({
       data: {
         instanceId: 'de-musterhausen',
@@ -102,173 +46,8 @@ describe('AccountPrivacyPage', () => {
         requests: [],
         exportJobs: [],
         legalHolds: [],
+        activityItems: [],
       },
-    });
-    createDataSubjectRequestMock.mockResolvedValue({ status: 'accepted' });
-
-    render(<AccountPrivacyPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Noch keine Datenschutzvorgänge vorhanden')).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Erste Auskunftsanfrage starten' }));
-
-    await waitFor(() => {
-      expect(createDataSubjectRequestMock).toHaveBeenCalledWith({ type: 'access' });
-      expect(screen.getByText('Die Auskunftsanfrage wurde eingereicht.')).toBeTruthy();
-    });
-  });
-
-  it('shows a blocked status message for optional processing checks', async () => {
-    getMyDataSubjectRightsMock.mockResolvedValue({
-      data: {
-        instanceId: 'de-musterhausen',
-        accountId: 'account-1',
-        nonEssentialProcessingAllowed: false,
-        requests: [],
-        exportJobs: [],
-        legalHolds: [],
-      },
-    });
-    checkOptionalProcessingMock.mockResolvedValue({
-      error: 'blocked',
-      blockedByRestriction: true,
-    });
-
-    render(<AccountPrivacyPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Verarbeitungsstatus prüfen' })).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Verarbeitungsstatus prüfen' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Die angefragte Verarbeitung ist derzeit blockiert.')).toBeTruthy();
-    });
-  });
-
-  it('renders load failures as destructive alerts', async () => {
-    getMyDataSubjectRightsMock.mockRejectedValue(new Error('privacy_unavailable'));
-
-    render(<AccountPrivacyPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('privacy_unavailable');
-    });
-  });
-
-  it('renders tenant deletion rules and saves a personal content override', async () => {
-    getMyDataSubjectRightsMock.mockResolvedValue({
-      data: {
-        instanceId: 'de-musterhausen',
-        accountId: 'account-1',
-        nonEssentialProcessingAllowed: true,
-        requests: [],
-        exportJobs: [],
-        legalHolds: [],
-      },
-    });
-    saveMyDeletionRulesContentPreferenceMock.mockResolvedValue({
-      instanceId: 'de-musterhausen',
-      lastLoginAt: '2026-03-20T10:00:00.000Z',
-      lifecycleState: 'active',
-      rules: {
-        instanceId: 'de-musterhausen',
-        deactivateAfterDays: 90,
-        pseudonymizeAfterDays: 180,
-        deleteAfterDays: 365,
-        defaultContentStrategy: 'retain',
-        allowContentPreferenceOverride: true,
-        canEdit: false,
-      },
-      contentPreference: {
-        isOverridden: true,
-        effectiveStrategy: 'with_owner_lifecycle',
-        overrideStrategy: 'with_owner_lifecycle',
-      },
-    });
-
-    render(<AccountPrivacyPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Konten-Löschregeln' })).toBeTruthy();
-      expect(screen.getByText('90')).toBeTruthy();
-      expect(screen.getByText('Aktiv')).toBeTruthy();
-    });
-
-    expect(screen.queryByText('Wirksame Inhaltsregel')).toBeNull();
-    expect((screen.getByLabelText('Regel für eigene Inhalte') as HTMLSelectElement).value).toBe('retain');
-
-    fireEvent.change(screen.getByLabelText('Regel für eigene Inhalte'), {
-      target: { value: 'with_owner_lifecycle' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Inhaltsregel speichern' }));
-
-    await waitFor(() => {
-      expect(saveMyDeletionRulesContentPreferenceMock).toHaveBeenCalledWith({
-        strategy: 'with_owner_lifecycle',
-      });
-      expect(screen.getByText('Die Inhaltsregel wurde gespeichert.')).toBeTruthy();
-    });
-  });
-
-  it('hides the override controls when the tenant disables personal content overrides', async () => {
-    getMyDataSubjectRightsMock.mockResolvedValue({
-      data: {
-        instanceId: 'de-musterhausen',
-        accountId: 'account-1',
-        nonEssentialProcessingAllowed: true,
-        requests: [],
-        exportJobs: [],
-        legalHolds: [],
-      },
-    });
-    getMyDeletionRulesMock.mockResolvedValue({
-      instanceId: 'de-musterhausen',
-      lastLoginAt: '2026-03-20T10:00:00.000Z',
-      lifecycleState: 'active',
-      rules: {
-        instanceId: 'de-musterhausen',
-        deactivateAfterDays: 90,
-        pseudonymizeAfterDays: 180,
-        deleteAfterDays: 365,
-        defaultContentStrategy: 'retain',
-        allowContentPreferenceOverride: false,
-        canEdit: false,
-      },
-      contentPreference: {
-        isOverridden: false,
-        effectiveStrategy: 'retain',
-      },
-    });
-
-    render(<AccountPrivacyPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Konten-Löschregeln' })).toBeTruthy();
-    });
-
-    expect(screen.queryByText('Wirksame Inhaltsregel')).toBeNull();
-    expect(screen.queryByLabelText('Regel für eigene Inhalte')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Inhaltsregel speichern' })).toBeNull();
-  });
-
-  it('hides the deletion-rules card for accounts without tenant scope', async () => {
-    getMyDataSubjectRightsMock.mockResolvedValue({
-      data: {
-        instanceId: 'de-musterhausen',
-        accountId: 'account-1',
-        nonEssentialProcessingAllowed: true,
-        requests: [],
-        exportJobs: [],
-        legalHolds: [],
-      },
-    });
-    getMyDeletionRulesMock.mockRejectedValue({
-      status: 403,
-      message: 'forbidden',
     });
 
     render(<AccountPrivacyPage />);
@@ -277,10 +56,30 @@ describe('AccountPrivacyPage', () => {
       expect(screen.getByRole('heading', { name: 'Datenschutz & Transparenz' })).toBeTruthy();
     });
 
-    expect(screen.queryByRole('heading', { name: 'Konten-Löschregeln' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Rechteänderung beantragen' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Auskunft anfordern' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Datenexport anfordern' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Widerspruch einreichen' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Löschanfrage anfordern' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Einschränkung der Verarbeitung anfordern' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Betroffenenanfragen' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Verarbeitung' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Verarbeitungsstatus prüfen' })).toBeNull();
+
+    const actionCardShells = screen
+      .getAllByRole('heading', { level: 2 })
+      .map((heading) => heading.closest('.rounded-lg'))
+      .filter((card): card is HTMLElement => card instanceof HTMLElement);
+
+    expect(actionCardShells).toHaveLength(6);
+    for (const card of actionCardShells) {
+      expect(card.className).toContain('h-full');
+      expect(card.className).toContain('min-h-[12.5rem]');
+      expect(card.querySelector('svg')).toBeTruthy();
+    }
   });
 
-  it('renders export failures as destructive alerts', async () => {
+  it('renders a privacy activity table sorted by newest activity first', async () => {
     getMyDataSubjectRightsMock.mockResolvedValue({
       data: {
         instanceId: 'de-musterhausen',
@@ -289,167 +88,100 @@ describe('AccountPrivacyPage', () => {
         requests: [],
         exportJobs: [],
         legalHolds: [],
-      },
-    });
-    requestDataExportMock.mockRejectedValue(new Error('forbidden_scope'));
-
-    render(<AccountPrivacyPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Datenexport anfordern' })).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Datenexport anfordern' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('forbidden_scope');
-    });
-  });
-
-  it('renders export, request and legal-hold details and supports all privacy actions', async () => {
-    getMyDataSubjectRightsMock.mockResolvedValue({
-      data: {
-        instanceId: 'de-musterhausen',
-        accountId: 'account-1',
-        nonEssentialProcessingAllowed: true,
-        processingRestrictedAt: undefined,
-        processingRestrictionReason: undefined,
-        nonEssentialProcessingOptOutAt: undefined,
-        requests: [
+        activityItems: [
           {
             id: 'req-1',
+            source: 'dsr',
             type: 'request',
-            canonicalStatus: 'failed',
-            rawStatus: 'rejected',
-            title: 'Widerspruch',
-            summary: 'Marketing-Opt-out',
-            createdAt: '2026-03-15T10:00:00.000Z',
+            canonicalStatus: 'queued',
+            rawStatus: 'accepted',
+            title: 'Auskunft',
+            summary: 'Anfrage wird vorbereitet',
+            createdAt: '2026-03-17T09:00:00.000Z',
             metadata: {},
           },
-        ],
-        exportJobs: [
           {
-            id: 'export-1',
+            id: 'req-2',
+            source: 'dsr',
+            type: 'request',
+            canonicalStatus: 'completed',
+            rawStatus: 'completed',
+            title: 'Rechteänderung',
+            summary: 'Mehr Rechte für Freigaben',
+            createdAt: '2026-03-18T10:00:00.000Z',
+            completedAt: '2026-03-18T10:05:00.000Z',
+            metadata: {},
+          },
+          {
+            id: 'exp-1',
+            source: 'dsr',
             type: 'export_job',
             canonicalStatus: 'completed',
-            rawStatus: 'done',
+            rawStatus: 'sent',
             title: 'Datenexport',
-            summary: 'JSON-Export fertig',
-            createdAt: '2026-03-14T10:00:00.000Z',
-            completedAt: '2026-03-14T11:00:00.000Z',
-            format: 'json',
+            summary: 'CSV-Export bereit',
+            format: 'csv',
+            createdAt: '2026-03-16T08:00:00.000Z',
+            completedAt: '2026-03-16T08:04:00.000Z',
             metadata: {},
           },
         ],
-        legalHolds: [
-          {
-            id: 'hold-1',
-            type: 'legal_hold',
-            canonicalStatus: 'blocked',
-            rawStatus: 'legal_hold',
-            title: 'Rechtliche Sperre',
-            summary: 'Löschung ausgesetzt',
-            createdAt: '2026-03-13T10:00:00.000Z',
-            blockedReason: 'legal_hold',
-            metadata: {},
-          },
-        ],
-      },
-    });
-    requestDataExportMock.mockResolvedValue({ status: 'accepted' });
-    createDataSubjectRequestMock.mockResolvedValue({ status: 'accepted' });
-    checkOptionalProcessingMock.mockResolvedValue({ allowed: true });
-    requestPermissionChangeMock.mockResolvedValue({
-      data: {
-        workflowId: 'wf-1',
-        operation: 'request_permission_change',
-        status: 'accepted',
       },
     });
 
     render(<AccountPrivacyPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Export-Jobs')).toBeTruthy();
-      expect(screen.getByText('Rechtliche Sperren')).toBeTruthy();
-      expect(screen.getByText('Abgeschlossen')).toBeTruthy();
-      expect(screen.getByText('Fehlgeschlagen')).toBeTruthy();
-      expect(screen.getByText('Blockiert')).toBeTruthy();
-      expect(screen.getByText(/Format: json/)).toBeTruthy();
-      expect(screen.getByText(/Blockiert durch: legal_hold/)).toBeTruthy();
+      expect(screen.getByRole('table', { name: 'Datenschutzvorgänge' })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Datenexport anfordern' }));
+    const headers = screen.getAllByRole('columnheader').map((header) => header.textContent?.trim());
+    expect(headers).toEqual(['Typ', 'Erstellungsdatum', 'Status', 'Letzte Änderung', 'ID', 'Aktionen']);
+
+    const rows = screen.getAllByRole('row');
+    expect(rows[1]?.textContent).toContain('req-2');
+    expect(rows[1]?.textContent).not.toContain('Rechteänderung');
+  });
+
+  it('routes access requests through the same note dialog flow as the other request actions', async () => {
+    getMyDataSubjectRightsMock.mockResolvedValue({
+      data: {
+        instanceId: 'de-musterhausen',
+        accountId: 'account-1',
+        nonEssentialProcessingAllowed: true,
+        requests: [],
+        exportJobs: [],
+        legalHolds: [],
+        activityItems: [],
+      },
+    });
+    createDataSubjectRequestMock.mockResolvedValue({ data: { id: 'req-1' } });
+
+    render(<AccountPrivacyPage />);
 
     await waitFor(() => {
-      expect(requestDataExportMock).toHaveBeenCalledWith({ format: 'json', async: true });
-      expect(screen.getByText('Der Export wurde in die Warteschlange gestellt.')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Auskunft anfordern' })).toBeTruthy();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Auskunft anfordern' }));
 
     await waitFor(() => {
-      expect(createDataSubjectRequestMock).toHaveBeenCalledWith({ type: 'access' });
-      expect(screen.getByText('Die Auskunftsanfrage wurde eingereicht.')).toBeTruthy();
+      expect(screen.getByRole('dialog', { name: 'Auskunft anfordern' })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Widerspruch einreichen' }));
+    const accessDialog = screen.getByRole('dialog', { name: 'Auskunft anfordern' });
+    expect(accessDialog.querySelector('form')?.className).toContain('pt-2');
+
+    fireEvent.change(screen.getByLabelText('Zusätzliche Hinweise'), {
+      target: { value: 'Bitte alle zu meinem Konto verarbeiteten Daten aufführen.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Auskunft senden' }));
 
     await waitFor(() => {
-      expect(createDataSubjectRequestMock).toHaveBeenCalledWith({ type: 'objection' });
-      expect(screen.getByText('Der Widerspruch wurde eingereicht.')).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Verarbeitungsstatus prüfen' }));
-
-    await waitFor(() => {
-      expect(checkOptionalProcessingMock).toHaveBeenCalledTimes(1);
-      expect(screen.getByText('Die optionale Verarbeitung ist aktuell zulässig.')).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Rechteänderung beantragen' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: 'Rechteänderung beantragen' })).toBeTruthy();
-    });
-
-    fireEvent.change(screen.getByLabelText('Gewünschte zusätzliche Rechte'), {
-      target: { value: 'Ich benötige zusätzliche Rechte für Veranstaltungsfreigaben.' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Antrag senden' }));
-
-    await waitFor(() => {
-      expect(requestPermissionChangeMock).toHaveBeenCalledWith({
-        requestNote: 'Ich benötige zusätzliche Rechte für Veranstaltungsfreigaben.',
+      expect(createDataSubjectRequestMock).toHaveBeenCalledWith({
+        type: 'access',
+        payload: { reason: 'Bitte alle zu meinem Konto verarbeiteten Daten aufführen.' },
       });
-      expect(screen.getByText('Die Anfrage zur Rechteänderung wurde eingereicht.')).toBeTruthy();
-    });
-  });
-
-  it('validates the self-service permission change request locally before submitting', async () => {
-    getMyDataSubjectRightsMock.mockResolvedValue({
-      data: {
-        instanceId: 'de-musterhausen',
-        accountId: 'account-1',
-        nonEssentialProcessingAllowed: true,
-        requests: [],
-        exportJobs: [],
-        legalHolds: [],
-      },
-    });
-
-    render(<AccountPrivacyPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Rechteänderung beantragen' })).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Rechteänderung beantragen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Antrag senden' }));
-
-    await waitFor(() => {
-      expect(requestPermissionChangeMock).not.toHaveBeenCalled();
-      expect(screen.getByText('Bitte beschreiben Sie den gewünschten zusätzlichen Zugriff.')).toBeTruthy();
     });
   });
 });

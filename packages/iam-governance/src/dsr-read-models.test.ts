@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   getAdminDsrCase,
+  getSelfServiceActivityItem,
   listAdminDsrCases,
   loadDsrSelfServiceOverview,
   toCanonicalDsrStatus,
@@ -76,7 +77,7 @@ describe('iam-data-subject-rights/read-models', () => {
             status: 'failed_export',
             error_message: 'upstream_timeout',
             target_account_id: 'account-1',
-            requested_by_account_id: 'requester-1',
+            requested_by_account_id: 'account-1',
             created_at: '2026-03-16T09:00:00.000Z',
             completed_at: null,
             target_display_name_ciphertext: 'Target User',
@@ -140,6 +141,203 @@ describe('iam-data-subject-rights/read-models', () => {
       id: 'hold-1',
       canonicalStatus: 'blocked',
       blockedReason: 'court_order',
+    });
+  });
+
+  it('builds a unified self-service privacy activity list ordered by newest activity first', async () => {
+    const client = buildClient(
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'account-1',
+            processing_restricted_at: null,
+            processing_restriction_reason: null,
+            non_essential_processing_opt_out_at: null,
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'req-2',
+            request_type: 'access',
+            status: 'completed',
+            requester_account_id: 'requester-1',
+            target_account_id: 'account-1',
+            legal_hold_blocked: false,
+            request_accepted_at: '2026-03-18T10:00:00.000Z',
+            completed_at: '2026-03-18T10:05:00.000Z',
+            updated_at: '2026-03-18T10:05:00.000Z',
+            requester_display_name_ciphertext: 'Requester',
+            requester_first_name_ciphertext: 'Req',
+            requester_last_name_ciphertext: 'Uester',
+            requester_keycloak_subject: 'kc-requester',
+            target_display_name_ciphertext: 'Target User',
+            target_first_name_ciphertext: 'Target',
+            target_last_name_ciphertext: 'User',
+            target_keycloak_subject: 'kc-target',
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'exp-1',
+            format: 'csv',
+            status: 'sent',
+            error_message: null,
+            target_account_id: 'account-1',
+            requested_by_account_id: 'account-1',
+            created_at: '2026-03-17T09:00:00.000Z',
+            completed_at: '2026-03-17T09:02:00.000Z',
+            target_display_name_ciphertext: 'Target User',
+            target_first_name_ciphertext: 'Target',
+            target_last_name_ciphertext: 'User',
+            target_keycloak_subject: 'kc-target',
+            requester_display_name_ciphertext: 'Requester',
+            requester_first_name_ciphertext: 'Req',
+            requester_last_name_ciphertext: 'Uester',
+            requester_keycloak_subject: 'kc-requester',
+          },
+        ],
+      },
+      {
+        rowCount: 0,
+        rows: [],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'consent-1',
+            legal_text_id: 'privacy_policy',
+            legal_text_version: '2026-03',
+            locale: 'de',
+            accepted_at: '2026-03-16T08:00:00.000Z',
+            revoked_at: null,
+            request_id: 'req-test',
+            trace_id: 'trace-test',
+            account_id: 'account-1',
+            display_name_ciphertext: 'Target User',
+            first_name_ciphertext: 'Target',
+            last_name_ciphertext: 'User',
+            keycloak_subject: 'kc-target',
+          },
+        ],
+      }
+    );
+
+    const overview = await loadDsrSelfServiceOverview(client as never, {
+      instanceId: 'de-test',
+      accountId: 'account-1',
+    });
+
+    expect(overview.activityItems.map((item) => item.id)).toEqual(['req-2', 'exp-1', 'consent-1']);
+    expect(overview.activityItems.map((item) => item.source)).toEqual(['dsr', 'dsr', 'governance']);
+    expect(overview.activityItems[2]).toMatchObject({
+      id: 'consent-1',
+      type: 'legal_acceptance',
+      canonicalStatus: 'completed',
+      metadata: {
+        legalTextVersion: '2026-03',
+        locale: 'de',
+      },
+    });
+  });
+
+  it('hides admin-created export jobs from the self-service overview and detail view', async () => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('FROM iam.accounts')) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: 'account-1',
+              processing_restricted_at: null,
+              processing_restriction_reason: null,
+              non_essential_processing_opt_out_at: null,
+            },
+          ],
+        };
+      }
+
+      if (sql.includes('FROM iam.data_subject_export_jobs job')) {
+        expect(sql).toContain('AND job.requested_by_account_id = $2::uuid');
+      }
+
+      return { rowCount: 0, rows: [] };
+    });
+
+    const client = { query };
+
+    const overview = await loadDsrSelfServiceOverview(client as never, {
+      instanceId: 'de-test',
+      accountId: 'account-1',
+    });
+
+    expect(overview.exportJobs).toEqual([]);
+    expect(overview.activityItems).toEqual([]);
+
+    const item = await getSelfServiceActivityItem(client as never, {
+      instanceId: 'de-test',
+      accountId: 'account-1',
+      caseId: 'exp-admin-1',
+    });
+
+    expect(item).toBeNull();
+    expect(query).toHaveBeenCalled();
+  });
+
+  it('loads a self-service activity detail by case id across all supported sources', async () => {
+    const client = buildClient(
+      {
+        rowCount: 0,
+        rows: [],
+      },
+      {
+        rowCount: 0,
+        rows: [],
+      },
+      {
+        rowCount: 0,
+        rows: [],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'consent-1',
+            legal_text_id: 'privacy_policy',
+            legal_text_version: '2026-03',
+            locale: 'de',
+            accepted_at: '2026-03-16T08:00:00.000Z',
+            revoked_at: null,
+            request_id: 'req-test',
+            trace_id: 'trace-test',
+            account_id: 'account-1',
+            display_name_ciphertext: 'Target User',
+            first_name_ciphertext: 'Target',
+            last_name_ciphertext: 'User',
+            keycloak_subject: 'kc-target',
+          },
+        ],
+      }
+    );
+
+    const item = await getSelfServiceActivityItem(client as never, {
+      instanceId: 'de-test',
+      accountId: 'account-1',
+      caseId: 'consent-1',
+    });
+
+    expect(item).toMatchObject({
+      id: 'consent-1',
+      source: 'governance',
+      type: 'legal_acceptance',
+      canonicalStatus: 'completed',
     });
   });
 

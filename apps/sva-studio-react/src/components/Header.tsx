@@ -26,7 +26,7 @@ type HeaderProps = Readonly<{
 
 type HeaderDropdownItem = Readonly<{
   id: string;
-  label: React.ReactNode;
+  label?: React.ReactNode;
   description?: React.ReactNode;
   icon?: React.ReactNode;
   active?: boolean;
@@ -137,6 +137,7 @@ const HeaderDropdownMenu = ({
                   key={item.id}
                   to={item.href}
                   role="menuitem"
+                  aria-disabled={item.disabled ? 'true' : undefined}
                   className={itemClassName}
                   onClick={() => setOpen(false)}
                 >
@@ -151,6 +152,7 @@ const HeaderDropdownMenu = ({
                 type="button"
                 role="menuitem"
                 disabled={item.disabled}
+                aria-disabled={item.disabled ? 'true' : undefined}
                 className={itemClassName}
                 onClick={() => {
                   setOpen(false);
@@ -256,36 +258,48 @@ export default function Header({
             </Button>
           );
   } else if (user) {
+    const logoutItem: HeaderDropdownItem = isDevAuthAvailable
+      ? {
+          id: 'logout',
+          label: t('shell.header.logout'),
+          onSelect: () => {
+            void logout();
+          },
+        }
+      : {
+          id: 'logout',
+          label: t('shell.header.logout'),
+          render: (
+            <form action="/auth/logout" method="post">
+              <input type="hidden" name="logoutIntent" value="user" />
+              <button
+                type="submit"
+                role="menuitem"
+                className="flex w-full items-start gap-3 rounded-md px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
+              >
+                <span className="space-y-0.5">
+                  <span className="block text-sm font-medium">{t('shell.header.logout')}</span>
+                </span>
+              </button>
+            </form>
+          ),
+        };
+
     const accountMenuItems: readonly HeaderDropdownItem[] = [
       { id: 'account', label: t('account.profile.title'), href: '/account' },
       { id: 'password', label: t('shell.header.changePassword'), disabled: true },
       { id: 'email', label: t('shell.header.changeEmail'), disabled: true },
-      isDevAuthAvailable
-        ? {
-            id: 'logout',
-            label: t('shell.header.logout'),
-            onSelect: () => {
-              void logout();
-            },
-          }
-        : {
-            id: 'logout',
-            label: t('shell.header.logout'),
-            render: (
-              <form action="/auth/logout" method="post">
-                <input type="hidden" name="logoutIntent" value="user" />
-                <button
-                  type="submit"
-                  role="menuitem"
-                  className="flex w-full items-start gap-3 rounded-md px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
-                >
-                  <span className="space-y-0.5">
-                    <span className="block text-sm font-medium">{t('shell.header.logout')}</span>
-                  </span>
-                </button>
-              </form>
-            ),
-          },
+      {
+        id: 'divider-privacy',
+        render: <div role="separator" className="my-1 border-t border-border" />,
+      },
+      { id: 'privacy', label: t('account.privacy.navLabel'), href: '/account/privacy' },
+      { id: 'rules', label: t('account.rules.navLabel'), href: '/account/rules' },
+      {
+        id: 'divider-session',
+        render: <div role="separator" className="my-1 border-t border-border" />,
+      },
+      logoutItem,
     ];
 
     authAction = (

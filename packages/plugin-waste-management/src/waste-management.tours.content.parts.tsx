@@ -178,10 +178,16 @@ export const useWasteToursSelectionState = ({
 
 type WasteToursDeleteDialogsProps = {
   readonly tourPendingDelete: WasteTourRecord | null;
+  readonly tourPendingStatusChange: {
+    readonly tour: WasteTourRecord;
+    readonly nextActive: boolean;
+  } | null;
   readonly bulkDeleteOpen: boolean;
   readonly selectedTourIds: readonly string[];
   readonly onCancelSingle: () => void;
+  readonly onCancelStatusChange: () => void;
   readonly onCancelBulk: () => void;
+  readonly onConfirmStatusChange: () => Promise<void>;
   readonly onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
   readonly onDeleteTours: (tourIds: readonly string[]) => Promise<void>;
   readonly onAfterBulkDelete: () => void;
@@ -189,18 +195,36 @@ type WasteToursDeleteDialogsProps = {
 
 export const WasteToursDeleteDialogs = ({
   tourPendingDelete,
+  tourPendingStatusChange,
   bulkDeleteOpen,
   selectedTourIds,
   onCancelSingle,
+  onCancelStatusChange,
   onCancelBulk,
+  onConfirmStatusChange,
   onDeleteTour,
   onDeleteTours,
   onAfterBulkDelete,
 }: WasteToursDeleteDialogsProps) => {
   const pt = usePluginTranslation('wasteManagement');
+  const nextActive = tourPendingStatusChange?.nextActive ?? false;
+  const statusDialogTranslationPrefix = nextActive ? 'activate' : 'deactivate';
 
   return (
     <>
+      <StudioConfirmDialog
+        open={tourPendingStatusChange !== null}
+        title={pt(`tours.statusDialog.${statusDialogTranslationPrefix}Title`)}
+        description={pt(`tours.statusDialog.${statusDialogTranslationPrefix}Description`, {
+          value: tourPendingStatusChange?.tour.name ?? '',
+        })}
+        confirmLabel={pt('tours.statusDialog.confirm')}
+        cancelLabel={pt('tours.statusDialog.cancel')}
+        onCancel={onCancelStatusChange}
+        onConfirm={() => {
+          void onConfirmStatusChange();
+        }}
+      />
       <StudioConfirmDialog
         open={tourPendingDelete !== null}
         title={pt('tours.deleteDialog.title')}

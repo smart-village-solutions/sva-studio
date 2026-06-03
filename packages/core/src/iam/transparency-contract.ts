@@ -62,6 +62,23 @@ export type IamDsrCaseListItem = {
   readonly metadata: Readonly<Record<string, unknown>>;
 };
 
+export type IamSelfServiceActivityType = IamDsrCaseType | 'legal_acceptance';
+
+export type IamSelfServiceActivityItem = {
+  readonly id: IamUuid;
+  readonly source: 'dsr' | 'governance';
+  readonly type: IamSelfServiceActivityType;
+  readonly canonicalStatus: IamDsrCanonicalStatus;
+  readonly rawStatus: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly format?: string;
+  readonly createdAt: string;
+  readonly updatedAt?: string;
+  readonly completedAt?: string;
+  readonly metadata: Readonly<Record<string, unknown>>;
+};
+
 export type IamDsrSelfServiceOverview = {
   readonly instanceId: IamInstanceId;
   readonly accountId: IamUuid;
@@ -72,6 +89,7 @@ export type IamDsrSelfServiceOverview = {
   readonly legalHolds: readonly IamDsrCaseListItem[];
   readonly requests: readonly IamDsrCaseListItem[];
   readonly exportJobs: readonly IamDsrCaseListItem[];
+  readonly activityItems: readonly IamSelfServiceActivityItem[];
 };
 
 export type IamDeletionContentStrategy =

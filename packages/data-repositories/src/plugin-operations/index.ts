@@ -9,6 +9,7 @@ import type {
   StudioJobListQuery,
   StudioJobProgressUpdateInput,
   StudioJobRecord,
+  StudioJobSource,
   StudioJobUpdateInput,
 } from '@sva/core';
 
@@ -17,7 +18,8 @@ import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositorie
 type StudioJobRow = {
   readonly id: string;
   readonly instance_id: string;
-  readonly plugin_id: string;
+  readonly source: StudioJobSource;
+  readonly plugin_id: string | null;
   readonly job_type_id: string;
   readonly import_profile_id: string | null;
   readonly queue_name: string;
@@ -98,7 +100,8 @@ export type StudioJobRepository = {
 const mapStudioJobRow = (row: StudioJobRow): StudioJobRecord => ({
   id: row.id,
   instanceId: row.instance_id,
-  pluginId: row.plugin_id,
+  source: row.source,
+  pluginId: row.plugin_id ?? undefined,
   jobTypeId: row.job_type_id,
   importProfileId: row.import_profile_id ?? undefined,
   queueName: row.queue_name,
@@ -169,6 +172,7 @@ const toJsonSqlValue = (value: Readonly<Record<string, unknown>> | null | undefi
 const jobSelectColumns = `
   id,
   instance_id,
+  source,
   plugin_id,
   job_type_id,
   import_profile_id,
@@ -211,9 +215,10 @@ const eventSelectColumns = `
 
 const createJobStatement = (input: StudioJobCreateInput): SqlStatement => ({
   text: `
-INSERT INTO iam.plugin_operation_jobs (
+INSERT INTO iam.studio_jobs (
   id,
   instance_id,
+  source,
   plugin_id,
   job_type_id,
   import_profile_id,
@@ -244,11 +249,11 @@ VALUES (
   $5,
   $6,
   $7,
-  $8::jsonb,
+  $8,
   $9::jsonb,
+  $10::jsonb,
   NULL,
   NULL,
-  $10,
   $11,
   $12,
   $13,
@@ -259,7 +264,8 @@ VALUES (
   $18,
   $19,
   $20,
-  $21
+  $21,
+  $22
 )
 RETURNING
 ${jobSelectColumns}
@@ -267,7 +273,8 @@ ${jobSelectColumns}
   values: [
     input.id,
     input.instanceId,
-    input.pluginId,
+    input.source,
+    input.pluginId ?? null,
     input.jobTypeId,
     input.importProfileId ?? null,
     input.queueName,
@@ -293,7 +300,7 @@ const getJobByIdStatement = (instanceId: string, jobId: string): SqlStatement =>
   text: `
 SELECT
 ${jobSelectColumns}
-FROM iam.plugin_operation_jobs
+FROM iam.studio_jobs
 WHERE instance_id = $1
   AND id = $2
   `,
@@ -302,7 +309,7 @@ WHERE instance_id = $1
 
 const updateJobStateStatement = (input: StudioJobUpdateInput): SqlStatement => ({
   text: `
-UPDATE iam.plugin_operation_jobs
+UPDATE iam.studio_jobs
 SET
   status = $1,
   progress = $2::jsonb,
@@ -336,7 +343,7 @@ ${jobSelectColumns}
 
 const updateJobProgressStatement = (input: StudioJobProgressUpdateInput): SqlStatement => ({
   text: `
-UPDATE iam.plugin_operation_jobs
+UPDATE iam.studio_jobs
 SET
   progress = $1::jsonb,
   last_progress_at = $2,
@@ -358,7 +365,7 @@ ${jobSelectColumns}
 
 const touchJobHeartbeatStatement = (input: StudioJobHeartbeatInput): SqlStatement => ({
   text: `
-UPDATE iam.plugin_operation_jobs
+UPDATE iam.studio_jobs
 SET
   heartbeat_at = $1,
   worker_id = COALESCE($2, worker_id),
@@ -373,7 +380,7 @@ ${jobSelectColumns}
 
 const requestJobCancellationStatement = (input: StudioJobCancellationRequestInput): SqlStatement => ({
   text: `
-UPDATE iam.plugin_operation_jobs
+UPDATE iam.studio_jobs
 SET
   cancel_requested_at = $1,
   updated_at = NOW()
@@ -388,16 +395,17 @@ ${jobSelectColumns}
 const deleteJobStatement = (instanceId: string, jobId: string): SqlStatement => ({
   text: `
 WITH deleted_events AS (
-  DELETE FROM iam.plugin_operation_job_events
+  DELETE FROM iam.studio_job_events
   WHERE instance_id = $1
     AND job_id = $2
 )
-DELETE FROM iam.plugin_operation_jobs
+DELETE FROM iam.studio_jobs
 WHERE instance_id = $1
   AND id = $2
 RETURNING
   id,
   instance_id,
+  source,
   plugin_id,
   job_type_id,
   import_profile_id,
@@ -429,7 +437,7 @@ RETURNING
 
 const createJobEventStatement = (input: StudioJobEventCreateInput): SqlStatement => ({
   text: `
-INSERT INTO iam.plugin_operation_job_events (
+INSERT INTO iam.studio_job_events (
   id,
   job_id,
   instance_id,
@@ -461,7 +469,7 @@ const listJobEventsStatement = (instanceId: string, jobId: string): SqlStatement
   text: `
 SELECT
 ${eventSelectColumns}
-FROM iam.plugin_operation_job_events
+FROM iam.studio_job_events
 WHERE instance_id = $1
   AND job_id = $2
 ORDER BY created_at ASC
@@ -524,7 +532,7 @@ const listJobsStatement = (instanceId: string, query: StudioJobListQuery): SqlSt
 WITH filtered_jobs AS (
   SELECT
     ${jobSelectColumns}
-  FROM iam.plugin_operation_jobs j
+  FROM iam.studio_jobs j
   WHERE ${whereClause.clause}
 )
 SELECT
@@ -542,7 +550,7 @@ FROM filtered_jobs
 LEFT JOIN LATERAL (
   SELECT
     ${eventSelectColumns}
-  FROM iam.plugin_operation_job_events event
+  FROM iam.studio_job_events event
   WHERE event.instance_id = filtered_jobs.instance_id
     AND event.job_id = filtered_jobs.id
   ORDER BY event.created_at DESC
@@ -564,7 +572,7 @@ const countJobsStatement = (instanceId: string, query: StudioJobListQuery): SqlS
   return {
     text: `
 SELECT COUNT(*)::int AS total_count
-FROM iam.plugin_operation_jobs j
+FROM iam.studio_jobs j
 WHERE ${whereClause.clause}
     `,
     values: whereClause.values,

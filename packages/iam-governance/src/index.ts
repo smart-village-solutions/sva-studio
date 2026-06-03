@@ -18,6 +18,7 @@ export {
 export type { WasteAuditFilters } from './waste-audit-read-models.types.js';
 export {
   getAdminDsrCase,
+  getSelfServiceActivityItem,
   listAdminDsrCases,
   loadDsrSelfServiceOverview,
   toCanonicalDsrStatus,

@@ -87,6 +87,22 @@ export type LegalHoldRow = {
   created_by_keycloak_subject: string | null;
 };
 
+export type LegalAcceptanceRow = {
+  id: string;
+  legal_text_id: string;
+  legal_text_version: string;
+  locale: string;
+  accepted_at: string;
+  revoked_at: string | null;
+  request_id: string | null;
+  trace_id: string | null;
+  account_id: string;
+  display_name_ciphertext: string | null;
+  first_name_ciphertext: string | null;
+  last_name_ciphertext: string | null;
+  keycloak_subject: string;
+};
+
 export type ProfileCorrectionRow = {
   id: string;
   account_id: string;
@@ -123,6 +139,7 @@ export type DsrSelfServiceRows = {
   requests: readonly RequestRow[];
   exportJobs: readonly ExportJobRow[];
   legalHolds: readonly LegalHoldRow[];
+  legalAcceptances: readonly LegalAcceptanceRow[];
 };
 
 export type AdminDsrSourceRows = {

@@ -288,4 +288,30 @@ describe('waste-management translation builders', () => {
       },
     });
   });
+
+  it('keeps status dialog labels at their public translation paths', () => {
+    expect(
+      createWasteManagementPluginTranslationLocale([
+        wasteManagementPluginTranslationsDEMasterData,
+        wasteManagementPluginTranslationsDETours,
+      ])
+    ).toMatchObject({
+      wasteManagement: {
+        masterData: {
+          fractions: {
+            statusDialog: {
+              confirm: 'Bestätigen',
+              cancel: 'Abbrechen',
+            },
+          },
+        },
+        tours: {
+          statusDialog: {
+            confirm: 'Bestätigen',
+            cancel: 'Abbrechen',
+          },
+        },
+      },
+    });
+  });
 });

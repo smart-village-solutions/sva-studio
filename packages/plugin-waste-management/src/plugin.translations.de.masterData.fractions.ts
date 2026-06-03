@@ -121,6 +121,14 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     confirm: 'Löschen',
     cancel: 'Abbrechen',
   },
+  statusDialog: {
+    activateTitle: 'Abfallfraktion aktivieren',
+    activateDescription: 'Die Abfallfraktion {{value}} wird aktiviert.',
+    deactivateTitle: 'Abfallfraktion deaktivieren',
+    deactivateDescription: 'Die Abfallfraktion {{value}} wird deaktiviert.',
+    confirm: 'Bestätigen',
+    cancel: 'Abbrechen',
+  },
   messages: {
     createSuccess: 'Die Waste-Fraktion wurde angelegt.',
     updateSuccess: 'Die Waste-Fraktion wurde aktualisiert.',

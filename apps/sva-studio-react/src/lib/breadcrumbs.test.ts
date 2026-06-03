@@ -102,4 +102,21 @@ describe('resolveBreadcrumbItems', () => {
       { label: 'Datenschutzfall-Detail' },
     ]);
   });
+
+  it('returns account rules breadcrumbs', () => {
+    expect(resolveBreadcrumbItems('/account/rules')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/account', label: 'Mein Konto' },
+      { label: 'Kontoregeln' },
+    ]);
+  });
+
+  it('returns account privacy detail breadcrumbs', () => {
+    expect(resolveBreadcrumbItems('/account/privacy/case-1')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/account', label: 'Mein Konto' },
+      { href: '/account/privacy', label: 'Datenschutz & Transparenz' },
+      { label: 'Datenschutzfall-Detail' },
+    ]);
+  });
 });

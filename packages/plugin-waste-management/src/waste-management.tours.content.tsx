@@ -58,6 +58,10 @@ export const WasteToursContent = ({
   const pt = usePluginTranslation('wasteManagement');
   const [sortField, setSortField] = useState<WasteToursSortField | null>(null);
   const [sortDirection, setSortDirection] = useState<WasteToursSortDirection>('asc');
+  const [tourPendingStatusChange, setTourPendingStatusChange] = useState<{
+    readonly tour: (typeof tours)[number];
+    readonly nextActive: boolean;
+  } | null>(null);
   const locationCountByTourId = useMemo(
     () => createLocationCountByTourId(masterDataOverview?.locationTourLinks),
     [masterDataOverview?.locationTourLinks],
@@ -184,16 +188,30 @@ export const WasteToursContent = ({
         onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
         canDuplicateTour={canDuplicateTour}
-        onToggleTourStatus={onToggleTourStatus}
+        onToggleTourStatus={(tour, nextActive) => {
+          setTourPendingStatusChange({ tour, nextActive });
+          return Promise.resolve();
+        }}
         setTourPendingDelete={setTourPendingDelete}
       />
       <WasteToursDeleteDialogs
         tourPendingDelete={tourPendingDelete}
+        tourPendingStatusChange={tourPendingStatusChange}
         bulkDeleteOpen={bulkDeleteOpen}
         selectedTourIds={selectedTourIds}
         onCancelSingle={() => setTourPendingDelete(null)}
+        onCancelStatusChange={() => setTourPendingStatusChange(null)}
         onCancelBulk={() => setBulkDeleteOpen(false)}
         onDeleteTour={onDeleteTour}
+        onConfirmStatusChange={() => {
+          if (!tourPendingStatusChange) {
+            return Promise.resolve();
+          }
+
+          return Promise.resolve(onToggleTourStatus(tourPendingStatusChange.tour, tourPendingStatusChange.nextActive)).finally(
+            () => setTourPendingStatusChange(null)
+          );
+        }}
         onDeleteTours={onDeleteTours}
         onAfterBulkDelete={() => {
           setSelectedTourIds([]);

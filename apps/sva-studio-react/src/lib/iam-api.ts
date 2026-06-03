@@ -17,6 +17,7 @@ import type {
   IamDsrCanonicalStatus,
   IamDsrCaseListItem,
   IamDsrSelfServiceOverview,
+  IamSelfServiceActivityItem,
   IamGovernanceCaseListItem,
   IamInstanceDetail,
   IamInstanceListItem,
@@ -1791,6 +1792,16 @@ export const getMyDataSubjectRights = async (): Promise<
 > =>
   requestJson<ApiItemResponse<IamDsrSelfServiceOverview>>('/iam/me/data-subject-rights/requests');
 
+export const getMyDataSubjectRightsCase = async (
+  caseId: string,
+  options?: IamRequestOptions
+): Promise<ApiItemResponse<IamSelfServiceActivityItem>> =>
+  requestJson<ApiItemResponse<IamSelfServiceActivityItem>>(
+    `/iam/me/data-subject-rights/cases/${encodeURIComponent(caseId)}`,
+    { signal: options?.signal },
+    { signal: options?.signal, timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS }
+  );
+
 export const getMyPendingLegalTexts = async (): Promise<ApiListResponse<IamPendingLegalTextItem>> =>
   requestSingleFlight('iam:pending-legal-texts', async () =>
     requestJson<ApiListResponse<IamPendingLegalTextItem>>('/iam/me/legal-texts/pending', undefined, {
@@ -1901,6 +1912,12 @@ export const requestLegalConsentExport = async (input: {
 
   return requestJsonOrText(`/iam/governance/legal-consents/export?${params.toString()}`);
 };
+
+export const buildMyDataExportDownloadUrl = (
+  jobId: string,
+  format: 'json' | 'csv' | 'xml'
+) =>
+  `/iam/me/data-export/status?jobId=${encodeURIComponent(jobId)}&download=${encodeURIComponent(format)}`;
 
 export const getDataExportStatus = async (
   jobId: string

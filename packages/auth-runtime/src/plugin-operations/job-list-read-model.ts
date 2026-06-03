@@ -33,6 +33,7 @@ export const normalizeStudioJobListItem = (
   return {
     id: job.id,
     instanceId: job.instanceId,
+    source: job.source,
     pluginId: job.pluginId,
     jobTypeId: job.jobTypeId,
     status: job.status,

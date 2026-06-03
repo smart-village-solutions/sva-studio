@@ -165,7 +165,12 @@ describe('WasteMasterDataFractionsContent', () => {
     expect(statusColumn.cell(fraction)).toBeTruthy();
 
     const rowActions = tableProps.rowActions as (row: typeof fraction) => React.ReactNode;
-    render(<div>{rowActions(fraction)}</div>);
+    render(
+      <div>
+        {statusColumn.cell(fraction)}
+        {rowActions(fraction)}
+      </div>
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.delete' }));
@@ -180,6 +185,15 @@ describe('WasteMasterDataFractionsContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.filters.reset' }));
     expect(onFractionsStatusChange).toHaveBeenCalledWith('all');
 
+    fireEvent.click(
+      screen.getByRole('switch', {
+        name: 'masterData.fractions.actions.deactivateStatus:Biotonne',
+      })
+    );
+    expect(screen.getByText('masterData.fractions.statusDialog.deactivateTitle')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.statusDialog.confirm' }));
+    expect(onToggleFractionStatus).toHaveBeenCalledWith(fraction, false);
+
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.filters.open' }));
     fireEvent.change(screen.getByLabelText('masterData.fractions.filters.statusLabel'), {
       target: { value: 'inactive' },
@@ -192,6 +206,7 @@ describe('WasteMasterDataFractionsContent', () => {
   });
 
   it('covers additional sort branches and closes the delete dialog on cancel', () => {
+    const onToggleFractionStatus = vi.fn();
     const fractions = [
       {
         id: 'fraction-1',
@@ -221,7 +236,7 @@ describe('WasteMasterDataFractionsContent', () => {
         onOpenEditFraction={vi.fn()}
         onOpenDeleteFraction={vi.fn()}
         onDeleteFractions={vi.fn()}
-        onToggleFractionStatus={vi.fn()}
+        onToggleFractionStatus={onToggleFractionStatus}
         onFractionsSortChange={vi.fn()}
         onFractionsStatusChange={vi.fn()}
         page={1}
@@ -243,11 +258,30 @@ describe('WasteMasterDataFractionsContent', () => {
     expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual(['fraction-2', 'fraction-1']);
     expect(screen.queryByRole('button', { name: 'masterData.fractions.filters.reset' })).toBeNull();
 
+    const [, , , statusColumn] = tableProps.columns as Array<{
+      id: string;
+      cell: (row: (typeof fractions)[number]) => React.ReactNode;
+    }>;
     const rowActions = tableProps.rowActions as (row: (typeof fractions)[number]) => React.ReactNode;
-    render(<div>{rowActions(fractions[0]!)}</div>);
+    render(
+      <div>
+        {statusColumn.cell(fractions[1]!)}
+        {rowActions(fractions[0]!)}
+      </div>
+    );
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.delete' }));
     expect(screen.getByText('masterData.fractions.deleteDialog.title')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.deleteDialog.cancel' }));
     expect(screen.queryByText('masterData.fractions.deleteDialog.title')).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole('switch', {
+        name: 'masterData.fractions.actions.activateStatus:Papier',
+      })
+    );
+    expect(screen.getByText('masterData.fractions.statusDialog.activateTitle')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.statusDialog.cancel' }));
+    expect(screen.queryByText('masterData.fractions.statusDialog.activateTitle')).toBeNull();
+    expect(onToggleFractionStatus).not.toHaveBeenCalled();
   });
 });

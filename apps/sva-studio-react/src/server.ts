@@ -13,7 +13,7 @@ import {
 const startFetch = createStartHandler(defaultStreamHandler);
 const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'development';
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
-const pluginOperationWorkerEnabled = process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED !== 'false';
+const studioJobWorkerEnabled = process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED !== 'false';
 
 type WorkspaceContext = {
   readonly requestId?: string | null;
@@ -45,8 +45,8 @@ type RequestContextSdk = {
 let sdkPromise: Promise<RequestContextSdk> | null = null;
 const loggerPromises = new Map<ServerTransportComponent, Promise<ServerTransportLogger>>();
 let dispatchAuthRouteRequestPromise: Promise<typeof import('@sva/routing/server')['dispatchAuthRouteRequest']> | null = null;
-let ensurePluginOperationWorkerStartedPromise:
-  | Promise<typeof import('@sva/auth-runtime/server')['ensurePluginOperationWorkerStarted']>
+let ensureStudioJobWorkerStartedPromise:
+  | Promise<typeof import('@sva/auth-runtime/server')['ensureStudioJobWorkerStarted']>
   | null = null;
 let registerStudioPluginOperationHandlersPromise:
   | Promise<typeof import('./lib/plugin-operation-runtime.server')['registerStudioPluginOperationHandlers']>
@@ -72,11 +72,11 @@ const getDispatchAuthRouteRequest = async () => {
   return dispatchAuthRouteRequestPromise;
 };
 
-const getEnsurePluginOperationWorkerStarted = async () => {
-  ensurePluginOperationWorkerStartedPromise ??= import('@sva/auth-runtime/server').then(
-    (mod) => mod.ensurePluginOperationWorkerStarted
+const getEnsureStudioJobWorkerStarted = async () => {
+  ensureStudioJobWorkerStartedPromise ??= import('@sva/auth-runtime/server').then(
+    (mod) => mod.ensureStudioJobWorkerStarted
   );
-  return ensurePluginOperationWorkerStartedPromise;
+  return ensureStudioJobWorkerStartedPromise;
 };
 
 const getRegisterStudioPluginOperationHandlers = async () => {
@@ -121,7 +121,7 @@ const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
 };
 
 const startPluginOperationWorkerInBackground = (): void => {
-  if (!pluginOperationWorkerEnabled) {
+  if (!studioJobWorkerEnabled) {
     return;
   }
 
@@ -132,7 +132,7 @@ const startPluginOperationWorkerInBackground = (): void => {
   pluginOperationWorkerBootstrapPromise = (async () => {
     try {
       await ensurePluginOperationHandlersRegistered();
-      const startWorker = await getEnsurePluginOperationWorkerStarted();
+      const startWorker = await getEnsureStudioJobWorkerStarted();
       await startWorker();
     } catch (error) {
       pluginOperationWorkerBootstrapPromise = null;
@@ -209,7 +209,7 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
     return mainserverPoiResponse;
   }
 
-  if (pluginOperationWorkerEnabled) {
+  if (studioJobWorkerEnabled) {
     await ensurePluginOperationHandlersRegistered();
   }
 

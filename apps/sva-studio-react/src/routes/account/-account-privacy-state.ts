@@ -1,32 +1,24 @@
-import type { IamDeletionContentStrategy, IamMyDeletionRulesOverview } from '@sva/core';
 import React from 'react';
 
+import { getMyDataSubjectRights } from '../../lib/iam-api';
 import {
-  getMyDeletionRules,
-  getMyDataSubjectRights,
-  saveMyDeletionRulesContentPreference,
-} from '../../lib/iam-api';
-import { t } from '../../i18n';
+  buildPrivacyActivityRows,
+  defaultPrivacyActivityFilters,
+  filterPrivacyActivityRows,
+  type PrivacyActivityFilters,
+} from './-account-privacy-view-model';
 
 type PrivacyOverview = Awaited<ReturnType<typeof getMyDataSubjectRights>>['data'];
 
 const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
-const getErrorStatus = (error: unknown): unknown =>
-  typeof error === 'object' && error !== null && 'status' in error ? error.status : undefined;
 
 export const useAccountPrivacyState = () => {
   const [overview, setOverview] = React.useState<PrivacyOverview | null>(null);
-  const [deletionRules, setDeletionRules] = React.useState<IamMyDeletionRulesOverview | null>(null);
-  const [hasDeletionRulesAccess, setHasDeletionRulesAccess] = React.useState(false);
-  const [contentPreferenceDraft, setContentPreferenceDraft] = React.useState<IamDeletionContentStrategy>('retain');
+  const [filters, setFilters] = React.useState<PrivacyActivityFilters>(defaultPrivacyActivityFilters);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [isLoadingDeletionRules, setIsLoadingDeletionRules] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isSavingDeletionRules, setIsSavingDeletionRules] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-  const [deletionRulesError, setDeletionRulesError] = React.useState<string | null>(null);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
-  const [deletionRulesStatusMessage, setDeletionRulesStatusMessage] = React.useState<string | null>(null);
 
   const loadOverview = React.useCallback(async () => {
     setIsLoading(true);
@@ -46,34 +38,6 @@ export const useAccountPrivacyState = () => {
     loadOverview().catch(() => undefined);
   }, [loadOverview]);
 
-  const loadDeletionRules = React.useCallback(async () => {
-    setIsLoadingDeletionRules(true);
-    setDeletionRulesError(null);
-    setHasDeletionRulesAccess(false);
-    try {
-      const response = await getMyDeletionRules();
-      setHasDeletionRulesAccess(true);
-      setDeletionRules(response);
-      setContentPreferenceDraft(response.contentPreference.effectiveStrategy);
-    } catch (error) {
-      setDeletionRules(null);
-      const status = getErrorStatus(error);
-      if (status === 403) {
-        setHasDeletionRulesAccess(false);
-        setDeletionRulesError(null);
-      } else {
-        setHasDeletionRulesAccess(false);
-        setDeletionRulesError(toErrorMessage(error));
-      }
-    } finally {
-      setIsLoadingDeletionRules(false);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    loadDeletionRules().catch(() => undefined);
-  }, [loadDeletionRules]);
-
   const runAction = React.useCallback(
     async (work: () => Promise<void>) => {
       setIsSubmitting(true);
@@ -91,44 +55,20 @@ export const useAccountPrivacyState = () => {
     [loadOverview]
   );
 
-  const saveDeletionRulesPreference = React.useCallback(async () => {
-    setIsSavingDeletionRules(true);
-    setDeletionRulesError(null);
-    setDeletionRulesStatusMessage(null);
-    try {
-      const response = await saveMyDeletionRulesContentPreference({
-        strategy:
-          deletionRules && contentPreferenceDraft === deletionRules.rules.defaultContentStrategy
-            ? undefined
-            : contentPreferenceDraft,
-      });
-      setDeletionRules(response);
-      setContentPreferenceDraft(response.contentPreference.effectiveStrategy);
-      setDeletionRulesStatusMessage(t('account.privacy.deletionRules.messages.saveSuccess'));
-    } catch (error) {
-      setDeletionRulesError(toErrorMessage(error));
-    } finally {
-      setIsSavingDeletionRules(false);
-    }
-  }, [contentPreferenceDraft, deletionRules]);
+  const activityRows = React.useMemo(() => buildPrivacyActivityRows(overview), [overview]);
+  const visibleRows = React.useMemo(() => filterPrivacyActivityRows(activityRows, filters), [activityRows, filters]);
 
   return {
-    contentPreferenceDraft,
-    deletionRules,
-    deletionRulesError,
-    deletionRulesStatusMessage,
+    filters,
     errorMessage,
-    hasDeletionRulesAccess,
     isLoading,
-    isLoadingDeletionRules,
-    isSavingDeletionRules,
     isSubmitting,
     overview,
     runAction,
-    saveDeletionRulesPreference,
-    setContentPreferenceDraft,
     setErrorMessage,
+    setFilters,
     setStatusMessage,
     statusMessage,
+    visibleRows,
   };
 };

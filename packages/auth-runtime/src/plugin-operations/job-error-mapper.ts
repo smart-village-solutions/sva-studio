@@ -7,19 +7,26 @@ const readPluginErrorCause = (error: Error): Record<string, unknown> | undefined
     : undefined;
 };
 
-export const createMissingHandlerPayload = (job: Pick<StudioJobRecord, 'jobTypeId' | 'pluginId'>): StudioJobError => ({
-  code: 'plugin_operation_handler_missing',
+export const createMissingHandlerPayload = (
+  job: Pick<StudioJobRecord, 'source' | 'jobTypeId' | 'pluginId'>
+): StudioJobError => ({
+  code: job.source === 'plugin' ? 'plugin_operation_handler_missing' : 'studio_job_handler_missing',
   category: 'permanent',
   details: {
     host: {
+      source: job.source,
       jobTypeId: job.jobTypeId,
       pluginId: job.pluginId,
     },
   },
 });
 
-export const createExecutionErrorPayload = (error: unknown, finalFailure: boolean): StudioJobError => ({
-  code: 'plugin_operation_execution_failed',
+export const createExecutionErrorPayload = (
+  job: Pick<StudioJobRecord, 'source'>,
+  error: unknown,
+  finalFailure: boolean
+): StudioJobError => ({
+  code: job.source === 'plugin' ? 'plugin_operation_execution_failed' : 'studio_job_execution_failed',
   category: finalFailure ? 'permanent' : 'retryable',
   message: error instanceof Error ? error.message : String(error),
   details:

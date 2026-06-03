@@ -1,13 +1,17 @@
 import type { QueryClient } from './query-client.js';
-import type { IamDsrCaseListItem } from '@sva/core';
+import type { IamDsrCaseListItem, IamSelfServiceActivityItem } from '@sva/core';
 import {
   buildAdminDsrItems,
   buildDsrSelfServiceOverview,
+  buildSelfServiceActivityItemFromSourceRows,
   filterAdminDsrItems,
   paginateDsrItems,
 } from './dsr-read-models.mappers.js';
 import { loadAdminDsrRows } from './dsr-read-models.admin-queries.js';
-import { loadDsrSelfServiceRows } from './dsr-read-models.self-service-queries.js';
+import {
+  findSelfServiceActivityItemByCaseId,
+  loadDsrSelfServiceRows,
+} from './dsr-read-models.self-service-queries.js';
 import type { DsrFilters } from './dsr-read-models.types.js';
 
 export { toCanonicalDsrStatus } from './dsr-read-models.mappers.js';
@@ -17,6 +21,17 @@ export const loadDsrSelfServiceOverview = async (
   input: { instanceId: string; accountId: string }
 ): Promise<ReturnType<typeof buildDsrSelfServiceOverview>> =>
   buildDsrSelfServiceOverview(await loadDsrSelfServiceRows(client, input), input);
+
+export const getSelfServiceActivityItem = async (
+  client: QueryClient,
+  input: { instanceId: string; accountId: string; caseId: string }
+): Promise<IamSelfServiceActivityItem | null> => {
+  const rows = await findSelfServiceActivityItemByCaseId(client, input);
+  if (!rows) {
+    return null;
+  }
+  return buildSelfServiceActivityItemFromSourceRows(rows);
+};
 
 export const listAdminDsrCases = async (
   client: QueryClient,

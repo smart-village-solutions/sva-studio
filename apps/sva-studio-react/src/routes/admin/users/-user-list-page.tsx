@@ -4,6 +4,7 @@ import type {
   IamKeycloakObjectEditability,
   IamUserImportSyncReport,
 } from '@sva/core';
+import { IconEdit } from '@tabler/icons-react';
 import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
@@ -17,6 +18,7 @@ import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
+import { Switch } from '../../../components/ui/switch';
 import { useUsers } from '../../../hooks/use-users';
 import { isIamBulkEnabled } from '../../../lib/iam-admin-access';
 import { useAuth } from '../../../providers/auth-provider';
@@ -168,11 +170,34 @@ export const UserListPage = () => {
       {
         id: 'status',
         header: t('admin.users.table.headerStatus'),
-        cell: (user) => (
-          <Badge className={`rounded-full ${statusClassByValue[user.status]}`} variant="outline">
-            {t(statusTranslationKeyByValue[user.status])}
-          </Badge>
-        ),
+        cell: (user) =>
+          isPlatformScope || isAuthLoading ? (
+            <Badge className={`rounded-full ${statusClassByValue[user.status]}`} variant="outline">
+              {t(statusTranslationKeyByValue[user.status])}
+            </Badge>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={user.status !== 'inactive'}
+                disabled={user.editability === 'blocked' || user.editability === 'read_only'}
+                aria-label={t('admin.users.messages.statusSwitchLabel', {
+                  name: user.displayName,
+                })}
+                onCheckedChange={(checked) =>
+                  setStatusActionDialog({
+                    action: checked ? 'activate' : 'deactivate',
+                    mode: 'single',
+                    userId: user.id,
+                  })
+                }
+              />
+              {user.status === 'pending' ? (
+                <Badge className={`rounded-full ${statusClassByValue[user.status]}`} variant="outline">
+                  {t(statusTranslationKeyByValue[user.status])}
+                </Badge>
+              ) : null}
+            </div>
+          ),
         sortable: true,
         sortValue: (user) => user.status,
       },
@@ -207,7 +232,7 @@ export const UserListPage = () => {
         sortValue: (user) => user.lastLoginAt ?? '',
       },
     ],
-    [usersApi.users]
+    [isAuthLoading, isPlatformScope]
   );
 
   return (
@@ -303,31 +328,28 @@ export const UserListPage = () => {
           rowActions={isPlatformScope || isAuthLoading ? undefined : (user) => (
             <>
               {user.editability === 'blocked' ? (
-                <Button size="sm" variant="outline" disabled>
-                  {t('admin.users.actions.edit')}
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  disabled
+                  aria-label={t('admin.users.actions.edit')}
+                  title={t('admin.users.actions.edit')}
+                >
+                  <IconEdit aria-hidden="true" className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/admin/users/$userId" params={{ userId: user.id }}>
-                    {t('admin.users.actions.edit')}
+                <Button asChild type="button" size="icon" variant="outline">
+                  <Link
+                    to="/admin/users/$userId"
+                    params={{ userId: user.id }}
+                    aria-label={t('admin.users.actions.edit')}
+                    title={t('admin.users.actions.edit')}
+                  >
+                    <IconEdit aria-hidden="true" className="h-4 w-4" />
                   </Link>
                 </Button>
               )}
-              <Button
-                type="button"
-                size="sm"
-                variant={user.status === 'inactive' ? 'outline' : 'destructive'}
-                disabled={user.editability === 'blocked' || user.editability === 'read_only'}
-                onClick={() =>
-                  setStatusActionDialog({
-                    action: user.status === 'inactive' ? 'activate' : 'deactivate',
-                    mode: 'single',
-                    userId: user.id,
-                  })
-                }
-              >
-                {t(user.status === 'inactive' ? 'admin.users.actions.activate' : 'admin.users.actions.deactivate')}
-              </Button>
             </>
           )}
         />

@@ -62,6 +62,7 @@ export {
   dataSubjectMaintenanceHandler,
   dataSubjectRequestHandler,
   getAdminDataSubjectRightsCaseHandler,
+  getMyDataSubjectRightsCaseHandler,
   getMyDataSubjectRightsHandler,
   legalHoldApplyHandler,
   legalHoldReleaseHandler,

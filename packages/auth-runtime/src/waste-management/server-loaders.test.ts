@@ -318,7 +318,7 @@ describe('waste-management server loaders', () => {
     });
     expect(withInstanceDbMock).toHaveBeenCalledTimes(3);
     expect(instanceDbQueryMock).toHaveBeenCalledWith(
-      expect.stringContaining('FROM iam.plugin_operation_jobs j'),
+      expect.stringContaining('FROM iam.studio_jobs j'),
       ['tenant-a', expect.any(Array), '%fraction%', 10]
     );
     expect(historyOverview.audit.total).toBe(1);
@@ -1133,7 +1133,7 @@ describe('waste-management server loaders', () => {
       expect.objectContaining({ page: 2, pageSize: 2 })
     );
     expect(instanceDbQueryMock).toHaveBeenCalledWith(
-      expect.stringContaining('FROM iam.plugin_operation_jobs j'),
+      expect.stringContaining('FROM iam.studio_jobs j'),
       ['tenant-a', expect.any(Array), 4]
     );
   });

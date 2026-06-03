@@ -35,6 +35,7 @@ const activeQuery: StudioJobListQuery = {
 const activeJobListItem: StudioJobListItem = {
   id: 'job-1',
   instanceId: 'instance-1',
+  source: 'plugin',
   pluginId: 'plugin.news',
   jobTypeId: 'news.import',
   status: 'running',
@@ -88,6 +89,7 @@ const activeJobListItem: StudioJobListItem = {
 const runningJobDetail: StudioJobDetail = {
   id: 'job-1',
   instanceId: 'instance-1',
+  source: 'plugin',
   pluginId: 'plugin.news',
   jobTypeId: 'news.import',
   queueName: 'plugin-operations',

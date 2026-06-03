@@ -21,23 +21,38 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 5. Asset-, Varianten-, Session- und Usage-Daten werden über `@sva/data-repositories` persistiert.
 6. Fachmodule wie News, Events und POI speichern nur hostseitige Medienreferenzen und keine Storage-Artefakte.
 
-### Generischer Plugin-Jobstart und Statusabruf
+### Generischer Studio-Jobstart und Statusabruf
 
 1. Ein Host- oder Fachclient ruft `POST /api/v1/plugin-operations/jobs` mit Plugin-ID, Jobtyp, optionalem Importprofil und fachlichem Input auf.
 2. `@sva/auth-runtime` prüft Session, Instanzkontext, Idempotency-Key und den generischen Request-Vertrag.
-3. Der Host legt über `@sva/data-repositories` einen führenden Jobdatensatz sowie das technische Initialevent `job.queued` im Studio-Postgres an.
-4. Die interne Worker-Anbindung queued den Job runner-agnostisch und baut für den fachlichen Handler einen Host-Context mit `job`, `progressReporter`, `abortSignal`, `logger` und Request-/Actor-Bezug.
+3. Der Host legt über `@sva/data-repositories` einen führenden Studio-Jobdatensatz mit `source = 'plugin'` sowie das technische Initialevent `job.queued` im Studio-Postgres an.
+4. Die interne Worker-Anbindung queued den generischen Task `studio_job_execute` runner-agnostisch und baut für den fachlichen Handler einen Host-Context mit `job`, `progressReporter`, `abortSignal`, `logger` und Request-/Actor-Bezug.
 5. Laufende Worker-Schritte schreiben Progress, Heartbeat und technische Lifecycle-Events gegen denselben zentralen Host-Store zurück.
 6. Falls ein Fachhandler strukturierte Fortschrittsdetails wie `processedRows` und `totalRows` kennt, meldet er diese über denselben generischen Progress-Vertrag und nicht über einen separaten Plugin-Endpunkt.
 7. Der Client liest Status, Progress, Heartbeat und Verlauf über `GET /api/v1/plugin-operations/jobs/:jobId`.
 8. Eine Abbruchanforderung wird über `POST /api/v1/plugin-operations/jobs/:jobId/cancel` zunächst nur als gespeicherter Cancel-Request modelliert; die kooperative Reaktion bleibt Worker-Verantwortung.
-9. Status, Progress, Verlauf, Ergebnis- und Fehlerfelder stammen immer aus derselben zentralen Persistenz.
+9. Status, Progress, Verlauf, Ergebnis- und Fehlerfelder stammen immer aus derselben zentralen Persistenz `iam.studio_jobs` plus `iam.studio_job_events`.
 
 Fehlerpfad:
 
 - Ohne gültigen Instanzkontext oder Idempotency-Key antwortet der Host fail-closed mit einem stabilen Fehlervertrag.
 - Datenbankfehler beim Anlegen oder Lesen werden als hostgeführte `database_unavailable`-Antworten abgebildet.
 - Die öffentliche API bleibt runner-agnostisch; eine interne Worker-Technologie darf den Fehler- und Statusvertrag nicht verändern.
+
+### Self-Service-Datenexport über Host-Worker
+
+1. Ein authentifizierter Benutzer ruft `POST /iam/me/data-export` für das eigene Konto auf.
+2. `@sva/auth-runtime` validiert Session, Instanzkontext und Format und delegiert an `@sva/iam-governance`.
+3. `@sva/iam-governance` legt den fachlichen Exportdatensatz in `iam.data_subject_export_jobs` an und erzeugt zusätzlich einen generischen Studio-Job mit `source = 'host'`.
+4. Der Exportdatensatz speichert die Verknüpfung `studio_job_id`, bleibt aber weiterhin die fachliche Source of Truth für Status, Fehler und Download-Payloads.
+5. Der generische Worker verarbeitet den Host-Job, claimt den Exportdatensatz atomar (`queued -> processing`) und schreibt nach erfolgreicher Payload-Erzeugung `completed` plus Download-Inhalt zurück.
+6. Statusabfragen und Downloads bleiben auf den bestehenden DSR-Endpunkten; die UI liest keinen Studio-Job direkt.
+
+Fehlerpfad:
+
+- Schlägt die Job-Erzeugung oder das Enqueue fehl, markiert der Host den Exportdatensatz als `failed`; es bleibt kein dauerhaft `queued` hängender Export ohne Worker-Pfad zurück.
+- Retries dürfen terminale Exporte nicht doppelt erzeugen; der Host-Handler bleibt idempotent.
+- Der DSR-Maintenance-Endpunkt ist für Exportverarbeitung nicht mehr verantwortlich; er deckt nur übrige Housekeeping-Läufe ab.
 
 ### Waste-Management: Settings, CRUD, PDF-Ausgabe und technische Tools
 
@@ -74,6 +89,20 @@ Fehlerpfad:
 - Fehlt die öffentliche Konfiguration, liefert die Bootstrap-Schicht einen deterministischen Fehlerzustand `missing_config`.
 - Ungültige oder unvollständige Konfiguration endet deterministisch in `invalid_config` statt in einer teilweise geladenen Auswahloberfläche.
 - Ungültige oder veraltete Standort-Cookies werden ignoriert; die App fällt ohne Halbzustand auf die erste gültige Auswahlstufe zurück.
+
+### Account-Self-Service: Datenschutzcockpit, Detail und Kontoregeln
+
+1. Ein authentifizierter Benutzer öffnet über das Header-Menü `/account/privacy` oder `/account/rules`.
+2. `/account/privacy` lädt `GET /iam/me/data-subject-rights/requests` und projiziert Requests, Exportjobs, Legal Holds und privacy-nahe Governance-Ereignisse als gemeinsame Aktivitätsliste.
+3. Ein Klick auf `Details` navigiert nach `/account/privacy/$caseId`; die Detailseite lädt `GET /iam/me/data-subject-rights/cases/$caseId` gezielt per `caseId` statt über einen Lookup in der Overview-Menge.
+4. Ein Klick auf `Kontoregeln` navigiert nach `/account/rules`; die Seite lädt `GET /iam/me/deletion-rules` und schreibt persönliche Inhaltsregeln über `POST /iam/me/deletion-rules/content-preference`.
+5. Asynchrone Self-Service-Exporte laufen im Hintergrund über den generischen Host-Worker; Export-Downloads bleiben hostgeführt und verwenden weiterhin den bestehenden Status-/Download-Pfad für abgeschlossene Exportjobs.
+
+Fehlerpfad:
+
+- Fehlt der authentifizierte Kontokontext oder gehört die angefragte `caseId` nicht zum eigenen Konto, antwortet der Host fail-closed mit `404 not_found`.
+- Die Detailansicht darf historische Vorgänge nicht implizit aus einer limitierten Overview-Liste rekonstruieren; der Laufzeitpfad bleibt immer ein expliziter Detail-Read.
+- Regeln und Datenschutzaktivitäten bleiben UI-seitig getrennt, teilen sich aber denselben Account-Self-Service-Einstieg im Header-Menü.
 
 ### Szenario 1: App-Start + Route-Komposition
 

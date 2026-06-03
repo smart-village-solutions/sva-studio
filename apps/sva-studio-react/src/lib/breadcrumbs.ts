@@ -34,11 +34,28 @@ const breadcrumbRoutes: ReadonlyArray<
     build: () => [{ label: t('shell.sidebar.overview') }],
   },
   {
+    pattern: /^\/account\/privacy\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/account', label: t('account.profile.title') },
+      { href: '/account/privacy', label: t('account.privacy.title') },
+      { label: t('account.privacy.detail.title') },
+    ],
+  },
+  {
     pattern: /^\/account\/privacy$/,
     build: () => [
       overviewBreadcrumb(),
       { href: '/account', label: t('account.profile.title') },
       { label: t('account.privacy.title') },
+    ],
+  },
+  {
+    pattern: /^\/account\/rules$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/account', label: t('account.profile.title') },
+      { label: t('account.rules.title') },
     ],
   },
   {

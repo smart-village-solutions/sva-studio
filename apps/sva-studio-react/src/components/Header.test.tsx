@@ -175,6 +175,11 @@ describe('Header auth actions', () => {
 
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
     expect(screen.getByRole('menuitem', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
+    expect(screen.getByRole('menuitem', { name: 'Datenschutz' }).getAttribute('href')).toBe('/account/privacy');
+    expect(screen.getByRole('menuitem', { name: 'Kontoregeln' }).getAttribute('href')).toBe('/account/rules');
+    expect(screen.getByRole('menuitem', { name: 'Passwort ändern' }).getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByRole('menuitem', { name: 'E-Mail ändern' }).getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getAllByRole('separator')).toHaveLength(2);
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
     expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
     expect(

@@ -73,6 +73,7 @@ export type AuthRoutePath =
   | '/iam/me/data-export'
   | '/iam/me/data-export/status'
   | '/iam/me/data-subject-rights/requests'
+  | '/iam/me/data-subject-rights/cases/$caseId'
   | '/iam/me/legal-texts/pending'
   | '/iam/me/profile'
   | '/iam/me/optional-processing/execute'
@@ -196,6 +197,7 @@ export const authRoutePaths = [
   '/iam/me/data-export',
   '/iam/me/data-export/status',
   '/iam/me/data-subject-rights/requests',
+  '/iam/me/data-subject-rights/cases/$caseId',
   '/iam/me/legal-texts/pending',
   '/iam/me/profile',
   '/iam/me/optional-processing/execute',

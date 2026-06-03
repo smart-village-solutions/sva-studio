@@ -1,5 +1,4 @@
 import type { IamUserDetail } from '@sva/core';
-import { Link } from '@tanstack/react-router';
 import React from 'react';
 
 import { asIamError, getMyProfile, IamHttpError, updateMyProfile } from '../../lib/iam-api';
@@ -7,7 +6,7 @@ import { IamRuntimeDiagnosticDetails } from '../../components/iam-runtime-diagno
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Card, CardContent } from '../../components/ui/card';
+import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
@@ -391,18 +390,6 @@ export const AccountProfilePage = () => {
           <AlertDescription>{t('account.messages.saveSuccess')}</AlertDescription>
         </Alert>
       ) : null}
-
-      <Card className="border-secondary/40 bg-secondary/10">
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{t('account.privacy.cta.title')}</h2>
-            <p className="text-sm text-muted-foreground">{t('account.privacy.cta.body')}</p>
-          </div>
-          <Button asChild variant="outline">
-            <Link to="/account/privacy">{t('account.privacy.cta.action')}</Link>
-          </Button>
-        </CardContent>
-      </Card>
 
       <form className="space-y-4" onSubmit={onSubmit} noValidate>
         <section className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-shell md:grid-cols-2">

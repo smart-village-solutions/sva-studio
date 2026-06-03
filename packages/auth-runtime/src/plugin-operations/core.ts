@@ -2,7 +2,7 @@ import {
   studioJobContract,
   studioJobListContract,
   type StudioJobListQuery,
-  type StudioJobStartRequest,
+  type StudioPluginOperationStartRequest,
 } from '@sva/core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 import { z } from 'zod';
@@ -31,7 +31,7 @@ const startPluginOperationJobSchema = z.object({
   correlationId: z.string().trim().min(1).optional(),
   parentJobId: z.string().trim().pipe(z.uuid()).optional(),
   input: z.record(z.string(), z.unknown()),
-}) satisfies z.ZodType<StudioJobStartRequest>;
+}) satisfies z.ZodType<StudioPluginOperationStartRequest>;
 
 const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
 

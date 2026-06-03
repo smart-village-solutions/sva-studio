@@ -8,6 +8,7 @@ import {
 const baseJob = {
   id: 'job-1',
   instanceId: 'tenant-a',
+  source: 'plugin',
   pluginId: 'news',
   jobTypeId: 'news.import-articles',
   queueName: 'plugin-operations',
@@ -28,6 +29,7 @@ describe('job error mapper', () => {
       category: 'permanent',
       details: {
         host: {
+          source: 'plugin',
           jobTypeId: 'news.import-articles',
           pluginId: 'news',
         },
@@ -39,7 +41,7 @@ describe('job error mapper', () => {
     const error = new Error('boom') as Error & { cause?: unknown };
     error.cause = { upstreamStatus: 503 };
 
-    expect(createExecutionErrorPayload(error, false)).toEqual({
+    expect(createExecutionErrorPayload(baseJob, error, false)).toEqual({
       code: 'plugin_operation_execution_failed',
       category: 'retryable',
       message: 'boom',
@@ -49,7 +51,7 @@ describe('job error mapper', () => {
         },
       },
     });
-    expect(createExecutionErrorPayload('fatal', true)).toEqual({
+    expect(createExecutionErrorPayload(baseJob, 'fatal', true)).toEqual({
       code: 'plugin_operation_execution_failed',
       category: 'permanent',
       message: 'fatal',

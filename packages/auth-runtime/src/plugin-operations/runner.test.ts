@@ -11,12 +11,13 @@ vi.mock('./repository.js', () => ({
 import {
   createPluginOperationTaskList,
   registerPluginOperationExecutionHandlers,
-  pluginOperationTaskIdentifier,
+  studioJobTaskIdentifier,
 } from './runner.js';
 
 const baseJob = {
   id: 'job-1',
   instanceId: 'tenant-a',
+  source: 'plugin',
   pluginId: 'news',
   jobTypeId: 'news.import-articles',
   importProfileId: 'news.article-import',
@@ -90,7 +91,7 @@ describe('plugin operation runner task list', () => {
       () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
     );
 
-    await taskList[pluginOperationTaskIdentifier]?.(
+    await taskList[studioJobTaskIdentifier]?.(
       { instanceId: 'tenant-a', jobId: 'job-1' },
       {
         job: { attempts: 1, max_attempts: 5 },
@@ -173,7 +174,7 @@ describe('plugin operation runner task list', () => {
 
     const taskList = createPluginOperationTaskList(() => new Map());
 
-    await taskList[pluginOperationTaskIdentifier]?.(
+    await taskList[studioJobTaskIdentifier]?.(
       { instanceId: 'tenant-a', jobId: 'job-1' },
       {
         job: { attempts: 1, max_attempts: 5 },
@@ -213,7 +214,7 @@ describe('plugin operation runner task list', () => {
     );
 
     await expect(
-      taskList[pluginOperationTaskIdentifier]?.(
+      taskList[studioJobTaskIdentifier]?.(
         { instanceId: 'tenant-a', jobId: 'job-1' },
         {
           job: { attempts: 1, max_attempts: 5 },
@@ -254,7 +255,7 @@ describe('plugin operation runner task list', () => {
     );
 
     await expect(
-      taskList[pluginOperationTaskIdentifier]?.(
+      taskList[studioJobTaskIdentifier]?.(
         { instanceId: 'tenant-a', jobId: 'job-1' },
         {
           job: { attempts: 5, max_attempts: 5 },
@@ -297,7 +298,7 @@ describe('plugin operation runner task list', () => {
       () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
     );
 
-    await taskList[pluginOperationTaskIdentifier]?.(
+    await taskList[studioJobTaskIdentifier]?.(
       { instanceId: 'tenant-a', jobId: 'job-1' },
       {
         job: { attempts: 2, max_attempts: 5 },
@@ -355,7 +356,7 @@ describe('plugin operation runner task list', () => {
     const taskList = createPluginOperationTaskList(
       () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
     );
-    const runPromise = taskList[pluginOperationTaskIdentifier]?.(
+    const runPromise = taskList[studioJobTaskIdentifier]?.(
       { instanceId: 'tenant-a', jobId: 'job-1' },
       {
         job: { attempts: 2, max_attempts: 5 },

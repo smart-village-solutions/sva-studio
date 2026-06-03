@@ -1013,12 +1013,48 @@ export const i18nResources = {
       },
       privacy: {
         title: 'Datenschutz & Transparenz',
+        navLabel: 'Datenschutz',
         subtitle:
           'Exports, Betroffenenrechte und Einschränkungen der Verarbeitung für Ihr eigenes Konto verwalten.',
-        cta: {
-          title: 'Datenschutz-Cockpit öffnen',
-          body: 'Sehen Sie Export-Jobs, Betroffenenanfragen und Einschränkungen der Verarbeitung in einer eigenen Ansicht.',
-          action: 'Zum Datenschutz-Cockpit',
+        detail: {
+          title: 'Datenschutzfall-Detail',
+          subtitle: 'Prüfen Sie Status, Typ und Metadaten eines einzelnen Verlaufs-Eintrags.',
+          back: 'Zurück zur Datenschutzübersicht',
+          caseId: 'Fall-ID',
+          loading: 'Datenschutzfall-Detail wird geladen ...',
+          notFound: 'Der Datenschutzfall wurde nicht gefunden.',
+        },
+        cards: {
+          permissionChange: {
+            title: 'Rechteänderung',
+            body: 'Beantragen Sie eine Änderung Ihrer Berechtigungen mit kurzer fachlicher Begründung.',
+            cta: 'Rechteänderung beantragen',
+          },
+          access: {
+            title: 'Auskunft',
+            body: 'Starten Sie eine neue Auskunftsanfrage für die zu Ihrem Konto verarbeiteten Daten.',
+            cta: 'Auskunft anfordern',
+          },
+          export: {
+            title: 'Datenexport',
+            body: 'Fordern Sie einen strukturierten Export Ihrer Kontodaten im gewünschten Format an.',
+            cta: 'Datenexport anfordern',
+          },
+          objection: {
+            title: 'Widerspruch',
+            body: 'Reichen Sie einen Widerspruch gegen optionale oder nicht erforderliche Verarbeitung ein.',
+            cta: 'Widerspruch einreichen',
+          },
+          deletion: {
+            title: 'Löschanfrage',
+            body: 'Stoßen Sie eine Löschanfrage für Ihr Konto und die zugehörigen Daten an.',
+            cta: 'Löschanfrage anfordern',
+          },
+          restriction: {
+            title: 'Einschränkung',
+            body: 'Fordern Sie eine vorübergehende Einschränkung der Verarbeitung Ihres Kontos an.',
+            cta: 'Einschränkung der Verarbeitung anfordern',
+          },
         },
         actions: {
           requestExport: 'Datenexport anfordern',
@@ -1032,6 +1068,38 @@ export const i18nResources = {
         },
         messages: {
           loading: 'Datenschutzdaten werden geladen ...',
+          accessRequested: 'Die Auskunftsanfrage wurde eingereicht.',
+          exportRequested: 'Der Export wurde in die Warteschlange gestellt.',
+          permissionChangeRequested: 'Die Rechteänderung wurde eingereicht.',
+          objectionRequested: 'Der Widerspruch wurde eingereicht.',
+          deletionRequested: 'Die Löschanfrage wurde eingereicht.',
+          restrictionRequested: 'Die Einschränkungsanfrage wurde eingereicht.',
+        },
+        table: {
+          title: 'Datenschutzvorgänge',
+          subtitle: 'Alle Self-Service-Vorgänge in einer gemeinsamen Aktivitätsliste.',
+          ariaLabel: 'Datenschutzvorgänge',
+          empty: 'Keine Datenschutzvorgänge vorhanden.',
+          columns: {
+            type: 'Typ',
+            createdAt: 'Erstellungsdatum',
+            status: 'Status',
+            updatedAt: 'Letzte Änderung',
+            details: 'Details',
+            id: 'ID',
+            actions: 'Aktionen',
+          },
+          actions: {
+            details: 'Details',
+            download: 'Download',
+          },
+          filters: {
+            search: 'Suche',
+            status: 'Status',
+            type: 'Typ',
+            allStatuses: 'Alle Status',
+            allTypes: 'Alle Typen',
+          },
         },
         deletionRules: {
           title: 'Konten-Löschregeln',
@@ -1100,6 +1168,39 @@ export const i18nResources = {
             required: 'Bitte beschreiben Sie den gewünschten zusätzlichen Zugriff.',
           },
         },
+        dialogs: {
+          shared: {
+            noteLabel: 'Zusätzliche Hinweise',
+            notePlaceholder: 'Optionalen Kontext oder Begründung ergänzen',
+            cancel: 'Abbrechen',
+          },
+          export: {
+            title: 'Datenexport anfordern',
+            description: 'Wählen Sie das gewünschte Exportformat für den neuen Exportjob.',
+            formatLabel: 'Exportformat',
+            submit: 'Export anfordern',
+          },
+          access: {
+            title: 'Auskunft anfordern',
+            description: 'Ergänzen Sie bei Bedarf Hinweise für die Auskunftsanfrage.',
+            submit: 'Auskunft senden',
+          },
+          objection: {
+            title: 'Widerspruch einreichen',
+            description: 'Ergänzen Sie bei Bedarf eine kurze Begründung für den Widerspruch.',
+            submit: 'Widerspruch senden',
+          },
+          deletion: {
+            title: 'Löschanfrage anfordern',
+            description: 'Ergänzen Sie bei Bedarf Hinweise für die Löschanfrage.',
+            submit: 'Löschanfrage senden',
+          },
+          restriction: {
+            title: 'Einschränkung anfordern',
+            description: 'Ergänzen Sie bei Bedarf Hinweise für die Einschränkung der Verarbeitung.',
+            submit: 'Einschränkung senden',
+          },
+        },
         sections: {
           exportJobs: 'Export-Jobs',
           requests: 'Betroffenenanfragen',
@@ -1123,12 +1224,67 @@ export const i18nResources = {
           blocked: 'Blockiert',
           failed: 'Fehlgeschlagen',
         },
+        types: {
+          request: 'Betroffenenanfrage',
+          export_job: 'Export-Job',
+          legal_hold: 'Rechtliche Sperre',
+          profile_correction: 'Profilkorrektur',
+          recipient_notification: 'Empfängerbenachrichtigung',
+          legal_acceptance: 'Rechtstext-Akzeptanz',
+        },
         shared: {
           createdAt: 'Erstellt: {{value}}',
           completedAt: 'Abgeschlossen: {{value}}',
           format: 'Format: {{value}}',
           blockedBy: 'Blockiert durch: {{value}}',
           rawStatus: 'Rohstatus: {{value}}',
+        },
+      },
+      rules: {
+        title: 'Kontoregeln',
+        navLabel: 'Kontoregeln',
+        subtitle: 'Prüfen Sie tenantweite Löschregeln und die Behandlung Ihrer eigenen Inhalte in einer separaten Ansicht.',
+        summary: {
+          deactivateAfterDays: 'Deaktivierung nach',
+          deactivateAfterDaysHint: 'Zeit bis zur Deaktivierung in Tagen.',
+          pseudonymizeAfterDays: 'Pseudonymisierung nach',
+          pseudonymizeAfterDaysHint: 'Zeit bis zur Pseudonymisierung in Tagen.',
+          deleteAfterDays: 'Löschung nach',
+          deleteAfterDaysHint: 'Zeit bis zur endgültigen Löschung in Tagen.',
+          defaultContentStrategy: 'Standardregel für Inhalte',
+        },
+        sections: {
+          global: {
+            title: 'Tenantweite Regeln',
+            deactivateAfterDays:
+              'Nach der konfigurierten Frist wird das Konto zunächst deaktiviert und für direkte Logins gesperrt.',
+            pseudonymizeAfterDays:
+              'Nach der zweiten Frist werden personenbezogene Daten pseudonymisiert, soweit keine Aufbewahrungspflicht greift.',
+            deleteAfterDays:
+              'Nach Ablauf der letzten Frist wird das Konto endgültig entfernt, sofern keine rechtliche Sperre besteht.',
+            defaultContentStrategy:
+              'Die Standardregel für Inhalte legt fest, ob eigene Inhalte erhalten bleiben oder mit dem Besitzer-Lebenszyklus mitlaufen.',
+          },
+          personal: {
+            title: 'Eigene Inhaltsregel',
+          },
+        },
+        fields: {
+          contentPreference: 'Regel für eigene Inhalte',
+          contentPreferenceHint:
+            'Wählen Sie, ob Ihre eigenen Inhalte dauerhaft erhalten bleiben oder dem Konto-Lebenszyklus folgen sollen.',
+        },
+        actions: {
+          save: 'Inhaltsregel speichern',
+          saving: 'Inhaltsregel wird gespeichert ...',
+        },
+        messages: {
+          loading: 'Kontoregeln werden geladen ...',
+          saveSuccess: 'Die Inhaltsregel wurde gespeichert.',
+        },
+        strategies: {
+          retain: 'Inhalte beibehalten',
+          with_owner_lifecycle: 'Inhalte mit dem Konto-Lebenszyklus behandeln',
         },
       },
     },
@@ -2261,6 +2417,7 @@ export const i18nResources = {
           error: 'Nutzer konnten nicht geladen werden.',
           mutationError: 'Die Nutzeraktion konnte nicht abgeschlossen werden.',
           resultCount: '{{count}} Nutzer gefunden.',
+          statusSwitchLabel: 'Aktivstatus für {{name}}',
           syncRunning: 'Synchronisierung läuft ...',
           syncEmpty:
             'Keine neuen oder geänderten Benutzer gefunden. {{skippedCount}} übersprungen.',
@@ -4253,12 +4410,48 @@ export const i18nResources = {
       },
       privacy: {
         title: 'Privacy & Transparency',
+        navLabel: 'Privacy',
         subtitle:
           'Manage exports, data subject rights, and processing restrictions for your own account.',
-        cta: {
-          title: 'Open privacy cockpit',
-          body: 'Review export jobs, data subject requests, and processing restrictions in a dedicated view.',
-          action: 'Go to privacy cockpit',
+        detail: {
+          title: 'Privacy case details',
+          subtitle: 'Review status, type, and metadata for a single activity entry.',
+          back: 'Back to privacy overview',
+          caseId: 'Case ID',
+          loading: 'Loading privacy case details ...',
+          notFound: 'The privacy case could not be found.',
+        },
+        cards: {
+          permissionChange: {
+            title: 'Permission change',
+            body: 'Request a permission change together with a short business justification.',
+            cta: 'Request permission change',
+          },
+          access: {
+            title: 'Access request',
+            body: 'Start a new access request for the data processed for your account.',
+            cta: 'Request access',
+          },
+          export: {
+            title: 'Data export',
+            body: 'Request a structured export of your account data in the desired format.',
+            cta: 'Request data export',
+          },
+          objection: {
+            title: 'Objection',
+            body: 'Submit an objection against optional or otherwise non-essential processing.',
+            cta: 'Submit objection',
+          },
+          deletion: {
+            title: 'Deletion request',
+            body: 'Start a deletion request for your account and its associated data.',
+            cta: 'Request deletion',
+          },
+          restriction: {
+            title: 'Restriction',
+            body: 'Request a temporary restriction of processing for your account.',
+            cta: 'Request processing restriction',
+          },
         },
         actions: {
           requestExport: 'Request data export',
@@ -4272,6 +4465,38 @@ export const i18nResources = {
         },
         messages: {
           loading: 'Loading privacy data ...',
+          accessRequested: 'The access request was submitted.',
+          exportRequested: 'The export was queued.',
+          permissionChangeRequested: 'The permission change was submitted.',
+          objectionRequested: 'The objection was submitted.',
+          deletionRequested: 'The deletion request was submitted.',
+          restrictionRequested: 'The restriction request was submitted.',
+        },
+        table: {
+          title: 'Privacy activities',
+          subtitle: 'All self-service workflows in one combined activity list.',
+          ariaLabel: 'Privacy activities',
+          empty: 'No privacy activities available.',
+          columns: {
+            type: 'Type',
+            createdAt: 'Created at',
+            status: 'Status',
+            updatedAt: 'Last updated',
+            details: 'Details',
+            id: 'ID',
+            actions: 'Actions',
+          },
+          actions: {
+            details: 'Details',
+            download: 'Download',
+          },
+          filters: {
+            search: 'Search',
+            status: 'Status',
+            type: 'Type',
+            allStatuses: 'All statuses',
+            allTypes: 'All types',
+          },
         },
         deletionRules: {
           title: 'Account deletion rules',
@@ -4340,6 +4565,39 @@ export const i18nResources = {
             required: 'Please describe the additional access you need.',
           },
         },
+        dialogs: {
+          shared: {
+            noteLabel: 'Additional notes',
+            notePlaceholder: 'Add optional context or a short rationale',
+            cancel: 'Cancel',
+          },
+          export: {
+            title: 'Request data export',
+            description: 'Choose the export format for the new export job.',
+            formatLabel: 'Export format',
+            submit: 'Request export',
+          },
+          access: {
+            title: 'Request access',
+            description: 'Add optional notes for the access request if needed.',
+            submit: 'Submit access request',
+          },
+          objection: {
+            title: 'Submit objection',
+            description: 'Add a short reason for the objection if needed.',
+            submit: 'Submit objection',
+          },
+          deletion: {
+            title: 'Request deletion',
+            description: 'Add optional notes for the deletion request.',
+            submit: 'Submit deletion request',
+          },
+          restriction: {
+            title: 'Request restriction',
+            description: 'Add optional notes for the processing restriction.',
+            submit: 'Submit restriction request',
+          },
+        },
         sections: {
           exportJobs: 'Export jobs',
           requests: 'Data subject requests',
@@ -4363,12 +4621,68 @@ export const i18nResources = {
           blocked: 'Blocked',
           failed: 'Failed',
         },
+        types: {
+          request: 'Data-subject request',
+          export_job: 'Export job',
+          legal_hold: 'Legal hold',
+          profile_correction: 'Profile correction',
+          recipient_notification: 'Recipient notification',
+          legal_acceptance: 'Legal acceptance',
+        },
         shared: {
           createdAt: 'Created: {{value}}',
           completedAt: 'Completed: {{value}}',
           format: 'Format: {{value}}',
           blockedBy: 'Blocked by: {{value}}',
           rawStatus: 'Raw status: {{value}}',
+        },
+      },
+      rules: {
+        title: 'Account rules',
+        navLabel: 'Account rules',
+        subtitle:
+          'Review tenant-wide deletion rules and the handling of your own content in a dedicated view.',
+        summary: {
+          deactivateAfterDays: 'Deactivate after',
+          deactivateAfterDaysHint: 'Time until account deactivation in days.',
+          pseudonymizeAfterDays: 'Pseudonymize after',
+          pseudonymizeAfterDaysHint: 'Time until pseudonymization in days.',
+          deleteAfterDays: 'Delete after',
+          deleteAfterDaysHint: 'Time until final deletion in days.',
+          defaultContentStrategy: 'Default content rule',
+        },
+        sections: {
+          global: {
+            title: 'Tenant-wide rules',
+            deactivateAfterDays:
+              'After the configured period the account is deactivated first and blocked for direct sign-ins.',
+            pseudonymizeAfterDays:
+              'After the second period personal data is pseudonymized unless retention duties still apply.',
+            deleteAfterDays:
+              'After the final period the account is permanently removed unless a legal hold is active.',
+            defaultContentStrategy:
+              'The default content rule defines whether personal content is kept or follows the owner lifecycle.',
+          },
+          personal: {
+            title: 'Personal content rule',
+          },
+        },
+        fields: {
+          contentPreference: 'Rule for own content',
+          contentPreferenceHint:
+            'Choose whether your own content stays retained or follows the account lifecycle.',
+        },
+        actions: {
+          save: 'Save content rule',
+          saving: 'Saving content rule ...',
+        },
+        messages: {
+          loading: 'Loading account rules ...',
+          saveSuccess: 'The content rule was saved.',
+        },
+        strategies: {
+          retain: 'Keep content',
+          with_owner_lifecycle: 'Handle content with the account lifecycle',
         },
       },
     },
@@ -5465,6 +5779,7 @@ export const i18nResources = {
           error: 'Users could not be loaded.',
           mutationError: 'The user action could not be completed.',
           resultCount: '{{count}} users found.',
+          statusSwitchLabel: 'Active status for {{name}}',
           syncRunning: 'Synchronization in progress ...',
           syncEmpty:
             'No new or changed users found. {{skippedCount}} skipped.',

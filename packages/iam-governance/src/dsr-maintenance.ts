@@ -1,12 +1,6 @@
 import { createHash } from 'node:crypto';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
-import {
-  collectDsrExportPayload,
-  serializeDsrExportPayload,
-  type DsrExportAccountSnapshot,
-  type DsrExportFormat,
-} from './dsr-export-payload.js';
 import type { QueryClient } from './query-client.js';
 
 export type DsrMaintenanceInput = {
@@ -23,39 +17,6 @@ export type DsrMaintenanceResult = {
 };
 
 const hashPseudonym = (value: string) => createHash('sha256').update(value).digest('hex').slice(0, 24);
-
-const resolveAccountById = async (
-  client: QueryClient,
-  input: { instanceId: string; accountId: string }
-): Promise<DsrExportAccountSnapshot | undefined> => {
-  const query = await client.query<DsrExportAccountSnapshot>(
-    `
-SELECT
-  a.id,
-  a.keycloak_subject,
-  a.email_ciphertext,
-  a.display_name_ciphertext,
-  a.is_blocked,
-  a.soft_deleted_at,
-  a.delete_after,
-  a.permanently_deleted_at,
-  a.processing_restricted_at,
-  a.processing_restriction_reason,
-  a.non_essential_processing_opt_out_at,
-  a.created_at,
-  a.updated_at
-FROM iam.accounts a
-JOIN iam.instance_memberships im
-  ON im.account_id = a.id
- AND im.instance_id = $1
-WHERE a.id = $2::uuid
-LIMIT 1;
-`,
-    [input.instanceId, input.accountId]
-  );
-
-  return query.rowCount > 0 ? query.rows[0] : undefined;
-};
 
 const isLegalHoldActive = async (
   client: QueryClient,
@@ -128,13 +89,9 @@ VALUES ($1, $2::uuid, $3::uuid, $4, $5::jsonb);
 };
 
 const processQueuedExportJobs = async (client: QueryClient, input: DsrMaintenanceInput): Promise<number> => {
-  const queued = await client.query<{
-    id: string;
-    target_account_id: string;
-    format: DsrExportFormat;
-  }>(
+  const queued = await client.query<{ id: string }>(
     `
-SELECT id, target_account_id, format
+SELECT id
 FROM iam.data_subject_export_jobs
 WHERE instance_id = $1
   AND status = 'queued'
@@ -143,69 +100,6 @@ LIMIT 20;
 `,
     [input.instanceId]
   );
-
-  if (input.dryRun || queued.rowCount <= 0) {
-    return queued.rowCount;
-  }
-
-  for (const job of queued.rows) {
-    await client.query(
-      `
-UPDATE iam.data_subject_export_jobs
-SET status = 'processing', started_at = NOW(), error_message = NULL
-WHERE id = $1::uuid;
-`,
-      [job.id]
-    );
-
-    try {
-      const account = await resolveAccountById(client, {
-        instanceId: input.instanceId,
-        accountId: job.target_account_id,
-      });
-      if (!account) {
-        throw new Error('target_account_not_found');
-      }
-
-      const payload = await collectDsrExportPayload(client, {
-        instanceId: input.instanceId,
-        account,
-        format: job.format,
-      });
-
-      await client.query(
-        `
-UPDATE iam.data_subject_export_jobs
-SET
-  status = 'completed',
-  completed_at = NOW(),
-  payload_json = $2::jsonb,
-  payload_csv = $3,
-  payload_xml = $4,
-  error_message = NULL
-WHERE id = $1::uuid;
-`,
-        [
-          job.id,
-          JSON.stringify(payload),
-          serializeDsrExportPayload('csv', payload),
-          serializeDsrExportPayload('xml', payload),
-        ]
-      );
-    } catch (error) {
-      await client.query(
-        `
-UPDATE iam.data_subject_export_jobs
-SET
-  status = 'failed',
-  completed_at = NOW(),
-  error_message = $2
-WHERE id = $1::uuid;
-`,
-        [job.id, error instanceof Error ? error.message : String(error)]
-      );
-    }
-  }
 
   return queued.rowCount;
 };

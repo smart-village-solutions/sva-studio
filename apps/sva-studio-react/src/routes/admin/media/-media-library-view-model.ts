@@ -15,7 +15,7 @@ const trimMetadataValue = (value: string | undefined): string | null => {
 
 export const resolveMediaCardState = (
   asset: IamMediaAsset,
-  referenceCount: number
+  referenceCount: number | null
 ): MediaLibraryCardState => {
   if (
     asset.processingStatus === 'failed' ||
@@ -38,11 +38,11 @@ export const resolveMediaCardState = (
 
 export const countMediaPriorityBuckets = (
   assets: readonly IamMediaAsset[],
-  usageByAssetId: Readonly<Record<string, number>>
+  usageByAssetId: Readonly<Record<string, number | null>>
 ): MediaPriorityBuckets =>
   assets.reduce<MediaPriorityBuckets>(
     (counts, asset) => {
-      const referenceCount = usageByAssetId[asset.id] ?? 0;
+      const referenceCount = usageByAssetId[asset.id] ?? null;
       const state = resolveMediaCardState(asset, referenceCount);
 
       return {

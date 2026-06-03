@@ -8,7 +8,7 @@ import { resolveMediaCardState } from './-media-library-view-model.js';
 
 type MediaAssetCardProps = Readonly<{
   asset: IamMediaAsset;
-  referenceCount: number;
+  referenceCount: number | null;
 }>;
 
 const stateVariantByValue = {
@@ -59,8 +59,15 @@ const isVisualPreview = (mimeType: string): boolean => mimeType.startsWith('imag
 
 const getAssetLabel = (asset: IamMediaAsset): string => asset.metadata.title?.trim() || asset.id;
 
-const usageCountLabel = (count: number): string =>
-  count === 1 ? t('media.library.usageCountOne') : t('media.library.usageCountOther', { count });
+const usageCountLabel = (count: number | null): string => {
+  if (count === null) {
+    return t('media.library.usageCountUnknown');
+  }
+
+  return count === 1
+    ? t('media.library.usageCountOne')
+    : t('media.library.usageCountOther', { count });
+};
 
 export const MediaAssetCard = ({ asset, referenceCount }: MediaAssetCardProps) => {
   const label = getAssetLabel(asset);

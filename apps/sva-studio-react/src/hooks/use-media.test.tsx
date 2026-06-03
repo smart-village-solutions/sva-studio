@@ -43,13 +43,13 @@ vi.mock('@sva/monitoring-client/logging', () => ({
 function MediaLibraryProbe(props: { readonly search?: string; readonly visibility?: 'all' | 'public' | 'protected' }) {
   const media = useMediaLibrary(props);
   const firstAsset = media.assets[0];
-  const firstUsageCount = firstAsset ? media.usageByAssetId[firstAsset.id] ?? 0 : 0;
+  const firstUsageCount = firstAsset ? media.usageByAssetId[firstAsset.id] : null;
 
   return (
     <div>
       <span data-testid="loading">{String(media.isLoading)}</span>
       <span data-testid="asset-count">{String(media.assets.length)}</span>
-      <span data-testid="usage-count">{String(firstUsageCount)}</span>
+      <span data-testid="usage-count">{firstUsageCount === null ? 'unknown' : String(firstUsageCount)}</span>
       <span data-testid="error-code">{media.error?.code ?? 'none'}</span>
       <button type="button" onClick={() => void media.refetch()}>
         refetch
@@ -203,11 +203,52 @@ describe('useMediaLibrary', () => {
     await waitFor(() => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
       expect(screen.getByTestId('asset-count').textContent).toBe('0');
-      expect(screen.getByTestId('usage-count').textContent).toBe('0');
+      expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
       expect(screen.getByTestId('error-code').textContent).toBe(protectedError.code);
     });
 
     expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps assets visible when usage enrichment fails and marks counts as unknown', async () => {
+    listMediaMock.mockResolvedValue({
+      data: [
+        {
+          id: 'asset-2',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-2',
+          mediaType: 'image',
+          mimeType: 'image/png',
+          byteSize: 2048,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {},
+          technical: {},
+        },
+      ],
+      pagination: {
+        page: 1,
+        pageSize: 25,
+        total: 1,
+      },
+    });
+    getMediaUsageMock.mockRejectedValue({
+      status: 503,
+      code: 'database_unavailable',
+      message: 'Usage unavailable',
+    });
+
+    render(<MediaLibraryProbe />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('false');
+      expect(screen.getByTestId('asset-count').textContent).toBe('1');
+      expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
+      expect(screen.getByTestId('error-code').textContent).toBe('none');
+    });
+
+    expect(invalidatePermissionsMock).not.toHaveBeenCalled();
   });
 });
 

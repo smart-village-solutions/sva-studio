@@ -53,6 +53,7 @@ describe('resolveMediaCardState', () => {
     expect(resolveMediaCardState(createAsset(), 0)).toBe('unused');
     expect(resolveMediaCardState(createAsset({}, { title: 'Hero', altText: '' }), 2)).toBe('new');
     expect(resolveMediaCardState(createAsset(), 2)).toBe('ready');
+    expect(resolveMediaCardState(createAsset(), null)).toBe('ready');
   });
 });
 
@@ -78,6 +79,20 @@ describe('countMediaPriorityBuckets', () => {
       blocked: 1,
       newItems: 1,
       unused: 1,
+    });
+  });
+
+  it('does not classify assets with unknown usage counts as unused', () => {
+    const uncertain = createAsset({ id: 'uncertain' });
+
+    expect(
+      countMediaPriorityBuckets([uncertain], {
+        uncertain: null,
+      })
+    ).toEqual({
+      blocked: 0,
+      newItems: 0,
+      unused: 0,
     });
   });
 });

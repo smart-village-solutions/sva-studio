@@ -152,4 +152,46 @@ describe('MediaLibraryPage', () => {
     expect(screen.getByText('Veranstaltungsflyer 2024')).toBeTruthy();
     expect(screen.getByText('PDF')).toBeTruthy();
   });
+
+  it('renders the empty state when no library assets are available', () => {
+    useMediaLibraryMock.mockReturnValue({
+      assets: [],
+      usageByAssetId: {},
+      isLoading: false,
+      error: null,
+      page: 1,
+      pageSize: 25,
+      total: 0,
+      refetch: vi.fn(),
+    });
+
+    render(<MediaLibraryPage />);
+
+    expect(
+      screen.getByText(
+        'Noch keine Medien vorhanden. Initialisieren Sie den ersten Upload, um die Bibliothek zu füllen.'
+      )
+    ).toBeTruthy();
+  });
+
+  it('renders the library load error when the hook reports a failure', () => {
+    useMediaLibraryMock.mockReturnValue({
+      assets: [],
+      usageByAssetId: {},
+      isLoading: false,
+      error: { code: 'database_unavailable' },
+      page: 1,
+      pageSize: 25,
+      total: 0,
+      refetch: vi.fn(),
+    });
+
+    render(<MediaLibraryPage />);
+
+    expect(
+      screen.getByText(
+        'Die Mediendaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.'
+      )
+    ).toBeTruthy();
+  });
 });

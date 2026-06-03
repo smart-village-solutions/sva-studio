@@ -28,7 +28,7 @@ import { useAuth } from '../providers/auth-provider';
 
 type UseMediaLibraryResult = {
   readonly assets: readonly IamMediaAsset[];
-  readonly usageByAssetId: Readonly<Record<string, number>>;
+  readonly usageByAssetId: Readonly<Record<string, number | null>>;
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
   readonly page: number;
@@ -62,14 +62,17 @@ const mediaLogger = createOperationLogger('media-hook', 'debug');
 export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResult => {
   const { invalidatePermissions } = useAuth();
   const [assets, setAssets] = React.useState<readonly IamMediaAsset[]>([]);
-  const [usageByAssetId, setUsageByAssetId] = React.useState<Readonly<Record<string, number>>>({});
+  const [usageByAssetId, setUsageByAssetId] = React.useState<Readonly<Record<string, number | null>>>({});
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [page, setPage] = React.useState(query.page ?? 1);
   const [pageSize, setPageSize] = React.useState(query.pageSize ?? 25);
   const [total, setTotal] = React.useState(0);
+  const latestRequestRef = React.useRef(0);
 
   const refetch = React.useCallback(async () => {
+    const requestId = latestRequestRef.current + 1;
+    latestRequestRef.current = requestId;
     logBrowserOperationStart(mediaLogger, 'media_library_refetch_started', {
       operation: 'list_media',
       search: query.search ?? null,
@@ -80,21 +83,62 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
 
     try {
       const response = await listMedia(query);
-      const usageEntries = await Promise.all(
+      if (requestId !== latestRequestRef.current) {
+        return;
+      }
+      const initialUsageByAssetId = Object.fromEntries(
+        response.data.map((asset) => [asset.id, null] as const)
+      );
+      setAssets(response.data);
+      setUsageByAssetId(initialUsageByAssetId);
+      setPage(response.pagination.page);
+      setPageSize(response.pagination.pageSize);
+      setTotal(response.pagination.total);
+      setIsLoading(false);
+      logBrowserOperationSuccess(mediaLogger, 'media_library_refetch_succeeded', {
+        operation: 'list_media',
+        item_count: response.data.length,
+      });
+
+      const usageResults = await Promise.allSettled(
         response.data.map(async (asset) => {
           const usageResponse = await getMediaUsage(asset.id);
           return [asset.id, usageResponse.data.totalReferences] as const;
         })
       );
-      setAssets(response.data);
-      setUsageByAssetId(Object.fromEntries(usageEntries));
-      setPage(response.pagination.page);
-      setPageSize(response.pagination.pageSize);
-      setTotal(response.pagination.total);
-      logBrowserOperationSuccess(mediaLogger, 'media_library_refetch_succeeded', {
-        operation: 'list_media',
-        item_count: response.data.length,
-      });
+
+      if (requestId !== latestRequestRef.current) {
+        return;
+      }
+
+      const resolvedUsageByAssetId: Record<string, number | null> = { ...initialUsageByAssetId };
+      let hasProtectedUsageFailure = false;
+
+      for (const result of usageResults) {
+        if (result.status === 'fulfilled') {
+          const [assetId, totalReferences] = result.value;
+          resolvedUsageByAssetId[assetId] = totalReferences;
+          continue;
+        }
+
+        const resolvedError = asIamError(result.reason);
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
+          hasProtectedUsageFailure = true;
+        }
+        logBrowserOperationFailure(mediaLogger, 'media_library_usage_load_failed', resolvedError, {
+          operation: 'get_media_usage',
+        });
+      }
+
+      if (hasProtectedUsageFailure) {
+        await invalidatePermissions();
+      }
+
+      if (requestId !== latestRequestRef.current) {
+        return;
+      }
+
+      setUsageByAssetId(resolvedUsageByAssetId);
     } catch (cause) {
       const resolvedError = asIamError(cause);
       if (resolvedError.status === 401 || resolvedError.status === 403) {
@@ -104,11 +148,10 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       setUsageByAssetId({});
       setTotal(0);
       setError(resolvedError);
+      setIsLoading(false);
       logBrowserOperationFailure(mediaLogger, 'media_library_refetch_failed', resolvedError, {
         operation: 'list_media',
       });
-    } finally {
-      setIsLoading(false);
     }
   }, [invalidatePermissions, query.page, query.pageSize, query.search, query.visibility]);
 

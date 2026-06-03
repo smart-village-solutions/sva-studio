@@ -54,7 +54,7 @@ jobs:
       - name: Determine PR scope
         id: scope
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
+        run: pnpm exec tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
       - name: Start Redis for coverage tests
         if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip')
@@ -207,7 +207,7 @@ jobs:
       - name: Determine PR scope
         id: scope
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
+        run: pnpm exec tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
       - name: Evaluate complexity gates
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
@@ -268,7 +268,7 @@ jobs:
       - name: Determine PR scope
         id: scope
         if: steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
+        run: pnpm exec tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
       - name: Run scoped integration tests
         if: steps.changes.outputs.relevant == 'true' && steps.scope.outputs.integration_mode != 'skip'
@@ -276,7 +276,7 @@ jobs:
           if [ "${{ steps.scope.outputs.integration_mode }}" = "full" ]; then
             pnpm test:integration
           else
-            env -u NO_COLOR pnpm nx affected --target=test:integration --base=${{ github.event.pull_request.base.sha }} --exclude=monitoring-client --output-style=stream
+            pnpm exec tsx scripts/ci/run-integration-gate.ts --mode affected --base ${{ github.event.pull_request.base.sha }}
           fi
 
       - name: Publish PR integration summary
@@ -292,7 +292,7 @@ jobs:
             exit 0
           fi
           echo "Scope: \`${{ steps.scope.outputs.integration_mode }}\` gegen Base-SHA \`${{ github.event.pull_request.base.sha }}\`." >> "$GITHUB_STEP_SUMMARY"
-          echo 'Monitoring-Checks laufen separat im Workflow `Monitoring Stack`.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Allgemeine Integration umfasst nur echte infra-abhängige Ziele; Monitoring-Checks laufen separat im Workflow `Monitoring Stack`.' >> "$GITHUB_STEP_SUMMARY"
 
   integration-required:
     name: Integration
@@ -316,4 +316,5 @@ jobs:
         if: always()
         run: |
           echo 'Integrations-Gate fuer main/schedule abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Scope: voller `pnpm test:integration` Lauf.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Scope: voller Lauf der allgemeinen echten Integrationsziele via `pnpm test:integration`.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Monitoring-Checks laufen separat im Workflow `Monitoring Stack`.' >> "$GITHUB_STEP_SUMMARY"

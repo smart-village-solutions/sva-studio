@@ -109,6 +109,8 @@ pnpm env:bootstrap:local-instance-db -- \
 
 Ohne `--approve-dangerous=bootstrap-local-instance-db:<target-instance-id>` bleibt der Bootstrap absichtlich gesperrt. Das verhindert, dass Neuaufbau- oder Reimport-Pfade versehentlich gegen eine bestehende lokale Datenbank laufen.
 
+Jeder Bootstrap-Lauf schreibt zusätzlich ein Audit nach `artifacts/runtime/rebuild-events.jsonl`. Das Log enthaelt Start, Ende und Fehler der einzelnen Phasen wie `recreate-database`, `import-schema`, `sync-catalog` oder `sync-keycloak-users`, aber keine Secrets.
+
 Das Skript führt in Reihenfolge aus:
 
 1. Ziel-Datenbank optional neu erzeugen

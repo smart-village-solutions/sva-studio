@@ -534,6 +534,7 @@ describe('verifyDbSchemaSnapshot', () => {
         `,
       ),
     ).toEqual({
+      contentDrift: false,
       ignoredSchemas: ['graphile_worker'],
       missingObjects: ['table:public.expected_table'],
       status: 'drift',

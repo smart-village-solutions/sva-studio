@@ -45,11 +45,15 @@ jobs:
       - name: Determine PR scope
         id: scope
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
+        run: pnpm exec tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
       - name: Run app build
         if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.app_build_mode != 'skip')
         run: pnpm nx run sva-studio-react:build
+
+      - name: Run runtime artifact verify
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true' && steps.scope.outputs.runtime_verify_mode != 'skip'
+        run: pnpm verify:runtime-artifact
 
       - name: Publish build summary
         if: always()
@@ -65,6 +69,12 @@ jobs:
           fi
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "Scope: \`${{ steps.scope.outputs.app_build_mode }}\` gegen Base-SHA \`${{ github.event.pull_request.base.sha }}\`." >> "$GITHUB_STEP_SUMMARY"
+            if [ "${{ steps.scope.outputs.runtime_verify_mode }}" = "skip" ]; then
+              echo 'Runtime-Artifact-Verify: bewusst nicht ausgeführt, weil keine runtime-kritischen Server-/Build-Pfade im Pull Request geändert wurden.' >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "Runtime-Artifact-Verify: \`${{ steps.scope.outputs.runtime_verify_mode }}\` fuer runtime-kritische Aenderungen im Pull Request ausgefuehrt." >> "$GITHUB_STEP_SUMMARY"
+            fi
           else
             echo 'Scope: voller App-Build für main.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Runtime-Artifact-Verify bleibt im regulaeren Push-Pfad auf main bewusst dem Release-/Image-Verifikationspfad vorbehalten.' >> "$GITHUB_STEP_SUMMARY"
           fi

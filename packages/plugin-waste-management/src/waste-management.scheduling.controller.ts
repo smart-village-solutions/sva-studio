@@ -20,7 +20,7 @@ export const useWasteSchedulingController = (pt: Translate, search: WasteManagem
     globalDateShifts: state.overview?.globalDateShifts ?? [],
     tourDateShifts: state.overview?.tourDateShifts ?? [],
     availableTours: state.availableTours,
-    t: pt,
+    pt,
   });
 
   return {

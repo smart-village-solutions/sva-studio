@@ -38,7 +38,7 @@ export const useSchedulingTableLabels = () => {
   const pt = usePluginTranslation('wasteManagement');
 
   return {
-    selectionColumn: pt('common.selection'),
+    selectionColumn: pt('scheduling.table.selection'),
     actionsColumn: pt('scheduling.table.actions'),
     loading: pt('masterData.messages.loading'),
     selectAllRows: (label: string) => `${label}: alle Zeilen auswählen`,

@@ -13,7 +13,11 @@
       "cache": true,
       "inputs": [
         "default",
-        "{workspaceRoot}/scripts/ci/check-i18n-keys.ts"
+        "{workspaceRoot}/scripts/ci/check-i18n-keys.ts",
+        "{workspaceRoot}/packages/plugin-news/src/**",
+        "{workspaceRoot}/packages/plugin-events/src/**",
+        "{workspaceRoot}/packages/plugin-poi/src/**",
+        "{workspaceRoot}/packages/plugin-waste-management/src/**"
       ],
       "outputs": [],
       "options": {

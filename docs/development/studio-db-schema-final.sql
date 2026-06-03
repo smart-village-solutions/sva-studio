@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict JcgUNDli7BV6ns23FpobiSNzgNhs7HNeagxyJldDjaGIFs14Im04PWUxhh8r7yN
+\restrict WllTzGWnJtp24wGps7ESTiQSbbg6frAk2gPlDHnEDWm3ODINT1hr2elv5Lm8Ziq
 
--- Dumped from database version 16.13
--- Dumped by pg_dump version 16.13
+-- Dumped from database version 16.14
+-- Dumped by pg_dump version 16.14
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -908,6 +908,34 @@ CREATE TABLE iam.legal_text_acceptances (
 
 
 --
+-- Name: legal_text_target_groups; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.legal_text_target_groups (
+    instance_id text NOT NULL,
+    legal_text_version_id uuid NOT NULL,
+    group_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+ALTER TABLE ONLY iam.legal_text_target_groups FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: legal_text_target_roles; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.legal_text_target_roles (
+    instance_id text NOT NULL,
+    legal_text_version_id uuid NOT NULL,
+    role_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+ALTER TABLE ONLY iam.legal_text_target_roles FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: legal_text_versions; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -926,67 +954,6 @@ CREATE TABLE iam.legal_text_versions (
     status text NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT legal_text_versions_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'valid'::text, 'archived'::text])))
-);
-
---
--- Name: legal_text_target_groups; Type: TABLE; Schema: iam; Owner: -
---
-
-CREATE TABLE iam.legal_text_target_groups (
-    instance_id text NOT NULL,
-    legal_text_version_id uuid NOT NULL,
-    group_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: waste_custom_recurrence_presets; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.waste_custom_recurrence_presets (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    name text NOT NULL,
-    description text,
-    interval_days integer NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT waste_custom_recurrence_presets_interval_days_positive_chk CHECK ((interval_days > 0)),
-    CONSTRAINT waste_custom_recurrence_presets_name_unique UNIQUE (name)
-);
-
-
---
--- Name: waste_tours; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.waste_tours (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    name text NOT NULL,
-    description text,
-    waste_fraction_ids text[] DEFAULT '{}'::text[] NOT NULL,
-    recurrence text,
-    custom_recurrence_id uuid,
-    first_date date,
-    end_date date,
-    custom_dates jsonb,
-    active boolean DEFAULT true NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT waste_tours_recurrence_chk CHECK ((recurrence = ANY (ARRAY['weekly'::text, 'biweekly'::text, 'fourweekly'::text, 'yearly'::text, 'on-demand'::text, 'custom'::text]))),
-    CONSTRAINT waste_tours_custom_recurrence_fk FOREIGN KEY (custom_recurrence_id) REFERENCES public.waste_custom_recurrence_presets(id)
-);
-
-
---
--- Name: legal_text_target_roles; Type: TABLE; Schema: iam; Owner: -
---
-
-CREATE TABLE iam.legal_text_target_roles (
-    instance_id text NOT NULL,
-    legal_text_version_id uuid NOT NULL,
-    role_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -1096,6 +1063,23 @@ CREATE TABLE iam.media_variants (
 
 
 --
+-- Name: organization_mainserver_credentials; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.organization_mainserver_credentials (
+    instance_id text NOT NULL,
+    organization_id uuid NOT NULL,
+    mainserver_application_id text,
+    mainserver_application_secret_ciphertext text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by_account_id uuid
+);
+
+ALTER TABLE ONLY iam.organization_mainserver_credentials FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: organizations; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -1118,23 +1102,6 @@ CREATE TABLE iam.organizations (
     CONSTRAINT organizations_parent_not_self_chk CHECK (((parent_organization_id IS NULL) OR (parent_organization_id <> id))),
     CONSTRAINT organizations_type_chk CHECK ((organization_type = ANY (ARRAY['county'::text, 'municipality'::text, 'district'::text, 'company'::text, 'agency'::text, 'other'::text])))
 );
-
-
---
--- Name: organization_mainserver_credentials; Type: TABLE; Schema: iam; Owner: -
---
-
-CREATE TABLE iam.organization_mainserver_credentials (
-    instance_id text NOT NULL,
-    organization_id uuid NOT NULL,
-    mainserver_application_id text,
-    mainserver_application_secret_ciphertext text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_by_account_id uuid
-);
-
-ALTER TABLE ONLY iam.organization_mainserver_credentials FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1275,9 +1242,9 @@ CREATE TABLE iam.role_permissions (
     permission_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     instance_id text NOT NULL,
-    access_scope text DEFAULT 'all'::text NOT NULL,
     grant_origin_kind text DEFAULT 'manual'::text NOT NULL,
     grant_origin_module_id text,
+    access_scope text DEFAULT 'all'::text NOT NULL,
     CONSTRAINT role_permissions_access_scope_check CHECK ((access_scope = ANY (ARRAY['all'::text, 'own'::text, 'organization'::text]))),
     CONSTRAINT role_permissions_grant_origin_kind_check CHECK ((grant_origin_kind = ANY (ARRAY['manual'::text, 'seed'::text, 'bootstrap'::text, 'module_sync'::text]))),
     CONSTRAINT role_permissions_grant_origin_module_check CHECK ((((grant_origin_kind = 'module_sync'::text) AND (grant_origin_module_id IS NOT NULL) AND (btrim(grant_origin_module_id) <> ''::text)) OR ((grant_origin_kind <> 'module_sync'::text) AND (grant_origin_module_id IS NULL))))
@@ -1689,22 +1656,6 @@ ALTER TABLE ONLY iam.legal_text_acceptances
 
 
 --
--- Name: legal_text_versions legal_text_versions_instance_unique; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.legal_text_versions
-    ADD CONSTRAINT legal_text_versions_instance_unique UNIQUE (instance_id, legal_text_id, legal_text_version, locale);
-
-
---
--- Name: legal_text_versions legal_text_versions_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.legal_text_versions
-    ADD CONSTRAINT legal_text_versions_pkey PRIMARY KEY (id);
-
-
---
 -- Name: legal_text_target_groups legal_text_target_groups_unique; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -1718,6 +1669,22 @@ ALTER TABLE ONLY iam.legal_text_target_groups
 
 ALTER TABLE ONLY iam.legal_text_target_roles
     ADD CONSTRAINT legal_text_target_roles_unique UNIQUE (instance_id, legal_text_version_id, role_id);
+
+
+--
+-- Name: legal_text_versions legal_text_versions_instance_unique; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_versions
+    ADD CONSTRAINT legal_text_versions_instance_unique UNIQUE (instance_id, legal_text_id, legal_text_version, locale);
+
+
+--
+-- Name: legal_text_versions legal_text_versions_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_versions
+    ADD CONSTRAINT legal_text_versions_pkey PRIMARY KEY (id);
 
 
 --
@@ -1769,6 +1736,14 @@ ALTER TABLE ONLY iam.media_variants
 
 
 --
+-- Name: organization_mainserver_credentials organization_mainserver_credentials_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.organization_mainserver_credentials
+    ADD CONSTRAINT organization_mainserver_credentials_pkey PRIMARY KEY (instance_id, organization_id);
+
+
+--
 -- Name: organizations organizations_instance_key_uniq; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -1782,14 +1757,6 @@ ALTER TABLE ONLY iam.organizations
 
 ALTER TABLE ONLY iam.organizations
     ADD CONSTRAINT organizations_pkey PRIMARY KEY (id);
-
-
---
--- Name: organization_mainserver_credentials organization_mainserver_credentials_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.organization_mainserver_credentials
-    ADD CONSTRAINT organization_mainserver_credentials_pkey PRIMARY KEY (instance_id, organization_id);
 
 
 --
@@ -2187,13 +2154,6 @@ CREATE INDEX idx_legal_text_acceptances_workspace_action ON iam.legal_text_accep
 
 
 --
--- Name: uq_legal_text_versions_instance_id_id; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE UNIQUE INDEX uq_legal_text_versions_instance_id_id ON iam.legal_text_versions USING btree (instance_id, id);
-
-
---
 -- Name: idx_media_assets_instance_storage_key; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -2422,6 +2382,13 @@ CREATE UNIQUE INDEX uq_instance_provisioning_runs_idempotency ON iam.instance_pr
 --
 
 CREATE UNIQUE INDEX uq_instances_primary_hostname ON iam.instances USING btree (primary_hostname);
+
+
+--
+-- Name: uq_legal_text_versions_instance_id_id; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_legal_text_versions_instance_id_id ON iam.legal_text_versions USING btree (instance_id, id);
 
 
 --
@@ -3081,22 +3048,6 @@ ALTER TABLE ONLY iam.legal_text_acceptances
 
 
 --
--- Name: legal_text_versions legal_text_versions_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.legal_text_versions
-    ADD CONSTRAINT legal_text_versions_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
-
-
---
--- Name: legal_text_target_groups legal_text_target_groups_group_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.legal_text_target_groups
-    ADD CONSTRAINT legal_text_target_groups_group_fk FOREIGN KEY (instance_id, group_id) REFERENCES iam.groups(instance_id, id) ON DELETE CASCADE;
-
-
---
 -- Name: legal_text_target_groups legal_text_target_groups_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3105,11 +3056,19 @@ ALTER TABLE ONLY iam.legal_text_target_groups
 
 
 --
--- Name: legal_text_target_groups legal_text_target_groups_legal_text_version_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+-- Name: legal_text_target_groups legal_text_target_groups_instance_id_group_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
 ALTER TABLE ONLY iam.legal_text_target_groups
-    ADD CONSTRAINT legal_text_target_groups_legal_text_version_fk FOREIGN KEY (instance_id, legal_text_version_id) REFERENCES iam.legal_text_versions(instance_id, id) ON DELETE CASCADE;
+    ADD CONSTRAINT legal_text_target_groups_instance_id_group_id_fkey FOREIGN KEY (instance_id, group_id) REFERENCES iam.groups(instance_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: legal_text_target_groups legal_text_target_groups_instance_id_legal_text_version_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_target_groups
+    ADD CONSTRAINT legal_text_target_groups_instance_id_legal_text_version_id_fkey FOREIGN KEY (instance_id, legal_text_version_id) REFERENCES iam.legal_text_versions(instance_id, id) ON DELETE CASCADE;
 
 
 --
@@ -3121,19 +3080,27 @@ ALTER TABLE ONLY iam.legal_text_target_roles
 
 
 --
--- Name: legal_text_target_roles legal_text_target_roles_legal_text_version_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+-- Name: legal_text_target_roles legal_text_target_roles_instance_id_legal_text_version_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
 ALTER TABLE ONLY iam.legal_text_target_roles
-    ADD CONSTRAINT legal_text_target_roles_legal_text_version_fk FOREIGN KEY (instance_id, legal_text_version_id) REFERENCES iam.legal_text_versions(instance_id, id) ON DELETE CASCADE;
+    ADD CONSTRAINT legal_text_target_roles_instance_id_legal_text_version_id_fkey FOREIGN KEY (instance_id, legal_text_version_id) REFERENCES iam.legal_text_versions(instance_id, id) ON DELETE CASCADE;
 
 
 --
--- Name: legal_text_target_roles legal_text_target_roles_role_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+-- Name: legal_text_target_roles legal_text_target_roles_instance_id_role_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
 ALTER TABLE ONLY iam.legal_text_target_roles
-    ADD CONSTRAINT legal_text_target_roles_role_fk FOREIGN KEY (instance_id, role_id) REFERENCES iam.roles(instance_id, id) ON DELETE CASCADE;
+    ADD CONSTRAINT legal_text_target_roles_instance_id_role_id_fkey FOREIGN KEY (instance_id, role_id) REFERENCES iam.roles(instance_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: legal_text_versions legal_text_versions_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.legal_text_versions
+    ADD CONSTRAINT legal_text_versions_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
 --
@@ -3209,14 +3176,6 @@ ALTER TABLE ONLY iam.media_variants
 
 
 --
--- Name: organizations organizations_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.organizations
-    ADD CONSTRAINT organizations_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
-
-
---
 -- Name: organization_mainserver_credentials organization_mainserver_credentials_org_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3230,6 +3189,14 @@ ALTER TABLE ONLY iam.organization_mainserver_credentials
 
 ALTER TABLE ONLY iam.organization_mainserver_credentials
     ADD CONSTRAINT organization_mainserver_credentials_updated_by_fk FOREIGN KEY (updated_by_account_id) REFERENCES iam.accounts(id) ON DELETE SET NULL;
+
+
+--
+-- Name: organizations organizations_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.organizations
+    ADD CONSTRAINT organizations_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
 
 
 --
@@ -3550,31 +3517,36 @@ CREATE POLICY legal_text_acceptances_isolation_policy ON iam.legal_text_acceptan
 
 
 --
--- Name: legal_text_versions legal_text_versions_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+-- Name: legal_text_target_groups; Type: ROW SECURITY; Schema: iam; Owner: -
 --
 
-CREATE POLICY legal_text_versions_isolation_policy ON iam.legal_text_versions USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
-
+ALTER TABLE iam.legal_text_target_groups ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: legal_text_target_groups legal_text_target_groups_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
-CREATE POLICY legal_text_target_groups_isolation_policy ON iam.legal_text_target_groups USING ((instance_id = iam.current_instance_id()));
+CREATE POLICY legal_text_target_groups_isolation_policy ON iam.legal_text_target_groups USING ((instance_id = current_setting('app.current_instance_id'::text, true)));
 
+
+--
+-- Name: legal_text_target_roles; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.legal_text_target_roles ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: legal_text_target_roles legal_text_target_roles_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
-CREATE POLICY legal_text_target_roles_isolation_policy ON iam.legal_text_target_roles USING ((instance_id = iam.current_instance_id()));
+CREATE POLICY legal_text_target_roles_isolation_policy ON iam.legal_text_target_roles USING ((instance_id = current_setting('app.current_instance_id'::text, true)));
 
 
 --
--- Name: organizations organizations_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+-- Name: legal_text_versions legal_text_versions_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
-CREATE POLICY organizations_isolation_policy ON iam.organizations USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+CREATE POLICY legal_text_versions_isolation_policy ON iam.legal_text_versions USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
 
 
 --
@@ -3588,6 +3560,13 @@ ALTER TABLE iam.organization_mainserver_credentials ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY organization_mainserver_credentials_isolation_policy ON iam.organization_mainserver_credentials USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: organizations organizations_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY organizations_isolation_policy ON iam.organizations USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
 
 
 --
@@ -3635,4 +3614,4 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict JcgUNDli7BV6ns23FpobiSNzgNhs7HNeagxyJldDjaGIFs14Im04PWUxhh8r7yN
+\unrestrict WllTzGWnJtp24wGps7ESTiQSbbg6frAk2gPlDHnEDWm3ODINT1hr2elv5Lm8Ziq

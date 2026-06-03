@@ -31,7 +31,7 @@
         "toolingScripts"
       ],
       "options": {
-        "command": "pnpm exec vitest --root tooling/testing run tests ../../scripts/ops/runtime-env.test.ts ../../scripts/ci/pr-scope.test.ts ../../scripts/ci/affected-unit-gate.test.ts ../../scripts/ci/run-pr-gate.test.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec vitest --root tooling/testing run tests ../../scripts/ops/runtime-env.test.ts ../../scripts/ci/pr-scope.test.ts ../../scripts/ci/affected-unit-gate.test.ts ../../scripts/ci/run-pr-gate.test.ts ../../scripts/ci/run-integration-gate.test.ts ../../scripts/ci/check-db-schema-snapshot.test.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:coverage": {
@@ -44,7 +44,7 @@
         "toolingScripts"
       ],
       "options": {
-        "command": "pnpm exec vitest --root tooling/testing run tests ../../scripts/ops/runtime-env.test.ts ../../scripts/ci/pr-scope.test.ts ../../scripts/ci/affected-unit-gate.test.ts ../../scripts/ci/run-pr-gate.test.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec vitest --root tooling/testing run tests ../../scripts/ops/runtime-env.test.ts ../../scripts/ci/pr-scope.test.ts ../../scripts/ci/affected-unit-gate.test.ts ../../scripts/ci/run-pr-gate.test.ts ../../scripts/ci/run-integration-gate.test.ts ../../scripts/ci/check-db-schema-snapshot.test.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:integration": {

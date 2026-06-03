@@ -277,8 +277,8 @@ describe('waste-management low coverage views', () => {
       />
     );
 
-    expect(screen.getByText('masterData.locationsWorkspace.overview.collectionLocationCount:{"value":5}')).toBeTruthy();
-    expect(screen.getByText('masterData.locationsWorkspace.overview.houseNumberCount:{"value":6}')).toBeTruthy();
+    expect(screen.getByText('masterData.meta.collectionLocationCount:{"value":5}')).toBeTruthy();
+    expect(screen.getByText('masterData.meta.houseNumberCount:{"value":6}')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.actions.createRegion' }));
     fireEvent.click(screen.getByRole('button', { name: 'masterData.locationsWorkspace.actions.createCity' }));

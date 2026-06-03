@@ -192,6 +192,7 @@ export const wasteManagementPluginTranslationsENScheduling = createWasteManageme
     description: 'Holiday rules, global shifts, and tour-related shifts in one shared table.',
     ariaLabel: 'Table of waste scheduling shifts',
     caption: 'Table of holiday rules, global shifts, and tour-related waste scheduling shifts with context and actions.',
+    selection: 'Selection',
     scope: 'Type',
     context: 'Context',
     scopeHoliday: 'Holiday rule',

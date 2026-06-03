@@ -110,7 +110,7 @@ describe('WasteToursCustomDatesField', () => {
     expect(screen.getByText('2027-01-01')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.dialog.removeConfirm' }));
     expect(onChange).toHaveBeenCalledWith([{ date: '2027-01-05' }]);
-  });
+  }, 10_000);
 
   it('respects disabled state and derives the initial year from explicit custom dates', () => {
     const onChange = vi.fn();

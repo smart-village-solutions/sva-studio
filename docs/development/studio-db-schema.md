@@ -220,21 +220,13 @@ Kernidee:
 
 ### 9. Externe Waste-Fachdatenbank
 
-Die instanzbezogene Waste-Fachdatenbank ist technisch von der zentralen IAM-/Governance-Persistenz getrennt. Für die im Studio verwalteten Touren und Terminlogiken ist insbesondere folgende `waste_*`-Tabellenfamilie relevant:
-
-- `waste_tours`
-- `waste_custom_recurrence_presets`
-- `waste_location_tour_links`
-- `waste_location_tour_pickup_dates`
-- `waste_tour_date_shifts`
-- `waste_global_date_shifts`
+Die instanzbezogene Waste-Fachdatenbank ist technisch von der zentralen IAM-/Governance-Persistenz getrennt. Im kanonischen migrationsbasierten Studio-Snapshot unter `docs/development/studio-db-schema-final.sql` sind derzeit keine `waste_*`-Tabellen enthalten.
 
 Kernidee:
 
-- `waste_tours` bleibt das führende Tourmodell und trägt weiterhin `first_date`, `end_date` und `custom_dates`.
-- `waste_custom_recurrence_presets` hält instanzbezogene zusätzliche Tagesabstände mit Name, optionaler Beschreibung und positiver Tagesanzahl.
-- `waste_tours.custom_recurrence_id` referenziert optional ein solches Preset; feste Default-Turnusse bleiben parallel über `recurrence` erhalten.
-- Datumsverschiebungen und ortsbezogene Zuordnungen bleiben in ihren bestehenden Tabellen und wenden die aufgelöste Tourserie lediglich fachlich an.
+- Waste-Fachtabellen gelten nur dann als Teil des kanonischen Studio-Snapshots, wenn sie auch ueber `packages/data/migrations/*.sql` reproduzierbar erzeugt werden.
+- Fachliche oder externe Waste-Schemata ausserhalb dieses Migrationspfads duerfen nicht stillschweigend im Soll-Snapshot oder in CI-Gates auftauchen.
+- Sobald Waste-Tabellen wieder in den migrationsbasierten Studio-Stand aufgenommen werden, muessen Snapshot und diese Einordnung gemeinsam aktualisiert werden.
 
 ## Wichtige Beziehungen
 

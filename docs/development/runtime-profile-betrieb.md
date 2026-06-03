@@ -135,6 +135,7 @@ Wichtig für den lokalen `local-keycloak`-Pfad:
 - `<instanceId>.studio.localhost:3000` ist ein Tenant-Host und authentifiziert gegen den in `iam.instances.auth_realm` hinterlegten Tenant-Realm, zum Beispiel `de-musterhausen`.
 - Normale Tenant-Mutationen für Nutzer, Rollen und Gruppen laufen im lokalen Standardpfad strikt gegen denselben Tenant-Realm wie der Login-Flow, aber über den separaten `tenantAdminClient`.
 - `pnpm env:up:local-keycloak` startet neben dem Dev-Server auch den lokalen Keycloak-Provisioning-Worker. Dessen State und Log liegen unter `artifacts/runtime/`.
+- Mutierende lokale Runtime- und Datenbankpfade schreiben zusätzlich ein JSONL-Audit nach `artifacts/runtime/rebuild-events.jsonl`. Dort stehen Start, Ende und Fehler von `env:up|update|down|migrate|repair|reconcile`, `env:bootstrap:local-instance-db` und `env:delete:local-instance-db` mit unkritischem Kontext, aber ohne Secrets.
 - Fehlt der Worker oder ist sein Prozess stale, meldet `pnpm env:doctor:local-keycloak` einen sichtbaren `warn`-Check, damit Provisioning-Läufe nicht unbemerkt in `planned`/`queued` hängen bleiben.
 - Beim lokalen Worker-Start werden nur `planned`-Provisioning-Läufe übernommen, die nach diesem konkreten Start neu angelegt wurden. Ältere wartende Läufe werden nicht stillschweigend wieder aufgenommen.
 - `KEYCLOAK_ADMIN_REALM` und `KEYCLOAK_ADMIN_CLIENT_ID` beschreiben im lokalen Profil nur noch den Plattform-/Break-Glass-Pfad. Sie sind kein impliziter Fallback für Tenant-Alltagsverwaltung mehr.

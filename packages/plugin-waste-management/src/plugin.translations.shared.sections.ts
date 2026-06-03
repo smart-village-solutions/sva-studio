@@ -107,6 +107,15 @@ type WasteManagementToolsCopy = Readonly<{
   actions: Readonly<Record<string, string>>;
   messages: Readonly<Record<string, string>>;
   meta: Readonly<Record<string, string>>;
+  progress: Readonly<{
+    title: string;
+    percentage: string;
+    rows: string;
+    updatedAt: string;
+    phases: Readonly<Record<string, string>>;
+    statuses: Readonly<Record<string, string>>;
+    steps: Readonly<Record<string, string>>;
+  }>;
 }>;
 
 export const createWasteManagementTabsTranslations = <const TCopy extends WasteManagementTabsCopy>(copy: TCopy) =>
@@ -177,5 +186,6 @@ export const createWasteManagementToolsTranslations = <const TCopy extends Waste
       actions: copy.actions,
       messages: copy.messages,
       meta: copy.meta,
+      progress: copy.progress,
     },
   }) as const;

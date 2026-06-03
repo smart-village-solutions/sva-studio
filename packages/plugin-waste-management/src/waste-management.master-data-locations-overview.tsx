@@ -17,11 +17,11 @@ export const WasteMasterDataLocationsOverview = (props: {
     props;
   const pt = usePluginTranslation('wasteManagement');
   const metrics = [
-    pt('masterData.locationsWorkspace.overview.collectionLocationCount', { value: props.collectionLocationCount }),
-    pt('masterData.locationsWorkspace.overview.regionCount', { value: props.regionCount }),
-    pt('masterData.locationsWorkspace.overview.cityCount', { value: props.cityCount }),
-    pt('masterData.locationsWorkspace.overview.streetCount', { value: props.streetCount }),
-    pt('masterData.locationsWorkspace.overview.houseNumberCount', { value: props.houseNumberCount }),
+    pt('masterData.meta.collectionLocationCount', { value: props.collectionLocationCount }),
+    pt('masterData.meta.regionCount', { value: props.regionCount }),
+    pt('masterData.meta.cityCount', { value: props.cityCount }),
+    pt('masterData.meta.streetCount', { value: props.streetCount }),
+    pt('masterData.meta.houseNumberCount', { value: props.houseNumberCount }),
   ];
 
   return (

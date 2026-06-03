@@ -33,7 +33,7 @@ describe('pr-scope', () => {
     });
   });
 
-  it('keeps ordinary package changes on affected-only gates', () => {
+  it('keeps ordinary plugin package changes on affected-only quality gates while marking app build relevance', () => {
     const decision = classifyPrScope([
       'packages/plugin-news/src/index.ts',
       'packages/plugin-news/tests/news.api.test.ts',
@@ -42,6 +42,68 @@ describe('pr-scope', () => {
     expectDecision(decision, {
       codeRelevant: true,
       qualityGateMode: 'affected',
+      coverageMode: 'skip',
+      integrationMode: 'skip',
+      e2eMode: 'skip',
+      appBuildMode: 'affected',
+    });
+  });
+
+  it('classifies plugin waste-management tsx changes as app-build and e2e relevant', () => {
+    const decision = classifyPrScope([
+      'packages/plugin-waste-management/src/waste-management.page.tsx',
+    ]);
+
+    expectDecision(decision, {
+      codeRelevant: true,
+      qualityGateMode: 'affected',
+      coverageMode: 'skip',
+      integrationMode: 'skip',
+      a11yMode: 'affected',
+      e2eMode: 'affected',
+      appBuildMode: 'affected',
+    });
+  });
+
+  it('classifies plugin ui ts changes as app-build and e2e relevant', () => {
+    const decision = classifyPrScope([
+      'packages/plugin-waste-management/src/waste-management.scheduling.table-entries.ts',
+    ]);
+
+    expectDecision(decision, {
+      codeRelevant: true,
+      qualityGateMode: 'affected',
+      coverageMode: 'skip',
+      integrationMode: 'skip',
+      a11yMode: 'skip',
+      e2eMode: 'affected',
+      appBuildMode: 'affected',
+    });
+  });
+
+  it('classifies plugin translation changes as app-build relevant', () => {
+    const decision = classifyPrScope([
+      'packages/plugin-news/src/plugin.translations.ts',
+    ]);
+
+    expectDecision(decision, {
+      codeRelevant: true,
+      qualityGateMode: 'affected',
+      coverageMode: 'skip',
+      integrationMode: 'skip',
+      e2eMode: 'skip',
+      appBuildMode: 'affected',
+    });
+  });
+
+  it('keeps docs-only pull requests as full no-op', () => {
+    const decision = classifyPrScope([
+      'docs/development/testing-coverage.md',
+    ]);
+
+    expectDecision(decision, {
+      codeRelevant: false,
+      qualityGateMode: 'skip',
       coverageMode: 'skip',
       integrationMode: 'skip',
       e2eMode: 'skip',
@@ -73,8 +135,62 @@ describe('pr-scope', () => {
       qualityGateMode: 'affected',
       coverageMode: 'skip',
       integrationMode: 'affected',
+      a11yMode: 'affected',
       e2eMode: 'affected',
       appBuildMode: 'affected',
+    });
+  });
+
+  it('keeps backend-only changes out of the a11y gate', () => {
+    const decision = classifyPrScope([
+      'packages/auth-runtime/src/db.ts',
+    ]);
+
+    expectDecision(decision, {
+      codeRelevant: true,
+      qualityGateMode: 'affected',
+      coverageMode: 'skip',
+      integrationMode: 'affected',
+      a11yMode: 'skip',
+      e2eMode: 'affected',
+      appBuildMode: 'skip',
+    });
+  });
+
+  it('marks runtime-critical app server changes for runtime artifact verification', () => {
+    const decision = classifyPrScope([
+      'apps/sva-studio-react/src/server.ts',
+      'apps/sva-studio-react/src/lib/auth.server.ts',
+    ]);
+
+    expectDecision(decision, {
+      codeRelevant: true,
+      qualityGateMode: 'affected',
+      runtimeVerifyMode: 'affected',
+    });
+  });
+
+  it('keeps ordinary ui-only app changes out of runtime artifact verification', () => {
+    const decision = classifyPrScope([
+      'apps/sva-studio-react/src/routes/index.tsx',
+    ]);
+
+    expectDecision(decision, {
+      codeRelevant: true,
+      qualityGateMode: 'affected',
+      runtimeVerifyMode: 'skip',
+    });
+  });
+
+  it('escalates runtime artifact verification for runtime verify tooling changes', () => {
+    const decision = classifyPrScope([
+      'scripts/ci/verify-runtime-artifact.sh',
+    ]);
+
+    expectDecision(decision, {
+      codeRelevant: true,
+      qualityGateMode: 'affected',
+      runtimeVerifyMode: 'full',
     });
   });
 

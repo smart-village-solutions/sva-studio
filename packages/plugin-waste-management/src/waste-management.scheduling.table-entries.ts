@@ -72,11 +72,11 @@ const createHolidayEntry = (rule: WasteHolidayRuleRecord): WasteSchedulingTableE
 const createGlobalEntry = (
   shift: WasteGlobalDateShiftRecord,
   tourNames: ReadonlyMap<string, string>,
-  t: (key: string, variables?: Readonly<Record<string, string | number>>) => string,
+  pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string,
 ): WasteSchedulingTableEntry => {
   const affectedTours = shift.tourIds?.length
     ? shift.tourIds.map((tourId) => resolveTourName(tourNames, tourId)).join(', ')
-    : t('scheduling.table.globalContext');
+    : pt('scheduling.table.globalContext');
 
   return {
     id: shift.id,
@@ -160,19 +160,19 @@ export const createSchedulingTableEntries = ({
   globalDateShifts,
   tourDateShifts,
   availableTours,
-  t,
+  pt,
 }: {
   readonly holidayRules: readonly WasteHolidayRuleRecord[];
   readonly globalDateShifts: readonly WasteGlobalDateShiftRecord[];
   readonly tourDateShifts: readonly WasteTourDateShiftRecord[];
   readonly availableTours: readonly WasteTourRecord[];
-  readonly t: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
+  readonly pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }): readonly WasteSchedulingTableEntry[] => {
   const tourNames = createTourNameMap(availableTours);
 
   return [
     ...holidayRules.map(createHolidayEntry),
-    ...globalDateShifts.map((shift) => createGlobalEntry(shift, tourNames, t)),
+    ...globalDateShifts.map((shift) => createGlobalEntry(shift, tourNames, pt)),
     ...tourDateShifts.map((shift) => createTourEntry(shift, tourNames)),
   ].sort(compareSchedulingEntries);
 };

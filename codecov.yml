@@ -58,7 +58,6 @@ coverage:
     unittests:
       paths:
         - apps/project-report/
-        - apps/public-waste-calendar-web/
         - apps/sva-studio-react/
         - packages/auth-runtime/
         - packages/core/

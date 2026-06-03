@@ -1,6 +1,4 @@
 import { execFileSync } from 'node:child_process';
-import fs from 'node:fs';
-import { pathToFileURL } from 'node:url';
 
 export type GateMode = 'skip' | 'affected' | 'full';
 
@@ -11,15 +9,10 @@ export interface PrScopeDecision {
   coverageMode: GateMode;
   integrationMode: GateMode;
   e2eMode: GateMode;
+  a11yMode: GateMode;
+  runtimeVerifyMode: GateMode;
   appBuildMode: GateMode;
   escalationReasons: string[];
-}
-
-interface PrScopeCliOptions {
-  base: string;
-  head: string;
-  githubOutput: boolean;
-  json: boolean;
 }
 
 const nonCodeRelevantPatterns = [
@@ -59,9 +52,31 @@ const integrationEscalationPatterns = [
   /^\.github\/workflows\/(?:app-e2e|runtime-gates|quality-gates)\.yml$/u,
 ];
 
+const pluginUiBuildRelevantPatterns = [
+  /^packages\/plugin-news\/src\/.*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-events\/src\/.*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-poi\/src\/.*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-waste-management\/src\/.*\.(?:ts|tsx)$/u,
+];
+
+const pluginUiA11yRelevantPatterns = [
+  /^packages\/plugin-news\/src\/.*\.tsx$/u,
+  /^packages\/plugin-events\/src\/.*\.tsx$/u,
+  /^packages\/plugin-poi\/src\/.*\.tsx$/u,
+  /^packages\/plugin-waste-management\/src\/.*\.tsx$/u,
+];
+
+const pluginUiE2eRelevantPatterns = [
+  /^packages\/plugin-news\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-events\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-poi\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
+  /^packages\/plugin-waste-management\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
+];
+
 const e2eRelevantPatterns = [
   /^apps\/sva-studio-react\//u,
   /^packages\/(?:auth-runtime|routing|server-runtime|sva-mainserver|studio-ui-react)\//u,
+  ...pluginUiE2eRelevantPatterns,
 ];
 
 const e2eEscalationPatterns = [
@@ -72,9 +87,36 @@ const e2eEscalationPatterns = [
   /^\.github\/workflows\/app-e2e\.yml$/u,
 ];
 
+const a11yRelevantPatterns = [
+  /^apps\/sva-studio-react\/src\/(?:components|routes|providers)\//u,
+  /^packages\/routing\//u,
+  /^packages\/studio-ui-react\/src\/.*\.(?:ts|tsx)$/u,
+  ...pluginUiA11yRelevantPatterns,
+];
+
+const a11yEscalationPatterns = [
+  /^apps\/sva-studio-react\/(?:package\.json|vitest\.a11y\.config\.ts|vitest\.config\.ts)$/u,
+  /^packages\/studio-ui-react\/(?:package\.json|vite\.config\.ts|vitest\.config\.ts)$/u,
+  /^scripts\/ci\//u,
+  /^\.github\/workflows\/quality-gates\.yml$/u,
+];
+
+const runtimeVerifyRelevantPatterns = [
+  /^apps\/sva-studio-react\/src\/server\.ts$/u,
+  /^apps\/sva-studio-react\/src\/lib\/.+\.server\.ts$/u,
+  /^apps\/sva-studio-react\/package\.json$/u,
+  /^apps\/sva-studio-react\/vite\.config\.ts$/u,
+];
+
+const runtimeVerifyEscalationPatterns = [
+  /^scripts\/ci\/verify-runtime-artifact\.sh$/u,
+  /^\.github\/workflows\/main-build\.yml$/u,
+];
+
 const appBuildRelevantPatterns = [
   /^apps\/sva-studio-react\//u,
   /^packages\/(?:routing|studio-ui-react)\//u,
+  ...pluginUiBuildRelevantPatterns,
 ];
 
 const appBuildEscalationPatterns = [
@@ -109,6 +151,8 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
       coverageMode: 'skip',
       integrationMode: 'skip',
       e2eMode: 'skip',
+      a11yMode: 'skip',
+      runtimeVerifyMode: 'skip',
       appBuildMode: 'skip',
       escalationReasons: [],
     };
@@ -132,6 +176,20 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
     : codeRelevantFiles.some((file) => matchesAnyPattern(file, e2eRelevantPatterns))
       ? 'affected'
       : 'skip';
+  const a11yMode: GateMode = codeRelevantFiles.some((file) =>
+    matchesAnyPattern(file, a11yEscalationPatterns)
+  )
+    ? 'full'
+    : codeRelevantFiles.some((file) => matchesAnyPattern(file, a11yRelevantPatterns))
+      ? 'affected'
+      : 'skip';
+  const runtimeVerifyMode: GateMode = codeRelevantFiles.some((file) =>
+    matchesAnyPattern(file, runtimeVerifyEscalationPatterns)
+  )
+    ? 'full'
+    : codeRelevantFiles.some((file) => matchesAnyPattern(file, runtimeVerifyRelevantPatterns))
+      ? 'affected'
+      : 'skip';
   const appBuildMode: GateMode = codeRelevantFiles.some((file) =>
     matchesAnyPattern(file, appBuildEscalationPatterns)
   )
@@ -147,6 +205,8 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
     coverageMode,
     integrationMode,
     e2eMode,
+    a11yMode,
+    runtimeVerifyMode,
     appBuildMode,
     escalationReasons,
   };
@@ -204,97 +264,3 @@ export const resolveChangedFiles = (
     .map((line) => line.trim())
     .filter(Boolean);
 };
-
-const parseCliOptions = (args: readonly string[]): PrScopeCliOptions => {
-  let base = 'origin/main';
-  let head = 'HEAD';
-  let githubOutput = false;
-  let json = false;
-
-  for (let index = 0; index < args.length; index += 1) {
-    const argument = args[index];
-
-    if (argument === '--base') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error('Fehlender Wert für --base');
-      }
-      base = value;
-      index += 1;
-      continue;
-    }
-
-    if (argument === '--head') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error('Fehlender Wert für --head');
-      }
-      head = value;
-      index += 1;
-      continue;
-    }
-
-    if (argument === '--github-output') {
-      githubOutput = true;
-      continue;
-    }
-
-    if (argument === '--json') {
-      json = true;
-      continue;
-    }
-  }
-
-  return { base, head, githubOutput, json };
-};
-
-const appendGithubOutput = (decision: PrScopeDecision, base: string, head: string): void => {
-  const outputPath = process.env.GITHUB_OUTPUT;
-  if (!outputPath) {
-    throw new Error('GITHUB_OUTPUT ist nicht gesetzt.');
-  }
-
-  const lines = [
-    `base=${base}`,
-    `head=${head}`,
-    `code_relevant=${decision.codeRelevant ? 'true' : 'false'}`,
-    `quality_gate_mode=${decision.qualityGateMode}`,
-    `coverage_mode=${decision.coverageMode}`,
-    `integration_mode=${decision.integrationMode}`,
-    `e2e_mode=${decision.e2eMode}`,
-    `app_build_mode=${decision.appBuildMode}`,
-    `escalation_reasons=${decision.escalationReasons.join(',')}`,
-  ];
-
-  fs.appendFileSync(outputPath, `${lines.join('\n')}\n`, 'utf8');
-};
-
-export const runPrScopeCli = (args: readonly string[]): number => {
-  const options = parseCliOptions(args);
-  const changedFiles = resolveChangedFiles(options.base, options.head);
-  const decision = classifyPrScope(changedFiles);
-
-  if (options.githubOutput) {
-    appendGithubOutput(decision, options.base, options.head);
-  }
-
-  if (options.json || !options.githubOutput) {
-    console.log(
-      JSON.stringify(
-        {
-          ...decision,
-          base: options.base,
-          head: options.head,
-        },
-        null,
-        2
-      )
-    );
-  }
-
-  return 0;
-};
-
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  process.exit(runPrScopeCli(process.argv.slice(2)));
-}

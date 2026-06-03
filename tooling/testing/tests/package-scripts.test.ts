@@ -85,6 +85,11 @@ function loadMainBuildWorkflow(): string {
   return fs.readFileSync(path.join(rootDir, '.github/workflows/main-build.yml'), 'utf8');
 }
 
+function loadRepositoryHygieneWorkflow(): string {
+  const rootDir = resolveRootDir();
+  return fs.readFileSync(path.join(rootDir, '.github/workflows/repository-hygiene.yml'), 'utf8');
+}
+
 function loadRunPrGateScript(): string {
   const rootDir = resolveRootDir();
   return fs.readFileSync(path.join(rootDir, 'scripts/ci/run-pr-gate.ts'), 'utf8');
@@ -222,6 +227,17 @@ describe('workspace package scripts', () => {
     );
   });
 
+  it('keeps general integration scripts on the dedicated honest helper', () => {
+    const packageJson = loadRootPackageJson();
+    const runtimeWorkflow = loadRuntimeGatesWorkflow();
+
+    expect(packageJson.scripts?.['test:integration']).toBe('tsx scripts/ci/run-integration-gate.ts --mode full');
+    expect(runtimeWorkflow).toContain(
+      'pnpm exec tsx scripts/ci/run-integration-gate.ts --mode affected --base ${{ github.event.pull_request.base.sha }}'
+    );
+    expect(runtimeWorkflow).toContain('Monitoring-Checks laufen separat im Workflow `Monitoring Stack`.');
+  });
+
   it('keeps PR quality workflows on the shared pr-scope helper', () => {
     const qualityWorkflow = loadQualityGatesWorkflow();
     const runtimeWorkflow = loadRuntimeGatesWorkflow();
@@ -231,13 +247,15 @@ describe('workspace package scripts', () => {
     expect(runtimeWorkflow).toContain('name: Runtime Gates');
     expect(e2eWorkflow).toContain('name: App E2E');
     expect(qualityWorkflow).toContain(
-      'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
+      'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
+    expect(qualityWorkflow).not.toContain('tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output');
     expect(runtimeWorkflow).toContain(
-      'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
+      'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
+    expect(runtimeWorkflow).not.toContain('tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output');
     expect(e2eWorkflow).toContain(
-      'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
+      'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
     expect(e2eWorkflow).toContain('pull_request:');
   });
@@ -260,9 +278,24 @@ describe('workspace package scripts', () => {
 
     expect(mainBuildWorkflow).toContain('pull_request:');
     expect(mainBuildWorkflow).toContain(
-      'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
+      'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
     expect(mainBuildWorkflow).toContain("steps.scope.outputs.app_build_mode != 'skip'");
+    expect(mainBuildWorkflow).toContain("steps.scope.outputs.runtime_verify_mode != 'skip'");
+    expect(mainBuildWorkflow).toContain('pnpm verify:runtime-artifact');
+  });
+
+  it('keeps the DB schema snapshot gate path-scoped in repository hygiene', () => {
+    const workflow = loadRepositoryHygieneWorkflow();
+
+    expect(workflow).toContain('name: DB Schema Snapshot');
+    expect(workflow).toContain('uses: dorny/paths-filter@v4');
+    expect(workflow).toContain("'packages/data/migrations/**'");
+    expect(workflow).toContain("'docs/development/studio-db-schema-final.sql'");
+    expect(workflow).toContain("'docs/development/studio-db-schema.md'");
+    expect(workflow).toContain("'scripts/ci/check-db-schema-snapshot.ts'");
+    expect(workflow).toContain('pnpm exec tsx scripts/ci/check-db-schema-snapshot.ts');
+    expect(workflow).toContain('Median-Mehrlast <= 2 Minuten');
   });
 
   it('publishes App E2E summaries with the current workflow naming', () => {

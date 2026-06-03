@@ -646,6 +646,19 @@ export const i18nResources = {
           default: 'Die Upload-Initialisierung konnte nicht abgeschlossen werden.',
         },
       },
+      detail: {
+        subtitle:
+          'Prüfen Sie Vorschau, Delivery, Metadaten und Nutzungsimpact in einem gemeinsamen Asset-Workspace.',
+        previewEyebrow: 'Asset-Workspace',
+        previewTitle: 'Arbeitsansicht',
+        previewBody:
+          'Die Detailseite hält Delivery, Qualitätsstatus und Referenzkontext zusammen, auch bevor eine echte Vorschau ausgeliefert wird.',
+        metadataDescription: 'Fachliche Beschreibung und redaktionelle Qualitätsfelder des Assets.',
+        imageControlsTitle: 'Bildsteuerung',
+        imageControlsDescription: 'Fokuspunkt und Zuschnitt für bildbasierte Ausspielungen auf einen Blick.',
+        usageDescription: 'Aktive Referenzen und Rollen, die dieses Asset derzeit verwenden.',
+        technicalDescription: 'Technische Identität, Statuswerte und Delivery-Daten des Assets.',
+      },
       filters: {
         searchLabel: 'Suche',
         searchPlaceholder: 'Nach Titel, Alternativtext oder MIME-Typ suchen',
@@ -4146,6 +4159,19 @@ export const i18nResources = {
         errors: {
           default: 'The upload initialization could not be completed.',
         },
+      },
+      detail: {
+        subtitle:
+          'Review preview context, delivery, metadata, and usage impact inside one shared asset workspace.',
+        previewEyebrow: 'Asset workspace',
+        previewTitle: 'Working view',
+        previewBody:
+          'The detail page keeps delivery, quality status, and reference context together even before a real preview is requested.',
+        metadataDescription: 'Business description and editorial quality fields for the asset.',
+        imageControlsTitle: 'Image controls',
+        imageControlsDescription: 'Focus point and crop settings for image-based placements at a glance.',
+        usageDescription: 'Active references and roles that currently use this asset.',
+        technicalDescription: 'Technical identity, status values, and delivery data for the asset.',
       },
       filters: {
         searchLabel: 'Search',

@@ -29,6 +29,8 @@ describe('MediaPage', () => {
     render(<MediaPage />);
 
     expect(screen.getByTestId('media-library-page')).toBeTruthy();
+    expect(screen.queryByTestId('media-create-page')).toBeNull();
+    expect(screen.queryByTestId('media-detail-page')).toBeNull();
   });
 
   it('renders the create page on /admin/media/new', () => {
@@ -37,6 +39,8 @@ describe('MediaPage', () => {
     render(<MediaPage />);
 
     expect(screen.getByTestId('media-create-page')).toBeTruthy();
+    expect(screen.queryByTestId('media-library-page')).toBeNull();
+    expect(screen.queryByTestId('media-detail-page')).toBeNull();
   });
 
   it('renders the detail page on /admin/media/asset-2', () => {
@@ -45,6 +49,8 @@ describe('MediaPage', () => {
 
     render(<MediaPage />);
 
-    expect(screen.getByTestId('media-detail-page')).toBeTruthy();
+    expect(screen.getByTestId('media-detail-page').getAttribute('data-asset-id')).toBe('asset-2');
+    expect(screen.queryByTestId('media-library-page')).toBeNull();
+    expect(screen.queryByTestId('media-create-page')).toBeNull();
   });
 });

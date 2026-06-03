@@ -1,3 +1,1 @@
-const MediaLibraryPage = () => <section data-testid="media-library-page" />;
-
-export default MediaLibraryPage;
+export const MediaLibraryPage = () => <section data-testid="media-library-page" />;

@@ -1,3 +1,1 @@
-const MediaCreatePage = () => <section data-testid="media-create-page" />;
-
-export default MediaCreatePage;
+export const MediaCreatePage = () => <section data-testid="media-create-page" />;

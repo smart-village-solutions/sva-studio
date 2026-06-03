@@ -4,6 +4,8 @@ export const uiRoutePaths = {
   home: '/',
   account: '/account',
   accountPrivacy: '/account/privacy',
+  accountPrivacyDetail: '/account/privacy/$caseId',
+  accountRules: '/account/rules',
   content: '/admin/content',
   contentCreate: '/admin/content/new',
   contentDetail: '/admin/content/$id',

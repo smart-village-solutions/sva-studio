@@ -110,6 +110,7 @@ vi.mock('../../hooks/use-plugin-operation-jobs', () => ({
 const baseItem: StudioJobListItem = {
   id: 'job-1',
   instanceId: 'instance-1',
+  source: 'plugin',
   pluginId: 'plugin.news',
   jobTypeId: 'news.import',
   status: 'running',

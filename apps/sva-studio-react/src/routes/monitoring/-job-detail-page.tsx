@@ -90,7 +90,11 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
                 <CardTitle>{t('monitoring.jobs.detail.summaryTitle')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <p>{t('monitoring.jobs.labels.pluginId', { value: job.pluginId })}</p>
+                <p>
+                  {t('monitoring.jobs.labels.pluginId', {
+                    value: job.pluginId ?? t('monitoring.jobs.values.notAvailable'),
+                  })}
+                </p>
                 <p>{t('monitoring.jobs.labels.jobTypeId', { value: job.jobTypeId })}</p>
                 <p>
                   {t('monitoring.jobs.labels.correlationId', {

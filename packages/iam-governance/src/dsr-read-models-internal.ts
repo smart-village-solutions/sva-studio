@@ -8,6 +8,7 @@ export {
 export { loadAdminDsrRows } from './dsr-read-models.admin-queries.js';
 export {
   DsrAccountSnapshotNotFoundError,
+  findSelfServiceActivityItemByCaseId,
   loadDsrSelfServiceRows,
 } from './dsr-read-models.self-service-queries.js';
 export type {
@@ -16,6 +17,7 @@ export type {
   DsrFilters,
   DsrSelfServiceRows,
   ExportJobRow,
+  LegalAcceptanceRow,
   LegalHoldRow,
   PersonColumns,
   ProfileCorrectionRow,

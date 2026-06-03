@@ -1,4 +1,4 @@
-import type { IamDsrCaseListItem } from '@sva/core';
+import type { IamDsrCanonicalStatus, IamDsrCaseListItem, IamSelfServiceActivityType } from '@sva/core';
 
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent } from '../../components/ui/card';
@@ -13,8 +13,8 @@ const formatPrivacyDateTime = (value?: string) => {
   return formatEditorDateTime(value) ?? value;
 };
 
-const mapDsrStatusKey = (item: Pick<IamDsrCaseListItem, 'canonicalStatus'>) => {
-  switch (item.canonicalStatus) {
+const mapDsrStatusKey = (status: IamDsrCanonicalStatus) => {
+  switch (status) {
     case 'queued':
       return 'account.privacy.status.queued';
     case 'in_progress':
@@ -28,8 +28,8 @@ const mapDsrStatusKey = (item: Pick<IamDsrCaseListItem, 'canonicalStatus'>) => {
   }
 };
 
-const mapDsrStatusTone = (item: Pick<IamDsrCaseListItem, 'canonicalStatus'>) => {
-  switch (item.canonicalStatus) {
+const mapDsrStatusTone = (status: IamDsrCanonicalStatus) => {
+  switch (status) {
     case 'completed':
       return 'border-primary/40 bg-primary/10 text-primary';
     case 'blocked':
@@ -37,6 +37,24 @@ const mapDsrStatusTone = (item: Pick<IamDsrCaseListItem, 'canonicalStatus'>) => 
       return 'border-destructive/40 bg-destructive/10 text-destructive';
     default:
       return 'border-secondary/40 bg-secondary/10 text-secondary';
+  }
+};
+
+const mapPrivacyTypeKey = (type: IamSelfServiceActivityType) => {
+  switch (type) {
+    case 'export_job':
+      return 'account.privacy.types.export_job';
+    case 'legal_hold':
+      return 'account.privacy.types.legal_hold';
+    case 'profile_correction':
+      return 'account.privacy.types.profile_correction';
+    case 'recipient_notification':
+      return 'account.privacy.types.recipient_notification';
+    case 'legal_acceptance':
+      return 'account.privacy.types.legal_acceptance';
+    case 'request':
+    default:
+      return 'account.privacy.types.request';
   }
 };
 
@@ -49,8 +67,8 @@ export const DsrCaseRow = ({ item }: Readonly<{ item: IamDsrCaseListItem }>) => 
           <p className="text-xs text-muted-foreground">{item.summary}</p>
         </div>
         <div className="text-right">
-          <Badge className={mapDsrStatusTone(item)} variant="outline">
-            {t(mapDsrStatusKey(item))}
+          <Badge className={mapDsrStatusTone(item.canonicalStatus)} variant="outline">
+            {t(mapDsrStatusKey(item.canonicalStatus))}
           </Badge>
           <p className="mt-1 text-[11px] text-muted-foreground">
             {t('account.privacy.shared.rawStatus', { value: item.rawStatus })}
@@ -70,3 +88,4 @@ export const DsrCaseRow = ({ item }: Readonly<{ item: IamDsrCaseListItem }>) => 
 );
 
 export { formatPrivacyDateTime };
+export { mapDsrStatusKey, mapDsrStatusTone, mapPrivacyTypeKey };

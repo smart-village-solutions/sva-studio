@@ -41,6 +41,13 @@ export type DsrExportFlowDeps = {
     responseBody: unknown;
   }) => Promise<void>;
   readonly toPayloadHash: (body: string) => string;
+  readonly createAsyncStudioJob: (input: {
+    instanceId: string;
+    exportJobId: string;
+    requestedByAccountId: string;
+    targetAccountId: string;
+    format: DsrExportFormat;
+  }) => Promise<{ id: string }>;
   readonly jsonResponse: (status: number, body: unknown) => Response;
   readonly textResponse: (status: number, body: string, contentType: string) => Response;
 };
@@ -190,6 +197,37 @@ RETURNING id;
   return requestRow.id;
 };
 
+const linkStudioJobToExportJob = async (
+  client: QueryClient,
+  input: { exportJobId: string; studioJobId: string }
+): Promise<void> => {
+  await client.query(
+    `
+UPDATE iam.data_subject_export_jobs
+SET studio_job_id = $2::uuid
+WHERE id = $1::uuid;
+`,
+    [input.exportJobId, input.studioJobId]
+  );
+};
+
+const markExportJobQueueFailed = async (
+  client: QueryClient,
+  input: { exportJobId: string; errorMessage: string }
+): Promise<void> => {
+  await client.query(
+    `
+UPDATE iam.data_subject_export_jobs
+SET
+  status = 'failed',
+  completed_at = NOW(),
+  error_message = $2
+WHERE id = $1::uuid;
+`,
+    [input.exportJobId, input.errorMessage]
+  );
+};
+
 const appendDsrRequestEvent = async (
   client: QueryClient,
   input: {
@@ -333,6 +371,26 @@ export const createDsrExportFlows = (deps: DsrExportFlowDeps) => ({
         format: input.exportRequest.format,
       });
 
+      try {
+        const studioJob = await deps.createAsyncStudioJob({
+          instanceId: input.instanceId,
+          exportJobId: job.id,
+          requestedByAccountId: account.id,
+          targetAccountId: account.id,
+          format: input.exportRequest.format,
+        });
+        await linkStudioJobToExportJob(input.client, {
+          exportJobId: job.id,
+          studioJobId: studioJob.id,
+        });
+      } catch (error) {
+        await markExportJobQueueFailed(input.client, {
+          exportJobId: job.id,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+        return deps.jsonResponse(503, { error: 'export_job_queue_failed' });
+      }
+
       const requestId = await createDsrRequest(input.client, {
         instanceId: input.instanceId,
         status: 'accepted',
@@ -464,6 +522,27 @@ export const createDsrExportFlows = (deps: DsrExportFlowDeps) => ({
         requestedByAccountId: actorAccountId,
         format: input.exportRequest.format,
       });
+
+      try {
+        const studioJob = await deps.createAsyncStudioJob({
+          instanceId: input.instanceId,
+          exportJobId: job.id,
+          requestedByAccountId: actorAccountId,
+          targetAccountId: target.id,
+          format: input.exportRequest.format,
+        });
+        await linkStudioJobToExportJob(input.client, {
+          exportJobId: job.id,
+          studioJobId: studioJob.id,
+        });
+      } catch (error) {
+        await markExportJobQueueFailed(input.client, {
+          exportJobId: job.id,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+        return deps.jsonResponse(503, { error: 'export_job_queue_failed' });
+      }
+
       await emitDsrAuditEvent(input.client, {
         instanceId: input.instanceId,
         accountId: actor?.id,

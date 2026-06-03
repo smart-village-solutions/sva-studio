@@ -165,6 +165,32 @@ describe('AccountProfilePage', () => {
     );
   });
 
+  it('does not render a separate privacy cockpit entry point on the profile page', async () => {
+    getMyProfileMock.mockResolvedValue({
+      data: {
+        id: 'account-1',
+        keycloakSubject: 'subject-1',
+        username: 'jane.doe',
+        displayName: 'Jane Doe',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        status: 'active',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
+    });
+
+    expect(screen.queryByText('Datenschutz-Cockpit öffnen')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Zum Datenschutz-Cockpit' })).toBeNull();
+  });
+
   it('shows unauthenticated state when profile cannot be loaded and user is not authenticated', async () => {
     const loadError = { status: 401, code: 'unauthorized', message: 'Unauthorized' };
     authMockValue.isAuthenticated = false;

@@ -12,6 +12,8 @@ import { getOrganization } from '../lib/iam-api';
 import { useAuth } from '../providers/auth-provider';
 import { AccountProfilePage } from '../routes/account/-account-profile-page';
 import { AccountPrivacyPage } from '../routes/account/-account-privacy-page';
+import { AccountPrivacyDetailPage } from '../routes/account/-account-privacy-detail-page';
+import { AccountRulesPage } from '../routes/account/-account-rules-page';
 import { Phase1TestPage } from '../routes/admin/api/-phase1-test-page';
 import { IamViewerPage } from '../routes/admin/-iam-page';
 import { IamDsrDetailPage } from '../routes/admin/-iam-dsr-detail-page';
@@ -341,10 +343,17 @@ const IamDsrDetailRoutePage = () => {
   return <IamDsrDetailPage caseId={readStringParam(params.caseId)} />;
 };
 
+const AccountPrivacyDetailRoutePage = () => {
+  const params = useParams({ strict: false });
+  return <AccountPrivacyDetailPage caseId={readStringParam(params.caseId)} />;
+};
+
 export const appRouteBindings: StudioAppRouteBindings = {
   home: HomePage,
   account: AccountProfilePage,
   accountPrivacy: AccountPrivacyPage,
+  accountPrivacyDetail: AccountPrivacyDetailRoutePage,
+  accountRules: AccountRulesPage,
   content: ContentListPage,
   contentCreate: ContentTypePickerPage,
   contentDetail: ContentDetailRoutePage,

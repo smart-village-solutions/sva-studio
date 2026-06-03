@@ -27,17 +27,13 @@ describe('dsr-maintenance', () => {
     expect(query.mock.calls.at(-1)?.[0]).toContain('INSERT INTO iam.activity_logs');
   });
 
-  it('marks queued export jobs as failed when the target account cannot be resolved', async () => {
+  it('counts queued export jobs but leaves their processing to the studio worker', async () => {
     const query = vi
       .fn<QueryClient['query']>()
       .mockResolvedValueOnce({
         rowCount: 1,
-        rows: [{ id: 'job-1', target_account_id: 'account-missing', format: 'json' }],
+        rows: [{ id: 'job-1' }],
       })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
-      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
-      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] });
@@ -45,7 +41,6 @@ describe('dsr-maintenance', () => {
     const result = await runDsrMaintenance({ query }, { instanceId: 'de-musterhausen', dryRun: false });
 
     expect(result.queuedExports).toBe(1);
-    expect(query.mock.calls[3]?.[0]).toContain("status = 'failed'");
-    expect(query.mock.calls[3]?.[1]).toEqual(['job-1', 'target_account_not_found']);
+    expect(query.mock.calls.some(([text]) => typeof text === 'string' && text.includes("status = 'failed'"))).toBe(false);
   });
 });

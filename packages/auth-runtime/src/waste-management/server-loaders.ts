@@ -681,7 +681,7 @@ const loadWasteHistoryOverview = async (query: {
     OR COALESCE(j.error_payload ->> 'message', '') ILIKE $${parameterIndex}
     OR EXISTS (
       SELECT 1
-      FROM iam.plugin_operation_job_events event_search
+      FROM iam.studio_job_events event_search
       WHERE event_search.instance_id = $1
         AND event_search.job_id = j.id
         AND COALESCE(event_search.message, '') ILIKE $${parameterIndex}
@@ -711,7 +711,7 @@ WITH filtered_jobs AS (
     j.updated_at,
     j.request_id,
     j.error_payload
-  FROM iam.plugin_operation_jobs j
+  FROM iam.studio_jobs j
   WHERE ${whereClause.clause}
 )
 SELECT
@@ -728,7 +728,7 @@ SELECT
 FROM filtered_jobs
 LEFT JOIN LATERAL (
   SELECT event.message
-  FROM iam.plugin_operation_job_events event
+  FROM iam.studio_job_events event
   WHERE event.instance_id = $1
     AND event.job_id = filtered_jobs.id
   ORDER BY event.created_at DESC
@@ -752,7 +752,7 @@ LIMIT $${pageSizeIndex}
             const result = await client.query<WasteTechnicalJobHistoryCountRow>(
               `
 SELECT COUNT(*)::int AS total_count
-FROM iam.plugin_operation_jobs j
+FROM iam.studio_jobs j
 WHERE ${whereClause.clause}
               `,
               whereClause.values

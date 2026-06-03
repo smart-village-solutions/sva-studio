@@ -6,6 +6,7 @@ import { createStudioJobRepository } from './index.js';
 const jobRow = {
   id: 'job-1',
   instance_id: 'tenant-a',
+  source: 'plugin',
   plugin_id: 'news',
   job_type_id: 'news.import-articles',
   import_profile_id: 'news.article-import',
@@ -78,6 +79,7 @@ describe('studio job repository', () => {
       repository.createJob({
         id: 'job-1',
         instanceId: 'tenant-a',
+        source: 'plugin',
         pluginId: 'news',
         jobTypeId: 'news.import-articles',
         importProfileId: 'news.article-import',
@@ -94,6 +96,7 @@ describe('studio job repository', () => {
       })
     ).resolves.toMatchObject({
       id: 'job-1',
+      source: 'plugin',
       pluginId: 'news',
       jobTypeId: 'news.import-articles',
       status: 'queued',
@@ -107,7 +110,7 @@ describe('studio job repository', () => {
       correlationId: 'corr-1',
     });
 
-    expect(statements[0]?.text.includes('INSERT INTO iam.plugin_operation_jobs')).toBe(true);
+    expect(statements[0]?.text.includes('INSERT INTO iam.studio_jobs')).toBe(true);
     expect(statements[1]?.values).toEqual(['tenant-a', 'job-1']);
   });
 
@@ -136,6 +139,7 @@ describe('studio job repository', () => {
       repository.createJob({
         id: 'job-2',
         instanceId: 'tenant-a',
+        source: 'plugin',
         pluginId: 'news',
         jobTypeId: 'news.import-articles',
         queueName: 'plugin-operations',
@@ -148,6 +152,7 @@ describe('studio job repository', () => {
       })
     ).resolves.toMatchObject({
       id: 'job-1',
+      source: 'plugin',
       importProfileId: undefined,
       progress: undefined,
       resultPayload: undefined,
@@ -165,7 +170,7 @@ describe('studio job repository', () => {
     });
 
     await expect(repository.getJobById('tenant-a', 'missing')).resolves.toBeNull();
-    expect(statements[0]?.values[7]).toBeNull();
+    expect(statements[0]?.values[8]).toBeNull();
   });
 
   it('updates job execution status, progress, results and errors', async () => {
@@ -196,7 +201,7 @@ describe('studio job repository', () => {
       status: 'queued',
     });
 
-    expect(statements[0]?.text.includes('UPDATE iam.plugin_operation_jobs')).toBe(true);
+    expect(statements[0]?.text.includes('UPDATE iam.studio_jobs')).toBe(true);
     expect(statements[0]?.values).toEqual([
       'running',
       JSON.stringify({
@@ -316,9 +321,47 @@ describe('studio job repository', () => {
       instanceId: 'tenant-a',
     });
 
-    expect(statements[0]?.text).toContain('DELETE FROM iam.plugin_operation_job_events');
-    expect(statements[0]?.text).toContain('DELETE FROM iam.plugin_operation_jobs');
+    expect(statements[0]?.text).toContain('DELETE FROM iam.studio_job_events');
+    expect(statements[0]?.text).toContain('DELETE FROM iam.studio_jobs');
     expect(statements[0]?.values).toEqual(['tenant-a', 'job-1']);
+  });
+
+  it('creates host jobs without plugin ownership', async () => {
+    const hostRow = {
+      ...jobRow,
+      source: 'host',
+      plugin_id: null,
+      job_type_id: 'dsr.export',
+      queue_name: 'host-operations',
+    };
+    const { executor, statements } = createQueuedExecutor([[hostRow]]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.createJob({
+        id: 'job-host-1',
+        instanceId: 'tenant-a',
+        source: 'host',
+        pluginId: undefined,
+        jobTypeId: 'dsr.export',
+        queueName: 'host-operations',
+        status: 'queued',
+        inputPayload: { exportJobId: 'export-1' },
+        attempts: 0,
+        maxAttempts: 3,
+        idempotencyKey: 'idem-host-1',
+        scheduledAt: '2026-05-09T12:00:00.000Z',
+      })
+    ).resolves.toMatchObject({
+      id: 'job-1',
+      source: 'host',
+      pluginId: undefined,
+      jobTypeId: 'dsr.export',
+      queueName: 'host-operations',
+    });
+
+    expect(statements[0]?.values[2]).toBe('host');
+    expect(statements[0]?.values[3]).toBeNull();
   });
 
   it('maps sparse event rows, appends minimal events and rejects missing returning rows', async () => {

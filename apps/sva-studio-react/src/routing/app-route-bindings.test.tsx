@@ -79,6 +79,16 @@ vi.mock('../routes/account/-account-privacy-page', () => ({
   AccountPrivacyPage: () => <div data-testid="account-privacy-page" />,
 }));
 
+vi.mock('../routes/account/-account-privacy-detail-page', () => ({
+  AccountPrivacyDetailPage: ({ caseId }: { caseId: string }) => (
+    <div data-testid="account-privacy-detail-page">{caseId}</div>
+  ),
+}));
+
+vi.mock('../routes/account/-account-rules-page', () => ({
+  AccountRulesPage: () => <div data-testid="account-rules-page" />,
+}));
+
 vi.mock('../routes/admin/api/-phase1-test-page', () => ({
   Phase1TestPage: () => <div data-testid="phase1-test-page" />,
 }));
@@ -467,6 +477,10 @@ describe('appRouteBindings', () => {
     expect(screen.getByTestId('iam-dsr-detail-page').textContent).toBe('case-3');
     cleanup();
 
+    render(<appRouteBindings.accountPrivacyDetail />);
+    expect(screen.getByTestId('account-privacy-detail-page').textContent).toBe('case-3');
+    cleanup();
+
     render(<appRouteBindings.newsList />);
     expect(screen.getByTestId('content-list-page')).toBeTruthy();
     cleanup();
@@ -543,6 +557,10 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.adminIamDsrDetail />);
     expect(screen.getByTestId('iam-dsr-detail-page').textContent).toBe('');
+    cleanup();
+
+    render(<appRouteBindings.accountPrivacyDetail />);
+    expect(screen.getByTestId('account-privacy-detail-page').textContent).toBe('');
   });
 
   it('exposes the direct page bindings for the canonical route keys', async () => {
@@ -558,6 +576,14 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.accountPrivacy />);
     expect(screen.getByTestId('account-privacy-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.accountPrivacyDetail />);
+    expect(screen.getByTestId('account-privacy-detail-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.accountRules />);
+    expect(screen.getByTestId('account-rules-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.content />);

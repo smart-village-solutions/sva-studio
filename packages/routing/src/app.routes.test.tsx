@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const guardSpies = vi.hoisted(() => ({
   account: vi.fn(async () => undefined),
   accountPrivacy: vi.fn(async () => undefined),
+  accountPrivacyDetail: vi.fn(async () => undefined),
+  accountRules: vi.fn(async () => undefined),
   modules: vi.fn(async () => undefined),
   content: vi.fn(async () => undefined),
   contentCreate: vi.fn(async () => undefined),
@@ -79,6 +81,8 @@ const bindingKeys = [
   'home',
   'account',
   'accountPrivacy',
+  'accountPrivacyDetail',
+  'accountRules',
   'content',
   'contentCreate',
   'contentDetail',
@@ -196,6 +200,8 @@ describe('app.routes', () => {
     const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
 
     expect(routeMap.has('/')).toBe(true);
+    expect(routeMap.has('/account/privacy/$caseId')).toBe(true);
+    expect(routeMap.has('/account/rules')).toBe(true);
     expect(routeMap.has('/admin/content')).toBe(true);
     expect(routeMap.has('/admin/media/$mediaId/usage')).toBe(true);
     expect(routeMap.has('/content')).toBe(true);
@@ -214,6 +220,10 @@ describe('app.routes', () => {
     expect(readRouteOptions(routeMap.get('/account')).getParentRoute?.()).toBe(rootRoute);
 
     await readRouteOptions(routeMap.get('/account')).beforeLoad?.({ href: '/account' });
+    await readRouteOptions(routeMap.get('/account/privacy/$caseId')).beforeLoad?.({
+      href: '/account/privacy/case-1',
+    });
+    await readRouteOptions(routeMap.get('/account/rules')).beforeLoad?.({ href: '/account/rules' });
     await readRouteOptions(routeMap.get('/admin/media/$mediaId/usage')).beforeLoad?.({
       href: '/admin/media/asset-1/usage',
       context: {
@@ -234,6 +244,8 @@ describe('app.routes', () => {
     await readRouteOptions(routeMap.get('/plugins/news')).beforeLoad?.({ href: '/plugins/news' });
 
     expect(guardSpies.account).toHaveBeenCalledWith({ href: '/account' });
+    expect(guardSpies.accountPrivacyDetail).toHaveBeenCalledWith({ href: '/account/privacy/case-1' });
+    expect(guardSpies.accountRules).toHaveBeenCalledWith({ href: '/account/rules' });
     expect(guardSpies.media).toHaveBeenCalledWith(
       expect.objectContaining({ href: '/admin/media/asset-1/usage' })
     );
@@ -244,6 +256,12 @@ describe('app.routes', () => {
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring/jobs/job-1' });
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/news' });
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/account');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'accountPrivacyDetail',
+      undefined,
+      '/account/privacy/$caseId'
+    );
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('accountRules', undefined, '/account/rules');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('media', undefined, '/admin/media/$mediaId/usage');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/admin/content');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');

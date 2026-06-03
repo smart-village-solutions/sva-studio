@@ -31,6 +31,16 @@ describe('accountUiRouteGuards', () => {
     await expect(invoke(accountUiRouteGuards.accountPrivacy, ['editor'], '/account/privacy')).resolves.toBeUndefined();
   });
 
+  it('allows account privacy detail route for authenticated users', async () => {
+    await expect(
+      invoke(accountUiRouteGuards.accountPrivacyDetail, ['editor'], '/account/privacy/case-1')
+    ).resolves.toBeUndefined();
+  });
+
+  it('allows account rules route for authenticated users', async () => {
+    await expect(invoke(accountUiRouteGuards.accountRules, ['editor'], '/account/rules')).resolves.toBeUndefined();
+  });
+
   it('allows modules route for authenticated users without admin roles', async () => {
     await expect(invoke(accountUiRouteGuards.modules, ['viewer'], '/modules')).resolves.toBeUndefined();
   });

@@ -19,16 +19,29 @@ export { resolveAuthRequestHost, sanitizeAuthReturnTo } from './auth-return-to.j
 export { emitAuthAuditEvent } from './audit-events.js';
 export type { AuthAuditEvent, AuthAuditEventType, PluginActionAuditPayload } from './audit-events.types.js';
 export {
+  ensureStudioJobWorkerStarted,
+  queueStudioJob,
+  registerStudioJobExecutionHandlers,
+  stopStudioJobWorker,
   ensurePluginOperationWorkerStarted,
   queuePluginOperationJob,
   registerPluginOperationExecutionHandlers,
   stopPluginOperationWorker,
 } from './plugin-operations/runner.js';
+export {
+  createAndQueueDsrExportStudioJob,
+  dsrExportStudioJobRegistration,
+  dsrExportStudioJobTypeId,
+} from './iam-data-subject-rights/export-worker.js';
 export type { PluginOperationExecutionHandler, PluginOperationExecutionResult } from './plugin-operations/runner.js';
 export type {
   PluginOperationExecutionHandlerContext,
   PluginOperationExecutionRegistration,
   PluginOperationProgressReporter,
+  StudioJobExecutionHandler,
+  StudioJobExecutionHandlerContext,
+  StudioJobExecutionRegistration,
+  StudioJobExecutionResult,
 } from './plugin-operations/runner.js';
 export {
   persistAuthAuditEventToDb,

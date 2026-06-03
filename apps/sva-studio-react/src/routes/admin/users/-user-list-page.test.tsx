@@ -98,6 +98,7 @@ describe('UserListPage', () => {
     expect(screen.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Nutzer anlegen' }).getAttribute('href')).toBe('/admin/users/new');
     expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe('/admin/users/$userId');
+    expect(screen.queryAllByRole('button', { name: 'Deaktivieren' })).toHaveLength(0);
   });
 
   it('shows Keycloak mapping diagnostics and disables blocked row actions', () => {
@@ -129,7 +130,7 @@ describe('UserListPage', () => {
       .getAllByRole('button', { name: 'Bearbeiten' })
       .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
     screen
-      .getAllByRole('button', { name: 'Deaktivieren' })
+      .getAllByRole('switch', { name: 'Aktivstatus für Unmapped User' })
       .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
   });
 
@@ -269,7 +270,7 @@ describe('UserListPage', () => {
 
     render(<UserListPage />);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Deaktivieren' })[0]!);
+    fireEvent.click(screen.getAllByRole('switch', { name: 'Aktivstatus für Alice' })[0]!);
     fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
 
     await waitFor(() => expect(deactivateUser).toHaveBeenCalledWith('user-1'));
@@ -296,7 +297,7 @@ describe('UserListPage', () => {
 
     render(<UserListPage />);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Aktivieren' })[0]!);
+    fireEvent.click(screen.getAllByRole('switch', { name: 'Aktivstatus für Alice' })[0]!);
 
     expect(screen.getByText('Die ausgewählte Person wird wieder aktiviert.')).toBeTruthy();
 
@@ -314,7 +315,7 @@ describe('UserListPage', () => {
     expect(screen.getByRole('heading', { name: 'Plattform-Benutzer' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Nutzer anlegen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Bearbeiten' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Deaktivieren' })).toBeNull();
+    expect(screen.queryByRole('switch', { name: 'Aktivstatus für Alice' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' })).toBeTruthy();
   });
 });

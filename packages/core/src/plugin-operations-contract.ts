@@ -21,13 +21,14 @@ const studioJobEventTypes = [
   'job.cancelled',
 ] as const;
 
-type StudioJobStatus = (typeof studioJobStatuses)[number];
-type TerminalStudioJobStatus = (typeof terminalStudioJobStatuses)[number];
-type StudioJobErrorCategory = (typeof studioJobErrorCategories)[number];
-type StudioJobEventType = (typeof studioJobEventTypes)[number];
-type StudioJobStaleState = 'fresh' | 'stale' | 'terminal';
-type StudioJobEventTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
-type StudioJobListView = 'active' | 'history';
+export type StudioJobStatus = (typeof studioJobStatuses)[number];
+export type TerminalStudioJobStatus = (typeof terminalStudioJobStatuses)[number];
+export type StudioJobErrorCategory = (typeof studioJobErrorCategories)[number];
+export type StudioJobEventType = (typeof studioJobEventTypes)[number];
+export type StudioJobSource = 'plugin' | 'host';
+export type StudioJobStaleState = 'fresh' | 'stale' | 'terminal';
+export type StudioJobEventTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
+export type StudioJobListView = 'active' | 'history';
 
 export const studioJobContract = {
   statuses: studioJobStatuses,
@@ -71,7 +72,7 @@ const studioImportPhases = [
   'completed',
 ] as const;
 
-type StudioImportPhase = (typeof studioImportPhases)[number];
+export type StudioImportPhase = (typeof studioImportPhases)[number];
 
 export const studioImportContract = {
   phases: studioImportPhases,
@@ -118,6 +119,7 @@ export type StudioJobEventHostDetails = {
   readonly errorCode?: string;
   readonly errorCategory?: StudioJobErrorCategory;
   readonly cancellationRequestedAt?: string;
+  readonly source?: StudioJobSource;
   readonly pluginId?: string;
   readonly jobTypeId?: string;
 };
@@ -152,7 +154,8 @@ export type StudioJobEventCreateInput = Omit<StudioJobEventRecord, 'createdAt'>;
 export type StudioJobRecord = {
   readonly id: string;
   readonly instanceId: string;
-  readonly pluginId: string;
+  readonly source: StudioJobSource;
+  readonly pluginId?: string;
   readonly jobTypeId: string;
   readonly importProfileId?: string;
   readonly queueName: string;
@@ -244,6 +247,7 @@ export type StudioJobListItem = Pick<
   StudioJobRecord,
   | 'id'
   | 'instanceId'
+  | 'source'
   | 'pluginId'
   | 'jobTypeId'
   | 'status'
@@ -264,7 +268,7 @@ export type StudioJobListItem = Pick<
   readonly runtime: StudioJobRuntimeDiagnostics;
 };
 
-export type StudioJobStartRequest = {
+export type StudioPluginOperationStartRequest = {
   readonly pluginId: string;
   readonly jobTypeId: string;
   readonly importProfileId?: string;
@@ -272,6 +276,8 @@ export type StudioJobStartRequest = {
   readonly parentJobId?: string;
   readonly input: Readonly<Record<string, unknown>>;
 };
+
+export type StudioJobStartRequest = StudioPluginOperationStartRequest;
 
 const studioPluginOperationApiErrorCodes = [
   'unauthorized',

@@ -1,5 +1,7 @@
 import {
+  dsrExportStudioJobRegistration,
   registerPluginOperationExecutionHandlers,
+  registerStudioJobExecutionHandlers,
   type PluginOperationExecutionRegistration,
 } from '@sva/auth-runtime/server';
 import type { PluginCatalogEntry, PluginManifest } from '@sva/plugin-sdk';
@@ -294,6 +296,7 @@ export const registerStudioPluginOperationHandlers = async (): Promise<
   return (async () => {
     const handlers = await createStudioPluginOperationExecutionHandlers();
     assertStudioPluginOperationHandlerCoverage(handlers);
+    registerStudioJobExecutionHandlers([dsrExportStudioJobRegistration]);
     registerPluginOperationExecutionHandlers(handlers);
     return handlers;
   })();

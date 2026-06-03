@@ -19,6 +19,8 @@ export type AppRouteBindings = {
   readonly home: RouteComponent;
   readonly account: RouteComponent;
   readonly accountPrivacy: RouteComponent;
+  readonly accountPrivacyDetail: RouteComponent;
+  readonly accountRules: RouteComponent;
   readonly content: RouteComponent;
   readonly contentCreate: RouteComponent;
   readonly contentDetail: RouteComponent;
@@ -82,6 +84,12 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'home', path: uiRoutePaths.home },
   { binding: 'account', path: uiRoutePaths.account, guard: 'account' },
   { binding: 'accountPrivacy', path: uiRoutePaths.accountPrivacy, guard: 'accountPrivacy' },
+  {
+    binding: 'accountPrivacyDetail',
+    path: uiRoutePaths.accountPrivacyDetail,
+    guard: 'accountPrivacyDetail',
+  },
+  { binding: 'accountRules', path: uiRoutePaths.accountRules, guard: 'accountRules' },
   {
     binding: 'mediaUsage',
     path: uiRoutePaths.mediaUsage,

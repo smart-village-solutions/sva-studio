@@ -41,11 +41,13 @@ gleichzeitig beeinflussen.
 
 - Hostseitige Hintergrundprozesse folgen einem runner-agnostischen Plattformvertrag mit zentralem Jobdatensatz im Studio-Postgres.
 - Eine erste interne Worker-Implementierung wird bevorzugt mit Graphile Worker umgesetzt, bleibt aber ausdrücklich hinter der Host-Runtime verborgen.
+- Der kanonische Jobdatensatz unterscheidet explizit zwischen `source = 'plugin' | 'host'`; Plugin-Operationen und Host-Fachjobs teilen sich dieselbe Lifecycle- und Progress-Infrastruktur.
 - Job-Starts, Actor-Kontext, Mandantenbezug, Korrelation, Status, Retry-Metadaten und Fehlerabbildung müssen im Hostvertrag explizit modelliert werden; ad-hoc Hintergrundjobs ohne gemeinsamen Orchestrierungsvertrag sind nicht der Zielpfad.
 - Fachliche Worker erhalten einen Host-Context mit `job`, `progressReporter`, `abortSignal`, `logger`, `requestId` und `actorAccountId`; sie kennen weder Graphile-Helper noch direkte Repository-Fabriken.
 - Progress ist ein erstklassiger Hostvertrag mit stabilen Feldern für Schritte, Phase, Details und Zeitstempel; Fortschritt darf mehrfach ohne terminalen Statuswechsel geschrieben werden.
 - Technische Job-Lifecycle-Events bleiben zunächst hostintern und werden zusammen mit Heartbeat und Job-History zentral persistiert; UI und spätere Integrationen lesen vorerst denselben Polling-Vertrag statt eines Brokers.
 - Öffentliche Plugin- und Client-Verträge dürfen keine Graphile-spezifischen Begriffe oder Tabellenkenntnis voraussetzen.
+- Self-Service-DSR-Exporte sind der erste Host-Fachjob auf diesem Pfad; der fachliche Exportstatus bleibt in `iam.data_subject_export_jobs`, während `iam.studio_jobs` nur die Orchestrierung trägt.
 - Temporal bleibt als spätere Eskalationsoption für komplexere Orchestrierung offen, ist aber noch kein zweiter aktiver Standard.
 - Trigger.dev ist für Studio kein zulässiger Workflow-Pfad.
 - Outbox, n8n-Anbindung, SSE/WebSocket und Broker-Pfade wie NATS bleiben explizite Folgearbeit hinter derselben Hostgrenze.
@@ -71,6 +73,8 @@ gleichzeitig beeinflussen.
 - Harte Laufzeitgrenzen: Impersonation max. 120 Minuten, Delegation max. 30 Tage
 - `support_admin`-Impersonation benötigt zusätzlichen Security-Approver
 - DSGVO-Betroffenenrechte im IAM: Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch
+- Account-Self-Service trennt bewusst zwischen Aktivitätscockpit (`/account/privacy`) und Regelseite (`/account/rules`); die UI darf beide Bereiche gemeinsam navigierbar machen, ohne DSR- und Governance-Verträge fachlich zu verwischen
+- Deep-Links auf einzelne Datenschutzvorgänge laufen immer über einen expliziten `caseId`-Detailread; historische Fälle dürfen nicht aus begrenzten Overview-Listen rekonstruiert werden
 - Löschprozess zweistufig: Soft-Delete (SLA <= 48h) und finale Anonymisierung nach Retention
 - Legal Hold blockiert irreversible Löschschritte bis zur Freigabe
 - Art.-19-Nachweisdaten für Empfängerbenachrichtigung werden revisionssicher persistiert
@@ -200,6 +204,7 @@ gleichzeitig beeinflussen.
 - Governance-Audit folgt Dual-Write: DB (`iam.activity_logs`) + OTEL-Pipeline
 - PII-Schutz in Governance-Events: nur pseudonymisierte Actor-/Target-Referenzen
 - DSR-Wartungslauf emittiert strukturierte Audit-Events (`dsr_maintenance_executed`, `dsr_deletion_sla_escalated`)
+- Der DSR-Wartungslauf verarbeitet keine Export-Queues mehr; Self-Service-Exporte laufen ausschließlich über den generischen Host-Worker.
 - Finale Löschung pseudonymisiert Audit-Referenzen (`subject_pseudonym`) statt Klartext-PII
 - Server-Runtime-Logger nutzt typisierte OTEL-Bridge (keine `any`-Casts in Transport/Bootstrap)
 - Sensitive-Keys-Redaction umfasst zusätzlich Cookie-, Session-, CSRF- und API-Key-Header/Felder

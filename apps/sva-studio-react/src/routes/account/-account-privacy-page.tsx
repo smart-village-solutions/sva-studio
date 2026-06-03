@@ -1,54 +1,82 @@
 import React from 'react';
 
 import {
-  checkOptionalProcessing,
+  buildMyDataExportDownloadUrl,
   createDataSubjectRequest,
   requestDataExport,
   requestPermissionChange,
 } from '../../lib/iam-api';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Button } from '../../components/ui/button';
-import { Label } from '../../components/ui/label';
-import { ModalDialog } from '../../components/ModalDialog';
-import { Textarea } from '../../components/ui/textarea';
 import { t } from '../../i18n';
-import { AccountDeletionRulesCard } from './-account-deletion-rules-card';
-import {
-  PrivacyActionPanel,
-  PrivacyCasesSection,
-  PrivacyEmptyStateCard,
-  PrivacyProcessingCard,
-} from './-account-privacy-sections';
+import { PrivacyActionCards } from './-account-privacy-action-cards';
+import { PrivacyActivityTable } from './-account-privacy-activity-table';
+import { PrivacyDialogs } from './-account-privacy-dialogs';
 import { useAccountPrivacyState } from './-account-privacy-state';
+
+const buildRequestPayload = (note: string) => {
+  const trimmedNote = note.trim();
+  return trimmedNote.length > 0 ? { reason: trimmedNote } : undefined;
+};
 
 export const AccountPrivacyPage = () => {
   const {
-    contentPreferenceDraft,
-    deletionRules,
-    deletionRulesError,
-    deletionRulesStatusMessage,
     errorMessage,
-    hasDeletionRulesAccess,
+    filters,
     isLoading,
-    isLoadingDeletionRules,
-    isSavingDeletionRules,
     isSubmitting,
-    overview,
     runAction,
-    saveDeletionRulesPreference,
-    setContentPreferenceDraft,
     setErrorMessage,
+    setFilters,
     setStatusMessage,
     statusMessage,
+    visibleRows,
   } = useAccountPrivacyState();
   const [permissionChangeDialogOpen, setPermissionChangeDialogOpen] = React.useState(false);
   const [permissionChangeNote, setPermissionChangeNote] = React.useState('');
+  const [accessDialogOpen, setAccessDialogOpen] = React.useState(false);
+  const [accessNote, setAccessNote] = React.useState('');
+  const [exportDialogOpen, setExportDialogOpen] = React.useState(false);
+  const [exportFormat, setExportFormat] = React.useState<'json' | 'csv' | 'xml'>('json');
+  const [objectionDialogOpen, setObjectionDialogOpen] = React.useState(false);
+  const [objectionNote, setObjectionNote] = React.useState('');
+  const [deletionDialogOpen, setDeletionDialogOpen] = React.useState(false);
+  const [deletionNote, setDeletionNote] = React.useState('');
+  const [restrictionDialogOpen, setRestrictionDialogOpen] = React.useState(false);
+  const [restrictionNote, setRestrictionNote] = React.useState('');
 
-  const hasNoEntries =
-    overview &&
-    overview.requests.length === 0 &&
-    overview.exportJobs.length === 0 &&
-    overview.legalHolds.length === 0;
+  const resetFeedback = React.useCallback(() => {
+    setErrorMessage(null);
+    setStatusMessage(null);
+  }, [setErrorMessage, setStatusMessage]);
+
+  const openDialog = React.useCallback(
+    (open: () => void) => {
+      resetFeedback();
+      open();
+    },
+    [resetFeedback]
+  );
+
+  const submitRequest = React.useCallback(
+    async (
+      type: 'access' | 'deletion' | 'restriction' | 'objection',
+      note: string,
+      onClose: () => void,
+      onReset: () => void,
+      messageKey: string
+    ) => {
+      await runAction(async () => {
+        await createDataSubjectRequest({
+          type,
+          payload: buildRequestPayload(note),
+        });
+        onClose();
+        onReset();
+        setStatusMessage(t(messageKey));
+      });
+    },
+    [runAction, setStatusMessage]
+  );
 
   const handlePermissionChangeSubmit = async () => {
     const trimmedNote = permissionChangeNote.trim();
@@ -61,171 +89,141 @@ export const AccountPrivacyPage = () => {
       await requestPermissionChange({ requestNote: trimmedNote });
       setPermissionChangeDialogOpen(false);
       setPermissionChangeNote('');
-      setStatusMessage(t('account.privacy.permissionChange.messages.requested'));
+      setStatusMessage(t('account.privacy.messages.permissionChangeRequested'));
+    });
+  };
+
+  const handleExportSubmit = async () => {
+    await runAction(async () => {
+      await requestDataExport({ format: exportFormat, async: true });
+      setExportDialogOpen(false);
+      setStatusMessage(t('account.privacy.messages.exportRequested'));
     });
   };
 
   return (
-    <section className="space-y-5" aria-busy={isLoading || isSubmitting || isLoadingDeletionRules || isSavingDeletionRules}>
+    <section className="space-y-6" aria-busy={isLoading || isSubmitting}>
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold text-foreground">{t('account.privacy.title')}</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">{t('account.privacy.subtitle')}</p>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,1fr)]">
-        <section className="space-y-4">
-          <PrivacyActionPanel
-            disabled={isSubmitting}
-            onExport={() =>
-              void runAction(async () => {
-                await requestDataExport({ format: 'json', async: true });
-                setStatusMessage(t('account.privacy.actions.exportQueued'));
-              })
-            }
-            onRequestAccess={() =>
-              void runAction(async () => {
-                await createDataSubjectRequest({ type: 'access' });
-                setStatusMessage(t('account.privacy.actions.accessRequested'));
-              })
-            }
-            onRequestPermissionChange={() => {
-              setErrorMessage(null);
-              setStatusMessage(null);
-              setPermissionChangeNote('');
-              setPermissionChangeDialogOpen(true);
-            }}
-            onSubmitObjection={() =>
-              void runAction(async () => {
-                await createDataSubjectRequest({ type: 'objection' });
-                setStatusMessage(t('account.privacy.actions.optOutRequested'));
-              })
-            }
-          />
+      <PrivacyActionCards
+        disabled={isSubmitting}
+        onOpenPermissionChange={() => openDialog(() => setPermissionChangeDialogOpen(true))}
+        onOpenAccessDialog={() => openDialog(() => setAccessDialogOpen(true))}
+        onOpenExportDialog={() => openDialog(() => setExportDialogOpen(true))}
+        onOpenObjectionDialog={() => openDialog(() => setObjectionDialogOpen(true))}
+        onOpenDeletionDialog={() => openDialog(() => setDeletionDialogOpen(true))}
+        onOpenRestrictionDialog={() => openDialog(() => setRestrictionDialogOpen(true))}
+      />
 
-          <AccountDeletionRulesCard
-            deletionRules={deletionRules}
-            hasDeletionRulesAccess={hasDeletionRulesAccess}
-            isLoadingDeletionRules={isLoadingDeletionRules}
-            deletionRulesError={deletionRulesError}
-            deletionRulesStatusMessage={deletionRulesStatusMessage}
-            contentPreferenceDraft={contentPreferenceDraft}
-            isSavingDeletionRules={isSavingDeletionRules}
-            onContentPreferenceChange={setContentPreferenceDraft}
-            onSave={() => void saveDeletionRulesPreference()}
-          />
+      {statusMessage ? (
+        <Alert className="border-primary/40 bg-primary/10 text-primary" role="status">
+          <AlertDescription>{statusMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+      {errorMessage ? (
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      ) : null}
 
-          {statusMessage ? (
-            <Alert className="border-primary/40 bg-primary/10 text-primary" role="status">
-              <AlertDescription>{statusMessage}</AlertDescription>
-            </Alert>
-          ) : null}
-          {errorMessage ? (
-            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-              <AlertDescription>{errorMessage}</AlertDescription>
-            </Alert>
-          ) : null}
+      <PrivacyActivityTable
+        rows={visibleRows}
+        filters={filters}
+        onFilterChange={setFilters}
+        onDownload={(jobId, format) => window.location.assign(buildMyDataExportDownloadUrl(jobId, format))}
+      />
 
-          {isLoading ? <p className="text-sm text-muted-foreground">{t('account.privacy.messages.loading')}</p> : null}
-
-          {hasNoEntries ? (
-            <PrivacyEmptyStateCard
-              disabled={isSubmitting}
-              onRequestAccess={() =>
-                void runAction(async () => {
-                  await createDataSubjectRequest({ type: 'access' });
-                  setStatusMessage(t('account.privacy.actions.accessRequested'));
-                })
-              }
-            />
-          ) : null}
-
-          <PrivacyCasesSection
-            title={t('account.privacy.sections.exportJobs')}
-            items={overview?.exportJobs ?? []}
-            prefix="export"
-          />
-
-          <PrivacyCasesSection
-            title={t('account.privacy.sections.requests')}
-            items={overview?.requests ?? []}
-            prefix="request"
-          />
-        </section>
-
-        <PrivacyProcessingCard
-          disabled={isSubmitting}
-          legalHolds={overview?.legalHolds ?? []}
-          nonEssentialProcessingAllowed={overview?.nonEssentialProcessingAllowed}
-          processingRestrictedAt={overview?.processingRestrictedAt}
-          processingRestrictionReason={overview?.processingRestrictionReason}
-          nonEssentialProcessingOptOutAt={overview?.nonEssentialProcessingOptOutAt}
-          onCheckProcessing={() =>
-            void runAction(async () => {
-              const response = await checkOptionalProcessing();
-              if ('error' in response) {
-                setStatusMessage(
-                  response.blockedByRestriction || response.blockedByObjection
-                    ? t('account.privacy.processing.blocked')
-                    : response.error
-                );
-                return;
-              }
-              setStatusMessage(t('account.privacy.processing.allowedCheck'));
-            })
-          }
-        />
-      </div>
-
-      <ModalDialog
-        open={permissionChangeDialogOpen}
-        title={t('account.privacy.permissionChange.dialog.title')}
-        description={t('account.privacy.permissionChange.dialog.description')}
-        onClose={() => {
-          setPermissionChangeDialogOpen(false);
-          setPermissionChangeNote('');
+      <PrivacyDialogs
+        isSubmitting={isSubmitting}
+        accessDialog={{
+          open: accessDialogOpen,
+          note: accessNote,
+          onClose: () => {
+            setAccessDialogOpen(false);
+            setAccessNote('');
+          },
+          onNoteChange: setAccessNote,
+          onSubmit: () =>
+            void submitRequest(
+              'access',
+              accessNote,
+              () => setAccessDialogOpen(false),
+              () => setAccessNote(''),
+              'account.privacy.messages.accessRequested'
+            ),
         }}
-      >
-        <form
-          className="space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void handlePermissionChangeSubmit();
-          }}
-        >
-          <div className="space-y-2">
-            <Label htmlFor="permission-change-note">
-              {t('account.privacy.permissionChange.fields.requestNote')}
-            </Label>
-            <Textarea
-              id="permission-change-note"
-              value={permissionChangeNote}
-              onChange={(event) => setPermissionChangeNote(event.target.value)}
-              rows={5}
-              disabled={isSubmitting}
-              placeholder={t('account.privacy.permissionChange.fields.requestNotePlaceholder')}
-            />
-            <p className="text-xs text-muted-foreground">
-              {t('account.privacy.permissionChange.fields.requestNoteHint')}
-            </p>
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isSubmitting}
-              onClick={() => {
-                setPermissionChangeDialogOpen(false);
-                setPermissionChangeNote('');
-              }}
-            >
-              {t('account.privacy.permissionChange.actions.cancel')}
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {t('account.privacy.permissionChange.actions.submit')}
-            </Button>
-          </div>
-        </form>
-      </ModalDialog>
+        permissionChangeDialog={{
+          open: permissionChangeDialogOpen,
+          note: permissionChangeNote,
+          onClose: () => {
+            setPermissionChangeDialogOpen(false);
+            setPermissionChangeNote('');
+          },
+          onNoteChange: setPermissionChangeNote,
+          onSubmit: () => void handlePermissionChangeSubmit(),
+        }}
+        exportDialog={{
+          open: exportDialogOpen,
+          format: exportFormat,
+          onClose: () => setExportDialogOpen(false),
+          onFormatChange: setExportFormat,
+          onSubmit: () => void handleExportSubmit(),
+        }}
+        objectionDialog={{
+          open: objectionDialogOpen,
+          note: objectionNote,
+          onClose: () => {
+            setObjectionDialogOpen(false);
+            setObjectionNote('');
+          },
+          onNoteChange: setObjectionNote,
+          onSubmit: () =>
+            void submitRequest(
+              'objection',
+              objectionNote,
+              () => setObjectionDialogOpen(false),
+              () => setObjectionNote(''),
+              'account.privacy.messages.objectionRequested'
+            ),
+        }}
+        deletionDialog={{
+          open: deletionDialogOpen,
+          note: deletionNote,
+          onClose: () => {
+            setDeletionDialogOpen(false);
+            setDeletionNote('');
+          },
+          onNoteChange: setDeletionNote,
+          onSubmit: () =>
+            void submitRequest(
+              'deletion',
+              deletionNote,
+              () => setDeletionDialogOpen(false),
+              () => setDeletionNote(''),
+              'account.privacy.messages.deletionRequested'
+            ),
+        }}
+        restrictionDialog={{
+          open: restrictionDialogOpen,
+          note: restrictionNote,
+          onClose: () => {
+            setRestrictionDialogOpen(false);
+            setRestrictionNote('');
+          },
+          onNoteChange: setRestrictionNote,
+          onSubmit: () =>
+            void submitRequest(
+              'restriction',
+              restrictionNote,
+              () => setRestrictionDialogOpen(false),
+              () => setRestrictionNote(''),
+              'account.privacy.messages.restrictionRequested'
+            ),
+        }}
+      />
     </section>
   );
 };

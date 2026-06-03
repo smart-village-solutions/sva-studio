@@ -11,6 +11,7 @@ import {
 import { useFractionColumns } from './waste-management.master-data-fractions-content.columns.js';
 import {
   WasteMasterDataFractionDeleteDialog,
+  WasteMasterDataFractionStatusDialog,
   WasteMasterDataFractionsTableSection,
 } from './waste-management.master-data-fractions-content.view.js';
 
@@ -34,6 +35,10 @@ export const WasteMasterDataFractionsContent = ({
   saving,
 }: WasteFractionsContentProps) => {
   const [fractionPendingDelete, setFractionPendingDelete] = useState<WasteFractionRecord | null>(null);
+  const [fractionPendingStatusChange, setFractionPendingStatusChange] = useState<{
+    readonly fraction: WasteFractionRecord;
+    readonly nextActive: boolean;
+  } | null>(null);
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [draftFractionsStatus, setDraftFractionsStatus] = useState(fractionsStatus);
   const [sortField, setSortField] = useState(fractionsSortBy);
@@ -86,7 +91,12 @@ export const WasteMasterDataFractionsContent = ({
   const sorting = useMemo(() => createFractionSorting(sortField, sortDirection), [sortDirection, sortField]);
   const tableLabels = useFractionTableLabels();
   const bulkActions = useFractionBulkActions({ saving, onDeleteFractions });
-  const columns = useFractionColumns({ saving, onToggleFractionStatus });
+  const columns = useFractionColumns({
+    saving,
+    onToggleFractionStatus: (fraction, active) => {
+      setFractionPendingStatusChange({ fraction, nextActive: active });
+    },
+  });
 
   usePagedRouteSync({ page, safePage: pagedFractions.safePage, onPageChange, onSyncPageChange });
   useWasteTabPanelActions(null);
@@ -134,6 +144,19 @@ export const WasteMasterDataFractionsContent = ({
         fractionPendingDelete={fractionPendingDelete}
         onOpenDeleteFraction={onOpenDeleteFraction}
         onCancel={() => setFractionPendingDelete(null)}
+      />
+      <WasteMasterDataFractionStatusDialog
+        fractionPendingStatusChange={fractionPendingStatusChange}
+        onCancel={() => setFractionPendingStatusChange(null)}
+        onConfirm={() => {
+          if (!fractionPendingStatusChange) {
+            return;
+          }
+
+          void Promise.resolve(
+            onToggleFractionStatus(fractionPendingStatusChange.fraction, fractionPendingStatusChange.nextActive)
+          ).finally(() => setFractionPendingStatusChange(null));
+        }}
       />
     </div>
   );

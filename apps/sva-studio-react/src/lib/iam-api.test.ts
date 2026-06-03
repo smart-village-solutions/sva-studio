@@ -35,6 +35,7 @@ import {
   getMyPendingLegalTexts,
   getMyProfile,
   getDataExportStatus,
+  buildMyDataExportDownloadUrl,
   getInstance,
   getInstanceKeycloakPreflight,
   getInstanceKeycloakProvisioningRun,
@@ -42,6 +43,7 @@ import {
   getRuntimeHealth,
   getLatestAuthorizePerformanceRun,
   getMyDataSubjectRights,
+  getMyDataSubjectRightsCase,
   deactivateOrganization,
   getPluginOperationJob,
   getGroup,
@@ -1398,6 +1400,7 @@ describe('iam-api transparency helpers', () => {
       signal: controller.signal,
     });
     await getMyDataSubjectRights();
+    await getMyDataSubjectRightsCase('case-1');
     await getDataExportStatus('job-1');
 
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -1419,7 +1422,11 @@ describe('iam-api transparency helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(3, '/iam/me/data-subject-rights/requests', expect.any(Object));
-    expect(fetchMock).toHaveBeenNthCalledWith(4, '/iam/me/data-export/status?jobId=job-1', expect.any(Object));
+    expect(fetchMock).toHaveBeenNthCalledWith(4, '/iam/me/data-subject-rights/cases/case-1', expect.any(Object));
+    expect(fetchMock).toHaveBeenNthCalledWith(5, '/iam/me/data-export/status?jobId=job-1', expect.any(Object));
+    expect(buildMyDataExportDownloadUrl('job-1', 'csv')).toBe(
+      '/iam/me/data-export/status?jobId=job-1&download=csv'
+    );
   });
 
   it('builds plugin operation job list queries with filters', async () => {

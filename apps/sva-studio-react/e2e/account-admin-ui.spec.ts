@@ -13,6 +13,8 @@ const adminAuthPayload = {
 
 const privacyOverviewPayload = {
   data: {
+    instanceId: 'de-musterhausen',
+    accountId: 'account-1',
     requests: [
       {
         id: 'request-1',
@@ -42,10 +44,67 @@ const privacyOverviewPayload = {
       },
     ],
     legalHolds: [],
+    activityItems: [
+      {
+        id: 'request-1',
+        source: 'dsr',
+        type: 'request',
+        canonicalStatus: 'queued',
+        rawStatus: 'accepted',
+        title: 'Auskunftsanfrage',
+        summary: 'Ihre Anfrage wird vorbereitet.',
+        createdAt: '2026-03-10T09:00:00.000Z',
+      },
+      {
+        id: 'export-1',
+        source: 'dsr',
+        type: 'export_job',
+        canonicalStatus: 'completed',
+        rawStatus: 'completed',
+        title: 'JSON-Export',
+        summary: 'Der Export wurde erfolgreich erstellt.',
+        createdAt: '2026-03-09T08:00:00.000Z',
+        completedAt: '2026-03-09T08:05:00.000Z',
+        format: 'json',
+      },
+    ],
     nonEssentialProcessingAllowed: false,
     processingRestrictedAt: '2026-03-08T07:00:00.000Z',
     processingRestrictionReason: 'pending_verification',
     nonEssentialProcessingOptOutAt: '2026-03-07T06:00:00.000Z',
+  },
+};
+
+const privacyDetailPayload = {
+  data: {
+    id: 'request-1',
+    source: 'dsr',
+    type: 'request',
+    canonicalStatus: 'queued',
+    rawStatus: 'accepted',
+    title: 'Auskunftsanfrage',
+    summary: 'Ihre Anfrage wird vorbereitet.',
+    createdAt: '2026-03-10T09:00:00.000Z',
+    metadata: { origin: 'self_service' },
+  },
+};
+
+const deletionRulesPayload = {
+  instanceId: 'de-musterhausen',
+  lastLoginAt: '2026-03-20T10:00:00.000Z',
+  lifecycleState: 'active',
+  rules: {
+    instanceId: 'de-musterhausen',
+    deactivateAfterDays: 90,
+    pseudonymizeAfterDays: 180,
+    deleteAfterDays: 365,
+    defaultContentStrategy: 'retain',
+    allowContentPreferenceOverride: true,
+    canEdit: false,
+  },
+  contentPreference: {
+    isOverridden: false,
+    effectiveStrategy: 'retain',
   },
 };
 
@@ -198,7 +257,7 @@ test('profile page supports loading and saving own profile', async ({ page }) =>
   await expect(page.getByText('Profil wurde erfolgreich gespeichert.')).toBeVisible();
 });
 
-test('account page links into privacy cockpit and renders self-service data', async ({ page }) => {
+test('header menu opens privacy cockpit, detail view, and account rules', async ({ page }) => {
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -235,17 +294,43 @@ test('account page links into privacy cockpit and renders self-service data', as
     });
   });
 
-  await gotoHomeAsAuthenticatedUser(page);
-  await navigateClientSide(page, '/account');
-  await expect(page.getByRole('heading', { name: 'Mein Konto' })).toBeVisible({ timeout: 10000 });
+  await page.route('**/iam/me/data-subject-rights/cases/*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(privacyDetailPayload),
+    });
+  });
 
-  await page.getByRole('link', { name: 'Zum Datenschutz-Cockpit' }).click();
+  await page.route('**/iam/me/deletion-rules', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(deletionRulesPayload),
+    });
+  });
+
+  await gotoHomeAsAuthenticatedUser(page);
+  await page.getByRole('button', { name: /Admin One/ }).click();
+  await page.getByRole('menuitem', { name: 'Datenschutz' }).click();
 
   await expect(page).toHaveURL(/\/account\/privacy$/);
   await expect(page.getByRole('heading', { name: 'Datenschutz & Transparenz' })).toBeVisible({ timeout: 10000 });
-  await expect(page.getByText('Auskunftsanfrage')).toBeVisible();
-  await expect(page.getByText('JSON-Export')).toBeVisible();
-  await expect(page.getByText('Widerspruch seit')).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Datenschutzvorgänge' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Rechteänderung beantragen' })).toBeVisible();
+
+  await page.getByRole('link', { name: 'Details' }).first().click();
+  await expect(page).toHaveURL(/\/account\/privacy\/request-1$/);
+  await expect(page.getByRole('button', { name: 'Zurück zur Datenschutzübersicht' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Zurück zur Datenschutzübersicht' }).click();
+  await expect(page).toHaveURL(/\/account\/privacy$/);
+
+  await page.getByRole('button', { name: /Admin One/ }).click();
+  await page.getByRole('menuitem', { name: 'Kontoregeln' }).click();
+  await expect(page).toHaveURL(/\/account\/rules$/);
+  await expect(page.getByRole('heading', { name: 'Kontoregeln' })).toBeVisible();
+  await expect(page.getByLabel('Regel für eigene Inhalte')).toBeVisible();
 });
 
 test('admin user list and edit page are reachable for system_admin', async ({ page }) => {

@@ -34,6 +34,7 @@ const createDeps = (): DsrExportFlowDeps => ({
   reserveIdempotency: vi.fn(async () => ({ status: 'reserved' })),
   completeIdempotency: vi.fn(async () => undefined),
   toPayloadHash: vi.fn(() => 'payload-hash'),
+  createAsyncStudioJob: vi.fn(async () => ({ id: 'studio-job-1' })),
   jsonResponse: vi.fn((status, body) =>
     new Response(JSON.stringify(body), {
       status,
@@ -54,6 +55,7 @@ describe('dsr-export-flows', () => {
       .fn<QueryClient['query']>()
       .mockResolvedValueOnce({ rowCount: 1, rows: [accountRow] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'job-1', status: 'queued' }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'request-1' }] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] });
@@ -71,6 +73,15 @@ describe('dsr-export-flows', () => {
 
     expect(response.status).toBe(202);
     expect(body).toEqual({ exportJobId: 'job-1', status: 'queued', format: 'json' });
+    expect(deps.createAsyncStudioJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'de-musterhausen',
+        exportJobId: 'job-1',
+        requestedByAccountId: 'account-1',
+        targetAccountId: 'account-1',
+        format: 'json',
+      })
+    );
     expect(deps.reserveIdempotency).toHaveBeenCalledWith(
       expect.objectContaining({
         actorAccountId: 'account-1',
@@ -104,6 +115,7 @@ describe('dsr-export-flows', () => {
     expect(response.status).toBe(200);
     await expect(response.text()).resolves.toBe('{"ok":true}');
     expect(query).toHaveBeenCalledTimes(1);
+    expect(deps.createAsyncStudioJob).not.toHaveBeenCalled();
     expect(deps.completeIdempotency).not.toHaveBeenCalled();
   });
 
@@ -131,7 +143,33 @@ describe('dsr-export-flows', () => {
       message: 'Payload mismatch',
     });
     expect(query).toHaveBeenCalledTimes(1);
+    expect(deps.createAsyncStudioJob).not.toHaveBeenCalled();
     expect(deps.completeIdempotency).not.toHaveBeenCalled();
+  });
+
+  it('fails async self exports cleanly when the studio job cannot be enqueued', async () => {
+    const query = vi
+      .fn<QueryClient['query']>()
+      .mockResolvedValueOnce({ rowCount: 1, rows: [accountRow] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'job-1', status: 'queued' }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] });
+    const deps = createDeps();
+    vi.mocked(deps.createAsyncStudioJob).mockRejectedValueOnce(new Error('queue_down'));
+    const flows = createDsrExportFlows(deps);
+
+    const response = await flows.runSelfExport({
+      client: { query },
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      exportRequest: { format: 'json', async: true },
+      idempotencyKey: 'idem-1',
+    });
+    const body = await readBody(response);
+
+    expect(response.status).toBe(503);
+    expect(body).toEqual({ error: 'export_job_queue_failed' });
+    expect(query.mock.calls.at(-1)?.[0]).toContain("status = 'failed'");
+    expect(query.mock.calls.at(-1)?.[1]).toEqual(['job-1', 'queue_down']);
   });
 
   it('delivers sync self exports as JSON text responses and stores the replay payload as text', async () => {

@@ -45,7 +45,35 @@ vi.mock('@sva/studio-ui-react', () => ({
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  StudioConfirmDialog: ({ open }: { readonly open: boolean }) => (open ? <div data-testid="confirm-dialog" /> : null),
+  StudioConfirmDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
+  }: {
+    readonly open: boolean;
+    readonly title: string;
+    readonly description: string;
+    readonly confirmLabel: string;
+    readonly cancelLabel: string;
+    readonly onConfirm: () => void;
+    readonly onCancel: () => void;
+  }) =>
+    open ? (
+      <div>
+        <p>{title}</p>
+        <p>{description}</p>
+        <button type="button" onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+        <button type="button" onClick={onCancel}>
+          {cancelLabel}
+        </button>
+      </div>
+    ) : null,
   StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="empty-state">{children}</div>,
   cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(' '),
 }));
@@ -84,6 +112,7 @@ describe('WasteToursContent', () => {
     const onOpenCreateAssignmentsDialog = vi.fn();
     const onOpenEditAssignmentsDialog = vi.fn();
     const onOpenCalendar = vi.fn();
+    const onToggleTourStatus = vi.fn(async () => undefined);
     const tour = {
       id: 'tour-1',
       name: 'Restmüll Nord',
@@ -115,7 +144,7 @@ describe('WasteToursContent', () => {
         onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
         onOpenCalendar={onOpenCalendar}
-        onToggleTourStatus={vi.fn(async () => undefined)}
+        onToggleTourStatus={onToggleTourStatus}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
         canDuplicateTour
@@ -161,12 +190,17 @@ describe('WasteToursContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.duplicate' }));
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openAssignments' }));
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openCalendar' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'tours.actions.deactivateStatus:Restmüll Nord' }));
 
     expect(onOpenEditDialog).toHaveBeenCalledWith(tour);
     expect(onOpenDuplicateDialog).toHaveBeenCalledWith(tour);
     expect(onOpenCalendar).toHaveBeenCalledWith(tour);
     expect(onOpenEditAssignmentsDialog).toHaveBeenCalledWith(tour, 'link-1');
     expect(onOpenCreateAssignmentsDialog).not.toHaveBeenCalled();
+    expect(screen.getByText('tours.statusDialog.deactivateTitle')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.statusDialog.confirm' }));
+    expect(onToggleTourStatus).toHaveBeenCalledWith(tour, false);
   });
 
   it('renders a loading hint while the assignment context is still loading', () => {

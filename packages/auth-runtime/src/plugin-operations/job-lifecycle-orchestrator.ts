@@ -1,7 +1,7 @@
 import type { StudioJobRecord } from '@sva/core';
 import type {
-  PluginOperationExecutionHandler,
-  PluginOperationExecutionHandlerContext,
+  StudioJobExecutionHandler,
+  StudioJobExecutionHandlerContext,
 } from './types.js';
 
 import { isPluginOperationCancellationError } from './job-cancellation.js';
@@ -34,7 +34,7 @@ type RepositoryPort = {
 type OrchestratorDeps = {
   readonly logger: PluginOperationLogger;
   readonly loadRepository: (instanceId: string) => Promise<RepositoryPort>;
-  readonly resolveHandler: (jobTypeId: string) => PluginOperationExecutionHandler | undefined;
+  readonly resolveHandler: (job: Pick<StudioJobRecord, 'source' | 'jobTypeId'>) => StudioJobExecutionHandler | undefined;
   readonly createWorkerId?: (job: { readonly instanceId: string; readonly id: string }) => string;
   readonly now?: () => string;
 };
@@ -57,7 +57,7 @@ const createHandlerContext = async (
   attempts: number,
   workerId: string
 ): Promise<{
-  readonly handlerContext: Omit<PluginOperationExecutionHandlerContext, 'job'>;
+  readonly handlerContext: Omit<StudioJobExecutionHandlerContext, 'job'>;
   readonly dispose: () => void;
   readonly getLatestProgress: () => StudioJobRecord['progress'];
 }> => {
@@ -135,7 +135,7 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
         workerId,
       });
 
-      const handler = deps.resolveHandler(job.jobTypeId);
+      const handler = deps.resolveHandler(job);
       if (!handler) {
         await stateWriter.markMissingHandler({
           job,
@@ -180,7 +180,7 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
         startedAt,
         workerId,
         progress: getLatestProgress(),
-        errorPayload: createExecutionErrorPayload(error, finalFailure),
+        errorPayload: createExecutionErrorPayload(job, error, finalFailure),
         finalFailure,
       });
       if (!finalFailure) {

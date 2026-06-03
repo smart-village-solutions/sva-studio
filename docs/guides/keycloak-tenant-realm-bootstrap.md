@@ -108,6 +108,18 @@ Regel:
 - Root-Host `https://studio.smart-village.app` gehört nicht in tenant-spezifische Client-Konfigurationen.
 - Mischkonfigurationen mit Redirects anderer Tenants sind unzulässig.
 
+## Optionales Login-Theme
+
+Für eine KERN-2-nahe Anmutung der Keycloak-Anmeldeseiten kann pro Tenant-Realm optional das Login-Theme
+
+- `sva-kern2`
+
+gesetzt werden.
+
+Die zugehörige Repository-Ablage und der Deployment-Pfad sind unter
+[Keycloak-Login-Theme `sva-kern2`](./keycloak-login-theme-kern2.md)
+dokumentiert.
+
 ## Claim-Vertrag für Studio
 
 Studio erwartet im Login-/Session-Pfad mindestens:

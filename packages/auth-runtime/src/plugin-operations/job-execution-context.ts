@@ -3,9 +3,9 @@ import { definePluginExecutionContextCapabilities } from '@sva/plugin-sdk';
 
 import { throwIfCancellationRequested } from './job-cancellation.js';
 import type {
-  PluginOperationExecutionHandlerContext,
   PluginOperationLogger,
   PluginOperationExecutionProgressContext,
+  StudioJobExecutionHandlerContext,
 } from './types.js';
 
 type JobExecutionContextDeps = {
@@ -20,7 +20,7 @@ type JobExecutionContextDeps = {
 };
 
 type ManagedJobExecutionContext = {
-  readonly context: Omit<PluginOperationExecutionHandlerContext, 'job'>;
+  readonly context: Omit<StudioJobExecutionHandlerContext, 'job'>;
   readonly dispose: () => void;
 };
 

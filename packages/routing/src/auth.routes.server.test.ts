@@ -224,6 +224,7 @@ const authServerMocks = vi.hoisted(() => {
     dataExportHandler: vi.fn(async () => response('dataExportHandler')),
     dataExportStatusHandler: vi.fn(async () => response('dataExportStatusHandler')),
     getMyDataSubjectRightsHandler: vi.fn(async () => response('getMyDataSubjectRightsHandler')),
+    getMyDataSubjectRightsCaseHandler: vi.fn(async () => response('getMyDataSubjectRightsCaseHandler')),
     listPendingLegalTextsHandler: vi.fn(async () => response('listPendingLegalTextsHandler')),
     dataSubjectRequestHandler: vi.fn(async () => response('dataSubjectRequestHandler')),
     profileCorrectionHandler: vi.fn(async () => response('profileCorrectionHandler')),
@@ -429,6 +430,21 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.deletionRulesAdminHandler).toHaveBeenCalledTimes(2);
     expect(authServerMocks.myDeletionRulesOverviewHandler).toHaveBeenCalledTimes(1);
     expect(authServerMocks.myDeletionRulesPreferenceHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('dispatches self-service privacy detail routes to the auth runtime', async () => {
+    const handlers = resolveAuthHandlers('/iam/me/data-subject-rights/cases/$caseId');
+
+    expect(handlers?.GET).toBeDefined();
+
+    await handlers?.GET?.({
+      request: new Request(
+        'http://localhost/iam/me/data-subject-rights/cases/123e4567-e89b-42d3-a456-426614174000?instanceId=de-test',
+        { method: 'GET' }
+      ),
+    });
+
+    expect(authServerMocks.getMyDataSubjectRightsCaseHandler).toHaveBeenCalledTimes(1);
   });
 
   it('dispatches waste management routes to the auth runtime', async () => {
@@ -749,6 +765,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.listGovernanceCasesHandler).toHaveBeenCalled();
     expect(authServerMocks.getUserTimelineHandler).toHaveBeenCalled();
     expect(authServerMocks.getMyDataSubjectRightsHandler).toHaveBeenCalled();
+    expect(authServerMocks.getMyDataSubjectRightsCaseHandler).toHaveBeenCalled();
     expect(authServerMocks.listPendingLegalTextsHandler).toHaveBeenCalled();
     expect(authServerMocks.listAdminDataSubjectRightsCasesHandler).toHaveBeenCalled();
     expect(authServerMocks.dataSubjectMaintenanceHandler).toHaveBeenCalled();

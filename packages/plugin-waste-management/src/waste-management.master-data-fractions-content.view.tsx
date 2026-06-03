@@ -153,6 +153,15 @@ type WasteMasterDataFractionDeleteDialogProps = Pick<
   readonly onCancel: () => void;
 };
 
+type WasteMasterDataFractionStatusDialogProps = {
+  readonly fractionPendingStatusChange: {
+    readonly fraction: WasteFractionRecord;
+    readonly nextActive: boolean;
+  } | null;
+  readonly onCancel: () => void;
+  readonly onConfirm: () => void;
+};
+
 export const WasteMasterDataFractionDeleteDialog = ({
   fractionPendingDelete,
   onOpenDeleteFraction,
@@ -176,6 +185,30 @@ export const WasteMasterDataFractionDeleteDialog = ({
         }
         void Promise.resolve(onOpenDeleteFraction(fractionPendingDelete)).finally(onCancel);
       }}
+    />
+  );
+};
+
+export const WasteMasterDataFractionStatusDialog = ({
+  fractionPendingStatusChange,
+  onCancel,
+  onConfirm,
+}: WasteMasterDataFractionStatusDialogProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const nextActive = fractionPendingStatusChange?.nextActive ?? false;
+  const translationPrefix = nextActive ? 'activate' : 'deactivate';
+
+  return (
+    <StudioConfirmDialog
+      open={fractionPendingStatusChange !== null}
+      title={pt(`masterData.fractions.statusDialog.${translationPrefix}Title`)}
+      description={pt(`masterData.fractions.statusDialog.${translationPrefix}Description`, {
+        value: fractionPendingStatusChange?.fraction.name ?? '',
+      })}
+      confirmLabel={pt('masterData.fractions.statusDialog.confirm')}
+      cancelLabel={pt('masterData.fractions.statusDialog.cancel')}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
     />
   );
 };

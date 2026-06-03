@@ -66,7 +66,8 @@ export type {
   StudioJobEventCreateInput, StudioJobEventDetails, StudioJobEventHostDetails, StudioJobEventPresentation,
   StudioJobEventRecord, StudioJobHeartbeatInput, StudioJobListItem, StudioJobListQuery, StudioJobListResponse,
   StudioJobProgressUpdateInput, StudioJobResponse, StudioJobProgress, StudioJobResult, StudioJobResultSummary,
-  StudioJobRecord, StudioJobRuntimeDiagnostics, StudioJobStartRequest, StudioPluginOperationApiError,
+  StudioJobRecord, StudioJobRuntimeDiagnostics, StudioJobSource, StudioJobStartRequest, StudioPluginOperationApiError,
+  StudioPluginOperationStartRequest,
   StudioPluginOperationApiErrorResponse, StudioJobUpdateInput,
 } from './plugin-operations-contract.js';
 export { wasteManagementDataSourceContract } from './waste-management-contract.js';

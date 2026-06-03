@@ -46,6 +46,9 @@ export const governanceAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.getMyDataSubjectRightsHandler),
     POST: routeHandler(authRuntimeRoutes.dataSubjectRequestHandler),
   },
+  '/iam/me/data-subject-rights/cases/$caseId': {
+    GET: routeHandler(authRuntimeRoutes.getMyDataSubjectRightsCaseHandler),
+  },
   '/iam/me/legal-texts/pending': {
     GET: routeHandler(authRuntimeRoutes.listPendingLegalTextsHandler),
   },

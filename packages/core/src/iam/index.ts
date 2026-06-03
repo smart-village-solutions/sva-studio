@@ -79,6 +79,8 @@ export type {
   IamDsrCaseType,
   IamMyDeletionRulesOverview,
   IamDsrSelfServiceOverview,
+  IamSelfServiceActivityItem,
+  IamSelfServiceActivityType,
   IamGovernanceCaseListItem,
   IamGovernanceCaseType,
   IamTenantDeletionRulesOverview,

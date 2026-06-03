@@ -389,6 +389,7 @@ CREATE TABLE iam.data_subject_export_jobs (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     target_account_id uuid NOT NULL,
     requested_by_account_id uuid,
+    studio_job_id uuid,
     format text NOT NULL,
     status text DEFAULT 'queued'::text NOT NULL,
     error_message text,
@@ -1176,10 +1177,10 @@ ALTER TABLE ONLY iam.platform_activity_logs FORCE ROW LEVEL SECURITY;
 
 
 --
--- Name: plugin_operation_job_events; Type: TABLE; Schema: iam; Owner: -
+-- Name: studio_job_events; Type: TABLE; Schema: iam; Owner: -
 --
 
-CREATE TABLE iam.plugin_operation_job_events (
+CREATE TABLE iam.studio_job_events (
     id uuid NOT NULL,
     job_id uuid NOT NULL,
     instance_id text NOT NULL,
@@ -1190,19 +1191,20 @@ CREATE TABLE iam.plugin_operation_job_events (
     message text,
     details jsonb,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT plugin_operation_job_events_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'retrying'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text]))),
-    CONSTRAINT plugin_operation_job_events_type_check CHECK ((event_type = ANY (ARRAY['job.queued'::text, 'job.started'::text, 'job.progressed'::text, 'job.retrying'::text, 'job.succeeded'::text, 'job.failed'::text, 'job.cancelled'::text])))
+    CONSTRAINT studio_job_events_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'retrying'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text]))),
+    CONSTRAINT studio_job_events_type_check CHECK ((event_type = ANY (ARRAY['job.queued'::text, 'job.started'::text, 'job.progressed'::text, 'job.retrying'::text, 'job.succeeded'::text, 'job.failed'::text, 'job.cancelled'::text])))
 );
 
 
 --
--- Name: plugin_operation_jobs; Type: TABLE; Schema: iam; Owner: -
+-- Name: studio_jobs; Type: TABLE; Schema: iam; Owner: -
 --
 
-CREATE TABLE iam.plugin_operation_jobs (
+CREATE TABLE iam.studio_jobs (
     id uuid NOT NULL,
     instance_id text NOT NULL,
-    plugin_id text NOT NULL,
+    source text DEFAULT 'plugin'::text NOT NULL,
+    plugin_id text,
     job_type_id text NOT NULL,
     import_profile_id text,
     queue_name text NOT NULL,
@@ -1227,9 +1229,10 @@ CREATE TABLE iam.plugin_operation_jobs (
     cancel_requested_at timestamp with time zone,
     correlation_id text,
     parent_job_id uuid,
-    CONSTRAINT plugin_operation_jobs_attempts_check CHECK ((attempts >= 0)),
-    CONSTRAINT plugin_operation_jobs_max_attempts_check CHECK ((max_attempts >= 1)),
-    CONSTRAINT plugin_operation_jobs_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'retrying'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text])))
+    CONSTRAINT studio_jobs_source_check CHECK ((source = ANY (ARRAY['plugin'::text, 'host'::text]))),
+    CONSTRAINT studio_jobs_attempts_check CHECK ((attempts >= 0)),
+    CONSTRAINT studio_jobs_max_attempts_check CHECK ((max_attempts >= 1)),
+    CONSTRAINT studio_jobs_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'retrying'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text])))
 );
 
 
@@ -1792,19 +1795,19 @@ ALTER TABLE ONLY iam.platform_activity_logs
 
 
 --
--- Name: plugin_operation_job_events plugin_operation_job_events_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+-- Name: studio_job_events studio_job_events_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
-ALTER TABLE ONLY iam.plugin_operation_job_events
-    ADD CONSTRAINT plugin_operation_job_events_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY iam.studio_job_events
+    ADD CONSTRAINT studio_job_events_pkey PRIMARY KEY (id);
 
 
 --
--- Name: plugin_operation_jobs plugin_operation_jobs_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+-- Name: studio_jobs studio_jobs_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
-ALTER TABLE ONLY iam.plugin_operation_jobs
-    ADD CONSTRAINT plugin_operation_jobs_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY iam.studio_jobs
+    ADD CONSTRAINT studio_jobs_pkey PRIMARY KEY (id);
 
 
 --
@@ -1955,6 +1958,13 @@ CREATE INDEX idx_activity_logs_subject_created ON iam.activity_logs USING btree 
 --
 
 CREATE INDEX idx_data_subject_export_jobs_instance_status ON iam.data_subject_export_jobs USING btree (instance_id, status, created_at DESC);
+
+
+--
+-- Name: idx_data_subject_export_jobs_studio_job_id; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_data_subject_export_jobs_studio_job_id ON iam.data_subject_export_jobs USING btree (studio_job_id) WHERE (studio_job_id IS NOT NULL);
 
 
 --
@@ -2266,52 +2276,52 @@ CREATE INDEX idx_platform_activity_logs_request_id ON iam.platform_activity_logs
 
 
 --
--- Name: idx_plugin_operation_job_events_job_created_at; Type: INDEX; Schema: iam; Owner: -
+-- Name: idx_studio_job_events_job_created_at; Type: INDEX; Schema: iam; Owner: -
 --
 
-CREATE INDEX idx_plugin_operation_job_events_job_created_at ON iam.plugin_operation_job_events USING btree (instance_id, job_id, created_at);
-
-
---
--- Name: idx_plugin_operation_jobs_id_instance; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE UNIQUE INDEX idx_plugin_operation_jobs_id_instance ON iam.plugin_operation_jobs USING btree (id, instance_id);
+CREATE INDEX idx_studio_job_events_job_created_at ON iam.studio_job_events USING btree (instance_id, job_id, created_at);
 
 
 --
--- Name: idx_plugin_operation_jobs_instance_created_at; Type: INDEX; Schema: iam; Owner: -
+-- Name: idx_studio_jobs_id_instance; Type: INDEX; Schema: iam; Owner: -
 --
 
-CREATE INDEX idx_plugin_operation_jobs_instance_created_at ON iam.plugin_operation_jobs USING btree (instance_id, created_at DESC);
-
-
---
--- Name: idx_plugin_operation_jobs_instance_heartbeat_at; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX idx_plugin_operation_jobs_instance_heartbeat_at ON iam.plugin_operation_jobs USING btree (instance_id, heartbeat_at DESC);
+CREATE UNIQUE INDEX idx_studio_jobs_id_instance ON iam.studio_jobs USING btree (id, instance_id);
 
 
 --
--- Name: idx_plugin_operation_jobs_instance_idempotency_key; Type: INDEX; Schema: iam; Owner: -
+-- Name: idx_studio_jobs_instance_created_at; Type: INDEX; Schema: iam; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_plugin_operation_jobs_instance_idempotency_key ON iam.plugin_operation_jobs USING btree (instance_id, idempotency_key);
-
-
---
--- Name: idx_plugin_operation_jobs_instance_status_updated_at; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX idx_plugin_operation_jobs_instance_status_updated_at ON iam.plugin_operation_jobs USING btree (instance_id, status, updated_at DESC);
+CREATE INDEX idx_studio_jobs_instance_created_at ON iam.studio_jobs USING btree (instance_id, created_at DESC);
 
 
 --
--- Name: idx_plugin_operation_jobs_parent_job_id; Type: INDEX; Schema: iam; Owner: -
+-- Name: idx_studio_jobs_instance_heartbeat_at; Type: INDEX; Schema: iam; Owner: -
 --
 
-CREATE INDEX idx_plugin_operation_jobs_parent_job_id ON iam.plugin_operation_jobs USING btree (parent_job_id);
+CREATE INDEX idx_studio_jobs_instance_heartbeat_at ON iam.studio_jobs USING btree (instance_id, heartbeat_at DESC);
+
+
+--
+-- Name: idx_studio_jobs_instance_idempotency_key; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_studio_jobs_instance_idempotency_key ON iam.studio_jobs USING btree (instance_id, idempotency_key);
+
+
+--
+-- Name: idx_studio_jobs_instance_status_updated_at; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_studio_jobs_instance_status_updated_at ON iam.studio_jobs USING btree (instance_id, status, updated_at DESC);
+
+
+--
+-- Name: idx_studio_jobs_parent_job_id; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_studio_jobs_parent_job_id ON iam.studio_jobs USING btree (parent_job_id);
 
 
 --
@@ -2653,6 +2663,14 @@ ALTER TABLE ONLY iam.contents
 
 ALTER TABLE ONLY iam.data_subject_export_jobs
     ADD CONSTRAINT data_subject_export_jobs_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: data_subject_export_jobs data_subject_export_jobs_studio_job_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.data_subject_export_jobs
+    ADD CONSTRAINT data_subject_export_jobs_studio_job_fk FOREIGN KEY (studio_job_id) REFERENCES iam.studio_jobs(id) ON DELETE SET NULL;
 
 
 --
@@ -3264,19 +3282,19 @@ ALTER TABLE ONLY iam.platform_activity_logs
 
 
 --
--- Name: plugin_operation_job_events plugin_operation_job_events_job_instance_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+-- Name: studio_job_events studio_job_events_job_instance_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
-ALTER TABLE ONLY iam.plugin_operation_job_events
-    ADD CONSTRAINT plugin_operation_job_events_job_instance_fk FOREIGN KEY (job_id, instance_id) REFERENCES iam.plugin_operation_jobs(id, instance_id) ON DELETE CASCADE;
+ALTER TABLE ONLY iam.studio_job_events
+    ADD CONSTRAINT studio_job_events_job_instance_fk FOREIGN KEY (job_id, instance_id) REFERENCES iam.studio_jobs(id, instance_id) ON DELETE CASCADE;
 
 
 --
--- Name: plugin_operation_jobs plugin_operation_jobs_parent_job_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+-- Name: studio_jobs studio_jobs_parent_job_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
-ALTER TABLE ONLY iam.plugin_operation_jobs
-    ADD CONSTRAINT plugin_operation_jobs_parent_job_fk FOREIGN KEY (parent_job_id) REFERENCES iam.plugin_operation_jobs(id) ON DELETE SET NULL;
+ALTER TABLE ONLY iam.studio_jobs
+    ADD CONSTRAINT studio_jobs_parent_job_fk FOREIGN KEY (parent_job_id) REFERENCES iam.studio_jobs(id) ON DELETE SET NULL;
 
 
 --

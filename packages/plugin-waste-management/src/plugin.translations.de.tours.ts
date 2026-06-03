@@ -120,6 +120,14 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     confirm: 'Löschen',
     cancel: 'Abbrechen',
   },
+  statusDialog: {
+    activateTitle: 'Tour aktivieren',
+    activateDescription: 'Die Tour {{value}} wird aktiviert.',
+    deactivateTitle: 'Tour deaktivieren',
+    deactivateDescription: 'Die Tour {{value}} wird deaktiviert.',
+    confirm: 'Bestätigen',
+    cancel: 'Abbrechen',
+  },
   bulkDeleteDialog: {
     title: 'Touren löschen',
     description: '{{value}} markierte Touren werden dauerhaft gelöscht.',

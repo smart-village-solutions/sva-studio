@@ -1,4 +1,4 @@
-import type { StudioJobStartRequest } from '@sva/core';
+import type { StudioPluginOperationStartRequest } from '@sva/core';
 
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 import { createApiError, toPayloadHash } from '../shared/request-helpers.js';
@@ -18,7 +18,7 @@ const readPluginNamespace = (value: string): string | null => {
 };
 
 export const validateStartRequestData = (
-  data: StudioJobStartRequest,
+  data: StudioPluginOperationStartRequest,
   requestId: string | undefined
 ): Response | null => {
   if (data.pluginId === 'waste-management') {
@@ -109,7 +109,7 @@ export const executeStartPluginOperationJob = async (input: {
   readonly actorAccountId: string;
   readonly idempotencyKey: string;
   readonly requestId?: string;
-  readonly data: StudioJobStartRequest;
+  readonly data: StudioPluginOperationStartRequest;
   readonly scheduledAt: string;
 }): Promise<Response> => {
   const responseContext = {

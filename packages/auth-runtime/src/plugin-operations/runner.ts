@@ -1,20 +1,33 @@
 import * as graphileWorker from 'graphile-worker';
 
+import type { StudioJobSource } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { resolvePool } from '../db.js';
 import { bootstrapStudioAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.js';
 import { createJobLifecycleOrchestrator } from './job-lifecycle-orchestrator.js';
 import { withStudioJobRepository } from './repository.js';
-import type { PluginOperationExecutionHandler } from './types.js';
+import type {
+  PluginOperationExecutionHandler,
+  PluginOperationExecutionHandlerContext,
+  StudioJobExecutionHandler,
+} from './types.js';
 
-const logger = createSdkLogger({ component: 'plugin-operations-runner', level: 'info' });
+const logger = createSdkLogger({ component: 'studio-jobs-runner', level: 'info' });
 
-export const pluginOperationTaskIdentifier = 'plugin_operation_execute';
+export const studioJobTaskIdentifier = 'studio_job_execute';
+export const pluginOperationTaskIdentifier = studioJobTaskIdentifier;
 
-type PluginOperationRunnerPayload = {
+type StudioJobRunnerPayload = {
   readonly instanceId: string;
   readonly jobId: string;
+};
+
+export type StudioJobExecutionRegistration = {
+  readonly source: StudioJobSource;
+  readonly jobTypeId: string;
+  readonly handler: StudioJobExecutionHandler;
+  readonly queueName: string;
 };
 
 export type PluginOperationExecutionRegistration = {
@@ -22,9 +35,10 @@ export type PluginOperationExecutionRegistration = {
   readonly queueName: string;
 };
 
+type StudioJobExecutionRegistry = ReadonlyMap<string, StudioJobExecutionRegistration>;
 type PluginOperationExecutionRegistry = ReadonlyMap<string, PluginOperationExecutionRegistration>;
 
-type QueuePluginOperationJobInput = {
+type QueueStudioJobInput = {
   readonly instanceId: string;
   readonly jobId: string;
   readonly queueName: string;
@@ -32,7 +46,43 @@ type QueuePluginOperationJobInput = {
 };
 
 let runnerPromise: Promise<graphileWorker.Runner> | null = null;
-let registeredHandlers = new Map<string, PluginOperationExecutionRegistration>();
+let registeredStudioJobHandlers = new Map<string, StudioJobExecutionRegistration>();
+
+const toRegistryKey = (source: StudioJobSource, jobTypeId: string): string => `${source}:${jobTypeId}`;
+
+const normalizePluginRegistration = (
+  jobTypeId: string,
+  value: PluginOperationExecutionHandler | PluginOperationExecutionRegistration
+): StudioJobExecutionRegistration => ({
+  source: 'plugin',
+  jobTypeId,
+  handler: adaptPluginOperationExecutionHandler(
+    typeof value === 'function' ? value : value.handler
+  ),
+  queueName: typeof value === 'function' ? 'plugin-operations' : value.queueName,
+});
+
+const adaptPluginOperationExecutionHandler = (
+  handler: PluginOperationExecutionHandler
+): StudioJobExecutionHandler => {
+  return async (context) => {
+    if (!context.pluginId) {
+      throw new Error('plugin_job_missing_plugin_id');
+    }
+
+    return (await handler(context as PluginOperationExecutionHandlerContext)) ?? {};
+  };
+};
+
+const replaceRegistrationsBySource = (
+  nextSource: StudioJobSource,
+  nextRegistrations: readonly StudioJobExecutionRegistration[]
+): void => {
+  const preservedEntries = [...registeredStudioJobHandlers.values()].filter((entry) => entry.source !== nextSource);
+  registeredStudioJobHandlers = new Map(
+    [...preservedEntries, ...nextRegistrations].map((entry) => [toRegistryKey(entry.source, entry.jobTypeId), entry])
+  );
+};
 
 const parseWorkerConcurrency = (rawValue: string | undefined): number => {
   const fallback = 1;
@@ -48,24 +98,42 @@ const parseWorkerConcurrency = (rawValue: string | undefined): number => {
   return Math.min(parsed, 16);
 };
 
-export const registerPluginOperationExecutionHandlers = (
-  handlers: Readonly<Record<string, PluginOperationExecutionHandler | PluginOperationExecutionRegistration>>
-): void => {
-  registeredHandlers = new Map(
-    Object.entries(handlers).map(([jobTypeId, value]) => [
-      jobTypeId,
-      typeof value === 'function' ? { handler: value, queueName: 'plugin-operations' } : value,
-    ])
+export const registerStudioJobExecutionHandlers = (handlers: readonly StudioJobExecutionRegistration[]): void => {
+  replaceRegistrationsBySource(
+    'host',
+    handlers.filter((entry) => entry.source === 'host')
   );
 };
 
-export const getRegisteredPluginOperationExecutionRegistry = (): PluginOperationExecutionRegistry => registeredHandlers;
+export const registerPluginOperationExecutionHandlers = (
+  handlers: Readonly<Record<string, PluginOperationExecutionHandler | PluginOperationExecutionRegistration>>
+): void => {
+  replaceRegistrationsBySource(
+    'plugin',
+    Object.entries(handlers).map(([jobTypeId, value]) => normalizePluginRegistration(jobTypeId, value))
+  );
+};
 
-export const createPluginOperationTaskList = (
-  getHandlers: () => PluginOperationExecutionRegistry
+export const getRegisteredStudioJobExecutionRegistry = (): StudioJobExecutionRegistry => registeredStudioJobHandlers;
+
+export const getRegisteredPluginOperationExecutionRegistry = (): PluginOperationExecutionRegistry =>
+  new Map(
+    [...registeredStudioJobHandlers.values()]
+      .filter((entry): entry is StudioJobExecutionRegistration & { source: 'plugin' } => entry.source === 'plugin')
+      .map((entry) => [
+        entry.jobTypeId,
+        {
+          handler: entry.handler as PluginOperationExecutionHandler,
+          queueName: entry.queueName,
+        },
+      ])
+  );
+
+export const createStudioJobTaskList = (
+  getHandlers: () => StudioJobExecutionRegistry
 ): graphileWorker.TaskList => ({
-  [pluginOperationTaskIdentifier]: async (payload, helpers) => {
-    const { instanceId, jobId } = payload as PluginOperationRunnerPayload;
+  [studioJobTaskIdentifier]: async (payload, helpers) => {
+    const { instanceId, jobId } = payload as StudioJobRunnerPayload;
     await createJobLifecycleOrchestrator({
       logger,
       loadRepository: async (tenantInstanceId) => ({
@@ -80,7 +148,7 @@ export const createPluginOperationTaskList = (
         appendJobEvent: (input) =>
           withStudioJobRepository(tenantInstanceId, (repository) => repository.appendJobEvent(input)),
       }),
-      resolveHandler: (jobTypeId) => getHandlers().get(jobTypeId)?.handler,
+      resolveHandler: (job) => getHandlers().get(toRegistryKey(job.source, job.jobTypeId))?.handler,
     }).run({
       instanceId,
       jobId,
@@ -90,10 +158,23 @@ export const createPluginOperationTaskList = (
   },
 });
 
+export const createPluginOperationTaskList = (
+  getHandlers: () => PluginOperationExecutionRegistry
+): graphileWorker.TaskList =>
+  createStudioJobTaskList(
+    () =>
+      new Map(
+        [...getHandlers().entries()].map(([jobTypeId, registration]) => [
+          toRegistryKey('plugin', jobTypeId),
+          normalizePluginRegistration(jobTypeId, registration),
+        ])
+      )
+  );
+
 const createGraphileWorkerRunner = async (): Promise<graphileWorker.Runner> => {
   const pool = resolvePool();
   if (!pool) {
-    throw new Error('plugin_operation_worker_database_unavailable');
+    throw new Error('studio_job_worker_database_unavailable');
   }
 
   const startRunner = async (): Promise<graphileWorker.Runner> => {
@@ -101,7 +182,7 @@ const createGraphileWorkerRunner = async (): Promise<graphileWorker.Runner> => {
 
     return graphileWorker.run({
       pgPool: pool,
-      taskList: createPluginOperationTaskList(getRegisteredPluginOperationExecutionRegistry),
+      taskList: createStudioJobTaskList(getRegisteredStudioJobExecutionRegistry),
       concurrency: parseWorkerConcurrency(process.env.SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY),
       noHandleSignals: true,
     });
@@ -118,11 +199,11 @@ const createGraphileWorkerRunner = async (): Promise<graphileWorker.Runner> => {
   }
 };
 
-export const ensurePluginOperationWorkerStarted = async (): Promise<void> => {
+export const ensureStudioJobWorkerStarted = async (): Promise<void> => {
   runnerPromise ??= createGraphileWorkerRunner().catch((error) => {
     runnerPromise = null;
-    logger.error('Plugin-Operations-Worker konnte nicht gestartet werden', {
-      operation: 'plugin_operation_worker_start_failed',
+    logger.error('Studio-Job-Worker konnte nicht gestartet werden', {
+      operation: 'studio_job_worker_start_failed',
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;
@@ -131,31 +212,35 @@ export const ensurePluginOperationWorkerStarted = async (): Promise<void> => {
   await runnerPromise;
 };
 
+export const ensurePluginOperationWorkerStarted = ensureStudioJobWorkerStarted;
+
 const getRunner = async (): Promise<graphileWorker.Runner> => {
-  await ensurePluginOperationWorkerStarted();
+  await ensureStudioJobWorkerStarted();
   if (!runnerPromise) {
-    throw new Error('plugin_operation_worker_not_started');
+    throw new Error('studio_job_worker_not_started');
   }
   return runnerPromise;
 };
 
-export const queuePluginOperationJob = async (input: QueuePluginOperationJobInput): Promise<void> => {
+export const queueStudioJob = async (input: QueueStudioJobInput): Promise<void> => {
   const runner = await getRunner();
   await runner.addJob(
-    pluginOperationTaskIdentifier,
+    studioJobTaskIdentifier,
     {
       instanceId: input.instanceId,
       jobId: input.jobId,
-    } satisfies PluginOperationRunnerPayload,
+    } satisfies StudioJobRunnerPayload,
     {
       queueName: input.queueName,
       maxAttempts: input.maxAttempts,
-      jobKey: `plugin-operation:${input.jobId}`,
+      jobKey: `studio-job:${input.jobId}`,
     }
   );
 };
 
-export const stopPluginOperationWorker = async (): Promise<void> => {
+export const queuePluginOperationJob = queueStudioJob;
+
+export const stopStudioJobWorker = async (): Promise<void> => {
   if (!runnerPromise) {
     return;
   }
@@ -165,9 +250,14 @@ export const stopPluginOperationWorker = async (): Promise<void> => {
   runnerPromise = null;
 };
 
+export const stopPluginOperationWorker = stopStudioJobWorker;
+
 export type {
   PluginOperationExecutionHandler,
   PluginOperationExecutionHandlerContext,
   PluginOperationExecutionResult,
   PluginOperationProgressReporter,
+  StudioJobExecutionHandler,
+  StudioJobExecutionHandlerContext,
+  StudioJobExecutionResult,
 } from './types.js';

@@ -121,6 +121,14 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     confirm: 'Delete',
     cancel: 'Cancel',
   },
+  statusDialog: {
+    activateTitle: 'Activate waste fraction',
+    activateDescription: 'The waste fraction {{value}} will be activated.',
+    deactivateTitle: 'Deactivate waste fraction',
+    deactivateDescription: 'The waste fraction {{value}} will be deactivated.',
+    confirm: 'Confirm',
+    cancel: 'Cancel',
+  },
   messages: {
     createSuccess: 'The waste fraction was created.',
     updateSuccess: 'The waste fraction was updated.',

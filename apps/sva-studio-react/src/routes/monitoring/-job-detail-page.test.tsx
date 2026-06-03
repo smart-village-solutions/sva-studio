@@ -19,6 +19,7 @@ vi.mock('../../hooks/use-plugin-operation-jobs', () => ({
 const detailRecord: StudioJobDetail = {
   id: 'job-1',
   instanceId: 'instance-1',
+  source: 'plugin',
   pluginId: 'plugin.news',
   jobTypeId: 'news.import',
   importProfileId: undefined,

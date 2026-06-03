@@ -34,6 +34,7 @@ vi.mock('@sva/routing/server', () => ({
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  ensureStudioJobWorkerStarted: ensurePluginOperationWorkerStartedMock,
   ensurePluginOperationWorkerStarted: ensurePluginOperationWorkerStartedMock,
 }));
 

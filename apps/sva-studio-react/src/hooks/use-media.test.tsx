@@ -560,6 +560,40 @@ describe('useMediaDetail', () => {
     expect(getMediaUsageMock).not.toHaveBeenCalled();
   });
 
+  it('keeps media detail usage available while delivery is still unresolved', async () => {
+    getMediaMock.mockResolvedValue({
+      data: {
+        id: 'asset-2',
+        instanceId: 'instance-1',
+        storageKey: 'media/asset-2',
+        mediaType: 'image',
+        mimeType: 'image/png',
+        byteSize: 2048,
+        visibility: 'protected',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: { title: 'Initial' },
+        technical: {},
+      },
+    });
+    getMediaUsageMock.mockResolvedValue({
+      data: {
+        assetId: 'asset-2',
+        totalReferences: 1,
+        references: [],
+      },
+    });
+
+    render(<MediaDetailProbe assetId="asset-2" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('false');
+      expect(screen.getByTestId('asset-id').textContent).toBe('asset-2');
+      expect(screen.getByTestId('usage-count').textContent).toBe('1');
+      expect(screen.getByTestId('delivery-url').textContent).toBe('none');
+    });
+  });
+
   it('loads asset and usage data, updates metadata, and refreshes detail state', async () => {
     getMediaMock
       .mockResolvedValueOnce({

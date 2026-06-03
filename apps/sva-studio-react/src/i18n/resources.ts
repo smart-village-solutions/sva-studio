@@ -589,6 +589,63 @@ export const i18nResources = {
         subtitle:
           'Verwalten Sie Uploads, Metadaten, Sichtbarkeit und die aktuelle Nutzung Ihrer Medienobjekte.',
       },
+      create: {
+        title: 'Datei vorbereiten',
+        subtitle:
+          'Reservieren Sie zuerst Asset-ID und Upload-Ziel. Der eigentliche Dateitransfer und die Metadatenpflege folgen direkt danach im Workspace.',
+        intakeBadge: 'Intake',
+        intakeTitle: 'Kompakter Intake',
+        intakeDescription:
+          'Wählen Sie Dateityp, Zielgröße und Sichtbarkeit, damit die Upload-Initialisierung technisch sauber vorbereitet ist.',
+        byteSizeHint: 'Planen Sie die erwartete Dateigröße in Byte, damit Limits und Validierung früh greifen.',
+        submitHint:
+          'Dieser Schritt erzeugt noch keinen Datei-Upload. Er reserviert nur das Asset und gibt die signierte Ziel-URL zurück.',
+        submitting: 'Wird initialisiert…',
+        planningTitle: 'Was jetzt konfiguriert wird',
+        planningDescription:
+          'Der Guided Intake definiert die technische Hülle des Assets, bevor Metadaten und konkrete Nutzung folgen.',
+        planning: {
+          items: {
+            mimeType: {
+              title: 'Dateiformat und Verarbeitungspfad',
+              body: 'Der MIME-Typ entscheidet, welche Validierung, Vorschau und Folgeprozesse für das Asset vorbereitet werden.',
+            },
+            byteSize: {
+              title: 'Zielgröße und Grenzprüfung',
+              body: 'Die erwartete Bytegröße hilft, Upload-Limits und Fehlpfade direkt beim Start sauber zu behandeln.',
+            },
+            visibility: {
+              title: 'Sichtbarkeit und Delivery-Modell',
+              body: 'Die Sichtbarkeit legt fest, ob das Asset sofort öffentlich auslieferbar oder geschützt behandelt werden soll.',
+            },
+          },
+        },
+        mimeTypeOptions: {
+          'image/jpeg': 'Bild (JPEG)',
+          'image/png': 'Bild (PNG)',
+          'image/webp': 'Bild (WEBP)',
+          'application/pdf': 'Dokument (PDF)',
+          'video/mp4': 'Video (MP4)',
+        },
+        nextStepsTitle: 'Nächste Schritte',
+        nextStepsDescription:
+          'Die Initialisierung ist abgeschlossen. Nutzen Sie die technische Antwort für den eigentlichen Transfer und die anschließende Qualitätsprüfung.',
+        result: {
+          assetId: 'Asset-ID: {{value}}',
+          uploadSessionId: 'Upload-Session: {{value}}',
+          method: 'Methode: {{value}}',
+          expiresAt: 'Gültig bis: {{value}}',
+        },
+        followUpTitle: 'Danach direkt weiter',
+        followUpSteps: {
+          transfer: '1. Datei mit der signierten URL in den reservierten Upload schreiben.',
+          describe: '2. Danach Titel, Alternativtext und Sichtbarkeit im Detail-Workspace prüfen.',
+          review: '3. Asset anschließend in der Bibliothek oder den Fachmodulen referenzieren.',
+        },
+        errors: {
+          default: 'Die Upload-Initialisierung konnte nicht abgeschlossen werden.',
+        },
+      },
       filters: {
         searchLabel: 'Suche',
         searchPlaceholder: 'Nach Titel, Alternativtext oder MIME-Typ suchen',
@@ -4032,6 +4089,63 @@ export const i18nResources = {
         title: 'Media library',
         subtitle:
           'Manage uploads, metadata, visibility, and the current usage footprint of your media assets.',
+      },
+      create: {
+        title: 'Prepare file',
+        subtitle:
+          'Reserve the asset ID and upload target first. The actual file transfer and metadata work follow immediately after in the workspace.',
+        intakeBadge: 'Intake',
+        intakeTitle: 'Compact intake',
+        intakeDescription:
+          'Choose file type, target size, and visibility so the upload initialization is prepared with the right technical context.',
+        byteSizeHint: 'Plan the expected file size in bytes so limits and validation can fail early and cleanly.',
+        submitHint:
+          'This step does not upload the file yet. It only reserves the asset and returns the signed upload target.',
+        submitting: 'Initializing…',
+        planningTitle: 'What gets configured now',
+        planningDescription:
+          'The guided intake defines the technical envelope of the asset before metadata and concrete usage follow.',
+        planning: {
+          items: {
+            mimeType: {
+              title: 'File format and processing path',
+              body: 'The MIME type determines which validation, preview, and downstream processing are prepared for the asset.',
+            },
+            byteSize: {
+              title: 'Target size and boundary checks',
+              body: 'The expected byte size helps treat upload limits and failure paths cleanly from the start.',
+            },
+            visibility: {
+              title: 'Visibility and delivery model',
+              body: 'Visibility decides whether the asset should be handled as immediately public or explicitly protected.',
+            },
+          },
+        },
+        mimeTypeOptions: {
+          'image/jpeg': 'Image (JPEG)',
+          'image/png': 'Image (PNG)',
+          'image/webp': 'Image (WEBP)',
+          'application/pdf': 'Document (PDF)',
+          'video/mp4': 'Video (MP4)',
+        },
+        nextStepsTitle: 'Next steps',
+        nextStepsDescription:
+          'Initialization is complete. Use the technical response for the actual transfer and the follow-up quality checks.',
+        result: {
+          assetId: 'Asset ID: {{value}}',
+          uploadSessionId: 'Upload session: {{value}}',
+          method: 'Method: {{value}}',
+          expiresAt: 'Expires at: {{value}}',
+        },
+        followUpTitle: 'Continue directly after this',
+        followUpSteps: {
+          transfer: '1. Write the file to the reserved upload target with the signed URL.',
+          describe: '2. Then review title, alt text, and visibility in the detail workspace.',
+          review: '3. Finally reference the asset in the library or in feature modules.',
+        },
+        errors: {
+          default: 'The upload initialization could not be completed.',
+        },
       },
       filters: {
         searchLabel: 'Search',

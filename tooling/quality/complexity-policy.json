@@ -1418,6 +1418,12 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-governance/src/dsr-export-flows.ts)"
     },
+    "iam-governance:packages/iam-governance/src/dsr-export-payload.ts:fileLines": {
+      "ticketId": "baseline-iam-governance-src-dsr-export-payload-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/dsr-export-payload.ts)"
+    },
     "iam-governance:packages/iam-governance/src/dsr-export-payload.ts:functionLines": {
       "ticketId": "baseline-iam-governance-src-dsr-export-payload-ts",
       "ticketSystem": "policy-baseline",

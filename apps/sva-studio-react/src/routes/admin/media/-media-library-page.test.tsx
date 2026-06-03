@@ -194,4 +194,41 @@ describe('MediaLibraryPage', () => {
       )
     ).toBeTruthy();
   });
+
+  it('renders unknown usage counts without treating the asset as unused', () => {
+    useMediaLibraryMock.mockReturnValue({
+      assets: [
+        {
+          id: 'asset-unknown',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-unknown',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 512_000,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {
+            title: 'Unklare Nutzungsdaten',
+            altText: 'Asset mit fehlender Usage-Anreicherung',
+          },
+          technical: {},
+        },
+      ],
+      usageByAssetId: {
+        'asset-unknown': null,
+      },
+      isLoading: false,
+      error: null,
+      page: 1,
+      pageSize: 25,
+      total: 1,
+      refetch: vi.fn(),
+    });
+
+    render(<MediaLibraryPage />);
+
+    expect(screen.getByText('Nutzung nicht verfügbar')).toBeTruthy();
+    expect(screen.getByText('bereit')).toBeTruthy();
+  });
 });

@@ -10,7 +10,7 @@ import { MediaAssetGrid } from './-media-asset-grid.js';
 import { MediaIntakeShelf } from './-media-intake-shelf.js';
 import { MediaLibraryToolbar } from './-media-library-toolbar.js';
 import { MediaPriorityShelf } from './-media-priority-shelf.js';
-import { countMediaPriorityBuckets, resolveMediaReferenceCount } from './-media-library-view-model.js';
+import { countMediaPriorityBuckets } from './-media-library-view-model.js';
 
 const mediaErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {
@@ -29,10 +29,7 @@ const mediaErrorMessage = (error: IamHttpError | null): string => {
 
 export const MediaLibraryPage = () => {
   const mediaApi = useMediaLibrary();
-  const usageByAssetId = Object.fromEntries(
-    mediaApi.assets.map((asset) => [asset.id, resolveMediaReferenceCount(asset)])
-  );
-  const priorityBuckets = countMediaPriorityBuckets(mediaApi.assets, usageByAssetId);
+  const priorityBuckets = countMediaPriorityBuckets(mediaApi.assets, mediaApi.usageByAssetId);
 
   if (mediaApi.isLoading) {
     return (
@@ -76,7 +73,7 @@ export const MediaLibraryPage = () => {
         total={mediaApi.total}
       />
       {mediaApi.assets.length > 0 ? (
-        <MediaAssetGrid assets={mediaApi.assets} />
+        <MediaAssetGrid assets={mediaApi.assets} usageByAssetId={mediaApi.usageByAssetId} />
       ) : (
         <Alert>
           <AlertDescription>{t('media.empty.body')}</AlertDescription>

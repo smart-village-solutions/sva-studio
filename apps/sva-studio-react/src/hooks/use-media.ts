@@ -28,6 +28,7 @@ import { useAuth } from '../providers/auth-provider';
 
 type UseMediaLibraryResult = {
   readonly assets: readonly IamMediaAsset[];
+  readonly usageByAssetId: Readonly<Record<string, number>>;
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
   readonly page: number;
@@ -61,6 +62,7 @@ const mediaLogger = createOperationLogger('media-hook', 'debug');
 export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResult => {
   const { invalidatePermissions } = useAuth();
   const [assets, setAssets] = React.useState<readonly IamMediaAsset[]>([]);
+  const [usageByAssetId, setUsageByAssetId] = React.useState<Readonly<Record<string, number>>>({});
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [page, setPage] = React.useState(query.page ?? 1);
@@ -78,7 +80,14 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
 
     try {
       const response = await listMedia(query);
+      const usageEntries = await Promise.all(
+        response.data.map(async (asset) => {
+          const usageResponse = await getMediaUsage(asset.id);
+          return [asset.id, usageResponse.data.totalReferences] as const;
+        })
+      );
       setAssets(response.data);
+      setUsageByAssetId(Object.fromEntries(usageEntries));
       setPage(response.pagination.page);
       setPageSize(response.pagination.pageSize);
       setTotal(response.pagination.total);
@@ -92,6 +101,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
         await invalidatePermissions();
       }
       setAssets([]);
+      setUsageByAssetId({});
       setTotal(0);
       setError(resolvedError);
       logBrowserOperationFailure(mediaLogger, 'media_library_refetch_failed', resolvedError, {
@@ -108,6 +118,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
 
   return {
     assets,
+    usageByAssetId,
     isLoading,
     error,
     page,

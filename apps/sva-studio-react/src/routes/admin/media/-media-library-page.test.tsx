@@ -41,11 +41,7 @@ describe('MediaLibraryPage', () => {
             title: 'Stadtfest 2024 - Hauptbühne',
             altText: 'Hauptbühne bei Abendlicht',
           },
-          technical: {
-            usage: {
-              totalReferences: 3,
-            },
-          },
+          technical: {},
         },
         {
           id: 'asset-blocked',
@@ -61,11 +57,7 @@ describe('MediaLibraryPage', () => {
             title: 'Blockierte Medienprobe',
             altText: 'Verarbeitung fehlgeschlagen',
           },
-          technical: {
-            usage: {
-              totalReferences: 1,
-            },
-          },
+          technical: {},
         },
         {
           id: 'asset-new',
@@ -80,11 +72,7 @@ describe('MediaLibraryPage', () => {
           metadata: {
             altText: 'Titel fehlt noch',
           },
-          technical: {
-            usage: {
-              totalReferences: 2,
-            },
-          },
+          technical: {},
         },
         {
           id: 'asset-unused',
@@ -100,11 +88,7 @@ describe('MediaLibraryPage', () => {
             title: 'Ungenutztes Bühnenbanner',
             altText: 'Banner ohne Referenzen',
           },
-          technical: {
-            usage: {
-              totalReferences: 0,
-            },
-          },
+          technical: {},
         },
         {
           id: 'asset-pdf',
@@ -123,6 +107,13 @@ describe('MediaLibraryPage', () => {
           technical: {},
         },
       ],
+      usageByAssetId: {
+        'asset-ready': 3,
+        'asset-blocked': 1,
+        'asset-new': 2,
+        'asset-unused': 0,
+        'asset-pdf': 4,
+      },
       isLoading: false,
       error: null,
       page: 1,
@@ -152,7 +143,7 @@ describe('MediaLibraryPage', () => {
     expect(screen.getByText('Stadtfest 2024 - Hauptbühne')).toBeTruthy();
     expect(screen.getByText('3 Verwendungen')).toBeTruthy();
     expect(screen.getByText('1 Verwendung')).toBeTruthy();
-    expect(screen.getByText('bereit')).toBeTruthy();
+    expect(screen.getAllByText('bereit').length).toBeGreaterThan(0);
   });
 
   it('renders non-image assets with a dedicated fallback card pattern', () => {

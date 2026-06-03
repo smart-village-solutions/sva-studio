@@ -2,51 +2,15 @@ import type { IamMediaAsset } from '../../../lib/iam-api';
 
 export type MediaLibraryCardState = 'ready' | 'new' | 'blocked' | 'unused';
 
-type MediaPriorityBuckets = Readonly<{
+export type MediaPriorityBuckets = Readonly<{
   blocked: number;
   newItems: number;
   unused: number;
 }>;
 
-const readNumber = (value: unknown): number | null => {
-  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-  }
-
-  return null;
-};
-
 const trimMetadataValue = (value: string | undefined): string | null => {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : null;
-};
-
-export const resolveMediaReferenceCount = (asset: IamMediaAsset): number => {
-  const candidates = [
-    asset.technical.totalReferences,
-    asset.technical.referenceCount,
-    asset.technical.usageCount,
-    typeof asset.technical.usage === 'object' && asset.technical.usage !== null
-      ? (asset.technical.usage as Record<string, unknown>).totalReferences
-      : null,
-    typeof asset.technical.metrics === 'object' && asset.technical.metrics !== null
-      ? (asset.technical.metrics as Record<string, unknown>).usageCount
-      : null,
-  ];
-
-  for (const candidate of candidates) {
-    const resolved = readNumber(candidate);
-    if (resolved !== null) {
-      return resolved;
-    }
-  }
-
-  return 0;
 };
 
 export const resolveMediaCardState = (

@@ -42,11 +42,14 @@ vi.mock('@sva/monitoring-client/logging', () => ({
 
 function MediaLibraryProbe(props: { readonly search?: string; readonly visibility?: 'all' | 'public' | 'protected' }) {
   const media = useMediaLibrary(props);
+  const firstAsset = media.assets[0];
+  const firstUsageCount = firstAsset ? media.usageByAssetId[firstAsset.id] ?? 0 : 0;
 
   return (
     <div>
       <span data-testid="loading">{String(media.isLoading)}</span>
       <span data-testid="asset-count">{String(media.assets.length)}</span>
+      <span data-testid="usage-count">{String(firstUsageCount)}</span>
       <span data-testid="error-code">{media.error?.code ?? 'none'}</span>
       <button type="button" onClick={() => void media.refetch()}>
         refetch
@@ -163,15 +166,24 @@ describe('useMediaLibrary', () => {
         total: 1,
       },
     });
+    getMediaUsageMock.mockResolvedValue({
+      data: {
+        assetId: 'asset-1',
+        totalReferences: 3,
+        references: [],
+      },
+    });
 
     render(<MediaLibraryProbe search="hero" visibility="public" />);
 
     await waitFor(() => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
       expect(screen.getByTestId('asset-count').textContent).toBe('1');
+      expect(screen.getByTestId('usage-count').textContent).toBe('3');
     });
 
     expect(listMediaMock).toHaveBeenCalledWith({ search: 'hero', visibility: 'public' });
+    expect(getMediaUsageMock).toHaveBeenCalledWith('asset-1');
 
     fireEvent.click(screen.getByRole('button', { name: 'refetch' }));
 
@@ -191,6 +203,7 @@ describe('useMediaLibrary', () => {
     await waitFor(() => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
       expect(screen.getByTestId('asset-count').textContent).toBe('0');
+      expect(screen.getByTestId('usage-count').textContent).toBe('0');
       expect(screen.getByTestId('error-code').textContent).toBe(protectedError.code);
     });
 

@@ -1,19 +1,19 @@
 import type { IamMediaAsset } from '../../../lib/iam-api';
 
 import { MediaAssetCard } from './-media-asset-card.js';
-import { resolveMediaReferenceCount } from './-media-library-view-model.js';
 
 type MediaAssetGridProps = Readonly<{
   assets: readonly IamMediaAsset[];
+  usageByAssetId: Readonly<Record<string, number>>;
 }>;
 
-export const MediaAssetGrid = ({ assets }: MediaAssetGridProps) => (
+export const MediaAssetGrid = ({ assets, usageByAssetId }: MediaAssetGridProps) => (
   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
     {assets.map((asset) => (
       <MediaAssetCard
         key={asset.id}
         asset={asset}
-        referenceCount={resolveMediaReferenceCount(asset)}
+        referenceCount={usageByAssetId[asset.id] ?? 0}
       />
     ))}
   </div>

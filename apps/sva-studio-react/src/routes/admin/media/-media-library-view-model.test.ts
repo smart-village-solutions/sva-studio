@@ -5,7 +5,6 @@ import type { IamMediaAsset } from '../../../lib/iam-api';
 import {
   countMediaPriorityBuckets,
   resolveMediaCardState,
-  resolveMediaReferenceCount,
 } from './-media-library-view-model';
 
 const createAsset = (
@@ -29,21 +28,6 @@ const createAsset = (
   },
   technical,
   ...overrides,
-});
-
-describe('resolveMediaReferenceCount', () => {
-  it('reads all supported technical reference count fallbacks and fails closed to zero', () => {
-    expect(resolveMediaReferenceCount(createAsset({}, {}, { totalReferences: 4 }))).toBe(4);
-    expect(resolveMediaReferenceCount(createAsset({}, {}, { referenceCount: '3' }))).toBe(3);
-    expect(resolveMediaReferenceCount(createAsset({}, {}, { usageCount: 2 }))).toBe(2);
-    expect(
-      resolveMediaReferenceCount(createAsset({}, {}, { usage: { totalReferences: 5 } }))
-    ).toBe(5);
-    expect(
-      resolveMediaReferenceCount(createAsset({}, {}, { metrics: { usageCount: '6' } }))
-    ).toBe(6);
-    expect(resolveMediaReferenceCount(createAsset({}, {}, { usage: 'unknown-shape' }))).toBe(0);
-  });
 });
 
 describe('resolveMediaCardState', () => {

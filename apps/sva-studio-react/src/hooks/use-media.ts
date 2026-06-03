@@ -104,46 +104,50 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
         item_count: response.data.length,
       });
 
-      const usageResults = await Promise.allSettled(
-        response.data.map(async (asset) => {
-          const usageResponse = await getMediaUsage(asset.id);
-          return [asset.id, usageResponse.data.totalReferences] as const;
-        })
-      );
-
-      if (requestId !== latestRequestRef.current) {
+      if (response.data.length === 0) {
         return;
       }
 
-      const resolvedUsageByAssetId: Record<string, number | null> = { ...initialUsageByAssetId };
-      let hasProtectedUsageFailure = false;
+      let remainingUsageRequests = response.data.length;
+      let protectedUsageFailureHandled = false;
 
-      for (const result of usageResults) {
-        if (result.status === 'fulfilled') {
-          const [assetId, totalReferences] = result.value;
-          resolvedUsageByAssetId[assetId] = totalReferences;
-          continue;
-        }
+      for (const asset of response.data) {
+        void getMediaUsage(asset.id)
+          .then((usageResponse) => {
+            if (requestId !== latestRequestRef.current) {
+              return;
+            }
 
-        const resolvedError = asIamError(result.reason);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          hasProtectedUsageFailure = true;
-        }
-        logBrowserOperationFailure(mediaLogger, 'media_library_usage_load_failed', resolvedError, {
-          operation: 'get_media_usage',
-        });
+            setUsageByAssetId((current) => ({
+              ...current,
+              [asset.id]: usageResponse.data.totalReferences,
+            }));
+          })
+          .catch(async (cause) => {
+            const resolvedError = asIamError(cause);
+            if (
+              (resolvedError.status === 401 || resolvedError.status === 403) &&
+              !protectedUsageFailureHandled
+            ) {
+              protectedUsageFailureHandled = true;
+              await invalidatePermissions();
+            }
+
+            logBrowserOperationFailure(mediaLogger, 'media_library_usage_load_failed', resolvedError, {
+              operation: 'get_media_usage',
+            });
+          })
+          .finally(() => {
+            if (requestId !== latestRequestRef.current) {
+              return;
+            }
+
+            remainingUsageRequests -= 1;
+            if (remainingUsageRequests === 0) {
+              setIsUsageLoading(false);
+            }
+          });
       }
-
-      if (hasProtectedUsageFailure) {
-        await invalidatePermissions();
-      }
-
-      if (requestId !== latestRequestRef.current) {
-        return;
-      }
-
-      setUsageByAssetId(resolvedUsageByAssetId);
-      setIsUsageLoading(false);
     } catch (cause) {
       const resolvedError = asIamError(cause);
       if (resolvedError.status === 401 || resolvedError.status === 403) {

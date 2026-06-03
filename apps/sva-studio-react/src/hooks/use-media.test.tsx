@@ -3,6 +3,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useCreateMediaUpload, useMediaDetail, useMediaLibrary } from './use-media';
 
+type MediaUsageResponse = {
+  data: {
+    assetId: string;
+    totalReferences: number;
+    references: never[];
+  };
+};
+
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return {
+    promise,
+    resolve,
+  };
+};
+
 const listMediaMock = vi.fn();
 const getMediaMock = vi.fn();
 const getMediaUsageMock = vi.fn();
@@ -253,6 +273,124 @@ describe('useMediaLibrary', () => {
     });
 
     expect(invalidatePermissionsMock).not.toHaveBeenCalled();
+  });
+
+  it('hydrates usage counts incrementally while enrichment is still running', async () => {
+    const firstUsage = createDeferred<MediaUsageResponse>();
+    const secondUsage = createDeferred<MediaUsageResponse>();
+
+    listMediaMock.mockResolvedValue({
+      data: [
+        {
+          id: 'asset-1',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-1',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 1234,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {},
+          technical: {},
+        },
+        {
+          id: 'asset-2',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-2',
+          mediaType: 'image',
+          mimeType: 'image/png',
+          byteSize: 2048,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {},
+          technical: {},
+        },
+      ],
+      pagination: {
+        page: 1,
+        pageSize: 25,
+        total: 2,
+      },
+    });
+    getMediaUsageMock
+      .mockImplementationOnce(() => firstUsage.promise)
+      .mockImplementationOnce(() => secondUsage.promise);
+
+    render(<MediaLibraryProbe />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('false');
+      expect(screen.getByTestId('usage-loading').textContent).toBe('true');
+      expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
+    });
+
+    firstUsage.resolve({
+      data: {
+        assetId: 'asset-1',
+        totalReferences: 3,
+        references: [],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('usage-count').textContent).toBe('3');
+      expect(screen.getByTestId('usage-loading').textContent).toBe('true');
+    });
+
+    secondUsage.resolve({
+      data: {
+        assetId: 'asset-2',
+        totalReferences: 1,
+        references: [],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('usage-loading').textContent).toBe('false');
+    });
+  });
+
+  it('invalidates permissions when usage enrichment returns a protected error', async () => {
+    listMediaMock.mockResolvedValue({
+      data: [
+        {
+          id: 'asset-3',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-3',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 4096,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {},
+          technical: {},
+        },
+      ],
+      pagination: {
+        page: 1,
+        pageSize: 25,
+        total: 1,
+      },
+    });
+    getMediaUsageMock.mockRejectedValue({
+      status: 403,
+      code: 'forbidden',
+      message: 'Forbidden',
+    });
+
+    render(<MediaLibraryProbe />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('false');
+      expect(screen.getByTestId('usage-loading').textContent).toBe('false');
+      expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
+      expect(screen.getByTestId('error-code').textContent).toBe('none');
+    });
+
+    expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
   });
 });
 

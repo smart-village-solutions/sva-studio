@@ -1,5 +1,4 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MediaPage } from './-media-page';
@@ -10,6 +9,20 @@ const useParamsMock = vi.fn();
 vi.mock('@tanstack/react-router', () => ({
   useLocation: () => useLocationMock(),
   useParams: () => useParamsMock(),
+}));
+
+vi.mock('./-media-library-page.js', () => ({
+  MediaLibraryPage: () => <section data-testid="media-library-page" />,
+}));
+
+vi.mock('./-media-create-page.js', () => ({
+  MediaCreatePage: () => <section data-testid="media-create-page" />,
+}));
+
+vi.mock('./-media-detail-page.js', () => ({
+  MediaDetailPage: ({ assetId }: { readonly assetId: string }) => (
+    <section data-testid="media-detail-page" data-asset-id={assetId} />
+  ),
 }));
 
 describe('MediaPage', () => {

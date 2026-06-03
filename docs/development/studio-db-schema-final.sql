@@ -389,7 +389,6 @@ CREATE TABLE iam.data_subject_export_jobs (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     target_account_id uuid NOT NULL,
     requested_by_account_id uuid,
-    studio_job_id uuid,
     format text NOT NULL,
     status text DEFAULT 'queued'::text NOT NULL,
     error_message text,
@@ -400,6 +399,7 @@ CREATE TABLE iam.data_subject_export_jobs (
     started_at timestamp with time zone,
     completed_at timestamp with time zone,
     instance_id text NOT NULL,
+    studio_job_id uuid,
     CONSTRAINT data_subject_export_jobs_format_chk CHECK ((format = ANY (ARRAY['json'::text, 'csv'::text, 'xml'::text]))),
     CONSTRAINT data_subject_export_jobs_status_chk CHECK ((status = ANY (ARRAY['queued'::text, 'processing'::text, 'completed'::text, 'failed'::text])))
 );
@@ -1203,7 +1203,6 @@ CREATE TABLE iam.studio_job_events (
 CREATE TABLE iam.studio_jobs (
     id uuid NOT NULL,
     instance_id text NOT NULL,
-    source text DEFAULT 'plugin'::text NOT NULL,
     plugin_id text,
     job_type_id text NOT NULL,
     import_profile_id text,
@@ -1229,9 +1228,10 @@ CREATE TABLE iam.studio_jobs (
     cancel_requested_at timestamp with time zone,
     correlation_id text,
     parent_job_id uuid,
-    CONSTRAINT studio_jobs_source_check CHECK ((source = ANY (ARRAY['plugin'::text, 'host'::text]))),
+    source text DEFAULT 'plugin'::text NOT NULL,
     CONSTRAINT studio_jobs_attempts_check CHECK ((attempts >= 0)),
     CONSTRAINT studio_jobs_max_attempts_check CHECK ((max_attempts >= 1)),
+    CONSTRAINT studio_jobs_source_check CHECK ((source = ANY (ARRAY['plugin'::text, 'host'::text]))),
     CONSTRAINT studio_jobs_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'retrying'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text])))
 );
 

@@ -709,6 +709,43 @@ export const i18nResources = {
         loading: 'Medien werden geladen ...',
         loadError: 'Die Medienbibliothek konnte nicht geladen werden.',
       },
+      library: {
+        quickIntake: {
+          title: 'Quick Intake',
+          description:
+            'Starten Sie neue Uploads schnell, erfassen Sie die Mindestmetadaten und bringen Sie Assets zielsicher in die Bibliothek.',
+          steps: {
+            prepare: 'Upload vorbereiten und signierte Ziel-URL erzeugen.',
+            describe: 'Titel, Alternativtext und Sichtbarkeit direkt nach dem Intake ergänzen.',
+            publish: 'Bereite Assets priorisieren und anschließend in Fachmodule übernehmen.',
+          },
+        },
+        priority: {
+          blocked: 'Blockiert',
+          blockedHint: 'Uploads oder Verarbeitung brauchen technische Nacharbeit.',
+          new: 'Neu',
+          newHint: 'Metadaten sind noch nicht vollständig gepflegt.',
+          unused: 'Ungenutzt',
+          unusedHint: 'Assets ohne Referenzen können geprüft oder archiviert werden.',
+        },
+        cardStates: {
+          ready: 'bereit',
+          new: 'neu',
+          blocked: 'blockiert',
+          unused: 'ungenutzt',
+        },
+        usageCount: '{{count}} Verwendungen',
+        assetCard: {
+          preview: 'Bildvorschau',
+          document: 'Dokument',
+          fallback: 'Dokumentenansicht ohne Bildvorschau',
+        },
+        toolbar: {
+          title: 'Bibliotheksfokus',
+          summary: '{{count}} Assets in der aktuellen Ansicht',
+          page: 'Seite {{page}} · {{pageSize}} pro Abschnitt',
+        },
+      },
       errors: {
         forbidden: 'Unzureichende Berechtigungen für diese Medienaktion.',
         databaseUnavailable:
@@ -4109,6 +4146,43 @@ export const i18nResources = {
       messages: {
         loading: 'Loading media ...',
         loadError: 'The media library could not be loaded.',
+      },
+      library: {
+        quickIntake: {
+          title: 'Quick Intake',
+          description:
+            'Start new uploads quickly, capture the minimum metadata, and move assets into the library with less friction.',
+          steps: {
+            prepare: 'Prepare an upload and generate the signed target URL.',
+            describe: 'Add title, alt text, and visibility directly after intake.',
+            publish: 'Prioritize ready assets and move them into feature modules.',
+          },
+        },
+        priority: {
+          blocked: 'Blocked',
+          blockedHint: 'Uploads or processing require technical follow-up.',
+          new: 'New',
+          newHint: 'Metadata is still incomplete.',
+          unused: 'Unused',
+          unusedHint: 'Assets without references can be reviewed or archived.',
+        },
+        cardStates: {
+          ready: 'ready',
+          new: 'new',
+          blocked: 'blocked',
+          unused: 'unused',
+        },
+        usageCount: '{{count}} uses',
+        assetCard: {
+          preview: 'Image preview',
+          document: 'Document',
+          fallback: 'Document preview without image thumbnail',
+        },
+        toolbar: {
+          title: 'Library focus',
+          summary: '{{count}} assets in the current view',
+          page: 'Page {{page}} · {{pageSize}} per section',
+        },
       },
       errors: {
         forbidden: 'Insufficient permissions for this media action.',

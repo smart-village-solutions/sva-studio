@@ -1,0 +1,163 @@
+import React from 'react';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { MediaLibraryPage } from './-media-library-page';
+
+const useMediaLibraryMock = vi.fn();
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    children,
+    to,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { readonly to: string }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
+vi.mock('../../../hooks/use-media', () => ({
+  useMediaLibrary: (...args: unknown[]) => useMediaLibraryMock(...args),
+}));
+
+describe('MediaLibraryPage', () => {
+  beforeEach(() => {
+    useMediaLibraryMock.mockReset();
+    useMediaLibraryMock.mockReturnValue({
+      assets: [
+        {
+          id: 'asset-ready',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-ready',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 2_048_000,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {
+            title: 'Stadtfest 2024 - Hauptbühne',
+            altText: 'Hauptbühne bei Abendlicht',
+          },
+          technical: {
+            usage: {
+              totalReferences: 3,
+            },
+          },
+        },
+        {
+          id: 'asset-blocked',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-blocked',
+          mediaType: 'image',
+          mimeType: 'image/png',
+          byteSize: 512_000,
+          visibility: 'protected',
+          uploadStatus: 'blocked',
+          processingStatus: 'failed',
+          metadata: {
+            title: 'Blockierte Medienprobe',
+            altText: 'Verarbeitung fehlgeschlagen',
+          },
+          technical: {
+            usage: {
+              totalReferences: 1,
+            },
+          },
+        },
+        {
+          id: 'asset-new',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-new',
+          mediaType: 'image',
+          mimeType: 'image/webp',
+          byteSize: 256_000,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {
+            altText: 'Titel fehlt noch',
+          },
+          technical: {
+            usage: {
+              totalReferences: 2,
+            },
+          },
+        },
+        {
+          id: 'asset-unused',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-unused',
+          mediaType: 'image',
+          mimeType: 'image/png',
+          byteSize: 128_000,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {
+            title: 'Ungenutztes Bühnenbanner',
+            altText: 'Banner ohne Referenzen',
+          },
+          technical: {
+            usage: {
+              totalReferences: 0,
+            },
+          },
+        },
+        {
+          id: 'asset-pdf',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-pdf',
+          mediaType: 'image',
+          mimeType: 'application/pdf',
+          byteSize: 98_304,
+          visibility: 'protected',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {
+            title: 'Veranstaltungsflyer 2024',
+            altText: 'Programmflyer',
+          },
+          technical: {},
+        },
+      ],
+      isLoading: false,
+      error: null,
+      page: 1,
+      pageSize: 25,
+      total: 5,
+      refetch: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('renders intake and priority shelves above the asset grid', () => {
+    render(<MediaLibraryPage />);
+
+    expect(screen.getByRole('heading', { name: 'Medienbibliothek' })).toBeTruthy();
+    expect(screen.getByText('Quick Intake')).toBeTruthy();
+    expect(screen.getByText('Blockiert')).toBeTruthy();
+    expect(screen.getByText('Neu')).toBeTruthy();
+    expect(screen.getByText('Ungenutzt')).toBeTruthy();
+  });
+
+  it('renders asset cards with usage and status hints instead of the raw table', () => {
+    render(<MediaLibraryPage />);
+
+    expect(screen.getByText('Stadtfest 2024 - Hauptbühne')).toBeTruthy();
+    expect(screen.getByText('3 Verwendungen')).toBeTruthy();
+    expect(screen.getByText('bereit')).toBeTruthy();
+  });
+
+  it('renders non-image assets with a dedicated fallback card pattern', () => {
+    render(<MediaLibraryPage />);
+
+    expect(screen.getByText('Veranstaltungsflyer 2024')).toBeTruthy();
+    expect(screen.getByText('PDF')).toBeTruthy();
+  });
+});

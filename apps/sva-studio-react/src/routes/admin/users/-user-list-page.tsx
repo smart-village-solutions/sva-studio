@@ -74,9 +74,15 @@ export const UserListPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const usersApi = useUsers();
 
-  const [deactivateDialog, setDeactivateDialog] = React.useState<{ mode: 'single' | 'bulk'; userId?: string; userIds?: string[] } | null>(
-    null
-  );
+  const [statusActionDialog, setStatusActionDialog] = React.useState<
+    | {
+        action: 'activate' | 'deactivate';
+        mode: 'single' | 'bulk';
+        userId?: string;
+        userIds?: string[];
+      }
+    | null
+  >(null);
   const [syncStatus, setSyncStatus] = React.useState<'idle' | 'pending' | 'success' | 'empty' | 'error'>('idle');
   const [syncResult, setSyncResult] = React.useState<IamUserImportSyncReport | null>(null);
   const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
@@ -84,20 +90,25 @@ export const UserListPage = () => {
   const isPlatformScope = user !== null && !user.instanceId;
   const isAuthLoading = user === null;
 
-  const onConfirmDeactivate = async () => {
-    const action = deactivateDialog;
-    setDeactivateDialog(null);
+  const onConfirmStatusAction = async () => {
+    const action = statusActionDialog;
+    setStatusActionDialog(null);
 
     if (!action) {
       return;
     }
 
-    if (action.mode === 'single' && action.userId) {
+    if (action.action === 'activate' && action.mode === 'single' && action.userId) {
+      await usersApi.updateUser(action.userId, { status: 'active' });
+      return;
+    }
+
+    if (action.action === 'deactivate' && action.mode === 'single' && action.userId) {
       await usersApi.deactivateUser(action.userId);
       return;
     }
 
-    if (action.mode === 'bulk' && action.userIds) {
+    if (action.action === 'deactivate' && action.mode === 'bulk' && action.userIds) {
       await usersApi.bulkDeactivate(action.userIds);
     }
   };
@@ -232,7 +243,8 @@ export const UserListPage = () => {
                     label: t('admin.users.actions.bulkDeactivate'),
                     variant: 'destructive',
                     onClick: ({ selectedRows }) =>
-                      setDeactivateDialog({
+                      setStatusActionDialog({
+                        action: 'deactivate',
                         mode: 'bulk',
                         userIds: selectedRows.map((user) => user.id),
                       }),
@@ -297,11 +309,17 @@ export const UserListPage = () => {
               <Button
                 type="button"
                 size="sm"
-                variant="destructive"
+                variant={user.status === 'inactive' ? 'outline' : 'destructive'}
                 disabled={user.editability === 'blocked' || user.editability === 'read_only'}
-                onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}
+                onClick={() =>
+                  setStatusActionDialog({
+                    action: user.status === 'inactive' ? 'activate' : 'deactivate',
+                    mode: 'single',
+                    userId: user.id,
+                  })
+                }
               >
-                {t('admin.users.actions.deactivate')}
+                {t(user.status === 'inactive' ? 'admin.users.actions.activate' : 'admin.users.actions.deactivate')}
               </Button>
             </>
           )}
@@ -432,21 +450,27 @@ export const UserListPage = () => {
       </footer>
 
       <ConfirmDialog
-        open={Boolean(deactivateDialog)}
+        open={Boolean(statusActionDialog)}
         title={t(
-          deactivateDialog?.mode === 'bulk'
-            ? 'admin.users.confirm.bulkTitle'
-            : 'admin.users.confirm.singleTitle'
+          statusActionDialog?.action === 'activate'
+            ? 'admin.users.confirm.activateTitle'
+            : statusActionDialog?.mode === 'bulk'
+              ? 'admin.users.confirm.bulkTitle'
+              : 'admin.users.confirm.singleTitle'
         )}
         description={t(
-          deactivateDialog?.mode === 'bulk'
-            ? 'admin.users.confirm.bulkDescription'
-            : 'admin.users.confirm.singleDescription'
+          statusActionDialog?.action === 'activate'
+            ? 'admin.users.confirm.activateDescription'
+            : statusActionDialog?.mode === 'bulk'
+              ? 'admin.users.confirm.bulkDescription'
+              : 'admin.users.confirm.singleDescription'
         )}
-        confirmLabel={t('admin.users.actions.deactivate')}
+        confirmLabel={t(
+          statusActionDialog?.action === 'activate' ? 'admin.users.actions.activate' : 'admin.users.actions.deactivate'
+        )}
         cancelLabel={t('account.actions.cancel')}
-        onCancel={() => setDeactivateDialog(null)}
-        onConfirm={() => void onConfirmDeactivate()}
+        onCancel={() => setStatusActionDialog(null)}
+        onConfirm={() => void onConfirmStatusAction()}
       />
     </section>
   );

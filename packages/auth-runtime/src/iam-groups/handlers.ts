@@ -16,6 +16,7 @@ import {
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import {
   emitActivityLog,
+  notifyPermissionInvalidation,
   requireRoles,
   resolveActorInfo,
   withInstanceScopedDb,
@@ -47,6 +48,7 @@ const groupMutationHandlers = createGroupMutationHandlers({
   isUuid,
   jsonResponse,
   logger,
+  notifyPermissionInvalidation,
   parseRequestBody,
   publishGroupEvent,
   randomUUID,

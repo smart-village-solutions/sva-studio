@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -273,6 +273,36 @@ describe('UserListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
 
     await waitFor(() => expect(deactivateUser).toHaveBeenCalledWith('user-1'));
+  });
+
+  it('shows an activation action for inactive users and confirms single-user activation', async () => {
+    const updateUser = vi.fn().mockResolvedValue({ id: 'user-1', status: 'active' });
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        updateUser,
+        users: [
+          {
+            id: 'user-1',
+            keycloakSubject: 'subject-1',
+            displayName: 'Alice',
+            email: 'alice@example.com',
+            status: 'inactive',
+            lastLoginAt: '2026-03-04T10:00:00Z',
+            roles: [{ roleId: 'role-1', roleName: 'system_admin', roleLevel: 90 }],
+          },
+        ],
+      })
+    );
+
+    render(<UserListPage />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Aktivieren' })[0]!);
+
+    expect(screen.getByText('Die ausgewählte Person wird wieder aktiviert.')).toBeTruthy();
+
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Aktivieren' }));
+
+    await waitFor(() => expect(updateUser).toHaveBeenCalledWith('user-1', { status: 'active' }));
   });
 
   it('renders platform user management on root scope without tenant mutations', () => {

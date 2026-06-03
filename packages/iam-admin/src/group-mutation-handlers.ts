@@ -102,6 +102,14 @@ export type GroupMutationHandlerDeps = {
   readonly isUuid: (value: string) => boolean;
   readonly jsonResponse: (status: number, payload: unknown) => Response;
   readonly logger: GroupMutationLogger;
+  readonly notifyPermissionInvalidation: (
+    client: GroupQueryClient,
+    input: {
+      readonly instanceId: string;
+      readonly keycloakSubject?: string;
+      readonly trigger: 'user_group_changed';
+    }
+  ) => Promise<void>;
   readonly parseRequestBody: <TData>(
     request: Request,
     schema: z.ZodType<TData>
@@ -648,6 +656,12 @@ ON CONFLICT (instance_id, account_id, group_id) DO UPDATE
           requestId: actor.requestId,
           traceId: actor.traceId,
         });
+
+        await deps.notifyPermissionInvalidation(client, {
+          instanceId: actor.instanceId,
+          keycloakSubject: body.data.keycloakSubject,
+          trigger: 'user_group_changed',
+        });
       });
 
       deps.logger.info('Group membership assigned', {
@@ -735,6 +749,12 @@ WHERE instance_id = $1
           payload: { group_id: groupId, account_id: accountId },
           requestId: actor.requestId,
           traceId: actor.traceId,
+        });
+
+        await deps.notifyPermissionInvalidation(client, {
+          instanceId: actor.instanceId,
+          keycloakSubject: body.data.keycloakSubject,
+          trigger: 'user_group_changed',
         });
       });
 

@@ -257,7 +257,7 @@ Metadatenbereich.
 
 ## Datenfluss
 
-## Bibliothek
+### Bibliothek
 
 Die bestehende Bibliotheksabfrage bleibt grundsätzlich erhalten.
 
@@ -273,7 +273,7 @@ deterministisch aus dem vorhandenen Vertrag ableitbar sind, dürfen kleine,
 gezielte Vertragsergänzungen erfolgen. Neue Spezialendpunkte ohne klare
 Notwendigkeit werden vermieden.
 
-## Detail
+### Detail
 
 Die bestehende Detailabfrage mit Asset, Usage und Delivery bleibt die Basis.
 

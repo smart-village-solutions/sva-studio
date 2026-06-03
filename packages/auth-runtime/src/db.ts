@@ -1,4 +1,5 @@
 import { Pool, type PoolClient } from 'pg';
+import { createSdkLogger } from '@sva/server-runtime';
 import { bootstrapStudioAppDbUserIfNeeded } from './postgres-app-user-bootstrap.js';
 import { getIamDatabaseUrl } from './runtime-secrets.js';
 
@@ -15,6 +16,7 @@ export type QueryClient = {
 };
 
 const JSON_RESPONSE_CACHE_CONTROL = 'private, no-store';
+const logger = createSdkLogger({ component: 'iam-db', level: 'info' });
 
 const mergeVaryHeaderValue = (currentValue: string | null, nextToken: string): string => {
   const tokens = (currentValue ?? '')
@@ -74,6 +76,13 @@ export const createPoolResolver = (
         connectionString: databaseUrl,
         max,
         idleTimeoutMillis,
+      });
+      pool.on('error', (error: Error & { code?: string }) => {
+        logger.error('iam_database_pool_error', {
+          operation: 'iam_database_pool',
+          error: error.message,
+          code: error.code,
+        });
       });
     }
     return pool;

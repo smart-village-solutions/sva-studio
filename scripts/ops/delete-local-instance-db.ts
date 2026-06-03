@@ -3,6 +3,12 @@ import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  buildDeleteLocalInstanceDbAuditDetails,
+  createRebuildAuditLogger,
+  getRebuildAuditLogFile,
+} from './runtime/rebuild-audit.js';
+
 export type DeleteLocalInstanceCliOptions = {
   dryRun: boolean;
   force: boolean;
@@ -296,25 +302,42 @@ const executeHardDelete = (options: DeleteLocalInstanceCliOptions) => {
 
 const main = async () => {
   const options = parseDeleteLocalInstanceArgs(rawArgs);
+  const rebuildAuditLogger = createRebuildAuditLogger({
+    command: 'tsx scripts/ops/delete-local-instance-db.ts',
+    defaultDetails: buildDeleteLocalInstanceDbAuditDetails(options),
+    logFile: getRebuildAuditLogFile(rootDir),
+    reason: 'Expliziter lokaler Hard-Delete fuer eine Instanz wurde angefordert.',
+    scope: 'local-instance-db-delete',
+    targetInstanceId: options.targetInstanceId,
+  });
 
-  logStep(`Pruefe Schema-Sicherungen fuer ${options.targetInstanceId}`);
-  assertKnownSchemaShape(options);
+  await rebuildAuditLogger.run('command', async () => {
+    logStep(`Pruefe Schema-Sicherungen fuer ${options.targetInstanceId}`);
+    await rebuildAuditLogger.run('schema-shape-guard', () => assertKnownSchemaShape(options));
 
-  logStep(`Lese lokalen Loeschumfang fuer ${options.targetInstanceId}`);
-  const summary = loadSummary(options);
-  assertInstanceExists(summary, options.targetInstanceId);
-  renderSummary(summary);
+    logStep(`Lese lokalen Loeschumfang fuer ${options.targetInstanceId}`);
+    const summary = await rebuildAuditLogger.run('load-delete-scope-summary', () => loadSummary(options));
+    assertInstanceExists(summary, options.targetInstanceId);
+    renderSummary(summary);
 
-  if (options.dryRun) {
-    logStep('Dry-run aktiviert; es wurden keine Daten geloescht.');
-    return;
-  }
+    if (options.dryRun) {
+      rebuildAuditLogger.log('dry-run', 'completed', { instanceExists: true });
+      logStep('Dry-run aktiviert; es wurden keine Daten geloescht.');
+      return;
+    }
 
-  await confirmDeletion(options);
+    await rebuildAuditLogger.run('interactive-confirmation', () => confirmDeletion(options), {
+      confirmationRequired: shouldRequireInteractiveConfirmation({
+        dryRun: options.dryRun,
+        isTty: Boolean(process.stdin.isTTY),
+        yes: options.yes,
+      }),
+    });
 
-  logStep(`Loesche lokale Instanzdaten fuer ${options.targetInstanceId}`);
-  executeHardDelete(options);
-  logStep('Lokaler Hard-Delete abgeschlossen.');
+    logStep(`Loesche lokale Instanzdaten fuer ${options.targetInstanceId}`);
+    await rebuildAuditLogger.run('execute-hard-delete', () => executeHardDelete(options));
+    logStep('Lokaler Hard-Delete abgeschlossen.');
+  });
 };
 
 if (process.argv[1] && resolve(process.argv[1]) === entrypointPath) {

@@ -84,6 +84,11 @@ import {
   runMigrationJobAgainstAcceptance as runMigrationJobAgainstAcceptanceWithDeps,
   selectLatestMigrationTask,
 } from './runtime/migration-job.ts';
+import {
+  buildLocalRuntimeAuditDetails,
+  createRebuildAuditLogger,
+  getRebuildAuditLogFile,
+} from './runtime/rebuild-audit.ts';
 import { inspectRemoteServiceContract } from './runtime/remote-service-spec.ts';
 import { formatRemoteStackSnapshot, inspectRemoteStack, type RemoteStackSnapshot } from './runtime/remote-stack-state.ts';
 import { withRegistryProvisioningWorkerDeps } from '../../packages/auth-runtime/src/iam-instance-registry/repository.ts';
@@ -229,6 +234,7 @@ const jsonOutput = cliOptions.jsonOutput;
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const runtimeArtifactsDir = resolve(rootDir, 'artifacts/runtime');
+const rebuildAuditLogFile = getRebuildAuditLogFile(rootDir);
 const localStateFile = resolve(runtimeArtifactsDir, 'local-app-state.json');
 const localWorkerStateFile = resolve(runtimeArtifactsDir, 'local-worker-state.json');
 const appLogDir = resolve(runtimeArtifactsDir, 'logs');
@@ -1821,6 +1827,52 @@ const waitForHttpOk = async (url: string, timeoutMs: number) => {
 
 const getComposeArgs = (env: NodeJS.ProcessEnv) =>
   env.SVA_ENABLE_MONITORING === 'false' ? composeBaseArgs : composeWithMonitoringArgs;
+
+const shouldAuditLocalCommand = (runtimeCommand: RuntimeCommand) =>
+  runtimeCommand === 'down' ||
+  runtimeCommand === 'migrate' ||
+  runtimeCommand === 'reconcile' ||
+  runtimeCommand === 'repair' ||
+  runtimeCommand === 'up' ||
+  runtimeCommand === 'update';
+
+const resolveLocalRuntimeAuditReason = (runtimeCommand: Extract<RuntimeCommand, 'down' | 'migrate' | 'reconcile' | 'repair' | 'up' | 'update'>) => {
+  switch (runtimeCommand) {
+    case 'up':
+      return 'Lokaler Start initialisiert Infra, Migrationen und Dev-Server.';
+    case 'down':
+      return 'Lokaler Stopp beendet Dev-Server, Worker und Compose-Stack.';
+    case 'update':
+      return 'Lokale Aktualisierung zieht Compose-Images neu und startet App sowie Worker kontrolliert neu.';
+    case 'migrate':
+      return 'Lokale Migration mutiert das Datenbankschema und bootstrappt den App-User neu.';
+    case 'repair':
+      return 'Lokaler Repair heilt Migration, Registry-Drift und Tenant-Secrets ohne kompletten Rebootstrap.';
+    case 'reconcile':
+      return 'Explizite lokale Registry-Reconcile passt die Instanz-Identitaet an das Sollbild an.';
+  }
+};
+
+const createLocalRuntimeAuditLogger = (
+  runtimeProfile: RuntimeProfile,
+  runtimeCommand: Extract<RuntimeCommand, 'down' | 'migrate' | 'reconcile' | 'repair' | 'up' | 'update'>,
+  env: NodeJS.ProcessEnv,
+) =>
+  createRebuildAuditLogger({
+    command: `tsx scripts/ops/runtime-env.ts ${runtimeCommand} ${runtimeProfile}`,
+    defaultDetails: buildLocalRuntimeAuditDetails({
+      authoritative: Boolean(cliOptions.authoritative),
+      composeMode: env.SVA_ENABLE_MONITORING === 'false' ? 'base' : 'with-monitoring',
+      driftCheckEnabled: runtimeCommand === 'up' || runtimeCommand === 'update',
+      jsonOutput,
+      workerEnabled: shouldRunLocalProvisioningWorker(runtimeProfile),
+    }),
+    gitSha: getGitCommitSha(),
+    logFile: rebuildAuditLogFile,
+    profile: runtimeProfile,
+    reason: resolveLocalRuntimeAuditReason(runtimeCommand),
+    scope: 'local-runtime',
+  });
 
 const upLocalInfra = (env: NodeJS.ProcessEnv) => {
   run('docker', [...getComposeArgs(env), 'up', '-d'], env);
@@ -4146,44 +4198,55 @@ const resolveRemoteDangerousApprovalRequirement = (
 
 const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: RuntimeCommand) => {
   const env = buildProfileEnv(runtimeProfile);
+  const rebuildAuditLogger = shouldAuditLocalCommand(runtimeCommand)
+    ? createLocalRuntimeAuditLogger(runtimeProfile, runtimeCommand, env)
+    : null;
+  const runWithCommandAudit = async <T>(operation: () => Promise<T> | T): Promise<T> =>
+    rebuildAuditLogger ? rebuildAuditLogger.run('command', operation) : await operation();
 
   switch (runtimeCommand) {
     case 'up':
-      assertRuntimeEnv(runtimeProfile, env);
-      upLocalInfra(env);
-      migrateLocalDatabase(env);
-      bootstrapLocalAppUser(env);
-      if (shouldCheckLocalInstanceRegistryDriftBeforeCommand(runtimeCommand)) {
-        checkLocalInstanceRegistryDrift(runtimeProfile, env);
-      }
-      await startLocalApp(runtimeProfile, env);
-      if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
-        startLocalProvisioningWorker(runtimeProfile, env);
-      }
-      console.log(`Profil ${runtimeProfile} gestartet.`);
+      await runWithCommandAudit(async () => {
+        assertRuntimeEnv(runtimeProfile, env);
+        await rebuildAuditLogger?.run('infra-up', () => upLocalInfra(env));
+        await rebuildAuditLogger?.run('db-migrate', () => migrateLocalDatabase(env));
+        await rebuildAuditLogger?.run('bootstrap-app-user', () => bootstrapLocalAppUser(env));
+        if (shouldCheckLocalInstanceRegistryDriftBeforeCommand(runtimeCommand)) {
+          await rebuildAuditLogger?.run('instance-registry-drift-check', () => checkLocalInstanceRegistryDrift(runtimeProfile, env));
+        }
+        await rebuildAuditLogger?.run('app-start', () => startLocalApp(runtimeProfile, env));
+        if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
+          await rebuildAuditLogger?.run('worker-start', () => startLocalProvisioningWorker(runtimeProfile, env));
+        }
+        console.log(`Profil ${runtimeProfile} gestartet.`);
+      });
       return;
     case 'down':
-      stopLocalProvisioningWorker();
-      stopLocalApp();
-      downLocalInfra(env);
-      console.log(`Profil ${runtimeProfile} gestoppt.`);
+      await runWithCommandAudit(async () => {
+        await rebuildAuditLogger?.run('worker-stop', () => stopLocalProvisioningWorker());
+        await rebuildAuditLogger?.run('app-stop', () => stopLocalApp());
+        await rebuildAuditLogger?.run('infra-down', () => downLocalInfra(env));
+        console.log(`Profil ${runtimeProfile} gestoppt.`);
+      });
       return;
     case 'update':
-      assertRuntimeEnv(runtimeProfile, env);
-      pullLocalInfra(env);
-      upLocalInfra(env);
-      migrateLocalDatabase(env);
-      bootstrapLocalAppUser(env);
-      if (shouldCheckLocalInstanceRegistryDriftBeforeCommand(runtimeCommand)) {
-        checkLocalInstanceRegistryDrift(runtimeProfile, env);
-      }
-      stopLocalProvisioningWorker();
-      stopLocalApp();
-      await startLocalApp(runtimeProfile, env);
-      if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
-        startLocalProvisioningWorker(runtimeProfile, env);
-      }
-      console.log(`Profil ${runtimeProfile} aktualisiert.`);
+      await runWithCommandAudit(async () => {
+        assertRuntimeEnv(runtimeProfile, env);
+        await rebuildAuditLogger?.run('infra-pull', () => pullLocalInfra(env));
+        await rebuildAuditLogger?.run('infra-up', () => upLocalInfra(env));
+        await rebuildAuditLogger?.run('db-migrate', () => migrateLocalDatabase(env));
+        await rebuildAuditLogger?.run('bootstrap-app-user', () => bootstrapLocalAppUser(env));
+        if (shouldCheckLocalInstanceRegistryDriftBeforeCommand(runtimeCommand)) {
+          await rebuildAuditLogger?.run('instance-registry-drift-check', () => checkLocalInstanceRegistryDrift(runtimeProfile, env));
+        }
+        await rebuildAuditLogger?.run('worker-stop', () => stopLocalProvisioningWorker());
+        await rebuildAuditLogger?.run('app-stop', () => stopLocalApp());
+        await rebuildAuditLogger?.run('app-start', () => startLocalApp(runtimeProfile, env));
+        if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
+          await rebuildAuditLogger?.run('worker-start', () => startLocalProvisioningWorker(runtimeProfile, env));
+        }
+        console.log(`Profil ${runtimeProfile} aktualisiert.`);
+      });
       return;
     case 'status': {
       const state = readLocalState();
@@ -4197,92 +4260,101 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       console.log(`Smoke-Checks fuer ${runtimeProfile} erfolgreich.`);
       return;
     case 'migrate':
-      assertRuntimeEnv(runtimeProfile, env);
-      run('pnpm', ['nx', 'run', 'data:db:migrate'], env);
-      bootstrapLocalAppUser(env);
-      {
-        const schemaGuard = runSchemaGuard(runtimeProfile, env);
-        if (!schemaGuard.ok) {
-          throw new Error(`Kritische IAM-Schema-Drift nach Migration: ${summarizeSchemaGuardFailures(schemaGuard)}`);
-        }
-      }
-      console.log(`Migrationen fuer ${runtimeProfile} abgeschlossen.`);
-      return;
-    case 'repair': {
-      assertRuntimeEnv(runtimeProfile, env);
-      {
-        const approvalRequirement = resolveLocalDangerousApprovalRequirement(runtimeProfile, 'repair', {
-          authoritative: Boolean(cliOptions.authoritative),
+      await runWithCommandAudit(async () => {
+        assertRuntimeEnv(runtimeProfile, env);
+        await rebuildAuditLogger?.run('db-migrate', () => run('pnpm', ['nx', 'run', 'data:db:migrate'], env));
+        await rebuildAuditLogger?.run('bootstrap-app-user', () => bootstrapLocalAppUser(env));
+        await rebuildAuditLogger?.run('schema-guard', () => {
+          const schemaGuard = runSchemaGuard(runtimeProfile, env);
+          if (!schemaGuard.ok) {
+            throw new Error(`Kritische IAM-Schema-Drift nach Migration: ${summarizeSchemaGuardFailures(schemaGuard)}`);
+          }
         });
-        if (approvalRequirement) {
-          assertDangerousOperationApproved({
-            actualApprovalToken: cliOptions.approvalToken,
-            expectedApprovalToken: approvalRequirement.token,
-            reason: approvalRequirement.reason,
+        console.log(`Migrationen fuer ${runtimeProfile} abgeschlossen.`);
+      });
+      return;
+    case 'repair':
+      await runWithCommandAudit(async () => {
+        assertRuntimeEnv(runtimeProfile, env);
+        {
+          const approvalRequirement = resolveLocalDangerousApprovalRequirement(runtimeProfile, 'repair', {
+            authoritative: Boolean(cliOptions.authoritative),
           });
+          if (approvalRequirement) {
+            assertDangerousOperationApproved({
+              actualApprovalToken: cliOptions.approvalToken,
+              expectedApprovalToken: approvalRequirement.token,
+              reason: approvalRequirement.reason,
+            });
+          }
         }
-      }
-      const repairResult = await repairLocalRuntimeWithDeps(
-        {
-          preflightDoctor: () => doctorRuntime(runtimeProfile, env),
-          postflightDoctor: () => doctorRuntime(runtimeProfile, env),
-          runMigrate: async () => {
-            migrateLocalDatabase(env);
-            bootstrapLocalAppUser(env);
+        const repairResult = await repairLocalRuntimeWithDeps(
+          {
+            preflightDoctor: () => rebuildAuditLogger!.run('preflight-doctor', () => doctorRuntime(runtimeProfile, env)),
+            postflightDoctor: () => rebuildAuditLogger!.run('postflight-doctor', () => doctorRuntime(runtimeProfile, env)),
+            runMigrate: async () =>
+              rebuildAuditLogger!.run('db-migrate-and-app-user-bootstrap', async () => {
+                migrateLocalDatabase(env);
+                bootstrapLocalAppUser(env);
+              }),
+            reconcileInstanceRegistry: async () =>
+              rebuildAuditLogger!.run('instance-registry-reconcile', () =>
+                reconcileLocalInstanceRegistry(runtimeProfile, env, { authoritative: cliOptions.authoritative }),
+              ),
+            syncTenantSecrets: () => rebuildAuditLogger!.run('tenant-secret-sync', () => syncLocalTenantSecretsToRegistry(env)),
+            runActorBindingRepair:
+              env.SVA_DOCTOR_BIND_COPY_FROM_KEYCLOAK_SUBJECT?.trim()
+                ? () => rebuildAuditLogger!.run('actor-binding-repair', () => repairActorBindingFromEnv(env))
+                : undefined,
           },
-          reconcileInstanceRegistry: async () => {
-            reconcileLocalInstanceRegistry(runtimeProfile, env, { authoritative: cliOptions.authoritative });
+          {
+            authoritative: Boolean(cliOptions.authoritative),
           },
-          syncTenantSecrets: () => syncLocalTenantSecretsToRegistry(env),
-          runActorBindingRepair:
-            env.SVA_DOCTOR_BIND_COPY_FROM_KEYCLOAK_SUBJECT?.trim()
-              ? () => repairActorBindingFromEnv(env)
-              : undefined,
-        },
-        {
-          authoritative: Boolean(cliOptions.authoritative),
-        },
-      );
-
-      if (jsonOutput) {
-        console.log(
-          JSON.stringify(
-            {
-              authoritative: Boolean(cliOptions.authoritative),
-              postflightReport: repairResult.postflightReport,
-              preflightReport: repairResult.preflightReport,
-              tenantSecretSync: repairResult.tenantSecretSync,
-            },
-            null,
-            2,
-          ),
         );
-      } else {
-        console.log(`Lokaler Runtime-Repair fuer ${runtimeProfile} abgeschlossen.`);
-        console.log(`  Tenant-Secrets geheilt: ${repairResult.tenantSecretSync.healedInstanceIds.join(', ') || 'keine'}`);
-        if (repairResult.tenantSecretSync.errors.length > 0) {
-          console.log(`  Secret-Fehler: ${repairResult.tenantSecretSync.errors.join(' | ')}`);
+
+        if (jsonOutput) {
+          console.log(
+            JSON.stringify(
+              {
+                authoritative: Boolean(cliOptions.authoritative),
+                postflightReport: repairResult.postflightReport,
+                preflightReport: repairResult.preflightReport,
+                tenantSecretSync: repairResult.tenantSecretSync,
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          console.log(`Lokaler Runtime-Repair fuer ${runtimeProfile} abgeschlossen.`);
+          console.log(`  Tenant-Secrets geheilt: ${repairResult.tenantSecretSync.healedInstanceIds.join(', ') || 'keine'}`);
+          if (repairResult.tenantSecretSync.errors.length > 0) {
+            console.log(`  Secret-Fehler: ${repairResult.tenantSecretSync.errors.join(' | ')}`);
+          }
+          printDoctorReport(repairResult.postflightReport);
         }
-        printDoctorReport(repairResult.postflightReport);
-      }
+      });
       return;
-    }
     case 'reconcile':
-      assertRuntimeEnv(runtimeProfile, env);
-      {
-        const approvalRequirement = resolveLocalDangerousApprovalRequirement(runtimeProfile, 'reconcile', {
-          authoritative: Boolean(cliOptions.authoritative),
-        });
-        if (approvalRequirement) {
-          assertDangerousOperationApproved({
-            actualApprovalToken: cliOptions.approvalToken,
-            expectedApprovalToken: approvalRequirement.token,
-            reason: approvalRequirement.reason,
+      await runWithCommandAudit(async () => {
+        assertRuntimeEnv(runtimeProfile, env);
+        {
+          const approvalRequirement = resolveLocalDangerousApprovalRequirement(runtimeProfile, 'reconcile', {
+            authoritative: Boolean(cliOptions.authoritative),
           });
+          if (approvalRequirement) {
+            assertDangerousOperationApproved({
+              actualApprovalToken: cliOptions.approvalToken,
+              expectedApprovalToken: approvalRequirement.token,
+              reason: approvalRequirement.reason,
+            });
+          }
         }
-      }
-      reconcileLocalInstanceRegistry(runtimeProfile, env, { authoritative: cliOptions.authoritative });
-      console.log(`Lokale Instanz-Registry fuer ${runtimeProfile} abgeglichen.`);
+        await rebuildAuditLogger?.run('instance-registry-reconcile', () =>
+          reconcileLocalInstanceRegistry(runtimeProfile, env, { authoritative: cliOptions.authoritative }),
+        );
+        console.log(`Lokale Instanz-Registry fuer ${runtimeProfile} abgeglichen.`);
+      });
       return;
     case 'doctor': {
       const report = await doctorRuntime(runtimeProfile, env);

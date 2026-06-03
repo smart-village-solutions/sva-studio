@@ -14,6 +14,7 @@ import {
   buildBootstrapLocalInstanceDbApprovalToken,
   runBootstrapLocalInstanceDb,
 } from './bootstrap-local-instance-db.ts';
+import type { RebuildAuditEvent } from './runtime/rebuild-audit.ts';
 
 describe('parseBootstrapLocalInstanceDbArgs', () => {
   it('parses required args and defaults', () => {
@@ -258,6 +259,61 @@ describe('runBootstrapLocalInstanceDb', () => {
 
     expect(fetchImpl).toHaveBeenCalled();
     expect(writes.join('')).toContain('Fertig. Nächste Schritte');
+  });
+
+  it('emits structured rebuild audit events without leaking secrets', async () => {
+    const auditEvents: RebuildAuditEvent[] = [];
+
+    await expect(
+      runBootstrapLocalInstanceDb(
+        [
+          '--target-instance-id=hb-demo',
+          '--target-realm=saas-hb-demo',
+          '--keycloak-admin-client-id=sva-studio-iam-service',
+          '--keycloak-admin-client-secret=top-secret',
+          '--target-db-container=sva-studio-postgres-hb',
+          '--approve-dangerous=bootstrap-local-instance-db:hb-demo',
+          '--create-db',
+        ],
+        {
+          appendRebuildAuditEventImpl: (_logFile, event) => {
+            auditEvents.push(event);
+          },
+          dockerPsqlImpl: vi.fn(() => ''),
+          dockerPsqlQuietImpl: vi.fn().mockReturnValueOnce('Demo\t90\t365').mockReturnValueOnce('accounts\t0\nmemberships\t0'),
+          fetchImpl: vi
+            .fn<typeof fetch>()
+            .mockResolvedValueOnce(
+              new Response(JSON.stringify({ access_token: 'token' }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+              }),
+            )
+            .mockResolvedValueOnce(
+              new Response(JSON.stringify([]), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+              }),
+            ),
+          logStepImpl: vi.fn(),
+          rebuildAuditLogFile: '/tmp/rebuild-events.jsonl',
+          runImpl: vi.fn(() => ''),
+          write: vi.fn(),
+        },
+      ),
+    ).resolves.toBe(0);
+
+    expect(auditEvents.some((event) => event.phase === 'command' && event.status === 'started')).toBe(true);
+    expect(auditEvents.some((event) => event.phase === 'recreate-database' && event.status === 'completed')).toBe(true);
+    expect(auditEvents[0]).toMatchObject({
+      details: expect.objectContaining({
+        createDb: true,
+        targetDbContainer: 'sva-studio-postgres-hb',
+        targetRealm: 'saas-hb-demo',
+      }),
+      targetInstanceId: 'hb-demo',
+    });
+    expect(JSON.stringify(auditEvents)).not.toContain('top-secret');
   });
 
   it('returns usage exit code for missing required options', async () => {

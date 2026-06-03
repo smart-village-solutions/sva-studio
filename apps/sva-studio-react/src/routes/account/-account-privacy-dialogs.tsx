@@ -16,12 +16,14 @@ type NoteDialogState = {
 const RequestDialog = ({
   description,
   isSubmitting,
+  noteInputId,
   noteState,
   submitLabel,
   title,
 }: Readonly<{
   description: string;
   isSubmitting: boolean;
+  noteInputId: string;
   noteState: NoteDialogState;
   submitLabel: string;
   title: string;
@@ -35,9 +37,9 @@ const RequestDialog = ({
       }}
     >
       <div className="space-y-2">
-        <Label htmlFor={title}>{t('account.privacy.dialogs.shared.noteLabel')}</Label>
+        <Label htmlFor={noteInputId}>{t('account.privacy.dialogs.shared.noteLabel')}</Label>
         <Textarea
-          id={title}
+          id={noteInputId}
           value={noteState.note}
           onChange={(event) => noteState.onNoteChange(event.target.value)}
           rows={5}
@@ -162,6 +164,7 @@ export const PrivacyDialogs = ({
       title={t('account.privacy.dialogs.access.title')}
       description={t('account.privacy.dialogs.access.description')}
       isSubmitting={isSubmitting}
+      noteInputId="privacy-access-request-note"
       noteState={accessDialog}
       submitLabel={t('account.privacy.dialogs.access.submit')}
     />
@@ -169,6 +172,7 @@ export const PrivacyDialogs = ({
       title={t('account.privacy.dialogs.objection.title')}
       description={t('account.privacy.dialogs.objection.description')}
       isSubmitting={isSubmitting}
+      noteInputId="privacy-objection-request-note"
       noteState={objectionDialog}
       submitLabel={t('account.privacy.dialogs.objection.submit')}
     />
@@ -176,6 +180,7 @@ export const PrivacyDialogs = ({
       title={t('account.privacy.dialogs.deletion.title')}
       description={t('account.privacy.dialogs.deletion.description')}
       isSubmitting={isSubmitting}
+      noteInputId="privacy-deletion-request-note"
       noteState={deletionDialog}
       submitLabel={t('account.privacy.dialogs.deletion.submit')}
     />
@@ -183,6 +188,7 @@ export const PrivacyDialogs = ({
       title={t('account.privacy.dialogs.restriction.title')}
       description={t('account.privacy.dialogs.restriction.description')}
       isSubmitting={isSubmitting}
+      noteInputId="privacy-restriction-request-note"
       noteState={restrictionDialog}
       submitLabel={t('account.privacy.dialogs.restriction.submit')}
     />

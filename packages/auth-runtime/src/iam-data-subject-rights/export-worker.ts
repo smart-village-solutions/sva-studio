@@ -196,9 +196,6 @@ export const dsrExportStudioJobRegistration: StudioJobExecutionRegistration = {
         if (currentJob.status === 'completed') {
           return { alreadyCompleted: true };
         }
-        if (currentJob.status === 'failed') {
-          return { alreadyCompleted: true };
-        }
 
         const claimed = currentJob.status === 'queued'
           ? await claimQueuedExportJob(client, {

@@ -9,13 +9,14 @@ describe('run-pr-gate order', () => {
   it('runs coverage and complexity gates before quality gates for full PR scopes', async () => {
     const commands: string[] = [];
 
-    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
     vi.doMock('node:child_process', () => ({
       execSync: vi.fn((command: string) => {
         commands.push(command);
         return Buffer.from('');
       }),
     }));
+    // eslint-disable-next-line @nx/enforce-module-boundaries
     vi.doMock('../../../scripts/ci/pr-scope.ts', () => ({
       resolveChangedFiles: vi.fn(() => ['pnpm-lock.yaml']),
       classifyPrScope: vi.fn(() => ({
@@ -27,6 +28,7 @@ describe('run-pr-gate order', () => {
         e2eMode: 'skip',
       })),
     }));
+    // eslint-disable-next-line @nx/enforce-module-boundaries
     vi.doMock('../../../scripts/ci/affected-unit-gate.ts', () => ({
       runAffectedUnitGate: vi.fn(() => []),
     }));
@@ -34,6 +36,7 @@ describe('run-pr-gate order', () => {
       runIntegrationGate: vi.fn(),
     }));
 
+    // eslint-disable-next-line @nx/enforce-module-boundaries
     const { runPrGate } = await import('../../../scripts/ci/run-pr-gate.ts');
 
     expect(runPrGate([])).toBe(0);

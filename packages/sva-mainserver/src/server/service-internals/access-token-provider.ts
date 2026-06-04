@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
 import type { SvaMainserverConnectionInput, SvaMainserverInstanceConfig } from '../../types.js';
@@ -33,9 +33,10 @@ export const createAccessTokenProvider = (input: {
 }) => {
   const tokenCache = new Map<string, TimedCacheEntry<string>>();
   const tokenLoads = new Map<string, Promise<string>>();
+  const credentialFingerprintKey = randomBytes(32);
 
   const resolveCredentialSignature = (credentials: CredentialValue): string =>
-    createHash('sha256')
+    createHmac('sha256', credentialFingerprintKey)
       .update(credentials.apiKey)
       .update('\u0000')
       .update(credentials.apiSecret)

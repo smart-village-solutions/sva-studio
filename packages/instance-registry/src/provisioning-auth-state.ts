@@ -156,7 +156,6 @@ const ensureTenantAdmin = async (client: KeycloakProvisioningClient, input: Tena
   const resolvedEmail = input.email ?? fallbackEmail;
 
   await client.ensureRealmRole(SYSTEM_ADMIN_ROLE);
-  await client.ensureRealmRole(INSTANCE_REGISTRY_ADMIN_ROLE);
 
   const existing = (await client.findUserByUsername(input.username))
     ?? (resolvedEmail ? await client.findUserByEmail(resolvedEmail) : null);
@@ -260,10 +259,7 @@ export const createReadKeycloakState =
     const tenantAdminClientSecret = input.tenantAdminClient?.clientId
       ? await client.getOidcClientSecretValue(input.tenantAdminClient.clientId)
       : null;
-    const [systemAdminRole, instanceRegistryAdminRole] = await Promise.all([
-      client.getRoleByName(SYSTEM_ADMIN_ROLE),
-      client.getRoleByName(INSTANCE_REGISTRY_ADMIN_ROLE),
-    ]);
+    const systemAdminRole = await client.getRoleByName(SYSTEM_ADMIN_ROLE);
 
     return {
       client,
@@ -277,7 +273,7 @@ export const createReadKeycloakState =
       keycloakClientSecret,
       tenantAdminClientSecret,
       systemAdminRole,
-      instanceRegistryAdminRole,
+      instanceRegistryAdminRole: null,
     };
   };
 

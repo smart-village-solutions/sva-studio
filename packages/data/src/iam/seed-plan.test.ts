@@ -4,12 +4,12 @@ import assert from 'node:assert/strict';
 import { getPersonaSeed, iamSeedPlan } from './seed-plan';
 
 describe('iam seed plan', () => {
-  it('contains exactly eight personas', () => {
-    assert.equal(iamSeedPlan.personas.length, 8);
+  it('contains exactly seven tenant bootstrap personas', () => {
+    assert.equal(iamSeedPlan.personas.length, 7);
   });
 
   it('keeps the canonical permission catalog in sync with the seed integration expectations', () => {
-    assert.equal(iamSeedPlan.permissions.length, 40);
+    assert.equal(iamSeedPlan.permissions.length, 53);
   });
 
   it('uses unique role slugs and keycloak subjects', () => {
@@ -35,6 +35,7 @@ describe('iam seed plan', () => {
     assert.deepEqual(editor.permissionKeys, [
       'content.read',
       'content.readHistory',
+      'experimental.read',
       'app.read',
       'cockpit.read',
       'content.create',
@@ -61,11 +62,14 @@ describe('iam seed plan', () => {
     ]);
   });
 
-  it('includes the global instance registry administrator persona', () => {
-    const registryAdmin = getPersonaSeed('instance_registry_admin');
+  it('does not expose a tenant-side instance_registry_admin persona anymore', () => {
+    assert.throws(() => getPersonaSeed('instance_registry_admin' as never), /Unknown persona key: instance_registry_admin/);
+  });
 
-    assert.equal(registryAdmin.roleSlug, 'instance_registry_admin');
-    assert.ok(registryAdmin.permissionKeys.includes('instance.registry.manage'));
+  it('keeps instance.registry.manage out of tenant bootstrap personas', () => {
+    for (const persona of iamSeedPlan.personas) {
+      assert.equal(persona.permissionKeys.includes('instance.registry.manage'), false);
+    }
   });
 
   it('contains hierarchical organizations for context-switch scenarios', () => {
@@ -88,6 +92,14 @@ describe('iam seed plan', () => {
     assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'news.update')?.resourceType, 'news');
     assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'app.read')?.resourceType, 'app');
     assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'cockpit.read')?.resourceType, 'cockpit');
+    assert.equal(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'experimental.read')?.resourceType,
+      'experimental'
+    );
+    assert.equal(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'iam.governance.export')?.resourceType,
+      'iam'
+    );
   });
 
   it('throws for unknown persona keys', () => {

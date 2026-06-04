@@ -62,6 +62,10 @@ export {
   type ContentPrimitiveAuthorizationResource,
   type ContentPrimitiveAuthorizationResult,
 } from './iam-contents/server-authorization.js';
+export {
+  authorizeInstancePermissionForUser,
+  type InstancePermissionAuthorizationResult,
+} from './instance-permission-authorization.js';
 export { validateCsrf } from './shared/request-security.js';
 export { completeIdempotency, reserveIdempotency } from './iam-account-management/shared.js';
 export { protectField, revealField } from './iam-account-management/encryption.js';

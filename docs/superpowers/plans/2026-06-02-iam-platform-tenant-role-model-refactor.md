@@ -56,6 +56,7 @@ Pflichtpunkte:
 - `instance_registry_admin` ist Root-only.
 - `system_admin` ist tenantseitige Sonderrolle.
 - Modulrechte sind permission-zentriert statt standardrollen-zentriert.
+- Die bewusste Abweichung zum bisherigen Konzept, wonach frühere Tenant-Standardrollen (`editor`, `designer`, `app_manager` usw.) nicht länger als geschützte System-Rollen gelten, wird explizit in einer ADR dokumentiert statt stillschweigend umgesetzt.
 
 ### Task 2: Plattform-/Tenant-Scope in Core- und Runtime-Verträgen trennen
 
@@ -77,7 +78,7 @@ export const PLATFORM_ROOT_ROLE = 'instance_registry_admin';
 const PLATFORM_PROFILE_ROLES = new Set([PLATFORM_ROOT_ROLE]);
 
 export const PLATFORM_ROLE_LEVEL_BY_NAME: Readonly<Record<string, number>> = {
-  [PLATFORM_ROOT_ROLE]: 0,
+  [PLATFORM_ROOT_ROLE]: 90,
 };
 ```
 
@@ -117,11 +118,14 @@ Expected:
 **Files:**
 - Modify: `packages/data/src/iam/seed-plan.ts`
 - Modify: `packages/data/src/iam/seed-plan.test.ts`
+- Modify: `packages/data/seeds/0001_iam_personas.sql`
 - Modify: `packages/data-repositories/src/iam/seed-plan.personas.ts`
 - Modify: `packages/instance-registry/src/provisioning-auth-state.ts`
 - Modify: `packages/instance-registry/src/provisioning-auth-state.test.ts`
 - Modify: `packages/instance-registry/src/service-keycloak-run-steps.ts`
 - Modify: `packages/instance-registry/src/provisioning-auth.test.ts`
+- Modify: `packages/instance-registry/src/provisioning-auth-utils.ts`
+- Modify: `packages/instance-registry/src/keycloak-checklist.ts`
 
 - [ ] **Step 1: Tenant-seitige Persona-Quelle auf system_admin als einzige geschützte Defaultrolle umstellen**
 
@@ -138,7 +142,26 @@ const personas: readonly PersonaSeed[] = [
 ];
 ```
 
-- [ ] **Step 2: Provisioning-Tests für Tenant-Admin-Bootstrap erst brechen**
+- [ ] **Step 2: Root-Realm-Seeding und Root-Control-Plane-Vertrag explizit absichern**
+
+Prüfen:
+- `packages/instance-registry/src/provisioning-auth-utils.ts`
+- `packages/instance-registry/src/keycloak-checklist.ts`
+- `packages/data/seeds/0001_iam_personas.sql`
+
+Regel:
+- `instance_registry_admin` verschwindet nur aus tenantseitigen Personas und Tenant-Bootstrap-Pfaden.
+- Root-Realm-Seeding, Root-Checklist und Root-Control-Plane-Projektion behalten die Rolle ausdrücklich bei.
+
+Run:
+```bash
+pnpm nx run instance-registry:test:unit --testFiles=packages/instance-registry/src/provisioning-auth-state.test.ts --testFiles=packages/instance-registry/src/provisioning-auth.test.ts
+```
+
+Expected:
+- FAIL nur auf tenantseitigen Altannahmen, nicht auf fehlendem Root-Realm-Contract.
+
+- [ ] **Step 3: Provisioning-Tests für Tenant-Admin-Bootstrap erst brechen**
 
 Run:
 ```bash
@@ -148,7 +171,7 @@ pnpm nx run instance-registry:test:unit --testFiles=packages/instance-registry/s
 Expected:
 - Fails, weil bisher `instance_registry_admin` im Tenant-Realm erwartet wird.
 
-- [ ] **Step 3: Tenant-Admin-Bootstrap nur noch auf system_admin ausrichten**
+- [ ] **Step 4: Tenant-Admin-Bootstrap nur noch auf system_admin ausrichten**
 
 Zielcode:
 ```ts
@@ -167,7 +190,7 @@ Wichtig:
 - `tenantAdminHasInstanceRegistryAdmin` entweder entfernen oder als Legacy-Diagnose klar deprecaten.
 - Kein Tenant-Realm-Drift mehr wegen fehlender Plattformrolle.
 
-- [ ] **Step 4: Slice erneut ausführen**
+- [ ] **Step 5: Slice erneut ausführen**
 
 Run:
 ```bash
@@ -182,6 +205,8 @@ Expected:
 **Files:**
 - Modify: `apps/sva-studio-react/src/lib/iam-admin-access.ts`
 - Modify: `packages/auth-runtime/src/iam-account-management/constants.ts`
+- Modify: `packages/data/src/iam/seed-plan.ts`
+- Modify: `packages/data/src/iam/seed-plan.test.ts`
 - Modify: `packages/iam-admin/src/organization-read-handlers.ts`
 - Modify: `packages/iam-admin/src/group-read-handlers.ts`
 - Modify: `packages/iam-admin/src/group-mutation-handlers.ts`
@@ -223,7 +248,20 @@ Anwendung:
 - nur auf Root-Pfaden
 - nicht in tenantlokalen Rollen-/Gruppen-/Nutzerseiten
 
-- [ ] **Step 4: Betroffene UI-/Handler-Tests anpassen**
+- [ ] **Step 4: `instance.registry.manage` aus tenantfähigem Katalog und Tenant-Guards entfernen**
+
+Zielrichtung:
+```ts
+// tenantseitige permissionKeys enthalten kein instance.registry.manage mehr
+permissionKeys: permissions.map(([, key]) => key).filter((key) => key !== 'instance.registry.manage')
+```
+
+Regel:
+- keine tenantseitige Persona oder Standardrolle darf `instance.registry.manage` tragen
+- tenantlokale UI-/API-Pfade dürfen das Recht nicht mehr als wirksame Tenant-Berechtigung behandeln
+- Requests bleiben fail-closed, wenn eine Tenant-Rolle versucht, Root-Control-Plane-Funktionalität zu modellieren
+
+- [ ] **Step 5: Betroffene UI-/Handler-Tests anpassen**
 
 Run:
 ```bash
@@ -251,14 +289,15 @@ export type StudioModuleIamContract = Readonly<{
   moduleId: string;
   namespace: string;
   permissionIds: readonly string[];
-  rootSystemRoles: readonly StudioModuleIamSystemRole[];
   tenantBootstrapRoles?: readonly StudioModuleIamBootstrapRole[];
+  rootSystemRoles?: readonly StudioModuleIamSystemRole[];
 }>;
 ```
 
 Regel:
-- `rootSystemRoles` höchstens für Plattform-/Root-Pfade
-- `tenantBootstrapRoles` nur Übergangskompatibilität
+- bestehende `systemRoles` der Modulverträge werden fachlich als `tenantBootstrapRoles` weitergeführt
+- `rootSystemRoles` bleibt für tenantbezogene Module leer oder nur für echte Root-/Plattformpfade reserviert
+- `tenantBootstrapRoles` ist nur Übergangskompatibilität
 - fachlich führend bleibt `permissionIds`
 
 - [ ] **Step 2: Instanz-Registry-Seeding entkoppeln**
@@ -350,7 +389,22 @@ Expected:
 - Modify: `docs/guides/keycloak-tenant-realm-bootstrap.md`
 - Modify: `docs/development/runtime-profile-betrieb.md`
 
-- [ ] **Step 1: Migrationsstrategie als additive Cleanup-Migration schreiben**
+- [ ] **Step 1: Bestandsanalyse für Legacy-Rollen und Tenant-Artefakte erstellen**
+
+Run:
+```bash
+rg -n "instance_registry_admin|app_manager|editor|designer|moderator|feature_manager|interface_manager" packages docs
+```
+
+Analysepflicht:
+- Welche tenantseitigen Seeds, Runtime-Pfade und UI-Flows erwarten noch `instance_registry_admin`?
+- Welche Standardrollen sind noch implizit normativ verdrahtet?
+- Welche Artefakte können sofort bereinigt werden und welche brauchen nur Markierung/Repair?
+
+Expected:
+- eine dokumentierte Voranalyse liegt vor, bevor irgendeine Cleanup-Migration geschrieben wird
+
+- [ ] **Step 2: Migrationsstrategie als additive Cleanup-Migration schreiben**
 
 Pflichten:
 - keine harte Löschung produktiver Rollen ohne Voranalyse
@@ -367,14 +421,14 @@ WHERE role_key = 'instance_registry_admin';
 Hinweis:
 - endgültige SQL anhand realer Tabellen- und Constraintlage schreiben, nicht blind übernehmen.
 
-- [ ] **Step 2: Runtime-/Ops-Dokumentation anpassen**
+- [ ] **Step 3: Runtime-/Ops-Dokumentation anpassen**
 
 Dokupunkte:
 - Root-Realm und Tenant-Realm sind getrennt.
 - `seed:system_admin` bleibt tenantseitige Reparaturreferenz.
 - `instance_registry_admin` ist Root-only und kein tenantseitiger Repair-Pfad.
 
-- [ ] **Step 3: Schema- und Type-Gates ausführen**
+- [ ] **Step 4: Schema- und Type-Gates ausführen**
 
 Run:
 ```bash

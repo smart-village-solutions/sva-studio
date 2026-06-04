@@ -21,6 +21,7 @@ import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUsers } from '../../../hooks/use-users';
 import { t } from '../../../i18n';
+import { isTenantRoleVisible } from '../../../lib/iam-role-governance';
 import { userErrorMessage } from './-user-error-message';
 
 const appendUnique = (values: readonly string[], nextValue: string): string[] =>
@@ -140,6 +141,10 @@ export const UserCreatePage = () => {
   const usersApi = useUsers();
   const rolesApi = useRoles();
   const groupsApi = useGroups();
+  const selectableRoles = React.useMemo(
+    () => rolesApi.roles.filter((role) => isTenantRoleVisible(role)),
+    [rolesApi.roles]
+  );
   const userCreateSchema = React.useMemo(() => createUserCreateSchema(), []);
   const selectableGroups = React.useMemo(
     () => groupsApi.groups.filter((group) => group.isActive !== false),
@@ -266,7 +271,7 @@ export const UserCreatePage = () => {
           />
           <UserCreateRoleAssignments
             selectedRoleIds={selectedRoleIds}
-            roles={rolesApi.roles}
+            roles={selectableRoles}
             onToggleRole={toggleRole}
           />
           <div className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-3 text-sm text-foreground">

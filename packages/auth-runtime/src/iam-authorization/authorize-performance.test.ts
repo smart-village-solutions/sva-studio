@@ -44,6 +44,7 @@ const state = vi.hoisted(() => ({
   readLatestAuthorizePerformanceBenchmark: vi.fn(() => null),
   getWorkspaceContext: vi.fn(() => ({ requestId: 'request-1' })),
   withRequestContext: vi.fn(async (_input: unknown, work: () => Promise<Response>) => work()),
+  authorizeInstancePermissionForUser: vi.fn(),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -74,10 +75,22 @@ vi.mock('./authorize-performance.server.js', () => ({
   runAuthorizePerformanceBenchmark: state.runAuthorizePerformanceBenchmark,
 }));
 
+vi.mock('../instance-permission-authorization.js', () => ({
+  authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode: (error: string) =>
+    error === 'missing_instance'
+      ? 'invalid_instance_id'
+      : error === 'invalid_action'
+        ? 'invalid_request'
+        : error === 'database_unavailable'
+          ? 'database_unavailable'
+          : 'forbidden',
+}));
+
 const baseUser: SessionUser = {
   id: 'kc-user-1',
   instanceId: INSTANCE_ID,
-  roles: ['system_admin'],
+  roles: ['custom_role'],
 };
 
 describe('authorize performance handlers', () => {
@@ -93,6 +106,7 @@ describe('authorize performance handlers', () => {
       async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
         handler({ user: baseUser })
     );
+    state.authorizeInstancePermissionForUser.mockResolvedValue({ ok: true, permissions: [] });
     state.runAuthorizePerformanceBenchmark.mockResolvedValue({
       generatedAt: '2026-05-25T18:00:00.000Z',
       measuredOn: 'server',
@@ -159,8 +173,14 @@ describe('authorize performance handlers', () => {
     );
   });
 
-  it('fails closed for users without monitoring privileges', async () => {
+  it('fails closed for users without monitoring permissions', async () => {
     const { startAuthorizePerformanceRunHandler } = await import('./authorize-performance.js');
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für Authorize-Performance-Monitoring.',
+    });
     state.withAuthenticatedUser.mockImplementationOnce(
       async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
         handler({
@@ -345,8 +365,14 @@ describe('authorize performance handlers', () => {
     );
   });
 
-  it('blocks latest-run access for non-monitoring users', async () => {
+  it('blocks latest-run access for users without monitoring permissions', async () => {
     const { getLatestAuthorizePerformanceRunHandler } = await import('./authorize-performance.js');
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für Authorize-Performance-Monitoring.',
+    });
     state.withAuthenticatedUser.mockImplementationOnce(
       async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
         handler({

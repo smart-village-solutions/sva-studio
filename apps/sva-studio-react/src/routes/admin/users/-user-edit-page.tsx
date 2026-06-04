@@ -17,6 +17,7 @@ import { useRoles } from '../../../hooks/use-roles';
 import { useUser } from '../../../hooks/use-user';
 import { t } from '../../../i18n';
 import { formatEditorDateTime } from '../../../lib/editor-date-time';
+import { isTenantRoleVisible } from '../../../lib/iam-role-governance';
 import { getUserTimeline } from '../../../lib/iam-api';
 import { userErrorMessage } from './-user-error-message';
 
@@ -282,6 +283,10 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
   const userApi = useUser(userId);
   const rolesApi = useRoles();
   const groupsApi = useGroups();
+  const selectableRoles = React.useMemo(
+    () => rolesApi.roles.filter((role) => isTenantRoleVisible(role)),
+    [rolesApi.roles]
+  );
   const selectableGroups = React.useMemo(
     () => groupsApi.groups.filter((group) => group.isActive !== false),
     [groupsApi.groups]
@@ -702,7 +707,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
           <fieldset className="flex flex-col gap-2 text-sm text-foreground md:col-span-2">
             <legend>{t('admin.users.edit.rolesLabel')}</legend>
             <div className="grid gap-2 sm:grid-cols-2">
-              {rolesApi.roles.map((role) => {
+              {selectableRoles.map((role) => {
                 const selected = formValues.roleIds.includes(role.id);
                 return (
                   <Label key={role.id} className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground">

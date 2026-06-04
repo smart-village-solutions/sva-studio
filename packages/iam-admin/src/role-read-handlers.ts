@@ -51,6 +51,12 @@ export type RoleReadHandlerDeps<TRole = unknown, TPermission = unknown, TFeature
   readonly getFeatureFlags: () => TFeatureFlags;
   readonly getWorkspaceContext: () => { readonly requestId?: string; readonly traceId?: string };
   readonly jsonResponse: (status: number, payload: unknown) => Response;
+  readonly authorizeRoleReadAccess?: (
+    request: Request,
+    ctx: RoleReadAuthenticatedRequestContext,
+    requestId: string | undefined,
+    options: { readonly allowPlatformRoles: boolean }
+  ) => Promise<Response | null> | Response | null;
   readonly listPlatformRolesInternal: (
     ctx: RoleReadAuthenticatedRequestContext,
     requestId?: string,
@@ -72,7 +78,8 @@ export type RoleReadHandlerDeps<TRole = unknown, TPermission = unknown, TFeature
 
 export type RoleReadApiErrorCode = ApiErrorCode;
 
-const ADMIN_ROLES = new Set(['system_admin', 'instance_admin']);
+const ROOT_ADMIN_ROLES = new Set(['instance_registry_admin']);
+const TENANT_ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
 
 const resolveRoleReadActor = async <TRole, TPermission, TFeatureFlags>(
   deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags>,
@@ -85,9 +92,15 @@ const resolveRoleReadActor = async <TRole, TPermission, TFeatureFlags>(
   if (featureCheck) {
     return featureCheck;
   }
-  const roleCheck = deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
+  const accessCheck = deps.authorizeRoleReadAccess
+    ? await deps.authorizeRoleReadAccess(request, ctx, requestContext.requestId, options)
+    : deps.requireRoles(
+        ctx,
+        !ctx.user.instanceId && options.allowPlatformRoles ? ROOT_ADMIN_ROLES : TENANT_ADMIN_ROLES,
+        requestContext.requestId
+      );
+  if (accessCheck) {
+    return accessCheck;
   }
   if (!ctx.user.instanceId && options.allowPlatformRoles) {
     return deps.listPlatformRolesInternal(ctx, requestContext.requestId, requestContext.traceId);

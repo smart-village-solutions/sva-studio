@@ -275,4 +275,25 @@ describe('me permissions handler', () => {
       })
     );
   });
+
+  it('filters root-only permissions from tenant me-permissions responses fail-closed', async () => {
+    const { mePermissionsHandler } = await import('./me-permissions.js');
+    state.resolveEffectivePermissions.mockResolvedValueOnce({
+      ok: true,
+      permissions: [
+        { action: 'instance.registry.manage', resourceType: 'instance', effect: 'allow' },
+        { action: 'waste.read', resourceType: 'waste', effect: 'allow' },
+      ],
+      snapshotVersion: 'snapshot-1',
+      cacheStatus: 'hit',
+    });
+
+    await mePermissionsHandler(new Request('https://example.test/api/v1/iam/me/permissions'));
+
+    expect(state.buildMePermissionsResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        permissions: [{ action: 'waste.read', resourceType: 'waste', effect: 'allow' }],
+      })
+    );
+  });
 });

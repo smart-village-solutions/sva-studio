@@ -51,7 +51,7 @@ const createClient = (queuedRows: readonly (readonly Record<string, unknown>[])[
 };
 
 const createDeps = (client: QueryClient) => ({
-  createApiError: vi.fn((status: number, code: 'conflict' | 'not_found', message: string, requestId?: string) =>
+  createApiError: vi.fn((status: number, code: 'conflict' | 'invalid_request' | 'not_found', message: string, requestId?: string) =>
     Response.json({ error: { code, message }, requestId }, { status })
   ),
   emitActivityLog: vi.fn(async () => undefined),
@@ -109,7 +109,11 @@ describe('role mutation persistence', () => {
       createRoleMutationPersistence(notFound).resolveMutableRole(actor, roleId)
     ).resolves.toMatchObject({ status: 404 });
 
-    const system = createDeps(createClient([[{ ...mutableRole, is_system_role: true }]]).client);
+    const system = createDeps(
+      createClient([
+        [{ ...mutableRole, role_key: 'system_admin', role_name: 'system_admin', external_role_name: 'system_admin', is_system_role: true }],
+      ]).client
+    );
     await expect(
       createRoleMutationPersistence(system).resolveMutableRole(actor, roleId)
     ).resolves.toMatchObject({ status: 409 });
@@ -121,6 +125,18 @@ describe('role mutation persistence', () => {
 
     const editable = createDeps(createClient([[mutableRole]]).client);
     await expect(createRoleMutationPersistence(editable).resolveMutableRole(actor, roleId)).resolves.toEqual(mutableRole);
+
+    const editableLegacyBootstrapRole = {
+      ...mutableRole,
+      role_key: 'app_manager',
+      role_name: 'app_manager',
+      external_role_name: 'app_manager',
+      is_system_role: true,
+    };
+    const legacyEditable = createDeps(createClient([[editableLegacyBootstrapRole]]).client);
+    await expect(
+      createRoleMutationPersistence(legacyEditable).resolveMutableRole(actor, roleId)
+    ).resolves.toEqual(editableLegacyBootstrapRole);
   });
 
   it('marks role sync state and audit result', async () => {
@@ -213,11 +229,65 @@ describe('role mutation persistence', () => {
     expect(queries[2]?.values[3]).toEqual(['organization', 'all']);
   });
 
+  it('rejects root-only and unknown tenant permission assignments before mutation work', async () => {
+    const { client } = createClient([
+      [{ id: 'permission-1', permission_key: 'instance.registry.manage' }],
+      [],
+    ]);
+    const deps = createDeps(client);
+    const persistence = createRoleMutationPersistence(deps);
+
+    await expect(
+      persistence.validateRequestedPermissions({
+        actor,
+        permissionIds: ['permission-1'],
+      })
+    ).resolves.toMatchObject({ status: 400 });
+
+    await expect(
+      persistence.validateRequestedPermissions({
+        actor,
+        permissionIds: ['missing-permission-id'],
+      })
+    ).resolves.toMatchObject({ status: 400 });
+  });
+
+  it('rejects duplicate permission ids with a dedicated invalid_request error', async () => {
+    const { client } = createClient();
+    const persistence = createRoleMutationPersistence(createDeps(client));
+
+    const response = await persistence.validateRequestedPermissions({
+      actor,
+      permissionIds: ['permission-1', 'permission-1'],
+    });
+
+    expect(response?.status).toBe(400);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: 'Berechtigungen dürfen im Payload nicht doppelt vorkommen.',
+      },
+      requestId: 'request-1',
+    });
+  });
+
   it('protects delete resolution and deletes editable roles', async () => {
     const dependency = createDeps(createClient([[mutableRole], [{ used: 2 }]]).client);
     await expect(
       createRoleMutationPersistence(dependency).resolveDeletableRole(actor, roleId)
     ).resolves.toMatchObject({ status: 409 });
+
+    const deletableLegacyBootstrapRole = {
+      ...mutableRole,
+      role_key: 'editor',
+      role_name: 'editor',
+      external_role_name: 'editor',
+      is_system_role: true,
+    };
+    const legacyDeletable = createDeps(createClient([[deletableLegacyBootstrapRole], [{ used: 0 }]]).client);
+    await expect(
+      createRoleMutationPersistence(legacyDeletable).resolveDeletableRole(actor, roleId)
+    ).resolves.toEqual(deletableLegacyBootstrapRole);
 
     const { client, queries } = createClient([[mutableRole], [{ used: 0 }], [], []]);
     const deps = createDeps(client);

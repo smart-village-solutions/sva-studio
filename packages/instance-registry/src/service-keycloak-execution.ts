@@ -6,6 +6,7 @@ import { createGetKeycloakStatusHandler, loadInstanceWithSecret } from './servic
 import { appendRunStep } from './service-keycloak-run-steps.js';
 import { buildProvisioningInput, completeRun, createQueuedRun, readQueuedTemporaryPassword, syncProvisionedClientSecretToRegistry, syncRotatedClientSecretToRegistry } from './service-keycloak-execution-shared.js';
 import { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
+import { buildProvisioningExecutionOptions, ensureReconcilePreconditions, resolveReconcileIntent } from './service-keycloak-reconcile-helpers.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 
@@ -98,7 +99,22 @@ const syncClientSecretAfterProvisioning = async (deps: InstanceRegistryServiceDe
   });
 };
 
-const buildProvisioningExecutionOptions = (intent: InstanceKeycloakProvisioningRun['intent']) => ({ reconcileAuthClient: intent !== 'reset_tenant_admin', reconcileTenantAdminClient: intent !== 'reset_tenant_admin' });
+const syncTenantAdminBootstrapAccountAfterProvisioning = async (
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceKeycloakProvisioningRun,
+  loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>
+) => {
+  if (!deps.syncTenantAdminBootstrapAccount) {
+    return;
+  }
+
+  await deps.syncTenantAdminBootstrapAccount({
+    instanceId: loaded.instance.instanceId,
+    tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
+    requestId: run.requestId,
+    actorId: run.actorId,
+  });
+};
 
 const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>, tenantAdminTemporaryPassword: string | undefined, provisioningInput: ReturnType<typeof buildProvisioningInput>) => {
   const preflight = await appendPreflightSnapshot(deps, run, provisioningInput);
@@ -129,6 +145,7 @@ const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: Instanc
   });
 
   await syncClientSecretAfterProvisioning(deps, run, loaded);
+  await syncTenantAdminBootstrapAccountAfterProvisioning(deps, run, loaded);
 
   const finalRunStatus = await completeRun(deps, {
     loaded,
@@ -232,45 +249,6 @@ export const createExecuteKeycloakProvisioningHandler =
     return deps.repository.getKeycloakProvisioningRun(loaded.instance.instanceId, run.id);
   };
 
-const shouldReconcileTenantAdminClient = (loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>) => {
-  if (loaded.instance.realmMode !== 'existing') {
-    return false;
-  }
-
-  const clientId = loaded.instance.tenantAdminClient?.clientId?.trim();
-  if (!clientId) {
-    return true;
-  }
-
-  return !loaded.tenantAdminClientSecret;
-};
-
-const ensureReconcilePreconditions = async (
-  deps: InstanceRegistryServiceDeps,
-  loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>
-): Promise<void> => {
-  const provisioningInput = buildProvisioningInput(loaded);
-  const [preflight, plan] = await Promise.all([
-    deps.getKeycloakPreflight?.(provisioningInput),
-    deps.planKeycloakProvisioning?.(provisioningInput),
-  ]);
-
-  const blockingSummary =
-    preflight?.overallStatus === 'blocked'
-      ? preflight.checks
-          .filter((check) => check.status === 'blocked')
-          .map((check) => check.summary)
-          .filter((summary) => summary.length > 0)
-          .join(' ')
-      : plan?.overallStatus === 'blocked'
-        ? plan.driftSummary
-        : '';
-
-  if (preflight?.overallStatus === 'blocked' || plan?.overallStatus === 'blocked') {
-    throw new Error(`registry_or_provisioning_drift_blocked:${blockingSummary || 'Provisioning blockiert.'}`);
-  }
-};
-
 export const createReconcileKeycloakHandler =
   (deps: InstanceRegistryServiceDeps) =>
   async (input: {
@@ -288,11 +266,7 @@ export const createReconcileKeycloakHandler =
 
     await ensureReconcilePreconditions(deps, loaded);
 
-    const intent = input.rotateClientSecret
-      ? 'rotate_client_secret'
-      : shouldReconcileTenantAdminClient(loaded)
-        ? 'provision_admin_client'
-        : 'provision';
+    const intent = resolveReconcileIntent(loaded, input.rotateClientSecret);
 
     if (loaded.instance.realmMode === 'existing' && intent !== 'provision_admin_client' && !loaded.authClientSecret) {
       throw new Error('tenant_auth_client_secret_missing');

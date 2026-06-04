@@ -11,6 +11,7 @@ import {
   emitPluginActionAuditEvent,
   resolveAuthorizeGeoContext,
 } from './authorize-runtime.js';
+import { filterTenantEffectivePermissions } from './root-only-permissions.js';
 import {
   buildRequestContext,
   errorResponse,
@@ -148,7 +149,10 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
       }
 
       const decisionEvaluationStartedAt = performance.now();
-      const decision = evaluateAuthorizeDecision(payload, resolved.permissions);
+      const decision = evaluateAuthorizeDecision(
+        payload,
+        filterTenantEffectivePermissions(resolved.permissions)
+      );
       timingDiagnostics.decisionEvaluationMs = performance.now() - decisionEvaluationStartedAt;
 
       logger[decision.allowed ? 'debug' : 'warn']('Authorize decision evaluated', {

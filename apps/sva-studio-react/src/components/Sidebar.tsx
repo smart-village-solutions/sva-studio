@@ -37,10 +37,15 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import {
-  hasIamAdminRole,
-  hasInstanceRegistryAdminRole,
-  hasInterfacesAccessRole,
-  hasSystemAdminRole,
+  hasExperimentalAccess,
+  hasIamGovernanceAccess,
+  hasInterfacesAccess,
+  hasLegalTextAdminAccess,
+  hasMonitoringAccess,
+  hasOrganizationAdminAccess,
+  hasPlatformInstanceAdminAccess,
+  hasRoleAdminAccess,
+  hasUserAdminAccess,
   isIamAdminEnabled,
   isIamUiEnabled,
 } from '../lib/iam-admin-access';
@@ -770,21 +775,31 @@ export default function Sidebar({
           contentAccessApi.permissionActions,
           contentAccessApi.isLoading
         )));
-  const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
-  const canAccessAdminOrganizations = canAccessAdminUsers;
+  const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasUserAdminAccess(user);
+  const canAccessAdminOrganizations =
+    isAuthenticated && isIamAdminEnabled() && hasOrganizationAdminAccess(user);
   const canAccessAdminInstances =
-    isAuthenticated && isIamAdminEnabled() && hasInstanceRegistryAdminRole(user);
-  const canAccessAdminRoles = canAccessAdminUsers && hasSystemAdminRole(user);
+    isAuthenticated && isIamAdminEnabled() && hasPlatformInstanceAdminAccess(user);
+  const canAccessAdminRoles =
+    isAuthenticated &&
+    isIamAdminEnabled() &&
+    (hasRoleAdminAccess(user) || hasPlatformInstanceAdminAccess(user));
   const canAccessAdminGroups = canAccessAdminRoles && Boolean(user?.instanceId);
-  const canAccessAdminPrivacy = canAccessAdminUsers;
-  const canAccessInterfaces = isAuthenticated && isIamUiEnabled() && hasInterfacesAccessRole(user);
-  const canAccessSystemTools = canAccessAdminRoles;
+  const canAccessAdminLegalTexts =
+    isAuthenticated && isIamAdminEnabled() && hasLegalTextAdminAccess(user);
+  const canAccessAdminPrivacy = isAuthenticated && isIamAdminEnabled() && hasIamGovernanceAccess(user);
+  const canAccessInterfaces = isAuthenticated && isIamUiEnabled() && hasInterfacesAccess(user);
+  const canAccessExperimentalFeatures = isAuthenticated && isIamUiEnabled() && hasExperimentalAccess(user);
+  const canAccessSystemTools =
+    canAccessExperimentalFeatures && isAuthenticated && isIamUiEnabled() && hasMonitoringAccess(user);
   const canAccessTenantModules = isAuthenticated && isIamUiEnabled() && Boolean(user?.instanceId);
   const canAccessApplicationLink =
     canAccessWorkspace &&
+    canAccessExperimentalFeatures &&
     hasPermissionAction(APP_LINK_PERMISSION, contentAccessApi.permissionActions, contentAccessApi.isLoading);
   const canAccessCockpitLink =
     canAccessWorkspace &&
+    canAccessExperimentalFeatures &&
     hasPermissionAction(COCKPIT_LINK_PERMISSION, contentAccessApi.permissionActions, contentAccessApi.isLoading);
 
   const [isCollapsed, setIsCollapsed] = React.useState(false);
@@ -964,6 +979,10 @@ export default function Sidebar({
                   },
                 ]
               : []),
+          ]
+        : []),
+      ...(canAccessAdminLegalTexts
+        ? [
             {
               kind: 'link' as const,
               id: 'legal-texts',
@@ -1062,6 +1081,7 @@ export default function Sidebar({
   }, [
     canAccessAdminOrganizations,
     canAccessAdminInstances,
+    canAccessAdminLegalTexts,
     canAccessAdminPrivacy,
     canAccessAdminRoles,
     canAccessAdminUsers,
@@ -1080,29 +1100,33 @@ export default function Sidebar({
 
   const footerItems = React.useMemo<readonly SidebarLeafItem[]>(
     () => [
-      {
-        kind: 'link',
-        id: 'help',
-        href: HELP_DISCUSSIONS_URL,
-        label: t('shell.sidebar.help'),
-        icon: IconHelpCircle,
-      },
-      {
-        kind: 'link',
-        id: 'support',
-        href: SUPPORT_ISSUES_URL,
-        label: t('shell.sidebar.support'),
-        icon: IconHeadset,
-      },
-      {
-        kind: 'link',
-        id: 'license',
-        href: LICENSE_ISSUE_URL,
-        label: t('shell.sidebar.license'),
-        icon: IconCertificate,
-      },
+      ...(canAccessExperimentalFeatures
+        ? [
+            {
+              kind: 'link' as const,
+              id: 'help',
+              href: HELP_DISCUSSIONS_URL,
+              label: t('shell.sidebar.help'),
+              icon: IconHelpCircle,
+            },
+            {
+              kind: 'link' as const,
+              id: 'support',
+              href: SUPPORT_ISSUES_URL,
+              label: t('shell.sidebar.support'),
+              icon: IconHeadset,
+            },
+            {
+              kind: 'link' as const,
+              id: 'license',
+              href: LICENSE_ISSUE_URL,
+              label: t('shell.sidebar.license'),
+              icon: IconCertificate,
+            },
+          ]
+        : []),
     ],
-    []
+    [canAccessExperimentalFeatures]
   );
 
   return (

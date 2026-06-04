@@ -31,6 +31,11 @@ import {
 import { DsrAccountSnapshotNotFoundError } from '@sva/iam-governance/dsr-read-models-internal';
 import { readPathSegment } from '../shared/request-helpers.js';
 import { revokeUserSessions } from '../session-revocation.js';
+import {
+  authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode,
+} from '../instance-permission-authorization.js';
+import type { AuthenticatedRequestContext } from '../middleware.js';
 
 const logger = createSdkLogger({ component: 'iam-dsr', level: 'info' });
 const isExportFormat = (value: string | undefined): value is ExportFormat =>
@@ -49,7 +54,9 @@ const dsrExportStatusHandlers = createDsrExportStatusHandlers({
   isExportFormat,
 });
 
-const ADMIN_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
+const DSR_READ_ACTION = 'iam.dsr.read';
+const DSR_WRITE_ACTION = 'iam.dsr.write';
+const DSR_EXPORT_ACTION = 'iam.dsr.export';
 const ART19_RECIPIENT_CLASSES = ['internal_processor', 'downstream_export', 'analytics_sink'] as const;
 const DELETE_SLA_HOURS = 48;
 const DEFAULT_DELETE_RETENTION_HOURS = 24;
@@ -83,7 +90,34 @@ type AdminExportRequestInput = ExportRequestInput & {
   targetKeycloakSubject: string;
 };
 
-const isAdminRole = (roles: readonly string[]): boolean => roles.some((role) => ADMIN_ROLES.has(role));
+const authorizeDsrJsonAction = async (ctx: AuthenticatedRequestContext, action: string) => {
+  const authorization = await authorizeInstancePermissionForUser({ ctx, action });
+  if (authorization.ok) {
+    return null;
+  }
+
+  return jsonResponse(authorization.status, {
+    error: toInstancePermissionApiErrorCode(authorization.error),
+  });
+};
+
+const authorizeDsrApiAction = async (
+  ctx: AuthenticatedRequestContext,
+  action: string,
+  message: string
+) => {
+  const authorization = await authorizeInstancePermissionForUser({ ctx, action });
+  if (authorization.ok) {
+    return null;
+  }
+
+  return createApiError(
+    authorization.status,
+    toInstancePermissionApiErrorCode(authorization.error),
+    message,
+    getWorkspaceContext().requestId
+  );
+};
 
 const resolveAccountBySubject = async (
   client: QueryClient,
@@ -563,10 +597,12 @@ export const dataExportStatusHandler = async (request: Request): Promise<Respons
 
 export const adminDataExportHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    return withAuthenticatedUser(request, async ({ user }) => {
-      if (!isAdminRole(user.roles)) {
-        return jsonResponse(403, { error: 'forbidden' });
+    return withAuthenticatedUser(request, async (ctx) => {
+      const authorizationError = await authorizeDsrJsonAction(ctx, DSR_EXPORT_ACTION);
+      if (authorizationError) {
+        return authorizationError;
       }
+      const { user } = ctx;
 
       const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
       if (csrfError) {
@@ -1203,10 +1239,12 @@ export const optionalProcessingExecuteHandler = async (request: Request): Promis
 
 export const legalHoldApplyHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    return withAuthenticatedUser(request, async ({ user }) => {
-      if (!isAdminRole(user.roles)) {
-        return jsonResponse(403, { error: 'forbidden' });
+    return withAuthenticatedUser(request, async (ctx) => {
+      const authorizationError = await authorizeDsrJsonAction(ctx, DSR_WRITE_ACTION);
+      if (authorizationError) {
+        return authorizationError;
       }
+      const { user } = ctx;
 
       const bodyResult = await requireJsonBody(request);
       if (!bodyResult.ok) {
@@ -1291,10 +1329,12 @@ RETURNING id;
 
 export const legalHoldReleaseHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    return withAuthenticatedUser(request, async ({ user }) => {
-      if (!isAdminRole(user.roles)) {
-        return jsonResponse(403, { error: 'forbidden' });
+    return withAuthenticatedUser(request, async (ctx) => {
+      const authorizationError = await authorizeDsrJsonAction(ctx, DSR_WRITE_ACTION);
+      if (authorizationError) {
+        return authorizationError;
       }
+      const { user } = ctx;
 
       const bodyResult = await requireJsonBody(request);
       if (!bodyResult.ok) {
@@ -1373,10 +1413,12 @@ RETURNING id;
 
 export const dataSubjectMaintenanceHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    return withAuthenticatedUser(request, async ({ user }) => {
-      if (!isAdminRole(user.roles)) {
-        return jsonResponse(403, { error: 'forbidden' });
+    return withAuthenticatedUser(request, async (ctx) => {
+      const authorizationError = await authorizeDsrJsonAction(ctx, DSR_WRITE_ACTION);
+      if (authorizationError) {
+        return authorizationError;
       }
+      const { user } = ctx;
 
       const bodyResult = await requireJsonBody(request);
       if (!bodyResult.ok) {
@@ -1412,10 +1454,12 @@ export const dataSubjectMaintenanceHandler = async (request: Request): Promise<R
 
 export const adminDataExportStatusHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    return withAuthenticatedUser(request, async ({ user }) => {
-      if (!isAdminRole(user.roles)) {
-        return jsonResponse(403, { error: 'forbidden' });
+    return withAuthenticatedUser(request, async (ctx) => {
+      const authorizationError = await authorizeDsrJsonAction(ctx, DSR_EXPORT_ACTION);
+      if (authorizationError) {
+        return authorizationError;
       }
+      const { user } = ctx;
 
       const url = new URL(request.url);
       const instanceScope = resolveJsonScopedInstance({
@@ -1456,10 +1500,16 @@ export const adminDataExportStatusHandler = async (request: Request): Promise<Re
 
 export const listAdminDataSubjectRightsCasesHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    return withAuthenticatedUser(request, async ({ user }) => {
-      if (!isAdminRole(user.roles)) {
-        return createApiError(403, 'forbidden', 'Keine Berechtigung für DSR-Transparenz.', getWorkspaceContext().requestId);
+    return withAuthenticatedUser(request, async (ctx) => {
+      const authorizationError = await authorizeDsrApiAction(
+        ctx,
+        DSR_READ_ACTION,
+        'Keine Berechtigung für DSR-Transparenz.'
+      );
+      if (authorizationError) {
+        return authorizationError;
       }
+      const { user } = ctx;
 
       const url = new URL(request.url);
       const instanceScope = resolveApiScopedInstance({
@@ -1506,10 +1556,16 @@ export const listAdminDataSubjectRightsCasesHandler = async (request: Request): 
 
 export const getAdminDataSubjectRightsCaseHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    return withAuthenticatedUser(request, async ({ user }) => {
-      if (!isAdminRole(user.roles)) {
-        return createApiError(403, 'forbidden', 'Keine Berechtigung für DSR-Transparenz.', getWorkspaceContext().requestId);
+    return withAuthenticatedUser(request, async (ctx) => {
+      const authorizationError = await authorizeDsrApiAction(
+        ctx,
+        DSR_READ_ACTION,
+        'Keine Berechtigung für DSR-Transparenz.'
+      );
+      if (authorizationError) {
+        return authorizationError;
       }
+      const { user } = ctx;
 
       const instanceScope = resolveApiScopedInstance({
         request,

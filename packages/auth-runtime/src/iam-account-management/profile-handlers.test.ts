@@ -410,7 +410,7 @@ describe('profile handlers', () => {
     });
   });
 
-  it('serves a platform self-service profile directly from the session context', async () => {
+  it('serves a platform self-service profile directly from the session context only for the root role', async () => {
     const response = await getMyProfileInternal(
       new Request('https://platform.example.test/api/v1/iam/users/me/profile'),
       {
@@ -421,7 +421,7 @@ describe('profile handlers', () => {
           firstName: 'Platform',
           lastName: 'Admin',
           displayName: '  ',
-          roles: ['system_admin', 'system_admin', 'ignored_role'],
+          roles: ['instance_registry_admin', 'system_admin', 'ignored_role'],
         },
       } as const
     );
@@ -442,10 +442,10 @@ describe('profile handlers', () => {
     });
     expect(payload.data.roles).toEqual([
       {
-        roleId: 'platform:system_admin',
-        roleKey: 'system_admin',
-        roleName: 'system_admin',
-        roleLevel: 0,
+        roleId: 'platform:instance_registry_admin',
+        roleKey: 'instance_registry_admin',
+        roleName: 'instance_registry_admin',
+        roleLevel: 90,
       },
     ]);
     expect(state.loadMyProfileDetail).not.toHaveBeenCalled();

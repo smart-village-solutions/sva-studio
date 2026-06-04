@@ -153,7 +153,7 @@ describe('Sidebar', () => {
     expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
 
-  it('rendert die neuen Abschnittsüberschriften und das Benutzer-Untermenü für system_admin', () => {
+  it('rendert die neuen Abschnittsüberschriften und das Benutzer-Untermenü über explizite Admin-Permissions', () => {
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,
       user: {
@@ -161,6 +161,19 @@ describe('Sidebar', () => {
         name: 'Admin',
         roles: ['system_admin', 'instance_registry_admin'],
         instanceId: 'de-musterhausen',
+        permissionActions: [
+          'experimental.read',
+          'iam.user.read',
+          'iam.user.write',
+          'iam.role.read',
+          'iam.role.write',
+          'iam.org.read',
+          'iam.org.write',
+          'iam.legalText.read',
+          'iam.governance.read',
+          'iam.monitoring.read',
+          'integration.manage',
+        ],
       },
       isAuthenticated: true,
     });
@@ -241,6 +254,7 @@ describe('Sidebar', () => {
         id: 'user-1',
         name: 'Admin',
         roles: ['system_admin', 'instance_registry_admin'],
+        permissionActions: ['iam.user.read', 'iam.role.read', 'iam.org.read'],
       },
       isAuthenticated: true,
     });
@@ -267,13 +281,41 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
   });
 
-  it('rendert Schnittstellen fuer interface_manager ohne System-Untermenue', () => {
+  it('zeigt Rollen auch fuer Plattform-Admins ohne Tenant-Role-Permissions an', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-1',
+        name: 'Platform Admin',
+        roles: ['instance_registry_admin'],
+        permissionActions: [],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: null,
+      permissionActions: [],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    const usersToggle = screen.getByRole('button', { name: 'Benutzer' });
+    fireEvent.click(usersToggle);
+
+    expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
+    expect(screen.queryByRole('link', { name: 'Gruppen' })).toBeNull();
+  });
+
+  it('rendert Schnittstellen mit integration.manage auch ohne Legacy-Rollenname', () => {
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,
       user: {
         id: 'user-1',
         name: 'Interface Manager',
-        roles: ['interface_manager'],
+        roles: ['custom_operator'],
+        permissionActions: ['integration.manage', 'experimental.read'],
       },
       isAuthenticated: true,
     });
@@ -341,7 +383,16 @@ describe('Sidebar', () => {
   });
 
   it('rendert Hilfe, Support und Lizenz innerhalb der Bereichsnavigation', () => {
-    useAuthMock.mockReturnValue(unauthenticatedAuthState);
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'experimental-user',
+        name: 'Experimental User',
+        roles: ['editor'],
+        permissionActions: ['experimental.read'],
+      },
+      isAuthenticated: true,
+    });
 
     render(<Sidebar />);
 
@@ -367,6 +418,15 @@ describe('Sidebar', () => {
         name: 'Admin',
         roles: ['system_admin', 'instance_registry_admin'],
         instanceId: 'de-musterhausen',
+        permissionActions: [
+          'iam.user.read',
+          'iam.user.write',
+          'iam.role.read',
+          'iam.role.write',
+          'iam.org.read',
+          'iam.org.write',
+          'iam.governance.read',
+        ],
       },
       isAuthenticated: true,
     });
@@ -412,6 +472,7 @@ describe('Sidebar', () => {
         id: 'user-1',
         name: 'Admin',
         roles: ['system_admin'],
+        permissionActions: ['iam.user.read'],
       },
       isAuthenticated: true,
     });
@@ -600,6 +661,7 @@ describe('Sidebar', () => {
         id: 'user-3',
         name: 'App Reader',
         roles: ['editor'],
+        permissionActions: ['experimental.read'],
       },
       isAuthenticated: true,
     });
@@ -631,6 +693,7 @@ describe('Sidebar', () => {
         id: 'user-4',
         name: 'Cockpit Reader',
         roles: ['editor'],
+        permissionActions: ['experimental.read'],
       },
       isAuthenticated: true,
     });
@@ -662,6 +725,7 @@ describe('Sidebar', () => {
         id: 'user-5',
         name: 'Restricted User',
         roles: ['editor'],
+        permissionActions: ['experimental.read'],
       },
       isAuthenticated: true,
     });
@@ -684,6 +748,76 @@ describe('Sidebar', () => {
     expect(screen.queryByText('Anwendungen')).toBeNull();
     expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
+  });
+
+  it('zeigt experimentelle Footer-Links auch ohne Fachrechte, aber keine fachlichen Experimental-Menues', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-6',
+        name: 'Experimental Only',
+        roles: ['editor'],
+        permissionActions: ['experimental.read'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'read_only',
+        canRead: true,
+        canCreate: false,
+        canUpdate: false,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['news.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(HELP_DISCUSSIONS_URL);
+    expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(SUPPORT_ISSUES_URL);
+    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(LICENSE_ISSUE_URL);
+    expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Monitoring' })).toBeNull();
+  });
+
+  it('versteckt experimentelle Navigation ohne experimental.read trotz vorhandener Fachrechte', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-7',
+        name: 'No Experimental',
+        roles: ['editor'],
+        permissionActions: ['iam.monitoring.read'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'read_only',
+        canRead: true,
+        canCreate: false,
+        canUpdate: false,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['app.read', 'cockpit.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Monitoring' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Hilfe' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Support' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Lizenz' })).toBeNull();
   });
 
   it('rendert benutzerdefinierte Plugin-Navigation innerhalb der Datenverwaltung und markiert sie als aktiv', () => {

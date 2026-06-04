@@ -7,6 +7,7 @@ import {
 } from './redis-permission-snapshot.server.js';
 import type { EffectivePermissionsResolution } from './shared.js';
 import { type PermissionLookupInput, loadPermissionsFromDb } from './permission-store.queries.js';
+import { filterTenantEffectivePermissions } from './root-only-permissions.js';
 import {
   buildRequestContext,
   cacheLogger,
@@ -68,6 +69,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
   const lookup = permissionSnapshotCache.get(snapshotLookupKey);
 
   if (lookup.status === 'hit' && lookup.snapshot) {
+    const permissions = filterTenantEffectivePermissions(lookup.snapshot.permissions);
     cacheMetricsState.lookups += 1;
     iamCacheLookupCounter.add(1, { hit: true });
     cacheLogger.debug('Permission snapshot cache lookup', {
@@ -79,7 +81,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
     });
     return {
       ok: true,
-      permissions: lookup.snapshot!.permissions,
+      permissions,
       cacheStatus: 'hit',
       snapshotVersion: lookup.snapshot?.snapshotVersion,
     };
@@ -108,10 +110,11 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
   );
 
   if (redisLookup.hit) {
+    const permissions = filterTenantEffectivePermissions(redisLookup.permissions);
     cacheMetricsState.lookups += 1;
     const snapshot = permissionSnapshotCache.set(
       snapshotLookupKey,
-      redisLookup.permissions,
+      permissions,
       Date.now(),
       redisLookup.version
     );
@@ -124,7 +127,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
     });
     return {
       ok: true,
-      permissions: redisLookup.permissions,
+      permissions,
       cacheStatus: 'hit',
       snapshotVersion: snapshot.snapshotVersion,
     };
@@ -152,7 +155,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
   });
 
   try {
-    const permissions = await loadPermissionsFromDb(input);
+    const permissions = filterTenantEffectivePermissions(await loadPermissionsFromDb(input));
     const redisWrite = await setRedisPermissionSnapshot(redisKey, permissions);
     if (!redisWrite.ok) {
       logger.error('Redis permission snapshot write failed after recompute', {

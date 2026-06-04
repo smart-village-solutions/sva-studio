@@ -387,6 +387,24 @@ describe('meHandler', () => {
     expect(payload.user.permissionActions).toEqual(['valid.read']);
   });
 
+  it('filters root-only permission actions from tenant auth me responses fail-closed', async () => {
+    const { meHandler } = await import('./auth-route-handlers.js');
+
+    mocks.resolveEffectivePermissions.mockResolvedValueOnce({
+      ok: true,
+      permissions: [
+        { action: 'instance.registry.manage', effect: 'allow' },
+        { action: 'events.read', effect: 'allow' },
+      ] satisfies EffectivePermission[],
+      cacheStatus: 'hit',
+      snapshotVersion: 'snap-1',
+    });
+
+    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+    const payload = (await response.json()) as { user: { permissionActions: string[] } };
+    expect(payload.user.permissionActions).toEqual(['events.read']);
+  });
+
   it('skips permissions with unknown or absent effect values', async () => {
     const { meHandler } = await import('./auth-route-handlers.js');
 

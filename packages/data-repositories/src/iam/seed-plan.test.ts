@@ -4,7 +4,7 @@ import { getPersonaSeed, iamSeedPlan } from './seed-plan.js';
 
 describe('iam seed plan', () => {
   it('keeps persona identifiers stable and unique', () => {
-    expect(iamSeedPlan.personas).toHaveLength(8);
+    expect(iamSeedPlan.personas).toHaveLength(7);
     expect(new Set(iamSeedPlan.personas.map((persona) => persona.roleSlug)).size).toBe(iamSeedPlan.personas.length);
     expect(new Set(iamSeedPlan.personas.map((persona) => persona.keycloakSubject)).size).toBe(iamSeedPlan.personas.length);
   });
@@ -18,6 +18,9 @@ describe('iam seed plan', () => {
     );
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'media.read')?.resourceType).toBe('media');
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'app.read')?.resourceType).toBe('app');
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'experimental.read')?.resourceType).toBe(
+      'experimental'
+    );
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'cockpit.read')?.resourceType).toBe(
       'cockpit'
     );
@@ -29,6 +32,7 @@ describe('iam seed plan', () => {
       roleSlug: 'editor',
       roleLevel: 30,
       permissionKeys: expect.arrayContaining([
+        'experimental.read',
         'app.read',
         'cockpit.read',
         'content.create',
@@ -40,9 +44,15 @@ describe('iam seed plan', () => {
         'media.reference.manage',
       ]),
     });
-    expect(getPersonaSeed('instance_registry_admin').permissionKeys).toEqual(
-      expect.arrayContaining(['instance.registry.manage', 'feature.toggle', 'integration.manage'])
+    expect(() => getPersonaSeed('instance_registry_admin' as never)).toThrow(
+      'Unknown persona key: instance_registry_admin'
     );
     expect(() => getPersonaSeed('unknown' as never)).toThrow('Unknown persona key: unknown');
+  });
+
+  it('keeps instance.registry.manage out of tenant bootstrap personas', () => {
+    expect(iamSeedPlan.personas.every((persona) => !persona.permissionKeys.includes('instance.registry.manage'))).toBe(
+      true
+    );
   });
 });

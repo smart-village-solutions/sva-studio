@@ -21,7 +21,11 @@ export type LegalTextsRequestContextDeps<TContext> = {
 
 export type LegalTextsAdminActorResolverDeps<TContext> = {
   readonly ensureFeature: (requestId?: string) => Response | null | undefined;
-  readonly requireAdminRoles: (ctx: TContext, requestId?: string) => Response | null | undefined;
+  readonly requireAdminAccess: (
+    ctx: TContext,
+    requestId: string | undefined,
+    options: { requireActorAccountId?: boolean }
+  ) => Promise<Response | null | undefined> | Response | null | undefined;
   readonly resolveActorInfo: (
     request: Request,
     ctx: TContext
@@ -78,7 +82,7 @@ export const createLegalTextsAdminActorResolver =
       return { error: featureCheck };
     }
 
-    const roleCheck = deps.requireAdminRoles(ctx, requestContext.requestId);
+    const roleCheck = await deps.requireAdminAccess(ctx, requestContext.requestId, options);
     if (roleCheck) {
       return { error: roleCheck };
     }

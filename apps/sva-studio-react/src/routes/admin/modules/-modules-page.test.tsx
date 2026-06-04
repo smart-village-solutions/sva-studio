@@ -76,6 +76,7 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   assignModule: vi.fn().mockResolvedValue(true),
   revokeModule: vi.fn().mockResolvedValue(true),
   seedIamBaseline: vi.fn().mockResolvedValue(true),
+  bootstrapAdminStructure: vi.fn().mockResolvedValue(true),
   ...overrides,
 });
 
@@ -107,12 +108,14 @@ describe('ModulesPage', () => {
     const assignModule = vi.fn().mockResolvedValue(true);
     const revokeModule = vi.fn().mockResolvedValue(true);
     const seedIamBaseline = vi.fn().mockResolvedValue(true);
+    const bootstrapAdminStructure = vi.fn().mockResolvedValue(true);
     useInstancesMock.mockReturnValue(
       createInstancesApiState({
         loadInstance,
         assignModule,
         revokeModule,
         seedIamBaseline,
+        bootstrapAdminStructure,
       })
     );
 
@@ -133,6 +136,10 @@ describe('ModulesPage', () => {
     expect(screen.getByText('waste-management')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur initialisieren' }));
+    expect(screen.getByRole('dialog', { name: 'Admin-Struktur wirklich initialisieren?' })).toBeTruthy();
+    expect(bootstrapAdminStructure).not.toHaveBeenCalled();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Admin-Struktur initialisieren' })[1]!);
     fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
     expect(screen.getByRole('dialog', { name: 'Modul wirklich entziehen?' })).toBeTruthy();
     expect(revokeModule).not.toHaveBeenCalled();
@@ -140,6 +147,7 @@ describe('ModulesPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]!);
 
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');
+    expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', ['news']);
     expect(revokeModule).toHaveBeenCalledWith('demo', 'news');
     expect(assignModule).toHaveBeenCalledWith('demo', 'events');
   });

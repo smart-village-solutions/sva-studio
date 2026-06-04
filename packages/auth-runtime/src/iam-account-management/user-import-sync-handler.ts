@@ -29,11 +29,11 @@ import {
   iamUserOperationsCounter,
   logger,
   requireRoles,
-  resolveActorInfo,
   resolveIdentityProviderForInstance,
   trackKeycloakCall,
   withInstanceScopedDb,
 } from './shared.js';
+import { resolveMutationActorWithAccount } from './mutation-request-context.shared.js';
 
 const KEYCLOAK_PAGE_SIZE = 100;
 const isPlatformIdentityProviderConfigurationError = (error: unknown): boolean =>
@@ -196,47 +196,19 @@ const listAllKeycloakUsers = async (
   }
 };
 
-const resolveSyncActor = async (
+export const resolveSyncActor = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<{ actor: ActorInfo } | { error: Response }> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return { error: featureCheck };
-  }
-
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return { error: roleCheck };
-  }
-
-  const actorResolution = await resolveActorInfo(request, ctx, {
-    requireActorMembership: true,
+  const actorResolution = await resolveMutationActorWithAccount(request, ctx, {
+    allowedRoles: ADMIN_ROLES,
+    requiredPermissionAction: 'iam.user.write',
+    feature: 'iam_admin',
+    scope: 'write',
     provisionMissingActorMembership: true,
   });
-  if ('error' in actorResolution) {
-    return actorResolution;
-  }
-  if (!actorResolution.actor.actorAccountId) {
-    return {
-      error: createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId),
-    };
-  }
-
-  const csrfError = validateCsrf(request, actorResolution.actor.requestId);
-  if (csrfError) {
-    return { error: csrfError };
-  }
-
-  const rateLimit = consumeRateLimit({
-    instanceId: actorResolution.actor.instanceId,
-    actorKeycloakSubject: ctx.user.id,
-    scope: 'write',
-    requestId: actorResolution.actor.requestId,
-  });
-  if (rateLimit) {
-    return { error: rateLimit };
+  if ('response' in actorResolution) {
+    return { error: actorResolution.response };
   }
 
   return { actor: actorResolution.actor };

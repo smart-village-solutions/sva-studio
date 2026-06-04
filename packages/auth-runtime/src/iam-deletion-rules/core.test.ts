@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({
   loadTenantDeletionRulesOverview: vi.fn(),
   loadMyDeletionRulesOverview: vi.fn(),
   validateCsrf: vi.fn(() => null),
+  authorizeInstancePermissionForUser: vi.fn(),
   queries: [] as string[],
   createApiError: vi.fn(
     (status: number, error: string, message: string, requestId?: string) =>
@@ -70,10 +71,22 @@ vi.mock('@sva/iam-governance', () => ({
   loadMyDeletionRulesOverview: state.loadMyDeletionRulesOverview,
 }));
 
+vi.mock('../instance-permission-authorization.js', () => ({
+  authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode: (error: string) =>
+    error === 'missing_instance'
+      ? 'invalid_instance_id'
+      : error === 'invalid_action'
+        ? 'invalid_request'
+        : error === 'database_unavailable'
+          ? 'database_unavailable'
+          : 'forbidden',
+}));
+
 const defaultUser: SessionUser = {
   id: 'kc-user-1',
   instanceId: 'de-test',
-  roles: ['iam_admin'],
+  roles: ['legacy-role'],
 };
 
 const adminOverview: IamTenantDeletionRulesOverview = {
@@ -127,9 +140,10 @@ describe('iam deletion rules runtime handlers', () => {
     );
     state.loadTenantDeletionRulesOverview.mockResolvedValue(adminOverview);
     state.loadMyDeletionRulesOverview.mockResolvedValue(myOverview);
+    state.authorizeInstancePermissionForUser.mockResolvedValue({ ok: true, permissions: [] });
   });
 
-  it('returns admin deletion rules for a tenant-scoped iam admin', async () => {
+  it('returns admin deletion rules for a tenant-scoped custom permission actor', async () => {
     const { deletionRulesAdminHandler } = await import('./core.js');
 
     const response = await deletionRulesAdminHandler(
@@ -144,15 +158,15 @@ describe('iam deletion rules runtime handlers', () => {
     });
   });
 
-  it('accepts the legacy admin alias for tenant deletion rules', async () => {
+  it('accepts custom permission grants without legacy admin roles for tenant deletion rules', async () => {
     const { deletionRulesAdminHandler } = await import('./core.js');
     state.withAuthenticatedUser.mockImplementationOnce(
       async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
         handler({
           user: {
-            id: 'legacy-admin',
+            id: 'custom-admin',
             instanceId: 'de-test',
-            roles: ['admin'],
+            roles: ['custom_role'],
           },
         })
     );

@@ -1,6 +1,5 @@
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
 import { getGovernanceCase } from '@sva/iam-governance';
-import { governanceReadRoles, hasRequiredGovernanceRole } from '@sva/iam-governance/governance-workflow-policy';
 
 import { createApiError, asApiItem } from '../iam-account-management/api-helpers.js';
 import { withAuthenticatedUser } from '../middleware.js';
@@ -9,6 +8,10 @@ import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { buildLogContext } from '../log-context.js';
 import { isUuid, readString } from '../shared/input-readers.js';
 import { readPathSegment } from '../shared/request-helpers.js';
+import {
+  authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode,
+} from '../instance-permission-authorization.js';
 
 const logger = createSdkLogger({ component: 'iam-governance', level: 'info' });
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
@@ -23,10 +26,20 @@ const buildGovernanceLogContext = (instanceId?: string) =>
 
 export const getGovernanceCaseHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    return withAuthenticatedUser(request, async ({ user }) => {
-      if (!hasRequiredGovernanceRole(user.roles, governanceReadRoles)) {
-        return createApiError(403, 'forbidden', 'Keine Berechtigung für Governance-Transparenz.', getWorkspaceContext().requestId);
+    return withAuthenticatedUser(request, async (ctx) => {
+      const authorization = await authorizeInstancePermissionForUser({
+        ctx,
+        action: 'iam.governance.read',
+      });
+      if (!authorization.ok) {
+        return createApiError(
+          authorization.status,
+          toInstancePermissionApiErrorCode(authorization.error),
+          'Keine Berechtigung für Governance-Transparenz.',
+          getWorkspaceContext().requestId
+        );
       }
+      const { user } = ctx;
 
       const url = new URL(request.url);
       const instanceId = readString(url.searchParams.get('instanceId')) ?? user.instanceId;

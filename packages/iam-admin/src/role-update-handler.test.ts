@@ -82,6 +82,7 @@ const createDeps = (
     resolveRoleMutationActor: vi.fn(async () => ({ actor })),
     sanitizeRoleErrorMessage: vi.fn((error) => (error instanceof Error ? error.message : String(error))),
     trackKeycloakCall: vi.fn(async (_operation, work) => work()),
+    validateRequestedPermissions: vi.fn(async () => null),
     ...overrides,
   }) satisfies UpdateRoleHandlerDeps<
     typeof payload,
@@ -209,5 +210,23 @@ describe('createUpdateRoleHandlerInternal', () => {
     expect(response).toBe(guardResponse);
     expect(deps.parseUpdateRoleBody).not.toHaveBeenCalled();
     expect(identityProvider.provider.updateRole).not.toHaveBeenCalled();
+  });
+
+  it('returns invalid_request before Keycloak when tenant permissions are not manageable', async () => {
+    const invalidResponse = createJsonResponse(400, {
+      error: { code: 'invalid_request', message: 'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.' },
+      requestId: 'req-update-role',
+    });
+    const deps = createDeps({
+      validateRequestedPermissions: vi.fn(async () => invalidResponse),
+    });
+    const handler = createUpdateRoleHandlerInternal(deps);
+
+    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
+
+    expect(response).toBe(invalidResponse);
+    expect(deps.requireRoleIdentityProvider).not.toHaveBeenCalled();
+    expect(identityProvider.provider.updateRole).not.toHaveBeenCalled();
+    expect(deps.persistUpdatedRole).not.toHaveBeenCalled();
   });
 });

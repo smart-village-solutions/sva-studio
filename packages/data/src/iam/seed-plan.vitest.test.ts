@@ -20,6 +20,19 @@ const granularContentPermissions = [
 ] as const;
 
 const pluginContentPermissions = [
+  'iam.legalText.read',
+  'iam.legalText.write',
+  'iam.governance.read',
+  'iam.governance.write',
+  'iam.governance.export',
+  'iam.dsr.read',
+  'iam.dsr.write',
+  'iam.dsr.export',
+  'iam.deletionRules.read',
+  'iam.deletionRules.write',
+  'iam.monitoring.read',
+  'iam.monitoring.write',
+  'experimental.read',
   'app.read',
   'cockpit.read',
   'media.read',
@@ -65,29 +78,44 @@ describe('iamSeedPlan content permissions', () => {
 
   it('assigns granular content permissions to content personas', () => {
     expect(getPersonaSeed('app_manager').permissionKeys).toEqual(
-      expect.arrayContaining(['app.read', 'cockpit.read'])
+      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
+    );
+    expect(getPersonaSeed('app_manager').permissionKeys).toEqual(
+      expect.arrayContaining([
+        'iam.legalText.read',
+        'iam.legalText.write',
+        'iam.monitoring.read',
+        'iam.monitoring.write',
+        'integration.manage',
+      ])
     );
     expect(getPersonaSeed('app_manager').permissionKeys).toContain('content.readHistory');
     expect(getPersonaSeed('app_manager').permissionKeys).toContain('media.read');
     expect(getPersonaSeed('interface_manager').permissionKeys).toContain('content.readHistory');
     expect(getPersonaSeed('interface_manager').permissionKeys).toEqual(
-      expect.arrayContaining(['app.read', 'cockpit.read'])
+      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
     );
     expect(getPersonaSeed('feature_manager').permissionKeys).toEqual(
       expect.arrayContaining(['content.updateMetadata', 'content.updatePayload', 'content.changeStatus', 'media.reference.manage'])
     );
-    expect(getPersonaSeed('designer').permissionKeys).toEqual(expect.arrayContaining(['app.read', 'cockpit.read']));
+    expect(getPersonaSeed('designer').permissionKeys).toEqual(
+      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
+    );
     expect(getPersonaSeed('designer').permissionKeys).toEqual(
       expect.arrayContaining(['content.updateMetadata', 'content.updatePayload', 'media.update'])
     );
-    expect(getPersonaSeed('editor').permissionKeys).toEqual(expect.arrayContaining(['app.read', 'cockpit.read']));
+    expect(getPersonaSeed('editor').permissionKeys).toEqual(
+      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
+    );
     expect(getPersonaSeed('editor').permissionKeys).toEqual(
       expect.arrayContaining(['content.create', 'content.changeStatus', 'content.delete', 'media.create', 'media.reference.manage'])
     );
     expect(getPersonaSeed('editor').permissionKeys).toEqual(
       expect.arrayContaining(['news.create', 'news.update', 'events.create', 'events.update', 'poi.create', 'poi.update'])
     );
-    expect(getPersonaSeed('moderator').permissionKeys).toEqual(expect.arrayContaining(['app.read', 'cockpit.read']));
+    expect(getPersonaSeed('moderator').permissionKeys).toEqual(
+      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
+    );
     expect(getPersonaSeed('moderator').permissionKeys).toEqual(
       expect.arrayContaining(['content.publish', 'content.archive', 'content.restore', 'content.manageRevisions', 'media.read'])
     );
@@ -104,27 +132,28 @@ describe('iamSeedPlan content permissions', () => {
     expect(getPersonaSeed('moderator').permissionKeys).not.toContain('events.update');
   });
 
-  it('keeps the SQL seed aligned with the canonical instance_registry_admin persona', () => {
-    expect(personaSeedSql).toContain("'instance_registry_admin'");
-    expect(personaSeedSql).toContain("'50888888-8888-8888-8888-888888888888'");
-    expect(personaSeedSql).toContain("'seed:instance_registry_admin'");
-    expect(personaSeedSql).toContain(
-      "('de-musterhausen', '50888888-8888-8888-8888-888888888888', 'member')"
-    );
-    expect(personaSeedSql).toContain(
+  it('does not seed a tenant-side instance_registry_admin persona into 0001 anymore', () => {
+    expect(personaSeedSql).not.toContain("'seed:instance_registry_admin'");
+    expect(personaSeedSql).not.toContain(
       "('30188888-8888-8888-8888-888888888888', 'de-musterhausen', 'instance_registry_admin'"
     );
-    expect(personaSeedSql).toContain(
+    expect(personaSeedSql).not.toContain(
+      "('de-musterhausen', '50888888-8888-8888-8888-888888888888', 'member')"
+    );
+    expect(personaSeedSql).not.toContain(
       "('de-musterhausen', '50888888-8888-8888-8888-888888888888', '30188888-8888-8888-8888-888888888888')"
     );
-    expect(personaSeedSql).toContain(
+    expect(personaSeedSql).not.toContain(
       "('instance_registry_admin', 'instance.registry.manage')"
     );
-    expect(personaSeedSql).toContain(
+    expect(personaSeedSql).not.toContain(
       "('instance_registry_admin', 'feature.toggle')"
     );
-    expect(personaSeedSql).toContain(
+    expect(personaSeedSql).not.toContain(
       "('instance_registry_admin', 'integration.manage')"
+    );
+    expect(personaSeedSql).toContain(
+      "('app_manager', 'experimental.read')"
     );
     expect(personaSeedSql).toContain(
       "('app_manager', 'app.read')"

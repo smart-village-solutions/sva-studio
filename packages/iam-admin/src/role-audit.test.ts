@@ -142,10 +142,10 @@ describe('role-audit', () => {
     expect(
       mapRoleListItem({
         id: 'role-system',
-        role_key: 'system.role',
-        role_name: 'system.role',
+        role_key: 'system_admin',
+        role_name: 'system_admin',
         display_name: null,
-        external_role_name: null,
+        external_role_name: 'system_admin',
         managed_by: 'studio',
         description: null,
         is_system_role: true,
@@ -157,8 +157,8 @@ describe('role-audit', () => {
         permission_rows: null,
       })
     ).toMatchObject({
-      roleName: 'system.role',
-      externalRoleName: 'system.role',
+      roleName: 'system_admin',
+      externalRoleName: 'system_admin',
       editability: 'read_only',
       diagnostics: [{ code: 'system_role' }],
       permissions: [],
@@ -216,6 +216,30 @@ describe('role-audit', () => {
     ).toMatchObject({
       editability: 'read_only',
       diagnostics: [{ code: 'external_managed' }],
+    });
+
+    expect(
+      mapRoleListItem({
+        id: 'role-app-manager',
+        role_key: 'app_manager',
+        role_name: 'app_manager',
+        display_name: 'App Manager',
+        external_role_name: 'app_manager',
+        managed_by: 'studio',
+        description: 'Legacy bootstrap role',
+        is_system_role: true,
+        role_level: 80,
+        member_count: 2,
+        sync_state: 'ready',
+        last_synced_at: null,
+        last_error_code: null,
+        permission_rows: [],
+      })
+    ).toMatchObject({
+      roleName: 'App Manager',
+      isSystemRole: false,
+      editability: 'editable',
+      diagnostics: undefined,
     });
   });
 

@@ -5,7 +5,7 @@ import { jsonResponse } from '../db.js';
 import { readString } from '../shared/input-readers.js';
 
 import { asApiItem, asApiList, createApiError, readPage } from './api-helpers.js';
-import { ADMIN_ROLES, PLATFORM_RATE_LIMIT_INSTANCE_ID } from './constants.js';
+import { PLATFORM_RATE_LIMIT_INSTANCE_ID, ROOT_ADMIN_ROLES } from './constants.js';
 import { validateCsrf } from './csrf.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
 import { listPlatformRoles, listPlatformUsers, runPlatformRoleReconcile } from './platform-iam.js';
@@ -38,6 +38,18 @@ const platformIdentityProviderConfigurationError = (requestId?: string): Respons
     }
   );
 
+const requirePlatformAdminAccess = (
+  ctx: AuthenticatedRequestContext,
+  requestId?: string
+): Response | null => {
+  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestId);
+  if (featureCheck) {
+    return featureCheck;
+  }
+
+  return requireRoles(ctx, ROOT_ADMIN_ROLES, requestId);
+};
+
 export const listPlatformUsersInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
@@ -49,11 +61,7 @@ export const listPlatformUsersInternal = async (
   const search = readString(url.searchParams.get('search'));
   const requestContext = getWorkspaceContext();
 
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+  const roleCheck = requirePlatformAdminAccess(ctx, requestContext.requestId);
   if (roleCheck) {
     return roleCheck;
   }
@@ -107,6 +115,11 @@ export const listPlatformRolesInternal = async (
   requestId?: string,
   traceId?: string
 ): Promise<Response> => {
+  const roleCheck = requirePlatformAdminAccess(ctx, requestId);
+  if (roleCheck) {
+    return roleCheck;
+  }
+
   const rateLimit = consumeRateLimit({
     instanceId: PLATFORM_RATE_LIMIT_INSTANCE_ID,
     actorKeycloakSubject: ctx.user.id,
@@ -141,6 +154,11 @@ export const reconcilePlatformRolesInternal = async (
   requestId?: string,
   traceId?: string
 ): Promise<Response> => {
+  const roleCheck = requirePlatformAdminAccess(ctx, requestId);
+  if (roleCheck) {
+    return roleCheck;
+  }
+
   const csrfError = validateCsrf(request, requestId);
   if (csrfError) {
     return csrfError;

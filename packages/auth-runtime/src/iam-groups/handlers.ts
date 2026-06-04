@@ -4,6 +4,10 @@ import { createGroupMutationHandlers, createGroupReadHandlers } from '@sva/iam-a
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import { jsonResponse } from '../db.js';
+import {
+  authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode,
+} from '../instance-permission-authorization.js';
 import { isUuid } from '../shared/input-readers.js';
 import {
   asApiItem,
@@ -33,6 +37,17 @@ const groupReadHandlers = createGroupReadHandlers({
   isUuid,
   jsonResponse,
   logger,
+  authorizeGroupReadAccess: (_request, ctx, requestId) =>
+    authorizeInstancePermissionForUser({ ctx, action: 'iam.role.read' }).then((result) =>
+      result.ok
+        ? null
+        : createApiError(
+            result.status,
+            toInstancePermissionApiErrorCode(result.error),
+            result.message,
+            requestId
+          )
+    ),
   readPage,
   readPathSegment,
   requireRoles,
@@ -48,6 +63,17 @@ const groupMutationHandlers = createGroupMutationHandlers({
   isUuid,
   jsonResponse,
   logger,
+  authorizeGroupMutationAccess: (_request, ctx, requestId) =>
+    authorizeInstancePermissionForUser({ ctx, action: 'iam.role.write' }).then((result) =>
+      result.ok
+        ? null
+        : createApiError(
+            result.status,
+            toInstancePermissionApiErrorCode(result.error),
+            result.message,
+            requestId
+          )
+    ),
   notifyPermissionInvalidation,
   parseRequestBody,
   publishGroupEvent,

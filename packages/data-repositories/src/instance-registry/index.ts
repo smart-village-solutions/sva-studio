@@ -198,7 +198,15 @@ export type CreateKeycloakProvisioningRunResult = {
 export type InstanceModuleIamContractRecord = {
   readonly moduleId: string;
   readonly permissionIds: readonly string[];
-  readonly systemRoles: readonly {
+  readonly tenantBootstrapRoles?: readonly {
+    readonly roleName: string;
+    readonly permissionIds: readonly string[];
+  }[];
+  readonly rootSystemRoles?: readonly {
+    readonly roleName: string;
+    readonly permissionIds: readonly string[];
+  }[];
+  readonly systemRoles?: readonly {
     readonly roleName: string;
     readonly permissionIds: readonly string[];
   }[];
@@ -561,16 +569,13 @@ WHERE instance_id = $1
       compareAlphabetically
     );
     const rolePermissionPairs = contracts.flatMap((contract) =>
-      contract.systemRoles.flatMap((role) =>
+      (contract.tenantBootstrapRoles ?? contract.systemRoles ?? []).flatMap((role) =>
         role.permissionIds.map((permissionId) => ({
           moduleId: contract.moduleId,
           roleName: role.roleName,
           permissionId,
         }))
       )
-    );
-    const managedRoleNames = Array.from(new Set(rolePermissionPairs.map((pair) => pair.roleName))).sort(
-      compareAlphabetically
     );
 
     for (const permissionKey of permissionKeys) {
@@ -610,54 +615,6 @@ SET
   updated_at = NOW();
 `,
           [instanceId, permissionKey, `Modulberechtigung ${permissionKey}`]
-        )
-      );
-    }
-
-    for (const roleName of managedRoleNames) {
-      await executor.execute(
-        statement(
-          `
-INSERT INTO iam.roles (
-  id,
-  instance_id,
-  role_key,
-  role_name,
-  display_name,
-  external_role_name,
-  description,
-  is_system_role,
-  role_level,
-  managed_by,
-  sync_state,
-  last_synced_at,
-  last_error_code
-)
-VALUES (
-  gen_random_uuid(),
-  $1,
-  $2,
-  $2,
-  $2,
-  $2,
-  $3,
-  TRUE,
-  0,
-  'studio',
-  'pending',
-  NOW(),
-  NULL
-)
-ON CONFLICT (instance_id, role_key) DO UPDATE
-SET
-  role_name = EXCLUDED.role_name,
-  display_name = EXCLUDED.display_name,
-  external_role_name = EXCLUDED.external_role_name,
-  description = EXCLUDED.description,
-  is_system_role = TRUE,
-  updated_at = NOW();
-`,
-          [instanceId, roleName, `Systemrolle fuer Modulzuweisungen (${roleName})`]
         )
       );
     }

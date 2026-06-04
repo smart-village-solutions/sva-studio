@@ -24,6 +24,12 @@ Dieses Runbook beschreibt den operativen Umgang mit der kanonischen Instanz-Modu
 3. Modul in `Verfügbare Module` auswählen.
 4. `Zuweisen` auslösen.
 
+Alternativ:
+
+1. Instanzdetail unter `/admin/instances/$instanceId` öffnen.
+2. Tab `Module` wählen.
+3. Das gewünschte Modul im Bereich `Verfügbare Module` zuweisen.
+
 Erwartetes Ergebnis:
 
 - die Instanz erhält den Eintrag in `iam.instance_modules`
@@ -37,6 +43,8 @@ Erwartetes Ergebnis:
 3. Im zugewiesenen Modul `Entziehen` auslösen.
 4. die Bestätigung `REVOKE` explizit abschließen.
 
+Alternativ kann derselbe Entzug direkt im Tab `Module` der Instanz-Detailseite ausgelöst werden.
+
 Erwartetes Ergebnis:
 
 - der Eintrag in `iam.instance_modules` wird entfernt
@@ -48,7 +56,7 @@ Erwartetes Ergebnis:
 Wenn die Detailansicht im Instanz-Cockpit oder im Modulbereich einen degradierten Modul-IAM-Befund zeigt:
 
 1. Instanzdetail unter `/admin/instances/$instanceId` öffnen.
-2. im Bereich `IAM-Basis zugewiesener Module` die Aktion `IAM-Basis neu aufbauen` ausführen.
+2. im Tab `Module` die Aktion `IAM-Basis neu aufbauen` ausführen.
 
 Erwartetes Ergebnis:
 
@@ -64,6 +72,7 @@ Erwartetes Ergebnis:
 ## Diagnose
 
 - `/admin/instances/$instanceId` zeigt `IAM-Basis zugewiesener Module` als eigene Betriebsachse.
+- Der Tab `Module` in `/admin/instances/$instanceId` bietet denselben instanzgebundenen Root-Admin-Arbeitsbereich wie `/admin/modules`, aber ohne zusätzliche Instanzauswahl.
 - `/auth/me` liefert für Instanz-Sessions die kanonische Liste `assignedModules`.
 - Plugin-Routen prüfen diese Liste clientseitig fail-closed vor dem Rendern.
 

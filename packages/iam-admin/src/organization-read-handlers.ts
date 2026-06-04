@@ -58,6 +58,11 @@ export type OrganizationReadHandlerDeps<TFeatureFlags = unknown> = {
   readonly getWorkspaceContext: () => { readonly requestId?: string };
   readonly isUuid: (value: string) => boolean;
   readonly jsonResponse: (status: number, payload: unknown) => Response;
+  readonly authorizeOrganizationReadAccess?: (
+    request: Request,
+    ctx: OrganizationReadAuthenticatedRequestContext,
+    requestId?: string
+  ) => Promise<Response | null> | Response | null;
   readonly loadContextOptions: (
     client: QueryClient,
     input: { readonly instanceId: string; readonly accountId: string }
@@ -114,9 +119,11 @@ const prepareOrganizationReadRequest = async <TFeatureFlags>(
   if (featureCheck) {
     return { error: featureCheck };
   }
-  const roleCheck = deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return { error: roleCheck };
+  const accessCheck = deps.authorizeOrganizationReadAccess
+    ? await deps.authorizeOrganizationReadAccess(request, ctx, requestContext.requestId)
+    : deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+  if (accessCheck) {
+    return { error: accessCheck };
   }
 
   const actorResolution = await deps.resolveActorInfo(request, ctx, {

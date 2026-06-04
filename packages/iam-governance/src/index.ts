@@ -58,10 +58,6 @@ export {
   type DsrMaintenanceResult,
 } from './dsr-maintenance.js';
 export {
-  governanceComplianceExportRoles,
-  governanceReadRoles,
-  governanceWorkflowRoles,
-  hasRequiredGovernanceRole,
   readGovernanceCaseType,
   readGovernanceOperation,
   requiresPrivilegedGovernanceWorkflowRole,
@@ -93,7 +89,6 @@ export {
 export { hashLegalTextHtml, sanitizeLegalTextHtml } from './legal-text-html.js';
 export {
   consumeLegalConsentExportRateLimit,
-  hasLegalConsentExportPermission,
   loadConsentExportRecords,
 } from './legal-consent-export.js';
 export { createLegalTextSchema, updateLegalTextSchema } from './legal-text-schemas.js';

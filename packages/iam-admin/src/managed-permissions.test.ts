@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { getManagedPermissionMetadata, listManagedPermissionMetadata } from './managed-permissions.js';
+import {
+  getManagedPermissionMetadata,
+  isRootOnlyPermissionKey,
+  isTenantVisiblePermissionKey,
+  listManagedPermissionMetadata,
+} from './managed-permissions.js';
 
 describe('managed-permissions', () => {
   it('publishes the centrally managed waste-management permissions for admin flows', () => {
@@ -43,5 +48,11 @@ describe('managed-permissions', () => {
       moduleId: 'app',
       description: 'App-Link in der Sidebar anzeigen',
     });
+  });
+
+  it('distinguishes tenant-visible permissions from root-only permissions', () => {
+    expect(isRootOnlyPermissionKey('instance.registry.manage')).toBe(true);
+    expect(isTenantVisiblePermissionKey('instance.registry.manage')).toBe(false);
+    expect(isTenantVisiblePermissionKey('content.read')).toBe(true);
   });
 });

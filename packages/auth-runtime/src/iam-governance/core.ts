@@ -2,7 +2,6 @@ import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/s
 import {
   consumeLegalConsentExportRateLimit,
   createSelfServicePermissionChangeRequest,
-  hasLegalConsentExportPermission,
   listGovernanceCases,
   loadConsentExportRecords,
   MAX_SELF_SERVICE_PERMISSION_CHANGE_REQUEST_NOTE_LENGTH,
@@ -13,10 +12,6 @@ import {
 } from '@sva/iam-governance/governance-workflow-executor';
 import { buildGovernanceComplianceExport } from '@sva/iam-governance/governance-compliance-export';
 import {
-  governanceComplianceExportRoles,
-  governanceReadRoles,
-  governanceWorkflowRoles,
-  hasRequiredGovernanceRole,
   readGovernanceCaseType,
   requiresPrivilegedGovernanceWorkflowRole,
 } from '@sva/iam-governance/governance-workflow-policy';
@@ -29,7 +24,16 @@ import { buildLogContext } from '../log-context.js';
 import { governanceRequestSchema, type GovernanceRequestInput } from '../shared/schemas.js';
 import { asApiList, createApiError, readPage } from '../iam-account-management/api-helpers.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
+import {
+  authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode,
+} from '../instance-permission-authorization.js';
+import type { AuthenticatedRequestContext } from '../middleware.js';
 export { getGovernanceCaseHandler } from './detail-handler.js';
+
+const GOVERNANCE_READ_ACTION = 'iam.governance.read';
+const GOVERNANCE_WRITE_ACTION = 'iam.governance.write';
+const GOVERNANCE_EXPORT_ACTION = 'iam.governance.export';
 const logger = createSdkLogger({ component: 'iam-governance', level: 'info' });
 type GovernanceWorkflowRequest = GovernanceRequestInput;
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
@@ -92,6 +96,72 @@ const withInstanceScopedDb = async <T>(
   work: (client: QueryClient) => Promise<T>
 ): Promise<T> => withResolvedInstanceDb(resolvePool, instanceId, work);
 
+const authorizeGovernanceAction = async (
+  ctx: AuthenticatedRequestContext,
+  action: string,
+  message: string
+) => {
+  const authorization = await authorizeInstancePermissionForUser({ ctx, action });
+  if (authorization.ok) {
+    return null;
+  }
+
+  return createApiError(
+    authorization.status,
+    toInstancePermissionApiErrorCode(authorization.error),
+    message,
+    getWorkspaceContext().requestId
+  );
+};
+
+const deriveGovernanceActorCapabilities = async (
+  ctx: AuthenticatedRequestContext,
+  permissions?: Parameters<typeof authorizeInstancePermissionForUser>[0]['permissions']
+): Promise<
+  | {
+      ok: true;
+      capabilities: NonNullable<GovernanceActor['capabilities']>;
+    }
+  | {
+      ok: false;
+      response: Response;
+    }
+> => {
+  const governanceExportAuthorization = await authorizeInstancePermissionForUser({
+    ctx,
+    action: GOVERNANCE_EXPORT_ACTION,
+    permissions,
+  });
+
+  if (governanceExportAuthorization.ok) {
+    return {
+      ok: true,
+      capabilities: {
+        requiresIndependentSecurityApproverForImpersonation: false,
+      },
+    };
+  }
+
+  if (governanceExportAuthorization.error === 'forbidden') {
+    return {
+      ok: true,
+      capabilities: {
+        requiresIndependentSecurityApproverForImpersonation: true,
+      },
+    };
+  }
+
+  return {
+    ok: false,
+    response: createApiError(
+      governanceExportAuthorization.status,
+      toInstancePermissionApiErrorCode(governanceExportAuthorization.error),
+      'Governance-Capabilities konnten nicht ermittelt werden.',
+      getWorkspaceContext().requestId
+    ),
+  };
+};
+
 const escapeCsvField = (value: string): string => {
   if (/[",\n\r]/.test(value)) {
     return `"${value.replaceAll('"', '""')}"`;
@@ -147,7 +217,8 @@ const serializeLegalConsentExportCsv = (
 
 export const governanceWorkflowHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    return withAuthenticatedUser(request, async ({ user }) => {
+    return withAuthenticatedUser(request, async (ctx) => {
+      const { user } = ctx;
       const parsed = await parseWorkflowRequest(request);
       if (!parsed) {
         return jsonResponse(400, { error: 'invalid_request' });
@@ -158,22 +229,47 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
       if (user.instanceId && user.instanceId !== parsed.instanceId) {
         return jsonResponse(403, { error: 'instance_scope_mismatch' });
       }
-      if (
-        requiresPrivilegedGovernanceWorkflowRole(parsed.operation) &&
-        !hasRequiredGovernanceRole(user.roles, governanceWorkflowRoles)
-      ) {
-        logger.warn('Governance workflow denied due to missing role', {
-          operation: parsed.operation,
-          reason_code: 'forbidden',
-          ...buildGovernanceLogContext(parsed.instanceId),
+      let governanceActorCapabilities: GovernanceActor['capabilities'];
+      if (requiresPrivilegedGovernanceWorkflowRole(parsed.operation)) {
+        const governanceAuthorization = await authorizeInstancePermissionForUser({
+          ctx,
+          action: GOVERNANCE_WRITE_ACTION,
         });
-        return jsonResponse(403, { error: 'forbidden' });
+        if (!governanceAuthorization.ok) {
+          logger.warn('Governance workflow denied due to missing permission', {
+            operation: parsed.operation,
+            reason_code: governanceAuthorization.error,
+            ...buildGovernanceLogContext(parsed.instanceId),
+          });
+          return createApiError(
+            governanceAuthorization.status,
+            toInstancePermissionApiErrorCode(governanceAuthorization.error),
+            'Keine Berechtigung für Governance-Workflows.',
+            getWorkspaceContext().requestId
+          );
+        }
+
+        const capabilityResolution = await deriveGovernanceActorCapabilities(
+          ctx,
+          governanceAuthorization.permissions
+        );
+        if (!capabilityResolution.ok) {
+          logger.warn('Governance workflow capabilities could not be resolved', {
+            operation: parsed.operation,
+            reason_code: 'capability_resolution_failed',
+            ...buildGovernanceLogContext(parsed.instanceId),
+          });
+          return capabilityResolution.response;
+        }
+
+        governanceActorCapabilities = capabilityResolution.capabilities;
       }
 
       const actor: GovernanceActor = {
         keycloakSubject: user.id,
         instanceId: parsed.instanceId,
         roles: user.roles,
+        capabilities: governanceActorCapabilities,
         requestId: getWorkspaceContext().requestId,
         traceId: getWorkspaceContext().traceId,
       };
@@ -210,14 +306,20 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
 
 export const listGovernanceCasesHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    return withAuthenticatedUser(request, async ({ user }) => {
-      if (!hasRequiredGovernanceRole(user.roles, governanceReadRoles)) {
-        logger.warn('Governance read denied due to missing role', {
+    return withAuthenticatedUser(request, async (ctx) => {
+      const { user } = ctx;
+      const authorizationError = await authorizeGovernanceAction(
+        ctx,
+        GOVERNANCE_READ_ACTION,
+        'Keine Berechtigung für Governance-Transparenz.'
+      );
+      if (authorizationError) {
+        logger.warn('Governance read denied due to missing permission', {
           operation: 'list_governance_cases',
           reason_code: 'forbidden',
           ...buildGovernanceLogContext(user.instanceId),
         });
-        return createApiError(403, 'forbidden', 'Keine Berechtigung für Governance-Transparenz.', getWorkspaceContext().requestId);
+        return authorizationError;
       }
 
       const url = new URL(request.url);
@@ -263,14 +365,20 @@ export const listGovernanceCasesHandler = async (request: Request): Promise<Resp
 
 export const governanceComplianceExportHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    return withAuthenticatedUser(request, async ({ user }) => {
-      if (!hasRequiredGovernanceRole(user.roles, governanceComplianceExportRoles)) {
-        logger.warn('Governance compliance export denied due to missing role', {
+    return withAuthenticatedUser(request, async (ctx) => {
+      const { user } = ctx;
+      const authorizationError = await authorizeGovernanceAction(
+        ctx,
+        GOVERNANCE_EXPORT_ACTION,
+        'Keine Berechtigung für Governance-Exporte.'
+      );
+      if (authorizationError) {
+        logger.warn('Governance compliance export denied due to missing permission', {
           operation: 'compliance_export',
           reason_code: 'forbidden',
           ...buildGovernanceLogContext(user.instanceId),
         });
-        return jsonResponse(403, { error: 'forbidden' });
+        return authorizationError;
       }
 
       const url = new URL(request.url);
@@ -316,7 +424,8 @@ export const governanceComplianceExportHandler = async (request: Request): Promi
 
 export const legalConsentExportHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    return withAuthenticatedUser(request, async ({ user }) => {
+    return withAuthenticatedUser(request, async (ctx) => {
+      const { user } = ctx;
       const url = new URL(request.url);
       const instanceId = readString(url.searchParams.get('instanceId')) ?? user.instanceId;
       const accountId = readString(url.searchParams.get('accountId')) ?? undefined;
@@ -334,13 +443,18 @@ export const legalConsentExportHandler = async (request: Request): Promise<Respo
       if (accountId && !isUuid(accountId)) {
         return jsonResponse(400, { error: 'invalid_request' });
       }
-      if (!hasLegalConsentExportPermission(user.roles ?? [])) {
-        logger.warn('Legal consent export denied due to missing role', {
+      const authorizationError = await authorizeGovernanceAction(
+        ctx,
+        GOVERNANCE_EXPORT_ACTION,
+        'Keine Berechtigung für Consent-Exporte.'
+      );
+      if (authorizationError) {
+        logger.warn('Legal consent export denied due to missing permission', {
           operation: 'legal_consent_export',
           reason_code: 'forbidden',
           ...buildGovernanceLogContext(user.instanceId),
         });
-        return jsonResponse(403, { error: 'forbidden' });
+        return authorizationError;
       }
 
       const rateLimit = consumeLegalConsentExportRateLimit({

@@ -7,6 +7,19 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111114', 'iam.role.write', 'Modify role assignments'],
   ['40111111-1111-1111-1111-111111111115', 'iam.org.read', 'Read organization data'],
   ['40111111-1111-1111-1111-111111111116', 'iam.org.write', 'Modify organization data'],
+  ['40111111-1111-1111-1111-111111111151', 'iam.legalText.read', 'Read legal text administration data'],
+  ['40111111-1111-1111-1111-111111111152', 'iam.legalText.write', 'Modify legal text administration data'],
+  ['40111111-1111-1111-1111-111111111153', 'iam.governance.read', 'Read governance workflows and audit trails'],
+  ['40111111-1111-1111-1111-111111111154', 'iam.governance.write', 'Execute governance workflows and decisions'],
+  ['40111111-1111-1111-1111-111111111155', 'iam.governance.export', 'Export governance and legal consent evidence'],
+  ['40111111-1111-1111-1111-111111111156', 'iam.dsr.read', 'Read tenant data-subject-rights cases'],
+  ['40111111-1111-1111-1111-111111111157', 'iam.dsr.write', 'Process tenant data-subject-rights cases'],
+  ['40111111-1111-1111-1111-111111111158', 'iam.dsr.export', 'Export tenant data-subject-rights payloads'],
+  ['40111111-1111-1111-1111-111111111159', 'iam.deletionRules.read', 'Read tenant deletion rules'],
+  ['40111111-1111-1111-1111-111111111160', 'iam.deletionRules.write', 'Modify tenant deletion rules'],
+  ['40111111-1111-1111-1111-111111111161', 'iam.monitoring.read', 'Read IAM monitoring and plugin operation status'],
+  ['40111111-1111-1111-1111-111111111162', 'iam.monitoring.write', 'Run IAM monitoring and plugin operations'],
+  ['40111111-1111-1111-1111-111111111163', 'experimental.read', 'Enable experimental shell features and placeholders'],
   ['40111111-1111-1111-1111-111111111117', 'content.read', 'Read content'],
   ['40111111-1111-1111-1111-111111111118', 'content.create', 'Create content'],
   ['40111111-1111-1111-1111-111111111119', 'content.updateMetadata', 'Update content metadata'],
@@ -42,6 +55,7 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111141', 'poi.update', 'Update POI plugin content'],
   ['40111111-1111-1111-1111-111111111142', 'poi.delete', 'Delete POI plugin content'],
 ] as const satisfies readonly [string, PermissionKey, string][];
+const experimentalShellPermissions = ['experimental.read'] as const;
 const applicationReadPermissions = ['app.read', 'cockpit.read'] as const;
 const pluginReadPermissions = ['news.read', 'events.read', 'poi.read'] as const;
 const mediaReadPermissions = ['media.read'] as const;
@@ -59,6 +73,9 @@ const pluginWritePermissions = [
 const mediaWritePermissions = ['media.create', 'media.update', 'media.reference.manage', 'media.delete'] as const;
 const pluginManagePermissions = [...pluginReadPermissions, ...pluginWritePermissions] as const;
 const mediaManagePermissions = [...mediaReadPermissions, ...mediaWritePermissions] as const;
+const tenantPermissionKeys = permissions
+  .map(([, key]) => key)
+  .filter((key) => key !== 'instance.registry.manage');
 const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'system_admin',
@@ -67,24 +84,11 @@ const personas: readonly PersonaSeed[] = [
     displayName: 'System Administrator',
     scopeDefault: 'instance',
     mfaPolicy: 'required',
-    permissionKeys: permissions.map(([, key]) => key),
+    permissionKeys: tenantPermissionKeys,
     accountId: '50111111-1111-1111-1111-111111111111',
     keycloakSubject: 'seed:system_admin',
     seedEmailPlaceholder: 'seed.system_admin@sva.local',
     seedDisplayNamePlaceholder: 'System Administrator',
-  },
-  {
-    personaKey: 'instance_registry_admin',
-    roleSlug: 'instance_registry_admin',
-    roleLevel: 95,
-    displayName: 'Instance Registry Administrator',
-    scopeDefault: 'instance',
-    mfaPolicy: 'required',
-    permissionKeys: ['instance.registry.manage', 'feature.toggle', 'integration.manage', ...applicationReadPermissions],
-    accountId: '50888888-8888-8888-8888-888888888888',
-    keycloakSubject: 'seed:instance_registry_admin',
-    seedEmailPlaceholder: 'seed.instance_registry_admin@sva.local',
-    seedDisplayNamePlaceholder: 'Instance Registry Administrator',
   },
   {
     personaKey: 'app_manager',
@@ -98,8 +102,14 @@ const personas: readonly PersonaSeed[] = [
       'iam.user.write',
       'iam.org.read',
       'iam.org.write',
+      'iam.legalText.read',
+      'iam.legalText.write',
+      'iam.monitoring.read',
+      'iam.monitoring.write',
       'content.read',
       'content.readHistory',
+      'integration.manage',
+      ...experimentalShellPermissions,
       ...applicationReadPermissions,
       ...mediaReadPermissions,
       ...pluginReadPermissions,
@@ -120,6 +130,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissions,
       ...applicationReadPermissions,
       'content.updateMetadata',
       'content.updatePayload',
@@ -144,6 +155,7 @@ const personas: readonly PersonaSeed[] = [
       'iam.org.read',
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissions,
       ...applicationReadPermissions,
       ...mediaReadPermissions,
       ...pluginReadPermissions,
@@ -164,6 +176,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissions,
       ...applicationReadPermissions,
       'content.updateMetadata',
       'content.updatePayload',
@@ -189,6 +202,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissions,
       ...applicationReadPermissions,
       'content.create',
       'content.updateMetadata',
@@ -216,6 +230,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissions,
       ...applicationReadPermissions,
       'content.changeStatus',
       'content.publish',

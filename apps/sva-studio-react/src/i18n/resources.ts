@@ -589,6 +589,76 @@ export const i18nResources = {
         subtitle:
           'Verwalten Sie Uploads, Metadaten, Sichtbarkeit und die aktuelle Nutzung Ihrer Medienobjekte.',
       },
+      create: {
+        title: 'Datei vorbereiten',
+        subtitle:
+          'Reservieren Sie zuerst Asset-ID und Upload-Ziel. Der eigentliche Dateitransfer und die Metadatenpflege folgen direkt danach im Workspace.',
+        intakeBadge: 'Intake',
+        intakeTitle: 'Kompakter Intake',
+        intakeDescription:
+          'Wählen Sie Dateityp, Zielgröße und Sichtbarkeit, damit die Upload-Initialisierung technisch sauber vorbereitet ist.',
+        byteSizeHint: 'Planen Sie die erwartete Dateigröße in Byte, damit Limits und Validierung früh greifen.',
+        submitHint:
+          'Dieser Schritt erzeugt noch keinen Datei-Upload. Er reserviert nur das Asset und gibt die signierte Ziel-URL zurück.',
+        submitting: 'Wird initialisiert…',
+        planningTitle: 'Was jetzt konfiguriert wird',
+        planningDescription:
+          'Der Guided Intake definiert die technische Hülle des Assets, bevor Metadaten und konkrete Nutzung folgen.',
+        planning: {
+          items: {
+            mimeType: {
+              title: 'Dateiformat und Verarbeitungspfad',
+              body: 'Der MIME-Typ entscheidet, welche Validierung, Vorschau und Folgeprozesse für das Asset vorbereitet werden.',
+            },
+            byteSize: {
+              title: 'Zielgröße und Grenzprüfung',
+              body: 'Die erwartete Bytegröße hilft, Upload-Limits und Fehlpfade direkt beim Start sauber zu behandeln.',
+            },
+            visibility: {
+              title: 'Sichtbarkeit und Delivery-Modell',
+              body: 'Die Sichtbarkeit legt fest, ob das Asset sofort öffentlich auslieferbar oder geschützt behandelt werden soll.',
+            },
+          },
+        },
+        mimeTypeOptions: {
+          'image/jpeg': 'Bild (JPEG)',
+          'image/png': 'Bild (PNG)',
+          'image/webp': 'Bild (WEBP)',
+          'application/pdf': 'Dokument (PDF)',
+          'video/mp4': 'Video (MP4)',
+        },
+        nextStepsTitle: 'Nächste Schritte',
+        nextStepsDescription:
+          'Die Initialisierung ist abgeschlossen. Nutzen Sie die technische Antwort für den eigentlichen Transfer und die anschließende Qualitätsprüfung.',
+        result: {
+          assetId: 'Asset-ID: {{value}}',
+          uploadSessionId: 'Upload-Session: {{value}}',
+          method: 'Methode: {{value}}',
+          expiresAt: 'Gültig bis: {{value}}',
+        },
+        followUpTitle: 'Danach direkt weiter',
+        followUpSteps: {
+          transfer: '1. Datei mit der signierten URL in den reservierten Upload schreiben.',
+          describe: '2. Danach Titel, Alternativtext und Sichtbarkeit im Detail-Workspace prüfen.',
+          review: '3. Asset anschließend in der Bibliothek oder den Fachmodulen referenzieren.',
+        },
+        errors: {
+          default: 'Die Upload-Initialisierung konnte nicht abgeschlossen werden.',
+        },
+      },
+      detail: {
+        subtitle:
+          'Prüfen Sie Vorschau, Delivery, Metadaten und Nutzungsimpact in einem gemeinsamen Asset-Workspace.',
+        previewEyebrow: 'Asset-Workspace',
+        previewTitle: 'Arbeitsansicht',
+        previewBody:
+          'Die Detailseite hält Delivery, Qualitätsstatus und Referenzkontext zusammen, auch bevor eine echte Vorschau ausgeliefert wird.',
+        metadataDescription: 'Fachliche Beschreibung und redaktionelle Qualitätsfelder des Assets.',
+        imageControlsTitle: 'Bildsteuerung',
+        imageControlsDescription: 'Fokuspunkt und Zuschnitt für bildbasierte Ausspielungen auf einen Blick.',
+        usageDescription: 'Aktive Referenzen und Rollen, die dieses Asset derzeit verwenden.',
+        technicalDescription: 'Technische Identität, Statuswerte und Delivery-Daten des Assets.',
+      },
       filters: {
         searchLabel: 'Suche',
         searchPlaceholder: 'Nach Titel, Alternativtext oder MIME-Typ suchen',
@@ -686,6 +756,7 @@ export const i18nResources = {
         uploadSessionId: 'Upload-Session',
         expiresAt: 'Gültig bis',
         uploadUrl: 'Upload-URL',
+        deliveryUrl: 'Auslieferungs-URL',
       },
       usage: {
         title: 'Nutzungstransparenz',
@@ -708,6 +779,50 @@ export const i18nResources = {
       messages: {
         loading: 'Medien werden geladen ...',
         loadError: 'Die Medienbibliothek konnte nicht geladen werden.',
+      },
+      library: {
+        quickIntake: {
+          title: 'Quick Intake',
+          description:
+            'Starten Sie neue Uploads schnell, erfassen Sie die Mindestmetadaten und bringen Sie Assets zielsicher in die Bibliothek.',
+          steps: {
+            prepare: 'Upload vorbereiten und signierte Ziel-URL erzeugen.',
+            describe: 'Titel, Alternativtext und Sichtbarkeit direkt nach dem Intake ergänzen.',
+            publish: 'Bereite Assets priorisieren und anschließend in Fachmodule übernehmen.',
+          },
+        },
+        priority: {
+          blocked: 'Blockiert',
+          blockedHint: 'Uploads oder Verarbeitung brauchen technische Nacharbeit.',
+          new: 'Neu',
+          newHint: 'Metadaten sind noch nicht vollständig gepflegt.',
+          unused: 'Ungenutzt',
+          unusedHint: 'Assets ohne Referenzen können geprüft oder archiviert werden.',
+        },
+        cardStates: {
+          ready: 'bereit',
+          new: 'neu',
+          blocked: 'blockiert',
+          unused: 'ungenutzt',
+        },
+        usageCountOne: '1 Verwendung',
+        usageCountOther: '{{count}} Verwendungen',
+        usageCountLoading: 'Nutzung wird geladen',
+        usageCountUnknown: 'Nutzung nicht verfügbar',
+        assetCard: {
+          preview: 'Bildvorschau',
+          document: 'Dokument',
+          fallback: 'Dokumentenansicht ohne Bildvorschau',
+        },
+        toolbar: {
+          title: 'Bibliotheksfokus',
+          summary: '{{count}} Assets in der aktuellen Ansicht',
+          page: 'Seite {{page}} von {{total}} · {{pageSize}} pro Abschnitt',
+          pageSizeLabel: 'Einträge pro Seite',
+          paginationAriaLabel: 'Medienbibliothek Pagination',
+          previous: 'Vorherige Seite',
+          next: 'Nächste Seite',
+        },
       },
       errors: {
         forbidden: 'Unzureichende Berechtigungen für diese Medienaktion.',
@@ -1469,6 +1584,7 @@ export const i18nResources = {
           tabs: {
             overview: 'Überblick',
             configuration: 'Konfiguration',
+            modules: 'Module',
             operations: 'Betrieb',
             history: 'Historie',
           },
@@ -1749,12 +1865,20 @@ export const i18nResources = {
             assign: 'Modul zuweisen',
             revoke: 'Modul entziehen',
             seedIamBaseline: 'IAM-Basis neu aufbauen',
+            bootstrapAdminStructure: 'Admin-Struktur initialisieren',
           },
           confirmRevoke: {
             title: 'Modul wirklich entziehen?',
             description:
               'Das Modul {{moduleId}} wird der Instanz {{instanceId}} entzogen. Zugehörige Berechtigungen und IAM-Basis werden dabei entfernt.',
             confirm: 'Modul entziehen',
+            cancel: 'Abbrechen',
+          },
+          confirmBootstrap: {
+            title: 'Admin-Struktur wirklich initialisieren?',
+            description:
+              'Für die Instanz {{instanceId}} wird die initiale Admin-Struktur für Core und aktuell zugewiesene Module neu angelegt oder überschrieben.',
+            confirm: 'Admin-Struktur initialisieren',
             cancel: 'Abbrechen',
           },
         },
@@ -3993,6 +4117,76 @@ export const i18nResources = {
         subtitle:
           'Manage uploads, metadata, visibility, and the current usage footprint of your media assets.',
       },
+      create: {
+        title: 'Prepare file',
+        subtitle:
+          'Reserve the asset ID and upload target first. The actual file transfer and metadata work follow immediately after in the workspace.',
+        intakeBadge: 'Intake',
+        intakeTitle: 'Compact intake',
+        intakeDescription:
+          'Choose file type, target size, and visibility so the upload initialization is prepared with the right technical context.',
+        byteSizeHint: 'Plan the expected file size in bytes so limits and validation can fail early and cleanly.',
+        submitHint:
+          'This step does not upload the file yet. It only reserves the asset and returns the signed upload target.',
+        submitting: 'Initializing…',
+        planningTitle: 'What gets configured now',
+        planningDescription:
+          'The guided intake defines the technical envelope of the asset before metadata and concrete usage follow.',
+        planning: {
+          items: {
+            mimeType: {
+              title: 'File format and processing path',
+              body: 'The MIME type determines which validation, preview, and downstream processing are prepared for the asset.',
+            },
+            byteSize: {
+              title: 'Target size and boundary checks',
+              body: 'The expected byte size helps treat upload limits and failure paths cleanly from the start.',
+            },
+            visibility: {
+              title: 'Visibility and delivery model',
+              body: 'Visibility decides whether the asset should be handled as immediately public or explicitly protected.',
+            },
+          },
+        },
+        mimeTypeOptions: {
+          'image/jpeg': 'Image (JPEG)',
+          'image/png': 'Image (PNG)',
+          'image/webp': 'Image (WEBP)',
+          'application/pdf': 'Document (PDF)',
+          'video/mp4': 'Video (MP4)',
+        },
+        nextStepsTitle: 'Next steps',
+        nextStepsDescription:
+          'Initialization is complete. Use the technical response for the actual transfer and the follow-up quality checks.',
+        result: {
+          assetId: 'Asset ID: {{value}}',
+          uploadSessionId: 'Upload session: {{value}}',
+          method: 'Method: {{value}}',
+          expiresAt: 'Expires at: {{value}}',
+        },
+        followUpTitle: 'Continue directly after this',
+        followUpSteps: {
+          transfer: '1. Write the file to the reserved upload target with the signed URL.',
+          describe: '2. Then review title, alt text, and visibility in the detail workspace.',
+          review: '3. Finally reference the asset in the library or in feature modules.',
+        },
+        errors: {
+          default: 'The upload initialization could not be completed.',
+        },
+      },
+      detail: {
+        subtitle:
+          'Review preview context, delivery, metadata, and usage impact inside one shared asset workspace.',
+        previewEyebrow: 'Asset workspace',
+        previewTitle: 'Working view',
+        previewBody:
+          'The detail page keeps delivery, quality status, and reference context together even before a real preview is requested.',
+        metadataDescription: 'Business description and editorial quality fields for the asset.',
+        imageControlsTitle: 'Image controls',
+        imageControlsDescription: 'Focus point and crop settings for image-based placements at a glance.',
+        usageDescription: 'Active references and roles that currently use this asset.',
+        technicalDescription: 'Technical identity, status values, and delivery data for the asset.',
+      },
       filters: {
         searchLabel: 'Search',
         searchPlaceholder: 'Search by title, alt text, or MIME type',
@@ -4088,6 +4282,7 @@ export const i18nResources = {
         uploadSessionId: 'Upload session',
         expiresAt: 'Expires at',
         uploadUrl: 'Upload URL',
+        deliveryUrl: 'Delivery URL',
       },
       usage: {
         title: 'Usage transparency',
@@ -4109,6 +4304,50 @@ export const i18nResources = {
       messages: {
         loading: 'Loading media ...',
         loadError: 'The media library could not be loaded.',
+      },
+      library: {
+        quickIntake: {
+          title: 'Quick Intake',
+          description:
+            'Start new uploads quickly, capture the minimum metadata, and move assets into the library with less friction.',
+          steps: {
+            prepare: 'Prepare an upload and generate the signed target URL.',
+            describe: 'Add title, alt text, and visibility directly after intake.',
+            publish: 'Prioritize ready assets and move them into feature modules.',
+          },
+        },
+        priority: {
+          blocked: 'Blocked',
+          blockedHint: 'Uploads or processing require technical follow-up.',
+          new: 'New',
+          newHint: 'Metadata is still incomplete.',
+          unused: 'Unused',
+          unusedHint: 'Assets without references can be reviewed or archived.',
+        },
+        cardStates: {
+          ready: 'ready',
+          new: 'new',
+          blocked: 'blocked',
+          unused: 'unused',
+        },
+        usageCountOne: '1 use',
+        usageCountOther: '{{count}} uses',
+        usageCountLoading: 'Usage loading',
+        usageCountUnknown: 'Usage unavailable',
+        assetCard: {
+          preview: 'Image preview',
+          document: 'Document',
+          fallback: 'Document preview without image thumbnail',
+        },
+        toolbar: {
+          title: 'Library focus',
+          summary: '{{count}} assets in the current view',
+          page: 'Page {{page}} of {{total}} · {{pageSize}} per section',
+          pageSizeLabel: 'Entries per page',
+          paginationAriaLabel: 'Media library pagination',
+          previous: 'Previous page',
+          next: 'Next page',
+        },
       },
       errors: {
         forbidden: 'Insufficient permissions for this media action.',
@@ -4864,6 +5103,7 @@ export const i18nResources = {
           tabs: {
             overview: 'Overview',
             configuration: 'Configuration',
+            modules: 'Modules',
             operations: 'Operations',
             history: 'History',
           },
@@ -5140,12 +5380,20 @@ export const i18nResources = {
             assign: 'Assign module',
             revoke: 'Revoke module',
             seedIamBaseline: 'Rebuild IAM baseline',
+            bootstrapAdminStructure: 'Initialize admin structure',
           },
           confirmRevoke: {
             title: 'Really revoke module?',
             description:
               'Module {{moduleId}} will be revoked from instance {{instanceId}}. Related permissions and IAM baseline data will be removed.',
             confirm: 'Revoke module',
+            cancel: 'Cancel',
+          },
+          confirmBootstrap: {
+            title: 'Really initialize the admin structure?',
+            description:
+              'The initial admin structure for Core and the currently assigned modules will be created or overwritten for instance {{instanceId}}.',
+            confirm: 'Initialize admin structure',
             cancel: 'Cancel',
           },
         },

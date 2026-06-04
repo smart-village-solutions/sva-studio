@@ -141,7 +141,14 @@ export const toListItem = (
 
 export const buildModuleIamStatus = (
   assignedModules: readonly string[],
-  contracts: ReadonlyMap<string, { permissionIds: readonly string[]; systemRoles: readonly { roleName: string }[] }>
+  contracts: ReadonlyMap<
+    string,
+    {
+      permissionIds: readonly string[];
+      tenantBootstrapRoles?: readonly { roleName: string }[];
+      systemRoles?: readonly { roleName: string }[];
+    }
+  >
 ): IamInstanceDetail['moduleIamStatus'] => {
   if (assignedModules.length === 0) {
     return {
@@ -173,7 +180,7 @@ export const buildModuleIamStatus = (
       summary: 'IAM-Basis des Moduls ist deklarativ registriert.',
       source: 'registry' as const,
       permissionIds: contract.permissionIds,
-      systemRoleNames: contract.systemRoles.map((role) => role.roleName),
+      systemRoleNames: (contract.tenantBootstrapRoles ?? contract.systemRoles ?? []).map((role) => role.roleName),
     };
   });
 

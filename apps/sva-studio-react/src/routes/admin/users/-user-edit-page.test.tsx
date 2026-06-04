@@ -597,6 +597,43 @@ describe('UserEditPage', () => {
     });
   });
 
+  it('hides the root-only instance_registry_admin role from tenant role assignments', () => {
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [
+        { id: 'role-1', roleName: 'system_admin', roleKey: 'system_admin', externalRoleName: 'system_admin' },
+        {
+          id: 'role-root',
+          roleName: 'instance_registry_admin',
+          roleKey: 'instance_registry_admin',
+          externalRoleName: 'instance_registry_admin',
+        },
+        { id: 'role-2', roleName: 'editor', roleKey: 'editor', externalRoleName: 'editor' },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Verwaltung' }));
+
+    expect(screen.getByRole('checkbox', { name: 'system_admin' })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'editor' })).toBeTruthy();
+    expect(screen.queryByRole('checkbox', { name: 'instance_registry_admin' })).toBeNull();
+  });
+
   it('filters inactive groups from the management selection', async () => {
     useUserMock.mockReturnValue({
       user: baseUser,

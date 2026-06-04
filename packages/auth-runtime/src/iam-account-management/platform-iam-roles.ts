@@ -2,13 +2,11 @@ import type { IamRoleListItem } from '@sva/core';
 
 import type { IdentityRole } from '../identity-provider-port.js';
 
+import { PLATFORM_ROLE_LEVEL_BY_NAME } from './constants.js';
 import { logger, trackKeycloakCall } from './shared-observability.js';
 import { resolveIdentityProvider } from './shared-runtime.js';
 
-export const PLATFORM_ROLE_LEVEL_BY_NAME: Readonly<Record<string, number>> = {
-  system_admin: 100,
-  instance_registry_admin: 90,
-};
+export { PLATFORM_ROLE_LEVEL_BY_NAME } from './constants.js';
 
 const BUILTIN_REALM_ROLE_NAMES = new Set(['offline_access', 'uma_authorization']);
 

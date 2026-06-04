@@ -1,10 +1,15 @@
 import type { PersonaSeed } from './types.js';
 import {
   applicationReadPermissionKeys,
+  experimentalShellPermissionKeys,
   iamSeedPermissions,
   mediaManagePermissionKeys,
   mediaReadPermissionKeys,
 } from './seed-plan.permissions.js';
+
+const tenantPermissionKeys = iamSeedPermissions
+  .map(([, key]) => key)
+  .filter((key) => key !== 'instance.registry.manage');
 
 export const iamSeedPersonas: readonly PersonaSeed[] = [
   {
@@ -14,24 +19,11 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
     displayName: 'System Administrator',
     scopeDefault: 'instance',
     mfaPolicy: 'required',
-    permissionKeys: iamSeedPermissions.map(([, key]) => key),
+    permissionKeys: tenantPermissionKeys,
     accountId: '50111111-1111-1111-1111-111111111111',
     keycloakSubject: 'seed:system_admin',
     seedEmailPlaceholder: 'seed.system_admin@sva.local',
     seedDisplayNamePlaceholder: 'System Administrator',
-  },
-  {
-    personaKey: 'instance_registry_admin',
-    roleSlug: 'instance_registry_admin',
-    roleLevel: 95,
-    displayName: 'Instance Registry Administrator',
-    scopeDefault: 'instance',
-    mfaPolicy: 'required',
-    permissionKeys: ['instance.registry.manage', 'feature.toggle', 'integration.manage', ...applicationReadPermissionKeys],
-    accountId: '50888888-8888-8888-8888-888888888888',
-    keycloakSubject: 'seed:instance_registry_admin',
-    seedEmailPlaceholder: 'seed.instance_registry_admin@sva.local',
-    seedDisplayNamePlaceholder: 'Instance Registry Administrator',
   },
   {
     personaKey: 'app_manager',
@@ -45,8 +37,14 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
       'iam.user.write',
       'iam.org.read',
       'iam.org.write',
+      'iam.legalText.read',
+      'iam.legalText.write',
+      'iam.monitoring.read',
+      'iam.monitoring.write',
       'content.read',
       'content.readHistory',
+      'integration.manage',
+      ...experimentalShellPermissionKeys,
       ...applicationReadPermissionKeys,
       ...mediaReadPermissionKeys,
       'feature.toggle',
@@ -66,6 +64,7 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissionKeys,
       ...applicationReadPermissionKeys,
       'content.updateMetadata',
       'content.updatePayload',
@@ -89,6 +88,7 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
       'iam.org.read',
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissionKeys,
       ...applicationReadPermissionKeys,
       ...mediaReadPermissionKeys,
       'integration.manage',
@@ -108,6 +108,7 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissionKeys,
       ...applicationReadPermissionKeys,
       'content.updateMetadata',
       'content.updatePayload',
@@ -129,6 +130,7 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissionKeys,
       ...applicationReadPermissionKeys,
       'content.create',
       'content.updateMetadata',
@@ -155,6 +157,7 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissionKeys,
       ...applicationReadPermissionKeys,
       'content.changeStatus',
       'content.publish',

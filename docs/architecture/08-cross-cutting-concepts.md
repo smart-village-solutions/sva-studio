@@ -71,7 +71,7 @@ gleichzeitig beeinflussen.
 - Redaction sensibler Logfelder in `@sva/server-runtime` und im OTEL Processor
 - Governance-Gates: Ticketpflicht, Vier-Augen-Prinzip, keine Self-Approvals
 - Harte Laufzeitgrenzen: Impersonation max. 120 Minuten, Delegation max. 30 Tage
-- `support_admin`-Impersonation benötigt zusätzlichen Security-Approver
+- Impersonation ohne Governance-Export-Capability benötigt zusätzlichen Security-Approver
 - DSGVO-Betroffenenrechte im IAM: Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch
 - Account-Self-Service trennt bewusst zwischen Aktivitätscockpit (`/account/privacy`) und Regelseite (`/account/rules`); die UI darf beide Bereiche gemeinsam navigierbar machen, ohne DSR- und Governance-Verträge fachlich zu verwischen
 - Deep-Links auf einzelne Datenschutzvorgänge laufen immer über einen expliziten `caseId`-Detailread; historische Fälle dürfen nicht aus begrenzten Overview-Listen rekonstruiert werden
@@ -138,11 +138,14 @@ gleichzeitig beeinflussen.
 - Inhalts-Schreibpfade folgen denselben Guardrails: CSRF-Header, Idempotency-Key bei Create, permission-basierte Freigabe (`content.read|create|update`) und revisionssichere History-Events
 - Mutierende Inhaltsaktionen deklarieren eine fachliche `domainCapability`; `@sva/auth-runtime` löst sie serverseitig auf bestehende primitive `content.*`-Actions auf und prüft ausschließlich diese primitive Action über die zentrale Permission Engine.
 - Globale Instanzmutationen verwenden die dedizierte Plattformrolle `instance_registry_admin`
+- `instance.registry.manage` ist ebenso Root-only: tenantseitige Rollen-, Gruppen- und Permission-Kataloge dürfen dieses Recht nicht als wirksame Tenant-Berechtigung auswerten.
 - Instanzverwaltung ist nur auf dem Root-Host zulässig; Tenant-Hosts rendern keine globale Control Plane
 - Kritische Root-Host-Mutationen der Instanz- und Keycloak-Control-Plane verlangen zusätzlich eine serverseitig gebundene Fresh-Reauth-Evidenz innerhalb eines begrenzten Frischefensters; Header, Query-Parameter oder UI-Marker gelten dabei nie als Sicherheitsnachweis
 - Die fachliche Modulfreigabe einer Instanz ist kanonisch in `iam.instance_modules` modelliert; Build-time-Plugin-Registrierung, `featureFlags` und Integrationsdaten sind keine alternative Aktivierungsquelle
 - `auth/me` liefert für tenantgebundene Sessions die fail-closed behandelte Liste `assignedModules`; Client-Routing und Plugin-Navigation dürfen modulbezogene Einstiege nur bei expliziter Zuweisung materialisieren
 - Modulentzug entfernt modulbezogene Permissions und `role_permissions` hart; zurückbleibende Restrechte gelten als Drift
+- Experimentelle Shell-Funktionen werden zusätzlich über die explizite Permission `experimental.read` gegated; sie ersetzt keine Fachrechte, sondern ergänzt sie.
+- Für experimentelle Menüpunkte gilt das additive Prinzip: fachliche Sichtbarkeit wie `app.read`, `cockpit.read` oder `iam.monitoring.read` bleibt führend und wird nur zusammen mit `experimental.read` materialisiert.
 - Normale Tenant-Administration nutzt ausschließlich einen tenantlokalen Keycloak-Adminpfad; Plattform-/Root-Credentials sind dafür kein zulässiger Fallback
 - Tenant-IAM-Betriebsdiagnostik auf der Instanz-Detailseite hält `configuration`, `access`, `reconcile` und `overall` getrennt; `overall` folgt strikt der Präzedenz `blocked` vor `degraded` vor `unknown` vor `ready`
 - Explizite Tenant-IAM-Access-Probes sind read-only, werden manuell ausgelöst und als korrelierbare Audit-Evidenz mit `requestId`, `errorCode`, `checkedAt` und stabiler Quelle `access_probe` persistiert
@@ -152,12 +155,14 @@ gleichzeitig beeinflussen.
 - Dezente Motion auf der Instanz-Detailseite ist nur zulässig, wenn sie Blickführung, Statusfeedback oder Prozesszustände unterstützt; `prefers-reduced-motion`, Fokusindikatoren, Statuskontrast und Incident-Lesbarkeit haben stets Vorrang vor dekorativer Wirkung.
 - Root-/Plattform-Zugriff umfasst Instanz-Lifecycle, Provisioning, Platform-User, Platform-Rollen, Platform-Sync und explizites Break-Glass; tenantlokale Daten bleiben davon getrennt
 - User-, Rollen- und Rollenzuordnungsänderungen folgen einem Keycloak-first-Vertrag. Studio schreibt erst Keycloak, synchronisiert danach die lokalen Read-Models und macht Abweichungen über `mappingStatus`, `editability` und Diagnosecodes sichtbar.
+- `system_admin` bleibt die einzige geschützte tenantlokale Defaultrolle; frühere Standardrollen wie `app_manager`, `designer` oder `editor` bleiben nur als Legacy-Bootstrap-Artefakte kompatibel und werden nicht länger pauschal als Systemrollen behandelt.
 - Tenant-Userlisten richten sich nach dem Tenant-Realm in Keycloak; ungemappte oder mehrdeutige Benutzer werden als `unmapped` beziehungsweise `manual_review` angezeigt.
 - Keycloak-Built-in-Rollen bleiben als Rollenobjekte read-only, werden aber in Listen nicht ausgeblendet.
 - Keycloak-Provisioning für Instanzen ist ein expliziter mehrstufiger Root-Host-Workflow aus Preflight, Plan, Ausführung und persistiertem Schrittprotokoll
 - Registry-Daten und Keycloak-Mutation sind getrennte Aktionen; ein Speichern von Instanzdaten führt keine implizite Keycloak-Änderung aus
 - Registry-Lookups verwenden einen kurzen In-Process-L1-Cache mit expliziter Invalidation, aber ohne Stale-Serve-Strategie
 - Tenant-gebundene Requests arbeiten fail-closed, wenn der Session-User keinen gültigen `instanceId`-Kontext mehr trägt. Neue Login-Sessions erhalten diesen Kontext bereits beim Callback aus dem Auth-Scope; Middleware-Hydration bleibt nur Absicherung für alte oder beschädigte Sessions.
+- `roleLevel` bleibt in Admin-Read-Models und Mutationsverträgen als Kompatibilitätsfeld sichtbar, ist aber kein Ersatz für die Root-/Tenant-Scope-Trennung und keine normative Quelle neuer Governance-Entscheidungen.
 
 ### Logging und Observability
 

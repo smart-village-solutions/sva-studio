@@ -98,6 +98,31 @@ describe('createGroupMutationHandlers', () => {
     );
   });
 
+  it('supports a custom access authorizer for permission-based tenant group mutations', async () => {
+    const authorizeGroupMutationAccess = vi.fn(async () => null);
+    const deps = createDeps(undefined, {
+      authorizeGroupMutationAccess,
+      requireRoles: vi.fn(() => new Response('Forbidden', { status: 403 })),
+    });
+    const handlers = createGroupMutationHandlers(deps);
+
+    const response = await handlers.createGroupInternal(
+      new Request('http://localhost/api/v1/iam/inst-g/groups', { method: 'POST', body: '{}' }),
+      {
+        ...ctx,
+        user: { ...ctx.user, roles: ['custom_role'] },
+      }
+    );
+
+    expect(response.status).toBe(201);
+    expect(authorizeGroupMutationAccess).toHaveBeenCalledWith(
+      expect.any(Request),
+      expect.objectContaining({ user: expect.objectContaining({ roles: ['custom_role'] }) }),
+      'req-workspace'
+    );
+    expect(deps.requireRoles).not.toHaveBeenCalled();
+  });
+
   it('maps groups_type_chk violations to invalid_request', async () => {
     const deps = createDeps([], {
       withInstanceScopedDb: vi.fn(async () => {

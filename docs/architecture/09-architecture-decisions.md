@@ -49,6 +49,7 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-043 formular foundation mit react-hook-form und zodResolver](../adr/ADR-043-formular-foundation-mit-react-hook-form-und-zodresolver.md)
 - [ADR-044 frontend-test-foundation mit MSW und selektivem fast-check](../adr/ADR-044-frontend-test-foundation-mit-msw-und-selektivem-fast-check.md)
 - [ADR-045 organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation](../adr/ADR-045-organisationsgebundene-mainserver-credentials-und-policy-gesteuerte-delegation.md)
+- [ADR-046 Plattform- vs. Tenant-Rollenmodell und Legacy-Standardrollen](../adr/ADR-046-plattform-vs-tenant-rollenmodell-und-legacy-standardrollen.md)
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -74,6 +75,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-041
 - Abschnitt 05/08/09/10 (Bausteine/Querschnitt/Entscheidungen/Qualität): ADR-043, ADR-044
 - Abschnitt 04/05/06/08/09/10/11/12 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken/Glossar): ADR-045
+- Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-046
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
@@ -116,6 +118,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-043: Formular-Foundation mit `react-hook-form` und `zodResolver` als verbindlichem Standardpfad für neue oder grundlegend überarbeitete Formular-Flows (Abschnitt 05, 08, 09, 10)
 - ADR-044: Frontend-Test-Foundation mit `msw` für HTTP-nahe Tests und selektivem `fast-check` für kritische Kernlogik (Abschnitt 05, 08, 09, 10)
 - ADR-045: Organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation über `contentAuthorPolicy`; persönliche Keycloak-Credentials bleiben nur Fallback bei `org_or_personal` (Abschnitt 04, 05, 06, 08, 09, 10, 11, 12)
+- ADR-046: Root-only `instance_registry_admin`, geschütztes tenantseitiges `system_admin` und Legacy-Status früherer Standardrollen als additive Rollenmodell-Trennung (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 
 ### Pflege-Regel
 
@@ -218,6 +221,17 @@ Zuordnung:
   - ADR-025 fuer die konservative Scope-Priorisierung,
   - ADR-036 fuer den kanonischen Projektions- und Reconcile-Vertrag.
 - Der Change fuehrt kein paralleles Berechtigungssystem ein, sondern praezisiert die bestehende Rollen-Permission-Zuordnung um `access_scope` auf `iam.role_permissions`.
+
+### Fortschreibung 2026-06: Plattform- vs. Tenant-Rollenmodell
+
+- `ADR-046-plattform-vs-tenant-rollenmodell-und-legacy-standardrollen.md`
+  - trennt `instance_registry_admin` als Root-only-Plattformrolle von tenantlokalen Rollenartefakten.
+  - hält `system_admin` als einzige geschützte tenantlokale Defaultrolle fest.
+  - dokumentiert frühere Standardrollen ausdrücklich als Legacy-Bootstrap-Kompatibilität statt als weiterhin normative Systemrollen.
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/09/10/11: ADR-046
 - Die fachliche Wirkung bleibt auf explizit scope-faehige Datensatzrechte begrenzt; Admin-, System- und nicht ownership-faehige Rechte bleiben binaer.
 
 Zuordnung:

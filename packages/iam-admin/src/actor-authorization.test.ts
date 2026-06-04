@@ -192,4 +192,32 @@ describe('actor-authorization', () => {
       message: 'Rollenzuweisung überschreitet die eigene Berechtigungsstufe.',
     });
   });
+
+  it('rejects assigning the root-only instance_registry_admin role even for system_admin actors', async () => {
+    const client = createClient(() => ({
+      rowCount: 1,
+      rows: [
+        {
+          id: 'role-root',
+          role_key: 'instance_registry_admin',
+          external_role_name: 'instance_registry_admin',
+          role_level: 90,
+        },
+      ],
+    }));
+
+    await expect(
+      ensureRoleAssignmentWithinActorLevel({
+        client,
+        instanceId: 'inst-1',
+        actorSubject: 'subject-1',
+        actorRoles: ['system_admin'],
+        roleIds: ['role-root'],
+      })
+    ).resolves.toEqual({
+      ok: false,
+      code: 'invalid_request',
+      message: 'Mindestens eine Rolle ist im Tenant nicht verwaltbar.',
+    });
+  });
 });

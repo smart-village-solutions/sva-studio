@@ -9,6 +9,7 @@ import { resolveEffectivePermissions } from '../iam-authorization/permission-sto
 import { resolveActorAccountIdWithProvision } from '../iam-account-management/shared-actor-resolution-helpers.js';
 import { logger as accountLogger } from '../iam-account-management/shared.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
+import { getSession } from '../redis-session.js';
 
 export type ContentPrimitiveAuthorizationResource = {
   readonly contentId?: string;
@@ -107,12 +108,37 @@ export const authorizeContentPrimitiveForUser = async (input: {
   }
 
   const workspaceContext = getWorkspaceContext();
-  const organizationId = input.resource?.organizationId;
+  let organizationId = input.resource?.organizationId;
   const resource = {
     ...input.resource,
-    ...(organizationId ? { organizationId } : {}),
   };
   let actorAccountId: string | undefined;
+
+  if (!organizationId) {
+    try {
+      const session = await getSession(input.ctx.sessionId);
+      organizationId = session?.activeOrganizationId;
+    } catch (error) {
+      accountLogger.error('Content primitive authorization session lookup failed', {
+        operation: 'content_primitive_authorize',
+        instance_id: instanceId,
+        request_id: workspaceContext.requestId,
+        trace_id: workspaceContext.traceId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      return {
+        ok: false,
+        status: 503,
+        error: 'database_unavailable',
+        message: 'Berechtigungen konnten nicht geprüft werden.',
+      };
+    }
+  }
+
+  if (organizationId) {
+    resource.organizationId = organizationId;
+  }
 
   if (resource.createdByAccountId) {
     try {

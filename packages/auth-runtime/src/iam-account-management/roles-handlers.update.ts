@@ -12,6 +12,7 @@ import {
   markRoleSyncState,
   persistUpdatedRole,
   resolveMutableRole,
+  validateRequestedPermissions,
 } from './role-mutation-persistence.js';
 import { updateRoleSchema } from './schemas.js';
 import { iamRoleSyncCounter, logger, trackKeycloakCall } from './shared-observability.js';
@@ -40,4 +41,5 @@ export const updateRoleInternal = createUpdateRoleHandlerInternal({
   resolveRoleMutationActor,
   sanitizeRoleErrorMessage,
   trackKeycloakCall,
+  validateRequestedPermissions,
 });

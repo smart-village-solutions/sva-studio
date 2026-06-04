@@ -10,6 +10,8 @@ export type ManagedPermissionMetadata = Readonly<{
 }>;
 
 const RECORD_ACCESS_SCOPES = iamRolePermissionAssignmentScopes;
+const ROOT_ONLY_PERMISSION_KEYS = ['instance.registry.manage'] as const satisfies readonly string[];
+const ROOT_ONLY_PERMISSION_KEY_SET: ReadonlySet<string> = new Set(ROOT_ONLY_PERMISSION_KEYS);
 const RECORD_SCOPED_PERMISSION_KEYS = [
   'content.read',
   'content.updateMetadata',
@@ -98,3 +100,9 @@ export const listManagedPermissionMetadata = (): readonly ManagedPermissionMetad
 
 export const getManagedPermissionMetadata = (permissionKey: string): ManagedPermissionMetadata | undefined =>
   managedPermissionMetadataByKey.get(permissionKey);
+
+export const isRootOnlyPermissionKey = (permissionKey: string): boolean =>
+  ROOT_ONLY_PERMISSION_KEY_SET.has(permissionKey);
+
+export const isTenantVisiblePermissionKey = (permissionKey: string): boolean =>
+  !isRootOnlyPermissionKey(permissionKey);

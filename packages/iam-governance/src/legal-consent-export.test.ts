@@ -2,17 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   consumeLegalConsentExportRateLimit,
-  hasLegalConsentExportPermission,
   loadConsentExportRecords,
 } from './legal-consent-export.js';
 
 describe('legal consent export', () => {
-  it('accepts explicit export permission or system admin roles', () => {
-    expect(hasLegalConsentExportPermission(['system_admin'])).toBe(true);
-    expect(hasLegalConsentExportPermission(['legal-consents:export'])).toBe(true);
-    expect(hasLegalConsentExportPermission(['tenant_admin'])).toBe(false);
-  });
-
   it('limits repeated export requests per actor and resets after the window', () => {
     const baseNow = 1_000;
 

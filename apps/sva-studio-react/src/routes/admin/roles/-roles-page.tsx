@@ -16,6 +16,7 @@ import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
 import type { RoleReconcileReport } from '../../../lib/iam-api';
+import { isTenantRoleReadOnly, isTenantRoleVisible } from '../../../lib/iam-role-governance';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { roleErrorMessage, roleStatusLabel, roleStatusTone, roleTypeLabel } from './-roles-shared';
 
@@ -46,10 +47,14 @@ export const RolesPage = () => {
 
   const [search, setSearch] = React.useState('');
   const [deleteRoleId, setDeleteRoleId] = React.useState<string | null>(null);
+  const visibleRoles = React.useMemo(
+    () => (isPlatformScope ? rolesApi.roles : rolesApi.roles.filter((role) => isTenantRoleVisible(role))),
+    [isPlatformScope, rolesApi.roles]
+  );
 
   const filteredRoles = React.useMemo(() => {
     const query = search.trim().toLowerCase();
-    return rolesApi.roles.filter((role) => {
+    return visibleRoles.filter((role) => {
       if (!query) {
         return true;
       }
@@ -61,7 +66,7 @@ export const RolesPage = () => {
         role.permissions.some((permission) => permission.permissionKey.toLowerCase().includes(query))
       );
     });
-  }, [rolesApi.roles, search]);
+  }, [search, visibleRoles]);
 
   const roleColumns = React.useMemo<readonly StudioColumnDef<(typeof filteredRoles)[number]>[]>(
     () => [
@@ -193,7 +198,7 @@ export const RolesPage = () => {
             </div>
           }
           rowActions={isPlatformScope ? undefined : (role) => {
-            const isReadOnly = role.isSystemRole || role.managedBy !== 'studio';
+            const isReadOnly = isTenantRoleReadOnly(role);
 
             return (
               <>

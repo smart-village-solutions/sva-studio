@@ -59,6 +59,7 @@ const mocks = vi.hoisted(() => ({
     success: typeof body === 'object' && body !== null,
     data: body,
   })),
+  authorizeInstancePermissionForUser: vi.fn(),
 }));
 
 class MockDsrAccountSnapshotNotFoundError extends Error {}
@@ -119,6 +120,18 @@ vi.mock('../runtime-secrets.js', () => ({
 
 vi.mock('../session-revocation.js', () => ({
   revokeUserSessions: mocks.revokeUserSessions,
+}));
+
+vi.mock('../instance-permission-authorization.js', () => ({
+  authorizeInstancePermissionForUser: mocks.authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode: (error: string) =>
+    error === 'missing_instance'
+      ? 'invalid_instance_id'
+      : error === 'invalid_action'
+        ? 'invalid_request'
+        : error === 'database_unavailable'
+          ? 'database_unavailable'
+          : 'forbidden',
 }));
 
 vi.mock('../db.js', () => ({
@@ -235,6 +248,7 @@ describe('iam data subject rights handlers', () => {
     mocks.getSelfServiceActivityItem.mockResolvedValue({ id: 'case-1', type: 'request' });
     mocks.listAdminDsrCases.mockResolvedValue({ items: [{ id: 'case-1' }], total: 1 });
     mocks.getAdminDsrCase.mockResolvedValue({ id: 'case-1' });
+    mocks.authorizeInstancePermissionForUser.mockResolvedValue({ ok: true, permissions: [] });
   });
 
   it('rejects invalid self-export formats before touching the database', async () => {
@@ -251,7 +265,7 @@ describe('iam data subject rights handlers', () => {
     expect(response.status).toBe(400);
     await expect(expectJson(response)).resolves.toEqual({ error: 'invalid_export_format' });
     expect(mocks.withResolvedInstanceDb).not.toHaveBeenCalled();
-  });
+  }, 15_000);
 
   it('accepts async self exports via query instance scope and string async flag', async () => {
     const { dataExportHandler } = await import('./core.js');
@@ -1046,8 +1060,14 @@ describe('iam data subject rights handlers', () => {
     await expect(expectJson(response)).resolves.toEqual({ error: 'database_unavailable' });
   });
 
-  it('requires an admin role for the DSR case list', async () => {
+  it('requires DSR read permission for the DSR case list', async () => {
     const { listAdminDataSubjectRightsCasesHandler } = await import('./core.js');
+    mocks.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für DSR-Transparenz.',
+    });
 
     const response = await listAdminDataSubjectRightsCasesHandler(
       new Request('http://localhost/iam/admin/data-subject-rights/cases?instanceId=de-test')
@@ -1371,9 +1391,16 @@ describe('iam data subject rights handlers', () => {
     await expect(expectJson(response)).resolves.toEqual({ error: 'database_unavailable' });
   });
 
-  it('requires admin roles for hold and maintenance endpoints', async () => {
+  it('requires DSR permissions for hold, maintenance and export endpoints', async () => {
     const { legalHoldApplyHandler, legalHoldReleaseHandler, dataSubjectMaintenanceHandler, adminDataExportHandler, adminDataExportStatusHandler } =
       await import('./core.js');
+
+    mocks.authorizeInstancePermissionForUser
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung.' })
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung.' })
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung.' })
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung.' })
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Keine Berechtigung.' });
 
     const apply = await legalHoldApplyHandler(
       new Request('http://localhost/iam/admin/legal-holds/apply', {
@@ -1520,6 +1547,12 @@ describe('iam data subject rights handlers', () => {
 
   it('guards admin DSR case detail and maps not-found or backend failures', async () => {
     const { getAdminDataSubjectRightsCaseHandler } = await import('./core.js');
+    mocks.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für DSR-Transparenz.',
+    });
 
     const forbidden = await getAdminDataSubjectRightsCaseHandler(
       new Request('http://localhost/iam/admin/data-subject-rights/cases/123e4567-e89b-42d3-a456-426614174000?instanceId=de-test')

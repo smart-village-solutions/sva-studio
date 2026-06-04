@@ -36,7 +36,7 @@ describe('platform iam helpers', () => {
     ).rejects.toThrow('platform_identity_provider_not_configured');
   });
 
-  it('maps and sorts platform roles with builtin, studio, external and system diagnostics', async () => {
+  it('maps and sorts platform roles while treating only instance_registry_admin as platform system role', async () => {
     const { PLATFORM_ROLE_LEVEL_BY_NAME } = await import('./platform-iam-roles.js');
     const { listPlatformRoles, runPlatformRoleReconcile } = await import('./platform-iam.js');
 
@@ -68,6 +68,11 @@ describe('platform iam helpers', () => {
           },
           {
             id: '4',
+            externalName: 'instance_registry_admin',
+            attributes: {},
+          },
+          {
+            id: '5',
             externalName: 'system_admin',
             attributes: {},
           },
@@ -76,19 +81,21 @@ describe('platform iam helpers', () => {
     });
 
     const roles = await listPlatformRoles();
-    expect(PLATFORM_ROLE_LEVEL_BY_NAME.system_admin).toBe(100);
+    expect(PLATFORM_ROLE_LEVEL_BY_NAME.instance_registry_admin).toBe(90);
+    expect(PLATFORM_ROLE_LEVEL_BY_NAME.system_admin).toBeUndefined();
     expect(roles.map((role) => role.externalRoleName)).toEqual([
-      'system_admin',
+      'instance_registry_admin',
       'custom-studio',
       'external-role',
       'offline_access',
+      'system_admin',
     ]);
     expect(roles[0]).toMatchObject({
       managedBy: 'external',
       isSystemRole: true,
       editability: 'read_only',
-      roleLevel: 100,
-      diagnostics: [{ code: 'system_role', objectId: 'system_admin', objectType: 'role' }],
+      roleLevel: 90,
+      diagnostics: [{ code: 'system_role', objectId: 'instance_registry_admin', objectType: 'role' }],
     });
     expect(roles[1]).toMatchObject({
       roleKey: 'studio_role',
@@ -106,9 +113,17 @@ describe('platform iam helpers', () => {
       managedBy: 'keycloak_builtin',
       diagnostics: [{ code: 'built_in_role', objectId: 'offline_access', objectType: 'role' }],
     });
+    expect(roles[4]).toMatchObject({
+      externalRoleName: 'system_admin',
+      managedBy: 'external',
+      isSystemRole: false,
+      editability: 'read_only',
+      roleLevel: 0,
+      diagnostics: [{ code: 'external_managed', objectId: 'system_admin', objectType: 'role' }],
+    });
 
     const reconcile = await runPlatformRoleReconcile();
-    expect(reconcile.checkedCount).toBe(4);
+    expect(reconcile.checkedCount).toBe(5);
     expect(reconcile.roles).toEqual(
       roles.map((role) => ({
         externalRoleName: role.externalRoleName,
@@ -121,7 +136,7 @@ describe('platform iam helpers', () => {
       expect.objectContaining({
         operation: 'reconcile_platform_roles',
         scope_kind: 'platform',
-        checked_count: 4,
+        checked_count: 5,
       })
     );
   });
@@ -191,12 +206,12 @@ describe('platform iam helpers', () => {
       keycloakSubject: 'u3',
       displayName: 'Carol Clark',
       status: 'active',
-      roles: [{ roleKey: 'system_admin', roleLevel: 100 }],
+      roles: [],
     });
     const filtered = await listPlatformUsers({
       page: 1,
       pageSize: 10,
-      role: 'system_admin',
+      role: 'instance_registry_admin',
       search: 'ali',
     });
     expect(filtered.total).toBe(0);
@@ -236,7 +251,7 @@ describe('platform iam helpers', () => {
       keycloakSubject: 'u9',
       displayName: 'u9',
       status: 'active',
-      roles: [{ roleKey: 'custom-role', roleLevel: 0 }],
+      roles: [],
     });
     expect(result.users[1]).toMatchObject({
       keycloakSubject: 'u8',
@@ -270,7 +285,7 @@ describe('platform iam helpers', () => {
       pageSize: 10,
       role: 'custom-role',
     });
-    expect(byRoleWithoutSearch.total).toBe(2);
+    expect(byRoleWithoutSearch).toEqual({ users: [], total: 0 });
 
     const byRoleWithSearchMiss = await listPlatformUsers({
       page: 1,
@@ -286,10 +301,6 @@ describe('platform iam helpers', () => {
       role: 'custom-role',
       status: 'inactive',
     });
-    expect(inactiveOnly.total).toBe(1);
-    expect(inactiveOnly.users[0]).toMatchObject({
-      keycloakSubject: 'u2',
-      status: 'inactive',
-    });
+    expect(inactiveOnly).toEqual({ users: [], total: 0 });
   });
 });

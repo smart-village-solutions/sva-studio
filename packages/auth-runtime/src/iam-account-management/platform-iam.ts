@@ -2,7 +2,7 @@ import type { IamUserListItem } from '@sva/core';
 
 import type { IdentityListedUser, IdentityUserListQuery } from '../identity-provider-port.js';
 
-import { PLATFORM_ROLE_LEVEL_BY_NAME } from './platform-iam-roles.js';
+import { PLATFORM_PROFILE_ROLES, PLATFORM_ROLE_LEVEL_BY_NAME } from './constants.js';
 import { resolveIdentityProvider } from './shared-runtime.js';
 import { logger, trackKeycloakCall } from './shared-observability.js';
 import type { UserStatus } from './types.js';
@@ -105,7 +105,7 @@ const mapPlatformUser = (
   displayName: resolveDisplayName(user),
   email: user.email,
   status: mapUserStatus(user),
-  roles: roleNames.map((roleName) => ({
+  roles: [...new Set(roleNames.filter((roleName) => PLATFORM_PROFILE_ROLES.has(roleName)))].map((roleName) => ({
     roleId: `platform:${roleName}`,
     roleKey: roleName,
     roleName,

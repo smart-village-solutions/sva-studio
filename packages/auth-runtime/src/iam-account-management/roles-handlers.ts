@@ -1,8 +1,16 @@
-import { createRoleReadHandlers, getManagedPermissionMetadata } from '@sva/iam-admin';
+import {
+  createRoleReadHandlers,
+  getManagedPermissionMetadata,
+  isTenantVisiblePermissionKey,
+} from '@sva/iam-admin';
 import { getWorkspaceContext } from '@sva/server-runtime';
 import type { IamPermission } from '@sva/core';
 
 import { jsonResponse, type QueryClient } from '../db.js';
+import {
+  authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode,
+} from '../instance-permission-authorization.js';
 
 import { asApiList, createApiError } from './api-helpers.js';
 import { classifyIamDiagnosticError } from './diagnostics.js';
@@ -36,20 +44,22 @@ ORDER BY p.permission_key ASC;
     [instanceId]
   );
 
-  return result.rows.map((row) => ({
-    id: row.id,
-    instanceId: row.instance_id,
-    permissionKey: row.permission_key,
-    ...((row.description ?? getManagedPermissionMetadata(row.permission_key)?.description)
-      ? { description: row.description ?? getManagedPermissionMetadata(row.permission_key)?.description }
-      : {}),
-    ...(getManagedPermissionMetadata(row.permission_key)?.isScopeAssignable
-      ? {
-          isScopeAssignable: true,
-          supportedAccessScopes: getManagedPermissionMetadata(row.permission_key)?.supportedAccessScopes,
-        }
-      : {}),
-  }));
+  return result.rows
+    .filter((row) => isTenantVisiblePermissionKey(row.permission_key))
+    .map((row) => ({
+      id: row.id,
+      instanceId: row.instance_id,
+      permissionKey: row.permission_key,
+      ...((row.description ?? getManagedPermissionMetadata(row.permission_key)?.description)
+        ? { description: row.description ?? getManagedPermissionMetadata(row.permission_key)?.description }
+        : {}),
+      ...(getManagedPermissionMetadata(row.permission_key)?.isScopeAssignable
+        ? {
+            isScopeAssignable: true,
+            supportedAccessScopes: getManagedPermissionMetadata(row.permission_key)?.supportedAccessScopes,
+          }
+        : {}),
+    }));
 };
 
 const roleReadHandlers = createRoleReadHandlers({
@@ -61,6 +71,14 @@ const roleReadHandlers = createRoleReadHandlers({
   getFeatureFlags,
   getWorkspaceContext,
   jsonResponse,
+  authorizeRoleReadAccess: (_request, ctx, requestId, options) => {
+    if (!ctx.user.instanceId && options.allowPlatformRoles) {
+      return requireRoles(ctx, new Set(['instance_registry_admin']), requestId);
+    }
+    return authorizeInstancePermissionForUser({ ctx, action: 'iam.role.read' }).then((result) =>
+      result.ok ? null : createApiError(result.status, toInstancePermissionApiErrorCode(result.error), result.message, requestId)
+    );
+  },
   listPlatformRolesInternal,
   loadPermissions: (instanceId) => withInstanceScopedDb(instanceId, (client) => loadPermissions(client, instanceId)),
   loadRoleListItems: (instanceId) => withInstanceScopedDb(instanceId, (client) => loadRoleListItems(client, instanceId)),

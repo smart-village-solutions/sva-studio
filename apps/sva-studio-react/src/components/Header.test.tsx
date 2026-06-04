@@ -143,6 +143,7 @@ describe('Header auth actions', () => {
         id: 'user-1',
         name: 'Test User',
         roles: ['editor'],
+        permissionActions: ['experimental.read'],
       },
       isAuthenticated: true,
       isLoading: false,
@@ -246,6 +247,7 @@ describe('Header auth actions', () => {
         id: 'user-1',
         name: 'Test User',
         roles: ['editor'],
+        permissionActions: ['experimental.read'],
       },
       isAuthenticated: true,
       isLoading: false,
@@ -291,6 +293,7 @@ describe('Header auth actions', () => {
         id: 'user-admin',
         name: 'Admin User',
         roles: ['system_admin'],
+        permissionActions: ['experimental.read'],
       },
       isAuthenticated: true,
       isLoading: false,
@@ -398,6 +401,7 @@ describe('Header auth actions', () => {
         id: 'user-1',
         name: 'Test User',
         roles: ['editor'],
+        permissionActions: ['experimental.read'],
       },
       isAuthenticated: true,
       isLoading: false,
@@ -529,6 +533,7 @@ describe('Header auth actions', () => {
         id: 'user-1',
         displayName: 'Dev User',
         roles: ['editor'],
+        permissionActions: ['experimental.read'],
       },
       isAuthenticated: true,
       isLoading: false,
@@ -586,6 +591,7 @@ describe('Header auth actions', () => {
         id: 'user-1',
         name: 'Test User',
         roles: ['editor'],
+        permissionActions: ['experimental.read'],
       },
       isAuthenticated: true,
       isLoading: false,
@@ -657,5 +663,80 @@ describe('Header auth actions', () => {
     const germanMenuItem = screen.getByRole('menuitem', { name: /Deutsch/ });
     expect(englishMenuItem.textContent).toContain('English');
     expect(germanMenuItem.textContent).toContain('Deutsch');
+  });
+
+  it('versteckt Such- und Assistenten-Platzhalter ohne experimental.read', async () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-plain',
+        name: 'Plain User',
+        roles: ['editor'],
+        permissionActions: ['news.read'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
+
+    render(<Header />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Systemmeldungen' })).toBeTruthy();
+    });
+
+    expect(screen.queryByRole('textbox', { name: 'Suche' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Frag den Assistenten' })).toBeNull();
+  });
+
+  it('zeigt Such- und Assistenten-Platzhalter nur mit experimental.read', async () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-experimental',
+        name: 'Experimental User',
+        roles: ['editor'],
+        permissionActions: ['experimental.read'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
+
+    render(<Header />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'Suche' })).toBeTruthy();
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Frag den Assistenten' })).toBeTruthy();
   });
 });

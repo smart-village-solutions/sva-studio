@@ -80,6 +80,53 @@ test('sidebar application permission cache invalidation migration notifies affec
   assert.match(sql, /SELECT pg_notify/);
 });
 
+test('platform tenant role split migration neutralizes tenant-side root role artifacts additively', () => {
+  const sql = readRepoFile('data/migrations/0050_iam_platform_tenant_role_split.sql');
+  const touchedInstancesOccurrences = sql.match(/WITH touched_instances AS \(/g) ?? [];
+
+  assert.match(sql, /CREATE TEMP TABLE migration_0050_touched_instances ON COMMIT DROP AS/);
+  assert.match(sql, /DELETE FROM iam\.account_roles/);
+  assert.match(sql, /DELETE FROM iam\.group_roles/);
+  assert.match(sql, /DELETE FROM iam\.role_permissions[\s\S]*permission_key = 'instance\.registry\.manage'/);
+  assert.match(sql, /\[legacy-root-role-in-tenant\]/);
+  assert.match(sql, /\[legacy-bootstrap-role\]/);
+  assert.match(sql, /is_system_role = false/);
+  assert.match(sql, /platform_tenant_role_split_migrated/);
+  assert.match(sql, /FROM migration_0050_touched_instances;/);
+  assert.equal(touchedInstancesOccurrences.length, 2);
+});
+
+test('permission gate backfill migration seeds the new permission model for tenant governance paths', () => {
+  const sql = readRepoFile('data/migrations/0051_iam_permission_gate_backfill.sql');
+
+  assert.match(sql, /'iam\.legalText\.read'/);
+  assert.match(sql, /'iam\.governance\.write'/);
+  assert.match(sql, /'iam\.dsr\.export'/);
+  assert.match(sql, /'iam\.deletionRules\.write'/);
+  assert.match(sql, /'iam\.monitoring\.read'/);
+  assert.match(sql, /'app_manager', 'iam\.legalText\.read'/);
+  assert.match(sql, /'support_admin', 'iam\.dsr\.write'/);
+  assert.match(sql, /'security_admin', 'iam\.governance\.export'/);
+  assert.match(sql, /grant_origin_kind,\s*access_scope/);
+  assert.match(sql, /ON CONFLICT \(instance_id, permission_key\) DO UPDATE/);
+  assert.match(sql, /iam_permission_snapshot_invalidation/);
+  assert.match(sql, /permission_gate_backfill_migrated/);
+  assert.match(sql, /permission_gate_backfill_rolled_back/);
+});
+
+test('experimental shell permission migration backfills the additive ui gate for existing roles', () => {
+  const sql = readRepoFile('data/migrations/0052_iam_experimental_shell_permission.sql');
+
+  assert.match(sql, /'experimental\.read'/);
+  assert.match(sql, /'experimental',\s*NULL,\s*'allow'/);
+  assert.match(sql, /permission_key IN \('app\.read', 'cockpit\.read', 'iam\.monitoring\.read', 'feature\.toggle'\)/);
+  assert.match(sql, /grant_origin_kind,\s*access_scope/);
+  assert.match(sql, /'seed',\s*'all'/);
+  assert.match(sql, /iam_permission_snapshot_invalidation/);
+  assert.match(sql, /experimental_shell_permission_migrated/);
+  assert.match(sql, /DELETE FROM iam\.permissions[\s\S]*permission_key = 'experimental\.read'/);
+});
+
 test('runtime artifact verification runs workspace node helper via bash', () => {
   const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
 

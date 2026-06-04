@@ -61,6 +61,7 @@ describe('user-mutation-request-context.shared', () => {
       allowedRoles: new Set(['system_admin', 'app_manager']),
       feature: 'iam_admin',
       provisionMissingActorMembership: true,
+      requiredPermissionAction: 'iam.user.write',
       scope: 'write',
     });
 

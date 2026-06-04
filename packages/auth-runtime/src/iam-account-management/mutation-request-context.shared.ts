@@ -1,5 +1,9 @@
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { isUuid } from '../shared/input-readers.js';
+import {
+  authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode,
+} from '../instance-permission-authorization.js';
 
 import { createActorResolutionDetails } from './diagnostics.js';
 import { createApiError, readPathSegment } from './api-helpers.js';
@@ -18,6 +22,7 @@ export const resolveMutationActorWithAccount = async (
   ctx: AuthenticatedRequestContext,
   input: {
     allowedRoles: ReadonlySet<string>;
+    requiredPermissionAction?: string;
     feature: 'iam_admin' | 'iam_bulk';
     scope: 'write' | 'bulk';
     requestId?: string;
@@ -29,9 +34,26 @@ export const resolveMutationActorWithAccount = async (
     return { response: featureCheck };
   }
 
-  const roleCheck = requireRoles(ctx, input.allowedRoles, input.requestId);
-  if (roleCheck) {
-    return { response: roleCheck };
+  if (input.requiredPermissionAction) {
+    const authorization = await authorizeInstancePermissionForUser({
+      ctx,
+      action: input.requiredPermissionAction,
+    });
+    if (!authorization.ok) {
+      return {
+        response: createApiError(
+          authorization.status,
+          toInstancePermissionApiErrorCode(authorization.error),
+          authorization.message,
+          input.requestId
+        ),
+      };
+    }
+  } else {
+    const roleCheck = requireRoles(ctx, input.allowedRoles, input.requestId);
+    if (roleCheck) {
+      return { response: roleCheck };
+    }
   }
 
   const actorResolution = await resolveActorInfo(request, ctx, {

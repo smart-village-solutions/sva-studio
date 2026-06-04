@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   resolveActorMaxRoleLevel: vi.fn(),
   resolveUserDetail: vi.fn(),
   ensureActorCanManageTarget: vi.fn(),
+  ensureTenantManageableRoleAssignments: vi.fn(),
   ensureRoleAssignmentWithinActorLevel: vi.fn(),
   resolveRolesByIds: vi.fn(),
   resolveGroupsByIds: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('./role-audit.js', () => ({
 
 vi.mock('./shared.js', () => ({
   ensureActorCanManageTarget: state.ensureActorCanManageTarget,
+  ensureTenantManageableRoleAssignments: state.ensureTenantManageableRoleAssignments,
   ensureRoleAssignmentWithinActorLevel: state.ensureRoleAssignmentWithinActorLevel,
   resolveActorMaxRoleLevel: state.resolveActorMaxRoleLevel,
   resolveGroupsByIds: state.resolveGroupsByIds,
@@ -45,7 +47,14 @@ describe('resolveUserUpdatePlan', () => {
       roles: [{ roleId: 'role-1', roleKey: 'editor', roleName: 'Editor' }],
     });
     state.ensureActorCanManageTarget.mockReturnValue({ ok: true });
-    state.ensureRoleAssignmentWithinActorLevel.mockResolvedValue({ ok: true });
+    state.ensureTenantManageableRoleAssignments.mockResolvedValue({
+      ok: true,
+      roles: [{ role_key: 'editor', externalName: 'editor' }],
+    });
+    state.ensureRoleAssignmentWithinActorLevel.mockResolvedValue({
+      ok: true,
+      roles: [{ role_key: 'editor', externalName: 'editor' }],
+    });
     state.resolveRolesByIds.mockResolvedValue([
       { role_key: 'editor', externalName: 'editor' },
       { role_key: 'system_admin', externalName: 'system_admin' },
@@ -141,6 +150,10 @@ describe('resolveUserUpdatePlan', () => {
 
     state.resolveGroupsByIds.mockResolvedValueOnce([{ id: 'group-1' }]);
     state.resolveRoleIdsForGroups.mockResolvedValueOnce(['role-bundled']);
+    state.ensureTenantManageableRoleAssignments.mockResolvedValueOnce({
+      ok: true,
+      roles: [{ role_key: 'role-bundled', externalName: 'role-bundled' }],
+    });
     state.ensureRoleAssignmentWithinActorLevel.mockResolvedValueOnce({
       ok: false,
       code: 'forbidden',
@@ -164,9 +177,11 @@ describe('resolveUserUpdatePlan', () => {
       status: 'active',
       roles: [{ roleId: 'role-1', roleKey: 'editor', roleName: 'Editor' }],
     });
-    state.resolveRolesByIds
-      .mockResolvedValueOnce([{ role_key: 'editor', externalName: 'external-editor' }])
-      .mockResolvedValueOnce([{ role_key: 'instance_registry_admin', externalName: 'instance_registry_admin' }]);
+    state.resolveRolesByIds.mockResolvedValueOnce([{ role_key: 'editor', externalName: 'external-editor' }]);
+    state.ensureTenantManageableRoleAssignments.mockResolvedValueOnce({
+      ok: true,
+      roles: [{ role_key: 'editor', externalName: 'editor' }],
+    });
 
     const plan = await resolveUserUpdatePlan({} as never, {
       instanceId: 'instance-1',
@@ -178,8 +193,33 @@ describe('resolveUserUpdatePlan', () => {
 
     expect(plan).toMatchObject({
       previousRoleNames: ['external-editor'],
-      nextRoleNames: ['instance_registry_admin'],
+      nextRoleNames: ['editor'],
     });
     expect(state.ensureActorCanManageTarget).not.toHaveBeenCalled();
+  });
+
+  it('rejects root-only tenant role assignments even for system_admin actors', async () => {
+    const { resolveUserUpdatePlan } = await import('./user-update-plan.js');
+    state.resolveUserDetail.mockResolvedValueOnce({
+      id: 'user-1',
+      status: 'active',
+      roles: [{ roleId: 'role-1', roleKey: 'editor', roleName: 'Editor' }],
+    });
+    state.resolveRolesByIds.mockResolvedValueOnce([{ role_key: 'editor', externalName: 'external-editor' }]);
+    state.ensureTenantManageableRoleAssignments.mockResolvedValueOnce({
+      ok: false,
+      code: 'invalid_request',
+      message: 'Mindestens eine Rolle ist im Tenant nicht verwaltbar.',
+    });
+
+    await expect(
+      resolveUserUpdatePlan({} as never, {
+        instanceId: 'instance-1',
+        actorSubject: 'kc-actor',
+        actorRoles: ['system_admin'],
+        userId: 'user-1',
+        payload: { roleIds: ['role-root'], status: 'active' },
+      } as never)
+    ).rejects.toThrow('invalid_request:Mindestens eine Rolle ist im Tenant nicht verwaltbar.');
   });
 });

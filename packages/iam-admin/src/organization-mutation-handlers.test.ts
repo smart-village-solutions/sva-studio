@@ -190,6 +190,32 @@ describe('organization mutation handlers', () => {
     expect(emitActivityLog).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ eventType: 'organization.created' }));
   });
 
+  it('supports a custom access authorizer for permission-based tenant organization mutations', async () => {
+    const authorizeOrganizationMutationAccess = vi.fn(async () => null);
+    const deps = {
+      ...buildDeps(),
+      authorizeOrganizationMutationAccess,
+      requireRoles: vi.fn(() => new Response('Forbidden', { status: 403 })),
+    };
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.createOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations', { method: 'POST' }),
+      {
+        ...ctx,
+        user: { ...ctx.user, roles: ['custom_role'] },
+      }
+    );
+
+    expect(response.status).toBe(201);
+    expect(authorizeOrganizationMutationAccess).toHaveBeenCalledWith(
+      expect.any(Request),
+      expect.objectContaining({ user: expect.objectContaining({ roles: ['custom_role'] }) }),
+      'req-org'
+    );
+    expect(deps.requireRoles).not.toHaveBeenCalled();
+  });
+
   it('creates organizations for text-scoped instance ids without uuid-casting instance_id', async () => {
     const deps = buildDeps();
     const observedQueries: string[] = [];

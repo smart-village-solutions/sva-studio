@@ -172,6 +172,7 @@ Abhängigkeiten des aktuellen Systems.
 - `packages/auth-runtime` haelt zusaetzlich nur sehr kurzlebige In-Process-Caches fuer Session-Resolution und Account-Lifecycle-Pruefung, um wiederholte Authorize-Requests derselben Session ohne neuen Redis-/DB-Roundtrip abzufangen.
 - Der SVA-Mainserver bleibt fachliche Source of Truth für seine GraphQL-Daten; Studio hält nur Endpunktkonfiguration und kurzlebige Laufzeit-Caches für Credentials und Access-Tokens.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.
+- `packages/iam-admin` hält zusätzlich die tenantseitige Governance-Trennung für Rollen und Permissions: Root-only-Rollen/-Permissions werden vor Admin-CRUD gefiltert oder abgewiesen, während `system_admin` als geschützte Tenant-Sonderrolle erhalten bleibt.
 
 ### Fortschreibung 2026-05: Scoped Rollen-Permissions fuer Datensatzrechte
 

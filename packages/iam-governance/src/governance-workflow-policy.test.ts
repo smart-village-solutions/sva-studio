@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  governanceReadRoles,
-  governanceWorkflowRoles,
-  hasRequiredGovernanceRole,
   readGovernanceCaseType,
   readGovernanceOperation,
   requiresPrivilegedGovernanceWorkflowRole,
@@ -29,10 +26,7 @@ describe('governance-workflow-policy', () => {
     expect(requiresPrivilegedGovernanceWorkflowRole('start_impersonation')).toBe(true);
   });
 
-  it('checks governance role sets and case types', () => {
-    expect(hasRequiredGovernanceRole(['support_admin'], governanceWorkflowRoles)).toBe(true);
-    expect(hasRequiredGovernanceRole(['security_admin'], governanceWorkflowRoles)).toBe(false);
-    expect(hasRequiredGovernanceRole(['security_admin'], governanceReadRoles)).toBe(true);
+  it('checks governance case types', () => {
     expect(readGovernanceCaseType('delegation')).toBe('delegation');
     expect(readGovernanceCaseType('unknown')).toBeNull();
     expect(readGovernanceCaseType(undefined)).toBeUndefined();

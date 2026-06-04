@@ -34,7 +34,15 @@ import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap
 export type InstanceModuleIamRegistryEntry = {
   readonly moduleId: string;
   readonly permissionIds: readonly string[];
-  readonly systemRoles: readonly {
+  readonly tenantBootstrapRoles?: readonly {
+    readonly roleName: string;
+    readonly permissionIds: readonly string[];
+  }[];
+  readonly rootSystemRoles?: readonly {
+    readonly roleName: string;
+    readonly permissionIds: readonly string[];
+  }[];
+  readonly systemRoles?: readonly {
     readonly roleName: string;
     readonly permissionIds: readonly string[];
   }[];
@@ -87,6 +95,12 @@ export type InstanceRegistryServiceDeps = {
   readonly repository: InstanceRegistryRepository;
   readonly invalidateHost: (hostname: string) => void;
   readonly invalidatePermissionSnapshots?: (input: { instanceId: string; trigger: string }) => Promise<void>;
+  readonly syncTenantAdminBootstrapAccount?: (input: {
+    instanceId: string;
+    tenantAdminBootstrap?: TenantAdminBootstrap;
+    requestId?: string;
+    actorId?: string;
+  }) => Promise<void>;
   readonly protectSecret?: (value: string | undefined, aad: string) => string | null;
   readonly revealSecret?: (value: string | null | undefined, aad: string) => string | undefined;
   readonly readKeycloakStateViaProvisioner?: (input: KeycloakProvisioningInput) => Promise<KeycloakReadState>;

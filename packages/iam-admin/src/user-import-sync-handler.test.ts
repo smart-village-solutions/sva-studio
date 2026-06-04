@@ -18,7 +18,7 @@ const platformCtx = {
   sessionId: 'session-1',
   user: {
     id: 'kc-platform-admin',
-    roles: ['system_admin'],
+    roles: ['instance_registry_admin'],
   },
 };
 
@@ -64,7 +64,14 @@ const createDeps = (overrides: Partial<SyncUsersHandlerDeps<typeof report>> = {}
   },
   mapSyncErrorResponse: vi.fn(() => undefined),
   platformRateLimitInstanceId: '__platform__',
-  requireRoles: vi.fn(() => null),
+  requireRoles: vi.fn((requestContext, roles, requestId) =>
+    requestContext.user.roles.some((role) => roles.has(role))
+      ? null
+      : createJsonResponse(403, {
+          error: { code: 'forbidden', message: 'forbidden' },
+          ...(requestId ? { requestId } : {}),
+        })
+  ),
   resolveSyncActor: vi.fn(async () => ({ actor })),
   runKeycloakUserImportSync: vi.fn(async () => ({
     report,

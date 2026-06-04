@@ -258,6 +258,18 @@ Schulden auf IST-Basis.
    - Impact: mittel bis hoch (Integrationen könnten vorschnell auf interne Tabellen oder Runner-Details zugreifen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Integrationsgrenze später über explizite Outbox-/Event-Verträge öffnen; keine direkte Kopplung an Graphile- oder Tabelleninterna zulassen
+
+### Fortschreibung 2026-06: Restschuld nach Rollenmodell-Trennung
+
+- `roleLevel` bleibt in Rollen-, User- und Audit-Verträgen als Kompatibilitätsfeld sichtbar.
+  - Impact: mittel bis hoch (Reviewer können Hierarchie-Logik weiterhin fälschlich als normative Autorisierungsquelle lesen)
+  - Maßnahme: separaten Folgechange für den kontrollierten Rückbau von `roleLevel` vorbereiten.
+- Legacy-Standardrollen wie `app_manager`, `designer`, `editor` oder `moderator` bleiben in Bestandsinstanzen sichtbar, obwohl sie nicht mehr normativ führend sind.
+  - Impact: mittel (Operatorsicht und UI können historische Bootstrap-Rollen noch mit aktivem Sollmodell verwechseln)
+  - Maßnahme: Read-Model und Runbooks markieren den Legacy-Status explizit; spätere Cleanup-Phase nur mit Migrations- und Kommunikationspfad.
+- Einzelne Governance- und Route-Gates arbeiten weiterhin rollennamenbasiert statt vollständig permission- oder scope-zentriert.
+  - Impact: mittel bis hoch (weitere Rollenmodelländerungen bleiben unnötig teuer und regressionsanfällig)
+  - Maßnahme: Folgechange für verbleibende rollennamenbasierte Gates priorisieren und gegen ADR-046 prüfen.
    - Maßnahme: generische Grundfelder stabil halten, plugin-spezifische Payloads an registrierte Jobtypen und Importprofile binden und Validierung vor Start sowie bei Worker-Updates kontrolliert ausbauen
 
 46. Stale-Detection für Plugin-Worker ist bisher nur diagnostisch und ohne automatische Recovery

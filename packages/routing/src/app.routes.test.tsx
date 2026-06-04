@@ -26,6 +26,9 @@ const guardSpies = vi.hoisted(() => ({
   adminLegalTextCreate: vi.fn(async () => undefined),
   adminLegalTextDetail: vi.fn(async () => undefined),
   adminIam: vi.fn(async () => undefined),
+  monitoring: vi.fn(async () => undefined),
+  monitoringJobs: vi.fn(async () => undefined),
+  monitoringJobDetail: vi.fn(async () => undefined),
 }));
 
 const createAccountUiRouteGuardMock = vi.hoisted(() =>
@@ -251,9 +254,9 @@ describe('app.routes', () => {
     );
     expect(guardSpies.adminUsers).toHaveBeenCalledWith({ href: '/admin/users' });
     expect(guardSpies.modules).toHaveBeenCalledWith({ href: '/modules' });
-    expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring' });
-    expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring/jobs' });
-    expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring/jobs/job-1' });
+    expect(guardSpies.monitoring).toHaveBeenCalledWith({ href: '/monitoring' });
+    expect(guardSpies.monitoringJobs).toHaveBeenCalledWith({ href: '/monitoring/jobs' });
+    expect(guardSpies.monitoringJobDetail).toHaveBeenCalledWith({ href: '/monitoring/jobs/job-1' });
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/news' });
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/account');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
@@ -266,9 +269,9 @@ describe('app.routes', () => {
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/admin/content');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('modules', undefined, '/modules');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/monitoring');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/monitoring/jobs');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/monitoring/jobs/$jobId');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('monitoring', undefined, '/monitoring');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('monitoringJobs', undefined, '/monitoring/jobs');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('monitoringJobDetail', undefined, '/monitoring/jobs/$jobId');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/news');
 
     expect(readRouteOptions(routeMap.get('/admin/iam')).validateSearch?.({ tab: 'bogus' })).toEqual({

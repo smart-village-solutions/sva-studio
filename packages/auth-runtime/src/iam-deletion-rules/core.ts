@@ -29,7 +29,11 @@ const withInstanceScopedDb = async <T>(
 const loadAdminDeletionRulesResponse = async (request: Request): Promise<Response> =>
   withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () =>
     withAuthenticatedUser(request, async (ctx) => {
-      const scoped = validateTenantAdminScope(ctx, resolveRequestInstanceId(request, ctx.user.instanceId));
+      const scoped = await validateTenantAdminScope(
+        ctx,
+        resolveRequestInstanceId(request, ctx.user.instanceId),
+        'iam.deletionRules.read'
+      );
       if (!scoped.ok) {
         return scoped.response;
       }
@@ -73,7 +77,7 @@ const saveAdminDeletionRulesResponse = async (request: Request): Promise<Respons
         return parsed.response;
       }
 
-      const scoped = validateTenantAdminScope(ctx, parsed.data.instanceId);
+      const scoped = await validateTenantAdminScope(ctx, parsed.data.instanceId, 'iam.deletionRules.write');
       if (!scoped.ok) {
         return scoped.response;
       }

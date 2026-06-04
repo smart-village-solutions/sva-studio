@@ -72,6 +72,7 @@ const createDeps = (overrides: Partial<CreateRoleHandlerDeps<typeof payload, typ
     sanitizeRoleErrorMessage: vi.fn((error) => (error instanceof Error ? error.message : String(error))),
     toPayloadHash: vi.fn(() => 'payload-hash-1'),
     trackKeycloakCall: vi.fn(async (_operation, work) => work()),
+    validateRequestedPermissions: vi.fn(async () => null),
     ...overrides,
   }) satisfies CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>;
 
@@ -157,6 +158,24 @@ describe('createCreateRoleHandlerInternal', () => {
         error: expect.objectContaining({ code: 'keycloak_unavailable' }),
       }),
     });
+  });
+
+  it('returns invalid_request before idempotency or Keycloak when tenant permissions are not manageable', async () => {
+    const invalidResponse = createJsonResponse(400, {
+      error: { code: 'invalid_request', message: 'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.' },
+      requestId: 'req-create-role',
+    });
+    const deps = createDeps({
+      validateRequestedPermissions: vi.fn(async () => invalidResponse),
+    });
+    const handler = createCreateRoleHandlerInternal(deps);
+
+    const response = await handler(new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }), ctx);
+
+    expect(response).toBe(invalidResponse);
+    expect(deps.reserveIdempotency).not.toHaveBeenCalled();
+    expect(identityProvider.provider.createRole).not.toHaveBeenCalled();
+    expect(deps.persistCreatedRole).not.toHaveBeenCalled();
   });
 
   it('compensates Keycloak role creation when local persistence fails', async () => {

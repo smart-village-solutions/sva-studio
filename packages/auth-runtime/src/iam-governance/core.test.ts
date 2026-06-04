@@ -11,12 +11,11 @@ const state = vi.hoisted(() => ({
   executeWorkflow: vi.fn(),
   buildGovernanceComplianceExport: vi.fn(),
   createSelfServicePermissionChangeRequest: vi.fn(),
-  hasRequiredGovernanceRole: vi.fn(),
+  authorizeInstancePermissionForUser: vi.fn(),
   readGovernanceCaseType: vi.fn(),
   requiresPrivilegedGovernanceWorkflowRole: vi.fn(),
   consumeLegalConsentExportRateLimit: vi.fn(),
   loadConsentExportRecords: vi.fn(),
-  hasLegalConsentExportPermission: vi.fn(),
   governanceRequestSafeParse: vi.fn(),
   asApiList: vi.fn(),
   createApiError: vi.fn(),
@@ -60,10 +59,6 @@ vi.mock('@sva/iam-governance/governance-compliance-export', () => ({
 }));
 
 vi.mock('@sva/iam-governance/governance-workflow-policy', () => ({
-  governanceComplianceExportRoles: ['governance_exporter'],
-  governanceReadRoles: ['governance_reader'],
-  governanceWorkflowRoles: ['governance_admin'],
-  hasRequiredGovernanceRole: state.hasRequiredGovernanceRole,
   readGovernanceCaseType: state.readGovernanceCaseType,
   requiresPrivilegedGovernanceWorkflowRole: state.requiresPrivilegedGovernanceWorkflowRole,
 }));
@@ -85,7 +80,6 @@ vi.mock('@sva/iam-governance', () => ({
   createSelfServicePermissionChangeRequest: state.createSelfServicePermissionChangeRequest,
   consumeLegalConsentExportRateLimit: state.consumeLegalConsentExportRateLimit,
   getGovernanceCase: state.getGovernanceCase,
-  hasLegalConsentExportPermission: state.hasLegalConsentExportPermission,
   listGovernanceCases: state.listGovernanceCases,
   loadConsentExportRecords: state.loadConsentExportRecords,
   MAX_SELF_SERVICE_PERMISSION_CHANGE_REQUEST_NOTE_LENGTH: 2000,
@@ -95,10 +89,22 @@ vi.mock('../iam-account-management/csrf.js', () => ({
   validateCsrf: state.validateCsrf,
 }));
 
+vi.mock('../instance-permission-authorization.js', () => ({
+  authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode: (error: string) =>
+    error === 'missing_instance'
+      ? 'invalid_instance_id'
+      : error === 'invalid_action'
+        ? 'invalid_request'
+        : error === 'database_unavailable'
+          ? 'database_unavailable'
+          : 'forbidden',
+}));
+
 const defaultUser = {
   id: 'user-1',
   instanceId: 'instance-1',
-  roles: ['governance_admin', 'governance_reader', 'governance_exporter'],
+  roles: ['legacy-role'],
 };
 
 describe('iam governance runtime handlers', () => {
@@ -113,9 +119,8 @@ describe('iam governance runtime handlers', () => {
     state.buildGovernanceComplianceExport.mockReset();
     state.consumeLegalConsentExportRateLimit.mockReset();
     state.loadConsentExportRecords.mockReset();
-    state.hasLegalConsentExportPermission.mockReset();
+    state.authorizeInstancePermissionForUser.mockReset();
     state.createSelfServicePermissionChangeRequest.mockReset();
-    state.hasRequiredGovernanceRole.mockReset();
     state.readGovernanceCaseType.mockReset();
     state.requiresPrivilegedGovernanceWorkflowRole.mockReset();
     state.governanceRequestSafeParse.mockReset();
@@ -129,7 +134,7 @@ describe('iam governance runtime handlers', () => {
 
     state.withAuthenticatedUser.mockImplementation(async (_request, handler) => handler({ user: defaultUser }));
     state.withResolvedInstanceDb.mockImplementation(async (_resolver, _instanceId, work) => work({ query: vi.fn() }));
-    state.hasRequiredGovernanceRole.mockReturnValue(true);
+    state.authorizeInstancePermissionForUser.mockResolvedValue({ ok: true, permissions: [] });
     state.readGovernanceCaseType.mockImplementation((value) => value ?? undefined);
     state.requiresPrivilegedGovernanceWorkflowRole.mockReturnValue(false);
     state.governanceRequestSafeParse.mockReturnValue({
@@ -162,7 +167,6 @@ describe('iam governance runtime handlers', () => {
     });
     state.consumeLegalConsentExportRateLimit.mockReturnValue(null);
     state.loadConsentExportRecords.mockResolvedValue([]);
-    state.hasLegalConsentExportPermission.mockReturnValue(true);
     state.validateCsrf.mockReturnValue(null);
   });
 
@@ -226,7 +230,12 @@ describe('iam governance runtime handlers', () => {
     expect(mismatchedInstance.status).toBe(403);
 
     state.requiresPrivilegedGovernanceWorkflowRole.mockReturnValueOnce(true);
-    state.hasRequiredGovernanceRole.mockReturnValueOnce(false);
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für Governance-Workflows.',
+    });
     const forbidden = await governanceWorkflowHandler(
       new Request('https://example.test/api/v1/iam/governance/workflow', {
         method: 'POST',
@@ -235,8 +244,51 @@ describe('iam governance runtime handlers', () => {
     );
     expect(forbidden.status).toBe(403);
     expect(state.logger.warn).toHaveBeenCalledWith(
-      'Governance workflow denied due to missing role',
+      'Governance workflow denied due to missing permission',
       expect.objectContaining({ operation: 'case.close', reason_code: 'forbidden' })
+    );
+  });
+
+  it('derives governance actor capabilities from explicit permissions instead of role names', async () => {
+    const { governanceWorkflowHandler } = await import('./core.js');
+
+    state.governanceRequestSafeParse.mockReturnValueOnce({
+      success: true,
+      data: { instanceId: 'instance-1', operation: 'start_impersonation' },
+    });
+    state.requiresPrivilegedGovernanceWorkflowRole.mockReturnValueOnce(true);
+    state.authorizeInstancePermissionForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: { instanceId: 'instance-1', keycloakSubject: 'user-1' },
+        permissions: [],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für Governance-Exporte.',
+      });
+
+    const response = await governanceWorkflowHandler(
+      new Request('https://example.test/api/v1/iam/governance/workflow', {
+        method: 'POST',
+        body: JSON.stringify({ instanceId: 'instance-1', operation: 'start_impersonation' }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(state.executeWorkflow).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        keycloakSubject: 'user-1',
+        instanceId: 'instance-1',
+        roles: ['legacy-role'],
+        capabilities: {
+          requiresIndependentSecurityApproverForImpersonation: true,
+        },
+      }),
+      expect.objectContaining({ operation: 'start_impersonation' })
     );
   });
 
@@ -284,13 +336,18 @@ describe('iam governance runtime handlers', () => {
   it('guards governance case listing and returns paginated results or failures', async () => {
     const { listGovernanceCasesHandler } = await import('./core.js');
 
-    state.hasRequiredGovernanceRole.mockReturnValueOnce(false);
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für Governance-Transparenz.',
+    });
     const forbidden = await listGovernanceCasesHandler(
       new Request('https://example.test/api/v1/iam/governance/cases?instanceId=instance-1')
     );
     expect(forbidden.status).toBe(403);
 
-    state.hasRequiredGovernanceRole.mockReturnValue(true);
+    state.authorizeInstancePermissionForUser.mockResolvedValue({ ok: true, permissions: [] });
     state.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
       handler({ user: { ...defaultUser, instanceId: undefined } })
     );
@@ -332,13 +389,18 @@ describe('iam governance runtime handlers', () => {
   it('guards governance case detail and returns item, not-found, or backend errors', async () => {
     const { getGovernanceCaseHandler } = await import('./core.js');
 
-    state.hasRequiredGovernanceRole.mockReturnValueOnce(false);
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für Governance-Transparenz.',
+    });
     const forbidden = await getGovernanceCaseHandler(
       new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1')
     );
     expect(forbidden.status).toBe(403);
 
-    state.hasRequiredGovernanceRole.mockReturnValue(true);
+    state.authorizeInstancePermissionForUser.mockResolvedValue({ ok: true, permissions: [] });
     state.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
       handler({ user: { ...defaultUser, instanceId: undefined } })
     );
@@ -384,13 +446,18 @@ describe('iam governance runtime handlers', () => {
   it('exports governance compliance as json or csv and enforces role and instance scope', async () => {
     const { governanceComplianceExportHandler } = await import('./core.js');
 
-    state.hasRequiredGovernanceRole.mockReturnValueOnce(false);
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für Governance-Exporte.',
+    });
     const forbidden = await governanceComplianceExportHandler(
       new Request('https://example.test/api/v1/iam/governance/compliance?instanceId=instance-1')
     );
     expect(forbidden.status).toBe(403);
 
-    state.hasRequiredGovernanceRole.mockReturnValue(true);
+    state.authorizeInstancePermissionForUser.mockResolvedValue({ ok: true, permissions: [] });
     state.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
       handler({ user: { ...defaultUser, instanceId: undefined } })
     );
@@ -443,13 +510,18 @@ describe('iam governance runtime handlers', () => {
   it('exports legal consents as json by default and enforces scope and permission', async () => {
     const { legalConsentExportHandler } = await import('./core.js');
 
-    state.hasLegalConsentExportPermission.mockReturnValueOnce(false);
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für Consent-Exporte.',
+    });
     const forbidden = await legalConsentExportHandler(
       new Request('https://example.test/api/v1/iam/governance/legal-consents?instanceId=instance-1')
     );
     expect(forbidden.status).toBe(403);
 
-    state.hasLegalConsentExportPermission.mockReturnValue(true);
+    state.authorizeInstancePermissionForUser.mockResolvedValue({ ok: true, permissions: [] });
     state.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
       handler({ user: { ...defaultUser, instanceId: undefined } })
     );

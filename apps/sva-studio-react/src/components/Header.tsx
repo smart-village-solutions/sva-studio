@@ -13,6 +13,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { t } from '../i18n';
 import { createLoginHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
+import { hasExperimentalAccess } from '../lib/iam-admin-access';
 import { cn } from '../lib/utils';
 import { useAuth } from '../providers/auth-provider';
 import { useLocale } from '../providers/locale-provider';
@@ -224,6 +225,7 @@ export default function Header({
   const loginHref = isHydrated ? createLoginHref(resolveCurrentReturnTo()) : '/auth/login';
   const showOrganizationContext = isHydrated && isAuthenticated && !isLoading && !isAuthLoading && Boolean(user);
   const showAuthenticatedHeaderTools = isHydrated && isAuthenticated && !isLoading && !isAuthLoading;
+  const showExperimentalHeaderTools = showAuthenticatedHeaderTools && hasExperimentalAccess(user);
   const hideAnonymousLoginAction = !isAuthenticated && currentPathname === '/';
   const displayName = user ? resolveUserDisplayName(user) : '';
   const initials = displayName ? resolveUserInitials(displayName) : '';
@@ -383,7 +385,7 @@ export default function Header({
               <OrganizationContextSwitcher />
             </div>
           ) : null}
-          {showAuthenticatedHeaderTools ? (
+          {showExperimentalHeaderTools ? (
             <div className="hidden min-w-0 flex-1 items-center gap-3 xl:flex">
               <HeaderPromptField icon={<Search className="h-4 w-4" />} label={searchPromptLabel} />
               <HeaderPromptField icon={<MessageCircle className="h-4 w-4" />} label={assistantPromptLabel} />

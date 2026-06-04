@@ -201,6 +201,8 @@ Begründung:
 
 - `system_admin` reicht für die tenant-lokalen Admin-Funktionen wie Benutzer-, Rollen- und Gruppenverwaltung
 - `instance_registry_admin` ist eine Plattformrolle für globale Instanzmutationen und soll nicht automatisch an Tenant-Admins gehen
+- Tenant-Zugriffe werden fachlich über Permissions entschieden; `system_admin` ist nur die kanonische Bootstrap-Rolle, nicht das alleinige technische Zugriffsmodell
+- der Root-Host-Provisioning-Pfad unter `/admin/instances` stellt den Tenant-Admin nicht nur in Keycloak sicher, sondern bindet den konfigurierten Bootstrap-User auch lokal in Studio direkt an die Sonderrolle `system_admin`
 
 ### Optionale Zusatzrollen
 
@@ -214,6 +216,24 @@ Nur wenn die jeweilige Funktion tatsächlich benötigt wird:
 - `editor`
 
 Diese Rollen sind bewusst nicht Teil des pauschalen Standard-Bootstraps.
+
+## Anti-Regression-Regel
+
+Tenant-lokale Fachzugriffe dürfen nicht wieder an feste Rollennamen gekoppelt werden, sobald dafür fachliche Permissions existieren.
+
+Das bedeutet konkret:
+
+- neue Tenant-APIs, Router-Guards und UI-Gates prüfen Permissions statt `system_admin`, `app_manager`, `iam_admin` oder ähnlicher Rollennamen
+- Root-only-Ausnahmen wie `instance_registry_admin` bleiben auf echte Plattformpfade beschränkt
+- Legacy-Rollennamen dürfen als Bootstrap- oder Kompatibilitätsartefakte weiter existieren, tragen aber keine neue Autorisierungssemantik
+
+### Legacy-Hinweis für Bestands-Realms
+
+Für ältere Tenants gilt zusätzlich:
+
+- tenantseitige Altartefakte mit Rolle `instance_registry_admin` werden als Fehlkonfiguration behandelt und sollen über den bereinigten Rollenabgleich beziehungsweise die Datenmigration entfernt oder neutralisiert werden
+- `seed:system_admin` bleibt die kanonische tenantseitige Reparaturreferenz für lokale oder operative Rebind-/Repair-Pfade
+- frühere Bootstrap-Rollen wie `app_manager`, `editor` oder `designer` dürfen weiter existieren, gelten aber nicht mehr als geschützte Systemrollen
 
 ## Technischer Tenant-Admin-Client
 

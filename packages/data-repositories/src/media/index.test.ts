@@ -195,6 +195,17 @@ describe('media repository', () => {
     expect(statements[0]?.values).toEqual(['tenant-a', '%rathaus%', 'public']);
   });
 
+  it('falls back to zero when the asset count query returns no row', async () => {
+    const { executor } = createQueuedExecutor([[]]);
+    const repository = createMediaRepository(executor);
+
+    await expect(
+      repository.countAssets({
+        instanceId: 'tenant-a',
+      })
+    ).resolves.toBe(0);
+  });
+
   it('keeps asset lookup fail-closed across instances', async () => {
     const { executor, statements } = createQueuedExecutor([[]]);
     const repository = createMediaRepository(executor);

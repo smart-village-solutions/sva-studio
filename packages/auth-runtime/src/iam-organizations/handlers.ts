@@ -19,6 +19,10 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import { getSession, updateSession } from '../redis-session.js';
 import { jsonResponse } from '../db.js';
+import {
+  authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode,
+} from '../instance-permission-authorization.js';
 import { isUuid, readString } from '../shared/input-readers.js';
 
 import {
@@ -59,6 +63,10 @@ const organizationReadHandlers = createOrganizationReadHandlers({
   getWorkspaceContext,
   isUuid,
   jsonResponse,
+  authorizeOrganizationReadAccess: (_request, ctx, requestId) =>
+    authorizeInstancePermissionForUser({ ctx, action: 'iam.org.read' }).then((result) =>
+      result.ok ? null : createApiError(result.status, toInstancePermissionApiErrorCode(result.error), result.message, requestId)
+    ),
   loadContextOptions,
   loadOrganizationDetail,
   loadOrganizationList,
@@ -86,6 +94,10 @@ const organizationMutationHandlers = createOrganizationMutationHandlers({
   isHierarchyError,
   isUuid,
   jsonResponse,
+  authorizeOrganizationMutationAccess: (_request, ctx, requestId) =>
+    authorizeInstancePermissionForUser({ ctx, action: 'iam.org.write' }).then((result) =>
+      result.ok ? null : createApiError(result.status, toInstancePermissionApiErrorCode(result.error), result.message, requestId)
+    ),
   loadContextOptions,
   loadOrganizationById,
   loadOrganizationDetail,

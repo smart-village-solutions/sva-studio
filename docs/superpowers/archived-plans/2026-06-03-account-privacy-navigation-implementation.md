@@ -8,6 +8,8 @@
 
 **Tech Stack:** Nx, pnpm-Workspace, TypeScript Strict Mode, TanStack Router, React, Vitest, Playwright, auth-runtime, iam-governance, routing, studio-ui
 
+**Archivstatus:** Inhaltlich umgesetzt in `48c2570a` (`Implement account privacy flows, DSR exports, and Keycloak theme`) und via `10d1c49c` nach `main` gemergt. Checkboxen wurden für die Archivierung auf den tatsächlichen Stand nachgezogen.
+
 ---
 
 ## File Structure Map
@@ -160,7 +162,7 @@ pnpm nx run routing:check:runtime
 
 Expected: Beide Läufe PASS; keine endungslosen Runtime-Import-Probleme.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/routing/src/route-paths.ts \
@@ -298,7 +300,7 @@ pnpm nx run sva-studio-react:test:types
 
 Expected: Erst rote Tests, danach grüne Tests; Typecheck PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/sva-studio-react/src/routing/app-route-bindings.tsx \
@@ -499,7 +501,7 @@ pnpm nx run sva-studio-react:test:unit:routes --testFiles=src/lib/iam-api.test.t
 
 Expected: Die neuen Tests schlagen vor der Umsetzung fehl und sind danach grün; Runtime-Checks PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core/src/iam/transparency-contract.ts \
@@ -678,7 +680,7 @@ pnpm nx run sva-studio-react:test:types
 
 Expected: Regeln-Seiten-Tests PASS; App-Typecheck PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/sva-studio-react/src/routes/account/-account-rules-page.tsx \
@@ -874,7 +876,7 @@ pnpm nx run sva-studio-react:test:types
 
 Expected: Privacy-UI-Tests PASS; Typecheck PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/sva-studio-react/src/routes/account/-account-privacy-page.tsx \
@@ -1056,7 +1058,7 @@ pnpm nx run sva-studio-react:test:e2e --testFiles=apps/sva-studio-react/e2e/acco
 
 Expected: PASS mit Menü-Einstieg, Privacy-Tabelle, Detailzugang und Rules-Seite.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/sva-studio-react/src/routes/account/-account-privacy-detail-page.tsx \

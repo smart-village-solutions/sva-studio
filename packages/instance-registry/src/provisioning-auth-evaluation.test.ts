@@ -98,11 +98,11 @@ describe('provisioning-auth-evaluation', () => {
         tenantAdminStatus: {
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
-          tenantAdminHasInstanceRegistryAdmin: true,
+          tenantAdminHasInstanceRegistryAdmin: false,
         },
         keycloakClientSecret: 'tenant-secret',
         systemAdminRole: { id: 'role-1', externalName: 'system_admin' } as never,
-        instanceRegistryAdminRole: { id: 'role-2', externalName: 'instance_registry_admin' } as never,
+        instanceRegistryAdminRole: null,
       },
     });
 

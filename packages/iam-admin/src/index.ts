@@ -27,6 +27,8 @@ export {
 } from './role-read-handlers.js';
 export {
   getManagedPermissionMetadata,
+  isRootOnlyPermissionKey,
+  isTenantVisiblePermissionKey,
   listManagedPermissionMetadata,
   type ManagedPermissionMetadata,
 } from './managed-permissions.js';
@@ -72,11 +74,17 @@ export {
 
 export {
   ensureActorCanManageTarget,
+  ensureTenantManageableRoleAssignments,
   ensureRoleAssignmentWithinActorLevel,
   isSystemAdminAccount,
   resolveActorMaxRoleLevel,
   resolveSystemAdminCount,
 } from './actor-authorization.js';
+export {
+  isProtectedTenantRole,
+  isRootOnlyRole,
+  isTenantManageableRole,
+} from './role-governance.js';
 
 export {
   resolveActorAccountId,

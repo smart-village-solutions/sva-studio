@@ -128,6 +128,14 @@ export type CreateRoleHandlerDeps<
     operation: 'create_role' | 'delete_role_compensation',
     work: () => Promise<T>
   ) => Promise<T>;
+  readonly validateRequestedPermissions?: (input: {
+    readonly actor: CreateRoleActor;
+    readonly permissionIds: readonly string[];
+    readonly permissionAssignments?: readonly {
+      readonly permissionId: string;
+      readonly accessScope?: IamRolePermissionAssignmentScope;
+    }[];
+  }) => Promise<Response | null>;
 };
 
 const CREATE_ROLE_ENDPOINT = 'POST:/api/v1/iam/roles';
@@ -201,6 +209,15 @@ export const createCreateRoleHandlerInternal =
     const parsed = await deps.parseCreateRoleBody(request);
     if (!parsed.ok) {
       return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+    }
+
+    const permissionValidationResponse = await deps.validateRequestedPermissions?.({
+      actor,
+      permissionIds: parsed.data.permissionIds,
+      permissionAssignments: parsed.data.permissionAssignments,
+    });
+    if (permissionValidationResponse) {
+      return permissionValidationResponse;
     }
 
     const reserve = await deps.reserveIdempotency({

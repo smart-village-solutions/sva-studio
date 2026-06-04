@@ -7,6 +7,7 @@ const {
   accountLogger,
   evaluateAuthorizeDecisionMock,
   getWorkspaceContextMock,
+  getSessionMock,
   resolveActorAccountIdWithProvisionMock,
   resolveEffectivePermissionsMock,
 } = vi.hoisted(() => ({
@@ -16,6 +17,7 @@ const {
     },
     evaluateAuthorizeDecisionMock: vi.fn(),
     getWorkspaceContextMock: vi.fn(),
+    getSessionMock: vi.fn(),
     resolveActorAccountIdWithProvisionMock: vi.fn(),
     resolveEffectivePermissionsMock: vi.fn(),
   }));
@@ -36,6 +38,10 @@ vi.mock('../iam-authorization/permission-store.js', () => ({
   resolveEffectivePermissions: resolveEffectivePermissionsMock,
 }));
 
+vi.mock('../redis-session.js', () => ({
+  getSession: getSessionMock,
+}));
+
 vi.mock('../iam-account-management/shared-actor-resolution-helpers.js', () => ({
   resolveActorAccountIdWithProvision: resolveActorAccountIdWithProvisionMock,
 }));
@@ -54,6 +60,7 @@ const permission: EffectivePermission = {
 
 const createCtx = (instanceId: string = 'instance-1'): AuthenticatedRequestContext => {
   return {
+    sessionId: 'session-1',
     user: {
       id: 'subject-1',
       email: 'editor@example.test',
@@ -70,10 +77,12 @@ describe('authorizeContentPrimitiveForUser', () => {
     accountLogger.warn.mockReset();
     evaluateAuthorizeDecisionMock.mockReset();
     getWorkspaceContextMock.mockReset();
+    getSessionMock.mockReset();
     resolveActorAccountIdWithProvisionMock.mockReset();
     resolveEffectivePermissionsMock.mockReset();
 
     getWorkspaceContextMock.mockReturnValue({ requestId: 'request-1', traceId: 'trace-1' });
+    getSessionMock.mockResolvedValue(undefined);
     resolveActorAccountIdWithProvisionMock.mockResolvedValue('account-1');
     resolveEffectivePermissionsMock.mockResolvedValue({ ok: true, permissions: [permission] });
     evaluateAuthorizeDecisionMock.mockReturnValue({ allowed: true });
@@ -181,6 +190,56 @@ describe('authorizeContentPrimitiveForUser', () => {
     );
   });
 
+  it('uses the active organization from the session when the caller omits organizationId', async () => {
+    getSessionMock.mockResolvedValueOnce({
+      id: 'session-1',
+      userId: 'user-1',
+      createdAt: Date.now(),
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
+
+    await expect(
+      authorizeContentPrimitiveForUser({
+        ctx: createCtx(),
+        action: 'news.read',
+        resource: {
+          contentType: 'news.article',
+        },
+      })
+    ).resolves.toEqual({
+      ok: true,
+      actor: {
+        instanceId: 'instance-1',
+        keycloakSubject: 'subject-1',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      },
+      permissions: [permission],
+    });
+
+    expect(resolveEffectivePermissionsMock).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      keycloakSubject: 'subject-1',
+      organizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'news.read',
+        resource: expect.objectContaining({
+          type: 'news',
+          organizationId: '11111111-1111-4111-8111-111111111111',
+          attributes: expect.objectContaining({
+            contentType: 'news.article',
+            organizationId: '11111111-1111-4111-8111-111111111111',
+          }),
+        }),
+        context: expect.objectContaining({
+          organizationId: '11111111-1111-4111-8111-111111111111',
+        }),
+      }),
+      [permission]
+    );
+  });
+
   it('adds the resolved actorAccountId for ownership-based authorization checks', async () => {
     await expect(
       authorizeContentPrimitiveForUser({
@@ -250,6 +309,27 @@ describe('authorizeContentPrimitiveForUser', () => {
     expect(accountLogger.error).toHaveBeenCalledWith(
       'Content primitive authorization resolution failed',
       expect.objectContaining({ error: 'db down' })
+    );
+  });
+
+  it('maps session lookup failures to database_unavailable', async () => {
+    getSessionMock.mockRejectedValueOnce(new Error('session unavailable'));
+
+    await expect(
+      authorizeContentPrimitiveForUser({
+        ctx: createCtx(),
+        action: 'content.read',
+      })
+    ).resolves.toMatchObject({
+      ok: false,
+      status: 503,
+      error: 'database_unavailable',
+    });
+
+    expect(resolveEffectivePermissionsMock).not.toHaveBeenCalled();
+    expect(accountLogger.error).toHaveBeenCalledWith(
+      'Content primitive authorization session lookup failed',
+      expect.objectContaining({ error: 'session unavailable' })
     );
   });
 

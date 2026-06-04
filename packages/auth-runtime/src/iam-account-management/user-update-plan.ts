@@ -7,6 +7,7 @@ import { getRoleExternalName } from './role-audit.js';
 import { updateUserSchema } from './schemas.js';
 import {
   ensureActorCanManageTarget,
+  ensureTenantManageableRoleAssignments,
   ensureRoleAssignmentWithinActorLevel,
   resolveActorMaxRoleLevel,
   resolveGroupsByIds,
@@ -69,23 +70,24 @@ const resolveNextRoleNames = async (
     return undefined;
   }
 
-  if (!input.actorIsSystemAdmin) {
-    const roleValidation = await ensureRoleAssignmentWithinActorLevel({
-      client,
-      instanceId: input.instanceId,
-      actorSubject: input.actorSubject,
-      actorRoles: input.actorRoles,
-      roleIds: input.payload.roleIds,
-    });
-    if (!roleValidation.ok) {
-      throw new Error(`${roleValidation.code}:${roleValidation.message}`);
-    }
+  const roleValidation = input.actorIsSystemAdmin
+    ? await ensureTenantManageableRoleAssignments({
+        client,
+        instanceId: input.instanceId,
+        roleIds: input.payload.roleIds,
+      })
+    : await ensureRoleAssignmentWithinActorLevel({
+        client,
+        instanceId: input.instanceId,
+        actorSubject: input.actorSubject,
+        actorRoles: input.actorRoles,
+        roleIds: input.payload.roleIds,
+      });
+  if (!roleValidation.ok) {
+    throw new Error(`${roleValidation.code}:${roleValidation.message}`);
   }
 
-  const assignedRoles = await resolveRolesByIds(client, {
-    instanceId: input.instanceId,
-    roleIds: input.payload.roleIds,
-  });
+  const assignedRoles = roleValidation.roles;
   const nextRoleNames = assignedRoles.map((role) => getRoleExternalName(role));
   const wouldRemoveSystemAdmin =
     hasSystemAdminRole(input.existing.roles) &&
@@ -122,14 +124,23 @@ const validateRequestedGroups = async (
     throw new Error('invalid_request:Mindestens eine aktive Gruppe existiert nicht.');
   }
 
-  if (input.actorIsSystemAdmin) {
-    return;
-  }
-
   const bundledRoleIds = await resolveRoleIdsForGroups(client, {
     instanceId: input.instanceId,
     groupIds: uniqueGroupIds,
   });
+  const tenantRoleValidation = await ensureTenantManageableRoleAssignments({
+    client,
+    instanceId: input.instanceId,
+    roleIds: bundledRoleIds,
+  });
+  if (!tenantRoleValidation.ok) {
+    throw new Error(`${tenantRoleValidation.code}:${tenantRoleValidation.message}`);
+  }
+
+  if (input.actorIsSystemAdmin) {
+    return;
+  }
+
   const roleValidation = await ensureRoleAssignmentWithinActorLevel({
     client,
     instanceId: input.instanceId,

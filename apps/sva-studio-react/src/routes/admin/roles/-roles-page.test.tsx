@@ -59,6 +59,19 @@ describe('RolesPage', () => {
     useRolesMock.mockReturnValue({
       roles: [
         {
+          id: 'role-root',
+          roleKey: 'instance_registry_admin',
+          roleName: 'instance_registry_admin',
+          externalRoleName: 'instance_registry_admin',
+          managedBy: 'external',
+          description: 'Root-only role',
+          isSystemRole: true,
+          roleLevel: 90,
+          memberCount: 0,
+          syncState: 'synced',
+          permissions: [],
+        },
+        {
           id: 'role-1',
           roleKey: 'system_admin',
           roleName: 'system_admin',
@@ -102,6 +115,7 @@ describe('RolesPage', () => {
     render(<RolesPage />);
 
     expect(screen.getByRole('heading', { name: 'Rollenverwaltung' })).toBeTruthy();
+    expect(screen.queryByText('instance_registry_admin')).toBeNull();
     expect(screen.getAllByText('system_admin').length).toBeGreaterThan(0);
     expect(screen.getAllByText('editor').length).toBeGreaterThan(0);
 

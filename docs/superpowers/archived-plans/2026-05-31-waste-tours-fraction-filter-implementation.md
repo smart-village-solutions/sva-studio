@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript, React, TanStack Router, Vitest, Nx, `@sva/studio-ui-react`
 
+**Archivstatus:** Inhaltlich umgesetzt im Waste-Management-Filter-Slice auf `main`; die Checkboxen wurden für die Archivierung auf den tatsächlichen Stand nachgezogen.
+
 ---
 
 ### Task 1: Touren-Suchzustand um eigenen Fraktionen-Filter erweitern
@@ -18,9 +20,9 @@
 - Test: `packages/plugin-waste-management/tests/search-params.test.ts`
 - Test: `packages/plugin-waste-management/tests/waste-management.tours-list-view.navigation.test.ts`
 
-- [ ] Search-Param `tourWasteFractionId` ergänzen und sauber normalisieren.
-- [ ] Kombinierten Touren-Filter-Writeback um `tourWasteFractionId` erweitern.
-- [ ] Sicherstellen, dass `wasteFractionId` weiterhin unangetastet für Stammdaten bleibt.
+- [x] Search-Param `tourWasteFractionId` ergänzen und sauber normalisieren.
+- [x] Kombinierten Touren-Filter-Writeback um `tourWasteFractionId` erweitern.
+- [x] Sicherstellen, dass `wasteFractionId` weiterhin unangetastet für Stammdaten bleibt.
 
 ### Task 2: Clientseitige Touren-Filterlogik um Abfallart erweitern
 
@@ -28,8 +30,8 @@
 - Modify: `packages/plugin-waste-management/src/waste-management.tours.shared.ts`
 - Test: `packages/plugin-waste-management/tests/waste-management.tours.shared.test.ts`
 
-- [ ] Touren nur dann durchlassen, wenn `tourWasteFractionId` in `tour.wasteFractionIds` enthalten ist.
-- [ ] Den Fraktionenfilter mit den bestehenden Text-, Status- und Datumsfiltern zusammenspielen lassen.
+- [x] Touren nur dann durchlassen, wenn `tourWasteFractionId` in `tour.wasteFractionIds` enthalten ist.
+- [x] Den Fraktionenfilter mit den bestehenden Text-, Status- und Datumsfiltern zusammenspielen lassen.
 
 ### Task 3: Touren-Modal und Reset um Single-Select für Abfallarten erweitern
 
@@ -43,9 +45,9 @@
 - Test: `packages/plugin-waste-management/tests/waste-management.tours-content.test.tsx`
 - Test: `packages/plugin-waste-management/tests/waste-management.tours-content.sorting.test.tsx`
 
-- [ ] Lokalen Draft `draftTourWasteFractionId` ergänzen.
-- [ ] Select `Abfallart` mit `Alle` plus verfügbaren Fraktionen in das Modal einfügen.
-- [ ] Apply/Cancel/Reset so erweitern, dass `tourWasteFractionId` vollständig mitgeführt wird.
+- [x] Lokalen Draft `draftTourWasteFractionId` ergänzen.
+- [x] Select `Abfallart` mit `Alle` plus verfügbaren Fraktionen in das Modal einfügen.
+- [x] Apply/Cancel/Reset so erweitern, dass `tourWasteFractionId` vollständig mitgeführt wird.
 
 ### Task 4: Übersetzungen und Verifikation abschließen
 
@@ -55,6 +57,6 @@
 - Modify: `packages/plugin-waste-management/src/plugin.translations.en.tours.ts`
 - Test: `packages/plugin-waste-management/tests/plugin.translations.shared.test.ts`
 
-- [ ] i18n-Keys für `Abfallart` und `Alle` im Touren-Filter ergänzen.
-- [ ] Kleinsten relevanten Unit-Gate-Pfad grün ausführen.
-- [ ] `pnpm nx run plugin-waste-management:test:types` grün ausführen.
+- [x] i18n-Keys für `Abfallart` und `Alle` im Touren-Filter ergänzen.
+- [x] Kleinsten relevanten Unit-Gate-Pfad grün ausführen.
+- [x] `pnpm nx run plugin-waste-management:test:types` grün ausführen.

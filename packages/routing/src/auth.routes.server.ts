@@ -22,11 +22,11 @@ const healthCheckRoutes = new Set<AuthRoutePath>([
   '/api/v1/iam/health/live',
 ]);
 
-const authHandlerMap = {
+const authHandlerMap: Record<AuthRoutePath, AuthHandlers> = {
   ...accountAuthHandlerMap,
   ...instanceAuthHandlerMap,
   ...governanceAuthHandlerMap,
-} satisfies Record<AuthRoutePath, AuthHandlers>;
+};
 
 const isAuthRoutePath = (value: string): value is AuthRoutePath =>
   (authRoutePaths as readonly string[]).includes(value);

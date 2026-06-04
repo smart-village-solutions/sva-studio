@@ -60,7 +60,7 @@ describe('legal-text-request-context', () => {
       async () => {
         const deps: LegalTextsAdminActorResolverDeps<TestContext> = {
           ensureFeature: vi.fn(() => undefined),
-          requireAdminRoles: vi.fn(() => undefined),
+          requireAdminAccess: vi.fn(() => undefined),
           resolveActorInfo: vi.fn(async () => ({
             actor: {
               instanceId: 'de-musterhausen',
@@ -82,7 +82,7 @@ describe('legal-text-request-context', () => {
           },
         });
         expect(deps.ensureFeature).toHaveBeenCalledWith('req-3');
-        expect(deps.requireAdminRoles).toHaveBeenCalledWith({ userId: 'u-1' }, 'req-3');
+        expect(deps.requireAdminAccess).toHaveBeenCalledWith({ userId: 'u-1' }, 'req-3', {});
       }
     );
   });
@@ -93,7 +93,7 @@ describe('legal-text-request-context', () => {
       async () => {
         const deps: LegalTextsAdminActorResolverDeps<TestContext> = {
           ensureFeature: vi.fn(() => undefined),
-          requireAdminRoles: vi.fn(() => undefined),
+          requireAdminAccess: vi.fn(() => undefined),
           resolveActorInfo: vi.fn(async () => ({ actor: { instanceId: 'de-musterhausen', requestId: 'req-4' } })),
           createApiError: vi.fn((status, code) => new Response(code, { status })),
         };

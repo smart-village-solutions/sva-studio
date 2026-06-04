@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript, React, TanStack Router, Vitest, Nx, `@sva/studio-ui-react`
 
+**Archivstatus:** Inhaltlich umgesetzt im Waste-Management-Filter-Slice auf `main`; die Checkboxen wurden für die Archivierung auf den tatsächlichen Stand nachgezogen.
+
 ---
 
 ### Task 1: Touren-Suchzustand um Datumsbereiche erweitern
@@ -18,8 +20,8 @@
 - Test: `packages/plugin-waste-management/tests/search-params.test.ts`
 - Test: `packages/plugin-waste-management/tests/waste-management.tours-list-view.navigation.test.ts`
 
-- [ ] Search-Params und Navigation für `firstDateFrom`, `firstDateTo`, `endDateFrom`, `endDateTo` ergänzen.
-- [ ] Normalisierung und kombinierte Filter-Writebacks per Tests absichern.
+- [x] Search-Params und Navigation für `firstDateFrom`, `firstDateTo`, `endDateFrom`, `endDateTo` ergänzen.
+- [x] Normalisierung und kombinierte Filter-Writebacks per Tests absichern.
 
 ### Task 2: Clientseitige Touren-Filterlogik um Datumsvergleiche erweitern
 
@@ -27,8 +29,8 @@
 - Modify: `packages/plugin-waste-management/src/waste-management.tours.shared.ts`
 - Test: `packages/plugin-waste-management/tests/waste-management.tours.shared.test.ts`
 
-- [ ] Inklusive Bereichsvergleiche auf `firstDate` und `endDate` ergänzen.
-- [ ] Fehlende Datumswerte bei aktivem Feldfilter explizit ausschließen.
+- [x] Inklusive Bereichsvergleiche auf `firstDate` und `endDate` ergänzen.
+- [x] Fehlende Datumswerte bei aktivem Feldfilter explizit ausschließen.
 
 ### Task 3: Touren-Modal und Reset um Datums-Draft erweitern
 
@@ -40,8 +42,8 @@
 - Modify: `packages/plugin-waste-management/src/waste-management.tours.toolbar.parts.tsx`
 - Test: `packages/plugin-waste-management/tests/waste-management.tours-content.test.tsx`
 
-- [ ] Lokalen Draft-Zustand für alle vier Datumsfelder ergänzen.
-- [ ] Modal-Felder, Apply/Cancel und Schnell-Reset erweitern.
+- [x] Lokalen Draft-Zustand für alle vier Datumsfelder ergänzen.
+- [x] Modal-Felder, Apply/Cancel und Schnell-Reset erweitern.
 
 ### Task 4: Übersetzungen und Verifikation abschließen
 
@@ -51,5 +53,5 @@
 - Modify: `packages/plugin-waste-management/src/plugin.translations.en.tours.ts`
 - Test: `packages/plugin-waste-management/tests/plugin.translations.shared.test.ts`
 
-- [ ] i18n-Keys für die vier Datumsfeld-Labels ergänzen.
-- [ ] Relevante Unit-Tests und `plugin-waste-management:test:types` grün ausführen.
+- [x] i18n-Keys für die vier Datumsfeld-Labels ergänzen.
+- [x] Relevante Unit-Tests und `plugin-waste-management:test:types` grün ausführen.

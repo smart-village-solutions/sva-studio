@@ -118,6 +118,8 @@ describe('provisioning-auth-state', () => {
         username: 'tenant-admin',
       })
     );
+    expect(client.ensureRealmRole).toHaveBeenCalledWith('system_admin');
+    expect(client.ensureRealmRole).not.toHaveBeenCalledWith('instance_registry_admin');
     expect(client.setUserPassword).toHaveBeenCalledWith('user-1', 'tmp-password', true);
   });
 

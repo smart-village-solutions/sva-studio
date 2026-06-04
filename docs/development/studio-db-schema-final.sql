@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict WllTzGWnJtp24wGps7ESTiQSbbg6frAk2gPlDHnEDWm3ODINT1hr2elv5Lm8Ziq
+\restrict KcbbagD8WOzRgJn0OSe4YhE5CZn8mBQnhAjg4Wp51NWmy3mtAmHl7loiFu7Py7M
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -1177,6 +1177,50 @@ ALTER TABLE ONLY iam.platform_activity_logs FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: role_permissions; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.role_permissions (
+    role_id uuid NOT NULL,
+    permission_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    instance_id text NOT NULL,
+    grant_origin_kind text DEFAULT 'manual'::text NOT NULL,
+    grant_origin_module_id text,
+    access_scope text DEFAULT 'all'::text NOT NULL,
+    CONSTRAINT role_permissions_access_scope_check CHECK ((access_scope = ANY (ARRAY['all'::text, 'own'::text, 'organization'::text]))),
+    CONSTRAINT role_permissions_grant_origin_kind_check CHECK ((grant_origin_kind = ANY (ARRAY['manual'::text, 'seed'::text, 'bootstrap'::text, 'module_sync'::text]))),
+    CONSTRAINT role_permissions_grant_origin_module_check CHECK ((((grant_origin_kind = 'module_sync'::text) AND (grant_origin_module_id IS NOT NULL) AND (btrim(grant_origin_module_id) <> ''::text)) OR ((grant_origin_kind <> 'module_sync'::text) AND (grant_origin_module_id IS NULL))))
+);
+
+
+--
+-- Name: roles; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.roles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    role_name text NOT NULL,
+    description text,
+    is_system_role boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    role_level integer DEFAULT 0 NOT NULL,
+    role_key text NOT NULL,
+    display_name text NOT NULL,
+    external_role_name text NOT NULL,
+    managed_by text DEFAULT 'studio'::text NOT NULL,
+    sync_state text DEFAULT 'pending'::text NOT NULL,
+    last_synced_at timestamp with time zone,
+    last_error_code text,
+    instance_id text NOT NULL,
+    CONSTRAINT roles_managed_by_chk CHECK ((managed_by = ANY (ARRAY['studio'::text, 'external'::text]))),
+    CONSTRAINT roles_role_level_range_chk CHECK (((role_level >= 0) AND (role_level <= 100))),
+    CONSTRAINT roles_sync_state_chk CHECK ((sync_state = ANY (ARRAY['synced'::text, 'pending'::text, 'failed'::text])))
+);
+
+
+--
 -- Name: studio_job_events; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -1233,50 +1277,6 @@ CREATE TABLE iam.studio_jobs (
     CONSTRAINT studio_jobs_max_attempts_check CHECK ((max_attempts >= 1)),
     CONSTRAINT studio_jobs_source_check CHECK ((source = ANY (ARRAY['plugin'::text, 'host'::text]))),
     CONSTRAINT studio_jobs_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'retrying'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text])))
-);
-
-
---
--- Name: role_permissions; Type: TABLE; Schema: iam; Owner: -
---
-
-CREATE TABLE iam.role_permissions (
-    role_id uuid NOT NULL,
-    permission_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    instance_id text NOT NULL,
-    grant_origin_kind text DEFAULT 'manual'::text NOT NULL,
-    grant_origin_module_id text,
-    access_scope text DEFAULT 'all'::text NOT NULL,
-    CONSTRAINT role_permissions_access_scope_check CHECK ((access_scope = ANY (ARRAY['all'::text, 'own'::text, 'organization'::text]))),
-    CONSTRAINT role_permissions_grant_origin_kind_check CHECK ((grant_origin_kind = ANY (ARRAY['manual'::text, 'seed'::text, 'bootstrap'::text, 'module_sync'::text]))),
-    CONSTRAINT role_permissions_grant_origin_module_check CHECK ((((grant_origin_kind = 'module_sync'::text) AND (grant_origin_module_id IS NOT NULL) AND (btrim(grant_origin_module_id) <> ''::text)) OR ((grant_origin_kind <> 'module_sync'::text) AND (grant_origin_module_id IS NULL))))
-);
-
-
---
--- Name: roles; Type: TABLE; Schema: iam; Owner: -
---
-
-CREATE TABLE iam.roles (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    role_name text NOT NULL,
-    description text,
-    is_system_role boolean DEFAULT false NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    role_level integer DEFAULT 0 NOT NULL,
-    role_key text NOT NULL,
-    display_name text NOT NULL,
-    external_role_name text NOT NULL,
-    managed_by text DEFAULT 'studio'::text NOT NULL,
-    sync_state text DEFAULT 'pending'::text NOT NULL,
-    last_synced_at timestamp with time zone,
-    last_error_code text,
-    instance_id text NOT NULL,
-    CONSTRAINT roles_managed_by_chk CHECK ((managed_by = ANY (ARRAY['studio'::text, 'external'::text]))),
-    CONSTRAINT roles_role_level_range_chk CHECK (((role_level >= 0) AND (role_level <= 100))),
-    CONSTRAINT roles_sync_state_chk CHECK ((sync_state = ANY (ARRAY['synced'::text, 'pending'::text, 'failed'::text])))
 );
 
 
@@ -1795,22 +1795,6 @@ ALTER TABLE ONLY iam.platform_activity_logs
 
 
 --
--- Name: studio_job_events studio_job_events_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.studio_job_events
-    ADD CONSTRAINT studio_job_events_pkey PRIMARY KEY (id);
-
-
---
--- Name: studio_jobs studio_jobs_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.studio_jobs
-    ADD CONSTRAINT studio_jobs_pkey PRIMARY KEY (id);
-
-
---
 -- Name: role_permissions role_permissions_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -1824,6 +1808,22 @@ ALTER TABLE ONLY iam.role_permissions
 
 ALTER TABLE ONLY iam.roles
     ADD CONSTRAINT roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: studio_job_events studio_job_events_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.studio_job_events
+    ADD CONSTRAINT studio_job_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: studio_jobs studio_jobs_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.studio_jobs
+    ADD CONSTRAINT studio_jobs_pkey PRIMARY KEY (id);
 
 
 --
@@ -2276,6 +2276,34 @@ CREATE INDEX idx_platform_activity_logs_request_id ON iam.platform_activity_logs
 
 
 --
+-- Name: idx_role_permissions_origin_module; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_role_permissions_origin_module ON iam.role_permissions USING btree (instance_id, grant_origin_kind, grant_origin_module_id);
+
+
+--
+-- Name: idx_roles_instance_id; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_roles_instance_id ON iam.roles USING btree (instance_id);
+
+
+--
+-- Name: idx_roles_instance_sync_state; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_roles_instance_sync_state ON iam.roles USING btree (instance_id, sync_state, updated_at DESC);
+
+
+--
+-- Name: idx_roles_managed_scope; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_roles_managed_scope ON iam.roles USING btree (instance_id, managed_by, external_role_name);
+
+
+--
 -- Name: idx_studio_job_events_job_created_at; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -2322,34 +2350,6 @@ CREATE INDEX idx_studio_jobs_instance_status_updated_at ON iam.studio_jobs USING
 --
 
 CREATE INDEX idx_studio_jobs_parent_job_id ON iam.studio_jobs USING btree (parent_job_id);
-
-
---
--- Name: idx_role_permissions_origin_module; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX idx_role_permissions_origin_module ON iam.role_permissions USING btree (instance_id, grant_origin_kind, grant_origin_module_id);
-
-
---
--- Name: idx_roles_instance_id; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX idx_roles_instance_id ON iam.roles USING btree (instance_id);
-
-
---
--- Name: idx_roles_instance_sync_state; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX idx_roles_instance_sync_state ON iam.roles USING btree (instance_id, sync_state, updated_at DESC);
-
-
---
--- Name: idx_roles_managed_scope; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE INDEX idx_roles_managed_scope ON iam.roles USING btree (instance_id, managed_by, external_role_name);
 
 
 --
@@ -2666,19 +2666,19 @@ ALTER TABLE ONLY iam.data_subject_export_jobs
 
 
 --
--- Name: data_subject_export_jobs data_subject_export_jobs_studio_job_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.data_subject_export_jobs
-    ADD CONSTRAINT data_subject_export_jobs_studio_job_fk FOREIGN KEY (studio_job_id) REFERENCES iam.studio_jobs(id) ON DELETE SET NULL;
-
-
---
 -- Name: data_subject_export_jobs data_subject_export_jobs_requester_membership_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
 ALTER TABLE ONLY iam.data_subject_export_jobs
     ADD CONSTRAINT data_subject_export_jobs_requester_membership_fk FOREIGN KEY (instance_id, requested_by_account_id) REFERENCES iam.instance_memberships(instance_id, account_id) ON DELETE SET NULL;
+
+
+--
+-- Name: data_subject_export_jobs data_subject_export_jobs_studio_job_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.data_subject_export_jobs
+    ADD CONSTRAINT data_subject_export_jobs_studio_job_fk FOREIGN KEY (studio_job_id) REFERENCES iam.studio_jobs(id) ON DELETE SET NULL;
 
 
 --
@@ -3282,22 +3282,6 @@ ALTER TABLE ONLY iam.platform_activity_logs
 
 
 --
--- Name: studio_job_events studio_job_events_job_instance_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.studio_job_events
-    ADD CONSTRAINT studio_job_events_job_instance_fk FOREIGN KEY (job_id, instance_id) REFERENCES iam.studio_jobs(id, instance_id) ON DELETE CASCADE;
-
-
---
--- Name: studio_jobs studio_jobs_parent_job_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
---
-
-ALTER TABLE ONLY iam.studio_jobs
-    ADD CONSTRAINT studio_jobs_parent_job_fk FOREIGN KEY (parent_job_id) REFERENCES iam.studio_jobs(id) ON DELETE SET NULL;
-
-
---
 -- Name: role_permissions role_permissions_permission_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3319,6 +3303,22 @@ ALTER TABLE ONLY iam.role_permissions
 
 ALTER TABLE ONLY iam.roles
     ADD CONSTRAINT roles_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: studio_job_events studio_job_events_job_instance_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.studio_job_events
+    ADD CONSTRAINT studio_job_events_job_instance_fk FOREIGN KEY (job_id, instance_id) REFERENCES iam.studio_jobs(id, instance_id) ON DELETE CASCADE;
+
+
+--
+-- Name: studio_jobs studio_jobs_parent_job_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.studio_jobs
+    ADD CONSTRAINT studio_jobs_parent_job_fk FOREIGN KEY (parent_job_id) REFERENCES iam.studio_jobs(id) ON DELETE SET NULL;
 
 
 --
@@ -3632,4 +3632,5 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict WllTzGWnJtp24wGps7ESTiQSbbg6frAk2gPlDHnEDWm3ODINT1hr2elv5Lm8Ziq
+\unrestrict KcbbagD8WOzRgJn0OSe4YhE5CZn8mBQnhAjg4Wp51NWmy3mtAmHl7loiFu7Py7M
+

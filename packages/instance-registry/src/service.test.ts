@@ -814,7 +814,7 @@ describe('instance registry service facade', () => {
         coreRole: expect.objectContaining({
           roleKey: 'core_admin',
           displayName: 'Core Admin',
-          permissionKeys: expect.arrayContaining(['instance.registry.manage']),
+          permissionKeys: expect.not.arrayContaining(['instance.registry.manage']),
         }),
         moduleRoles: expect.arrayContaining([
           expect.objectContaining({

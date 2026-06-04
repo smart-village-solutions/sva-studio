@@ -90,7 +90,7 @@ export type SyncUsersApiErrorCode =
   | 'tenant_admin_client_not_configured'
   | 'database_unavailable';
 
-const ADMIN_ROLES = new Set(['system_admin', 'instance_admin']);
+const ROOT_ADMIN_ROLES = new Set(['instance_registry_admin']);
 
 const handlePlatformSync = async <TReport, TFeatureFlags>(
   deps: SyncUsersHandlerDeps<TReport, TFeatureFlags>,
@@ -102,7 +102,7 @@ const handlePlatformSync = async <TReport, TFeatureFlags>(
   if (featureCheck) {
     return featureCheck;
   }
-  const roleCheck = deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+  const roleCheck = deps.requireRoles(ctx, ROOT_ADMIN_ROLES, requestContext.requestId);
   if (roleCheck) {
     return roleCheck;
   }

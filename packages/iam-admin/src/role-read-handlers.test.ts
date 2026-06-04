@@ -15,7 +15,7 @@ const platformCtx = {
   sessionId: 'session-1',
   user: {
     id: 'kc-platform-admin',
-    roles: ['system_admin'],
+    roles: ['instance_registry_admin'],
   },
 };
 
@@ -49,7 +49,11 @@ const createDeps = (overrides: Partial<RoleReadHandlerDeps<(typeof roles)[number
     listPlatformRolesInternal: vi.fn(async () => createJsonResponse(200, { data: [{ id: 'platform-role' }] })),
     loadPermissions: vi.fn(async () => permissions),
     loadRoleListItems: vi.fn(async () => roles),
-    requireRoles: vi.fn(() => null),
+    requireRoles: vi.fn((requestContext, roles, requestId) =>
+      requestContext.user.roles.some((role) => roles.has(role))
+        ? null
+        : createJsonResponse(403, { error: { code: 'forbidden', message: 'forbidden' }, requestId })
+    ),
     resolveActorInfo: vi.fn(async () => ({ actor })),
     ...overrides,
   }) satisfies RoleReadHandlerDeps<(typeof roles)[number], (typeof permissions)[number]>;
@@ -72,6 +76,29 @@ describe('createRoleReadHandlers', () => {
       requestId: 'req-roles',
     });
     expect(deps.loadRoleListItems).toHaveBeenCalledWith('de-musterhausen');
+  });
+
+  it('supports a custom access authorizer for permission-based role access', async () => {
+    const authorizeRoleReadAccess = vi.fn(async () => null);
+    const deps = createDeps({
+      authorizeRoleReadAccess,
+      requireRoles: vi.fn(() => createJsonResponse(403, { error: { code: 'forbidden', message: 'forbidden' } })),
+    });
+    const handlers = createRoleReadHandlers(deps);
+
+    const response = await handlers.listRolesInternal(new Request('http://localhost/api/v1/iam/roles'), {
+      ...ctx,
+      user: { ...ctx.user, roles: ['custom_role'] },
+    });
+
+    expect(response.status).toBe(200);
+    expect(authorizeRoleReadAccess).toHaveBeenCalledWith(
+      expect.any(Request),
+      expect.objectContaining({ user: expect.objectContaining({ roles: ['custom_role'] }) }),
+      'req-workspace',
+      { allowPlatformRoles: true }
+    );
+    expect(deps.requireRoles).not.toHaveBeenCalled();
   });
 
   it('delegates platform role lists when no instance scope is present', async () => {

@@ -44,10 +44,7 @@ export type UpdateRoleIdentityProvider<TAttributes = unknown> = {
   readonly provider: {
     readonly updateRole: (
       externalName: string,
-      input: {
-        readonly description?: string;
-        readonly attributes: TAttributes;
-      }
+      input: { readonly description?: string; readonly attributes: TAttributes }
     ) => Promise<unknown>;
   };
 };
@@ -118,20 +115,19 @@ export type UpdateRoleHandlerDeps<
     readonly operation: 'update' | 'retry';
   }) => Promise<TRoleItem>;
   readonly requireRoleId: (request: Request, requestId?: string) => string | Response;
-  readonly requireRoleIdentityProvider: (
-    instanceId: string,
-    requestId?: string
-  ) => Promise<TIdentityProvider | Response>;
+  readonly requireRoleIdentityProvider: (instanceId: string, requestId?: string) => Promise<TIdentityProvider | Response>;
   readonly resolveMutableRole: (actor: UpdateRoleActor, roleId: string) => Promise<TRole | Response>;
-  readonly resolveRoleMutationActor: (
-    request: Request,
-    ctx: UpdateRoleAuthenticatedRequestContext
-  ) => Promise<{ readonly actor: UpdateRoleActor } | { readonly response: Response }>;
+  readonly resolveRoleMutationActor: (request: Request, ctx: UpdateRoleAuthenticatedRequestContext) => Promise<{ readonly actor: UpdateRoleActor } | { readonly response: Response }>;
   readonly sanitizeRoleErrorMessage: (error: unknown) => string;
-  readonly trackKeycloakCall: <T>(
-    operation: 'update_role' | 'update_role_compensation',
-    work: () => Promise<T>
-  ) => Promise<T>;
+  readonly trackKeycloakCall: <T>(operation: 'update_role' | 'update_role_compensation', work: () => Promise<T>) => Promise<T>;
+  readonly validateRequestedPermissions?: (input: {
+    readonly actor: UpdateRoleActor;
+    readonly permissionIds?: readonly string[];
+    readonly permissionAssignments?: readonly {
+      readonly permissionId: string;
+      readonly accessScope?: IamRolePermissionAssignmentScope;
+    }[];
+  }) => Promise<Response | null>;
 };
 
 export const createUpdateRoleHandlerInternal =
@@ -159,6 +155,15 @@ export const createUpdateRoleHandlerInternal =
     const parsed = await deps.parseUpdateRoleBody(request);
     if (!parsed.ok) {
       return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+    }
+
+    const permissionValidationResponse = await deps.validateRequestedPermissions?.({
+      actor,
+      permissionIds: parsed.data.permissionIds,
+      permissionAssignments: parsed.data.permissionAssignments,
+    });
+    if (permissionValidationResponse) {
+      return permissionValidationResponse;
     }
 
     const identityProvider = await deps.requireRoleIdentityProvider(actor.instanceId, actor.requestId);

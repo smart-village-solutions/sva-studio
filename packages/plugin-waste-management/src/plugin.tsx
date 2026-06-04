@@ -178,7 +178,7 @@ export const pluginWasteManagement: PluginDefinition = {
   moduleIam: {
     moduleId: wasteManagementModuleIam.moduleId,
     permissionIds: wasteManagementModuleIam.permissionIds,
-    systemRoles: wasteManagementModuleIam.systemRoles,
+    systemRoles: wasteManagementModuleIam.systemRoles ?? wasteManagementModuleIam.tenantBootstrapRoles,
   },
   auditEvents: wasteManagementAuditEventDefinitions,
   jobTypes: createWasteManagementPluginJobTypes(),

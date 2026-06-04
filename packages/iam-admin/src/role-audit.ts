@@ -2,29 +2,17 @@ import type { IamRoleListItem, IamRoleSyncState } from '@sva/core';
 import { redactObject } from '@sva/server-runtime';
 
 import { getManagedPermissionMetadata } from './managed-permissions.js';
+import { isProtectedTenantRole, isRootOnlyRole } from './role-governance.js';
 
 type IamRoleRow = {
-  id: string;
-  role_key: string;
-  role_name: string;
-  display_name?: string | null;
-  external_role_name?: string | null;
-  role_level: number;
-  is_system_role: boolean;
+  id: string; role_key: string; role_name: string; display_name?: string | null;
+  external_role_name?: string | null; role_level: number; is_system_role: boolean;
 };
 
 type ManagedBy = 'studio' | 'external' | 'keycloak_builtin';
 
-type RoleSyncErrorCode =
-  | 'IDP_UNAVAILABLE'
-  | 'IDP_TIMEOUT'
-  | 'IDP_FORBIDDEN'
-  | 'IDP_CONFLICT'
-  | 'IDP_NOT_FOUND'
-  | 'IDP_UNKNOWN'
-  | 'DB_WRITE_FAILED'
-  | 'COMPENSATION_FAILED'
-  | 'REQUIRES_MANUAL_ACTION';
+type RoleSyncErrorCode = 'IDP_UNAVAILABLE' | 'IDP_TIMEOUT' | 'IDP_FORBIDDEN' | 'IDP_CONFLICT' | 'IDP_NOT_FOUND' |
+  'IDP_UNKNOWN' | 'DB_WRITE_FAILED' | 'COMPENSATION_FAILED' | 'REQUIRES_MANUAL_ACTION';
 
 const readString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim().length > 0 ? value : undefined;
@@ -103,34 +91,110 @@ export const sanitizeRoleAuditDetails = (
 export const sanitizeRoleErrorMessage = (error: unknown): string =>
   sanitizeRoleAuditString(error instanceof Error ? error.message : String(error));
 
+const mapRoleRequestErrorStatusCode = (
+  statusCode: number | undefined,
+  errorCode: string | undefined
+): RoleSyncErrorCode | undefined => {
+  if (errorCode === 'connect_timeout' || errorCode === 'read_timeout') {
+    return 'IDP_TIMEOUT';
+  }
+  if (statusCode === 403) {
+    return 'IDP_FORBIDDEN';
+  }
+  if (statusCode === 404) {
+    return 'IDP_NOT_FOUND';
+  }
+  if (statusCode === 409) {
+    return 'IDP_CONFLICT';
+  }
+  if ((typeof statusCode === 'number' && statusCode >= 500) || statusCode === 429) {
+    return 'IDP_UNAVAILABLE';
+  }
+  return undefined;
+};
+
+const isKeycloakUnavailableError = (errorName: string | undefined): boolean =>
+  errorName?.endsWith('KeycloakAdminUnavailableError') === true;
+
+const shouldMapRoleRequestError = (input: {
+  readonly errorName: string | undefined;
+  readonly statusCode: number | undefined;
+  readonly errorCode: string | undefined;
+}): boolean =>
+  input.errorName?.endsWith('KeycloakAdminRequestError') === true ||
+  typeof input.statusCode === 'number' ||
+  typeof input.errorCode === 'string';
+
 export const mapRoleSyncErrorCode = (error: unknown): RoleSyncErrorCode => {
   const errorName = readErrorName(error);
-  if (errorName?.endsWith('KeycloakAdminUnavailableError')) {
+  if (isKeycloakUnavailableError(errorName)) {
     return 'IDP_UNAVAILABLE';
   }
 
   const statusCode = readStatusCode(error);
   const errorCode = readErrorCode(error);
-  if (errorName?.endsWith('KeycloakAdminRequestError') || typeof statusCode === 'number' || errorCode) {
-    if (errorCode === 'connect_timeout' || errorCode === 'read_timeout') {
-      return 'IDP_TIMEOUT';
-    }
-    if (statusCode === 403) {
-      return 'IDP_FORBIDDEN';
-    }
-    if (statusCode === 404) {
-      return 'IDP_NOT_FOUND';
-    }
-    if (statusCode === 409) {
-      return 'IDP_CONFLICT';
-    }
-    if ((typeof statusCode === 'number' && statusCode >= 500) || statusCode === 429) {
-      return 'IDP_UNAVAILABLE';
+  if (shouldMapRoleRequestError({ errorName, statusCode, errorCode })) {
+    const mappedCode = mapRoleRequestErrorStatusCode(statusCode, errorCode);
+    if (mappedCode) {
+      return mappedCode;
     }
   }
 
   return 'IDP_UNKNOWN';
 };
+
+const getRoleEditability = (input: {
+  readonly systemRole: boolean;
+  readonly rootOnlyRole: boolean;
+  readonly managedBy: ManagedBy;
+}): IamRoleListItem['editability'] =>
+  input.systemRole || input.rootOnlyRole || input.managedBy !== 'studio' ? 'read_only' : 'editable';
+
+const getRoleDiagnostics = (row: {
+  readonly id: string;
+  readonly managed_by: ManagedBy;
+  readonly isSystemRole: boolean;
+}): IamRoleListItem['diagnostics'] => {
+  if (row.isSystemRole) {
+    return [{ code: 'system_role', objectId: row.id, objectType: 'role' }];
+  }
+  if (row.managed_by === 'keycloak_builtin') {
+    return [{ code: 'built_in_role', objectId: row.id, objectType: 'role' }];
+  }
+  if (row.managed_by === 'external') {
+    return [{ code: 'external_managed', objectId: row.id, objectType: 'role' }];
+  }
+  return undefined;
+};
+
+const mapRolePermission = (permission: {
+  readonly id: string;
+  readonly permission_key: string;
+  readonly description: string | null;
+  readonly access_scope: 'all' | 'own' | 'organization' | null;
+}): IamRoleListItem['permissions'][number] => {
+  const metadata = getManagedPermissionMetadata(permission.permission_key);
+  return {
+    id: permission.id,
+    permissionKey: permission.permission_key,
+    description: permission.description ?? metadata?.description,
+    ...(metadata?.isScopeAssignable
+      ? {
+          isScopeAssignable: true,
+          supportedAccessScopes: metadata.supportedAccessScopes,
+          accessScope: permission.access_scope ?? 'all',
+        }
+      : {}),
+  };
+};
+
+const mapRolePermissionAssignment = (permission: {
+  readonly id: string;
+  readonly access_scope: 'all' | 'own' | 'organization' | null;
+}): NonNullable<IamRoleListItem['permissionAssignments']>[number] => ({
+  permissionId: permission.id,
+  accessScope: permission.access_scope ?? 'all',
+});
 
 export const mapRoleListItem = (row: {
   id: string;
@@ -152,50 +216,30 @@ export const mapRoleListItem = (row: {
     description: string | null;
     access_scope: 'all' | 'own' | 'organization' | null;
   }> | null;
-}): IamRoleListItem => ({
-  id: row.id,
-  roleKey: row.role_key,
-  roleName: row.display_name ?? row.role_name,
-  externalRoleName: row.external_role_name ?? row.role_key,
-  managedBy: row.managed_by,
-  description: row.description ?? undefined,
-  isSystemRole: row.is_system_role,
-  editability:
-    row.is_system_role || row.managed_by !== 'studio'
-      ? 'read_only'
-      : 'editable',
-  diagnostics:
-    row.is_system_role
-      ? [{ code: 'system_role', objectId: row.id, objectType: 'role' }]
-      : row.managed_by === 'keycloak_builtin'
-        ? [{ code: 'built_in_role', objectId: row.id, objectType: 'role' }]
-        : row.managed_by === 'external'
-          ? [{ code: 'external_managed', objectId: row.id, objectType: 'role' }]
-          : undefined,
-  roleLevel: row.role_level,
-  memberCount: row.member_count,
-  syncState: row.sync_state,
-  lastSyncedAt: row.last_synced_at ?? undefined,
-  syncError: row.last_error_code ? { code: row.last_error_code } : undefined,
-  permissions:
-    row.permission_rows?.map((permission) => ({
-      id: permission.id,
-      permissionKey: permission.permission_key,
-      description: permission.description ?? getManagedPermissionMetadata(permission.permission_key)?.description,
-      ...(getManagedPermissionMetadata(permission.permission_key)?.isScopeAssignable
-        ? {
-            isScopeAssignable: true,
-            supportedAccessScopes: getManagedPermissionMetadata(permission.permission_key)?.supportedAccessScopes,
-            accessScope: permission.access_scope ?? 'all',
-          }
-        : {}),
-    })) ?? [],
-  permissionAssignments:
-    row.permission_rows?.map((permission) => ({
-      permissionId: permission.id,
-      accessScope: permission.access_scope ?? 'all',
-    })) ?? [],
-});
+}): IamRoleListItem => {
+  const systemRole = row.is_system_role && isProtectedTenantRole(row);
+  const rootOnlyRole = isRootOnlyRole(row);
+  const permissionRows = row.permission_rows ?? [];
+
+  return {
+    id: row.id,
+    roleKey: row.role_key,
+    roleName: row.display_name ?? row.role_name,
+    externalRoleName: row.external_role_name ?? row.role_key,
+    managedBy: row.managed_by,
+    description: row.description ?? undefined,
+    isSystemRole: systemRole,
+    editability: getRoleEditability({ systemRole, rootOnlyRole, managedBy: row.managed_by }),
+    diagnostics: getRoleDiagnostics({ id: row.id, managed_by: row.managed_by, isSystemRole: systemRole }),
+    roleLevel: row.role_level,
+    memberCount: row.member_count,
+    syncState: row.sync_state,
+    lastSyncedAt: row.last_synced_at ?? undefined,
+    syncError: row.last_error_code ? { code: row.last_error_code } : undefined,
+    permissions: permissionRows.map(mapRolePermission),
+    permissionAssignments: permissionRows.map(mapRolePermissionAssignment),
+  };
+};
 
 const createApiError = (
   status: number,

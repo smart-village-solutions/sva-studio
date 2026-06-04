@@ -157,6 +157,32 @@ describe('organization read handlers', () => {
     await expect(json(response)).resolves.toMatchObject({ pagination: { total: 1 }, requestId: 'req-org' });
   });
 
+  it('supports a custom access authorizer for permission-based tenant organization access', async () => {
+    const authorizeOrganizationReadAccess = vi.fn(async () => null);
+    const deps = {
+      ...buildDeps(),
+      authorizeOrganizationReadAccess,
+      requireRoles: vi.fn(() => new Response('Forbidden', { status: 403 })),
+    };
+    const handlers = createOrganizationReadHandlers(deps);
+
+    const response = await handlers.listOrganizationsInternal(
+      new Request('http://localhost/api/v1/iam/organizations'),
+      {
+        ...ctx,
+        user: { ...ctx.user, roles: ['custom_role'] },
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(authorizeOrganizationReadAccess).toHaveBeenCalledWith(
+      expect.any(Request),
+      expect.objectContaining({ user: expect.objectContaining({ roles: ['custom_role'] }) }),
+      'req-org'
+    );
+    expect(deps.requireRoles).not.toHaveBeenCalled();
+  });
+
   it('rejects invalid organization type filters before querying', async () => {
     const deps = { ...buildDeps(), readOrganizationTypeFilter: vi.fn(() => 'invalid' as const) };
     const handlers = createOrganizationReadHandlers(deps);

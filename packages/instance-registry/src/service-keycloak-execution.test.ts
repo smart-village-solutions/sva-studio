@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   readQueuedTemporaryPassword: vi.fn(),
   syncProvisionedClientSecretToRegistry: vi.fn(),
   syncRotatedClientSecretToRegistry: vi.fn(),
+  syncTenantAdminBootstrapAccount: vi.fn(),
   failClaimedRun: vi.fn(),
   failRun: vi.fn(),
 }));
@@ -90,6 +91,7 @@ describe('service-keycloak-execution', () => {
     state.readQueuedTemporaryPassword.mockReset();
     state.syncProvisionedClientSecretToRegistry.mockReset();
     state.syncRotatedClientSecretToRegistry.mockReset();
+    state.syncTenantAdminBootstrapAccount.mockReset();
     state.failClaimedRun.mockReset();
     state.failRun.mockReset();
 
@@ -99,6 +101,7 @@ describe('service-keycloak-execution', () => {
     state.readQueuedTemporaryPassword.mockReturnValue(undefined);
     state.syncProvisionedClientSecretToRegistry.mockResolvedValue(undefined);
     state.syncRotatedClientSecretToRegistry.mockResolvedValue(undefined);
+    state.syncTenantAdminBootstrapAccount.mockResolvedValue(undefined);
     state.failClaimedRun.mockResolvedValue(undefined);
     state.failRun.mockResolvedValue(undefined);
   });
@@ -209,6 +212,7 @@ describe('service-keycloak-execution', () => {
         {
           repository: repository as never,
           provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+          syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
           getKeycloakStatus: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
           planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
@@ -219,6 +223,12 @@ describe('service-keycloak-execution', () => {
 
     expect(state.syncRotatedClientSecretToRegistry).toHaveBeenCalled();
     expect(state.syncProvisionedClientSecretToRegistry).not.toHaveBeenCalled();
+    expect(state.syncTenantAdminBootstrapAccount).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      tenantAdminBootstrap: undefined,
+      requestId: 'request-1',
+      actorId: 'actor-1',
+    });
     expect(state.completeRun).toHaveBeenCalled();
   });
 
@@ -236,6 +246,7 @@ describe('service-keycloak-execution', () => {
         {
           repository: repository as never,
           provisionInstanceAuth,
+          syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
           getKeycloakStatus: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
           planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
@@ -257,6 +268,57 @@ describe('service-keycloak-execution', () => {
     );
     expect(state.syncProvisionedClientSecretToRegistry).not.toHaveBeenCalled();
     expect(state.syncRotatedClientSecretToRegistry).not.toHaveBeenCalled();
+    expect(state.syncTenantAdminBootstrapAccount).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      tenantAdminBootstrap: undefined,
+      requestId: 'request-1',
+      actorId: 'actor-1',
+    });
+  });
+
+  it('passes the configured tenant admin bootstrap to the local sync hook after provisioning', async () => {
+    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const repository = {
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
+    };
+    state.loadInstanceWithSecret.mockResolvedValue({
+      ...createLoaded(),
+      instance: {
+        ...createLoaded().instance,
+        tenantAdminBootstrap: {
+          username: 'tenant.admin',
+          email: 'tenant.admin@example.test',
+          firstName: 'Tenant',
+          lastName: 'Admin',
+        },
+      },
+    });
+
+    await expect(
+      processClaimedKeycloakProvisioningRun(
+        {
+          repository: repository as never,
+          provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+          syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
+          getKeycloakStatus: vi.fn(),
+          getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
+          planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+        } as never,
+        createRun()
+      )
+    ).resolves.toEqual({ id: 'run-1', overallStatus: 'succeeded' });
+
+    expect(state.syncTenantAdminBootstrapAccount).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      tenantAdminBootstrap: {
+        username: 'tenant.admin',
+        email: 'tenant.admin@example.test',
+        firstName: 'Tenant',
+        lastName: 'Admin',
+      },
+      requestId: 'request-1',
+      actorId: 'actor-1',
+    });
   });
 
   it('fails the run when execution throws and reloads the persisted run state', async () => {

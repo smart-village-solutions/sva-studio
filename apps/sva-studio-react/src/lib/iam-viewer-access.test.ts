@@ -37,7 +37,7 @@ describe('iam-viewer-access', () => {
 
     expect(isIamCockpitEnabled()).toBe(false);
     expect(isIamViewerEnabled()).toBe(false);
-    expect(hasIamViewerAdminRole({ roles: ['support_admin'] })).toBe(true);
+    expect(hasIamViewerAdminRole({ permissionActions: ['iam.dsr.read'] })).toBe(true);
   });
 
   it('maps the allowed tabs to the harmonized role matrix', async () => {
@@ -48,38 +48,34 @@ describe('iam-viewer-access', () => {
     const { getAllowedIamCockpitTabs, hasGovernanceComplianceExportRole, hasIamCockpitAccessRole } =
       await import('./iam-viewer-access');
 
-    expect(getAllowedIamCockpitTabs({ roles: ['support_admin'], instanceId: 'de-test' })).toEqual([
+    expect(getAllowedIamCockpitTabs({ permissionActions: ['iam.user.read', 'iam.governance.read', 'iam.dsr.read', 'iam.deletionRules.read'], instanceId: 'de-test' })).toEqual([
       'rights',
       'governance',
       'dsr',
       'deletion-rules',
     ]);
-    expect(getAllowedIamCockpitTabs({ roles: ['admin'], instanceId: 'de-test' })).toEqual([
+    expect(getAllowedIamCockpitTabs({ permissionActions: ['iam.user.read', 'iam.governance.read', 'iam.dsr.read'] })).toEqual([
+      'rights',
+      'governance',
+      'dsr',
+    ]);
+    expect(getAllowedIamCockpitTabs({ permissionActions: ['iam.governance.read'] })).toEqual(['governance']);
+    expect(getAllowedIamCockpitTabs({ permissionActions: ['iam.governance.read', 'iam.dsr.read'], instanceId: 'de-test' })).toEqual([
+      'governance',
+      'dsr',
+    ]);
+    expect(getAllowedIamCockpitTabs({ permissionActions: ['iam.user.read', 'iam.governance.read', 'iam.dsr.read', 'iam.deletionRules.read'], instanceId: 'de-test' })).toEqual([
       'rights',
       'governance',
       'dsr',
       'deletion-rules',
     ]);
-    expect(getAllowedIamCockpitTabs({ roles: ['support_admin'] })).toEqual([
-      'rights',
-      'governance',
-      'dsr',
-    ]);
-    expect(getAllowedIamCockpitTabs({ roles: ['security_admin'] })).toEqual(['governance']);
-    expect(getAllowedIamCockpitTabs({ roles: ['compliance_officer'] })).toEqual(['governance']);
-    expect(getAllowedIamCockpitTabs({ roles: ['iam_admin', 'security_admin'], instanceId: 'de-test' })).toEqual([
-      'rights',
-      'governance',
-      'dsr',
-      'deletion-rules',
-    ]);
-    expect(getAllowedIamCockpitTabs({ roles: ['editor'] })).toEqual([]);
-    expect(getAllowedIamCockpitTabs({ roles: null })).toEqual([]);
+    expect(getAllowedIamCockpitTabs({ permissionActions: ['news.read'] })).toEqual([]);
+    expect(getAllowedIamCockpitTabs({ permissionActions: null })).toEqual([]);
     expect(getAllowedIamCockpitTabs(null)).toEqual([]);
-    expect(hasGovernanceComplianceExportRole({ roles: ['support_admin'] })).toBe(false);
-    expect(hasGovernanceComplianceExportRole({ roles: ['security_admin'] })).toBe(true);
-    expect(hasGovernanceComplianceExportRole({ roles: ['admin'] })).toBe(true);
-    expect(hasIamCockpitAccessRole({ roles: ['editor'] })).toBe(false);
-    expect(hasIamCockpitAccessRole({ roles: ['iam_admin'] })).toBe(true);
+    expect(hasGovernanceComplianceExportRole({ permissionActions: ['iam.governance.read'] })).toBe(false);
+    expect(hasGovernanceComplianceExportRole({ permissionActions: ['iam.governance.export'] })).toBe(true);
+    expect(hasIamCockpitAccessRole({ permissionActions: ['news.read'] })).toBe(false);
+    expect(hasIamCockpitAccessRole({ permissionActions: ['iam.dsr.read'] })).toBe(true);
   });
 });

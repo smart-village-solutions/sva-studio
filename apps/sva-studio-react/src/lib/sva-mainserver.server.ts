@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 
 import type { SvaMainserverConnectionStatus } from '@sva/sva-mainserver';
 
-const MAIN_SERVER_ALLOWED_ROLES = new Set(['system_admin', 'app_manager', 'interface_manager', 'interface-manager']);
+const MAIN_SERVER_PERMISSION_ACTION = 'integration.manage';
 type SvaMainserverLogger = {
   warn: (message: string, meta: Record<string, unknown>) => void;
 };
@@ -23,9 +23,6 @@ const jsonResponse = (status: number, payload: unknown): Response =>
     headers: { 'Content-Type': 'application/json' },
   });
 
-const hasMainserverAccess = (roles: readonly string[]): boolean =>
-  roles.some((role) => MAIN_SERVER_ALLOWED_ROLES.has(role.trim().toLowerCase()));
-
 const createErrorStatus = (message: string, errorCode: SvaMainserverConnectionStatus['errorCode'] = 'forbidden'): SvaMainserverConnectionStatus => ({
   status: 'error',
   checkedAt: new Date().toISOString(),
@@ -42,7 +39,7 @@ const createUnauthorizedStatus = (message: string): SvaMainserverConnectionStatu
 
 export const loadSvaMainserverConnectionStatus = createServerFn().handler(async (): Promise<SvaMainserverConnectionStatus> => {
   const { getRequest } = await import('@tanstack/react-start/server');
-  const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
+  const { authorizeInstancePermissionForUser, withAuthenticatedUser } = await import('@sva/auth-runtime/server');
   const { getSvaMainserverConnectionStatus } = await import('@sva/sva-mainserver/server');
 
   const request = getRequest();
@@ -59,15 +56,27 @@ export const loadSvaMainserverConnectionStatus = createServerFn().handler(async 
       } satisfies SvaMainserverConnectionStatus);
     }
 
-    if (!hasMainserverAccess(ctx.user.roles)) {
-      (await getLogger()).warn('SVA Mainserver access denied by local studio role check', {
+    const authorization = await authorizeInstancePermissionForUser({
+      ctx,
+      action: MAIN_SERVER_PERMISSION_ACTION,
+    });
+    if (!authorization.ok) {
+      (await getLogger()).warn('SVA Mainserver access denied by integration permission check', {
         workspace_id: ctx.user.instanceId,
         operation: 'load_sva_mainserver_connection_status',
         decision: 'deny',
-        reason: 'missing_local_role',
+        reason:
+          authorization.error === 'forbidden'
+            ? 'missing_integration_manage_permission'
+            : authorization.error,
       });
-      return jsonResponse(403, {
-        ...createErrorStatus('Lokale Studio-Berechtigung für die Mainserver-Diagnostik fehlt.'),
+      return jsonResponse(authorization.status, {
+        ...createErrorStatus(
+          authorization.error === 'forbidden'
+            ? 'Zugriff auf die Mainserver-Diagnostik ist nicht erlaubt.'
+            : authorization.message,
+          authorization.error === 'database_unavailable' ? 'database_unavailable' : 'forbidden'
+        ),
       } satisfies SvaMainserverConnectionStatus);
     }
 

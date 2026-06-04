@@ -347,7 +347,6 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
       return null;
     }
     setMutationError(null);
-
     try {
       const response = await getMediaDelivery(assetId);
       setDelivery(response.data);

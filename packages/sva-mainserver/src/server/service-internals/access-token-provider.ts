@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from 'node:crypto';
+import { randomBytes, scryptSync } from 'node:crypto';
 import { z } from 'zod';
 
 import type { SvaMainserverConnectionInput, SvaMainserverInstanceConfig } from '../../types.js';
@@ -33,18 +33,19 @@ export const createAccessTokenProvider = (input: {
 }) => {
   const tokenCache = new Map<string, TimedCacheEntry<string>>();
   const tokenLoads = new Map<string, Promise<string>>();
-  const credentialFingerprintKey = randomBytes(32);
+  const credentialFingerprintSalt = randomBytes(16);
 
   const resolveCredentialSignature = (credentials: CredentialValue): string =>
-    createHmac('sha256', credentialFingerprintKey)
-      .update(credentials.apiKey)
-      .update('\u0000')
-      .update(credentials.apiSecret)
-      .update('\u0000')
-      .update(credentials.credentialSource ?? 'unknown')
-      .update('\u0000')
-      .update(credentials.credentialOrganizationId ?? 'none')
-      .digest('hex');
+    scryptSync(
+      [
+        credentials.apiKey,
+        credentials.apiSecret,
+        credentials.credentialSource ?? 'unknown',
+        credentials.credentialOrganizationId ?? 'none',
+      ].join('\u0000'),
+      credentialFingerprintSalt,
+      32,
+    ).toString('hex');
 
   return async (connection: SvaMainserverConnectionInput, config: SvaMainserverInstanceConfig): Promise<string> => {
     const credentials = await input.loadCredentials(connection);

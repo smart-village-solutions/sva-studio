@@ -172,6 +172,9 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       }
     } catch (cause) {
       const resolvedError = asIamError(cause);
+      if (requestId !== latestRequestRef.current) {
+        return;
+      }
       if (resolvedError.status === 401 || resolvedError.status === 403) {
         await invalidatePermissions();
       }

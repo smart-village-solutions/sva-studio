@@ -10,12 +10,19 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({
     children,
     to,
+    params,
     ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { readonly to: string }) => (
-    <a href={to} {...props}>
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    readonly to: string;
+    readonly params?: Record<string, string>;
+  }) => {
+    const href = typeof params?.mediaId === 'string' ? to.replace('$mediaId', params.mediaId) : to;
+    return (
+      <a href={href} {...props}>
       {children}
-    </a>
-  ),
+      </a>
+    );
+  },
 }));
 
 vi.mock('../../../hooks/use-media', () => ({
@@ -152,6 +159,9 @@ describe('MediaLibraryPage', () => {
     expect(screen.getByText('3 Verwendungen')).toBeTruthy();
     expect(screen.getByText('1 Verwendung')).toBeTruthy();
     expect(screen.getAllByText('bereit').length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: /Stadtfest 2024 - Hauptbühne/i }).getAttribute('href')).toBe(
+      '/admin/media/asset-ready'
+    );
   });
 
   it('renders non-image assets with a dedicated fallback card pattern', () => {

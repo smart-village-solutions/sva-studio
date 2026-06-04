@@ -107,6 +107,9 @@ test('permission gate backfill migration seeds the new permission model for tena
   assert.match(sql, /'security_admin', 'iam\.governance\.export'/);
   assert.match(sql, /grant_origin_kind,\s*access_scope/);
   assert.match(sql, /ON CONFLICT \(instance_id, permission_key\) DO UPDATE/);
+  assert.match(sql, /iam_permission_snapshot_invalidation/);
+  assert.match(sql, /permission_gate_backfill_migrated/);
+  assert.match(sql, /permission_gate_backfill_rolled_back/);
 });
 
 test('experimental shell permission migration backfills the additive ui gate for existing roles', () => {

@@ -13,13 +13,16 @@ type MediaUsageResponse = {
 
 const createDeferred = <T,>() => {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((resolvePromise) => {
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise;
+    reject = rejectPromise;
   });
 
   return {
     promise,
     resolve,
+    reject,
   };
 };
 
@@ -235,6 +238,86 @@ describe('useMediaLibrary', () => {
     });
 
     expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores stale list failures after a newer refetch has already succeeded', async () => {
+    const firstListRequest = createDeferred<{
+      data: {
+        id: string;
+        instanceId: string;
+        storageKey: string;
+        mediaType: string;
+        mimeType: string;
+        byteSize: number;
+        visibility: string;
+        uploadStatus: string;
+        processingStatus: string;
+        metadata: Record<string, unknown>;
+        technical: Record<string, unknown>;
+      }[];
+      pagination: {
+        page: number;
+        pageSize: number;
+        total: number;
+      };
+    }>();
+
+    listMediaMock
+      .mockImplementationOnce(() => firstListRequest.promise)
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'asset-current',
+            instanceId: 'instance-1',
+            storageKey: 'media/asset-current',
+            mediaType: 'image',
+            mimeType: 'image/jpeg',
+            byteSize: 1234,
+            visibility: 'public',
+            uploadStatus: 'processed',
+            processingStatus: 'ready',
+            metadata: {},
+            technical: {},
+          },
+        ],
+        pagination: {
+          page: 1,
+          pageSize: 25,
+          total: 1,
+        },
+      });
+    getMediaUsageMock.mockResolvedValue({
+      data: {
+        assetId: 'asset-current',
+        totalReferences: 2,
+        references: [],
+      },
+    });
+
+    render(<MediaLibraryProbe />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'refetch' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('false');
+      expect(screen.getByTestId('asset-count').textContent).toBe('1');
+      expect(screen.getByTestId('usage-count').textContent).toBe('2');
+      expect(screen.getByTestId('error-code').textContent).toBe('none');
+    });
+
+    firstListRequest.reject({
+      status: 503,
+      code: 'database_unavailable',
+      message: 'Stale failure',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('asset-count').textContent).toBe('1');
+      expect(screen.getByTestId('usage-count').textContent).toBe('2');
+      expect(screen.getByTestId('error-code').textContent).toBe('none');
+    });
+
+    expect(invalidatePermissionsMock).not.toHaveBeenCalled();
   });
 
   it('keeps assets visible when usage enrichment fails and marks counts as unknown', async () => {

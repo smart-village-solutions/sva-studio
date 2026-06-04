@@ -1,3 +1,5 @@
+import { useNavigate } from '@tanstack/react-router';
+
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { useMediaDetail } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
@@ -32,6 +34,16 @@ const mediaErrorMessage = (error: IamHttpError | null): string => {
 
 export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
   const mediaApi = useMediaDetail(assetId);
+  const navigate = useNavigate();
+
+  const handleDelete = async () => {
+    const deleted = await mediaApi.deleteMedia();
+    if (!deleted) {
+      return;
+    }
+
+    await navigate({ to: '/admin/media' });
+  };
 
   if (mediaApi.isLoading) {
     return (
@@ -64,7 +76,7 @@ export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
         usageCount={mediaApi.usage.totalReferences}
         delivery={mediaApi.delivery}
         onResolveDelivery={() => void mediaApi.resolveDelivery()}
-        onDelete={() => void mediaApi.deleteMedia()}
+        onDelete={() => void handleDelete()}
       />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,1fr)]">

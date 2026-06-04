@@ -48,6 +48,11 @@ const normalizeRolePermissionAssignments = (
   }));
 };
 
+const hasDuplicatePermissionIds = (assignments: readonly StoredRolePermissionAssignment[]): boolean => {
+  const uniquePermissionIds = new Set(assignments.map((assignment) => assignment.permissionId));
+  return uniquePermissionIds.size !== assignments.length;
+};
+
 const loadPermissionKeysById = async (
   client: QueryClient,
   instanceId: string,
@@ -168,13 +173,25 @@ export const createRoleMutationPersistence = (deps: RoleMutationPersistenceDeps)
         return null;
       }
 
+      if (hasDuplicatePermissionIds(assignments)) {
+        return deps.createApiError(
+          400,
+          'invalid_request',
+          'Berechtigungen dürfen im Payload nicht doppelt vorkommen.',
+          input.actor.requestId
+        );
+      }
+
       const permissionKeyById = await loadPermissionKeysById(
         client,
         input.actor.instanceId,
         assignments.map((assignment) => assignment.permissionId)
       );
 
-      if (permissionKeyById.size !== assignments.length) {
+      const hasUnknownPermission = assignments.some(
+        (assignment) => !permissionKeyById.has(assignment.permissionId)
+      );
+      if (hasUnknownPermission) {
         return deps.createApiError(
           400,
           'invalid_request',

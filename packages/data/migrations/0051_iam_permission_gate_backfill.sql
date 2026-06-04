@@ -106,6 +106,24 @@ JOIN iam.permissions permissions
   ON permissions.instance_id = roles.instance_id
  AND permissions.permission_key = role_permission_templates.permission_key
 ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
+
+WITH touched_instances AS (
+  SELECT DISTINCT instance_id
+  FROM iam.roles
+  WHERE instance_id IS NOT NULL
+)
+SELECT pg_notify(
+  'iam_permission_snapshot_invalidation',
+  json_build_object(
+    'instanceId',
+    instance_id,
+    'eventId',
+    format('0051-up-%s-%s', instance_id, txid_current()),
+    'reason',
+    'permission_gate_backfill_migrated'
+  )::text
+)
+FROM touched_instances;
 -- +goose StatementEnd
 
 -- +goose Down
@@ -147,4 +165,22 @@ WHERE permission_key IN (
   'iam.monitoring.read',
   'iam.monitoring.write'
 );
+
+WITH touched_instances AS (
+  SELECT DISTINCT instance_id
+  FROM iam.roles
+  WHERE instance_id IS NOT NULL
+)
+SELECT pg_notify(
+  'iam_permission_snapshot_invalidation',
+  json_build_object(
+    'instanceId',
+    instance_id,
+    'eventId',
+    format('0051-down-%s-%s', instance_id, txid_current()),
+    'reason',
+    'permission_gate_backfill_rolled_back'
+  )::text
+)
+FROM touched_instances;
 -- +goose StatementEnd

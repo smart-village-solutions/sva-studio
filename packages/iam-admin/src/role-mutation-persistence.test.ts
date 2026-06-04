@@ -51,7 +51,7 @@ const createClient = (queuedRows: readonly (readonly Record<string, unknown>[])[
 };
 
 const createDeps = (client: QueryClient) => ({
-  createApiError: vi.fn((status: number, code: 'conflict' | 'not_found', message: string, requestId?: string) =>
+  createApiError: vi.fn((status: number, code: 'conflict' | 'invalid_request' | 'not_found', message: string, requestId?: string) =>
     Response.json({ error: { code, message }, requestId }, { status })
   ),
   emitActivityLog: vi.fn(async () => undefined),
@@ -250,6 +250,25 @@ describe('role mutation persistence', () => {
         permissionIds: ['missing-permission-id'],
       })
     ).resolves.toMatchObject({ status: 400 });
+  });
+
+  it('rejects duplicate permission ids with a dedicated invalid_request error', async () => {
+    const { client } = createClient();
+    const persistence = createRoleMutationPersistence(createDeps(client));
+
+    const response = await persistence.validateRequestedPermissions({
+      actor,
+      permissionIds: ['permission-1', 'permission-1'],
+    });
+
+    expect(response?.status).toBe(400);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: 'Berechtigungen dürfen im Payload nicht doppelt vorkommen.',
+      },
+      requestId: 'request-1',
+    });
   });
 
   it('protects delete resolution and deletes editable roles', async () => {

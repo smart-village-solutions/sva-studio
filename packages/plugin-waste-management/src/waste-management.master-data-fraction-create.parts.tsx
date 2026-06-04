@@ -1,5 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Input, Select, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
+import { Button, Input, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
 import type { ReactNode } from 'react';
 
 import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
@@ -12,14 +12,6 @@ export type FractionFormErrors = {
 
 const normalizeColor = (value: string) => value.trim().toLowerCase();
 const isHexColor = (value: string) => /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
-const fractionReminderLeadDayMin = 1;
-const fractionReminderLeadDayMax = 14;
-const fractionReminderLeadDayOptions = Array.from(
-  {
-    length: fractionReminderLeadDayMax - fractionReminderLeadDayMin + 1,
-  },
-  (_, index) => fractionReminderLeadDayMin + index
-);
 
 export const validateFractionForm = (
   form: FractionFormState,
@@ -213,157 +205,6 @@ export const FractionVisibilitySection = ({
           </div>
         </div>
         <p className="text-sm text-muted-foreground">{pt('masterData.fractions.createView.fieldHints.active')}</p>
-      </div>
-    </FractionSection>
-  );
-};
-
-const getReminderLeadDayLabel = (pt: ReturnType<typeof usePluginTranslation>, count: number) => {
-  if (count === fractionReminderLeadDayMin) {
-    return pt('masterData.fractions.createView.reminderLeadDayOptions.default');
-  }
-
-  return count === 1
-    ? pt('masterData.fractions.createView.reminderLeadDayOptions.day', { count })
-    : pt('masterData.fractions.createView.reminderLeadDayOptions.days', { count });
-};
-
-const FractionReminderChannelSwitch = ({
-  checked,
-  disabled,
-  title,
-  description,
-  onChange,
-}: {
-  readonly checked: boolean;
-  readonly disabled: boolean;
-  readonly title: string;
-  readonly description: string;
-  readonly onChange: (checked: boolean) => void;
-}) => (
-  <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-background/70 p-3">
-    <WasteManagementFormSwitch checked={checked} disabled={disabled} ariaLabel={title} onChange={onChange} />
-    <div className="space-y-1">
-      <p className="text-sm font-medium text-foreground">{title}</p>
-      <p className="text-xs text-muted-foreground">{description}</p>
-    </div>
-  </div>
-);
-
-export const FractionReminderSection = ({
-  form,
-  onChange,
-}: {
-  readonly form: FractionFormState;
-  readonly onChange: (patch: Partial<FractionFormState>) => void;
-}) => {
-  const pt = usePluginTranslation('wasteManagement');
-  const remindersEnabled = form.reminderCount !== 'none';
-  const secondReminderEnabled = form.reminderCount === 'twice';
-
-  return (
-    <FractionSection
-      title={pt('masterData.fractions.createView.sections.reminders')}
-      description={pt('masterData.fractions.createView.sections.remindersHint')}
-    >
-      <StudioFieldGroup columns={1}>
-        <StudioField
-          id="waste-fraction-reminder-count"
-          label={pt('masterData.fractions.fields.reminderCount')}
-          description={pt('masterData.fractions.createView.fieldHints.reminderCount')}
-        >
-          <Select
-            id="waste-fraction-reminder-count"
-            value={form.reminderCount}
-            onChange={(event) => {
-              const reminderCount = event.target.value as FractionFormState['reminderCount'];
-              onChange({
-                reminderCount,
-                firstReminderMaxLeadDays: form.firstReminderMaxLeadDays ?? fractionReminderLeadDayMin,
-                secondReminderMaxLeadDays: form.secondReminderMaxLeadDays ?? fractionReminderLeadDayMin,
-                reminderChannelPushEnabled: reminderCount === 'none' ? false : form.reminderChannelPushEnabled,
-                reminderChannelEmailEnabled: reminderCount === 'none' ? false : form.reminderChannelEmailEnabled,
-                reminderChannelCalendarEnabled: reminderCount === 'none' ? false : form.reminderChannelCalendarEnabled,
-              });
-            }}
-          >
-            <option value="none">{pt('masterData.fractions.createView.reminderCountOptions.none')}</option>
-            <option value="once">{pt('masterData.fractions.createView.reminderCountOptions.once')}</option>
-            <option value="twice">{pt('masterData.fractions.createView.reminderCountOptions.twice')}</option>
-          </Select>
-        </StudioField>
-        {remindersEnabled ? (
-          <StudioField
-            id="waste-fraction-first-reminder-max-lead-days"
-            label={pt('masterData.fractions.fields.firstReminderMaxLeadDays')}
-            description={pt('masterData.fractions.createView.fieldHints.firstReminderMaxLeadDays')}
-          >
-            <Select
-              id="waste-fraction-first-reminder-max-lead-days"
-              value={String(form.firstReminderMaxLeadDays ?? fractionReminderLeadDayMin)}
-              onChange={(event) => onChange({ firstReminderMaxLeadDays: Number(event.target.value) })}
-            >
-              {fractionReminderLeadDayOptions.map((value) => (
-                <option key={value} value={value}>
-                  {getReminderLeadDayLabel(pt, value)}
-                </option>
-              ))}
-            </Select>
-          </StudioField>
-        ) : null}
-        {secondReminderEnabled ? (
-          <StudioField
-            id="waste-fraction-second-reminder-max-lead-days"
-            label={pt('masterData.fractions.fields.secondReminderMaxLeadDays')}
-            description={pt('masterData.fractions.createView.fieldHints.secondReminderMaxLeadDays')}
-          >
-            <Select
-              id="waste-fraction-second-reminder-max-lead-days"
-              value={String(form.secondReminderMaxLeadDays ?? fractionReminderLeadDayMin)}
-              onChange={(event) => onChange({ secondReminderMaxLeadDays: Number(event.target.value) })}
-            >
-              {fractionReminderLeadDayOptions.map((value) => (
-                <option key={value} value={value}>
-                  {getReminderLeadDayLabel(pt, value)}
-                </option>
-              ))}
-            </Select>
-          </StudioField>
-        ) : null}
-      </StudioFieldGroup>
-
-      <div className="space-y-3">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">{pt('masterData.fractions.fields.reminderChannels')}</p>
-          <p className="text-sm text-muted-foreground">
-            {remindersEnabled
-              ? pt('masterData.fractions.createView.fieldHints.reminderChannels')
-              : pt('masterData.fractions.createView.fieldHints.reminderChannelsDisabled')}
-          </p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          <FractionReminderChannelSwitch
-            checked={form.reminderChannelPushEnabled}
-            disabled={!remindersEnabled}
-            title={pt('masterData.fractions.fields.reminderChannelPushEnabled')}
-            description={pt('masterData.fractions.createView.fieldHints.reminderChannelPushEnabled')}
-            onChange={(reminderChannelPushEnabled) => onChange({ reminderChannelPushEnabled })}
-          />
-          <FractionReminderChannelSwitch
-            checked={form.reminderChannelEmailEnabled}
-            disabled={!remindersEnabled}
-            title={pt('masterData.fractions.fields.reminderChannelEmailEnabled')}
-            description={pt('masterData.fractions.createView.fieldHints.reminderChannelEmailEnabled')}
-            onChange={(reminderChannelEmailEnabled) => onChange({ reminderChannelEmailEnabled })}
-          />
-          <FractionReminderChannelSwitch
-            checked={form.reminderChannelCalendarEnabled}
-            disabled={!remindersEnabled}
-            title={pt('masterData.fractions.fields.reminderChannelCalendarEnabled')}
-            description={pt('masterData.fractions.createView.fieldHints.reminderChannelCalendarEnabled')}
-            onChange={(reminderChannelCalendarEnabled) => onChange({ reminderChannelCalendarEnabled })}
-          />
-        </div>
       </div>
     </FractionSection>
   );

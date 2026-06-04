@@ -8,10 +8,10 @@ import {
   FractionBasicsSection,
   FractionFormActions,
   FractionPresentationSection,
-  FractionReminderSection,
   FractionVisibilitySection,
   validateFractionForm,
 } from './waste-management.master-data-fraction-create.parts.js';
+import { FractionReminderSection } from './waste-management.master-data-fraction-reminder-section.js';
 
 type WasteMasterDataFractionCreateContentProps = {
   readonly mode: 'create' | 'edit';

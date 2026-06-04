@@ -2,6 +2,11 @@ import React from 'react';
 
 import type { PublicWasteCalendarEntry } from '../lib/public-waste-contract.js';
 
+type PublicWasteEventDialogProps = Readonly<{
+  entry: PublicWasteCalendarEntry | null;
+  onClose: () => void;
+}>;
+
 const findDialogFocusableElements = (dialog: HTMLElement): readonly HTMLElement[] =>
   Array.from(
     dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
@@ -30,10 +35,32 @@ const trapDialogFocus = (event: React.KeyboardEvent, dialog: HTMLElement): void 
   }
 };
 
-export function PublicWasteEventDialog(props: Readonly<{
-  entry: PublicWasteCalendarEntry | null;
-  onClose: () => void;
-}>) {
+const resolveEventHints = (entry: PublicWasteCalendarEntry): readonly string[] => {
+  const hints = [entry.tourDescription?.trim(), entry.note?.trim()].filter(
+    (value): value is string => Boolean(value)
+  );
+  return hints.length > 0 ? hints : ['Für diesen Termin liegt kein zusätzlicher Hinweis vor.'];
+};
+
+const handleDialogKeyDown = (
+  event: React.KeyboardEvent,
+  dialog: HTMLDivElement | null,
+  onClose: () => void
+): void => {
+  if (event.key === 'Escape') {
+    event.stopPropagation();
+    onClose();
+    return;
+  }
+
+  if (event.key !== 'Tab' || !dialog) {
+    return;
+  }
+
+  trapDialogFocus(event, dialog);
+};
+
+export function PublicWasteEventDialog(props: PublicWasteEventDialogProps) {
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
   const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const previousFocusRef = React.useRef<HTMLElement | null>(null);
@@ -57,10 +84,7 @@ export function PublicWasteEventDialog(props: Readonly<{
   }
 
   const dialogTitleId = `pickup-dialog-title-${props.entry.id}`;
-  const hintItems = [props.entry.tourDescription?.trim(), props.entry.note?.trim()].filter(
-    (value): value is string => Boolean(value)
-  );
-  const hints = hintItems.length > 0 ? hintItems : ['Für diesen Termin liegt kein zusätzlicher Hinweis vor.'];
+  const hints = resolveEventHints(props.entry);
 
   return (
     <div className="dialog-backdrop" role="presentation" onClick={props.onClose}>
@@ -70,19 +94,7 @@ export function PublicWasteEventDialog(props: Readonly<{
         role="dialog"
         aria-modal="true"
         aria-labelledby={dialogTitleId}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            event.stopPropagation();
-            props.onClose();
-            return;
-          }
-
-          if (event.key !== 'Tab' || !dialogRef.current) {
-            return;
-          }
-
-          trapDialogFocus(event, dialogRef.current);
-        }}
+        onKeyDown={(event) => handleDialogKeyDown(event, dialogRef.current, props.onClose)}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="dialog-header">

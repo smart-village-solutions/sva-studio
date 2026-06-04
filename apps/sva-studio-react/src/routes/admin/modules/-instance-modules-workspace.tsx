@@ -29,6 +29,173 @@ type InstanceModulesWorkspaceProps = {
 
 const formatRoleNames = (roleNames: readonly string[]) => roleNames.join(', ');
 
+type StudioModuleContract = (typeof studioModuleIamContracts)[number];
+
+type ModuleCardProps = {
+  readonly module: StudioModuleContract;
+  readonly actionLabel: string;
+  readonly actionVariant?: 'default' | 'outline';
+  readonly statusLoading: boolean;
+  readonly onAction: (moduleId: string) => void;
+};
+
+const ModuleWorkspaceGuidance = () => (
+  <Card className="space-y-3 p-4">
+    <div className="space-y-1">
+      <div className="font-medium text-foreground">{t('admin.instances.instanceModules.guidance.title')}</div>
+      <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.guidance.subtitle')}</p>
+    </div>
+    <div className="grid gap-3 md:grid-cols-2">
+      <div className="rounded-lg border border-border p-3">
+        <div className="font-medium text-foreground">{t('admin.instances.instanceModules.guidance.moduleTitle')}</div>
+        <p className="mt-1 text-sm text-muted-foreground">{t('admin.instances.instanceModules.guidance.moduleBody')}</p>
+      </div>
+      <div className="rounded-lg border border-border p-3">
+        <div className="font-medium text-foreground">{t('admin.instances.instanceModules.guidance.roleTitle')}</div>
+        <p className="mt-1 text-sm text-muted-foreground">{t('admin.instances.instanceModules.guidance.roleBody')}</p>
+      </div>
+    </div>
+  </Card>
+);
+
+const ModuleCard = ({
+  module,
+  actionLabel,
+  actionVariant,
+  statusLoading,
+  onAction,
+}: ModuleCardProps) => (
+  <div className="rounded-lg border border-border p-4">
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <div className="font-medium text-foreground">{module.moduleId}</div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t('admin.instances.instanceModules.module.permissions', { value: module.permissionIds.join(', ') })}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t('admin.instances.instanceModules.module.roles', {
+            value: formatRoleNames((module.systemRoles ?? []).map((role) => role.roleName)),
+          })}
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">{resolveModuleDescription(module.descriptionKey)}</p>
+      </div>
+      <Button
+        type="button"
+        variant={actionVariant}
+        onClick={() => onAction(module.moduleId)}
+        disabled={statusLoading}
+      >
+        {actionLabel}
+      </Button>
+    </div>
+  </div>
+);
+
+type AssignedModulesCardProps = {
+  readonly assignedModules: readonly StudioModuleContract[];
+  readonly instanceId: string;
+  readonly statusLoading: boolean;
+  readonly onSeedIamBaseline: (instanceId: string) => Promise<unknown>;
+  readonly onOpenBootstrapConfirm: () => void;
+  readonly onOpenRevokeConfirm: (moduleId: string) => void;
+};
+
+const AssignedModulesCard = ({
+  assignedModules,
+  instanceId,
+  statusLoading,
+  onSeedIamBaseline,
+  onOpenBootstrapConfirm,
+  onOpenRevokeConfirm,
+}: AssignedModulesCardProps) => (
+  <Card className="space-y-4 p-4">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="space-y-1">
+        <div className="font-medium text-foreground">{t('admin.instances.instanceModules.assigned.title')}</div>
+        <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.assigned.subtitle')}</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void onSeedIamBaseline(instanceId)}
+          disabled={statusLoading}
+        >
+          {t('admin.instances.instanceModules.actions.seedIamBaseline')}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onOpenBootstrapConfirm}
+          disabled={statusLoading}
+        >
+          {t('admin.instances.instanceModules.actions.bootstrapAdminStructure')}
+        </Button>
+      </div>
+    </div>
+
+    {assignedModules.length > 0 ? (
+      <div className="space-y-3">
+        {assignedModules.map((module) => (
+          <ModuleCard
+            key={module.moduleId}
+            module={module}
+            actionLabel={t('admin.instances.instanceModules.actions.revoke')}
+            actionVariant="outline"
+            statusLoading={statusLoading}
+            onAction={onOpenRevokeConfirm}
+          />
+        ))}
+      </div>
+    ) : (
+      <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+        {t('admin.instances.instanceModules.assigned.empty')}
+      </div>
+    )}
+  </Card>
+);
+
+type AvailableModulesCardProps = {
+  readonly availableModules: readonly StudioModuleContract[];
+  readonly instanceId: string;
+  readonly statusLoading: boolean;
+  readonly onAssignModule: (instanceId: string, moduleId: string) => Promise<unknown>;
+};
+
+const AvailableModulesCard = ({
+  availableModules,
+  instanceId,
+  statusLoading,
+  onAssignModule,
+}: AvailableModulesCardProps) => (
+  <Card className="space-y-4 p-4">
+    <div className="space-y-1">
+      <div className="font-medium text-foreground">{t('admin.instances.instanceModules.available.title')}</div>
+      <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.available.subtitle')}</p>
+    </div>
+
+    {availableModules.length > 0 ? (
+      <div className="space-y-3">
+        {availableModules.map((module) => (
+          <ModuleCard
+            key={module.moduleId}
+            module={module}
+            actionLabel={t('admin.instances.instanceModules.actions.assign')}
+            statusLoading={statusLoading}
+            onAction={(moduleId) => {
+              void onAssignModule(instanceId, moduleId);
+            }}
+          />
+        ))}
+      </div>
+    ) : (
+      <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+        {t('admin.instances.instanceModules.available.empty')}
+      </div>
+    )}
+  </Card>
+);
+
 export const InstanceModulesWorkspace = ({
   selectedInstance,
   statusLoading,
@@ -50,22 +217,7 @@ export const InstanceModulesWorkspace = ({
 
   return (
     <div className="space-y-5">
-      <Card className="space-y-3 p-4">
-        <div className="space-y-1">
-          <div className="font-medium text-foreground">{t('admin.instances.instanceModules.guidance.title')}</div>
-          <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.guidance.subtitle')}</p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-lg border border-border p-3">
-            <div className="font-medium text-foreground">{t('admin.instances.instanceModules.guidance.moduleTitle')}</div>
-            <p className="mt-1 text-sm text-muted-foreground">{t('admin.instances.instanceModules.guidance.moduleBody')}</p>
-          </div>
-          <div className="rounded-lg border border-border p-3">
-            <div className="font-medium text-foreground">{t('admin.instances.instanceModules.guidance.roleTitle')}</div>
-            <p className="mt-1 text-sm text-muted-foreground">{t('admin.instances.instanceModules.guidance.roleBody')}</p>
-          </div>
-        </div>
-      </Card>
+      <ModuleWorkspaceGuidance />
 
       {showMutationError && mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
@@ -75,112 +227,21 @@ export const InstanceModulesWorkspace = ({
 
       {selectedInstance ? (
         <div className="grid gap-5 lg:grid-cols-2">
-          <Card className="space-y-4 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                <div className="font-medium text-foreground">{t('admin.instances.instanceModules.assigned.title')}</div>
-                <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.assigned.subtitle')}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void onSeedIamBaseline(selectedInstance.instanceId)}
-                  disabled={statusLoading}
-                >
-                  {t('admin.instances.instanceModules.actions.seedIamBaseline')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setBootstrapConfirmOpen(true)}
-                  disabled={statusLoading}
-                >
-                  {t('admin.instances.instanceModules.actions.bootstrapAdminStructure')}
-                </Button>
-              </div>
-            </div>
+          <AssignedModulesCard
+            assignedModules={assignedModules}
+            instanceId={selectedInstance.instanceId}
+            statusLoading={statusLoading}
+            onSeedIamBaseline={onSeedIamBaseline}
+            onOpenBootstrapConfirm={() => setBootstrapConfirmOpen(true)}
+            onOpenRevokeConfirm={setPendingRevokeModuleId}
+          />
 
-            {assignedModules.length > 0 ? (
-              <div className="space-y-3">
-                {assignedModules.map((module) => (
-                  <div key={module.moduleId} className="rounded-lg border border-border p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-medium text-foreground">{module.moduleId}</div>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {t('admin.instances.instanceModules.module.permissions', { value: module.permissionIds.join(', ') })}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {t('admin.instances.instanceModules.module.roles', {
-                            value: formatRoleNames((module.systemRoles ?? []).map((role) => role.roleName)),
-                          })}
-                        </p>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {resolveModuleDescription(module.descriptionKey)}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setPendingRevokeModuleId(module.moduleId)}
-                        disabled={statusLoading}
-                      >
-                        {t('admin.instances.instanceModules.actions.revoke')}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                {t('admin.instances.instanceModules.assigned.empty')}
-              </div>
-            )}
-          </Card>
-
-          <Card className="space-y-4 p-4">
-            <div className="space-y-1">
-              <div className="font-medium text-foreground">{t('admin.instances.instanceModules.available.title')}</div>
-              <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.available.subtitle')}</p>
-            </div>
-
-            {availableModules.length > 0 ? (
-              <div className="space-y-3">
-                {availableModules.map((module) => (
-                  <div key={module.moduleId} className="rounded-lg border border-border p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-medium text-foreground">{module.moduleId}</div>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {t('admin.instances.instanceModules.module.permissions', { value: module.permissionIds.join(', ') })}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {t('admin.instances.instanceModules.module.roles', {
-                            value: formatRoleNames((module.systemRoles ?? []).map((role) => role.roleName)),
-                          })}
-                        </p>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {resolveModuleDescription(module.descriptionKey)}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={() => void onAssignModule(selectedInstance.instanceId, module.moduleId)}
-                        disabled={statusLoading}
-                      >
-                        {t('admin.instances.instanceModules.actions.assign')}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                {t('admin.instances.instanceModules.available.empty')}
-              </div>
-            )}
-          </Card>
+          <AvailableModulesCard
+            availableModules={availableModules}
+            instanceId={selectedInstance.instanceId}
+            statusLoading={statusLoading}
+            onAssignModule={onAssignModule}
+          />
         </div>
       ) : (
         <Card className="p-4 text-sm text-muted-foreground">{emptyState}</Card>

@@ -44,20 +44,13 @@ export type UpdateRoleIdentityProvider<TAttributes = unknown> = {
   readonly provider: {
     readonly updateRole: (
       externalName: string,
-      input: {
-        readonly description?: string;
-        readonly attributes: TAttributes;
-      }
+      input: { readonly description?: string; readonly attributes: TAttributes }
     ) => Promise<unknown>;
   };
 };
 
 export type ParsedUpdateRoleBody<TPayload extends UpdateRolePayloadShape> =
-  | {
-      readonly ok: true;
-      readonly data: TPayload;
-      readonly rawBody: string;
-    }
+  | { readonly ok: true; readonly data: TPayload; readonly rawBody: string }
   | { readonly ok: false };
 
 export type UpdateRoleHandlerDeps<

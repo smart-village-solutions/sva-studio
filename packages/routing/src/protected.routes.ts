@@ -51,7 +51,6 @@ const normalizeReturnToPath = (value: string): string => {
   if (isInternalPath(value)) {
     return value;
   }
-
   try {
     const url = new URL(value);
     return `${url.pathname}${url.search}${url.hash}`;
@@ -112,9 +111,7 @@ const emitAccessDeniedDiagnostic = (input: {
 };
 
 const throwInsufficientAccessRedirect = (fallbackPath: string, insufficientRoleKey: string): never => {
-  throw redirect({
-    href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey),
-  });
+  throw redirect({ href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey) });
 };
 
 const assertAllRequiredPermissions = (input: {
@@ -129,9 +126,7 @@ const assertAllRequiredPermissions = (input: {
     return;
   }
   const grantedPermissions = new Set(input.user.permissionActions ?? []);
-  const missingPermissions = input.requiredPermissions.filter(
-    (permission) => !grantedPermissions.has(permission)
-  );
+  const missingPermissions = input.requiredPermissions.filter((permission) => !grantedPermissions.has(permission));
   if (missingPermissions.length === 0) {
     return;
   }

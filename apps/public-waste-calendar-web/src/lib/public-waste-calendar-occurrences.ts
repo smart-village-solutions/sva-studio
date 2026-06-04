@@ -14,6 +14,7 @@ type PublicWasteLinkedTour = {
   readonly tour: {
     readonly id: string;
     readonly name: string;
+    readonly description?: string;
     readonly recurrence?: 'weekly' | 'biweekly' | 'fourweekly' | 'yearly' | 'on-demand' | 'custom' | null;
     readonly customRecurrenceIntervalDays?: number;
     readonly firstDate?: string;
@@ -197,6 +198,8 @@ export const calculatePublicWasteCalendarEntries = (
           fractionId: fraction.id,
           fractionLabel: fraction.label,
           ...(fraction.color ? { fractionColor: fraction.color } : {}),
+          ...(linkedTour.tour.name.trim() ? { tourName: linkedTour.tour.name.trim() } : {}),
+          ...(linkedTour.tour.description?.trim() ? { tourDescription: linkedTour.tour.description.trim() } : {}),
           note,
         });
       }

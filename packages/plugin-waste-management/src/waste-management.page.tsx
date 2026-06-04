@@ -39,12 +39,26 @@ const updateSearch = (
   });
 };
 
+const resolvePublicWasteCalendarUrl = (): string | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const { hostname } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === 'studio.localhost' || hostname.endsWith('.studio.localhost')) {
+    return 'http://localhost:3002';
+  }
+
+  return null;
+};
+
 export const WasteManagementPage = () => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
   const rawSearch = useSearch({ strict: false });
   const search = normalizeWasteManagementSearchParams(rawSearch as Record<string, unknown>);
   const uiAccess = useWasteManagementUiAccess(search.tab);
+  const publicWasteCalendarUrl = resolvePublicWasteCalendarUrl();
 
   useEffect(() => {
     if (!uiAccess.isResolved || uiAccess.visibleTabIds.includes(search.tab)) {
@@ -71,7 +85,21 @@ export const WasteManagementPage = () => {
   return (
     <StudioOverviewPageTemplate
       title={pt('page.title')}
-      description={pt('page.description')}
+      description={
+        <>
+          {pt('page.description')}{' '}
+          {publicWasteCalendarUrl ? (
+            <a
+              href={publicWasteCalendarUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              {pt('page.publicCalendarLink')}
+            </a>
+          ) : null}
+        </>
+      }
     >
       <WasteManagementPageTabs
         pt={pt}

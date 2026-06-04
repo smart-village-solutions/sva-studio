@@ -57,6 +57,10 @@ export function PublicWasteEventDialog(props: Readonly<{
   }
 
   const dialogTitleId = `pickup-dialog-title-${props.entry.id}`;
+  const hintItems = [props.entry.tourDescription?.trim(), props.entry.note?.trim()].filter(
+    (value): value is string => Boolean(value)
+  );
+  const hints = hintItems.length > 0 ? hintItems : ['Für diesen Termin liegt kein zusätzlicher Hinweis vor.'];
 
   return (
     <div className="dialog-backdrop" role="presentation" onClick={props.onClose}>
@@ -87,13 +91,24 @@ export function PublicWasteEventDialog(props: Readonly<{
             <h3 id={dialogTitleId} className="dialog-title">
               {props.entry.fractionLabel}
             </h3>
+            {props.entry.tourName ? <p className="dialog-subtitle">{props.entry.tourName}</p> : null}
           </div>
           <button ref={closeButtonRef} type="button" className="dialog-close" onClick={props.onClose}>
             Schließen
           </button>
         </div>
-        <p className="body-copy">{props.entry.date}</p>
-        <p className="body-copy">{props.entry.note ?? 'Für diesen Termin liegt kein zusätzlicher Hinweis vor.'}</p>
+        <div className="dialog-section">
+          <p className="dialog-section-label">Datum</p>
+          <p className="body-copy">{props.entry.date}</p>
+        </div>
+        <div className="dialog-section">
+          <p className="dialog-section-label">Hinweis</p>
+          {hints.map((hint) => (
+            <p key={hint} className="body-copy">
+              {hint}
+            </p>
+          ))}
+        </div>
       </div>
     </div>
   );

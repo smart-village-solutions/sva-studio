@@ -30,7 +30,13 @@ export type SessionResolutionFailureReason =
   | 'token_refresh_failed_after_expiry';
 
 export type SessionResolutionResult =
-  | { kind: 'authenticated'; user: SessionUser | null; expiresAt?: number; freshReauthAt?: number }
+  | {
+      kind: 'authenticated';
+      user: SessionUser | null;
+      expiresAt?: number;
+      freshReauthAt?: number;
+      activeOrganizationId?: string;
+    }
   | { kind: 'invalid'; reason: SessionResolutionFailureReason };
 
 const readSessionInvalidationReason = async (
@@ -251,6 +257,9 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
       user,
       expiresAt: session.expiresAt,
       freshReauthAt: session.freshReauthAt,
+      ...(session.activeOrganizationId
+        ? { activeOrganizationId: session.activeOrganizationId }
+        : {}),
     } satisfies Extract<SessionResolutionResult, { kind: 'authenticated' }>;
     return result;
   }
@@ -291,6 +300,9 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
       user: updatedSession?.user ?? null,
       expiresAt: updatedSession?.expiresAt,
       freshReauthAt: updatedSession?.freshReauthAt,
+      ...(updatedSession?.activeOrganizationId
+        ? { activeOrganizationId: updatedSession.activeOrganizationId }
+        : {}),
     } satisfies Extract<SessionResolutionResult, { kind: 'authenticated' }>;
     return result;
   } catch (error) {

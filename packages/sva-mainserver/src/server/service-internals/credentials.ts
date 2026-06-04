@@ -1,6 +1,6 @@
 import type { SvaMainserverConnectionInput } from '../../types.js';
 
-import { readSvaMainserverCredentialsWithStatus } from '@sva/auth-runtime/server';
+import { readEffectiveSvaMainserverCredentialsWithStatus } from '@sva/auth-runtime/server';
 
 import { SvaMainserverError } from '../errors.js';
 import { readTimedCacheValue, type TimedCacheEntry, writeTimedCacheValue } from './cache.js';
@@ -10,12 +10,21 @@ import { type CredentialValue, toSvaMainserverError } from './shared.js';
 type ReadCredentials = (input: {
   readonly instanceId: string;
   readonly keycloakSubject: string;
+  readonly activeOrganizationId?: string;
 }) => Promise<CredentialValue | null>;
 
 export const createDefaultCredentialReader = (): ReadCredentials => async (input) => {
-  const result = await readSvaMainserverCredentialsWithStatus(input.keycloakSubject, input.instanceId);
+  const result = await readEffectiveSvaMainserverCredentialsWithStatus({
+    instanceId: input.instanceId,
+    keycloakSubject: input.keycloakSubject,
+    activeOrganizationId: input.activeOrganizationId,
+  });
   if (result.status === 'ok') {
-    return result.credentials;
+    return {
+      ...result.credentials,
+      credentialSource: result.source,
+      credentialOrganizationId: result.organizationId,
+    };
   }
 
   if (result.status === 'identity_provider_unavailable') {
@@ -23,6 +32,22 @@ export const createDefaultCredentialReader = (): ReadCredentials => async (input
       code: 'identity_provider_unavailable',
       message: 'Identity-Provider für Mainserver-Credentials ist nicht verfügbar.',
       statusCode: 503,
+    });
+  }
+
+  if (result.status === 'database_unavailable') {
+    throw toSvaMainserverError({
+      code: 'database_unavailable',
+      message: 'Organisationskontext für Mainserver-Credentials konnte nicht geladen werden.',
+      statusCode: 503,
+    });
+  }
+
+  if (result.status === 'organization_mainserver_credentials_missing') {
+    throw toSvaMainserverError({
+      code: 'organization_mainserver_credentials_missing',
+      message: 'Für die aktive Organisation fehlen Mainserver-Credentials.',
+      statusCode: 409,
     });
   }
 
@@ -39,7 +64,8 @@ export const createCredentialProvider = (input: {
   const credentialLoads = new Map<string, Promise<CredentialValue>>();
 
   return async (connection: SvaMainserverConnectionInput): Promise<CredentialValue> => {
-    const cacheKey = connection.keycloakSubject;
+    const cacheKey =
+      `${connection.instanceId}:${connection.keycloakSubject}:${connection.activeOrganizationId ?? 'none'}`;
     const nowMs = input.now();
     const cached = readTimedCacheValue(credentialCache, cacheKey, nowMs, input.credentialCacheMaxSize);
     if (cached) {

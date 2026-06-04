@@ -193,7 +193,7 @@ describe('role-audit', () => {
       editability: 'read_only',
       diagnostics: [{ code: 'built_in_role' }],
       syncError: { code: 'IDP_FORBIDDEN' },
-      permissions: [{ permissionKey: 'waste-management.read', description: expect.any(String) }],
+      permissions: [{ permissionKey: 'waste-management.read', description: expect.any(String), runtimeScope: 'instance' }],
     });
 
     expect(

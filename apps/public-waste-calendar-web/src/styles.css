@@ -50,6 +50,11 @@ body {
   gap: 1rem;
 }
 
+.selection-intro {
+  display: grid;
+  gap: 0.35rem;
+}
+
 .pickup-months {
   display: grid;
   gap: 2rem;
@@ -67,23 +72,10 @@ body {
   letter-spacing: -0.03em;
 }
 
-.selection-grid {
-  display: grid;
-  gap: 0.75rem;
-}
-
 .selection-path {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.selection-path-item,
-.selection-summary-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem 0.9rem;
-  align-items: center;
-  justify-content: space-between;
+  gap: 0.65rem;
 }
 
 .selection-header {
@@ -139,70 +131,213 @@ body {
   line-height: 1;
 }
 
-.selection-path-step {
-  color: rgb(96 96 96);
-  font-size: 0.9rem;
-}
-
-.selection-path-label {
-  font-size: 1rem;
-}
-
 .selection-combobox,
 .selection-search-panel {
   display: grid;
   gap: 0.75rem;
 }
 
+.selection-step-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid rgb(220 220 220);
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgb(255 255 255) 0%, rgb(250 250 250) 100%);
+  box-shadow: 0 18px 45px -36px rgb(30 30 30 / 0.55);
+}
+
+.selection-step-card-header {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.selection-step-kicker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(110 110 110);
+}
+
+.selection-step-title {
+  margin: 0;
+  font-size: clamp(1.15rem, 2vw, 1.35rem);
+  line-height: 1.2;
+}
+
+.selection-step-copy {
+  margin: 0;
+  color: rgb(88 88 88);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.selection-search-shell {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.9rem;
+  padding: 0 0.95rem;
+  border: 1px solid rgb(122 122 122);
+  border-radius: 0.95rem;
+  background: rgb(255 255 255);
+  color: rgb(92 92 92);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
 .selection-search-input {
   min-height: 2.9rem;
   width: 100%;
-  padding: 0.75rem 0.95rem;
-  border: 1px solid rgb(122 122 122);
-  border-radius: 1rem;
-  background: rgb(255 255 255);
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: inherit;
   font: inherit;
 }
 
-.selection-option,
-.selection-trigger,
-.selection-path-action {
-  display: inline-flex;
+.selection-search-input::placeholder {
+  color: rgb(120 120 120);
+}
+
+.selection-search-meta {
+  margin: 0;
+  color: rgb(96 96 96);
+  font-size: 0.88rem;
+}
+
+.selection-results {
+  display: grid;
+  gap: 0.55rem;
+  max-height: min(24rem, 52vh);
+  padding-right: 0.2rem;
+  overflow: auto;
+}
+
+.selection-path-chip,
+.selection-result,
+.selection-trigger {
+  display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.8rem;
+  width: 100%;
   min-height: 2.75rem;
-  padding: 0.75rem 1rem;
   border: 1px solid rgb(122 122 122);
-  border-radius: 999px;
-  background: rgb(247 247 247);
+  background: rgb(255 255 255);
   color: inherit;
   font: inherit;
   text-decoration: none;
   cursor: pointer;
 }
 
-.selection-option:hover,
-.selection-trigger:hover,
-.selection-path-action:hover {
-  background: rgb(239 239 239);
+.selection-path-chip {
+  justify-content: flex-start;
+  width: auto;
+  min-height: 0;
+  padding: 0.6rem 0.8rem;
+  border-color: rgb(208 208 208);
+  border-radius: 999px;
+  background: rgb(246 246 246);
 }
 
-.selection-option:focus-visible,
+.selection-path-chip-step {
+  color: rgb(96 96 96);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.selection-path-chip-label {
+  font-size: 0.96rem;
+}
+
+.selection-path-chip-action {
+  color: rgb(78 78 78);
+  font-size: 0.86rem;
+}
+
+.selection-result {
+  justify-content: space-between;
+  padding: 0.8rem 0.95rem 0.8rem 1rem;
+  border-color: rgb(214 214 214);
+  border-radius: 1rem;
+  text-align: left;
+}
+
+.selection-result-label {
+  min-width: 0;
+  font-size: 0.98rem;
+  line-height: 1.35;
+}
+
+.selection-result-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: rgb(96 96 96);
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.selection-empty-state {
+  padding: 1rem;
+  border: 1px dashed rgb(196 196 196);
+  border-radius: 1rem;
+  color: rgb(96 96 96);
+  background: rgb(252 252 252);
+  font-size: 0.95rem;
+}
+
+.selection-path-chip:hover,
+.selection-result:hover,
+.selection-trigger:hover,
+.selection-summary-link:hover {
+  background: rgb(247 247 247);
+}
+
+.selection-path-chip:focus-visible,
+.selection-result:focus-visible,
 .selection-trigger:focus-visible,
-.selection-path-action:focus-visible,
 .selection-summary-link:focus-visible,
-.selection-search-input:focus-visible,
 .pickup-button:focus-visible,
 .dialog-close:focus-visible {
   outline: 2px solid rgb(64 64 64);
   outline-offset: 2px;
 }
 
+.selection-search-shell:focus-within {
+  border-color: rgb(64 64 64);
+  box-shadow: 0 0 0 1px rgb(64 64 64 / 0.18);
+}
+
+.selection-search-input:focus-visible {
+  outline: none;
+}
+
 .filter-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .selection-step-card {
+    padding: 0.9rem;
+  }
+
+  .selection-result {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .selection-result-action {
+    font-size: 0.82rem;
+  }
 }
 
 .calendar-tabs {
@@ -539,6 +674,11 @@ body {
   cursor: pointer;
 }
 
+.pickup-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
 .pickup-dot {
   width: 1.1rem;
   height: 1.1rem;
@@ -551,6 +691,12 @@ body {
 .pickup-label {
   font-size: clamp(1.25rem, 3vw, 1.5rem);
   font-weight: 400;
+}
+
+.pickup-description {
+  color: rgb(96 96 96);
+  font-size: 0.95rem;
+  line-height: 1.45;
 }
 
 .notice-banner {
@@ -612,6 +758,27 @@ body {
   font-size: 1.35rem;
 }
 
+.dialog-subtitle {
+  margin: 0.35rem 0 0;
+  color: rgb(76 76 76);
+  font-size: 0.95rem;
+}
+
+.dialog-section {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 1rem;
+}
+
+.dialog-section-label {
+  margin: 0;
+  color: rgb(96 96 96);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .dialog-close {
   min-height: 2.5rem;
   padding: 0.65rem 0.9rem;
@@ -643,6 +810,10 @@ body {
 
   .pickup-label {
     font-size: 1.05rem;
+  }
+
+  .pickup-description {
+    font-size: 0.88rem;
   }
 
   .pickup-dot {

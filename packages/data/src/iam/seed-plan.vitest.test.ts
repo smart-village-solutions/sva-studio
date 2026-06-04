@@ -77,20 +77,6 @@ describe('iamSeedPlan content permissions', () => {
   });
 
   it('assigns granular content permissions to content personas', () => {
-    expect(getPersonaSeed('app_manager').permissionKeys).toEqual(
-      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
-    );
-    expect(getPersonaSeed('app_manager').permissionKeys).toEqual(
-      expect.arrayContaining([
-        'iam.legalText.read',
-        'iam.legalText.write',
-        'iam.monitoring.read',
-        'iam.monitoring.write',
-        'integration.manage',
-      ])
-    );
-    expect(getPersonaSeed('app_manager').permissionKeys).toContain('content.readHistory');
-    expect(getPersonaSeed('app_manager').permissionKeys).toContain('media.read');
     expect(getPersonaSeed('interface_manager').permissionKeys).toContain('content.readHistory');
     expect(getPersonaSeed('interface_manager').permissionKeys).toEqual(
       expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
@@ -119,6 +105,10 @@ describe('iamSeedPlan content permissions', () => {
     expect(getPersonaSeed('moderator').permissionKeys).toEqual(
       expect.arrayContaining(['content.publish', 'content.archive', 'content.restore', 'content.manageRevisions', 'media.read'])
     );
+  });
+
+  it('does not keep the removed app_manager persona in the seed plan', () => {
+    expect(iamSeedPlan.personas.map((persona) => persona.personaKey)).not.toContain('app_manager');
   });
 
   it('keeps plugin permissions namespace-isolated in persona assignments', () => {
@@ -152,14 +142,9 @@ describe('iamSeedPlan content permissions', () => {
     expect(personaSeedSql).not.toContain(
       "('instance_registry_admin', 'integration.manage')"
     );
-    expect(personaSeedSql).toContain(
-      "('app_manager', 'experimental.read')"
-    );
-    expect(personaSeedSql).toContain(
-      "('app_manager', 'app.read')"
-    );
-    expect(personaSeedSql).toContain(
-      "('app_manager', 'cockpit.read')"
-    );
+    expect(personaSeedSql).not.toContain("'seed:app_manager'");
+    expect(personaSeedSql).not.toContain("('app_manager', 'experimental.read')");
+    expect(personaSeedSql).not.toContain("('app_manager', 'app.read')");
+    expect(personaSeedSql).not.toContain("('app_manager', 'cockpit.read')");
   });
 });

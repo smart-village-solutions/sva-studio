@@ -1,7 +1,13 @@
 export { extractRoles, resolveInstanceId, resolveUserName } from './claims.js';
 export { parseJwtPayload } from './token.js';
 export { evaluateAuthorizeDecision } from './authorization-engine.js';
-export type { IamAccountProfile, IamAccountStatus, IamPermission, IamRole } from './account-management.js';
+export type {
+  IamAccountProfile,
+  IamAccountStatus,
+  IamPermission,
+  IamPermissionRuntimeScope,
+  IamRole,
+} from './account-management.js';
 export type {
   ApiErrorCode,
   ApiErrorResponse,

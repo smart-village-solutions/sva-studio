@@ -8,7 +8,13 @@ type TestSessionUser = {
 };
 
 type SessionResolutionResult =
-  | { kind: 'authenticated'; user: TestSessionUser | null; expiresAt?: number; freshReauthAt?: number }
+  | {
+      kind: 'authenticated';
+      user: TestSessionUser | null;
+      expiresAt?: number;
+      freshReauthAt?: number;
+      activeOrganizationId?: string;
+    }
   | { kind: 'invalid'; reason: string };
 
 const getSessionUserMock = vi.hoisted(() =>
@@ -218,6 +224,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
       },
       expiresAt: 1_800_000_000_000,
       freshReauthAt: 1_700_000_000_000,
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
     });
     const request = new Request('http://localhost/auth/me', {
       headers: { cookie: 'sva_auth_session=session-2' },
@@ -231,8 +238,17 @@ describe('auth-runtime withAuthenticatedUser', () => {
       })
     );
 
-    const response = await withAuthenticatedUser(request, ({ sessionId, sessionExpiresAt, freshReauthAt, user }) =>
-      Response.json({ sessionId, sessionExpiresAt, freshReauthAt, userId: user.id, roles: user.roles })
+    const response = await withAuthenticatedUser(
+      request,
+      ({ sessionId, sessionExpiresAt, freshReauthAt, activeOrganizationId, user }) =>
+        Response.json({
+          sessionId,
+          sessionExpiresAt,
+          freshReauthAt,
+          activeOrganizationId,
+          userId: user.id,
+          roles: user.roles,
+        })
     );
 
     expect(response.status).toBe(200);
@@ -240,6 +256,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
       sessionId: 'session-2',
       sessionExpiresAt: 1_800_000_000_000,
       freshReauthAt: 1_700_000_000_000,
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       userId: 'user-1',
       roles: ['admin', 'system_admin'],
     });

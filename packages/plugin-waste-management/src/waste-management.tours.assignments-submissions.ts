@@ -6,6 +6,7 @@ import {
   deleteWasteManagementLocationTourLink,
   updateWasteManagementLocationTourLink,
 } from './waste-management.api.js';
+import { submitWasteLocationTourLinksBulkInChunks } from './waste-management.location-tour-links-bulk-client.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
 import { toCreateLocationTourLinkInput, toUpdateLocationTourLinkInput } from './waste-management.tours.shared.js';
 import type { WasteToursState } from './waste-management.tours.state.js';
@@ -58,15 +59,16 @@ export const createWasteToursAssignmentSubmitHandlers = ({
         }
       } else {
         if (locationIdsToCreate.length > 0) {
-          await createWasteManagementLocationTourLinksBulk(
+          await submitWasteLocationTourLinksBulkInChunks(
             wasteMasterDataInputMappers.toCreateLocationTourLinksBulkInput(
               {
                 tourId,
                 startDate: state.linkForm.startDate,
                 endDate: state.linkForm.endDate,
               },
-              locationIdsToCreate,
-            )
+              locationIdsToCreate
+            ),
+            createWasteManagementLocationTourLinksBulk
           );
         }
 

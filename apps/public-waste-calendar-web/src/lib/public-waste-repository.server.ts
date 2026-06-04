@@ -32,6 +32,7 @@ type CalendarEntryRow = {
   readonly link_end_date: string | null;
   readonly tour_id: string;
   readonly tour_name: string;
+  readonly tour_description: string | null;
   readonly tour_recurrence: 'weekly' | 'biweekly' | 'fourweekly' | 'yearly' | 'on-demand' | 'custom' | null;
   readonly tour_custom_recurrence_interval_days: number | null;
   readonly tour_first_date: string | null;
@@ -244,6 +245,7 @@ export const createPublicWasteRepository = (input: {
             ltl.end_date::text AS link_end_date,
             t.id::text AS tour_id,
             t.name AS tour_name,
+            t.description AS tour_description,
             t.recurrence AS tour_recurrence,
             crp.interval_days AS tour_custom_recurrence_interval_days,
             t.first_date::text AS tour_first_date,
@@ -315,12 +317,13 @@ export const createPublicWasteRepository = (input: {
               readonly startDate?: string;
               readonly endDate?: string;
               readonly tour: {
-                readonly id: string;
-                readonly name: string;
-                readonly recurrence: CalendarEntryRow['tour_recurrence'];
-                readonly customRecurrenceIntervalDays?: number;
-                readonly firstDate?: string;
-                readonly endDate?: string;
+              readonly id: string;
+              readonly name: string;
+              readonly description?: string;
+              readonly recurrence: CalendarEntryRow['tour_recurrence'];
+              readonly customRecurrenceIntervalDays?: number;
+              readonly firstDate?: string;
+              readonly endDate?: string;
                 readonly customDates: readonly { readonly date: string; readonly description?: string }[];
                 readonly fractions: {
                   id: string;
@@ -355,6 +358,7 @@ export const createPublicWasteRepository = (input: {
             tour: {
               id: row.tour_id,
               name: row.tour_name,
+              ...(row.tour_description?.trim() ? { description: row.tour_description.trim() } : {}),
               recurrence: row.tour_recurrence,
               ...(typeof row.tour_custom_recurrence_interval_days === 'number'
                 ? { customRecurrenceIntervalDays: row.tour_custom_recurrence_interval_days }

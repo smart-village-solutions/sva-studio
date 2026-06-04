@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import type { SvaMainserverConnectionInput, SvaMainserverInstanceConfig } from '../../types.js';
@@ -33,10 +34,23 @@ export const createAccessTokenProvider = (input: {
   const tokenCache = new Map<string, TimedCacheEntry<string>>();
   const tokenLoads = new Map<string, Promise<string>>();
 
+  const resolveCredentialSignature = (credentials: CredentialValue): string =>
+    createHash('sha256')
+      .update(credentials.apiKey)
+      .update('\u0000')
+      .update(credentials.apiSecret)
+      .update('\u0000')
+      .update(credentials.credentialSource ?? 'unknown')
+      .update('\u0000')
+      .update(credentials.credentialOrganizationId ?? 'none')
+      .digest('hex');
+
   return async (connection: SvaMainserverConnectionInput, config: SvaMainserverInstanceConfig): Promise<string> => {
     const credentials = await input.loadCredentials(connection);
+    const credentialSignature = resolveCredentialSignature(credentials);
     const tokenCacheKey =
-      `${connection.instanceId}:${connection.keycloakSubject}:${credentials.apiKey}:` +
+      `${connection.instanceId}:${connection.keycloakSubject}:${connection.activeOrganizationId ?? 'none'}:` +
+      `${credentialSignature}:` +
       `${config.oauthTokenUrl}:${config.graphqlBaseUrl}`;
     const nowMs = input.now();
     const cached = readTimedCacheValue(tokenCache, tokenCacheKey, nowMs, input.tokenCacheMaxSize);

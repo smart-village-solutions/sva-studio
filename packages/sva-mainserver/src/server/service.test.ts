@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   loadSvaMainserverInstanceConfig: vi.fn(),
-  readSvaMainserverCredentialsWithStatus: vi.fn(),
+  readEffectiveSvaMainserverCredentialsWithStatus: vi.fn(),
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -37,7 +37,8 @@ vi.mock('@opentelemetry/api', () => ({
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
-  readSvaMainserverCredentialsWithStatus: state.readSvaMainserverCredentialsWithStatus,
+  readEffectiveSvaMainserverCredentialsWithStatus:
+    state.readEffectiveSvaMainserverCredentialsWithStatus,
 }));
 
 vi.mock('./config-store.js', () => ({
@@ -112,7 +113,7 @@ describe('createSvaMainserverService', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     state.loadSvaMainserverInstanceConfig.mockReset();
-    state.readSvaMainserverCredentialsWithStatus.mockReset();
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockReset();
     state.logger.debug.mockReset();
     state.logger.info.mockReset();
     state.logger.warn.mockReset();
@@ -317,8 +318,9 @@ describe('createSvaMainserverService', () => {
       publishedAt: '2026-04-14T09:30:00.000Z',
     };
     state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
-    state.readSvaMainserverCredentialsWithStatus.mockResolvedValue({
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
       status: 'ok',
+      source: 'user',
       credentials: { apiKey: 'key-1', apiSecret: 'secret-1' },
     });
     const fetchImpl = vi
@@ -560,8 +562,9 @@ describe('createSvaMainserverService', () => {
       visible: true,
     };
     state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
-    state.readSvaMainserverCredentialsWithStatus.mockResolvedValue({
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
       status: 'ok',
+      source: 'user',
       credentials: { apiKey: 'key-1', apiSecret: 'secret-1' },
     });
     const fetchImpl = vi
@@ -1088,8 +1091,9 @@ describe('createSvaMainserverService', () => {
   });
 
   it('uses the default credential reader with keycloak subject and instance id', async () => {
-    state.readSvaMainserverCredentialsWithStatus.mockResolvedValue({
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
       status: 'ok',
+      source: 'user',
       credentials: {
         apiKey: 'key-1',
         apiSecret: 'secret-1',
@@ -1107,7 +1111,11 @@ describe('createSvaMainserverService', () => {
 
     await service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
 
-    expect(state.readSvaMainserverCredentialsWithStatus).toHaveBeenCalledWith('subject-1', 'de-musterhausen');
+    expect(state.readEffectiveSvaMainserverCredentialsWithStatus).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: undefined,
+    });
   });
 
   it('preserves typed identity provider errors from credential loading', async () => {

@@ -17,6 +17,8 @@ describe('PublicWasteEventDialog', () => {
           date: '2026-05-19',
           fractionId: 'bio',
           fractionLabel: 'Bioabfall',
+          tourName: 'Biotour Nord',
+          tourDescription: 'Wöchentliche Leerung im Innenstadtbereich.',
           note: 'Bitte rausstellen.',
         }}
         onClose={onClose}
@@ -25,6 +27,10 @@ describe('PublicWasteEventDialog', () => {
 
     const closeButton = screen.getByRole('button', { name: 'Schließen' });
     expect(document.activeElement).toBe(closeButton);
+    expect(screen.getByText('Biotour Nord')).toBeTruthy();
+    expect(screen.getByText('Hinweis')).toBeTruthy();
+    expect(screen.getByText('Wöchentliche Leerung im Innenstadtbereich.')).toBeTruthy();
+    expect(screen.getByText('Bitte rausstellen.')).toBeTruthy();
 
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);

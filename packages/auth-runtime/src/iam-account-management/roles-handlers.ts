@@ -53,6 +53,11 @@ ORDER BY p.permission_key ASC;
       ...((row.description ?? getManagedPermissionMetadata(row.permission_key)?.description)
         ? { description: row.description ?? getManagedPermissionMetadata(row.permission_key)?.description }
         : {}),
+      ...(getManagedPermissionMetadata(row.permission_key)?.runtimeScope
+        ? {
+            runtimeScope: getManagedPermissionMetadata(row.permission_key)?.runtimeScope,
+          }
+        : {}),
       ...(getManagedPermissionMetadata(row.permission_key)?.isScopeAssignable
         ? {
             isScopeAssignable: true,

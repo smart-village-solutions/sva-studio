@@ -10,7 +10,6 @@ const DEFAULT_MOCK_AUTH_ROLES = [
   'security_admin',
   'instance_registry_admin',
   'interface_manager',
-  'app_manager',
   'editor',
 ] as const;
 

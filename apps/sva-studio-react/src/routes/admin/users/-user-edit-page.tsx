@@ -102,6 +102,12 @@ const permissionTraceSourceTranslationKeyByValue = {
   group_role: 'admin.users.edit.permissionTrace.source.groupRole',
 } as const;
 
+const permissionTraceRuntimeScopeTranslationKeyByValue = {
+  instance: 'admin.users.edit.permissionTrace.runtimeScope.instance',
+  record: 'admin.users.edit.permissionTrace.runtimeScope.record',
+  organization_context: 'admin.users.edit.permissionTrace.runtimeScope.organizationContext',
+} as const;
+
 const toFormValues = (input: ReturnType<typeof useUser>['user']): UserFormValues => ({
   firstName: input?.firstName ?? '',
   lastName: input?.lastName ?? '',
@@ -196,6 +202,9 @@ const describePermissionTraceSource = (entry: IamUserPermissionTraceItem) => {
 
   return entry.roleName ? `${base} · ${entry.roleName}` : base;
 };
+
+const describePermissionTraceRuntimeScope = (entry: IamUserPermissionTraceItem) =>
+  entry.runtimeScope ? t(permissionTraceRuntimeScopeTranslationKeyByValue[entry.runtimeScope]) : null;
 
 const formatTraceValidity = (entry: Pick<IamUserPermissionTraceItem, 'validFrom' | 'validTo'>) => {
   if (entry.validFrom && entry.validTo) {
@@ -833,6 +842,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                 {effectivePermissionTrace.map((entry, index) => {
                   const scopeText = formatScope(entry.scope);
                   const detailLines = buildPermissionTraceDetails(entry);
+                  const runtimeScopeText = describePermissionTraceRuntimeScope(entry);
                   return (
                     <li
                       key={`${entry.permissionKey}:${entry.sourceKind}:${entry.roleId ?? 'none'}:${entry.groupId ?? 'none'}:${index}`}
@@ -846,6 +856,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="outline">{entry.effect}</Badge>
                           <Badge variant="outline">{t(permissionTraceStatusTranslationKeyByValue[entry.status])}</Badge>
+                          {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
                         </div>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
@@ -875,6 +886,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               <ul className="grid gap-3">
                 {inactivePermissionTrace.map((entry, index) => {
                   const detailLines = buildPermissionTraceDetails(entry);
+                  const runtimeScopeText = describePermissionTraceRuntimeScope(entry);
                   return (
                     <li
                       key={`${entry.permissionKey}:${entry.sourceKind}:${entry.roleId ?? 'none'}:${entry.groupId ?? 'none'}:inactive:${index}`}
@@ -885,7 +897,10 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                           <p className="font-medium text-foreground">{entry.permissionKey}</p>
                           <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
                         </div>
-                        <Badge variant="outline">{t(permissionTraceStatusTranslationKeyByValue[entry.status])}</Badge>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="outline">{t(permissionTraceStatusTranslationKeyByValue[entry.status])}</Badge>
+                          {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
+                        </div>
                       </div>
                       {detailLines.length > 0 ? (
                         <ul className="mt-3 grid gap-1 text-xs text-muted-foreground">

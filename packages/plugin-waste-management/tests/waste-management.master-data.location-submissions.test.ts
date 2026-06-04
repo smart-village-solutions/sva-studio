@@ -288,4 +288,45 @@ describe('createWasteMasterDataLocationSubmissions', () => {
       text: 'masterData.collectionLocations.bulk.messages.assignForbidden',
     });
   });
+
+  it('chunks master-data bulk assignments into multiple API requests when more than 100 locations are selected', async () => {
+    const state = createState();
+    const loadOverview = vi.fn(async () => undefined);
+    const selectedCollectionLocationIds = Array.from({ length: 205 }, (_, index) => `location-${index + 1}`);
+    createWasteManagementLocationTourLinksBulkMock.mockClear();
+    const handlers = createWasteMasterDataLocationSubmissions({
+      state,
+      pt: (key: string) => key,
+      search: createSearch(),
+      loadOverview,
+      selectedCollectionLocationIds,
+    });
+
+    await handlers.onSubmitBulkAssignments({
+      preventDefault: vi.fn(),
+    } as unknown as React.FormEvent<HTMLFormElement>);
+
+    expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenCalledTimes(3);
+    expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenNthCalledWith(1, {
+      locationIds: selectedCollectionLocationIds.slice(0, 100),
+      tourId: 'tour-1',
+      startDate: undefined,
+      endDate: undefined,
+    });
+    expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenNthCalledWith(2, {
+      locationIds: selectedCollectionLocationIds.slice(100, 200),
+      tourId: 'tour-1',
+      startDate: undefined,
+      endDate: undefined,
+    });
+    expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenNthCalledWith(3, {
+      locationIds: selectedCollectionLocationIds.slice(200),
+      tourId: 'tour-1',
+      startDate: undefined,
+      endDate: undefined,
+    });
+    expect(loadOverview).toHaveBeenCalledWith(true);
+    expect(state.setBulkAssignmentsDialogOpen).toHaveBeenCalledWith(false);
+    expect(state.setSelectedLocationIds).toHaveBeenCalledWith([]);
+  });
 });

@@ -16,6 +16,9 @@ describe('organization shared helpers', () => {
         organizationType: 'county',
         parentOrganizationId: '',
         contentAuthorPolicy: 'org_or_personal',
+        mainserverApplicationId: ' org-app-1 ',
+        mainserverApplicationSecret: ' org-secret-1 ',
+        mainserverApplicationSecretSet: true,
       })
     ).toEqual({
       organizationKey: 'landkreis-alpha',
@@ -23,6 +26,8 @@ describe('organization shared helpers', () => {
       organizationType: 'county',
       parentOrganizationId: undefined,
       contentAuthorPolicy: 'org_or_personal',
+      mainserverApplicationId: 'org-app-1',
+      mainserverApplicationSecret: 'org-secret-1',
     });
   });
 
@@ -45,6 +50,9 @@ describe('organization shared helpers', () => {
       organizationType: 'other',
       parentOrganizationId: '',
       contentAuthorPolicy: 'org_only',
+      mainserverApplicationId: '',
+      mainserverApplicationSecret: '',
+      mainserverApplicationSecretSet: false,
     });
   });
 

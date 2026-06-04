@@ -70,7 +70,7 @@ export type GroupReadHandlerDeps = {
 
 export type GroupReadApiErrorCode = ApiErrorCode;
 
-const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
+const ADMIN_ROLES = new Set(['system_admin']);
 
 const isSchemaDriftLikeGroupQueryError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);

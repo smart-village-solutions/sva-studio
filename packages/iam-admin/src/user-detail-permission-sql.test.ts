@@ -37,5 +37,8 @@ describe('user-detail-permission-sql', () => {
     expect(sql).toContain("'group_disabled'");
     expect(sql).toContain("'membership_not_started'");
     expect(sql).toContain("'assignment_expired'");
+    expect(sql).toContain('p.permission_key = ANY(ARRAY[');
+    expect(sql).toContain('THEN ao.organization_id::text');
+    expect(sql).toContain('ELSE NULL::text');
   });
 });

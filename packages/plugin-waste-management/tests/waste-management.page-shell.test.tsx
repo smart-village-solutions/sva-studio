@@ -53,7 +53,7 @@ vi.mock('@sva/studio-ui-react', () => ({
     children,
   }: {
     readonly title: string;
-    readonly description: string;
+    readonly description: React.ReactNode;
     readonly primaryAction: React.ReactNode;
     readonly toolbar?: React.ReactNode;
     readonly children: React.ReactNode;
@@ -127,6 +127,7 @@ describe('WasteManagementPage shell', () => {
 
     expect(screen.getByText('page.title')).toBeTruthy();
     expect(screen.getByText('page.description')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'page.publicCalendarLink' }).getAttribute('href')).toBe('http://localhost:3002');
     expect(screen.queryByRole('button', { name: 'change-search' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'change-status' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'change-shift-context' })).toBeNull();

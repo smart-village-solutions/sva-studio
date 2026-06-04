@@ -60,6 +60,7 @@ import { dispatchSvaMainserverPoiRequest } from './poi-route';
 
 const ctx = {
   sessionId: 'session-1',
+  activeOrganizationId: '11111111-1111-1111-8111-111111111111',
   user: {
     id: 'subject-1',
     email: 'editor@example.invalid',
@@ -84,7 +85,11 @@ const mockAuthorizedMutation = () => {
   state.validateCsrf.mockReturnValue(null);
   state.authorizeContentPrimitiveForUser.mockResolvedValue({
     ok: true,
-    actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+    actor: {
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      organizationId: '11111111-1111-1111-8111-111111111111',
+    },
     permissions: [],
   });
 };
@@ -139,12 +144,14 @@ describe('mainserver content route contracts', () => {
     expect(state.listSvaMainserverEvents).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       page: 1,
       pageSize: 25,
     });
     expect(state.listSvaMainserverPoi).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       page: 1,
       pageSize: 25,
     });
@@ -171,12 +178,14 @@ describe('mainserver content route contracts', () => {
     expect(state.listSvaMainserverEvents).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       page: 1,
       pageSize: 25,
     });
     expect(state.listSvaMainserverPoi).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       page: 1,
       pageSize: 25,
     });

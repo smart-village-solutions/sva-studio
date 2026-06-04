@@ -107,7 +107,7 @@ export type OrganizationReadHandlerDeps<TFeatureFlags = unknown> = {
   ) => Promise<T>;
 };
 
-const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
+const ADMIN_ROLES = new Set(['system_admin']);
 
 const prepareOrganizationReadRequest = async <TFeatureFlags>(
   deps: OrganizationReadHandlerDeps<TFeatureFlags>,

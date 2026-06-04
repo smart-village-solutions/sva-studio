@@ -472,31 +472,6 @@ Das System MUST für Role-Sync und Reconciliation strukturierte Logs und Audit-E
 - **THEN** werden keine Tokens, Secrets oder personenbezogenen Rohdaten in Logs/Auditdaten gespeichert
 - **AND** Fehler werden über maschinenlesbare Codes statt sensibler Rohdaten abgebildet
 
-### Requirement: Per-User-Delegation an den SVA-Mainserver
-
-Das System SHALL Zugriffe auf den externen SVA-Mainserver serverseitig und per Benutzer delegieren. API-Key und Secret werden aus Keycloak-User-Attributen des aktuellen Benutzers gelesen und nicht im Browser, in Sessions oder in der Studio-Datenbank gespiegelt.
-
-#### Scenario: Serverseitiger Mainserver-Aufruf mit aktuellen Keycloak-Attributen
-
-- **WHEN** eine serverseitige Studio-Funktion einen Mainserver-Aufruf für einen authentifizierten Benutzer ausführt
-- **THEN** liest das System bevorzugt `mainserverUserApplicationId` und `mainserverUserApplicationSecret` aus den Keycloak-User-Attributen dieses Benutzers
-- **AND** fordert serverseitig ein OAuth2-Access-Token an
-- **AND** sendet den GraphQL-Aufruf mit `Authorization: Bearer <token>` an den SVA-Mainserver
-- **AND** exponiert weder Credentials noch Access-Token an Browser-Code
-
-#### Scenario: Legacy-Attribute bleiben übergangsweise lauffähig
-
-- **WHEN** die aktuellen Attribute `mainserverUserApplicationId` und `mainserverUserApplicationSecret` für einen Benutzer nicht gesetzt sind
-- **AND** die Legacy-Attribute `sva_mainserver_api_key` und `sva_mainserver_api_secret` vorhanden sind
-- **THEN** verwendet das System die Legacy-Attribute als Fallback
-- **AND** der Mainserver-Aufruf bleibt für Bestandsbenutzer funktionsfähig
-
-#### Scenario: Fehlende Mainserver-Credentials im Benutzerprofil
-
-- **WHEN** für den aktuellen Benutzer weder die aktuellen noch die Legacy-Attribute vollständig in Keycloak vorhanden sind
-- **THEN** wird kein Upstream-Aufruf gestartet
-- **AND** das System liefert einen stabilen Fehlerzustand `missing_credentials`
-
 ### Requirement: Instanzgebundene Mainserver-Endpunktkonfiguration
 
 Das System SHALL pro `instanceId` eine aktive Mainserver-Integration mit
@@ -1194,4 +1169,57 @@ Das System SHALL sensitive Mutationen nur dann als frisch re-authentisiert behan
 - **WHEN** ein lokales oder nicht-produktives Runtime-Profil von der produktiven Fresh-Reauth-Regel abweichen darf
 - **THEN** ist diese Abweichung serverseitig explizit an das Profil gebunden
 - **AND** dieselbe Abweichung ist in produktionsnahen Profilen nicht implizit aktiv
+
+### Requirement: Delegation an den SVA-Mainserver im aktiven Organisationskontext
+
+Das System SHALL Zugriffe auf den externen SVA-Mainserver serverseitig delegieren und die effektiven Mainserver-Credentials anhand der `contentAuthorPolicy` der aktiven Organisation auflösen. Organisationsgebundene Credentials werden aus der Studio-Datenbank für `instanceId + activeOrganizationId` gelesen; Benutzer-Credentials bleiben in Keycloak-User-Attributen des aktuellen Benutzers. Credentials und Access-Tokens werden weder im Browser noch in Sessions exponiert.
+
+#### Scenario: `org_only` erzwingt Organisations-Credentials
+
+- **WHEN** eine serverseitige Studio-Funktion einen Mainserver-Aufruf im aktiven Organisationskontext ausführt
+- **AND** für die aktive Organisation gilt `contentAuthorPolicy = org_only`
+- **THEN** verwendet das System ausschließlich die Mainserver-Credentials dieser aktiven Organisation
+- **AND** es fällt nicht auf Benutzer-Credentials zurück
+
+#### Scenario: `org_or_personal` nutzt zuerst die aktive Organisation
+
+- **WHEN** eine serverseitige Studio-Funktion einen Mainserver-Aufruf im aktiven Organisationskontext ausführt
+- **AND** für die aktive Organisation gilt `contentAuthorPolicy = org_or_personal`
+- **THEN** prüft das System zuerst vollständige Organisations-Credentials der aktiven Organisation
+- **AND** verwendet nur bei unvollständiger Organisationskonfiguration die Keycloak-basierten Benutzer-Credentials des aktuellen Benutzers
+
+#### Scenario: Ohne `activeOrganizationId` erfolgt kein organisationsbezogener Lookup
+
+- **WHEN** eine serverseitige Studio-Funktion einen Mainserver-Aufruf ohne `activeOrganizationId` in der Session ausführt
+- **THEN** führt das System keinen organisationsbezogenen Credential-Lookup aus
+- **AND** es sucht nicht implizit über andere Organisationsmitgliedschaften, Hierarchien oder frühere Kontexte nach Organisations-Credentials
+
+#### Scenario: `org_only` bleibt ohne `activeOrganizationId` fail-closed
+
+- **WHEN** eine serverseitige Studio-Funktion einen Mainserver-Aufruf ohne `activeOrganizationId` in der Session ausführt
+- **AND** der organisationsgebundene Pfad `org_only` für die Credential-Auflösung maßgeblich ist
+- **THEN** wird kein Upstream-Aufruf gestartet
+- **AND** der gemeinsame Resolver-Vertrag liefert den stabilen Fehlercode `organization_mainserver_credentials_missing`
+
+#### Scenario: Benutzerpfad bleibt für Bestandsbenutzer kompatibel
+
+- **WHEN** der Resolver im Benutzerpfad arbeitet
+- **AND** die aktuellen Attribute `mainserverUserApplicationId` und `mainserverUserApplicationSecret` für den aktuellen Benutzer nicht vollständig gesetzt sind
+- **THEN** verwendet das System übergangsweise die Legacy-Attribute `sva_mainserver_api_key` und `sva_mainserver_api_secret`, falls diese vollständig vorhanden sind
+- **AND** der Benutzerpfad bleibt für Bestandsbenutzer funktionsfähig
+
+#### Scenario: Fehlende effektive Credentials liefern deterministische Fehler
+
+- **WHEN** `contentAuthorPolicy = org_only`
+- **AND** die aktive Organisation keine vollständigen Mainserver-Credentials hat
+- **THEN** wird kein Upstream-Aufruf gestartet
+- **AND** der gemeinsame Resolver-Vertrag liefert den stabilen Fehlercode `organization_mainserver_credentials_missing`
+
+#### Scenario: Weder Organisation noch Benutzer liefern vollständige Credentials
+
+- **WHEN** `contentAuthorPolicy = org_or_personal`
+- **AND** die aktive Organisation keine vollständigen Mainserver-Credentials hat
+- **AND** für den aktuellen Benutzer weder aktuelle noch Legacy-Credentials vollständig vorhanden sind
+- **THEN** wird kein Upstream-Aufruf gestartet
+- **AND** der gemeinsame Resolver-Vertrag liefert den stabilen Fehlercode `missing_credentials`
 

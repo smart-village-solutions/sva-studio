@@ -95,6 +95,12 @@ describe('waste management operations runtime', () => {
     expect(statements).toContain('ALTER TABLE "wm".waste_tours ADD COLUMN IF NOT EXISTS custom_recurrence_id UUID');
     expect(statements).toContain('waste_tours_custom_recurrence_id_fkey');
     expect(statements).toContain('idx_waste_tours_custom_recurrence_id');
+    expect(statements).toContain("reminder_count TEXT NOT NULL DEFAULT 'none'");
+    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS reminder_count TEXT NOT NULL DEFAULT \'none\'');
+    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS first_reminder_max_lead_days INTEGER');
+    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS second_reminder_max_lead_days INTEGER');
+    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS reminder_channel_push_enabled BOOLEAN NOT NULL DEFAULT FALSE');
+    expect(statements).toContain('waste_fractions_reminder_count_check');
   });
 
   it('parses geography imports as a dry run from an xlsx workbook', async () => {

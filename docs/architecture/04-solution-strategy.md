@@ -28,6 +28,8 @@ Architekturprinzipien auf IST-Basis.
 - Auth-Sessions folgen einer klaren Führungslogik: `expiresAt` ist fachlich maßgeblich; Cookie und Redis-TTL sind abgeleitete Technik
 - Redis-Permission-Snapshots sind der primäre Shared-Read-Path für effektive IAM-Berechtigungen; der lokale In-Memory-Cache dient nur als L1
 - `instanceId` ist der kanonische Mandanten-Scope für IAM-Datenzugriff und Autorisierung und wird als fachlicher String-Schlüssel geführt
+- `organizationId` bleibt im IAM ein optionaler Fachkontext innerhalb einer Instanz und bindet instanzweite Rechte nicht implizit an eine Organisation
+- Verwaltete IAM-Permissions klassifizieren ihre Laufzeitsemantik explizit über `runtimeScope = instance | record | organization_context`; `accessScope` bleibt auf datensatzbezogene Rollen-Zuordnungen begrenzt
 - Für tenant-spezifische Logins stammt `instanceId` aus Host, Registry und dem zugeordneten Realm-Scope; ein benutzerbezogener OIDC-Claim ist nur Interop-/Diagnoseartefakt und kein zweites Login-Gate
 - Externe SVA-Mainserver-Zugriffe laufen strikt serverseitig; Credentials werden policy-gesteuert aus aktivem Organisationskontext oder aus dem persönlichen Benutzerkontext aufgelöst
 - Der SVA-Mainserver wird über ein dediziertes Integrationspaket mit client-sicheren Root-Exports und serverseitigem `./server`-Subpfad angebunden
@@ -61,6 +63,7 @@ Architekturprinzipien auf IST-Basis.
 - Gruppen werden als eigenständige IAM-Entität mit eigener API, eigener UI und eigener Event-Invalidierung modelliert statt als implizite Rollenbeimischung
 - Direkte Nutzerrechte werden als explizite Ausnahme zum Rollen- und Gruppenmodell behandelt: fachlich nur für gezielte Einzelabweichungen, technisch mit klarer Herkunft `direct_user` und konservativer Konfliktregel `deny vor allow`
 - Datensatzbezogene Rollenrechte werden nicht über neue Rollenfamilien vervielfacht, sondern über additive Assignment-Scopes pro Rollen-Permission (`all`, `own`, `organization`) konkretisiert
+- Transparenz in Admin- und Diagnosepfaden zeigt deshalb nicht nur Herkunft und Restriktionen, sondern auch die explizite Laufzeitklassifikation eines Rechts
 
 ### Zielkonflikte (aktuell sichtbar)
 

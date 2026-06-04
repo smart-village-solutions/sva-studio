@@ -53,7 +53,6 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
     'security_admin',
     'instance_registry_admin',
     'interface_manager',
-    'app_manager',
     'editor',
   ],
   permissionActions: [

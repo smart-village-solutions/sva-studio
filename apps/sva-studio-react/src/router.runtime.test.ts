@@ -173,7 +173,6 @@ describe('router runtime helpers', () => {
         'security_admin',
         'instance_registry_admin',
         'interface_manager',
-        'app_manager',
         'editor',
       ],
       permissionActions: [
@@ -356,7 +355,7 @@ describe('router runtime helpers', () => {
     routerMocks.executionMode.current = 'server';
     routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(
       new Response(
-        JSON.stringify({ user: { roles: ['app_manager', 'editor'], permissionActions: ['news.read'], assignedModules: ['media'] } }),
+        JSON.stringify({ user: { roles: ['editor'], permissionActions: ['news.read'], assignedModules: ['media'] } }),
         {
           status: 200,
           headers: { 'content-type': 'application/json' },
@@ -364,7 +363,7 @@ describe('router runtime helpers', () => {
       )
     );
     expect(await getUser()).toEqual({
-      roles: ['app_manager', 'editor'],
+      roles: ['editor'],
       permissionActions: ['news.read'],
       permissionStatus: 'ok',
       assignedModules: ['media'],

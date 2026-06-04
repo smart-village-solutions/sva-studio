@@ -58,7 +58,7 @@ describe('user-mutation-request-context.shared', () => {
       },
     });
     expect(state.resolveMutationActorWithAccount).toHaveBeenCalledWith(request, ctx, {
-      allowedRoles: new Set(['system_admin', 'app_manager']),
+      allowedRoles: new Set(['system_admin']),
       feature: 'iam_admin',
       provisionMissingActorMembership: true,
       requiredPermissionAction: 'iam.user.write',

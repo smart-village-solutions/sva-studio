@@ -37,6 +37,8 @@ const organizationFixture = {
   parentDisplayName: undefined,
   organizationType: 'county',
   contentAuthorPolicy: 'org_only',
+  mainserverApplicationId: 'org-app-1',
+  mainserverApplicationSecretSet: true,
   isActive: true,
   depth: 0,
   hierarchyPath: ['Landkreis Alpha'],
@@ -191,6 +193,23 @@ describe('OrganizationDetailPage', () => {
       fireEvent.change(screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }), {
         target: { value: 'parent-2' },
       });
+      fireEvent.change(
+        screen.getByLabelText('Mainserver Application-ID', { selector: '#organization-mainserver-app-id' }),
+        {
+          target: { value: ' org-app-2 ' },
+        }
+      );
+      fireEvent.change(
+        screen.getByLabelText('Mainserver Application-Secret', {
+          selector: '#organization-mainserver-app-secret',
+        }),
+        {
+          target: { value: ' org-secret-2 ' },
+        }
+      );
+
+      expect(screen.getByText('Ein Secret ist bereits hinterlegt.')).toBeTruthy();
+      expect(screen.getByText('Leer lassen, um das bestehende Secret unverändert zu lassen.')).toBeTruthy();
       fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
       await waitFor(() => {
@@ -200,6 +219,8 @@ describe('OrganizationDetailPage', () => {
           organizationType: 'district',
           parentOrganizationId: 'parent-2',
           contentAuthorPolicy: 'org_or_personal',
+          mainserverApplicationId: 'org-app-2',
+          mainserverApplicationSecret: 'org-secret-2',
         });
       });
 

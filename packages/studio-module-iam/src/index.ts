@@ -26,7 +26,6 @@ const createStandardContentBootstrapRoles = (pluginId: string): readonly StudioM
     roleName: 'system_admin',
     permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
   },
-  { roleName: 'app_manager', permissionIds: [`${pluginId}.read`] },
   {
     roleName: 'feature-manager',
     permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
@@ -68,10 +67,6 @@ const wasteManagementTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole
       'waste-management.reset.execute',
       'waste-management.settings.manage',
     ],
-  },
-  {
-    roleName: 'app_manager',
-    permissionIds: ['waste-management.read', 'waste-management.settings.manage'],
   },
   {
     roleName: 'feature-manager',

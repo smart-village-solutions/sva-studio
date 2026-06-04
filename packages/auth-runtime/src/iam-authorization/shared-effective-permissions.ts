@@ -4,6 +4,8 @@ import type {
   IamRolePermissionAssignmentScope,
 } from '@sva/core';
 
+import { projectOrganizationIdForPermission } from './permission-scope-semantics.js';
+
 export type PermissionRow = {
   permission_key: string;
   action?: string | null;
@@ -66,6 +68,7 @@ type NormalizedPermissionRow = {
   action: string;
   resourceType: string;
   resourceId?: string;
+  organizationId?: string;
   effect: 'allow' | 'deny';
   scope?: Record<string, unknown>;
   accessScope?: IamRolePermissionAssignmentScope;
@@ -81,10 +84,16 @@ const normalizePermissionRow = (row: PermissionRow): NormalizedPermissionRow => 
   const effect = row.effect ?? 'allow';
   const scope = row.scope ?? undefined;
   const accessScope = row.access_scope ?? undefined;
+  const organizationId = projectOrganizationIdForPermission({
+    permissionKey: row.permission_key,
+    accessScope,
+    organizationId: row.organization_id,
+  });
   return {
     action,
     resourceType,
     resourceId,
+    organizationId,
     effect,
     scope,
     accessScope,
@@ -94,7 +103,7 @@ const normalizePermissionRow = (row: PermissionRow): NormalizedPermissionRow => 
       action,
       resourceType,
       resourceId,
-      organizationId: row.organization_id ?? '',
+      organizationId: organizationId ?? '',
       effect,
       scope,
       accessScope,
@@ -106,7 +115,7 @@ const createPermissionBucket = (row: PermissionRow, normalized: NormalizedPermis
   action: normalized.action,
   resourceType: normalized.resourceType,
   resourceId: normalized.resourceId,
-  organizationId: row.organization_id ?? undefined,
+  organizationId: normalized.organizationId,
   effect: normalized.effect,
   scope: normalized.scope,
   accessScope: normalized.accessScope,

@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { getPersonaSeed, iamSeedPlan } from './seed-plan';
 
 describe('iam seed plan', () => {
-  it('contains exactly seven tenant bootstrap personas', () => {
-    assert.equal(iamSeedPlan.personas.length, 7);
+  it('contains exactly six tenant bootstrap personas', () => {
+    assert.equal(iamSeedPlan.personas.length, 6);
   });
 
   it('keeps the canonical permission catalog in sync with the seed integration expectations', () => {
@@ -64,6 +64,10 @@ describe('iam seed plan', () => {
 
   it('does not expose a tenant-side instance_registry_admin persona anymore', () => {
     assert.throws(() => getPersonaSeed('instance_registry_admin' as never), /Unknown persona key: instance_registry_admin/);
+  });
+
+  it('does not expose the removed app_manager bootstrap persona anymore', () => {
+    assert.throws(() => getPersonaSeed('app_manager' as never), /Unknown persona key: app_manager/);
   });
 
   it('keeps instance.registry.manage out of tenant bootstrap personas', () => {

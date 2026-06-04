@@ -532,6 +532,7 @@ const toMainserverErrorResponse = (error: unknown): Response => {
       error.statusCode ??
       ({
         missing_credentials: 400,
+        organization_mainserver_credentials_missing: 409,
         invalid_config: 400,
         config_not_found: 400,
         integration_disabled: 400,
@@ -570,7 +571,14 @@ const authorizeOrResponse = async (
   ctx: AuthenticatedRequestContext,
   action: string,
   newsId?: string
-): Promise<{ readonly instanceId: string; readonly keycloakSubject: string } | Response> => {
+): Promise<
+  | {
+      readonly instanceId: string;
+      readonly keycloakSubject: string;
+      readonly activeOrganizationId?: string;
+    }
+  | Response
+> => {
   const result = await authorize(ctx, action, newsId);
   if (!result.ok) {
     const workspaceContext = getWorkspaceContext();
@@ -591,22 +599,35 @@ const authorizeOrResponse = async (
   return {
     instanceId: result.actor.instanceId,
     keycloakSubject: result.actor.keycloakSubject,
+    activeOrganizationId: result.actor.organizationId ?? ctx.activeOrganizationId,
   };
 };
 
 const listNewsForRequest = async (
   request: Request,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string }
+  actor: {
+    readonly instanceId: string;
+    readonly keycloakSubject: string;
+    readonly activeOrganizationId?: string;
+  }
 ) => listSvaMainserverNews({ ...actor, ...parseMainserverListQuery(request) });
 
 const getNewsForRoute = async (
   route: Extract<RouteMatch, { kind: 'item' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string }
+  actor: {
+    readonly instanceId: string;
+    readonly keycloakSubject: string;
+    readonly activeOrganizationId?: string;
+  }
 ) => getSvaMainserverNews({ ...actor, newsId: route.newsId });
 
 const updateNewsForRoute = async (
   route: Extract<RouteMatch, { kind: 'item' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string },
+  actor: {
+    readonly instanceId: string;
+    readonly keycloakSubject: string;
+    readonly activeOrganizationId?: string;
+  },
   news: SvaMainserverNewsInput
 ) => {
   const data = await updateSvaMainserverNews({ ...actor, newsId: route.newsId, news });
@@ -615,7 +636,11 @@ const updateNewsForRoute = async (
 
 const deleteNewsForRoute = async (
   route: Extract<RouteMatch, { kind: 'item' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string }
+  actor: {
+    readonly instanceId: string;
+    readonly keycloakSubject: string;
+    readonly activeOrganizationId?: string;
+  }
 ) => {
   const data = await deleteSvaMainserverNews({ ...actor, newsId: route.newsId });
   return json({ data });

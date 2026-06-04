@@ -79,7 +79,7 @@ export type RoleReadHandlerDeps<TRole = unknown, TPermission = unknown, TFeature
 export type RoleReadApiErrorCode = ApiErrorCode;
 
 const ROOT_ADMIN_ROLES = new Set(['instance_registry_admin']);
-const TENANT_ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
+const TENANT_ADMIN_ROLES = new Set(['system_admin']);
 
 const resolveRoleReadActor = async <TRole, TPermission, TFeatureFlags>(
   deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags>,

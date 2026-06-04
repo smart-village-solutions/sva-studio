@@ -20,6 +20,9 @@ export type OrganizationFormValues = {
   organizationType: IamOrganizationType;
   parentOrganizationId: string;
   contentAuthorPolicy: OrganizationContentAuthorPolicy;
+  mainserverApplicationId: string;
+  mainserverApplicationSecret: string;
+  mainserverApplicationSecretSet: boolean;
 };
 
 export type OrganizationParentOption = Pick<IamOrganizationListItem, 'id' | 'displayName' | 'organizationKey'>;
@@ -44,12 +47,21 @@ export const createOrganizationFormValues = (): OrganizationFormValues => ({
   organizationType: 'other',
   parentOrganizationId: '',
   contentAuthorPolicy: 'org_only',
+  mainserverApplicationId: '',
+  mainserverApplicationSecret: '',
+  mainserverApplicationSecretSet: false,
 });
 
 export const toOrganizationFormValues = (
   organization: Pick<
     IamOrganizationDetail,
-    'organizationKey' | 'displayName' | 'organizationType' | 'parentOrganizationId' | 'contentAuthorPolicy'
+    | 'organizationKey'
+    | 'displayName'
+    | 'organizationType'
+    | 'parentOrganizationId'
+    | 'contentAuthorPolicy'
+    | 'mainserverApplicationId'
+    | 'mainserverApplicationSecretSet'
   >
 ): OrganizationFormValues => ({
   organizationKey: organization.organizationKey,
@@ -57,6 +69,9 @@ export const toOrganizationFormValues = (
   organizationType: organization.organizationType,
   parentOrganizationId: organization.parentOrganizationId ?? '',
   contentAuthorPolicy: organization.contentAuthorPolicy,
+  mainserverApplicationId: organization.mainserverApplicationId ?? '',
+  mainserverApplicationSecret: '',
+  mainserverApplicationSecretSet: organization.mainserverApplicationSecretSet,
 });
 
 export const toOrganizationMutationPayload = (values: OrganizationFormValues) => ({
@@ -65,6 +80,8 @@ export const toOrganizationMutationPayload = (values: OrganizationFormValues) =>
   organizationType: values.organizationType,
   parentOrganizationId: values.parentOrganizationId || undefined,
   contentAuthorPolicy: values.contentAuthorPolicy,
+  mainserverApplicationId: values.mainserverApplicationId.trim() || undefined,
+  mainserverApplicationSecret: values.mainserverApplicationSecret.trim() || undefined,
 });
 
 const normalizeOrganizationKeyBase = (value: string): string =>
@@ -289,6 +306,47 @@ export const OrganizationForm = ({
             </option>
           ))}
         </Select>
+      </div>
+      <div className="grid gap-1 text-sm text-foreground">
+        <Label htmlFor="organization-mainserver-app-id">
+          {t('admin.organizations.form.mainserverApplicationIdLabel')}
+        </Label>
+        <Input
+          id="organization-mainserver-app-id"
+          value={formValues.mainserverApplicationId}
+          onChange={(event) =>
+            setFormValues((current) => ({
+              ...current,
+              mainserverApplicationId: event.target.value,
+            }))
+          }
+        />
+      </div>
+      <div className="grid gap-1 text-sm text-foreground">
+        <Label htmlFor="organization-mainserver-app-secret">
+          {t('admin.organizations.form.mainserverApplicationSecretLabel')}
+        </Label>
+        <Input
+          id="organization-mainserver-app-secret"
+          type="password"
+          autoComplete="new-password"
+          value={formValues.mainserverApplicationSecret}
+          placeholder={t('admin.organizations.form.mainserverApplicationSecretPlaceholder')}
+          onChange={(event) =>
+            setFormValues((current) => ({
+              ...current,
+              mainserverApplicationSecret: event.target.value,
+            }))
+          }
+        />
+        <span className="text-xs text-muted-foreground">
+          {formValues.mainserverApplicationSecretSet
+            ? t('admin.organizations.form.mainserverApplicationSecretConfigured')
+            : t('admin.organizations.form.mainserverApplicationSecretMissing')}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {t('admin.organizations.form.mainserverApplicationSecretHint')}
+        </span>
       </div>
       <div className="flex justify-end gap-2">
         {actions}

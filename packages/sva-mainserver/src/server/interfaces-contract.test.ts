@@ -42,8 +42,15 @@ describe('interfaces.server', () => {
   it('loads interfaces overview for users with integration.manage even without a legacy role name', async () => {
     let capturedResponse: Response | null = null;
     state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+      async (
+        _request: Request,
+        handler: (ctx: {
+          activeOrganizationId?: string;
+          user: { id: string; instanceId?: string; roles: string[] };
+        }) => Promise<Response>
+      ) =>
         handler({
+          activeOrganizationId: '11111111-1111-1111-8111-111111111111',
           user: {
             id: 'subject-1',
             instanceId: 'de-musterhausen',
@@ -78,6 +85,11 @@ describe('interfaces.server', () => {
         action: 'integration.manage',
       })
     );
+    expect(state.getSvaMainserverConnectionStatus).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+    });
     expect(capturedResponse?.headers.get('Cache-Control')).toBe('no-store');
   });
 

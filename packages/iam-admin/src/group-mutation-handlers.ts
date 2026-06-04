@@ -139,7 +139,7 @@ export type GroupMutationHandlerDeps = {
   ) => Promise<T>;
 };
 
-const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
+const ADMIN_ROLES = new Set(['system_admin']);
 
 const resolveGroupMutationActor = async (
   deps: GroupMutationHandlerDeps,

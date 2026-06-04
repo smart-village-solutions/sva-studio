@@ -7,7 +7,8 @@ Das System MUST eine User-Bearbeitungsseite unter `/admin/users/:userId` bereits
 
 - **WENN** ein Administrator den Benutzer-Detailbereich mit Rollen- und Rechteinformationen öffnet
 - **DANN** zeigt die UI direkte Rollen, Gruppenherkünfte und effektive Berechtigungen in lesbarer Form an
-- **UND** markiert sie sichtbar, ob ein Eintrag direkt zugewiesen, über eine Gruppe wirksam oder über Organisations- bzw. Geo-Hierarchien vererbt ist
+- **UND** markiert sie sichtbar, ob ein Eintrag instanzweit, datensatzbezogen oder organisationskontextbezogen ausgewertet wird
+- **UND** bleibt erkennbar, ob ein Eintrag direkt zugewiesen, über eine Gruppe wirksam oder über Organisations- bzw. Geo-Hierarchien vererbt ist
 - **UND** bleiben blockierte oder fachlich unwirksame Einträge als solche erkennbar statt still ausgeblendet zu werden
 
 #### Scenario: Benutzerbearbeitung löscht fachlich unveränderte Assignment-Metadaten nicht

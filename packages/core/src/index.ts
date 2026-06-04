@@ -134,6 +134,7 @@ export type {
   WasteCollectionLocationRecord,
   WasteHolidayRuleConflictStatus,
   WasteHolidayRuleConfigurationStatus,
+  WasteFractionReminderCount,
   WasteHolidayRuleListFilter,
   WasteHolidayRuleRecord,
   WasteHolidayRuleScope,

@@ -19,6 +19,8 @@ type GraphqlResponse<TResult> = {
 export type CredentialValue = {
   readonly apiKey: string;
   readonly apiSecret: string;
+  readonly credentialSource?: 'organization' | 'user';
+  readonly credentialOrganizationId?: string;
 };
 
 export type ServiceHop = 'db' | 'keycloak' | 'oauth2' | 'graphql';

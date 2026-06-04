@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { PublicWasteApp } from './public-waste-app.js';
@@ -165,6 +165,7 @@ describe('PublicWasteApp', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Standort wählen' })).toBeTruthy();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Ort suchen' }), { target: { value: 'Mus' } });
     expect(screen.getByRole('button', { name: 'Musterstadt' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'iCal abonnieren' })).toBeNull();
   });
@@ -184,6 +185,8 @@ describe('PublicWasteApp', () => {
               fractionId: 'bio',
               fractionLabel: 'Bioabfall',
               fractionColor: '#00AA00',
+              tourName: 'Biotour Nord',
+              tourDescription: 'Wöchentliche Leerung im Innenstadtbereich.',
               note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
             },
           ],
@@ -199,8 +202,12 @@ describe('PublicWasteApp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Termin Bioabfall am 2026-05-19' }));
 
-    expect(screen.getByRole('dialog')).toBeTruthy();
-    expect(screen.getByText('Bitte Tonne ab 6 Uhr bereitstellen.')).toBeTruthy();
+    const dialog = screen.getByRole('dialog');
+    expect(screen.getAllByText('Wöchentliche Leerung im Innenstadtbereich.')).toHaveLength(2);
+    expect(dialog).toBeTruthy();
+    expect(within(dialog).getByText('Biotour Nord')).toBeTruthy();
+    expect(within(dialog).getByText('Wöchentliche Leerung im Innenstadtbereich.')).toBeTruthy();
+    expect(within(dialog).getByText('Bitte Tonne ab 6 Uhr bereitstellen.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'In Kalender übernehmen' })).toBeTruthy();
   });
 });

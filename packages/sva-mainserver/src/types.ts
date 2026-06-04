@@ -8,6 +8,7 @@ export type SvaMainserverErrorCode =
   | 'database_unavailable'
   | 'identity_provider_unavailable'
   | 'missing_credentials'
+  | 'organization_mainserver_credentials_missing'
   | 'token_request_failed'
   | 'unauthorized'
   | 'forbidden'
@@ -39,6 +40,7 @@ export type SvaMainserverConnectionStatus = {
 export type SvaMainserverConnectionInput = {
   readonly instanceId: string;
   readonly keycloakSubject: string;
+  readonly activeOrganizationId?: string;
 };
 
 export type SvaMainserverListQuery = {

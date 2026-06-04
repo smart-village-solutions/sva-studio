@@ -106,5 +106,6 @@ tmp/pdfs/arbeitspakete-bad-belzig-15.png
 tmp/pdfs/arbeitspakete-bad-belzig-16.png
 dump.rdb
 apps/public-waste-calendar-web/public-waste-config.json
+apps/public-waste-calendar-web/public-waste-config.local.json
 apps/**/test-results/
 playwright-report/

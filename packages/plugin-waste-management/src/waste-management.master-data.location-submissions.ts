@@ -6,6 +6,7 @@ import {
   updateWasteManagementCollectionLocation,
   WasteManagementApiError,
 } from './waste-management.api.js';
+import { submitWasteLocationTourLinksBulkInChunks } from './waste-management.location-tour-links-bulk-client.js';
 import { wasteMasterDataInputMappers } from './waste-management.master-data.forms.js';
 import { applySuccess, type WasteMasterDataState } from './waste-management.master-data.state.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
@@ -121,8 +122,9 @@ export const createWasteMasterDataLocationSubmissions = ({
     state.setMessage(null);
     state.setLastOutcome(null);
     try {
-      await createWasteManagementLocationTourLinksBulk(
-        wasteMasterDataInputMappers.toCreateLocationTourLinksBulkInput(state.bulkAssignmentsForm, selectedCollectionLocationIds)
+      await submitWasteLocationTourLinksBulkInChunks(
+        wasteMasterDataInputMappers.toCreateLocationTourLinksBulkInput(state.bulkAssignmentsForm, selectedCollectionLocationIds),
+        createWasteManagementLocationTourLinksBulk
       );
       await loadOverview(true);
       state.setBulkAssignmentsDialogOpen(false);

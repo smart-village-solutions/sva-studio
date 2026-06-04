@@ -129,7 +129,6 @@ export const createStandardContentPluginSystemRoles = (
     roleName: 'system_admin',
     permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
   },
-  { roleName: 'app_manager', permissionIds: [`${pluginId}.read`] },
   {
     roleName: 'feature-manager',
     permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],

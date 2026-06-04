@@ -201,7 +201,7 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
   ) => Promise<T>;
 };
 
-const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
+const ADMIN_ROLES = new Set(['system_admin']);
 const CREATE_ORGANIZATION_ENDPOINT = 'POST:/api/v1/iam/organizations';
 const ASSIGN_MEMBERSHIP_ENDPOINT = 'POST:/api/v1/iam/organizations/$organizationId/memberships';
 

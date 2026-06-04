@@ -36,10 +36,12 @@ describe('managed-permissions', () => {
       permissionKey: 'waste-management.tours.manage',
       moduleId: 'waste-management',
       description: 'Touren im Waste-Management verwalten',
+      runtimeScope: 'instance',
     });
     expect(getManagedPermissionMetadata('content.read')).toEqual({
       permissionKey: 'content.read',
       moduleId: 'content',
+      runtimeScope: 'record',
       isScopeAssignable: true,
       supportedAccessScopes: ['all', 'own', 'organization'],
     });
@@ -47,6 +49,13 @@ describe('managed-permissions', () => {
       permissionKey: 'app.read',
       moduleId: 'app',
       description: 'App-Link in der Sidebar anzeigen',
+      runtimeScope: 'instance',
+    });
+    expect(getManagedPermissionMetadata('instance.registry.manage')).toEqual({
+      permissionKey: 'instance.registry.manage',
+      moduleId: 'instance',
+      description: 'Manage instance registry and provisioning',
+      runtimeScope: 'instance',
     });
   });
 
@@ -54,5 +63,11 @@ describe('managed-permissions', () => {
     expect(isRootOnlyPermissionKey('instance.registry.manage')).toBe(true);
     expect(isTenantVisiblePermissionKey('instance.registry.manage')).toBe(false);
     expect(isTenantVisiblePermissionKey('content.read')).toBe(true);
+  });
+
+  it('classifies every managed permission with an explicit runtime scope', () => {
+    for (const permission of listManagedPermissionMetadata()) {
+      expect(permission.runtimeScope).toMatch(/^(instance|record|organization_context)$/);
+    }
   });
 });

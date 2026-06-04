@@ -315,6 +315,12 @@ const ensureFraction = (state: PlannerState, fractionName: string): WasteFractio
     color: wasteLocationTourPickupDateImportDefaults.defaultFractionColor,
     description: undefined,
     active: true,
+    reminderCount: 'none',
+    firstReminderMaxLeadDays: undefined,
+    secondReminderMaxLeadDays: undefined,
+    reminderChannelPushEnabled: false,
+    reminderChannelEmailEnabled: false,
+    reminderChannelCalendarEnabled: false,
     createdAt: '',
     updatedAt: '',
   });

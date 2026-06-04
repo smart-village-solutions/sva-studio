@@ -3,7 +3,6 @@ export type IamInstanceId = string;
 
 export type PersonaKey =
   | 'system_admin'
-  | 'app_manager'
   | 'feature_manager'
   | 'interface_manager'
   | 'designer'

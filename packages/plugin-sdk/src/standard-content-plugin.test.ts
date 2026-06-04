@@ -63,6 +63,7 @@ describe('standard content plugin helpers', () => {
       permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
       systemRoles: createStandardContentPluginSystemRoles('news'),
     });
+    expect(createStandardContentPluginSystemRoles('news').map((role) => role.roleName)).not.toContain('app_manager');
   });
 
   it('builds the canonical host-owned admin resource wiring for standard content plugins', () => {

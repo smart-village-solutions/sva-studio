@@ -247,12 +247,13 @@ Fehlerpfad:
 
 1. Ein Benutzer ruft eine datensatzbezogene Lese- oder Mutationsroute auf, deren Permission als scope-faehig modelliert ist.
 2. `packages/auth-runtime` laedt die effektiven Rollen-Permissions inklusive `accessScope` aus dem Snapshot- oder Recompute-Pfad.
-3. Die Fachroute baut einen kanonischen `AuthorizeRequest` mit `actorAccountId` im Kontext sowie `createdByAccountId` und optional `organizationId` am Resource-Objekt.
+3. Die Fachroute baut einen kanonischen `AuthorizeRequest` mit `actorAccountId` im Kontext sowie `createdByAccountId` und optional `organizationId` am Resource-Objekt; `organizationId` bleibt dabei ein expliziter Fachkontext und kein blanket Scope für instanzweite Rechte.
 4. Die Authorization-Engine wertet zuerst den Assignment-Scope aus und kombiniert ihn danach mit den bestehenden RBAC-/ABAC-Regeln.
 5. Bei `all` bleibt die bisherige Freigabe unveraendert.
 6. Bei `own` wird der Zugriff nur freigegeben, wenn `createdByAccountId` dem aktuellen Actor entspricht.
 7. Bei `organization` wird der Zugriff freigegeben, wenn der Actor den Datensatz selbst erstellt hat oder der Datensatz zur aktiven Session-Organisation gehoert.
 8. Die Rollen-UI schreibt denselben Scope als `permissionAssignments[]`, und die Nutzeransicht zeigt den wirksamen Scope read-only im Permission-Trace.
+9. Für instanzweite Rechte wie `media.*`, `waste-management.*`, `app.read` oder `cockpit.read` bleibt die Entscheidung auch bei aktivem Organisationskontext instanzweit; der Permission-Trace zeigt dies über `runtimeScope = instance` statt über eine künstliche Organisationsbindung.
 
 Fehlerpfad:
 
@@ -422,10 +423,10 @@ Fehlerpfad:
 
 ### Szenario 5: IAM Authorize mit ABAC, Hierarchie und Snapshot-Cache
 
-1. Client ruft `POST /iam/authorize` mit `instanceId`, `action`, `resource` und optionalem ABAC-Kontext auf; `GET /iam/me/permissions` nutzt denselben Snapshot-Pfad optional mit `organizationId`, `geoUnitId` und `geoHierarchy`.
+1. Client ruft `POST /iam/authorize` mit `instanceId`, `action`, `resource` und optionalem ABAC-Kontext auf; `GET /iam/me/permissions` nutzt denselben Snapshot-Pfad optional mit `organizationId`, `geoUnitId` und `geoHierarchy`, wobei `organizationId` nur für scope-sensitive Rechte fachlich wirksam wird.
 2. Server erzwingt Instanzgrenze und wertet Hard-Deny-Regeln zuerst aus.
 3. Permission-Snapshot wird zuerst im lokalen L1-Cache und danach in Redis über User-/Instanz-/Org-/Geo-Kontext gesucht.
-4. Bei Cache-Hit wertet die Engine die Entscheidung in fester Reihenfolge aus: RBAC-Basis, danach ABAC-Regeln und Hierarchie-Restriktionen.
+4. Bei Cache-Hit wertet die Engine die Entscheidung in fester Reihenfolge aus: RBAC-Basis, danach ABAC-Regeln und Hierarchie-Restriktionen; instanzweite Rechte behalten dabei ihre instanzweite Semantik und erhalten keine künstliche `organizationId`-Projektion.
 5. Bei Miss, Stale oder Integritätsfehler erfolgt Recompute aus Postgres als fachlicher Quelle; ein erfolgreicher Recompute schreibt zuerst Redis und danach den L1-Cache.
 6. Bei Redis- oder Recompute-Fehler im sicherheitskritischen Pfad greift Fail-Closed mit HTTP `503` und Fehlercode `database_unavailable`.
 
@@ -647,7 +648,7 @@ Fehlerpfad:
 3. Beim Speichern sendet die UI `PATCH /api/v1/iam/users/:userId` additiv mit `groupIds`.
 4. Der Backend-Service validiert alle Gruppen im aktiven `instanceId`-Scope und ersetzt die aktiven Einträge in `iam.account_groups`.
 5. Anschließend wird ein `user_group_changed`-Invalidation-Event emittiert; der nächste `GET /iam/me/permissions`- oder `POST /iam/authorize`-Aufruf recomputet den Snapshot.
-6. Transparenzansichten zeigen die daraus abgeleiteten Rechte mit `sourceRoleIds`, `sourceGroupIds` und Provenance der Quelle an.
+6. Transparenzansichten zeigen die daraus abgeleiteten Rechte mit `sourceRoleIds`, `sourceGroupIds`, Provenance der Quelle und der expliziten Laufzeitklassifikation `runtimeScope` an.
 
 Fehlerpfad:
 

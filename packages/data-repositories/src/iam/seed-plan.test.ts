@@ -4,7 +4,7 @@ import { getPersonaSeed, iamSeedPlan } from './seed-plan.js';
 
 describe('iam seed plan', () => {
   it('keeps persona identifiers stable and unique', () => {
-    expect(iamSeedPlan.personas).toHaveLength(7);
+    expect(iamSeedPlan.personas).toHaveLength(6);
     expect(new Set(iamSeedPlan.personas.map((persona) => persona.roleSlug)).size).toBe(iamSeedPlan.personas.length);
     expect(new Set(iamSeedPlan.personas.map((persona) => persona.keycloakSubject)).size).toBe(iamSeedPlan.personas.length);
   });
@@ -47,6 +47,7 @@ describe('iam seed plan', () => {
     expect(() => getPersonaSeed('instance_registry_admin' as never)).toThrow(
       'Unknown persona key: instance_registry_admin'
     );
+    expect(() => getPersonaSeed('app_manager' as never)).toThrow('Unknown persona key: app_manager');
     expect(() => getPersonaSeed('unknown' as never)).toThrow('Unknown persona key: unknown');
   });
 

@@ -389,7 +389,7 @@ Referenzen:
 25. Drift zwischen Transparenz-Read-Models und zugrunde liegenden IAM-Quellen
    - Impact: hoch (Admin- und Compliance-Sichten zeigen unvollständige oder missverständlich normalisierte Daten)
    - Wahrscheinlichkeit: mittel
-   - Maßnahme: Contract-Tests für Governance-/DSR-Mapper, synchrone Pflege von OpenSpec, API-Guide und OpenAPI sowie gezielte Review-Gates bei Feldänderungen
+   - Maßnahme: Contract-Tests für Governance-/DSR-Mapper, synchrone Pflege von OpenSpec, API-Guide und OpenAPI sowie gezielte Review-Gates bei Feldänderungen; für Permission-Transparenz bleiben insbesondere `runtimeScope` und das Fehlen künstlicher `organizationId`-Bindungen bei instanzweiten Rechten prüfrelevant
 
 26. Rollenmatrix-Drift zwischen Route-Guard, Tab-Gating und Backend-Reads
    - Impact: hoch (Overexposure oder unnötige Deny-Zustände in sensiblen Transparenz-Views)

@@ -41,7 +41,7 @@ describe('user-import-sync-handler request context', () => {
       },
     });
     expect(state.resolveMutationActorWithAccount).toHaveBeenCalledWith(request, ctx, {
-      allowedRoles: new Set(['system_admin', 'app_manager']),
+      allowedRoles: new Set(['system_admin']),
       requiredPermissionAction: 'iam.user.write',
       feature: 'iam_admin',
       scope: 'write',

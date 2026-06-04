@@ -178,6 +178,7 @@ const mapRolePermission = (permission: {
     id: permission.id,
     permissionKey: permission.permission_key,
     description: permission.description ?? metadata?.description,
+    ...(metadata?.runtimeScope ? { runtimeScope: metadata.runtimeScope } : {}),
     ...(metadata?.isScopeAssignable
       ? {
           isScopeAssignable: true,

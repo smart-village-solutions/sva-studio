@@ -2,14 +2,14 @@
 
 ## Why
 
-Die aktuelle IAM-Administration bildet `WP-005` fachlich nur teilweise ab. Beim Bearbeiten von Benutzer-Rollen und -Gruppen werden bestehende Assignment-Metadaten heute destruktiv ersetzt, und die Admin-UI zeigt Vererbungs- und Restriktionspfade effektiver Berechtigungen nicht durchgehend nachvollziehbar an.
+Die aktuelle IAM-Administration bildet `WP-005` fachlich nur noch teilweise ab. Diff-basierte Benutzer-Updates, strukturierte Transparenzfelder und die Root-/Tenant-Bereinigung sind im Codestand inzwischen vorhanden; offen bleibt vor allem die konsistente Scope-Semantik zwischen Runtime, Admin-Read-Modellen und UI.
 
 ## What Changes
 
-- diff-basierter Write-Pfad für Benutzer-Rollen und Benutzer-Gruppen statt globalem Lösch-/Neuaufbau
-- strukturierter Transparenzvertrag für direkte, vererbte, restriktive und fachlich unwirksame Berechtigungspfade
-- UI-Nachschärfung für Benutzer- und Gruppendetail mit lesbarer Herkunft, Vererbungsweg und Inaktivitätsgründen
-- normierter Abnahme- und Nachweisrahmen für Konflikt-, Gruppen-, Vererbungs- und Geo-Szenarien
+- explizite `runtimeScope`-Semantik für verwaltete Permissions und Permission-Traces
+- saubere Trennung zwischen instanzweiten und organisations-/record-bezogenen Permission-Projektionen
+- UI-Nachschärfung für Benutzer- und Gruppendetail, damit `instanzweit` vs. `organisationsbezogen` sichtbar wird
+- normierter Abnahme- und Nachweisrahmen für Konflikt-, Gruppen-, Vererbungs-, Geo- und Scope-Szenarien
 
 ## Impact
 
@@ -19,12 +19,12 @@ Die aktuelle IAM-Administration bildet `WP-005` fachlich nur teilweise ab. Beim 
   - `iam-core`
 - Affected code:
   - `apps/sva-studio-react/src/routes/admin/users/`
-  - `apps/sva-studio-react/src/routes/admin/groups/`
   - `packages/core/src/iam/account-management-contract.ts`
   - `packages/iam-admin/src/user-detail-*`
-  - `packages/auth-runtime/src/iam-account-management/`
+  - `packages/auth-runtime/src/iam-authorization/`
+  - `packages/auth-runtime/src/iam-media/`
+  - `packages/auth-runtime/src/waste-management/`
 - Affected arc42 sections:
-  - `05-building-block-view`
   - `06-runtime-view`
   - `08-cross-cutting-concepts`
   - `10-quality-requirements`

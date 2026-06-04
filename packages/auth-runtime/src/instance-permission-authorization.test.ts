@@ -70,7 +70,7 @@ describe('instance permission authorization', () => {
         instanceId: 'de-musterhausen',
         action: 'integration.manage',
         resource: expect.objectContaining({
-          type: 'instance',
+          type: 'integration',
           id: 'de-musterhausen',
         }),
       }),
@@ -78,7 +78,7 @@ describe('instance permission authorization', () => {
     );
   });
 
-  it('accepts multi-segment iam actions and rejects malformed action ids', async () => {
+  it('accepts multi-segment iam actions and maps them to the iam resource family', async () => {
     await expect(
       authorizeInstancePermissionForUser({
         ctx: {
@@ -95,6 +95,76 @@ describe('instance permission authorization', () => {
       ok: true,
     });
 
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'iam.user.read',
+        resource: expect.objectContaining({
+          type: 'iam',
+          id: 'de-musterhausen',
+        }),
+      }),
+      []
+    );
+  });
+
+  it('accepts camelCase action families used by tenant iam modules', async () => {
+    await expect(
+      authorizeInstancePermissionForUser({
+        ctx: {
+          sessionId: 'session-1',
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['custom_operator'],
+          },
+        } as never,
+        action: 'iam.legalText.read',
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+    });
+
+    await expect(
+      authorizeInstancePermissionForUser({
+        ctx: {
+          sessionId: 'session-1',
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['custom_operator'],
+          },
+        } as never,
+        action: 'iam.deletionRules.read',
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+    });
+
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        action: 'iam.legalText.read',
+        resource: expect.objectContaining({
+          type: 'iam',
+          id: 'de-musterhausen',
+        }),
+      }),
+      []
+    );
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        action: 'iam.deletionRules.read',
+        resource: expect.objectContaining({
+          type: 'iam',
+          id: 'de-musterhausen',
+        }),
+      }),
+      []
+    );
+  });
+
+  it('rejects malformed action ids', async () => {
     await expect(
       authorizeInstancePermissionForUser({
         ctx: {
@@ -112,6 +182,8 @@ describe('instance permission authorization', () => {
       status: 400,
       error: 'invalid_action',
     });
+
+    expect(evaluateAuthorizeDecisionMock).not.toHaveBeenCalled();
   });
 
   it('fails closed for denied, missing-instance and unavailable permission resolution states', async () => {

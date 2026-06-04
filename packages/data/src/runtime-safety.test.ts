@@ -109,6 +109,19 @@ test('permission gate backfill migration seeds the new permission model for tena
   assert.match(sql, /ON CONFLICT \(instance_id, permission_key\) DO UPDATE/);
 });
 
+test('experimental shell permission migration backfills the additive ui gate for existing roles', () => {
+  const sql = readRepoFile('data/migrations/0052_iam_experimental_shell_permission.sql');
+
+  assert.match(sql, /'experimental\.read'/);
+  assert.match(sql, /'experimental',\s*NULL,\s*'allow'/);
+  assert.match(sql, /permission_key IN \('app\.read', 'cockpit\.read', 'iam\.monitoring\.read', 'feature\.toggle'\)/);
+  assert.match(sql, /grant_origin_kind,\s*access_scope/);
+  assert.match(sql, /'seed',\s*'all'/);
+  assert.match(sql, /iam_permission_snapshot_invalidation/);
+  assert.match(sql, /experimental_shell_permission_migrated/);
+  assert.match(sql, /DELETE FROM iam\.permissions[\s\S]*permission_key = 'experimental\.read'/);
+});
+
 test('runtime artifact verification runs workspace node helper via bash', () => {
   const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
 

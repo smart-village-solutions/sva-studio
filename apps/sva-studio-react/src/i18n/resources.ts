@@ -1579,6 +1579,7 @@ export const i18nResources = {
           tabs: {
             overview: 'Überblick',
             configuration: 'Konfiguration',
+            modules: 'Module',
             operations: 'Betrieb',
             history: 'Historie',
           },
@@ -1859,12 +1860,20 @@ export const i18nResources = {
             assign: 'Modul zuweisen',
             revoke: 'Modul entziehen',
             seedIamBaseline: 'IAM-Basis neu aufbauen',
+            bootstrapAdminStructure: 'Admin-Struktur initialisieren',
           },
           confirmRevoke: {
             title: 'Modul wirklich entziehen?',
             description:
               'Das Modul {{moduleId}} wird der Instanz {{instanceId}} entzogen. Zugehörige Berechtigungen und IAM-Basis werden dabei entfernt.',
             confirm: 'Modul entziehen',
+            cancel: 'Abbrechen',
+          },
+          confirmBootstrap: {
+            title: 'Admin-Struktur wirklich initialisieren?',
+            description:
+              'Für die Instanz {{instanceId}} wird die initiale Admin-Struktur für Core und aktuell zugewiesene Module neu angelegt oder überschrieben.',
+            confirm: 'Admin-Struktur initialisieren',
             cancel: 'Abbrechen',
           },
         },
@@ -5084,6 +5093,7 @@ export const i18nResources = {
           tabs: {
             overview: 'Overview',
             configuration: 'Configuration',
+            modules: 'Modules',
             operations: 'Operations',
             history: 'History',
           },
@@ -5360,12 +5370,20 @@ export const i18nResources = {
             assign: 'Assign module',
             revoke: 'Revoke module',
             seedIamBaseline: 'Rebuild IAM baseline',
+            bootstrapAdminStructure: 'Initialize admin structure',
           },
           confirmRevoke: {
             title: 'Really revoke module?',
             description:
               'Module {{moduleId}} will be revoked from instance {{instanceId}}. Related permissions and IAM baseline data will be removed.',
             confirm: 'Revoke module',
+            cancel: 'Cancel',
+          },
+          confirmBootstrap: {
+            title: 'Really initialize the admin structure?',
+            description:
+              'The initial admin structure for Core and the currently assigned modules will be created or overwritten for instance {{instanceId}}.',
+            confirm: 'Initialize admin structure',
             cancel: 'Cancel',
           },
         },

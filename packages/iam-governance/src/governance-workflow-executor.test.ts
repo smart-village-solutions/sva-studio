@@ -222,23 +222,30 @@ describe('governance workflow executor', () => {
   });
 
   it('starts and ends impersonation sessions', async () => {
-    const supportActor = { ...actor, roles: ['support_admin'] };
+    const actorRequiringSecurityApprover = {
+      ...actor,
+      capabilities: { requiresIndependentSecurityApproverForImpersonation: true },
+    };
     const missingSecurityApproval = createClient([
       [{ id: 'actor-account' }],
       [{ id: 'target-account' }],
       [{ id: 'approver-account' }],
     ]);
     await expect(
-      createGovernanceWorkflowExecutor(createDeps()).executeWorkflow(missingSecurityApproval.client, supportActor, {
-        operation: 'start_impersonation',
-        instanceId: 'tenant-a',
-        payload: {
-          targetKeycloakSubject: 'target',
-          approverKeycloakSubject: 'approver',
-          ticketId: 'JIRA-3',
-          ticketState: 'open',
-        },
-      })
+      createGovernanceWorkflowExecutor(createDeps()).executeWorkflow(
+        missingSecurityApproval.client,
+        actorRequiringSecurityApprover,
+        {
+          operation: 'start_impersonation',
+          instanceId: 'tenant-a',
+          payload: {
+            targetKeycloakSubject: 'target',
+            approverKeycloakSubject: 'approver',
+            ticketId: 'JIRA-3',
+            ticketState: 'open',
+          },
+        }
+      )
     ).resolves.toEqual({
       operation: 'start_impersonation',
       status: 'error',

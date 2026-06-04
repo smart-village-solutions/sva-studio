@@ -19,6 +19,7 @@ export const iamSeedPermissions = [
   ['40111111-1111-1111-1111-111111111160', 'iam.deletionRules.write', 'Modify tenant deletion rules'],
   ['40111111-1111-1111-1111-111111111161', 'iam.monitoring.read', 'Read IAM monitoring and plugin operation status'],
   ['40111111-1111-1111-1111-111111111162', 'iam.monitoring.write', 'Run IAM monitoring and plugin operations'],
+  ['40111111-1111-1111-1111-111111111163', 'experimental.read', 'Enable experimental shell features and placeholders'],
   ['40111111-1111-1111-1111-111111111117', 'content.read', 'Read content'],
   ['40111111-1111-1111-1111-111111111118', 'content.create', 'Create content'],
   ['40111111-1111-1111-1111-111111111119', 'content.updateMetadata', 'Update content metadata'],
@@ -43,6 +44,7 @@ export const iamSeedPermissions = [
   ['40111111-1111-1111-1111-111111111148', 'media.deliver.protected', 'Deliver protected media'],
 ] as const satisfies readonly [string, PermissionKey, string][];
 
+export const experimentalShellPermissionKeys = ['experimental.read'] as const;
 export const applicationReadPermissionKeys = ['app.read', 'cockpit.read'] as const;
 export const mediaReadPermissionKeys = ['media.read'] as const;
 export const mediaManagePermissionKeys = [

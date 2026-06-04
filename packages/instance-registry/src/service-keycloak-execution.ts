@@ -100,6 +100,23 @@ const syncClientSecretAfterProvisioning = async (deps: InstanceRegistryServiceDe
 
 const buildProvisioningExecutionOptions = (intent: InstanceKeycloakProvisioningRun['intent']) => ({ reconcileAuthClient: intent !== 'reset_tenant_admin', reconcileTenantAdminClient: intent !== 'reset_tenant_admin' });
 
+const syncTenantAdminBootstrapAccountAfterProvisioning = async (
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceKeycloakProvisioningRun,
+  loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>
+) => {
+  if (!deps.syncTenantAdminBootstrapAccount) {
+    return;
+  }
+
+  await deps.syncTenantAdminBootstrapAccount({
+    instanceId: loaded.instance.instanceId,
+    tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
+    requestId: run.requestId,
+    actorId: run.actorId,
+  });
+};
+
 const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: InstanceKeycloakProvisioningRun, loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>, tenantAdminTemporaryPassword: string | undefined, provisioningInput: ReturnType<typeof buildProvisioningInput>) => {
   const preflight = await appendPreflightSnapshot(deps, run, provisioningInput);
   const plan = await appendPlanSnapshot(deps, run, provisioningInput);
@@ -129,6 +146,7 @@ const executeClaimedRun = async (deps: InstanceRegistryServiceDeps, run: Instanc
   });
 
   await syncClientSecretAfterProvisioning(deps, run, loaded);
+  await syncTenantAdminBootstrapAccountAfterProvisioning(deps, run, loaded);
 
   const finalRunStatus = await completeRun(deps, {
     loaded,

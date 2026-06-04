@@ -46,7 +46,7 @@ export const toInstancePermissionApiErrorCode = (
   }
 };
 
-const ACTION_PATTERN = /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[A-Za-z][A-Za-z0-9-]*$/;
+const ACTION_PATTERN = /^[a-z][a-z0-9-]*(?:\.[A-Za-z][A-Za-z0-9-]*)+$/;
 
 const normalizeAuthorizationAction = (action: string): string | null => {
   const normalized = action.trim();
@@ -56,16 +56,22 @@ const normalizeAuthorizationAction = (action: string): string | null => {
   return normalized;
 };
 
+const deriveAuthorizationResourceType = (action: string): string => {
+  const [resourceType] = action.split('.', 1);
+  return resourceType ?? 'instance';
+};
+
 const buildAuthorizeRequest = (input: {
   instanceId: string;
   action: string;
+  resourceType: string;
   requestId?: string;
   traceId?: string;
 }): AuthorizeRequest => ({
   instanceId: input.instanceId,
   action: input.action,
   resource: {
-    type: 'instance',
+    type: input.resourceType,
     id: input.instanceId,
   },
   context: {
@@ -74,13 +80,7 @@ const buildAuthorizeRequest = (input: {
   },
 });
 
-const buildDatabaseUnavailableResult = (
-  input: Readonly<{
-    action: string;
-    requestId?: string;
-    traceId?: string;
-  }>
-): Extract<InstancePermissionAuthorizationResult, { ok: false }> => ({
+const buildDatabaseUnavailableResult = (): Extract<InstancePermissionAuthorizationResult, { ok: false }> => ({
   ok: false,
   status: 503,
   error: 'database_unavailable',
@@ -120,7 +120,7 @@ const resolveAuthorizationPermissions = async (input: {
 
       return {
         ok: false,
-        result: buildDatabaseUnavailableResult(input),
+        result: buildDatabaseUnavailableResult(),
       };
     }
 
@@ -137,7 +137,7 @@ const resolveAuthorizationPermissions = async (input: {
 
     return {
       ok: false,
-      result: buildDatabaseUnavailableResult(input),
+      result: buildDatabaseUnavailableResult(),
     };
   }
 };
@@ -168,6 +168,7 @@ export const authorizeInstancePermissionForUser = async (input: {
   }
 
   const workspaceContext = getWorkspaceContext();
+  const resourceType = deriveAuthorizationResourceType(action);
   const resolvedPermissions = await resolveAuthorizationPermissions({
     ctx: input.ctx,
     action,
@@ -183,6 +184,7 @@ export const authorizeInstancePermissionForUser = async (input: {
   const request = buildAuthorizeRequest({
     instanceId,
     action,
+    resourceType,
     requestId: workspaceContext.requestId,
     traceId: workspaceContext.traceId,
   });

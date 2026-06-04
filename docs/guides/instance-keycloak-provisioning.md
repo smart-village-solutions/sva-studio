@@ -220,6 +220,7 @@ Das Provisioning stellt mindestens folgenden Zustand sicher:
 - Realm-Rolle `system_admin` existiert
 - Realm-Rolle `instance_registry_admin` existiert nur für Plattformpfade, nicht als Default-Rolle des Tenant-Admins
 - Tenant-Admin existiert, trägt `system_admin` und hat nicht `instance_registry_admin`
+- der konfigurierte Tenant-Admin ist nach einem Root-Host-Provisioning-Lauf auch lokal in Studio an die direkte Rolle `system_admin` gebunden, damit Permission-Projektionen nicht nur auf Keycloak-Rollen beruhen
 
 Optional und weiter diagnostizierbar:
 

@@ -124,6 +124,7 @@ vi.mock('../iam-account-management/encryption.js', () => ({
 vi.mock('../iam-account-management/shared-runtime.js', () => ({
   resolveIdentityProviderForInstance: (...args: unknown[]) => resolveIdentityProviderForInstanceMock(...args),
   isKeycloakIdentityProvider: (provider: unknown) => typeof provider === 'object' && provider !== null && 'getOidcClientByClientId' in provider,
+  withInstanceScopedDb: vi.fn(),
 }));
 
 vi.mock('../config.js', () => ({
@@ -183,6 +184,7 @@ describe('iam instance registry repository wiring', () => {
         }),
         provisioningWorkerServiceDeps: expect.objectContaining({
           moduleIamRegistry: serviceRegistry,
+          syncTenantAdminBootstrapAccount: expect.any(Function),
           loadWasteDataSourceRecord: expect.any(Function),
           saveWasteDataSourceRecord: expect.any(Function),
         }),

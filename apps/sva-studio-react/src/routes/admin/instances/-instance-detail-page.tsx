@@ -9,8 +9,8 @@ import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
 import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
+import { InstanceModulesWorkspace } from '../modules/-instance-modules-workspace';
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
-import { InstanceDetailModulesSection } from './-instance-detail-modules-section';
 import {
   buildExistingRealmOperationsModel,
   buildHistoryWorkspaceModel,
@@ -43,7 +43,7 @@ type ActionFeedback = {
   readonly message: string;
 };
 
-type WorkspaceTab = 'overview' | 'configuration' | 'history';
+type WorkspaceTab = 'overview' | 'configuration' | 'modules' | 'history';
 
 const DETAIL_AUTO_REFRESH_INTERVAL_MS = 5_000;
 const WORKER_UNAVAILABLE_WARNING_THRESHOLD_MS = 15_000;
@@ -644,6 +644,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
             <TabsList aria-label={t('admin.instances.cockpit.tabsAriaLabel')} className="h-auto flex-wrap justify-start">
               <TabsTrigger value="overview">{t('admin.instances.cockpit.tabs.overview')}</TabsTrigger>
               <TabsTrigger value="configuration">{t('admin.instances.cockpit.tabs.configuration')}</TabsTrigger>
+              <TabsTrigger value="modules">{t('admin.instances.cockpit.tabs.modules')}</TabsTrigger>
               <TabsTrigger value="history">{t('admin.instances.cockpit.tabs.history')}</TabsTrigger>
             </TabsList>
 
@@ -691,14 +692,6 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 onAction={(action) => void runDetailAction(action)}
                 disabled={instancesApi.statusLoading}
               />
-
-              <InstanceDetailModulesSection
-                selectedInstance={selectedInstance}
-                onSeedIamBaseline={async () => {
-                  await instancesApi.seedIamBaseline(selectedInstance.instanceId);
-                }}
-                statusLoading={instancesApi.statusLoading}
-              />
             </TabsContent>
 
             <TabsContent value="configuration" className="space-y-5">
@@ -710,6 +703,20 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 tenantSecretUserInputRequired={tenantSecretUserInputRequired}
                 setDetailFormValues={setDetailFormValues}
                 onUpdateSubmit={onUpdateSubmit}
+              />
+            </TabsContent>
+
+            <TabsContent value="modules" className="space-y-5">
+              <InstanceModulesWorkspace
+                selectedInstance={selectedInstance}
+                statusLoading={instancesApi.statusLoading}
+                mutationError={instancesApi.mutationError}
+                showMutationError={false}
+                emptyState={t('admin.instances.instanceModules.empty')}
+                onAssignModule={instancesApi.assignModule}
+                onRevokeModule={instancesApi.revokeModule}
+                onSeedIamBaseline={instancesApi.seedIamBaseline}
+                onBootstrapAdminStructure={instancesApi.bootstrapAdminStructure}
               />
             </TabsContent>
 

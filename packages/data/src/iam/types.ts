@@ -38,6 +38,7 @@ export type PermissionKey =
   | 'iam.deletionRules.write'
   | 'iam.monitoring.read'
   | 'iam.monitoring.write'
+  | 'experimental.read'
   | 'app.read'
   | 'cockpit.read'
   | 'content.read'

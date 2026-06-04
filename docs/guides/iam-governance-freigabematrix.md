@@ -16,7 +16,7 @@
 | Rollenänderung mit privilegierten Permissions (`*admin*`, `*security*`, `*iam*`) | IAM Admin | IAM Approver | Ticketpflicht |
 | Delegation (privilegierte Rolle) | Delegator / IAM Admin | IAM Approver | Max. 30 Tage |
 | Impersonation (Standard) | Support / IAM Admin | IAM Approver | Max. 120 Minuten |
-| Impersonation (`support_admin`) | Support Admin | IAM Approver + Security Approver | Zwei unabhängige Freigaben |
+| Impersonation (ohne Governance-Export-Capability) | Support / IAM Admin | IAM Approver + Security Approver | Zwei unabhängige Freigaben |
 | Legal-Text-Akzeptanz-Widerruf | Betroffener Benutzer / Compliance Admin | Compliance Approver | Auditpflicht |
 
 ## Reason-Codes bei Verstoß

@@ -23,6 +23,7 @@ import {
   isKeycloakIdentityProvider,
   resolveIdentityProviderForInstance,
 } from '../iam-account-management/shared-runtime.js';
+import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
 
 const getWorkerKeycloakPreflight = async (input: Parameters<typeof getInstanceKeycloakPreflightViaProvisioner>[0]) =>
   getInstanceKeycloakPreflightViaProvisioner(input);
@@ -190,6 +191,7 @@ const registryRuntime = createInstanceRegistryRuntime({
     moduleIamRegistry: studioModuleIamRegistry,
     protectSecret: protectField,
     revealSecret: revealField,
+    syncTenantAdminBootstrapAccount,
     loadWasteDataSourceRecord,
     saveWasteDataSourceRecord,
     readKeycloakStateViaProvisioner,

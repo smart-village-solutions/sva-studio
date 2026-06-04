@@ -249,6 +249,49 @@ describe('iam governance runtime handlers', () => {
     );
   });
 
+  it('derives governance actor capabilities from explicit permissions instead of role names', async () => {
+    const { governanceWorkflowHandler } = await import('./core.js');
+
+    state.governanceRequestSafeParse.mockReturnValueOnce({
+      success: true,
+      data: { instanceId: 'instance-1', operation: 'start_impersonation' },
+    });
+    state.requiresPrivilegedGovernanceWorkflowRole.mockReturnValueOnce(true);
+    state.authorizeInstancePermissionForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: { instanceId: 'instance-1', keycloakSubject: 'user-1' },
+        permissions: [],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für Governance-Exporte.',
+      });
+
+    const response = await governanceWorkflowHandler(
+      new Request('https://example.test/api/v1/iam/governance/workflow', {
+        method: 'POST',
+        body: JSON.stringify({ instanceId: 'instance-1', operation: 'start_impersonation' }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(state.executeWorkflow).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        keycloakSubject: 'user-1',
+        instanceId: 'instance-1',
+        roles: ['legacy-role'],
+        capabilities: {
+          requiresIndependentSecurityApproverForImpersonation: true,
+        },
+      }),
+      expect.objectContaining({ operation: 'start_impersonation' })
+    );
+  });
+
   it('returns workflow error results as 400, successful results as 200 and database failures as 503', async () => {
     const { governanceWorkflowHandler } = await import('./core.js');
 

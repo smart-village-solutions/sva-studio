@@ -71,7 +71,7 @@ gleichzeitig beeinflussen.
 - Redaction sensibler Logfelder in `@sva/server-runtime` und im OTEL Processor
 - Governance-Gates: Ticketpflicht, Vier-Augen-Prinzip, keine Self-Approvals
 - Harte Laufzeitgrenzen: Impersonation max. 120 Minuten, Delegation max. 30 Tage
-- `support_admin`-Impersonation benötigt zusätzlichen Security-Approver
+- Impersonation ohne Governance-Export-Capability benötigt zusätzlichen Security-Approver
 - DSGVO-Betroffenenrechte im IAM: Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch
 - Account-Self-Service trennt bewusst zwischen Aktivitätscockpit (`/account/privacy`) und Regelseite (`/account/rules`); die UI darf beide Bereiche gemeinsam navigierbar machen, ohne DSR- und Governance-Verträge fachlich zu verwischen
 - Deep-Links auf einzelne Datenschutzvorgänge laufen immer über einen expliziten `caseId`-Detailread; historische Fälle dürfen nicht aus begrenzten Overview-Listen rekonstruiert werden
@@ -144,6 +144,8 @@ gleichzeitig beeinflussen.
 - Die fachliche Modulfreigabe einer Instanz ist kanonisch in `iam.instance_modules` modelliert; Build-time-Plugin-Registrierung, `featureFlags` und Integrationsdaten sind keine alternative Aktivierungsquelle
 - `auth/me` liefert für tenantgebundene Sessions die fail-closed behandelte Liste `assignedModules`; Client-Routing und Plugin-Navigation dürfen modulbezogene Einstiege nur bei expliziter Zuweisung materialisieren
 - Modulentzug entfernt modulbezogene Permissions und `role_permissions` hart; zurückbleibende Restrechte gelten als Drift
+- Experimentelle Shell-Funktionen werden zusätzlich über die explizite Permission `experimental.read` gegated; sie ersetzt keine Fachrechte, sondern ergänzt sie.
+- Für experimentelle Menüpunkte gilt das additive Prinzip: fachliche Sichtbarkeit wie `app.read`, `cockpit.read` oder `iam.monitoring.read` bleibt führend und wird nur zusammen mit `experimental.read` materialisiert.
 - Normale Tenant-Administration nutzt ausschließlich einen tenantlokalen Keycloak-Adminpfad; Plattform-/Root-Credentials sind dafür kein zulässiger Fallback
 - Tenant-IAM-Betriebsdiagnostik auf der Instanz-Detailseite hält `configuration`, `access`, `reconcile` und `overall` getrennt; `overall` folgt strikt der Präzedenz `blocked` vor `degraded` vor `unknown` vor `ready`
 - Explizite Tenant-IAM-Access-Probes sind read-only, werden manuell ausgelöst und als korrelierbare Audit-Evidenz mit `requestId`, `errorCode`, `checkedAt` und stabiler Quelle `access_probe` persistiert

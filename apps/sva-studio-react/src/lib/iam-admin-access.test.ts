@@ -23,18 +23,33 @@ describe('iam-admin-access', () => {
     expect(updated.isIamBulkEnabled()).toBe(false);
   });
 
-  it('matches admin, interface permissions and instance registry roles', async () => {
+  it('matches explicit admin capabilities, interface permissions and instance registry roles', async () => {
     const access = await import('./iam-admin-access');
     const user = {
       roles: ['custom_role', 'instance_registry_admin'],
-      permissionActions: ['iam.user.read', 'integration.manage'],
+      permissionActions: [
+        'experimental.read',
+        'iam.user.read',
+        'iam.org.read',
+        'iam.role.read',
+        'iam.legalText.read',
+        'iam.governance.read',
+        'iam.monitoring.read',
+        'integration.manage',
+      ],
     };
 
-    expect(access.hasIamAdminRole(user)).toBe(true);
-    expect(access.hasInterfacesAccessRole(user)).toBe(true);
-    expect(access.hasSystemAdminRole(user)).toBe(false);
-    expect(access.hasInstanceRegistryAdminRole(user)).toBe(true);
-    expect(access.hasIamAdminRole(null)).toBe(false);
+    expect(access.hasUserAdminAccess(user)).toBe(true);
+    expect(access.hasOrganizationAdminAccess(user)).toBe(true);
+    expect(access.hasRoleAdminAccess(user)).toBe(true);
+    expect(access.hasLegalTextAdminAccess(user)).toBe(true);
+    expect(access.hasIamGovernanceAccess(user)).toBe(true);
+    expect(access.hasMonitoringAccess(user)).toBe(true);
+    expect(access.hasInterfacesAccess(user)).toBe(true);
+    expect(access.hasExperimentalAccess(user)).toBe(true);
+    expect(access.hasProtectedTenantRole(user)).toBe(false);
+    expect(access.hasPlatformInstanceAdminAccess(user)).toBe(true);
+    expect(access.hasUserAdminAccess(null)).toBe(false);
   });
 
   it('does not treat the root-only platform role as tenant IAM admin access', async () => {
@@ -44,18 +59,25 @@ describe('iam-admin-access', () => {
       permissionActions: [],
     };
 
-    expect(access.hasIamAdminRole(user)).toBe(false);
-    expect(access.hasInstanceRegistryAdminRole(user)).toBe(true);
+    expect(access.hasUserAdminAccess(user)).toBe(false);
+    expect(access.hasRoleAdminAccess(user)).toBe(false);
+    expect(access.hasIamGovernanceAccess(user)).toBe(false);
+    expect(access.hasPlatformInstanceAdminAccess(user)).toBe(true);
   });
 
-  it('does not derive tenant IAM admin access from legacy role names without IAM permissions', async () => {
+  it('does not derive tenant IAM access from legacy role names without explicit permissions', async () => {
     const access = await import('./iam-admin-access');
     const user = {
       roles: ['app_manager'],
       permissionActions: ['news.read'],
     };
 
-    expect(access.hasIamAdminRole(user)).toBe(false);
+    expect(access.hasUserAdminAccess(user)).toBe(false);
+    expect(access.hasOrganizationAdminAccess(user)).toBe(false);
+    expect(access.hasRoleAdminAccess(user)).toBe(false);
+    expect(access.hasLegalTextAdminAccess(user)).toBe(false);
+    expect(access.hasIamGovernanceAccess(user)).toBe(false);
+    expect(access.hasMonitoringAccess(user)).toBe(false);
   });
 
   it('does not derive interfaces access from legacy role names without integration.manage', async () => {
@@ -65,6 +87,16 @@ describe('iam-admin-access', () => {
       permissionActions: ['news.read'],
     };
 
-    expect(access.hasInterfacesAccessRole(user)).toBe(false);
+    expect(access.hasInterfacesAccess(user)).toBe(false);
+  });
+
+  it('does not derive experimental access from legacy role names without experimental.read', async () => {
+    const access = await import('./iam-admin-access');
+    const user = {
+      roles: ['app_manager'],
+      permissionActions: ['app.read', 'cockpit.read'],
+    };
+
+    expect(access.hasExperimentalAccess(user)).toBe(false);
   });
 });

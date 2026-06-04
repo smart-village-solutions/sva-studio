@@ -19,6 +19,7 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111160', 'iam.deletionRules.write', 'Modify tenant deletion rules'],
   ['40111111-1111-1111-1111-111111111161', 'iam.monitoring.read', 'Read IAM monitoring and plugin operation status'],
   ['40111111-1111-1111-1111-111111111162', 'iam.monitoring.write', 'Run IAM monitoring and plugin operations'],
+  ['40111111-1111-1111-1111-111111111163', 'experimental.read', 'Enable experimental shell features and placeholders'],
   ['40111111-1111-1111-1111-111111111117', 'content.read', 'Read content'],
   ['40111111-1111-1111-1111-111111111118', 'content.create', 'Create content'],
   ['40111111-1111-1111-1111-111111111119', 'content.updateMetadata', 'Update content metadata'],
@@ -54,6 +55,7 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111141', 'poi.update', 'Update POI plugin content'],
   ['40111111-1111-1111-1111-111111111142', 'poi.delete', 'Delete POI plugin content'],
 ] as const satisfies readonly [string, PermissionKey, string][];
+const experimentalShellPermissions = ['experimental.read'] as const;
 const applicationReadPermissions = ['app.read', 'cockpit.read'] as const;
 const pluginReadPermissions = ['news.read', 'events.read', 'poi.read'] as const;
 const mediaReadPermissions = ['media.read'] as const;
@@ -127,6 +129,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissions,
       ...applicationReadPermissions,
       'content.updateMetadata',
       'content.updatePayload',
@@ -151,6 +154,7 @@ const personas: readonly PersonaSeed[] = [
       'iam.org.read',
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissions,
       ...applicationReadPermissions,
       ...mediaReadPermissions,
       ...pluginReadPermissions,
@@ -171,6 +175,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissions,
       ...applicationReadPermissions,
       'content.updateMetadata',
       'content.updatePayload',
@@ -196,6 +201,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissions,
       ...applicationReadPermissions,
       'content.create',
       'content.updateMetadata',
@@ -223,6 +229,7 @@ const personas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissions,
       ...applicationReadPermissions,
       'content.changeStatus',
       'content.publish',

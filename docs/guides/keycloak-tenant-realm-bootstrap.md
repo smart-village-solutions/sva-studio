@@ -202,6 +202,7 @@ Begründung:
 - `system_admin` reicht für die tenant-lokalen Admin-Funktionen wie Benutzer-, Rollen- und Gruppenverwaltung
 - `instance_registry_admin` ist eine Plattformrolle für globale Instanzmutationen und soll nicht automatisch an Tenant-Admins gehen
 - Tenant-Zugriffe werden fachlich über Permissions entschieden; `system_admin` ist nur die kanonische Bootstrap-Rolle, nicht das alleinige technische Zugriffsmodell
+- der Root-Host-Provisioning-Pfad unter `/admin/instances` stellt den Tenant-Admin nicht nur in Keycloak sicher, sondern bindet den konfigurierten Bootstrap-User auch lokal in Studio direkt an die Sonderrolle `system_admin`
 
 ### Optionale Zusatzrollen
 

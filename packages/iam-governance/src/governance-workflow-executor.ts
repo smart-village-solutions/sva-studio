@@ -33,6 +33,9 @@ export type GovernanceActor = {
   keycloakSubject: string;
   instanceId: string;
   roles: readonly string[];
+  capabilities?: Readonly<{
+    requiresIndependentSecurityApproverForImpersonation?: boolean;
+  }>;
   requestId?: string;
   traceId?: string;
 };
@@ -804,7 +807,7 @@ const resolveSecurityApproverAccountId = async (
   | { ok: true; accountId?: string }
   | { ok: false; reasonCode: GovernanceWorkflowResponse['reasonCode'] }
 > => {
-  if (!actor.roles.includes('support_admin')) {
+  if (!actor.capabilities?.requiresIndependentSecurityApproverForImpersonation) {
     return { ok: true };
   }
 

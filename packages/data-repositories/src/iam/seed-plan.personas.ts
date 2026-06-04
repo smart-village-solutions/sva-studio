@@ -1,6 +1,7 @@
 import type { PersonaSeed } from './types.js';
 import {
   applicationReadPermissionKeys,
+  experimentalShellPermissionKeys,
   iamSeedPermissions,
   mediaManagePermissionKeys,
   mediaReadPermissionKeys,
@@ -62,6 +63,7 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissionKeys,
       ...applicationReadPermissionKeys,
       'content.updateMetadata',
       'content.updatePayload',
@@ -85,6 +87,7 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
       'iam.org.read',
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissionKeys,
       ...applicationReadPermissionKeys,
       ...mediaReadPermissionKeys,
       'integration.manage',
@@ -104,6 +107,7 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissionKeys,
       ...applicationReadPermissionKeys,
       'content.updateMetadata',
       'content.updatePayload',
@@ -125,6 +129,7 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissionKeys,
       ...applicationReadPermissionKeys,
       'content.create',
       'content.updateMetadata',
@@ -151,6 +156,7 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
     permissionKeys: [
       'content.read',
       'content.readHistory',
+      ...experimentalShellPermissionKeys,
       ...applicationReadPermissionKeys,
       'content.changeStatus',
       'content.publish',

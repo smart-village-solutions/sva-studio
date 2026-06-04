@@ -35,6 +35,7 @@ Dadurch tauchten `instance_registry_admin`, `system_admin`, `roleLevel` und frü
 
 - Legacy-Standardrollen und `roleLevel` bleiben vorerst als Kompatibilitätslast sichtbar.
 - Zusätzliche Permission-Backfills und Anti-Regression-Tests sind nötig, damit Bestandsrollen und Spezialpfade nicht schleichend wieder an Rollennamen gekoppelt werden.
+- Tenant-seitige Spezialfälle müssen über explizite, permission-abgeleitete Capabilities modelliert werden; neue Fachzugriffe dürfen nicht wieder direkt an Rollennamen hängen.
 
 ## Verworfen
 

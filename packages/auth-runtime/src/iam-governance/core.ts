@@ -114,6 +114,54 @@ const authorizeGovernanceAction = async (
   );
 };
 
+const deriveGovernanceActorCapabilities = async (
+  ctx: AuthenticatedRequestContext,
+  permissions?: Parameters<typeof authorizeInstancePermissionForUser>[0]['permissions']
+): Promise<
+  | {
+      ok: true;
+      capabilities: NonNullable<GovernanceActor['capabilities']>;
+    }
+  | {
+      ok: false;
+      response: Response;
+    }
+> => {
+  const governanceExportAuthorization = await authorizeInstancePermissionForUser({
+    ctx,
+    action: GOVERNANCE_EXPORT_ACTION,
+    permissions,
+  });
+
+  if (governanceExportAuthorization.ok) {
+    return {
+      ok: true,
+      capabilities: {
+        requiresIndependentSecurityApproverForImpersonation: false,
+      },
+    };
+  }
+
+  if (governanceExportAuthorization.error === 'forbidden') {
+    return {
+      ok: true,
+      capabilities: {
+        requiresIndependentSecurityApproverForImpersonation: true,
+      },
+    };
+  }
+
+  return {
+    ok: false,
+    response: createApiError(
+      governanceExportAuthorization.status,
+      toInstancePermissionApiErrorCode(governanceExportAuthorization.error),
+      'Governance-Capabilities konnten nicht ermittelt werden.',
+      getWorkspaceContext().requestId
+    ),
+  };
+};
+
 const escapeCsvField = (value: string): string => {
   if (/[",\n\r]/.test(value)) {
     return `"${value.replaceAll('"', '""')}"`;
@@ -181,26 +229,47 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
       if (user.instanceId && user.instanceId !== parsed.instanceId) {
         return jsonResponse(403, { error: 'instance_scope_mismatch' });
       }
+      let governanceActorCapabilities: GovernanceActor['capabilities'];
       if (requiresPrivilegedGovernanceWorkflowRole(parsed.operation)) {
-        const authorizationError = await authorizeGovernanceAction(
+        const governanceAuthorization = await authorizeInstancePermissionForUser({
           ctx,
-          GOVERNANCE_WRITE_ACTION,
-          'Keine Berechtigung für Governance-Workflows.'
-        );
-        if (authorizationError) {
+          action: GOVERNANCE_WRITE_ACTION,
+        });
+        if (!governanceAuthorization.ok) {
           logger.warn('Governance workflow denied due to missing permission', {
             operation: parsed.operation,
-            reason_code: 'forbidden',
+            reason_code: governanceAuthorization.error,
             ...buildGovernanceLogContext(parsed.instanceId),
           });
-          return authorizationError;
+          return createApiError(
+            governanceAuthorization.status,
+            toInstancePermissionApiErrorCode(governanceAuthorization.error),
+            'Keine Berechtigung für Governance-Workflows.',
+            getWorkspaceContext().requestId
+          );
         }
+
+        const capabilityResolution = await deriveGovernanceActorCapabilities(
+          ctx,
+          governanceAuthorization.permissions
+        );
+        if (!capabilityResolution.ok) {
+          logger.warn('Governance workflow capabilities could not be resolved', {
+            operation: parsed.operation,
+            reason_code: 'capability_resolution_failed',
+            ...buildGovernanceLogContext(parsed.instanceId),
+          });
+          return capabilityResolution.response;
+        }
+
+        governanceActorCapabilities = capabilityResolution.capabilities;
       }
 
       const actor: GovernanceActor = {
         keycloakSubject: user.id,
         instanceId: parsed.instanceId,
         roles: user.roles,
+        capabilities: governanceActorCapabilities,
         requestId: getWorkspaceContext().requestId,
         traceId: getWorkspaceContext().traceId,
       };

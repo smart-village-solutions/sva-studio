@@ -32,6 +32,7 @@ const pluginContentPermissions = [
   'iam.deletionRules.write',
   'iam.monitoring.read',
   'iam.monitoring.write',
+  'experimental.read',
   'app.read',
   'cockpit.read',
   'media.read',
@@ -77,7 +78,7 @@ describe('iamSeedPlan content permissions', () => {
 
   it('assigns granular content permissions to content personas', () => {
     expect(getPersonaSeed('app_manager').permissionKeys).toEqual(
-      expect.arrayContaining(['app.read', 'cockpit.read'])
+      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
     );
     expect(getPersonaSeed('app_manager').permissionKeys).toEqual(
       expect.arrayContaining([
@@ -92,23 +93,29 @@ describe('iamSeedPlan content permissions', () => {
     expect(getPersonaSeed('app_manager').permissionKeys).toContain('media.read');
     expect(getPersonaSeed('interface_manager').permissionKeys).toContain('content.readHistory');
     expect(getPersonaSeed('interface_manager').permissionKeys).toEqual(
-      expect.arrayContaining(['app.read', 'cockpit.read'])
+      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
     );
     expect(getPersonaSeed('feature_manager').permissionKeys).toEqual(
       expect.arrayContaining(['content.updateMetadata', 'content.updatePayload', 'content.changeStatus', 'media.reference.manage'])
     );
-    expect(getPersonaSeed('designer').permissionKeys).toEqual(expect.arrayContaining(['app.read', 'cockpit.read']));
+    expect(getPersonaSeed('designer').permissionKeys).toEqual(
+      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
+    );
     expect(getPersonaSeed('designer').permissionKeys).toEqual(
       expect.arrayContaining(['content.updateMetadata', 'content.updatePayload', 'media.update'])
     );
-    expect(getPersonaSeed('editor').permissionKeys).toEqual(expect.arrayContaining(['app.read', 'cockpit.read']));
+    expect(getPersonaSeed('editor').permissionKeys).toEqual(
+      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
+    );
     expect(getPersonaSeed('editor').permissionKeys).toEqual(
       expect.arrayContaining(['content.create', 'content.changeStatus', 'content.delete', 'media.create', 'media.reference.manage'])
     );
     expect(getPersonaSeed('editor').permissionKeys).toEqual(
       expect.arrayContaining(['news.create', 'news.update', 'events.create', 'events.update', 'poi.create', 'poi.update'])
     );
-    expect(getPersonaSeed('moderator').permissionKeys).toEqual(expect.arrayContaining(['app.read', 'cockpit.read']));
+    expect(getPersonaSeed('moderator').permissionKeys).toEqual(
+      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
+    );
     expect(getPersonaSeed('moderator').permissionKeys).toEqual(
       expect.arrayContaining(['content.publish', 'content.archive', 'content.restore', 'content.manageRevisions', 'media.read'])
     );
@@ -144,6 +151,9 @@ describe('iamSeedPlan content permissions', () => {
     );
     expect(personaSeedSql).not.toContain(
       "('instance_registry_admin', 'integration.manage')"
+    );
+    expect(personaSeedSql).toContain(
+      "('app_manager', 'experimental.read')"
     );
     expect(personaSeedSql).toContain(
       "('app_manager', 'app.read')"

@@ -18,6 +18,9 @@ describe('iam seed plan', () => {
     );
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'media.read')?.resourceType).toBe('media');
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'app.read')?.resourceType).toBe('app');
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'experimental.read')?.resourceType).toBe(
+      'experimental'
+    );
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'cockpit.read')?.resourceType).toBe(
       'cockpit'
     );
@@ -29,6 +32,7 @@ describe('iam seed plan', () => {
       roleSlug: 'editor',
       roleLevel: 30,
       permissionKeys: expect.arrayContaining([
+        'experimental.read',
         'app.read',
         'cockpit.read',
         'content.create',

@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -188,6 +188,9 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   suspendInstance: vi.fn().mockResolvedValue(true),
   archiveInstance: vi.fn().mockResolvedValue(true),
   seedIamBaseline: vi.fn().mockResolvedValue(true),
+  assignModule: vi.fn().mockResolvedValue(true),
+  revokeModule: vi.fn().mockResolvedValue(true),
+  bootstrapAdminStructure: vi.fn().mockResolvedValue(true),
   ...overrides,
 });
 
@@ -229,6 +232,7 @@ describe('InstanceDetailPage', () => {
     expect(screen.getByRole('tab', { name: 'Überblick' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Konfiguration' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Historie' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Module' })).toBeTruthy();
     expect(screen.getByText('Bestehenden Realm abgleichen')).toBeTruthy();
     expect(screen.getByText('Diagnose- und Reconcile-Schritte')).toBeTruthy();
 
@@ -483,7 +487,7 @@ describe('InstanceDetailPage', () => {
     });
   });
 
-  it('renders all known modules with derived activation status and translated descriptions in operations', async () => {
+  it('renders all known modules with derived activation status and translated descriptions in the modules tab', async () => {
     useInstancesMock.mockReturnValue(
       createInstancesApiState({
         selectedInstance: createSelectedInstance({
@@ -495,17 +499,18 @@ describe('InstanceDetailPage', () => {
 
     render(<InstanceDetailPage instanceId="demo" />);
 
+    await activateTab('Module');
+
     expect(await screen.findByText('news')).toBeTruthy();
     expect(screen.getByText('events')).toBeTruthy();
     expect(screen.getByText('media')).toBeTruthy();
-
-    expect(screen.getAllByText('Aktiv')).toHaveLength(2);
-    expect(screen.getAllByText('Deaktiviert')).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Modul entziehen' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Modul zuweisen' })).toHaveLength(1);
 
     expect(screen.getByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.')).toBeTruthy();
     expect(screen.getByText('Veröffentlicht Termine und Veranstaltungsdaten für den Mandanten.')).toBeTruthy();
     expect(screen.getByText('Aktiviert die Medienverwaltung für Uploads, Referenzen und geschützte Auslieferung.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeTruthy();
   });
 
   it('shows action feedback in the overview and clears stale feedback before a later failure', async () => {
@@ -832,12 +837,17 @@ describe('InstanceDetailPage', () => {
   it('renders follow-up module actions separately and loads runs from the history tab on demand', async () => {
     const seedIamBaseline = vi.fn().mockResolvedValue(true);
     const loadKeycloakProvisioningRun = vi.fn().mockResolvedValue(true);
+    const assignModule = vi.fn().mockResolvedValue(true);
+    const bootstrapAdminStructure = vi.fn().mockResolvedValue(true);
 
     useInstancesMock.mockReturnValue(
       createInstancesApiState({
         seedIamBaseline,
         loadKeycloakProvisioningRun,
+        assignModule,
+        bootstrapAdminStructure,
         selectedInstance: createSelectedInstance({
+          assignedModules: ['news'],
           latestKeycloakProvisioningRun: {
             id: 'run-current',
             intent: 'provision',
@@ -882,12 +892,20 @@ describe('InstanceDetailPage', () => {
 
     render(<InstanceDetailPage instanceId="demo" />);
 
+    await activateTab('Module');
     expect(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeTruthy();
-    expect(screen.getByText('Modul')).toBeTruthy();
     expect(screen.getByText('news')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Admin-Struktur initialisieren' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur initialisieren' }));
+    const bootstrapDialog = screen.getByRole('alertdialog', { name: 'Admin-Struktur wirklich initialisieren?' });
+    fireEvent.click(within(bootstrapDialog).getByRole('button', { name: 'Admin-Struktur initialisieren' }));
+
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');
+    expect(assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', ['news']);
 
     await activateTab('Historie');
     expect(screen.getByText('Historischer Fehler')).toBeTruthy();

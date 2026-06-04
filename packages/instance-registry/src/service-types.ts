@@ -95,6 +95,12 @@ export type InstanceRegistryServiceDeps = {
   readonly repository: InstanceRegistryRepository;
   readonly invalidateHost: (hostname: string) => void;
   readonly invalidatePermissionSnapshots?: (input: { instanceId: string; trigger: string }) => Promise<void>;
+  readonly syncTenantAdminBootstrapAccount?: (input: {
+    instanceId: string;
+    tenantAdminBootstrap?: TenantAdminBootstrap;
+    requestId?: string;
+    actorId?: string;
+  }) => Promise<void>;
   readonly protectSecret?: (value: string | undefined, aad: string) => string | null;
   readonly revealSecret?: (value: string | null | undefined, aad: string) => string | undefined;
   readonly readKeycloakStateViaProvisioner?: (input: KeycloakProvisioningInput) => Promise<KeycloakReadState>;

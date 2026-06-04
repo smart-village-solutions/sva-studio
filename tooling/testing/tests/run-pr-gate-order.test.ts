@@ -16,7 +16,6 @@ describe('run-pr-gate order', () => {
         return Buffer.from('');
       }),
     }));
-    // eslint-disable-next-line @nx/enforce-module-boundaries
     vi.doMock('../../../scripts/ci/pr-scope.ts', () => ({
       resolveChangedFiles: vi.fn(() => ['pnpm-lock.yaml']),
       classifyPrScope: vi.fn(() => ({
@@ -28,7 +27,6 @@ describe('run-pr-gate order', () => {
         e2eMode: 'skip',
       })),
     }));
-    // eslint-disable-next-line @nx/enforce-module-boundaries
     vi.doMock('../../../scripts/ci/affected-unit-gate.ts', () => ({
       runAffectedUnitGate: vi.fn(() => []),
     }));

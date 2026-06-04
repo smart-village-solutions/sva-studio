@@ -44,6 +44,7 @@ export const iamSeedPersonas: readonly PersonaSeed[] = [
       'content.read',
       'content.readHistory',
       'integration.manage',
+      ...experimentalShellPermissionKeys,
       ...applicationReadPermissionKeys,
       ...mediaReadPermissionKeys,
       'feature.toggle',

@@ -109,6 +109,7 @@ const personas: readonly PersonaSeed[] = [
       'content.read',
       'content.readHistory',
       'integration.manage',
+      ...experimentalShellPermissions,
       ...applicationReadPermissions,
       ...mediaReadPermissions,
       ...pluginReadPermissions,

@@ -238,16 +238,20 @@ const OperationsOverviewCard = ({
   title,
   summary,
   primaryActionLabel,
+  secondaryActionLabel,
   onPrimaryAction,
+  onSecondaryAction,
   disabled,
 }: {
   title: string;
   summary: string;
   primaryActionLabel: string;
+  secondaryActionLabel?: string;
   onPrimaryAction: () => void;
+  onSecondaryAction?: () => void;
   disabled: boolean;
 }) => (
-  <Card className="space-y-4 p-5">
+  <Card data-testid="instance-operations-overview" className="space-y-4 p-5">
     <div className="space-y-1">
       <div className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
         {t('admin.instances.operations.overview.eyebrow')}
@@ -259,6 +263,11 @@ const OperationsOverviewCard = ({
       <Button type="button" onClick={onPrimaryAction} disabled={disabled}>
         {primaryActionLabel}
       </Button>
+      {secondaryActionLabel && onSecondaryAction ? (
+        <Button type="button" variant="outline" onClick={onSecondaryAction} disabled={disabled}>
+          {secondaryActionLabel}
+        </Button>
+      ) : null}
     </div>
   </Card>
 );
@@ -516,6 +525,10 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     }
   };
 
+  const repairTenantAdmin = async () => {
+    await executeProvisioning('reset_tenant_admin');
+  };
+
   const probeTenantIamAccess = async () => {
     if (!selectedInstance) {
       return;
@@ -655,7 +668,13 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                   : t('admin.instances.operations.existing.title')}
                 summary={operationsModel.summary}
                 primaryActionLabel={primaryAction.label}
+                secondaryActionLabel={selectedInstance.tenantAdminBootstrap?.username?.trim()
+                  ? t('admin.instances.actions.resetTenantAdmin')
+                  : undefined}
                 onPrimaryAction={() => void runDetailAction(primaryAction.action)}
+                onSecondaryAction={selectedInstance.tenantAdminBootstrap?.username?.trim()
+                  ? () => void repairTenantAdmin()
+                  : undefined}
                 disabled={instancesApi.statusLoading}
               />
 

@@ -306,6 +306,36 @@ describe('InstanceDetailPage', () => {
     });
   });
 
+  it('shows a visible tenant-admin reset action inside the overview card and triggers the existing repair intent', async () => {
+    const executeKeycloakProvisioning = vi.fn().mockResolvedValue(true);
+    const loadInstance = vi.fn().mockResolvedValue(true);
+
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        executeKeycloakProvisioning,
+        loadInstance,
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    const overviewCard = screen.getByTestId('instance-operations-overview');
+
+    const repairButton = within(overviewCard).getByRole('button', {
+      name: 'Tenant-Admin neu setzen',
+    });
+
+    fireEvent.click(repairButton);
+
+    await waitFor(() => {
+      expect(executeKeycloakProvisioning).toHaveBeenCalledWith('demo', {
+        intent: 'reset_tenant_admin',
+        tenantAdminTemporaryPassword: undefined,
+      });
+    });
+    expect(loadInstance).toHaveBeenCalledWith('demo');
+  });
+
   it('shows a visible warning when a provisioning run stays queued without a worker', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-05-06T12:00:00.000Z').getTime());
 

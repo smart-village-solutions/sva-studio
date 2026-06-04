@@ -30,7 +30,9 @@ vi.mock('./iam-authorization/permission-store.js', () => ({
   resolveEffectivePermissions: resolveEffectivePermissionsMock,
 }));
 
-const { authorizeInstancePermissionForUser } = await import('./instance-permission-authorization.js');
+const { authorizeInstancePermissionForUser, toInstancePermissionApiErrorCode } = await import(
+  './instance-permission-authorization.js'
+);
 
 describe('instance permission authorization', () => {
   beforeEach(() => {
@@ -186,6 +188,55 @@ describe('instance permission authorization', () => {
     expect(evaluateAuthorizeDecisionMock).not.toHaveBeenCalled();
   });
 
+  it('maps internal authorization errors to stable API error codes', () => {
+    expect(toInstancePermissionApiErrorCode('missing_instance')).toBe('invalid_instance_id');
+    expect(toInstancePermissionApiErrorCode('invalid_action')).toBe('invalid_request');
+    expect(toInstancePermissionApiErrorCode('database_unavailable')).toBe('database_unavailable');
+    expect(toInstancePermissionApiErrorCode('forbidden')).toBe('forbidden');
+  });
+
+  it('uses injected permissions and trims valid action ids before authorization', async () => {
+    const permissions = [
+      {
+        action: 'integration.manage',
+        effect: 'allow',
+      },
+    ] as never;
+
+    await expect(
+      authorizeInstancePermissionForUser({
+        ctx: {
+          sessionId: 'session-1',
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['custom_operator'],
+          },
+        } as never,
+        action: '  integration.manage  ',
+        permissions,
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+      },
+    });
+
+    expect(resolveEffectivePermissionsMock).not.toHaveBeenCalled();
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'integration.manage',
+        resource: expect.objectContaining({
+          type: 'integration',
+          id: 'de-musterhausen',
+        }),
+      }),
+      permissions
+    );
+  });
+
   it('fails closed for denied, missing-instance and unavailable permission resolution states', async () => {
     evaluateAuthorizeDecisionMock.mockReturnValueOnce({ allowed: false, reason: 'permission_missing' });
     await expect(
@@ -224,6 +275,28 @@ describe('instance permission authorization', () => {
     });
 
     resolveEffectivePermissionsMock.mockResolvedValueOnce({ ok: false, error: 'db' });
+    await expect(
+      authorizeInstancePermissionForUser({
+        ctx: {
+          sessionId: 'session-1',
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['custom_operator'],
+          },
+        } as never,
+        action: 'integration.manage',
+      })
+    ).resolves.toMatchObject({
+      ok: false,
+      status: 503,
+      error: 'database_unavailable',
+    });
+  });
+
+  it('fails closed when effective permission resolution throws unexpectedly', async () => {
+    resolveEffectivePermissionsMock.mockRejectedValueOnce(new Error('boom'));
+
     await expect(
       authorizeInstancePermissionForUser({
         ctx: {

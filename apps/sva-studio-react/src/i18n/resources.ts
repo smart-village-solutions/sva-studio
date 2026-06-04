@@ -756,6 +756,7 @@ export const i18nResources = {
         uploadSessionId: 'Upload-Session',
         expiresAt: 'Gültig bis',
         uploadUrl: 'Upload-URL',
+        deliveryUrl: 'Auslieferungs-URL',
       },
       usage: {
         title: 'Nutzungstransparenz',
@@ -4277,6 +4278,7 @@ export const i18nResources = {
         uploadSessionId: 'Upload session',
         expiresAt: 'Expires at',
         uploadUrl: 'Upload URL',
+        deliveryUrl: 'Delivery URL',
       },
       usage: {
         title: 'Usage transparency',

@@ -179,6 +179,30 @@ describe('protected routes', () => {
     );
   });
 
+  it('allows routes when either an alternative permission or role matches', async () => {
+    const guard = createProtectedRoute({
+      route: '/admin/roles',
+      requiredAnyPermissions: ['iam.role.read'],
+      requiredAnyRoles: ['instance_registry_admin'],
+    });
+
+    await expect(
+      invokeGuard(guard, { roles: ['instance_registry_admin'], permissionActions: [] }, '/admin/roles')
+    ).resolves.toBeUndefined();
+
+    await expect(
+      invokeGuard(guard, { roles: ['custom_role'], permissionActions: ['iam.role.read'] }, '/admin/roles')
+    ).resolves.toBeUndefined();
+
+    await expect(
+      invokeGuard(guard, { roles: ['custom_role'], permissionActions: ['news.read'] }, '/admin/roles')
+    ).rejects.toMatchObject(
+      expect.objectContaining({
+        options: expect.objectContaining({ href: '/?error=auth.insufficientRole' }),
+      })
+    );
+  });
+
   it('remains silent by default when no diagnostics hook is injected', async () => {
     const guard = createProtectedRoute({ route: '/admin/users' });
 

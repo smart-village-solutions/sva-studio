@@ -24,6 +24,7 @@ type BeforeLoadOptions<TContext extends RouteGuardContext = RouteGuardContext> =
 
 export type ProtectedRouteOptions = {
   readonly requiredRoles?: readonly string[];
+  readonly requiredAnyRoles?: readonly string[];
   readonly loginPath?: string;
   readonly fallbackPath?: string;
   readonly insufficientRoleKey?: string;
@@ -145,28 +146,33 @@ const assertAllRequiredPermissions = (input: {
   throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
 };
 
-const assertAnyRequiredPermission = (input: {
+const assertAnyRequiredAccess = (input: {
   readonly user: RouteGuardUser;
   readonly requiredPermissions: readonly string[];
+  readonly requiredRoles: readonly string[];
   readonly diagnostics: RoutingDiagnosticsHook | undefined;
   readonly route: string | null;
   readonly fallbackPath: string;
   readonly insufficientRoleKey: string;
 }) => {
-  if (input.requiredPermissions.length === 0) {
+  if (input.requiredPermissions.length === 0 && input.requiredRoles.length === 0) {
     return;
   }
   const grantedPermissions = new Set(input.user.permissionActions ?? []);
-  if (input.requiredPermissions.some((permission) => grantedPermissions.has(permission))) {
+  if (
+    input.requiredPermissions.some((permission) => grantedPermissions.has(permission)) ||
+    hasAnyRole(input.user, input.requiredRoles)
+  ) {
     return;
   }
 
   emitAccessDeniedDiagnostic({
     diagnostics: input.diagnostics,
     route: input.route,
-    reason: 'insufficient-permission',
+    reason: input.requiredPermissions.length > 0 ? 'insufficient-permission' : 'insufficient-role',
     fallbackPath: input.fallbackPath,
-    requiredPermissions: input.requiredPermissions,
+    requiredPermissions: input.requiredPermissions.length > 0 ? input.requiredPermissions : undefined,
+    requiredRoles: input.requiredRoles.length > 0 ? input.requiredRoles : undefined,
   });
   throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
 };
@@ -198,6 +204,7 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
 ) => {
   const {
     requiredRoles = [],
+    requiredAnyRoles = [],
     loginPath = DEFAULT_LOGIN_PATH,
     fallbackPath = DEFAULT_FALLBACK_PATH,
     insufficientRoleKey = DEFAULT_INSUFFICIENT_ROLE_KEY,
@@ -228,9 +235,10 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
       fallbackPath,
       insufficientRoleKey,
     });
-    assertAnyRequiredPermission({
+    assertAnyRequiredAccess({
       user,
       requiredPermissions: requiredAnyPermissions,
+      requiredRoles: requiredAnyRoles,
       diagnostics,
       route: diagnosticsRoute,
       fallbackPath,

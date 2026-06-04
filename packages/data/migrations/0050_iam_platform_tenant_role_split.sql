@@ -1,5 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
+CREATE TEMP TABLE migration_0050_touched_instances ON COMMIT DROP AS
 WITH touched_instances AS (
   SELECT DISTINCT instance_id
   FROM iam.roles
@@ -19,8 +20,11 @@ WITH touched_instances AS (
     ON p.instance_id = rp.instance_id
    AND p.id = rp.permission_id
   WHERE p.permission_key = 'instance.registry.manage'
-),
-legacy_root_roles AS (
+)
+SELECT instance_id
+FROM touched_instances;
+
+WITH legacy_root_roles AS (
   SELECT id, instance_id
   FROM iam.roles
   WHERE role_key = 'instance_registry_admin'
@@ -76,26 +80,6 @@ WHERE managed_by = 'studio'
     'moderator'
   );
 
-WITH touched_instances AS (
-  SELECT DISTINCT instance_id
-  FROM iam.roles
-  WHERE role_key = 'instance_registry_admin'
-     OR (managed_by = 'studio' AND role_key IN (
-       'app_manager',
-       'feature-manager',
-       'interface-manager',
-       'designer',
-       'editor',
-       'moderator'
-     ))
-  UNION
-  SELECT DISTINCT rp.instance_id
-  FROM iam.role_permissions rp
-  JOIN iam.permissions p
-    ON p.instance_id = rp.instance_id
-   AND p.id = rp.permission_id
-  WHERE p.permission_key = 'instance.registry.manage'
-)
 SELECT pg_notify(
   'iam_permission_snapshot_invalidation',
   json_build_object(
@@ -107,7 +91,7 @@ SELECT pg_notify(
     'platform_tenant_role_split_migrated'
   )::text
 )
-FROM touched_instances;
+FROM migration_0050_touched_instances;
 -- +goose StatementEnd
 
 -- +goose Down

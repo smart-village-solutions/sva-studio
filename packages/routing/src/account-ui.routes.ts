@@ -20,6 +20,7 @@ export type AccountUiRouteGuardKey =
   | 'adminOrganizationDetail'
   | 'adminInstances'
   | 'adminRoles'
+  | 'adminRoleCreate'
   | 'adminRoleDetail'
   | 'adminGroups'
   | 'adminGroupCreate'
@@ -36,6 +37,7 @@ type AccountUiRouteGuardDefinition = {
   readonly kind: 'admin' | 'protected';
   readonly route: string;
   readonly requiredRoles?: ProtectedRouteOptions['requiredRoles'];
+  readonly requiredAnyRoles?: ProtectedRouteOptions['requiredAnyRoles'];
   readonly requiredPermissions?: ProtectedRouteOptions['requiredPermissions'];
   readonly requiredAnyPermissions?: ProtectedRouteOptions['requiredAnyPermissions'];
 };
@@ -69,7 +71,17 @@ export const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, Acco
     route: uiRoutePaths.adminInstances,
     requiredRoles: ['instance_registry_admin'],
   },
-  adminRoles: { kind: 'protected', route: uiRoutePaths.adminRoles, requiredPermissions: ['iam.role.read'] },
+  adminRoles: {
+    kind: 'protected',
+    route: uiRoutePaths.adminRoles,
+    requiredAnyPermissions: ['iam.role.read'],
+    requiredAnyRoles: ['instance_registry_admin'],
+  },
+  adminRoleCreate: {
+    kind: 'protected',
+    route: uiRoutePaths.adminRoleCreate,
+    requiredPermissions: ['iam.role.write'],
+  },
   adminRoleDetail: {
     kind: 'protected',
     route: uiRoutePaths.adminRoleDetail,
@@ -143,6 +155,7 @@ export const createAccountUiRouteGuard = (
     route,
     requiredPermissions: definition.requiredPermissions,
     requiredAnyPermissions: definition.requiredAnyPermissions,
+    requiredAnyRoles: definition.requiredAnyRoles,
     requiredRoles: definition.requiredRoles,
   });
 };
@@ -166,6 +179,7 @@ export const createAccountUiRouteGuards = (diagnostics?: RoutingDiagnosticsHook)
     adminOrganizationDetail: createAccountUiRouteGuard('adminOrganizationDetail', diagnostics),
     adminInstances: createAccountUiRouteGuard('adminInstances', diagnostics),
     adminRoles: createAccountUiRouteGuard('adminRoles', diagnostics),
+    adminRoleCreate: createAccountUiRouteGuard('adminRoleCreate', diagnostics),
     adminRoleDetail: createAccountUiRouteGuard('adminRoleDetail', diagnostics),
     adminGroups: createAccountUiRouteGuard('adminGroups', diagnostics),
     adminGroupCreate: createAccountUiRouteGuard('adminGroupCreate', diagnostics),

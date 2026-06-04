@@ -84,6 +84,7 @@ test('platform tenant role split migration neutralizes tenant-side root role art
   const sql = readRepoFile('data/migrations/0050_iam_platform_tenant_role_split.sql');
   const touchedInstancesOccurrences = sql.match(/WITH touched_instances AS \(/g) ?? [];
 
+  assert.match(sql, /CREATE TEMP TABLE migration_0050_touched_instances ON COMMIT DROP AS/);
   assert.match(sql, /DELETE FROM iam\.account_roles/);
   assert.match(sql, /DELETE FROM iam\.group_roles/);
   assert.match(sql, /DELETE FROM iam\.role_permissions[\s\S]*permission_key = 'instance\.registry\.manage'/);
@@ -91,7 +92,8 @@ test('platform tenant role split migration neutralizes tenant-side root role art
   assert.match(sql, /\[legacy-bootstrap-role\]/);
   assert.match(sql, /is_system_role = false/);
   assert.match(sql, /platform_tenant_role_split_migrated/);
-  assert.equal(touchedInstancesOccurrences.length, 3);
+  assert.match(sql, /FROM migration_0050_touched_instances;/);
+  assert.equal(touchedInstancesOccurrences.length, 2);
 });
 
 test('permission gate backfill migration seeds the new permission model for tenant governance paths', () => {

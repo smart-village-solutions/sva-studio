@@ -91,6 +91,7 @@ describe('MediaDetailPage', () => {
     expect(screen.getByText('1 Verwendung')).toBeTruthy();
     expect(screen.getByText('Geschützt')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Auslieferungslink erzeugen' })).toBeTruthy();
+    expect(screen.getByText('Auslieferungs-URL')).toBeTruthy();
   });
 
   it('renders usage information inside the detail workspace instead of requiring a separate usage screen', () => {

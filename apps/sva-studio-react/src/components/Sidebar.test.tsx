@@ -281,6 +281,33 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
   });
 
+  it('zeigt Rollen auch fuer Plattform-Admins ohne Tenant-Role-Permissions an', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-1',
+        name: 'Platform Admin',
+        roles: ['instance_registry_admin'],
+        permissionActions: [],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: null,
+      permissionActions: [],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    const usersToggle = screen.getByRole('button', { name: 'Benutzer' });
+    fireEvent.click(usersToggle);
+
+    expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
+    expect(screen.queryByRole('link', { name: 'Gruppen' })).toBeNull();
+  });
+
   it('rendert Schnittstellen mit integration.manage auch ohne Legacy-Rollenname', () => {
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,

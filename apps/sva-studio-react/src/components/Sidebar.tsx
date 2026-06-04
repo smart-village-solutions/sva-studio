@@ -780,7 +780,10 @@ export default function Sidebar({
     isAuthenticated && isIamAdminEnabled() && hasOrganizationAdminAccess(user);
   const canAccessAdminInstances =
     isAuthenticated && isIamAdminEnabled() && hasPlatformInstanceAdminAccess(user);
-  const canAccessAdminRoles = isAuthenticated && isIamAdminEnabled() && hasRoleAdminAccess(user);
+  const canAccessAdminRoles =
+    isAuthenticated &&
+    isIamAdminEnabled() &&
+    (hasRoleAdminAccess(user) || hasPlatformInstanceAdminAccess(user));
   const canAccessAdminGroups = canAccessAdminRoles && Boolean(user?.instanceId);
   const canAccessAdminLegalTexts =
     isAuthenticated && isIamAdminEnabled() && hasLegalTextAdminAccess(user);

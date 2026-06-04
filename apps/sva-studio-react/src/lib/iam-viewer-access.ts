@@ -51,6 +51,6 @@ export const hasIamCockpitAccessRole = (user: UserWithRoles | null | undefined) 
 export const hasGovernanceComplianceExportRole = (user: UserWithRoles | null | undefined) =>
   hasAnyPermission(user, GOVERNANCE_EXPORT_PERMISSIONS);
 
-// Compatibility wrappers for existing imports/tests, including the legacy `admin` role alias.
+// Compatibility wrappers for existing imports/tests while the old names are still imported.
 export const isIamViewerEnabled = isIamCockpitEnabled;
 export const hasIamViewerAdminRole = hasIamCockpitAccessRole;

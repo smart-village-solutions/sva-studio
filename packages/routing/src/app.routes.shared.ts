@@ -114,7 +114,7 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminInstanceCreate', path: uiRoutePaths.adminInstanceCreate, guard: 'adminInstances' },
   { binding: 'adminInstanceDetail', path: uiRoutePaths.adminInstanceDetail, guard: 'adminInstances' },
   { binding: 'adminRoles', path: uiRoutePaths.adminRoles, guard: 'adminRoles' },
-  { binding: 'adminRoleCreate', path: uiRoutePaths.adminRoleCreate, guard: 'adminRoles' },
+  { binding: 'adminRoleCreate', path: uiRoutePaths.adminRoleCreate, guard: 'adminRoleCreate' },
   { binding: 'adminRoleDetail', path: uiRoutePaths.adminRoleDetail, guard: 'adminRoleDetail', validateSearch: (search: Record<string, unknown>) => ({ tab: normalizeRoleDetailTab(search.tab) }) },
   { binding: 'adminGroups', path: uiRoutePaths.adminGroups, guard: 'adminGroups' },
   { binding: 'adminGroupCreate', path: uiRoutePaths.adminGroupCreate, guard: 'adminGroupCreate' },

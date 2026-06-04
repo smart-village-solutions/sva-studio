@@ -37,7 +37,7 @@ export const MediaDetailTechnicalSection = ({ asset, delivery }: MediaDetailTech
         <p className="text-sm text-foreground">{t(`media.processingStatus.${asset.processingStatus}`)}</p>
       </div>
       <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t('media.meta.uploadUrl')}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t('media.meta.deliveryUrl')}</p>
         <p className="break-all text-sm text-foreground">{readValue(delivery?.deliveryUrl)}</p>
       </div>
       <div className="space-y-1">

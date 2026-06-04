@@ -104,6 +104,32 @@ describe('accountUiRouteGuards', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('allows admin roles route for platform admins without tenant permission actions', async () => {
+    await expect(
+      invoke(
+        accountUiRouteGuards.adminRoles,
+        { roles: ['instance_registry_admin'], permissionActions: [] },
+        '/admin/roles'
+      )
+    ).resolves.toBeUndefined();
+  });
+
+  it('requires write access for the role creation route', async () => {
+    await expect(
+      invoke(accountUiRouteGuards.adminRoleCreate, { roles: ['custom_role'], permissionActions: ['iam.role.read'] }, '/admin/roles/new')
+    ).rejects.toMatchObject(
+      redirect({ href: '/?error=auth.insufficientRole' })
+    );
+
+    await expect(
+      invoke(
+        accountUiRouteGuards.adminRoleCreate,
+        { roles: ['custom_role'], permissionActions: ['iam.role.write'] },
+        '/admin/roles/new'
+      )
+    ).resolves.toBeUndefined();
+  });
+
   it('allows admin groups route for custom permission grants without legacy roles', async () => {
     const user = { roles: ['custom_role'], permissionActions: ['iam.role.read', 'iam.role.write'] };
     await expect(invoke(accountUiRouteGuards.adminGroups, user, '/admin/groups')).resolves.toBeUndefined();

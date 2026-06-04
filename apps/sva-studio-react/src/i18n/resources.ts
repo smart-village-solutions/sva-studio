@@ -817,7 +817,11 @@ export const i18nResources = {
         toolbar: {
           title: 'Bibliotheksfokus',
           summary: '{{count}} Assets in der aktuellen Ansicht',
-          page: 'Seite {{page}} · {{pageSize}} pro Abschnitt',
+          page: 'Seite {{page}} von {{total}} · {{pageSize}} pro Abschnitt',
+          pageSizeLabel: 'Einträge pro Seite',
+          paginationAriaLabel: 'Medienbibliothek Pagination',
+          previous: 'Vorherige Seite',
+          next: 'Nächste Seite',
         },
       },
       errors: {
@@ -4338,7 +4342,11 @@ export const i18nResources = {
         toolbar: {
           title: 'Library focus',
           summary: '{{count}} assets in the current view',
-          page: 'Page {{page}} · {{pageSize}} per section',
+          page: 'Page {{page}} of {{total}} · {{pageSize}} per section',
+          pageSizeLabel: 'Entries per page',
+          paginationAriaLabel: 'Media library pagination',
+          previous: 'Previous page',
+          next: 'Next page',
         },
       },
       errors: {

@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
@@ -28,12 +29,21 @@ const mediaErrorMessage = (error: IamHttpError | null): string => {
 };
 
 export const MediaLibraryPage = () => {
-  const mediaApi = useMediaLibrary();
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
+  const mediaApi = useMediaLibrary({ page, pageSize });
+  const totalPages = Math.max(1, Math.ceil(mediaApi.total / Math.max(1, mediaApi.pageSize)));
   const priorityBuckets = countMediaPriorityBuckets(
     mediaApi.assets,
     mediaApi.usageByAssetId,
     mediaApi.usageStatusByAssetId
   );
+
+  React.useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   if (mediaApi.isLoading) {
     return (
@@ -73,8 +83,14 @@ export const MediaLibraryPage = () => {
       />
       <MediaLibraryToolbar
         page={mediaApi.page}
+        pageCount={totalPages}
         pageSize={mediaApi.pageSize}
         total={mediaApi.total}
+        onPageChange={setPage}
+        onPageSizeChange={(nextPageSize) => {
+          setPageSize(nextPageSize);
+          setPage(1);
+        }}
       />
       {mediaApi.assets.length > 0 ? (
         <MediaAssetGrid

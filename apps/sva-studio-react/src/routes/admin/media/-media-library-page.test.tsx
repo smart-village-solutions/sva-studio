@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MediaLibraryPage } from './-media-library-page';
@@ -355,5 +355,51 @@ describe('MediaLibraryPage', () => {
 
     expect(screen.getByText('Nutzung nicht verfügbar')).toBeTruthy();
     expect(screen.getByText('Nutzung wird geladen')).toBeTruthy();
+  });
+
+  it('passes pagination state into the media hook and exposes page controls', () => {
+    useMediaLibraryMock.mockReturnValue({
+      assets: [
+        {
+          id: 'asset-page-1',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-page-1',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 256_000,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {
+            title: 'Seitenwechsel',
+            altText: 'Pagination-Testasset',
+          },
+          technical: {},
+        },
+      ],
+      usageByAssetId: {
+        'asset-page-1': 1,
+      },
+      usageStatusByAssetId: {
+        'asset-page-1': 'ready',
+      },
+      isUsageLoading: false,
+      isLoading: false,
+      error: null,
+      page: 1,
+      pageSize: 25,
+      total: 60,
+      refetch: vi.fn(),
+    });
+
+    render(<MediaLibraryPage />);
+
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 25 });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nächste Seite' }));
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 2, pageSize: 25 });
+
+    fireEvent.change(screen.getByLabelText('Einträge pro Seite'), { target: { value: '50' } });
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 50 });
   });
 });

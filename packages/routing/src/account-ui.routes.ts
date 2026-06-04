@@ -96,7 +96,7 @@ export const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, Acco
   adminGroupDetail: {
     kind: 'protected',
     route: uiRoutePaths.adminGroupDetail,
-    requiredPermissions: ['iam.role.read'],
+    requiredPermissions: ['iam.role.write'],
   },
   adminLegalTexts: {
     kind: 'protected',

@@ -127,7 +127,9 @@ describe('WasteManagementPage shell', () => {
 
     expect(screen.getByText('page.title')).toBeTruthy();
     expect(screen.getByText('page.description')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'page.publicCalendarLink' }).getAttribute('href')).toBe('http://localhost:3002');
+    const publicCalendarLink = screen.getByRole('link', { name: 'page.publicCalendarLink' });
+    expect(publicCalendarLink.getAttribute('href')).toBe('http://localhost:3002');
+    expect(publicCalendarLink.getAttribute('rel')).toBe('noopener noreferrer');
     expect(screen.queryByRole('button', { name: 'change-search' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'change-status' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'change-shift-context' })).toBeNull();

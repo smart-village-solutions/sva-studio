@@ -102,6 +102,7 @@ export const createCredentialProvider = (input: {
           credentials = await input.readCredentials({
             instanceId: connection.instanceId,
             keycloakSubject: connection.keycloakSubject,
+            activeOrganizationId: connection.activeOrganizationId,
           });
         } catch (error) {
           const normalizedError =

@@ -92,7 +92,7 @@ export const WasteManagementPage = () => {
             <a
               href={publicWasteCalendarUrl}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="underline underline-offset-4 hover:text-foreground"
             >
               {pt('page.publicCalendarLink')}

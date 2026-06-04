@@ -42,4 +42,23 @@ describe('PublicWasteEventDialog', () => {
     expect(document.activeElement).toBe(trigger);
     trigger.remove();
   });
+
+  it('renders duplicate hint text without collapsing entries', () => {
+    render(
+      <PublicWasteEventDialog
+        entry={{
+          id: 'pickup-2',
+          date: '2026-05-20',
+          fractionId: 'rest',
+          fractionLabel: 'Restabfall',
+          tourName: 'Resttour West',
+          tourDescription: 'Identischer Hinweis',
+          note: 'Identischer Hinweis',
+        }}
+        onClose={() => undefined}
+      />
+    );
+
+    expect(screen.getAllByText('Identischer Hinweis')).toHaveLength(2);
+  });
 });

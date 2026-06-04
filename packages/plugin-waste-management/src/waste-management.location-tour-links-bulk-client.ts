@@ -1,6 +1,7 @@
 import type { CreateWasteManagementLocationTourLinksBulkInput } from './waste-management.api.js';
 import { createWasteManagementLocationTourLinksBulk } from './waste-management.api.js';
 
+// Keep this in sync with the server-side bulk request schema, which caps locationIds at 100 per request.
 const maxBulkLocationTourLinksPerRequest = 100;
 
 export const submitWasteLocationTourLinksBulkInChunks = async (

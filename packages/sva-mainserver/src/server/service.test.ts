@@ -1090,7 +1090,7 @@ describe('createSvaMainserverService', () => {
     });
   });
 
-  it('uses the default credential reader with keycloak subject and instance id', async () => {
+  it('forwards the active organization into the default credential reader', async () => {
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
       status: 'ok',
       source: 'user',
@@ -1109,12 +1109,16 @@ describe('createSvaMainserverService', () => {
         .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Mutation' } })),
     });
 
-    await service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
+    await service.getConnectionStatus({
+      instanceId: baseConfig.instanceId,
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: 'org-1',
+    });
 
     expect(state.readEffectiveSvaMainserverCredentialsWithStatus).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
-      activeOrganizationId: undefined,
+      activeOrganizationId: 'org-1',
     });
   });
 

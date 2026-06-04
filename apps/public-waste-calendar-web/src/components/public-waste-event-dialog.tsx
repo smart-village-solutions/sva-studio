@@ -115,8 +115,8 @@ export function PublicWasteEventDialog(props: PublicWasteEventDialogProps) {
         </div>
         <div className="dialog-section">
           <p className="dialog-section-label">Hinweis</p>
-          {hints.map((hint) => (
-            <p key={hint} className="body-copy">
+          {hints.map((hint, index) => (
+            <p key={`${index}:${hint}`} className="body-copy">
               {hint}
             </p>
           ))}

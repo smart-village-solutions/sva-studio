@@ -17,7 +17,7 @@ Die öffentliche API wird über den Haupteinstieg `@sva/iam-governance` und doku
 - Governance-Read-Modelle: `listGovernanceCases`, `GovernanceFilters`
 - DSR-Read-Modelle: `listAdminDsrCases`, `loadDsrSelfServiceOverview`, `toCanonicalDsrStatus`, `DsrFilters`
 - DSR-Exporte und Wartung: `collectDsrExportPayload`, `serializeDsrExportPayload`, `createDsrExportFlows`, `createDsrExportStatusHandlers`, `runDsrMaintenance`
-- Governance-Workflows und Audit: `governanceWorkflowRoles`, `governanceReadRoles`, `governanceComplianceExportRoles`, `hasRequiredGovernanceRole`, `validateGovernanceTicketState`, `createGovernanceWorkflowExecutor`, `buildGovernanceComplianceExport`
+- Governance-Workflows und Audit: `readGovernanceCaseType`, `readGovernanceOperation`, `requiresPrivilegedGovernanceWorkflowRole`, `validateGovernanceTicketState`, `createGovernanceWorkflowExecutor`, `buildGovernanceComplianceExport`
 - Rechtstexte: `hashLegalTextHtml`, `sanitizeLegalTextHtml`, `createLegalTextSchema`, `updateLegalTextSchema`, `createLegalTextRepository`, `createLegalTextMutationHandlers`, `createLegalTextHttpHandlers`
 - Rechtstext-Kontext: `createLegalTextsAdminActorResolver`, `createLegalTextsRequestContextHandlers`, `withLegalTextsRequestContext`
 - Weitere Exportpfade: `./read-models-internal`, `./dsr-read-models-internal`, `./governance-compliance-export`, `./legal-text-repository-shared` sowie die in [package.json](./package.json) definierten DSR-, Workflow- und Rechtstext-Subpfade

@@ -46,7 +46,7 @@ export const toInstancePermissionApiErrorCode = (
   }
 };
 
-const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,30}\.[A-Za-z][A-Za-z0-9-]*$/;
+const ACTION_PATTERN = /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[A-Za-z][A-Za-z0-9-]*$/;
 
 const normalizeAuthorizationAction = (action: string): string | null => {
   const normalized = action.trim();
@@ -74,6 +74,74 @@ const buildAuthorizeRequest = (input: {
   },
 });
 
+const buildDatabaseUnavailableResult = (
+  input: Readonly<{
+    action: string;
+    requestId?: string;
+    traceId?: string;
+  }>
+): Extract<InstancePermissionAuthorizationResult, { ok: false }> => ({
+  ok: false,
+  status: 503,
+  error: 'database_unavailable',
+  message: 'Berechtigungen konnten nicht geprüft werden.',
+});
+
+const resolveAuthorizationPermissions = async (input: {
+  readonly ctx: AuthenticatedRequestContext;
+  readonly action: string;
+  readonly requestId?: string;
+  readonly traceId?: string;
+  readonly permissions?: readonly EffectivePermission[];
+}): Promise<
+  | Readonly<{ ok: true; permissions: readonly EffectivePermission[] }>
+  | Readonly<{ ok: false; result: Extract<InstancePermissionAuthorizationResult, { ok: false }> }>
+> => {
+  const instanceId = input.ctx.user.instanceId!;
+  if (input.permissions) {
+    return { ok: true, permissions: input.permissions };
+  }
+
+  try {
+    const resolved = await resolveEffectivePermissions({
+      instanceId,
+      keycloakSubject: input.ctx.user.id,
+    });
+
+    if (!resolved.ok) {
+      accountLogger.error('Instance permission authorization resolution failed', {
+        operation: 'instance_permission_authorize',
+        instance_id: instanceId,
+        request_id: input.requestId,
+        trace_id: input.traceId,
+        action: input.action,
+        error: resolved.error,
+      });
+
+      return {
+        ok: false,
+        result: buildDatabaseUnavailableResult(input),
+      };
+    }
+
+    return { ok: true, permissions: resolved.permissions };
+  } catch (error) {
+    accountLogger.error('Instance permission authorization failed', {
+      operation: 'instance_permission_authorize',
+      instance_id: instanceId,
+      request_id: input.requestId,
+      trace_id: input.traceId,
+      action: input.action,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      ok: false,
+      result: buildDatabaseUnavailableResult(input),
+    };
+  }
+};
+
 export const authorizeInstancePermissionForUser = async (input: {
   readonly ctx: AuthenticatedRequestContext;
   readonly action: string;
@@ -100,54 +168,17 @@ export const authorizeInstancePermissionForUser = async (input: {
   }
 
   const workspaceContext = getWorkspaceContext();
-
-  let permissions: readonly EffectivePermission[];
-  if (input.permissions) {
-    permissions = input.permissions;
-  } else {
-    try {
-      const resolved = await resolveEffectivePermissions({
-        instanceId,
-        keycloakSubject: input.ctx.user.id,
-      });
-
-      if (!resolved.ok) {
-        accountLogger.error('Instance permission authorization resolution failed', {
-          operation: 'instance_permission_authorize',
-          instance_id: instanceId,
-          request_id: workspaceContext.requestId,
-          trace_id: workspaceContext.traceId,
-          action,
-          error: resolved.error,
-        });
-
-        return {
-          ok: false,
-          status: 503,
-          error: 'database_unavailable',
-          message: 'Berechtigungen konnten nicht geprüft werden.',
-        };
-      }
-
-      permissions = resolved.permissions;
-    } catch (error) {
-      accountLogger.error('Instance permission authorization failed', {
-        operation: 'instance_permission_authorize',
-        instance_id: instanceId,
-        request_id: workspaceContext.requestId,
-        trace_id: workspaceContext.traceId,
-        action,
-        error: error instanceof Error ? error.message : String(error),
-      });
-
-      return {
-        ok: false,
-        status: 503,
-        error: 'database_unavailable',
-        message: 'Berechtigungen konnten nicht geprüft werden.',
-      };
-    }
+  const resolvedPermissions = await resolveAuthorizationPermissions({
+    ctx: input.ctx,
+    action,
+    requestId: workspaceContext.requestId,
+    traceId: workspaceContext.traceId,
+    permissions: input.permissions,
+  });
+  if (!resolvedPermissions.ok) {
+    return resolvedPermissions.result;
   }
+  const permissions = resolvedPermissions.permissions;
 
   const request = buildAuthorizeRequest({
     instanceId,

@@ -27,13 +27,17 @@ export type AccountUiRouteGuardKey =
   | 'adminLegalTexts'
   | 'adminLegalTextCreate'
   | 'adminLegalTextDetail'
-  | 'adminIam';
+  | 'adminIam'
+  | 'monitoring'
+  | 'monitoringJobs'
+  | 'monitoringJobDetail';
 
 type AccountUiRouteGuardDefinition = {
   readonly kind: 'admin' | 'protected';
   readonly route: string;
   readonly requiredRoles?: ProtectedRouteOptions['requiredRoles'];
   readonly requiredPermissions?: ProtectedRouteOptions['requiredPermissions'];
+  readonly requiredAnyPermissions?: ProtectedRouteOptions['requiredAnyPermissions'];
 };
 
 export const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, AccountUiRouteGuardDefinition> = {
@@ -82,21 +86,41 @@ export const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, Acco
     route: uiRoutePaths.adminGroupDetail,
     requiredPermissions: ['iam.role.read'],
   },
-  adminLegalTexts: { kind: 'protected', route: uiRoutePaths.adminLegalTexts, requiredRoles: ['system_admin'] },
+  adminLegalTexts: {
+    kind: 'protected',
+    route: uiRoutePaths.adminLegalTexts,
+    requiredPermissions: ['iam.legalText.read'],
+  },
   adminLegalTextCreate: {
     kind: 'protected',
     route: uiRoutePaths.adminLegalTextCreate,
-    requiredRoles: ['system_admin'],
+    requiredPermissions: ['iam.legalText.write'],
   },
   adminLegalTextDetail: {
     kind: 'protected',
     route: uiRoutePaths.adminLegalTextDetail,
-    requiredRoles: ['system_admin'],
+    requiredPermissions: ['iam.legalText.write'],
   },
   adminIam: {
     kind: 'protected',
     route: uiRoutePaths.adminIam,
-    requiredRoles: ['iam_admin', 'support_admin', 'system_admin', 'security_admin', 'compliance_officer'],
+    requiredAnyPermissions: [
+      'iam.user.read',
+      'iam.governance.read',
+      'iam.dsr.read',
+      'iam.deletionRules.read',
+    ],
+  },
+  monitoring: { kind: 'protected', route: uiRoutePaths.monitoring, requiredPermissions: ['iam.monitoring.read'] },
+  monitoringJobs: {
+    kind: 'protected',
+    route: uiRoutePaths.monitoringJobs,
+    requiredPermissions: ['iam.monitoring.read'],
+  },
+  monitoringJobDetail: {
+    kind: 'protected',
+    route: uiRoutePaths.monitoringJobDetail,
+    requiredPermissions: ['iam.monitoring.read'],
   },
 };
 
@@ -118,6 +142,7 @@ export const createAccountUiRouteGuard = (
     diagnostics,
     route,
     requiredPermissions: definition.requiredPermissions,
+    requiredAnyPermissions: definition.requiredAnyPermissions,
     requiredRoles: definition.requiredRoles,
   });
 };
@@ -149,6 +174,9 @@ export const createAccountUiRouteGuards = (diagnostics?: RoutingDiagnosticsHook)
     adminLegalTextCreate: createAccountUiRouteGuard('adminLegalTextCreate', diagnostics),
     adminLegalTextDetail: createAccountUiRouteGuard('adminLegalTextDetail', diagnostics),
     adminIam: createAccountUiRouteGuard('adminIam', diagnostics),
+    monitoring: createAccountUiRouteGuard('monitoring', diagnostics),
+    monitoringJobs: createAccountUiRouteGuard('monitoringJobs', diagnostics),
+    monitoringJobDetail: createAccountUiRouteGuard('monitoringJobDetail', diagnostics),
   }) as const;
 
 export const accountUiRouteGuards = createAccountUiRouteGuards();

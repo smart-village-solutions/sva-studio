@@ -111,22 +111,29 @@ describe('accountUiRouteGuards', () => {
     await expect(invoke(accountUiRouteGuards.adminGroupDetail, user, '/admin/groups/group-1')).resolves.toBeUndefined();
   });
 
-  it('allows legal text routes for system_admin', async () => {
-    await expect(invoke(accountUiRouteGuards.adminLegalTexts, { roles: ['system_admin'] }, '/admin/legal-texts')).resolves.toBeUndefined();
+  it('allows legal text routes for custom permission grants without legacy roles', async () => {
     await expect(
-      invoke(accountUiRouteGuards.adminLegalTextCreate, { roles: ['system_admin'] }, '/admin/legal-texts/new')
+      invoke(accountUiRouteGuards.adminLegalTexts, { roles: ['custom_role'], permissionActions: ['iam.legalText.read'] }, '/admin/legal-texts')
     ).resolves.toBeUndefined();
     await expect(
-      invoke(accountUiRouteGuards.adminLegalTextDetail, { roles: ['system_admin'] }, '/admin/legal-texts/legal-text-1')
+      invoke(accountUiRouteGuards.adminLegalTextCreate, { roles: ['custom_role'], permissionActions: ['iam.legalText.write'] }, '/admin/legal-texts/new')
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.adminLegalTextDetail, { roles: ['custom_role'], permissionActions: ['iam.legalText.write'] }, '/admin/legal-texts/legal-text-1')
     ).resolves.toBeUndefined();
   });
 
-  it('allows admin iam route for compliance officer', async () => {
-    await expect(invoke(accountUiRouteGuards.adminIam, { roles: ['compliance_officer'] }, '/admin/iam')).resolves.toBeUndefined();
+  it('allows admin iam route for cockpit permissions without legacy roles', async () => {
+    await expect(
+      invoke(accountUiRouteGuards.adminIam, { roles: ['custom_role'], permissionActions: ['iam.governance.read'] }, '/admin/iam')
+    ).resolves.toBeUndefined();
   });
 
-  it('allows admin iam route for security admin', async () => {
-    await expect(invoke(accountUiRouteGuards.adminIam, { roles: ['security_admin'] }, '/admin/iam')).resolves.toBeUndefined();
+  it('allows monitoring routes for custom permission grants without legacy roles', async () => {
+    const user = { roles: ['custom_role'], permissionActions: ['iam.monitoring.read'] };
+    await expect(invoke(accountUiRouteGuards.monitoring, user, '/monitoring')).resolves.toBeUndefined();
+    await expect(invoke(accountUiRouteGuards.monitoringJobs, user, '/monitoring/jobs')).resolves.toBeUndefined();
+    await expect(invoke(accountUiRouteGuards.monitoringJobDetail, user, '/monitoring/jobs/job-1')).resolves.toBeUndefined();
   });
 
   it('creates a fresh guard set when diagnostics are injected', () => {

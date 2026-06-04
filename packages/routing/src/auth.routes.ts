@@ -28,7 +28,7 @@ const createAuthRouteFactory = (path: string) => {
 /**
  * Client-safe auth route factories for integration into app routers
  */
-export const authRouteFactories = authRoutePaths.map((path) =>
+export const authRouteFactories = authRoutePaths.map((path: (typeof authRoutePaths)[number]) =>
   createAuthRouteFactory(path)
 );
 

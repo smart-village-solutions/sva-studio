@@ -25,23 +25,6 @@ const GOVERNANCE_OPERATIONS = [
   'revoke_legal_acceptance',
 ] as const satisfies readonly GovernanceOperation[];
 
-export const governanceWorkflowRoles = new Set(['iam_admin', 'support_admin', 'system_admin']);
-
-export const governanceReadRoles = new Set([
-  'iam_admin',
-  'support_admin',
-  'system_admin',
-  'security_admin',
-  'compliance_officer',
-]);
-
-export const governanceComplianceExportRoles = new Set([
-  'iam_admin',
-  'system_admin',
-  'security_admin',
-  'compliance_officer',
-]);
-
 const ALLOWED_TICKET_STATES = new Set(['open', 'in_progress', 'approved_for_execution']);
 const GOVERNANCE_CASE_TYPES = new Set<IamGovernanceCaseType>([
   'permission_change',
@@ -67,11 +50,6 @@ export const validateGovernanceTicketState = (
   }
   return { ok: true };
 };
-
-export const hasRequiredGovernanceRole = (
-  userRoles: readonly string[],
-  allowedRoles: ReadonlySet<string>
-): boolean => userRoles.some((role) => allowedRoles.has(role));
 
 export const requiresPrivilegedGovernanceWorkflowRole = (operation: GovernanceOperation): boolean => {
   if (operation === 'accept_legal_text' || operation === 'revoke_legal_acceptance') {

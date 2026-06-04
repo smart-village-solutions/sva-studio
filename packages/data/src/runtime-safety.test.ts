@@ -94,6 +94,21 @@ test('platform tenant role split migration neutralizes tenant-side root role art
   assert.equal(touchedInstancesOccurrences.length, 3);
 });
 
+test('permission gate backfill migration seeds the new permission model for tenant governance paths', () => {
+  const sql = readRepoFile('data/migrations/0051_iam_permission_gate_backfill.sql');
+
+  assert.match(sql, /'iam\.legalText\.read'/);
+  assert.match(sql, /'iam\.governance\.write'/);
+  assert.match(sql, /'iam\.dsr\.export'/);
+  assert.match(sql, /'iam\.deletionRules\.write'/);
+  assert.match(sql, /'iam\.monitoring\.read'/);
+  assert.match(sql, /'app_manager', 'iam\.legalText\.read'/);
+  assert.match(sql, /'support_admin', 'iam\.dsr\.write'/);
+  assert.match(sql, /'security_admin', 'iam\.governance\.export'/);
+  assert.match(sql, /grant_origin_kind,\s*access_scope/);
+  assert.match(sql, /ON CONFLICT \(instance_id, permission_key\) DO UPDATE/);
+});
+
 test('runtime artifact verification runs workspace node helper via bash', () => {
   const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
 

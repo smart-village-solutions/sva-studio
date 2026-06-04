@@ -11,6 +11,7 @@ const runnerState = vi.hoisted(() => ({
 
 const middlewareState = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
+  authorizeInstancePermissionForUser: vi.fn(),
 }));
 
 const workspaceContextState = vi.hoisted(() => ({
@@ -48,6 +49,18 @@ vi.mock('../iam-account-management/shared.js', () => ({
   completeIdempotency: idempotencyState.completeIdempotency,
 }));
 
+vi.mock('../instance-permission-authorization.js', () => ({
+  authorizeInstancePermissionForUser: middlewareState.authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode: (error: string) =>
+    error === 'missing_instance'
+      ? 'invalid_instance_id'
+      : error === 'invalid_action'
+        ? 'invalid_request'
+        : error === 'database_unavailable'
+          ? 'database_unavailable'
+          : 'forbidden',
+}));
+
 import {
   cancelPluginOperationJobHandler,
   deletePluginOperationJobHandler,
@@ -81,10 +94,11 @@ describe('plugin operations handlers', () => {
         user: {
           id: 'user-1',
           instanceId: 'tenant-a',
-          roles: ['system_admin'],
+          roles: ['custom_role'],
         },
       })
     );
+    middlewareState.authorizeInstancePermissionForUser.mockResolvedValue({ ok: true, permissions: [] });
   });
 
   afterEach(() => {
@@ -689,7 +703,7 @@ describe('plugin operations handlers', () => {
     expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
   });
 
-  it('rejects plugin operation access for users without monitoring admin roles', async () => {
+  it('rejects plugin operation access for users without monitoring permissions', async () => {
     middlewareState.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
       handler({
         sessionId: 'session-1',
@@ -700,6 +714,12 @@ describe('plugin operations handlers', () => {
         },
       })
     );
+    middlewareState.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für Plugin-Operations-Monitoring.',
+    });
 
     const response = await listPluginOperationJobsHandler(
       new Request('https://studio.test/api/v1/plugin-operations/jobs?view=active', { method: 'GET' })

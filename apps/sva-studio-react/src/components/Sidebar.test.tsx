@@ -161,7 +161,15 @@ describe('Sidebar', () => {
         name: 'Admin',
         roles: ['system_admin', 'instance_registry_admin'],
         instanceId: 'de-musterhausen',
-        permissionActions: ['integration.manage'],
+        permissionActions: [
+          'iam.user.read',
+          'iam.user.write',
+          'iam.role.read',
+          'iam.role.write',
+          'iam.org.read',
+          'iam.org.write',
+          'integration.manage',
+        ],
       },
       isAuthenticated: true,
     });
@@ -242,6 +250,7 @@ describe('Sidebar', () => {
         id: 'user-1',
         name: 'Admin',
         roles: ['system_admin', 'instance_registry_admin'],
+        permissionActions: ['iam.user.read', 'iam.role.read', 'iam.org.read'],
       },
       isAuthenticated: true,
     });
@@ -369,6 +378,14 @@ describe('Sidebar', () => {
         name: 'Admin',
         roles: ['system_admin', 'instance_registry_admin'],
         instanceId: 'de-musterhausen',
+        permissionActions: [
+          'iam.user.read',
+          'iam.user.write',
+          'iam.role.read',
+          'iam.role.write',
+          'iam.org.read',
+          'iam.org.write',
+        ],
       },
       isAuthenticated: true,
     });
@@ -414,6 +431,7 @@ describe('Sidebar', () => {
         id: 'user-1',
         name: 'Admin',
         roles: ['system_admin'],
+        permissionActions: ['iam.user.read'],
       },
       isAuthenticated: true,
     });

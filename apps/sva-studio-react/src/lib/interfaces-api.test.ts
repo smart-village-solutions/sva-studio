@@ -429,6 +429,12 @@ describe('interfaces app adapter', () => {
           },
         })
     );
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung zur Schnittstellenverwaltung.',
+    });
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
 
@@ -722,6 +728,12 @@ describe('interfaces app adapter', () => {
           },
         })
     );
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung zur Schnittstellenverwaltung.',
+    });
 
     const { deleteInstanceInterfaceServerFn } = await import('./interfaces-api');
 

@@ -78,6 +78,42 @@ describe('instance permission authorization', () => {
     );
   });
 
+  it('accepts multi-segment iam actions and rejects malformed action ids', async () => {
+    await expect(
+      authorizeInstancePermissionForUser({
+        ctx: {
+          sessionId: 'session-1',
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['custom_operator'],
+          },
+        } as never,
+        action: 'iam.user.read',
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+    });
+
+    await expect(
+      authorizeInstancePermissionForUser({
+        ctx: {
+          sessionId: 'session-1',
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['custom_operator'],
+          },
+        } as never,
+        action: 'invalid action',
+      })
+    ).resolves.toMatchObject({
+      ok: false,
+      status: 400,
+      error: 'invalid_action',
+    });
+  });
+
   it('fails closed for denied, missing-instance and unavailable permission resolution states', async () => {
     evaluateAuthorizeDecisionMock.mockReturnValueOnce({ allowed: false, reason: 'permission_missing' });
     await expect(

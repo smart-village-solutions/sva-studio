@@ -201,6 +201,7 @@ Begründung:
 
 - `system_admin` reicht für die tenant-lokalen Admin-Funktionen wie Benutzer-, Rollen- und Gruppenverwaltung
 - `instance_registry_admin` ist eine Plattformrolle für globale Instanzmutationen und soll nicht automatisch an Tenant-Admins gehen
+- Tenant-Zugriffe werden fachlich über Permissions entschieden; `system_admin` ist nur die kanonische Bootstrap-Rolle, nicht das alleinige technische Zugriffsmodell
 
 ### Optionale Zusatzrollen
 
@@ -214,6 +215,16 @@ Nur wenn die jeweilige Funktion tatsächlich benötigt wird:
 - `editor`
 
 Diese Rollen sind bewusst nicht Teil des pauschalen Standard-Bootstraps.
+
+## Anti-Regression-Regel
+
+Tenant-lokale Fachzugriffe dürfen nicht wieder an feste Rollennamen gekoppelt werden, sobald dafür fachliche Permissions existieren.
+
+Das bedeutet konkret:
+
+- neue Tenant-APIs, Router-Guards und UI-Gates prüfen Permissions statt `system_admin`, `app_manager`, `iam_admin` oder ähnlicher Rollennamen
+- Root-only-Ausnahmen wie `instance_registry_admin` bleiben auf echte Plattformpfade beschränkt
+- Legacy-Rollennamen dürfen als Bootstrap- oder Kompatibilitätsartefakte weiter existieren, tragen aber keine neue Autorisierungssemantik
 
 ### Legacy-Hinweis für Bestands-Realms
 

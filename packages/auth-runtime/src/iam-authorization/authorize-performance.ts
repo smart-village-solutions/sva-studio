@@ -4,15 +4,21 @@ import { z } from 'zod';
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
 
 import { withAuthenticatedUser } from '../middleware.js';
+import type { AuthenticatedRequestContext } from '../middleware.js';
 import { createJsonItemResponse } from '../plugin-operations/core.shared.js';
 import { createApiError, parseRequestBody } from '../shared/request-helpers.js';
 import { validateCsrf } from '../shared/request-security.js';
+import {
+  authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode,
+} from '../instance-permission-authorization.js';
 import {
   readLatestAuthorizePerformanceBenchmark,
   runAuthorizePerformanceBenchmark,
 } from './authorize-performance.server.js';
 
-const MONITORING_ADMIN_ROLES = new Set(['system_admin']);
+const MONITORING_READ_ACTION = 'iam.monitoring.read';
+const MONITORING_WRITE_ACTION = 'iam.monitoring.write';
 const logger = createSdkLogger({ component: 'iam-authorize-performance', level: 'info' });
 
 const authorizePerformanceRequestSchema = z.object({
@@ -26,10 +32,20 @@ const authorizePerformanceRequestSchema = z.object({
 
 const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
 
-const requireMonitoringAdminRole = (roles: readonly string[]): Response | null =>
-  roles.some((role) => MONITORING_ADMIN_ROLES.has(role))
+const requireMonitoringAccess = async (
+  ctx: AuthenticatedRequestContext,
+  action: string
+): Promise<Response | null> => {
+  const authorization = await authorizeInstancePermissionForUser({ ctx, action });
+  return authorization.ok
     ? null
-    : createApiError(403, 'forbidden', 'Keine Berechtigung für Authorize-Performance-Monitoring.', getRequestId());
+    : createApiError(
+        authorization.status,
+        toInstancePermissionApiErrorCode(authorization.error),
+        'Keine Berechtigung für Authorize-Performance-Monitoring.',
+        getRequestId()
+      );
+};
 
 const requireActorInstanceId = (instanceId: string | null | undefined): string | Response =>
   instanceId && instanceId.trim().length > 0
@@ -39,7 +55,7 @@ const requireActorInstanceId = (instanceId: string | null | undefined): string |
 export const startAuthorizePerformanceRunHandler = async (request: Request): Promise<Response> =>
   withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async (ctx) => {
-      const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+      const authorizationError = await requireMonitoringAccess(ctx, MONITORING_WRITE_ACTION);
       if (authorizationError) {
         return authorizationError;
       }
@@ -98,7 +114,7 @@ export const startAuthorizePerformanceRunHandler = async (request: Request): Pro
 export const getLatestAuthorizePerformanceRunHandler = async (request: Request): Promise<Response> =>
   withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async (ctx) => {
-      const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+      const authorizationError = await requireMonitoringAccess(ctx, MONITORING_READ_ACTION);
       if (authorizationError) {
         return authorizationError;
       }

@@ -1,9 +1,6 @@
 import { redirect } from '@tanstack/react-router';
 
-import {
-  emitRoutingDiagnostic,
-  type RoutingDiagnosticsHook,
-} from './diagnostics.js';
+import { emitRoutingDiagnostic, type RoutingDiagnosticsHook } from './diagnostics.js';
 
 export type RouteGuardUser = {
   readonly roles: readonly string[];
@@ -33,6 +30,7 @@ export type ProtectedRouteOptions = {
   readonly diagnostics?: RoutingDiagnosticsHook;
   readonly route?: string;
   readonly requiredPermissions?: readonly string[];
+  readonly requiredAnyPermissions?: readonly string[];
 };
 
 const DEFAULT_LOGIN_PATH = '/auth/login';
@@ -90,6 +88,111 @@ const sanitizeRequiredRoles = (requiredRoles: readonly string[]): readonly strin
 const hasAnyRole = (user: RouteGuardUser, requiredRoles: readonly string[]) =>
   requiredRoles.some((requiredRole) => user.roles.includes(requiredRole));
 
+const emitAccessDeniedDiagnostic = (input: {
+  readonly diagnostics: RoutingDiagnosticsHook | undefined;
+  readonly route: string | null;
+  readonly reason: 'unauthenticated' | 'insufficient-permission' | 'insufficient-role';
+  readonly fallbackPath: string;
+  readonly requiredPermissions?: readonly string[];
+  readonly requiredRoles?: readonly string[];
+}) => {
+  if (!input.route) {
+    return;
+  }
+  emitRoutingDiagnostic(input.diagnostics, {
+    level: 'info',
+    event: 'routing.guard.access_denied',
+    route: input.route,
+    reason: input.reason,
+    redirect_target: sanitizePathForDiagnostics(input.fallbackPath, DEFAULT_FALLBACK_PATH),
+    ...(input.requiredPermissions ? { required_permissions: input.requiredPermissions } : {}),
+    ...(input.requiredRoles ? { required_roles: sanitizeRequiredRoles(input.requiredRoles) } : {}),
+  });
+};
+
+const throwInsufficientAccessRedirect = (fallbackPath: string, insufficientRoleKey: string): never => {
+  throw redirect({
+    href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey),
+  });
+};
+
+const assertAllRequiredPermissions = (input: {
+  readonly user: RouteGuardUser;
+  readonly requiredPermissions: readonly string[];
+  readonly diagnostics: RoutingDiagnosticsHook | undefined;
+  readonly route: string | null;
+  readonly fallbackPath: string;
+  readonly insufficientRoleKey: string;
+}) => {
+  if (input.requiredPermissions.length === 0) {
+    return;
+  }
+  const grantedPermissions = new Set(input.user.permissionActions ?? []);
+  const missingPermissions = input.requiredPermissions.filter(
+    (permission) => !grantedPermissions.has(permission)
+  );
+  if (missingPermissions.length === 0) {
+    return;
+  }
+
+  emitAccessDeniedDiagnostic({
+    diagnostics: input.diagnostics,
+    route: input.route,
+    reason: 'insufficient-permission',
+    fallbackPath: input.fallbackPath,
+    requiredPermissions: input.requiredPermissions,
+  });
+  throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
+};
+
+const assertAnyRequiredPermission = (input: {
+  readonly user: RouteGuardUser;
+  readonly requiredPermissions: readonly string[];
+  readonly diagnostics: RoutingDiagnosticsHook | undefined;
+  readonly route: string | null;
+  readonly fallbackPath: string;
+  readonly insufficientRoleKey: string;
+}) => {
+  if (input.requiredPermissions.length === 0) {
+    return;
+  }
+  const grantedPermissions = new Set(input.user.permissionActions ?? []);
+  if (input.requiredPermissions.some((permission) => grantedPermissions.has(permission))) {
+    return;
+  }
+
+  emitAccessDeniedDiagnostic({
+    diagnostics: input.diagnostics,
+    route: input.route,
+    reason: 'insufficient-permission',
+    fallbackPath: input.fallbackPath,
+    requiredPermissions: input.requiredPermissions,
+  });
+  throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
+};
+
+const assertRequiredRoles = (input: {
+  readonly user: RouteGuardUser;
+  readonly requiredRoles: readonly string[];
+  readonly diagnostics: RoutingDiagnosticsHook | undefined;
+  readonly route: string | null;
+  readonly fallbackPath: string;
+  readonly insufficientRoleKey: string;
+}) => {
+  if (input.requiredRoles.length === 0 || hasAnyRole(input.user, input.requiredRoles)) {
+    return;
+  }
+
+  emitAccessDeniedDiagnostic({
+    diagnostics: input.diagnostics,
+    route: input.route,
+    reason: 'insufficient-role',
+    fallbackPath: input.fallbackPath,
+    requiredRoles: input.requiredRoles,
+  });
+  throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
+};
+
 export const createProtectedRoute = <TContext extends RouteGuardContext = RouteGuardContext>(
   options: ProtectedRouteOptions = {}
 ) => {
@@ -100,6 +203,7 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
     insufficientRoleKey = DEFAULT_INSUFFICIENT_ROLE_KEY,
     diagnostics,
     requiredPermissions = [],
+    requiredAnyPermissions = [],
   } = options;
   const diagnosticsRoute = 'route' in options && typeof options.route === 'string' ? options.route : null;
 
@@ -107,50 +211,39 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
     const user = await context.auth?.getUser();
 
     if (!user) {
-      if (diagnosticsRoute) {
-        emitRoutingDiagnostic(diagnostics, {
-            level: 'info',
-            event: 'routing.guard.access_denied',
-            route: diagnosticsRoute,
-            reason: 'unauthenticated',
-            redirect_target: sanitizePathForDiagnostics(DEFAULT_FALLBACK_PATH, DEFAULT_FALLBACK_PATH),
-        });
-      }
+      emitAccessDeniedDiagnostic({
+        diagnostics,
+        route: diagnosticsRoute,
+        reason: 'unauthenticated',
+        fallbackPath: DEFAULT_FALLBACK_PATH,
+      });
       throw redirect({ href: buildLoginHref(loginPath, location.href) });
     }
 
-    if (requiredPermissions.length > 0) {
-      const grantedPermissions = new Set(user.permissionActions ?? []);
-      const missingPermissions = requiredPermissions.filter((permission) => !grantedPermissions.has(permission));
-      if (missingPermissions.length > 0) {
-        if (diagnosticsRoute) {
-          emitRoutingDiagnostic(diagnostics, {
-            level: 'info',
-            event: 'routing.guard.access_denied',
-            route: diagnosticsRoute,
-            reason: 'insufficient-permission',
-            redirect_target: sanitizePathForDiagnostics(fallbackPath, DEFAULT_FALLBACK_PATH),
-            required_permissions: requiredPermissions,
-          });
-        }
-        throw redirect({
-          href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey),
-        });
-      }
-    }
-    if (requiredRoles.length > 0 && !hasAnyRole(user, requiredRoles)) {
-      if (diagnosticsRoute) {
-        emitRoutingDiagnostic(diagnostics, {
-          level: 'info',
-          event: 'routing.guard.access_denied',
-          route: diagnosticsRoute,
-          reason: 'insufficient-role',
-          redirect_target: sanitizePathForDiagnostics(fallbackPath, DEFAULT_FALLBACK_PATH),
-          required_roles: sanitizeRequiredRoles(requiredRoles),
-        });
-      }
-      throw redirect({ href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey) });
-    }
+    assertAllRequiredPermissions({
+      user,
+      requiredPermissions,
+      diagnostics,
+      route: diagnosticsRoute,
+      fallbackPath,
+      insufficientRoleKey,
+    });
+    assertAnyRequiredPermission({
+      user,
+      requiredPermissions: requiredAnyPermissions,
+      diagnostics,
+      route: diagnosticsRoute,
+      fallbackPath,
+      insufficientRoleKey,
+    });
+    assertRequiredRoles({
+      user,
+      requiredRoles,
+      diagnostics,
+      route: diagnosticsRoute,
+      fallbackPath,
+      insufficientRoleKey,
+    });
   };
 };
 

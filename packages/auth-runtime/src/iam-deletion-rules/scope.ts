@@ -3,10 +3,10 @@ import { getWorkspaceContext } from '@sva/server-runtime';
 import { createApiError } from '../iam-account-management/api-helpers.js';
 import { type AuthenticatedRequestContext } from '../middleware.js';
 import { readString } from '../shared/input-readers.js';
-
-const ADMIN_ROLES = new Set(['admin', 'iam_admin', 'support_admin', 'system_admin']);
-
-const isAdminRole = (roles: readonly string[]): boolean => roles.some((role) => ADMIN_ROLES.has(role));
+import {
+  authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode,
+} from '../instance-permission-authorization.js';
 
 export const resolveRequestInstanceId = (request: Request, fallback?: string): string | undefined =>
   readString(new URL(request.url).searchParams.get('instanceId')) ?? fallback;
@@ -46,19 +46,29 @@ export const validateTenantScope = (
   return { ok: true, instanceId };
 };
 
-export const validateTenantAdminScope = (
+export const validateTenantAdminScope = async (
   ctx: AuthenticatedRequestContext,
-  instanceId: string | undefined
-): { ok: true; instanceId: string } | { ok: false; response: Response } => {
+  instanceId: string | undefined,
+  action: 'iam.deletionRules.read' | 'iam.deletionRules.write'
+): Promise<{ ok: true; instanceId: string } | { ok: false; response: Response }> => {
   const scoped = validateTenantScope(ctx, instanceId);
   if (!scoped.ok) {
     return scoped;
   }
 
-  if (!isAdminRole(ctx.user.roles)) {
+  const authorization = await authorizeInstancePermissionForUser({
+    ctx,
+    action,
+  });
+  if (!authorization.ok) {
     return {
       ok: false,
-      response: createApiError(403, 'forbidden', 'Keine Berechtigung für Tenant-Löschregeln.', getWorkspaceContext().requestId),
+      response: createApiError(
+        authorization.status,
+        toInstancePermissionApiErrorCode(authorization.error),
+        'Keine Berechtigung für Tenant-Löschregeln.',
+        getWorkspaceContext().requestId
+      ),
     };
   }
 

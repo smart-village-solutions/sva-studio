@@ -2,7 +2,6 @@ import type { LegalAcceptanceActionType, LegalConsentExportRecord } from '@sva/c
 
 import type { QueryClient } from './query-client.js';
 
-const LEGAL_CONSENT_EXPORT_PERMISSION = 'legal-consents:export';
 const LEGAL_CONSENT_EXPORT_LIMIT = 10;
 const LEGAL_CONSENT_EXPORT_WINDOW_MS = 60 * 60 * 1000;
 
@@ -12,9 +11,6 @@ type ExportRateBucket = {
 };
 
 const exportRateLimiterStore = new Map<string, ExportRateBucket>();
-
-export const hasLegalConsentExportPermission = (roles: readonly string[]): boolean =>
-  roles.includes('system_admin') || roles.includes(LEGAL_CONSENT_EXPORT_PERMISSION);
 
 const pruneExportRateBuckets = (now: number): void => {
   for (const [key, bucket] of exportRateLimiterStore.entries()) {

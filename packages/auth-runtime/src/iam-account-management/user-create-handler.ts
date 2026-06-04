@@ -3,7 +3,6 @@ import {
   createCreateUserHandlerInternal,
   type CreateUserHandlerDeps,
 } from '@sva/iam-admin';
-import { getWorkspaceContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { jsonResponse } from '../db.js';
@@ -16,22 +15,18 @@ import {
   requireIdempotencyKey,
   toPayloadHash,
 } from './api-helpers.js';
-import { ensureFeature, getFeatureFlags } from './feature-flags.js';
-import { consumeRateLimit } from './rate-limit.js';
 import { createUserSchema } from './schemas.js';
 import {
   completeIdempotency,
   iamUserOperationsCounter,
-  requireRoles,
   reserveIdempotency,
-  resolveActorInfo,
   resolveIdentityProviderForInstance,
 } from './shared.js';
 import type { IdentityProviderResolution } from './shared-runtime.js';
-import { validateCsrf } from './csrf.js';
 import { createUserMutationErrorResponse } from './user-mutation-errors.js';
 import { executeCreateUser } from './user-create-operation.js';
 import type { CreateUserPayload } from './user-create-persistence.js';
+import { resolveMutationActorWithAccount } from './mutation-request-context.shared.js';
 
 type CreateUserActorContext = {
   actor: {
@@ -43,45 +38,19 @@ type CreateUserActorContext = {
   actorSubject: string;
 };
 
-const resolveCreateUserActorContext = async (
+export const resolveCreateUserActorContext = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<CreateUserActorContext | Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-
-  const actorResolution = await resolveActorInfo(request, ctx, {
-    requireActorMembership: true,
+  const actorResolution = await resolveMutationActorWithAccount(request, ctx, {
+    allowedRoles: ADMIN_ROLES,
+    requiredPermissionAction: 'iam.user.write',
+    feature: 'iam_admin',
+    scope: 'write',
     provisionMissingActorMembership: true,
   });
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
-  if (!actorResolution.actor.actorAccountId) {
-    return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId);
-  }
-
-  const csrfError = validateCsrf(request, actorResolution.actor.requestId);
-  if (csrfError) {
-    return csrfError;
-  }
-
-  const rateLimit = consumeRateLimit({
-    instanceId: actorResolution.actor.instanceId,
-    actorKeycloakSubject: ctx.user.id,
-    scope: 'write',
-    requestId: actorResolution.actor.requestId,
-  });
-  if (rateLimit) {
-    return rateLimit;
+  if ('response' in actorResolution) {
+    return actorResolution.response;
   }
 
   return {

@@ -20,6 +20,18 @@ const granularContentPermissions = [
 ] as const;
 
 const pluginContentPermissions = [
+  'iam.legalText.read',
+  'iam.legalText.write',
+  'iam.governance.read',
+  'iam.governance.write',
+  'iam.governance.export',
+  'iam.dsr.read',
+  'iam.dsr.write',
+  'iam.dsr.export',
+  'iam.deletionRules.read',
+  'iam.deletionRules.write',
+  'iam.monitoring.read',
+  'iam.monitoring.write',
   'app.read',
   'cockpit.read',
   'media.read',
@@ -66,6 +78,15 @@ describe('iamSeedPlan content permissions', () => {
   it('assigns granular content permissions to content personas', () => {
     expect(getPersonaSeed('app_manager').permissionKeys).toEqual(
       expect.arrayContaining(['app.read', 'cockpit.read'])
+    );
+    expect(getPersonaSeed('app_manager').permissionKeys).toEqual(
+      expect.arrayContaining([
+        'iam.legalText.read',
+        'iam.legalText.write',
+        'iam.monitoring.read',
+        'iam.monitoring.write',
+        'integration.manage',
+      ])
     );
     expect(getPersonaSeed('app_manager').permissionKeys).toContain('content.readHistory');
     expect(getPersonaSeed('app_manager').permissionKeys).toContain('media.read');

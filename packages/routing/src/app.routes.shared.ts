@@ -126,9 +126,9 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminIamGovernanceDetail', path: uiRoutePaths.adminIamGovernanceDetail, guard: 'adminIam' },
   { binding: 'adminIamDsrDetail', path: uiRoutePaths.adminIamDsrDetail, guard: 'adminIam' },
   { binding: 'modules', path: uiRoutePaths.modules, guard: 'modules' },
-  { binding: 'monitoring', path: uiRoutePaths.monitoring, guard: 'adminRoles' },
-  { binding: 'monitoringJobs', path: uiRoutePaths.monitoringJobs, guard: 'adminRoles' },
-  { binding: 'monitoringJobDetail', path: uiRoutePaths.monitoringJobDetail, guard: 'adminRoles' },
+  { binding: 'monitoring', path: uiRoutePaths.monitoring, guard: 'monitoring' },
+  { binding: 'monitoringJobs', path: uiRoutePaths.monitoringJobs, guard: 'monitoringJobs' },
+  { binding: 'monitoringJobDetail', path: uiRoutePaths.monitoringJobDetail, guard: 'monitoringJobDetail' },
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 

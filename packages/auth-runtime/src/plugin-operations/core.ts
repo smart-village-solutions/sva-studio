@@ -11,8 +11,13 @@ import {
   asApiItem, asApiList, createApiError, parseRequestBody, readPage, readPathSegment, requireIdempotencyKey,
 } from '../shared/request-helpers.js';
 import { withAuthenticatedUser } from '../middleware.js';
+import type { AuthenticatedRequestContext } from '../middleware.js';
 import { isUuid } from '../shared/input-readers.js';
 import { validateCsrf } from '../shared/request-security.js';
+import {
+  authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode,
+} from '../instance-permission-authorization.js';
 import { createJsonItemResponse } from './core.shared.js';
 import {
   executeStartPluginOperationJob, reserveStartIdempotency, validateStartRequestData,
@@ -21,8 +26,9 @@ import { normalizeStudioJobDetail } from './job-detail-read-model.js';
 import { normalizeStudioJobListItem } from './job-list-read-model.js';
 import { withStudioJobRepository } from './repository.js';
 
-const MONITORING_ADMIN_ROLES = new Set(['system_admin']);
 const TERMINAL_JOB_STATUSES = new Set(['succeeded', 'failed', 'cancelled']);
+const MONITORING_READ_ACTION = 'iam.monitoring.read';
+const MONITORING_WRITE_ACTION = 'iam.monitoring.write';
 
 const startPluginOperationJobSchema = z.object({
   pluginId: z.string().trim().min(1),
@@ -40,10 +46,20 @@ const requireActorInstanceId = (instanceId: string | null | undefined): string |
     ? instanceId
     : createApiError(400, 'invalid_instance_id', 'Instanzkontext fehlt.', getRequestId());
 
-const requireMonitoringAdminRole = (roles: readonly string[]): Response | null =>
-  roles.some((role) => MONITORING_ADMIN_ROLES.has(role))
+const requireMonitoringAccess = async (
+  ctx: AuthenticatedRequestContext,
+  action: string
+): Promise<Response | null> => {
+  const authorization = await authorizeInstancePermissionForUser({ ctx, action });
+  return authorization.ok
     ? null
-    : createApiError(403, 'forbidden', 'Keine Berechtigung für Plugin-Operations-Monitoring.', getRequestId());
+    : createApiError(
+        authorization.status,
+        toInstancePermissionApiErrorCode(authorization.error),
+        'Keine Berechtigung für Plugin-Operations-Monitoring.',
+        getRequestId()
+      );
+};
 
 const readJobId = (request: Request): string | Response => {
   const jobId = readPathSegment(request, 4);
@@ -83,7 +99,7 @@ const readJobListQuery = (request: Request): StudioJobListQuery | Response => {
 
 export const startPluginOperationJobHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
-    const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+    const authorizationError = await requireMonitoringAccess(ctx, MONITORING_WRITE_ACTION);
     if (authorizationError) {
       return authorizationError;
     }
@@ -136,7 +152,7 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
 
 export const getPluginOperationJobHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
-    const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+    const authorizationError = await requireMonitoringAccess(ctx, MONITORING_READ_ACTION);
     if (authorizationError) {
       return authorizationError;
     }
@@ -166,7 +182,7 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
 export const deletePluginOperationJobHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
     const requestId = getRequestId();
-    const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+    const authorizationError = await requireMonitoringAccess(ctx, MONITORING_WRITE_ACTION);
     if (authorizationError) {
       return authorizationError;
     }
@@ -212,7 +228,7 @@ export const deletePluginOperationJobHandler = async (request: Request): Promise
 
 export const listPluginOperationJobsHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
-    const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+    const authorizationError = await requireMonitoringAccess(ctx, MONITORING_READ_ACTION);
     if (authorizationError) {
       return authorizationError;
     }
@@ -254,7 +270,7 @@ export const listPluginOperationJobsHandler = async (request: Request): Promise<
 
 export const cancelPluginOperationJobHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
-    const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+    const authorizationError = await requireMonitoringAccess(ctx, MONITORING_WRITE_ACTION);
     if (authorizationError) {
       return authorizationError;
     }

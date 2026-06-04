@@ -21,6 +21,7 @@ Dadurch tauchten `instance_registry_admin`, `system_admin`, `roleLevel` und frü
 3. Tenant-seitige Permission-Kataloge, Rollenmutationen und Laufzeit-Projektionen wie `auth/me`, `iam/me/permissions` und `iam/authorize` blenden Root-only-Artefakte wie `instance_registry_admin` und `instance.registry.manage` aus beziehungsweise lehnen sie fail-closed ab.
 4. Frühere tenantlokale Standardrollen (`app_manager`, `feature-manager`, `interface-manager`, `designer`, `editor`, `moderator`) bleiben als Legacy-Bootstrap-Rollen kompatibel bestehen, gelten aber nicht länger als geschützte Systemrollen.
 5. `roleLevel` bleibt vorerst als Kompatibilitätsfeld im Vertrag, ist aber nicht mehr die normative Quelle für neue Rollenmodellentscheidungen.
+6. Neue tenantlokale Fachzugriffe dürfen nicht wieder über feste Rollennamen modelliert werden, sobald fachliche Permissions existieren; Ausnahmen sind nur echte Plattformpfade.
 
 ## Konsequenzen
 
@@ -33,7 +34,7 @@ Dadurch tauchten `instance_registry_admin`, `system_admin`, `roleLevel` und frü
 ### Negativ
 
 - Legacy-Standardrollen und `roleLevel` bleiben vorerst als Kompatibilitätslast sichtbar.
-- Einzelne Governance- und UI-Gates arbeiten weiterhin rollennamenbasiert und benötigen einen Folgechange.
+- Zusätzliche Permission-Backfills und Anti-Regression-Tests sind nötig, damit Bestandsrollen und Spezialpfade nicht schleichend wieder an Rollennamen gekoppelt werden.
 
 ## Verworfen
 

@@ -1,0 +1,1 @@
+../../../.github/skills/link-workspace-packages/SKILL.md

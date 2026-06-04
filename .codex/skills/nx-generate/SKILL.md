@@ -1,0 +1,1 @@
+../../../.github/skills/nx-generate/SKILL.md

@@ -40,21 +40,9 @@ export type UpdateRolePayloadShape = {
   readonly retrySync?: boolean;
 };
 
-export type UpdateRoleIdentityProvider<TAttributes = unknown> = {
-  readonly provider: {
-    readonly updateRole: (
-      externalName: string,
-      input: {
-        readonly description?: string;
-        readonly attributes: TAttributes;
-      }
-    ) => Promise<unknown>;
-  };
-};
+export type UpdateRoleIdentityProvider<TAttributes = unknown> = { readonly provider: { readonly updateRole: (externalName: string, input: { readonly description?: string; readonly attributes: TAttributes }) => Promise<unknown> } };
 
-export type ParsedUpdateRoleBody<TPayload extends UpdateRolePayloadShape> =
-  | { readonly ok: true; readonly data: TPayload; readonly rawBody: string }
-  | { readonly ok: false };
+export type ParsedUpdateRoleBody<TPayload extends UpdateRolePayloadShape> = { readonly ok: true; readonly data: TPayload; readonly rawBody: string } | { readonly ok: false };
 
 export type UpdateRoleHandlerDeps<
   TPayload extends UpdateRolePayloadShape = UpdateRolePayloadShape,
@@ -118,20 +106,11 @@ export type UpdateRoleHandlerDeps<
     readonly operation: 'update' | 'retry';
   }) => Promise<TRoleItem>;
   readonly requireRoleId: (request: Request, requestId?: string) => string | Response;
-  readonly requireRoleIdentityProvider: (
-    instanceId: string,
-    requestId?: string
-  ) => Promise<TIdentityProvider | Response>;
+  readonly requireRoleIdentityProvider: (instanceId: string, requestId?: string) => Promise<TIdentityProvider | Response>;
   readonly resolveMutableRole: (actor: UpdateRoleActor, roleId: string) => Promise<TRole | Response>;
-  readonly resolveRoleMutationActor: (
-    request: Request,
-    ctx: UpdateRoleAuthenticatedRequestContext
-  ) => Promise<{ readonly actor: UpdateRoleActor } | { readonly response: Response }>;
+  readonly resolveRoleMutationActor: (request: Request, ctx: UpdateRoleAuthenticatedRequestContext) => Promise<{ readonly actor: UpdateRoleActor } | { readonly response: Response }>;
   readonly sanitizeRoleErrorMessage: (error: unknown) => string;
-  readonly trackKeycloakCall: <T>(
-    operation: 'update_role' | 'update_role_compensation',
-    work: () => Promise<T>
-  ) => Promise<T>;
+  readonly trackKeycloakCall: <T>(operation: 'update_role' | 'update_role_compensation', work: () => Promise<T>) => Promise<T>;
   readonly validateRequestedPermissions?: (input: {
     readonly actor: UpdateRoleActor;
     readonly permissionIds?: readonly string[];

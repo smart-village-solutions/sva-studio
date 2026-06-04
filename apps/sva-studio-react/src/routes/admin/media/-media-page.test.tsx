@@ -56,6 +56,17 @@ describe('MediaPage', () => {
     expect(screen.queryByTestId('media-detail-page')).toBeNull();
   });
 
+  it('prefers the create page when the optional route param resolves to new', () => {
+    useLocationMock.mockReturnValue({ pathname: '/admin/media/new' });
+    useParamsMock.mockReturnValue({ mediaId: 'new' });
+
+    render(<MediaPage />);
+
+    expect(screen.getByTestId('media-create-page')).toBeTruthy();
+    expect(screen.queryByTestId('media-library-page')).toBeNull();
+    expect(screen.queryByTestId('media-detail-page')).toBeNull();
+  });
+
   it('renders the detail page on /admin/media/asset-2', () => {
     useLocationMock.mockReturnValue({ pathname: '/admin/media/asset-2' });
     useParamsMock.mockReturnValue({ mediaId: 'asset-2' });

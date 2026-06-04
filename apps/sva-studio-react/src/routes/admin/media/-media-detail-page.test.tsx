@@ -97,4 +97,41 @@ describe('MediaDetailPage', () => {
     expect(screen.getByText('Teaserbild')).toBeTruthy();
     expect(screen.getByText('news-hero')).toBeTruthy();
   });
+
+  it('renders conflict mutation errors with the media-specific message', () => {
+    useMediaDetailMock.mockReturnValue({
+      asset: {
+        id: 'asset-2',
+        instanceId: 'instance-1',
+        storageKey: 'media/asset-2',
+        mediaType: 'image',
+        mimeType: 'image/jpeg',
+        byteSize: 4096,
+        visibility: 'protected',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {},
+        technical: {},
+      },
+      usage: {
+        assetId: 'asset-2',
+        totalReferences: 1,
+        references: [],
+      },
+      isLoading: false,
+      error: null,
+      mutationError: { status: 409, code: 'conflict', message: 'Conflict' },
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateMedia: vi.fn(),
+      resolveDelivery: vi.fn(),
+      deleteMedia: vi.fn(),
+    });
+
+    render(<MediaDetailPage assetId="asset-2" />);
+
+    expect(
+      screen.getByText('Die Medienaktion konnte wegen eines Konflikts nicht abgeschlossen werden.')
+    ).toBeTruthy();
+  });
 });

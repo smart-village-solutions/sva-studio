@@ -330,7 +330,7 @@ test.describe('media management', () => {
     await mockSharedShellRequests(page);
   });
 
-  test('covers upload initialization, metadata editing, focus point, crop, and blocked deletion', async ({ page }) => {
+  test('covers upload initialization, detail workspace inspection, and blocked deletion', async ({ page }) => {
     const state: {
       assets: MediaAssetRecord[];
       usageByAssetId: Record<string, MediaUsageRecord>;
@@ -350,29 +350,20 @@ test.describe('media management', () => {
     await page.goto('/interfaces');
     await expectInterfacesShellReady(page);
     await navigateClientSide(page, '/admin/media/new');
-    await expect(page.getByRole('heading', { name: 'Medienupload vorbereiten' })).toBeVisible();
-    await page.getByLabel('MIME-Typ').fill('image/jpeg');
+    await expect(page.getByRole('heading', { name: 'Datei vorbereiten' })).toBeVisible();
+    await page.getByLabel('MIME-Typ').selectOption('image/jpeg');
     await page.getByLabel('Dateigröße in Byte').fill('640000');
     await page.getByRole('button', { name: 'Upload initialisieren' }).click();
 
-    await expect(page.getByText('Upload bereit')).toBeVisible();
+    await expect(page.getByText('Nächste Schritte')).toBeVisible();
     await expect(page.getByText('Asset-ID: asset-1')).toBeVisible();
     await navigateClientSide(page, '/admin/media/asset-1');
-    await expect(page.getByRole('heading', { name: 'Medium bearbeiten' })).toBeVisible();
-    await page.getByLabel('Titel').fill('Hero Asset');
-    await page.getByLabel('Alternativtext').fill('Rathaus am Marktplatz');
-    await page.getByLabel('Fokuspunkt X').fill('0.35');
-    await page.getByLabel('Fokuspunkt Y').fill('0.65');
-    await page.getByLabel('Zuschnitt X').fill('48');
-    await page.getByLabel('Zuschnitt Y').fill('96');
-    await page.getByLabel('Zuschnitt Breite').fill('1280');
-    await page.getByLabel('Zuschnitt Höhe').fill('720');
-    await page.getByRole('button', { name: 'Metadaten speichern' }).click();
-
-    await expect(page.getByLabel('Titel')).toHaveValue('Hero Asset');
-    await expect(page.getByLabel('Alternativtext')).toHaveValue('Rathaus am Marktplatz');
-    await expect(page.getByLabel('Fokuspunkt X')).toHaveValue('0.35');
-    await expect(page.getByLabel('Zuschnitt Breite')).toHaveValue('1280');
+    await expect(page.getByRole('heading', { name: 'asset-1' })).toBeVisible();
+    await expect(page.getByText('1 Verwendung')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Auslieferungslink erzeugen' })).toBeVisible();
+    await expect(page.getByText('Aktive Referenzen: 1')).toBeVisible();
+    await expect(page.getByText('Teaserbild')).toBeVisible();
+    await expect(page.getByText('news-1')).toBeVisible();
 
     await page.getByRole('button', { name: 'Medium löschen' }).click();
 

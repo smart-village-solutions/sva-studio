@@ -8,6 +8,17 @@ const adminAuthPayload = {
     email: 'admin@example.com',
     instanceId: '11111111-1111-1111-8111-111111111111',
     roles: ['system_admin'],
+    permissionActions: [
+      'iam.user.read',
+      'iam.user.write',
+      'iam.role.read',
+      'iam.role.write',
+      'iam.org.read',
+      'iam.org.write',
+      'integration.manage',
+      'app.read',
+      'cockpit.read',
+    ],
   },
 };
 

@@ -133,8 +133,8 @@ assert_count "SELECT COUNT(*) FROM iam.account_roles WHERE instance_id = 'de-mus
 assert_count "SELECT COUNT(*) FROM iam.account_roles WHERE instance_id = 'de-musterhausen' AND account_id = '50888888-8888-8888-8888-888888888888';" "0" "tenant instance registry admin account role"
 assert_count "SELECT COUNT(*) FROM iam.account_organizations WHERE instance_id = 'de-musterhausen';" "10" "account organizations"
 assert_count "SELECT COUNT(*) FROM iam.account_organizations WHERE instance_id = 'de-musterhausen' AND is_default_context = true;" "7" "default organization contexts"
-assert_count "SELECT COUNT(*) FROM iam.role_permissions WHERE instance_id = 'de-musterhausen';" "140" "role permissions"
-assert_count "SELECT COUNT(*) FROM iam.role_permissions WHERE instance_id = 'de-musterhausen' AND grant_origin_kind = 'manual';" "140" "manual role permissions"
+assert_count "SELECT COUNT(*) FROM iam.role_permissions WHERE instance_id = 'de-musterhausen';" "139" "role permissions"
+assert_count "SELECT COUNT(*) FROM iam.role_permissions WHERE instance_id = 'de-musterhausen' AND grant_origin_kind = 'manual';" "139" "manual role permissions"
 assert_count "SELECT COUNT(*) FROM iam.role_permissions rp JOIN iam.roles r ON r.id = rp.role_id AND r.instance_id = rp.instance_id WHERE rp.instance_id = 'de-musterhausen' AND r.role_key = 'instance_registry_admin';" "0" "tenant instance registry admin role permissions"
 assert_count "SELECT COUNT(*) FROM iam.role_permissions WHERE instance_id = 'de-musterhausen' AND grant_origin_module_id IS NOT NULL;" "0" "module-owned role permissions in seeds"
 

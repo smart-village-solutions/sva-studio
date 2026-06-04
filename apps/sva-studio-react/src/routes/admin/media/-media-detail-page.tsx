@@ -18,6 +18,8 @@ const mediaErrorMessage = (error: IamHttpError | null): string => {
   switch (error.code) {
     case 'forbidden':
       return t('media.errors.forbidden');
+    case 'conflict':
+      return t('media.errors.conflict');
     case 'database_unavailable':
       return t('media.errors.databaseUnavailable');
     case 'notFound':

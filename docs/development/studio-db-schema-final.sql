@@ -139,11 +139,6 @@ BEGIN
 END;
 $$;
 
-
-SET default_tablespace = '';
-
-SET default_table_access_method = heap;
-
 --
 -- Name: account_deletion_content_preferences; Type: TABLE; Schema: iam; Owner: -
 --

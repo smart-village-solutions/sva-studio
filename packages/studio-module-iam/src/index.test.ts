@@ -57,14 +57,17 @@ describe('@sva/studio-module-iam', () => {
       ownerPluginId: 'news',
       permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
     });
-    expect(getStudioModuleIamContract('events')?.systemRoles.map((role) => role.roleName)).toContain('system_admin');
-    expect(getStudioModuleIamContract('poi')?.systemRoles.map((role) => role.roleName)).toContain('editor');
+    expect(getStudioModuleIamContract('events')?.tenantBootstrapRoles.map((role) => role.roleName)).toContain(
+      'system_admin'
+    );
+    expect(getStudioModuleIamContract('poi')?.tenantBootstrapRoles.map((role) => role.roleName)).toContain('editor');
     expect(getStudioModuleIamContract('waste-management')).toMatchObject({
       moduleId: 'waste-management',
       namespace: 'waste-management',
       ownerPluginId: 'waste-management',
+      rootSystemRoles: [],
     });
-    expect(getStudioModuleIamContract('waste-management')?.systemRoles).toContainEqual({
+    expect(getStudioModuleIamContract('waste-management')?.tenantBootstrapRoles).toContainEqual({
       roleName: 'app_manager',
       permissionIds: ['waste-management.read', 'waste-management.settings.manage'],
     });

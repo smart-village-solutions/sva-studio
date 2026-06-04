@@ -33,6 +33,7 @@ type AccountUiRouteGuardDefinition = {
   readonly kind: 'admin' | 'protected';
   readonly route: string;
   readonly requiredRoles?: ProtectedRouteOptions['requiredRoles'];
+  readonly requiredPermissions?: ProtectedRouteOptions['requiredPermissions'];
 };
 
 export const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, AccountUiRouteGuardDefinition> = {
@@ -45,22 +46,42 @@ export const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, Acco
   contentCreate: { kind: 'protected', route: uiRoutePaths.contentCreate },
   contentDetail: { kind: 'protected', route: uiRoutePaths.contentDetail },
   media: { kind: 'protected', route: uiRoutePaths.media },
-  adminUsers: { kind: 'admin', route: uiRoutePaths.adminUsers },
-  adminUserCreate: { kind: 'admin', route: uiRoutePaths.adminUserCreate },
-  adminUserDetail: { kind: 'admin', route: uiRoutePaths.adminUserDetail },
-  adminOrganizations: { kind: 'admin', route: uiRoutePaths.adminOrganizations },
-  adminOrganizationCreate: { kind: 'admin', route: uiRoutePaths.adminOrganizationCreate },
-  adminOrganizationDetail: { kind: 'admin', route: uiRoutePaths.adminOrganizationDetail },
+  adminUsers: { kind: 'admin', route: uiRoutePaths.adminUsers, requiredPermissions: ['iam.user.read'] },
+  adminUserCreate: { kind: 'admin', route: uiRoutePaths.adminUserCreate, requiredPermissions: ['iam.user.write'] },
+  adminUserDetail: { kind: 'admin', route: uiRoutePaths.adminUserDetail, requiredPermissions: ['iam.user.read'] },
+  adminOrganizations: { kind: 'admin', route: uiRoutePaths.adminOrganizations, requiredPermissions: ['iam.org.read'] },
+  adminOrganizationCreate: {
+    kind: 'admin',
+    route: uiRoutePaths.adminOrganizationCreate,
+    requiredPermissions: ['iam.org.write'],
+  },
+  adminOrganizationDetail: {
+    kind: 'admin',
+    route: uiRoutePaths.adminOrganizationDetail,
+    requiredPermissions: ['iam.org.read'],
+  },
   adminInstances: {
     kind: 'protected',
     route: uiRoutePaths.adminInstances,
     requiredRoles: ['instance_registry_admin'],
   },
-  adminRoles: { kind: 'protected', route: uiRoutePaths.adminRoles, requiredRoles: ['system_admin'] },
-  adminRoleDetail: { kind: 'protected', route: uiRoutePaths.adminRoleDetail, requiredRoles: ['system_admin'] },
-  adminGroups: { kind: 'protected', route: uiRoutePaths.adminGroups, requiredRoles: ['system_admin'] },
-  adminGroupCreate: { kind: 'protected', route: uiRoutePaths.adminGroupCreate, requiredRoles: ['system_admin'] },
-  adminGroupDetail: { kind: 'protected', route: uiRoutePaths.adminGroupDetail, requiredRoles: ['system_admin'] },
+  adminRoles: { kind: 'protected', route: uiRoutePaths.adminRoles, requiredPermissions: ['iam.role.read'] },
+  adminRoleDetail: {
+    kind: 'protected',
+    route: uiRoutePaths.adminRoleDetail,
+    requiredPermissions: ['iam.role.read'],
+  },
+  adminGroups: { kind: 'protected', route: uiRoutePaths.adminGroups, requiredPermissions: ['iam.role.read'] },
+  adminGroupCreate: {
+    kind: 'protected',
+    route: uiRoutePaths.adminGroupCreate,
+    requiredPermissions: ['iam.role.write'],
+  },
+  adminGroupDetail: {
+    kind: 'protected',
+    route: uiRoutePaths.adminGroupDetail,
+    requiredPermissions: ['iam.role.read'],
+  },
   adminLegalTexts: { kind: 'protected', route: uiRoutePaths.adminLegalTexts, requiredRoles: ['system_admin'] },
   adminLegalTextCreate: {
     kind: 'protected',
@@ -86,12 +107,17 @@ export const createAccountUiRouteGuard = (
 ) => {
   const definition = accountUiRouteGuardDefinitions[guardKey];
   if (definition.kind === 'admin') {
-    return createAdminRoute({ diagnostics, route });
+    return createAdminRoute({
+      diagnostics,
+      route,
+      requiredPermissions: definition.requiredPermissions,
+    });
   }
 
   return createProtectedRoute({
     diagnostics,
     route,
+    requiredPermissions: definition.requiredPermissions,
     requiredRoles: definition.requiredRoles,
   });
 };

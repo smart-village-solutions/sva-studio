@@ -228,7 +228,6 @@ FROM (
     ('system_admin', 'feature.toggle'),
     ('system_admin', 'app.read'),
     ('system_admin', 'cockpit.read'),
-    ('system_admin', 'instance.registry.manage'),
     ('system_admin', 'content.updatePayload'),
     ('system_admin', 'content.changeStatus'),
     ('system_admin', 'content.archive'),

@@ -38,7 +38,6 @@ export type ProtectedRouteOptions = {
 const DEFAULT_LOGIN_PATH = '/auth/login';
 const DEFAULT_FALLBACK_PATH = '/';
 const DEFAULT_INSUFFICIENT_ROLE_KEY = 'auth.insufficientRole';
-const ADMIN_ROLES = ['system_admin', 'app_manager'] as const;
 const INTERNAL_REDIRECT_BASE = 'https://local.invalid';
 
 const isInternalPath = (value: string): boolean => value.startsWith('/') && value.startsWith('//') === false;
@@ -156,9 +155,8 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
 };
 
 export const createAdminRoute = <TContext extends RouteGuardContext = RouteGuardContext>(
-  options: Omit<ProtectedRouteOptions, 'requiredRoles'> = {}
+  options: ProtectedRouteOptions = {}
 ) =>
   createProtectedRoute<TContext>({
     ...options,
-    requiredRoles: ADMIN_ROLES,
   });

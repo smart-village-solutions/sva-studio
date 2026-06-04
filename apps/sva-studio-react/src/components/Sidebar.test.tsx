@@ -161,6 +161,7 @@ describe('Sidebar', () => {
         name: 'Admin',
         roles: ['system_admin', 'instance_registry_admin'],
         instanceId: 'de-musterhausen',
+        permissionActions: ['integration.manage'],
       },
       isAuthenticated: true,
     });
@@ -267,13 +268,14 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
   });
 
-  it('rendert Schnittstellen fuer interface_manager ohne System-Untermenue', () => {
+  it('rendert Schnittstellen mit integration.manage auch ohne Legacy-Rollenname', () => {
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,
       user: {
         id: 'user-1',
         name: 'Interface Manager',
-        roles: ['interface_manager'],
+        roles: ['custom_operator'],
+        permissionActions: ['integration.manage'],
       },
       isAuthenticated: true,
     });

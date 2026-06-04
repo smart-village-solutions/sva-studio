@@ -80,6 +80,20 @@ test('sidebar application permission cache invalidation migration notifies affec
   assert.match(sql, /SELECT pg_notify/);
 });
 
+test('platform tenant role split migration neutralizes tenant-side root role artifacts additively', () => {
+  const sql = readRepoFile('data/migrations/0050_iam_platform_tenant_role_split.sql');
+  const touchedInstancesOccurrences = sql.match(/WITH touched_instances AS \(/g) ?? [];
+
+  assert.match(sql, /DELETE FROM iam\.account_roles/);
+  assert.match(sql, /DELETE FROM iam\.group_roles/);
+  assert.match(sql, /DELETE FROM iam\.role_permissions[\s\S]*permission_key = 'instance\.registry\.manage'/);
+  assert.match(sql, /\[legacy-root-role-in-tenant\]/);
+  assert.match(sql, /\[legacy-bootstrap-role\]/);
+  assert.match(sql, /is_system_role = false/);
+  assert.match(sql, /platform_tenant_role_split_migrated/);
+  assert.equal(touchedInstancesOccurrences.length, 3);
+});
+
 test('runtime artifact verification runs workspace node helper via bash', () => {
   const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
 

@@ -267,6 +267,51 @@ describe('authorize handler', () => {
     );
   });
 
+  it('denies root-only tenant permissions fail-closed before decision evaluation', async () => {
+    const { authorizeHandler } = await import('./authorize.js');
+    state.loadAuthorizeRequest.mockResolvedValueOnce({
+      ...createPayload(),
+      action: 'instance.registry.manage',
+      resource: {
+        type: 'instance',
+        organizationId: ORGANIZATION_ID,
+      },
+    });
+    state.resolveEffectivePermissions.mockResolvedValueOnce({
+      ok: true,
+      permissions: [{ action: 'instance.registry.manage', resourceType: 'instance', effect: 'allow' }],
+      snapshotVersion: 'snapshot-1',
+      cacheStatus: 'hit',
+    });
+    state.evaluateAuthorizeDecision.mockImplementationOnce((payload, permissions: Array<{ action: string }>) =>
+      permissions.some((permission) => permission.action === payload.action)
+        ? {
+            allowed: true,
+            reason: 'allowed_by_root_only_permission',
+            requestId: undefined,
+            traceId: undefined,
+          }
+        : {
+            allowed: false,
+            reason: 'permission_missing',
+            requestId: undefined,
+            traceId: undefined,
+          }
+    );
+
+    const response = await authorizeHandler(new Request('https://example.test/api/v1/iam/authorize'));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      allowed: false,
+      reason: 'permission_missing',
+    });
+    expect(state.evaluateAuthorizeDecision).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'instance.registry.manage' }),
+      []
+    );
+  });
+
   it('returns successful authorization decisions with workspace fallback ids', async () => {
     const { authorizeHandler } = await import('./authorize.js');
 

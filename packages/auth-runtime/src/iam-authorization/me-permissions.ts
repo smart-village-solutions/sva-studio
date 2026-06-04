@@ -14,6 +14,7 @@ import {
   resolveOrganizationIdFromRequest,
 } from './shared.js';
 import { resolveEffectivePermissions } from './permission-store.js';
+import { filterTenantEffectivePermissions } from './root-only-permissions.js';
 
 const resolveEffectiveUserId = (actingAsUserId: string | undefined, userId: string): string =>
   actingAsUserId && actingAsUserId !== userId ? actingAsUserId : userId;
@@ -103,10 +104,11 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
         return errorResponse(503, 'database_unavailable');
       }
 
+      const filteredPermissions = filterTenantEffectivePermissions(resolved.permissions);
       const response = buildMePermissionsResponse({
         instanceId,
         organizationId: organizationId ?? undefined,
-        permissions: resolved.permissions,
+        permissions: filteredPermissions,
         actorUserId: user.id,
         effectiveUserId,
         isImpersonating,

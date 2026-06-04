@@ -112,6 +112,11 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
   readonly isHierarchyError: (value: unknown) => value is Extract<HierarchyResolution, { readonly ok: false }>;
   readonly isUuid: (value: string) => boolean;
   readonly jsonResponse: (status: number, payload: unknown) => Response;
+  readonly authorizeOrganizationMutationAccess?: (
+    request: Request,
+    ctx: OrganizationMutationAuthenticatedRequestContext,
+    requestId?: string
+  ) => Promise<Response | null> | Response | null;
   readonly loadContextOptions: (
     client: QueryClient,
     input: { readonly instanceId: string; readonly accountId: string }
@@ -210,9 +215,11 @@ const prepareAdminMutation = async <TFeatureFlags>(
   if (featureCheck) {
     return { error: featureCheck };
   }
-  const roleCheck = deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return { error: roleCheck };
+  const accessCheck = deps.authorizeOrganizationMutationAccess
+    ? await deps.authorizeOrganizationMutationAccess(request, ctx, requestContext.requestId)
+    : deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+  if (accessCheck) {
+    return { error: accessCheck };
   }
 
   const actorResolution = await deps.resolveActorInfo(request, ctx, {

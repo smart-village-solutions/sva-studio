@@ -215,6 +215,14 @@ Nur wenn die jeweilige Funktion tatsächlich benötigt wird:
 
 Diese Rollen sind bewusst nicht Teil des pauschalen Standard-Bootstraps.
 
+### Legacy-Hinweis für Bestands-Realms
+
+Für ältere Tenants gilt zusätzlich:
+
+- tenantseitige Altartefakte mit Rolle `instance_registry_admin` werden als Fehlkonfiguration behandelt und sollen über den bereinigten Rollenabgleich beziehungsweise die Datenmigration entfernt oder neutralisiert werden
+- `seed:system_admin` bleibt die kanonische tenantseitige Reparaturreferenz für lokale oder operative Rebind-/Repair-Pfade
+- frühere Bootstrap-Rollen wie `app_manager`, `editor` oder `designer` dürfen weiter existieren, gelten aber nicht mehr als geschützte Systemrollen
+
 ## Technischer Tenant-Admin-Client
 
 Zusätzlich zum menschlichen Tenant-Admin benötigt der technische Tenant-Admin-Client

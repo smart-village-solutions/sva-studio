@@ -34,7 +34,15 @@ import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap
 export type InstanceModuleIamRegistryEntry = {
   readonly moduleId: string;
   readonly permissionIds: readonly string[];
-  readonly systemRoles: readonly {
+  readonly tenantBootstrapRoles?: readonly {
+    readonly roleName: string;
+    readonly permissionIds: readonly string[];
+  }[];
+  readonly rootSystemRoles?: readonly {
+    readonly roleName: string;
+    readonly permissionIds: readonly string[];
+  }[];
+  readonly systemRoles?: readonly {
     readonly roleName: string;
     readonly permissionIds: readonly string[];
   }[];

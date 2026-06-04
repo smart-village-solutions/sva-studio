@@ -114,6 +114,26 @@ describe('UserCreatePage', () => {
     expect(checkbox?.checked).toBe(true);
   });
 
+  it('hides the root-only instance_registry_admin role from the advanced role picker', () => {
+    useUsersMock.mockReturnValue(createUsersApiState());
+    useRolesMock.mockReturnValue({
+      roles: [
+        { id: 'role-1', roleName: 'Editor', roleKey: 'editor', externalRoleName: 'editor' },
+        {
+          id: 'role-root',
+          roleName: 'instance_registry_admin',
+          roleKey: 'instance_registry_admin',
+          externalRoleName: 'instance_registry_admin',
+        },
+      ],
+    });
+
+    render(<UserCreatePage />);
+
+    expect(screen.queryByLabelText('instance_registry_admin')).toBeNull();
+    expect(screen.getByLabelText('Editor')).toBeTruthy();
+  });
+
   it('shows resolver-driven field errors and blocks invalid submit through the shared RHF path', async () => {
     const createUser = vi.fn();
     useUsersMock.mockReturnValue(createUsersApiState({ createUser }));

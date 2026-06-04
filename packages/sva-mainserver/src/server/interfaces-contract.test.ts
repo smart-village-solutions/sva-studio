@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
+  authorizeInstancePermissionForUser: vi.fn(),
   getSvaMainserverConnectionStatus: vi.fn(),
   loadSvaMainserverSettings: vi.fn(),
   saveSvaMainserverSettings: vi.fn(),
@@ -9,6 +10,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
+  authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
 }));
 
 vi.mock('./service.js', () => ({
@@ -23,12 +25,21 @@ vi.mock('./settings.js', () => ({
 describe('interfaces.server', () => {
   beforeEach(() => {
     state.withAuthenticatedUser.mockReset();
+    state.authorizeInstancePermissionForUser.mockReset();
     state.getSvaMainserverConnectionStatus.mockReset();
     state.loadSvaMainserverSettings.mockReset();
     state.saveSvaMainserverSettings.mockReset();
+    state.authorizeInstancePermissionForUser.mockResolvedValue({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+      },
+      permissions: [],
+    });
   });
 
-  it('loads interfaces overview for admin roles', async () => {
+  it('loads interfaces overview for users with integration.manage even without a legacy role name', async () => {
     let capturedResponse: Response | null = null;
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
@@ -36,7 +47,7 @@ describe('interfaces.server', () => {
           user: {
             id: 'subject-1',
             instanceId: 'de-musterhausen',
-            roles: ['app_manager'],
+            roles: ['custom_operator'],
           },
         }).then((response) => {
           capturedResponse = response;
@@ -62,20 +73,31 @@ describe('interfaces.server', () => {
       config: expect.objectContaining({ enabled: true }),
       status: expect.objectContaining({ status: 'connected' }),
     });
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'integration.manage',
+      })
+    );
     expect(capturedResponse?.headers.get('Cache-Control')).toBe('no-store');
   });
 
-  it('returns forbidden status for users without management role', async () => {
+  it('returns forbidden status when integration.manage is denied even for a legacy role name', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
         handler({
           user: {
             id: 'subject-1',
             instanceId: 'de-musterhausen',
-            roles: ['editor'],
+            roles: ['app_manager'],
           },
         })
     );
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung zur Schnittstellenverwaltung.',
+    });
 
     const { loadSvaMainserverInterfacesOverview } = await import('./interfaces-contract');
 
@@ -297,14 +319,14 @@ describe('interfaces.server', () => {
     expect(capturedResponse?.headers.get('Cache-Control')).toBe('no-store');
   });
 
-  it('allows interface_manager users to save mainserver settings', async () => {
+  it('allows custom-role users with integration.manage to save mainserver settings', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
         handler({
           user: {
             id: 'subject-1',
             instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
+            roles: ['custom_operator'],
           },
         })
     );
@@ -376,6 +398,12 @@ describe('interfaces.server', () => {
           },
         })
     );
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung zur Schnittstellenverwaltung.',
+    });
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-contract');
 

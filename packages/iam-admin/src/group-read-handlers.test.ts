@@ -120,6 +120,28 @@ describe('createGroupReadHandlers', () => {
     );
   });
 
+  it('supports a custom access authorizer for permission-based tenant admin access', async () => {
+    const authorizeGroupReadAccess = vi.fn(async () => null);
+    const deps = createDeps([{ rowCount: 1, rows: [groupRow] }], {
+      authorizeGroupReadAccess,
+      requireRoles: vi.fn(() => new Response('Forbidden', { status: 403 })),
+    });
+    const handlers = createGroupReadHandlers(deps);
+
+    const response = await handlers.listGroupsInternal(new Request('http://localhost/api/v1/iam/inst-g/groups'), {
+      ...ctx,
+      user: { ...ctx.user, roles: ['custom_role'] },
+    });
+
+    expect(response.status).toBe(200);
+    expect(authorizeGroupReadAccess).toHaveBeenCalledWith(
+      expect.any(Request),
+      expect.objectContaining({ user: expect.objectContaining({ roles: ['custom_role'] }) }),
+      'req-workspace'
+    );
+    expect(deps.requireRoles).not.toHaveBeenCalled();
+  });
+
   it('returns role guard errors before touching the database', async () => {
     const forbidden = new Response('Forbidden', { status: 403 });
     const deps = createDeps([], {

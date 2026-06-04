@@ -45,6 +45,11 @@ export type GroupReadHandlerDeps = {
   readonly isUuid: (value: string) => boolean;
   readonly jsonResponse: (status: number, payload: unknown) => Response;
   readonly logger: GroupReadLogger;
+  readonly authorizeGroupReadAccess?: (
+    request: Request,
+    ctx: GroupReadAuthenticatedRequestContext,
+    requestId?: string
+  ) => Promise<Response | null> | Response | null;
   readonly readPage: (request: Request) => { readonly page: number; readonly pageSize: number };
   readonly readPathSegment: (request: Request, index: number) => string | null | undefined;
   readonly requireRoles: (
@@ -78,9 +83,11 @@ const resolveGroupReadActor = async (
   ctx: GroupReadAuthenticatedRequestContext
 ): Promise<{ readonly actor: GroupReadActor } | Response> => {
   const requestContext = deps.getWorkspaceContext();
-  const roleCheck = deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
+  const accessCheck = deps.authorizeGroupReadAccess
+    ? await deps.authorizeGroupReadAccess(request, ctx, requestContext.requestId)
+    : deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+  if (accessCheck) {
+    return accessCheck;
   }
 
   const actorResolution = await deps.resolveActorInfo(request, ctx, { requireActorMembership: true });

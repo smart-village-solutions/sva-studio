@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   ensureFeature: vi.fn(),
   getFeatureFlags: vi.fn(() => ({})),
   requireRoles: vi.fn(),
+  authorizeInstancePermissionForUser: vi.fn(),
   resolveActorInfo: vi.fn(),
   readPathSegment: vi.fn(),
   createApiError: vi.fn(
@@ -48,6 +49,10 @@ vi.mock('./shared.js', () => ({
   resolveActorInfo: state.resolveActorInfo,
 }));
 
+vi.mock('../instance-permission-authorization.js', () => ({
+  authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
+}));
+
 vi.mock('./api-helpers.js', () => ({
   createApiError: state.createApiError,
   readPathSegment: state.readPathSegment,
@@ -66,6 +71,14 @@ describe('user-read-shared', () => {
     vi.clearAllMocks();
     state.ensureFeature.mockReturnValue(undefined);
     state.requireRoles.mockReturnValue(undefined);
+    state.authorizeInstancePermissionForUser.mockResolvedValue({
+      ok: true,
+      actor: {
+        instanceId: 'instance-1',
+        keycloakSubject: 'kc-user-1',
+      },
+      permissions: [],
+    });
     state.resolveActorInfo.mockResolvedValue({
       actor: {
         instanceId: 'instance-1',
@@ -84,7 +97,7 @@ describe('user-read-shared', () => {
     });
   });
 
-  it('returns the feature gate response before checking roles or actor membership', async () => {
+  it('returns the feature gate response before checking permissions or actor membership', async () => {
     const featureGate = new Response('feature-gate', { status: 403 });
     state.ensureFeature.mockReturnValue(featureGate);
 
@@ -98,8 +111,34 @@ describe('user-read-shared', () => {
     } as never);
 
     expect(result).toEqual({ response: featureGate });
-    expect(state.requireRoles).not.toHaveBeenCalled();
+    expect(state.authorizeInstancePermissionForUser).not.toHaveBeenCalled();
     expect(state.resolveActorInfo).not.toHaveBeenCalled();
+  });
+
+  it('allows custom permission grants without legacy tenant admin roles', async () => {
+    const { resolveUserReadAccess } = await import('./user-read-shared.js');
+    const request = new Request('https://example.test/api/v1/iam/users/user-1');
+    const ctx = {
+      user: {
+        id: 'kc-user-1',
+        instanceId: 'instance-1',
+        roles: ['custom_role'],
+      },
+    } as never;
+
+    await expect(resolveUserReadAccess(request, ctx)).resolves.toEqual({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-actor',
+        traceId: 'trace-actor',
+      },
+    });
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith({
+      ctx,
+      action: 'iam.user.read',
+    });
+    expect(state.requireRoles).not.toHaveBeenCalled();
   });
 
   it('returns the resolved actor and maps actor resolution failures to responses', async () => {

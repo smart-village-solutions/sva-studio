@@ -17,6 +17,7 @@ export const {
   persistUpdatedRole,
   resolveDeletableRole,
   resolveMutableRole,
+  validateRequestedPermissions,
 } = createRoleMutationPersistence({
   createApiError,
   emitActivityLog,

@@ -9,6 +9,7 @@ import { jsonResponse } from '../db.js';
 import { asApiItem, createApiError, parseRequestBody } from './api-helpers.js';
 import { classifyIamDiagnosticError } from './diagnostics.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { PLATFORM_PROFILE_ROLES, PLATFORM_ROLE_LEVEL_BY_NAME } from './constants.js';
 import {
   loadMyProfileDetail,
   type ProfileUpdatePayload,
@@ -92,8 +93,6 @@ type ProfileUpdateAttemptState = {
   keycloak_subject?: string;
 };
 
-const PLATFORM_PROFILE_ROLES = new Set(['system_admin', 'instance_registry_admin']);
-
 const deriveSessionDisplayName = (ctx: AuthenticatedRequestContext): string =>
   ctx.user.displayName?.trim() ||
   [ctx.user.firstName?.trim(), ctx.user.lastName?.trim()].filter(Boolean).join(' ').trim() ||
@@ -105,7 +104,7 @@ const buildPlatformRoleAssignments = (roles: readonly string[]): readonly IamUse
     roleId: `platform:${roleName}`,
     roleKey: roleName,
     roleName,
-    roleLevel: 0,
+    roleLevel: PLATFORM_ROLE_LEVEL_BY_NAME[roleName] ?? 0,
   }));
 
 const canUsePlatformSelfServiceProfile = (ctx: AuthenticatedRequestContext): boolean =>

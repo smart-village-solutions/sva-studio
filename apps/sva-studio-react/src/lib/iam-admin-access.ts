@@ -1,11 +1,19 @@
 type UserWithRoles = {
   roles?: readonly string[];
+  permissionActions?: readonly string[];
 };
 
-const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
-const INTERFACES_ROLES = new Set(['system_admin', 'app_manager', 'interface_manager', 'interface-manager']);
+const INTERFACES_PERMISSION = 'integration.manage';
+const IAM_ADMIN_PERMISSIONS = new Set([
+  'iam.user.read',
+  'iam.user.write',
+  'iam.role.read',
+  'iam.role.write',
+  'iam.org.read',
+  'iam.org.write',
+]);
 const SYSTEM_ADMIN_ROLES = new Set(['system_admin']);
-const INSTANCE_REGISTRY_ADMIN_ROLES = new Set(['instance_registry_admin']);
+const ROOT_ADMIN_ROLES = new Set(['instance_registry_admin']);
 
 const readFlag = (value: string | undefined, fallback: boolean) => {
   if (value === undefined) {
@@ -22,13 +30,13 @@ export const isIamAdminEnabled = () => isIamUiEnabled() && readFlag(import.meta.
 export const isIamBulkEnabled = () => isIamAdminEnabled() && readFlag(import.meta.env.VITE_IAM_BULK_ENABLED, true);
 
 export const hasIamAdminRole = (user: UserWithRoles | null | undefined) =>
-  Boolean(user?.roles?.some((role) => ADMIN_ROLES.has(role)));
+  Boolean(user?.permissionActions?.some((action) => IAM_ADMIN_PERMISSIONS.has(action)));
 
 export const hasInterfacesAccessRole = (user: UserWithRoles | null | undefined) =>
-  Boolean(user?.roles?.some((role) => INTERFACES_ROLES.has(role.trim().toLowerCase())));
+  user?.permissionActions?.includes(INTERFACES_PERMISSION) === true;
 
 export const hasSystemAdminRole = (user: UserWithRoles | null | undefined) =>
   Boolean(user?.roles?.some((role) => SYSTEM_ADMIN_ROLES.has(role)));
 
 export const hasInstanceRegistryAdminRole = (user: UserWithRoles | null | undefined) =>
-  Boolean(user?.roles?.some((role) => INSTANCE_REGISTRY_ADMIN_ROLES.has(role)));
+  Boolean(user?.roles?.some((role) => ROOT_ADMIN_ROLES.has(role)));

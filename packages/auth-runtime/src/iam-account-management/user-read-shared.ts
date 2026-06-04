@@ -2,12 +2,15 @@ import { getWorkspaceContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { isUuid } from '../shared/input-readers.js';
+import {
+  authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode,
+} from '../instance-permission-authorization.js';
 
-import { ADMIN_ROLES } from './constants.js';
 import { createApiError, readPathSegment } from './api-helpers.js';
 import { classifyIamDiagnosticError } from './diagnostics.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
-import { requireRoles, resolveActorInfo } from './shared.js';
+import { resolveActorInfo } from './shared.js';
 
 export type UserReadActor = {
   instanceId: string;
@@ -21,9 +24,19 @@ export const resolveUserReadAccess = async (request: Request, ctx: Authenticated
   if (featureCheck) {
     return { response: featureCheck } as const;
   }
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return { response: roleCheck } as const;
+  const authorization = await authorizeInstancePermissionForUser({
+    ctx,
+    action: 'iam.user.read',
+  });
+  if (!authorization.ok) {
+    return {
+      response: createApiError(
+        authorization.status,
+        toInstancePermissionApiErrorCode(authorization.error),
+        authorization.message,
+        requestContext.requestId
+      ),
+    } as const;
   }
   const actorResolution = await resolveActorInfo(request, ctx, {
     requireActorMembership: true,

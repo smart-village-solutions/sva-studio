@@ -88,6 +88,7 @@ Architekturprinzipien auf IST-Basis.
 - OSS-Standard für SQL-Migrationen: `ADR-029`
 - Standard für Hintergrundprozess-Orchestrierung: `ADR-040`
 - Registry-basierte Instanzfreigabe und gemeinsamer Provisioning-Vertrag: `ADR-030`
+- Plattform-/Tenant-Rollenmodell und Legacy-Standardrollen: `ADR-046`
 - Package-Zielarchitektur-Hard-Cut: OpenSpec-Change `refactor-package-target-architecture-hard-cut`
 
 Referenzen:
@@ -110,6 +111,7 @@ Referenzen:
 - `../adr/ADR-045-organisationsgebundene-mainserver-credentials-und-policy-gesteuerte-delegation.md`
 - `../adr/ADR-030-registry-basierte-instance-freigabe-und-provisioning.md`
 - `../adr/ADR-040-graphile-worker-als-standard-fuer-hintergrundprozesse.md`
+- `../adr/ADR-046-plattform-vs-tenant-rollenmodell-und-legacy-standardrollen.md`
 
 ### Fortschreibung 2026-04: Registry-basierte Tenant-Freigabe
 
@@ -189,3 +191,10 @@ Referenzen:
 - Der Host validiert diese Identifier fail-fast gegen reservierte Core-Namespaces, fremde Namespace-Nutzung und globale Kollisionen.
 - Core-Identifier wie `generic`, `legal` oder die hosteigene Admin-Ressource `content` bleiben ausdrücklich außerhalb dieser Plugin-Namespace-Pflicht.
 - Die Referenzmigration in diesem Schritt stellt das News-Plugin hart auf `news.article` um; ein Kompatibilitätspfad für das alte unqualifizierte `news` wurde bewusst nicht eingeführt.
+
+### Fortschreibung 2026-06: Root-/Tenant-Rollenmodell entkoppeln
+
+- Der Root-Host verwendet `instance_registry_admin` als einzige relevante Plattformrolle für Instanz-Control-Plane und Break-Glass-Pfade.
+- Tenant-Realms behalten `system_admin` als einzige geschützte Defaultrolle; frühere Standardrollen wie `app_manager`, `designer` oder `editor` bleiben nur noch als Legacy-Bootstrap-Kompatibilität bestehen.
+- Tenantseitige Rollen- und Permission-Verträge dürfen Root-only-Artefakte wie `instance_registry_admin` und `instance.registry.manage` weder anzeigen noch als wirksame Tenant-Berechtigung behandeln.
+- `roleLevel` bleibt als Kompatibilitätsfeld bestehen, verliert aber seine normative Führungsrolle für neue Autorisierungsentscheidungen.

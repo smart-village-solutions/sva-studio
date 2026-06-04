@@ -1,6 +1,7 @@
 import type { ApiErrorCode } from '@sva/core';
 
 import type { QueryClient } from './query-client.js';
+import { isRootOnlyRole } from './role-governance.js';
 import { resolveRolesByExternalNames, resolveRolesByIds } from './role-resolution.js';
 import type { IamRoleRow } from './types.js';
 
@@ -144,11 +145,9 @@ export const isSystemAdminAccount = async (
   return Boolean(result.rows[0]?.has_role);
 };
 
-export const ensureRoleAssignmentWithinActorLevel = async (input: {
+export const ensureTenantManageableRoleAssignments = async (input: {
   readonly client: QueryClient;
   readonly instanceId: string;
-  readonly actorSubject: string;
-  readonly actorRoles?: readonly string[];
   readonly roleIds: readonly string[];
 }): Promise<{ ok: true; roles: readonly IamRoleRow[] } | { ok: false; code: ApiErrorCode; message: string }> => {
   const roles = await resolveRolesByIds(input.client, {
@@ -158,6 +157,29 @@ export const ensureRoleAssignmentWithinActorLevel = async (input: {
   if (roles.length !== input.roleIds.length) {
     return { ok: false, code: 'invalid_request', message: 'Mindestens eine Rolle existiert nicht.' };
   }
+  if (roles.some((role) => isRootOnlyRole(role))) {
+    return { ok: false, code: 'invalid_request', message: 'Mindestens eine Rolle ist im Tenant nicht verwaltbar.' };
+  }
+
+  return { ok: true, roles };
+};
+
+export const ensureRoleAssignmentWithinActorLevel = async (input: {
+  readonly client: QueryClient;
+  readonly instanceId: string;
+  readonly actorSubject: string;
+  readonly actorRoles?: readonly string[];
+  readonly roleIds: readonly string[];
+}): Promise<{ ok: true; roles: readonly IamRoleRow[] } | { ok: false; code: ApiErrorCode; message: string }> => {
+  const manageableRoles = await ensureTenantManageableRoleAssignments({
+    client: input.client,
+    instanceId: input.instanceId,
+    roleIds: input.roleIds,
+  });
+  if (!manageableRoles.ok) {
+    return manageableRoles;
+  }
+  const roles = manageableRoles.roles;
 
   if (hasSystemAdminRole(input.actorRoles)) {
     return { ok: true, roles };

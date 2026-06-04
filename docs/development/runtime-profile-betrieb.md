@@ -142,6 +142,7 @@ Wichtig für den lokalen `local-keycloak`-Pfad:
 - Realm-Provisioning im lokalen Worker nutzt explizit `KEYCLOAK_PROVISIONER_*`, standardmäßig `master` plus `sva-studio-provisioner`. Fehlen diese Variablen, fällt der Worker weiterhin auf `KEYCLOAK_ADMIN_*` zurück; das ist für neue Tenant-Realms fachlich nicht gewollt.
 - Tenant-Logins laufen fail-closed, wenn für die aktive Instanz kein tenant-spezifisches `auth_client_secret` lesbar ist. Das globale Plattform-Secret bleibt nur für den Plattform-Host zulässig und ist kein stiller Tenant-Fallback.
 - Fehlen tenantlokaler Admin-Client oder tenantlokales Secret im Instanzdatensatz, schlagen Tenant-Mutationen fail-closed mit `tenant_admin_client_not_configured` oder `tenant_admin_client_secret_missing` fehl.
+- Tenant-Repair- und Rebind-Pfade verwenden tenantseitig weiterhin `seed:system_admin` als kanonische Referenz. `instance_registry_admin` ist Root-only und kein zulässiger tenantseitiger Repair- oder Bootstrap-Pfad.
 - `pnpm env:up:local-keycloak` und `pnpm env:update:local-keycloak` führen auf der Instanz-Registry nur noch einen read-only Drift-Check aus. Sie schreiben keine Hostname-/Realm-/Client-Identität mehr still zurück.
 - Die explizite lokale Registry-Korrektur läuft nur noch über `pnpm env:reconcile:local-instance-registry`.
 - `pnpm env:repair:local-keycloak` ist der autoritative lokale Heilpfad fuer Drift in Migration, Registry-Identitaet und tenant-spezifischen Secrets. Er bleibt idempotent und fuehrt weder `down` noch `reset` noch einen kompletten Rebootstrap implizit aus.

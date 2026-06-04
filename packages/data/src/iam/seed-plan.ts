@@ -59,6 +59,9 @@ const pluginWritePermissions = [
 const mediaWritePermissions = ['media.create', 'media.update', 'media.reference.manage', 'media.delete'] as const;
 const pluginManagePermissions = [...pluginReadPermissions, ...pluginWritePermissions] as const;
 const mediaManagePermissions = [...mediaReadPermissions, ...mediaWritePermissions] as const;
+const tenantPermissionKeys = permissions
+  .map(([, key]) => key)
+  .filter((key) => key !== 'instance.registry.manage');
 const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'system_admin',
@@ -67,24 +70,11 @@ const personas: readonly PersonaSeed[] = [
     displayName: 'System Administrator',
     scopeDefault: 'instance',
     mfaPolicy: 'required',
-    permissionKeys: permissions.map(([, key]) => key),
+    permissionKeys: tenantPermissionKeys,
     accountId: '50111111-1111-1111-1111-111111111111',
     keycloakSubject: 'seed:system_admin',
     seedEmailPlaceholder: 'seed.system_admin@sva.local',
     seedDisplayNamePlaceholder: 'System Administrator',
-  },
-  {
-    personaKey: 'instance_registry_admin',
-    roleSlug: 'instance_registry_admin',
-    roleLevel: 95,
-    displayName: 'Instance Registry Administrator',
-    scopeDefault: 'instance',
-    mfaPolicy: 'required',
-    permissionKeys: ['instance.registry.manage', 'feature.toggle', 'integration.manage', ...applicationReadPermissions],
-    accountId: '50888888-8888-8888-8888-888888888888',
-    keycloakSubject: 'seed:instance_registry_admin',
-    seedEmailPlaceholder: 'seed.instance_registry_admin@sva.local',
-    seedDisplayNamePlaceholder: 'Instance Registry Administrator',
   },
   {
     personaKey: 'app_manager',

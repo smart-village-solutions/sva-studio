@@ -24,7 +24,6 @@ const CORE_ADMIN_PERMISSION_KEYS = [
   'content.manageRevisions',
   'integration.manage',
   'feature.toggle',
-  'instance.registry.manage',
   'content.updatePayload',
   'content.changeStatus',
   'content.archive',

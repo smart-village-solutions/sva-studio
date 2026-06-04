@@ -1,5 +1,6 @@
 export {
   ensureActorCanManageTarget,
+  ensureTenantManageableRoleAssignments,
   ensureRoleAssignmentWithinActorLevel,
   isSystemAdminAccount,
   resolveActorMaxRoleLevel,

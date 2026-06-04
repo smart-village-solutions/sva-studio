@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   request: new Request('http://localhost'),
   withAuthenticatedUser: vi.fn(),
+  authorizeInstancePermissionForUser: vi.fn(),
   getSvaMainserverConnectionStatus: vi.fn(),
   logger: {
     warn: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock('@tanstack/react-start/server', () => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
+  authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
 }));
 
 vi.mock('@sva/sva-mainserver/server', () => ({
@@ -37,14 +39,23 @@ vi.mock('@sva/server-runtime', () => ({
 describe('loadSvaMainserverConnectionStatus', () => {
   beforeEach(() => {
     state.withAuthenticatedUser.mockReset();
+    state.authorizeInstancePermissionForUser.mockReset();
     state.getSvaMainserverConnectionStatus.mockReset();
     state.logger.warn.mockReset();
     state.logger.info.mockReset();
     state.logger.debug.mockReset();
     state.logger.error.mockReset();
+    state.authorizeInstancePermissionForUser.mockResolvedValue({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+      },
+      permissions: [],
+    });
   });
 
-  it('delegates to the mainserver package for allowed roles', async () => {
+  it('delegates to the mainserver package for users with integration.manage even without a legacy role name', async () => {
     state.getSvaMainserverConnectionStatus.mockResolvedValue({
       status: 'connected',
       checkedAt: '2026-03-14T00:00:00.000Z',
@@ -57,7 +68,7 @@ describe('loadSvaMainserverConnectionStatus', () => {
           user: {
             id: 'subject-1',
             instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
+            roles: ['custom_operator'],
           },
         })
     );
@@ -72,20 +83,31 @@ describe('loadSvaMainserverConnectionStatus', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
     });
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'integration.manage',
+      })
+    );
     expect(state.logger.warn).not.toHaveBeenCalled();
   });
 
-  it('returns a stable forbidden payload when local studio roles are missing and emits an audit log', async () => {
+  it('returns a stable forbidden payload when integration.manage is denied even for a legacy role name', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
         handler({
           user: {
             id: 'subject-1',
             instanceId: 'de-musterhausen',
-            roles: ['editor'],
+            roles: ['app_manager'],
           },
         })
     );
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung zur Schnittstellenverwaltung.',
+    });
 
     const { loadSvaMainserverConnectionStatus } = await import('./sva-mainserver.server');
 
@@ -95,11 +117,11 @@ describe('loadSvaMainserverConnectionStatus', () => {
     });
     expect(state.getSvaMainserverConnectionStatus).not.toHaveBeenCalled();
     expect(state.logger.warn).toHaveBeenCalledWith(
-      'SVA Mainserver access denied by local studio role check',
+      'SVA Mainserver access denied by integration permission check',
       expect.objectContaining({
         workspace_id: 'de-musterhausen',
         decision: 'deny',
-        reason: 'missing_local_role',
+        reason: 'missing_integration_manage_permission',
       })
     );
   });

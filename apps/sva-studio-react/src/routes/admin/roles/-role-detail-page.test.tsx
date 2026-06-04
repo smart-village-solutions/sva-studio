@@ -473,6 +473,45 @@ describe('RoleDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).hasAttribute('disabled')).toBe(true);
   });
 
+  it('treats legacy tenant bootstrap roles as editable when the API marks them editable', () => {
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-legacy-editor',
+          roleKey: 'editor',
+          roleName: 'editor',
+          externalRoleName: 'editor',
+          managedBy: 'studio',
+          description: 'Legacy tenant bootstrap role',
+          isSystemRole: true,
+          editability: 'editable',
+          roleLevel: 30,
+          memberCount: 2,
+          syncState: 'synced',
+          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RoleDetailPage roleId="role-legacy-editor" activeTab="general" />);
+
+    expect(
+      screen.queryByText('Systemrollen bleiben schreibgeschützt, damit Baseline-Rechte konsistent und nachvollziehbar bleiben.')
+    ).toBeNull();
+    expect(screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).hasAttribute('disabled')).toBe(false);
+  });
+
   it('navigates between tabs through tab buttons', () => {
     useRolesMock.mockReturnValue({
       roles: [

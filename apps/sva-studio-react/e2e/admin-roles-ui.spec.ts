@@ -144,3 +144,57 @@ test('role create page opens and submits successfully', async ({ page }) => {
 
   await expect(page).toHaveURL(/\/admin\/roles\/role-new\?tab=general$/);
 });
+
+test('tenant role list hides the root-only instance_registry_admin role', async ({ page }) => {
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(adminAuthPayload),
+    });
+  });
+
+  await page.route('**/api/v1/iam/roles', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          {
+            id: 'role-root',
+            roleKey: 'instance_registry_admin',
+            roleName: 'instance_registry_admin',
+            externalRoleName: 'instance_registry_admin',
+            managedBy: 'studio',
+            description: 'Legacy root role in tenant',
+            isSystemRole: true,
+            roleLevel: 90,
+            memberCount: 1,
+            syncState: 'synced',
+            permissions: [],
+          },
+          {
+            id: 'role-editor',
+            roleKey: 'editor',
+            roleName: 'editor',
+            externalRoleName: 'editor',
+            managedBy: 'studio',
+            description: 'Editorial role',
+            isSystemRole: false,
+            roleLevel: 20,
+            memberCount: 3,
+            syncState: 'synced',
+            permissions: [],
+          },
+        ],
+      }),
+    });
+  });
+
+  await gotoHomeAsAuthenticatedUser(page);
+  await navigateClientSide(page, '/admin/roles');
+
+  await expect(page.getByRole('heading', { name: 'Rollenverwaltung' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('table')).toContainText('editor');
+  await expect(page.getByRole('table')).not.toContainText('instance_registry_admin');
+});

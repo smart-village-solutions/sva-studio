@@ -104,26 +104,24 @@ describe('iamSeedPlan content permissions', () => {
     expect(getPersonaSeed('moderator').permissionKeys).not.toContain('events.update');
   });
 
-  it('keeps the SQL seed aligned with the canonical instance_registry_admin persona', () => {
-    expect(personaSeedSql).toContain("'instance_registry_admin'");
-    expect(personaSeedSql).toContain("'50888888-8888-8888-8888-888888888888'");
-    expect(personaSeedSql).toContain("'seed:instance_registry_admin'");
-    expect(personaSeedSql).toContain(
-      "('de-musterhausen', '50888888-8888-8888-8888-888888888888', 'member')"
-    );
-    expect(personaSeedSql).toContain(
+  it('does not seed a tenant-side instance_registry_admin persona into 0001 anymore', () => {
+    expect(personaSeedSql).not.toContain("'seed:instance_registry_admin'");
+    expect(personaSeedSql).not.toContain(
       "('30188888-8888-8888-8888-888888888888', 'de-musterhausen', 'instance_registry_admin'"
     );
-    expect(personaSeedSql).toContain(
+    expect(personaSeedSql).not.toContain(
+      "('de-musterhausen', '50888888-8888-8888-8888-888888888888', 'member')"
+    );
+    expect(personaSeedSql).not.toContain(
       "('de-musterhausen', '50888888-8888-8888-8888-888888888888', '30188888-8888-8888-8888-888888888888')"
     );
-    expect(personaSeedSql).toContain(
+    expect(personaSeedSql).not.toContain(
       "('instance_registry_admin', 'instance.registry.manage')"
     );
-    expect(personaSeedSql).toContain(
+    expect(personaSeedSql).not.toContain(
       "('instance_registry_admin', 'feature.toggle')"
     );
-    expect(personaSeedSql).toContain(
+    expect(personaSeedSql).not.toContain(
       "('instance_registry_admin', 'integration.manage')"
     );
     expect(personaSeedSql).toContain(

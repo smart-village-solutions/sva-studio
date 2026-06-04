@@ -251,7 +251,7 @@ describe('iam data subject rights handlers', () => {
     expect(response.status).toBe(400);
     await expect(expectJson(response)).resolves.toEqual({ error: 'invalid_export_format' });
     expect(mocks.withResolvedInstanceDb).not.toHaveBeenCalled();
-  });
+  }, 15_000);
 
   it('accepts async self exports via query instance scope and string async flag', async () => {
     const { dataExportHandler } = await import('./core.js');

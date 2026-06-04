@@ -1,7 +1,8 @@
 import type { IamRolePermissionAssignmentScope } from '@sva/core';
 import type { ManagedRoleRow } from './types.js';
 
-import { getManagedPermissionMetadata } from './managed-permissions.js';
+import { getManagedPermissionMetadata, isRootOnlyPermissionKey } from './managed-permissions.js';
+import { isProtectedTenantRole, isRootOnlyRole } from './role-governance.js';
 import { loadRoleById, loadRoleListItemById } from './role-query.js';
 import type { QueryClient } from './query-client.js';
 
@@ -126,7 +127,7 @@ type RoleActivityLogInput = {
 export type RoleMutationPersistenceDeps = {
   readonly createApiError: (
     status: number,
-    code: 'conflict' | 'not_found',
+    code: 'conflict' | 'invalid_request' | 'not_found',
     message: string,
     requestId?: string
   ) => Response;
@@ -156,6 +157,47 @@ export type RoleMutationPersistenceDeps = {
 };
 
 export const createRoleMutationPersistence = (deps: RoleMutationPersistenceDeps) => {
+  const validateRequestedPermissions = async (input: {
+    readonly actor: RoleMutationPersistenceActor;
+    readonly permissionIds?: readonly string[];
+    readonly permissionAssignments?: readonly RolePermissionAssignmentInput[];
+  }): Promise<Response | null> =>
+    deps.withInstanceScopedDb(input.actor.instanceId, async (client) => {
+      const assignments = normalizeRolePermissionAssignments(input.permissionIds, input.permissionAssignments);
+      if (assignments.length === 0) {
+        return null;
+      }
+
+      const permissionKeyById = await loadPermissionKeysById(
+        client,
+        input.actor.instanceId,
+        assignments.map((assignment) => assignment.permissionId)
+      );
+
+      if (permissionKeyById.size !== assignments.length) {
+        return deps.createApiError(
+          400,
+          'invalid_request',
+          'Mindestens eine Berechtigung existiert im Tenant nicht.',
+          input.actor.requestId
+        );
+      }
+
+      const hasRootOnlyPermission = assignments.some((assignment) =>
+        isRootOnlyPermissionKey(permissionKeyById.get(assignment.permissionId) ?? '')
+      );
+      if (hasRootOnlyPermission) {
+        return deps.createApiError(
+          400,
+          'invalid_request',
+          'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.',
+          input.actor.requestId
+        );
+      }
+
+      return null;
+    });
+
   const persistCreatedRole = async (input: {
     readonly actor: RoleMutationPersistenceActor;
     readonly roleKey: string;
@@ -291,7 +333,7 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
     if (!existing) {
       return deps.createApiError(404, 'not_found', 'Rolle nicht gefunden.', actor.requestId);
     }
-    if (existing.is_system_role) {
+    if ((existing.is_system_role && isProtectedTenantRole(existing)) || isRootOnlyRole(existing)) {
       return deps.createApiError(409, 'conflict', 'System-Rollen können nicht geändert werden.', actor.requestId);
     }
     if (existing.managed_by !== 'studio') {
@@ -450,7 +492,7 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
     if (!existing) {
       return deps.createApiError(404, 'not_found', 'Rolle nicht gefunden.', actor.requestId);
     }
-    if (existing.is_system_role) {
+    if ((existing.is_system_role && isProtectedTenantRole(existing)) || isRootOnlyRole(existing)) {
       return deps.createApiError(409, 'conflict', 'System-Rollen können nicht gelöscht werden.', actor.requestId);
     }
     if (existing.managed_by !== 'studio') {
@@ -571,5 +613,6 @@ WHERE instance_id = $1
     persistUpdatedRole,
     resolveDeletableRole,
     resolveMutableRole,
+    validateRequestedPermissions,
   };
 };

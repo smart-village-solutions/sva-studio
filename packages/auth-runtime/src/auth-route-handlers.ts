@@ -17,6 +17,7 @@ import { logoutSession } from './auth-server/logout.js';
 import { withAuthenticatedUser } from './middleware.js';
 import { getSession } from './redis-session.js';
 import { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
+import { filterTenantEffectivePermissions } from './iam-authorization/root-only-permissions.js';
 import { withInstanceScopedDb } from './iam-authorization/shared.js';
 import { withRegistryRepository } from './iam-instance-registry/repository.js';
 import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
@@ -711,8 +712,9 @@ const loadAuthMePermissionState = async (user: { id: string; instanceId?: string
     });
 
     if (resolvedPermissions.ok) {
+      const filteredPermissions = filterTenantEffectivePermissions(resolvedPermissions.permissions);
       return {
-        permissionActions: collectEffectivePermissionActions(resolvedPermissions.permissions),
+        permissionActions: collectEffectivePermissionActions(filteredPermissions),
         permissionStatus: 'ok',
       };
     }

@@ -171,7 +171,7 @@ const AdminModulesPage = () => {
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {t('admin.instances.instanceModules.module.roles', {
-                            value: formatRoleNames(module.systemRoles.map((role) => role.roleName)),
+                            value: formatRoleNames((module.systemRoles ?? []).map((role) => role.roleName)),
                           })}
                         </p>
                       </div>
@@ -212,7 +212,7 @@ const AdminModulesPage = () => {
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {t('admin.instances.instanceModules.module.roles', {
-                            value: formatRoleNames(module.systemRoles.map((role) => role.roleName)),
+                            value: formatRoleNames((module.systemRoles ?? []).map((role) => role.roleName)),
                           })}
                         </p>
                       </div>

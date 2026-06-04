@@ -469,7 +469,7 @@ describe('instance registry repository', () => {
           {
             moduleId: 'news',
             permissionIds: [],
-            systemRoles: [{ roleName: 'news_admin', permissionIds: [] }],
+            tenantBootstrapRoles: [{ roleName: 'news_admin', permissionIds: [] }],
           },
         ],
       })
@@ -493,7 +493,7 @@ describe('instance registry repository', () => {
           {
             moduleId: 'news',
             permissionIds: ['news.read'],
-            systemRoles: [{ roleName: 'system_admin', permissionIds: ['news.read'] }],
+            tenantBootstrapRoles: [{ roleName: 'system_admin', permissionIds: ['news.read'] }],
           },
         ],
       })
@@ -524,7 +524,10 @@ describe('instance registry repository', () => {
           {
             moduleId: 'news',
             permissionIds: ['z.permission', 'ä.permission'],
-            systemRoles: [{ roleName: 'z-role', permissionIds: ['z.permission'] }, { roleName: 'ä-role', permissionIds: ['ä.permission'] }],
+            tenantBootstrapRoles: [
+              { roleName: 'z-role', permissionIds: ['z.permission'] },
+              { roleName: 'ä-role', permissionIds: ['ä.permission'] },
+            ],
           },
         ],
       })
@@ -533,16 +536,12 @@ describe('instance registry repository', () => {
     const permissionCleanup = statements.find((statement) =>
       statement.text.includes('DELETE FROM iam.permissions')
     );
-    const roleUpserts = statements.filter((statement) =>
-      statement.text.includes('INSERT INTO iam.roles')
-    );
     const permissionUpserts = statements.filter((statement) =>
       statement.text.includes('INSERT INTO iam.permissions')
     );
 
     expect(permissionCleanup?.text).toContain("permission_key NOT IN ('ä.permission', 'z.permission')");
     expect(permissionUpserts.map((statement) => statement.values[1])).toEqual(['ä.permission', 'z.permission']);
-    expect(roleUpserts.map((statement) => statement.values[1])).toEqual(['ä-role', 'z-role']);
   });
 
   it('tags bootstrap role grants with bootstrap ownership metadata', async () => {

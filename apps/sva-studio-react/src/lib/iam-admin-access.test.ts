@@ -23,10 +23,11 @@ describe('iam-admin-access', () => {
     expect(updated.isIamBulkEnabled()).toBe(false);
   });
 
-  it('matches admin, interface and instance registry roles', async () => {
+  it('matches admin, interface permissions and instance registry roles', async () => {
     const access = await import('./iam-admin-access');
     const user = {
-      roles: ['app_manager', ' Interface_Manager ', 'instance_registry_admin'],
+      roles: ['custom_role', 'instance_registry_admin'],
+      permissionActions: ['iam.user.read', 'integration.manage'],
     };
 
     expect(access.hasIamAdminRole(user)).toBe(true);
@@ -34,5 +35,36 @@ describe('iam-admin-access', () => {
     expect(access.hasSystemAdminRole(user)).toBe(false);
     expect(access.hasInstanceRegistryAdminRole(user)).toBe(true);
     expect(access.hasIamAdminRole(null)).toBe(false);
+  });
+
+  it('does not treat the root-only platform role as tenant IAM admin access', async () => {
+    const access = await import('./iam-admin-access');
+    const user = {
+      roles: ['instance_registry_admin'],
+      permissionActions: [],
+    };
+
+    expect(access.hasIamAdminRole(user)).toBe(false);
+    expect(access.hasInstanceRegistryAdminRole(user)).toBe(true);
+  });
+
+  it('does not derive tenant IAM admin access from legacy role names without IAM permissions', async () => {
+    const access = await import('./iam-admin-access');
+    const user = {
+      roles: ['app_manager'],
+      permissionActions: ['news.read'],
+    };
+
+    expect(access.hasIamAdminRole(user)).toBe(false);
+  });
+
+  it('does not derive interfaces access from legacy role names without integration.manage', async () => {
+    const access = await import('./iam-admin-access');
+    const user = {
+      roles: ['interface_manager'],
+      permissionActions: ['news.read'],
+    };
+
+    expect(access.hasInterfacesAccessRole(user)).toBe(false);
   });
 });

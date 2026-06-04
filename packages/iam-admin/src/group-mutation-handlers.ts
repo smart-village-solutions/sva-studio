@@ -102,6 +102,11 @@ export type GroupMutationHandlerDeps = {
   readonly isUuid: (value: string) => boolean;
   readonly jsonResponse: (status: number, payload: unknown) => Response;
   readonly logger: GroupMutationLogger;
+  readonly authorizeGroupMutationAccess?: (
+    request: Request,
+    ctx: GroupMutationAuthenticatedRequestContext,
+    requestId?: string
+  ) => Promise<Response | null> | Response | null;
   readonly notifyPermissionInvalidation: (
     client: GroupQueryClient,
     input: {
@@ -143,9 +148,11 @@ const resolveGroupMutationActor = async (
 ): Promise<{ readonly actor: GroupMutationActor } | Response> => {
   const requestContext = deps.getWorkspaceContext();
 
-  const roleCheck = deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
+  const accessCheck = deps.authorizeGroupMutationAccess
+    ? await deps.authorizeGroupMutationAccess(request, ctx, requestContext.requestId)
+    : deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+  if (accessCheck) {
+    return accessCheck;
   }
 
   const csrfError = deps.validateCsrf(request, requestContext.requestId);

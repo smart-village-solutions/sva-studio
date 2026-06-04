@@ -563,6 +563,18 @@ Fehlerpfad:
 - Fehlt die Keycloak-Verbindung oder der Service-Account hat zu wenige Rechte, endet der Lauf mit `keycloak_unavailable`.
 - Einzelne Rollen können im Report als `failed` auftauchen, ohne den gesamten Drift-Kontext zu verlieren.
 
+### Szenario 10a: Tenant-Rollenverwaltung blendet Root-only-Artefakte fail-closed aus
+
+1. `system_admin` öffnet `/admin/roles` oder `/admin/users/$userId` auf einem Tenant-Host.
+2. Der Backend-Service liefert ausschließlich tenantseitig sichtbare Rollen und Permissions; `instance_registry_admin` und `instance.registry.manage` bleiben im Tenant-Katalog unsichtbar.
+3. Versucht ein API-Client dennoch, Root-only-Permissions in einer Tenant-Rolle zu speichern, antwortet der Server bereits vor dem Keycloak-Write mit `invalid_request`.
+4. Legacy-Standardrollen wie `app_manager` oder `editor` bleiben lesbar und bearbeitbar, solange sie tenantlokale Rollenartefakte der Instanz sind.
+
+Fehlerpfad:
+
+- Tenantseitige Altartefakte aus früheren Seeds oder manuellen Zuweisungen werden durch die Cleanup-Migration neutralisiert und verlieren ihre wirksamen Permission-Zuordnungen.
+- Root-/Plattformrechte eskalieren nicht über Tenant-Rollen, Gruppen oder Permission-Snapshots in den Plattform-Scope.
+
 ### Szenario 11: Zielpackage-Fassaden delegieren in Fachkern
 
 1. Routing oder ein externer Konsument importiert eine stabile Zielpackage-Fassade wie `@sva/auth-runtime/server`, `@sva/iam-admin`, `@sva/iam-governance` oder `@sva/instance-registry`.

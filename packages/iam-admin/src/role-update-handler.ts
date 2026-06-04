@@ -132,6 +132,14 @@ export type UpdateRoleHandlerDeps<
     operation: 'update_role' | 'update_role_compensation',
     work: () => Promise<T>
   ) => Promise<T>;
+  readonly validateRequestedPermissions?: (input: {
+    readonly actor: UpdateRoleActor;
+    readonly permissionIds?: readonly string[];
+    readonly permissionAssignments?: readonly {
+      readonly permissionId: string;
+      readonly accessScope?: IamRolePermissionAssignmentScope;
+    }[];
+  }) => Promise<Response | null>;
 };
 
 export const createUpdateRoleHandlerInternal =
@@ -159,6 +167,15 @@ export const createUpdateRoleHandlerInternal =
     const parsed = await deps.parseUpdateRoleBody(request);
     if (!parsed.ok) {
       return deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+    }
+
+    const permissionValidationResponse = await deps.validateRequestedPermissions?.({
+      actor,
+      permissionIds: parsed.data.permissionIds,
+      permissionAssignments: parsed.data.permissionAssignments,
+    });
+    if (permissionValidationResponse) {
+      return permissionValidationResponse;
     }
 
     const identityProvider = await deps.requireRoleIdentityProvider(actor.instanceId, actor.requestId);

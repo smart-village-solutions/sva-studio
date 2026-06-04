@@ -62,18 +62,16 @@ describe('iam seed sql contracts', () => {
     assert.doesNotMatch(sql, /tenant_admin_client_id = EXCLUDED\.tenant_admin_client_id,/);
   });
 
-  it('keeps 0001 aligned with the canonical instance_registry_admin persona', () => {
+  it('does not keep a tenant-side instance_registry_admin persona in 0001 anymore', () => {
     const sql = readSeed('0001_iam_personas.sql');
 
-    assert.match(sql, /'instance_registry_admin'/);
-    assert.match(sql, /'50888888-8888-8888-8888-888888888888'/);
-    assert.match(sql, /'seed:instance_registry_admin'/);
-    assert.match(sql, /'30188888-8888-8888-8888-888888888888', 'de-musterhausen', 'instance_registry_admin'/);
-    assert.match(sql, /\('de-musterhausen', '50888888-8888-8888-8888-888888888888', 'member'\)/);
-    assert.match(sql, /\('de-musterhausen', '50888888-8888-8888-8888-888888888888', '30188888-8888-8888-8888-888888888888'\)/);
-    assert.match(sql, /\('instance_registry_admin', 'instance\.registry\.manage'\)/);
-    assert.match(sql, /\('instance_registry_admin', 'feature\.toggle'\)/);
-    assert.match(sql, /\('instance_registry_admin', 'integration\.manage'\)/);
+    assert.doesNotMatch(sql, /'seed:instance_registry_admin'/);
+    assert.doesNotMatch(sql, /'30188888-8888-8888-8888-888888888888', 'de-musterhausen', 'instance_registry_admin'/);
+    assert.doesNotMatch(sql, /\('de-musterhausen', '50888888-8888-8888-8888-888888888888', 'member'\)/);
+    assert.doesNotMatch(sql, /\('de-musterhausen', '50888888-8888-8888-8888-888888888888', '30188888-8888-8888-8888-888888888888'\)/);
+    assert.doesNotMatch(sql, /\('instance_registry_admin', 'instance\.registry\.manage'\)/);
+    assert.doesNotMatch(sql, /\('instance_registry_admin', 'feature\.toggle'\)/);
+    assert.doesNotMatch(sql, /\('instance_registry_admin', 'integration\.manage'\)/);
   });
 
   it('expects the deletion-rules seed to create tenant defaults', () => {

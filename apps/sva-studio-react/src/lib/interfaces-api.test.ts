@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   isCustomInterfaceStorageAvailable: vi.fn(),
   saveSvaMainserverSettings: vi.fn(),
   withAuthenticatedUser: vi.fn(),
+  authorizeInstancePermissionForUser: vi.fn(),
   logger: {
     error: vi.fn(),
     info: vi.fn(),
@@ -44,6 +45,7 @@ vi.mock('@sva/sva-mainserver/server', () => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
+  authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -81,6 +83,7 @@ describe('interfaces app adapter', () => {
     state.isCustomInterfaceStorageAvailable.mockReset();
     state.saveSvaMainserverSettings.mockReset();
     state.withAuthenticatedUser.mockReset();
+    state.authorizeInstancePermissionForUser.mockReset();
     state.logger.error.mockReset();
     state.logger.info.mockReset();
     state.logger.warn.mockReset();
@@ -92,6 +95,14 @@ describe('interfaces app adapter', () => {
     });
     state.runStoredInterfaceHealthcheck.mockResolvedValue(null);
     state.isCustomInterfaceStorageAvailable.mockReturnValue(true);
+    state.authorizeInstancePermissionForUser.mockResolvedValue({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+      },
+      permissions: [],
+    });
   });
 
   it('keeps server-only modules out of eager module evaluation', async () => {
@@ -135,14 +146,14 @@ describe('interfaces app adapter', () => {
     expect(state.loadSvaMainserverInterfacesOverview).toHaveBeenCalledWith(state.request);
   });
 
-  it('loads stored interfaces only for authorized users in their own instance context', async () => {
+  it('loads stored interfaces for custom-role users when integration.manage is granted', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
         handler({
           user: {
             id: 'subject-1',
             instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
+            roles: ['custom_operator'],
           },
         })
     );
@@ -190,6 +201,11 @@ describe('interfaces app adapter', () => {
         }),
       ],
     });
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'integration.manage',
+      })
+    );
     expect(state.listStoredInterfaces).toHaveBeenCalledWith('de-musterhausen');
   });
 
@@ -315,17 +331,23 @@ describe('interfaces app adapter', () => {
     );
   });
 
-  it('rejects list requests from users without interfaces permissions before reading stored entries', async () => {
+  it('rejects list requests when integration.manage is denied before reading stored entries', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
         handler({
           user: {
             id: 'subject-1',
             instanceId: 'de-musterhausen',
-            roles: ['editor'],
+            roles: ['app_manager'],
           },
         })
     );
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung zur Schnittstellenverwaltung.',
+    });
 
     const { listInstanceInterfacesServerFn } = await import('./interfaces-api');
 

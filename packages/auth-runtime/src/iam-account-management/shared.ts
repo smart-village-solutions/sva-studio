@@ -7,6 +7,7 @@ export {
 export type { ActorInfo } from './shared-actor-resolution.js';
 export {
   ensureActorCanManageTarget,
+  ensureTenantManageableRoleAssignments,
   ensureRoleAssignmentWithinActorLevel,
   isSystemAdminAccount,
   resolveActorMaxRoleLevel,

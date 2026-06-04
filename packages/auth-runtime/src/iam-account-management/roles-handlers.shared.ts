@@ -13,6 +13,7 @@ export const resolveRoleMutationActor = async (
 ): Promise<{ actor: RoleMutationActor } | { response: Response }> => {
   return resolveMutationActorWithAccount(request, ctx, {
     allowedRoles: SYSTEM_ADMIN_ROLES,
+    requiredPermissionAction: 'iam.role.write',
     feature: 'iam_admin',
     scope: 'write',
     requestId,

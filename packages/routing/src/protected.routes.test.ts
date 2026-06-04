@@ -145,10 +145,19 @@ describe('protected routes', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('uses default admin roles in createAdminRoute', async () => {
-    const guard = createAdminRoute({ route: '/admin/users' });
+  it('uses explicit admin permissions in createAdminRoute', async () => {
+    const guard = createAdminRoute({ route: '/admin/users', requiredPermissions: ['iam.user.read'] });
 
-    await expect(invokeGuard(guard, { roles: ['app_manager'] }, '/admin/users')).resolves.toBeUndefined();
+    await expect(
+      invokeGuard(guard, { roles: ['custom_role'], permissionActions: ['iam.user.read'] }, '/admin/users')
+    ).resolves.toBeUndefined();
+    await expect(
+      invokeGuard(guard, { roles: ['app_manager'], permissionActions: ['news.read'] }, '/admin/users')
+    ).rejects.toMatchObject(
+      expect.objectContaining({
+        options: expect.objectContaining({ href: '/?error=auth.insufficientRole' }),
+      })
+    );
   });
 
   it('remains silent by default when no diagnostics hook is injected', async () => {

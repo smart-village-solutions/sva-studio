@@ -19,6 +19,7 @@ export const resolveUserMutationActor = async (
   return resolveMutationActorWithAccount(request, ctx, {
     ...input,
     allowedRoles: ADMIN_ROLES,
+    requiredPermissionAction: 'iam.user.write',
     provisionMissingActorMembership: input.provisionMissingActorMembership ?? true,
   });
 };

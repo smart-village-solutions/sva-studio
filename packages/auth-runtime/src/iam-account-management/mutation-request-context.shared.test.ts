@@ -4,6 +4,10 @@ const state = vi.hoisted(() => ({
   ensureFeature: vi.fn(),
   getFeatureFlags: vi.fn(() => ({ iam_admin: true, iam_bulk: true })),
   requireRoles: vi.fn(),
+  authorizeInstancePermissionForUser: vi.fn(),
+  toInstancePermissionApiErrorCode: vi.fn((error: string) =>
+    error === 'database_unavailable' ? 'database_unavailable' : 'forbidden'
+  ),
   resolveActorInfo: vi.fn(),
   validateCsrf: vi.fn(),
   consumeRateLimit: vi.fn(),
@@ -18,6 +22,11 @@ vi.mock('./feature-flags.js', () => ({
 vi.mock('./shared-actor-resolution.js', () => ({
   requireRoles: state.requireRoles,
   resolveActorInfo: state.resolveActorInfo,
+}));
+
+vi.mock('../instance-permission-authorization.js', () => ({
+  authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
+  toInstancePermissionApiErrorCode: state.toInstancePermissionApiErrorCode,
 }));
 
 vi.mock('./csrf.js', () => ({
@@ -49,6 +58,14 @@ describe('mutation-request-context.shared', () => {
     vi.clearAllMocks();
     state.ensureFeature.mockReturnValue(null);
     state.requireRoles.mockReturnValue(null);
+    state.authorizeInstancePermissionForUser.mockResolvedValue({
+      ok: true,
+      actor: {
+        instanceId: 'instance-1',
+        keycloakSubject: 'kc-user-1',
+      },
+      permissions: [],
+    });
     state.resolveActorInfo.mockResolvedValue({
       actor: {
         instanceId: 'instance-1',
@@ -82,13 +99,22 @@ describe('mutation-request-context.shared', () => {
     await expect(
       resolveMutationActorWithAccount(request, ctx, { allowedRoles, feature: 'iam_admin', scope: 'write' })
     ).resolves.toEqual({ response: featureError });
-    expect(state.requireRoles).not.toHaveBeenCalled();
+    expect(state.authorizeInstancePermissionForUser).not.toHaveBeenCalled();
 
-    const roleError = new Response('role', { status: 403 });
-    state.requireRoles.mockReturnValueOnce(roleError);
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung für diese Instanzoperation.',
+    });
     await expect(
-      resolveMutationActorWithAccount(request, ctx, { allowedRoles, feature: 'iam_admin', scope: 'write' })
-    ).resolves.toEqual({ response: roleError });
+      resolveMutationActorWithAccount(request, ctx, {
+        allowedRoles,
+        requiredPermissionAction: 'iam.user.write',
+        feature: 'iam_admin',
+        scope: 'write',
+      })
+    ).resolves.toMatchObject({ response: expect.any(Response) });
 
     const actorError = new Response('actor', { status: 401 });
     state.resolveActorInfo.mockResolvedValueOnce({ error: actorError });
@@ -147,6 +173,40 @@ describe('mutation-request-context.shared', () => {
       requestId: 'req-1',
       scope: 'bulk',
     });
+  });
+
+  it('allows custom permission grants without legacy tenant admin roles', async () => {
+    const request = new Request('http://localhost/api/v1/iam/users/123e4567-e89b-12d3-a456-426614174000', {
+      method: 'PATCH',
+    });
+    const ctx = {
+      user: {
+        id: 'kc-user-1',
+        instanceId: 'instance-1',
+        roles: ['custom_role'],
+      },
+    } as never;
+
+    await expect(
+      resolveMutationActorWithAccount(request, ctx, {
+        allowedRoles: new Set(['system_admin']),
+        requiredPermissionAction: 'iam.user.write',
+        feature: 'iam_admin',
+        scope: 'write',
+      })
+    ).resolves.toEqual({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
+    });
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith({
+      ctx,
+      action: 'iam.user.write',
+    });
+    expect(state.requireRoles).not.toHaveBeenCalled();
   });
 
   it('validates mutation path ids and resolves tenant-admin identity providers', async () => {

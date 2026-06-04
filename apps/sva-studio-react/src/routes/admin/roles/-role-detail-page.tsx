@@ -21,6 +21,7 @@ import { useRoles } from '../../../hooks/use-roles';
 import { useUsers } from '../../../hooks/use-users';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
+import { isTenantRoleReadOnly, isTenantRoleVisible } from '../../../lib/iam-role-governance';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { roleErrorMessage, roleStatusLabel, roleTypeLabel } from './-roles-shared';
 
@@ -229,8 +230,12 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   const usersApi = useUsers({ page: 1, pageSize: 100 });
   const navigate = useNavigate();
   const studioDataTableLabels = createStudioDataTableLabels();
-  const role = React.useMemo(() => rolesApi.roles.find((entry) => entry.id === roleId) ?? null, [roleId, rolesApi.roles]);
-  const isReadOnly = role ? role.isSystemRole || role.managedBy !== 'studio' : true;
+  const visibleRoles = React.useMemo(
+    () => rolesApi.roles.filter((entry) => isTenantRoleVisible(entry)),
+    [rolesApi.roles]
+  );
+  const role = React.useMemo(() => visibleRoles.find((entry) => entry.id === roleId) ?? null, [roleId, visibleRoles]);
+  const isReadOnly = role ? isTenantRoleReadOnly(role) : true;
   const [editForm, setEditForm] = React.useState({
     displayName: '',
     description: '',

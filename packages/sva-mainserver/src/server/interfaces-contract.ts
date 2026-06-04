@@ -1,4 +1,7 @@
-import { withAuthenticatedUser } from '@sva/auth-runtime/server';
+import {
+  authorizeInstancePermissionForUser,
+  withAuthenticatedUser,
+} from '@sva/auth-runtime/server';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import type { SvaMainserverConnectionStatus, SvaMainserverInstanceConfig } from '../types.js';
@@ -6,7 +9,7 @@ import { getSvaMainserverConnectionStatus } from './service.js';
 import { loadSvaMainserverSettings, saveSvaMainserverSettings } from './settings.js';
 
 const COMPONENT = 'interfaces-api';
-const INTERFACES_ROLES = new Set(['system_admin', 'app_manager', 'interface_manager', 'interface-manager']);
+const INTERFACES_PERMISSION_ACTION = 'integration.manage';
 
 export type SvaMainserverInterfacesOverview = {
   readonly instanceId: string;
@@ -29,15 +32,6 @@ type ErrorPayload = {
   readonly error?: string;
   readonly field?: InterfacesErrorField;
 };
-
-type UserWithRoles = {
-  readonly id: string;
-  readonly instanceId?: string;
-  readonly roles?: readonly string[];
-};
-
-const hasInterfacesAccessRole = (user: UserWithRoles | null | undefined) =>
-  Boolean(user?.roles?.some((role) => INTERFACES_ROLES.has(role.trim().toLowerCase())));
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -317,7 +311,8 @@ export const loadSvaMainserverInterfacesOverview = async (
   try {
     const logger = createSdkLogger({ component: COMPONENT });
 
-    const response = await withAuthenticatedUser(request, async ({ user }) => {
+    const response = await withAuthenticatedUser(request, async (ctx) => {
+      const { user } = ctx;
       const instanceId = user.instanceId;
 
       if (!instanceId) {
@@ -332,17 +327,27 @@ export const loadSvaMainserverInterfacesOverview = async (
         } satisfies SvaMainserverInterfacesOverview);
       }
 
-      if (!hasInterfacesAccessRole(user)) {
+      const authorization = await authorizeInstancePermissionForUser({
+        ctx,
+        action: INTERFACES_PERMISSION_ACTION,
+      });
+      if (!authorization.ok) {
         logger.warn('Load interfaces overview rejected: insufficient permissions', {
           operation: 'load_interfaces_overview',
           workspace_id: instanceId,
           user_id: user.id,
           user_roles: user.roles,
+          reason_code: authorization.error,
         });
-        return jsonResponse(403, {
+        return jsonResponse(authorization.status, {
           instanceId,
           config: null,
-          status: createErrorStatus('forbidden', 'Keine Berechtigung zur Schnittstellenverwaltung.'),
+          status: createErrorStatus(
+            authorization.error === 'database_unavailable' ? 'database_unavailable' : 'forbidden',
+            authorization.error === 'forbidden'
+              ? 'Keine Berechtigung zur Schnittstellenverwaltung.'
+              : authorization.message
+          ),
         } satisfies SvaMainserverInterfacesOverview);
       }
 
@@ -435,7 +440,8 @@ export const saveSvaMainserverInterfaceSettings = async (
     const logger = createSdkLogger({ component: COMPONENT });
     const payloadData = (data ?? {}) as SaveSvaMainserverInterfaceSettingsInput['data'];
 
-    const response = await withAuthenticatedUser(request, async ({ user }) => {
+    const response = await withAuthenticatedUser(request, async (ctx) => {
+      const { user } = ctx;
       const instanceId = user.instanceId;
 
       if (!instanceId) {
@@ -446,14 +452,21 @@ export const saveSvaMainserverInterfaceSettings = async (
         return jsonResponse(400, { error: 'invalid_config' } satisfies ErrorPayload);
       }
 
-      if (!hasInterfacesAccessRole(user)) {
+      const authorization = await authorizeInstancePermissionForUser({
+        ctx,
+        action: INTERFACES_PERMISSION_ACTION,
+      });
+      if (!authorization.ok) {
         logger.warn('Save interfaces settings rejected: insufficient permissions', {
           operation: 'save_interfaces_settings',
           workspace_id: instanceId,
           user_id: user.id,
           user_roles: user.roles,
+          reason_code: authorization.error,
         });
-        return jsonResponse(403, { error: 'forbidden' } satisfies ErrorPayload);
+        return jsonResponse(authorization.status, {
+          error: authorization.error === 'database_unavailable' ? 'database_unavailable' : 'forbidden',
+        } satisfies ErrorPayload);
       }
 
       if (typeof payloadData.enabled !== 'boolean') {

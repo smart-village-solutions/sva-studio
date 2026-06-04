@@ -246,11 +246,11 @@ describe('content request authorization context', () => {
     });
   });
 
-  it('resolves content actors and enforces feature, role and actor-account requirements', async () => {
+  it('resolves content actors and enforces feature and actor-account requirements without legacy role gates', async () => {
     await expect(
       resolveContentActor(new Request('https://example.test/content'), {
         sessionId: 'session-1',
-        user: { id: 'subject-1', roles: ['editor'], instanceId: 'instance-1' },
+        user: { id: 'subject-1', roles: ['viewer'], instanceId: 'instance-1' },
       } as never)
     ).resolves.toMatchObject({
       actor: {
@@ -259,6 +259,7 @@ describe('content request authorization context', () => {
         activeOrganizationId: 'org-1',
       },
     });
+    expect(requireRolesMock).not.toHaveBeenCalled();
 
     ensureFeatureMock.mockReturnValueOnce(new Response('disabled', { status: 451 }));
     await expect(
@@ -267,14 +268,6 @@ describe('content request authorization context', () => {
         user: { id: 'subject-1', roles: ['editor'], instanceId: 'instance-1' },
       } as never)
     ).resolves.toMatchObject({ error: expect.objectContaining({ status: 451 }) });
-
-    requireRolesMock.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
-    await expect(
-      resolveContentActor(new Request('https://example.test/content'), {
-        sessionId: 'session-1',
-        user: { id: 'subject-1', roles: ['viewer'], instanceId: 'instance-1' },
-      } as never)
-    ).resolves.toMatchObject({ error: expect.objectContaining({ status: 403 }) });
 
     resolveActorInfoMock.mockResolvedValueOnce({ error: new Response('db', { status: 503 }) });
     await expect(

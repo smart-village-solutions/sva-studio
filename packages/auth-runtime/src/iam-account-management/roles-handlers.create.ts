@@ -22,6 +22,7 @@ import {
   requireRoleIdentityProvider,
   resolveRoleMutationActor,
 } from './roles-handlers.shared.js';
+import { validateRequestedPermissions } from './role-mutation-persistence.js';
 
 export const createRoleInternal = createCreateRoleHandlerInternal({
   asApiItem,
@@ -43,4 +44,5 @@ export const createRoleInternal = createCreateRoleHandlerInternal({
   sanitizeRoleErrorMessage,
   toPayloadHash,
   trackKeycloakCall,
+  validateRequestedPermissions,
 });

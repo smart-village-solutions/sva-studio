@@ -12,12 +12,10 @@ import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@s
 import { createApiError } from '../iam-account-management/api-helpers.js';
 import { ensureFeature, getFeatureFlags } from '../iam-account-management/feature-flags.js';
 import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
-import { logger as accountLogger, requireRoles, resolveActorInfo } from '../iam-account-management/shared.js';
+import { logger as accountLogger, resolveActorInfo } from '../iam-account-management/shared.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { withAuthenticatedUser } from '../middleware.js';
 import { getSession } from '../redis-session.js';
-
-const CONTENT_ROLES = new Set(['system_admin', 'app_manager', 'editor']);
 
 export type ResolvedContentActor = {
   actor: {
@@ -275,11 +273,6 @@ export const resolveContentActor = async (
   const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
   if (featureCheck) {
     return { error: featureCheck };
-  }
-
-  const roleCheck = requireRoles(ctx, CONTENT_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return { error: roleCheck };
   }
 
   const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });

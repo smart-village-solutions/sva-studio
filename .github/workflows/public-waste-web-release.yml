@@ -18,7 +18,7 @@ jobs:
     name: Release Public Waste Web
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: public-waste-production
+    environment: web-waste-calendar
     env:
       PUBLIC_WASTE_BASE_URL: ${{ vars.PUBLIC_WASTE_BASE_URL }}
       PUBLIC_WASTE_STACK_NAME: ${{ vars.PUBLIC_WASTE_STACK_NAME || 'web-waste-calendar' }}

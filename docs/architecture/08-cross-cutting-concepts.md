@@ -52,6 +52,14 @@ gleichzeitig beeinflussen.
 - Trigger.dev ist für Studio kein zulässiger Workflow-Pfad.
 - Outbox, n8n-Anbindung, SSE/WebSocket und Broker-Pfade wie NATS bleiben explizite Folgearbeit hinter derselben Hostgrenze.
 
+### Öffentlicher Waste-Web-Releasevertrag
+
+- Die öffentliche Waste-Webversion ist betriebsseitig strikt vom Studio-Releasepfad getrennt: eigenes Image, eigener Stack, eigener Workflow, eigener Variablenraum.
+- Produktive Konfiguration für diesen Pfad wird ausschließlich über getrennte `PUBLIC_WASTE_*`-Variablen modelliert; ein zusammengefasster JSON-Blob ist nur noch lokaler Fallback.
+- Git-Tags `waste-web-vX.Y.Z` sind die kanonische Freigabe für diese Bürgeroberfläche; andere Branch- oder Studio-Releases dürfen den Stack `public-waste-calendar` nicht mitverändern.
+- Der Portainer-Updatepfad verändert ausschließlich `PUBLIC_WASTE_IMAGE_TAG` und belässt alle übrigen Stack-Variablen unverändert, damit Host, Datenbankpfad und PDF-Konfiguration operativ getrennt steuerbar bleiben.
+- Für diesen speziellen Bürger-Frontend-Stack ist bewusst das einfache SemVer-Tag-Modell führend; Digest-Pinning des Studio-Referenzpfads wird hier nicht auf den Waste-Web-Stack übertragen.
+
 ### Security und Privacy
 
 - OIDC Authorization Code Flow mit PKCE

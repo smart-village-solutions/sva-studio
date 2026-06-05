@@ -42,6 +42,7 @@ output/
 .cache/
 artifacts/
 .playwright-cli/
+.superpowers/
 
 # NX
 .nx/

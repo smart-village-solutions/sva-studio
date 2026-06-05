@@ -314,15 +314,15 @@ describe('runRoleCatalogReconciliation', () => {
     });
   });
 
-  it('accepts canonical alias matches without updating the identity role payload', async () => {
+  it('accepts canonical identity roles for legacy external-name aliases without forcing an idp update', async () => {
     const updateRole = vi.fn(async () => undefined);
     const deps = createDeps({
       resolveIdentityProviderForInstance: vi.fn(async () => ({
         provider: {
           listRoles: vi.fn(async () => [
             {
-              externalName: 'Editor',
-              description: undefined,
+              externalName: 'mainserver_editor',
+              description: 'Canonical description',
               clientRole: false,
               attributes: {
                 managed_by: ['studio'],
@@ -343,18 +343,18 @@ describe('runRoleCatalogReconciliation', () => {
               return {
                 rows: [
                   {
-                    id: 'role-editor',
-                    role_key: 'editor',
-                    role_name: 'editor',
+                    id: 'role-legacy-alias',
+                    role_key: 'mainserver_editor',
+                    role_name: 'mainserver_editor',
                     display_name: 'Editor',
-                    external_role_name: null,
-                    description: null,
+                    external_role_name: 'Editor',
+                    description: 'Canonical description',
                     is_system_role: false,
                     role_level: 0,
                     managed_by: 'studio',
                     sync_state: 'failed',
                     last_synced_at: null,
-                    last_error_code: 'PREVIOUS_ERROR',
+                    last_error_code: 'OLD_ERROR',
                   },
                 ],
               };
@@ -372,14 +372,24 @@ describe('runRoleCatalogReconciliation', () => {
     });
 
     expect(updateRole).not.toHaveBeenCalled();
+    expect(deps.setRoleSyncState).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        roleId: 'role-legacy-alias',
+        syncState: 'synced',
+        errorCode: null,
+        syncedAt: true,
+      })
+    );
     expect(report).toMatchObject({
       outcome: 'success',
       correctedCount: 1,
       failedCount: 0,
       roles: [
         {
-          roleId: 'role-editor',
-          roleKey: 'editor',
+          roleId: 'role-legacy-alias',
+          roleKey: 'mainserver_editor',
           externalRoleName: 'Editor',
           action: 'noop',
           status: 'corrected',

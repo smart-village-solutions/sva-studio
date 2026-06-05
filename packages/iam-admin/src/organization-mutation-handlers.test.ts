@@ -73,6 +73,7 @@ const buildDeps = (): OrganizationMutationHandlerDeps => ({
   isUuid: (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value),
   jsonResponse: (status, payload) =>
     new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json' } }),
+  authorizeOrganizationMutationAccess: vi.fn(async () => null),
   loadContextOptions: vi.fn(async () => state.contextOptions),
   loadOrganizationById: vi.fn(async () => ({
     id: '11111111-1111-1111-8111-111111111111',
@@ -98,7 +99,14 @@ const buildDeps = (): OrganizationMutationHandlerDeps => ({
   ),
   rebuildOrganizationSubtree: vi.fn(),
   requireIdempotencyKey: vi.fn(() => ({ key: 'idem-org-1' })),
-  requireRoles: vi.fn(() => null),
+  requireRoles: vi.fn((requestContext, roles, requestId) =>
+    requestContext.user.roles.some((role) => roles.has(role))
+      ? null
+      : new Response(JSON.stringify({ error: { code: 'forbidden', message: 'forbidden' }, requestId }), {
+          status: 403,
+          headers: { 'content-type': 'application/json' },
+        })
+  ),
   reserveIdempotency: vi.fn(async () => state.reserve),
   resolveActorInfo: vi.fn(async () => state.actorResolution),
   resolveHierarchyFields: vi.fn(async () => ({ ok: true, hierarchyPath: [], depth: 0 })),
@@ -214,6 +222,32 @@ describe('organization mutation handlers', () => {
       'req-org'
     );
     expect(deps.requireRoles).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when no organization mutation authorizer is configured', async () => {
+    const deps = {
+      ...buildDeps(),
+      authorizeOrganizationMutationAccess: undefined,
+    };
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.createOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations', { method: 'POST' }),
+      {
+        ...ctx,
+        user: { ...ctx.user, roles: ['system_admin'] },
+      }
+    );
+
+    expect(response.status).toBe(403);
+    expect(deps.withInstanceScopedDb).not.toHaveBeenCalled();
+    await expect(json(response)).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+        details: { reason_code: 'missing_organization_mutation_authorizer' },
+      },
+      requestId: 'req-org',
+    });
   });
 
   it('creates organizations for text-scoped instance ids without uuid-casting instance_id', async () => {

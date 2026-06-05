@@ -32,15 +32,28 @@ Das System SHALL tenantlokale geschützte Sonderrollen wie `system_admin` von fr
 - **WHEN** ein Benutzer oder eine Rolle im Tenant-Realm verwaltet wird
 - **THEN** behandelt das System `system_admin` weiterhin als geschützte Sonderrolle
 - **AND** Sonderregeln wie Letztadmin-Schutz oder strengere Verwaltungsprüfungen bleiben erhalten
+- **AND** die geschützte Rolle bündelt direkt alle tenantlokalen Permissions des aktiven Sollzustands
 
 #### Scenario: Individuelle Tenant-Rollen bleiben editierbar
 - **WHEN** eine tenantlokale Custom-Rolle ohne Sonderstatus gelesen oder bearbeitet wird
 - **THEN** bleibt sie über die normale Rollenverwaltung editierbar
 - **AND** ihre Rechtebasis kann unabhängig von kanonischen Standardrollen gepflegt werden
 
+### Requirement: system_admin ist die normative Vollzugriffsrolle im Tenant
+Das System SHALL `system_admin` als normative tenantlokale Vollzugriffsrolle behandeln. Die effektive Permission-Menge von `system_admin` MUST mindestens alle tenantlokalen Core-, Verwaltungs- und Modul-Permissions umfassen, die über tenantseitige UI- und API-Gates relevant sind.
+
+#### Scenario: UI-Gate akzeptiert system_admin ohne Nebenartefakte
+- **WHEN** ein UI- oder API-Gate auf eine tenantlokale Verwaltungs- oder Modul-Permission prüft
+- **THEN** erhält ein Benutzer mit `system_admin` die Freigabe auch dann, wenn keine zusätzliche Gruppe wie `admins` und keine ergänzende Rolle wie `core_admin` zugewiesen ist
+
+#### Scenario: Komfortgruppen bleiben optional
+- **WHEN** eine Tenant-Instanz Gruppen oder Standardrollen als Komfortbündel für Administratoren verwendet
+- **THEN** dürfen diese Artefakte weiterhin Permissions vermitteln
+- **AND** sie sind nicht die normative Quelle dafür, dass ein `system_admin` vollen Zugriff besitzt
+
 ## MODIFIED Requirements
 ### Requirement: Plattformrollen und Tenant-Admin-Rollen bleiben getrennt
-Das System SHALL tenant-lokale Admin-Rollen und globale Plattformrollen in der Instanzverwaltung strikt trennen. `instance_registry_admin` ist eine reine Plattformrolle des Root-Realm. `system_admin` ist die geschützte Defaultrolle des Tenant-Realm.
+Das System SHALL tenant-lokale Admin-Rollen und globale Plattformrollen in der Instanzverwaltung strikt trennen. `instance_registry_admin` ist eine reine Plattformrolle des Root-Realm. `system_admin` ist die geschützte tenantlokale Vollzugriffs- und Defaultrolle des Tenant-Realm.
 
 #### Scenario: Nur Plattform-Admin darf Keycloak-Provisioning anstossen
 - **WHEN** ein Benutzer ohne `instance_registry_admin` im Root-Realm versucht, Instanz-Realm-Grundeinstellungen zu ändern oder ein Keycloak-Provisioning auszulösen

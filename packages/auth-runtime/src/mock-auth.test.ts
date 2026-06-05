@@ -38,12 +38,12 @@ describe('auth-runtime mock auth', () => {
   it('creates a configured mock session user', () => {
     process.env.SVA_MOCK_AUTH_USER_ID = 'mock-user';
     process.env.SVA_MOCK_AUTH_INSTANCE_ID = 'de-test';
-    process.env.SVA_MOCK_AUTH_ROLES = 'editor, support_admin';
+    process.env.SVA_MOCK_AUTH_ROLES = 'system_admin, support_admin';
 
     expect(createMockSessionUser()).toEqual({
       id: 'mock-user',
       instanceId: 'de-test',
-      roles: ['editor', 'support_admin'],
+      roles: ['system_admin', 'support_admin'],
     });
   });
 
@@ -55,16 +55,7 @@ describe('auth-runtime mock auth', () => {
     expect(createMockSessionUser()).toEqual({
       id: 'dev:local-admin',
       instanceId: 'de-musterhausen',
-      roles: [
-        'system_admin',
-        'iam_admin',
-        'support_admin',
-        'security_admin',
-        'instance_registry_admin',
-        'interface_manager',
-        'app_manager',
-        'editor',
-      ],
+      roles: ['system_admin'],
     });
   });
 });

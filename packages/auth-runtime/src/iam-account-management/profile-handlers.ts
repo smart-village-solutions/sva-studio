@@ -200,12 +200,44 @@ const resolvePlatformProfileRead = async (
   };
 };
 
+const resolvePlatformProfileWrite = (
+  ctx: AuthenticatedRequestContext
+): Response | null => {
+  if (!canUsePlatformSelfServiceProfile(ctx)) {
+    return null;
+  }
+
+  const requestContext = getWorkspaceContext();
+  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_ui', requestContext.requestId);
+  if (featureCheck) {
+    return featureCheck;
+  }
+
+  return createApiError(
+    403,
+    'forbidden',
+    'Plattform-Profile koennen nicht ueber den tenantlokalen Profilpfad aktualisiert werden.',
+    requestContext.requestId,
+    {
+      reason_code: 'platform_profile_write_not_supported',
+      scope_kind: 'platform',
+    }
+  );
+};
+
 const resolveProfileActorContext = async (
   request: Request,
   ctx: AuthenticatedRequestContext,
   scope: 'read' | 'write',
   options?: { validateWriteCsrf?: boolean }
 ): Promise<ProfileActorContext | Response> => {
+  if (scope === 'write') {
+    const platformWrite = resolvePlatformProfileWrite(ctx);
+    if (platformWrite) {
+      return platformWrite;
+    }
+  }
+
   const requestContext = getWorkspaceContext();
   const featureCheck = ensureFeature(getFeatureFlags(), 'iam_ui', requestContext.requestId);
   if (featureCheck) {

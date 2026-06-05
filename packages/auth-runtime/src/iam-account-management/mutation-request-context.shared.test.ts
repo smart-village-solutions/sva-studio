@@ -5,9 +5,16 @@ const state = vi.hoisted(() => ({
   getFeatureFlags: vi.fn(() => ({ iam_admin: true, iam_bulk: true })),
   requireRoles: vi.fn(),
   authorizeInstancePermissionForUser: vi.fn(),
-  toInstancePermissionApiErrorCode: vi.fn((error: string) =>
-    error === 'database_unavailable' ? 'database_unavailable' : 'forbidden'
-  ),
+  toInstancePermissionApiErrorCode: vi.fn((error: string) => {
+    switch (error) {
+      case 'missing_instance':
+        return 'invalid_instance_id';
+      case 'database_unavailable':
+        return 'database_unavailable';
+      default:
+        return 'forbidden';
+    }
+  }),
   resolveActorInfo: vi.fn(),
   validateCsrf: vi.fn(),
   consumeRateLimit: vi.fn(),
@@ -207,6 +214,43 @@ describe('mutation-request-context.shared', () => {
       action: 'iam.user.write',
     });
     expect(state.requireRoles).not.toHaveBeenCalled();
+  });
+
+  it('rejects root-only platform admins for instance-scoped tenant mutations without an instance context', async () => {
+    const request = new Request('http://localhost/api/v1/iam/users/123e4567-e89b-12d3-a456-426614174000', {
+      method: 'PATCH',
+    });
+    const ctx = {
+      user: {
+        id: 'kc-root-admin',
+        roles: ['instance_registry_admin'],
+      },
+    } as never;
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      error: 'missing_instance',
+      message: 'Kein Instanzkontext für diese Operation vorhanden.',
+    });
+
+    const result = await resolveMutationActorWithAccount(request, ctx, {
+      allowedRoles: new Set(['system_admin']),
+      requiredPermissionAction: 'iam.user.write',
+      feature: 'iam_admin',
+      scope: 'write',
+    });
+
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith({
+      ctx,
+      action: 'iam.user.write',
+    });
+    expect(state.resolveActorInfo).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ response: expect.any(Response) });
+    await expect((result as { response: Response }).response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_instance_id',
+      },
+    });
   });
 
   it('validates mutation path ids and resolves tenant-admin identity providers', async () => {

@@ -9,7 +9,7 @@ import type {
   InstanceStatus,
 } from '@sva/core';
 
-import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
+import type { SqlExecutionResult, SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 
 type InstanceListRow = {
   instance_id: string;
@@ -212,14 +212,11 @@ export type InstanceModuleIamContractRecord = {
   }[];
 };
 
-export type InstanceAdminBootstrapRoleRecord = {
+export type ProtectedSystemRolePermissionBundleRecord = {
   readonly roleKey: string;
   readonly displayName: string;
+  readonly roleLevel: number;
   readonly permissionKeys: readonly string[];
-};
-
-export type InstanceAdminBootstrapModuleRoleRecord = InstanceAdminBootstrapRoleRecord & {
-  readonly moduleId: string;
 };
 
 export type InstanceRegistryRepository = {
@@ -233,12 +230,9 @@ export type InstanceRegistryRepository = {
     managedModuleIds: readonly string[];
     contracts: readonly InstanceModuleIamContractRecord[];
   }): Promise<void>;
-  syncInstanceAdminBootstrap(input: {
+  syncProtectedSystemRolePermissions(input: {
     instanceId: string;
-    groupKey: string;
-    groupDisplayName: string;
-    coreRole: InstanceAdminBootstrapRoleRecord;
-    moduleRoles: readonly InstanceAdminBootstrapModuleRoleRecord[];
+    role: ProtectedSystemRolePermissionBundleRecord;
   }): Promise<void>;
   getAuthClientSecretCiphertext(instanceId: string): Promise<string | null>;
   getTenantAdminClientSecretCiphertext(instanceId: string): Promise<string | null>;
@@ -377,7 +371,7 @@ export type InstanceRegistryRepository = {
   }): Promise<InstanceKeycloakProvisioningRunStep>;
 };
 
-const statement = (text: string, values: readonly (string | number | boolean | null)[]): SqlStatement => ({ text, values });
+const statement = (text: string, values: readonly SqlPrimitive[]): SqlStatement => ({ text, values });
 
 const queryRows = async <TRow>(executor: SqlExecutor, sql: SqlStatement): Promise<readonly TRow[]> => {
   const result: SqlExecutionResult<TRow> = await executor.execute<TRow>(sql);
@@ -569,7 +563,7 @@ WHERE instance_id = $1
       compareAlphabetically
     );
     const rolePermissionPairs = contracts.flatMap((contract) =>
-      (contract.tenantBootstrapRoles ?? contract.systemRoles ?? []).flatMap((role) =>
+      (contract.systemRoles ?? contract.tenantBootstrapRoles ?? []).flatMap((role) =>
         role.permissionIds.map((permissionId) => ({
           moduleId: contract.moduleId,
           roleName: role.roleName,
@@ -704,42 +698,8 @@ WHERE instance_id = $1
     }
   },
 
-  async syncInstanceAdminBootstrap({ instanceId, groupKey, groupDisplayName, coreRole, moduleRoles }) {
-    const roles = [coreRole, ...moduleRoles];
-    const permissionKeys = Array.from(new Set(roles.flatMap((role) => role.permissionKeys))).sort(compareAlphabetically);
-
-    await executor.execute(
-      statement(
-        `
-INSERT INTO iam.groups (
-  id,
-  instance_id,
-  group_key,
-  display_name,
-  description,
-  group_type,
-  is_active
-)
-VALUES (
-  gen_random_uuid(),
-  $1,
-  $2,
-  $3,
-  'Von Studio initial angelegte Admin-Gruppe',
-  'role_bundle',
-  TRUE
-)
-ON CONFLICT (instance_id, group_key) DO UPDATE
-SET
-  display_name = EXCLUDED.display_name,
-  description = EXCLUDED.description,
-  group_type = EXCLUDED.group_type,
-  is_active = TRUE,
-  updated_at = NOW();
-`,
-        [instanceId, groupKey, groupDisplayName]
-      )
-    );
+  async syncProtectedSystemRolePermissions({ instanceId, role }) {
+    const permissionKeys = Array.from(new Set(role.permissionKeys)).sort(compareAlphabetically);
 
     for (const permissionKey of permissionKeys) {
       await executor.execute(
@@ -777,15 +737,14 @@ SET
   description = EXCLUDED.description,
   updated_at = NOW();
 `,
-          [instanceId, permissionKey, `Initiale Admin-Berechtigung ${permissionKey}`]
+          [instanceId, permissionKey, `Geschützte Systemrolle ${role.roleKey}: ${permissionKey}`]
         )
       );
     }
 
-    for (const role of roles) {
-      await executor.execute(
-        statement(
-          `
+    await executor.execute(
+      statement(
+        `
 INSERT INTO iam.roles (
   id,
   instance_id,
@@ -807,10 +766,10 @@ VALUES (
   $2,
   $2,
   $3,
-  $3,
+  $2,
   $4,
-  FALSE,
-  0,
+  TRUE,
+  $5,
   'studio',
   'pending',
   NOW(),
@@ -822,34 +781,44 @@ SET
   display_name = EXCLUDED.display_name,
   external_role_name = EXCLUDED.external_role_name,
   description = EXCLUDED.description,
-  is_system_role = FALSE,
+  is_system_role = TRUE,
+  role_level = EXCLUDED.role_level,
   updated_at = NOW();
 `,
-          [instanceId, role.roleKey, role.displayName, `Initiale Admin-Rolle ${role.displayName}`]
-        )
-      );
+        [instanceId, role.roleKey, role.displayName, `Geschützte Systemrolle ${role.displayName}`, role.roleLevel]
+      )
+    );
 
-      await executor.execute(
-        statement(
-          `
-DELETE FROM iam.role_permissions
-WHERE instance_id = $1
-  AND role_id = (
+    await executor.execute(
+      statement(
+        `
+DELETE FROM iam.role_permissions role_permission
+WHERE role_permission.instance_id = $1
+  AND role_permission.role_id = (
     SELECT id
     FROM iam.roles
     WHERE instance_id = $1
       AND role_key = $2
     LIMIT 1
+  )
+  AND role_permission.grant_origin_kind = 'bootstrap'
+  AND role_permission.grant_origin_module_id IS NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM iam.permissions permission
+    WHERE permission.instance_id = role_permission.instance_id
+      AND permission.id = role_permission.permission_id
+      AND permission.permission_key = ANY($3::text[])
   );
 `,
-          [instanceId, role.roleKey]
-        )
-      );
+        [instanceId, role.roleKey, permissionKeys]
+      )
+    );
 
-      for (const permissionKey of role.permissionKeys) {
-        await executor.execute(
-          statement(
-            `
+    for (const permissionKey of permissionKeys) {
+      await executor.execute(
+        statement(
+          `
 INSERT INTO iam.role_permissions (
   instance_id,
   role_id,
@@ -859,40 +828,19 @@ INSERT INTO iam.role_permissions (
 )
 SELECT
   $1,
-  role.id,
+  iam_role.id,
   permission.id,
-  $4,
-  $5
-FROM iam.roles role
+  'bootstrap',
+  NULL
+FROM iam.roles iam_role
 JOIN iam.permissions permission
-  ON permission.instance_id = role.instance_id
-WHERE role.instance_id = $1
-  AND role.role_key = $2
+  ON permission.instance_id = iam_role.instance_id
+WHERE iam_role.instance_id = $1
+  AND iam_role.role_key = $2
   AND permission.permission_key = $3
 ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
 `,
-            [instanceId, role.roleKey, permissionKey, 'bootstrap', null]
-          )
-        );
-      }
-
-      await executor.execute(
-        statement(
-          `
-INSERT INTO iam.group_roles (instance_id, group_id, role_id)
-SELECT
-  $1,
-  iam_group.id,
-  role.id
-FROM iam.groups iam_group
-JOIN iam.roles role
-  ON role.instance_id = iam_group.instance_id
-WHERE iam_group.instance_id = $1
-  AND iam_group.group_key = $2
-  AND role.role_key = $3
-ON CONFLICT (instance_id, group_id, role_id) DO NOTHING;
-`,
-          [instanceId, groupKey, role.roleKey]
+          [instanceId, role.roleKey, permissionKey]
         )
       );
     }
@@ -1202,9 +1150,35 @@ LIMIT 1;
       )
     );
     const correlation = correlationRows[0];
+    const legacyArtifactRows = await queryRows<{ legacy_artifact_count: number }>(
+      executor,
+      statement(
+        `
+SELECT (
+  COALESCE((
+    SELECT COUNT(*)::int
+    FROM iam.roles
+    WHERE instance_id = $1
+      AND role_key = 'core_admin'
+  ), 0) +
+  COALESCE((
+    SELECT COUNT(*)::int
+    FROM iam.groups
+    WHERE instance_id = $1
+      AND group_key = 'admins'
+  ), 0)
+) AS legacy_artifact_count;
+`,
+        [instanceId]
+      )
+    );
+    const legacyArtifactCount = legacyArtifactRows[0]?.legacy_artifact_count ?? 0;
+    const hasLegacyAdminArtifacts = legacyArtifactCount > 0;
     const status =
-      aggregate.sync_state === 'failed' ? 'degraded' : aggregate.sync_state === 'pending' ? 'degraded' : 'ready';
-    const summary =
+      aggregate.sync_state === 'failed' || aggregate.sync_state === 'pending' || hasLegacyAdminArtifacts
+        ? 'degraded'
+        : 'ready';
+    const syncSummary =
       aggregate.failed_count > 0 && aggregate.pending_count > 0
         ? `${aggregate.failed_count} Rollen mit Fehler, ${aggregate.pending_count} Rollen im Backlog.`
         : aggregate.failed_count > 0
@@ -1212,12 +1186,21 @@ LIMIT 1;
           : aggregate.pending_count > 0
             ? `${aggregate.pending_count} Rollen im Backlog.`
             : 'Letzter Rollenabgleich ist synchron.';
+    const summary = hasLegacyAdminArtifacts
+      ? aggregate.failed_count > 0 || aggregate.pending_count > 0
+        ? `${syncSummary} ${legacyArtifactCount} Legacy-Admin-Artefakte erfordern manuelle Bereinigung.`
+        : `${legacyArtifactCount} Legacy-Admin-Artefakte erfordern manuelle Bereinigung.`
+      : syncSummary;
 
     return {
       status,
       summary,
       ...(aggregate.last_synced_at ? { checkedAt: aggregate.last_synced_at } : {}),
-      ...(aggregate.last_error_code ? { errorCode: aggregate.last_error_code } : {}),
+      ...(aggregate.last_error_code
+        ? { errorCode: aggregate.last_error_code }
+        : hasLegacyAdminArtifacts
+          ? { errorCode: 'LEGACY_ADMIN_ARTIFACT_DRIFT' }
+          : {}),
       ...(correlation?.request_id ? { requestId: correlation.request_id } : {}),
     };
   },

@@ -36,7 +36,7 @@ describe('platform iam helpers', () => {
     ).rejects.toThrow('platform_identity_provider_not_configured');
   });
 
-  it('maps and sorts platform roles while treating only instance_registry_admin as platform system role', async () => {
+  it('projects only instance_registry_admin as relevant platform role', async () => {
     const { PLATFORM_ROLE_LEVEL_BY_NAME } = await import('./platform-iam-roles.js');
     const { listPlatformRoles, runPlatformRoleReconcile } = await import('./platform-iam.js');
 
@@ -83,12 +83,15 @@ describe('platform iam helpers', () => {
     const roles = await listPlatformRoles();
     expect(PLATFORM_ROLE_LEVEL_BY_NAME.instance_registry_admin).toBe(90);
     expect(PLATFORM_ROLE_LEVEL_BY_NAME.system_admin).toBeUndefined();
-    expect(roles.map((role) => role.externalRoleName)).toEqual([
-      'instance_registry_admin',
-      'custom-studio',
-      'external-role',
-      'offline_access',
-      'system_admin',
+    expect(roles).toEqual([
+      expect.objectContaining({
+        externalRoleName: 'instance_registry_admin',
+        managedBy: 'external',
+        isSystemRole: true,
+        editability: 'read_only',
+        roleLevel: 90,
+        diagnostics: [{ code: 'system_role', objectId: 'instance_registry_admin', objectType: 'role' }],
+      }),
     ]);
     expect(roles[0]).toMatchObject({
       managedBy: 'external',
@@ -97,33 +100,9 @@ describe('platform iam helpers', () => {
       roleLevel: 90,
       diagnostics: [{ code: 'system_role', objectId: 'instance_registry_admin', objectType: 'role' }],
     });
-    expect(roles[1]).toMatchObject({
-      roleKey: 'studio_role',
-      roleName: 'Studio Role',
-      managedBy: 'studio',
-      editability: 'editable',
-      roleLevel: 55,
-    });
-    expect(roles[2]).toMatchObject({
-      managedBy: 'external',
-      diagnostics: [{ code: 'external_managed', objectId: 'external-role', objectType: 'role' }],
-      roleLevel: 0,
-    });
-    expect(roles[3]).toMatchObject({
-      managedBy: 'keycloak_builtin',
-      diagnostics: [{ code: 'built_in_role', objectId: 'offline_access', objectType: 'role' }],
-    });
-    expect(roles[4]).toMatchObject({
-      externalRoleName: 'system_admin',
-      managedBy: 'external',
-      isSystemRole: false,
-      editability: 'read_only',
-      roleLevel: 0,
-      diagnostics: [{ code: 'external_managed', objectId: 'system_admin', objectType: 'role' }],
-    });
 
     const reconcile = await runPlatformRoleReconcile();
-    expect(reconcile.checkedCount).toBe(5);
+    expect(reconcile.checkedCount).toBe(1);
     expect(reconcile.roles).toEqual(
       roles.map((role) => ({
         externalRoleName: role.externalRoleName,
@@ -136,7 +115,7 @@ describe('platform iam helpers', () => {
       expect.objectContaining({
         operation: 'reconcile_platform_roles',
         scope_kind: 'platform',
-        checked_count: 5,
+        checked_count: 1,
       })
     );
   });

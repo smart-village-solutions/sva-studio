@@ -79,13 +79,13 @@ export const createReconcileHandlerInternal =
       return featureCheck;
     }
 
+    if (!ctx.user.instanceId) {
+      return deps.reconcilePlatformRoles(request, ctx, requestContext.requestId, requestContext.traceId);
+    }
+
     const roleCheck = deps.requireSystemAdminRole(ctx, requestContext.requestId);
     if (roleCheck) {
       return roleCheck;
-    }
-
-    if (!ctx.user.instanceId) {
-      return deps.reconcilePlatformRoles(request, ctx, requestContext.requestId, requestContext.traceId);
     }
 
     const actorResolution = await deps.resolveActorInfo(request, ctx, { requireActorMembership: true });

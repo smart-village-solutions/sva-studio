@@ -118,7 +118,6 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
     tenantAdminClientExists: true,
     tenantAdminExists: true,
     tenantAdminHasSystemAdmin: true,
-    tenantAdminHasInstanceRegistryAdmin: false,
     redirectUrisMatch: true,
     logoutUrisMatch: true,
     webOriginsMatch: true,
@@ -925,13 +924,13 @@ describe('InstanceDetailPage', () => {
     await activateTab('Module');
     expect(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeTruthy();
     expect(screen.getByText('news')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Admin-Struktur initialisieren' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]!);
-    fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur initialisieren' }));
-    const bootstrapDialog = screen.getByRole('alertdialog', { name: 'Admin-Struktur wirklich initialisieren?' });
-    fireEvent.click(within(bootstrapDialog).getByRole('button', { name: 'Admin-Struktur initialisieren' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' }));
+    const bootstrapDialog = screen.getByRole('alertdialog', { name: 'Tenant-Admin-Struktur wirklich initialisieren?' });
+    fireEvent.click(within(bootstrapDialog).getByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' }));
 
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');
     expect(assignModule).toHaveBeenCalledWith('demo', 'events');

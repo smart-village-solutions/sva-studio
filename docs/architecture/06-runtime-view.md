@@ -518,7 +518,7 @@ Fehlerpfad:
 
 ### Szenario 9: Admin-Flow User- und Rollenverwaltung
 
-1. `system_admin`/`app_manager` öffnet `/admin/users`.
+1. `system_admin` oder ein anderer tenantlokal berechtigter Admin öffnet `/admin/users`.
 2. Liste wird paginiert über `GET /api/v1/iam/users` geladen.
 3. Bearbeitung erfolgt in `/admin/users/$userId` per Tabs und `PATCH /api/v1/iam/users/$userId`.
 4. Rollen-Änderungen triggern Permission-Invalidierung über `pg_notify`.
@@ -568,7 +568,7 @@ Fehlerpfad:
 1. `system_admin` öffnet `/admin/roles` oder `/admin/users/$userId` auf einem Tenant-Host.
 2. Der Backend-Service liefert ausschließlich tenantseitig sichtbare Rollen und Permissions; `instance_registry_admin` und `instance.registry.manage` bleiben im Tenant-Katalog unsichtbar.
 3. Versucht ein API-Client dennoch, Root-only-Permissions in einer Tenant-Rolle zu speichern, antwortet der Server bereits vor dem Keycloak-Write mit `invalid_request`.
-4. Legacy-Standardrollen wie `app_manager` oder `editor` bleiben lesbar und bearbeitbar, solange sie tenantlokale Rollenartefakte der Instanz sind.
+4. Historische Altrollen aus früheren Seeds bleiben in Bestandsinstanzen nur so lange sichtbar, bis Cleanup-, Repair- oder manuelle Migrationspfade sie ersetzt oder neutralisiert haben; neue Default- oder Systemrollen entstehen daraus nicht mehr.
 
 Fehlerpfad:
 
@@ -588,7 +588,7 @@ Fehlerpfad:
 
 ### Szenario 12: Admin verwaltet Organisationen
 
-1. `system_admin` oder berechtigter `app_manager` öffnet `/admin/organizations`.
+1. `system_admin` oder ein anderer tenantlokal berechtigter Admin öffnet `/admin/organizations`.
 2. Die UI lädt `GET /api/v1/iam/organizations` und erhält ein instanzgebundenes Read-Model mit Parent-, Typ- und Zählerdaten.
 3. Beim Anlegen oder Bearbeiten sendet die UI `POST` oder `PATCH /api/v1/iam/organizations/:organizationId`.
 4. Der Server validiert Instanzscope, Parent-Bezug, Zyklusfreiheit, CSRF-Contract und Deaktivierungsregeln.

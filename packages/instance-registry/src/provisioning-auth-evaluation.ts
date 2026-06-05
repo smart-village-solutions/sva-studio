@@ -15,7 +15,6 @@ export const buildMissingRealmStatus = (
   tenantAdminClientExists: false,
   tenantAdminExists: false,
   tenantAdminHasSystemAdmin: false,
-  tenantAdminHasInstanceRegistryAdmin: false,
   redirectUrisMatch: false,
   logoutUrisMatch: false,
   webOriginsMatch: false,

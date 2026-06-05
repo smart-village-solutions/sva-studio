@@ -3,7 +3,7 @@
 WITH target_roles AS (
   SELECT id, instance_id, role_key
   FROM iam.roles
-  WHERE role_key IN ('system_admin', 'instance_registry_admin', 'app_manager', 'feature-manager', 'interface-manager', 'designer', 'editor', 'moderator')
+  WHERE role_key IN ('system_admin', 'instance_registry_admin')
 ),
 target_instances AS (
   SELECT DISTINCT instance_id
@@ -50,7 +50,7 @@ SET
 WITH target_roles AS (
   SELECT id, instance_id, role_key
   FROM iam.roles
-  WHERE role_key IN ('system_admin', 'instance_registry_admin', 'app_manager', 'feature-manager', 'interface-manager', 'designer', 'editor', 'moderator')
+  WHERE role_key IN ('system_admin', 'instance_registry_admin')
 )
 INSERT INTO iam.role_permissions (instance_id, role_id, permission_id, grant_origin_kind, access_scope)
 SELECT DISTINCT
@@ -74,7 +74,7 @@ WHERE iam.roles.instance_id = iam.role_permissions.instance_id
   AND iam.roles.id = iam.role_permissions.role_id
   AND iam.permissions.instance_id = iam.role_permissions.instance_id
   AND iam.permissions.id = iam.role_permissions.permission_id
-  AND iam.roles.role_key IN ('system_admin', 'instance_registry_admin', 'app_manager', 'feature-manager', 'interface-manager', 'designer', 'editor', 'moderator')
+  AND iam.roles.role_key IN ('system_admin', 'instance_registry_admin')
   AND iam.permissions.permission_key IN ('app.read', 'cockpit.read');
 
 DELETE FROM iam.permissions

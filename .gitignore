@@ -108,3 +108,4 @@ dump.rdb
 apps/public-waste-calendar-web/public-waste-config.json
 apps/**/test-results/
 playwright-report/
+apps/public-waste-calendar-web/public-waste-config.local.json

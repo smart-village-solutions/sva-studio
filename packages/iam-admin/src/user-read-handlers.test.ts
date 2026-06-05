@@ -169,7 +169,7 @@ describe('createUserReadHandlers', () => {
     const handlers = createUserReadHandlers(deps);
     const platformContext = {
       sessionId: 'session-1',
-      user: { id: 'kc-platform-admin', roles: ['system_admin'] },
+      user: { id: 'kc-platform-admin', roles: ['instance_registry_admin'] },
     };
     const request = new Request('http://localhost/api/v1/iam/users');
 

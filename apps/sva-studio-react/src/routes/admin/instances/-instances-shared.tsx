@@ -249,7 +249,7 @@ const buildNewRealmArtifactSteps = (instance: IamInstanceDetail): OperationsStep
       checkedAt,
       requestId,
       ...artifactState(
-        Boolean(keycloakStatus?.tenantAdminHasSystemAdmin && !keycloakStatus.tenantAdminHasInstanceRegistryAdmin),
+        Boolean(keycloakStatus?.tenantAdminHasSystemAdmin),
         'admin.instances.operations.new.stepSummaries.realmRolesFailed',
         'admin.instances.operations.new.stepSummaries.realmRolesReady'
       ),

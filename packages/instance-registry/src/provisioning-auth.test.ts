@@ -80,12 +80,10 @@ const readState = vi.fn(async (): Promise<KeycloakReadState> => ({
   tenantAdminStatus: {
     tenantAdminExists: true,
     tenantAdminHasSystemAdmin: true,
-    tenantAdminHasInstanceRegistryAdmin: false,
   },
   keycloakClientSecret: 'secret',
   tenantAdminClientSecret: 'tenant-secret',
   systemAdminRole: { name: 'system_admin' },
-  instanceRegistryAdminRole: null,
 }));
 
 describe('provisioning-auth readers', () => {

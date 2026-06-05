@@ -20,7 +20,7 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { Switch } from '../../../components/ui/switch';
 import { useUsers } from '../../../hooks/use-users';
-import { isIamBulkEnabled } from '../../../lib/iam-admin-access';
+import { hasPlatformInstanceAdminAccess, isIamBulkEnabled } from '../../../lib/iam-admin-access';
 import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
@@ -98,7 +98,7 @@ export const UserListPage = () => {
   const [syncResult, setSyncResult] = React.useState<IamUserImportSyncReport | null>(null);
   const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
   const { user } = useAuth();
-  const isPlatformScope = user !== null && !user.instanceId;
+  const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
   const isAuthLoading = user === null;
 
   const onConfirmStatusAction = async () => {

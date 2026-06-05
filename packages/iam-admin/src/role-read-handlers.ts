@@ -79,7 +79,14 @@ export type RoleReadHandlerDeps<TRole = unknown, TPermission = unknown, TFeature
 export type RoleReadApiErrorCode = ApiErrorCode;
 
 const ROOT_ADMIN_ROLES = new Set(['instance_registry_admin']);
-const TENANT_ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
+
+const createMissingRoleReadAuthorizerResponse = <TRole, TPermission, TFeatureFlags>(
+  deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags>,
+  requestId?: string
+): Response =>
+  deps.createApiError(403, 'forbidden', 'Autorisierungsstrategie fuer Rollenlesezugriffe ist nicht konfiguriert.', requestId, {
+    reason_code: 'missing_role_read_authorizer',
+  });
 
 const resolveRoleReadActor = async <TRole, TPermission, TFeatureFlags>(
   deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags>,
@@ -94,11 +101,9 @@ const resolveRoleReadActor = async <TRole, TPermission, TFeatureFlags>(
   }
   const accessCheck = deps.authorizeRoleReadAccess
     ? await deps.authorizeRoleReadAccess(request, ctx, requestContext.requestId, options)
-    : deps.requireRoles(
-        ctx,
-        !ctx.user.instanceId && options.allowPlatformRoles ? ROOT_ADMIN_ROLES : TENANT_ADMIN_ROLES,
-        requestContext.requestId
-      );
+    : !ctx.user.instanceId && options.allowPlatformRoles
+      ? deps.requireRoles(ctx, ROOT_ADMIN_ROLES, requestContext.requestId)
+      : createMissingRoleReadAuthorizerResponse(deps, requestContext.requestId);
   if (accessCheck) {
     return accessCheck;
   }

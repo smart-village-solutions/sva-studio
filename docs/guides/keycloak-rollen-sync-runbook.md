@@ -59,6 +59,7 @@ Häufige Fehlercodes:
 - `IDP_CONFLICT`: Rollenkonflikt im externen Katalog
 - `DB_WRITE_FAILED`: Keycloak-Schritt erfolgreich, Persistenz lokal fehlgeschlagen
 - `COMPENSATION_FAILED`: Rückabwicklung konnte den Zwischenzustand nicht sauber auflösen
+- `LEGACY_ADMIN_ARTIFACT_DRIFT`: Legacy-Artefakte wie `admins` oder `core_admin` sind noch vorhanden und müssen manuell bereinigt werden
 - `REQUIRES_MANUAL_ACTION`: Reconcile hat externen Drift erkannt, der bewusst nicht automatisch bereinigt wurde
 
 ## Manuelle Reconciliation
@@ -77,6 +78,38 @@ Häufige Fehlercodes:
    - `failed`: Korrekturversuch ist fehlgeschlagen; Ursache im Keycloak-/DB-Pfad analysieren.
    - `requires_manual_action`: meist orphaned Keycloak-Rolle, manuelle Freigabe erforderlich.
 7. Bei orphaned Rollen vor einer Löschung immer Freigabe und Nutzungsprüfung dokumentieren.
+
+## Repair-Pfad für Legacy-Admin-Artefakte
+
+Auslöser:
+
+- `reconcile.status = degraded`, obwohl die Sync-Zähler keine offenen `failed`-Einträge mehr zeigen
+- `reconcile.errorCode = LEGACY_ADMIN_ARTIFACT_DRIFT`
+- Summary-Hinweis wie `Legacy-Admin-Artefakte erfordern manuelle Bereinigung`
+
+Vorgehen:
+
+1. Im Tenant zuerst prüfen, dass `system_admin` weiterhin das vollständige Permission-Superset trägt und als kanonische Admin-Rolle funktionsfähig ist.
+2. In der Tenant-Rollenverwaltung nach `core_admin` suchen und dokumentieren, ob die Rolle noch direkte Benutzer- oder Gruppenzuordnungen hat.
+3. In der Tenant-Gruppenverwaltung nach `admins` suchen und dokumentieren, welche Benutzer, Untergruppen oder Composite-Zuordnungen noch daran hängen.
+4. Falls an `core_admin` oder `admins` noch fachlich benötigte Rechte hängen, diese Rechte nicht zurückmigrieren, sondern als explizite Custom-Rollen oder Custom-Gruppen nachbauen.
+5. Erst wenn die Nachfolgestruktur steht, `core_admin` und `admins` aus den normalen Tenant-Admin-Flows entfernen oder löschen.
+6. Anschließend den Reconcile-Lauf erneut auslösen und verifizieren, dass der Drift-Hinweis verschwindet.
+7. Die Bereinigung im Incident- oder Betriebsprotokoll mit `instance_id`, entfernten Artefakten und dem Nachfolgemodell festhalten.
+
+Leitplanken:
+
+- `instance_registry_admin` ist im Tenant kein zulässiger Reparaturanker mehr.
+- Legacy-Rollen oder -Gruppen dürfen nicht als verdeckte Voraussetzung wieder eingeführt werden.
+- Modulrechte bleiben permission-basiert; ein Rollback auf implizite Default-Rollen ist nicht zulässig.
+
+## Rollback nach fehlerhafter Legacy-Bereinigung
+
+1. Wenn nach der Bereinigung Berechtigungen fehlen, zuerst den betroffenen Fachzugriff und die fehlenden Permissions konkret ermitteln.
+2. Die benötigten Rechte als explizite Custom-Rolle oder Custom-Gruppe neu anlegen und den betroffenen Benutzern gezielt zuweisen.
+3. Nur `system_admin` bleibt die geschützte Standardrolle; `admins` oder `core_admin` werden nicht wieder als Standardmodell hergestellt.
+4. Falls die Störung aus einer fehlerhaften Modul-Permission-Menge stammt, das Modul-IAM reseeden oder den tenantlokalen `system_admin`-Repair ausführen, statt Legacy-Artefakte zurückzubringen.
+5. Nach dem Rollback erneut Reconcile und fachliche Smoke-Checks ausführen und die Entscheidung dokumentieren.
 
 ## Triage bei Alerts
 
@@ -112,7 +145,8 @@ Häufige Fehlercodes:
 1. Betroffene `instance_id` über `iam_role_drift_backlog` identifizieren.
 2. Letzten geplanten oder manuellen Reconcile-Lauf im Log suchen (`operation = reconcile_roles` oder `reconcile_roles_scheduler`).
 3. Prüfen, ob nur `requires_manual_action` vorliegt oder echte `failed`-Einträge existieren.
-4. Bei ausschließlich orphaned Rollen Freigabeprozess starten; bei fehlenden Rollen oder Metadatenabweichungen Reconcile erneut ausführen.
+4. Bei `LEGACY_ADMIN_ARTIFACT_DRIFT` den Repair-Pfad für `admins` und `core_admin` aus diesem Runbook abarbeiten.
+5. Bei ausschließlich orphaned Rollen Freigabeprozess starten; bei fehlenden Rollen oder Metadatenabweichungen Reconcile erneut ausführen.
 
 ## Audit- und Logging-Nachweise
 

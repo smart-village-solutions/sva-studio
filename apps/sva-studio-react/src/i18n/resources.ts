@@ -1050,6 +1050,9 @@ export const i18nResources = {
       profile: {
         title: 'Mein Konto',
         subtitle: 'Persönliche Daten und Einstellungen verwalten',
+        platformReadOnlyTitle: 'Plattform-Profil nur lesbar',
+        platformReadOnlyBody:
+          'Plattform-Profile sind hier nur lesbar. Änderungen werden nicht über den tenantlokalen Profilpfad gespeichert.',
       },
       fields: {
         username: 'Benutzername',
@@ -1859,13 +1862,13 @@ export const i18nResources = {
           },
           module: {
             permissions: 'Berechtigungen: {{value}}',
-            roles: 'Systemrollen: {{value}}',
+            roles: 'Geschützte Systemrollen: {{value}}',
           },
           actions: {
             assign: 'Modul zuweisen',
             revoke: 'Modul entziehen',
             seedIamBaseline: 'IAM-Basis neu aufbauen',
-            bootstrapAdminStructure: 'Admin-Struktur initialisieren',
+            bootstrapAdminStructure: 'Tenant-Admin-Struktur initialisieren',
           },
           confirmRevoke: {
             title: 'Modul wirklich entziehen?',
@@ -1875,10 +1878,10 @@ export const i18nResources = {
             cancel: 'Abbrechen',
           },
           confirmBootstrap: {
-            title: 'Admin-Struktur wirklich initialisieren?',
+            title: 'Tenant-Admin-Struktur wirklich initialisieren?',
             description:
-              'Für die Instanz {{instanceId}} wird die initiale Admin-Struktur für Core und aktuell zugewiesene Module neu angelegt oder überschrieben.',
-            confirm: 'Admin-Struktur initialisieren',
+              'Für die Instanz {{instanceId}} werden `system_admin` und die IAM-Basis der aktuell zugewiesenen Module synchronisiert. Zusätzliche Legacy-Standardrollen werden dabei nicht angelegt.',
+            confirm: 'Tenant-Admin-Struktur initialisieren',
             cancel: 'Abbrechen',
           },
         },
@@ -1968,20 +1971,20 @@ export const i18nResources = {
           },
         },
         adminBootstrap: {
-          title: 'Admin-Struktur',
+          title: 'Tenant-Admin-Struktur',
           subtitlePending:
             'Der Abschnitt ist Teil des Happy Path, wird aber erst nach erfolgreichem Registry-Create aktiv.',
           subtitleReady:
-            'Optional Module auswählen und danach die initiale Admin-Struktur für Core und zugewiesene Module anlegen.',
+            'Optional Module auswählen und danach `system_admin` sowie die IAM-Basis für die zugewiesenen Module synchronisieren.',
           moduleHint: 'Enthält initial die Rechte: {{value}}',
           conflictHint:
-            'Bestehende Rollen mit gleichem Namen werden beim erneuten Bootstrap überschrieben. Bereits angelegte Sonderrollen bleiben unberührt.',
-          action: 'Admin-Struktur jetzt anlegen',
+            'Beim erneuten Bootstrap wird nur die geschützte Rolle `system_admin` auf den Sollzustand zurückgeführt. Bereits angelegte individuelle Rollen bleiben unberührt.',
+          action: 'Tenant-Admin-Struktur jetzt anlegen',
           actionHintPending: 'Zuerst die Instanz anlegen, danach wird dieser Schritt aktiv.',
           actionHintReady:
-            'Ohne Modulauswahl werden nur die Gruppe Admins und die Core-Admin-Rolle angelegt.',
+            'Ohne Modulauswahl wird nur `system_admin` als tenantlokale Vollzugriffsrolle synchronisiert.',
           success:
-            'Die initiale Admin-Struktur wurde erfolgreich angelegt. Die Instanz gilt damit im Create-Flow als fertig.',
+            'Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Die Instanz gilt damit im Create-Flow als fertig.',
           modules: {
             news: 'News',
             events: 'Events',
@@ -2286,7 +2289,6 @@ export const i18nResources = {
           tenantAdminClientExists: 'Tenant-Admin-Client vorhanden',
           tenantAdminExists: 'Tenant-Admin vorhanden',
           tenantAdminHasSystemAdmin: 'Tenant-Admin hat system_admin',
-          tenantAdminHasInstanceRegistryAdmin: 'Tenant-Admin hat instance_registry_admin',
           redirectUrisMatch: 'Redirect-URIs stimmen',
           logoutUrisMatch: 'Logout-URIs stimmen',
           webOriginsMatch: 'Web-Origins stimmen',
@@ -4572,6 +4574,9 @@ export const i18nResources = {
       profile: {
         title: 'My Account',
         subtitle: 'Manage personal data and preferences',
+        platformReadOnlyTitle: 'Platform profile is read only',
+        platformReadOnlyBody:
+          'Platform profiles are read only here. Changes are not saved through the tenant-local profile path.',
       },
       fields: {
         username: 'Username',
@@ -5374,13 +5379,13 @@ export const i18nResources = {
           },
           module: {
             permissions: 'Permissions: {{value}}',
-            roles: 'System roles: {{value}}',
+            roles: 'Protected system roles: {{value}}',
           },
           actions: {
             assign: 'Assign module',
             revoke: 'Revoke module',
             seedIamBaseline: 'Rebuild IAM baseline',
-            bootstrapAdminStructure: 'Initialize admin structure',
+            bootstrapAdminStructure: 'Initialize tenant admin structure',
           },
           confirmRevoke: {
             title: 'Really revoke module?',
@@ -5390,10 +5395,10 @@ export const i18nResources = {
             cancel: 'Cancel',
           },
           confirmBootstrap: {
-            title: 'Really initialize the admin structure?',
+            title: 'Really initialize the tenant admin structure?',
             description:
-              'The initial admin structure for Core and the currently assigned modules will be created or overwritten for instance {{instanceId}}.',
-            confirm: 'Initialize admin structure',
+              'For instance {{instanceId}}, `system_admin` and the IAM baseline for the currently assigned modules will be synchronized. No additional legacy default roles are created.',
+            confirm: 'Initialize tenant admin structure',
             cancel: 'Cancel',
           },
         },
@@ -5484,16 +5489,16 @@ export const i18nResources = {
           subtitlePending:
             'This section stays visible in the happy path but only becomes actionable after the registry create succeeded.',
           subtitleReady:
-            'Optionally select modules and then create the initial admin structure for Core and the assigned modules.',
+            'Optionally select modules and then synchronize `system_admin` together with the IAM baseline for the assigned modules.',
           moduleHint: 'Initially grants: {{value}}',
           conflictHint:
-            'Existing roles with the same name are overwritten during a repeated bootstrap. Already created custom roles stay untouched.',
-          action: 'Create admin structure now',
+            'A repeated bootstrap only restores the protected `system_admin` role to the target state. Existing custom roles stay untouched.',
+          action: 'Create tenant admin structure now',
           actionHintPending: 'Create the instance first, then this step becomes active.',
           actionHintReady:
-            'Without selecting modules, only the Admins group and the Core Admin role are created.',
+            'Without selecting modules, only `system_admin` is synchronized as the tenant-wide full-access role.',
           success:
-            'The initial admin structure was created successfully. In the create flow, the instance is now considered complete.',
+            'The tenant admin structure was synchronized successfully. In the create flow, the instance is now considered complete.',
           modules: {
             news: 'News',
             events: 'Events',
@@ -5780,7 +5785,6 @@ export const i18nResources = {
           tenantAdminClientExists: 'Tenant admin client exists',
           tenantAdminExists: 'Tenant admin exists',
           tenantAdminHasSystemAdmin: 'Tenant admin has system_admin',
-          tenantAdminHasInstanceRegistryAdmin: 'Tenant admin has instance_registry_admin',
           redirectUrisMatch: 'Redirect URIs match',
           logoutUrisMatch: 'Logout URIs match',
           webOriginsMatch: 'Web origins match',

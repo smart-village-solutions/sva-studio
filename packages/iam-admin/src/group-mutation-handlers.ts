@@ -139,7 +139,19 @@ export type GroupMutationHandlerDeps = {
   ) => Promise<T>;
 };
 
-const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
+const createMissingGroupMutationAuthorizerResponse = (
+  deps: GroupMutationHandlerDeps,
+  requestId?: string
+): Response =>
+  deps.createApiError(
+    403,
+    'forbidden',
+    'Autorisierungsstrategie fuer Gruppenmutationen ist nicht konfiguriert.',
+    requestId,
+    {
+      reason_code: 'missing_group_mutation_authorizer',
+    }
+  );
 
 const resolveGroupMutationActor = async (
   deps: GroupMutationHandlerDeps,
@@ -150,7 +162,7 @@ const resolveGroupMutationActor = async (
 
   const accessCheck = deps.authorizeGroupMutationAccess
     ? await deps.authorizeGroupMutationAccess(request, ctx, requestContext.requestId)
-    : deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+    : createMissingGroupMutationAuthorizerResponse(deps, requestContext.requestId);
   if (accessCheck) {
     return accessCheck;
   }

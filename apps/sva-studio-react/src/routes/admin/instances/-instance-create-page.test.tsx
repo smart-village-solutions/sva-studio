@@ -177,8 +177,8 @@ describe('InstanceCreatePage', () => {
     expect(screen.getByText('Die Instanz demo wurde in der Registry angelegt. Aktueller Status: Angefordert.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Detailseite öffnen' }).getAttribute('href')).toBe('/admin/instances/demo');
     expect(screen.getByText('Führen Sie dort den Keycloak-Abgleich für Realm saas-demo aus.')).toBeTruthy();
-    expect(screen.getByText('Admin-Struktur')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' })).toBeTruthy();
+    expect(screen.getByText('Tenant-Admin-Struktur')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' })).toBeTruthy();
   });
 
   it('runs the admin bootstrap step after a successful create', async () => {
@@ -220,7 +220,7 @@ describe('InstanceCreatePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Instanz anlegen' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' })).toBeTruthy();
     });
 
     const newsCheckbox = screen.getByRole('checkbox', { name: /News/u });
@@ -229,7 +229,7 @@ describe('InstanceCreatePage', () => {
       'instance-admin-bootstrap-module-news-title'
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' }));
 
     await waitFor(() => {
       expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', []);
@@ -278,19 +278,19 @@ describe('InstanceCreatePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Instanz anlegen' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' })).toBeTruthy();
     });
 
     fireEvent.click(screen.getByText(/news\.read/));
     fireEvent.click(screen.getByText(/events\.read/));
-    fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' }));
 
     await waitFor(() => {
       expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', ['news', 'events']);
     });
 
     expect(
-      screen.getByText('Die initiale Admin-Struktur wurde erfolgreich angelegt. Die Instanz gilt damit im Create-Flow als fertig.')
+      screen.getByText('Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Die Instanz gilt damit im Create-Flow als fertig.')
     ).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /Basisdaten/u }));
@@ -299,9 +299,9 @@ describe('InstanceCreatePage', () => {
     });
 
     expect(
-      screen.queryByText('Die initiale Admin-Struktur wurde erfolgreich angelegt. Die Instanz gilt damit im Create-Flow als fertig.')
+      screen.queryByText('Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Die Instanz gilt damit im Create-Flow als fertig.')
     ).toBeNull();
-    expect((screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('shows the bootstrap mutation error after create when the admin structure step fails', async () => {
@@ -341,10 +341,10 @@ describe('InstanceCreatePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Instanz anlegen' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' }));
 
     await waitFor(() => {
       expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', []);

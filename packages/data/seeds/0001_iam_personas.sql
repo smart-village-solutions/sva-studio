@@ -145,12 +145,6 @@ INSERT INTO iam.roles (
 )
 VALUES
   ('30111111-1111-1111-1111-111111111111', 'de-musterhausen', 'system_admin', 'system_admin', 'system_admin', 'system_admin', 'System administration persona', true, 'studio', 'pending', 100),
-  ('30222222-2222-2222-2222-222222222222', 'de-musterhausen', 'app_manager', 'app_manager', 'app_manager', 'app_manager', 'Application management persona', true, 'studio', 'pending', 80),
-  ('30333333-3333-3333-3333-333333333333', 'de-musterhausen', 'feature-manager', 'feature-manager', 'feature-manager', 'feature-manager', 'Feature management persona', true, 'studio', 'pending', 60),
-  ('30444444-4444-4444-4444-444444444444', 'de-musterhausen', 'interface-manager', 'interface-manager', 'interface-manager', 'interface-manager', 'Interface management persona', true, 'studio', 'pending', 50),
-  ('30555555-5555-5555-5555-555555555555', 'de-musterhausen', 'designer', 'designer', 'designer', 'designer', 'Design persona', true, 'studio', 'pending', 40),
-  ('30666666-6666-6666-6666-666666666666', 'de-musterhausen', 'editor', 'editor', 'editor', 'editor', 'Editorial persona', true, 'studio', 'pending', 30),
-  ('30777777-7777-7777-7777-777777777777', 'de-musterhausen', 'moderator', 'moderator', 'moderator', 'moderator', 'Moderation persona', true, 'studio', 'pending', 35),
   ('30888888-8888-8888-8888-888888888888', 'de-musterhausen', 'mainserver_admin', 'mainserver_admin', 'Admin', 'Admin', 'Studio-verwaltete Bootstrap-Rolle für den Abgleich mit dem externen SVA-Mainserver.', false, 'studio', 'pending', 90),
   ('30999999-9999-9999-9999-999999999999', 'de-musterhausen', 'mainserver_app', 'mainserver_app', 'App', 'App', 'Studio-verwaltete Bootstrap-Rolle für den Abgleich mit dem externen SVA-Mainserver.', false, 'studio', 'pending', 80),
   ('30aaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'de-musterhausen', 'mainserver_user', 'mainserver_user', 'User', 'User', 'Studio-verwaltete Bootstrap-Rolle für den Abgleich mit dem externen SVA-Mainserver.', false, 'studio', 'pending', 20),
@@ -248,13 +242,7 @@ SET
 
 INSERT INTO iam.accounts (id, instance_id, keycloak_subject, email_ciphertext, display_name_ciphertext)
 VALUES
-  ('50111111-1111-1111-1111-111111111111', 'de-musterhausen', 'seed:system_admin', 'enc:v1:seed:2Br4L9r7mA:89azg6De9W2xgh9ZWMDg7Q:6ZkQz-ljCq8', 'enc:v1:seed:r76A9cbcvQ:F6GQjC-KsZdU6kgb4fX6RQ:Wr8vP9mS7hY'),
-  ('50222222-2222-2222-2222-222222222222', 'de-musterhausen', 'seed:app_manager', 'enc:v1:seed:Y2W6W_Q6YA:4IbeUqS5iZgRyj8wud1dnQ:BK4U5GJp2xM', 'enc:v1:seed:8uoN0kRw1A:3FSkP2_Pfc7RK2Y9CB_q5Q:h-ZwYFhN0q8'),
-  ('50333333-3333-3333-3333-333333333333', 'de-musterhausen', 'seed:feature_manager', 'enc:v1:seed:4N10D5lGmA:8u6j2qXxmnLr8XHnQw5H7w:G4KfA9iWv0o', 'enc:v1:seed:aXh5YpP9mQ:1d8W5v4u0QvXfBY3M2e0nA:T2hPn6Kx4Rc'),
-  ('50444444-4444-4444-4444-444444444444', 'de-musterhausen', 'seed:interface_manager', 'enc:v1:seed:9bH6fVv8xQ:5vxw8QjC2LrYAfj9QJ8R6w:hD6mQs1v9Nk', 'enc:v1:seed:H2n7bLx4kA:6gq3j8G2p8QYk6M8rA1N6g:R7kL0jU2nQw'),
-  ('50555555-5555-5555-5555-555555555555', 'de-musterhausen', 'seed:designer', 'enc:v1:seed:V4k9rMz0pA:9D8m4W2nV7qQf1eR6yU2dA:K6hPa9sV3wQ', 'enc:v1:seed:uM0w7Xn2cA:2f8N6d3Qv9sK1aP4rT7yBg:B9mPq2hV6xW'),
-  ('50666666-6666-6666-6666-666666666666', 'de-musterhausen', 'seed:editor', 'enc:v1:seed:G1y8nVb6qA:3r6M9d2Pq8wV4cT1mK7xJQ:L5pQw8nZ2vR', 'enc:v1:seed:mQ9k7Bv2dA:7t1P4nW8rQ6yV3fM9xJ2cQ:N4sLh7kP1wR'),
-  ('50777777-7777-7777-7777-777777777777', 'de-musterhausen', 'seed:moderator', 'enc:v1:seed:T8m4cN1vQw:8a2K5qP9rW3nX6dM1jF7yA:Q7wP2nK6vXs', 'enc:v1:seed:zR3n8Vq5mA:5y9J2kF6pQ4tW1dN8xM3rQ:P2hVk9mQ4wX')
+  ('50111111-1111-1111-1111-111111111111', 'de-musterhausen', 'seed:system_admin', 'enc:v1:seed:2Br4L9r7mA:89azg6De9W2xgh9ZWMDg7Q:6ZkQz-ljCq8', 'enc:v1:seed:r76A9cbcvQ:F6GQjC-KsZdU6kgb4fX6RQ:Wr8vP9mS7hY')
 ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO UPDATE
 SET
   email_ciphertext = EXCLUDED.email_ciphertext,
@@ -263,26 +251,14 @@ SET
 
 INSERT INTO iam.instance_memberships (instance_id, account_id, membership_type)
 VALUES
-  ('de-musterhausen', '50111111-1111-1111-1111-111111111111', 'member'),
-  ('de-musterhausen', '50222222-2222-2222-2222-222222222222', 'member'),
-  ('de-musterhausen', '50333333-3333-3333-3333-333333333333', 'member'),
-  ('de-musterhausen', '50444444-4444-4444-4444-444444444444', 'member'),
-  ('de-musterhausen', '50555555-5555-5555-5555-555555555555', 'member'),
-  ('de-musterhausen', '50666666-6666-6666-6666-666666666666', 'member'),
-  ('de-musterhausen', '50777777-7777-7777-7777-777777777777', 'member')
+  ('de-musterhausen', '50111111-1111-1111-1111-111111111111', 'member')
 ON CONFLICT (instance_id, account_id) DO UPDATE
 SET
   membership_type = EXCLUDED.membership_type;
 
 INSERT INTO iam.account_roles (instance_id, account_id, role_id)
 VALUES
-  ('de-musterhausen', '50111111-1111-1111-1111-111111111111', '30111111-1111-1111-1111-111111111111'),
-  ('de-musterhausen', '50222222-2222-2222-2222-222222222222', '30222222-2222-2222-2222-222222222222'),
-  ('de-musterhausen', '50333333-3333-3333-3333-333333333333', '30333333-3333-3333-3333-333333333333'),
-  ('de-musterhausen', '50444444-4444-4444-4444-444444444444', '30444444-4444-4444-4444-444444444444'),
-  ('de-musterhausen', '50555555-5555-5555-5555-555555555555', '30555555-5555-5555-5555-555555555555'),
-  ('de-musterhausen', '50666666-6666-6666-6666-666666666666', '30666666-6666-6666-6666-666666666666'),
-  ('de-musterhausen', '50777777-7777-7777-7777-777777777777', '30777777-7777-7777-7777-777777777777')
+  ('de-musterhausen', '50111111-1111-1111-1111-111111111111', '30111111-1111-1111-1111-111111111111')
 ON CONFLICT (instance_id, account_id, role_id) DO NOTHING;
 
 INSERT INTO iam.account_organizations (
@@ -294,15 +270,7 @@ INSERT INTO iam.account_organizations (
 )
 VALUES
   ('de-musterhausen', '50111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', true, 'internal'),
-  ('de-musterhausen', '50111111-1111-1111-1111-111111111111', '22333333-3333-3333-3333-333333333333', false, 'internal'),
-  ('de-musterhausen', '50222222-2222-2222-2222-222222222222', '22333333-3333-3333-3333-333333333333', true, 'internal'),
-  ('de-musterhausen', '50333333-3333-3333-3333-333333333333', '22333333-3333-3333-3333-333333333333', true, 'internal'),
-  ('de-musterhausen', '50333333-3333-3333-3333-333333333333', '22444444-4444-4444-4444-444444444444', false, 'external'),
-  ('de-musterhausen', '50444444-4444-4444-4444-444444444444', '22222222-2222-2222-2222-222222222222', true, 'internal'),
-  ('de-musterhausen', '50555555-5555-5555-5555-555555555555', '22444444-4444-4444-4444-444444444444', true, 'internal'),
-  ('de-musterhausen', '50666666-6666-6666-6666-666666666666', '22444444-4444-4444-4444-444444444444', true, 'internal'),
-  ('de-musterhausen', '50666666-6666-6666-6666-666666666666', '22333333-3333-3333-3333-333333333333', false, 'internal'),
-  ('de-musterhausen', '50777777-7777-7777-7777-777777777777', '22333333-3333-3333-3333-333333333333', true, 'internal')
+  ('de-musterhausen', '50111111-1111-1111-1111-111111111111', '22333333-3333-3333-3333-333333333333', false, 'internal')
 ON CONFLICT (instance_id, account_id, organization_id) DO UPDATE
 SET
   is_default_context = EXCLUDED.is_default_context,
@@ -345,65 +313,7 @@ FROM (
     ('system_admin', 'content.archive'),
     ('system_admin', 'content.restore'),
     ('system_admin', 'content.readHistory'),
-    ('system_admin', 'content.delete'),
-    ('app_manager', 'iam.user.read'),
-    ('app_manager', 'iam.user.write'),
-    ('app_manager', 'iam.org.read'),
-    ('app_manager', 'iam.org.write'),
-    ('app_manager', 'iam.legalText.read'),
-    ('app_manager', 'iam.legalText.write'),
-    ('app_manager', 'iam.monitoring.read'),
-    ('app_manager', 'iam.monitoring.write'),
-    ('app_manager', 'content.read'),
-    ('app_manager', 'content.readHistory'),
-    ('app_manager', 'integration.manage'),
-    ('app_manager', 'experimental.read'),
-    ('app_manager', 'app.read'),
-    ('app_manager', 'cockpit.read'),
-    ('app_manager', 'feature.toggle'),
-    ('feature-manager', 'content.read'),
-    ('feature-manager', 'content.readHistory'),
-    ('feature-manager', 'experimental.read'),
-    ('feature-manager', 'app.read'),
-    ('feature-manager', 'cockpit.read'),
-    ('feature-manager', 'content.updateMetadata'),
-    ('feature-manager', 'content.updatePayload'),
-    ('feature-manager', 'content.changeStatus'),
-    ('feature-manager', 'feature.toggle'),
-    ('interface-manager', 'iam.org.read'),
-    ('interface-manager', 'content.read'),
-    ('interface-manager', 'content.readHistory'),
-    ('interface-manager', 'experimental.read'),
-    ('interface-manager', 'app.read'),
-    ('interface-manager', 'cockpit.read'),
-    ('interface-manager', 'integration.manage'),
-    ('designer', 'content.read'),
-    ('designer', 'content.readHistory'),
-    ('designer', 'experimental.read'),
-    ('designer', 'app.read'),
-    ('designer', 'cockpit.read'),
-    ('designer', 'content.updateMetadata'),
-    ('designer', 'content.updatePayload'),
-    ('editor', 'content.read'),
-    ('editor', 'content.readHistory'),
-    ('editor', 'experimental.read'),
-    ('editor', 'app.read'),
-    ('editor', 'cockpit.read'),
-    ('editor', 'content.create'),
-    ('editor', 'content.updateMetadata'),
-    ('editor', 'content.updatePayload'),
-    ('editor', 'content.changeStatus'),
-    ('editor', 'content.delete'),
-    ('moderator', 'content.read'),
-    ('moderator', 'content.readHistory'),
-    ('moderator', 'experimental.read'),
-    ('moderator', 'app.read'),
-    ('moderator', 'cockpit.read'),
-    ('moderator', 'content.changeStatus'),
-    ('moderator', 'content.publish'),
-    ('moderator', 'content.archive'),
-    ('moderator', 'content.restore'),
-    ('moderator', 'content.manageRevisions')
+    ('system_admin', 'content.delete')
 ) AS assignments(role_key, permission_key)
 JOIN iam.roles roles
   ON roles.instance_id = 'de-musterhausen'
@@ -420,23 +330,7 @@ FROM (
     ('system_admin', 'media.read'), ('system_admin', 'media.create'), ('system_admin', 'media.update'), ('system_admin', 'media.reference.manage'), ('system_admin', 'media.delete'), ('system_admin', 'media.deliver.protected'),
     ('system_admin', 'news.read'), ('system_admin', 'news.create'), ('system_admin', 'news.update'), ('system_admin', 'news.delete'),
     ('system_admin', 'events.read'), ('system_admin', 'events.create'), ('system_admin', 'events.update'), ('system_admin', 'events.delete'),
-    ('system_admin', 'poi.read'), ('system_admin', 'poi.create'), ('system_admin', 'poi.update'), ('system_admin', 'poi.delete'),
-    ('app_manager', 'media.read'),
-    ('app_manager', 'news.read'), ('app_manager', 'events.read'), ('app_manager', 'poi.read'),
-    ('feature-manager', 'media.read'), ('feature-manager', 'media.create'), ('feature-manager', 'media.update'), ('feature-manager', 'media.reference.manage'), ('feature-manager', 'media.delete'),
-    ('feature-manager', 'news.read'), ('feature-manager', 'news.create'), ('feature-manager', 'news.update'), ('feature-manager', 'news.delete'),
-    ('feature-manager', 'events.read'), ('feature-manager', 'events.create'), ('feature-manager', 'events.update'), ('feature-manager', 'events.delete'),
-    ('feature-manager', 'poi.read'), ('feature-manager', 'poi.create'), ('feature-manager', 'poi.update'), ('feature-manager', 'poi.delete'),
-    ('interface-manager', 'media.read'),
-    ('interface-manager', 'news.read'), ('interface-manager', 'events.read'), ('interface-manager', 'poi.read'),
-    ('designer', 'media.read'), ('designer', 'media.update'),
-    ('designer', 'news.read'), ('designer', 'news.update'), ('designer', 'events.read'), ('designer', 'events.update'), ('designer', 'poi.read'), ('designer', 'poi.update'),
-    ('editor', 'media.read'), ('editor', 'media.create'), ('editor', 'media.update'), ('editor', 'media.reference.manage'),
-    ('editor', 'news.read'), ('editor', 'news.create'), ('editor', 'news.update'), ('editor', 'news.delete'),
-    ('editor', 'events.read'), ('editor', 'events.create'), ('editor', 'events.update'), ('editor', 'events.delete'),
-    ('editor', 'poi.read'), ('editor', 'poi.create'), ('editor', 'poi.update'), ('editor', 'poi.delete'),
-    ('moderator', 'media.read'),
-    ('moderator', 'news.read'), ('moderator', 'events.read'), ('moderator', 'poi.read')
+    ('system_admin', 'poi.read'), ('system_admin', 'poi.create'), ('system_admin', 'poi.update'), ('system_admin', 'poi.delete')
 ) AS assignments(role_key, permission_key)
 JOIN iam.roles roles
   ON roles.instance_id = 'de-musterhausen'

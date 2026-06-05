@@ -129,7 +129,6 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
       tenantAdminClientExists: true,
       tenantAdminExists: true,
       tenantAdminHasSystemAdmin: true,
-      tenantAdminHasInstanceRegistryAdmin: true,
       redirectUrisMatch: true,
       logoutUrisMatch: true,
       webOriginsMatch: true,

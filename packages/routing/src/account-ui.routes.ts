@@ -52,7 +52,12 @@ export const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, Acco
   contentCreate: { kind: 'protected', route: uiRoutePaths.contentCreate },
   contentDetail: { kind: 'protected', route: uiRoutePaths.contentDetail },
   media: { kind: 'protected', route: uiRoutePaths.media },
-  adminUsers: { kind: 'admin', route: uiRoutePaths.adminUsers, requiredPermissions: ['iam.user.read'] },
+  adminUsers: {
+    kind: 'protected',
+    route: uiRoutePaths.adminUsers,
+    requiredAnyPermissions: ['iam.user.read'],
+    requiredAnyRoles: ['instance_registry_admin'],
+  },
   adminUserCreate: { kind: 'admin', route: uiRoutePaths.adminUserCreate, requiredPermissions: ['iam.user.write'] },
   adminUserDetail: { kind: 'admin', route: uiRoutePaths.adminUserDetail, requiredPermissions: ['iam.user.read'] },
   adminOrganizations: { kind: 'admin', route: uiRoutePaths.adminOrganizations, requiredPermissions: ['iam.org.read'] },

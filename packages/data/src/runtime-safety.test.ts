@@ -61,7 +61,7 @@ test('sidebar application permission migration adds navigation permissions for e
   assert.match(sql, /'cockpit\.read', 'cockpit\.read', 'cockpit', 'Show the cockpit link in the sidebar'/);
   assert.match(
     sql,
-    /WHERE role_key IN \('system_admin', 'instance_registry_admin', 'app_manager', 'feature-manager', 'interface-manager', 'designer', 'editor', 'moderator'\)/
+    /WHERE role_key IN \('system_admin', 'instance_registry_admin'\)/
   );
   assert.match(sql, /grant_origin_kind,\s*access_scope/);
   assert.match(sql, /'seed',\s*'all'/);
@@ -104,7 +104,7 @@ test('permission gate backfill migration seeds the new permission model for tena
   assert.match(sql, /'iam\.dsr\.export'/);
   assert.match(sql, /'iam\.deletionRules\.write'/);
   assert.match(sql, /'iam\.monitoring\.read'/);
-  assert.match(sql, /'app_manager', 'iam\.legalText\.read'/);
+  assert.doesNotMatch(sql, /'app_manager', 'iam\.legalText\.read'/);
   assert.match(sql, /'support_admin', 'iam\.dsr\.write'/);
   assert.match(sql, /'security_admin', 'iam\.governance\.export'/);
   assert.match(sql, /grant_origin_kind,\s*access_scope/);

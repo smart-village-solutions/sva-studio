@@ -68,7 +68,7 @@ export type LegacyGroupReadHandlerDeps<TFeatureFlags = unknown> = {
   ) => Promise<T>;
 };
 
-const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
+const ADMIN_ROLES = new Set(['system_admin']);
 
 const createDatabaseUnavailableError = (
   deps: Pick<LegacyGroupReadHandlerDeps, 'createApiError'>,

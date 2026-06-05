@@ -276,6 +276,39 @@ describe('AccountProfilePage', () => {
     expect(screen.getByText('Diagnosecodes: keycloak_projection_degraded')).toBeTruthy();
   });
 
+  it('renders platform profiles as read only and does not offer the tenant-local save path', async () => {
+    authMockValue.user = {
+      id: 'platform-user-1',
+      roles: ['instance_registry_admin'],
+    };
+    getMyProfileMock.mockResolvedValue({
+      data: {
+        id: 'account-1',
+        keycloakSubject: 'subject-1',
+        username: 'platform.admin',
+        displayName: 'Platform Admin',
+        firstName: 'Platform',
+        lastName: 'Admin',
+        email: 'platform@example.com',
+        status: 'active',
+        roles: [{ roleId: 'role-1', roleName: 'instance_registry_admin' }],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
+    });
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Plattform-Profile sind hier nur lesbar. Änderungen werden nicht über den tenantlokalen Profilpfad gespeichert.'
+    );
+    expect((screen.getByRole('button', { name: 'Speichern' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(updateMyProfileMock).not.toHaveBeenCalled();
+  });
+
   it('derives the display name from first and last name when no custom display name exists', async () => {
     getMyProfileMock.mockResolvedValue({
       data: {

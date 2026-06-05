@@ -19,7 +19,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.hostname == node-005.sva
+          - node.hostname == node-003.sva
       update_config:
         parallelism: 1
         delay: 10s

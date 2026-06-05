@@ -10,7 +10,7 @@ bestehenden Studio-Betrieb nicht beeinflussen.
 ## What Changes
 
 - eigener Produktionspfad für `apps/public-waste-calendar-web`
-- eigener Swarm-/Portainer-Stack `public-waste-calendar`
+- eigener Swarm-/Portainer-Stack `web-waste-calendar`
 - Git-Tag-getriebener Releaseworkflow `waste-web-vX.Y.Z`
 - produktive Runtime-Konfiguration über einzelne `PUBLIC_WASTE_*`-Variablen
 - eigener Produktionsserver für die öffentliche Web-App mit Health- und

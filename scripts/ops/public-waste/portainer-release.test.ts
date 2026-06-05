@@ -38,7 +38,7 @@ describe('public waste portainer release', () => {
           JSON.stringify([
             {
               Id: 42,
-              Name: 'public-waste-calendar',
+              Name: 'web-waste-calendar',
               EndpointId: 7,
             },
           ])
@@ -48,7 +48,7 @@ describe('public waste portainer release', () => {
         new Response(
           JSON.stringify({
             Id: 42,
-            Name: 'public-waste-calendar',
+            Name: 'web-waste-calendar',
             EndpointId: 7,
             Env: [
               { name: 'PUBLIC_WASTE_IMAGE_TAG', value: 'v1.2.2' },
@@ -69,7 +69,7 @@ describe('public waste portainer release', () => {
     const result = await releasePublicWasteStack(
       {
         GITHUB_REF: 'refs/tags/waste-web-v1.2.3',
-        PUBLIC_WASTE_STACK_NAME: 'public-waste-calendar',
+        PUBLIC_WASTE_STACK_NAME: 'web-waste-calendar',
         QUANTUM_API_KEY: 'secret',
         QUANTUM_ENDPOINT_ID: '7',
         QUANTUM_HOST: 'https://portainer.example.invalid',
@@ -86,7 +86,7 @@ describe('public waste portainer release', () => {
       imageTag: 'v1.2.3',
       previousImageTag: 'v1.2.2',
       stackId: 42,
-      stackName: 'public-waste-calendar',
+      stackName: 'web-waste-calendar',
     });
 
     expect(fetch).toHaveBeenCalledTimes(4);

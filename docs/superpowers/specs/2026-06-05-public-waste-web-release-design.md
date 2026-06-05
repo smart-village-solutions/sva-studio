@@ -9,7 +9,7 @@ Studio-Deploy getrennt bleibt.
 Ein Release soll über ein Git-Tag im Format `waste-web-vX.Y.Z`
 automatisch ausgelöst werden, ein eigenes Image mit exakt diesem
 SemVer-Tag bauen und ausschließlich den dedizierten Portainer-Stack
-`public-waste-calendar` auf diese Version aktualisieren.
+`web-waste-calendar` auf diese Version aktualisieren.
 
 ## Nicht-Ziele
 
@@ -75,7 +75,7 @@ Der Releasepfad wird ausschließlich über Git-Tags gesteuert.
 3. Workflow baut nur das Image des öffentlichen Abfallkalenders
 4. Workflow published das Image mit exakt diesem Tag
 5. Workflow aktualisiert im Portainer-Stack nur die Image-Version
-6. Workflow stößt den Rollout des Stacks `public-waste-calendar` an
+6. Workflow stößt den Rollout des Stacks `web-waste-calendar` an
 7. Workflow führt schlanke Smoke-Checks gegen den öffentlichen Host aus
 
 ### Versionsmodell
@@ -103,7 +103,7 @@ Darstellungsfrontend mit vergleichsweise einfacher Rollback-Strategie.
 ### Stack-Trennung
 
 - die App läuft in einem eigenen Portainer-Stack
-  `public-waste-calendar`
+  `web-waste-calendar`
 - dafür wird eine eigene Compose-Datei eingeführt, zum Beispiel
   `deploy/portainer/docker-compose.public-waste.yml`
 - dieser Stack darf weder aus dem `studio`-Stack abgeleitet werden noch
@@ -247,7 +247,7 @@ Der gewünschte Bedienpfad lautet im Ergebnis:
 1. Code für `public-waste-calendar-web` freigeben
 2. Git-Tag `waste-web-v1.2.3` pushen
 3. GitHub baut und publiziert das Image `:v1.2.3`
-4. GitHub aktualisiert nur den Stack `public-waste-calendar`
+4. GitHub aktualisiert nur den Stack `web-waste-calendar`
 5. Smoke-Checks bestätigen die neue Version
 
 Der öffentliche Abfallkalender erhält damit einen eigenen,

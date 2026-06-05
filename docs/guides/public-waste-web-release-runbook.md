@@ -8,7 +8,7 @@ mitverändern.
 ## Zielbild
 
 - eigenes Image: `ghcr.io/smart-village-solutions/public-waste-calendar-web`
-- eigener Stack: `public-waste-calendar`
+- eigener Stack: `web-waste-calendar`
 - eigene Compose-Datei: `deploy/portainer/docker-compose.public-waste.yml`
 - eigener Workflow: `.github/workflows/public-waste-web-release.yml`
 - eigener Trigger: Git-Tag `waste-web-vX.Y.Z`
@@ -42,7 +42,7 @@ benötigt:
 
 Empfohlener Wert für `PUBLIC_WASTE_STACK_NAME`:
 
-- `public-waste-calendar`
+- `web-waste-calendar`
 
 ## Normaler Releasepfad
 
@@ -51,7 +51,7 @@ Empfohlener Wert für `PUBLIC_WASTE_STACK_NAME`:
 3. Tag pushen.
 4. GitHub baut und publiziert das Image `ghcr.io/smart-village-solutions/public-waste-calendar-web:v1.2.3`.
 5. Der Workflow aktualisiert in Portainer nur `PUBLIC_WASTE_IMAGE_TAG=v1.2.3`.
-6. Der Stack `public-waste-calendar` wird neu ausgerollt.
+6. Der Stack `web-waste-calendar` wird neu ausgerollt.
 7. Smoke-Checks gegen `/health/live`, `/` und `/api/public-waste/selection` bestätigen den Rollout.
 
 Beispiel:
@@ -95,7 +95,7 @@ Dann in Portainer:
 ## Betriebsgrenzen
 
 - Der Waste-Web-Workflow darf weder `SVA_IMAGE_TAG` noch `SVA_IMAGE_REF` oder `SVA_IMAGE_DIGEST` verändern.
-- Der Stack `public-waste-calendar` darf nicht aus dem Studio-Stack abgeleitet werden.
+- Der Stack `web-waste-calendar` darf nicht aus dem Studio-Stack abgeleitet werden.
 - Änderungen an diesem Pfad betreffen nur die öffentliche Abfallkalender-Webversion, nicht das normale Studio.
 
 ## Referenzen

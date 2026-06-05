@@ -1,5 +1,5 @@
 # Portainer-Stack-Name fuer die oeffentliche Abfallkalender-Webversion.
-PUBLIC_WASTE_STACK_NAME=public-waste-calendar
+PUBLIC_WASTE_STACK_NAME=web-waste-calendar
 
 # SemVer-Image-Tag des dedizierten Frontend-Images.
 PUBLIC_WASTE_IMAGE_TAG=v0.0.0-dev

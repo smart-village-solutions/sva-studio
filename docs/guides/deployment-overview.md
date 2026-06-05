@@ -62,7 +62,7 @@ Wichtig:
 Der öffentliche Webkalender bildet einen davon getrennten Rollout-Pfad:
 
 - Compose-Datei: `../../deploy/portainer/docker-compose.public-waste.yml`
-- Stack typischerweise: `public-waste-calendar`
+- Stack typischerweise: `web-waste-calendar`
 - Quantum-Environment: `public-waste`
 - Workflow: `.github/workflows/public-waste-web-release.yml`
 - Trigger: Git-Tag `waste-web-vX.Y.Z`

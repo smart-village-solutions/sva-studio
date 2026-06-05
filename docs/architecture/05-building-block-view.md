@@ -247,7 +247,7 @@ Abhängigkeiten des aktuellen Systems.
    - nutzt eine reduzierte UI aus `PublicWasteApp`, `PublicWasteSelectionForm`, `PublicWasteCalendarPanels` und `PublicWasteEventDialog`
    - kapselt servernahe Verträge in `src/lib/public-waste-*.ts`, ohne neue Workspace-Kopplung zu `@sva/core` oder `@sva/data-repositories` einzuführen
    - besitzt zusätzlich eine eigene produktive Node-Runtime unter `src/server/**`, die das gebaute Frontend statisch ausliefert und die öffentlichen Read-Endpunkte `/api/public-waste/*` lokal bedient
-   - wird betrieblich über ein dediziertes Image, einen dedizierten Portainer-Stack `public-waste-calendar` und einen separaten Git-Tag-Releasepfad `waste-web-vX.Y.Z` ausgerollt, ohne den normalen Studio-Releasevertrag mitzubenutzen
+   - wird betrieblich über ein dediziertes Image, einen dedizierten Portainer-Stack `web-waste-calendar` und einen separaten Git-Tag-Releasepfad `waste-web-vX.Y.Z` ausgerollt, ohne den normalen Studio-Releasevertrag mitzubenutzen
 
 ### Foundation-Governance über Bausteingrenzen
 

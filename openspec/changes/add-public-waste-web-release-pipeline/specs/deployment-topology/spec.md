@@ -2,13 +2,13 @@
 
 ### Requirement: Öffentliche Waste-Web-App hat einen eigenen Swarm-Stack
 
-Das System SHALL für `public-waste-calendar` einen eigenen Portainer-/Swarm-Stack
+Das System SHALL für `web-waste-calendar` einen eigenen Portainer-/Swarm-Stack
 bereitstellen, der nicht Teil des normalen `studio`-Stacks ist.
 
 #### Scenario: Öffentliche Waste-Web-App wird getrennt von Studio ausgerollt
 
 - **WHEN** ein Operator oder Workflow die öffentliche Waste-Web-App ausrollt
-- **THEN** erfolgt der Rollout gegen den dedizierten Stack `public-waste-calendar`
+- **THEN** erfolgt der Rollout gegen den dedizierten Stack `web-waste-calendar`
 - **AND** der bestehende `studio`-Stack bleibt unverändert
 - **AND** die Compose-Definition des Waste-Web-Stacks erweitert nicht die Studio-Compose
 

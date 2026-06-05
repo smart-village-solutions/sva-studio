@@ -4,7 +4,7 @@
 
 **Goal:** Build an isolated production release path for `apps/public-waste-calendar-web` that deploys the public waste calendar via Git tags like `waste-web-v1.2.3` without changing the normal Studio stack or workflows.
 
-**Architecture:** Introduce a dedicated production runtime for the public waste app, a dedicated Swarm/Portainer stack definition, and a dedicated GitHub Actions workflow that builds a separate image and updates only `PUBLIC_WASTE_IMAGE_TAG` in the `public-waste-calendar` stack. Keep runtime config in split `PUBLIC_WASTE_*` variables and preserve `PUBLIC_WASTE_CONFIG_JSON` only as a local/dev compatibility fallback.
+**Architecture:** Introduce a dedicated production runtime for the public waste app, a dedicated Swarm/Portainer stack definition, and a dedicated GitHub Actions workflow that builds a separate image and updates only `PUBLIC_WASTE_IMAGE_TAG` in the `web-waste-calendar` stack. Keep runtime config in split `PUBLIC_WASTE_*` variables and preserve `PUBLIC_WASTE_CONFIG_JSON` only as a local/dev compatibility fallback.
 
 **Tech Stack:** Nx, pnpm, Vite, React, Node.js 24, TypeScript, Vitest, Playwright, Docker Swarm, Portainer API, GitHub Actions, OpenSpec
 
@@ -42,14 +42,14 @@ bestehenden Studio-Betrieb nicht beeinflussen.
 
 ## What Changes
 - eigener Produktionspfad für `apps/public-waste-calendar-web`
-- eigener Swarm-/Portainer-Stack `public-waste-calendar`
+- eigener Swarm-/Portainer-Stack `web-waste-calendar`
 - Git-Tag-getriebener Releaseworkflow `waste-web-vX.Y.Z`
 - produktive Runtime-Konfiguration über einzelne `PUBLIC_WASTE_*`-Variablen
 - **BREAKING (betrieblich):** produktionsführende Konfiguration ist nicht mehr
   `PUBLIC_WASTE_CONFIG_JSON`, sondern aufgetrennte Variablen
 
 ## Impact
-- Affected specs: `public-waste-calendar`, `deployment-topology`, `architecture-documentation`
+- Affected specs: `web-waste-calendar`, `deployment-topology`, `architecture-documentation`
 - Affected code: `apps/public-waste-calendar-web`, `deploy/portainer/*`, `.github/workflows/*`, `scripts/ops/*`
 - Affected arc42 sections: `05-building-block-view`, `07-deployment-view`, `08-cross-cutting-concepts`
 ```
@@ -59,7 +59,7 @@ bestehenden Studio-Betrieb nicht beeinflussen.
 ```md
 ## ADDED Requirements
 ### Requirement: Öffentliche Abfallkalender-App hat einen isolierten Releasepfad
-Das System SHALL für `public-waste-calendar` einen eigenen Releasepfad
+Das System SHALL für `web-waste-calendar` einen eigenen Releasepfad
 bereitstellen, der weder den `studio`-Stack noch den `studio`-Releaseworkflow
 mitverwendet.
 
@@ -343,7 +343,7 @@ git add \
 git commit -m "feat: add public waste production runtime"
 ```
 
-### Task 4: Define an Isolated Image and Stack for `public-waste-calendar`
+### Task 4: Define an Isolated Image and Stack for `web-waste-calendar`
 
 **Files:**
 - Create: `deploy/portainer/Dockerfile.public-waste`
@@ -549,7 +549,7 @@ jobs:
           QUANTUM_API_KEY: ${{ secrets.QUANTUM_API_KEY }}
           QUANTUM_HOST: ${{ secrets.QUANTUM_HOST }}
           QUANTUM_ENDPOINT_ID: ${{ secrets.QUANTUM_ENDPOINT_ID }}
-          PUBLIC_WASTE_STACK_NAME: public-waste-calendar
+          PUBLIC_WASTE_STACK_NAME: web-waste-calendar
 ```
 
 - [ ] **Step 4: Run tests and scripts typecheck**
@@ -589,7 +589,7 @@ git commit -m "feat: automate public waste web releases"
 ```md
 ## Öffentliches Waste-Web-Release
 
-- eigener Stack: `public-waste-calendar`
+- eigener Stack: `web-waste-calendar`
 - eigener Workflow: `public-waste-web-release.yml`
 - Trigger: Git-Tag `waste-web-vX.Y.Z`
 - Versionsträger im Stack: `PUBLIC_WASTE_IMAGE_TAG`
@@ -643,7 +643,7 @@ git commit -m "docs: document public waste web release path"
 ## Spec Coverage Check
 
 - Isolierter Releasepfad: Task 1, Task 4, Task 5, Task 6
-- Eigener Stack `public-waste-calendar`: Task 4, Task 5, Task 6
+- Eigener Stack `web-waste-calendar`: Task 4, Task 5, Task 6
 - Git-Tag `waste-web-vX.Y.Z`: Task 1, Task 5
 - Nur Versionsupdate im Stack: Task 5
 - Split `PUBLIC_WASTE_*` variables statt produktivem JSON blob: Task 2, Task 4, Task 6

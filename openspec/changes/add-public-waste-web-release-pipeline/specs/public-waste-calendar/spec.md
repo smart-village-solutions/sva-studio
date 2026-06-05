@@ -2,7 +2,7 @@
 
 ### Requirement: Öffentliche Abfallkalender-App hat einen isolierten Releasepfad
 
-Das System SHALL für `public-waste-calendar` einen eigenen Releasepfad
+Das System SHALL für `web-waste-calendar` einen eigenen Releasepfad
 bereitstellen, der weder den `studio`-Stack noch den `studio`-Releaseworkflow
 mitverwendet.
 

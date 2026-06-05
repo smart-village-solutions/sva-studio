@@ -21,7 +21,7 @@ jobs:
     environment: public-waste-production
     env:
       PUBLIC_WASTE_BASE_URL: ${{ vars.PUBLIC_WASTE_BASE_URL }}
-      PUBLIC_WASTE_STACK_NAME: ${{ vars.PUBLIC_WASTE_STACK_NAME || 'public-waste-calendar' }}
+      PUBLIC_WASTE_STACK_NAME: ${{ vars.PUBLIC_WASTE_STACK_NAME || 'web-waste-calendar' }}
       QUANTUM_ENDPOINT_ID: ${{ vars.QUANTUM_ENDPOINT_ID }}
       QUANTUM_HOST: ${{ vars.QUANTUM_HOST }}
       QUANTUM_API_KEY: ${{ secrets.QUANTUM_API_KEY }}

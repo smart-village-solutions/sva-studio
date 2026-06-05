@@ -6,7 +6,7 @@
 
 ## 2. Deployment-Artefakte
 
-- [ ] 2.1 Eigenes Dockerfile und eigene Swarm-Compose-Datei für `public-waste-calendar` ergänzen
+- [ ] 2.1 Eigenes Dockerfile und eigene Swarm-Compose-Datei für `web-waste-calendar` ergänzen
 - [ ] 2.2 Quantum-/Runtime-Beispielkonfiguration für den isolierten Waste-Web-Stack dokumentieren
 - [ ] 2.3 GitHub-Workflow für Git-Tags `waste-web-vX.Y.Z` ergänzen, der nur das Waste-Web-Image baut und den Waste-Web-Stack ausrollt
 - [ ] 2.4 Dedizierten Portainer-/Quantum-Scriptpfad ergänzen, der nur `PUBLIC_WASTE_IMAGE_TAG` im Zielstack aktualisiert

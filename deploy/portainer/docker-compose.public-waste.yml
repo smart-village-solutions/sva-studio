@@ -1,0 +1,59 @@
+services:
+  app:
+    image: ghcr.io/smart-village-solutions/public-waste-calendar-web:${PUBLIC_WASTE_IMAGE_TAG}
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3002
+      PUBLIC_WASTE_BASE_URL: '${PUBLIC_WASTE_BASE_URL}'
+      PUBLIC_WASTE_INSTANCE_ID: '${PUBLIC_WASTE_INSTANCE_ID}'
+      PUBLIC_WASTE_DATABASE_URL: '${PUBLIC_WASTE_DATABASE_URL}'
+      PUBLIC_WASTE_SCHEMA_NAME: '${PUBLIC_WASTE_SCHEMA_NAME}'
+      PUBLIC_WASTE_PDF_URL_TEMPLATE: '${PUBLIC_WASTE_PDF_URL_TEMPLATE}'
+    labels:
+      com.sva-studio.component: 'public-waste-app'
+      com.sva-studio.environment: 'production'
+    networks:
+      - public
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node-005.sva
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 384M
+          cpus: '0.50'
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=public
+        - traefik.public-waste.frontend.rule=Host:${PUBLIC_WASTE_PUBLIC_HOST}
+        - traefik.public-waste.frontend.priority=220
+        - traefik.public-waste.frontend.passHostHeader=true
+        - traefik.public-waste.port=3002
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:3002/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+networks:
+  public:
+    external: true

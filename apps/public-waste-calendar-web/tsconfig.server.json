@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": false,
+    "outDir": "dist/server",
+    "rootDir": "src",
+    "types": ["node"],
+    "tsBuildInfoFile": "dist/.tsbuildinfo.server"
+  },
+  "include": [
+    "src/server/**/*.ts",
+    "src/lib/public-waste-api.ts",
+    "src/lib/public-waste-bootstrap.server.ts",
+    "src/lib/public-waste-calendar-occurrences.ts",
+    "src/lib/public-waste-config.server.ts",
+    "src/lib/public-waste-contract.ts",
+    "src/lib/public-waste-endpoints.server.ts",
+    "src/lib/public-waste-ical.server.ts",
+    "src/lib/public-waste-repository.server.ts"
+  ],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+}

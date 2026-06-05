@@ -29,6 +29,13 @@
         "command": "pnpm run preview"
       }
     },
+    "start": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/public-waste-calendar-web",
+        "command": "pnpm run start"
+      }
+    },
     "test:unit": {
       "executor": "nx:run-commands",
       "cache": true,

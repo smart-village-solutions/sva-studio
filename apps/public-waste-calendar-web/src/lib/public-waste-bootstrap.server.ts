@@ -1,5 +1,6 @@
 import {
   parsePublicWasteConfig,
+  readPublicWasteConfigFromEnvironment,
   type PublicWasteConfig,
 } from './public-waste-config.server.js';
 
@@ -47,9 +48,17 @@ export const resolvePublicWasteBootstrapState = (rawConfig: unknown): PublicWast
 };
 
 export const readPublicWasteBootstrapStateFromEnvironment = (input: {
+  readonly env?: NodeJS.ProcessEnv;
   readonly rawConfigJson?: string | undefined;
 } = {}): PublicWasteBootstrapState => {
-  const rawConfigJson = input.rawConfigJson ?? process.env.PUBLIC_WASTE_CONFIG_JSON;
+  const env = input.env ?? process.env;
+  const configFromEnvironment = readPublicWasteConfigFromEnvironment(env);
+
+  if (configFromEnvironment !== null) {
+    return resolvePublicWasteBootstrapState(configFromEnvironment);
+  }
+
+  const rawConfigJson = input.rawConfigJson ?? env.PUBLIC_WASTE_CONFIG_JSON;
 
   if (!rawConfigJson) {
     return resolvePublicWasteBootstrapState(undefined);

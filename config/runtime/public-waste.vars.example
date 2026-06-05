@@ -11,5 +11,5 @@ PUBLIC_WASTE_BASE_URL=https://bb-prignitz.abfallkalender.smart-village.app
 # Fachliche Runtime-Konfiguration.
 PUBLIC_WASTE_INSTANCE_ID=bb-prignitz
 PUBLIC_WASTE_SCHEMA_NAME=public
-PUBLIC_WASTE_DATABASE_URL=postgres://waste_app:change-me@postgres.example.invalid:5432/waste
+PUBLIC_WASTE_DATABASE_URL=postgres://postgres.example.invalid:5432/waste
 PUBLIC_WASTE_PDF_URL_TEMPLATE=https://example.invalid/waste/{locationKey}/{year}.pdf

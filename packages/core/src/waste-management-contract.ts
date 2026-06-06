@@ -29,6 +29,15 @@ export type WasteManagementConnectionCheckStatus = (typeof wasteManagementConnec
 export type WasteHolidaySyncStatus = (typeof wasteHolidaySyncStatuses)[number];
 export type WasteManagementTechnicalEventType = (typeof wasteManagementTechnicalEventTypes)[number];
 
+export type WasteManagementSettingsInterfaceOption = Readonly<{
+  id: string;
+  name: string;
+  typeKey: string;
+  enabled: boolean;
+  visibleStatus: 'not_configured' | 'unknown' | 'ok' | 'error' | 'disabled';
+  isSelected: boolean;
+}>;
+
 export const wasteManagementDataSourceContract = {
   providers: wasteManagementDataSourceProviders,
   statuses: wasteManagementDataSourceStatuses,
@@ -53,6 +62,13 @@ export type WasteManagementSettingsRecord = {
   readonly projectUrl: string;
   readonly schemaName: string;
   readonly enabled: boolean;
+  readonly selectedInterfaceId?: string;
+  readonly selectedInterfaceName?: string;
+  readonly selectedInterfaceTypeKey?: string;
+  readonly availableInterfaces?: readonly WasteManagementSettingsInterfaceOption[];
+  readonly calendarWebUrl?: string;
+  readonly pdfBrandingAssetUrl?: string;
+  readonly pdfContactBlock?: string;
   readonly databaseUrlConfigured: boolean;
   readonly serviceRoleKeyConfigured: boolean;
   readonly visibleStatus: WasteManagementDataSourceStatus;
@@ -62,6 +78,7 @@ export type WasteManagementSettingsRecord = {
   readonly lastCheckErrorMessage?: string;
   readonly holidayStateCode?: WasteHolidayStateCode;
   readonly lastHolidaySyncStatus?: WasteHolidaySyncStatus;
+  readonly lastSuccessfulHolidaySyncAt?: string;
   readonly updatedAt?: string;
   readonly customRecurrencePresets?: readonly WasteCustomRecurrencePresetRecord[];
 };

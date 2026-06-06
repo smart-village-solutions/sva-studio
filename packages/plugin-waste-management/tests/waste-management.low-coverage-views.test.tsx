@@ -18,6 +18,7 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, variables?: Record<string, string | number>) =>
     variables ? `${key}:${JSON.stringify(variables)}` : key,
+  formatTechnicalDateTimeInEditorTimeZone: (value: string) => value,
   wasteManagementMasterDataContract: {
     holidayStateCodes: ['BW', 'BY', 'NW'],
   },
@@ -75,6 +76,35 @@ vi.mock('@sva/studio-ui-react', () => ({
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  StudioConfirmDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
+  }: {
+    readonly open: boolean;
+    readonly title: React.ReactNode;
+    readonly description: React.ReactNode;
+    readonly confirmLabel: React.ReactNode;
+    readonly cancelLabel: React.ReactNode;
+    readonly onConfirm: () => void;
+    readonly onCancel: () => void;
+  }) =>
+    open ? (
+      <div>
+        <div>{title}</div>
+        <div>{description}</div>
+        <button type="button" onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button type="button" onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+      </div>
+    ) : null,
   StudioActionMenu: ({
     items,
   }: {
@@ -95,8 +125,8 @@ vi.mock('@sva/studio-ui-react', () => ({
     children,
   }: {
     readonly id: string;
-    readonly label: string;
-    readonly description?: string;
+    readonly label: React.ReactNode;
+    readonly description?: React.ReactNode;
     readonly children: React.ReactNode;
   }) => (
     <label htmlFor={id}>
@@ -161,7 +191,10 @@ describe('waste-management low coverage views', () => {
 
   it('renders the settings form, updates fields, toggles the switch and submits', () => {
     const onChange = vi.fn();
-    const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault());
+    const onSaveCalendarWebUrl = vi.fn();
+    const onPersistCustomRecurrences = vi.fn();
+    const onSaveInterfaceSelection = vi.fn();
+    const onSaveHolidayState = vi.fn();
 
     render(
       <WasteSettingsForm
@@ -170,29 +203,63 @@ describe('waste-management low coverage views', () => {
           projectUrl: 'https://tenant-a.supabase.co',
           schemaName: 'wm',
           enabled: true,
+          selectedInterfaceId: 'supabase-1',
+          calendarWebUrl: '',
           holidayStateCode: '',
           databaseUrl: 'postgresql://db',
           serviceRoleKey: 'secret',
           customRecurrencePresets: [],
           deletedPresetFallbacks: {},
         }}
-        saving={false}
-        onSubmit={onSubmit}
+        settings={{
+          instanceId: 'tenant-a',
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          schemaName: 'wm',
+          enabled: true,
+          selectedInterfaceId: 'supabase-1',
+          selectedInterfaceName: 'Supabase A',
+          selectedInterfaceTypeKey: 'supabase',
+          availableInterfaces: [
+            { id: 'supabase-1', name: 'Supabase A', typeKey: 'supabase', enabled: true, visibleStatus: 'ok', isSelected: true },
+          ],
+          databaseUrlConfigured: true,
+          serviceRoleKeyConfigured: true,
+          visibleStatus: 'ok',
+          customRecurrencePresets: [],
+        }}
+        savingSection={null}
         onChange={onChange}
+        onSaveCalendarWebUrl={onSaveCalendarWebUrl}
+        onPersistCustomRecurrences={onPersistCustomRecurrences}
+        onSaveInterfaceSelection={onSaveInterfaceSelection}
+        onSaveHolidayState={onSaveHolidayState}
       />
     );
 
-    fireEvent.click(screen.getByRole('switch', { name: 'settings.fields.enabled' }));
+    fireEvent.change(screen.getByPlaceholderText('settings.fields.customRecurrenceName'), {
+      target: { value: '14 Tage' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'settings.actions.addCustomRecurrence' }));
-    fireEvent.submit(screen.getByRole('button', { name: 'settings.actions.save' }).closest('form')!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'settings.actions.save' })[1]);
 
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('common.active')).toBeTruthy();
+    expect(onPersistCustomRecurrences).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          name: '14 Tage',
+          intervalDays: 7,
+        }),
+      ],
+      {}
+    );
+    expect(onSaveCalendarWebUrl).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('settings.messages.customRecurrencesTitle')).toBeTruthy();
+    expect(screen.getByText('settings.messages.interfaceSelectionTitle')).toBeTruthy();
   });
 
-  it('updates the holiday state selection through the settings form reducer', () => {
+  it('updates the holiday state selection through the settings form reducer without saving immediately', () => {
     const onChange = vi.fn();
+    const onSaveHolidayState = vi.fn();
 
     render(
       <WasteSettingsForm
@@ -201,15 +268,21 @@ describe('waste-management low coverage views', () => {
           projectUrl: 'https://tenant-a.supabase.co',
           schemaName: 'wm',
           enabled: true,
+          selectedInterfaceId: 'supabase-1',
+          calendarWebUrl: '',
           holidayStateCode: '',
           databaseUrl: 'postgresql://db',
           serviceRoleKey: 'secret',
           customRecurrencePresets: [],
           deletedPresetFallbacks: {},
         }}
-        saving={false}
-        onSubmit={(event) => event.preventDefault()}
+        settings={null}
+        savingSection={null}
         onChange={onChange}
+        onSaveCalendarWebUrl={vi.fn()}
+        onPersistCustomRecurrences={vi.fn()}
+        onSaveInterfaceSelection={vi.fn()}
+        onSaveHolidayState={onSaveHolidayState}
       />
     );
 
@@ -229,6 +302,8 @@ describe('waste-management low coverage views', () => {
         projectUrl: 'https://tenant-a.supabase.co',
         schemaName: 'wm',
         enabled: true,
+        selectedInterfaceId: 'supabase-1',
+        calendarWebUrl: '',
         holidayStateCode: '',
         databaseUrl: 'postgresql://db',
         serviceRoleKey: 'secret',
@@ -240,6 +315,221 @@ describe('waste-management low coverage views', () => {
         holidayStateCode: 'NW',
       })
     );
+    expect(onSaveHolidayState).not.toHaveBeenCalled();
+  });
+
+  it('saves the selected holiday state through the dedicated button', () => {
+    const onSaveHolidayState = vi.fn();
+
+    render(
+      <WasteSettingsForm
+        form={{
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          schemaName: 'wm',
+          enabled: true,
+          selectedInterfaceId: 'supabase-1',
+          calendarWebUrl: '',
+          holidayStateCode: 'NW',
+          databaseUrl: 'postgresql://db',
+          serviceRoleKey: 'secret',
+          customRecurrencePresets: [],
+          deletedPresetFallbacks: {},
+        }}
+        settings={null}
+        savingSection={null}
+        onChange={vi.fn()}
+        onSaveCalendarWebUrl={vi.fn()}
+        onPersistCustomRecurrences={vi.fn()}
+        onSaveInterfaceSelection={vi.fn()}
+        onSaveHolidayState={onSaveHolidayState}
+      />
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'settings.actions.save' })[0]);
+
+    expect(onSaveHolidayState).toHaveBeenCalledTimes(1);
+  });
+
+  it('places the holiday state dropdown and save button in the same action row', () => {
+    render(
+      <WasteSettingsForm
+        form={{
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          schemaName: 'wm',
+          enabled: true,
+          selectedInterfaceId: 'supabase-1',
+          calendarWebUrl: '',
+          holidayStateCode: 'NW',
+          databaseUrl: 'postgresql://db',
+          serviceRoleKey: 'secret',
+          customRecurrencePresets: [],
+          deletedPresetFallbacks: {},
+        }}
+        settings={null}
+        savingSection={null}
+        onChange={vi.fn()}
+        onSaveCalendarWebUrl={vi.fn()}
+        onPersistCustomRecurrences={vi.fn()}
+        onSaveInterfaceSelection={vi.fn()}
+        onSaveHolidayState={vi.fn()}
+      />
+    );
+
+    const holidayStateSelect = screen.getByLabelText('settings.fields.holidayStateCode');
+    const holidaySaveButton = screen.getAllByRole('button', { name: 'settings.actions.save' })[0];
+    const actionRow = Array.from(document.querySelectorAll('div')).find((element) =>
+      element.className.includes('lg:grid-cols-[minmax(0,1fr)_auto]')
+    );
+
+    expect(actionRow).toBeTruthy();
+    expect(actionRow?.contains(holidayStateSelect)).toBe(true);
+    expect(actionRow?.contains(holidaySaveButton)).toBe(true);
+  });
+
+  it('warns before saving the holiday state when imported holidays already exist', () => {
+    const onSaveHolidayState = vi.fn();
+
+    render(
+      <WasteSettingsForm
+        form={{
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          schemaName: 'wm',
+          enabled: true,
+          selectedInterfaceId: 'supabase-1',
+          calendarWebUrl: '',
+          holidayStateCode: 'NW',
+          databaseUrl: 'postgresql://db',
+          serviceRoleKey: 'secret',
+          customRecurrencePresets: [],
+          deletedPresetFallbacks: {},
+        }}
+        settings={{
+          instanceId: 'tenant-a',
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          schemaName: 'wm',
+          enabled: true,
+          selectedInterfaceId: 'supabase-1',
+          selectedInterfaceName: 'Supabase A',
+          selectedInterfaceTypeKey: 'supabase',
+          availableInterfaces: [],
+          databaseUrlConfigured: true,
+          serviceRoleKeyConfigured: true,
+          visibleStatus: 'ok',
+          holidayStateCode: 'BY',
+          lastSuccessfulHolidaySyncAt: '2026-06-06T12:00:00.000Z',
+          customRecurrencePresets: [],
+        }}
+        savingSection={null}
+        onChange={vi.fn()}
+        onSaveCalendarWebUrl={vi.fn()}
+        onPersistCustomRecurrences={vi.fn()}
+        onSaveInterfaceSelection={vi.fn()}
+        onSaveHolidayState={onSaveHolidayState}
+      />
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'settings.actions.save' })[0]);
+
+    expect(screen.getByText('settings.messages.holidayStateOverwriteWarningTitle')).toBeTruthy();
+    expect(screen.getByText('settings.messages.holidayStateOverwriteWarningDescription')).toBeTruthy();
+    expect(onSaveHolidayState).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'settings.actions.save' }).at(-1) as HTMLButtonElement);
+
+    expect(onSaveHolidayState).toHaveBeenCalledTimes(1);
+  });
+
+  it('updates the configured calendar web link through the settings form reducer', () => {
+    const onChange = vi.fn();
+
+    render(
+      <WasteSettingsForm
+        form={{
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          schemaName: 'wm',
+          enabled: true,
+          selectedInterfaceId: 'supabase-1',
+          calendarWebUrl: '',
+          holidayStateCode: '',
+          databaseUrl: 'postgresql://db',
+          serviceRoleKey: 'secret',
+          customRecurrencePresets: [],
+          deletedPresetFallbacks: {},
+        }}
+        settings={null}
+        savingSection={null}
+        onChange={onChange}
+        onSaveCalendarWebUrl={vi.fn()}
+        onPersistCustomRecurrences={vi.fn()}
+        onSaveInterfaceSelection={vi.fn()}
+        onSaveHolidayState={vi.fn()}
+      />
+    );
+
+    const calendarWebUrlInput = document.getElementById('waste-settings-calendar-web-url');
+    expect(calendarWebUrlInput).toBeTruthy();
+
+    fireEvent.change(calendarWebUrlInput as Element, {
+      target: { value: 'https://bb-prignitz.abfallkalender.smart-village.app/' },
+    });
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(typeof onChange.mock.calls[0]?.[0]).toBe('function');
+  });
+
+  it('keeps single-field settings cards accessible via visually hidden labels', () => {
+    render(
+      <WasteSettingsForm
+        form={{
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          schemaName: 'wm',
+          enabled: true,
+          selectedInterfaceId: 'supabase-1',
+          calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+          holidayStateCode: 'NW',
+          databaseUrl: 'postgresql://db',
+          serviceRoleKey: 'secret',
+          customRecurrencePresets: [],
+          deletedPresetFallbacks: {},
+        }}
+        settings={{
+          instanceId: 'tenant-a',
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          schemaName: 'wm',
+          enabled: true,
+          selectedInterfaceId: 'supabase-1',
+          selectedInterfaceName: 'Supabase A',
+          selectedInterfaceTypeKey: 'supabase',
+          availableInterfaces: [
+            { id: 'supabase-1', name: 'Supabase A', typeKey: 'supabase', enabled: true, visibleStatus: 'ok', isSelected: true },
+          ],
+          databaseUrlConfigured: true,
+          serviceRoleKeyConfigured: true,
+          visibleStatus: 'ok',
+          customRecurrencePresets: [],
+        }}
+        savingSection={null}
+        onChange={vi.fn()}
+        onSaveCalendarWebUrl={vi.fn()}
+        onPersistCustomRecurrences={vi.fn()}
+        onSaveInterfaceSelection={vi.fn()}
+        onSaveHolidayState={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText('settings.fields.holidayStateCode')).toBeTruthy();
+    expect(screen.getByLabelText('settings.fields.calendarWebUrl')).toBeTruthy();
+    expect(screen.getByLabelText('settings.fields.selectedInterface')).toBeTruthy();
+    expect(screen.getByText('settings.fields.holidayStateCode').className).toContain('sr-only');
+    expect(screen.getByText('settings.fields.calendarWebUrl').className).toContain('sr-only');
+    expect(screen.getByText('settings.fields.selectedInterface').className).toContain('sr-only');
   });
 
   it('renders the disabled switch branch and toggles an unchecked switch directly', () => {

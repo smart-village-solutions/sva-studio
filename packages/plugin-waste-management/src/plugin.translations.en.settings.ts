@@ -1,8 +1,9 @@
 import { createWasteManagementSettingsTranslations } from './plugin.translations.shared.sections.js';
 
 export const wasteManagementPluginTranslationsENSettings = createWasteManagementSettingsTranslations({
-  groupTitle: 'Waste data source',
-  groupDescription: 'Maintain the instance-specific connection to the waste database through the host facade.',
+  common: {
+    actions: 'Actions',
+  },
   technical: {
     title: 'Technical status',
     description: 'The host evaluates the active waste data source and reflects the latest server-side connection check.',
@@ -13,6 +14,9 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
     databaseUrl: 'Database URL',
     serviceRoleKey: 'Service role key',
     enabled: 'Enable data source',
+    selectedInterface: 'Interface',
+    selectedInterfacePlaceholder: 'Select interface',
+    calendarWebUrl: 'Web version link',
     holidayStateCode: 'Holiday state',
     holidayStateCodePlaceholder: 'Select state',
     customRecurrenceName: 'Name',
@@ -28,10 +32,13 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
     databaseUrlConfiguredLabel: 'Database URL',
     serviceRoleKeyConfiguredLabel: 'Service key',
     lastCheckedAtLabel: 'Last check',
+    selectedInterfaceLabel: 'Selected interface',
+    selectedInterfaceEmpty: 'Not selected',
     holidayStateCodeLabel: 'Holiday state',
     holidayStateCodeEmpty: 'Not set',
     lastHolidaySyncStatusLabel: 'Latest holiday sync',
     lastHolidaySyncStatusEmpty: 'Not run yet',
+    lastSuccessfulHolidaySyncAtLabel: 'Latest successful sync',
     holidaySyncSuccess: 'Successful',
     holidaySyncPartialSuccess: 'Partially successful',
     holidaySyncFailed: 'Failed',
@@ -40,6 +47,7 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
   actions: {
     save: 'Save settings',
     saving: 'Saving…',
+    cancel: 'Cancel',
     runHolidaySync: 'Resynchronize holidays',
     runningHolidaySync: 'Synchronizing holidays…',
     addCustomRecurrence: 'Add interval',
@@ -58,10 +66,21 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
     holidaySyncSuccess: 'Holiday sync completed: {{status}}.',
     holidaySyncError: 'Holidays could not be synchronized again.',
     holidaySyncForbidden: 'Missing permission to rerun the holiday sync.',
-    connectionManagedHint: 'Connection details remain managed through /interfaces and are mirrored here read-only.',
-    holidayStateDescription: 'Saving the settings synchronizes holidays for the selected state for the next ten years.',
+    interfaceSelectionTitle: 'Interface selection',
+    interfaceSelectionDescription:
+      'Choose the interface the waste module should use. Suitability is currently not restricted.',
+    holidayStateTitle: 'State selection',
+    calendarWebUrlDescription:
+      'Enter the public waste calendar web link here. It is rendered in the plugin as a shortcut.',
+    calendarWebUrlTitle: 'Web version link',
+    holidayStateDescription:
+      'Choose the holiday state and save the change to trigger the holiday sync for the next ten years.',
+    holidayStateOverwriteWarningTitle: 'Overwrite existing holidays?',
+    holidayStateOverwriteWarningDescription:
+      'Holidays have already been imported for this instance. Saving will overwrite the existing holidays and rebuild them for the selected state.',
     customRecurrencesTitle: 'Custom intervals',
-    customRecurrencesDescription: 'Maintain additional day-based intervals that appear as extra recurrence options in the tour form.',
+    customRecurrencesDescription:
+      'Define additional collection intervals that appear as further recurrence options in the tour form.',
     customRecurrencesEmpty: 'No custom intervals have been stored yet.',
     customRecurrenceCreateTitle: 'Create custom interval',
     customRecurrenceEditTitle: 'Edit custom interval',
@@ -69,5 +88,6 @@ export const wasteManagementPluginTranslationsENSettings = createWasteManagement
     customRecurrenceDeleteDescription: 'The interval {{name}} will be removed. If tours are still assigned, the server uses the selected fallback.',
     customRecurrenceFallbackHint: 'Optional: preselect a fallback when this interval is already assigned to tours.',
     customRecurrenceFallbackPlaceholder: 'Do not preselect a fallback',
+    noInterfacesAvailable: 'No external interfaces have been configured for this instance yet.',
   },
 });

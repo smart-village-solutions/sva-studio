@@ -1,4 +1,17 @@
-import type { ExternalInterfaceRecord, WasteHolidayStateCode, WasteHolidaySyncStatus, WasteManagementSettingsRecord } from '@sva/core';
+import {
+  buildWasteManagementPublicConfig,
+  isWasteManagementInterfaceSelected,
+  readWasteManagementCalendarWebUrl,
+  readWasteManagementHolidayStateCode,
+  readWasteManagementHolidaySyncStatus,
+  readWasteManagementLastSuccessfulHolidaySyncAt,
+  readWasteManagementPdfBrandingAssetUrl,
+  readWasteManagementPdfContactBlock,
+  type ExternalInterfaceRecord,
+  type WasteHolidayStateCode,
+  type WasteHolidaySyncStatus,
+  type WasteManagementSettingsRecord,
+} from '@sva/core';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { asApiItem, createApiError } from '../../shared/request-helpers.js';
@@ -16,29 +29,43 @@ export const loadWasteSettingsWriteContext = async (
   | Response
   | {
       readonly current: WasteManagementSettingsRecord;
-      readonly interfaceRecord: ExternalInterfaceRecord;
+      readonly interfaceRecords: readonly ExternalInterfaceRecord[];
     }
 > => {
   const current = await loadConfiguredWasteSettings(deps, instanceId);
-  const interfaceRecord = await requireDeps(deps.loadDefaultInterfaceRecord, 'loadDefaultInterfaceRecord')(instanceId, 'supabase');
+  let interfaceRecords: readonly ExternalInterfaceRecord[] = [];
+  if (deps.listInterfaceRecords) {
+    interfaceRecords = await deps.listInterfaceRecords(instanceId);
+  } else if (deps.loadDefaultInterfaceRecord) {
+    const fallbackRecord = await deps.loadDefaultInterfaceRecord(instanceId, 'supabase');
+    interfaceRecords = fallbackRecord ? [fallbackRecord] : [];
+  }
 
-  return current && interfaceRecord
-    ? { current, interfaceRecord }
+  return current
+    ? { current, interfaceRecords }
     : createApiError(503, 'database_unavailable', 'Die Waste-Einstellungen konnten nicht geladen werden.', requestId);
 };
 
 export const hasManagedWasteSettingsConflict = (
-  current: WasteManagementSettingsRecord,
+  interfaceRecord: ExternalInterfaceRecord,
   input: {
     readonly projectUrl: string;
     readonly schemaName?: string;
     readonly enabled: boolean;
   }
 ): boolean => {
-  const currentSchemaName = current.schemaName ?? 'public';
+  if (interfaceRecord.typeKey !== 'supabase') {
+    return false;
+  }
+
+  const currentProjectUrl = typeof interfaceRecord.publicConfig.projectUrl === 'string' ? interfaceRecord.publicConfig.projectUrl : '';
+  const currentSchemaName =
+    typeof interfaceRecord.publicConfig.schemaName === 'string' && interfaceRecord.publicConfig.schemaName.trim().length > 0
+      ? interfaceRecord.publicConfig.schemaName
+      : 'public';
   const nextSchemaName = input.schemaName?.trim() || 'public';
 
-  return current.projectUrl !== input.projectUrl || currentSchemaName !== nextSchemaName || current.enabled !== input.enabled;
+  return currentProjectUrl !== input.projectUrl || currentSchemaName !== nextSchemaName || interfaceRecord.enabled !== input.enabled;
 };
 
 export const syncWasteHolidayState = async (
@@ -55,25 +82,6 @@ export const syncWasteHolidayState = async (
   } catch {
     return 'failed';
   }
-};
-
-export const buildWasteSettingsPublicConfig = (
-  interfaceRecord: ExternalInterfaceRecord,
-  holidayStateCode: WasteHolidayStateCode | undefined,
-  lastHolidaySyncStatus: WasteHolidaySyncStatus | undefined
-): Record<string, unknown> => {
-  const nextPublicConfig: Record<string, unknown> = {
-    ...interfaceRecord.publicConfig,
-    holidayStateCode,
-  };
-
-  if (lastHolidaySyncStatus) {
-    nextPublicConfig.lastHolidaySyncStatus = lastHolidaySyncStatus;
-  } else {
-    delete nextPublicConfig.lastHolidaySyncStatus;
-  }
-
-  return nextPublicConfig;
 };
 
 export const createWasteSettingsSuccessResponse = (
@@ -99,6 +107,91 @@ export const createWasteSettingsSuccessResponse = (
     }
   );
 
+const resolveTargetInterfaceRecord = (
+  interfaceRecords: readonly ExternalInterfaceRecord[],
+  current: WasteManagementSettingsRecord,
+  selectedInterfaceId?: string
+): ExternalInterfaceRecord | null => {
+  const explicitMatch = selectedInterfaceId
+    ? interfaceRecords.find((record) => record.id === selectedInterfaceId) ?? null
+    : null;
+  if (explicitMatch) {
+    return explicitMatch;
+  }
+
+  if (current.selectedInterfaceId) {
+    const currentMatch = interfaceRecords.find((record) => record.id === current.selectedInterfaceId);
+    if (currentMatch) {
+      return currentMatch;
+    }
+  }
+
+  return interfaceRecords.find((record) => isWasteManagementInterfaceSelected(record)) ?? null;
+};
+
+const createInterfaceSettingsRecord = (
+  interfaceRecord: ExternalInterfaceRecord,
+  input: {
+    readonly selected: boolean;
+    readonly calendarWebUrl?: string;
+    readonly pdfBrandingAssetUrl?: string;
+    readonly pdfContactBlock?: string;
+    readonly holidayStateCode?: WasteHolidayStateCode;
+    readonly lastHolidaySyncStatus?: WasteHolidaySyncStatus;
+    readonly lastSuccessfulHolidaySyncAt?: string;
+  }
+): ExternalInterfaceRecord => ({
+  ...interfaceRecord,
+  publicConfig: buildWasteManagementPublicConfig(interfaceRecord.publicConfig, input),
+});
+
+const persistWasteSettingsInterfaceSelection = async ({
+  deps,
+  interfaceRecords,
+  targetInterfaceRecord,
+  calendarWebUrl,
+  pdfBrandingAssetUrl,
+  pdfContactBlock,
+  holidayStateCode,
+  lastHolidaySyncStatus,
+  lastSuccessfulHolidaySyncAt,
+}: {
+  readonly deps: WasteManagementHandlerDeps;
+  readonly interfaceRecords: readonly ExternalInterfaceRecord[];
+  readonly targetInterfaceRecord: ExternalInterfaceRecord;
+  readonly calendarWebUrl?: string;
+  readonly pdfBrandingAssetUrl?: string;
+  readonly pdfContactBlock?: string;
+  readonly holidayStateCode?: WasteHolidayStateCode;
+  readonly lastHolidaySyncStatus?: WasteHolidaySyncStatus;
+  readonly lastSuccessfulHolidaySyncAt?: string;
+}): Promise<void> => {
+  const saveExternalInterfaceRecord = requireDeps(deps.saveExternalInterfaceRecord, 'saveExternalInterfaceRecord');
+
+  const recordsToPersist = interfaceRecords.filter(
+    (record) => record.id === targetInterfaceRecord.id || isWasteManagementInterfaceSelected(record)
+  );
+
+  for (const record of recordsToPersist) {
+    const isTarget = record.id === targetInterfaceRecord.id;
+    await saveExternalInterfaceRecord(
+      createInterfaceSettingsRecord(record, {
+        selected: isTarget,
+        calendarWebUrl: isTarget ? calendarWebUrl : readWasteManagementCalendarWebUrl(record.publicConfig),
+        pdfBrandingAssetUrl: isTarget
+          ? pdfBrandingAssetUrl
+          : readWasteManagementPdfBrandingAssetUrl(record.publicConfig),
+        pdfContactBlock: isTarget ? pdfContactBlock : readWasteManagementPdfContactBlock(record.publicConfig),
+        holidayStateCode: isTarget ? holidayStateCode : readWasteManagementHolidayStateCode(record.publicConfig),
+        lastHolidaySyncStatus: isTarget ? lastHolidaySyncStatus : readWasteManagementHolidaySyncStatus(record.publicConfig),
+        lastSuccessfulHolidaySyncAt: isTarget
+          ? lastSuccessfulHolidaySyncAt
+          : readWasteManagementLastSuccessfulHolidaySyncAt(record.publicConfig),
+      })
+    );
+  }
+};
+
 export const updateWasteManagementSettingsAfterValidation = async ({
   deps,
   ctx,
@@ -114,6 +207,10 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     readonly projectUrl: string;
     readonly schemaName?: string;
     readonly enabled: boolean;
+    readonly selectedInterfaceId?: string;
+    readonly calendarWebUrl?: string;
+    readonly pdfBrandingAssetUrl?: string;
+    readonly pdfContactBlock?: string;
     readonly holidayStateCode?: WasteHolidayStateCode;
     readonly customRecurrencePresets: readonly Omit<NonNullable<Parameters<NonNullable<WasteManagementHandlerDeps['saveWasteCustomRecurrencePresets']>>[1]>['nextItems'][number], never>[];
     readonly deletedPresetFallbacks: NonNullable<Parameters<NonNullable<WasteManagementHandlerDeps['saveWasteCustomRecurrencePresets']>>[1]>['deletedPresetFallbacks'];
@@ -124,7 +221,16 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     return writeContext;
   }
 
-  if (hasManagedWasteSettingsConflict(writeContext.current, input)) {
+  const targetInterfaceRecord = resolveTargetInterfaceRecord(
+    writeContext.interfaceRecords,
+    writeContext.current,
+    input.selectedInterfaceId
+  );
+  if (!targetInterfaceRecord) {
+    return createApiError(400, 'invalid_request', 'Für Waste muss zuerst eine Schnittstelle ausgewählt werden.', requestId);
+  }
+
+  if (hasManagedWasteSettingsConflict(targetInterfaceRecord, input)) {
     await emitWasteAuditEvent({
       deps,
       ctx,
@@ -138,10 +244,26 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     return createApiError(409, 'invalid_request', 'Die Waste-Supabase wird ausschließlich über /interfaces verwaltet.', requestId);
   }
 
-  const lastHolidaySyncStatus = await syncWasteHolidayState(deps, instanceId, input.holidayStateCode);
-  await requireDeps(deps.saveExternalInterfaceRecord, 'saveExternalInterfaceRecord')({
-    ...writeContext.interfaceRecord,
-    publicConfig: buildWasteSettingsPublicConfig(writeContext.interfaceRecord, input.holidayStateCode, lastHolidaySyncStatus),
+  const shouldRunHolidaySync =
+    Boolean(input.holidayStateCode) && input.holidayStateCode !== writeContext.current.holidayStateCode;
+  const lastHolidaySyncStatus = shouldRunHolidaySync
+    ? await syncWasteHolidayState(deps, instanceId, input.holidayStateCode)
+    : writeContext.current.lastHolidaySyncStatus;
+  const lastSuccessfulHolidaySyncAt =
+    shouldRunHolidaySync && lastHolidaySyncStatus && lastHolidaySyncStatus !== 'failed'
+      ? new Date().toISOString()
+      : writeContext.current.lastSuccessfulHolidaySyncAt;
+
+  await persistWasteSettingsInterfaceSelection({
+    deps,
+    interfaceRecords: writeContext.interfaceRecords,
+    targetInterfaceRecord,
+    calendarWebUrl: input.calendarWebUrl?.trim(),
+    pdfBrandingAssetUrl: input.pdfBrandingAssetUrl?.trim(),
+    pdfContactBlock: input.pdfContactBlock?.trim(),
+    holidayStateCode: input.holidayStateCode,
+    lastHolidaySyncStatus,
+    lastSuccessfulHolidaySyncAt,
   });
   await requireDeps(deps.saveWasteCustomRecurrencePresets, 'saveWasteCustomRecurrencePresets')(instanceId, {
     nextItems: input.customRecurrencePresets,
@@ -192,6 +314,14 @@ export const runWasteManagementHolidaySyncAfterValidation = async ({
   if (writeContext instanceof Response) {
     return writeContext;
   }
+  const targetInterfaceRecord = resolveTargetInterfaceRecord(
+    writeContext.interfaceRecords,
+    writeContext.current,
+    writeContext.current.selectedInterfaceId
+  );
+  if (!targetInterfaceRecord) {
+    return createApiError(400, 'invalid_request', 'Für Waste muss zuerst eine Schnittstelle ausgewählt werden.', requestId);
+  }
   if (!writeContext.current.holidayStateCode) {
     return createApiError(
       400,
@@ -202,13 +332,17 @@ export const runWasteManagementHolidaySyncAfterValidation = async ({
   }
 
   const lastHolidaySyncStatus = (await syncWasteHolidayState(deps, instanceId, writeContext.current.holidayStateCode)) ?? 'failed';
-  await requireDeps(deps.saveExternalInterfaceRecord, 'saveExternalInterfaceRecord')({
-    ...writeContext.interfaceRecord,
-    publicConfig: buildWasteSettingsPublicConfig(
-      writeContext.interfaceRecord,
-      writeContext.current.holidayStateCode,
-      lastHolidaySyncStatus
-    ),
+  await persistWasteSettingsInterfaceSelection({
+    deps,
+    interfaceRecords: writeContext.interfaceRecords,
+    targetInterfaceRecord,
+    calendarWebUrl: writeContext.current.calendarWebUrl,
+    pdfBrandingAssetUrl: writeContext.current.pdfBrandingAssetUrl,
+    pdfContactBlock: writeContext.current.pdfContactBlock,
+    holidayStateCode: writeContext.current.holidayStateCode,
+    lastHolidaySyncStatus,
+    lastSuccessfulHolidaySyncAt:
+      lastHolidaySyncStatus !== 'failed' ? new Date().toISOString() : writeContext.current.lastSuccessfulHolidaySyncAt,
   });
 
   const saved = await loadConfiguredWasteSettings(deps, instanceId);

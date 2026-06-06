@@ -174,9 +174,6 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     audit: { items: [], total: 0 },
     technical: { items: [], total: 0 },
   })),
-  getWasteManagementOutputOverview: vi.fn(async () => ({
-    collectionLocations: [],
-  })),
   getWasteManagementImportCatalog: vi.fn(() => [
     {
       profileId: 'waste-management.geografie-abholorte',
@@ -213,13 +210,6 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     tours: [],
   })),
   getWasteManagementSettings: vi.fn(async () => null),
-  createWasteManagementOutputPdf: vi.fn(async () => ({
-    collectionLocationId: '11111111-1111-4111-8111-111111111111',
-    year: 2026,
-    storageKey: 'waste-output/collection-locations/11111111-1111-4111-8111-111111111111/2026.pdf',
-    deliveryUrl: 'https://cdn.example/output.pdf',
-    expiresAt: '2026-05-21T12:00:00.000Z',
-  })),
   updateWasteManagementSettings: vi.fn(async () => null),
   startWasteManagementMigrations: vi.fn(async () => ({
     id: 'job-1',
@@ -650,9 +640,26 @@ describe('WasteManagementPage', () => {
   });
 
   it('renders the plugin shell from normalized search params without a redundant settings shortcut', async () => {
+    wasteManagementApiMocks.getWasteManagementSettings.mockResolvedValueOnce({
+      instanceId: 'tenant-a',
+      provider: 'supabase',
+      projectUrl: 'https://tenant-a.supabase.co',
+      schemaName: 'wm',
+      enabled: true,
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+      databaseUrlConfigured: true,
+      serviceRoleKeyConfigured: true,
+      visibleStatus: 'ok',
+      customRecurrencePresets: [],
+    });
+
     render(<WasteManagementPage />);
 
     expect(screen.getByText('wasteManagement.page.title')).toBeTruthy();
+    const webVersionLink = await screen.findByRole('link', {
+      name: 'wasteManagement.page.webVersionLinkLabel',
+    });
+    expect(webVersionLink.getAttribute('href')).toBe('https://bb-prignitz.abfallkalender.smart-village.app/');
     expect(screen.queryByDisplayValue('Restmüll')).toBeNull();
     expect(screen.queryByLabelText('wasteManagement.filters.searchLabel')).toBeNull();
     expect(screen.queryByLabelText('wasteManagement.filters.statusLabel')).toBeNull();
@@ -837,6 +844,20 @@ describe('WasteManagementPage', () => {
       projectUrl: 'https://tenant-a.supabase.co',
       schemaName: 'wm',
       enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      selectedInterfaceName: 'Supabase A',
+      selectedInterfaceTypeKey: 'supabase',
+      availableInterfaces: [
+        {
+          id: 'supabase-1',
+          name: 'Supabase A',
+          typeKey: 'supabase',
+          enabled: true,
+          visibleStatus: 'ok',
+          isSelected: true,
+        },
+      ],
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
       databaseUrlConfigured: true,
       serviceRoleKeyConfigured: true,
       visibleStatus: 'ok',
@@ -847,6 +868,20 @@ describe('WasteManagementPage', () => {
       projectUrl: 'https://tenant-a.supabase.co',
       schemaName: 'wm',
       enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      selectedInterfaceName: 'Supabase A',
+      selectedInterfaceTypeKey: 'supabase',
+      availableInterfaces: [
+        {
+          id: 'supabase-1',
+          name: 'Supabase A',
+          typeKey: 'supabase',
+          enabled: true,
+          visibleStatus: 'ok',
+          isSelected: true,
+        },
+      ],
+      calendarWebUrl: 'https://abfall.example.de',
       databaseUrlConfigured: true,
       serviceRoleKeyConfigured: true,
       visibleStatus: 'ok',
@@ -855,33 +890,177 @@ describe('WasteManagementPage', () => {
     render(<WasteManagementPage />);
 
     await waitFor(() => {
-      expect(wasteManagementApiMocks.getWasteManagementSettings).toHaveBeenCalledTimes(1);
+      expect(wasteManagementApiMocks.getWasteManagementSettings).toHaveBeenCalledTimes(2);
     });
 
-    const projectUrlInput = await screen.findByLabelText('wasteManagement.settings.fields.projectUrl');
-    const schemaNameInput = await screen.findByLabelText('wasteManagement.settings.fields.schemaName');
-    const enabledSwitch = await screen.findByRole('switch', { name: 'wasteManagement.settings.fields.enabled' });
+    const calendarWebUrlInput = await screen.findByLabelText('wasteManagement.settings.fields.calendarWebUrl');
 
     await waitFor(() => {
-      expect((projectUrlInput as HTMLInputElement).value).toBe('https://tenant-a.supabase.co');
-      expect((schemaNameInput as HTMLInputElement).value).toBe('wm');
-      expect(enabledSwitch.getAttribute('aria-checked')).toBe('true');
+      expect((calendarWebUrlInput as HTMLInputElement).value).toBe(
+        'https://bb-prignitz.abfallkalender.smart-village.app/'
+      );
     });
 
-    fireEvent.change(projectUrlInput, {
-      target: { value: 'https://tenant-b.supabase.co' },
+    fireEvent.change(calendarWebUrlInput, {
+      target: { value: 'https://abfall.example.de' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.settings.actions.save' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.settings.actions.save' })[1]);
 
     await waitFor(() => {
       expect(wasteManagementApiMocks.updateWasteManagementSettings).toHaveBeenCalledWith(
         expect.objectContaining({
-          projectUrl: 'https://tenant-b.supabase.co',
-          schemaName: 'wm',
-          enabled: true,
+          selectedInterfaceId: 'supabase-1',
+          calendarWebUrl: 'https://abfall.example.de',
         })
       );
     });
+  });
+
+  it('keeps the settings page stable when selecting an interval for a custom recurrence preset draft', async () => {
+    searchMock.mockImplementation(() => ({
+      tab: 'settings',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+    }));
+    wasteManagementApiMocks.getWasteManagementSettings.mockImplementation(async () => ({
+      instanceId: 'tenant-a',
+      provider: 'supabase',
+      projectUrl: 'https://tenant-a.supabase.co',
+      schemaName: 'wm',
+      enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      selectedInterfaceName: 'Supabase A',
+      selectedInterfaceTypeKey: 'supabase',
+      availableInterfaces: [
+        {
+          id: 'supabase-1',
+          name: 'Supabase A',
+          typeKey: 'supabase',
+          enabled: true,
+          visibleStatus: 'ok',
+          isSelected: true,
+        },
+      ],
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+      databaseUrlConfigured: true,
+      serviceRoleKeyConfigured: true,
+      visibleStatus: 'ok',
+      customRecurrencePresets: [],
+    }));
+
+    render(<WasteManagementPage />);
+
+    const intervalSelect = await screen.findByLabelText(
+      'wasteManagement.settings.fields.customRecurrenceIntervalDays'
+    );
+
+    fireEvent.change(intervalSelect, {
+      target: { value: '14' },
+    });
+
+    await waitFor(() => {
+      expect((intervalSelect as HTMLSelectElement).value).toBe('14');
+    });
+    expect(screen.getByLabelText('wasteManagement.settings.fields.customRecurrenceName')).toBeTruthy();
+  });
+
+  it('adds a custom recurrence preset draft without crashing after choosing an interval', async () => {
+    searchMock.mockImplementation(() => ({
+      tab: 'settings',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+    }));
+    wasteManagementApiMocks.getWasteManagementSettings.mockImplementation(async () => ({
+      instanceId: 'tenant-a',
+      provider: 'supabase',
+      projectUrl: 'https://tenant-a.supabase.co',
+      schemaName: 'wm',
+      enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      selectedInterfaceName: 'Supabase A',
+      selectedInterfaceTypeKey: 'supabase',
+      availableInterfaces: [
+        {
+          id: 'supabase-1',
+          name: 'Supabase A',
+          typeKey: 'supabase',
+          enabled: true,
+          visibleStatus: 'ok',
+          isSelected: true,
+        },
+      ],
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+      databaseUrlConfigured: true,
+      serviceRoleKeyConfigured: true,
+      visibleStatus: 'ok',
+      customRecurrencePresets: [],
+    }));
+    wasteManagementApiMocks.updateWasteManagementSettings.mockResolvedValueOnce({
+      instanceId: 'tenant-a',
+      provider: 'supabase',
+      projectUrl: 'https://tenant-a.supabase.co',
+      schemaName: 'wm',
+      enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      selectedInterfaceName: 'Supabase A',
+      selectedInterfaceTypeKey: 'supabase',
+      availableInterfaces: [
+        {
+          id: 'supabase-1',
+          name: 'Supabase A',
+          typeKey: 'supabase',
+          enabled: true,
+          visibleStatus: 'ok',
+          isSelected: true,
+        },
+      ],
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+      databaseUrlConfigured: true,
+      serviceRoleKeyConfigured: true,
+      visibleStatus: 'ok',
+      customRecurrencePresets: [
+        {
+          id: 'custom-14-days',
+          name: '14 Tage',
+          description: '',
+          intervalDays: 14,
+        },
+      ],
+    });
+
+    render(<WasteManagementPage />);
+
+    const nameInput = await screen.findByLabelText('wasteManagement.settings.fields.customRecurrenceName');
+    const intervalSelect = screen.getByLabelText('wasteManagement.settings.fields.customRecurrenceIntervalDays');
+
+    fireEvent.change(nameInput, {
+      target: { value: '14 Tage' },
+    });
+    fireEvent.change(intervalSelect, {
+      target: { value: '14' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.settings.actions.addCustomRecurrence' }));
+
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.updateWasteManagementSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customRecurrencePresets: [
+            expect.objectContaining({
+              name: '14 Tage',
+              intervalDays: 14,
+            }),
+          ],
+        })
+      );
+    });
+    expect(await screen.findByText('14 Tage')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'wasteManagement.settings.actions.saveCustomRecurrences' })).toBeNull();
   });
 
   it('loads and renders the filtered master-data overview', async () => {

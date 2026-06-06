@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WasteSettingsPanel } from '../src/waste-management.settings-panel.js';
 
 const getWasteManagementSettingsMock = vi.hoisted(() => vi.fn());
-const startWasteManagementHolidaySyncMock = vi.hoisted(() => vi.fn());
 const updateWasteManagementSettingsMock = vi.hoisted(() => vi.fn());
 const capturedForms = vi.hoisted(() => [] as unknown[]);
 
@@ -18,14 +17,12 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
-  Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
   StudioErrorState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('../src/waste-management.api.js', () => ({
   getWasteManagementSettings: getWasteManagementSettingsMock,
-  startWasteManagementHolidaySync: startWasteManagementHolidaySyncMock,
   updateWasteManagementSettings: updateWasteManagementSettingsMock,
 }));
 
@@ -47,17 +44,33 @@ vi.mock('../src/waste-management.settings-status-panel.js', () => ({
 vi.mock('../src/waste-management.settings-form.js', () => ({
   WasteSettingsForm: ({
     form,
-    onSubmit,
+    onChange,
+    onSaveCalendarWebUrl,
+    onSaveHolidayState,
   }: {
-    readonly form: { holidayStateCode?: string };
-    readonly onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+    readonly form: { holidayStateCode?: string; calendarWebUrl?: string; selectedInterfaceId?: string };
+    readonly onChange: (next: unknown) => void;
+    readonly onSaveCalendarWebUrl: () => void;
+    readonly onSaveHolidayState: () => void;
   }) => {
     capturedForms.push(form);
     return (
-      <form onSubmit={onSubmit}>
+      <div>
         <div>{form.holidayStateCode ?? 'unset'}</div>
-        <button type="submit">submit-settings</button>
-      </form>
+        <div>{form.calendarWebUrl ?? 'unset-url'}</div>
+        <button type="button" onClick={onSaveCalendarWebUrl}>
+          save-calendar-web-url
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange((current: { holidayStateCode?: string }) => ({ ...current, holidayStateCode: 'BB' }))}
+        >
+          change-holiday-state
+        </button>
+        <button type="button" onClick={onSaveHolidayState}>
+          save-holiday-state
+        </button>
+      </div>
     );
   },
 }));
@@ -66,18 +79,19 @@ afterEach(() => {
   cleanup();
   capturedForms.length = 0;
   getWasteManagementSettingsMock.mockReset();
-  startWasteManagementHolidaySyncMock.mockReset();
   updateWasteManagementSettingsMock.mockReset();
 });
 
 describe('WasteSettingsPanel', () => {
-  it('loads the holiday state code and shows a sync-aware success message after save', async () => {
+  it('loads the calendar web url and persists it through the dedicated card action', async () => {
     getWasteManagementSettingsMock.mockResolvedValueOnce({
       instanceId: 'tenant-a',
       provider: 'supabase',
       projectUrl: 'https://tenant-a.supabase.co',
       schemaName: 'wm',
       enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
       databaseUrlConfigured: true,
       serviceRoleKeyConfigured: true,
       visibleStatus: 'ok',
@@ -90,6 +104,8 @@ describe('WasteSettingsPanel', () => {
       projectUrl: 'https://tenant-a.supabase.co',
       schemaName: 'wm',
       enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
       databaseUrlConfigured: true,
       serviceRoleKeyConfigured: true,
       visibleStatus: 'ok',
@@ -101,14 +117,24 @@ describe('WasteSettingsPanel', () => {
     render(<WasteSettingsPanel />);
 
     await waitFor(() => {
-      expect(capturedForms.at(-1)).toEqual(expect.objectContaining({ holidayStateCode: 'NW' }));
+      expect(capturedForms.at(-1)).toEqual(
+        expect.objectContaining({
+          holidayStateCode: 'NW',
+          calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+          selectedInterfaceId: 'supabase-1',
+        })
+      );
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'submit-settings' }));
+    fireEvent.click(screen.getByRole('button', { name: 'save-calendar-web-url' }));
 
     await waitFor(() => {
       expect(updateWasteManagementSettingsMock).toHaveBeenCalledWith(
-        expect.objectContaining({ holidayStateCode: 'NW' })
+        expect.objectContaining({
+          holidayStateCode: 'NW',
+          calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+          selectedInterfaceId: 'supabase-1',
+        })
       );
     });
     await waitFor(() => {
@@ -116,25 +142,29 @@ describe('WasteSettingsPanel', () => {
     });
   });
 
-  it('runs the manual holiday sync from the settings tab and refreshes the local settings state', async () => {
+  it('saves the holiday state after the dedicated save action', async () => {
     getWasteManagementSettingsMock.mockResolvedValueOnce({
       instanceId: 'tenant-a',
       provider: 'supabase',
       projectUrl: 'https://tenant-a.supabase.co',
       schemaName: 'wm',
       enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
       databaseUrlConfigured: true,
       serviceRoleKeyConfigured: true,
       visibleStatus: 'ok',
-      holidayStateCode: 'BB',
+      holidayStateCode: 'NW',
       customRecurrencePresets: [],
     });
-    startWasteManagementHolidaySyncMock.mockResolvedValueOnce({
+    updateWasteManagementSettingsMock.mockResolvedValueOnce({
       instanceId: 'tenant-a',
       provider: 'supabase',
       projectUrl: 'https://tenant-a.supabase.co',
       schemaName: 'wm',
       enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
       databaseUrlConfigured: true,
       serviceRoleKeyConfigured: true,
       visibleStatus: 'ok',
@@ -146,16 +176,25 @@ describe('WasteSettingsPanel', () => {
     render(<WasteSettingsPanel />);
 
     await waitFor(() => {
-      expect(capturedForms.at(-1)).toEqual(expect.objectContaining({ holidayStateCode: 'BB' }));
+      expect(capturedForms.at(-1)).toEqual(expect.objectContaining({ holidayStateCode: 'NW' }));
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'settings.actions.runHolidaySync' }));
+    fireEvent.click(screen.getByRole('button', { name: 'change-holiday-state' }));
+
+    expect(updateWasteManagementSettingsMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'save-holiday-state' }));
 
     await waitFor(() => {
-      expect(startWasteManagementHolidaySyncMock).toHaveBeenCalledTimes(1);
+      expect(updateWasteManagementSettingsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          holidayStateCode: 'BB',
+          selectedInterfaceId: 'supabase-1',
+        })
+      );
     });
     await waitFor(() => {
-      expect(screen.getByText('settings.messages.holidaySyncSuccess:{"status":"success"}')).toBeTruthy();
+      expect(screen.getByText('settings.messages.saveSuccessWithHolidaySync:{"status":"success"}')).toBeTruthy();
     });
   });
 });

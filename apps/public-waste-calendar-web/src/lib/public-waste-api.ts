@@ -34,29 +34,14 @@ export const loadResolvedPublicWasteCalendar = async (input: {
     selection: input.input.selection,
     referenceDate: input.input.referenceDate,
   });
-  const projection = projectPublicWasteCalendar({
-    referenceDate: input.input.referenceDate,
-    upcomingEntries: entries,
-  });
-
   return {
     locationKey: buildPublicWasteLocationKey(input.input.selection),
-    ...projection,
+    ...projectPublicWasteCalendar({
+      referenceDate: input.input.referenceDate,
+      upcomingEntries: entries,
+    }),
   };
 };
-
-const interpolatePdfTemplate = (urlTemplate: string, locationKey: string, year: number): string =>
-  urlTemplate.replaceAll('{locationKey}', locationKey).replaceAll('{year}', String(year));
-
-export const buildPublicWastePdfLinks = (input: {
-  readonly urlTemplate: string;
-  readonly locationKey: string;
-  readonly year: number;
-}): readonly string[] => [
-  interpolatePdfTemplate(input.urlTemplate, input.locationKey, input.year - 1),
-  interpolatePdfTemplate(input.urlTemplate, input.locationKey, input.year),
-  interpolatePdfTemplate(input.urlTemplate, input.locationKey, input.year + 1),
-];
 
 export type PublicWasteSelectionResponse = {
   readonly status: 'incomplete';
@@ -69,7 +54,6 @@ export type PublicWasteSelectionResponse = {
 
 export type PublicWasteCalendarResponse = Awaited<ReturnType<typeof loadResolvedPublicWasteCalendar>> & {
   readonly selectionSummary: string;
-  readonly pdfLinks: readonly string[];
   readonly icalUrl: string;
 };
 
@@ -80,6 +64,19 @@ const toSearchParams = (selection: PublicWasteSelectionState): URLSearchParams =
   if (selection.streetId) params.set('streetId', selection.streetId);
   if (selection.houseNumberId) params.set('houseNumberId', selection.houseNumberId);
   return params;
+};
+
+export const buildPublicWastePdfDownloadUrl = (input: {
+  readonly selection: PublicWasteResolvedSelection;
+  readonly year: number;
+  readonly fractionIds: readonly string[];
+}): string => {
+  const params = toSearchParams(input.selection);
+  params.set('year', String(input.year));
+  for (const fractionId of input.fractionIds) {
+    params.append('fractionId', fractionId);
+  }
+  return `/api/public-waste/pdf?${params.toString()}`;
 };
 
 export const requestPublicWasteSelection = async (selection: PublicWasteSelectionState): Promise<PublicWasteSelectionResponse> => {
@@ -101,4 +98,28 @@ export const requestPublicWasteCalendar = async (input: {
     throw new Error(`public_waste_calendar_failed:${response.status}`);
   }
   return (await response.json()) as PublicWasteCalendarResponse;
+};
+
+export const requestPublicWastePdf = async (input: {
+  readonly selection: PublicWasteResolvedSelection;
+  readonly year: number;
+  readonly fractionIds: readonly string[];
+}): Promise<{ readonly blob: Blob; readonly filename: string }> => {
+  const response = await fetch(buildPublicWastePdfDownloadUrl(input), {
+    headers: {
+      accept: 'application/pdf, application/json;q=0.9, text/plain;q=0.8',
+    },
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `public_waste_pdf_failed:${response.status}`);
+  }
+
+  const contentDisposition = response.headers.get('content-disposition') ?? '';
+  const filenameMatch = contentDisposition.match(/filename=\"?([^\";]+)\"?/i);
+
+  return {
+    blob: await response.blob(),
+    filename: filenameMatch?.[1] ?? `abfallkalender-${input.year}.pdf`,
+  };
 };

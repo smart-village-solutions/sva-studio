@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef } from 'react';
 
 import {
   getWasteManagementMasterDataOverview,
-  getWasteManagementOutputOverview,
   getWasteManagementToursOverview,
 } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
@@ -21,18 +20,6 @@ const resolveMasterDataOverviewScope = (tab: WasteManagementSearchParams['master
   }
 
   return undefined;
-};
-
-const loadLocationOutputOverview = async (tab: WasteManagementSearchParams['masterDataTab']) => {
-  if (tab !== 'locations') {
-    return null;
-  }
-
-  try {
-    return await getWasteManagementOutputOverview();
-  } catch {
-    return null;
-  }
 };
 
 const resolveMasterDataLoadError = (translate: Translate, loadError: unknown) => {
@@ -71,28 +58,24 @@ export const useWasteMasterDataDataLoading = (
   const ptRef = useRef(pt);
   const isMountedRef = useRef(false);
   ptRef.current = pt;
-  const { setAvailableTours, setError, setLoading, setOutputOverview, setOverview } = state;
+  const { setAvailableTours, setError, setLoading, setOverview } = state;
 
   const loadOverview = useCallback(
     async () => {
       try {
         const overviewResponse = await getWasteManagementMasterDataOverview(resolveMasterDataOverviewScope(tab));
         if (!isMountedRef.current) return;
-        const outputResponse = await loadLocationOutputOverview(tab);
-        if (!isMountedRef.current) return;
         setOverview(overviewResponse);
-        setOutputOverview(outputResponse);
         setError(null);
       } catch (loadError) {
         if (!isMountedRef.current) return;
         setError(resolveMasterDataLoadError(ptRef.current, loadError));
         setAvailableTours([]);
-        setOutputOverview(null);
       } finally {
         if (isMountedRef.current) setLoading(false);
       }
     },
-    [setAvailableTours, setError, setLoading, setOutputOverview, setOverview, tab]
+    [setAvailableTours, setError, setLoading, setOverview, tab]
   );
 
   useEffect(() => {

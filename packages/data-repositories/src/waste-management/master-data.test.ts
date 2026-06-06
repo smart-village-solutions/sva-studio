@@ -24,6 +24,7 @@ describe('waste master data repository', () => {
       {
         id: 'fraction-1',
         name: 'Bioabfall',
+        pdf_short_label: null,
         label_translations: { de: 'Bioabfall', en: 'Organic waste' },
         container_size: null,
         color: '#00AA00',
@@ -43,6 +44,7 @@ describe('waste master data repository', () => {
       {
         id: 'fraction-1',
         name: 'Bioabfall',
+        pdfShortLabel: undefined,
         translations: { de: 'Bioabfall', en: 'Organic waste' },
         containerSize: undefined,
         color: '#00AA00',
@@ -65,6 +67,7 @@ describe('waste master data repository', () => {
       {
         id: 'fraction-1',
         name: 'Papier',
+        pdf_short_label: 'PAP',
         label_translations: { de: 'Papier', en: 'Paper' },
         container_size: '240l',
         color: '#0000FF',
@@ -79,6 +82,7 @@ describe('waste master data repository', () => {
     await expect(repository.getWasteFractionById('fraction-1')).resolves.toEqual({
       id: 'fraction-1',
       name: 'Papier',
+      pdfShortLabel: 'PAP',
       translations: { de: 'Papier', en: 'Paper' },
       containerSize: '240l',
       color: '#0000FF',
@@ -95,6 +99,7 @@ describe('waste master data repository', () => {
     await createWasteMasterDataRepository(write.executor).upsertWasteFraction({
       id: 'fraction-2',
       name: 'Restmüll',
+      pdfShortLabel: 'RES',
       translations: { de: 'Restmüll', en: 'Residual waste' },
       containerSize: undefined,
       color: '#444444',
@@ -106,6 +111,7 @@ describe('waste master data repository', () => {
     expect(write.statements[0]?.values).toEqual([
       'fraction-2',
       'Restmüll',
+      'RES',
       JSON.stringify({ de: 'Restmüll', en: 'Residual waste' }),
       null,
       '#444444',

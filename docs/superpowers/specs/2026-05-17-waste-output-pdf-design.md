@@ -1,5 +1,7 @@
 # Design: Ausgabe-Tab und PDF-Erzeugung für den Abfallkalender
 
+> Hinweis: Dieses Design ist fachlich überholt. Der aktuelle Zielvertrag liegt in [2026-06-06-public-waste-pdf-export-shift-design.md](./2026-06-06-public-waste-pdf-export-shift-design.md). Das Studio erzeugt keine PDFs mehr; die Erzeugung erfolgt ad hoc in der öffentlichen Web-App.
+
 ## Kurzbeschreibung
 Das Waste-Management erhält einen neuen Tab `Ausgabe`. Die erste Card `PDF-Ausdruck` konfiguriert einen adressgenauen Jahreskalender als PDF für genau einen Abholort. Eine Vorschau ist im ersten Ausbau nicht vorgesehen. Erzeugte PDF-Links werden zusätzlich in der Tabelle `Abholorte` sichtbar gemacht.
 

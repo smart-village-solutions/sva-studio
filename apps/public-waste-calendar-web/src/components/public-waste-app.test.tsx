@@ -1,12 +1,25 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PublicWasteApp } from './public-waste-app.js';
 
 describe('PublicWasteApp', () => {
-  it('renders header actions for calendar import and current-year pdf download', () => {
+  const fetchMock = vi.fn<typeof fetch>();
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock.mockReset();
+  });
+
+  it('renders header actions for calendar import and the on-demand pdf export', () => {
     render(
       <PublicWasteApp
+        selection={{
+          regionId: 'r-1',
+          cityId: 'c-1',
+          streetId: 's-1',
+          houseNumberId: 'h-1',
+        }}
         selectionState="complete"
         selectionSummary="Musterstadt, Hauptstraße 12"
         calendarModel={{
@@ -26,11 +39,6 @@ describe('PublicWasteApp', () => {
           yearBuckets: [],
           fractionOptions: [{ id: 'bio', label: 'Bioabfall' }],
         }}
-        pdfLinks={[
-          'https://example.invalid/2025.pdf',
-          'https://example.invalid/2026.pdf',
-          'https://example.invalid/2027.pdf',
-        ]}
         icalUrl="https://example.invalid/calendar.ics"
         onChangeLocation={() => undefined}
       />
@@ -39,9 +47,8 @@ describe('PublicWasteApp', () => {
     expect(screen.getByRole('link', { name: 'In Kalender übernehmen' }).getAttribute('href')).toBe(
       'https://example.invalid/calendar.ics'
     );
-    expect(screen.getByRole('link', { name: 'Druckversion herunterladen' }).getAttribute('href')).toBe(
-      'https://example.invalid/2026.pdf'
-    );
+    expect(screen.getByRole('button', { name: 'Druckversion herunterladen' })).toBeTruthy();
+    expect(screen.getByLabelText('PDF-Jahr')).toBeTruthy();
     expect(screen.getByText('Musterstadt')).toBeTruthy();
     expect(screen.getByText('Hauptstraße')).toBeTruthy();
     expect(screen.getByText('12')).toBeTruthy();
@@ -51,6 +58,12 @@ describe('PublicWasteApp', () => {
   it('starts with all fractions selected and filters the visible entries without clearing the selection summary', () => {
     render(
       <PublicWasteApp
+        selection={{
+          regionId: 'r-1',
+          cityId: 'c-1',
+          streetId: 's-1',
+          houseNumberId: 'h-1',
+        }}
         selectionState="complete"
         selectionSummary="Musterstadt, Hauptstraße 12"
         calendarModel={{
@@ -81,7 +94,6 @@ describe('PublicWasteApp', () => {
             { id: 'paper', label: 'Papier' },
           ],
         }}
-        pdfLinks={[]}
         icalUrl="https://example.invalid/calendar.ics"
         onChangeLocation={() => undefined}
       />
@@ -104,6 +116,12 @@ describe('PublicWasteApp', () => {
   it('allows deselecting all fractions so that no pickup entries remain visible', () => {
     render(
       <PublicWasteApp
+        selection={{
+          regionId: 'r-1',
+          cityId: 'c-1',
+          streetId: 's-1',
+          houseNumberId: 'h-1',
+        }}
         selectionState="complete"
         selectionSummary="Musterstadt, Hauptstraße 12"
         calendarModel={{
@@ -134,7 +152,6 @@ describe('PublicWasteApp', () => {
             { id: 'paper', label: 'Papier' },
           ],
         }}
-        pdfLinks={[]}
         icalUrl="https://example.invalid/calendar.ics"
         onChangeLocation={() => undefined}
       />
@@ -172,6 +189,12 @@ describe('PublicWasteApp', () => {
   it('opens a pickup detail dialog when an entry is activated and keeps global actions outside the dialog', () => {
     render(
       <PublicWasteApp
+        selection={{
+          regionId: 'r-1',
+          cityId: 'c-1',
+          streetId: 's-1',
+          houseNumberId: 'h-1',
+        }}
         selectionState="complete"
         selectionSummary="Musterstadt, Hauptstraße 12"
         calendarModel={{
@@ -191,7 +214,6 @@ describe('PublicWasteApp', () => {
           yearBuckets: [],
           fractionOptions: [{ id: 'bio', label: 'Bioabfall' }],
         }}
-        pdfLinks={['https://example.invalid/2025.pdf', 'https://example.invalid/2026.pdf', 'https://example.invalid/2027.pdf']}
         icalUrl="https://example.invalid/calendar.ics"
         onChangeLocation={() => undefined}
       />

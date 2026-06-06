@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Select,
   StudioField,
   StudioFieldGroup,
   Textarea,
@@ -16,6 +17,7 @@ import {
 
 import {
   createEmptyCustomRecurrencePreset,
+  customRecurrenceIntervalDayOptions,
   normalizeCustomRecurrencePresetDraft,
 } from './waste-management.settings-custom-recurrence.support.js';
 import type { CustomRecurrencePresetInputState } from './waste-management.settings.shared.js';
@@ -27,7 +29,7 @@ const CustomRecurrenceDialogFields = ({
 }: {
   readonly draft: CustomRecurrencePresetInputState;
   readonly onChange: (next: CustomRecurrencePresetInputState) => void;
-  readonly pt: (key: string) => string;
+  readonly pt: (key: string, variables?: Record<string, string | number>) => string;
 }) => (
   <div className="space-y-4">
     <StudioFieldGroup>
@@ -42,18 +44,22 @@ const CustomRecurrenceDialogFields = ({
         id="waste-settings-custom-recurrence-interval-days"
         label={pt('settings.fields.customRecurrenceIntervalDays')}
       >
-        <Input
+        <Select
           id="waste-settings-custom-recurrence-interval-days"
-          type="number"
-          min={1}
           value={String(draft.intervalDays)}
           onChange={(event) =>
             onChange({
               ...draft,
-              intervalDays: Math.max(1, Number(event.target.value) || 1),
+              intervalDays: Math.max(1, Number(event.currentTarget.value) || 1),
             })
           }
-        />
+        >
+          {customRecurrenceIntervalDayOptions.map((value) => (
+            <option key={value} value={value}>
+              {pt('settings.meta.customRecurrenceIntervalDays', { value })}
+            </option>
+          ))}
+        </Select>
       </StudioField>
       <StudioField
         id="waste-settings-custom-recurrence-description"

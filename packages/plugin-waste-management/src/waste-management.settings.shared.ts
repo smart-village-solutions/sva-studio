@@ -15,6 +15,10 @@ export type SettingsFormState = {
   readonly projectUrl: string;
   readonly schemaName: string;
   readonly enabled: boolean;
+  readonly selectedInterfaceId: string;
+  readonly calendarWebUrl: string;
+  readonly pdfBrandingAssetUrl: string;
+  readonly pdfContactBlock: string;
   readonly holidayStateCode: string;
   readonly databaseUrl: string;
   readonly serviceRoleKey: string;

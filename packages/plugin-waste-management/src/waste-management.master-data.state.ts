@@ -1,13 +1,12 @@
 import { type StatusMessage } from './waste-management.page.support.js';
 import { startTransition, useState } from 'react';
-import type { WasteManagementMasterDataOverview, WasteManagementOutputOverview } from './waste-management.api.js';
+import type { WasteManagementMasterDataOverview } from './waste-management.api.js';
 import { useWasteMasterDataEntityState } from './waste-management.master-data.entity-state.js';
 import { useWasteMasterDataLocationState } from './waste-management.master-data.location-state.js';
 
 export const useWasteMasterDataState = () => {
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<WasteManagementMasterDataOverview | null>(null);
-  const [outputOverview, setOutputOverview] = useState<WasteManagementOutputOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const [lastOutcome, setLastOutcome] = useState<
@@ -20,7 +19,6 @@ export const useWasteMasterDataState = () => {
   return {
     loading,
     overview,
-    outputOverview,
     error,
     message,
     lastOutcome,
@@ -29,7 +27,6 @@ export const useWasteMasterDataState = () => {
     ...locationState,
     setLoading,
     setOverview,
-    setOutputOverview,
     setError,
     setMessage,
     setLastOutcome,

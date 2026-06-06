@@ -71,6 +71,17 @@ export type {
   StudioPluginOperationApiErrorResponse, StudioJobUpdateInput,
 } from './plugin-operations-contract.js';
 export { wasteManagementDataSourceContract } from './waste-management-contract.js';
+export {
+  buildWasteManagementPublicConfig,
+  findSelectedWasteManagementInterfaceRecord,
+  isWasteManagementInterfaceSelected,
+  readWasteManagementCalendarWebUrl,
+  readWasteManagementHolidayStateCode,
+  readWasteManagementHolidaySyncStatus,
+  readWasteManagementLastSuccessfulHolidaySyncAt,
+  readWasteManagementPdfBrandingAssetUrl,
+  readWasteManagementPdfContactBlock,
+} from './waste-management-settings-public-config.js';
 export type {
   WasteManagementAuditOverview,
   WasteManagementAuditOutcome,
@@ -88,6 +99,7 @@ export type {
   WasteManagementDataSourceRecord,
   WasteManagementDataSourceStatus,
   WasteHolidaySyncStatus,
+  WasteManagementSettingsInterfaceOption,
   WasteManagementSettingsRecord,
   WasteManagementTechnicalEventType,
 } from './waste-management-contract.js';
@@ -174,8 +186,7 @@ export type {
 export { wasteManagementMasterDataContract } from './waste-management-master-data.js';
 export { buildWasteCalendarPdfDocument, renderWasteCalendarPdf } from './waste-management-output.js';
 export type {
-  WasteCalendarPdfDocument, WasteManagementOutputOverview, WasteManagementOutputPdfResult,
-  WasteOutputCollectionLocationArtifacts, WasteOutputPdfArtifactRecord, WasteOutputPickupEntry, WasteOutputFraction,
+  WasteCalendarPdfDocument, WasteOutputPickupEntry, WasteOutputFraction,
 } from './waste-management-output.types.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';

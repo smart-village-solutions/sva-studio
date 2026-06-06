@@ -10,6 +10,8 @@
     "test:e2e": "playwright test --config playwright.config.ts"
   },
   "dependencies": {
+    "@sva/core": "workspace:*",
+    "@sva/data-repositories": "workspace:*",
     "@tabler/icons-react": "^3.41.1",
     "pg": "^8.16.3",
     "react": "^19.2.0",

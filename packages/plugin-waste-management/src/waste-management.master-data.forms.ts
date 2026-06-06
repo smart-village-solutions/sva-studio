@@ -27,6 +27,7 @@ import type {
 export type FractionFormState = {
   readonly id: string;
   readonly name: string;
+  readonly pdfShortLabel: string;
   readonly translations: WasteLocalizedTextRecord;
   readonly containerSize: string;
   readonly color: string;
@@ -106,7 +107,10 @@ const createId = (): string => {
   fallbackBytes[15] = 0xdd;
   return formatUuidV4FromBytes(fallbackBytes);
 };
-const compactOptionalString = (value: string): string | undefined => (value.trim() ? value.trim() : undefined);
+const compactOptionalString = (value: string | undefined): string | undefined => {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+};
 
 const normalizeLocalizedTextRecord = (value: WasteLocalizedTextRecord): WasteLocalizedTextRecord | undefined => {
   const entries = Object.entries(value).flatMap(([locale, localizedValue]) => {
@@ -121,6 +125,7 @@ export const wasteMasterDataFormDefaults = {
   createFraction: (): FractionFormState => ({
     id: createId(),
     name: '',
+    pdfShortLabel: '',
     translations: {},
     containerSize: '',
     color: '#4f6d7a',
@@ -146,6 +151,7 @@ export const wasteMasterDataFormMappers = {
   fractionToForm: (fraction: WasteFractionRecord): FractionFormState => ({
     id: fraction.id,
     name: fraction.name,
+    pdfShortLabel: fraction.pdfShortLabel ?? '',
     translations: fraction.translations ?? {},
     containerSize: fraction.containerSize ?? '',
     color: fraction.color,
@@ -174,6 +180,7 @@ export const wasteMasterDataInputMappers = {
   toCreateFractionInput: (form: FractionFormState): CreateWasteManagementFractionInput => ({
     id: form.id,
     name: form.name.trim(),
+    pdfShortLabel: compactOptionalString(form.pdfShortLabel),
     translations: normalizeLocalizedTextRecord(form.translations),
     containerSize: compactOptionalString(form.containerSize),
     color: form.color.trim(),
@@ -182,6 +189,7 @@ export const wasteMasterDataInputMappers = {
   }),
   toUpdateFractionInput: (form: FractionFormState): UpdateWasteManagementFractionInput => ({
     name: form.name.trim(),
+    pdfShortLabel: compactOptionalString(form.pdfShortLabel),
     translations: normalizeLocalizedTextRecord(form.translations),
     containerSize: compactOptionalString(form.containerSize),
     color: form.color.trim(),

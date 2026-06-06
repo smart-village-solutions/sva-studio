@@ -1,5 +1,7 @@
 # Design: Öffentliche Web-App für den Abfallkalender
 
+> Hinweis: Dieses Design ist teilweise überholt. Der aktuelle PDF-Vertrag liegt in [2026-06-06-public-waste-pdf-export-shift-design.md](./2026-06-06-public-waste-pdf-export-shift-design.md). Die öffentliche App erzeugt PDFs inzwischen serverseitig ad hoc statt nur externe PDF-Links abzuleiten.
+
 ## Kurzbeschreibung
 Es wird eine eigenständige öffentliche Web-App im Monorepo eingeführt, die den Abfallkalender für einen ausgewählten Abholort in einer schlichten iFrame-tauglichen Oberfläche darstellt. Die App liest serverseitig eine lokale JSON-Konfiguration ein, kapselt den Zugriff auf dieselbe Supabase wie das Waste-Management und stellt dem Browser nur öffentliche Read-Verträge bereit.
 

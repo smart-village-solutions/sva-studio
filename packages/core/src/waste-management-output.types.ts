@@ -1,35 +1,13 @@
 export type WasteOutputFraction = Readonly<{
   id: string;
   label: string;
+  shortLabel?: string;
   color: string;
 }>;
 
 export type WasteOutputPickupEntry = Readonly<{
   date: string;
   fractions: readonly WasteOutputFraction[];
-}>;
-
-export type WasteOutputPdfArtifactRecord = Readonly<{
-  year: number;
-  deliveryUrl: string;
-  expiresAt: string;
-}>;
-
-export type WasteOutputCollectionLocationArtifacts = Readonly<{
-  collectionLocationId: string;
-  pdfs: readonly WasteOutputPdfArtifactRecord[];
-}>;
-
-export type WasteManagementOutputOverview = Readonly<{
-  collectionLocations: readonly WasteOutputCollectionLocationArtifacts[];
-}>;
-
-export type WasteManagementOutputPdfResult = Readonly<{
-  collectionLocationId: string;
-  year: number;
-  storageKey: string;
-  deliveryUrl: string;
-  expiresAt: string;
 }>;
 
 type WasteCalendarPdfEntry = Readonly<{

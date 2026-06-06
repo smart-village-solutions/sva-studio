@@ -1,15 +1,10 @@
-import { startTransition, useEffect, useRef, useState, type FormEvent } from 'react';
+import { startTransition, useEffect, useRef, useState } from 'react';
 import { usePluginTranslation, wasteManagementMasterDataContract } from '@sva/plugin-sdk';
-import {
-  Button,
-  StudioErrorState,
-  StudioLoadingState,
-} from '@sva/studio-ui-react';
+import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
 import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
 
 import {
   getWasteManagementSettings,
-  startWasteManagementHolidaySync,
   updateWasteManagementSettings,
   type WasteManagementSettingsInput,
 } from './waste-management.api.js';
@@ -20,14 +15,19 @@ import {
   type StatusMessage,
 } from './waste-management.page.support.js';
 import { WasteSettingsForm } from './waste-management.settings-form.js';
-import { WasteSettingsStatusPanel } from './waste-management.settings-status-panel.js';
 import type { CustomRecurrencePresetInputState, SettingsFormState } from './waste-management.settings-form.js';
+
+type SavingSection = 'interface' | 'holiday' | 'calendarWebUrl' | 'customRecurrences' | null;
 
 const createDefaultSettingsForm = (): SettingsFormState => ({
   provider: 'supabase',
   projectUrl: '',
   schemaName: 'public',
   enabled: false,
+  selectedInterfaceId: '',
+  calendarWebUrl: '',
+  pdfBrandingAssetUrl: '',
+  pdfContactBlock: '',
   holidayStateCode: '',
   databaseUrl: '',
   serviceRoleKey: '',
@@ -42,6 +42,10 @@ const mapSettingsToForm = (settings: WasteManagementSettingsRecord | null): Sett
         projectUrl: settings.projectUrl,
         schemaName: settings.schemaName ?? 'public',
         enabled: settings.enabled,
+        selectedInterfaceId: settings.selectedInterfaceId ?? '',
+        calendarWebUrl: settings.calendarWebUrl ?? '',
+        pdfBrandingAssetUrl: settings.pdfBrandingAssetUrl ?? '',
+        pdfContactBlock: settings.pdfContactBlock ?? '',
         holidayStateCode: settings.holidayStateCode ?? '',
         databaseUrl: '',
         serviceRoleKey: '',
@@ -60,6 +64,10 @@ const toSettingsInput = (form: SettingsFormState): WasteManagementSettingsInput 
   projectUrl: form.projectUrl.trim(),
   schemaName: compactOptionalString(form.schemaName),
   enabled: form.enabled,
+  selectedInterfaceId: compactOptionalString(form.selectedInterfaceId),
+  calendarWebUrl: compactOptionalString(form.calendarWebUrl),
+  pdfBrandingAssetUrl: compactOptionalString(form.pdfBrandingAssetUrl),
+  pdfContactBlock: compactOptionalString(form.pdfContactBlock),
   holidayStateCode: wasteManagementMasterDataContract.isWasteHolidayStateCode(form.holidayStateCode)
     ? form.holidayStateCode
     : undefined,
@@ -88,12 +96,16 @@ const useWasteSettingsState = (pt: ReturnType<typeof usePluginTranslation>) => {
     void (async () => {
       try {
         const response = await getWasteManagementSettings();
-        if (!active) return;
+        if (!active) {
+          return;
+        }
         setSettings(response);
         setForm(mapSettingsToForm(response));
         setError(null);
       } catch (loadError) {
-        if (!active) return;
+        if (!active) {
+          return;
+        }
         const code = resolveApiErrorCode(loadError);
         setError(
           code === 'forbidden'
@@ -101,7 +113,9 @@ const useWasteSettingsState = (pt: ReturnType<typeof usePluginTranslation>) => {
             : ptRef.current('settings.messages.loadError')
         );
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     })();
 
@@ -134,31 +148,9 @@ const persistWasteSettings = async (
   }
 };
 
-const runWasteHolidaySync = async (
-  pt: ReturnType<typeof usePluginTranslation>
-): Promise<{ readonly message: StatusMessage; readonly settings: WasteManagementSettingsRecord | null }> => {
-  try {
-    const response = await startWasteManagementHolidaySync();
-    return {
-      settings: response,
-      message: {
-        kind: 'success',
-        text: pt('settings.messages.holidaySyncSuccess', { status: response?.lastHolidaySyncStatus ?? 'success' }),
-      },
-    };
-  } catch (syncError) {
-    const code = resolveApiErrorCode(syncError);
-    const error = new Error(
-      code === 'forbidden' ? pt('settings.messages.holidaySyncForbidden') : pt('settings.messages.holidaySyncError')
-    );
-    (error as Error & { cause?: unknown }).cause = syncError;
-    throw error;
-  }
-};
-
 export const WasteSettingsPanel = () => {
   const pt = usePluginTranslation('wasteManagement');
-  const [saving, setSaving] = useState(false);
+  const [savingSection, setSavingSection] = useState<SavingSection>(null);
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const { error, form, loading, setForm, setSettings, settings } = useWasteSettingsState(pt);
 
@@ -170,61 +162,49 @@ export const WasteSettingsPanel = () => {
     return <StudioErrorState>{error}</StudioErrorState>;
   }
 
-  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSaving(true);
+  const applyPersistedSettings = (result: { readonly message: StatusMessage; readonly settings: WasteManagementSettingsRecord | null }) => {
+    startTransition(() => {
+      setSettings(result.settings);
+      setForm(mapSettingsToForm(result.settings));
+      setMessage(result.message);
+    });
+  };
+
+  const saveSection = async (section: Exclude<SavingSection, null>, nextForm: SettingsFormState) => {
+    setSavingSection(section);
     setMessage(null);
 
     try {
-      const result = await persistWasteSettings(form, pt);
-      startTransition(() => {
-        setSettings(result.settings);
-        setForm(mapSettingsToForm(result.settings));
-        setMessage(result.message);
-      });
+      const result = await persistWasteSettings(nextForm, pt);
+      applyPersistedSettings(result);
     } catch (saveError) {
       setMessage({ kind: 'error', text: saveError instanceof Error ? saveError.message : pt('settings.messages.saveError') });
     } finally {
-      setSaving(false);
-    }
-  };
-
-  const onRunHolidaySync = async () => {
-    if (!settings?.holidayStateCode) {
-      return;
-    }
-
-    setSaving(true);
-    setMessage(null);
-
-    try {
-      const result = await runWasteHolidaySync(pt);
-      const nextSettings = result.settings ?? settings;
-      startTransition(() => {
-        setSettings(nextSettings);
-        setForm(mapSettingsToForm(nextSettings));
-        setMessage(result.message);
-      });
-    } catch (syncError) {
-      setMessage({
-        kind: 'error',
-        text: syncError instanceof Error ? syncError.message : pt('settings.messages.holidaySyncError'),
-      });
-    } finally {
-      setSaving(false);
+      setSavingSection(null);
     }
   };
 
   return (
     <div className="space-y-4">
       <StatusNotice message={message} />
-      <WasteSettingsStatusPanel settings={settings} />
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" disabled={saving || !settings?.holidayStateCode} onClick={() => void onRunHolidaySync()}>
-          {saving ? pt('settings.actions.runningHolidaySync') : pt('settings.actions.runHolidaySync')}
-        </Button>
-      </div>
-      <WasteSettingsForm form={form} saving={saving} onSubmit={onSubmit} onChange={setForm} />
+      <WasteSettingsForm
+        form={form}
+        settings={settings}
+        savingSection={savingSection}
+        onChange={setForm}
+        onSaveInterfaceSelection={() => void saveSection('interface', form)}
+        onSaveHolidayState={() => void saveSection('holiday', form)}
+        onSaveCalendarWebUrl={() => void saveSection('calendarWebUrl', form)}
+        onPersistCustomRecurrences={(customRecurrencePresets, deletedPresetFallbacks) => {
+          const nextForm = {
+            ...form,
+            customRecurrencePresets: [...customRecurrencePresets],
+            deletedPresetFallbacks,
+          };
+          setForm(nextForm);
+          void saveSection('customRecurrences', nextForm);
+        }}
+      />
     </div>
   );
 };

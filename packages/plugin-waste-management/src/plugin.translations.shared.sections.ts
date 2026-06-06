@@ -12,8 +12,9 @@ type WasteManagementTabsCopy = Readonly<{
 }>;
 
 type WasteManagementSettingsCopy = Readonly<{
-  groupTitle: string;
-  groupDescription: string;
+  common: Readonly<{
+    actions: string;
+  }>;
   technical: Readonly<{
     title: string;
     description: string;
@@ -134,9 +135,8 @@ export const createWasteManagementTabsTranslations = <const TCopy extends WasteM
 
 export const createWasteManagementSettingsTranslations = <const TCopy extends WasteManagementSettingsCopy>(copy: TCopy) =>
   ({
+    common: copy.common,
     settings: {
-      groupTitle: copy.groupTitle,
-      groupDescription: copy.groupDescription,
       technical: copy.technical,
       fields: copy.fields,
       meta: copy.meta,

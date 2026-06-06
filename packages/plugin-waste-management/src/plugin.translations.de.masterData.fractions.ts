@@ -40,6 +40,7 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     translationEn: 'Bezeichnung (EN)',
     color: 'Farbe',
     containerSize: 'Behältergröße',
+    pdfShortLabel: 'PDF-Kürzel',
     description: 'Beschreibung',
     active: 'Status',
   },
@@ -74,6 +75,8 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
       description: 'Beschreiben Sie die Abfallart kurz und verständlich. Maximal 300 Zeichen.',
       translationDe: 'Optional: deutsche Bezeichnung für mehrsprachige Ausgaben.',
       translationEn: 'Optional: englische Bezeichnung für mehrsprachige Ausgaben.',
+      pdfShortLabel:
+        'Optional: Kürzel für die PDF-Legende. Wenn nichts gepflegt ist, wird später ein Kürzel aus der Bezeichnung abgeleitet.',
       containerSize: 'Optional: Tragen Sie eine Behältergröße nur ein, wenn diese Abfallart in mehreren Größen geführt wird, zum Beispiel 120 l oder 240 l.',
       color: 'Diese Farbe wird später zur Wiedererkennung im Kalender und in Tabellen verwendet.',
       active: 'Nur aktive Abfallarten stehen für die weitere Planung zur Verfügung.',

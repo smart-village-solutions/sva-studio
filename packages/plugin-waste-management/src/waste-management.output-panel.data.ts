@@ -1,51 +1,33 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useState } from 'react';
+import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
 
-import {
-  getWasteManagementMasterDataOverview,
-  getWasteManagementOutputOverview,
-  type WasteManagementOutputOverview,
-} from './waste-management.api.js';
+import { getWasteManagementSettings } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
-import type { OutputLocationData } from './waste-management.output-panel.model.js';
 
 type OutputTranslate = (key: string) => string;
 
 type WasteOutputPanelDataState = Readonly<{
   loading: boolean;
   error: string | null;
-  locationData: OutputLocationData | null;
-  outputOverview: WasteManagementOutputOverview | null;
-  setOutputOverview: Dispatch<SetStateAction<WasteManagementOutputOverview | null>>;
+  settings: WasteManagementSettingsRecord | null;
+  setSettings: (value: WasteManagementSettingsRecord | null) => void;
 }>;
-
-const mapLocationData = (overview: Awaited<ReturnType<typeof getWasteManagementMasterDataOverview>>): OutputLocationData => ({
-  collectionLocations: overview.collectionLocations,
-  regions: overview.regions,
-  cities: overview.cities,
-  streets: overview.streets,
-  houseNumbers: overview.houseNumbers,
-});
 
 export const useWasteOutputPanelData = (translate: OutputTranslate): WasteOutputPanelDataState => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [locationData, setLocationData] = useState<OutputLocationData | null>(null);
-  const [outputOverview, setOutputOverview] = useState<WasteManagementOutputOverview | null>(null);
+  const [settings, setSettings] = useState<WasteManagementSettingsRecord | null>(null);
 
   useEffect(() => {
     let active = true;
 
     void (async () => {
       try {
-        const [overview, outputs] = await Promise.all([
-          getWasteManagementMasterDataOverview({ scope: 'locations' }),
-          getWasteManagementOutputOverview(),
-        ]);
+        const nextSettings = await getWasteManagementSettings();
         if (!active) {
           return;
         }
-        setLocationData(mapLocationData(overview));
-        setOutputOverview(outputs);
+        setSettings(nextSettings);
         setError(null);
       } catch (loadError) {
         if (!active) {
@@ -53,7 +35,7 @@ export const useWasteOutputPanelData = (translate: OutputTranslate): WasteOutput
         }
         const errorKey =
           resolveApiErrorCode(loadError) === 'forbidden'
-            ? 'output.pdf.messages.generateForbidden'
+            ? 'output.pdf.messages.loadForbidden'
             : 'output.pdf.messages.loadError';
         setError(translate(errorKey));
       } finally {
@@ -71,8 +53,7 @@ export const useWasteOutputPanelData = (translate: OutputTranslate): WasteOutput
   return {
     loading,
     error,
-    locationData,
-    outputOverview,
-    setOutputOverview,
+    settings,
+    setSettings,
   };
 };

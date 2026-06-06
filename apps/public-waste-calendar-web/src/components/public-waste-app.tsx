@@ -3,8 +3,10 @@ import { IconCalendarPlus, IconFileTypePdf, IconPencil } from '@tabler/icons-rea
 
 import type {
   PublicWasteCalendarEntry,
+  PublicWasteResolvedSelection,
   PublicWasteSelectableEntry,
 } from '../lib/public-waste-contract.js';
+import { requestPublicWastePdf } from '../lib/public-waste-api.js';
 import {
   filterPublicWasteCalendarFractions,
   type PublicWasteCalendarViewModel,
@@ -23,10 +25,10 @@ type IncompletePublicWasteAppProps = {
 };
 
 type CompletePublicWasteAppProps = {
+  readonly selection: PublicWasteResolvedSelection;
   readonly selectionState: 'complete';
   readonly selectionSummary: string;
   readonly calendarModel: PublicWasteCalendarViewModel;
-  readonly pdfLinks: readonly string[];
   readonly icalUrl: string;
   readonly onChangeLocation: () => void;
 };
@@ -79,19 +81,59 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
     props.calendarModel.fractionOptions.map((fraction) => fraction.id)
   );
   const [selectedEntry, setSelectedEntry] = React.useState<PublicWasteCalendarEntry | null>(null);
+  const [pdfYear, setPdfYear] = React.useState(new Date().getFullYear());
+  const [pdfRunning, setPdfRunning] = React.useState(false);
+  const [pdfError, setPdfError] = React.useState<string | null>(null);
   const deferredFractions = React.useDeferredValue(selectedFractions);
   const filteredModel = filterPublicWasteCalendarFractions(props.calendarModel, deferredFractions);
   const [cityLine, streetLine, houseNumberLine] = splitSelectionSummary(props.selectionSummary);
-  const currentYearPdf = props.pdfLinks[1];
+  const yearOptions = React.useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return [currentYear - 1, currentYear, currentYear + 1];
+  }, []);
 
   React.useEffect(() => {
     setSelectedFractions(props.calendarModel.fractionOptions.map((fraction) => fraction.id));
   }, [props.calendarModel.locationKey, props.calendarModel.fractionOptions]);
 
+  React.useEffect(() => {
+    setPdfYear(new Date().getFullYear());
+    setPdfError(null);
+  }, [props.calendarModel.locationKey]);
+
   const toggleFraction = (fractionId: string) => {
     setSelectedFractions((current) =>
       current.includes(fractionId) ? current.filter((entry) => entry !== fractionId) : [...current, fractionId]
     );
+  };
+
+  const handleDownloadPdf = async () => {
+    if (selectedFractions.length === 0 || pdfRunning) {
+      return;
+    }
+
+    setPdfRunning(true);
+    setPdfError(null);
+
+    try {
+      const { blob, filename } = await requestPublicWastePdf({
+        selection: props.selection,
+        year: pdfYear,
+        fractionIds: selectedFractions,
+      });
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = filename;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      setPdfError(error instanceof Error ? error.message : 'Die PDF-Datei konnte nicht erzeugt werden.');
+    } finally {
+      setPdfRunning(false);
+    }
   };
 
   return (
@@ -116,14 +158,34 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
             <IconCalendarPlus size={18} stroke={1.75} aria-hidden="true" />
             <span>In Kalender übernehmen</span>
           </a>
-          {!currentYearPdf ? null : (
-            <a href={currentYearPdf} className="header-action-link">
-              <IconFileTypePdf size={18} stroke={1.75} aria-hidden="true" />
-              <span>Druckversion herunterladen</span>
-            </a>
-          )}
+          <label className="header-action-link">
+            <span>PDF-Jahr</span>
+            <select
+              aria-label="PDF-Jahr"
+              value={pdfYear}
+              onChange={(event) => setPdfYear(Number.parseInt(event.target.value, 10))}
+            >
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="header-action-link"
+            disabled={selectedFractions.length === 0 || pdfRunning}
+            onClick={() => {
+              void handleDownloadPdf();
+            }}
+          >
+            <IconFileTypePdf size={18} stroke={1.75} aria-hidden="true" />
+            <span>{pdfRunning ? 'PDF wird erstellt…' : 'Druckversion herunterladen'}</span>
+          </button>
         </div>
       </div>
+      {pdfError ? <p className="body-copy">{pdfError}</p> : null}
       <PublicWasteCalendarPanels
         model={filteredModel}
         onToggleFraction={toggleFraction}

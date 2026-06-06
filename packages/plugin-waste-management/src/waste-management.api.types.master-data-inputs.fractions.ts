@@ -3,6 +3,7 @@ import type { WasteLocalizedTextRecord } from '@sva/plugin-sdk';
 export type CreateWasteManagementFractionInput = Readonly<{
   id: string;
   name: string;
+  pdfShortLabel?: string;
   translations?: WasteLocalizedTextRecord;
   containerSize?: string;
   color: string;
@@ -12,6 +13,7 @@ export type CreateWasteManagementFractionInput = Readonly<{
 
 export type UpdateWasteManagementFractionInput = Readonly<{
   name: string;
+  pdfShortLabel?: string;
   translations?: WasteLocalizedTextRecord;
   containerSize?: string;
   color: string;

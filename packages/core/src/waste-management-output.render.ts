@@ -174,8 +174,9 @@ const renderMonthGrid = (commands: string[], page: WasteCalendarPdfDocument['pag
 };
 
 const renderNotes = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
-  drawText({ commands, x: 38, top: 525, fontSize: 10.2, text: page.notes[0] ?? '', fontName: 'F1' });
-  drawText({ commands, x: 38, top: 549, fontSize: 10.2, text: page.notes[1] ?? '', fontName: 'F1' });
+  for (const [index, note] of page.notes.slice(0, 4).entries()) {
+    drawText({ commands, x: 38, top: 501 + index * 16, fontSize: 10.2, text: note, fontName: 'F1' });
+  }
 };
 
 const renderLegend = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {

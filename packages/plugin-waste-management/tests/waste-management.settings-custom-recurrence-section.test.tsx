@@ -31,6 +31,8 @@ vi.mock('@sva/studio-ui-react', () => ({
       {children}
     </button>
   ),
+  Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
+  Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
 }));
 
 vi.mock('../src/waste-management.settings-custom-recurrence-dialog.js', () => ({
@@ -57,7 +59,7 @@ afterEach(() => {
 
 describe('WasteSettingsCustomRecurrenceSection', () => {
   it('removes stale fallback references when deleting a preset that another pending deletion points to', () => {
-    const onChange = vi.fn();
+    const onPersist = vi.fn();
 
     render(
       <WasteSettingsCustomRecurrenceSection
@@ -71,14 +73,15 @@ describe('WasteSettingsCustomRecurrenceSection', () => {
             value: 'preset-a',
           },
         }}
-        onChange={onChange}
+        saving={false}
+        onPersist={onPersist}
       />
     );
 
     fireEvent.click(screen.getAllByRole('button', { name: 'settings.actions.deleteCustomRecurrence' })[0]);
     fireEvent.click(screen.getByRole('button', { name: 'confirm-delete' }));
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(onPersist).toHaveBeenCalledWith(
       [{ id: 'preset-b', name: 'B', description: '', intervalDays: 14 }],
       {}
     );

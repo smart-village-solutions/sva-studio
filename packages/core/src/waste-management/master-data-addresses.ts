@@ -3,6 +3,7 @@ import type { WasteLocalizedTextRecord } from './master-data-contract.js';
 export type WasteFractionRecord = {
   readonly id: string;
   readonly name: string;
+  readonly pdfShortLabel?: string;
   readonly translations?: WasteLocalizedTextRecord;
   readonly containerSize?: string;
   readonly color: string;

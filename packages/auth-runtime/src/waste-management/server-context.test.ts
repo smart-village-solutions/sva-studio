@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
 const dataRepositoryMocks = vi.hoisted(() => ({
+  listExternalInterfaceRecords: vi.fn(),
   loadDefaultExternalInterfaceRecord: vi.fn(),
   saveExternalInterfaceConnectionCheck: vi.fn(),
   saveExternalInterfaceRecord: vi.fn(),
 }));
 
 vi.mock('@sva/data-repositories/server', () => ({
+  listExternalInterfaceRecords: dataRepositoryMocks.listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord: dataRepositoryMocks.loadDefaultExternalInterfaceRecord,
   saveExternalInterfaceConnectionCheck: dataRepositoryMocks.saveExternalInterfaceConnectionCheck,
   saveExternalInterfaceRecord: dataRepositoryMocks.saveExternalInterfaceRecord,
@@ -40,5 +42,6 @@ describe('sharedWasteManagementDeps', () => {
     expect(sharedWasteManagementDeps.loadDefaultInterfaceRecord).toBe(
       dataRepositoryMocks.loadDefaultExternalInterfaceRecord
     );
+    expect(sharedWasteManagementDeps.listInterfaceRecords).toBe(dataRepositoryMocks.listExternalInterfaceRecords);
   });
 });

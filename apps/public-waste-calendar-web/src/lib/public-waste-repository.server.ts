@@ -39,6 +39,7 @@ type CalendarEntryRow = {
   readonly tour_custom_dates: readonly { readonly date?: unknown; readonly description?: unknown }[] | null;
   readonly fraction_id: string;
   readonly fraction_label: string;
+  readonly fraction_pdf_short_label: string | null;
   readonly fraction_color: string | null;
 };
 
@@ -251,6 +252,7 @@ export const createPublicWasteRepository = (input: {
             t.custom_dates AS tour_custom_dates,
             f.id AS fraction_id,
             f.name AS fraction_label,
+            f.pdf_short_label AS fraction_pdf_short_label,
             f.color AS fraction_color
           FROM ${schemaName}.waste_collection_locations cl
           INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
@@ -325,6 +327,7 @@ export const createPublicWasteRepository = (input: {
                 readonly fractions: {
                   id: string;
                   label: string;
+                  shortLabel?: string;
                   color?: string;
                 }[];
               };
@@ -336,6 +339,7 @@ export const createPublicWasteRepository = (input: {
             ? {
                 id: row.fraction_id,
                 label: row.fraction_label,
+                ...(row.fraction_pdf_short_label ? { shortLabel: row.fraction_pdf_short_label } : {}),
                 ...(row.fraction_color ? { color: row.fraction_color } : {}),
               }
             : null;

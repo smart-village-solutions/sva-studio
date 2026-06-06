@@ -6,7 +6,7 @@ import type {
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
 } from '@sva/core';
-import type { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
+import type { loadDefaultExternalInterfaceRecord, listExternalInterfaceRecords } from '@sva/data-repositories/server';
 
 export type SqlClient = {
   query: <TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) => Promise<{
@@ -24,6 +24,7 @@ export type WasteOperationSqlPool = {
 export type WasteOperationRuntimeDeps = {
   readonly now?: () => Date;
   readonly loadDefaultInterfaceRecord?: typeof loadDefaultExternalInterfaceRecord;
+  readonly listInterfaceRecords?: typeof listExternalInterfaceRecords;
   readonly revealSecret?: (ciphertext: string | null | undefined, aad: string) => string | undefined;
   readonly createPool?: (connectionString: string) => WasteOperationSqlPool;
   readonly readBinarySource?: (blobRef: string) => Promise<Uint8Array>;

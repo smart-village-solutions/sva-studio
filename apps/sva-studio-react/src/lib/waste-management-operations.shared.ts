@@ -5,7 +5,11 @@ import {
   type SqlStatement,
 } from '@sva/data-repositories';
 import { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
+import {
+  findSelectedWasteManagementInterfaceRecord,
+} from '@sva/core';
 import type {
+  ExternalInterfaceRecord,
   WasteCustomTourDate,
   WasteDateShiftReasonType,
   WasteManagementImportProfileId,
@@ -188,13 +192,25 @@ export const defaultCreatePool = (connectionString: string): WasteOperationSqlPo
     connectionTimeoutMillis: 5_000,
   });
 
+const loadSelectedWasteInterfaceRecord = async (
+  deps: WasteOperationRuntimeDeps,
+  instanceId: string
+): Promise<ExternalInterfaceRecord | null> => {
+  if (!deps.listInterfaceRecords) {
+    return await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(instanceId, 'supabase');
+  }
+
+  const records = await deps.listInterfaceRecords(instanceId);
+  return findSelectedWasteManagementInterfaceRecord(records) ?? (await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(instanceId, 'supabase'));
+};
+
 export const resolveRuntimeDataSource = async (
   deps: WasteOperationRuntimeDeps,
   instanceId: string
 ): Promise<ResolvedWasteDataSource> =>
   resolveWasteDataSource({
     instanceId,
-    loadDefaultInterface: deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord,
+    loadDefaultInterface: async () => await loadSelectedWasteInterfaceRecord(deps, instanceId),
     revealSecret: deps.revealSecret ?? ((ciphertext, aad) => revealField(ciphertext, aad) ?? undefined),
   });
 

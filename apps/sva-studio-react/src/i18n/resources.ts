@@ -882,6 +882,9 @@ export const i18nResources = {
         body: 'Verwalten Sie Inhalte, Kontokontext und angeschlossene Module in einer gemeinsamen Oberfläche mit serverseitig abgesicherter Authentifizierung und Berechtigungsprüfung.',
         primaryAction: 'Inhalte öffnen',
         secondaryAction: 'Konto öffnen',
+        openSourcePrefix: 'Open Source Software made with',
+        openSourceLoveLabel: 'love',
+        openSourceSuffix: 'in Bad Belzig',
       },
       session: {
         loading: 'Sitzung wird geladen ...',
@@ -4406,6 +4409,9 @@ export const i18nResources = {
         body: 'Manage content, account context, and connected modules in one shared interface with server-side authentication and authorization checks.',
         primaryAction: 'Open content',
         secondaryAction: 'Open account',
+        openSourcePrefix: 'Open Source Software made with',
+        openSourceLoveLabel: 'love',
+        openSourceSuffix: 'in Bad Belzig',
       },
       session: {
         loading: 'Session is loading ...',

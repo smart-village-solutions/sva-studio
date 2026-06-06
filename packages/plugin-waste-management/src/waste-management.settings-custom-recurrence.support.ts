@@ -1,6 +1,22 @@
 import type { CustomRecurrencePresetInputState, DeletedPresetFallbackState } from './waste-management.settings.shared.js';
 
 export const defaultRecurrenceFallbacks = ['weekly', 'biweekly', 'fourweekly', 'yearly', 'on-demand', 'custom'] as const;
+export const customRecurrenceIntervalDayOptions = [
+  ...Array.from({ length: 31 }, (_, index) => index + 1),
+  35,
+  42,
+  49,
+  56,
+  63,
+  70,
+  77,
+  84,
+  91,
+  98,
+  112,
+  182,
+  365,
+] as const;
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 

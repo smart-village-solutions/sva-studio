@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
@@ -9,6 +9,7 @@ import {
   type WasteManagementSearchParams,
   type WasteManagementTabId,
 } from './search-params.js';
+import { getWasteManagementSettings } from './waste-management.api.js';
 import { useWasteManagementUiAccess } from './waste-management.ui-access.js';
 import { WasteManagementPageTabs } from './waste-management.page.layout.js';
 
@@ -45,6 +46,7 @@ export const WasteManagementPage = () => {
   const rawSearch = useSearch({ strict: false });
   const search = normalizeWasteManagementSearchParams(rawSearch as Record<string, unknown>);
   const uiAccess = useWasteManagementUiAccess(search.tab);
+  const [calendarWebUrl, setCalendarWebUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!uiAccess.isResolved || uiAccess.visibleTabIds.includes(search.tab)) {
@@ -68,10 +70,49 @@ export const WasteManagementPage = () => {
     });
   }, [navigate, search, uiAccess.isResolved, uiAccess.visibleTabIds]);
 
+  useEffect(() => {
+    let active = true;
+
+    void getWasteManagementSettings()
+      .then((settings) => {
+        if (!active) {
+          return;
+        }
+        setCalendarWebUrl(settings?.calendarWebUrl ?? null);
+      })
+      .catch(() => {
+        if (active) {
+          setCalendarWebUrl(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <StudioOverviewPageTemplate
       title={pt('page.title')}
-      description={pt('page.description')}
+      description={
+        <>
+          {pt('page.description')}
+          {calendarWebUrl ? (
+            <>
+              {' '}
+              {pt('page.webVersionLead')}{' '}
+              <a
+                href={calendarWebUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium underline underline-offset-2"
+              >
+                {pt('page.webVersionLinkLabel')}
+              </a>
+            </>
+          ) : null}
+        </>
+      }
     >
       <WasteManagementPageTabs
         pt={pt}

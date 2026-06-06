@@ -61,6 +61,17 @@ Das System SHALL alle Waste-Management-Datenzugriffe über eine hostgeführte St
 - **AND** die Datenbankverbindung wird serverseitig hergestellt
 - **AND** das Plugin erhält keinen direkten Zugriff auf Datenbank-Credentials oder rohe Verbindungsdetails
 
+### Requirement: Waste-Management pflegt PDF-Stamminhalte, erzeugt aber keine PDFs
+
+Das System SHALL den Tab `Ausgabe` im Waste-Management auf die Pflege statischer PDF-Inhalte begrenzen und keine operative PDF-Erzeugung im Studio mehr anbieten.
+
+#### Scenario: Studio pflegt nur statische PDF-Inhalte
+
+- **WHEN** ein berechtigter Benutzer den Tab `Ausgabe` im Waste-Management öffnet
+- **THEN** kann er dort nur statische PDF-Inhalte wie Branding-Grafik oder Kontaktblock pflegen
+- **AND** das Studio zeigt keinen Button zur PDF-Erzeugung
+- **AND** das Studio zeigt keine Liste persistierter Waste-PDF-Artefakte
+
 ### Requirement: Waste-Management verwendet die `waste_*`-Tabellenfamilie als Migrationsbasis
 
 Das System SHALL die bestehende `waste_*`-Tabellenfamilie als Migrationsbasis für das Waste-Management nutzen, ohne sie als unveränderlichen Vertrag zu behandeln.
@@ -397,75 +408,57 @@ Das System SHALL CSV-Import, Seed und Reset als kontrollierte Data-Tools im Wast
 - **THEN** persistiert das System Fortschrittsmeldungen blockweise statt zwingend für jede einzelne Zeile
 - **AND** die gewählte Strategie hält Jobdetail und UI fachlich aussagekräftig, ohne die Event-Persistenz unverhältnismäßig zu vergrößern
 
-### Requirement: Waste-Management bietet einen Ausgabe-Tab für Dokumentausgaben
+### Requirement: Waste-Management bietet einen Ausgabe-Tab für PDF-Stamminhalte
 
 Das System SHALL innerhalb des Waste-Management-Plugins einen zusätzlichen Tab `Ausgabe` bereitstellen.
 
 #### Scenario: Benutzer wechselt in den Ausgabe-Bereich
 
 - **WHEN** ein berechtigter Benutzer im Waste-Management den Tab `Ausgabe` auswählt
-- **THEN** rendert das Plugin ein eigenes Tabpanel für Dokument- und Ausgabe-Funktionen
+- **THEN** rendert das Plugin ein eigenes Tabpanel für PDF-bezogene Stamminhalte
 - **AND** das Tabpanel ist als vertikale Folge von Cards organisiert
-- **AND** die erste Card ist für den `PDF-Ausdruck` vorgesehen
+- **AND** es bietet keine operative Dokumenterzeugung an
 
-### Requirement: Der erste PDF-Ausdruck wird für genau einen Abholort und genau ein Jahr konfiguriert
+### Requirement: Der Ausgabe-Tab pflegt nur statische PDF-Inhalte
 
-Das System SHALL den ersten produktiven PDF-Ausdruck als jahresbezogenen Abfallkalender für genau einen Abholort modellieren.
+Das System SHALL den Tab `Ausgabe` ausschließlich für statische PDF-Inhalte verwenden, die nicht aus den fachlichen Waste-Daten stammen.
 
-#### Scenario: Benutzer konfiguriert den PDF-Ausdruck
+#### Scenario: Benutzer pflegt PDF-Stamminhalte
 
-- **WHEN** ein berechtigter Benutzer die Card `PDF-Ausdruck` im Tab `Ausgabe` nutzt
-- **THEN** kann er genau einen Abholort auswählen
-- **AND** kann genau ein Jahr für die Ausgabe festlegen
-- **AND** der Konfigurationsumfang enthält im ersten Ausbau keine Mehrjahresausgabe und keine Sammelausgabe für Orte oder Regionen
+- **WHEN** ein berechtigter Benutzer den Tab `Ausgabe` nutzt
+- **THEN** kann er dort Branding-Grafik und Kontaktblock pflegen
+- **AND** diese Inhalte werden vom öffentlichen PDF-Export verwendet
+- **AND** der Tab enthält keine Auswahl von Abholort oder Jahr für eine Studio-seitige PDF-Erzeugung
 
-#### Scenario: PDF-Ausdruck enthält automatisch alle wirksamen Fraktionen und Termine
+### Requirement: Der Ausgabe-Tab dient nur der Konfiguration, nicht der Vorschau oder Erzeugung
 
-- **WHEN** für einen Abholort und ein Jahr ein PDF-Ausdruck erzeugt wird
-- **THEN** werden alle für diesen Abholort wirksamen Fraktionen automatisch berücksichtigt
-- **AND** reguläre Termine und fachlich wirksame Ausweichtermine des gewählten Jahres werden automatisch berücksichtigt
-- **AND** der erste Ausbau bietet keine manuelle Auswahl einzelner Fraktionen im Konfigurationsformular
-
-### Requirement: Der Ausgabe-Tab dient nur der Konfiguration, nicht der Vorschau
-
-Das System SHALL im ersten Ausbau keine PDF-Vorschau innerhalb des Tabs `Ausgabe` rendern.
+Das System SHALL im Tab `Ausgabe` weder eine PDF-Vorschau noch eine PDF-Erzeugung im Studio anbieten.
 
 #### Scenario: Benutzer öffnet den Ausgabe-Tab
 
-- **WHEN** ein berechtigter Benutzer die Konfiguration für den `PDF-Ausdruck` aufruft
-- **THEN** zeigt der Tab nur die Konfigurations- und Erzeugungsoberfläche
+- **WHEN** ein berechtigter Benutzer die PDF-Konfiguration im Tab `Ausgabe` aufruft
+- **THEN** zeigt der Tab nur die Konfigurationsoberfläche
 - **AND** rendert keine eingebettete PDF-Vorschau
-- **AND** verlagert die operative Nutzung erzeugter PDFs auf andere UI-Stellen
+- **AND** zeigt keinen Button `PDF erzeugen`
+- **AND** listet keine erzeugten PDF-Artefakte
 
-### Requirement: Waste-Management integriert den vorhandenen Beispielgenerator als produktive Grundlage
+### Requirement: Waste-Management referenziert nur die gemeinsame PDF-Kernlogik
 
-Das System SHALL den vorhandenen Waste-Calendar-Beispielgenerator als Grundlage für den produktiven PDF-Ausdruck wiederverwenden, ohne den Script-Pfad selbst als Produktivvertrag zu belassen.
+Das System SHALL die produktive Waste-PDF-Kernlogik nur noch als gemeinsame fachliche Grundlage referenzieren, ohne selbst den operativen Exportpfad zu besitzen.
 
-#### Scenario: Produktive PDF-Erzeugung nutzt keinen Ops-Script-Pfad direkt
+#### Scenario: Gemeinsame PDF-Kernlogik bleibt produktiv nutzbar
 
-- **WHEN** das System einen produktiven PDF-Ausdruck für den Abfallkalender erzeugt
-- **THEN** stammt das Render-Grundgerüst fachlich aus dem vorhandenen Beispielgenerator
-- **AND** Dokumentmodell, Datenaufbereitung und Rendering sind in einen produktiven Package-Pfad des Studios überführt
+- **WHEN** das System den vorhandenen Waste-Calendar-Beispielgenerator fachlich weiterentwickelt
+- **THEN** stammen Dokumentmodell, Datenaufbereitung und Rendering weiterhin aus einem produktiven Package-Pfad
 - **AND** `scripts/ops/waste-calendar-example-pdf*.ts` bleibt Referenz oder Quellmaterial, aber nicht der produktive Laufzeitvertrag
+- **AND** der operative Exportpfad liegt in der öffentlichen Web-App
 
-### Requirement: Erzeugte PDF-Links sind in der Tabelle Abholorte sichtbar
+### Requirement: Waste-Management zeigt keine persistenten PDF-Artefakte mehr
 
-Das System SHALL erzeugte PDF-Links zusätzlich in der Tabelle `Abholorte` zugänglich machen.
+Das System SHALL weder im Tab `Ausgabe` noch in der Tabelle `Abholorte` persistierte Waste-PDF-Artefakte oder Jahreslinks anzeigen.
 
 #### Scenario: Benutzer arbeitet in der Abholorte-Tabelle
 
-- **WHEN** für einen Abholort bereits PDF-Ausgaben erzeugt wurden
-- **THEN** zeigt die Tabelle `Abholorte` den zugehörigen PDF-Link oder die zugehörigen PDF-Links in der Tabellenansicht an
-- **AND** der Benutzer muss den Tab `Ausgabe` nicht erneut öffnen, um einen vorhandenen Ausdruck aufzurufen
-
-### Requirement: Die PDF-Erzeugung erfolgt serverseitig im Instanzkontext
-
-Das System SHALL die Erzeugung des Abfallkalender-PDFs serverseitig im aktiven Instanzkontext ausführen.
-
-#### Scenario: Benutzer startet die PDF-Erzeugung
-
-- **WHEN** ein berechtigter Benutzer im Tab `Ausgabe` einen PDF-Ausdruck für einen Abholort und ein Jahr startet
-- **THEN** verarbeitet die Host-Fassade die Anforderung serverseitig
-- **AND** lädt die hierfür notwendigen Waste-Daten im Kontext der aktiven Instanz
-- **AND** der Browser erhält keinen direkten Zugriff auf Render- oder Datenbankgeheimnisse
-
+- **WHEN** ein berechtigter Benutzer die Tabelle `Abholorte` betrachtet
+- **THEN** enthält diese Tabelle keine Spalte oder Zellinhalte für erzeugte Waste-PDFs
+- **AND** der Benutzer wird für PDF-Exporte auf die öffentliche Web-App verwiesen

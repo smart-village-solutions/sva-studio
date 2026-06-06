@@ -113,6 +113,18 @@ export const FractionBasicsSection = ({
           />
         </StudioField>
         <StudioField
+          id="waste-fraction-pdf-short-label"
+          label={pt('masterData.fractions.fields.pdfShortLabel')}
+          description={pt('masterData.fractions.createView.fieldHints.pdfShortLabel')}
+        >
+          <Input
+            id="waste-fraction-pdf-short-label"
+            value={form.pdfShortLabel}
+            maxLength={12}
+            onChange={(event) => onChange({ pdfShortLabel: event.target.value })}
+          />
+        </StudioField>
+        <StudioField
           id="waste-fraction-container-size"
           label={pt('masterData.fractions.fields.containerSize')}
           description={pt('masterData.fractions.createView.fieldHints.containerSize')}

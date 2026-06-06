@@ -40,6 +40,11 @@ vi.mock('@sva/studio-ui-react', () => ({
   Input: ({ id, value, onChange, type = 'text', min }: React.ComponentProps<'input'>) => (
     <input id={id} value={value} onChange={onChange} type={type} min={min} />
   ),
+  Select: ({ id, value, onChange, children }: React.ComponentProps<'select'>) => (
+    <select id={id} value={value} onChange={onChange}>
+      {children}
+    </select>
+  ),
   StudioField: ({
     id,
     label,

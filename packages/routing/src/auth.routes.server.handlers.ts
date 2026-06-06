@@ -86,12 +86,6 @@ export const governanceAuthHandlerMap = {
   '/api/v1/waste-management/master-data': {
     GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getMasterDataOverview),
   },
-  '/api/v1/waste-management/outputs': {
-    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getOutputOverview),
-  },
-  '/api/v1/waste-management/outputs/pdf': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createOutputPdf),
-  },
   '/api/v1/waste-management/fractions': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createFraction),
   },

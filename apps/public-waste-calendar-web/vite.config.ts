@@ -8,8 +8,10 @@ import { readPublicWasteBootstrapStateFromEnvironment } from './src/lib/public-w
 import {
   handlePublicWasteCalendarRequest,
   handlePublicWasteIcalRequest,
+  handlePublicWastePdfRequest,
   handlePublicWasteSelectionRequest,
 } from './src/lib/public-waste-endpoints.server.js';
+import { loadPublicWastePdfStaticConfig } from './src/lib/public-waste-pdf-settings.server.js';
 import { createPublicWasteRepository } from './src/lib/public-waste-repository.server.js';
 
 const publicWasteApiPlugin = (): Plugin => {
@@ -68,10 +70,13 @@ const publicWasteApiPlugin = (): Plugin => {
       return handlePublicWasteSelectionRequest({ repository, request });
     }
     if (url.includes('/api/public-waste/calendar')) {
-      return handlePublicWasteCalendarRequest({
+      return handlePublicWasteCalendarRequest({ repository, request });
+    }
+    if (url.includes('/api/public-waste/pdf')) {
+      return handlePublicWastePdfRequest({
         repository,
         request,
-        pdfUrlTemplate: bootstrapState.config.pdf.urlTemplate,
+        loadPdfStaticConfig: () => loadPublicWastePdfStaticConfig(bootstrapState.config.instanceId),
       });
     }
     return handlePublicWasteIcalRequest({ repository, request });
@@ -88,6 +93,7 @@ const publicWasteApiPlugin = (): Plugin => {
         if (
           !url.startsWith('/api/public-waste/selection') &&
           !url.startsWith('/api/public-waste/calendar') &&
+          !url.startsWith('/api/public-waste/pdf') &&
           !url.startsWith('/api/public-waste/ical')
         ) {
           return next();
@@ -108,6 +114,7 @@ const publicWasteApiPlugin = (): Plugin => {
         if (
           !url.startsWith('/api/public-waste/selection') &&
           !url.startsWith('/api/public-waste/calendar') &&
+          !url.startsWith('/api/public-waste/pdf') &&
           !url.startsWith('/api/public-waste/ical')
         ) {
           return next();

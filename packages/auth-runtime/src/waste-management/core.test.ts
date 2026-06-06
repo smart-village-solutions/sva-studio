@@ -159,6 +159,19 @@ describe('waste-management auth runtime handlers', () => {
         projectUrl: 'https://tenant-a.supabase.co',
         schemaName: 'public',
         enabled: true,
+        selectedInterfaceId: 'supabase-1',
+        selectedInterfaceName: 'Waste Supabase',
+        selectedInterfaceTypeKey: 'supabase',
+        availableInterfaces: [
+          {
+            id: 'supabase-1',
+            name: 'Waste Supabase',
+            typeKey: 'supabase',
+            enabled: true,
+            visibleStatus: 'unknown',
+            isSelected: true,
+          },
+        ],
         databaseUrlConfigured: true,
         serviceRoleKeyConfigured: true,
         visibleStatus: 'unknown',
@@ -502,7 +515,7 @@ describe('waste-management auth runtime handlers', () => {
       nextItems: [{ id: 'preset-10', name: '10 Tage', intervalDays: 10 }],
       deletedPresetFallbacks: {},
     });
-    expect(syncWasteHolidayRules).toHaveBeenCalledWith('tenant-a', 'NW');
+    expect(syncWasteHolidayRules).not.toHaveBeenCalled();
     expect(emitAuditEvent).toHaveBeenCalledTimes(1);
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -551,6 +564,7 @@ describe('waste-management auth runtime handlers', () => {
         publicConfig: expect.objectContaining({
           holidayStateCode: 'NW',
           lastHolidaySyncStatus: 'partial_success',
+          wasteManagementSelected: true,
         }),
       })
     );

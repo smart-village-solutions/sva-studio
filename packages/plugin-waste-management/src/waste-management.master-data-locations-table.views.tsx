@@ -360,7 +360,6 @@ export const WasteMasterDataLocationsHeader = ({
         <th scope="col" className="w-[128px] px-3 py-3">{renderSortableHeader('houseNumbers', pt('masterData.locationsWorkspace.table.houseNumbers'))}</th>
         <th scope="col" className="w-[220px] px-3 py-3">{renderSortableHeader('tours', pt('masterData.locationsWorkspace.table.tours'))}</th>
         <th scope="col" className="w-[92px] px-3 py-3">{renderSortableHeader('status', pt('masterData.locationsWorkspace.table.status'))}</th>
-        <th scope="col" className="w-[160px] px-3 py-3">{pt('masterData.locationsWorkspace.table.outputs')}</th>
         <th scope="col" className="w-[144px] px-3 py-3 text-right">{pt('masterData.locationsWorkspace.table.actions')}</th>
       </tr>
     </thead>
@@ -390,7 +389,6 @@ export const WasteMasterDataLocationsRow = ({
   const street = location.streetId ? maps.streetsById.get(location.streetId) : undefined;
   const houseNumber = location.houseNumberId ? maps.houseNumbersById.get(location.houseNumberId) : undefined;
   const linkedTourNames = maps.locationTourNamesByLocationId.get(location.id) ?? [];
-  const outputPdfs = maps.outputPdfsByLocationId.get(location.id) ?? [];
 
   return (
     <tr className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20">
@@ -428,26 +426,6 @@ export const WasteMasterDataLocationsRow = ({
       </td>
       <td className="px-3 py-3 align-top">
         <span className="text-sm">{location.active ? pt('common.active') : pt('common.inactive')}</span>
-      </td>
-      <td className="px-3 py-3 align-top">
-        {outputPdfs.length ? (
-          <div className="space-y-1">
-            {outputPdfs.map((pdf: (typeof outputPdfs)[number]) => (
-              <a
-                key={`${location.id}-${pdf.year}`}
-                href={pdf.deliveryUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-sm font-medium text-primary underline-offset-2 hover:underline"
-                aria-label={pt('masterData.locationsWorkspace.table.openOutput', { value: pdf.year })}
-              >
-                {pdf.year}
-              </a>
-            ))}
-          </div>
-        ) : (
-          <span className="text-sm text-muted-foreground">{pt('masterData.locationsWorkspace.table.noOutputs')}</span>
-        )}
       </td>
       <td className="px-3 py-3 align-top text-right">
         <div className="flex justify-end gap-1.5">

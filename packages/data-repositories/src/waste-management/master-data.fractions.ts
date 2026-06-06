@@ -7,6 +7,7 @@ import { buildLikePattern, normalizeLocalizedTextRecord } from './master-data.sh
 type WasteFractionRow = {
   readonly id: string;
   readonly name: string;
+  readonly pdf_short_label: string | null;
   readonly label_translations: unknown;
   readonly container_size: string | null;
   readonly color: string;
@@ -19,6 +20,7 @@ type WasteFractionRow = {
 const mapWasteFractionRow = (row: WasteFractionRow): WasteFractionRecord => ({
   id: row.id,
   name: row.name,
+  pdfShortLabel: row.pdf_short_label ?? undefined,
   translations: normalizeLocalizedTextRecord(row.label_translations),
   containerSize: row.container_size ?? undefined,
   color: row.color,
@@ -47,6 +49,7 @@ const buildFractionListStatement = (filter: WasteFractionListFilter = {}): SqlSt
 SELECT
   id::text,
   name,
+  pdf_short_label,
   label_translations,
   container_size,
   color,
@@ -67,6 +70,7 @@ const buildFractionSelectStatement = (id: string): SqlStatement => ({
 SELECT
   id::text,
   name,
+  pdf_short_label,
   label_translations,
   container_size,
   color,
@@ -88,15 +92,17 @@ const buildFractionUpsertStatement = (
 INSERT INTO waste_fractions (
   id,
   name,
+  pdf_short_label,
   label_translations,
   container_size,
   color,
   description,
   active
 )
-VALUES ($1::uuid, $2, $3::jsonb, $4, $5, $6, $7)
+VALUES ($1::uuid, $2, $3, $4::jsonb, $5, $6, $7, $8)
 ON CONFLICT (id) DO UPDATE
 SET name = EXCLUDED.name,
+    pdf_short_label = EXCLUDED.pdf_short_label,
     label_translations = EXCLUDED.label_translations,
     container_size = EXCLUDED.container_size,
     color = EXCLUDED.color,
@@ -107,6 +113,7 @@ SET name = EXCLUDED.name,
   values: [
     input.id,
     input.name,
+    input.pdfShortLabel ?? null,
     input.translations ? JSON.stringify(input.translations) : null,
     input.containerSize ?? null,
     input.color,

@@ -90,20 +90,6 @@ type WasteCollectionLocationState = {
   updatedAt: string;
 };
 
-type WasteOutputPdfState = {
-  year: number;
-  deliveryUrl: string;
-  expiresAt?: string;
-  storageKey?: string;
-};
-
-type WasteOutputOverviewState = {
-  collectionLocations: Array<{
-    collectionLocationId: string;
-    pdfs: WasteOutputPdfState[];
-  }>;
-};
-
 type WasteJobState = {
   id: string;
   jobTypeId: string;
@@ -198,7 +184,6 @@ const mockWasteFacade = async (page: Page, input: {
   readonly streets?: WasteStreetState[];
   readonly houseNumbers?: WasteHouseNumberState[];
   readonly collectionLocations?: WasteCollectionLocationState[];
-  readonly outputOverview?: WasteOutputOverviewState;
   readonly allowFractionCreate?: boolean;
 }) : Promise<WasteHarness> => {
   const settingsState: WasteSettingsState = { ...input.settings };
@@ -210,12 +195,6 @@ const mockWasteFacade = async (page: Page, input: {
   const streetsState = [...(input.streets ?? [])];
   const houseNumbersState = [...(input.houseNumbers ?? [])];
   const collectionLocationsState = [...(input.collectionLocations ?? [])];
-  const outputOverviewState: WasteOutputOverviewState = {
-    collectionLocations: (input.outputOverview?.collectionLocations ?? []).map((entry) => ({
-      collectionLocationId: entry.collectionLocationId,
-      pdfs: [...entry.pdfs],
-    })),
-  };
   const requests = {
     settingsUpdates: [] as Array<Record<string, unknown>>,
     createdFractions: [] as Array<Record<string, unknown>>,
@@ -259,50 +238,6 @@ const mockWasteFacade = async (page: Page, input: {
           houseNumbers: houseNumbersState,
           collectionLocations: collectionLocationsState,
           locationTourLinks: [],
-        }),
-      });
-      return;
-    }
-
-    if (method === 'GET' && path === '/api/v1/waste-management/outputs') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: createApiItem(outputOverviewState),
-      });
-      return;
-    }
-
-    if (method === 'POST' && path === '/api/v1/waste-management/outputs/pdf') {
-      const body = request.postDataJSON() as { collectionLocationId: string; year: number };
-      const pdf: WasteOutputPdfState = {
-        year: body.year,
-        deliveryUrl: `https://cdn.example/waste-output/${body.collectionLocationId}/${body.year}.pdf`,
-        expiresAt: '2026-05-10T13:15:00.000Z',
-        storageKey: `waste-output/collection-locations/${body.collectionLocationId}/${body.year}.pdf`,
-      };
-      const existingEntry = outputOverviewState.collectionLocations.find(
-        (entry) => entry.collectionLocationId === body.collectionLocationId
-      );
-      if (existingEntry) {
-        existingEntry.pdfs = [...existingEntry.pdfs.filter((entry) => entry.year !== body.year), pdf].sort(
-          (left, right) => right.year - left.year
-        );
-      } else {
-        outputOverviewState.collectionLocations.push({
-          collectionLocationId: body.collectionLocationId,
-          pdfs: [pdf],
-        });
-      }
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: createApiItem({
-          collectionLocationId: body.collectionLocationId,
-          year: body.year,
-          deliveryUrl: pdf.deliveryUrl,
-          expiresAt: pdf.expiresAt,
-          storageKey: pdf.storageKey,
         }),
       });
       return;

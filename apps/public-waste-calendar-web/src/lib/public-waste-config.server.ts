@@ -4,9 +4,6 @@ export type PublicWasteConfig = {
     readonly databaseUrl: string;
     readonly schemaName: string;
   };
-  readonly pdf: {
-    readonly urlTemplate: string;
-  };
 };
 
 const CONFIG_ERROR = 'public_waste_config_invalid';
@@ -30,13 +27,11 @@ export const parsePublicWasteConfig = (input: unknown): PublicWasteConfig => {
 
   const instanceId = readString(input.instanceId);
   const supabase = isRecord(input.supabase) ? input.supabase : null;
-  const pdf = isRecord(input.pdf) ? input.pdf : null;
 
   const databaseUrl = readString(supabase?.databaseUrl);
   const schemaName = readString(supabase?.schemaName);
-  const urlTemplate = readString(pdf?.urlTemplate);
 
-  if (instanceId === null || databaseUrl === null || schemaName === null || urlTemplate === null) {
+  if (instanceId === null || databaseUrl === null || schemaName === null) {
     throw new Error(CONFIG_ERROR);
   }
 
@@ -45,9 +40,6 @@ export const parsePublicWasteConfig = (input: unknown): PublicWasteConfig => {
     supabase: {
       databaseUrl,
       schemaName,
-    },
-    pdf: {
-      urlTemplate,
     },
   };
 };

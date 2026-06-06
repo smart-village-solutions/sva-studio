@@ -4,6 +4,7 @@ import { z } from 'zod';
 const createWasteFractionSchema = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1),
+  pdfShortLabel: z.string().trim().min(1).max(12).optional(),
   translations: z.record(z.string().trim().min(1), z.string().trim().min(1)).optional(),
   containerSize: z.string().trim().min(1).optional(),
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, 'Ungültiger Hex-Farbwert.'),
@@ -72,12 +73,20 @@ const wasteCustomRecurrencePresetSchema = z.object({
 });
 
 const wasteHolidayStateCodeSchema = z.enum(wasteManagementMasterDataContract.holidayStateCodes);
+const optionalWasteUrlSchema = z
+  .string()
+  .trim()
+  .refine((value) => value.length === 0 || z.string().url().safeParse(value).success, 'Ungültige URL.');
 
 const updateWasteSettingsSchema = z.object({
   provider: z.literal('supabase'),
   projectUrl: z.string().trim(),
   schemaName: z.string().trim().optional(),
   enabled: z.boolean(),
+  selectedInterfaceId: z.string().trim().min(1).optional(),
+  calendarWebUrl: optionalWasteUrlSchema.optional(),
+  pdfBrandingAssetUrl: optionalWasteUrlSchema.optional(),
+  pdfContactBlock: z.string().trim().max(2_000).optional(),
   holidayStateCode: wasteHolidayStateCodeSchema.optional(),
   customRecurrencePresets: z.array(wasteCustomRecurrencePresetSchema).default([]),
   deletedPresetFallbacks: z

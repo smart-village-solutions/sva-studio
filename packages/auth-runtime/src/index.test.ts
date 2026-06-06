@@ -16,8 +16,6 @@ describe('@sva/auth-runtime package scaffold', () => {
     expect(authRoutePaths).toContain('/api/v1/iam/health/ready');
     expect(authRoutePaths).toContain('/api/v1/waste-management/master-data');
     expect(authRoutePaths).toContain('/api/v1/waste-management/history');
-    expect(authRoutePaths).toContain('/api/v1/waste-management/outputs');
-    expect(authRoutePaths).toContain('/api/v1/waste-management/outputs/pdf');
     expect(authRoutePaths).toContain('/api/v1/waste-management/scheduling');
     expect(authRoutePaths).toContain('/api/v1/waste-management/tours');
     expect(authRoutePaths).toContain('/api/v1/waste-management/settings');

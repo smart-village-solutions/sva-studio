@@ -41,30 +41,34 @@ const AccessFaxFolderIcon = () => (
   </svg>
 );
 
-const AccessFaxTitleBarButton = ({
-  children,
-  onClick,
-  ariaLabel,
-}: Readonly<{
-  children: React.ReactNode;
-  onClick?: () => void;
-  ariaLabel?: string;
-}>) => {
-  const Component = onClick ? 'button' : 'span';
+type AccessFaxTitleBarButtonProps =
+  | {
+      readonly children: React.ReactNode;
+      readonly onClick: () => void;
+      readonly ariaLabel: string;
+    }
+  | {
+      readonly children: React.ReactNode;
+      readonly onClick?: undefined;
+      readonly ariaLabel?: undefined;
+    };
+
+const AccessFaxTitleBarButton = ({ children, onClick, ariaLabel }: AccessFaxTitleBarButtonProps) => {
+  const className =
+    'flex h-[17px] w-[19px] items-center justify-center border border-black bg-[#c0c0c0] shadow-[1px_1px_0_0_#ffffff_inset,-1px_-1px_0_0_#7b7b7b_inset] text-[10px] leading-none text-black';
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-label={ariaLabel} className={className}>
+        {children}
+      </button>
+    );
+  }
 
   return (
-    <Component
-      {...(onClick
-        ? {
-            type: 'button' as const,
-            onClick,
-            'aria-label': ariaLabel,
-          }
-        : { 'aria-hidden': true })}
-      className="flex h-[17px] w-[19px] items-center justify-center border border-black bg-[#c0c0c0] shadow-[1px_1px_0_0_#ffffff_inset,-1px_-1px_0_0_#7b7b7b_inset] text-[10px] leading-none text-black"
-    >
+    <span aria-hidden="true" className={className}>
       {children}
-    </Component>
+    </span>
   );
 };
 
@@ -275,12 +279,15 @@ const AccessFaxEasterEggDialog = ({
           </div>
         </div>
 
-        <label className="flex items-center gap-2 pt-[2px]">
-          <span className="flex h-[13px] w-[13px] items-center justify-center border border-black bg-white text-[11px] leading-none shadow-[1px_1px_0_0_#7b7b7b_inset,-1px_-1px_0_0_#ffffff_inset]">
+        <div className="flex items-center gap-2 pt-[2px]">
+          <span
+            aria-hidden="true"
+            className="flex h-[13px] w-[13px] items-center justify-center border border-black bg-white text-[11px] leading-none shadow-[1px_1px_0_0_#7b7b7b_inset,-1px_-1px_0_0_#ffffff_inset]"
+          >
             ✓
           </span>
           <span>{t('account.privacy.dialogs.accessFax.autoCloseLabel')}</span>
-        </label>
+        </div>
 
         <div className="flex justify-end gap-[6px] pt-1">
           <button

@@ -67,7 +67,10 @@ describe('PrivacyDialogs', () => {
     expect(screen.getByText('Speichern:')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Öffnen' }).getAttribute('disabled')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Ordner öffnen' }).getAttribute('disabled')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Fenster schließen' })).toBeTruthy();
     expect(screen.getByText('Papier wird eingelegt ...')).toBeTruthy();
+    expect(screen.queryByLabelText('Fenster nach Abschluss schließen')).toBeNull();
+    expect(screen.getByText('Fenster nach Abschluss schließen')).toBeTruthy();
     const progressBar = screen.getByRole('progressbar', { name: 'Faxversand-Fortschritt' });
     const firstFilledSegment = progressBar.querySelector('[data-progress-filled="true"]');
     expect(firstFilledSegment?.className).toContain('bg-[#0606a7]');

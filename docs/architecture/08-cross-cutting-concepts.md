@@ -165,7 +165,7 @@ gleichzeitig beeinflussen.
 - Dezente Motion auf der Instanz-Detailseite ist nur zulässig, wenn sie Blickführung, Statusfeedback oder Prozesszustände unterstützt; `prefers-reduced-motion`, Fokusindikatoren, Statuskontrast und Incident-Lesbarkeit haben stets Vorrang vor dekorativer Wirkung.
 - Root-/Plattform-Zugriff umfasst Instanz-Lifecycle, Provisioning, Platform-User, Platform-Rollen, Platform-Sync und explizites Break-Glass; tenantlokale Daten bleiben davon getrennt
 - User-, Rollen- und Rollenzuordnungsänderungen folgen einem Keycloak-first-Vertrag. Studio schreibt erst Keycloak, synchronisiert danach die lokalen Read-Models und macht Abweichungen über `mappingStatus`, `editability` und Diagnosecodes sichtbar.
-- `system_admin` bleibt die einzige geschützte tenantlokale Defaultrolle; frühere Standardrollen wie `app_manager`, `designer` oder `editor` bleiben nur als Legacy-Bootstrap-Artefakte kompatibel und werden nicht länger pauschal als Systemrollen behandelt.
+- `system_admin` bleibt die einzige geschützte tenantlokale Defaultrolle; frühere Standardrollen wie `app_manager`, `designer` oder `editor` gehören nicht mehr zum tenantlokalen Sollmodell, werden nicht mehr als Systemrollen behandelt und sind höchstens noch historische Altartefakte für explizite Migrations- und Repair-Pfade.
 - Tenant-Userlisten richten sich nach dem Tenant-Realm in Keycloak; ungemappte oder mehrdeutige Benutzer werden als `unmapped` beziehungsweise `manual_review` angezeigt.
 - Keycloak-Built-in-Rollen bleiben als Rollenobjekte read-only, werden aber in Listen nicht ausgeblendet.
 - Keycloak-Provisioning für Instanzen ist ein expliziter mehrstufiger Root-Host-Workflow aus Preflight, Plan, Ausführung und persistiertem Schrittprotokoll

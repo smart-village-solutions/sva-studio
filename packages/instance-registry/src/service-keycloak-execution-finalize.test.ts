@@ -189,7 +189,6 @@ describe('service-keycloak-execution-finalize', () => {
       tenantAdminClientExists: false,
       tenantAdminClientSecretAligned: false,
       tenantAdminHasSystemAdmin: true,
-      tenantAdminHasInstanceRegistryAdmin: false,
       tenantAdminExists: true,
     };
     const repository = {

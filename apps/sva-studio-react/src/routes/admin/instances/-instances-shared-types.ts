@@ -52,6 +52,13 @@ export type SetupWorkflowStep = {
     | 'activate_instance';
 };
 
+export type InstanceSetupStatusItem = {
+  readonly key: 'activation' | 'adminStructure';
+  readonly title: string;
+  readonly description: string;
+  readonly status: WorkflowStepState;
+};
+
 export type DetailWorkflowAction =
   | NonNullable<SetupWorkflowStep['action']>
   | 'rotate_client_secret'

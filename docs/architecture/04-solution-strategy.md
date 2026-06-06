@@ -198,6 +198,6 @@ Referenzen:
 ### Fortschreibung 2026-06: Root-/Tenant-Rollenmodell entkoppeln
 
 - Der Root-Host verwendet `instance_registry_admin` als einzige relevante Plattformrolle für Instanz-Control-Plane und Break-Glass-Pfade.
-- Tenant-Realms behalten `system_admin` als einzige geschützte Defaultrolle; frühere Standardrollen wie `app_manager`, `designer` oder `editor` bleiben nur noch als Legacy-Bootstrap-Kompatibilität bestehen.
+- Tenant-Realms behalten `system_admin` als einzige geschützte Defaultrolle; frühere Standardrollen wie `app_manager`, `designer` oder `editor` gehören nicht mehr zum Sollmodell, werden nicht mehr geseedet und nur noch als historische Altartefakte bestehender Instanzen über Migrations- und Repair-Pfade behandelt.
 - Tenantseitige Rollen- und Permission-Verträge dürfen Root-only-Artefakte wie `instance_registry_admin` und `instance.registry.manage` weder anzeigen noch als wirksame Tenant-Berechtigung behandeln.
 - `roleLevel` bleibt als Kompatibilitätsfeld bestehen, verliert aber seine normative Führungsrolle für neue Autorisierungsentscheidungen.

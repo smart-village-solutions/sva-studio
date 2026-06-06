@@ -1,5 +1,5 @@
-export const ADMIN_ROLES = new Set(['system_admin']);
 export const SYSTEM_ADMIN_ROLES = new Set(['system_admin']);
+export const ADMIN_ROLES = SYSTEM_ADMIN_ROLES;
 export const PLATFORM_ROOT_ROLE = 'instance_registry_admin';
 export const ROOT_ADMIN_ROLES = new Set([PLATFORM_ROOT_ROLE]);
 export const PLATFORM_PROFILE_ROLES = new Set([PLATFORM_ROOT_ROLE]);

@@ -20,9 +20,13 @@ vi.mock('../../../hooks/use-users', () => ({
   useUsers: () => useUsersMock(),
 }));
 
-vi.mock('../../../lib/iam-admin-access', () => ({
-  isIamBulkEnabled: () => isIamBulkEnabledMock(),
-}));
+vi.mock('../../../lib/iam-admin-access', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../lib/iam-admin-access')>();
+  return {
+    ...actual,
+    isIamBulkEnabled: () => isIamBulkEnabledMock(),
+  };
+});
 
 vi.mock('../../../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
@@ -307,7 +311,7 @@ describe('UserListPage', () => {
   });
 
   it('renders platform user management on root scope without tenant mutations', () => {
-    useAuthMock.mockReturnValue({ user: { id: 'platform-admin', roles: ['system_admin'] } });
+    useAuthMock.mockReturnValue({ user: { id: 'platform-admin', roles: ['instance_registry_admin'] } });
     useUsersMock.mockReturnValue(createUsersApiState());
 
     render(<UserListPage />);
@@ -317,5 +321,16 @@ describe('UserListPage', () => {
     expect(screen.queryByRole('link', { name: 'Bearbeiten' })).toBeNull();
     expect(screen.queryByRole('switch', { name: 'Aktivstatus für Alice' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' })).toBeTruthy();
+  });
+
+  it('does not switch into platform scope for rootless sessions without the platform role', () => {
+    useAuthMock.mockReturnValue({ user: { id: 'broken-session', roles: ['system_admin'] } });
+    useUsersMock.mockReturnValue(createUsersApiState());
+
+    render(<UserListPage />);
+
+    expect(screen.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Plattform-Benutzer' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Nutzer anlegen' })).toBeTruthy();
   });
 });

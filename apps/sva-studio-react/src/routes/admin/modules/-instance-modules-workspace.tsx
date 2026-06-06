@@ -20,6 +20,7 @@ type InstanceModulesWorkspaceProps = {
   readonly statusLoading: boolean;
   readonly mutationError: IamHttpError | null;
   readonly showMutationError?: boolean;
+  readonly showBootstrapAction?: boolean;
   readonly emptyState: string;
   readonly onAssignModule: (instanceId: string, moduleId: string) => Promise<unknown>;
   readonly onRevokeModule: (instanceId: string, moduleId: string) => Promise<unknown>;
@@ -95,6 +96,7 @@ type AssignedModulesCardProps = {
   readonly assignedModules: readonly StudioModuleContract[];
   readonly instanceId: string;
   readonly statusLoading: boolean;
+  readonly showBootstrapAction: boolean;
   readonly onSeedIamBaseline: (instanceId: string) => Promise<unknown>;
   readonly onOpenBootstrapConfirm: () => void;
   readonly onOpenRevokeConfirm: (moduleId: string) => void;
@@ -104,6 +106,7 @@ const AssignedModulesCard = ({
   assignedModules,
   instanceId,
   statusLoading,
+  showBootstrapAction,
   onSeedIamBaseline,
   onOpenBootstrapConfirm,
   onOpenRevokeConfirm,
@@ -123,14 +126,16 @@ const AssignedModulesCard = ({
         >
           {t('admin.instances.instanceModules.actions.seedIamBaseline')}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onOpenBootstrapConfirm}
-          disabled={statusLoading}
-        >
-          {t('admin.instances.instanceModules.actions.bootstrapAdminStructure')}
-        </Button>
+        {showBootstrapAction ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onOpenBootstrapConfirm}
+            disabled={statusLoading}
+          >
+            {t('admin.instances.instanceModules.actions.bootstrapAdminStructure')}
+          </Button>
+        ) : null}
       </div>
     </div>
 
@@ -201,6 +206,7 @@ export const InstanceModulesWorkspace = ({
   statusLoading,
   mutationError,
   showMutationError = true,
+  showBootstrapAction = true,
   emptyState,
   onAssignModule,
   onRevokeModule,
@@ -231,6 +237,7 @@ export const InstanceModulesWorkspace = ({
             assignedModules={assignedModules}
             instanceId={selectedInstance.instanceId}
             statusLoading={statusLoading}
+            showBootstrapAction={showBootstrapAction}
             onSeedIamBaseline={onSeedIamBaseline}
             onOpenBootstrapConfirm={() => setBootstrapConfirmOpen(true)}
             onOpenRevokeConfirm={setPendingRevokeModuleId}
@@ -268,28 +275,30 @@ export const InstanceModulesWorkspace = ({
         }}
       />
 
-      <ConfirmDialog
-        open={bootstrapConfirmOpen && selectedInstance !== null}
-        title={t('admin.instances.instanceModules.confirmBootstrap.title')}
-        description={t('admin.instances.instanceModules.confirmBootstrap.description', {
-          instanceId: selectedInstance?.instanceId ?? '',
-        })}
-        confirmLabel={t('admin.instances.instanceModules.confirmBootstrap.confirm')}
-        cancelLabel={t('admin.instances.instanceModules.confirmBootstrap.cancel')}
-        onCancel={() => setBootstrapConfirmOpen(false)}
-        onConfirm={async () => {
-          if (!selectedInstance) {
-            return;
-          }
-          const success = await onBootstrapAdminStructure(
-            selectedInstance.instanceId,
-            selectedInstance.assignedModules ?? []
-          );
-          if (success) {
-            setBootstrapConfirmOpen(false);
-          }
-        }}
-      />
+      {showBootstrapAction ? (
+        <ConfirmDialog
+          open={bootstrapConfirmOpen && selectedInstance !== null}
+          title={t('admin.instances.instanceModules.confirmBootstrap.title')}
+          description={t('admin.instances.instanceModules.confirmBootstrap.description', {
+            instanceId: selectedInstance?.instanceId ?? '',
+          })}
+          confirmLabel={t('admin.instances.instanceModules.confirmBootstrap.confirm')}
+          cancelLabel={t('admin.instances.instanceModules.confirmBootstrap.cancel')}
+          onCancel={() => setBootstrapConfirmOpen(false)}
+          onConfirm={async () => {
+            if (!selectedInstance) {
+              return;
+            }
+            const success = await onBootstrapAdminStructure(
+              selectedInstance.instanceId,
+              selectedInstance.assignedModules ?? []
+            );
+            if (success) {
+              setBootstrapConfirmOpen(false);
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 };

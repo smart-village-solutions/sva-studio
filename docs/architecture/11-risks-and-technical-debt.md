@@ -264,9 +264,9 @@ Schulden auf IST-Basis.
 - `roleLevel` bleibt in Rollen-, User- und Audit-Verträgen als Kompatibilitätsfeld sichtbar.
   - Impact: mittel bis hoch (Reviewer können Hierarchie-Logik weiterhin fälschlich als normative Autorisierungsquelle lesen)
   - Maßnahme: separaten Folgechange für den kontrollierten Rückbau von `roleLevel` vorbereiten.
-- Legacy-Standardrollen wie `app_manager`, `designer`, `editor` oder `moderator` bleiben in Bestandsinstanzen sichtbar, obwohl sie nicht mehr normativ führend sind.
-  - Impact: mittel (Operatorsicht und UI können historische Bootstrap-Rollen noch mit aktivem Sollmodell verwechseln)
-  - Maßnahme: Read-Model und Runbooks markieren den Legacy-Status explizit; spätere Cleanup-Phase nur mit Migrations- und Kommunikationspfad.
+- Historische Altrollen wie `app_manager`, `designer`, `editor` oder `moderator` können in Bestandsinstanzen noch sichtbar sein, obwohl sie nicht mehr zum Sollmodell gehören.
+  - Impact: mittel (Operatorsicht und UI können historische Altartefakte noch mit aktiv verwalteten Tenant-Rollen verwechseln)
+  - Maßnahme: Read-Model, Runbooks und Cleanup-Migrationen markieren den Altstatus explizit; neue Seeds oder Default-Verträge dürfen diese Rollen nicht wieder einführen.
 - Einzelne Governance- und Route-Gates arbeiten weiterhin rollennamenbasiert statt vollständig permission- oder scope-zentriert.
   - Impact: mittel bis hoch (weitere Rollenmodelländerungen bleiben unnötig teuer und regressionsanfällig)
   - Maßnahme: Folgechange für verbleibende rollennamenbasierte Gates priorisieren und gegen ADR-046 prüfen.

@@ -42,6 +42,7 @@ output/
 .cache/
 artifacts/
 .playwright-cli/
+.superpowers/
 
 # NX
 .nx/
@@ -109,3 +110,4 @@ apps/public-waste-calendar-web/public-waste-config.json
 apps/public-waste-calendar-web/public-waste-config.local.json
 apps/**/test-results/
 playwright-report/
+apps/public-waste-calendar-web/public-waste-config.local.json

@@ -107,7 +107,19 @@ export type OrganizationReadHandlerDeps<TFeatureFlags = unknown> = {
   ) => Promise<T>;
 };
 
-const ADMIN_ROLES = new Set(['system_admin']);
+const createMissingOrganizationReadAuthorizerResponse = <TFeatureFlags>(
+  deps: OrganizationReadHandlerDeps<TFeatureFlags>,
+  requestId?: string
+): Response =>
+  deps.createApiError(
+    403,
+    'forbidden',
+    'Autorisierungsstrategie für Organisationslesezugriffe ist nicht konfiguriert.',
+    requestId,
+    {
+      reason_code: 'missing_organization_read_authorizer',
+    }
+  );
 
 const prepareOrganizationReadRequest = async <TFeatureFlags>(
   deps: OrganizationReadHandlerDeps<TFeatureFlags>,
@@ -121,7 +133,7 @@ const prepareOrganizationReadRequest = async <TFeatureFlags>(
   }
   const accessCheck = deps.authorizeOrganizationReadAccess
     ? await deps.authorizeOrganizationReadAccess(request, ctx, requestContext.requestId)
-    : deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+    : createMissingOrganizationReadAuthorizerResponse(deps, requestContext.requestId);
   if (accessCheck) {
     return { error: accessCheck };
   }

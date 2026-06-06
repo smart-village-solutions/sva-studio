@@ -10,7 +10,7 @@ Das bestehende IAM-Modell mischte drei getrennte Ebenen:
 
 - Plattformrechte für Root-Host und Instanz-Control-Plane
 - tenantlokale Sonderrollen für die Erstadministration
-- tenantlokale Standardrollen als historische Bootstrap-Kompatibilität
+- tenantlokale Standardrollen als historisch gewachsene Bootstrap-Artefakte
 
 Dadurch tauchten `instance_registry_admin`, `system_admin`, `roleLevel` und frühere Standardrollen wie `app_manager` oder `editor` gleichzeitig in Seeds, Provisioning, Permission-Katalogen, UI-Gates und Rollenmutationen auf. Die Folge waren fachlich unscharfe Grenzen zwischen Root- und Tenant-Scope sowie unnötige Kopplung zwischen Modulrechten und kanonischen Rollennamen.
 
@@ -19,7 +19,7 @@ Dadurch tauchten `instance_registry_admin`, `system_admin`, `roleLevel` und frü
 1. `instance_registry_admin` ist ausschließlich eine Plattformrolle des Root-Realm.
 2. `system_admin` bleibt die einzige geschützte tenantlokale Defaultrolle.
 3. Tenant-seitige Permission-Kataloge, Rollenmutationen und Laufzeit-Projektionen wie `auth/me`, `iam/me/permissions` und `iam/authorize` blenden Root-only-Artefakte wie `instance_registry_admin` und `instance.registry.manage` aus beziehungsweise lehnen sie fail-closed ab.
-4. Frühere tenantlokale Standardrollen (`app_manager`, `feature-manager`, `interface-manager`, `designer`, `editor`, `moderator`) bleiben als Legacy-Bootstrap-Rollen kompatibel bestehen, gelten aber nicht länger als geschützte Systemrollen.
+4. Frühere tenantlokale Standardrollen (`app_manager`, `feature-manager`, `interface-manager`, `designer`, `editor`, `moderator`) gehören nicht mehr zum Sollmodell, werden nicht mehr geseedet oder als Default-/Systemrollen geführt und sind nur noch als historische Altartefakte für Cleanup-, Repair- und Migrationspfade relevant.
 5. `roleLevel` bleibt vorerst als Kompatibilitätsfeld im Vertrag, ist aber nicht mehr die normative Quelle für neue Rollenmodellentscheidungen.
 6. Neue tenantlokale Fachzugriffe dürfen nicht wieder über feste Rollennamen modelliert werden, sobald fachliche Permissions existieren; Ausnahmen sind nur echte Plattformpfade.
 
@@ -29,19 +29,19 @@ Dadurch tauchten `instance_registry_admin`, `system_admin`, `roleLevel` und frü
 
 - Root- und Tenant-Scope sind technisch und fachlich klarer getrennt.
 - Tenant-Admins können individuelle Rollen und Gruppen verwalten, ohne auf kanonische Standardrollen festgelegt zu sein.
-- Bestandsinstanzen lassen sich additiv bereinigen, ohne produktive Rollen hart zu löschen.
+- Bestandsinstanzen lassen sich additiv bereinigen, ohne historische Upgrade-Pfade oder Cleanup-Migrationen abzuschneiden.
 
 ### Negativ
 
-- Legacy-Standardrollen und `roleLevel` bleiben vorerst als Kompatibilitätslast sichtbar.
+- Historische Altrollen und `roleLevel` bleiben vorerst als Kompatibilitätslast in Bestandsdaten oder Read-Models sichtbar.
 - Zusätzliche Permission-Backfills und Anti-Regression-Tests sind nötig, damit Bestandsrollen und Spezialpfade nicht schleichend wieder an Rollennamen gekoppelt werden.
 - Tenant-seitige Spezialfälle müssen über explizite, permission-abgeleitete Capabilities modelliert werden; neue Fachzugriffe dürfen nicht wieder direkt an Rollennamen hängen.
 
 ## Verworfen
 
-### Sofortige Entfernung aller Legacy-Standardrollen
+### Sofortige physische Löschung aller Legacy-Standardrollen aus Bestandsdaten
 
-Verworfen, weil laufende Instanzen, Seeds und fachliche Erwartungshaltungen sonst unnötig hart gebrochen würden.
+Verworfen, weil historische Daten- und Upgrade-Pfade sonst unnötig hart gebrochen würden; stattdessen bleiben Cleanup- und Repair-Pfade explizit erhalten.
 
 ### Modellierung von `instance_registry_admin` als normale tenantlokale Rolle mit Spezial-Permission
 

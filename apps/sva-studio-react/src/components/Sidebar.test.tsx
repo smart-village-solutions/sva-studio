@@ -159,7 +159,7 @@ describe('Sidebar', () => {
       user: {
         id: 'user-1',
         name: 'Admin',
-        roles: ['system_admin', 'instance_registry_admin'],
+        roles: ['system_admin'],
         instanceId: 'de-musterhausen',
         permissionActions: [
           'experimental.read',
@@ -216,9 +216,7 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Organisationen' }).getAttribute('href')).toBe(
       '/admin/organizations'
     );
-    expect(screen.getByRole('link', { name: 'Instanzen' }).getAttribute('href')).toBe(
-      '/admin/instances'
-    );
+    expect(screen.queryByRole('link', { name: 'Instanzen' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
     expect(screen.getByRole('link', { name: 'Gruppen' }).getAttribute('href')).toBe(
       '/admin/groups'
@@ -253,7 +251,7 @@ describe('Sidebar', () => {
       user: {
         id: 'user-1',
         name: 'Admin',
-        roles: ['system_admin', 'instance_registry_admin'],
+        roles: ['system_admin'],
         permissionActions: ['iam.user.read', 'iam.role.read', 'iam.org.read'],
       },
       isAuthenticated: true,
@@ -281,7 +279,7 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
   });
 
-  it('zeigt Rollen auch fuer Plattform-Admins ohne Tenant-Role-Permissions an', () => {
+  it('zeigt Benutzerliste und Rollen auch fuer Plattform-Admins ohne Tenant-Role-Permissions an', () => {
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,
       user: {
@@ -304,6 +302,7 @@ describe('Sidebar', () => {
     const usersToggle = screen.getByRole('button', { name: 'Benutzer' });
     fireEvent.click(usersToggle);
 
+    expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe('/admin/users');
     expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
     expect(screen.queryByRole('link', { name: 'Gruppen' })).toBeNull();
   });
@@ -416,7 +415,7 @@ describe('Sidebar', () => {
       user: {
         id: 'user-1',
         name: 'Admin',
-        roles: ['system_admin', 'instance_registry_admin'],
+        roles: ['system_admin'],
         instanceId: 'de-musterhausen',
         permissionActions: [
           'iam.user.read',
@@ -454,9 +453,7 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe(
       '/admin/users'
     );
-    expect(screen.getByRole('link', { name: 'Instanzen' }).getAttribute('href')).toBe(
-      '/admin/instances'
-    );
+    expect(screen.queryByRole('link', { name: 'Instanzen' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Gruppen' }).getAttribute('href')).toBe(
       '/admin/groups'
     );

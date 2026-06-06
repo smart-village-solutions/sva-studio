@@ -66,7 +66,11 @@ const createDeps = (
       error: vi.fn(),
     },
     readPathSegment: vi.fn(() => groupId),
-    requireRoles: vi.fn(() => null),
+    requireRoles: vi.fn((requestContext, roles, requestId) =>
+      requestContext.user.roles.some((role) => roles.has(role))
+        ? null
+        : createJsonResponse(403, { error: { code: 'forbidden', message: 'forbidden' }, requestId })
+    ),
     resolveActorInfo: vi.fn(async () => ({ actor })),
     withInstanceScopedDb: vi.fn(async (_instanceId, work) => work({ query })),
     ...overrides,
@@ -178,6 +182,19 @@ describe('createLegacyGroupReadHandlers', () => {
     const handlers = createLegacyGroupReadHandlers(deps);
 
     const response = await handlers.listGroupsInternal(new Request('http://localhost/api/v1/iam/groups'), ctx);
+
+    expect(response.status).toBe(403);
+    expect(deps.withInstanceScopedDb).not.toHaveBeenCalled();
+  });
+
+  it('rejects legacy app_manager fallback access', async () => {
+    const deps = createDeps();
+    const handlers = createLegacyGroupReadHandlers(deps);
+
+    const response = await handlers.listGroupsInternal(new Request('http://localhost/api/v1/iam/groups'), {
+      ...ctx,
+      user: { ...ctx.user, roles: ['app_manager'] },
+    });
 
     expect(response.status).toBe(403);
     expect(deps.withInstanceScopedDb).not.toHaveBeenCalled();

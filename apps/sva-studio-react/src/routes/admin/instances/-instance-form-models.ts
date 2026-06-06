@@ -281,7 +281,7 @@ export const getPostCreateGuidance = (instance: {
     status: t(INSTANCE_STATUS_LABELS[instance.status]),
   }),
   nextSteps: [
-    t('admin.instances.success.nextSteps.openDetail'),
+    t('admin.instances.success.nextSteps.openSetup'),
     t('admin.instances.success.nextSteps.runProvisioning', { realm: instance.authRealm }),
     t('admin.instances.success.nextSteps.activate', { hostname: instance.primaryHostname }),
   ],

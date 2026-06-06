@@ -878,6 +878,9 @@ export const i18nResources = {
       },
       hero: {
         eyebrow: 'Studio Workspace',
+        openSourcePrefix: 'Open Source Software made with',
+        openSourceLoveLabel: 'love',
+        openSourceSuffix: 'in Bad Belzig',
         subtitle: 'Smart Village App Self-Service Plattform für Inhalte, Module und Erweiterungen.',
         body: 'Verwalten Sie Inhalte, Kontokontext und angeschlossene Module in einer gemeinsamen Oberfläche mit serverseitig abgesicherter Authentifizierung und Berechtigungsprüfung.',
         primaryAction: 'Inhalte öffnen',
@@ -1050,6 +1053,9 @@ export const i18nResources = {
       profile: {
         title: 'Mein Konto',
         subtitle: 'Persönliche Daten und Einstellungen verwalten',
+        platformReadOnlyTitle: 'Plattform-Profil nur lesbar',
+        platformReadOnlyBody:
+          'Plattform-Profile sind hier nur lesbar. Änderungen werden nicht über den tenantlokalen Profilpfad gespeichert.',
       },
       fields: {
         username: 'Benutzername',
@@ -1299,6 +1305,21 @@ export const i18nResources = {
             title: 'Auskunft anfordern',
             description: 'Ergänzen Sie bei Bedarf Hinweise für die Auskunftsanfrage.',
             submit: 'Auskunft senden',
+          },
+          accessFax: {
+            title: 'Als Fax versenden',
+            description: 'Spielerischer Faxversand ohne Auswirkungen auf Ihre Anfrage.',
+            windowTitle: 'Processing...',
+            progressLabel: 'Status:',
+            progressAriaLabel: 'Faxversand-Fortschritt',
+            closeWindow: 'Fenster schließen',
+            close: 'Schließen',
+            status: {
+              paper: 'Papier wird eingelegt ...',
+              toner: 'Toner wird geschüttelt ...',
+              handshake: 'Empfangsgerät piept beleidigt ...',
+              failed: 'Fehlgeschlagen: Gegenstelle hat Feierabend.',
+            },
           },
           objection: {
             title: 'Widerspruch einreichen',
@@ -1552,12 +1573,58 @@ export const i18nResources = {
             'Pflegen Sie Registry- und Keycloak-Grundeinstellungen der ausgewählten Instanz.',
           empty:
             'Wählen Sie eine Instanz aus der Liste, um Details, Realm-Status und Läufe anzuzeigen.',
+          actions: {
+            openDoctor: 'Doctor öffnen',
+          },
+          tabs: {
+            betrieb: 'Betrieb',
+            doctor: 'Doctor',
+            einstellungen: 'Einstellungen',
+          },
           primaryHostname: 'Primärer Hostname: {{value}}',
           parentDomain: 'Parent-Domain: {{value}}',
           status: 'Status: {{value}}',
           runs: 'Provisioning-Läufe',
           runStatus: 'Laufstatus: {{value}}',
           noRuns: 'Für diese Instanz liegen noch keine Läufe vor.',
+        },
+        doctor: {
+          warning: {
+            title: 'Doctor erkennt aktuell Handlungsbedarf.',
+          },
+          steps: {
+            overview: {
+              title: 'Überblick',
+              subtitle: 'Zeigt grüne und offene Prüfungen gemeinsam, bevor Sie in eine Reparatur springen.',
+            },
+            recommendation: {
+              title: 'Empfohlene Maßnahme',
+              subtitle: 'Die nächste sinnvolle Aktion auf Basis der aktuellen Evidenz.',
+            },
+            repair: {
+              title: 'Reparatur ausführen',
+              subtitle: 'Starten Sie gezielt den passenden Korrekturlauf oder Folgeeingriff.',
+            },
+            validation: {
+              title: 'Validieren',
+              subtitle: 'Prüfen Sie die grünen Vorbedingungen erneut und bestätigen Sie den neuen Zustand.',
+            },
+          },
+          checks: {
+            configuration: 'Konfiguration',
+            tenantAccess: 'Tenant-Zugriff',
+            tenantReconcile: 'Tenant-Reconcile',
+            preflight: 'Vorbedingungen',
+            latestRun: 'Letzter technischer Lauf',
+          },
+          validation: {
+            ready: 'Doctor erkennt aktuell keinen priorisierten Befund. Nutzen Sie die Validierung bei Bedarf erneut.',
+            degraded: 'Doctor empfiehlt nach der Korrektur eine erneute Validierung der Vorbedingungen und des Live-Status.',
+            blocked: 'Doctor hat blockierende Befunde erkannt und priorisiert die nächste Maßnahme vor dem Weiterbetrieb.',
+          },
+          historyTitle: 'Historie',
+          historySubtitle:
+            'Technische Läufe bleiben zur Diagnose sichtbar, folgen aber bewusst erst nach Überblick, Maßnahme, Reparatur und Validierung.',
         },
         cockpit: {
           eyebrow: 'Control Tower',
@@ -1774,6 +1841,7 @@ export const i18nResources = {
           provisioningPreviewUpdated: 'Provisioning-Vorschau wurde aktualisiert.',
           provisioningQueued:
             'Provisioning-Auftrag wurde gespeichert und zur Abarbeitung vorgemerkt.',
+          instanceActivated: 'Die Instanz wurde aktiviert.',
           tenantIamProbeUpdated: 'Tenant-IAM-Rechteprobe wurde aktualisiert.',
           workerEnvMissing:
             'Der Provisioning-Worker kann Keycloak derzeit nicht technisch prüfen. Im laufenden Prozess fehlt {{envName}}.',
@@ -1859,13 +1927,13 @@ export const i18nResources = {
           },
           module: {
             permissions: 'Berechtigungen: {{value}}',
-            roles: 'Systemrollen: {{value}}',
+            roles: 'Geschützte Systemrollen: {{value}}',
           },
           actions: {
             assign: 'Modul zuweisen',
             revoke: 'Modul entziehen',
             seedIamBaseline: 'IAM-Basis neu aufbauen',
-            bootstrapAdminStructure: 'Admin-Struktur initialisieren',
+            bootstrapAdminStructure: 'Tenant-Admin-Struktur initialisieren',
           },
           confirmRevoke: {
             title: 'Modul wirklich entziehen?',
@@ -1875,10 +1943,10 @@ export const i18nResources = {
             cancel: 'Abbrechen',
           },
           confirmBootstrap: {
-            title: 'Admin-Struktur wirklich initialisieren?',
+            title: 'Tenant-Admin-Struktur wirklich initialisieren?',
             description:
-              'Für die Instanz {{instanceId}} wird die initiale Admin-Struktur für Core und aktuell zugewiesene Module neu angelegt oder überschrieben.',
-            confirm: 'Admin-Struktur initialisieren',
+              'Für die Instanz {{instanceId}} werden `system_admin` und die IAM-Basis der aktuell zugewiesenen Module synchronisiert. Zusätzliche Legacy-Standardrollen werden dabei nicht angelegt.',
+            confirm: 'Tenant-Admin-Struktur initialisieren',
             cancel: 'Abbrechen',
           },
         },
@@ -1943,7 +2011,7 @@ export const i18nResources = {
             'Diese Angaben sind optional, solange der Tenant-Admin nicht direkt beim ersten Provisioning neu gesetzt werden muss.',
           reviewTitle: 'Eingaben prüfen',
           reviewSubtitle:
-            'Die Instanz wird jetzt nur angelegt. Der eigentliche Keycloak-Abgleich folgt danach auf der Detailseite.',
+            'Die Instanz wird jetzt nur angelegt. Der eigentliche Keycloak-Abgleich folgt danach im separaten Setup.',
           reviewDefaultIssuer: 'Wird automatisch aus dem Realm abgeleitet',
           reviewNotConfigured: 'Nicht konfiguriert',
           actions: {
@@ -1960,28 +2028,57 @@ export const i18nResources = {
             backToOverview: 'Zur Übersicht',
           },
           nextSteps: {
-            openDetail:
-              'Öffnen Sie die Detailseite, um den technischen Zustand der Instanz zu prüfen.',
+            openSetup:
+              'Öffnen Sie danach den Setup-Flow, um Provisioning, Aktivierung und Tenant-Admin-Struktur abzuschließen.',
             runProvisioning: 'Führen Sie dort den Keycloak-Abgleich für Realm {{realm}} aus.',
             activate:
               'Aktivieren Sie die Instanz erst nach erfolgreichem Provisioning für {{hostname}}.',
           },
         },
+        setup: {
+          title: 'Setup abschließen',
+          subtitle:
+            'Die Instanz {{instanceId}} ist angelegt. Schließen Sie jetzt Aktivierung und Tenant-Admin-Struktur ab, bevor Sie in den normalen Betrieb wechseln.',
+          temporaryPasswordTitle: 'Temporäres Tenant-Admin-Passwort',
+          temporaryPasswordHint:
+            'Nur erforderlich, wenn der Workflow beim Zurücksetzen des Tenant-Admins ein Passwort setzen soll.',
+          status: {
+            title: 'Setup-Status',
+            subtitle:
+              'Der Setup-Flow ist abgeschlossen, sobald die Instanz aktiv ist und die Tenant-Admin-Struktur initialisiert wurde.',
+            activationTitle: 'Instanz aktiviert',
+            activationPending: 'Aktivieren Sie die Instanz nach erfolgreichem Provisioning.',
+            activationDone: 'Die Instanz ist aktiv geschaltet.',
+            adminStructureTitle: 'Tenant-Admin-Struktur initialisiert',
+            adminStructurePending:
+              'Synchronisieren Sie `system_admin` und die benötigten Module für den Start.',
+            adminStructureDone: 'Die geschützte Tenant-Admin-Struktur wurde initialisiert.',
+          },
+          completion: {
+            ready: 'Setup abgeschlossen. Sie können jetzt in den normalen Betrieb wechseln.',
+            pending: 'Setup noch nicht abgeschlossen. Prüfen Sie zuerst die beiden Pflichtschritte.',
+          },
+          actions: {
+            completeSetup: 'Setup abschließen',
+            openOperations: 'Zur Betriebsansicht wechseln',
+            backToOverview: 'Zur Übersicht',
+          },
+        },
         adminBootstrap: {
-          title: 'Admin-Struktur',
+          title: 'Tenant-Admin-Struktur',
           subtitlePending:
             'Der Abschnitt ist Teil des Happy Path, wird aber erst nach erfolgreichem Registry-Create aktiv.',
           subtitleReady:
-            'Optional Module auswählen und danach die initiale Admin-Struktur für Core und zugewiesene Module anlegen.',
+            'Optional Module auswählen und danach `system_admin` sowie die IAM-Basis für die zugewiesenen Module synchronisieren.',
           moduleHint: 'Enthält initial die Rechte: {{value}}',
           conflictHint:
-            'Bestehende Rollen mit gleichem Namen werden beim erneuten Bootstrap überschrieben. Bereits angelegte Sonderrollen bleiben unberührt.',
-          action: 'Admin-Struktur jetzt anlegen',
+            'Beim erneuten Bootstrap wird nur die geschützte Rolle `system_admin` auf den Sollzustand zurückgeführt. Bereits angelegte individuelle Rollen bleiben unberührt.',
+          action: 'Tenant-Admin-Struktur jetzt anlegen',
           actionHintPending: 'Zuerst die Instanz anlegen, danach wird dieser Schritt aktiv.',
           actionHintReady:
-            'Ohne Modulauswahl werden nur die Gruppe Admins und die Core-Admin-Rolle angelegt.',
+            'Ohne Modulauswahl wird nur `system_admin` als tenantlokale Vollzugriffsrolle synchronisiert.',
           success:
-            'Die initiale Admin-Struktur wurde erfolgreich angelegt. Die Instanz gilt damit im Create-Flow als fertig.',
+            'Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Der Setup-Schritt ist damit abgeschlossen.',
           modules: {
             news: 'News',
             events: 'Events',
@@ -2286,7 +2383,6 @@ export const i18nResources = {
           tenantAdminClientExists: 'Tenant-Admin-Client vorhanden',
           tenantAdminExists: 'Tenant-Admin vorhanden',
           tenantAdminHasSystemAdmin: 'Tenant-Admin hat system_admin',
-          tenantAdminHasInstanceRegistryAdmin: 'Tenant-Admin hat instance_registry_admin',
           redirectUrisMatch: 'Redirect-URIs stimmen',
           logoutUrisMatch: 'Logout-URIs stimmen',
           webOriginsMatch: 'Web-Origins stimmen',
@@ -4414,6 +4510,9 @@ export const i18nResources = {
       },
       hero: {
         eyebrow: 'Studio workspace',
+        openSourcePrefix: 'Open Source Software made with',
+        openSourceLoveLabel: 'love',
+        openSourceSuffix: 'in Bad Belzig',
         subtitle: 'Smart Village App self-service platform for content, modules, and extensions.',
         body: 'Manage content, account context, and connected modules in one shared interface with server-side authentication and authorization checks.',
         primaryAction: 'Open content',
@@ -4584,6 +4683,9 @@ export const i18nResources = {
       profile: {
         title: 'My Account',
         subtitle: 'Manage personal data and preferences',
+        platformReadOnlyTitle: 'Platform profile is read only',
+        platformReadOnlyBody:
+          'Platform profiles are read only here. Changes are not saved through the tenant-local profile path.',
       },
       fields: {
         username: 'Username',
@@ -4832,6 +4934,21 @@ export const i18nResources = {
             title: 'Request access',
             description: 'Add optional notes for the access request if needed.',
             submit: 'Submit access request',
+          },
+          accessFax: {
+            title: 'Send as fax',
+            description: 'Playful fax overlay without affecting your request.',
+            windowTitle: 'Processing...',
+            progressLabel: 'Status:',
+            progressAriaLabel: 'Fax transmission progress',
+            closeWindow: 'Close window',
+            close: 'Close',
+            status: {
+              paper: 'Loading paper tray ...',
+              toner: 'Shaking toner cartridge ...',
+              handshake: 'Receiving machine beeps with disdain ...',
+              failed: 'Failed: receiving office has already clocked out.',
+            },
           },
           objection: {
             title: 'Submit objection',
@@ -5084,12 +5201,58 @@ export const i18nResources = {
           title: 'Instance details',
           subtitle: 'Maintain registry and Keycloak base settings for the selected instance.',
           empty: 'Select an instance from the list to inspect details, realm status, and runs.',
+          actions: {
+            openDoctor: 'Open Doctor',
+          },
+          tabs: {
+            betrieb: 'Operations',
+            doctor: 'Doctor',
+            einstellungen: 'Settings',
+          },
           primaryHostname: 'Primary hostname: {{value}}',
           parentDomain: 'Parent domain: {{value}}',
           status: 'Status: {{value}}',
           runs: 'Provisioning runs',
           runStatus: 'Run status: {{value}}',
           noRuns: 'No provisioning runs recorded for this instance yet.',
+        },
+        doctor: {
+          warning: {
+            title: 'Doctor has identified work that needs attention.',
+          },
+          steps: {
+            overview: {
+              title: 'Overview',
+              subtitle: 'Shows green and non-green checks together before you jump into a repair.',
+            },
+            recommendation: {
+              title: 'Recommended action',
+              subtitle: 'The next meaningful action based on the current evidence.',
+            },
+            repair: {
+              title: 'Run repair',
+              subtitle: 'Trigger the matching corrective run or follow-up intervention deliberately.',
+            },
+            validation: {
+              title: 'Validate',
+              subtitle: 'Re-check the green prerequisites and confirm the new state.',
+            },
+          },
+          checks: {
+            configuration: 'Configuration',
+            tenantAccess: 'Tenant access',
+            tenantReconcile: 'Tenant reconcile',
+            preflight: 'Preflight',
+            latestRun: 'Latest technical run',
+          },
+          validation: {
+            ready: 'Doctor currently sees no prioritized finding. Re-run validation whenever needed.',
+            degraded: 'Doctor recommends validating preflight and live status again after the correction.',
+            blocked: 'Doctor found blocking issues and prioritizes the next action before normal operations continue.',
+          },
+          historyTitle: 'History',
+          historySubtitle:
+            'Technical runs remain available for diagnosis, but they intentionally follow overview, recommendation, repair, and validation.',
         },
         cockpit: {
           eyebrow: 'Control Tower',
@@ -5304,6 +5467,7 @@ export const i18nResources = {
           keycloakStatusUpdated: 'Keycloak status was refreshed.',
           provisioningPreviewUpdated: 'Provisioning preview was refreshed.',
           provisioningQueued: 'The provisioning job was queued for execution.',
+          instanceActivated: 'The instance was activated.',
           tenantIamProbeUpdated: 'The tenant IAM access probe was refreshed.',
           workerEnvMissing:
             'The provisioning worker cannot technically inspect Keycloak right now. The running process is missing {{envName}}.',
@@ -5386,13 +5550,13 @@ export const i18nResources = {
           },
           module: {
             permissions: 'Permissions: {{value}}',
-            roles: 'System roles: {{value}}',
+            roles: 'Protected system roles: {{value}}',
           },
           actions: {
             assign: 'Assign module',
             revoke: 'Revoke module',
             seedIamBaseline: 'Rebuild IAM baseline',
-            bootstrapAdminStructure: 'Initialize admin structure',
+            bootstrapAdminStructure: 'Initialize tenant admin structure',
           },
           confirmRevoke: {
             title: 'Really revoke module?',
@@ -5402,10 +5566,10 @@ export const i18nResources = {
             cancel: 'Cancel',
           },
           confirmBootstrap: {
-            title: 'Really initialize the admin structure?',
+            title: 'Really initialize the tenant admin structure?',
             description:
-              'The initial admin structure for Core and the currently assigned modules will be created or overwritten for instance {{instanceId}}.',
-            confirm: 'Initialize admin structure',
+              'For instance {{instanceId}}, `system_admin` and the IAM baseline for the currently assigned modules will be synchronized. No additional legacy default roles are created.',
+            confirm: 'Initialize tenant admin structure',
             cancel: 'Cancel',
           },
         },
@@ -5486,9 +5650,39 @@ export const i18nResources = {
             backToOverview: 'Back to overview',
           },
           nextSteps: {
-            openDetail: 'Open the detail page to inspect the technical state of the instance.',
+            openSetup:
+              'Open the dedicated setup flow to finish provisioning, activation, and the tenant admin structure.',
             runProvisioning: 'Run the Keycloak reconciliation for realm {{realm}} there.',
             activate: 'Activate the instance only after provisioning succeeded for {{hostname}}.',
+          },
+        },
+        setup: {
+          title: 'Complete setup',
+          subtitle:
+            'The instance {{instanceId}} has been created. Finish activation and the tenant admin structure before switching into normal operations.',
+          temporaryPasswordTitle: 'Temporary tenant admin password',
+          temporaryPasswordHint:
+            'Only needed when the workflow should assign a password while resetting the tenant admin.',
+          status: {
+            title: 'Setup status',
+            subtitle:
+              'The setup flow is complete once the instance is active and the tenant admin structure has been initialized.',
+            activationTitle: 'Instance activated',
+            activationPending: 'Activate the instance after provisioning succeeded.',
+            activationDone: 'The instance is active.',
+            adminStructureTitle: 'Tenant admin structure initialized',
+            adminStructurePending:
+              'Synchronize `system_admin` and the required starter modules.',
+            adminStructureDone: 'The protected tenant admin structure has been initialized.',
+          },
+          completion: {
+            ready: 'Setup complete. You can now switch into normal operations.',
+            pending: 'Setup is not complete yet. Finish the two required steps first.',
+          },
+          actions: {
+            completeSetup: 'Complete setup',
+            openOperations: 'Open operations view',
+            backToOverview: 'Back to overview',
           },
         },
         adminBootstrap: {
@@ -5496,16 +5690,16 @@ export const i18nResources = {
           subtitlePending:
             'This section stays visible in the happy path but only becomes actionable after the registry create succeeded.',
           subtitleReady:
-            'Optionally select modules and then create the initial admin structure for Core and the assigned modules.',
+            'Optionally select modules and then synchronize `system_admin` together with the IAM baseline for the assigned modules.',
           moduleHint: 'Initially grants: {{value}}',
           conflictHint:
-            'Existing roles with the same name are overwritten during a repeated bootstrap. Already created custom roles stay untouched.',
-          action: 'Create admin structure now',
+            'A repeated bootstrap only restores the protected `system_admin` role to the target state. Existing custom roles stay untouched.',
+          action: 'Create tenant admin structure now',
           actionHintPending: 'Create the instance first, then this step becomes active.',
           actionHintReady:
-            'Without selecting modules, only the Admins group and the Core Admin role are created.',
+            'Without selecting modules, only `system_admin` is synchronized as the tenant-wide full-access role.',
           success:
-            'The initial admin structure was created successfully. In the create flow, the instance is now considered complete.',
+            'The tenant admin structure was synchronized successfully. This setup step is now complete.',
           modules: {
             news: 'News',
             events: 'Events',
@@ -5792,7 +5986,6 @@ export const i18nResources = {
           tenantAdminClientExists: 'Tenant admin client exists',
           tenantAdminExists: 'Tenant admin exists',
           tenantAdminHasSystemAdmin: 'Tenant admin has system_admin',
-          tenantAdminHasInstanceRegistryAdmin: 'Tenant admin has instance_registry_admin',
           redirectUrisMatch: 'Redirect URIs match',
           logoutUrisMatch: 'Logout URIs match',
           webOriginsMatch: 'Web origins match',

@@ -64,7 +64,7 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     assignModule: vi.fn(async () => true),
     revokeModule: vi.fn(async () => true),
     syncAssignedModuleIam: vi.fn(async () => undefined),
-    syncInstanceAdminBootstrap: vi.fn(async () => undefined),
+    syncProtectedSystemRolePermissions: vi.fn(async () => undefined),
     getAuthClientSecretCiphertext: vi.fn(async () => 'auth-cipher'),
     getTenantAdminClientSecretCiphertext: vi.fn(async () => 'tenant-admin-cipher'),
     resolveHostname: vi.fn(async () => baseInstance),
@@ -127,7 +127,6 @@ const createDeps = (
         permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
         systemRoles: [
           { roleName: 'system_admin', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
-          { roleName: 'editor', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
         ],
       },
     ],
@@ -523,7 +522,6 @@ describe('instance registry service facade', () => {
         tenantAdminClientExists: true,
         tenantAdminExists: true,
         tenantAdminHasSystemAdmin: true,
-        tenantAdminHasInstanceRegistryAdmin: true,
         redirectUrisMatch: true,
         logoutUrisMatch: true,
         webOriginsMatch: true,
@@ -775,7 +773,6 @@ describe('instance registry service facade', () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
       listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['news', 'events']),
-      syncInstanceAdminBootstrap: vi.fn(async () => undefined),
       getInstanceById: vi
         .fn()
         .mockResolvedValueOnce(baseInstance)
@@ -806,38 +803,27 @@ describe('instance registry service facade', () => {
         managedModuleIds: expect.arrayContaining(['news', 'events', 'waste-management']),
       })
     );
-    expect(repository.syncInstanceAdminBootstrap).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'demo',
-        groupKey: 'admins',
-        groupDisplayName: 'Admins',
-        coreRole: expect.objectContaining({
-          roleKey: 'core_admin',
-          displayName: 'Core Admin',
-          permissionKeys: expect.not.arrayContaining(['instance.registry.manage']),
-        }),
-        moduleRoles: expect.arrayContaining([
-          expect.objectContaining({
-            moduleId: 'news',
-            roleKey: 'news_admin',
-            displayName: 'News Admin',
-            permissionKeys: ['news.read', 'news.create', 'news.update', 'news.delete'],
-          }),
-          expect.objectContaining({
-            moduleId: 'events',
-            roleKey: 'events_admin',
-            displayName: 'Events Admin',
-            permissionKeys: ['events.read'],
-          }),
+    expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      role: expect.objectContaining({
+        roleKey: 'system_admin',
+        roleLevel: 100,
+        permissionKeys: expect.arrayContaining([
+          'iam.user.read',
+          'iam.user.write',
+          'iam.role.read',
+          'iam.role.write',
+          'app.read',
+          'cockpit.read',
         ]),
-      })
-    );
+      }),
+    });
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'instance_admin_bootstrapped',
         details: expect.objectContaining({
           assignedModules: ['news', 'events'],
-          groupKey: 'admins',
+          bootstrapMode: 'system_admin_only',
         }),
       })
     );
@@ -847,7 +833,7 @@ describe('instance registry service facade', () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
       listAssignedModules: vi.fn(async () => ['news']),
-      syncInstanceAdminBootstrap: vi.fn(async () => {
+      syncProtectedSystemRolePermissions: vi.fn(async () => {
         throw new Error('admin_bootstrap_failed');
       }),
       getInstanceById: vi.fn(async () => baseInstance),
@@ -911,7 +897,7 @@ describe('instance registry service facade', () => {
         contracts: expect.arrayContaining([expect.objectContaining({ moduleId: 'news' }), expect.objectContaining({ moduleId: 'events' })]),
       })
     );
-    expect(repository.syncInstanceAdminBootstrap).toHaveBeenCalled();
+    expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalled();
   });
 
   it('rolls back newly assigned modules when bootstrap module IAM sync fails', async () => {
@@ -939,7 +925,7 @@ describe('instance registry service facade', () => {
 
     expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
     expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'events');
-    expect(repository.syncInstanceAdminBootstrap).not.toHaveBeenCalled();
+    expect(repository.syncProtectedSystemRolePermissions).not.toHaveBeenCalled();
     expect(repository.appendAuditEvent).not.toHaveBeenCalled();
     expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
   });
@@ -1053,6 +1039,13 @@ describe('instance registry service facade', () => {
       requestId: 'req-module-3',
     });
 
+    expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      role: expect.objectContaining({
+        roleKey: 'system_admin',
+        permissionKeys: expect.arrayContaining(['iam.user.read', 'content.read', 'app.read']),
+      }),
+    });
     expect(deps.invalidatePermissionSnapshots).toHaveBeenNthCalledWith(1, {
       instanceId: 'demo',
       trigger: 'instance_module_assigned',
@@ -1084,7 +1077,7 @@ describe('instance registry service facade', () => {
             {
               moduleId: 'media',
               permissionIds: ['media.read', 'media.create'],
-              systemRoles: [{ roleName: 'editor', permissionIds: ['media.read', 'media.create'] }],
+              systemRoles: [{ roleName: 'system_admin', permissionIds: ['media.read', 'media.create'] }],
             },
           ],
         ]),
@@ -1267,7 +1260,6 @@ describe('instance registry service facade', () => {
       tenantAdminClientExists: false,
       tenantAdminExists: false,
       tenantAdminHasSystemAdmin: false,
-      tenantAdminHasInstanceRegistryAdmin: false,
       redirectUrisMatch: false,
       logoutUrisMatch: false,
       webOriginsMatch: false,
@@ -1306,7 +1298,6 @@ describe('instance registry service facade', () => {
       tenantAdminClientExists: false,
       tenantAdminExists: false,
       tenantAdminHasSystemAdmin: false,
-      tenantAdminHasInstanceRegistryAdmin: false,
       redirectUrisMatch: false,
       logoutUrisMatch: false,
       webOriginsMatch: false,
@@ -1348,7 +1339,6 @@ describe('instance registry service facade', () => {
                   tenantAdminClientExists: true,
                   tenantAdminExists: true,
                   tenantAdminHasSystemAdmin: true,
-                  tenantAdminHasInstanceRegistryAdmin: true,
                   redirectUrisMatch: true,
                   logoutUrisMatch: true,
                   webOriginsMatch: true,
@@ -1401,7 +1391,6 @@ describe('instance registry service facade', () => {
                   tenantAdminClientExists: true,
                   tenantAdminExists: true,
                   tenantAdminHasSystemAdmin: true,
-                  tenantAdminHasInstanceRegistryAdmin: true,
                   redirectUrisMatch: true,
                   logoutUrisMatch: true,
                   webOriginsMatch: true,
@@ -1430,7 +1419,6 @@ describe('instance registry service facade', () => {
       tenantAdminClientExists: true,
       tenantAdminExists: true,
       tenantAdminHasSystemAdmin: true,
-      tenantAdminHasInstanceRegistryAdmin: true,
       redirectUrisMatch: true,
       logoutUrisMatch: true,
       webOriginsMatch: true,

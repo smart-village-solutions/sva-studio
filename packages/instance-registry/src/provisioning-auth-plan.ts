@@ -195,7 +195,6 @@ const buildRoleStep = (
       : 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle wird angelegt.',
   details: {
     systemAdminRoleExists: Boolean(state?.systemAdminRole),
-    instanceRegistryAdminRoleExists: Boolean(state?.instanceRegistryAdminRole),
   },
 });
 
@@ -221,11 +220,7 @@ const buildTenantAdminStep = (
 const hasTenantAdminMinimalProfile = (
   adminStatus: KeycloakReadState['tenantAdminStatus'] | undefined
 ): boolean =>
-  Boolean(
-    adminStatus?.tenantAdminExists &&
-      adminStatus.tenantAdminHasSystemAdmin &&
-      !adminStatus.tenantAdminHasInstanceRegistryAdmin
-  );
+  Boolean(adminStatus?.tenantAdminExists && adminStatus.tenantAdminHasSystemAdmin);
 
 export const buildPlan = (input: {
   realmMode: InstanceRealmMode;

@@ -16,6 +16,7 @@ import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
 import type { RoleReconcileReport } from '../../../lib/iam-api';
+import { hasPlatformInstanceAdminAccess } from '../../../lib/iam-admin-access';
 import { isTenantRoleReadOnly, isTenantRoleVisible } from '../../../lib/iam-role-governance';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { roleErrorMessage, roleStatusLabel, roleStatusTone, roleTypeLabel } from './-roles-shared';
@@ -43,7 +44,7 @@ export const RolesPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const rolesApi = useRoles();
   const { user } = useAuth();
-  const isPlatformScope = user !== null && !user.instanceId;
+  const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
 
   const [search, setSearch] = React.useState('');
   const [deleteRoleId, setDeleteRoleId] = React.useState<string | null>(null);

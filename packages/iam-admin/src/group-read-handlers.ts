@@ -70,7 +70,13 @@ export type GroupReadHandlerDeps = {
 
 export type GroupReadApiErrorCode = ApiErrorCode;
 
-const ADMIN_ROLES = new Set(['system_admin']);
+const createMissingGroupReadAuthorizerResponse = (
+  deps: GroupReadHandlerDeps,
+  requestId?: string
+): Response =>
+  deps.createApiError(403, 'forbidden', 'Autorisierungsstrategie für Gruppenlesezugriffe ist nicht konfiguriert.', requestId, {
+    reason_code: 'missing_group_read_authorizer',
+  });
 
 const isSchemaDriftLikeGroupQueryError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
@@ -85,7 +91,7 @@ const resolveGroupReadActor = async (
   const requestContext = deps.getWorkspaceContext();
   const accessCheck = deps.authorizeGroupReadAccess
     ? await deps.authorizeGroupReadAccess(request, ctx, requestContext.requestId)
-    : deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+    : createMissingGroupReadAuthorizerResponse(deps, requestContext.requestId);
   if (accessCheck) {
     return accessCheck;
   }

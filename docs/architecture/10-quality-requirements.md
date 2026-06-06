@@ -299,7 +299,7 @@ Referenzen:
 - Das Core-Modell für Inhalte bleibt framework-agnostisch; `packages/core` und `packages/plugin-sdk` definieren nur den stabilen Kern und deklarative Erweiterungspunkte.
 - Die UI unter `/content` muss bestehende `shadcn/ui`-Patterns und Admin-Tabellen wiederverwenden und darf keine parallele Tabellen-Basis einführen.
 - Inhalts-Create und -Update müssen JSON-Payloads, Statuswechsel und Historie über Unit-Tests für Hooks und Seiten explizit abdecken.
-- Rollen-Gates für `system_admin`, `app_manager` und `editor` müssen auf Route-, UI- und Server-Ebene konsistent wirken.
+- Route-, UI- und Server-Gates für `system_admin` sowie individuell vergebene tenantlokale Permissions müssen konsistent wirken; neue Fachzugriffe dürfen nicht wieder an frühere Default-Rollennamen gekoppelt werden.
 - Neue Inhaltsmigrationen gelten nur als verifiziert, wenn `pnpm nx run data:db:migrate:validate` lokal erfolgreich `up -> down -> up` bestätigt.
 
 ### Ergänzung 2026-03: Qualitätsziele direkte Nutzerrechte

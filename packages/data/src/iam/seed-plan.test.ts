@@ -1,11 +1,11 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getPersonaSeed, iamSeedPlan } from './seed-plan';
+import { getPersonaSeed, iamSeedPlan, rootOnlySeedPermissionKeys, tenantBootstrapPermissionKeys } from './seed-plan';
 
 describe('iam seed plan', () => {
-  it('contains exactly six tenant bootstrap personas', () => {
-    assert.equal(iamSeedPlan.personas.length, 6);
+  it('contains exactly one tenant bootstrap persona', () => {
+    assert.equal(iamSeedPlan.personas.length, 1);
   });
 
   it('keeps the canonical permission catalog in sync with the seed integration expectations', () => {
@@ -28,49 +28,21 @@ describe('iam seed plan', () => {
   });
 
   it('resolves persona by stable key', () => {
-    const editor = getPersonaSeed('editor');
+    const systemAdmin = getPersonaSeed('system_admin');
 
-    assert.equal(editor.roleSlug, 'editor');
-    assert.equal(editor.roleLevel, 30);
-    assert.deepEqual(editor.permissionKeys, [
-      'content.read',
-      'content.readHistory',
-      'experimental.read',
-      'app.read',
-      'cockpit.read',
-      'content.create',
-      'content.updateMetadata',
-      'content.updatePayload',
-      'content.changeStatus',
-      'content.delete',
-      'media.read',
-      'media.create',
-      'media.update',
-      'media.reference.manage',
-      'news.read',
-      'events.read',
-      'poi.read',
-      'news.create',
-      'news.update',
-      'news.delete',
-      'events.create',
-      'events.update',
-      'events.delete',
-      'poi.create',
-      'poi.update',
-      'poi.delete',
-    ]);
+    assert.equal(systemAdmin.roleSlug, 'system_admin');
+    assert.equal(systemAdmin.roleLevel, 100);
+    assert.deepEqual(systemAdmin.permissionKeys, tenantBootstrapPermissionKeys);
   });
 
   it('does not expose a tenant-side instance_registry_admin persona anymore', () => {
     assert.throws(() => getPersonaSeed('instance_registry_admin' as never), /Unknown persona key: instance_registry_admin/);
   });
 
-  it('does not expose the removed app_manager bootstrap persona anymore', () => {
-    assert.throws(() => getPersonaSeed('app_manager' as never), /Unknown persona key: app_manager/);
-  });
-
   it('keeps instance.registry.manage out of tenant bootstrap personas', () => {
+    assert.deepEqual(rootOnlySeedPermissionKeys, ['instance.registry.manage']);
+    assert.equal(tenantBootstrapPermissionKeys.includes('instance.registry.manage'), false);
+    assert.deepEqual(getPersonaSeed('system_admin').permissionKeys, tenantBootstrapPermissionKeys);
     for (const persona of iamSeedPlan.personas) {
       assert.equal(persona.permissionKeys.includes('instance.registry.manage'), false);
     }

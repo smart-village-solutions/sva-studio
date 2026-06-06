@@ -39,14 +39,16 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0050_iam_platform_tenant_role_split.sql`
+- Repo-Migrationen vorhanden bis: `0053_iam_legacy_standard_role_grant_cleanup.sql`
 
-Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0050`:
+Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0053`:
 
 - auf `iam.role_permissions` die Ownership-/Origin-Felder `grant_origin_kind` und `grant_origin_module_id` samt Check-Constraints und Index `idx_role_permissions_origin_module`
 - auf `iam.role_permissions` das Assignment-Scope-Feld `access_scope` samt Constraint `role_permissions_access_scope_check`
 - die Tabellen `iam.studio_jobs` und `iam.studio_job_events`, das Quellfeld `source` für Host- und Plugin-Jobs sowie die Verknüpfung `iam.data_subject_export_jobs.studio_job_id` aus `0049_studio_jobs_and_dsr_export_worker.sql`
 - die additive Datenbereinigung aus `0050_iam_platform_tenant_role_split.sql`, die tenantseitige Legacy-Artefakte für `instance_registry_admin`, `instance.registry.manage` und frühere geschützte Bootstrap-Standardrollen neutralisiert, ohne das relationale Schema zu verändern
+- die additive Permission-Erweiterung aus `0051_iam_permission_gate_backfill.sql` und `0052_iam_experimental_shell_permission.sql`
+- das Upgrade-Follow-up `0053_iam_legacy_standard_role_grant_cleanup.sql`, das historisch geseedete Standard-Grant-Reste auf früheren tenantlokalen Bootstrap-Rollen entfernt, ohne das relationale Schema zu verändern
 - der External-Interface-Katalog mit `iam.external_interface_types` und `iam.instance_external_interfaces`
 - die tenantbezogenen Löschregel-Tabellen `iam.instance_deletion_rules` und `iam.account_deletion_content_preferences`
 - die Lifecycle-Spalten `last_login_at`, `deletion_lifecycle_state`, `deactivated_at`, `pseudonymized_at`, `deletion_marked_at` auf `iam.accounts`
@@ -63,7 +65,7 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0050_iam_platform_tenant_role_split.sql`; `0050` ist datenbereinigend und führt keine zusätzlichen Tabellen-, Spalten- oder Constraint-Änderungen ein
+- Enthält strukturell den Repo-Sollstand bis `0053_iam_legacy_standard_role_grant_cleanup.sql`; `0050` bis `0053` sind daten- beziehungsweise permissionseitig und führen keine zusätzlichen Tabellen-, Spalten- oder Constraint-Änderungen ein
 - Aktueller Soll-Stand: **54 Tabellen**, davon **53 im Schema `iam`**
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.

@@ -8,6 +8,7 @@ import {
   sanitizeRoleErrorMessage,
 } from './role-audit.js';
 import type { QueryClient } from './query-client.js';
+import { isTenantManageableRole } from './role-governance.js';
 import type { ManagedRoleRow } from './types.js';
 
 type IdentityRole = Awaited<ReturnType<IdentityProviderPort['getRoleByName']>> extends infer T ? Exclude<T, null> : never;
@@ -71,11 +72,6 @@ type RoleImportDbContext = {
   appInstanceId?: string;
 };
 
-type RoleReconcileAlias = {
-  readonly externalRoleName: string;
-  readonly identityRoleKey?: string;
-};
-
 type RoleReconcileOperation = 'reconcile_create' | 'reconcile_update' | 'reconcile_import';
 type RoleReconcileResult = 'success' | 'failure';
 
@@ -110,13 +106,6 @@ export type RoleCatalogReconciliationDeps = {
   ): Promise<void>;
   trackKeycloakCall<T>(operation: string, execute: () => Promise<T>): Promise<T>;
   setRoleDriftBacklog(instanceId: string, backlog: number): void;
-};
-
-const ROLE_RECONCILE_ALIASES: Readonly<Record<string, RoleReconcileAlias>> = {
-  editor: {
-    externalRoleName: 'Editor',
-    identityRoleKey: 'mainserver_editor',
-  },
 };
 
 const BUILTIN_REALM_ROLE_NAMES = new Set(['offline_access', 'uma_authorization']);
@@ -204,18 +193,12 @@ const hydrateRoleDetailsForReconciliation = async (
     })
   );
 
-const readRoleReconcileAlias = (roleKey: string): RoleReconcileAlias | undefined => ROLE_RECONCILE_ALIASES[roleKey];
-
 const isAcceptedIdentityRoleKey = (roleKey: string, identityRoleKey: string | undefined): boolean => {
   if (!identityRoleKey) {
     return false;
   }
 
-  if (identityRoleKey === roleKey) {
-    return true;
-  }
-
-  return readRoleReconcileAlias(roleKey)?.identityRoleKey === identityRoleKey;
+  return identityRoleKey === roleKey;
 };
 
 const buildReconcileDebugReport = (input: {
@@ -290,49 +273,64 @@ const resolveMatchingIdentityRole = (input: {
   role: ManagedRoleRow;
   idpByExternalName: ReadonlyMap<string, IdentityRole>;
   idpByRoleKey: ReadonlyMap<string, IdentityRole>;
-}) => {
+}): {
+  externalRoleName: string;
+  alias?: string;
+  matchingIdentityRole?: IdentityRole;
+} => {
   const externalRoleName = getRoleExternalName(input.role);
-  const alias = readRoleReconcileAlias(input.role.role_key);
-  const matchingIdentityRole =
-    input.idpByExternalName.get(externalRoleName) ??
-    input.idpByRoleKey.get(input.role.role_key) ??
-    (alias ? input.idpByExternalName.get(alias.externalRoleName) : undefined) ??
-    (alias?.identityRoleKey ? input.idpByRoleKey.get(alias.identityRoleKey) : undefined);
+  const matchingIdentityRoleByExternalName = input.idpByExternalName.get(externalRoleName);
+  if (matchingIdentityRoleByExternalName) {
+    return {
+      externalRoleName,
+      matchingIdentityRole: matchingIdentityRoleByExternalName,
+    };
+  }
+
+  const matchingIdentityRoleByRoleKey = input.idpByRoleKey.get(input.role.role_key);
+  if (!matchingIdentityRoleByRoleKey) {
+    return {
+      externalRoleName,
+      matchingIdentityRole: undefined,
+    };
+  }
 
   return {
     externalRoleName,
-    alias,
-    matchingIdentityRole,
+    alias:
+      matchingIdentityRoleByRoleKey.externalName !== externalRoleName
+        ? externalRoleName
+        : undefined,
+    matchingIdentityRole: matchingIdentityRoleByRoleKey,
   };
 };
 
 const describeMatchedIdentityRole = (input: {
   role: ManagedRoleRow;
   externalRoleName: string;
-  alias: RoleReconcileAlias | undefined;
+  alias?: string;
   matchingIdentityRole: IdentityRole;
-}) => {
+}): {
+  expectedDisplayName: string;
+  identityDisplayName: string | undefined;
+  identityRoleKey: string | undefined;
+  canonicalExternalRoleName: string;
+  aliasSatisfiedByCanonicalRole: boolean;
+  reportedExternalRoleName: string;
+} => {
   const expectedDisplayName = getRoleDisplayName(input.role);
   const identityDisplayName = readRoleAttribute(input.matchingIdentityRole.attributes, 'display_name');
   const identityRoleKey = readRoleAttribute(input.matchingIdentityRole.attributes, 'role_key');
   const canonicalExternalRoleName = input.matchingIdentityRole.externalName ?? input.externalRoleName;
-  const matchedByAlias =
-    Boolean(input.alias) &&
-    identityRoleKey === input.alias?.identityRoleKey &&
-    (input.matchingIdentityRole.externalName === input.alias?.externalRoleName ||
-      input.matchingIdentityRole.externalName === canonicalExternalRoleName) &&
-    input.alias?.identityRoleKey !== input.role.role_key;
-  const aliasSatisfiedByCanonicalRole = matchedByAlias && identityRoleKey === input.alias?.identityRoleKey;
-  const reportedExternalRoleName = matchedByAlias ? canonicalExternalRoleName : input.externalRoleName;
+  const aliasSatisfiedByCanonicalRole = input.alias !== undefined && canonicalExternalRoleName !== input.alias;
 
   return {
     expectedDisplayName,
     identityDisplayName,
     identityRoleKey,
     canonicalExternalRoleName,
-    matchedByAlias,
     aliasSatisfiedByCanonicalRole,
-    reportedExternalRoleName,
+    reportedExternalRoleName: input.alias ?? input.externalRoleName,
   };
 };
 
@@ -930,7 +928,7 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
 `,
       [input.instanceId]
     );
-    return result.rows;
+    return result.rows.filter((role) => isTenantManageableRole(role));
   });
 
   const listedIdpRoles = await deps.trackKeycloakCall('reconcile_list_roles', () => identityProvider.provider.listRoles());

@@ -1,5 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
+-- Historische Legacy-Rollennamen bleiben hier bewusst als Migrationsinput erhalten.
+-- Die Migration neutralisiert Altbestände, ohne diese Rollen erneut als Sollmodell zu etablieren.
 CREATE TEMP TABLE migration_0050_touched_instances ON COMMIT DROP AS
 WITH touched_instances AS (
   SELECT DISTINCT instance_id

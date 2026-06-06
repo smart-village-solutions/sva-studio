@@ -19,7 +19,6 @@ describe('instance keycloak checklist', () => {
       'tenant_admin_client_secret',
       'tenant_admin',
       'tenant_admin_system_admin',
-      'tenant_admin_lacks_instance_registry_admin',
     ]);
   });
 
@@ -30,7 +29,6 @@ describe('instance keycloak checklist', () => {
       tenantAdminClientExists: true,
       tenantAdminExists: true,
       tenantAdminHasSystemAdmin: true,
-      tenantAdminHasInstanceRegistryAdmin: false,
       redirectUrisMatch: true,
       logoutUrisMatch: true,
       webOriginsMatch: true,
@@ -47,8 +45,8 @@ describe('instance keycloak checklist', () => {
     expect(areAllInstanceKeycloakRequirementsSatisfied({ ...status, clientExists: false })).toBe(false);
     expect(
       isInstanceKeycloakRequirementSatisfied(
-        { ...status, tenantAdminHasInstanceRegistryAdmin: true },
-        INSTANCE_KEYCLOAK_REQUIREMENTS.find((requirement) => requirement.key === 'tenant_admin_lacks_instance_registry_admin')!
+        { ...status, tenantAdminHasSystemAdmin: false },
+        INSTANCE_KEYCLOAK_REQUIREMENTS.find((requirement) => requirement.key === 'tenant_admin_system_admin')!
       )
     ).toBe(false);
   });

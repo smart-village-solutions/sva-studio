@@ -180,7 +180,7 @@ export const buildModuleIamStatus = (
       summary: 'IAM-Basis des Moduls ist deklarativ registriert.',
       source: 'registry' as const,
       permissionIds: contract.permissionIds,
-      systemRoleNames: (contract.tenantBootstrapRoles ?? contract.systemRoles ?? []).map((role) => role.roleName),
+      systemRoleNames: (contract.systemRoles ?? contract.tenantBootstrapRoles ?? []).map((role) => role.roleName),
     };
   });
 

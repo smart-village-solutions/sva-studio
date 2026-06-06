@@ -45,17 +45,31 @@ export const isMockAuthEnabled = async () => {
 };
 
 export const createMockRouteGuardUser = (): RouteGuardUser => ({
+  instanceId: 'de-musterhausen',
   assignedModules: ['news', 'events', 'poi', 'media', 'waste-management'],
-  roles: [
-    'system_admin',
-    'iam_admin',
-    'support_admin',
-    'security_admin',
-    'instance_registry_admin',
-    'interface_manager',
-    'editor',
-  ],
+  roles: ['system_admin'],
   permissionActions: [
+    'iam.user.read',
+    'iam.user.write',
+    'iam.role.read',
+    'iam.role.write',
+    'iam.org.read',
+    'iam.org.write',
+    'iam.legalText.read',
+    'iam.legalText.write',
+    'iam.governance.read',
+    'iam.governance.write',
+    'iam.governance.export',
+    'iam.dsr.read',
+    'iam.dsr.write',
+    'iam.dsr.export',
+    'iam.deletionRules.read',
+    'iam.deletionRules.write',
+    'iam.monitoring.read',
+    'iam.monitoring.write',
+    'experimental.read',
+    'app.read',
+    'cockpit.read',
     'content.read',
     'content.create',
     'content.updateMetadata',
@@ -84,6 +98,8 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
     'waste-management.seed.execute',
     'waste-management.reset.execute',
     'waste-management.settings.manage',
+    'integration.manage',
+    'feature.toggle',
   ],
 });
 
@@ -117,6 +133,7 @@ const readStringArray = (value: unknown): string[] =>
 export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
   const user = readRouteGuardPayloadUser(payload);
 
+  const instanceId = typeof user?.instanceId === 'string' ? user.instanceId : undefined;
   const roles = readStringArray(user?.roles);
   const permissionActions = readStringArray(user?.permissionActions);
   const assignedModules = readStringArray(user?.assignedModules);
@@ -124,7 +141,7 @@ export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
   const rawStatus = user?.permissionStatus;
   const permissionStatus: 'ok' | 'degraded' = rawStatus === 'degraded' ? 'degraded' : 'ok';
 
-  return { roles, permissionActions, permissionStatus, assignedModules };
+  return { instanceId, roles, permissionActions, permissionStatus, assignedModules };
 };
 
 export const parseRouteGuardUser = (payload: unknown): RouteGuardUser | null => {

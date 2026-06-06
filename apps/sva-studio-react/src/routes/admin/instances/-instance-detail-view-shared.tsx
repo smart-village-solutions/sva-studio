@@ -39,7 +39,7 @@ export const TENANT_IAM_AXIS_TITLE_KEYS = {
   reconcile: 'admin.instances.tenantIam.axes.reconcile',
 } as const;
 
-export type WorkspaceTabKey = 'configuration' | 'operations' | 'history';
+export type WorkspaceTabKey = 'betrieb' | 'doctor' | 'einstellungen';
 export type ProvisioningIntent = 'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
 export type WorkflowAction = NonNullable<SetupWorkflowStep['action']>;
 
@@ -67,7 +67,7 @@ export type OperationsSectionProps = WorkspaceSectionCommonProps & {
 
 export type HistorySectionProps = {
   readonly selectedInstance: SelectedInstance;
-  readonly onLoadProvisioningRun: (runId: string) => Promise<void>;
+  readonly onLoadProvisioningRun: (runId: string) => Promise<unknown>;
 };
 
 export type CockpitSectionProps = {

@@ -118,7 +118,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-043: Formular-Foundation mit `react-hook-form` und `zodResolver` als verbindlichem Standardpfad für neue oder grundlegend überarbeitete Formular-Flows (Abschnitt 05, 08, 09, 10)
 - ADR-044: Frontend-Test-Foundation mit `msw` für HTTP-nahe Tests und selektivem `fast-check` für kritische Kernlogik (Abschnitt 05, 08, 09, 10)
 - ADR-045: Organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation über `contentAuthorPolicy`; persönliche Keycloak-Credentials bleiben nur Fallback bei `org_or_personal` (Abschnitt 04, 05, 06, 08, 09, 10, 11, 12)
-- ADR-046: Root-only `instance_registry_admin`, geschütztes tenantseitiges `system_admin` und Legacy-Status früherer Standardrollen als additive Rollenmodell-Trennung (Abschnitt 04, 05, 06, 08, 09, 10, 11)
+- ADR-046: Root-only `instance_registry_admin`, geschütztes tenantseitiges `system_admin` und die Entfernung früherer Standardrollen aus dem Sollmodell bei gleichzeitiger Absicherung historischer Altbestände über Migrationspfade (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 
 ### Pflege-Regel
 
@@ -227,7 +227,7 @@ Zuordnung:
 - `ADR-046-plattform-vs-tenant-rollenmodell-und-legacy-standardrollen.md`
   - trennt `instance_registry_admin` als Root-only-Plattformrolle von tenantlokalen Rollenartefakten.
   - hält `system_admin` als einzige geschützte tenantlokale Defaultrolle fest.
-  - dokumentiert frühere Standardrollen ausdrücklich als Legacy-Bootstrap-Kompatibilität statt als weiterhin normative Systemrollen.
+  - dokumentiert frühere Standardrollen als aus dem Sollmodell entfernte Altartefakte, die nur noch über historische Cleanup- und Repair-Pfade berücksichtigt werden.
 
 Zuordnung:
 

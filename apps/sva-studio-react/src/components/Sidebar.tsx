@@ -775,7 +775,8 @@ export default function Sidebar({
           contentAccessApi.permissionActions,
           contentAccessApi.isLoading
         )));
-  const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasUserAdminAccess(user);
+  const canAccessAdminUsers =
+    isAuthenticated && isIamAdminEnabled() && (hasUserAdminAccess(user) || hasPlatformInstanceAdminAccess(user));
   const canAccessAdminOrganizations =
     isAuthenticated && isIamAdminEnabled() && hasOrganizationAdminAccess(user);
   const canAccessAdminInstances =

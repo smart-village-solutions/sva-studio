@@ -9,7 +9,6 @@ import type {
 import {
   buildExpectedClientConfig,
   buildExpectedTenantAdminClientConfig,
-  INSTANCE_REGISTRY_ADMIN_ROLE,
   SYSTEM_ADMIN_ROLE,
 } from './provisioning-auth-utils.js';
 
@@ -201,7 +200,6 @@ const readTenantAdminStatus = async (
     return {
       tenantAdminExists: false,
       tenantAdminHasSystemAdmin: false,
-      tenantAdminHasInstanceRegistryAdmin: false,
     };
   }
 
@@ -210,7 +208,6 @@ const readTenantAdminStatus = async (
   return {
     tenantAdminExists: Boolean(tenantAdmin),
     tenantAdminHasSystemAdmin: tenantAdminRoles.includes(SYSTEM_ADMIN_ROLE),
-    tenantAdminHasInstanceRegistryAdmin: tenantAdminRoles.includes(INSTANCE_REGISTRY_ADMIN_ROLE),
   };
 };
 
@@ -238,12 +235,10 @@ export const createReadKeycloakState =
         tenantAdminStatus: {
           tenantAdminExists: false,
           tenantAdminHasSystemAdmin: false,
-          tenantAdminHasInstanceRegistryAdmin: false,
         },
         keycloakClientSecret: null,
         tenantAdminClientSecret: null,
         systemAdminRole: null,
-        instanceRegistryAdminRole: null,
       };
     }
 
@@ -273,7 +268,6 @@ export const createReadKeycloakState =
       keycloakClientSecret,
       tenantAdminClientSecret,
       systemAdminRole,
-      instanceRegistryAdminRole: null,
     };
   };
 

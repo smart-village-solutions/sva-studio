@@ -20,6 +20,14 @@ Das System SHALL in der tenantlokalen Rollenverwaltung die Zuordnung von Rechten
 - **THEN** kann er modulbezogene und tenantlokale Rechte direkt über die Rollenverwaltung zuweisen
 - **AND** die UI verlangt dafür keine Auswahl oder Kopplung an Rollen wie `editor`, `designer` oder `app_manager`
 
+### Requirement: UI-Gates behandeln system_admin als vollständigen Tenant-Vollzugriff
+Das System SHALL tenantlokale Navigations-, Aktions- und Verwaltungs-Gates so auswerten, dass ein Benutzer mit `system_admin` die vollständigen vorgesehenen Tenant-Admin-Funktionen nutzen kann, ohne zusätzliche versteckte Rollen- oder Gruppenabhängigkeiten.
+
+#### Scenario: Sidebar und Admin-Funktionen bleiben für system_admin sichtbar
+- **WHEN** ein Benutzer im Tenant-Realm ausschließlich `system_admin` besitzt
+- **THEN** bleiben die für Tenant-Administratoren vorgesehenen Navigationspunkte, Verwaltungsseiten und Aktionen sichtbar und nutzbar
+- **AND** ihre Verfügbarkeit hängt nicht zusätzlich von Gruppen wie `admins` oder Rollen wie `core_admin` ab
+
 ## MODIFIED Requirements
 ### Requirement: Das System MUST eine Rollen-Verwaltungsseite unter /admin/roles bereitstellen, die das Anzeigen und Bearbeiten von System- und Custom-Rollen ermöglicht.
 Das System MUST eine tenantlokale Rollen-Verwaltungsseite unter `/admin/roles` bereitstellen, die das Anzeigen und Bearbeiten von tenantlokalen System- und Custom-Rollen ermöglicht. Root-/Plattformrollen werden dort nicht als tenantlokale Bearbeitungsobjekte behandelt.

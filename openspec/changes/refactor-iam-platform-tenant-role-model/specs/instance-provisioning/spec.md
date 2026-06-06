@@ -5,12 +5,28 @@ Das System SHALL beim Bootstrap einer neuen Instanz dem initialen Tenant-Admin a
 #### Scenario: Bootstrap vergibt system_admin, aber keine Plattformrolle
 - **WHEN** der initiale Tenant-Admin einer neuen Instanz angelegt oder aktualisiert wird
 - **THEN** synchronisiert das System im Tenant-Realm mindestens die Rolle `system_admin`
+- **AND** es synchronisiert für `system_admin` die vollständige tenantlokale Permission-Basis aus der führenden Permission-Quelle
 - **AND** es synchronisiert dabei nicht die Plattformrolle `instance_registry_admin`
 
 #### Scenario: Tenant-Status fordert keine Plattformrolle im Tenant-Realm
 - **WHEN** der Keycloak-Status oder Preflight einer Tenant-Instanz gelesen wird
 - **THEN** bewertet das System tenantlokale Rollen und Tenant-Admin-Zustand ohne Erwartung einer Rolle `instance_registry_admin` im Tenant-Realm
 - **AND** fehlende Plattformrollen im Tenant-Realm werden nicht als Drift des Tenant-Realm interpretiert
+
+#### Scenario: Tenant-Admin-Repair erkennt fehlende Vollzugriffs-Permissions
+- **WHEN** ein Bootstrap-, Repair- oder Reconcile-Pfad einen Tenant mit `system_admin` prüft
+- **THEN** behandelt das System fehlende tenantlokale Permissions auf `system_admin` als Drift
+- **AND** der Repair-Pfad kann diese Permission-Bündelung idempotent wiederherstellen
+
+#### Scenario: Root-Bootstrap materialisiert keine Legacy-Admin-Struktur mehr
+- **WHEN** ein Root-/Plattform-Administrator in der Instanzverwaltung die Tenant-Admin-Struktur bootstrappt oder repariert
+- **THEN** synchronisiert das System nur die geschützte Tenant-Rolle `system_admin` sowie die IAM-Basis der zugewiesenen Module
+- **AND** es materialisiert dabei keine Gruppen wie `admins`, keine Rollen wie `core_admin` und keine modulbezogenen Standard-Admin-Rollen mehr
+
+#### Scenario: Legacy-Admin-Artefakte bleiben als reparierbarer Drift sichtbar
+- **WHEN** eine Bestandsinstanz weiterhin Komfortartefakte wie die Gruppe `admins` oder die Rolle `core_admin` enthält
+- **THEN** weist das System diesen Zustand im Tenant-IAM- oder Rollenabgleich als Drift bzw. manuellen Nacharbeitsbedarf aus
+- **AND** der Zustand bleibt über die regulären Tenant-Rollen- und Gruppenverwaltungswege bereinigbar, ohne `system_admin` als normative Vollzugriffsrolle zu ersetzen
 
 ### Requirement: Root- und Tenant-Provisioning-Evidenz bleiben getrennt
 Das System SHALL Provisioning-, Status- und Diagnosepfade für Root-Control-Plane und Tenant-Realm getrennt ausweisen.

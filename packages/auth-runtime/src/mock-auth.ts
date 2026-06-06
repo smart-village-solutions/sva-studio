@@ -5,12 +5,6 @@ import type { SessionUser } from './types.js';
 
 const DEFAULT_MOCK_AUTH_ROLES = [
   'system_admin',
-  'iam_admin',
-  'support_admin',
-  'security_admin',
-  'instance_registry_admin',
-  'interface_manager',
-  'editor',
 ] as const;
 
 export const DEV_AUTH_COOKIE_NAME = 'sva_dev_auth';

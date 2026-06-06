@@ -162,4 +162,31 @@ describe('tenant admin bootstrap sync', () => {
       trigger: 'tenant_admin_bootstrap_sync',
     });
   });
+
+  it('keeps the sync idempotent when system_admin is already assigned directly', async () => {
+    state.client.query.mockResolvedValue({
+      rows: [
+        { role_id: 'role-existing' },
+        { role_id: 'role-system-admin' },
+      ],
+    });
+
+    const { syncTenantAdminBootstrapAccount } = await import('./tenant-admin-bootstrap-sync.js');
+
+    await expect(
+      syncTenantAdminBootstrapAccount({
+        instanceId: 'tenant-a',
+        tenantAdminBootstrap: {
+          username: 'tenant.admin',
+        },
+      })
+    ).resolves.toBeUndefined();
+
+    expect(state.assignRoles).toHaveBeenCalledWith(state.client, {
+      instanceId: 'tenant-a',
+      accountId: 'account-1',
+      existingRoleIds: ['role-existing', 'role-system-admin'],
+      roleIds: ['role-existing', 'role-system-admin'],
+    });
+  });
 });

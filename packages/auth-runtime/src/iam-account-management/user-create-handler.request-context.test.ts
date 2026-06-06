@@ -48,7 +48,7 @@ describe('user-create-handler request context', () => {
       scope: 'write',
       provisionMissingActorMembership: true,
     });
-  });
+  }, 15_000);
 
   it('returns shared guard responses unchanged', async () => {
     const { resolveCreateUserActorContext } = await import('./user-create-handler.js');

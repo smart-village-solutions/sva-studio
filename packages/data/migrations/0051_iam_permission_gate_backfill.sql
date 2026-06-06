@@ -67,10 +67,6 @@ WITH role_permission_templates(role_key, permission_key) AS (
     ('system_admin', 'iam.deletionRules.write'),
     ('system_admin', 'iam.monitoring.read'),
     ('system_admin', 'iam.monitoring.write'),
-    ('app_manager', 'iam.legalText.read'),
-    ('app_manager', 'iam.legalText.write'),
-    ('app_manager', 'iam.monitoring.read'),
-    ('app_manager', 'iam.monitoring.write'),
     ('iam_admin', 'iam.legalText.read'),
     ('iam_admin', 'iam.legalText.write'),
     ('iam_admin', 'iam.governance.read'),
@@ -134,7 +130,7 @@ WHERE iam.roles.instance_id = iam.role_permissions.instance_id
   AND iam.roles.id = iam.role_permissions.role_id
   AND iam.permissions.instance_id = iam.role_permissions.instance_id
   AND iam.permissions.id = iam.role_permissions.permission_id
-  AND iam.roles.role_key IN ('system_admin', 'app_manager', 'iam_admin', 'support_admin', 'security_admin', 'compliance_officer')
+  AND iam.roles.role_key IN ('system_admin', 'iam_admin', 'support_admin', 'security_admin', 'compliance_officer')
   AND iam.permissions.permission_key IN (
     'iam.legalText.read',
     'iam.legalText.write',

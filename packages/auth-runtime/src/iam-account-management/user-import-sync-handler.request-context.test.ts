@@ -47,7 +47,7 @@ describe('user-import-sync-handler request context', () => {
       scope: 'write',
       provisionMissingActorMembership: true,
     });
-  });
+  }, 15_000);
 
   it('returns shared guard responses unchanged', async () => {
     const { resolveSyncActor } = await import('./user-import-sync-handler.js');

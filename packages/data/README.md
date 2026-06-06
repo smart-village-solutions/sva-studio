@@ -94,9 +94,9 @@ Datenbank- und Betriebs-Targets:
 | `pnpm nx run data:db:migrate:status` | Zeigt den `goose`-Migrationsstatus |
 | `pnpm nx run data:db:migrate:validate` | Prüft den Zyklus `up -> down -> up` auf einer temporären Datenbank |
 | `pnpm nx run data:db:seed` | Führt die Seed-Skripte aus |
-| `pnpm nx run data:db:test:seeds` | Testet die Seeds gegen eine Datenbank |
-| `pnpm nx run data:db:test:encryption` | Prüft Verschlüsselungs-bezogene Datenbankpfade |
-| `pnpm nx run data:db:test:rls` | Prüft RLS-bezogene Datenbankpfade |
+| `pnpm nx run data:db:test:seeds` | Testet die Seeds gegen eine temporäre Testdatenbank |
+| `pnpm nx run data:db:test:encryption` | Prüft Verschlüsselungs-bezogene Datenbankpfade auf einer temporären Testdatenbank |
+| `pnpm nx run data:db:test:rls` | Prüft RLS-bezogene Datenbankpfade auf einer temporären Testdatenbank |
 | `pnpm nx run data:db:bootstrap-app-user` | Erstellt beziehungsweise aktualisiert den App-User für lokale Nutzung |
 | `pnpm nx run data:db:reset` | Setzt den lokalen Postgres-Container samt Volume zurück |
 

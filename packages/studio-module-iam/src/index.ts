@@ -26,15 +26,11 @@ const createStandardContentBootstrapRoles = (pluginId: string): readonly StudioM
     roleName: 'system_admin',
     permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
   },
-  {
-    roleName: 'feature-manager',
-    permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
-  },
-  { roleName: 'interface-manager', permissionIds: [`${pluginId}.read`] },
-  { roleName: 'designer', permissionIds: [`${pluginId}.read`, `${pluginId}.update`] },
-  { roleName: 'editor', permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`] },
-  { roleName: 'moderator', permissionIds: [`${pluginId}.read`] },
 ];
+
+const createSystemAdminSystemRoles = (
+  roles: readonly StudioModuleIamBootstrapRole[]
+): readonly StudioModuleIamSystemRole[] => roles.filter((role) => role.roleName === 'system_admin');
 
 const createStandardContentContract = (pluginId: string, descriptionKey: string): StudioModuleIamContract => {
   const tenantBootstrapRoles = createStandardContentBootstrapRoles(pluginId);
@@ -47,7 +43,7 @@ const createStandardContentContract = (pluginId: string, descriptionKey: string)
     permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
     tenantBootstrapRoles,
     rootSystemRoles: [],
-    systemRoles: tenantBootstrapRoles,
+    systemRoles: createSystemAdminSystemRoles(tenantBootstrapRoles),
   };
 };
 
@@ -68,38 +64,6 @@ const wasteManagementTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole
       'waste-management.settings.manage',
     ],
   },
-  {
-    roleName: 'feature-manager',
-    permissionIds: [
-      'waste-management.read',
-      'waste-management.master-data.manage',
-      'waste-management.tours.manage',
-      'waste-management.scheduling.manage',
-      'waste-management.import.execute',
-      'waste-management.settings.manage',
-    ],
-  },
-  {
-    roleName: 'editor',
-    permissionIds: [
-      'waste-management.read',
-      'waste-management.master-data.manage',
-      'waste-management.tours.manage',
-      'waste-management.scheduling.manage',
-    ],
-  },
-  {
-    roleName: 'designer',
-    permissionIds: ['waste-management.read'],
-  },
-  {
-    roleName: 'interface-manager',
-    permissionIds: ['waste-management.read'],
-  },
-  {
-    roleName: 'moderator',
-    permissionIds: ['waste-management.read'],
-  },
 ];
 
 const wasteManagementModuleIamContract: StudioModuleIamContract = {
@@ -119,7 +83,7 @@ const wasteManagementModuleIamContract: StudioModuleIamContract = {
   ],
   tenantBootstrapRoles: wasteManagementTenantBootstrapRoles,
   rootSystemRoles: [],
-  systemRoles: wasteManagementTenantBootstrapRoles,
+  systemRoles: createSystemAdminSystemRoles(wasteManagementTenantBootstrapRoles),
 };
 const mediaTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[] = [
   {
@@ -132,10 +96,6 @@ const mediaTenantBootstrapRoles: readonly StudioModuleIamBootstrapRole[] = [
       'media.delete',
       'media.deliver.protected',
     ],
-  },
-  {
-    roleName: 'editor',
-    permissionIds: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
   },
 ];
 
@@ -154,7 +114,7 @@ const mediaModuleIamContract: StudioModuleIamContract = {
   ],
   tenantBootstrapRoles: mediaTenantBootstrapRoles,
   rootSystemRoles: [],
-  systemRoles: mediaTenantBootstrapRoles,
+  systemRoles: createSystemAdminSystemRoles(mediaTenantBootstrapRoles),
 };
 
 export const studioPluginModuleIamContracts = [

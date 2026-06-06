@@ -1,3 +1,26 @@
+import { listManagedPermissionMetadata } from './managed-permissions.js';
+
+const SCOPE_SENSITIVE_PERMISSION_KEYS_SQL = `ARRAY[${listManagedPermissionMetadata()
+  .filter((permission) => permission.runtimeScope !== 'instance')
+  .map((permission) => `'${permission.permissionKey.replaceAll("'", "''")}'`)
+  .join(', ')}]::text[]`;
+
+const buildScopeSensitivePermissionCondition = (
+  permissionKeyExpression: string,
+  accessScopeExpression: string
+) =>
+  `${accessScopeExpression} IS NOT NULL OR ${permissionKeyExpression} = ANY(${SCOPE_SENSITIVE_PERMISSION_KEYS_SQL})`;
+
+const buildTraceOrganizationProjection = (
+  permissionKeyExpression: string,
+  accessScopeExpression: string,
+  organizationIdExpression: string
+) => `CASE
+            WHEN ${buildScopeSensitivePermissionCondition(permissionKeyExpression, accessScopeExpression)}
+              THEN ${organizationIdExpression}
+            ELSE NULL::text
+          END`;
+
 const DIRECT_PERMISSION_KEYS_SQL = `
         UNION
 
@@ -177,7 +200,7 @@ const buildDirectRolePermissionTraceSql = (projection: ReturnType<typeof buildPe
           ${projection.action} AS action,
           ${projection.resourceType} AS resource_type,
           ${projection.resourceId} AS resource_id,
-          ao.organization_id::text AS organization_id,
+          ${buildTraceOrganizationProjection('p.permission_key', 'rp.access_scope', 'ao.organization_id::text')} AS organization_id,
           ${projection.effect} AS effect,
           ${projection.scope} AS scope,
           rp.access_scope::text AS access_scope,
@@ -196,7 +219,7 @@ const buildDirectRolePermissionTraceSql = (projection: ReturnType<typeof buildPe
           NULL::text AS group_display_name,
           NULL::boolean AS group_active,
           NULL::text AS assignment_origin,
-          ao.organization_id::text AS inherited_from_organization_id,
+          ${buildTraceOrganizationProjection('p.permission_key', 'rp.access_scope', 'ao.organization_id::text')} AS inherited_from_organization_id,
           CASE
             WHEN jsonb_typeof(COALESCE(p.scope, '{}'::jsonb) -> 'allowedGeoUnitIds') = 'array'
               THEN p.scope -> 'allowedGeoUnitIds' ->> 0
@@ -237,7 +260,7 @@ const buildGroupRolePermissionTraceSql = (projection: ReturnType<typeof buildPer
           ${projection.action} AS action,
           ${projection.resourceType} AS resource_type,
           ${projection.resourceId} AS resource_id,
-          ao.organization_id::text AS organization_id,
+          ${buildTraceOrganizationProjection('p.permission_key', 'rp.access_scope', 'ao.organization_id::text')} AS organization_id,
           ${projection.effect} AS effect,
           ${projection.scope} AS scope,
           rp.access_scope::text AS access_scope,
@@ -261,7 +284,7 @@ const buildGroupRolePermissionTraceSql = (projection: ReturnType<typeof buildPer
           g.display_name AS group_display_name,
           g.is_active AS group_active,
           ag.origin::text AS assignment_origin,
-          ao.organization_id::text AS inherited_from_organization_id,
+          ${buildTraceOrganizationProjection('p.permission_key', 'rp.access_scope', 'ao.organization_id::text')} AS inherited_from_organization_id,
           CASE
             WHEN jsonb_typeof(COALESCE(p.scope, '{}'::jsonb) -> 'allowedGeoUnitIds') = 'array'
               THEN p.scope -> 'allowedGeoUnitIds' ->> 0

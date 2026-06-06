@@ -50,6 +50,7 @@ export type AppRouteBindings = {
   readonly adminOrganizationDetail: RouteComponent;
   readonly adminInstances: RouteComponent;
   readonly adminInstanceCreate: RouteComponent;
+  readonly adminInstanceSetup: RouteComponent;
   readonly adminInstanceDetail: RouteComponent;
   readonly adminRoles: RouteComponent;
   readonly adminRoleCreate: RouteComponent;
@@ -112,6 +113,7 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminOrganizationDetail', path: uiRoutePaths.adminOrganizationDetail, guard: 'adminOrganizationDetail' },
   { binding: 'adminInstances', path: uiRoutePaths.adminInstances, guard: 'adminInstances' },
   { binding: 'adminInstanceCreate', path: uiRoutePaths.adminInstanceCreate, guard: 'adminInstances' },
+  { binding: 'adminInstanceSetup', path: uiRoutePaths.adminInstanceSetup, guard: 'adminInstances' },
   { binding: 'adminInstanceDetail', path: uiRoutePaths.adminInstanceDetail, guard: 'adminInstances' },
   { binding: 'adminRoles', path: uiRoutePaths.adminRoles, guard: 'adminRoles' },
   { binding: 'adminRoleCreate', path: uiRoutePaths.adminRoleCreate, guard: 'adminRoleCreate' },

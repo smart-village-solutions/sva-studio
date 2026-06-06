@@ -72,6 +72,18 @@ describe('iam seed sql contracts', () => {
     assert.doesNotMatch(sql, /\('instance_registry_admin', 'instance\.registry\.manage'\)/);
     assert.doesNotMatch(sql, /\('instance_registry_admin', 'feature\.toggle'\)/);
     assert.doesNotMatch(sql, /\('instance_registry_admin', 'integration\.manage'\)/);
+    assert.doesNotMatch(sql, /'seed:app_manager'/);
+    assert.doesNotMatch(sql, /'seed:feature_manager'/);
+    assert.doesNotMatch(sql, /'seed:interface_manager'/);
+    assert.doesNotMatch(sql, /'seed:designer'/);
+    assert.doesNotMatch(sql, /'seed:editor'/);
+    assert.doesNotMatch(sql, /'seed:moderator'/);
+    assert.doesNotMatch(sql, /'app_manager'/);
+    assert.doesNotMatch(sql, /'feature-manager'/);
+    assert.doesNotMatch(sql, /'interface-manager'/);
+    assert.doesNotMatch(sql, /'designer'/);
+    assert.doesNotMatch(sql, /'editor'/);
+    assert.doesNotMatch(sql, /'moderator'/);
   });
 
   it('expects the deletion-rules seed to create tenant defaults', () => {

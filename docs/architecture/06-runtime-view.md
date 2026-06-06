@@ -247,12 +247,13 @@ Fehlerpfad:
 
 1. Ein Benutzer ruft eine datensatzbezogene Lese- oder Mutationsroute auf, deren Permission als scope-faehig modelliert ist.
 2. `packages/auth-runtime` laedt die effektiven Rollen-Permissions inklusive `accessScope` aus dem Snapshot- oder Recompute-Pfad.
-3. Die Fachroute baut einen kanonischen `AuthorizeRequest` mit `actorAccountId` im Kontext sowie `createdByAccountId` und optional `organizationId` am Resource-Objekt.
+3. Die Fachroute baut einen kanonischen `AuthorizeRequest` mit `actorAccountId` im Kontext sowie `createdByAccountId` und optional `organizationId` am Resource-Objekt; `organizationId` bleibt dabei ein expliziter Fachkontext und kein blanket Scope für instanzweite Rechte.
 4. Die Authorization-Engine wertet zuerst den Assignment-Scope aus und kombiniert ihn danach mit den bestehenden RBAC-/ABAC-Regeln.
 5. Bei `all` bleibt die bisherige Freigabe unveraendert.
 6. Bei `own` wird der Zugriff nur freigegeben, wenn `createdByAccountId` dem aktuellen Actor entspricht.
 7. Bei `organization` wird der Zugriff freigegeben, wenn der Actor den Datensatz selbst erstellt hat oder der Datensatz zur aktiven Session-Organisation gehoert.
 8. Die Rollen-UI schreibt denselben Scope als `permissionAssignments[]`, und die Nutzeransicht zeigt den wirksamen Scope read-only im Permission-Trace.
+9. Für instanzweite Rechte wie `media.*`, `waste-management.*`, `app.read` oder `cockpit.read` bleibt die Entscheidung auch bei aktivem Organisationskontext instanzweit; der Permission-Trace zeigt dies über `runtimeScope = instance` statt über eine künstliche Organisationsbindung.
 
 Fehlerpfad:
 
@@ -422,10 +423,10 @@ Fehlerpfad:
 
 ### Szenario 5: IAM Authorize mit ABAC, Hierarchie und Snapshot-Cache
 
-1. Client ruft `POST /iam/authorize` mit `instanceId`, `action`, `resource` und optionalem ABAC-Kontext auf; `GET /iam/me/permissions` nutzt denselben Snapshot-Pfad optional mit `organizationId`, `geoUnitId` und `geoHierarchy`.
+1. Client ruft `POST /iam/authorize` mit `instanceId`, `action`, `resource` und optionalem ABAC-Kontext auf; `GET /iam/me/permissions` nutzt denselben Snapshot-Pfad optional mit `organizationId`, `geoUnitId` und `geoHierarchy`, wobei `organizationId` nur für scope-sensitive Rechte fachlich wirksam wird.
 2. Server erzwingt Instanzgrenze und wertet Hard-Deny-Regeln zuerst aus.
 3. Permission-Snapshot wird zuerst im lokalen L1-Cache und danach in Redis über User-/Instanz-/Org-/Geo-Kontext gesucht.
-4. Bei Cache-Hit wertet die Engine die Entscheidung in fester Reihenfolge aus: RBAC-Basis, danach ABAC-Regeln und Hierarchie-Restriktionen.
+4. Bei Cache-Hit wertet die Engine die Entscheidung in fester Reihenfolge aus: RBAC-Basis, danach ABAC-Regeln und Hierarchie-Restriktionen; instanzweite Rechte behalten dabei ihre instanzweite Semantik und erhalten keine künstliche `organizationId`-Projektion.
 5. Bei Miss, Stale oder Integritätsfehler erfolgt Recompute aus Postgres als fachlicher Quelle; ein erfolgreicher Recompute schreibt zuerst Redis und danach den L1-Cache.
 6. Bei Redis- oder Recompute-Fehler im sicherheitskritischen Pfad greift Fail-Closed mit HTTP `503` und Fehlercode `database_unavailable`.
 
@@ -518,7 +519,7 @@ Fehlerpfad:
 
 ### Szenario 9: Admin-Flow User- und Rollenverwaltung
 
-1. `system_admin`/`app_manager` öffnet `/admin/users`.
+1. `system_admin` oder ein anderer tenantlokal berechtigter Admin öffnet `/admin/users`.
 2. Liste wird paginiert über `GET /api/v1/iam/users` geladen.
 3. Bearbeitung erfolgt in `/admin/users/$userId` per Tabs und `PATCH /api/v1/iam/users/$userId`.
 4. Rollen-Änderungen triggern Permission-Invalidierung über `pg_notify`.
@@ -568,7 +569,7 @@ Fehlerpfad:
 1. `system_admin` öffnet `/admin/roles` oder `/admin/users/$userId` auf einem Tenant-Host.
 2. Der Backend-Service liefert ausschließlich tenantseitig sichtbare Rollen und Permissions; `instance_registry_admin` und `instance.registry.manage` bleiben im Tenant-Katalog unsichtbar.
 3. Versucht ein API-Client dennoch, Root-only-Permissions in einer Tenant-Rolle zu speichern, antwortet der Server bereits vor dem Keycloak-Write mit `invalid_request`.
-4. Legacy-Standardrollen wie `app_manager` oder `editor` bleiben lesbar und bearbeitbar, solange sie tenantlokale Rollenartefakte der Instanz sind.
+4. Historische Altrollen aus früheren Seeds bleiben in Bestandsinstanzen nur so lange sichtbar, bis Cleanup-, Repair- oder manuelle Migrationspfade sie ersetzt oder neutralisiert haben; neue Default- oder Systemrollen entstehen daraus nicht mehr.
 
 Fehlerpfad:
 
@@ -588,7 +589,7 @@ Fehlerpfad:
 
 ### Szenario 12: Admin verwaltet Organisationen
 
-1. `system_admin` oder berechtigter `app_manager` öffnet `/admin/organizations`.
+1. `system_admin` oder ein anderer tenantlokal berechtigter Admin öffnet `/admin/organizations`.
 2. Die UI lädt `GET /api/v1/iam/organizations` und erhält ein instanzgebundenes Read-Model mit Parent-, Typ- und Zählerdaten.
 3. Beim Anlegen oder Bearbeiten sendet die UI `POST` oder `PATCH /api/v1/iam/organizations/:organizationId`.
 4. Der Server validiert Instanzscope, Parent-Bezug, Zyklusfreiheit, CSRF-Contract und Deaktivierungsregeln.
@@ -647,7 +648,7 @@ Fehlerpfad:
 3. Beim Speichern sendet die UI `PATCH /api/v1/iam/users/:userId` additiv mit `groupIds`.
 4. Der Backend-Service validiert alle Gruppen im aktiven `instanceId`-Scope und ersetzt die aktiven Einträge in `iam.account_groups`.
 5. Anschließend wird ein `user_group_changed`-Invalidation-Event emittiert; der nächste `GET /iam/me/permissions`- oder `POST /iam/authorize`-Aufruf recomputet den Snapshot.
-6. Transparenzansichten zeigen die daraus abgeleiteten Rechte mit `sourceRoleIds`, `sourceGroupIds` und Provenance der Quelle an.
+6. Transparenzansichten zeigen die daraus abgeleiteten Rechte mit `sourceRoleIds`, `sourceGroupIds`, Provenance der Quelle und der expliziten Laufzeitklassifikation `runtimeScope` an.
 
 Fehlerpfad:
 

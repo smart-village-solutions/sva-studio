@@ -2,13 +2,7 @@ export type IamUuid = string;
 export type IamInstanceId = string;
 
 export type PersonaKey =
-  | 'system_admin'
-  | 'app_manager'
-  | 'feature_manager'
-  | 'interface_manager'
-  | 'designer'
-  | 'editor'
-  | 'moderator';
+  | 'system_admin';
 
 type PersonaScope = 'instance' | 'org';
 export type MfaPolicy = 'required' | 'recommended' | 'optional';

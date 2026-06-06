@@ -309,6 +309,12 @@ describe('waste management helper modules', () => {
         color: ' #111111 ',
         description: ' Beschreibung ',
         active: true,
+        reminderCount: 'none',
+        firstReminderMaxLeadDays: 14,
+        secondReminderMaxLeadDays: 7,
+        reminderChannelPushEnabled: true,
+        reminderChannelEmailEnabled: true,
+        reminderChannelCalendarEnabled: true,
       })
     ).toEqual({
       id: 'fraction-1',
@@ -318,6 +324,46 @@ describe('waste management helper modules', () => {
       color: '#111111',
       description: 'Beschreibung',
       active: true,
+      reminderCount: 'none',
+      firstReminderMaxLeadDays: undefined,
+      secondReminderMaxLeadDays: undefined,
+      reminderChannelPushEnabled: false,
+      reminderChannelEmailEnabled: false,
+      reminderChannelCalendarEnabled: false,
+    });
+
+    expect(
+      wasteMasterDataFormMappers.fractionToForm({
+        id: 'fraction-2',
+        name: 'Bio',
+        translations: {},
+        containerSize: undefined,
+        color: '#16A34A',
+        description: undefined,
+        active: false,
+        reminderCount: 'once',
+        firstReminderMaxLeadDays: 5,
+        secondReminderMaxLeadDays: undefined,
+        reminderChannelPushEnabled: false,
+        reminderChannelEmailEnabled: true,
+        reminderChannelCalendarEnabled: false,
+        createdAt: '2026-05-10T10:00:00.000Z',
+        updatedAt: '2026-05-10T10:00:00.000Z',
+      })
+    ).toEqual({
+      id: 'fraction-2',
+      name: 'Bio',
+      translations: {},
+      containerSize: '',
+      color: '#16A34A',
+      description: '',
+      active: false,
+      reminderCount: 'once',
+      firstReminderMaxLeadDays: 5,
+      secondReminderMaxLeadDays: 1,
+      reminderChannelPushEnabled: false,
+      reminderChannelEmailEnabled: true,
+      reminderChannelCalendarEnabled: false,
     });
 
     expect(
@@ -816,6 +862,62 @@ describe('waste management helper modules', () => {
       kind: 'success',
       text: 'tours.assignments.messages.updateSuccess',
     });
+  });
+
+  it('chunks tour assignment bulk creates into server-sized requests', async () => {
+    const loadOverview = vi.fn(async () => undefined);
+    const translate = (key: string) => key;
+    const selectedLocationIds = Array.from({ length: 205 }, (_, index) => `location-${index + 1}`);
+    createWasteManagementLocationTourLinksBulkMock.mockClear();
+    const chunkingState = {
+      assignmentsDialogMode: 'edit',
+      linkForm: {
+        id: 'link-1',
+        locationId: '',
+        tourId: 'tour-1',
+        startDate: '2026-05-01',
+        endDate: '',
+      },
+      selectedTour: { id: 'tour-1' },
+      masterDataOverview: {
+        locationTourLinks: [],
+      },
+      setSaving: vi.fn(),
+      setMessage: vi.fn(),
+      setAssignmentsDialogOpen: vi.fn(),
+    };
+
+    createWasteManagementLocationTourLinksBulkMock.mockResolvedValue(undefined);
+
+    const handlers = createWasteToursAssignmentSubmitHandlers({
+      state: chunkingState as never,
+      pt: translate,
+      loadOverview,
+    });
+
+    await handlers.onSubmitAssignments({ preventDefault: vi.fn() } as never, selectedLocationIds);
+
+    expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenCalledTimes(3);
+    expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenNthCalledWith(1, {
+      locationIds: selectedLocationIds.slice(0, 100),
+      tourId: 'tour-1',
+      startDate: '2026-05-01',
+      endDate: undefined,
+    });
+    expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenNthCalledWith(2, {
+      locationIds: selectedLocationIds.slice(100, 200),
+      tourId: 'tour-1',
+      startDate: '2026-05-01',
+      endDate: undefined,
+    });
+    expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenNthCalledWith(3, {
+      locationIds: selectedLocationIds.slice(200),
+      tourId: 'tour-1',
+      startDate: '2026-05-01',
+      endDate: undefined,
+    });
+    expect(loadOverview).toHaveBeenCalledWith(true);
+    expect(chunkingState.setAssignmentsDialogOpen).toHaveBeenCalledWith(false);
   });
 
   it('covers tours presentation helpers including recurrence, ranges, custom dates, and shifts', () => {

@@ -203,19 +203,11 @@ Begründung:
 - `instance_registry_admin` ist eine Plattformrolle für globale Instanzmutationen und soll nicht automatisch an Tenant-Admins gehen
 - Tenant-Zugriffe werden fachlich über Permissions entschieden; `system_admin` ist nur die kanonische Bootstrap-Rolle, nicht das alleinige technische Zugriffsmodell
 - der Root-Host-Provisioning-Pfad unter `/admin/instances` stellt den Tenant-Admin nicht nur in Keycloak sicher, sondern bindet den konfigurierten Bootstrap-User auch lokal in Studio direkt an die Sonderrolle `system_admin`
+- derselbe Root-Follow-up-Pfad synchronisiert nur `system_admin` und die IAM-Basis der aktivierten Module; Gruppen wie `admins`, Rollen wie `core_admin` oder modulbezogene `*_admin`-Standardrollen werden dabei nicht mehr automatisch angelegt
 
 ### Optionale Zusatzrollen
 
-Nur wenn die jeweilige Funktion tatsächlich benötigt wird:
-
-- `iam_admin`
-- `support_admin`
-- `security_admin`
-- `compliance_officer`
-- `app_manager`
-- `editor`
-
-Diese Rollen sind bewusst nicht Teil des pauschalen Standard-Bootstraps.
+Nur wenn die jeweilige Funktion tatsächlich benötigt wird, sollen zusätzliche tenantlokale Custom-Rollen manuell angelegt und gezielt mit Permissions ausgestattet werden. Solche Rollen sind bewusst nicht Teil des pauschalen Standard-Bootstraps.
 
 ## Anti-Regression-Regel
 

@@ -96,7 +96,6 @@ describe('service-keycloak-run-steps', () => {
       webOriginsMatch: true,
       clientSecretAligned: true,
       tenantAdminHasSystemAdmin: true,
-      tenantAdminHasInstanceRegistryAdmin: false,
       tenantAdminExists: true,
     };
 
@@ -125,8 +124,7 @@ describe('service-keycloak-run-steps', () => {
       logoutUrisMatch: true,
       webOriginsMatch: true,
       clientSecretAligned: true,
-      tenantAdminHasSystemAdmin: true,
-      tenantAdminHasInstanceRegistryAdmin: true,
+      tenantAdminHasSystemAdmin: false,
       tenantAdminExists: true,
     };
 
@@ -154,7 +152,6 @@ describe('service-keycloak-run-steps', () => {
       webOriginsMatch: true,
       clientSecretAligned: true,
       tenantAdminHasSystemAdmin: true,
-      tenantAdminHasInstanceRegistryAdmin: false,
       tenantAdminExists: true,
     };
 

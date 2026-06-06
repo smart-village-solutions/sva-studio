@@ -136,10 +136,10 @@ describe('ModulesPage', () => {
     expect(screen.getByText('waste-management')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur initialisieren' }));
-    expect(screen.getByRole('dialog', { name: 'Admin-Struktur wirklich initialisieren?' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' }));
+    expect(screen.getByRole('dialog', { name: 'Tenant-Admin-Struktur wirklich initialisieren?' })).toBeTruthy();
     expect(bootstrapAdminStructure).not.toHaveBeenCalled();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Admin-Struktur initialisieren' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })[1]!);
     fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
     expect(screen.getByRole('dialog', { name: 'Modul wirklich entziehen?' })).toBeTruthy();
     expect(revokeModule).not.toHaveBeenCalled();

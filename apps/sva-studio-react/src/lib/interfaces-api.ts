@@ -107,6 +107,7 @@ const ERROR_CODES = new Set<string>([
   'invalid_config',
   'database_unavailable',
   'identity_provider_unavailable',
+  'organization_mainserver_credentials_missing',
   'missing_credentials',
   'token_request_failed',
   'unauthorized',

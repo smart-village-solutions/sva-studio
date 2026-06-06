@@ -40,6 +40,8 @@ export type PublicWasteCalendarEntry = {
   readonly fractionId: string;
   readonly fractionLabel: string;
   readonly fractionColor?: string;
+  readonly tourName?: string;
+  readonly tourDescription?: string;
   readonly note: string | null;
 };
 

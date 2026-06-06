@@ -1,7 +1,36 @@
-import { wasteManagementMasterDataContract, wasteManagementOperationsContract, type WasteTourRecurrence } from '@sva/core';
+import {
+  wasteManagementMasterDataContract,
+  wasteManagementOperationsContract,
+  type WasteTourRecurrence,
+} from '@sva/core';
 import { z } from 'zod';
 
-const createWasteFractionSchema = z.object({
+const wasteFractionReminderCountSchema = z.enum(wasteManagementMasterDataContract.fractionReminderCounts);
+const wasteFractionReminderLeadDaySchema = z
+  .number()
+  .int()
+  .min(wasteManagementMasterDataContract.fractionReminderLeadDayMin)
+  .max(wasteManagementMasterDataContract.fractionReminderLeadDayMax);
+
+const withWasteFractionReminderValidation = <TSchema extends z.ZodObject>(schema: TSchema) =>
+  schema.superRefine((value, ctx) => {
+    if ((value.reminderCount === 'once' || value.reminderCount === 'twice') && value.firstReminderMaxLeadDays === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['firstReminderMaxLeadDays'],
+        message: 'firstReminderMaxLeadDays ist erforderlich, wenn Erinnerungen aktiviert sind.',
+      });
+    }
+    if (value.reminderCount === 'twice' && value.secondReminderMaxLeadDays === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['secondReminderMaxLeadDays'],
+        message: 'secondReminderMaxLeadDays ist erforderlich, wenn zwei Erinnerungen aktiviert sind.',
+      });
+    }
+  });
+
+const wasteFractionSchemaBase = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1),
   translations: z.record(z.string().trim().min(1), z.string().trim().min(1)).optional(),
@@ -9,9 +38,17 @@ const createWasteFractionSchema = z.object({
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, 'Ungültiger Hex-Farbwert.'),
   description: z.string().trim().min(1).optional(),
   active: z.boolean(),
-});
+  reminderCount: wasteFractionReminderCountSchema,
+  firstReminderMaxLeadDays: wasteFractionReminderLeadDaySchema.optional(),
+  secondReminderMaxLeadDays: wasteFractionReminderLeadDaySchema.optional(),
+  reminderChannelPushEnabled: z.boolean(),
+  reminderChannelEmailEnabled: z.boolean(),
+  reminderChannelCalendarEnabled: z.boolean(),
+  });
 
-const updateWasteFractionSchema = createWasteFractionSchema.omit({ id: true });
+const createWasteFractionSchema = withWasteFractionReminderValidation(wasteFractionSchemaBase);
+
+const updateWasteFractionSchema = withWasteFractionReminderValidation(wasteFractionSchemaBase.omit({ id: true }));
 
 const createWasteRegionSchema = z.object({
   id: z.string().trim().min(1),

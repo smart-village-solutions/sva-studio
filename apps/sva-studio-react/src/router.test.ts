@@ -58,12 +58,14 @@ describe('createRuntimeRouteTree', () => {
     expect(
       readRouteGuardUser({
         user: {
+          instanceId: 'instance-1',
           roles: ['iam_admin', 1, null, 'editor'],
           permissionActions: ['news.read', false, 'events.read'],
           assignedModules: ['news', false, 'media'],
         },
       }),
     ).toEqual({
+      instanceId: 'instance-1',
       roles: ['iam_admin', 'editor'],
       permissionActions: ['news.read', 'events.read'],
       permissionStatus: 'ok',
@@ -71,6 +73,7 @@ describe('createRuntimeRouteTree', () => {
     });
 
     expect(readRouteGuardUser({ user: { roles: 'not-an-array' } })).toEqual({
+      instanceId: undefined,
       roles: [],
       permissionActions: [],
       permissionStatus: 'ok',
@@ -82,6 +85,7 @@ describe('createRuntimeRouteTree', () => {
     expect(
       readRouteGuardUser({
         user: {
+          instanceId: 'instance-2',
           roles: ['editor'],
           permissionActions: [],
           permissionStatus: 'degraded',
@@ -89,6 +93,7 @@ describe('createRuntimeRouteTree', () => {
         },
       }),
     ).toEqual({
+      instanceId: 'instance-2',
       roles: ['editor'],
       permissionActions: [],
       permissionStatus: 'degraded',
@@ -114,6 +119,7 @@ describe('createRuntimeRouteTree', () => {
         },
       }),
     ).toEqual({
+      instanceId: 'instance-1',
       roles: [],
       permissionActions: [],
       permissionStatus: 'ok',

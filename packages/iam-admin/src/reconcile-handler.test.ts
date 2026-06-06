@@ -75,10 +75,14 @@ describe('reconcile handler facade', () => {
 
   it('delegates platform sessions to platform reconciliation', async () => {
     const deps = createDeps();
-    const platformCtx = { ...ctx, user: { ...ctx.user, instanceId: undefined } };
+    const platformCtx = {
+      ...ctx,
+      user: { ...ctx.user, instanceId: undefined, roles: ['instance_registry_admin'] },
+    };
     const response = await createReconcileHandlerInternal(deps)(new Request('https://app/reconcile'), platformCtx);
 
     await expect(response.json()).resolves.toEqual({ platform: true });
+    expect(deps.requireSystemAdminRole).not.toHaveBeenCalled();
     expect(deps.reconcilePlatformRoles).toHaveBeenCalledWith(
       expect.any(Request),
       platformCtx,

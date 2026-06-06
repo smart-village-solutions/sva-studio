@@ -1,13 +1,24 @@
 ## MODIFIED Requirements
 ### Requirement: Permissions-Übersicht pro aktivem Kontext
 
-Das System SHALL eine kontextbezogene Permissions-Übersicht für den aktuell angemeldeten Benutzer bereitstellen, optional einen impersonierten Zielkontext auswerten und dabei alle für Transparenz- und Diagnose-UI erforderlichen strukturierten Felder einschließlich Vererbungs-, Restriktions- und Inaktivitätsgründen liefern.
+Das System SHALL eine kontextbezogene Permissions-Übersicht für den aktuell angemeldeten Benutzer bereitstellen, optional einen impersonierten Zielkontext auswerten und dabei alle für Transparenz- und Diagnose-UI erforderlichen strukturierten Felder einschließlich `runtimeScope`, Vererbungs-, Restriktions- und Inaktivitätsgründen liefern.
 
 #### Scenario: Strukturierte Permission-Felder enthalten Vererbungs- und Restriktionsgründe
 
 - **WHEN** die Permissions-Übersicht oder ein äquivalentes Benutzer-Detail-Read-Modell für Transparenzzwecke zurückgegeben wird
-- **THEN** enthält jeder Permission-Eintrag neben Quelle und Scope auch strukturierte Felder für organisations- oder geo-bezogene Vererbung sowie blockierende Restriktionen
+- **THEN** enthält jeder Permission-Eintrag neben Quelle und Scope auch strukturierte Felder für `runtimeScope`, organisations- oder geo-bezogene Vererbung sowie blockierende Restriktionen
 - **AND** kann die Admin-UI direkte, vererbte und unwirksame Pfade ohne zusätzliche Serverheuristik unterscheiden
+
+### Requirement: Tenantweite Rechte bleiben bei aktivem Organisationskontext instanzweit wirksam
+
+Das System SHALL tenantweite Host- und Plugin-Rechte nicht allein deshalb organisationsgebunden behandeln, weil ein aktiver `organizationId`-Kontext vorhanden ist.
+
+#### Scenario: Instanzrecht bleibt trotz aktivem Organisationskontext organisationsagnostisch
+
+- **WHEN** eine instanzweite Permission wie `media.read` oder `waste-management.read` für einen Benutzer aufgelöst wird
+- **AND** der Request oder die Session gleichzeitig einen aktiven `organizationId`-Kontext trägt
+- **THEN** bleibt die effektive Permission instanzweit wirksam
+- **AND** wird im effektiven Permission-Modell kein organisationsbezogener Scope allein aus diesem Kontext abgeleitet
 
 ### Requirement: Hierarchische Vererbung mit Restriktionen
 

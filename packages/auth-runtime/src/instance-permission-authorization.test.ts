@@ -246,7 +246,7 @@ describe('instance permission authorization', () => {
           user: {
             id: 'subject-1',
             instanceId: 'de-musterhausen',
-            roles: ['app_manager'],
+            roles: ['custom_operator'],
           },
         } as never,
         action: 'integration.manage',

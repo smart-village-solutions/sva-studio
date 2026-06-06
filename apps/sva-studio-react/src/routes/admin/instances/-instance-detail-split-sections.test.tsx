@@ -4,6 +4,7 @@ import React from 'react';
 
 import { InstanceDetailCockpitSection } from './-instance-detail-cockpit-section';
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
+import { InstanceDetailDoctorSection } from './-instance-detail-doctor-section';
 import { InstanceDetailHistorySection } from './-instance-detail-history-section';
 import { InstanceDetailOperationsSection } from './-instance-detail-operations-section';
 import { InstanceDetailWorkspaceSections } from './-instance-detail-sections';
@@ -129,7 +130,6 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
       tenantAdminClientExists: true,
       tenantAdminExists: true,
       tenantAdminHasSystemAdmin: true,
-      tenantAdminHasInstanceRegistryAdmin: true,
       redirectUrisMatch: true,
       logoutUrisMatch: true,
       webOriginsMatch: true,
@@ -436,10 +436,85 @@ describe('instance detail split sections', () => {
     expect(onLoadProvisioningRun).toHaveBeenCalledWith('run-history-1');
   });
 
+  it('renders the guided doctor section with overview, recommendation, repair, validation, and history', () => {
+    const onRunDetailAction = vi.fn().mockResolvedValue(undefined);
+    const onLoadProvisioningRun = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <InstanceDetailDoctorSection
+        selectedInstance={createDetailFixture()}
+        statusLoading={false}
+        historyModel={{
+          currentRun: createDetailFixture().latestKeycloakProvisioningRun,
+          historicalRuns: createDetailFixture().keycloakProvisioningRuns,
+          hasHistoricalMismatchHint: false,
+        }}
+        doctorModel={{
+          checks: [
+            {
+              key: 'configuration',
+              title: 'Konfiguration',
+              summary: 'Konfiguration ok',
+              status: 'ready',
+              sourceLabel: 'Quelle: Registry',
+            },
+            {
+              key: 'tenant-reconcile',
+              title: 'Tenant-Reconcile',
+              summary: 'Drift vorhanden',
+              status: 'blocked',
+              sourceLabel: 'Quelle: Rollenabgleich',
+            },
+          ],
+          recommendedAction: {
+            action: 'reconcileKeycloak',
+            label: 'Realm abgleichen',
+            summary: 'Drift vorhanden',
+          },
+          repairActions: [
+            { action: 'reconcileKeycloak', label: 'Realm abgleichen' },
+            { action: 'reset_tenant_admin', label: 'Tenant-Admin neu setzen' },
+          ],
+          validationActions: [
+            { action: 'check_preflight', label: 'Vorbedingungen prüfen' },
+            { action: 'check_keycloak_status', label: 'Keycloak-Status prüfen' },
+          ],
+          validationState: 'blocked',
+          warning: {
+            tone: 'blocked',
+            title: 'Doctor erkennt aktuell Handlungsbedarf.',
+            summary: 'Drift vorhanden',
+          },
+        }}
+        onRunDetailAction={onRunDetailAction}
+        onLoadProvisioningRun={onLoadProvisioningRun}
+      />
+    );
+
+    expect(screen.getByText('Überblick')).toBeTruthy();
+    expect(screen.getByText('Empfohlene Maßnahme')).toBeTruthy();
+    expect(screen.getByText('Reparatur ausführen')).toBeTruthy();
+    expect(screen.getByText('Validieren')).toBeTruthy();
+    expect(screen.getByText('Konfiguration ok')).toBeTruthy();
+    expect(screen.getAllByText('Drift vorhanden').length).toBeGreaterThan(0);
+    expect(screen.getByText('Historischer Fehler')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Realm abgleichen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Vorbedingungen prüfen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Run laden' })[0] as HTMLButtonElement);
+
+    expect(onRunDetailAction).toHaveBeenCalledWith('reconcileKeycloak');
+    expect(onRunDetailAction).toHaveBeenCalledWith('check_preflight');
+    expect(onLoadProvisioningRun).toHaveBeenCalledWith('run-current');
+  });
+
   it('renders the workspace wrapper and switches between configuration, operations, and history tabs', () => {
     const onTriggerWorkflowAction = vi.fn().mockResolvedValue(undefined);
     const onExecuteProvisioning = vi.fn().mockResolvedValue(undefined);
+    const onAssignModule = vi.fn().mockResolvedValue(undefined);
+    const onRevokeModule = vi.fn().mockResolvedValue(undefined);
     const onSeedIamBaseline = vi.fn().mockResolvedValue(undefined);
+    const onBootstrapAdminStructure = vi.fn().mockResolvedValue(undefined);
     const onLoadProvisioningRun = vi.fn().mockResolvedValue(undefined);
     const onUpdateSubmit = vi.fn().mockImplementation(async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -447,7 +522,7 @@ describe('instance detail split sections', () => {
 
     const Harness = () => {
       const [activeWorkspaceTab, setActiveWorkspaceTab] =
-        React.useState<'configuration' | 'operations' | 'history'>('configuration');
+        React.useState<'betrieb' | 'doctor' | 'einstellungen'>('einstellungen');
       const [detailFormValues, setDetailFormValues] = React.useState(createDetailFormValues());
 
       return (
@@ -474,7 +549,10 @@ describe('instance detail split sections', () => {
           onUpdateSubmit={onUpdateSubmit}
           onTriggerWorkflowAction={onTriggerWorkflowAction}
           onExecuteProvisioning={onExecuteProvisioning}
+          onAssignModule={onAssignModule}
+          onRevokeModule={onRevokeModule}
           onSeedIamBaseline={onSeedIamBaseline}
+          onBootstrapAdminStructure={onBootstrapAdminStructure}
           onLoadProvisioningRun={onLoadProvisioningRun}
         />
       );
@@ -482,15 +560,15 @@ describe('instance detail split sections', () => {
 
     render(<Harness />);
 
-    expect(screen.getByRole('tab', { name: 'Konfiguration' }).getAttribute('data-state')).toBe('active');
+    expect(screen.getByRole('tab', { name: 'Einstellungen' }).getAttribute('data-state')).toBe('active');
     expect(screen.getByRole('button', { name: 'Instanz speichern' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
     expect(screen.getByRole('tab', { name: 'Betrieb' }).getAttribute('data-state')).toBe('active');
-    expect(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'IAM-Basis neu aufbauen' }).length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Historie' }));
-    expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('data-state')).toBe('active');
+    fireEvent.click(screen.getByRole('tab', { name: 'Doctor' }));
+    expect(screen.getByRole('tab', { name: 'Doctor' }).getAttribute('data-state')).toBe('active');
     fireEvent.click(screen.getByRole('button', { name: 'Run laden' }));
 
     expect(onLoadProvisioningRun).toHaveBeenCalledWith('run-history-1');

@@ -52,6 +52,14 @@ export { withLegalTextCompliance } from './legal-text-enforcement.js';
 export { jitProvisionAccount, jitProvisionAccountWithClient } from './jit-provisioning.js';
 export type { JitProvisionInput, JitProvisionResult } from './jit-provisioning.js';
 export {
+  readEffectiveSvaMainserverCredentials,
+  readEffectiveSvaMainserverCredentialsWithStatus,
+} from './mainserver-effective-credentials.js';
+export type {
+  EffectiveMainserverCredentialSource,
+  EffectiveSvaMainserverCredentialsResult,
+} from './mainserver-effective-credentials.js';
+export {
   buildMainserverIdentityAttributes,
   getSvaMainserverCredentialAttributeNames,
   readIdentityUserAttributes,

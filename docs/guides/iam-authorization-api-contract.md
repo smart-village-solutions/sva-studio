@@ -41,6 +41,7 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
       "action": "content.read",
       "resourceType": "content",
       "resourceId": "article-1",
+      "runtimeScope": "record",
       "organizationId": "22222222-2222-2222-8222-222222222222",
       "effect": "allow",
       "accessScope": "organization",
@@ -75,7 +76,9 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
 ### Zusätzliche Zusagen für Transparenz-UI
 
 - `resourceId`, `effect`, `scope`, `sourceRoleIds`, `sourceGroupIds`, `provenance` und `subject` sind Teil des stabilen Read-Modells für das Rights-Tab in `/admin/iam`.
+- `runtimeScope` klassifiziert jede Permission explizit als `instance`, `record` oder `organization_context`.
 - `accessScope` ist ein additives Feld fuer scoped Rollen-Permissions und beschreibt den wirksamen Rollen-Zugriffsmodus (`all`, `own`, `organization`).
+- Ein gesetzter Query-Parameter `organizationId` bindet instanzweite Permissions nicht implizit an eine Organisation. Für instanzweite Rechte wie `media.read`, `waste-management.read`, `app.read` oder `cockpit.read` bleibt `permissions[].organizationId` deshalb leer.
 - `snapshotVersion` und `cacheStatus` sind additive Diagnosefelder für Snapshot-Transparenz; bestehende Consumer dürfen diese Felder ignorieren.
 - `geoUnitId` und `geoHierarchy` beeinflussen nur die Snapshot-Dimension und Provenance-Auswertung, nicht die Session oder die Nutzeridentität.
 - Diagnosefelder bleiben allowlist-basiert. Die UI zeigt keine Roh-Policy-Dumps, Secrets oder Ciphertexte an.

@@ -105,6 +105,7 @@ pnpm --filter sva-studio-react exec playwright install --with-deps chromium
 ### Vorbereitung für Paket 3 bis 5
 
 - Die Zielumgebung muss denselben Authorization-Vertrag wie lokal bereitstellen: `POST /iam/authorize` und `GET /iam/me/permissions` liefern additive `snapshotVersion`- und `cacheStatus`-Felder.
+- Für `WP-005` muss die Benutzerdetailansicht strukturierte Permission-Transparenz mit sichtbarer Laufzeitklassifikation (`instanzweit`, `datensatzbezogen`, `organisationskontextbezogen`) nachweisen; instanzweite Rechte dürfen dabei trotz aktivem Organisationskontext keine künstliche Organisationsbindung anzeigen.
 - Geo-bezogene Acceptance-Fälle verwenden denselben Laufzeitkontext in beiden Endpunkten:
   - `POST /iam/authorize` über `context.attributes.geoUnitId` und `context.attributes.geoHierarchy`
   - `GET /iam/me/permissions` über `geoUnitId` und `geoHierarchy`
@@ -156,6 +157,7 @@ Hinweise:
 
 - Zugangsdaten nicht ins Repository schreiben; nur lokal als Environment setzen.
 - `WP-005` bleibt ohne `IAM_EVIDENCE_WP005_USER_ID` absichtlich auf `skipped`, weil der Runner sonst keinen konkreten Benutzerdetailfall öffnen kann.
+- Für einen vollständigen `WP-005`-Nachweis sollte der gewählte Detailfall mindestens eine instanzweite und eine datensatzbezogene Permission im Trace enthalten.
 - `WP-006` bewertet den Negativfall ohne `IAM_EVIDENCE_NEGATIVE_USERNAME` und `IAM_EVIDENCE_NEGATIVE_PASSWORD` bewusst nur als `manual_review`, damit ein privilegierter Testactor nicht fälschlich als Produktfehler erscheint.
 - `WP-003` und Teile von `WP-005` können bewusst als `manual_review` enden. Das ist kein Fehler des Runners, sondern markiert echte Zielumgebungsfälle, die aus Stabilitätsgründen nicht blind automatisiert werden.
 

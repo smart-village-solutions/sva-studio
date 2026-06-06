@@ -44,6 +44,14 @@ export const iamSeedPermissions = [
   ['40111111-1111-1111-1111-111111111148', 'media.deliver.protected', 'Deliver protected media'],
 ] as const satisfies readonly [string, PermissionKey, string][];
 
+export const rootOnlySeedPermissionKeys = ['instance.registry.manage'] as const satisfies readonly PermissionKey[];
+
+const rootOnlySeedPermissionKeySet: ReadonlySet<PermissionKey> = new Set(rootOnlySeedPermissionKeys);
+
+export const tenantBootstrapPermissionKeys = iamSeedPermissions
+  .map(([, key]) => key)
+  .filter((key): key is PermissionKey => !rootOnlySeedPermissionKeySet.has(key));
+
 export const experimentalShellPermissionKeys = ['experimental.read'] as const;
 export const applicationReadPermissionKeys = ['app.read', 'cockpit.read'] as const;
 export const mediaReadPermissionKeys = ['media.read'] as const;

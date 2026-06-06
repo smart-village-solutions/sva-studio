@@ -199,7 +199,7 @@ describe('instances shared helpers', () => {
       title: 'Instanz gespeichert',
       summary: 'Die Instanz hb-meinquartier wurde in der Registry angelegt. Aktueller Status: Angefordert.',
       nextSteps: [
-        'Öffnen Sie die Detailseite, um den technischen Zustand der Instanz zu prüfen.',
+        'Öffnen Sie danach den Setup-Flow, um Provisioning, Aktivierung und Tenant-Admin-Struktur abzuschließen.',
         'Führen Sie dort den Keycloak-Abgleich für Realm saas-hb-meinquartier aus.',
         'Aktivieren Sie die Instanz erst nach erfolgreichem Provisioning für hb-meinquartier.studio.smart-village.app.',
       ],
@@ -328,7 +328,6 @@ describe('instances shared helpers', () => {
         clientExists: true,
         tenantAdminExists: true,
         tenantAdminHasSystemAdmin: true,
-        tenantAdminHasInstanceRegistryAdmin: false,
         redirectUrisMatch: true,
         logoutUrisMatch: true,
         webOriginsMatch: true,
@@ -339,7 +338,7 @@ describe('instances shared helpers', () => {
       },
     } as never);
 
-    expect(entries).toContainEqual([
+    expect(entries).not.toContainEqual([
       'admin.instances.keycloakStatus.tenantAdminHasInstanceRegistryAdmin',
       true,
     ]);
@@ -380,7 +379,6 @@ describe('instances shared helpers', () => {
           tenantAdminClientExists: false,
           tenantAdminExists: false,
           tenantAdminHasSystemAdmin: false,
-          tenantAdminHasInstanceRegistryAdmin: false,
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,
@@ -436,7 +434,6 @@ describe('instances shared helpers', () => {
           tenantAdminClientExists: false,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
-          tenantAdminHasInstanceRegistryAdmin: false,
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,
@@ -647,7 +644,6 @@ describe('instances shared helpers', () => {
           tenantAdminClientExists: true,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
-          tenantAdminHasInstanceRegistryAdmin: false,
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,
@@ -753,7 +749,6 @@ describe('instances shared helpers', () => {
           tenantAdminClientExists: true,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
-          tenantAdminHasInstanceRegistryAdmin: false,
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,
@@ -788,7 +783,6 @@ describe('instances shared helpers', () => {
         tenantAdminClientExists: true,
         tenantAdminExists: true,
         tenantAdminHasSystemAdmin: true,
-        tenantAdminHasInstanceRegistryAdmin: true,
         redirectUrisMatch: true,
         logoutUrisMatch: true,
         webOriginsMatch: true,
@@ -829,14 +823,14 @@ describe('instances shared helpers', () => {
     expect(status).toEqual(
       expect.objectContaining({
         configuration: expect.objectContaining({
-          status: 'degraded',
+          status: 'ready',
           source: 'keycloak_status_snapshot',
           checkedAt: '2026-01-01T00:00:00.000Z',
           requestId: 'req-config-1',
         }),
         overall: expect.objectContaining({
-          status: 'degraded',
-          source: 'keycloak_status_snapshot',
+          status: 'unknown',
+          source: 'role_reconcile',
         }),
       })
     );
@@ -1069,7 +1063,6 @@ describe('instances shared helpers', () => {
           tenantAdminClientExists: false,
           tenantAdminExists: false,
           tenantAdminHasSystemAdmin: false,
-          tenantAdminHasInstanceRegistryAdmin: false,
           redirectUrisMatch: false,
           logoutUrisMatch: false,
           webOriginsMatch: false,
@@ -1140,7 +1133,6 @@ describe('instances shared helpers', () => {
           tenantAdminClientExists: true,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
-          tenantAdminHasInstanceRegistryAdmin: false,
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,
@@ -1215,7 +1207,6 @@ describe('instances shared helpers', () => {
           tenantAdminClientExists: true,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
-          tenantAdminHasInstanceRegistryAdmin: false,
           redirectUrisMatch: true,
           logoutUrisMatch: false,
           webOriginsMatch: true,
@@ -1267,7 +1258,6 @@ describe('instances shared helpers', () => {
           tenantAdminClientExists: true,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
-          tenantAdminHasInstanceRegistryAdmin: false,
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,

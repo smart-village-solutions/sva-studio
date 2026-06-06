@@ -11,6 +11,7 @@ import {
   FractionVisibilitySection,
   validateFractionForm,
 } from './waste-management.master-data-fraction-create.parts.js';
+import { FractionReminderSection } from './waste-management.master-data-fraction-reminder-section.js';
 
 type WasteMasterDataFractionCreateContentProps = {
   readonly mode: 'create' | 'edit';
@@ -80,6 +81,7 @@ export const WasteMasterDataFractionCreateContent = ({
         <FractionBasicsSection form={form} submitAttempted={submitAttempted} errors={errors} onChange={onChange} />
         <FractionPresentationSection form={form} submitAttempted={submitAttempted} errors={errors} onChange={onChange} />
         <FractionVisibilitySection form={form} onChange={onChange} />
+        <FractionReminderSection form={form} onChange={onChange} />
         <FractionFormActions cancelLabel={cancelLabel} saveLabel={saveLabel} saving={saving} onCancel={onCancel} />
       </form>
     </div>

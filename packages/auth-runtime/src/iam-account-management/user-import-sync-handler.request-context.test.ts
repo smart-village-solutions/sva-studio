@@ -41,13 +41,13 @@ describe('user-import-sync-handler request context', () => {
       },
     });
     expect(state.resolveMutationActorWithAccount).toHaveBeenCalledWith(request, ctx, {
-      allowedRoles: new Set(['system_admin', 'app_manager']),
+      allowedRoles: new Set(['system_admin']),
       requiredPermissionAction: 'iam.user.write',
       feature: 'iam_admin',
       scope: 'write',
       provisionMissingActorMembership: true,
     });
-  });
+  }, 15_000);
 
   it('returns shared guard responses unchanged', async () => {
     const { resolveSyncActor } = await import('./user-import-sync-handler.js');

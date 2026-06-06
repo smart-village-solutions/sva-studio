@@ -4,8 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3002",
-    "build": "vite build",
+    "build": "rm -rf dist && vite build --outDir dist/client && pnpm exec tsc -p tsconfig.server.json",
     "preview": "vite preview",
+    "start": "node dist/server/server/main.js",
     "test": "vitest run --passWithNoTests",
     "test:e2e": "playwright test --config playwright.config.ts"
   },

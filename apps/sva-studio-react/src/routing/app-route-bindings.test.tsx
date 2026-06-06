@@ -127,6 +127,12 @@ vi.mock('../routes/admin/instances/-instance-create-page', () => ({
   InstanceCreatePage: () => <div data-testid="instance-create-page" />,
 }));
 
+vi.mock('../routes/admin/instances/-instance-setup-page', () => ({
+  InstanceSetupPage: ({ instanceId }: { instanceId: string }) => (
+    <div data-testid="instance-setup-page">{instanceId}</div>
+  ),
+}));
+
 vi.mock('../routes/admin/instances/-instance-detail-page', () => ({
   InstanceDetailPage: ({ instanceId }: { instanceId: string }) => (
     <div data-testid="instance-detail-page">{instanceId}</div>
@@ -616,6 +622,10 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.adminInstanceCreate />);
     expect(screen.getByTestId('instance-create-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.adminInstanceSetup />);
+    expect(screen.getByTestId('instance-setup-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.adminRoleCreate />);

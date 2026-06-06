@@ -30,6 +30,7 @@ export type AuthenticatedRequestContext = {
   sessionExpiresAt?: number;
   freshReauthAt?: number;
   isLocalDevelopmentAuth?: boolean;
+  activeOrganizationId?: string;
   user: SessionUser;
 };
 
@@ -43,6 +44,7 @@ type SessionResolution =
       sessionExpiresAt?: number;
       freshReauthAt?: number;
       isLocalDevelopmentAuth?: boolean;
+      activeOrganizationId?: string;
       user: SessionUser;
     }
   | { kind: 'response'; response: Response };
@@ -69,6 +71,7 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
       runtimeSessionHydrationMs: 0,
       isLocalDevelopmentAuth: true,
       sessionId: 'mock-auth-session',
+      activeOrganizationId: undefined,
       user: createMockSessionUser(),
     };
   }
@@ -156,11 +159,12 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
     kind: 'authenticated',
     tenantHostValidationMs,
     storedSessionResolutionMs,
-    runtimeSessionHydrationMs,
-    freshReauthAt: sessionResolution.freshReauthAt,
-    sessionId,
-    sessionExpiresAt: sessionResolution.expiresAt,
-    user: effectiveSessionUser,
+      runtimeSessionHydrationMs,
+      freshReauthAt: sessionResolution.freshReauthAt,
+      activeOrganizationId: sessionResolution.activeOrganizationId,
+      sessionId,
+      sessionExpiresAt: sessionResolution.expiresAt,
+      user: effectiveSessionUser,
   };
 };
 
@@ -209,6 +213,7 @@ export const withAuthenticatedUser = async (
       sessionExpiresAt: resolution.sessionExpiresAt,
       freshReauthAt: resolution.freshReauthAt,
       isLocalDevelopmentAuth: resolution.isLocalDevelopmentAuth,
+      activeOrganizationId: resolution.activeOrganizationId,
       user: resolution.user,
     };
     const accountLifecycleStartedAt = performance.now();

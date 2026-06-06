@@ -274,6 +274,9 @@ const normalizeSectionKey = (metadata: NonNullable<SchemaSnapshotSection['metada
   return [type, schema, name].join(':');
 };
 
+const isVolatileDumpSettingLine = (line: string): boolean =>
+  line === "SET default_tablespace = '';" || line === 'SET default_table_access_method = heap;';
+
 const normalizeSchemaSnapshotSection = (
   section: SchemaSnapshotSection,
   ignoredSchemas: readonly string[],
@@ -291,6 +294,7 @@ const normalizeSchemaSnapshotSection = (
     .filter(({ trimmed }) => !trimmed.startsWith('--'))
     .filter(({ trimmed }) => !trimmed.startsWith('\\restrict '))
     .filter(({ trimmed }) => !trimmed.startsWith('\\unrestrict '))
+    .filter(({ trimmed }) => !isVolatileDumpSettingLine(trimmed))
     .map(({ raw }) => raw)
     .join('\n')
     .trim();

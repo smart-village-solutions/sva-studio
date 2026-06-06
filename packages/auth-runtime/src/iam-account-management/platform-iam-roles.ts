@@ -2,7 +2,7 @@ import type { IamRoleListItem } from '@sva/core';
 
 import type { IdentityRole } from '../identity-provider-port.js';
 
-import { PLATFORM_ROLE_LEVEL_BY_NAME } from './constants.js';
+import { PLATFORM_PROFILE_ROLES, PLATFORM_ROLE_LEVEL_BY_NAME } from './constants.js';
 import { logger, trackKeycloakCall } from './shared-observability.js';
 import { resolveIdentityProvider } from './shared-runtime.js';
 
@@ -64,6 +64,7 @@ export const listPlatformRoles = async (): Promise<readonly IamRoleListItem[]> =
 
   const roles = await trackKeycloakCall('list_platform_roles', () => identityProvider.provider.listRoles());
   return roles
+    .filter((role) => PLATFORM_PROFILE_ROLES.has(role.externalName))
     .map(mapPlatformRole)
     .sort((left, right) => right.roleLevel - left.roleLevel || left.roleName.localeCompare(right.roleName, 'de'));
 };

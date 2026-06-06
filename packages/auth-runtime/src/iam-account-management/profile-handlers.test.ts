@@ -451,6 +451,45 @@ describe('profile handlers', () => {
     expect(state.loadMyProfileDetail).not.toHaveBeenCalled();
   });
 
+  it('rejects platform profile updates before tenant actor resolution', async () => {
+    const response = await updateMyProfileInternal(
+      new Request('https://platform.example.test/api/v1/iam/users/me/profile', {
+        method: 'PATCH',
+      }),
+      {
+        user: {
+          id: 'kc-platform-user',
+          username: 'platform.admin',
+          email: 'platform@example.com',
+          firstName: 'Platform',
+          lastName: 'Admin',
+          displayName: 'Platform Admin',
+          roles: ['instance_registry_admin'],
+        },
+      } as const
+    );
+    const payload = (await response.json()) as {
+      error: {
+        code: string;
+        details?: {
+          reason_code?: string;
+          scope_kind?: string;
+        };
+      };
+      requestId?: string;
+    };
+
+    expect(response.status).toBe(403);
+    expect(payload.error.code).toBe('forbidden');
+    expect(payload.error.details).toMatchObject({
+      reason_code: 'platform_profile_write_not_supported',
+      scope_kind: 'platform',
+    });
+    expect(payload.requestId).toBe('req-1');
+    expect(state.resolveActorInfo).not.toHaveBeenCalled();
+    expect(state.loadMyProfileDetail).not.toHaveBeenCalled();
+  });
+
   it('marks self-service profiles as manual_review when keycloak role projection degrades', async () => {
     state.resolveKeycloakRoleNames.mockRejectedValueOnce(new KeycloakAdminUnavailableError('keycloak unavailable'));
 

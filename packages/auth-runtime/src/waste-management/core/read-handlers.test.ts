@@ -44,31 +44,32 @@ describe('waste-management read handlers', () => {
   const collectionLocationId = '11111111-1111-4111-8111-111111111111';
 
   it('loads settings and history with sanitized payloads and paging params', async () => {
+    const settingsDeps = {
+      ...createDeps('waste-management.settings.manage'),
+      loadDefaultInterfaceRecord: vi.fn(async () => ({
+        id: 'supabase-1',
+        instanceId: 'tenant-a',
+        typeKey: 'supabase',
+        ownerKind: 'host',
+        ownerId: 'host',
+        displayName: 'Supabase',
+        alias: 'default',
+        enabled: true,
+        isDefault: true,
+        category: 'database',
+        statusCheckKind: 'supabase',
+        visibleStatus: 'ok',
+        publicConfig: {
+          projectUrl: 'https://tenant.example',
+          schemaName: 'wm',
+        },
+        secretConfigCiphertext: 'cipher-secret',
+      })),
+    };
     const settingsResponse = await wasteManagementReadHandlers.getWasteManagementSettingsInternal(
       new Request('https://studio.test/api/v1/waste-management/settings'),
       actor,
-      {
-        ...createDeps('waste-management.settings.manage'),
-        loadDefaultInterfaceRecord: vi.fn(async () => ({
-          id: 'supabase-1',
-          instanceId: 'tenant-a',
-          typeKey: 'supabase',
-          ownerKind: 'host',
-          ownerId: 'host',
-          displayName: 'Supabase',
-          alias: 'default',
-          enabled: true,
-          isDefault: true,
-          category: 'database',
-          statusCheckKind: 'supabase',
-          visibleStatus: 'ok',
-          publicConfig: {
-            projectUrl: 'https://tenant.example',
-            schemaName: 'wm',
-          },
-          secretConfigCiphertext: 'cipher-secret',
-        })),
-      }
+      settingsDeps
     );
 
     expect(settingsResponse.status).toBe(200);
@@ -79,6 +80,10 @@ describe('waste-management read handlers', () => {
         visibleStatus: 'ok',
       },
       requestId: 'req-test',
+    });
+    expect(settingsDeps.resolvePermissions).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      keycloakSubject: 'user-1',
     });
 
     const loadWasteHistoryOverview = vi.fn(async () => ({ audit: { items: [], total: 0 }, technical: { items: [], total: 0 } }));
@@ -126,7 +131,7 @@ describe('waste-management read handlers', () => {
     expect(historyResponse.status).toBe(503);
   });
 
-  it('accepts organization-scoped read permissions when the session carries an active organization id', async () => {
+  it('rejects organization-scoped read permissions for instance-wide waste reads', async () => {
     const response = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
       new Request('https://studio.test/api/v1/waste-management/master-data'),
       actor,
@@ -161,7 +166,7 @@ describe('waste-management read handlers', () => {
       }
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(403);
   });
 
   it('returns guard errors before overview loaders run', async () => {

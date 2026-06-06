@@ -35,6 +35,12 @@ export const seedWasteBaseline = async (repository: ReturnType<typeof createWast
     color: '#4B5563',
     description: 'Baseline-Fraktion für Seed-Daten',
     active: true,
+    reminderCount: 'none',
+    firstReminderMaxLeadDays: undefined,
+    secondReminderMaxLeadDays: undefined,
+    reminderChannelPushEnabled: false,
+    reminderChannelEmailEnabled: false,
+    reminderChannelCalendarEnabled: false,
   });
   await repository.upsertWasteFraction({
     id: baselineIds.fractionBio,
@@ -44,6 +50,12 @@ export const seedWasteBaseline = async (repository: ReturnType<typeof createWast
     color: '#16A34A',
     description: 'Baseline-Fraktion für Seed-Daten',
     active: true,
+    reminderCount: 'none',
+    firstReminderMaxLeadDays: undefined,
+    secondReminderMaxLeadDays: undefined,
+    reminderChannelPushEnabled: false,
+    reminderChannelEmailEnabled: false,
+    reminderChannelCalendarEnabled: false,
   });
   await repository.upsertWasteTour({
     id: baselineIds.tour,

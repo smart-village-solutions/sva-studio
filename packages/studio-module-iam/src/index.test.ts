@@ -56,20 +56,45 @@ describe('@sva/studio-module-iam', () => {
       namespace: 'news',
       ownerPluginId: 'news',
       permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      tenantBootstrapRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+        },
+      ],
     });
-    expect(getStudioModuleIamContract('events')?.tenantBootstrapRoles.map((role) => role.roleName)).toContain(
-      'system_admin'
-    );
-    expect(getStudioModuleIamContract('poi')?.tenantBootstrapRoles.map((role) => role.roleName)).toContain('editor');
+    expect(getStudioModuleIamContract('events')?.tenantBootstrapRoles.map((role) => role.roleName)).toEqual([
+      'system_admin',
+    ]);
+    expect(getStudioModuleIamContract('poi')?.tenantBootstrapRoles.map((role) => role.roleName)).toEqual([
+      'system_admin',
+    ]);
+    expect(getStudioModuleIamContract('poi')?.systemRoles).toEqual([
+      {
+        roleName: 'system_admin',
+        permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'],
+      },
+    ]);
     expect(getStudioModuleIamContract('waste-management')).toMatchObject({
       moduleId: 'waste-management',
       namespace: 'waste-management',
       ownerPluginId: 'waste-management',
       rootSystemRoles: [],
     });
-    expect(getStudioModuleIamContract('waste-management')?.tenantBootstrapRoles).toContainEqual({
-      roleName: 'app_manager',
-      permissionIds: ['waste-management.read', 'waste-management.settings.manage'],
-    });
+    expect(getStudioModuleIamContract('waste-management')?.tenantBootstrapRoles).toEqual([
+      {
+        roleName: 'system_admin',
+        permissionIds: [
+          'waste-management.read',
+          'waste-management.master-data.manage',
+          'waste-management.tours.manage',
+          'waste-management.scheduling.manage',
+          'waste-management.import.execute',
+          'waste-management.seed.execute',
+          'waste-management.reset.execute',
+          'waste-management.settings.manage',
+        ],
+      },
+    ]);
   });
 });

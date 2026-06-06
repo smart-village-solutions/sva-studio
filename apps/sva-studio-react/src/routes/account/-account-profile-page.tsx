@@ -13,6 +13,7 @@ import { Select } from '../../components/ui/select';
 import { t } from '../../i18n';
 import { createLoginHref, resolveCurrentReturnTo } from '../../lib/auth-navigation';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
+import { hasPlatformInstanceAdminAccess } from '../../lib/iam-admin-access';
 import { notifyIamUsersUpdated } from '../../lib/iam-user-events';
 import { useAuth } from '../../providers/auth-provider';
 
@@ -126,6 +127,7 @@ const getLoadErrorDescription = (error: IamHttpError) => {
 
 export const AccountProfilePage = () => {
   const { user, isAuthenticated, isLoading: isAuthLoading, hasResolvedSession } = useAuth();
+  const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
 
   const [profile, setProfile] = React.useState<IamUserDetail | null>(null);
   const [formValues, setFormValues] = React.useState<ProfileFormValues>(EMPTY_FORM);
@@ -197,6 +199,10 @@ export const AccountProfilePage = () => {
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (isPlatformScope) {
+      return;
+    }
 
     const nextErrors = validateForm(formValues);
     setValidationErrors(nextErrors);
@@ -303,6 +309,7 @@ export const AccountProfilePage = () => {
     ? t(editabilityTranslationKeyByValue[profile.editability])
     : null;
   const diagnosticCodes = profile?.diagnostics?.map((diagnostic) => diagnostic.code).join(', ') ?? null;
+  const isProfileReadOnly = isPlatformScope;
 
   return (
     <section className="space-y-5" aria-busy={isSaving}>
@@ -357,6 +364,13 @@ export const AccountProfilePage = () => {
         </Alert>
       ) : null}
 
+      {isProfileReadOnly ? (
+        <Alert className="border-secondary/40 bg-secondary/10 text-secondary">
+          <AlertTitle>{t('account.profile.platformReadOnlyTitle')}</AlertTitle>
+          <AlertDescription>{t('account.profile.platformReadOnlyBody')}</AlertDescription>
+        </Alert>
+      ) : null}
+
       {Object.keys(validationErrors).length > 0 ? (
         <Alert
           ref={errorSummaryRef}
@@ -399,6 +413,7 @@ export const AccountProfilePage = () => {
               id="account-first-name"
               autoComplete="given-name"
               value={formValues.firstName}
+              disabled={isProfileReadOnly}
               onChange={(event) => onFieldChange('firstName', event.target.value)}
               aria-invalid={Boolean(validationErrors.firstName)}
             />
@@ -409,6 +424,7 @@ export const AccountProfilePage = () => {
               id="account-last-name"
               autoComplete="family-name"
               value={formValues.lastName}
+              disabled={isProfileReadOnly}
               onChange={(event) => onFieldChange('lastName', event.target.value)}
               aria-invalid={Boolean(validationErrors.lastName)}
             />
@@ -419,6 +435,7 @@ export const AccountProfilePage = () => {
               id="account-phone"
               autoComplete="tel"
               value={formValues.phone}
+              disabled={isProfileReadOnly}
               onChange={(event) => onFieldChange('phone', event.target.value)}
               aria-invalid={Boolean(validationErrors.phone)}
             />
@@ -431,6 +448,7 @@ export const AccountProfilePage = () => {
             <Input
               id="account-position"
               value={formValues.position}
+              disabled={isProfileReadOnly}
               onChange={(event) => onFieldChange('position', event.target.value)}
             />
           </div>
@@ -439,6 +457,7 @@ export const AccountProfilePage = () => {
             <Input
               id="account-department"
               value={formValues.department}
+              disabled={isProfileReadOnly}
               onChange={(event) => onFieldChange('department', event.target.value)}
             />
           </div>
@@ -447,6 +466,7 @@ export const AccountProfilePage = () => {
             <Select
               id="account-language"
               value={formValues.preferredLanguage}
+              disabled={isProfileReadOnly}
               onChange={(event) => onFieldChange('preferredLanguage', event.target.value)}
             >
               <option value="de">Deutsch</option>
@@ -464,7 +484,7 @@ export const AccountProfilePage = () => {
         </section>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={isSaving}>
+          <Button type="submit" disabled={isSaving || isProfileReadOnly}>
             {isSaving ? t('account.actions.saving') : t('account.actions.save')}
           </Button>
         </div>

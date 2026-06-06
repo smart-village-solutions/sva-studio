@@ -1,24 +1,23 @@
-import { Link } from '@tanstack/react-router';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
 import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
-import { InstanceModulesWorkspace } from '../modules/-instance-modules-workspace';
+import { InstanceDetailBetriebSection } from './-instance-detail-betrieb-section';
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
+import { InstanceDetailDoctorSection } from './-instance-detail-doctor-section';
+import { InstanceDetailHeader } from './-instance-detail-header';
 import {
+  buildInstanceDoctorModel,
   buildExistingRealmOperationsModel,
   buildHistoryWorkspaceModel,
   buildNewRealmOperationsModel,
   buildOperationsPrimaryAction,
   type DetailWorkflowAction,
-  getOperationsActionLabel,
-  getOperationsEvidenceSourceLabel,
   evaluateInstanceConfiguration,
   getStatusGuidance,
 } from './-instance-detail-models';
@@ -27,12 +26,6 @@ import {
   createDetailForm,
   isTenantSecretUserInputRequired,
 } from './-instance-form-models';
-import { COCKPIT_STATUS_STYLES, INSTANCE_STATUS_LABELS } from './-instance-detail-view-shared';
-import {
-  OperationsStepStatusBadge,
-  ProvisioningStepBadge,
-} from './-instance-status-badges';
-import type { OperationsDetailAction, OperationsStepModel } from './-instances-shared';
 
 type InstanceDetailPageProps = {
   readonly instanceId: string;
@@ -43,7 +36,7 @@ type ActionFeedback = {
   readonly message: string;
 };
 
-type WorkspaceTab = 'overview' | 'configuration' | 'modules' | 'history';
+type WorkspaceTab = 'betrieb' | 'doctor' | 'einstellungen';
 
 const DETAIL_AUTO_REFRESH_INTERVAL_MS = 5_000;
 const WORKER_UNAVAILABLE_WARNING_THRESHOLD_MS = 15_000;
@@ -162,7 +155,7 @@ const readOperationsModel = (
   return buildExistingRealmOperationsModel(selectedInstance, mutationError);
 };
 
-const readActionFeedbackClassName = (actionFeedback: ActionFeedback, actionFeedbackFading: boolean) => {
+export const readActionFeedbackClassName = (actionFeedback: ActionFeedback, actionFeedbackFading: boolean) => {
   const opacityClassName = actionFeedbackFading ? 'opacity-0' : 'opacity-100';
 
   if (actionFeedback.tone === 'success') {
@@ -234,88 +227,13 @@ const InstanceRuntimeEvidence = ({
   );
 };
 
-const OperationsOverviewCard = ({
-  title,
-  summary,
-  primaryActionLabel,
-  onPrimaryAction,
-  disabled,
-}: {
-  title: string;
-  summary: string;
-  primaryActionLabel: string;
-  onPrimaryAction: () => void;
-  disabled: boolean;
-}) => (
-  <Card className="space-y-4 p-5">
-    <div className="space-y-1">
-      <div className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-        {t('admin.instances.operations.overview.eyebrow')}
-      </div>
-      <h2 className="text-2xl font-semibold text-foreground">{title}</h2>
-      <p className="text-sm text-muted-foreground">{summary}</p>
-    </div>
-    <div className="flex flex-wrap gap-3">
-      <Button type="button" onClick={onPrimaryAction} disabled={disabled}>
-        {primaryActionLabel}
-      </Button>
-    </div>
-  </Card>
-);
-
-const OperationsStepsPanel = ({
-  title,
-  subtitle,
-  steps,
-  onAction,
-  disabled,
-}: {
-  title: string;
-  subtitle: string;
-  steps: readonly OperationsStepModel[];
-  onAction: (action: OperationsDetailAction) => void;
-  disabled: boolean;
-}) => (
-  <Card className="space-y-4 p-4">
-    <div className="space-y-1">
-      <div className="font-medium text-foreground">{title}</div>
-      <p className="text-sm text-muted-foreground">{subtitle}</p>
-    </div>
-    <div className="grid gap-3">
-      {steps.map((step) => (
-        <div key={step.key} className="rounded-xl border border-border/70 bg-background/85 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <div className="font-medium text-foreground">{step.title}</div>
-              <p className="text-sm text-muted-foreground">{step.summary}</p>
-            </div>
-            <OperationsStepStatusBadge status={step.status} />
-          </div>
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <span>{t('admin.instances.operations.labels.evidence', { value: getOperationsEvidenceSourceLabel(step.evidenceSource) })}</span>
-            {step.checkedAt ? <span>{t('admin.instances.cockpit.checkedAt', { value: formatDateTime(step.checkedAt) })}</span> : null}
-            {step.requestId ? <span>{t('admin.instances.tenantIam.requestId', { value: step.requestId })}</span> : null}
-          </div>
-          {step.action ? (
-            <div className="mt-3">
-              <Button type="button" variant="outline" size="sm" onClick={() => onAction(step.action!)} disabled={disabled}>
-                {getOperationsActionLabel(step.action)}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      ))}
-    </div>
-  </Card>
-);
-
 export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const instancesApi = useInstances();
   const { loadInstance, isLoading, detailLoading, statusLoading } = instancesApi;
   const [detailFormValues, setDetailFormValues] = React.useState<ReturnType<typeof createDetailForm> | null>(null);
   const [actionFeedback, setActionFeedback] = React.useState<ActionFeedback | null>(null);
   const [actionFeedbackFading, setActionFeedbackFading] = React.useState(false);
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<WorkspaceTab>('overview');
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<WorkspaceTab>('betrieb');
   const previousSelectedInstanceIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
@@ -328,7 +246,16 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const operationsModel = readOperationsModel(selectedInstance, instancesApi.mutationError);
   const historyModel = selectedInstance && operationsModel ? buildHistoryWorkspaceModel(selectedInstance, operationsModel) : null;
   const primaryAction = operationsModel ? buildOperationsPrimaryAction(operationsModel) : null;
-  const operationsAnomalies = operationsModel?.steps.filter((step) => step.status === 'fehlgeschlagen').slice(0, 3) ?? [];
+  const doctorModel =
+    selectedInstance && configurationAssessment && operationsModel && primaryAction
+      ? buildInstanceDoctorModel({
+          instance: selectedInstance,
+          configurationAssessment,
+          mutationError: instancesApi.mutationError,
+          operationsModel,
+          primaryAction,
+        })
+      : null;
   const missingWorkerEnvName = readMissingWorkerEnvName(selectedInstance);
   const workerPendingProjection = readWorkerPendingProjection(selectedInstance);
   const workerUnavailableWarning = readWorkerUnavailableWarning(selectedInstance);
@@ -341,7 +268,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       if (instanceChanged) {
         setActionFeedback(null);
         setDetailFormValues(createDetailForm(selectedInstance));
-        setActiveWorkspaceTab('overview');
+        setActiveWorkspaceTab('betrieb');
       } else if (!detailFormValues) {
         setDetailFormValues(createDetailForm(selectedInstance));
       }
@@ -533,7 +460,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const runDetailAction = async (action: DetailWorkflowAction | 'focus_configuration') => {
     switch (action) {
       case 'focus_configuration':
-        setActiveWorkspaceTab('configuration');
+        setActiveWorkspaceTab('einstellungen');
         return;
       case 'probeTenantIamAccess':
         await probeTenantIamAccess();
@@ -554,16 +481,6 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
 
   return (
     <section className="space-y-5" aria-busy={instancesApi.isLoading || instancesApi.detailLoading}>
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-foreground">{t('admin.instances.detail.title')}</h1>
-          <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.instances.detail.subtitle')}</p>
-        </div>
-        <Button asChild type="button" variant="outline">
-          <Link to="/admin/instances">{t('admin.instances.actions.back')}</Link>
-        </Button>
-      </header>
-
       {actionFeedback ? (
         <Alert className={readActionFeedbackClassName(actionFeedback, actionFeedbackFading)}>
           <AlertDescription>{actionFeedback.message}</AlertDescription>
@@ -607,94 +524,47 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
 
       {selectedInstance && detailFormValues && operationsModel && primaryAction ? (
         <div className="space-y-5">
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-border/60 bg-background/90 p-4 shadow-sm">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t('admin.instances.cockpit.identity')}
-              </div>
-              <div className="mt-3 space-y-1">
-                <div className="text-lg font-semibold text-foreground">{selectedInstance.displayName}</div>
-                <div className="text-sm text-muted-foreground">{selectedInstance.instanceId}</div>
-                <div className="text-sm text-muted-foreground">
-                  {t('admin.instances.detail.primaryHostname', { value: selectedInstance.primaryHostname })}
-                </div>
-              </div>
-            </div>
-            <div className={`rounded-2xl border p-4 shadow-sm ${COCKPIT_STATUS_STYLES[operationsModel.status]}`}>
-              <div className="text-xs uppercase tracking-wide opacity-80">{t('admin.instances.operations.labels.currentState')}</div>
-              <div className="mt-3 space-y-2">
-                <div className="text-lg font-semibold">{getStatusGuidance(selectedInstance).title}</div>
-                <p className="text-sm opacity-90">{operationsModel.summary}</p>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-background/90 p-4 shadow-sm">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t('admin.instances.cockpit.lifecycle')}
-              </div>
-              <div className="mt-3 space-y-1">
-                <div className="text-lg font-semibold text-foreground">{t(INSTANCE_STATUS_LABELS[selectedInstance.status])}</div>
-                <div className="text-sm text-muted-foreground">
-                  {t('admin.instances.detail.parentDomain', { value: selectedInstance.parentDomain })}
-                </div>
-              </div>
-            </div>
-          </div>
+          <InstanceDetailHeader
+            selectedInstance={selectedInstance}
+            operationalTitle={getStatusGuidance(selectedInstance).title}
+            operationalSummary={operationsModel.summary}
+            onOpenDoctor={() => setActiveWorkspaceTab('doctor')}
+            doctorWarning={doctorModel?.warning}
+          />
 
           <Tabs value={activeWorkspaceTab} onValueChange={(value) => setActiveWorkspaceTab(value as WorkspaceTab)} className="space-y-4">
             <TabsList aria-label={t('admin.instances.cockpit.tabsAriaLabel')} className="h-auto flex-wrap justify-start">
-              <TabsTrigger value="overview">{t('admin.instances.cockpit.tabs.overview')}</TabsTrigger>
-              <TabsTrigger value="configuration">{t('admin.instances.cockpit.tabs.configuration')}</TabsTrigger>
-              <TabsTrigger value="modules">{t('admin.instances.cockpit.tabs.modules')}</TabsTrigger>
-              <TabsTrigger value="history">{t('admin.instances.cockpit.tabs.history')}</TabsTrigger>
+              <TabsTrigger value="betrieb">{t('admin.instances.detail.tabs.betrieb')}</TabsTrigger>
+              <TabsTrigger value="doctor">{t('admin.instances.detail.tabs.doctor')}</TabsTrigger>
+              <TabsTrigger value="einstellungen">{t('admin.instances.detail.tabs.einstellungen')}</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="space-y-5">
-              <OperationsOverviewCard
-                title={operationsModel.mode === 'new'
-                  ? t('admin.instances.operations.new.title')
-                  : t('admin.instances.operations.existing.title')}
-                summary={operationsModel.summary}
-                primaryActionLabel={primaryAction.label}
-                onPrimaryAction={() => void runDetailAction(primaryAction.action)}
-                disabled={instancesApi.statusLoading}
-              />
-
-              {operationsAnomalies.length > 0 ? (
-                <Card className="space-y-4 p-4">
-                  <div className="space-y-1">
-                    <div className="font-medium text-foreground">{t('admin.instances.cockpit.anomaliesTitle')}</div>
-                    <p className="text-sm text-muted-foreground">{t('admin.instances.cockpit.anomaliesSubtitle')}</p>
-                  </div>
-                  <div className="grid gap-3">
-                    {operationsAnomalies.map((step) => (
-                      <div key={step.key} className="rounded-xl border border-border/70 bg-background/85 p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="font-medium text-foreground">{step.title}</div>
-                            <p className="mt-1 text-sm text-muted-foreground">{step.summary}</p>
-                          </div>
-                          <OperationsStepStatusBadge status={step.status} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              ) : null}
-
-              <OperationsStepsPanel
-                title={operationsModel.mode === 'new'
-                  ? t('admin.instances.operations.new.stepsTitle')
-                  : t('admin.instances.operations.existing.stepsTitle')}
-                subtitle={operationsModel.mode === 'new'
-                  ? t('admin.instances.operations.new.stepsSubtitle')
-                  : t('admin.instances.operations.existing.stepsSubtitle')}
-                steps={operationsModel.steps}
-                onAction={(action) => void runDetailAction(action)}
-                disabled={instancesApi.statusLoading}
+            <TabsContent value="betrieb" className="space-y-5">
+              <InstanceDetailBetriebSection
+                selectedInstance={selectedInstance}
+                statusLoading={instancesApi.statusLoading}
+                mutationError={instancesApi.mutationError}
+                onAssignModule={instancesApi.assignModule}
+                onRevokeModule={instancesApi.revokeModule}
+                onSeedIamBaseline={instancesApi.seedIamBaseline}
+                onBootstrapAdminStructure={instancesApi.bootstrapAdminStructure}
               />
             </TabsContent>
 
-            <TabsContent value="configuration" className="space-y-5">
+            <TabsContent value="doctor" className="space-y-5">
+              {doctorModel && historyModel ? (
+                <InstanceDetailDoctorSection
+                  doctorModel={doctorModel}
+                  historyModel={historyModel}
+                  selectedInstance={selectedInstance}
+                  statusLoading={instancesApi.statusLoading}
+                  onRunDetailAction={runDetailAction}
+                  onLoadProvisioningRun={(runId) => instancesApi.loadKeycloakProvisioningRun(selectedInstance.instanceId, runId)}
+                />
+              ) : null}
+            </TabsContent>
+
+            <TabsContent value="einstellungen" className="space-y-5">
               <InstanceDetailConfigurationSection
                 selectedInstance={selectedInstance}
                 detailFormValues={detailFormValues}
@@ -704,112 +574,6 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 setDetailFormValues={setDetailFormValues}
                 onUpdateSubmit={onUpdateSubmit}
               />
-            </TabsContent>
-
-            <TabsContent value="modules" className="space-y-5">
-              <InstanceModulesWorkspace
-                selectedInstance={selectedInstance}
-                statusLoading={instancesApi.statusLoading}
-                mutationError={instancesApi.mutationError}
-                showMutationError={false}
-                emptyState={t('admin.instances.instanceModules.empty')}
-                onAssignModule={instancesApi.assignModule}
-                onRevokeModule={instancesApi.revokeModule}
-                onSeedIamBaseline={instancesApi.seedIamBaseline}
-                onBootstrapAdminStructure={instancesApi.bootstrapAdminStructure}
-              />
-            </TabsContent>
-
-            <TabsContent value="history" className="space-y-5">
-              {historyModel?.currentRun ? (
-                <Card className="space-y-4 p-4">
-                  <div className="space-y-1">
-                    <div className="font-medium text-foreground">{t('admin.instances.history.currentRunTitle')}</div>
-                    <p className="text-sm text-muted-foreground">{t('admin.instances.history.currentRunSubtitle')}</p>
-                  </div>
-                  <div className="rounded-xl border border-border/70 bg-background/85 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="font-medium text-foreground">{historyModel.currentRun.intent}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {historyModel.currentRun.mode} • {historyModel.currentRun.overallStatus} • {historyModel.currentRun.requestId ?? t('shell.runtimeHealth.notAvailable')}
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => void instancesApi.loadKeycloakProvisioningRun(selectedInstance.instanceId, historyModel.currentRun!.id)}
-                      >
-                        {t('admin.instances.actions.loadRun')}
-                      </Button>
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground">{historyModel.currentRun.driftSummary}</p>
-                    <div className="mt-3 grid gap-2">
-                      {historyModel.currentRun.steps.map((step) => (
-                        <div key={`${historyModel.currentRun!.id}-${step.stepKey}`} className="rounded-md border border-border p-2">
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="font-medium text-foreground">{step.title}</span>
-                            <ProvisioningStepBadge status={step.status} />
-                          </div>
-                          <p className="mt-1 text-xs text-muted-foreground">{step.summary}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  {historyModel.hasHistoricalMismatchHint ? (
-                    <Alert>
-                      <AlertDescription>{t('admin.instances.history.mismatchHint')}</AlertDescription>
-                    </Alert>
-                  ) : null}
-                </Card>
-              ) : null}
-
-              <Card className="space-y-4 p-4">
-                <div className="space-y-1">
-                  <div className="font-medium text-foreground">{t('admin.instances.history.previousRunsTitle')}</div>
-                  <p className="text-sm text-muted-foreground">{t('admin.instances.history.previousRunsSubtitle')}</p>
-                </div>
-                {historyModel && historyModel.historicalRuns.length > 0 ? (
-                  historyModel.historicalRuns.map((run) => (
-                    <div key={run.id} className="rounded-lg border border-border p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="font-medium text-foreground">{run.intent}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {run.mode} • {run.overallStatus} • {run.requestId ?? t('shell.runtimeHealth.notAvailable')}
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => void instancesApi.loadKeycloakProvisioningRun(selectedInstance.instanceId, run.id)}
-                        >
-                          {t('admin.instances.actions.loadRun')}
-                        </Button>
-                      </div>
-                      <p className="mt-2 text-sm text-muted-foreground">{run.driftSummary}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">{t('admin.instances.history.previousRunsEmpty')}</p>
-                )}
-              </Card>
-
-              <Card className="space-y-2 p-4">
-                <div className="font-medium text-foreground">{t('admin.instances.detail.runs')}</div>
-                {selectedInstance.provisioningRuns.length > 0 ? (
-                  selectedInstance.provisioningRuns.map((run) => (
-                    <div key={run.id} className="rounded-lg border border-border p-3">
-                      <div className="font-medium">{run.operation}</div>
-                      <div className="text-muted-foreground">
-                        {t('admin.instances.detail.runStatus', { value: t(INSTANCE_STATUS_LABELS[run.status]) })}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-muted-foreground">{t('admin.instances.detail.noRuns')}</p>
-                )}
-              </Card>
             </TabsContent>
           </Tabs>
         </div>

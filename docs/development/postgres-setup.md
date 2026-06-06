@@ -111,6 +111,7 @@ Ausführung:
 - `db:migrate:down` rollt kontrolliert bis Version `0` zurück
 - `db:migrate:status` zeigt den `goose`-Status und den letzten angewendeten Stand
 - `db:migrate:validate` prüft `up -> down -> up` auf einer separaten temporären Validierungs-Datenbank und greift die aktive lokale Dev-Datenbank nicht an
+- `db:test:seeds`, `db:test:encryption` und `db:test:rls` laufen auf separaten temporären Testdatenbanken und verweigern geschützte Namen wie `sva_studio`
 - `db:test:rls` prüft Instanzisolation, Fail-Closed ohne `app.instance_id`, Runtime-Rollenhärtung sowie Privilege-Escalation-Guards auf dem letzten RLS-erzwingenden Schema-Stand vor `0023_iam_disable_rls.sql`
 
 ## Verbindlicher Prüfpfad für neue Inhaltsmigrationen

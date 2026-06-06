@@ -12,8 +12,7 @@ export type InstanceKeycloakRequirementKey =
   | 'tenant_secret'
   | 'tenant_admin_client_secret'
   | 'tenant_admin'
-  | 'tenant_admin_system_admin'
-  | 'tenant_admin_lacks_instance_registry_admin';
+  | 'tenant_admin_system_admin';
 
 export type InstanceKeycloakRequirement = {
   readonly key: InstanceKeycloakRequirementKey;
@@ -135,16 +134,6 @@ export const INSTANCE_KEYCLOAK_REQUIREMENTS: readonly InstanceKeycloakRequiremen
     sourceFields: ['tenantAdminBootstrap.username'],
     dbFields: ['iam.instances.tenant_admin_username'],
     keycloakArtifacts: ['user-role:system_admin'],
-    workerStepKey: 'roles',
-    uiStepKey: 'tenantAdmin',
-  },
-  {
-    key: 'tenant_admin_lacks_instance_registry_admin',
-    statusField: 'tenantAdminHasInstanceRegistryAdmin',
-    expectedValue: false,
-    sourceFields: ['tenantAdminBootstrap.username'],
-    dbFields: ['iam.instances.tenant_admin_username'],
-    keycloakArtifacts: ['user-role:instance_registry_admin'],
     workerStepKey: 'roles',
     uiStepKey: 'tenantAdmin',
   },

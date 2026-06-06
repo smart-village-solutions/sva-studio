@@ -52,6 +52,14 @@ gleichzeitig beeinflussen.
 - Trigger.dev ist für Studio kein zulässiger Workflow-Pfad.
 - Outbox, n8n-Anbindung, SSE/WebSocket und Broker-Pfade wie NATS bleiben explizite Folgearbeit hinter derselben Hostgrenze.
 
+### Öffentlicher Waste-Web-Releasevertrag
+
+- Die öffentliche Waste-Webversion ist betriebsseitig strikt vom Studio-Releasepfad getrennt: eigenes Image, eigener Stack, eigener Workflow, eigener Variablenraum.
+- Produktive Konfiguration für diesen Pfad wird ausschließlich über getrennte `PUBLIC_WASTE_*`-Variablen modelliert; ein zusammengefasster JSON-Blob ist nur noch lokaler Fallback.
+- Git-Tags `waste-web-vX.Y.Z` sind die kanonische Freigabe für diese Bürgeroberfläche; andere Branch- oder Studio-Releases dürfen den Stack `web-waste-calendar` nicht mitverändern.
+- Der Portainer-Updatepfad verändert ausschließlich `PUBLIC_WASTE_IMAGE_TAG` und belässt alle übrigen Stack-Variablen unverändert, damit Host, Datenbankpfad und PDF-Konfiguration operativ getrennt steuerbar bleiben.
+- Für diesen speziellen Bürger-Frontend-Stack ist bewusst das einfache SemVer-Tag-Modell führend; Digest-Pinning des Studio-Referenzpfads wird hier nicht auf den Waste-Web-Stack übertragen.
+
 ### Security und Privacy
 
 - OIDC Authorization Code Flow mit PKCE
@@ -111,6 +119,8 @@ gleichzeitig beeinflussen.
 - Effektive Berechtigungen aggregieren direkte Nutzerrechte, direkte Rollen und gruppenvermittelte Rollen; die Provenance hält `direct_user`, `direct_role` und `group_role` als strukturierte Quelle fest
 - Rollen-Permission-Zuordnungen koennen fuer explizit scope-faehige Datensatzrechte zusaetzlich einen Assignment-Scope `all|own|organization` tragen; dieser Scope lebt auf `iam.role_permissions.access_scope` und nicht im generischen `iam.permissions.scope`
 - `all` bedeutet unveraenderte globale Freigabe innerhalb des Instanzkontexts; `own` bindet die Freigabe an `createdByAccountId`; `organization` erweitert `own` um Datensaetze der aktiven Session-Organisation
+- Verwaltete Permissions tragen zusätzlich eine explizite Laufzeitklassifikation `runtimeScope = instance | record | organization_context`; nur `record`- und `organization_context`-Rechte werten zusätzlichen Organisations- oder Ownership-Kontext fachlich aus
+- Ein aktiver `organizationId`-Kontext ist deshalb kein blanket Projektionssignal für alle effektiven Permissions; instanzweite Rechte wie `media.*`, `waste-management.*`, `app.read` oder `cockpit.read` bleiben im Snapshot- und Transparenzpfad instanzweit
 - Scope-faehige Fachmodule muessen fuer Authorize-Entscheidungen die kanonischen Resource-Attribute `createdByAccountId` und bei organisationsrelevanten Datensaetzen `organizationId` liefern; fehlt dieser Kontext, bleibt die Entscheidung fail-closed
 - Gruppen sind instanzgebundene Rollenbündel (`group_type = role_bundle`); direkte Gruppen-Permissions sind bewusst nicht Teil des ersten Schnitts
 - Direkte Nutzerrechte werden in `iam.account_permissions` mit eigenem `effect` (`allow|deny`) persistiert und bewusst von Rollen-/Gruppenmitgliedschaften getrennt gepflegt
@@ -155,7 +165,7 @@ gleichzeitig beeinflussen.
 - Dezente Motion auf der Instanz-Detailseite ist nur zulässig, wenn sie Blickführung, Statusfeedback oder Prozesszustände unterstützt; `prefers-reduced-motion`, Fokusindikatoren, Statuskontrast und Incident-Lesbarkeit haben stets Vorrang vor dekorativer Wirkung.
 - Root-/Plattform-Zugriff umfasst Instanz-Lifecycle, Provisioning, Platform-User, Platform-Rollen, Platform-Sync und explizites Break-Glass; tenantlokale Daten bleiben davon getrennt
 - User-, Rollen- und Rollenzuordnungsänderungen folgen einem Keycloak-first-Vertrag. Studio schreibt erst Keycloak, synchronisiert danach die lokalen Read-Models und macht Abweichungen über `mappingStatus`, `editability` und Diagnosecodes sichtbar.
-- `system_admin` bleibt die einzige geschützte tenantlokale Defaultrolle; frühere Standardrollen wie `app_manager`, `designer` oder `editor` bleiben nur als Legacy-Bootstrap-Artefakte kompatibel und werden nicht länger pauschal als Systemrollen behandelt.
+- `system_admin` bleibt die einzige geschützte tenantlokale Defaultrolle; frühere Standardrollen wie `app_manager`, `designer` oder `editor` gehören nicht mehr zum tenantlokalen Sollmodell, werden nicht mehr als Systemrollen behandelt und sind höchstens noch historische Altartefakte für explizite Migrations- und Repair-Pfade.
 - Tenant-Userlisten richten sich nach dem Tenant-Realm in Keycloak; ungemappte oder mehrdeutige Benutzer werden als `unmapped` beziehungsweise `manual_review` angezeigt.
 - Keycloak-Built-in-Rollen bleiben als Rollenobjekte read-only, werden aber in Listen nicht ausgeblendet.
 - Keycloak-Provisioning für Instanzen ist ein expliziter mehrstufiger Root-Host-Workflow aus Preflight, Plan, Ausführung und persistiertem Schrittprotokoll

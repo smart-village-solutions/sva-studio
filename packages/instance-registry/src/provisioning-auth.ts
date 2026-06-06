@@ -106,9 +106,7 @@ export const createInstanceKeycloakStatusReader =
       client_exists: status.clientExists,
       tenant_admin_client_exists: status.tenantAdminClientExists,
       admin_exists: status.tenantAdminExists,
-      roles_ok:
-        status.tenantAdminHasSystemAdmin
-        && !status.tenantAdminHasInstanceRegistryAdmin,
+      roles_ok: status.tenantAdminHasSystemAdmin,
       secret_aligned: status.clientSecretAligned,
       tenant_admin_client_secret_aligned: status.tenantAdminClientSecretAligned,
       runtime_secret_source: status.runtimeSecretSource,

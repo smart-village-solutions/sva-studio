@@ -52,6 +52,7 @@ type RouteMatch = SharedRouteMatch<ContentKind>;
 type ContentActor = {
   readonly instanceId: string;
   readonly keycloakSubject: string;
+  readonly activeOrganizationId?: string;
 };
 
 const matchRoute = (request: Request): RouteMatch | null => matchRequestRoute(request, EVENTS_COLLECTION_PATH, 'events');
@@ -174,6 +175,7 @@ const toMainserverErrorResponse = (error: unknown): Response => {
       error.statusCode ??
       ({
         missing_credentials: 400,
+        organization_mainserver_credentials_missing: 409,
         invalid_config: 400,
         config_not_found: 400,
         integration_disabled: 400,
@@ -210,7 +212,7 @@ const authorizeOrResponse = async (
   contentKind: ContentKind,
   action: string,
   contentId?: string
-): Promise<{ readonly instanceId: string; readonly keycloakSubject: string } | Response> => {
+): Promise<ContentActor | Response> => {
   const result = await authorizeContentPrimitiveForUser({
     ctx,
     action,
@@ -237,6 +239,7 @@ const authorizeOrResponse = async (
   return {
     instanceId: result.actor.instanceId,
     keycloakSubject: result.actor.keycloakSubject,
+    activeOrganizationId: result.actor.organizationId ?? ctx.activeOrganizationId,
   };
 };
 

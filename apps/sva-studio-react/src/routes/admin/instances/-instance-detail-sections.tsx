@@ -2,6 +2,7 @@ import React from 'react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { t } from '../../../i18n';
+import { InstanceDetailBetriebSection } from './-instance-detail-betrieb-section';
 import { InstanceDetailCockpitSection } from './-instance-detail-cockpit-section';
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
 import { InstanceDetailHistorySection } from './-instance-detail-history-section';
@@ -31,7 +32,10 @@ type WorkspaceSectionsProps = {
   readonly onUpdateSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   readonly onTriggerWorkflowAction: (action: WorkflowAction) => Promise<void>;
   readonly onExecuteProvisioning: (intent: ProvisioningIntent) => Promise<void>;
+  readonly onAssignModule: (instanceId: string, moduleId: string) => Promise<unknown>;
+  readonly onRevokeModule: (instanceId: string, moduleId: string) => Promise<unknown>;
   readonly onSeedIamBaseline: () => Promise<void>;
+  readonly onBootstrapAdminStructure: (instanceId: string, moduleIds: readonly string[]) => Promise<unknown>;
   readonly onLoadProvisioningRun: (runId: string) => Promise<void>;
 };
 
@@ -52,35 +56,38 @@ export const InstanceDetailWorkspaceSections = ({
   onUpdateSubmit,
   onTriggerWorkflowAction,
   onExecuteProvisioning,
+  onAssignModule,
+  onRevokeModule,
   onSeedIamBaseline,
+  onBootstrapAdminStructure,
   onLoadProvisioningRun,
 }: WorkspaceSectionsProps) => (
   <Tabs value={activeWorkspaceTab} onValueChange={(value) => setActiveWorkspaceTab(value as WorkspaceTabKey)} className="space-y-4">
     <TabsList aria-label={t('admin.instances.cockpit.tabsAriaLabel')} className="h-auto flex-wrap justify-start">
-      <TabsTrigger value="configuration" onClick={() => setActiveWorkspaceTab('configuration')}>
-        {t('admin.instances.cockpit.tabs.configuration')}
+      <TabsTrigger value="betrieb" onClick={() => setActiveWorkspaceTab('betrieb')}>
+        {t('admin.instances.detail.tabs.betrieb')}
       </TabsTrigger>
-      <TabsTrigger value="operations" onClick={() => setActiveWorkspaceTab('operations')}>
-        {t('admin.instances.cockpit.tabs.operations')}
+      <TabsTrigger value="doctor" onClick={() => setActiveWorkspaceTab('doctor')}>
+        {t('admin.instances.detail.tabs.doctor')}
       </TabsTrigger>
-      <TabsTrigger value="history" onClick={() => setActiveWorkspaceTab('history')}>
-        {t('admin.instances.cockpit.tabs.history')}
+      <TabsTrigger value="einstellungen" onClick={() => setActiveWorkspaceTab('einstellungen')}>
+        {t('admin.instances.detail.tabs.einstellungen')}
       </TabsTrigger>
     </TabsList>
 
-    <TabsContent value="configuration" className="space-y-5">
-      <InstanceDetailConfigurationSection
+    <TabsContent value="betrieb" className="space-y-5">
+      <InstanceDetailBetriebSection
         selectedInstance={selectedInstance}
-        detailFormValues={detailFormValues}
-        configurationAssessment={configurationAssessment}
-        tenantSecretUserInputRequired={tenantSecretUserInputRequired}
         statusLoading={statusLoading}
-        setDetailFormValues={setDetailFormValues}
-        onUpdateSubmit={onUpdateSubmit}
+        mutationError={mutationError}
+        onAssignModule={onAssignModule}
+        onRevokeModule={onRevokeModule}
+        onSeedIamBaseline={async () => onSeedIamBaseline()}
+        onBootstrapAdminStructure={onBootstrapAdminStructure}
       />
     </TabsContent>
 
-    <TabsContent value="operations" forceMount className="space-y-5 data-[state=inactive]:hidden">
+    <TabsContent value="doctor" forceMount className="space-y-5 data-[state=inactive]:hidden">
       <InstanceDetailOperationsSection
         selectedInstance={selectedInstance}
         detailFormValues={detailFormValues}
@@ -92,12 +99,21 @@ export const InstanceDetailWorkspaceSections = ({
         onExecuteProvisioning={onExecuteProvisioning}
         onSeedIamBaseline={onSeedIamBaseline}
       />
-    </TabsContent>
-
-    <TabsContent value="history" className="space-y-5">
       <InstanceDetailHistorySection
         selectedInstance={selectedInstance}
         onLoadProvisioningRun={onLoadProvisioningRun}
+      />
+    </TabsContent>
+
+    <TabsContent value="einstellungen" className="space-y-5">
+      <InstanceDetailConfigurationSection
+        selectedInstance={selectedInstance}
+        detailFormValues={detailFormValues}
+        configurationAssessment={configurationAssessment}
+        tenantSecretUserInputRequired={tenantSecretUserInputRequired}
+        statusLoading={statusLoading}
+        setDetailFormValues={setDetailFormValues}
+        onUpdateSubmit={onUpdateSubmit}
       />
     </TabsContent>
   </Tabs>

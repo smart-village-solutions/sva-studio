@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { AnchorHTMLAttributes } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -34,6 +34,7 @@ describe('AccountPrivacyPage', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     cleanup();
   });
 
@@ -183,5 +184,41 @@ describe('AccountPrivacyPage', () => {
         payload: { reason: 'Bitte alle zu meinem Konto verarbeiteten Daten aufführen.' },
       });
     });
+  });
+
+  it('does not create an access request when the fax easter egg is opened and fails', async () => {
+    getMyDataSubjectRightsMock.mockResolvedValue({
+      data: {
+        instanceId: 'de-musterhausen',
+        accountId: 'account-1',
+        nonEssentialProcessingAllowed: true,
+        requests: [],
+        exportJobs: [],
+        legalHolds: [],
+        activityItems: [],
+      },
+    });
+
+    render(<AccountPrivacyPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Auskunft anfordern' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Auskunft anfordern' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'Auskunft anfordern' })).toBeTruthy();
+    });
+
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'Als Fax versenden' }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(19_000);
+    });
+
+    expect(screen.getByText('Fehlgeschlagen: Gegenstelle hat Feierabend.')).toBeTruthy();
+    expect(createDataSubjectRequestMock).not.toHaveBeenCalled();
   });
 });

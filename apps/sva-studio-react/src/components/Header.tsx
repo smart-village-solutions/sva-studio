@@ -13,6 +13,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { t } from '../i18n';
 import { createLoginHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
+import { clearClientLogoutState } from '../lib/auth-session-state';
 import { hasExperimentalAccess } from '../lib/iam-admin-access';
 import { cn } from '../lib/utils';
 import { useAuth } from '../providers/auth-provider';
@@ -272,7 +273,7 @@ export default function Header({
           id: 'logout',
           label: t('shell.header.logout'),
           render: (
-            <form action="/auth/logout" method="post">
+            <form action="/auth/logout" method="post" onSubmit={() => clearClientLogoutState()}>
               <input type="hidden" name="logoutIntent" value="user" />
               <button
                 type="submit"

@@ -13,11 +13,15 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import {
-  clearAuthDiagnosticTrail,
   createAuthFlowId,
   publishAuthDiagnosticsDebugHandle,
   recordAuthDiagnosticEvent,
 } from '../lib/auth-diagnostics';
+import {
+  clearClientLogoutState,
+  markKnownSession,
+  readHadKnownSession,
+} from '../lib/auth-session-state';
 import {
   createLoginHref,
   createSessionExpiredHref,
@@ -79,7 +83,6 @@ const AUTH_LOGOUT_ENDPOINT = '/auth/logout';
 const LOGOUT_INTENT_HEADER = 'x-sva-logout-intent';
 const LOGOUT_INTENT_VALUE = 'user';
 const SILENT_SSO_MESSAGE_TYPE = 'sva-auth:silent-sso';
-const AUTH_KNOWN_SESSION_STORAGE_KEY = 'sva_auth_had_session';
 const isProductionMode = import.meta.env.PROD;
 const isTestRuntime = () =>
   import.meta.env.MODE === 'test' ||
@@ -107,30 +110,6 @@ type AuthDiagnosticMeta = Readonly<{
   safeDetails?: IamRuntimeSafeDetails;
   status?: number;
 }>;
-
-const readHadKnownSession = (): boolean => {
-  try {
-    return globalThis.window?.localStorage.getItem(AUTH_KNOWN_SESSION_STORAGE_KEY) === '1';
-  } catch {
-    return false;
-  }
-};
-
-const markKnownSession = (): void => {
-  try {
-    globalThis.window?.localStorage.setItem(AUTH_KNOWN_SESSION_STORAGE_KEY, '1');
-  } catch {
-    // Storage can be unavailable in restricted browser contexts.
-  }
-};
-
-const clearKnownSession = (): void => {
-  try {
-    globalThis.window?.localStorage.removeItem(AUTH_KNOWN_SESSION_STORAGE_KEY);
-  } catch {
-    // Storage can be unavailable in restricted browser contexts.
-  }
-};
 
 const readAuthDiagnosticMeta = (error: IamHttpError | undefined): Partial<AuthDiagnosticMeta> => ({
   classification: error?.classification,
@@ -796,8 +775,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsRecoveringSession(false);
         setSessionRecoveryFailed(false);
       }
-      clearKnownSession();
-      clearAuthDiagnosticTrail();
+      clearClientLogoutState();
     }
   }, [nextAuthAttempt, recordTrail, startAuthFlow]);
 

@@ -2,12 +2,39 @@
  * Unit-Tests für Header-Auth-Aktionen und Loading-Zustand.
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearAuthDiagnosticTrail, readAuthDiagnosticTrail, recordAuthDiagnosticEvent } from '../lib/auth-diagnostics';
 import Header from './Header';
 
 const useAuthMock = vi.fn();
 const useLocaleMock = vi.fn();
 const useThemeMock = vi.fn();
+const localStorageState = new Map<string, string>();
+const sessionStorageState = new Map<string, string>();
+const localStorageMock = {
+  getItem: vi.fn((key: string) => localStorageState.get(key) ?? null),
+  setItem: vi.fn((key: string, value: string) => {
+    localStorageState.set(key, value);
+  }),
+  removeItem: vi.fn((key: string) => {
+    localStorageState.delete(key);
+  }),
+  clear: vi.fn(() => {
+    localStorageState.clear();
+  }),
+};
+const sessionStorageMock = {
+  getItem: vi.fn((key: string) => sessionStorageState.get(key) ?? null),
+  setItem: vi.fn((key: string, value: string) => {
+    sessionStorageState.set(key, value);
+  }),
+  removeItem: vi.fn((key: string) => {
+    sessionStorageState.delete(key);
+  }),
+  clear: vi.fn(() => {
+    sessionStorageState.clear();
+  }),
+};
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
@@ -56,7 +83,23 @@ describe('Header auth actions', () => {
     useAuthMock.mockReset();
     useThemeMock.mockReset();
     useLocaleMock.mockReset();
+    localStorageState.clear();
+    sessionStorageState.clear();
+    clearAuthDiagnosticTrail();
     vi.unstubAllEnvs();
+  });
+
+  beforeEach(() => {
+    localStorageState.clear();
+    sessionStorageState.clear();
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: localStorageMock,
+    });
+    Object.defineProperty(window, 'sessionStorage', {
+      configurable: true,
+      value: sessionStorageMock,
+    });
   });
 
   it('zeigt Dev-Auth-Badge und lokalen Dev-Login im expliziten Dev-Modus', async () => {
@@ -194,6 +237,59 @@ describe('Header auth actions', () => {
     const logoutIntent = logoutForm?.querySelector('input[name="logoutIntent"]');
     expect(logoutForm?.getAttribute('method')).toBe('post');
     expect(logoutIntent?.getAttribute('value')).toBe('user');
+  });
+
+  it('räumt lokale Session-Marker vor dem Formular-Logout auf', async () => {
+    window.localStorage.setItem('sva_auth_had_session', '1');
+    recordAuthDiagnosticEvent({
+      authFlowId: 'auth-flow-logout',
+      attempt: 1,
+      event: 'auth_me_401_received',
+      requestId: 'req-logout',
+    });
+
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        roles: ['editor'],
+        permissionActions: ['experimental.read'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'dark',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
+
+    render(<Header />);
+
+    const accountTrigger = await screen.findByRole('button', { name: /Test User/ });
+    accountTrigger.click();
+
+    await waitFor(() => {
+      expect(document.querySelector('form[action="/auth/logout"]')).not.toBeNull();
+    });
+    const logoutForm = document.querySelector('form[action="/auth/logout"]');
+    expect(readAuthDiagnosticTrail()).toHaveLength(1);
+
+    fireEvent.submit(logoutForm as HTMLFormElement);
+
+    expect(window.localStorage.getItem('sva_auth_had_session')).toBeNull();
+    expect(readAuthDiagnosticTrail()).toHaveLength(0);
   });
 
   it('zeigt beim Theme-Toggle den Zielmodus passend zum Icon an', async () => {

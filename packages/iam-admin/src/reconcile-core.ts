@@ -8,6 +8,7 @@ import {
   sanitizeRoleErrorMessage,
 } from './role-audit.js';
 import type { QueryClient } from './query-client.js';
+import { isTenantManageableRole } from './role-governance.js';
 import type { ManagedRoleRow } from './types.js';
 
 type IdentityRole = Awaited<ReturnType<IdentityProviderPort['getRoleByName']>> extends infer T ? Exclude<T, null> : never;
@@ -927,7 +928,7 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
 `,
       [input.instanceId]
     );
-    return result.rows;
+    return result.rows.filter((role) => isTenantManageableRole(role));
   });
 
   const listedIdpRoles = await deps.trackKeycloakCall('reconcile_list_roles', () => identityProvider.provider.listRoles());

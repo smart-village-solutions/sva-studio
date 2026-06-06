@@ -153,6 +153,68 @@ describe('runRoleCatalogReconciliation', () => {
     expect(deps.setRoleDriftBacklog).toHaveBeenCalledWith('tenant-a', 0);
   });
 
+  it('ignores root-only database roles during tenant reconciliation', async () => {
+    const createRole = vi.fn(async () => undefined);
+    const updateRole = vi.fn(async () => undefined);
+    const deps = createDeps({
+      resolveIdentityProviderForInstance: vi.fn(async () => ({
+        provider: {
+          listRoles: vi.fn(async () => []),
+          getRoleByName: vi.fn(async () => null),
+          createRole,
+          updateRole,
+        } as never,
+      })),
+      withInstanceScopedDb: vi.fn(async (_instanceId, work) =>
+        work({
+          query: vi.fn(async (sql: string) => {
+            if (sql.includes('SELECT\n  id,')) {
+              return {
+                rows: [
+                  {
+                    id: 'role-root-only',
+                    role_key: 'instance_registry_admin',
+                    role_name: 'instance_registry_admin',
+                    display_name: 'Instance Registry Administrator',
+                    external_role_name: 'instance_registry_admin',
+                    description: '[legacy-root-role-in-tenant]',
+                    is_system_role: false,
+                    role_level: 100,
+                    managed_by: 'studio',
+                    sync_state: 'pending',
+                    last_synced_at: null,
+                    last_error_code: null,
+                  },
+                ],
+              };
+            }
+
+            return { rows: [] };
+          }),
+        } as never)
+      ),
+    });
+
+    const report = await runRoleCatalogReconciliation({
+      deps,
+      instanceId: 'tenant-a',
+      requestId: 'req-1',
+    });
+
+    expect(report).toMatchObject({
+      outcome: 'success',
+      checkedCount: 0,
+      correctedCount: 0,
+      failedCount: 0,
+      manualReviewCount: 0,
+      requiresManualActionCount: 0,
+      roles: [],
+    });
+    expect(createRole).not.toHaveBeenCalled();
+    expect(updateRole).not.toHaveBeenCalled();
+    expect(deps.setRoleDriftBacklog).toHaveBeenCalledWith('tenant-a', 0);
+  });
+
   it('does not import the same role key twice when multiple identity roles point to one canonical role', async () => {
     const insertAttempts: string[] = [];
     const deps = createDeps({

@@ -96,4 +96,47 @@ describe('PrivacyDialogs', () => {
     expect(screen.queryByRole('dialog', { name: 'Als Fax versenden' })).toBeNull();
     expect(screen.getByRole('dialog', { name: 'Auskunft anfordern' })).toBeTruthy();
   });
+
+  it('closes the fax easter egg when the access dialog closes', () => {
+    const { rerender } = render(
+      <PrivacyDialogs
+        accessDialog={{ ...createNoteDialogState(), open: true }}
+        deletionDialog={createNoteDialogState()}
+        exportDialog={{
+          open: false,
+          format: 'json',
+          onClose: vi.fn(),
+          onFormatChange: vi.fn(),
+          onSubmit: vi.fn(),
+        }}
+        isSubmitting={false}
+        objectionDialog={createNoteDialogState()}
+        permissionChangeDialog={createNoteDialogState()}
+        restrictionDialog={createNoteDialogState()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Als Fax versenden' }));
+    expect(screen.getByRole('dialog', { name: 'Als Fax versenden' })).toBeTruthy();
+
+    rerender(
+      <PrivacyDialogs
+        accessDialog={{ ...createNoteDialogState(), open: false }}
+        deletionDialog={createNoteDialogState()}
+        exportDialog={{
+          open: false,
+          format: 'json',
+          onClose: vi.fn(),
+          onFormatChange: vi.fn(),
+          onSubmit: vi.fn(),
+        }}
+        isSubmitting={false}
+        objectionDialog={createNoteDialogState()}
+        permissionChangeDialog={createNoteDialogState()}
+        restrictionDialog={createNoteDialogState()}
+      />
+    );
+
+    expect(screen.queryByRole('dialog', { name: 'Als Fax versenden' })).toBeNull();
+  });
 });

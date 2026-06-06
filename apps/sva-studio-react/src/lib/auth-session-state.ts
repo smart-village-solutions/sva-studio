@@ -10,8 +10,14 @@ const readLocalStorage = (): Storage | null => {
   }
 };
 
-export const readHadKnownSession = (): boolean =>
-  readLocalStorage()?.getItem(AUTH_KNOWN_SESSION_STORAGE_KEY) === '1';
+export const readHadKnownSession = (): boolean => {
+  try {
+    return readLocalStorage()?.getItem(AUTH_KNOWN_SESSION_STORAGE_KEY) === '1';
+  } catch {
+    // Storage methods can still throw in restricted browser contexts.
+    return false;
+  }
+};
 
 export const markKnownSession = (): void => {
   try {

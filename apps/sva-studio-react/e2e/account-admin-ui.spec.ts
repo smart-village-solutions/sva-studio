@@ -713,7 +713,7 @@ test('tenant admin mutations fail closed in the browser when the admin client co
   await navigateClientSide(page, '/admin/instances/demo');
 
   await expect(page.getByRole('heading', { name: 'Instanzdetails' })).toBeVisible({ timeout: 10000 });
-  await page.getByRole('tab', { name: 'Konfiguration' }).click();
+  await page.getByRole('tab', { name: 'Einstellungen' }).click();
   await expect(page.locator('#detail-auth-client-id')).toHaveValue('sva-studio');
   await expect(page.locator('#detail-admin-username')).toHaveValue('demo-admin');
 
@@ -875,7 +875,7 @@ test('root control plane exposes tenant IAM reconcile for platform admins', asyn
   await navigateClientSide(page, '/admin/instances/demo');
 
   await expect(page.getByRole('heading', { name: 'Instanzdetails' })).toBeVisible({ timeout: 10000 });
-  await page.getByRole('tab', { name: 'Konfiguration' }).click();
+  await page.getByRole('tab', { name: 'Einstellungen' }).click();
   await expect(page.locator('#detail-auth-client-id')).toHaveValue('sva-studio');
   await expect(page.locator('#detail-admin-username')).toHaveValue('demo-admin');
 });
@@ -1047,6 +1047,8 @@ test('instance create flow bootstraps tenant admin structure with selected modul
       })
     );
 
+  await page.getByRole('link', { name: 'Setup abschließen' }).click();
+  await expect(page.getByRole('heading', { name: 'Setup abschließen' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' })).toBeVisible();
 
   await page.getByRole('checkbox', { name: /News/u }).check();
@@ -1060,7 +1062,7 @@ test('instance create flow bootstraps tenant admin structure with selected modul
     });
 
   await expect(
-    page.getByText('Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Die Instanz gilt damit im Create-Flow als fertig.')
+    page.getByText('Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Der Setup-Schritt ist damit abgeschlossen.')
   ).toBeVisible();
 });
 

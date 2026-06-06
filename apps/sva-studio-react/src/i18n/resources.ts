@@ -1841,6 +1841,7 @@ export const i18nResources = {
           provisioningPreviewUpdated: 'Provisioning-Vorschau wurde aktualisiert.',
           provisioningQueued:
             'Provisioning-Auftrag wurde gespeichert und zur Abarbeitung vorgemerkt.',
+          instanceActivated: 'Die Instanz wurde aktiviert.',
           tenantIamProbeUpdated: 'Tenant-IAM-Rechteprobe wurde aktualisiert.',
           workerEnvMissing:
             'Der Provisioning-Worker kann Keycloak derzeit nicht technisch prüfen. Im laufenden Prozess fehlt {{envName}}.',
@@ -5466,6 +5467,7 @@ export const i18nResources = {
           keycloakStatusUpdated: 'Keycloak status was refreshed.',
           provisioningPreviewUpdated: 'Provisioning preview was refreshed.',
           provisioningQueued: 'The provisioning job was queued for execution.',
+          instanceActivated: 'The instance was activated.',
           tenantIamProbeUpdated: 'The tenant IAM access probe was refreshed.',
           workerEnvMissing:
             'The provisioning worker cannot technically inspect Keycloak right now. The running process is missing {{envName}}.',

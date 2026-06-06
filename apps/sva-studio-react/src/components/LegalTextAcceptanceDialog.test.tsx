@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { clearAuthDiagnosticTrail, readAuthDiagnosticTrail, recordAuthDiagnosticEvent } from '../lib/auth-diagnostics';
 import { LEGAL_ACCEPTANCE_REQUIRED_EVENT } from '../lib/iam-api';
 import { AuthProvider } from '../providers/auth-provider';
 import { LegalTextAcceptanceDialog } from './LegalTextAcceptanceDialog';
@@ -15,6 +16,32 @@ const browserLoggerMock = vi.hoisted(() => ({
 const getMyPendingLegalTextsMock = vi.fn();
 const acceptLegalTextMock = vi.fn();
 const asIamErrorMock = vi.fn();
+const localStorageState = new Map<string, string>();
+const sessionStorageState = new Map<string, string>();
+const localStorageMock = {
+  getItem: vi.fn((key: string) => localStorageState.get(key) ?? null),
+  setItem: vi.fn((key: string, value: string) => {
+    localStorageState.set(key, value);
+  }),
+  removeItem: vi.fn((key: string) => {
+    localStorageState.delete(key);
+  }),
+  clear: vi.fn(() => {
+    localStorageState.clear();
+  }),
+};
+const sessionStorageMock = {
+  getItem: vi.fn((key: string) => sessionStorageState.get(key) ?? null),
+  setItem: vi.fn((key: string, value: string) => {
+    sessionStorageState.set(key, value);
+  }),
+  removeItem: vi.fn((key: string) => {
+    sessionStorageState.delete(key);
+  }),
+  clear: vi.fn(() => {
+    sessionStorageState.clear();
+  }),
+};
 
 vi.mock('../lib/iam-api', async () => {
   const actual = await vi.importActual<typeof import('../lib/iam-api')>('../lib/iam-api');
@@ -37,6 +64,8 @@ describe('LegalTextAcceptanceDialog', () => {
     getMyPendingLegalTextsMock.mockReset();
     acceptLegalTextMock.mockReset();
     asIamErrorMock.mockReset();
+    localStorageState.clear();
+    sessionStorageState.clear();
     assignMock = vi.fn();
     vi.stubGlobal(
       'fetch',
@@ -59,6 +88,14 @@ describe('LegalTextAcceptanceDialog', () => {
         assign: assignMock,
       },
     });
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: localStorageMock,
+    });
+    Object.defineProperty(window, 'sessionStorage', {
+      configurable: true,
+      value: sessionStorageMock,
+    });
   });
 
   afterEach(() => {
@@ -67,6 +104,9 @@ describe('LegalTextAcceptanceDialog', () => {
     browserLoggerMock.info.mockReset();
     browserLoggerMock.warn.mockReset();
     browserLoggerMock.error.mockReset();
+    localStorageState.clear();
+    sessionStorageState.clear();
+    clearAuthDiagnosticTrail();
     vi.unstubAllGlobals();
   });
 
@@ -459,6 +499,13 @@ describe('LegalTextAcceptanceDialog', () => {
   });
 
   it('shows acceptance errors and allows retry/logout actions', async () => {
+    window.localStorage.setItem('sva_auth_had_session', '1');
+    recordAuthDiagnosticEvent({
+      authFlowId: 'auth-flow-legal-logout',
+      attempt: 1,
+      event: 'auth_me_401_received',
+      requestId: 'req-legal-logout',
+    });
     getMyPendingLegalTextsMock.mockResolvedValue({
       data: [
         {
@@ -497,6 +544,12 @@ describe('LegalTextAcceptanceDialog', () => {
     const logoutIntent = logoutForm?.querySelector('input[name="logoutIntent"]');
     expect(logoutForm?.getAttribute('method')).toBe('post');
     expect(logoutIntent?.getAttribute('value')).toBe('user');
+    expect(readAuthDiagnosticTrail().length).toBeGreaterThan(0);
+
+    fireEvent.submit(logoutForm as HTMLFormElement);
+
+    expect(window.localStorage.getItem('sva_auth_had_session')).toBeNull();
+    expect(readAuthDiagnosticTrail()).toHaveLength(0);
   });
 
 });

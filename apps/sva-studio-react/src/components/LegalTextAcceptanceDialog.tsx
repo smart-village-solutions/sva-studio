@@ -14,6 +14,7 @@ import {
   storeLegalAcceptanceReturnTo,
 } from '../lib/legal-acceptance-navigation';
 import { sanitizeLegalTextHtml } from '../lib/legal-text-html-sanitizer';
+import { clearClientLogoutState } from '../lib/auth-session-state';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
 import { Alert, AlertDescription } from './ui/alert';
@@ -268,7 +269,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
           <Button type="button" variant="outline" onClick={() => void loadPendingTexts()} disabled={isSubmitting}>
             {t('admin.legalAcceptance.retry')}
           </Button>
-          <form action="/auth/logout" method="post">
+          <form action="/auth/logout" method="post" onSubmit={() => clearClientLogoutState()}>
             <input type="hidden" name="logoutIntent" value="user" />
             <Button type="submit" variant="outline" disabled={isSubmitting}>
               {t('admin.legalAcceptance.logout')}

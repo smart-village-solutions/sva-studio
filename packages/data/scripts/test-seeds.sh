@@ -7,6 +7,7 @@ POSTGRES_READY_DB="${POSTGRES_READY_DB:-postgres}"
 POSTGRES_WAIT_TIMEOUT_SECONDS="${POSTGRES_WAIT_TIMEOUT_SECONDS:-120}"
 POSTGRES_HOST_PORT="${POSTGRES_HOST_PORT:-5432}"
 POSTGRES_PORT="${POSTGRES_PORT:-${POSTGRES_HOST_PORT}}"
+PROTECTED_DB_NAMES_REGEX="${PROTECTED_DB_NAMES_REGEX:-^(sva_studio|postgres)$}"
 
 export POSTGRES_HOST_PORT
 export POSTGRES_PORT
@@ -58,19 +59,48 @@ if ! docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POST
   exit 1
 fi
 
+timestamp="$(date +%s)"
+raw_db_name="${POSTGRES_DB}_seed_test_${timestamp}_$$"
+sanitized_db_name="$(printf '%s' "${raw_db_name}" | tr -c '[:alnum:]_' '_')"
+TEST_DB_NAME="${TEST_DB_NAME:-${sanitized_db_name:0:63}}"
+
+if [[ "${TEST_DB_NAME}" =~ ${PROTECTED_DB_NAMES_REGEX} ]]; then
+  echo "Refusing to run seed integration test against protected database '${TEST_DB_NAME}'."
+  echo "Use TEST_DB_NAME for a dedicated temporary database name."
+  exit 1
+fi
+
+cleanup() {
+  local exit_code="$1"
+
+  echo "Dropping temporary seed test database: ${TEST_DB_NAME}"
+  docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" <<SQL >/dev/null || true
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = '${TEST_DB_NAME}'
+  AND pid <> pg_backend_pid();
+
+DROP DATABASE IF EXISTS "${TEST_DB_NAME}";
+SQL
+
+  exit "${exit_code}"
+}
+
+trap 'cleanup $?' EXIT
+
 echo "Ensure target database exists..."
 db_exists=$(
-  docker compose exec -T postgres psql -tA -U "${POSTGRES_USER}" -d postgres -v db_name="${POSTGRES_DB}" <<'SQL'
+  docker compose exec -T postgres psql -tA -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" -v db_name="${TEST_DB_NAME}" <<'SQL'
 SELECT 1 FROM pg_database WHERE datname = :'db_name';
 SQL
 )
 if [ "${db_exists}" != "1" ]; then
-  docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d postgres \
-    -c "CREATE DATABASE \"${POSTGRES_DB}\";"
+  docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" \
+    -c "CREATE DATABASE \"${TEST_DB_NAME}\";"
 fi
 
 echo "Recreate target database for a clean seed integration run..."
-docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d postgres -v db_name="${POSTGRES_DB}" <<'SQL'
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" -v db_name="${TEST_DB_NAME}" <<'SQL'
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
 WHERE datname = :'db_name'
@@ -82,10 +112,10 @@ SELECT format('CREATE DATABASE %I;', :'db_name');
 SQL
 
 echo "Apply migrations..."
-bash packages/data/scripts/run-migrations.sh up
+POSTGRES_DB="${TEST_DB_NAME}" bash packages/data/scripts/run-migrations.sh up
 
 echo "Reset IAM tables for seed integration test..."
-docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${TEST_DB_NAME}" <<'SQL'
 TRUNCATE iam.activity_logs, iam.role_permissions, iam.account_roles, iam.account_organizations,
   iam.account_deletion_content_preferences, iam.instance_memberships, iam.permissions, iam.roles,
   iam.organizations, iam.instance_deletion_rules, iam.accounts, iam.instances
@@ -93,8 +123,8 @@ TRUNCATE iam.activity_logs, iam.role_permissions, iam.account_roles, iam.account
 SQL
 
 echo "Run seeds twice..."
-bash packages/data/scripts/run-seeds.sh
-bash packages/data/scripts/run-seeds.sh
+POSTGRES_DB="${TEST_DB_NAME}" bash packages/data/scripts/run-seeds.sh
+POSTGRES_DB="${TEST_DB_NAME}" bash packages/data/scripts/run-seeds.sh
 
 echo "Validate seed idempotency counts..."
 assert_count() {
@@ -103,7 +133,7 @@ assert_count() {
   local label="$3"
 
   local actual
-  actual=$(docker compose exec -T postgres psql -tA -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "$sql")
+  actual=$(docker compose exec -T postgres psql -tA -U "${POSTGRES_USER}" -d "${TEST_DB_NAME}" -c "$sql")
 
   if [ "${actual}" != "${expected}" ]; then
     echo "[FAIL] ${label}: expected ${expected}, got ${actual}"

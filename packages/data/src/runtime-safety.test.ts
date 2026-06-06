@@ -45,6 +45,30 @@ test('migration script supports profile-specific postgres targets', () => {
   assert.match(script, /exec env PGPASSWORD="\$\{POSTGRES_PASSWORD\}" "\$\{GOOSE_WRAPPER\}"/);
 });
 
+test('destructive integration scripts isolate themselves from the default local development database', () => {
+  const seedScript = readRepoFile('data/scripts/test-seeds.sh');
+  const rlsScript = readRepoFile('data/scripts/test-rls.sh');
+  const encryptionScript = readRepoFile('data/scripts/test-encryption.sh');
+
+  for (const script of [seedScript, rlsScript, encryptionScript]) {
+    assert.match(script, /PROTECTED_DB_NAMES_REGEX="\$\{PROTECTED_DB_NAMES_REGEX:-\^\(sva_studio\|postgres\)\$\}"/);
+    assert.match(script, /TEST_DB_NAME="\$\{TEST_DB_NAME:-\$\{sanitized_db_name:0:63\}\}"/);
+    assert.match(script, /Refusing to run .* against protected database/);
+    assert.match(script, /DROP DATABASE IF EXISTS "\$\{TEST_DB_NAME\}";/);
+  }
+
+  assert.match(seedScript, /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-migrations\.sh up/);
+  assert.match(seedScript, /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-seeds\.sh/);
+
+  assert.match(rlsScript, /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-migrations\.sh up-to 22/);
+
+  assert.match(
+    encryptionScript,
+    /IAM_DATABASE_URL="\$\{IAM_DATABASE_URL:-postgres:\/\/sva:sva_local_dev_password@localhost:5432\/\$\{TEST_DB_NAME\}\}"/
+  );
+  assert.match(encryptionScript, /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-seeds\.sh/);
+});
+
 test('self-service permission change migration keeps admin inserts and rollback fail-closed', () => {
   const sql = readRepoFile('data/migrations/0042_iam_self_service_permission_change_requests.sql');
 

@@ -1,9 +1,12 @@
+import React from 'react';
+
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 import { ModalDialog } from '../../components/ModalDialog';
 import { t } from '../../i18n';
+import { AccessFaxEasterEggDialog } from './-account-privacy-access-fax-easter-egg-dialog';
 
 type NoteDialogState = {
   readonly open: boolean;
@@ -14,14 +17,18 @@ type NoteDialogState = {
 };
 
 const RequestDialog = ({
+  afterForm,
   description,
+  footerStart,
   isSubmitting,
   noteInputId,
   noteState,
   submitLabel,
   title,
 }: Readonly<{
+  afterForm?: React.ReactNode;
   description: string;
+  footerStart?: React.ReactNode;
   isSubmitting: boolean;
   noteInputId: string;
   noteState: NoteDialogState;
@@ -47,17 +54,59 @@ const RequestDialog = ({
           placeholder={t('account.privacy.dialogs.shared.notePlaceholder')}
         />
       </div>
-      <div className="flex justify-end gap-3">
-        <Button type="button" variant="outline" disabled={isSubmitting} onClick={noteState.onClose}>
-          {t('account.privacy.dialogs.shared.cancel')}
-        </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {submitLabel}
-        </Button>
+      <div className={footerStart ? 'flex flex-wrap items-center justify-between gap-3' : 'flex justify-end gap-3'}>
+        {footerStart ? <div>{footerStart}</div> : null}
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" disabled={isSubmitting} onClick={noteState.onClose}>
+            {t('account.privacy.dialogs.shared.cancel')}
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {submitLabel}
+          </Button>
+        </div>
       </div>
     </form>
+    {afterForm}
   </ModalDialog>
 );
+
+const AccessRequestDialog = ({
+  isSubmitting,
+  noteState,
+}: Readonly<{
+  isSubmitting: boolean;
+  noteState: NoteDialogState;
+}>) => {
+  const [faxDialogOpen, setFaxDialogOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!noteState.open) {
+      setFaxDialogOpen(false);
+    }
+  }, [noteState.open]);
+
+  return (
+    <RequestDialog
+      title={t('account.privacy.dialogs.access.title')}
+      description={t('account.privacy.dialogs.access.description')}
+      isSubmitting={isSubmitting}
+      noteInputId="privacy-access-request-note"
+      noteState={noteState}
+      submitLabel={t('account.privacy.dialogs.access.submit')}
+      footerStart={
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={() => setFaxDialogOpen(true)}
+          className="text-xs font-medium text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50"
+        >
+          {t('account.privacy.dialogs.accessFax.title')}
+        </button>
+      }
+      afterForm={<AccessFaxEasterEggDialog open={faxDialogOpen} onClose={() => setFaxDialogOpen(false)} />}
+    />
+  );
+};
 
 export const PrivacyDialogs = ({
   accessDialog,
@@ -160,14 +209,7 @@ export const PrivacyDialogs = ({
       </form>
     </ModalDialog>
 
-    <RequestDialog
-      title={t('account.privacy.dialogs.access.title')}
-      description={t('account.privacy.dialogs.access.description')}
-      isSubmitting={isSubmitting}
-      noteInputId="privacy-access-request-note"
-      noteState={accessDialog}
-      submitLabel={t('account.privacy.dialogs.access.submit')}
-    />
+    <AccessRequestDialog isSubmitting={isSubmitting} noteState={accessDialog} />
     <RequestDialog
       title={t('account.privacy.dialogs.objection.title')}
       description={t('account.privacy.dialogs.objection.description')}

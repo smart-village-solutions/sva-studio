@@ -84,7 +84,7 @@ const createMissingRoleReadAuthorizerResponse = <TRole, TPermission, TFeatureFla
   deps: RoleReadHandlerDeps<TRole, TPermission, TFeatureFlags>,
   requestId?: string
 ): Response =>
-  deps.createApiError(403, 'forbidden', 'Autorisierungsstrategie fuer Rollenlesezugriffe ist nicht konfiguriert.', requestId, {
+  deps.createApiError(403, 'forbidden', 'Autorisierungsstrategie für Rollenlesezugriffe ist nicht konfiguriert.', requestId, {
     reason_code: 'missing_role_read_authorizer',
   });
 

@@ -2588,6 +2588,11 @@ export const i18nResources = {
               groupDisabled: 'Gruppe deaktiviert',
               hierarchyRestricted: 'Hierarchie-Restriktion greift',
             },
+            runtimeScope: {
+              instance: 'instanzweit',
+              record: 'datensatzbezogen',
+              organizationContext: 'organisationskontextbezogen',
+            },
             source: {
               directPermission: 'Direkte Berechtigung',
               directRole: 'Direkte Rolle',
@@ -2785,6 +2790,13 @@ export const i18nResources = {
           parentLabel: 'Parent-Organisation',
           parentNone: 'Kein Parent',
           policyLabel: 'Autoren-Policy',
+          mainserverApplicationIdLabel: 'Mainserver Application-ID',
+          mainserverApplicationSecretLabel: 'Mainserver Application-Secret',
+          mainserverApplicationSecretPlaceholder: 'Neues Secret eingeben',
+          mainserverApplicationSecretConfigured: 'Ein Secret ist bereits hinterlegt.',
+          mainserverApplicationSecretMissing: 'Es ist noch kein Secret hinterlegt.',
+          mainserverApplicationSecretHint:
+            'Leer lassen, um das bestehende Secret unverändert zu lassen.',
         },
         policies: {
           orgOnly: 'Nur Organisation',
@@ -6170,6 +6182,11 @@ export const i18nResources = {
               groupDisabled: 'Group disabled',
               hierarchyRestricted: 'Hierarchy restriction applied',
             },
+            runtimeScope: {
+              instance: 'instance-wide',
+              record: 'record-scoped',
+              organizationContext: 'organization-context-bound',
+            },
             source: {
               directPermission: 'Direct permission',
               directRole: 'Direct role',
@@ -6361,6 +6378,12 @@ export const i18nResources = {
           parentLabel: 'Parent organization',
           parentNone: 'No parent',
           policyLabel: 'Author policy',
+          mainserverApplicationIdLabel: 'Mainserver application ID',
+          mainserverApplicationSecretLabel: 'Mainserver application secret',
+          mainserverApplicationSecretPlaceholder: 'Enter a new secret',
+          mainserverApplicationSecretConfigured: 'A secret is already configured.',
+          mainserverApplicationSecretMissing: 'No secret is configured yet.',
+          mainserverApplicationSecretHint: 'Leave empty to keep the existing secret unchanged.',
         },
         policies: {
           orgOnly: 'Organization only',

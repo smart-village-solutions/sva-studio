@@ -1,4 +1,12 @@
 export {
+  readEffectiveSvaMainserverCredentials,
+  readEffectiveSvaMainserverCredentialsWithStatus,
+} from './mainserver-effective-credentials.js';
+export type {
+  EffectiveMainserverCredentialSource,
+  EffectiveSvaMainserverCredentialsResult,
+} from './mainserver-effective-credentials.js';
+export {
   readSvaMainserverCredentials,
   readSvaMainserverCredentialsWithStatus,
 } from './mainserver-credentials.js';

@@ -76,6 +76,7 @@ describe('public waste repository', () => {
             link_end_date: null,
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
+            tour_description: 'Leerung fuer den Innenstadtbereich.',
             tour_recurrence: 'weekly',
             tour_custom_recurrence_interval_days: null,
             tour_first_date: '2026-01-07',
@@ -125,6 +126,7 @@ describe('public waste repository', () => {
             link_end_date: null,
             tour_id: 'tour-1',
             tour_name: 'Restmuell',
+            tour_description: 'Leerung fuer den Innenstadtbereich.',
             tour_recurrence: 'weekly',
             tour_custom_recurrence_interval_days: null,
             tour_first_date: '2026-01-07',
@@ -161,6 +163,55 @@ describe('public waste repository', () => {
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({
         text: expect.stringContaining("cl.street_id IS NULL OR cl.street_id = $3::uuid"),
+      })
+    );
+  });
+
+  it('projects the public tour description into returned calendar entries', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            link_id: 'link-1',
+            location_id: 'location-1',
+            link_start_date: '2026-01-01',
+            link_end_date: null,
+            tour_id: 'tour-1',
+            tour_name: 'Restmuell',
+            tour_description: 'Leerung fuer den Innenstadtbereich.',
+            tour_recurrence: 'weekly',
+            tour_custom_recurrence_interval_days: null,
+            tour_first_date: '2026-05-20',
+            tour_end_date: '2026-05-20',
+            tour_custom_dates: null,
+            fraction_id: 'fraction-1',
+            fraction_label: 'Restmuell',
+            fraction_color: '#111111',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const repository = createPublicWasteRepository({
+      schemaName: 'waste',
+      execute,
+    });
+
+    await expect(
+      repository.loadCalendarEntries({
+        selection: {
+          cityId: 'city-1',
+          streetId: 'street-1',
+        },
+        referenceDate: '2026-05-19',
+      })
+    ).resolves.toContainEqual(
+      expect.objectContaining({
+        tourName: 'Restmuell',
+        tourDescription: 'Leerung fuer den Innenstadtbereich.',
       })
     );
   });

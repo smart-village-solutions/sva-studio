@@ -216,7 +216,7 @@ const resolvePlatformProfileWrite = (
   return createApiError(
     403,
     'forbidden',
-    'Plattform-Profile koennen nicht ueber den tenantlokalen Profilpfad aktualisiert werden.',
+    'Plattform-Profile können nicht über den tenantlokalen Profilpfad aktualisiert werden.',
     requestContext.requestId,
     {
       reason_code: 'platform_profile_write_not_supported',

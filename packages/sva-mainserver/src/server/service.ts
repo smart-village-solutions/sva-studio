@@ -47,6 +47,7 @@ export type SvaMainserverServiceOptions = {
   readonly readCredentials?: (input: {
     readonly instanceId: string;
     readonly keycloakSubject: string;
+    readonly activeOrganizationId?: string;
   }) => Promise<CredentialValue | null>;
   readonly fetchImpl?: typeof fetch;
   readonly now?: () => number;

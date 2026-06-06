@@ -10,6 +10,46 @@ import { getRequestId, normalizeOptionalString, requireActorInstanceId, requireD
 
 const { createWasteFractionSchema, updateWasteFractionSchema } = wasteManagementMasterDataSchemas;
 
+const normalizeWasteFractionReminderConfig = (input: {
+  readonly reminderCount: 'none' | 'once' | 'twice';
+  readonly firstReminderMaxLeadDays?: number;
+  readonly secondReminderMaxLeadDays?: number;
+  readonly reminderChannelPushEnabled: boolean;
+  readonly reminderChannelEmailEnabled: boolean;
+  readonly reminderChannelCalendarEnabled: boolean;
+}) => {
+  if (input.reminderCount === 'none') {
+    return {
+      reminderCount: 'none' as const,
+      firstReminderMaxLeadDays: undefined,
+      secondReminderMaxLeadDays: undefined,
+      reminderChannelPushEnabled: false,
+      reminderChannelEmailEnabled: false,
+      reminderChannelCalendarEnabled: false,
+    };
+  }
+
+  if (input.reminderCount === 'once') {
+    return {
+      reminderCount: 'once' as const,
+      firstReminderMaxLeadDays: input.firstReminderMaxLeadDays,
+      secondReminderMaxLeadDays: undefined,
+      reminderChannelPushEnabled: input.reminderChannelPushEnabled,
+      reminderChannelEmailEnabled: input.reminderChannelEmailEnabled,
+      reminderChannelCalendarEnabled: input.reminderChannelCalendarEnabled,
+    };
+  }
+
+  return {
+    reminderCount: 'twice' as const,
+    firstReminderMaxLeadDays: input.firstReminderMaxLeadDays,
+    secondReminderMaxLeadDays: input.secondReminderMaxLeadDays,
+    reminderChannelPushEnabled: input.reminderChannelPushEnabled,
+    reminderChannelEmailEnabled: input.reminderChannelEmailEnabled,
+    reminderChannelCalendarEnabled: input.reminderChannelCalendarEnabled,
+  };
+};
+
 export const wasteManagementFractionHandlers = {
   createWasteManagementFractionInternal: async (
     request: Request,
@@ -36,6 +76,7 @@ export const wasteManagementFractionHandlers = {
     if (!parsed.ok) {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
+    const reminderConfig = normalizeWasteFractionReminderConfig(parsed.data);
 
     return runWasteCreateMutation({
       deps,
@@ -60,6 +101,12 @@ export const wasteManagementFractionHandlers = {
           color: parsed.data.color,
           description: normalizeOptionalString(parsed.data.description),
           active: parsed.data.active,
+          reminderCount: reminderConfig.reminderCount,
+          firstReminderMaxLeadDays: reminderConfig.firstReminderMaxLeadDays,
+          secondReminderMaxLeadDays: reminderConfig.secondReminderMaxLeadDays,
+          reminderChannelPushEnabled: reminderConfig.reminderChannelPushEnabled,
+          reminderChannelEmailEnabled: reminderConfig.reminderChannelEmailEnabled,
+          reminderChannelCalendarEnabled: reminderConfig.reminderChannelCalendarEnabled,
         }),
       loadSaved: () => requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById')(instanceId, parsed.data.id),
     });
@@ -94,6 +141,7 @@ export const wasteManagementFractionHandlers = {
     if (!parsed.ok) {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
+    const reminderConfig = normalizeWasteFractionReminderConfig(parsed.data);
 
     const loadWasteFraction = requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById');
 
@@ -122,6 +170,12 @@ export const wasteManagementFractionHandlers = {
           color: parsed.data.color,
           description: normalizeOptionalString(parsed.data.description),
           active: parsed.data.active,
+          reminderCount: reminderConfig.reminderCount,
+          firstReminderMaxLeadDays: reminderConfig.firstReminderMaxLeadDays,
+          secondReminderMaxLeadDays: reminderConfig.secondReminderMaxLeadDays,
+          reminderChannelPushEnabled: reminderConfig.reminderChannelPushEnabled,
+          reminderChannelEmailEnabled: reminderConfig.reminderChannelEmailEnabled,
+          reminderChannelCalendarEnabled: reminderConfig.reminderChannelCalendarEnabled,
         }),
       loadSaved: () => loadWasteFraction(instanceId, fractionId),
     });

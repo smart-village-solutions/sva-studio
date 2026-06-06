@@ -127,6 +127,19 @@ test('experimental shell permission migration backfills the additive ui gate for
   assert.match(sql, /DELETE FROM iam\.permissions[\s\S]*permission_key = 'experimental\.read'/);
 });
 
+test('legacy standard role grant cleanup migration removes historical seed grants from deprecated tenant defaults', () => {
+  const sql = readRepoFile('data/migrations/0053_iam_legacy_standard_role_grant_cleanup.sql');
+
+  assert.match(sql, /migration_0053_touched_instances/);
+  assert.match(sql, /grant_origin_kind = 'seed'/);
+  assert.match(sql, /role_key IN \(\s*'app_manager',\s*'feature-manager',\s*'interface-manager',\s*'designer',\s*'editor',\s*'moderator'\s*\)/);
+  assert.match(sql, /permission_key IN \(\s*'app\.read',\s*'cockpit\.read',\s*'experimental\.read'/);
+  assert.match(sql, /'iam\.monitoring\.write'/);
+  assert.match(sql, /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/);
+  assert.match(sql, /legacy_standard_role_grants_cleaned/);
+  assert.match(sql, /legacy_standard_role_grants_restored/);
+});
+
 test('runtime artifact verification runs workspace node helper via bash', () => {
   const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
 

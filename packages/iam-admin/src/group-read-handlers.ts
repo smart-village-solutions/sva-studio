@@ -74,7 +74,7 @@ const createMissingGroupReadAuthorizerResponse = (
   deps: GroupReadHandlerDeps,
   requestId?: string
 ): Response =>
-  deps.createApiError(403, 'forbidden', 'Autorisierungsstrategie fuer Gruppenlesezugriffe ist nicht konfiguriert.', requestId, {
+  deps.createApiError(403, 'forbidden', 'Autorisierungsstrategie für Gruppenlesezugriffe ist nicht konfiguriert.', requestId, {
     reason_code: 'missing_group_read_authorizer',
   });
 

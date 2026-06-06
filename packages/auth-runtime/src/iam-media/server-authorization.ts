@@ -8,7 +8,6 @@ import { getWorkspaceContext } from '@sva/server-runtime';
 import { logger as accountLogger } from '../iam-account-management/shared.js';
 import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
-import { getSession } from '../redis-session.js';
 
 export type MediaPrimitiveAuthorizationResource = Readonly<{
   assetId?: string;
@@ -53,7 +52,6 @@ const buildAuthorizeRequest = (input: {
   instanceId: string;
   action: string;
   resource: MediaPrimitiveAuthorizationResource;
-  organizationId?: string;
   requestId?: string;
   traceId?: string;
 }): AuthorizeRequest => ({
@@ -62,20 +60,17 @@ const buildAuthorizeRequest = (input: {
   resource: {
     type: 'media',
     ...(input.resource.assetId ? { id: input.resource.assetId } : {}),
-    ...(input.organizationId ? { organizationId: input.organizationId } : {}),
-    ...(input.resource.targetId || input.resource.targetType || input.resource.visibility || input.organizationId
+    ...(input.resource.targetId || input.resource.targetType || input.resource.visibility
       ? {
           attributes: {
             ...(input.resource.targetId ? { targetId: input.resource.targetId } : {}),
             ...(input.resource.targetType ? { targetType: input.resource.targetType } : {}),
             ...(input.resource.visibility ? { visibility: input.resource.visibility } : {}),
-            ...(input.organizationId ? { organizationId: input.organizationId } : {}),
           },
         }
       : {}),
   },
   context: {
-    ...(input.organizationId ? { organizationId: input.organizationId } : {}),
     ...(input.requestId ? { requestId: input.requestId } : {}),
     ...(input.traceId ? { traceId: input.traceId } : {}),
     attributes: {
@@ -113,27 +108,6 @@ export const authorizeMediaPrimitiveForUser = async (input: {
   }
 
   const workspaceContext = getWorkspaceContext();
-  let organizationId: string | undefined;
-
-  try {
-    const session = await getSession(input.ctx.sessionId);
-    organizationId = session?.activeOrganizationId;
-  } catch (error) {
-    accountLogger.error('Media primitive authorization session lookup failed', {
-      operation: 'media_primitive_authorize',
-      instance_id: instanceId,
-      request_id: workspaceContext.requestId,
-      trace_id: workspaceContext.traceId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-
-    return {
-      ok: false,
-      status: 503,
-      error: 'database_unavailable',
-      message: 'Berechtigungen konnten nicht geprüft werden.',
-    };
-  }
 
   let permissions: readonly EffectivePermission[];
   if (input.permissions) {
@@ -143,7 +117,6 @@ export const authorizeMediaPrimitiveForUser = async (input: {
       const resolved = await resolveEffectivePermissions({
         instanceId,
         keycloakSubject: input.ctx.user.id,
-        organizationId,
       });
 
       if (!resolved.ok) {
@@ -186,7 +159,6 @@ export const authorizeMediaPrimitiveForUser = async (input: {
     instanceId,
     action,
     resource: input.resource ?? {},
-    organizationId,
     requestId: workspaceContext.requestId,
     traceId: workspaceContext.traceId,
   });

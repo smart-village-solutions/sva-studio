@@ -211,7 +211,7 @@ const createMissingOrganizationMutationAuthorizerResponse = <TFeatureFlags>(
   deps.createApiError(
     403,
     'forbidden',
-    'Autorisierungsstrategie fuer Organisationsmutationen ist nicht konfiguriert.',
+    'Autorisierungsstrategie für Organisationsmutationen ist nicht konfiguriert.',
     requestId,
     {
       reason_code: 'missing_organization_mutation_authorizer',

@@ -79,4 +79,50 @@ describe('shared effective permission mapping', () => {
       },
     ]);
   });
+
+  it('strips blanket organization projections from instance-scoped permissions', () => {
+    expect(
+      toEffectivePermissions([
+        {
+          permission_key: 'media.read',
+          organization_id: '22222222-2222-4222-8222-222222222222',
+          effect: 'allow',
+        },
+        {
+          permission_key: 'content.read',
+          organization_id: '22222222-2222-4222-8222-222222222222',
+          access_scope: 'all',
+          effect: 'allow',
+        },
+        {
+          permission_key: 'iam.role.read',
+          organization_id: '22222222-2222-4222-8222-222222222222',
+          access_scope: 'all',
+          effect: 'allow',
+        },
+      ])
+    ).toEqual([
+      {
+        action: 'media.read',
+        resourceType: 'media',
+        effect: 'allow',
+        provenance: undefined,
+      },
+        {
+          action: 'content.read',
+          resourceType: 'content',
+          organizationId: '22222222-2222-4222-8222-222222222222',
+          effect: 'allow',
+          accessScope: 'all',
+          provenance: undefined,
+        },
+        {
+          action: 'iam.role.read',
+          resourceType: 'iam',
+          effect: 'allow',
+          accessScope: 'all',
+          provenance: undefined,
+        },
+      ]);
+  });
 });

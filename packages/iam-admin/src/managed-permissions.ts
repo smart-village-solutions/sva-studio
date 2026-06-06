@@ -1,10 +1,15 @@
-import { iamRolePermissionAssignmentScopes, type IamRolePermissionAssignmentScope } from '@sva/core';
+import {
+  iamRolePermissionAssignmentScopes,
+  type IamPermissionRuntimeScope,
+  type IamRolePermissionAssignmentScope,
+} from '@sva/core';
 import { studioModuleIamContracts } from '@sva/studio-module-iam';
 
 export type ManagedPermissionMetadata = Readonly<{
   permissionKey: string;
   moduleId: string;
   description?: string;
+  runtimeScope: IamPermissionRuntimeScope;
   isScopeAssignable?: boolean;
   supportedAccessScopes?: readonly IamRolePermissionAssignmentScope[];
 }>;
@@ -12,6 +17,7 @@ export type ManagedPermissionMetadata = Readonly<{
 const RECORD_ACCESS_SCOPES = iamRolePermissionAssignmentScopes;
 const ROOT_ONLY_PERMISSION_KEYS = ['instance.registry.manage'] as const satisfies readonly string[];
 const ROOT_ONLY_PERMISSION_KEY_SET: ReadonlySet<string> = new Set(ROOT_ONLY_PERMISSION_KEYS);
+const INSTANCE_REGISTRY_PERMISSION_DESCRIPTION = 'Manage instance registry and provisioning';
 const RECORD_SCOPED_PERMISSION_KEYS = [
   'content.read',
   'content.updateMetadata',
@@ -31,13 +37,26 @@ const RECORD_SCOPED_PERMISSION_KEYS = [
   'poi.delete',
 ] as const satisfies readonly string[];
 const RECORD_SCOPED_PERMISSION_KEY_SET: ReadonlySet<string> = new Set(RECORD_SCOPED_PERMISSION_KEYS);
+const ORGANIZATION_CONTEXT_PERMISSION_KEYS = [] as const satisfies readonly string[];
+const ORGANIZATION_CONTEXT_PERMISSION_KEY_SET: ReadonlySet<string> = new Set(ORGANIZATION_CONTEXT_PERMISSION_KEYS);
 
 const isRecordScopedPermission = (permissionKey: string): boolean =>
   RECORD_SCOPED_PERMISSION_KEY_SET.has(permissionKey);
 
+const resolveManagedPermissionRuntimeScope = (permissionKey: string): IamPermissionRuntimeScope => {
+  if (ORGANIZATION_CONTEXT_PERMISSION_KEY_SET.has(permissionKey)) {
+    return 'organization_context';
+  }
+  if (isRecordScopedPermission(permissionKey)) {
+    return 'record';
+  }
+  return 'instance';
+};
+
 const managedPermissionDescriptions = {
   'app.read': 'App-Link in der Sidebar anzeigen',
   'cockpit.read': 'Cockpit-Link in der Sidebar anzeigen',
+  'instance.registry.manage': INSTANCE_REGISTRY_PERMISSION_DESCRIPTION,
   'waste-management.read': 'Lesezugriff auf das Waste-Management-Modul',
   'waste-management.master-data.manage': 'Stammdaten im Waste-Management verwalten',
   'waste-management.tours.manage': 'Touren im Waste-Management verwalten',
@@ -53,11 +72,19 @@ const managedPermissionMetadata = [
     permissionKey: 'app.read',
     moduleId: 'app',
     description: managedPermissionDescriptions['app.read'],
+    runtimeScope: resolveManagedPermissionRuntimeScope('app.read'),
   },
   {
     permissionKey: 'cockpit.read',
     moduleId: 'cockpit',
     description: managedPermissionDescriptions['cockpit.read'],
+    runtimeScope: resolveManagedPermissionRuntimeScope('cockpit.read'),
+  },
+  {
+    permissionKey: 'instance.registry.manage',
+    moduleId: 'instance',
+    description: managedPermissionDescriptions['instance.registry.manage'],
+    runtimeScope: resolveManagedPermissionRuntimeScope('instance.registry.manage'),
   },
   ...studioModuleIamContracts.flatMap((contract) =>
     contract.permissionIds.flatMap((permissionKey) => {
@@ -68,6 +95,7 @@ const managedPermissionMetadata = [
               permissionKey,
               moduleId: contract.moduleId,
               ...(description ? { description } : {}),
+              runtimeScope: resolveManagedPermissionRuntimeScope(permissionKey),
               ...(isRecordScopedPermission(permissionKey)
                 ? {
                     isScopeAssignable: true,
@@ -86,6 +114,7 @@ const managedPermissionMetadata = [
       ({
         permissionKey,
         moduleId: permissionKey.split('.')[0] ?? 'host',
+        runtimeScope: resolveManagedPermissionRuntimeScope(permissionKey),
         isScopeAssignable: true,
         supportedAccessScopes: RECORD_ACCESS_SCOPES,
       }) satisfies ManagedPermissionMetadata

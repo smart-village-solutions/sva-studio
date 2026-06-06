@@ -12,6 +12,12 @@ type WasteFractionRow = {
   readonly color: string;
   readonly description: string | null;
   readonly active: boolean;
+  readonly reminder_count: WasteFractionRecord['reminderCount'] | null;
+  readonly first_reminder_max_lead_days: number | null;
+  readonly second_reminder_max_lead_days: number | null;
+  readonly reminder_channel_push_enabled: boolean | null;
+  readonly reminder_channel_email_enabled: boolean | null;
+  readonly reminder_channel_calendar_enabled: boolean | null;
   readonly created_at: string;
   readonly updated_at: string;
 };
@@ -24,6 +30,12 @@ const mapWasteFractionRow = (row: WasteFractionRow): WasteFractionRecord => ({
   color: row.color,
   description: row.description ?? undefined,
   active: row.active,
+  reminderCount: row.reminder_count ?? 'none',
+  firstReminderMaxLeadDays: row.first_reminder_max_lead_days ?? undefined,
+  secondReminderMaxLeadDays: row.second_reminder_max_lead_days ?? undefined,
+  reminderChannelPushEnabled: row.reminder_channel_push_enabled ?? false,
+  reminderChannelEmailEnabled: row.reminder_channel_email_enabled ?? false,
+  reminderChannelCalendarEnabled: row.reminder_channel_calendar_enabled ?? false,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -52,6 +64,12 @@ SELECT
   color,
   description,
   active,
+  reminder_count,
+  first_reminder_max_lead_days,
+  second_reminder_max_lead_days,
+  reminder_channel_push_enabled,
+  reminder_channel_email_enabled,
+  reminder_channel_calendar_enabled,
   created_at::text,
   updated_at::text
 FROM waste_fractions
@@ -72,6 +90,12 @@ SELECT
   color,
   description,
   active,
+  reminder_count,
+  first_reminder_max_lead_days,
+  second_reminder_max_lead_days,
+  reminder_channel_push_enabled,
+  reminder_channel_email_enabled,
+  reminder_channel_calendar_enabled,
   created_at::text,
   updated_at::text
 FROM waste_fractions
@@ -92,9 +116,15 @@ INSERT INTO waste_fractions (
   container_size,
   color,
   description,
-  active
+  active,
+  reminder_count,
+  first_reminder_max_lead_days,
+  second_reminder_max_lead_days,
+  reminder_channel_push_enabled,
+  reminder_channel_email_enabled,
+  reminder_channel_calendar_enabled
 )
-VALUES ($1::uuid, $2, $3::jsonb, $4, $5, $6, $7)
+VALUES ($1::uuid, $2, $3::jsonb, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 ON CONFLICT (id) DO UPDATE
 SET name = EXCLUDED.name,
     label_translations = EXCLUDED.label_translations,
@@ -102,6 +132,12 @@ SET name = EXCLUDED.name,
     color = EXCLUDED.color,
     description = EXCLUDED.description,
     active = EXCLUDED.active,
+    reminder_count = EXCLUDED.reminder_count,
+    first_reminder_max_lead_days = EXCLUDED.first_reminder_max_lead_days,
+    second_reminder_max_lead_days = EXCLUDED.second_reminder_max_lead_days,
+    reminder_channel_push_enabled = EXCLUDED.reminder_channel_push_enabled,
+    reminder_channel_email_enabled = EXCLUDED.reminder_channel_email_enabled,
+    reminder_channel_calendar_enabled = EXCLUDED.reminder_channel_calendar_enabled,
     updated_at = NOW();
 `,
   values: [
@@ -112,6 +148,12 @@ SET name = EXCLUDED.name,
     input.color,
     input.description ?? null,
     input.active,
+    input.reminderCount,
+    input.firstReminderMaxLeadDays ?? null,
+    input.secondReminderMaxLeadDays ?? null,
+    input.reminderChannelPushEnabled,
+    input.reminderChannelEmailEnabled,
+    input.reminderChannelCalendarEnabled,
   ],
 });
 

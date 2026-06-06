@@ -114,7 +114,7 @@ const createMissingOrganizationReadAuthorizerResponse = <TFeatureFlags>(
   deps.createApiError(
     403,
     'forbidden',
-    'Autorisierungsstrategie fuer Organisationslesezugriffe ist nicht konfiguriert.',
+    'Autorisierungsstrategie für Organisationslesezugriffe ist nicht konfiguriert.',
     requestId,
     {
       reason_code: 'missing_organization_read_authorizer',

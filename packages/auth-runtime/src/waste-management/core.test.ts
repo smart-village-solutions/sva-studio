@@ -574,6 +574,12 @@ describe('waste-management auth runtime handlers', () => {
       color: '#123456',
       description: 'Blaue Tonne',
       active: true,
+      reminderCount: 'twice',
+      firstReminderMaxLeadDays: 10,
+      secondReminderMaxLeadDays: 3,
+      reminderChannelPushEnabled: true,
+      reminderChannelEmailEnabled: false,
+      reminderChannelCalendarEnabled: true,
       createdAt: '2026-05-09T12:00:00.000Z',
       updatedAt: '2026-05-09T12:30:00.000Z',
     };
@@ -599,6 +605,12 @@ describe('waste-management auth runtime handlers', () => {
           color: '#123456',
           description: 'Blaue Tonne',
           active: true,
+          reminderCount: 'twice',
+          firstReminderMaxLeadDays: 10,
+          secondReminderMaxLeadDays: 3,
+          reminderChannelPushEnabled: true,
+          reminderChannelEmailEnabled: false,
+          reminderChannelCalendarEnabled: true,
         }),
       }),
       actor,
@@ -622,6 +634,12 @@ describe('waste-management auth runtime handlers', () => {
       color: '#123456',
       description: 'Blaue Tonne',
       active: true,
+      reminderCount: 'twice',
+      firstReminderMaxLeadDays: 10,
+      secondReminderMaxLeadDays: 3,
+      reminderChannelPushEnabled: true,
+      reminderChannelEmailEnabled: false,
+      reminderChannelCalendarEnabled: true,
     });
     expect(loadWasteFractionById).toHaveBeenCalledWith('tenant-a', 'fraction-new');
     expect(response.status).toBe(201);
@@ -649,12 +667,23 @@ describe('waste-management auth runtime handlers', () => {
       name: 'Restmüll',
       color: '#111111',
       active: true,
+      reminderCount: 'once',
+      firstReminderMaxLeadDays: 7,
+      reminderChannelPushEnabled: true,
+      reminderChannelEmailEnabled: true,
+      reminderChannelCalendarEnabled: false,
       createdAt: '2026-05-09T10:00:00.000Z',
       updatedAt: '2026-05-09T10:00:00.000Z',
     };
     const updatedFraction: WasteFractionRecord = {
       ...existingFraction,
       name: 'Restmüll Plus',
+      reminderCount: 'none',
+      firstReminderMaxLeadDays: undefined,
+      secondReminderMaxLeadDays: undefined,
+      reminderChannelPushEnabled: false,
+      reminderChannelEmailEnabled: false,
+      reminderChannelCalendarEnabled: false,
       updatedAt: '2026-05-09T12:30:00.000Z',
     };
 
@@ -677,6 +706,12 @@ describe('waste-management auth runtime handlers', () => {
           translations: { de: 'Restmüll Plus', en: 'Residual waste plus' },
           color: '#111111',
           active: true,
+          reminderCount: 'none',
+          firstReminderMaxLeadDays: 8,
+          secondReminderMaxLeadDays: 2,
+          reminderChannelPushEnabled: true,
+          reminderChannelEmailEnabled: true,
+          reminderChannelCalendarEnabled: true,
         }),
       }),
       actor,
@@ -699,6 +734,12 @@ describe('waste-management auth runtime handlers', () => {
       color: '#111111',
       description: undefined,
       active: true,
+      reminderCount: 'none',
+      firstReminderMaxLeadDays: undefined,
+      secondReminderMaxLeadDays: undefined,
+      reminderChannelPushEnabled: false,
+      reminderChannelEmailEnabled: false,
+      reminderChannelCalendarEnabled: false,
     });
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
@@ -2848,32 +2889,31 @@ describe('waste-management auth runtime handlers', () => {
     expect(loadDefaultInterfaceRecord).not.toHaveBeenCalled();
   });
 
-  it('returns database_unavailable when loading the actor session fails before permission resolution', async () => {
+  it('resolves waste permissions without loading an active organization context first', async () => {
     const resolvePermissions = vi.fn(async () => ({
       ok: true as const,
       permissions: allowPermission('waste-management.settings.manage'),
     }));
+    const getSessionById = vi.fn(async () => {
+      throw new Error('redis_down');
+    });
 
     const response = await getWasteManagementSettingsInternal(
       new Request('https://studio.test/api/v1/waste-management/settings'),
       actor,
       {
         getRequestId: () => 'req-test',
-        getSessionById: vi.fn(async () => {
-          throw new Error('redis_down');
-        }),
+        getSessionById,
         loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
         resolvePermissions,
       }
     );
 
-    expect(response.status).toBe(503);
-    expect(resolvePermissions).not.toHaveBeenCalled();
-    await expect(response.json()).resolves.toMatchObject({
-      error: {
-        code: 'database_unavailable',
-      },
-      requestId: 'req-test',
+    expect(response.status).toBe(200);
+    expect(getSessionById).not.toHaveBeenCalled();
+    expect(resolvePermissions).toHaveBeenCalledWith({
+      instanceId: actor.user.instanceId,
+      keycloakSubject: actor.user.id,
     });
   });
 

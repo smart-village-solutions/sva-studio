@@ -146,7 +146,7 @@ const createMissingGroupMutationAuthorizerResponse = (
   deps.createApiError(
     403,
     'forbidden',
-    'Autorisierungsstrategie fuer Gruppenmutationen ist nicht konfiguriert.',
+    'Autorisierungsstrategie für Gruppenmutationen ist nicht konfiguriert.',
     requestId,
     {
       reason_code: 'missing_group_mutation_authorizer',

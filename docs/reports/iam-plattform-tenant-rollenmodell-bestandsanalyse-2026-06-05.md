@@ -14,11 +14,12 @@ Zielbild des laufenden Refactorings:
 
 Die Analyse basiert auf folgenden bereits vorhandenen Artefakten im Repository:
 
-- [0050_iam_platform_tenant_role_split.sql](/Users/wilimzig/Documents/Projects/SVA/sva-studio/packages/data/migrations/0050_iam_platform_tenant_role_split.sql:1)
-- [0051_iam_permission_gate_backfill.sql](/Users/wilimzig/Documents/Projects/SVA/sva-studio/packages/data/migrations/0051_iam_permission_gate_backfill.sql:1)
-- [studio-db-schema.md](/Users/wilimzig/Documents/Projects/SVA/sva-studio/docs/development/studio-db-schema.md:49)
-- [keycloak-tenant-realm-bootstrap.md](/Users/wilimzig/Documents/Projects/SVA/sva-studio/docs/guides/keycloak-tenant-realm-bootstrap.md:198)
-- [ADR-046-plattform-vs-tenant-rollenmodell-und-legacy-standardrollen.md](/Users/wilimzig/Documents/Projects/SVA/sva-studio/docs/adr/ADR-046-plattform-vs-tenant-rollenmodell-und-legacy-standardrollen.md:19)
+- [0050_iam_platform_tenant_role_split.sql](../../../packages/data/migrations/0050_iam_platform_tenant_role_split.sql)
+- [0051_iam_permission_gate_backfill.sql](../../../packages/data/migrations/0051_iam_permission_gate_backfill.sql)
+- [0053_iam_legacy_standard_role_grant_cleanup.sql](../../../packages/data/migrations/0053_iam_legacy_standard_role_grant_cleanup.sql)
+- [studio-db-schema.md](../development/studio-db-schema.md)
+- [keycloak-tenant-realm-bootstrap.md](../guides/keycloak-tenant-realm-bootstrap.md)
+- [ADR-046-plattform-vs-tenant-rollenmodell-und-legacy-standardrollen.md](../adr/ADR-046-plattform-vs-tenant-rollenmodell-und-legacy-standardrollen.md)
 
 ## Relevante Altbestände
 
@@ -145,6 +146,19 @@ Wichtig:
 - `0051` ersetzt keine Legacy-Rollen direkt
 - `0051` reduziert aber das Risiko, dass Altrollen nur deshalb weitergeschleppt werden, weil `system_admin` noch nicht vollständig genug ausgestattet wäre
 
+### Migration `0053_iam_legacy_standard_role_grant_cleanup.sql`
+
+Diese Follow-up-Migration schließt die Lücke für bereits migrierte Bestandsdatenbanken:
+
+- entfernt historisch geseedete Sidebar-, Governance- und Experimental-Grants gezielt von früheren tenantlokalen Standardrollen
+- wirkt nur auf Legacy-Rollenkeys und nur auf Seed-Zuordnungen, damit manuell gepflegte Berechtigungen nicht pauschal überschrieben werden
+- invalidiert Permission-Snapshots betroffener Instanzen erneut
+
+Wichtig:
+
+- `0053` ersetzt keine strukturelle Löschung historischer Rollen
+- `0053` verhindert aber, dass frühere Defaultrollen in hochgezogenen Umgebungen weiterhin implizite Standard- oder Vollzugriffs-Permissions behalten, obwohl frische Datenbanken diese Grants nicht mehr erhalten
+
 ### Additiver Keycloak-/Reconcile-Pfad im Laufzeitcode
 
 Neben den DB-Migrationen ist auch der laufende Bootstrap- und Reconcile-Pfad bereits additiv auf das neue Zielmodell ausgerichtet:
@@ -156,7 +170,7 @@ Neben den DB-Migrationen ist auch der laufende Bootstrap- und Reconcile-Pfad ber
 
 Einordnung:
 
-- die strukturelle Neutralisierung läuft additiv über `0050` und `0051`
+- die strukturelle Neutralisierung läuft additiv über `0050`, `0051` und das Upgrade-Follow-up `0053`
 - der operative Reconcile-Pfad hält das Zielbild zur Laufzeit stabil, ohne destruktive Löschpflicht
 - damit ist der Migrationspfad kompatibel mit Bestandsinstanzen, solange die verbleibenden Komfortartefakte über Drift-Erkennung und Runbook nachverfolgt werden
 

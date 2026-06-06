@@ -878,6 +878,9 @@ export const i18nResources = {
       },
       hero: {
         eyebrow: 'Studio Workspace',
+        openSourcePrefix: 'Open Source Software made with',
+        openSourceLoveLabel: 'love',
+        openSourceSuffix: 'in Bad Belzig',
         subtitle: 'Smart Village App Self-Service Plattform für Inhalte, Module und Erweiterungen.',
         body: 'Verwalten Sie Inhalte, Kontokontext und angeschlossene Module in einer gemeinsamen Oberfläche mit serverseitig abgesicherter Authentifizierung und Berechtigungsprüfung.',
         primaryAction: 'Inhalte öffnen',
@@ -1303,6 +1306,21 @@ export const i18nResources = {
             description: 'Ergänzen Sie bei Bedarf Hinweise für die Auskunftsanfrage.',
             submit: 'Auskunft senden',
           },
+          accessFax: {
+            title: 'Als Fax versenden',
+            description: 'Spielerischer Faxversand ohne Auswirkungen auf Ihre Anfrage.',
+            windowTitle: 'Processing...',
+            progressLabel: 'Status:',
+            progressAriaLabel: 'Faxversand-Fortschritt',
+            closeWindow: 'Fenster schließen',
+            close: 'Schließen',
+            status: {
+              paper: 'Papier wird eingelegt ...',
+              toner: 'Toner wird geschüttelt ...',
+              handshake: 'Empfangsgerät piept beleidigt ...',
+              failed: 'Fehlgeschlagen: Gegenstelle hat Feierabend.',
+            },
+          },
           objection: {
             title: 'Widerspruch einreichen',
             description: 'Ergänzen Sie bei Bedarf eine kurze Begründung für den Widerspruch.',
@@ -1555,12 +1573,58 @@ export const i18nResources = {
             'Pflegen Sie Registry- und Keycloak-Grundeinstellungen der ausgewählten Instanz.',
           empty:
             'Wählen Sie eine Instanz aus der Liste, um Details, Realm-Status und Läufe anzuzeigen.',
+          actions: {
+            openDoctor: 'Doctor öffnen',
+          },
+          tabs: {
+            betrieb: 'Betrieb',
+            doctor: 'Doctor',
+            einstellungen: 'Einstellungen',
+          },
           primaryHostname: 'Primärer Hostname: {{value}}',
           parentDomain: 'Parent-Domain: {{value}}',
           status: 'Status: {{value}}',
           runs: 'Provisioning-Läufe',
           runStatus: 'Laufstatus: {{value}}',
           noRuns: 'Für diese Instanz liegen noch keine Läufe vor.',
+        },
+        doctor: {
+          warning: {
+            title: 'Doctor erkennt aktuell Handlungsbedarf.',
+          },
+          steps: {
+            overview: {
+              title: 'Überblick',
+              subtitle: 'Zeigt grüne und offene Prüfungen gemeinsam, bevor Sie in eine Reparatur springen.',
+            },
+            recommendation: {
+              title: 'Empfohlene Maßnahme',
+              subtitle: 'Die nächste sinnvolle Aktion auf Basis der aktuellen Evidenz.',
+            },
+            repair: {
+              title: 'Reparatur ausführen',
+              subtitle: 'Starten Sie gezielt den passenden Korrekturlauf oder Folgeeingriff.',
+            },
+            validation: {
+              title: 'Validieren',
+              subtitle: 'Prüfen Sie die grünen Vorbedingungen erneut und bestätigen Sie den neuen Zustand.',
+            },
+          },
+          checks: {
+            configuration: 'Konfiguration',
+            tenantAccess: 'Tenant-Zugriff',
+            tenantReconcile: 'Tenant-Reconcile',
+            preflight: 'Vorbedingungen',
+            latestRun: 'Letzter technischer Lauf',
+          },
+          validation: {
+            ready: 'Doctor erkennt aktuell keinen priorisierten Befund. Nutzen Sie die Validierung bei Bedarf erneut.',
+            degraded: 'Doctor empfiehlt nach der Korrektur eine erneute Validierung der Vorbedingungen und des Live-Status.',
+            blocked: 'Doctor hat blockierende Befunde erkannt und priorisiert die nächste Maßnahme vor dem Weiterbetrieb.',
+          },
+          historyTitle: 'Historie',
+          historySubtitle:
+            'Technische Läufe bleiben zur Diagnose sichtbar, folgen aber bewusst erst nach Überblick, Maßnahme, Reparatur und Validierung.',
         },
         cockpit: {
           eyebrow: 'Control Tower',
@@ -1946,7 +2010,7 @@ export const i18nResources = {
             'Diese Angaben sind optional, solange der Tenant-Admin nicht direkt beim ersten Provisioning neu gesetzt werden muss.',
           reviewTitle: 'Eingaben prüfen',
           reviewSubtitle:
-            'Die Instanz wird jetzt nur angelegt. Der eigentliche Keycloak-Abgleich folgt danach auf der Detailseite.',
+            'Die Instanz wird jetzt nur angelegt. Der eigentliche Keycloak-Abgleich folgt danach im separaten Setup.',
           reviewDefaultIssuer: 'Wird automatisch aus dem Realm abgeleitet',
           reviewNotConfigured: 'Nicht konfiguriert',
           actions: {
@@ -1963,11 +2027,40 @@ export const i18nResources = {
             backToOverview: 'Zur Übersicht',
           },
           nextSteps: {
-            openDetail:
-              'Öffnen Sie die Detailseite, um den technischen Zustand der Instanz zu prüfen.',
+            openSetup:
+              'Öffnen Sie danach den Setup-Flow, um Provisioning, Aktivierung und Tenant-Admin-Struktur abzuschließen.',
             runProvisioning: 'Führen Sie dort den Keycloak-Abgleich für Realm {{realm}} aus.',
             activate:
               'Aktivieren Sie die Instanz erst nach erfolgreichem Provisioning für {{hostname}}.',
+          },
+        },
+        setup: {
+          title: 'Setup abschließen',
+          subtitle:
+            'Die Instanz {{instanceId}} ist angelegt. Schließen Sie jetzt Aktivierung und Tenant-Admin-Struktur ab, bevor Sie in den normalen Betrieb wechseln.',
+          temporaryPasswordTitle: 'Temporäres Tenant-Admin-Passwort',
+          temporaryPasswordHint:
+            'Nur erforderlich, wenn der Workflow beim Zurücksetzen des Tenant-Admins ein Passwort setzen soll.',
+          status: {
+            title: 'Setup-Status',
+            subtitle:
+              'Der Setup-Flow ist abgeschlossen, sobald die Instanz aktiv ist und die Tenant-Admin-Struktur initialisiert wurde.',
+            activationTitle: 'Instanz aktiviert',
+            activationPending: 'Aktivieren Sie die Instanz nach erfolgreichem Provisioning.',
+            activationDone: 'Die Instanz ist aktiv geschaltet.',
+            adminStructureTitle: 'Tenant-Admin-Struktur initialisiert',
+            adminStructurePending:
+              'Synchronisieren Sie `system_admin` und die benötigten Module für den Start.',
+            adminStructureDone: 'Die geschützte Tenant-Admin-Struktur wurde initialisiert.',
+          },
+          completion: {
+            ready: 'Setup abgeschlossen. Sie können jetzt in den normalen Betrieb wechseln.',
+            pending: 'Setup noch nicht abgeschlossen. Prüfen Sie zuerst die beiden Pflichtschritte.',
+          },
+          actions: {
+            completeSetup: 'Setup abschließen',
+            openOperations: 'Zur Betriebsansicht wechseln',
+            backToOverview: 'Zur Übersicht',
           },
         },
         adminBootstrap: {
@@ -1984,7 +2077,7 @@ export const i18nResources = {
           actionHintReady:
             'Ohne Modulauswahl wird nur `system_admin` als tenantlokale Vollzugriffsrolle synchronisiert.',
           success:
-            'Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Die Instanz gilt damit im Create-Flow als fertig.',
+            'Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Der Setup-Schritt ist damit abgeschlossen.',
           modules: {
             news: 'News',
             events: 'Events',
@@ -4404,6 +4497,9 @@ export const i18nResources = {
       },
       hero: {
         eyebrow: 'Studio workspace',
+        openSourcePrefix: 'Open Source Software made with',
+        openSourceLoveLabel: 'love',
+        openSourceSuffix: 'in Bad Belzig',
         subtitle: 'Smart Village App self-service platform for content, modules, and extensions.',
         body: 'Manage content, account context, and connected modules in one shared interface with server-side authentication and authorization checks.',
         primaryAction: 'Open content',
@@ -4826,6 +4922,21 @@ export const i18nResources = {
             description: 'Add optional notes for the access request if needed.',
             submit: 'Submit access request',
           },
+          accessFax: {
+            title: 'Send as fax',
+            description: 'Playful fax overlay without affecting your request.',
+            windowTitle: 'Processing...',
+            progressLabel: 'Status:',
+            progressAriaLabel: 'Fax transmission progress',
+            closeWindow: 'Close window',
+            close: 'Close',
+            status: {
+              paper: 'Loading paper tray ...',
+              toner: 'Shaking toner cartridge ...',
+              handshake: 'Receiving machine beeps with disdain ...',
+              failed: 'Failed: receiving office has already clocked out.',
+            },
+          },
           objection: {
             title: 'Submit objection',
             description: 'Add a short reason for the objection if needed.',
@@ -5077,12 +5188,58 @@ export const i18nResources = {
           title: 'Instance details',
           subtitle: 'Maintain registry and Keycloak base settings for the selected instance.',
           empty: 'Select an instance from the list to inspect details, realm status, and runs.',
+          actions: {
+            openDoctor: 'Open Doctor',
+          },
+          tabs: {
+            betrieb: 'Operations',
+            doctor: 'Doctor',
+            einstellungen: 'Settings',
+          },
           primaryHostname: 'Primary hostname: {{value}}',
           parentDomain: 'Parent domain: {{value}}',
           status: 'Status: {{value}}',
           runs: 'Provisioning runs',
           runStatus: 'Run status: {{value}}',
           noRuns: 'No provisioning runs recorded for this instance yet.',
+        },
+        doctor: {
+          warning: {
+            title: 'Doctor has identified work that needs attention.',
+          },
+          steps: {
+            overview: {
+              title: 'Overview',
+              subtitle: 'Shows green and non-green checks together before you jump into a repair.',
+            },
+            recommendation: {
+              title: 'Recommended action',
+              subtitle: 'The next meaningful action based on the current evidence.',
+            },
+            repair: {
+              title: 'Run repair',
+              subtitle: 'Trigger the matching corrective run or follow-up intervention deliberately.',
+            },
+            validation: {
+              title: 'Validate',
+              subtitle: 'Re-check the green prerequisites and confirm the new state.',
+            },
+          },
+          checks: {
+            configuration: 'Configuration',
+            tenantAccess: 'Tenant access',
+            tenantReconcile: 'Tenant reconcile',
+            preflight: 'Preflight',
+            latestRun: 'Latest technical run',
+          },
+          validation: {
+            ready: 'Doctor currently sees no prioritized finding. Re-run validation whenever needed.',
+            degraded: 'Doctor recommends validating preflight and live status again after the correction.',
+            blocked: 'Doctor found blocking issues and prioritizes the next action before normal operations continue.',
+          },
+          historyTitle: 'History',
+          historySubtitle:
+            'Technical runs remain available for diagnosis, but they intentionally follow overview, recommendation, repair, and validation.',
         },
         cockpit: {
           eyebrow: 'Control Tower',
@@ -5479,9 +5636,39 @@ export const i18nResources = {
             backToOverview: 'Back to overview',
           },
           nextSteps: {
-            openDetail: 'Open the detail page to inspect the technical state of the instance.',
+            openSetup:
+              'Open the dedicated setup flow to finish provisioning, activation, and the tenant admin structure.',
             runProvisioning: 'Run the Keycloak reconciliation for realm {{realm}} there.',
             activate: 'Activate the instance only after provisioning succeeded for {{hostname}}.',
+          },
+        },
+        setup: {
+          title: 'Complete setup',
+          subtitle:
+            'The instance {{instanceId}} has been created. Finish activation and the tenant admin structure before switching into normal operations.',
+          temporaryPasswordTitle: 'Temporary tenant admin password',
+          temporaryPasswordHint:
+            'Only needed when the workflow should assign a password while resetting the tenant admin.',
+          status: {
+            title: 'Setup status',
+            subtitle:
+              'The setup flow is complete once the instance is active and the tenant admin structure has been initialized.',
+            activationTitle: 'Instance activated',
+            activationPending: 'Activate the instance after provisioning succeeded.',
+            activationDone: 'The instance is active.',
+            adminStructureTitle: 'Tenant admin structure initialized',
+            adminStructurePending:
+              'Synchronize `system_admin` and the required starter modules.',
+            adminStructureDone: 'The protected tenant admin structure has been initialized.',
+          },
+          completion: {
+            ready: 'Setup complete. You can now switch into normal operations.',
+            pending: 'Setup is not complete yet. Finish the two required steps first.',
+          },
+          actions: {
+            completeSetup: 'Complete setup',
+            openOperations: 'Open operations view',
+            backToOverview: 'Back to overview',
           },
         },
         adminBootstrap: {
@@ -5498,7 +5685,7 @@ export const i18nResources = {
           actionHintReady:
             'Without selecting modules, only `system_admin` is synchronized as the tenant-wide full-access role.',
           success:
-            'The tenant admin structure was synchronized successfully. In the create flow, the instance is now considered complete.',
+            'The tenant admin structure was synchronized successfully. This setup step is now complete.',
           modules: {
             news: 'News',
             events: 'Events',

@@ -105,6 +105,7 @@ const bindingKeys = [
   'adminOrganizationDetail',
   'adminInstances',
   'adminInstanceCreate',
+  'adminInstanceSetup',
   'adminInstanceDetail',
   'adminRoles',
   'adminRoleCreate',

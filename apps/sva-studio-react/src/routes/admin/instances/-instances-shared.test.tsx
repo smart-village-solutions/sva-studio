@@ -199,7 +199,7 @@ describe('instances shared helpers', () => {
       title: 'Instanz gespeichert',
       summary: 'Die Instanz hb-meinquartier wurde in der Registry angelegt. Aktueller Status: Angefordert.',
       nextSteps: [
-        'Öffnen Sie die Detailseite, um den technischen Zustand der Instanz zu prüfen.',
+        'Öffnen Sie danach den Setup-Flow, um Provisioning, Aktivierung und Tenant-Admin-Struktur abzuschließen.',
         'Führen Sie dort den Keycloak-Abgleich für Realm saas-hb-meinquartier aus.',
         'Aktivieren Sie die Instanz erst nach erfolgreichem Provisioning für hb-meinquartier.studio.smart-village.app.',
       ],

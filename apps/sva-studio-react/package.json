@@ -39,7 +39,7 @@
     "@sva/sva-mainserver": "workspace:*",
     "@tabler/icons-react": "^3.41.1",
     "@tanstack/react-devtools": "^0.10.5",
-    "@tanstack/react-router": "^1.170.8",
+    "@tanstack/react-router": "^1.170.15",
     "@tanstack/react-router-devtools": "^1.167.0",
     "@tanstack/react-start": "^1.168.13",
     "class-variance-authority": "^0.7.1",

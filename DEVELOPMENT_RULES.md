@@ -383,9 +383,24 @@ Inline styles are permitted ONLY when styling depends on dynamic data from the d
 
 ---
 
-## 5. Test Coverage Requirements
+## 5. Testbarkeit, Coverage und Komplexität
+
+### Qualitätsziel bei der Codeerstellung
+
+Testbarkeit und niedrige strukturelle Komplexität sind keine nachgelagerten Optimierungen, sondern Entwurfsanforderungen bei der Erstellung neuer oder wesentlich geänderter produktiver Dateien. Die nachfolgenden Coverage- und Komplexitäts-Gates dienen der Bestätigung dieses Anspruchs, nicht als primäre Stelle seiner erstmaligen Entdeckung.
 
 ### ✅ REQUIRED
+- Neue oder wesentlich erweiterte produktive Dateien sind von Anfang an so zu entwerfen, dass sie mit gezielten Tests gut abdeckbar bleiben und keine unnötige strukturelle Komplexität aufbauen.
+- Neue Logik ist bevorzugt in kleine, klar abgegrenzte Funktionen, Helper oder Module zu schneiden, wenn dies Verständlichkeit, Testbarkeit oder Wartbarkeit verbessert.
+- Wenn bereits während der Umsetzung absehbar ist, dass eine Datei nur mit hoher Komplexität oder mit schwacher Testabdeckung fertigstellbar wäre, muss vor Weiterarbeit refaktoriert, zerlegt oder der Zuschnitt der Änderung reduziert werden.
+- Coverage- und Komplexitäts-Gates sind bei der Implementierung als Zielbild mitzudenken, nicht erst beim späteren PR- oder CI-Lauf.
+
+### ❌ FORBIDDEN
+- Neue produktive Dateien in einer Form anzulegen, bei der geringe Testbarkeit oder hohe Komplexität bereits während der Erstellung erkennbar in Kauf genommen werden.
+- Große Logikblöcke, viele Verzweigungen oder verdeckte Seiteneffekte ohne nachvollziehbare Zerlegung neu einzuführen.
+- Komplexität oder fehlende Testbarkeit erst dann zu adressieren, wenn `complexity-gate`, `coverage-gate` oder externe Quality Gates bereits rot sind.
+
+### Gate-Anforderungen
 - Neue Features und Verhaltensänderungen müssen Unit-Tests erhalten.
 - Coverage darf pro Projekt und global nicht unter die Baseline bzw. definierte Floors fallen.
 - Kritische Module müssen ihre definierten Mindest-Floors in `tooling/testing/coverage-policy.json` erfüllen.
@@ -394,7 +409,7 @@ Inline styles are permitted ONLY when styling depends on dynamic data from the d
 - Neue Komplexitätsüberschreitungen sind nur mit dokumentiertem Refactoring-Ticket zulässig.
 - Coverage-Gate muss vor dem Merge erfolgreich sein.
 
-### ❌ FORBIDDEN
+### ❌ FORBIDDEN im Gate-Kontext
 - PRs mit neuer Funktionalität ohne zugehörige Tests.
 - Baseline-Updates ohne dokumentierte Team-Freigabe.
 - Exemptions als dauerhafte Umgehung des Coverage-Gates.

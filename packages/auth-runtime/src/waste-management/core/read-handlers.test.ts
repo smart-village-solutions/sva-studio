@@ -1,8 +1,26 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 
 const updateWasteVisibleStatusMock = vi.hoisted(() => vi.fn(async () => undefined));
+const loggerState = vi.hoisted(() => ({
+  error: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+}));
+
+vi.mock('@sva/server-runtime', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/server-runtime')>();
+  return {
+    ...actual,
+    createSdkLogger: vi.fn(() => loggerState),
+    getWorkspaceContext: () => ({
+      requestId: 'req-test',
+      traceId: 'trace-test',
+      workspaceId: 'tenant-a',
+    }),
+  };
+});
 
 vi.mock('./settings-shared.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./settings-shared.js')>();
@@ -41,6 +59,11 @@ const createDeps = (action = 'waste-management.read') => ({
 });
 
 describe('waste-management read handlers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    updateWasteVisibleStatusMock.mockResolvedValue(undefined);
+  });
+
   it('loads settings and history with sanitized payloads and paging params', async () => {
     const settingsDeps = {
       ...createDeps('waste-management.settings.manage'),
@@ -252,6 +275,160 @@ describe('waste-management read handlers', () => {
 
     expect(failureResponse.status).toBe(503);
     expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(expect.any(Object), 'tenant-a', 'revalidate');
+  });
+
+  it('returns fractions data even when the visible-status update fails after a successful load', async () => {
+    updateWasteVisibleStatusMock.mockRejectedValueOnce(new Error('visible status write failed'));
+
+    const response = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/master-data?scope=fractions'),
+      actor,
+      {
+        ...createDeps(),
+        loadMasterDataFractionsOverview: vi.fn(async () => ({
+          fractions: [{ id: 'fraction-1' }],
+          regions: [],
+          cities: [],
+          streets: [],
+          houseNumbers: [],
+          collectionLocations: [],
+          locationTourLinks: [],
+        })),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        fractions: [{ id: 'fraction-1' }],
+      },
+      requestId: 'req-test',
+    });
+    expect(loggerState.warn).toHaveBeenCalledWith(
+      'Waste visible status update failed',
+      expect.objectContaining({
+        operation: 'get_waste_management_master_data_overview',
+        update_outcome: 'success',
+        instance_id: 'tenant-a',
+        request_id: 'req-test',
+        error_message: 'visible status write failed',
+      })
+    );
+  });
+
+  it('logs the original overview failure and still returns 503 when revalidation also fails', async () => {
+    updateWasteVisibleStatusMock.mockRejectedValueOnce(new Error('revalidation write failed'));
+
+    const response = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/master-data'),
+      actor,
+      {
+        ...createDeps(),
+        loadMasterDataOverview: vi.fn(async () => {
+          throw new Error('db down');
+        }),
+      }
+    );
+
+    expect(response.status).toBe(503);
+    expect(loggerState.error).toHaveBeenCalledWith(
+      'Waste master-data overview failed',
+      expect.objectContaining({
+        operation: 'get_waste_management_master_data_overview',
+        instance_id: 'tenant-a',
+        request_id: 'req-test',
+        error_message: 'db down',
+      })
+    );
+    expect(loggerState.warn).toHaveBeenCalledWith(
+      'Waste visible status update failed',
+      expect.objectContaining({
+        operation: 'get_waste_management_master_data_overview',
+        update_outcome: 'revalidate',
+        instance_id: 'tenant-a',
+        request_id: 'req-test',
+        error_message: 'revalidation write failed',
+      })
+    );
+  });
+
+  it('logs scope and entity counts when master-data loads successfully', async () => {
+    const response = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/master-data?scope=fractions'),
+      actor,
+      {
+        ...createDeps(),
+        loadMasterDataFractionsOverview: vi.fn(async () => ({
+          fractions: [{ id: 'fraction-1' }, { id: 'fraction-2' }],
+          regions: [],
+          cities: [],
+          streets: [],
+          houseNumbers: [],
+          collectionLocations: [],
+          locationTourLinks: [],
+        })),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(loggerState.info).toHaveBeenCalledWith(
+      'Waste master-data overview loaded',
+      expect.objectContaining({
+        operation: 'get_waste_management_master_data_overview',
+        master_data_scope: 'fractions',
+        fractions_count: 2,
+        regions_count: 0,
+        collection_locations_count: 0,
+        request_id: 'req-test',
+      })
+    );
+  });
+
+  it('logs response serialization failures separately for master-data responses', async () => {
+    const originalStringify = JSON.stringify;
+    const stringifySpy = vi.spyOn(JSON, 'stringify').mockImplementation(((value: unknown, replacer?: unknown, space?: unknown) => {
+      if (
+        value &&
+        typeof value === 'object' &&
+        'data' in value &&
+        Array.isArray((value as { data?: { fractions?: unknown } }).data?.fractions)
+      ) {
+        throw new Error('serialize failed');
+      }
+
+      return originalStringify(value, replacer as never, space as never);
+    }) as typeof JSON.stringify);
+
+    const response = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/master-data?scope=fractions'),
+      actor,
+      {
+        ...createDeps(),
+        loadMasterDataFractionsOverview: vi.fn(async () => ({
+          fractions: [{ id: 'fraction-1' }],
+          regions: [],
+          cities: [],
+          streets: [],
+          houseNumbers: [],
+          collectionLocations: [],
+          locationTourLinks: [],
+        })),
+      }
+    );
+
+    stringifySpy.mockRestore();
+
+    expect(response.status).toBe(503);
+    expect(loggerState.error).toHaveBeenCalledWith(
+      'Waste master-data response serialization failed',
+      expect.objectContaining({
+        operation: 'get_waste_management_master_data_overview',
+        master_data_scope: 'fractions',
+        fractions_count: 1,
+        request_id: 'req-test',
+        error_message: 'serialize failed',
+      })
+    );
   });
 
   it('uses the scoped fractions overview loader when master-data is requested with scope=fractions', async () => {

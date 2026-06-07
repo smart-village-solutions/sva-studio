@@ -394,6 +394,84 @@ describe('studio-ui-react primitives', () => {
     expect(onBulk).toHaveBeenCalledWith([{ id: 'a', title: 'Alpha' }]);
   });
 
+  it('limits row selection to eligible rows and keeps bulk selection scoped to them', () => {
+    const onBulk = vi.fn();
+    const data = [
+      { id: 'holiday-1', title: 'Feiertag', selectable: false },
+      { id: 'global-1', title: 'Global', selectable: true },
+      { id: 'tour-1', title: 'Tour', selectable: true },
+    ];
+
+    render(
+      <StudioDataTable
+        ariaLabel="Ausweichtermine"
+        labels={tableLabels}
+        data={data}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title }]}
+        emptyState={<p>Keine Daten</p>}
+        canSelectRow={(row) => row.selectable}
+        bulkActions={[{ id: 'delete', label: 'Löschen', onClick: ({ selectedRows }) => onBulk(selectedRows) }]}
+      />
+    );
+
+    const holidayCheckbox = screen.getByLabelText('Ausweichtermine holiday-1 auswählen') as HTMLInputElement;
+    const globalCheckbox = screen.getByLabelText('Ausweichtermine global-1 auswählen') as HTMLInputElement;
+    const tourCheckbox = screen.getByLabelText('Ausweichtermine tour-1 auswählen') as HTMLInputElement;
+
+    expect(holidayCheckbox.disabled).toBe(true);
+    expect(globalCheckbox.disabled).toBe(false);
+    expect(tourCheckbox.disabled).toBe(false);
+
+    fireEvent.click(globalCheckbox);
+    expect(globalCheckbox.checked).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    expect(onBulk).toHaveBeenCalledWith([{ id: 'global-1', title: 'Global', selectable: true }]);
+
+    fireEvent.click(screen.getByLabelText('Alle Ausweichtermine auswählen'));
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    expect(onBulk).toHaveBeenLastCalledWith([
+      { id: 'global-1', title: 'Global', selectable: true },
+      { id: 'tour-1', title: 'Tour', selectable: true },
+    ]);
+  });
+
+  it('keeps selected rows when the parent rerenders with the same row ids', () => {
+    const data = [
+      { id: 'global-1', title: 'Global' },
+      { id: 'tour-1', title: 'Tour' },
+    ];
+
+    const { rerender } = render(
+      <StudioDataTable
+        ariaLabel="Ausweichtermine"
+        labels={tableLabels}
+        data={data}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title }]}
+        emptyState={<p>Keine Daten</p>}
+      />
+    );
+
+    const globalCheckbox = screen.getByLabelText('Ausweichtermine global-1 auswählen') as HTMLInputElement;
+    fireEvent.click(globalCheckbox);
+    expect(globalCheckbox.checked).toBe(true);
+
+    rerender(
+      <StudioDataTable
+        ariaLabel="Ausweichtermine"
+        labels={tableLabels}
+        data={[...data]}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title }]}
+        emptyState={<p>Keine Daten</p>}
+      />
+    );
+
+    expect((screen.getByLabelText('Ausweichtermine global-1 auswählen') as HTMLInputElement).checked).toBe(true);
+  });
+
   it('renders table sorting, row actions, toolbar content and clearable bulk actions', () => {
     const onBulk = vi.fn();
     const data = [
@@ -464,6 +542,25 @@ describe('studio-ui-react primitives', () => {
     const table = screen.getByRole('table', { name: 'News' });
     const footer = screen.getByText('Seitenfuß');
     expect(Boolean(table.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+  });
+
+  it('keeps desktop table rows height-stable on hover', () => {
+    render(
+      <StudioDataTable
+        ariaLabel="News"
+        labels={tableLabels}
+        data={[{ id: 'a', title: 'Alpha' }]}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title }]}
+        emptyState={<p>Keine Daten</p>}
+        selectionMode="none"
+      />
+    );
+
+    const bodyRow = screen.getByRole('cell', { name: 'Alpha' }).closest('tr');
+    expect(bodyRow).toBeTruthy();
+    expect(bodyRow?.className).not.toContain('animate-row-hover');
+    expect(bodyRow?.className).toContain('transition-colors');
   });
 
   it('renders table loading, empty and no-selection variants', () => {

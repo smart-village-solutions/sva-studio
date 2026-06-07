@@ -3,6 +3,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
   StudioDataTable,
+  type StudioBulkAction,
 } from '@sva/studio-ui-react';
 
 import type { WasteSchedulingTableEntry } from './waste-management.scheduling.shared.js';
@@ -40,6 +41,7 @@ export const WasteSchedulingShiftsTable = ({
   onEditGlobalShiftDialog,
   onEditTourShiftDialog,
   onDeleteSchedulingRows,
+  saving,
   page,
   pageSize,
   onPageChange,
@@ -52,6 +54,20 @@ export const WasteSchedulingShiftsTable = ({
   const labels = useSchedulingTableLabels();
   const columns = useSchedulingColumns();
   const pagedRows = useMemo(() => createPagedItems({ items: entries, page, pageSize }), [entries, page, pageSize]);
+  const bulkActions = useMemo<readonly StudioBulkAction<WasteSchedulingTableEntry>[]>(
+    () => [
+      {
+        id: 'delete-selected-scheduling-rows',
+        label: pt('scheduling.actions.deleteSelected'),
+        ...(saving ? { disabled: true } : {}),
+        onClick: async ({ selectedRows, clearSelection }) => {
+          clearSelectionRef.current = clearSelection;
+          setPendingDeleteRows(selectedRows);
+        },
+      },
+    ],
+    [pt, saving]
+  );
 
   usePagedRouteSync({ page, safePage: pagedRows.safePage, onPageChange, onSyncPageChange });
 
@@ -64,6 +80,9 @@ export const WasteSchedulingShiftsTable = ({
         data={pagedRows.items}
         columns={columns}
         getRowId={(row) => `${row.kind}:${row.id}`}
+        selectionMode="multiple"
+        canSelectRow={(row) => row.canDelete}
+        bulkActions={bulkActions}
         toolbarEnd={
           <Button type="button" className="rounded-lg" onClick={onOpenCreateShiftDialog}>
             {pt('scheduling.actions.openCreate')}

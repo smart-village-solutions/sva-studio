@@ -62,6 +62,7 @@ export type StudioDataTableProps<TData> = Readonly<{
   isLoading?: boolean;
   getRowId: (row: TData) => string;
   selectionMode?: 'none' | 'multiple';
+  canSelectRow?: (row: TData) => boolean;
   sorting?: SortingState;
   onSortingChange?: (sorting: SortingState) => void;
 }>;
@@ -108,6 +109,7 @@ const renderSelectionCell = <TData,>(
   <Checkbox
     aria-label={labels.selectRow({ label: ariaLabel, rowId: row.id })}
     checked={row.getIsSelected()}
+    disabled={!row.getCanSelect()}
     ref={undefined}
     onChange={(event) => row.toggleSelected(event.target.checked)}
   />
@@ -159,6 +161,7 @@ export function StudioDataTable<TData>({
   isLoading = false,
   getRowId,
   selectionMode = 'multiple',
+  canSelectRow,
   sorting: controlledSorting,
   onSortingChange,
 }: StudioDataTableProps<TData>) {
@@ -169,6 +172,10 @@ export function StudioDataTable<TData>({
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [isCompact, setIsCompact] = React.useState(false);
+  const selectionScopeKey = React.useMemo(
+    () => [...data].map((row) => getRowId(row)).sort().join('\u0000'),
+    [data, getRowId]
+  );
 
   React.useLayoutEffect(() => {
     const node = containerRef.current;
@@ -187,7 +194,7 @@ export function StudioDataTable<TData>({
 
   React.useEffect(() => {
     setRowSelection({});
-  }, [data]);
+  }, [selectionScopeKey]);
 
   const clearSelection = React.useCallback(() => {
     setRowSelection({});
@@ -264,7 +271,10 @@ export function StudioDataTable<TData>({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getRowId,
-    enableRowSelection: selectionMode === 'multiple',
+    enableRowSelection:
+      selectionMode === 'multiple'
+        ? (row) => (canSelectRow ? canSelectRow(row.original) : true)
+        : false,
     onSortingChange: handleSortingChange,
     onRowSelectionChange: setRowSelection,
     state: {
@@ -363,7 +373,10 @@ export function StudioDataTable<TData>({
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="animate-row-hover border-t border-border text-sm text-foreground hover:bg-muted/40">
+              <tr
+                key={row.id}
+                className="border-t border-border text-sm text-foreground transition-colors duration-150 hover:bg-muted/40"
+              >
                 {row.getVisibleCells().map((cell) => {
                   const meta = cell.column.columnDef.meta as { className?: string } | undefined;
                   return (

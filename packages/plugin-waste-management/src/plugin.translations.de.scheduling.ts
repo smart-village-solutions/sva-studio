@@ -103,6 +103,7 @@ export const wasteManagementPluginTranslationsDEScheduling = createWasteManageme
   actions: {
     openCreate: 'Ausweichtermin anlegen',
     delete: 'Löschen',
+    deleteSelected: 'Markierte löschen',
   },
   create: {
     scope: 'Typ des Ausweichtermins',

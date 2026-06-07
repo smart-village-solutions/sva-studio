@@ -1,3 +1,6 @@
+import { createSdkLogger } from '@sva/server-runtime';
+
+import { buildLogContext } from '../../log-context.js';
 import { asApiItem, createApiError, readPage } from '../../shared/request-helpers.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { authorizeWasteManagementAction } from './auth.js';
@@ -5,9 +8,20 @@ import { loadConfiguredWasteSettings, updateWasteVisibleStatus } from './setting
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 
+const logger = createSdkLogger({ component: 'waste-management-auth-runtime', level: 'info' });
+
 const toOptionalTrimmedSearchParam = (request: Request, key: string): string | undefined => {
   const value = new URL(request.url).searchParams.get(key)?.trim();
   return value ? value : undefined;
+};
+
+const resolveMasterDataScope = (request: Request): 'fractions' | 'locations' | 'all' => {
+  const scope = toOptionalTrimmedSearchParam(request, 'scope');
+  if (scope === 'fractions' || scope === 'locations') {
+    return scope;
+  }
+
+  return 'all';
 };
 
 const resolveMasterDataOverview = async (
@@ -15,7 +29,7 @@ const resolveMasterDataOverview = async (
   deps: WasteManagementHandlerDeps,
   instanceId: string
 ) => {
-  const scope = toOptionalTrimmedSearchParam(request, 'scope');
+  const scope = resolveMasterDataScope(request);
   if (scope === 'fractions') {
     return requireDeps(deps.loadMasterDataFractionsOverview, 'loadMasterDataFractionsOverview')(instanceId);
   }
@@ -26,6 +40,63 @@ const resolveMasterDataOverview = async (
 
   return requireDeps(deps.loadMasterDataOverview, 'loadMasterDataOverview')(instanceId);
 };
+
+const logWasteReadFailure = (
+  operation: string,
+  message: string,
+  instanceId: string,
+  error: unknown,
+  details?: Readonly<Record<string, string | number | boolean | undefined>>
+): void => {
+  logger.error(message, {
+    operation,
+    error_type: error instanceof Error ? error.constructor.name : typeof error,
+    error_message: error instanceof Error ? error.message : String(error),
+    ...details,
+    ...buildLogContext({ kind: 'instance', instanceId }, { includeTraceId: true }),
+  });
+};
+
+const updateWasteVisibleStatusSafely = async (
+  deps: WasteManagementHandlerDeps,
+  instanceId: string,
+  outcome: 'success' | 'revalidate',
+  operation: string
+): Promise<void> => {
+  try {
+    await updateWasteVisibleStatus(deps, instanceId, outcome);
+  } catch (error) {
+    logger.warn('Waste visible status update failed', {
+      operation,
+      update_outcome: outcome,
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
+      error_message: error instanceof Error ? error.message : String(error),
+      ...buildLogContext({ kind: 'instance', instanceId }, { includeTraceId: true }),
+    });
+  }
+};
+
+const buildMasterDataLogFields = (
+  scope: 'fractions' | 'locations' | 'all',
+  overview: {
+    readonly fractions: readonly unknown[];
+    readonly regions: readonly unknown[];
+    readonly cities: readonly unknown[];
+    readonly streets: readonly unknown[];
+    readonly houseNumbers: readonly unknown[];
+    readonly collectionLocations: readonly unknown[];
+    readonly locationTourLinks: readonly unknown[];
+  }
+) => ({
+  master_data_scope: scope,
+  fractions_count: overview.fractions.length,
+  regions_count: overview.regions.length,
+  cities_count: overview.cities.length,
+  streets_count: overview.streets.length,
+  house_numbers_count: overview.houseNumbers.length,
+  collection_locations_count: overview.collectionLocations.length,
+  location_tour_links_count: overview.locationTourLinks.length,
+});
 
 export const wasteManagementReadHandlers = {
   getWasteManagementSettingsInternal: async (
@@ -50,7 +121,13 @@ export const wasteManagementReadHandlers = {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
-    } catch {
+    } catch (error) {
+      logWasteReadFailure(
+        'get_waste_management_settings',
+        'Waste settings overview failed',
+        instanceId,
+        error
+      );
       return createApiError(503, 'database_unavailable', 'Die Waste-Einstellungen konnten nicht geladen werden.', requestId);
     }
   },
@@ -84,7 +161,13 @@ export const wasteManagementReadHandlers = {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
-    } catch {
+    } catch (error) {
+      logWasteReadFailure(
+        'get_waste_management_history_overview',
+        'Waste history overview failed',
+        instanceId,
+        error
+      );
       return createApiError(503, 'database_unavailable', 'Die Waste-Historie konnte nicht geladen werden.', requestId);
     }
   },
@@ -104,15 +187,56 @@ export const wasteManagementReadHandlers = {
       return instanceId;
     }
 
+    const scope = resolveMasterDataScope(request);
+
     try {
       const overview = await resolveMasterDataOverview(request, deps, instanceId);
-      await updateWasteVisibleStatus(deps, instanceId, 'success');
-      return new Response(JSON.stringify(asApiItem(overview, requestId)), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+      const logFields = buildMasterDataLogFields(scope, overview);
+      logger.info('Waste master-data overview loaded', {
+        operation: 'get_waste_management_master_data_overview',
+        ...logFields,
+        ...buildLogContext({ kind: 'instance', instanceId }, { includeTraceId: true }),
       });
-    } catch {
-      await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+      await updateWasteVisibleStatusSafely(
+        deps,
+        instanceId,
+        'success',
+        'get_waste_management_master_data_overview'
+      );
+      try {
+        return new Response(JSON.stringify(asApiItem(overview, requestId)), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        logWasteReadFailure(
+          'get_waste_management_master_data_overview',
+          'Waste master-data response serialization failed',
+          instanceId,
+          error,
+          logFields
+        );
+        return createApiError(
+          503,
+          'database_unavailable',
+          'Die Waste-Stammdaten konnten nicht geladen werden.',
+          requestId
+        );
+      }
+    } catch (error) {
+      logWasteReadFailure(
+        'get_waste_management_master_data_overview',
+        'Waste master-data overview failed',
+        instanceId,
+        error,
+        { master_data_scope: scope }
+      );
+      await updateWasteVisibleStatusSafely(
+        deps,
+        instanceId,
+        'revalidate',
+        'get_waste_management_master_data_overview'
+      );
       return createApiError(503, 'database_unavailable', 'Die Waste-Stammdaten konnten nicht geladen werden.', requestId);
     }
   },
@@ -134,13 +258,24 @@ export const wasteManagementReadHandlers = {
 
     try {
       const overview = await requireDeps(deps.loadToursOverview, 'loadToursOverview')(instanceId);
-      await updateWasteVisibleStatus(deps, instanceId, 'success');
+      await updateWasteVisibleStatusSafely(deps, instanceId, 'success', 'get_waste_management_tours_overview');
       return new Response(JSON.stringify(asApiItem(overview, requestId)), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
-    } catch {
-      await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+    } catch (error) {
+      logWasteReadFailure(
+        'get_waste_management_tours_overview',
+        'Waste tours overview failed',
+        instanceId,
+        error
+      );
+      await updateWasteVisibleStatusSafely(
+        deps,
+        instanceId,
+        'revalidate',
+        'get_waste_management_tours_overview'
+      );
       return createApiError(503, 'database_unavailable', 'Die Waste-Touren konnten nicht geladen werden.', requestId);
     }
   },
@@ -162,13 +297,29 @@ export const wasteManagementReadHandlers = {
 
     try {
       const overview = await requireDeps(deps.loadSchedulingOverview, 'loadSchedulingOverview')(instanceId);
-      await updateWasteVisibleStatus(deps, instanceId, 'success');
+      await updateWasteVisibleStatusSafely(
+        deps,
+        instanceId,
+        'success',
+        'get_waste_management_scheduling_overview'
+      );
       return new Response(JSON.stringify(asApiItem(overview, requestId)), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
-    } catch {
-      await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+    } catch (error) {
+      logWasteReadFailure(
+        'get_waste_management_scheduling_overview',
+        'Waste scheduling overview failed',
+        instanceId,
+        error
+      );
+      await updateWasteVisibleStatusSafely(
+        deps,
+        instanceId,
+        'revalidate',
+        'get_waste_management_scheduling_overview'
+      );
       return createApiError(
         503,
         'database_unavailable',

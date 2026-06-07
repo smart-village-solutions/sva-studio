@@ -47,6 +47,7 @@ import {
   StudioTechnicalStatusPanel,
   Textarea,
 } from './index.js';
+import { compareAlphabetically } from './studio-data-table.js';
 
 const tableLabels: StudioDataTableLabels = {
   selectionColumn: 'Auswahl',
@@ -662,6 +663,26 @@ describe('studio-ui-react primitives', () => {
 
     expect(screen.queryByLabelText('News a auswählen')).toBeNull();
     expect(screen.getAllByText('a')).toHaveLength(2);
+  });
+
+  it('sorts strings with a fixed locale and a deterministic tie-breaker', () => {
+    const localeCompareSpy = vi
+      .spyOn(String.prototype, 'localeCompare')
+      .mockImplementation(function mockLocaleCompare(
+        this: string,
+        _other: string,
+        _locales?: string | readonly string[],
+        _options?: Intl.CollatorOptions
+      ) {
+        return 0;
+      });
+
+    try {
+      expect(compareAlphabetically('a', 'b')).toBeLessThan(0);
+      expect(localeCompareSpy).toHaveBeenCalledWith('b', 'de');
+    } finally {
+      localeCompareSpy.mockRestore();
+    }
   });
 
   it('keeps a bulk action enabled without selection when disabled is explicitly false', () => {

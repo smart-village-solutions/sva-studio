@@ -71,6 +71,35 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('HM');
   });
 
+  it('embeds a branding image when one is provided', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Rathenow, Berliner Str. 12',
+        pickups: [
+          {
+            date: '2026-01-14',
+            fractions: [{ id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666' }],
+          },
+        ],
+        brandingImage: {
+          width: 2,
+          height: 2,
+          rgbData: new Uint8Array([
+            255, 0, 0,
+            0, 255, 0,
+            0, 0, 255,
+            255, 255, 0,
+          ]),
+        },
+      })
+    ).toString('latin1');
+
+    expect(pdfText).toContain('/Subtype /Image');
+    expect(pdfText).toContain('/XObject << /Im1');
+    expect(pdfText).toContain('/Im1 Do');
+  });
+
   it('renders legend labels at distinct positions once more than six fractions are present', () => {
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({

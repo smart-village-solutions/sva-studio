@@ -59,7 +59,7 @@ afterEach(() => {
 
 describe('WasteSettingsCustomRecurrenceSection', () => {
   it('removes stale fallback references when deleting a preset that another pending deletion points to', () => {
-    const onPersist = vi.fn();
+    const onChange = vi.fn();
 
     render(
       <WasteSettingsCustomRecurrenceSection
@@ -74,14 +74,14 @@ describe('WasteSettingsCustomRecurrenceSection', () => {
           },
         }}
         saving={false}
-        onPersist={onPersist}
+        onChange={onChange}
       />
     );
 
     fireEvent.click(screen.getAllByRole('button', { name: 'settings.actions.deleteCustomRecurrence' })[0]);
     fireEvent.click(screen.getByRole('button', { name: 'confirm-delete' }));
 
-    expect(onPersist).toHaveBeenCalledWith(
+    expect(onChange).toHaveBeenCalledWith(
       [{ id: 'preset-b', name: 'B', description: '', intervalDays: 14 }],
       {}
     );

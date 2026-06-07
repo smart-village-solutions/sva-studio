@@ -1,5 +1,20 @@
 # Public Waste PDF Export Shift Implementation Plan
 
+**Status 2026-06-07:** Implementiert. Studio erzeugt keine Waste-PDFs mehr, `public-waste-calendar-web` erzeugt PDFs ad hoc serverseitig, die OpenSpec-Änderung ist strikt valide, und die relevanten Unit-/Type-/Build-Gates wurden im Arbeitsverlauf grün nachgewiesen.
+
+**Abschlussnachweise:**
+- `openspec validate refactor-public-waste-pdf-export-responsibility --strict`
+- `pnpm nx run plugin-waste-management:test:unit`
+- `pnpm nx run auth-runtime:test:unit`
+- `pnpm nx run routing:test:unit`
+- `pnpm nx run core:test:types`
+- `pnpm nx run plugin-waste-management:test:types`
+- `pnpm nx run auth-runtime:test:types`
+- `pnpm nx run routing:test:types`
+- `pnpm check:server-runtime`
+- `pnpm nx run public-waste-calendar-web:test:types`
+- `pnpm nx run public-waste-calendar-web:build`
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Move waste-calendar PDF generation out of Studio and into the public waste web app as an ad hoc export, while turning Studio `Ausgabe` into a pure configuration area for static PDF content.

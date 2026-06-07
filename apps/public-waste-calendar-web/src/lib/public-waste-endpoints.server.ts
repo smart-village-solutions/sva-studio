@@ -1,13 +1,20 @@
 import {
   buildWasteCalendarPdfDocument,
   renderWasteCalendarPdf,
+  type WasteCalendarPdfBrandingImage,
   type WasteOutputPickupEntry,
 } from '@sva/core';
 
 import { loadNextPublicWasteSelection, loadResolvedPublicWasteCalendar } from './public-waste-api.js';
-import { isPublicWasteStreetSelectionId, isPublicWasteUuid } from './public-waste-contract.js';
 import { renderPublicWasteIcal } from './public-waste-ical.server.js';
 import type { PublicWastePdfStaticConfig } from './public-waste-pdf-settings.server.js';
+import {
+  readPublicWasteCalendarName,
+  readPublicWasteFractionIds,
+  readPublicWasteReferenceDate,
+  readPublicWasteResolvedSelection,
+  readPublicWasteSelectionState,
+} from './public-waste-request-parsing.server.js';
 import type { PublicWasteRepository } from './public-waste-repository.server.js';
 
 const INVALID_REQUEST_MESSAGE = 'Ungültige Anfrage.';
@@ -20,44 +27,6 @@ const jsonResponse = (payload: unknown, status = 200): Response =>
       'content-type': 'application/json; charset=utf-8',
     },
   });
-
-const readRequiredParam = (url: URL, key: string): string => {
-  const value = url.searchParams.get(key)?.trim();
-  if (!value || !isPublicWasteUuid(value)) {
-    throw new Error(`missing_query_param:${key}`);
-  }
-  return value;
-};
-
-const readOptionalParam = (url: URL, key: string): string | undefined => {
-  const value = url.searchParams.get(key)?.trim();
-  if (!value) {
-    return undefined;
-  }
-  if (!isPublicWasteUuid(value)) {
-    throw new Error(`invalid_query_param:${key}`);
-  }
-  return value;
-};
-
-const readRequiredStreetParam = (url: URL, key: string): string => {
-  const value = url.searchParams.get(key)?.trim();
-  if (!value || !isPublicWasteStreetSelectionId(value)) {
-    throw new Error(`missing_query_param:${key}`);
-  }
-  return value;
-};
-
-const readOptionalStreetParam = (url: URL, key: string): string | undefined => {
-  const value = url.searchParams.get(key)?.trim();
-  if (!value) {
-    return undefined;
-  }
-  if (!isPublicWasteStreetSelectionId(value)) {
-    throw new Error(`invalid_query_param:${key}`);
-  }
-  return value;
-};
 
 const readRequiredYear = (url: URL): number => {
   const value = Number.parseInt(url.searchParams.get('year') ?? '', 10);
@@ -127,12 +96,7 @@ export const handlePublicWasteSelectionRequest = async (input: {
     const payload = await loadNextPublicWasteSelection({
       repository: input.repository,
       input: {
-        selection: {
-          regionId: readOptionalParam(url, 'regionId'),
-          cityId: readOptionalParam(url, 'cityId'),
-          streetId: readOptionalStreetParam(url, 'streetId'),
-          houseNumberId: readOptionalParam(url, 'houseNumberId'),
-        },
+        selection: readPublicWasteSelectionState(url),
       },
     });
 
@@ -148,17 +112,12 @@ export const handlePublicWasteCalendarRequest = async (input: {
 }): Promise<Response> => {
   try {
     const url = new URL(input.request.url);
-    const selection = {
-      regionId: readOptionalParam(url, 'regionId'),
-      cityId: readRequiredParam(url, 'cityId'),
-      streetId: readRequiredStreetParam(url, 'streetId'),
-      houseNumberId: readOptionalParam(url, 'houseNumberId'),
-    } as const;
+    const selection = readPublicWasteResolvedSelection(url);
     const payload = await loadResolvedPublicWasteCalendar({
       repository: input.repository,
       input: {
         selection,
-        referenceDate: url.searchParams.get('referenceDate') ?? new Date().toISOString().slice(0, 10),
+        referenceDate: readPublicWasteReferenceDate(url),
       },
     });
 
@@ -184,19 +143,13 @@ export const handlePublicWastePdfRequest = async (input: {
   readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries' | 'loadSelectionSummary'>;
   readonly request: Request;
   readonly loadPdfStaticConfig: () => Promise<PublicWastePdfStaticConfig>;
+  readonly loadBrandingImage?: (assetUrl: string) => Promise<WasteCalendarPdfBrandingImage | undefined>;
 }): Promise<Response> => {
   try {
     const url = new URL(input.request.url);
-    const selection = {
-      regionId: readOptionalParam(url, 'regionId'),
-      cityId: readRequiredParam(url, 'cityId'),
-      streetId: readRequiredStreetParam(url, 'streetId'),
-      houseNumberId: readOptionalParam(url, 'houseNumberId'),
-    } as const;
+    const selection = readPublicWasteResolvedSelection(url);
     const year = readRequiredYear(url);
-    const fractionIds = Array.from(
-      new Set(url.searchParams.getAll('fractionId').map((value) => value.trim()).filter(Boolean))
-    );
+    const fractionIds = readPublicWasteFractionIds(url);
     if (fractionIds.length === 0) {
       throw new Error('missing_query_param:fractionId');
     }
@@ -218,6 +171,9 @@ export const handlePublicWastePdfRequest = async (input: {
     }
 
     const locationLabel = normalizePdfLocationLabel(selectionSummary);
+    const brandingImage = staticConfig.brandingAssetUrl
+      ? await input.loadBrandingImage?.(staticConfig.brandingAssetUrl)
+      : undefined;
     const pdf = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
         year,
@@ -225,6 +181,7 @@ export const handlePublicWastePdfRequest = async (input: {
         pickups: buildPdfPickups(filteredEntries),
         notes: collectPdfNotes(filteredEntries.map((entry) => entry.note)),
         footerLine: staticConfig.contactBlock?.replace(/\s*\n\s*/g, ' · '),
+        ...(brandingImage ? { brandingImage } : {}),
         brandingPlaceholderLabel: staticConfig.brandingAssetUrl ? 'Branding-Grafik' : 'Kommunales Waste-Management',
       })
     );
@@ -251,18 +208,13 @@ export const handlePublicWasteIcalRequest = async (input: {
     const calendar = await loadResolvedPublicWasteCalendar({
       repository: input.repository,
       input: {
-        selection: {
-          regionId: readOptionalParam(url, 'regionId'),
-          cityId: readRequiredParam(url, 'cityId'),
-          streetId: readRequiredStreetParam(url, 'streetId'),
-          houseNumberId: readOptionalParam(url, 'houseNumberId'),
-        },
-        referenceDate: url.searchParams.get('referenceDate') ?? new Date().toISOString().slice(0, 10),
+        selection: readPublicWasteResolvedSelection(url),
+        referenceDate: readPublicWasteReferenceDate(url),
       },
     });
 
     const body = renderPublicWasteIcal({
-      calendarName: url.searchParams.get('calendarName') ?? 'Abfallkalender',
+      calendarName: readPublicWasteCalendarName(url),
       events: calendar.listEntries.map((entry) => ({
         uid: `${entry.id}@public-waste-calendar`,
         startDate: normalizeDateForIcal(entry.date),

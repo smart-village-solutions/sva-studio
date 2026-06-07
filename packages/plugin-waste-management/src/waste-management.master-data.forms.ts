@@ -57,11 +57,7 @@ export type CollectionLocationFormState = {
   readonly active: boolean;
 };
 
-export type LocationTourLinkBulkFormState = {
-  readonly tourId: string;
-  readonly startDate: string;
-  readonly endDate: string;
-};
+export type LocationTourLinkBulkFormState = { readonly tourId: string; readonly startDate: string; readonly endDate: string };
 const defaultFractionReminderLeadDays = 1;
 
 export const wasteMasterDataFormDefaults = {
@@ -254,10 +250,8 @@ export const wasteMasterDataInputMappers = {
   }),
   resolveSingleSelectValue: (form: HTMLFormElement, fieldName: string): string => {
     const field = form.elements.namedItem(fieldName);
-    if (!(field instanceof HTMLSelectElement)) {
-      return '';
-    }
-    const values = Array.from(field.options).map((option) => option.value.trim()).filter(Boolean);
-    return values.length === 1 ? values[0] ?? '' : '';
+    const values =
+      field instanceof HTMLSelectElement ? Array.from(field.options).map((option) => option.value.trim()).filter(Boolean) : [];
+    return values.length === 1 ? (values[0] ?? '') : '';
   },
 };

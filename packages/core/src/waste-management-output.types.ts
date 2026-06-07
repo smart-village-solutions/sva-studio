@@ -10,6 +10,12 @@ export type WasteOutputPickupEntry = Readonly<{
   fractions: readonly WasteOutputFraction[];
 }>;
 
+export type WasteCalendarPdfBrandingImage = Readonly<{
+  width: number;
+  height: number;
+  rgbData: Uint8Array;
+}>;
+
 type WasteCalendarPdfEntry = Readonly<{
   code: string;
   fillColor: readonly [red: number, green: number, blue: number];
@@ -40,6 +46,7 @@ type WasteCalendarPdfPage = Readonly<{
   title: string;
   locationLabel: string;
   brandingPlaceholderLabel: string;
+  brandingImage?: WasteCalendarPdfBrandingImage;
   months: readonly WasteCalendarPdfMonth[];
   legend: readonly WasteCalendarPdfLegendEntry[];
   notes: readonly string[];

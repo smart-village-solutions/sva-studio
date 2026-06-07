@@ -231,6 +231,12 @@ Kernidee:
 - Fachliche oder externe Waste-Schemata ausserhalb dieses Migrationspfads duerfen nicht stillschweigend im Soll-Snapshot oder in CI-Gates auftauchen.
 - Sobald Waste-Tabellen wieder in den migrationsbasierten Studio-Stand aufgenommen werden, muessen Snapshot und diese Einordnung gemeinsam aktualisiert werden.
 
+Für den aktuellen Waste-PDF-Export-Shift ist wichtig:
+
+- Das optionale Fraktionskürzel `waste_fractions.pdf_short_label` gehört zur externen Waste-Fachdatenbank, nicht zur zentralen Studio-DB.
+- Die zugehörige Schemaquelle liegt aktuell im runtime-nahen Waste-Migrationspfad unter `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`.
+- PDF-bezogene Stamminhalte wie `calendarWebUrl`, `pdfBrandingAssetUrl` und `pdfContactBlock` liegen dagegen weiterhin in der zentralen Studio-DB als Teil von `iam.instance_external_interfaces.public_config`.
+
 ## Wichtige Beziehungen
 
 - Fast alle fachlichen Tabellen hängen direkt oder indirekt an `iam.instances`.

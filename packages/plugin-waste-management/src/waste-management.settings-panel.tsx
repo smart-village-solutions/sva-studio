@@ -15,9 +15,8 @@ import {
   type StatusMessage,
 } from './waste-management.page.support.js';
 import { WasteSettingsForm } from './waste-management.settings-form.js';
+import { WasteSettingsStatusPanel } from './waste-management.settings-status-panel.js';
 import type { CustomRecurrencePresetInputState, SettingsFormState } from './waste-management.settings-form.js';
-
-type SavingSection = 'interface' | 'holiday' | 'calendarWebUrl' | 'customRecurrences' | null;
 
 const createDefaultSettingsForm = (): SettingsFormState => ({
   provider: 'supabase',
@@ -150,7 +149,7 @@ const persistWasteSettings = async (
 
 export const WasteSettingsPanel = () => {
   const pt = usePluginTranslation('wasteManagement');
-  const [savingSection, setSavingSection] = useState<SavingSection>(null);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const { error, form, loading, setForm, setSettings, settings } = useWasteSettingsState(pt);
 
@@ -170,40 +169,30 @@ export const WasteSettingsPanel = () => {
     });
   };
 
-  const saveSection = async (section: Exclude<SavingSection, null>, nextForm: SettingsFormState) => {
-    setSavingSection(section);
+  const handleSubmit = async () => {
+    setSaving(true);
     setMessage(null);
 
     try {
-      const result = await persistWasteSettings(nextForm, pt);
+      const result = await persistWasteSettings(form, pt);
       applyPersistedSettings(result);
     } catch (saveError) {
       setMessage({ kind: 'error', text: saveError instanceof Error ? saveError.message : pt('settings.messages.saveError') });
     } finally {
-      setSavingSection(null);
+      setSaving(false);
     }
   };
 
   return (
     <div className="space-y-4">
       <StatusNotice message={message} />
+      <WasteSettingsStatusPanel settings={settings} />
       <WasteSettingsForm
         form={form}
         settings={settings}
-        savingSection={savingSection}
+        saving={saving}
         onChange={setForm}
-        onSaveInterfaceSelection={() => void saveSection('interface', form)}
-        onSaveHolidayState={() => void saveSection('holiday', form)}
-        onSaveCalendarWebUrl={() => void saveSection('calendarWebUrl', form)}
-        onPersistCustomRecurrences={(customRecurrencePresets, deletedPresetFallbacks) => {
-          const nextForm = {
-            ...form,
-            customRecurrencePresets: [...customRecurrencePresets],
-            deletedPresetFallbacks,
-          };
-          setForm(nextForm);
-          void saveSection('customRecurrences', nextForm);
-        }}
+        onSubmit={() => void handleSubmit()}
       />
     </div>
   );

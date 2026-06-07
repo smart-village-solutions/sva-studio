@@ -217,6 +217,7 @@ export const buildWasteCalendarPdfDocument = (input: {
   readonly notes?: readonly string[];
   readonly footerLine?: string;
   readonly brandingPlaceholderLabel?: string;
+  readonly brandingImage?: WasteCalendarPdfDocument['pages'][number]['brandingImage'];
 }): WasteCalendarPdfDocument => {
   const { entriesByDate, legendFractions } = buildEntriesByDate(input.pickups);
   const holidayMap = buildHolidayMap(input.year);
@@ -231,6 +232,7 @@ export const buildWasteCalendarPdfDocument = (input: {
     title: `Abfallkalender ${input.year}`,
     locationLabel: input.locationLabel,
     brandingPlaceholderLabel: input.brandingPlaceholderLabel ?? 'Kommunales Waste-Management',
+    ...(input.brandingImage ? { brandingImage: input.brandingImage } : {}),
     months: months.map((month) => buildMonth(input.year, month, holidayMap, entriesByDate)),
     legend,
     notes,

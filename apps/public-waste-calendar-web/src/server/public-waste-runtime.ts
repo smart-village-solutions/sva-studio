@@ -13,6 +13,7 @@ import {
   handlePublicWastePdfRequest,
   handlePublicWasteSelectionRequest,
 } from '../lib/public-waste-endpoints.server.js';
+import type { WasteCalendarPdfBrandingImage } from '@sva/core/waste-output';
 import { createPublicWasteRepository, type PublicWasteRepository } from '../lib/public-waste-repository.server.js';
 
 export const PUBLIC_WASTE_RUNTIME_APP_NAME = 'public-waste-calendar-web';
@@ -28,23 +29,15 @@ type RepositoryHandle = {
 };
 
 type RepositoryFactory = (config: PublicWasteConfig) => Promise<RepositoryHandle> | RepositoryHandle;
-type PublicWastePdfStaticConfig = {
-  readonly brandingAssetUrl?: string;
-  readonly contactBlock?: string;
-};
-
+type PublicWastePdfStaticConfig = { readonly brandingAssetUrl?: string; readonly contactBlock?: string };
+type PublicWasteBrandingImageLoader = (assetUrl: string) => Promise<WasteCalendarPdfBrandingImage | undefined>;
 export type PublicWasteRuntime = {
   readonly bootstrapState: PublicWasteBootstrapState;
   handle: (request: Request) => Promise<Response>;
   dispose: () => Promise<void>;
 };
 
-const publicWasteApiPrefixes = [
-  '/api/public-waste/selection',
-  '/api/public-waste/calendar',
-  '/api/public-waste/pdf',
-  '/api/public-waste/ical',
-] as const;
+const publicWasteApiPrefixes = ['/api/public-waste/selection', '/api/public-waste/calendar', '/api/public-waste/pdf', '/api/public-waste/ical'] as const;
 
 const staticMimeTypes: Readonly<Record<string, string>> = {
   '.css': 'text/css; charset=utf-8',
@@ -106,14 +99,13 @@ const createInvalidConfigResponse = (bootstrapState: PublicWasteBootstrapState):
     500
   );
 
-const createMethodNotAllowedResponse = (): Response =>
-  new Response('Method Not Allowed', {
-    status: 405,
-    headers: {
-      allow: 'GET, HEAD',
-      'content-type': 'text/plain; charset=utf-8',
-    },
-  });
+const createMethodNotAllowedResponse = (): Response => new Response('Method Not Allowed', {
+  status: 405,
+  headers: {
+    allow: 'GET, HEAD',
+    'content-type': 'text/plain; charset=utf-8',
+  },
+});
 
 const toHeadResponse = (response: Response): Response =>
   new Response(null, {
@@ -121,10 +113,8 @@ const toHeadResponse = (response: Response): Response =>
     statusText: response.statusText,
     headers: response.headers,
   });
-
 const resolveStaticAssetPath = (assetsDir: string, pathname: string): string => {
-  const relativePath =
-    pathname === '/' || extname(pathname).length === 0 ? '/index.html' : pathname;
+  const relativePath = pathname === '/' || extname(pathname).length === 0 ? '/index.html' : pathname;
   const normalizedPath = relativePath.replace(/\\/g, '/');
   const absolutePath = resolve(assetsDir, `.${normalizedPath}`);
   const rootPath = resolve(assetsDir);
@@ -165,11 +155,50 @@ const serveStaticAsset = async (input: {
   }
 };
 
+const dispatchPublicWasteApiRequest = async (input: {
+  readonly request: Request;
+  readonly pathname: string;
+  readonly repository: PublicWasteRuntimeRepository;
+  readonly bootstrapState: Extract<PublicWasteBootstrapState, { status: 'ready' }>;
+  readonly loadPdfStaticConfig?: (instanceId: string) => Promise<PublicWastePdfStaticConfig>;
+  readonly loadBrandingImage?: PublicWasteBrandingImageLoader;
+}): Promise<Response> => {
+  if (input.pathname.startsWith('/api/public-waste/selection')) {
+    return handlePublicWasteSelectionRequest({
+      repository: input.repository,
+      request: input.request,
+    });
+  }
+
+  if (input.pathname.startsWith('/api/public-waste/calendar')) {
+    return handlePublicWasteCalendarRequest({
+      repository: input.repository,
+      request: input.request,
+    });
+  }
+
+  if (input.pathname.startsWith('/api/public-waste/pdf')) {
+    return handlePublicWastePdfRequest({
+      repository: input.repository,
+      request: input.request,
+      loadPdfStaticConfig: async () =>
+        await (input.loadPdfStaticConfig?.(input.bootstrapState.config.instanceId) ?? {}),
+      loadBrandingImage: input.loadBrandingImage,
+    });
+  }
+
+  return handlePublicWasteIcalRequest({
+    repository: input.repository,
+    request: input.request,
+  });
+};
+
 export const createPublicWasteRuntime = async (input: {
   readonly assetsDir: string;
   readonly env?: NodeJS.ProcessEnv;
   readonly createRepository?: RepositoryFactory;
   readonly loadPdfStaticConfig?: (instanceId: string) => Promise<PublicWastePdfStaticConfig>;
+  readonly loadBrandingImage?: PublicWasteBrandingImageLoader;
 }): Promise<PublicWasteRuntime> => {
   const bootstrapState = readPublicWasteBootstrapStateFromEnvironment({
     env: input.env,
@@ -204,30 +233,14 @@ export const createPublicWasteRuntime = async (input: {
           return createInvalidConfigResponse(bootstrapState);
         }
 
-        let response: Response;
-        if (url.pathname.startsWith('/api/public-waste/selection')) {
-          response = await handlePublicWasteSelectionRequest({
-            repository: repositoryHandle.repository,
-            request,
-          });
-        } else if (url.pathname.startsWith('/api/public-waste/calendar')) {
-          response = await handlePublicWasteCalendarRequest({
-            repository: repositoryHandle.repository,
-            request,
-          });
-        } else if (url.pathname.startsWith('/api/public-waste/pdf')) {
-          response = await handlePublicWastePdfRequest({
-            repository: repositoryHandle.repository,
-            request,
-            loadPdfStaticConfig: async () =>
-              await (input.loadPdfStaticConfig?.(bootstrapState.config.instanceId) ?? {}),
-          });
-        } else {
-          response = await handlePublicWasteIcalRequest({
-            repository: repositoryHandle.repository,
-            request,
-          });
-        }
+        const response = await dispatchPublicWasteApiRequest({
+          request,
+          pathname: url.pathname,
+          repository: repositoryHandle.repository,
+          bootstrapState,
+          loadPdfStaticConfig: input.loadPdfStaticConfig,
+          loadBrandingImage: input.loadBrandingImage,
+        });
 
         return method === 'HEAD' ? toHeadResponse(response) : response;
       }

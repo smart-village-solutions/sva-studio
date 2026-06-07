@@ -45,30 +45,25 @@ vi.mock('../src/waste-management.settings-form.js', () => ({
   WasteSettingsForm: ({
     form,
     onChange,
-    onSaveCalendarWebUrl,
-    onSaveHolidayState,
+    onSubmit,
   }: {
     readonly form: { holidayStateCode?: string; calendarWebUrl?: string; selectedInterfaceId?: string };
     readonly onChange: (next: unknown) => void;
-    readonly onSaveCalendarWebUrl: () => void;
-    readonly onSaveHolidayState: () => void;
+    readonly onSubmit: () => void;
   }) => {
     capturedForms.push(form);
     return (
       <div>
         <div>{form.holidayStateCode ?? 'unset'}</div>
         <div>{form.calendarWebUrl ?? 'unset-url'}</div>
-        <button type="button" onClick={onSaveCalendarWebUrl}>
-          save-calendar-web-url
-        </button>
         <button
           type="button"
           onClick={() => onChange((current: { holidayStateCode?: string }) => ({ ...current, holidayStateCode: 'BB' }))}
         >
           change-holiday-state
         </button>
-        <button type="button" onClick={onSaveHolidayState}>
-          save-holiday-state
+        <button type="button" onClick={onSubmit}>
+          save-settings
         </button>
       </div>
     );
@@ -83,7 +78,7 @@ afterEach(() => {
 });
 
 describe('WasteSettingsPanel', () => {
-  it('loads the calendar web url and persists it through the dedicated card action', async () => {
+  it('loads the calendar web url and persists it through the global save action', async () => {
     getWasteManagementSettingsMock.mockResolvedValueOnce({
       instanceId: 'tenant-a',
       provider: 'supabase',
@@ -126,7 +121,7 @@ describe('WasteSettingsPanel', () => {
       );
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'save-calendar-web-url' }));
+    fireEvent.click(screen.getByRole('button', { name: 'save-settings' }));
 
     await waitFor(() => {
       expect(updateWasteManagementSettingsMock).toHaveBeenCalledWith(
@@ -142,7 +137,7 @@ describe('WasteSettingsPanel', () => {
     });
   });
 
-  it('saves the holiday state after the dedicated save action', async () => {
+  it('saves the holiday state after the global save action', async () => {
     getWasteManagementSettingsMock.mockResolvedValueOnce({
       instanceId: 'tenant-a',
       provider: 'supabase',
@@ -183,7 +178,7 @@ describe('WasteSettingsPanel', () => {
 
     expect(updateWasteManagementSettingsMock).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'save-holiday-state' }));
+    fireEvent.click(screen.getByRole('button', { name: 'save-settings' }));
 
     await waitFor(() => {
       expect(updateWasteManagementSettingsMock).toHaveBeenCalledWith(

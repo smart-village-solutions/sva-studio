@@ -11,6 +11,7 @@ import {
   handlePublicWastePdfRequest,
   handlePublicWasteSelectionRequest,
 } from './src/lib/public-waste-endpoints.server.js';
+import { loadPublicWastePdfBrandingImage } from './src/lib/public-waste-pdf-branding.server.js';
 import { loadPublicWastePdfStaticConfig } from './src/lib/public-waste-pdf-settings.server.js';
 import { createPublicWasteRepository } from './src/lib/public-waste-repository.server.js';
 
@@ -77,6 +78,7 @@ const publicWasteApiPlugin = (): Plugin => {
         repository,
         request,
         loadPdfStaticConfig: () => loadPublicWastePdfStaticConfig(bootstrapState.config.instanceId),
+        loadBrandingImage: loadPublicWastePdfBrandingImage,
       });
     }
     return handlePublicWasteIcalRequest({ repository, request });

@@ -10,6 +10,7 @@ import {
   type WasteManagementTabId,
 } from './search-params.js';
 import { getWasteManagementSettings } from './waste-management.api.js';
+import { WasteManagementPageDescription } from './waste-management.page.description.js';
 import { useWasteManagementUiAccess } from './waste-management.ui-access.js';
 import { WasteManagementPageTabs } from './waste-management.page.layout.js';
 
@@ -95,23 +96,12 @@ export const WasteManagementPage = () => {
     <StudioOverviewPageTemplate
       title={pt('page.title')}
       description={
-        <>
-          {pt('page.description')}
-          {calendarWebUrl ? (
-            <>
-              {' '}
-              {pt('page.webVersionLead')}{' '}
-              <a
-                href={calendarWebUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium underline underline-offset-2"
-              >
-                {pt('page.webVersionLinkLabel')}
-              </a>
-            </>
-          ) : null}
-        </>
+        <WasteManagementPageDescription
+          description={pt('page.description')}
+          calendarWebUrl={calendarWebUrl}
+          webVersionLead={pt('page.webVersionLead')}
+          webVersionLinkLabel={pt('page.webVersionLinkLabel')}
+        />
       }
     >
       <WasteManagementPageTabs

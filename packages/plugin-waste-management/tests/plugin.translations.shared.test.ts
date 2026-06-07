@@ -243,6 +243,48 @@ describe('waste-management translation builders', () => {
     });
   });
 
+  it('deep-merges shared and settings common keys without dropping either branch', () => {
+    expect(
+      createWasteManagementPluginTranslationLocale([
+        {
+          common: {
+            active: 'Aktiv',
+            inactive: 'Inaktiv',
+          },
+        },
+        createWasteManagementSettingsTranslations({
+          common: {
+            actions: 'Aktionen',
+          },
+          technical: {
+            title: 'Status',
+            description: 'Beschreibung',
+          },
+          fields: {
+            holidayStateCode: 'Bundesland',
+          },
+          meta: {
+            lastSuccessfulHolidaySyncAtLabel: 'Letzter erfolgreicher Abgleich',
+          },
+          actions: {
+            save: 'Speichern',
+          },
+          messages: {
+            loading: 'Lädt',
+          },
+        }),
+      ])
+    ).toMatchObject({
+      wasteManagement: {
+        common: {
+          actions: 'Aktionen',
+          active: 'Aktiv',
+          inactive: 'Inaktiv',
+        },
+      },
+    });
+  });
+
   it('keeps master-data entity meta labels at their public translation paths', () => {
     expect(
       createMasterDataEntityTranslations({

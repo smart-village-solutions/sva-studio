@@ -904,7 +904,7 @@ describe('WasteManagementPage', () => {
     fireEvent.change(calendarWebUrlInput, {
       target: { value: 'https://abfall.example.de' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.settings.actions.save' })[1]);
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.settings.actions.save' }));
 
     await waitFor(() => {
       expect(wasteManagementApiMocks.updateWasteManagementSettings).toHaveBeenCalledWith(
@@ -916,7 +916,7 @@ describe('WasteManagementPage', () => {
     });
   });
 
-  it('keeps the settings page stable when selecting an interval for a custom recurrence preset draft', async () => {
+  it('keeps the settings page stable when opening the custom recurrence dialog', async () => {
     searchMock.mockImplementation(() => ({
       tab: 'settings',
       q: '',
@@ -953,6 +953,8 @@ describe('WasteManagementPage', () => {
 
     render(<WasteManagementPage />);
 
+    fireEvent.click(await screen.findByRole('button', { name: 'wasteManagement.settings.actions.addCustomRecurrence' }));
+
     const intervalSelect = await screen.findByLabelText(
       'wasteManagement.settings.fields.customRecurrenceIntervalDays'
     );
@@ -967,7 +969,7 @@ describe('WasteManagementPage', () => {
     expect(screen.getByLabelText('wasteManagement.settings.fields.customRecurrenceName')).toBeTruthy();
   });
 
-  it('adds a custom recurrence preset draft without crashing after choosing an interval', async () => {
+  it('adds a custom recurrence preset and persists it with the global settings save', async () => {
     searchMock.mockImplementation(() => ({
       tab: 'settings',
       q: '',
@@ -1036,6 +1038,8 @@ describe('WasteManagementPage', () => {
 
     render(<WasteManagementPage />);
 
+    fireEvent.click(await screen.findByRole('button', { name: 'wasteManagement.settings.actions.addCustomRecurrence' }));
+
     const nameInput = await screen.findByLabelText('wasteManagement.settings.fields.customRecurrenceName');
     const intervalSelect = screen.getByLabelText('wasteManagement.settings.fields.customRecurrenceIntervalDays');
 
@@ -1045,7 +1049,8 @@ describe('WasteManagementPage', () => {
     fireEvent.change(intervalSelect, {
       target: { value: '14' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.settings.actions.addCustomRecurrence' }));
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.settings.actions.saveCustomRecurrence' }));
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.settings.actions.save' }));
 
     await waitFor(() => {
       expect(wasteManagementApiMocks.updateWasteManagementSettings).toHaveBeenCalledWith(
@@ -1060,7 +1065,6 @@ describe('WasteManagementPage', () => {
       );
     });
     expect(await screen.findByText('14 Tage')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'wasteManagement.settings.actions.saveCustomRecurrences' })).toBeNull();
   });
 
   it('loads and renders the filtered master-data overview', async () => {

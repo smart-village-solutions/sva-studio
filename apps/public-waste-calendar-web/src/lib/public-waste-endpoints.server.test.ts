@@ -56,6 +56,11 @@ describe('public waste endpoints', () => {
   });
 
   it('returns a binary pdf for the resolved selection and chosen fractions', async () => {
+    const loadBrandingImage = vi.fn().mockResolvedValue({
+      width: 2,
+      height: 1,
+      rgbData: new Uint8Array([255, 255, 255, 0, 0, 0]),
+    });
     const response = await handlePublicWastePdfRequest({
       repository: {
         loadCalendarEntries: vi.fn().mockResolvedValue([
@@ -77,12 +82,16 @@ describe('public waste endpoints', () => {
         brandingAssetUrl: 'https://cdn.example/logo.svg',
         contactBlock: 'Abfallberatung 03395 / 1234',
       }),
+      loadBrandingImage,
     });
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('application/pdf');
     expect(response.headers.get('content-disposition')).toContain('abfallkalender-2026-musterstadt-hauptstra-e-1.pdf');
-    expect(Buffer.from(await response.arrayBuffer()).toString('latin1')).toContain('Abfallkalender 2026');
+    const pdfText = Buffer.from(await response.arrayBuffer()).toString('latin1');
+    expect(pdfText).toContain('Abfallkalender 2026');
+    expect(pdfText).toContain('/Subtype /Image');
+    expect(loadBrandingImage).toHaveBeenCalledWith('https://cdn.example/logo.svg');
   });
 
   it('returns an iCal feed for the resolved calendar request', async () => {

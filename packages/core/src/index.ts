@@ -187,7 +187,7 @@ export type {
 export { wasteManagementMasterDataContract } from './waste-management-master-data.js';
 export { buildWasteCalendarPdfDocument, renderWasteCalendarPdf } from './waste-management-output.js';
 export type {
-  WasteCalendarPdfDocument, WasteOutputPickupEntry, WasteOutputFraction,
+  WasteCalendarPdfBrandingImage, WasteCalendarPdfDocument, WasteOutputPickupEntry, WasteOutputFraction,
 } from './waste-management-output.types.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';

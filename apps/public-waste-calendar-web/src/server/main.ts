@@ -1,5 +1,6 @@
 import { once } from 'node:events';
 
+import { loadPublicWastePdfBrandingImage } from '../lib/public-waste-pdf-branding.server.js';
 import { loadPublicWastePdfStaticConfig } from '../lib/public-waste-pdf-settings.server.js';
 import { createPublicWasteHttpServer } from './public-waste-http-server.js';
 import { createPublicWasteRuntime } from './public-waste-runtime.js';
@@ -12,6 +13,7 @@ const runtime = await createPublicWasteRuntime({
   assetsDir: assetsDir.pathname,
   env: process.env,
   loadPdfStaticConfig: loadPublicWastePdfStaticConfig,
+  loadBrandingImage: loadPublicWastePdfBrandingImage,
 });
 const server = createPublicWasteHttpServer({ runtime });
 

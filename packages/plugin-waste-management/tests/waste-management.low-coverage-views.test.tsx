@@ -191,10 +191,7 @@ describe('waste-management low coverage views', () => {
 
   it('renders the settings form, updates fields, toggles the switch and submits', () => {
     const onChange = vi.fn();
-    const onSaveCalendarWebUrl = vi.fn();
-    const onPersistCustomRecurrences = vi.fn();
-    const onSaveInterfaceSelection = vi.fn();
-    const onSaveHolidayState = vi.fn();
+    const onSubmit = vi.fn();
 
     render(
       <WasteSettingsForm
@@ -228,38 +225,26 @@ describe('waste-management low coverage views', () => {
           visibleStatus: 'ok',
           customRecurrencePresets: [],
         }}
-        savingSection={null}
+        saving={false}
         onChange={onChange}
-        onSaveCalendarWebUrl={onSaveCalendarWebUrl}
-        onPersistCustomRecurrences={onPersistCustomRecurrences}
-        onSaveInterfaceSelection={onSaveInterfaceSelection}
-        onSaveHolidayState={onSaveHolidayState}
+        onSubmit={onSubmit}
       />
     );
 
-    fireEvent.change(screen.getByPlaceholderText('settings.fields.customRecurrenceName'), {
+    fireEvent.click(screen.getByRole('button', { name: 'settings.actions.addCustomRecurrence' }));
+    fireEvent.change(screen.getByLabelText('settings.fields.customRecurrenceName'), {
       target: { value: '14 Tage' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'settings.actions.addCustomRecurrence' }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'settings.actions.save' })[1]);
-
-    expect(onPersistCustomRecurrences).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({
-          name: '14 Tage',
-          intervalDays: 7,
-        }),
-      ],
-      {}
-    );
-    expect(onSaveCalendarWebUrl).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'settings.actions.saveCustomRecurrence' }));
+    expect(onChange).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'settings.actions.save' }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(screen.getByText('settings.messages.customRecurrencesTitle')).toBeTruthy();
     expect(screen.getByText('settings.messages.interfaceSelectionTitle')).toBeTruthy();
   });
 
   it('updates the holiday state selection through the settings form reducer without saving immediately', () => {
     const onChange = vi.fn();
-    const onSaveHolidayState = vi.fn();
 
     render(
       <WasteSettingsForm
@@ -277,12 +262,9 @@ describe('waste-management low coverage views', () => {
           deletedPresetFallbacks: {},
         }}
         settings={null}
-        savingSection={null}
+        saving={false}
         onChange={onChange}
-        onSaveCalendarWebUrl={vi.fn()}
-        onPersistCustomRecurrences={vi.fn()}
-        onSaveInterfaceSelection={vi.fn()}
-        onSaveHolidayState={onSaveHolidayState}
+        onSubmit={vi.fn()}
       />
     );
 
@@ -315,11 +297,10 @@ describe('waste-management low coverage views', () => {
         holidayStateCode: 'NW',
       })
     );
-    expect(onSaveHolidayState).not.toHaveBeenCalled();
   });
 
-  it('saves the selected holiday state through the dedicated button', () => {
-    const onSaveHolidayState = vi.fn();
+  it('submits the selected holiday state through the global save button', () => {
+    const onSubmit = vi.fn();
 
     render(
       <WasteSettingsForm
@@ -337,21 +318,18 @@ describe('waste-management low coverage views', () => {
           deletedPresetFallbacks: {},
         }}
         settings={null}
-        savingSection={null}
+        saving={false}
         onChange={vi.fn()}
-        onSaveCalendarWebUrl={vi.fn()}
-        onPersistCustomRecurrences={vi.fn()}
-        onSaveInterfaceSelection={vi.fn()}
-        onSaveHolidayState={onSaveHolidayState}
+        onSubmit={onSubmit}
       />
     );
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'settings.actions.save' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'settings.actions.save' }));
 
-    expect(onSaveHolidayState).toHaveBeenCalledTimes(1);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
-  it('places the holiday state dropdown and save button in the same action row', () => {
+  it('renders the holiday state dropdown without a dedicated inline action row', () => {
     render(
       <WasteSettingsForm
         form={{
@@ -368,28 +346,19 @@ describe('waste-management low coverage views', () => {
           deletedPresetFallbacks: {},
         }}
         settings={null}
-        savingSection={null}
+        saving={false}
         onChange={vi.fn()}
-        onSaveCalendarWebUrl={vi.fn()}
-        onPersistCustomRecurrences={vi.fn()}
-        onSaveInterfaceSelection={vi.fn()}
-        onSaveHolidayState={vi.fn()}
+        onSubmit={vi.fn()}
       />
     );
 
     const holidayStateSelect = screen.getByLabelText('settings.fields.holidayStateCode');
-    const holidaySaveButton = screen.getAllByRole('button', { name: 'settings.actions.save' })[0];
-    const actionRow = Array.from(document.querySelectorAll('div')).find((element) =>
-      element.className.includes('lg:grid-cols-[minmax(0,1fr)_auto]')
-    );
-
-    expect(actionRow).toBeTruthy();
-    expect(actionRow?.contains(holidayStateSelect)).toBe(true);
-    expect(actionRow?.contains(holidaySaveButton)).toBe(true);
+    expect(holidayStateSelect).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'settings.actions.save' })).toBeTruthy();
   });
 
   it('warns before saving the holiday state when imported holidays already exist', () => {
-    const onSaveHolidayState = vi.fn();
+    const onSubmit = vi.fn();
 
     render(
       <WasteSettingsForm
@@ -423,24 +392,21 @@ describe('waste-management low coverage views', () => {
           lastSuccessfulHolidaySyncAt: '2026-06-06T12:00:00.000Z',
           customRecurrencePresets: [],
         }}
-        savingSection={null}
+        saving={false}
         onChange={vi.fn()}
-        onSaveCalendarWebUrl={vi.fn()}
-        onPersistCustomRecurrences={vi.fn()}
-        onSaveInterfaceSelection={vi.fn()}
-        onSaveHolidayState={onSaveHolidayState}
+        onSubmit={onSubmit}
       />
     );
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'settings.actions.save' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'settings.actions.save' }));
 
     expect(screen.getByText('settings.messages.holidayStateOverwriteWarningTitle')).toBeTruthy();
     expect(screen.getByText('settings.messages.holidayStateOverwriteWarningDescription')).toBeTruthy();
-    expect(onSaveHolidayState).not.toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'settings.actions.save' }).at(-1) as HTMLButtonElement);
 
-    expect(onSaveHolidayState).toHaveBeenCalledTimes(1);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
   it('updates the configured calendar web link through the settings form reducer', () => {
@@ -462,12 +428,9 @@ describe('waste-management low coverage views', () => {
           deletedPresetFallbacks: {},
         }}
         settings={null}
-        savingSection={null}
+        saving={false}
         onChange={onChange}
-        onSaveCalendarWebUrl={vi.fn()}
-        onPersistCustomRecurrences={vi.fn()}
-        onSaveInterfaceSelection={vi.fn()}
-        onSaveHolidayState={vi.fn()}
+        onSubmit={vi.fn()}
       />
     );
 
@@ -515,12 +478,9 @@ describe('waste-management low coverage views', () => {
           visibleStatus: 'ok',
           customRecurrencePresets: [],
         }}
-        savingSection={null}
+        saving={false}
         onChange={vi.fn()}
-        onSaveCalendarWebUrl={vi.fn()}
-        onPersistCustomRecurrences={vi.fn()}
-        onSaveInterfaceSelection={vi.fn()}
-        onSaveHolidayState={vi.fn()}
+        onSubmit={vi.fn()}
       />
     );
 

@@ -4,7 +4,7 @@ Dieses Dokument ist der kanonische Einstieg für Deployment- und Betriebsfragen.
 
 ## Zielbild
 
-SVA Studio kennt aktuell vier relevante Betriebsmodi:
+SVA Studio kennt aktuell fünf relevante Betriebsmodi:
 
 | Modus | Zweck | Primäre Dokumente |
 | --- | --- | --- |
@@ -12,6 +12,7 @@ SVA Studio kennt aktuell vier relevante Betriebsmodi:
 | Swarm-Referenzprofil | kanonischer Betriebsweg mit Swarm-Secrets und Traefik-v2+-Labels | `./swarm-deployment-guide.md`, `./swarm-deployment-runbook.md` |
 | Demo-Profil | vereinfachter Stack ohne Secret-Provisioning, mit Traefik-v1-kompatiblen Labels | `./swarm-deployment-guide.md`, `./swarm-deployment-runbook.md` |
 | Studio-Remoteprofil | produktionsnaher Betrieb als eigener Stack auf `studio.smart-village.app` | `./swarm-deployment-guide.md`, `../development/runtime-profile-betrieb.md` |
+| Public-Waste-Remoteprofil | isolierter Releasepfad für die öffentliche Abfallkalender-Webversion | `./public-waste-web-release-runbook.md`, `../architecture/07-deployment-view.md` |
 
 ## Profilwahl
 
@@ -56,6 +57,23 @@ Wichtig:
 - für `studio` ist der kanonische Ablauf jetzt zweigeteilt: GitHub liefert Build und Verify, der finale mutierende Rollout läuft lokal über `pnpm env:release:studio:local`
 - direkte `quantum-cli`-, Portainer- oder Ad-hoc-Shellpfade bleiben Notfall- oder Diagnosewerkzeuge und sind kein offizieller Standard
 
+### Public-Waste-Remoteprofil
+
+Der öffentliche Webkalender bildet einen davon getrennten Rollout-Pfad:
+
+- Compose-Datei: `../../deploy/portainer/docker-compose.public-waste.yml`
+- Stack typischerweise: `web-waste-calendar`
+- Quantum-Environment: `public-waste`
+- Workflow: `.github/workflows/public-waste-web-release.yml`
+- Trigger: Git-Tag `waste-web-vX.Y.Z`
+
+Wichtig:
+
+- der Workflow baut nur `public-waste-calendar-web` und nicht das Studio-Image
+- Portainer verwaltet die fachlichen Laufzeitwerte über getrennte `PUBLIC_WASTE_*`-Variablen
+- der GitHub-Releasepfad aktualisiert im Stack nur `PUBLIC_WASTE_IMAGE_TAG`
+- Rollback erfolgt durch Rücksetzen von `PUBLIC_WASTE_IMAGE_TAG` auf den vorherigen SemVer-Tag
+
 ## Standardablauf für Releases
 
 1. Image mit konkretem Tag bereitstellen.
@@ -78,6 +96,12 @@ Für `studio` zusätzlich wichtig:
 - ein gesunder Stack ersetzt nicht die Prüfung, ob sich `APP_DB_USER` tatsächlich gegen `POSTGRES_DB` anmelden kann
 - `env:precheck:studio` blockiert Images, deren Registry-Manifest kein `linux/amd64` ausweist
 - `env:precheck:studio` und `/health/ready` blockieren jetzt auch kritische IAM-Schema-Drifts für die Tenant-Registry, z. B. fehlende Artefakte aus `0025_iam_instance_registry_provisioning.sql` oder `0027_iam_instance_keycloak_bootstrap.sql`
+
+Für `public-waste` zusätzlich wichtig:
+
+- die produktive Runtime liest führend `PUBLIC_WASTE_INSTANCE_ID`, `PUBLIC_WASTE_DATABASE_URL` und `PUBLIC_WASTE_SCHEMA_NAME`
+- `PUBLIC_WASTE_CONFIG_JSON` ist kein operativer Sollzustand mehr
+- der Release-Workflow führt nach dem Stack-Update Smoke-Checks gegen `/health/live`, `/` und `/api/public-waste/selection` aus
 
 Die operativen Details und Beispielkommandos stehen unter `./swarm-deployment-runbook.md`.
 
@@ -146,6 +170,7 @@ Wenn eine Änderung ein neues Schema voraussetzt, ist ein reiner Image-Rollback 
 
 - Swarm-Leitfaden: `./swarm-deployment-guide.md`
 - Swarm-Runbook: `./swarm-deployment-runbook.md`
+- Public-Waste-Runbook: `./public-waste-web-release-runbook.md`
 - Tenant-Realm-Bootstrap: `./keycloak-tenant-realm-bootstrap.md`
 - Verteilungssicht: `../architecture/07-deployment-view.md`
 - Monitoring-Details: `../development/monitoring-stack.md`

@@ -1,12 +1,14 @@
 import type { IamRolePermissionAssignmentScope } from './authorization-contract';
 
 export type IamAccountStatus = 'active' | 'inactive' | 'pending';
+export type IamPermissionRuntimeScope = 'instance' | 'record' | 'organization_context';
 
 export type IamPermission = {
   readonly id: string;
   readonly instanceId: string;
   readonly permissionKey: string;
   readonly description?: string;
+  readonly runtimeScope?: IamPermissionRuntimeScope;
   readonly isScopeAssignable?: boolean;
   readonly supportedAccessScopes?: readonly IamRolePermissionAssignmentScope[];
 };

@@ -1,0 +1,35 @@
+FROM node:24.15.0-alpine AS build
+
+WORKDIR /workspace
+
+ENV PNPM_HOME=/pnpm
+ENV PATH="${PNPM_HOME}:${PATH}"
+ENV CI=true
+ENV NX_DAEMON=false
+ENV NX_ADD_PLUGINS=false
+
+RUN npm install -g pnpm@11.3.0
+
+COPY . .
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm nx run public-waste-calendar-web:build --skip-nx-cache
+RUN pnpm --filter public-waste-calendar-web deploy --prod /workspace/.deploy/public-waste-calendar-web
+
+FROM node:24.15.0-alpine AS runtime
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3002
+
+COPY --from=build --chown=node:node /workspace/.deploy/public-waste-calendar-web/package.json ./package.json
+COPY --from=build --chown=node:node /workspace/.deploy/public-waste-calendar-web/node_modules ./node_modules
+COPY --from=build --chown=node:node /workspace/apps/public-waste-calendar-web/dist ./dist
+
+USER node
+
+EXPOSE 3002
+
+CMD ["node", "dist/server/server/main.js"]

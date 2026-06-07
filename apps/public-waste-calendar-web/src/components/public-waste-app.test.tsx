@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PublicWasteApp } from './public-waste-app.js';
@@ -53,6 +53,88 @@ describe('PublicWasteApp', () => {
     expect(screen.getByText('Hauptstraße')).toBeTruthy();
     expect(screen.getByText('12')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Adresse ändern' })).toBeTruthy();
+  });
+
+  it('revokes the generated object url after the download was triggered', async () => {
+    const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:public-waste-pdf');
+    const revokeObjectUrlSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    fetchMock.mockResolvedValue(
+      new Response(new Blob(['pdf'], { type: 'application/pdf' }), {
+        status: 200,
+        headers: {
+          'content-disposition': 'attachment; filename="abfallkalender-2026-rathenow.pdf"',
+        },
+      })
+    );
+
+    render(
+      <PublicWasteApp
+        selection={{
+          regionId: 'r-1',
+          cityId: 'c-1',
+          streetId: 's-1',
+          houseNumberId: 'h-1',
+        }}
+        selectionState="complete"
+        selectionSummary="Musterstadt, Hauptstraße 12"
+        calendarModel={{
+          locationKey: 'r-1:c-1:s-1:h-1',
+          nextPickupDate: '2026-05-19',
+          listEntries: [
+            {
+              id: 'pickup-1',
+              date: '2026-05-19',
+              fractionId: 'bio',
+              fractionLabel: 'Bioabfall',
+              fractionColor: '#00AA00',
+              note: null,
+            },
+          ],
+          monthBuckets: [],
+          yearBuckets: [],
+          fractionOptions: [{ id: 'bio', label: 'Bioabfall' }],
+        }}
+        icalUrl="https://example.invalid/calendar.ics"
+        onChangeLocation={() => undefined}
+      />
+    );
+
+    const anchorClick = vi.fn();
+    const appendSpy = vi.spyOn(document.body, 'append').mockImplementation(() => undefined);
+    const originalCreateElement = document.createElement.bind(document);
+    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+      if (tagName === 'a') {
+        const anchor = originalCreateElement(tagName) as HTMLAnchorElement;
+        vi.spyOn(anchor, 'click').mockImplementation(anchorClick);
+        vi.spyOn(anchor, 'remove').mockImplementation(() => undefined);
+        return anchor;
+      }
+
+      return originalCreateElement(tagName);
+    });
+    const timeoutCallCountBeforeClick = setTimeoutSpy.mock.calls.length;
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Druckversion herunterladen' }));
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
+    });
+    expect(appendSpy).toHaveBeenCalledTimes(1);
+    expect(anchorClick).toHaveBeenCalledTimes(1);
+    const newTimeoutCalls = setTimeoutSpy.mock.calls.slice(timeoutCallCountBeforeClick);
+    expect(newTimeoutCalls.some((call) => call[1] === 0)).toBe(true);
+
+    expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:public-waste-pdf');
+
+    createElementSpy.mockRestore();
+    appendSpy.mockRestore();
+    createObjectUrlSpy.mockRestore();
+    revokeObjectUrlSpy.mockRestore();
+    setTimeoutSpy.mockRestore();
   });
 
   it('starts with all fractions selected and filters the visible entries without clearing the selection summary', () => {
@@ -182,6 +264,7 @@ describe('PublicWasteApp', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Standort wählen' })).toBeTruthy();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Ort suchen' }), { target: { value: 'Mus' } });
     expect(screen.getByRole('button', { name: 'Musterstadt' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'iCal abonnieren' })).toBeNull();
   });
@@ -207,6 +290,8 @@ describe('PublicWasteApp', () => {
               fractionId: 'bio',
               fractionLabel: 'Bioabfall',
               fractionColor: '#00AA00',
+              tourName: 'Biotour Nord',
+              tourDescription: 'Wöchentliche Leerung im Innenstadtbereich.',
               note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
             },
           ],
@@ -221,8 +306,12 @@ describe('PublicWasteApp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Termin Bioabfall am 2026-05-19' }));
 
-    expect(screen.getByRole('dialog')).toBeTruthy();
-    expect(screen.getByText('Bitte Tonne ab 6 Uhr bereitstellen.')).toBeTruthy();
+    const dialog = screen.getByRole('dialog');
+    expect(screen.getAllByText('Wöchentliche Leerung im Innenstadtbereich.')).toHaveLength(2);
+    expect(dialog).toBeTruthy();
+    expect(within(dialog).getByText('Biotour Nord')).toBeTruthy();
+    expect(within(dialog).getByText('Wöchentliche Leerung im Innenstadtbereich.')).toBeTruthy();
+    expect(within(dialog).getByText('Bitte Tonne ab 6 Uhr bereitstellen.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'In Kalender übernehmen' })).toBeTruthy();
   });
 });

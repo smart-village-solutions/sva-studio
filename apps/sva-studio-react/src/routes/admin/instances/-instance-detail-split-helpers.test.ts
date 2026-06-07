@@ -19,7 +19,6 @@ const createKeycloakStatusFixture = (overrides: Record<string, unknown> = {}) =>
     tenantAdminClientExists: true,
     tenantAdminExists: true,
     tenantAdminHasSystemAdmin: true,
-    tenantAdminHasInstanceRegistryAdmin: true,
     redirectUrisMatch: true,
     logoutUrisMatch: true,
     webOriginsMatch: true,
@@ -186,7 +185,6 @@ describe('instance detail split helpers', () => {
           tenantAdminClientExists: true,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
-          tenantAdminHasInstanceRegistryAdmin: true,
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,
@@ -209,12 +207,12 @@ describe('instance detail split helpers', () => {
 
     expect(readyStatus).toMatchObject({
       configuration: {
-        status: 'degraded',
+        status: 'ready',
         source: 'keycloak_status_snapshot',
         requestId: 'req-config',
       },
       overall: {
-        status: 'degraded',
+        status: 'ready',
         source: 'keycloak_status_snapshot',
       },
     });
@@ -364,14 +362,13 @@ describe('instance detail split helpers', () => {
 
     const keycloakEntries = getKeycloakStatusEntries({
       keycloakStatus: createKeycloakStatusFixture({
-        tenantAdminHasInstanceRegistryAdmin: true,
         runtimeSecretSource: 'registry',
       }),
     } as never);
 
     expect(keycloakEntries).toContainEqual([
-      'admin.instances.keycloakStatus.tenantAdminHasInstanceRegistryAdmin',
-      false,
+      'admin.instances.keycloakStatus.tenantAdminHasSystemAdmin',
+      true,
     ]);
     expect(keycloakEntries).toContainEqual([
       'admin.instances.keycloakStatus.runtimeSecretSourceTenant',
@@ -466,7 +463,6 @@ describe('instance detail split helpers', () => {
           ],
         },
         keycloakStatus: createKeycloakStatusFixture({
-          tenantAdminHasInstanceRegistryAdmin: false,
         }),
         latestKeycloakProvisioningRun: {
           id: 'run-success',
@@ -509,7 +505,6 @@ describe('instance detail split helpers', () => {
           tenantAdminClientExists: false,
           tenantAdminExists: false,
           tenantAdminHasSystemAdmin: false,
-          tenantAdminHasInstanceRegistryAdmin: true,
           tenantAdminClientSecretConfigured: false,
           tenantAdminClientSecretReadable: false,
           tenantAdminClientSecretAligned: false,

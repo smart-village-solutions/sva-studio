@@ -134,6 +134,55 @@ describe('compareSchemaSnapshots', () => {
     });
   });
 
+  it('ignores pg_dump default SET lines around ignored schema sections', () => {
+    const expectedSql = `
+      -- Name: prevent_platform_activity_logs_mutation(); Type: FUNCTION; Schema: iam; Owner: -
+      CREATE FUNCTION iam.prevent_platform_activity_logs_mutation() RETURNS trigger
+          LANGUAGE plpgsql
+          AS $$
+      BEGIN
+        RAISE EXCEPTION 'iam.platform_activity_logs is immutable';
+      END;
+      $$;
+
+      SET default_tablespace = '';
+
+      SET default_table_access_method = heap;
+
+      -- Name: account_deletion_content_preferences; Type: TABLE; Schema: iam; Owner: -
+      CREATE TABLE iam.account_deletion_content_preferences (
+          instance_id text NOT NULL
+      );
+    `;
+    const actualSql = `
+      -- Name: prevent_platform_activity_logs_mutation(); Type: FUNCTION; Schema: iam; Owner: -
+      CREATE FUNCTION iam.prevent_platform_activity_logs_mutation() RETURNS trigger
+          LANGUAGE plpgsql
+          AS $$
+      BEGIN
+        RAISE EXCEPTION 'iam.platform_activity_logs is immutable';
+      END;
+      $$;
+
+      -- Name: jobs; Type: TABLE; Schema: graphile_worker; Owner: -
+      CREATE TABLE graphile_worker.jobs (
+          id bigint NOT NULL
+      );
+
+      -- Name: account_deletion_content_preferences; Type: TABLE; Schema: iam; Owner: -
+      CREATE TABLE iam.account_deletion_content_preferences (
+          instance_id text NOT NULL
+      );
+    `;
+
+    expect(compareSchemaSnapshots(actualSql, expectedSql)).toEqual({
+      contentMatches: true,
+      ignoredSchemas: ['graphile_worker'],
+      missingObjects: [],
+      unexpectedObjects: [],
+    });
+  });
+
   it('detects definition drift even when object names stay stable', () => {
     const expectedSql = `
       -- Name: examples; Type: TABLE; Schema: iam; Owner: -

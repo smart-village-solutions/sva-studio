@@ -3,14 +3,45 @@ set -euo pipefail
 
 POSTGRES_DB="${POSTGRES_DB:-sva_studio}"
 POSTGRES_USER="${POSTGRES_USER:-sva}"
+POSTGRES_READY_DB="${POSTGRES_READY_DB:-postgres}"
+PROTECTED_DB_NAMES_REGEX="${PROTECTED_DB_NAMES_REGEX:-^(sva_studio|postgres)$}"
 
 if [ -z "$(docker compose ps -q postgres)" ]; then
   echo "Postgres container is not running. Start it with: pnpm nx run data:db:up"
   exit 1
 fi
 
+timestamp="$(date +%s)"
+raw_db_name="${POSTGRES_DB}_rls_test_${timestamp}_$$"
+sanitized_db_name="$(printf '%s' "${raw_db_name}" | tr -c '[:alnum:]_' '_')"
+TEST_DB_NAME="${TEST_DB_NAME:-${sanitized_db_name:0:63}}"
+
+if [[ "${TEST_DB_NAME}" =~ ${PROTECTED_DB_NAMES_REGEX} ]]; then
+  echo "Refusing to run RLS integration test against protected database '${TEST_DB_NAME}'."
+  echo "Use TEST_DB_NAME for a dedicated temporary database name."
+  exit 1
+fi
+
+cleanup() {
+  local exit_code="$1"
+
+  echo "Dropping temporary RLS test database: ${TEST_DB_NAME}"
+  docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" <<SQL >/dev/null || true
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = '${TEST_DB_NAME}'
+  AND pid <> pg_backend_pid();
+
+DROP DATABASE IF EXISTS "${TEST_DB_NAME}";
+SQL
+
+  exit "${exit_code}"
+}
+
+trap 'cleanup $?' EXIT
+
 echo "Recreate target database for a clean RLS integration run..."
-docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d postgres -v db_name="${POSTGRES_DB}" <<'SQL'
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" -v db_name="${TEST_DB_NAME}" <<'SQL'
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
 WHERE datname = :'db_name'
@@ -24,9 +55,9 @@ SQL
 # RLS is explicitly disabled again in 0023_iam_disable_rls.sql for the current
 # runtime compatibility profile. This integration check validates the last
 # schema version that still enforces tenant isolation via RLS.
-bash packages/data/scripts/run-migrations.sh up-to 22
+POSTGRES_DB="${TEST_DB_NAME}" bash packages/data/scripts/run-migrations.sh up-to 22
 
-docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${TEST_DB_NAME}" <<'SQL'
 TRUNCATE iam.activity_logs, iam.role_permissions, iam.account_roles, iam.account_organizations,
   iam.instance_memberships, iam.permissions, iam.roles, iam.organizations, iam.accounts, iam.instances
   RESTART IDENTITY CASCADE;
@@ -52,7 +83,7 @@ $$;
 REVOKE iam_escalation_target FROM iam_app;
 SQL
 
-visible_for_a=$(docker compose exec -T postgres psql -tA -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
+visible_for_a=$(docker compose exec -T postgres psql -tA -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${TEST_DB_NAME}" <<'SQL'
 SET ROLE iam_app;
 SET app.instance_id = 'instance-a';
 SELECT count(*) FROM iam.organizations;
@@ -65,7 +96,7 @@ if [ "${visible_for_a}" != "1" ]; then
   exit 1
 fi
 
-visible_without_context=$(docker compose exec -T postgres psql -tA -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
+visible_without_context=$(docker compose exec -T postgres psql -tA -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${TEST_DB_NAME}" <<'SQL'
 SET ROLE iam_app;
 RESET app.instance_id;
 SELECT count(*) FROM iam.organizations;
@@ -78,7 +109,7 @@ if [ "${visible_without_context}" != "0" ]; then
   exit 1
 fi
 
-role_hardening=$(docker compose exec -T postgres psql -tA -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
+role_hardening=$(docker compose exec -T postgres psql -tA -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${TEST_DB_NAME}" <<'SQL'
 SELECT CASE WHEN rolsuper OR rolbypassrls THEN 'bad' ELSE 'ok' END
 FROM pg_roles
 WHERE rolname = 'iam_app';
@@ -91,7 +122,7 @@ if [ "${role_hardening}" != "ok" ]; then
   exit 1
 fi
 
-superuser_visibility=$(docker compose exec -T postgres psql -tA -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
+superuser_visibility=$(docker compose exec -T postgres psql -tA -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${TEST_DB_NAME}" <<'SQL'
 SELECT count(*) FROM iam.organizations;
 SQL
 )
@@ -102,7 +133,7 @@ if [ "${superuser_visibility}" != "2" ]; then
   exit 1
 fi
 
-membership_guard=$(docker compose exec -T postgres psql -tA -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
+membership_guard=$(docker compose exec -T postgres psql -tA -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${TEST_DB_NAME}" <<'SQL'
 SELECT CASE
   WHEN pg_has_role('iam_app', 'iam_escalation_target', 'member') THEN 'bad'
   WHEN (SELECT rolcreaterole FROM pg_roles WHERE rolname = 'iam_app') THEN 'bad'
@@ -117,7 +148,7 @@ if [ "${membership_guard}" != "ok" ]; then
   exit 1
 fi
 
-if docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
+if docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${TEST_DB_NAME}" <<'SQL'
 SET ROLE iam_app;
 CREATE ROLE iam_escalation_probe;
 SQL

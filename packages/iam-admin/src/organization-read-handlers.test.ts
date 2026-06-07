@@ -67,8 +67,8 @@ const buildDeps = (): OrganizationReadHandlerDeps => ({
   chooseActiveOrganizationId: ({ storedActiveOrganizationId, organizations }) =>
     storedActiveOrganizationId ?? organizations[0]?.organizationId,
   consumeRateLimit: vi.fn(() => null),
-  createApiError: (status, code, message, requestId) =>
-    new Response(JSON.stringify({ error: { code, message }, ...(requestId ? { requestId } : {}) }), {
+  createApiError: (status, code, message, requestId, details) =>
+    new Response(JSON.stringify({ error: { code, message, ...(details ? { details } : {}) }, ...(requestId ? { requestId } : {}) }), {
       status,
       headers: { 'content-type': 'application/json' },
     }),
@@ -79,6 +79,7 @@ const buildDeps = (): OrganizationReadHandlerDeps => ({
   isUuid: (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value),
   jsonResponse: (status, payload) =>
     new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json' } }),
+  authorizeOrganizationReadAccess: vi.fn(async () => null),
   loadContextOptions: vi.fn(async () => state.contextOptions),
   loadOrganizationDetail: vi.fn(async () => state.detail),
   loadOrganizationList: vi.fn(async () => state.organizations),
@@ -90,7 +91,14 @@ const buildDeps = (): OrganizationReadHandlerDeps => ({
   ),
   readStatusFilter: vi.fn(() => undefined),
   readString: (value) => (typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined),
-  requireRoles: vi.fn(() => null),
+  requireRoles: vi.fn((requestContext, roles, requestId) =>
+    requestContext.user.roles.some((role) => roles.has(role))
+      ? null
+      : new Response(JSON.stringify({ error: { code: 'forbidden', message: 'forbidden' }, requestId }), {
+          status: 403,
+          headers: { 'content-type': 'application/json' },
+        })
+  ),
   resolveActorInfo: vi.fn(async () => state.actorResolution),
   updateSession,
   withInstanceScopedDb: vi.fn(async (_instanceId, work) => work({ query: vi.fn() })),
@@ -181,6 +189,32 @@ describe('organization read handlers', () => {
       'req-org'
     );
     expect(deps.requireRoles).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when no organization read authorizer is configured', async () => {
+    const deps = {
+      ...buildDeps(),
+      authorizeOrganizationReadAccess: undefined,
+    };
+    const handlers = createOrganizationReadHandlers(deps);
+
+    const response = await handlers.listOrganizationsInternal(
+      new Request('http://localhost/api/v1/iam/organizations'),
+      {
+        ...ctx,
+        user: { ...ctx.user, roles: ['system_admin'] },
+      }
+    );
+
+    expect(response.status).toBe(403);
+    expect(deps.loadOrganizationList).not.toHaveBeenCalled();
+    await expect(json(response)).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+        details: { reason_code: 'missing_organization_read_authorizer' },
+      },
+      requestId: 'req-org',
+    });
   });
 
   it('rejects invalid organization type filters before querying', async () => {

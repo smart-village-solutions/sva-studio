@@ -304,7 +304,10 @@ export function PublicWasteCalendarPanels(props: Readonly<{
                                 aria-hidden="true"
                                 style={entry.fractionColor ? { backgroundColor: entry.fractionColor } : undefined}
                               />
-                              <strong className="pickup-label">{entry.fractionLabel}</strong>
+                              <span className="pickup-copy">
+                                <strong className="pickup-label">{entry.fractionLabel}</strong>
+                                {entry.tourDescription ? <span className="pickup-description">{entry.tourDescription}</span> : null}
+                              </span>
                             </button>
                           ))}
                         </div>

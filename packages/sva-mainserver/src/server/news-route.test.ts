@@ -42,6 +42,7 @@ import { dispatchSvaMainserverNewsRequest } from './news-route';
 
 const ctx = {
   sessionId: 'session-1',
+  activeOrganizationId: '11111111-1111-1111-8111-111111111111',
   user: {
     id: 'subject-1',
     email: 'editor@example.invalid',
@@ -111,7 +112,11 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.authorizeContentPrimitiveForUser.mockResolvedValue({
       ok: true,
-      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        organizationId: '11111111-1111-1111-8111-111111111111',
+      },
       permissions: [],
     });
     state.listSvaMainserverNews.mockResolvedValue({
@@ -127,6 +132,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.listSvaMainserverNews).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       page: 1,
       pageSize: 25,
     });
@@ -158,6 +164,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.listSvaMainserverCategories).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
     });
     await expect(response?.json()).resolves.toEqual({
       data: [
@@ -186,6 +193,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.listSvaMainserverNews).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       page: 1,
       pageSize: 25,
     });
@@ -450,6 +458,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.deleteSvaMainserverNews).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       newsId: 'news-1',
     });
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
@@ -570,16 +579,27 @@ describe('dispatchSvaMainserverNewsRequest', () => {
 
     state.authorizeContentPrimitiveForUser.mockResolvedValueOnce({
       ok: true,
-      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        organizationId: '11111111-1111-1111-8111-111111111111',
+      },
       permissions: [],
     });
     state.listSvaMainserverNews.mockRejectedValueOnce(
-      new SvaMainserverError({ code: 'missing_credentials', message: 'Credentials fehlen.', statusCode: 400 })
+      new SvaMainserverError({
+        code: 'organization_mainserver_credentials_missing',
+        message: 'Für die aktive Organisation fehlen Mainserver-Credentials.',
+        statusCode: 409,
+      })
     );
 
     const upstream = await dispatchSvaMainserverNewsRequest(new Request('https://studio.test/api/v1/mainserver/news'));
-    expect(upstream?.status).toBe(400);
-    await expect(upstream?.json()).resolves.toEqual({ error: 'missing_credentials', message: 'Credentials fehlen.' });
+    expect(upstream?.status).toBe(409);
+    await expect(upstream?.json()).resolves.toEqual({
+      error: 'organization_mainserver_credentials_missing',
+      message: 'Für die aktive Organisation fehlen Mainserver-Credentials.',
+    });
   });
 
   it('returns stable errors for missing instance context and unsupported methods', async () => {

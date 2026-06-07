@@ -105,6 +105,7 @@ const bindingKeys = [
   'adminOrganizationDetail',
   'adminInstances',
   'adminInstanceCreate',
+  'adminInstanceSetup',
   'adminInstanceDetail',
   'adminRoles',
   'adminRoleCreate',
@@ -529,7 +530,7 @@ describe('app.routes', () => {
     expect(readRouteOptions(route).path).toBe('/plugins/news');
     await expect(
       readRouteOptions(route).beforeLoad?.({
-        context: { auth: { getUser: () => ({ roles: ['editor'], permissionActions: ['news.read'] }) } },
+        context: { auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: ['news.read'] }) } },
         location: { href: '/plugins/news' },
       })
     ).resolves.toBeUndefined();
@@ -537,7 +538,7 @@ describe('app.routes', () => {
 
     await expect(
       readRouteOptions(route).beforeLoad?.({
-        context: { auth: { getUser: () => ({ roles: ['editor'], permissionActions: [] }) } },
+        context: { auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: [] }) } },
         location: { href: '/plugins/news' },
       })
     ).rejects.toMatchObject({
@@ -566,7 +567,7 @@ describe('app.routes', () => {
 
     await expect(
       readRouteOptions(route).beforeLoad?.({
-        context: { auth: { getUser: () => ({ roles: ['editor'], permissionActions: ['news.read'] }) } },
+        context: { auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: ['news.read'] }) } },
         location: { href: '/plugins/news' },
       })
     ).resolves.toBeUndefined();
@@ -613,7 +614,7 @@ describe('app.routes', () => {
         moduleIam: {
           moduleId: 'news',
           permissionIds: ['news.read'],
-          systemRoles: [{ roleName: 'editor', permissionIds: ['news.read'] }],
+          systemRoles: [{ roleName: 'system_admin', permissionIds: ['news.read'] }],
         },
         permissions: [{ id: 'news.read', titleKey: 'news.permissions.read' }],
         routes: [
@@ -631,7 +632,7 @@ describe('app.routes', () => {
 
     await expect(
       readRouteOptions(route).beforeLoad?.({
-        context: { auth: { getUser: () => ({ roles: ['editor'], permissionActions: ['news.read'], assignedModules: [] }) } },
+        context: { auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: ['news.read'], assignedModules: [] }) } },
         location: { href: '/plugins/news' },
       })
     ).rejects.toMatchObject({
@@ -641,7 +642,7 @@ describe('app.routes', () => {
     await expect(
       readRouteOptions(route).beforeLoad?.({
         context: {
-          auth: { getUser: () => ({ roles: ['editor'], permissionActions: ['news.read'], assignedModules: ['news'] }) },
+          auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: ['news.read'], assignedModules: ['news'] }) },
         },
         location: { href: '/plugins/news' },
       })
@@ -661,7 +662,7 @@ describe('app.routes', () => {
     await expect(
       readRouteOptions(mediaUsageRoute).beforeLoad?.({
         context: {
-          auth: { getUser: () => ({ roles: ['app_manager'], permissionActions: ['media.read'], assignedModules: [] }) },
+          auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: ['media.read'], assignedModules: [] }) },
         },
         location: { href: '/admin/media/asset-1/usage' },
       })
@@ -672,7 +673,7 @@ describe('app.routes', () => {
     await expect(
       readRouteOptions(mediaUsageRoute).beforeLoad?.({
         context: {
-          auth: { getUser: () => ({ roles: ['app_manager'], permissionActions: [], assignedModules: ['media'] }) },
+          auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: [], assignedModules: ['media'] }) },
         },
         location: { href: '/admin/media/asset-1/usage' },
       })
@@ -696,7 +697,7 @@ describe('app.routes', () => {
         context: {
           auth: {
             getUser: () => ({
-              roles: ['app_manager'],
+              roles: ['custom_role'],
               permissionActions: ['media.read', 'media.update'],
               assignedModules: ['media'],
             }),

@@ -13,6 +13,7 @@ import type {
   UserDetailRoleRow,
   UserDetailRow,
 } from './user-detail-query.types.js';
+import { getManagedPermissionMetadata } from './managed-permissions.js';
 
 const mapRoleRows = (roleRows: UserDetailRoleRow[] | null) =>
   roleRows?.map((entry) => ({
@@ -58,6 +59,9 @@ const mapPermissionTraceRows = (
     action: entry.action,
     resourceType: entry.resource_type,
     resourceId: entry.resource_id ?? undefined,
+    runtimeScope:
+      getManagedPermissionMetadata(entry.permission_key)?.runtimeScope ??
+      (entry.access_scope ? 'record' : 'instance'),
     organizationId: entry.organization_id ?? undefined,
     effect: entry.effect,
     scope: entry.scope ?? undefined,

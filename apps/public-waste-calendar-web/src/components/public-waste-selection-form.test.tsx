@@ -4,22 +4,33 @@ import { describe, expect, it, vi } from 'vitest';
 import { PublicWasteSelectionForm } from './public-waste-selection-form.js';
 
 describe('PublicWasteSelectionForm', () => {
-  it('renders a simple option list for short selections', () => {
+  it('renders the city step as typeahead and shows suggestions only after typing', () => {
+    const onSelectOption = vi.fn();
+
     render(
       <PublicWasteSelectionForm
         nextStepLabel="Ort"
         options={[
           { id: '1', label: 'Ahrensdorf' },
           { id: '2', label: 'Buchholz' },
+          { id: '3', label: 'Bad Wilsnack' },
         ]}
         selectionPath={[]}
         onEditStep={() => undefined}
-        onSelectOption={() => undefined}
+        onSelectOption={onSelectOption}
       />
     );
 
-    expect(screen.getByRole('button', { name: 'Ahrensdorf' })).toBeTruthy();
-    expect(screen.queryByRole('textbox', { name: 'Ort suchen' })).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Ort suchen' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Ahrensdorf' })).toBeNull();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Ort suchen' }), {
+      target: { value: 'bu' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Buchholz' }));
+
+    expect(screen.queryByRole('button', { name: 'Ahrensdorf' })).toBeNull();
+    expect(onSelectOption).toHaveBeenCalledWith('2');
   });
 
   it('renders a searchable textbox for long selections and filters by partial match', () => {
@@ -50,6 +61,33 @@ describe('PublicWasteSelectionForm', () => {
 
     expect(onSelectOption).toHaveBeenCalledWith('2');
     expect(screen.queryByRole('button', { name: 'Berliner Straße' })).toBeNull();
+  });
+
+  it('uses the same typeahead behavior for short follow-up selections', () => {
+    const onSelectOption = vi.fn();
+
+    render(
+      <PublicWasteSelectionForm
+        nextStepLabel="Hausnummer"
+        options={[
+          { id: '1', label: '12' },
+          { id: '2', label: '14a' },
+        ]}
+        selectionPath={[]}
+        onEditStep={() => undefined}
+        onSelectOption={onSelectOption}
+      />
+    );
+
+    expect(screen.getByRole('textbox', { name: 'Hausnummer suchen' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '12' })).toBeNull();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Hausnummer suchen' }), {
+      target: { value: '12' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '12' }));
+
+    expect(onSelectOption).toHaveBeenCalledWith('1');
   });
 
   it('shows the resolved path and allows jumping back to an earlier step', () => {

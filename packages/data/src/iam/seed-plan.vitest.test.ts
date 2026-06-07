@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { getPersonaSeed, iamSeedPlan } from './seed-plan';
+import { getPersonaSeed, iamSeedPlan, rootOnlySeedPermissionKeys, tenantBootstrapPermissionKeys } from './seed-plan';
 
 const granularContentPermissions = [
   'content.read',
@@ -76,63 +76,40 @@ describe('iamSeedPlan content permissions', () => {
     expect(permissionKeys).not.toContain('content.moderate');
   });
 
-  it('assigns granular content permissions to content personas', () => {
-    expect(getPersonaSeed('app_manager').permissionKeys).toEqual(
-      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
-    );
-    expect(getPersonaSeed('app_manager').permissionKeys).toEqual(
+  it('assigns the full tenant bootstrap permission set to system_admin', () => {
+    expect(getPersonaSeed('system_admin').permissionKeys).toEqual(tenantBootstrapPermissionKeys);
+    expect(getPersonaSeed('system_admin').permissionKeys).toEqual(
       expect.arrayContaining([
+        'experimental.read',
+        'app.read',
+        'cockpit.read',
         'iam.legalText.read',
-        'iam.legalText.write',
-        'iam.monitoring.read',
+        'iam.governance.write',
+        'iam.dsr.export',
+        'iam.deletionRules.write',
         'iam.monitoring.write',
+        'content.create',
+        'content.changeStatus',
+        'content.publish',
+        'content.manageRevisions',
+        'content.delete',
+        'media.create',
+        'media.reference.manage',
+        'media.deliver.protected',
+        'news.create',
+        'news.update',
+        'events.create',
+        'poi.delete',
         'integration.manage',
+        'feature.toggle',
       ])
     );
-    expect(getPersonaSeed('app_manager').permissionKeys).toContain('content.readHistory');
-    expect(getPersonaSeed('app_manager').permissionKeys).toContain('media.read');
-    expect(getPersonaSeed('interface_manager').permissionKeys).toContain('content.readHistory');
-    expect(getPersonaSeed('interface_manager').permissionKeys).toEqual(
-      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
-    );
-    expect(getPersonaSeed('feature_manager').permissionKeys).toEqual(
-      expect.arrayContaining(['content.updateMetadata', 'content.updatePayload', 'content.changeStatus', 'media.reference.manage'])
-    );
-    expect(getPersonaSeed('designer').permissionKeys).toEqual(
-      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
-    );
-    expect(getPersonaSeed('designer').permissionKeys).toEqual(
-      expect.arrayContaining(['content.updateMetadata', 'content.updatePayload', 'media.update'])
-    );
-    expect(getPersonaSeed('editor').permissionKeys).toEqual(
-      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
-    );
-    expect(getPersonaSeed('editor').permissionKeys).toEqual(
-      expect.arrayContaining(['content.create', 'content.changeStatus', 'content.delete', 'media.create', 'media.reference.manage'])
-    );
-    expect(getPersonaSeed('editor').permissionKeys).toEqual(
-      expect.arrayContaining(['news.create', 'news.update', 'events.create', 'events.update', 'poi.create', 'poi.update'])
-    );
-    expect(getPersonaSeed('moderator').permissionKeys).toEqual(
-      expect.arrayContaining(['experimental.read', 'app.read', 'cockpit.read'])
-    );
-    expect(getPersonaSeed('moderator').permissionKeys).toEqual(
-      expect.arrayContaining(['content.publish', 'content.archive', 'content.restore', 'content.manageRevisions', 'media.read'])
-    );
-  });
-
-  it('keeps plugin permissions namespace-isolated in persona assignments', () => {
-    expect(getPersonaSeed('designer').permissionKeys).toEqual(
-      expect.arrayContaining(['news.update', 'events.update', 'poi.update'])
-    );
-    expect(getPersonaSeed('designer').permissionKeys).not.toContain('news.create');
-    expect(getPersonaSeed('moderator').permissionKeys).toEqual(
-      expect.arrayContaining(['news.read', 'events.read', 'poi.read'])
-    );
-    expect(getPersonaSeed('moderator').permissionKeys).not.toContain('events.update');
   });
 
   it('does not seed a tenant-side instance_registry_admin persona into 0001 anymore', () => {
+    expect(rootOnlySeedPermissionKeys).toEqual(['instance.registry.manage']);
+    expect(tenantBootstrapPermissionKeys).not.toContain('instance.registry.manage');
+    expect(getPersonaSeed('system_admin').permissionKeys).toEqual(tenantBootstrapPermissionKeys);
     expect(personaSeedSql).not.toContain("'seed:instance_registry_admin'");
     expect(personaSeedSql).not.toContain(
       "('30188888-8888-8888-8888-888888888888', 'de-musterhausen', 'instance_registry_admin'"
@@ -152,14 +129,9 @@ describe('iamSeedPlan content permissions', () => {
     expect(personaSeedSql).not.toContain(
       "('instance_registry_admin', 'integration.manage')"
     );
-    expect(personaSeedSql).toContain(
-      "('app_manager', 'experimental.read')"
-    );
-    expect(personaSeedSql).toContain(
-      "('app_manager', 'app.read')"
-    );
-    expect(personaSeedSql).toContain(
-      "('app_manager', 'cockpit.read')"
-    );
+    expect(personaSeedSql).not.toContain("'seed:app_manager'");
+    expect(personaSeedSql).not.toContain("('app_manager', 'experimental.read')");
+    expect(personaSeedSql).not.toContain("('app_manager', 'app.read')");
+    expect(personaSeedSql).not.toContain("('app_manager', 'cockpit.read')");
   });
 });

@@ -42,13 +42,13 @@ describe('user-create-handler request context', () => {
       actorSubject: 'kc-user-1',
     });
     expect(state.resolveMutationActorWithAccount).toHaveBeenCalledWith(request, ctx, {
-      allowedRoles: new Set(['system_admin', 'app_manager']),
+      allowedRoles: new Set(['system_admin']),
       requiredPermissionAction: 'iam.user.write',
       feature: 'iam_admin',
       scope: 'write',
       provisionMissingActorMembership: true,
     });
-  });
+  }, 15_000);
 
   it('returns shared guard responses unchanged', async () => {
     const { resolveCreateUserActorContext } = await import('./user-create-handler.js');

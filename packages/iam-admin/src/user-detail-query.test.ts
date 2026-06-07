@@ -98,6 +98,33 @@ describe('resolveUserDetail', () => {
                 valid_to: null,
               },
               {
+                permission_key: 'media.read',
+                action: 'media.read',
+                resource_type: 'media',
+                resource_id: null,
+                organization_id: null,
+                effect: 'allow',
+                scope: null,
+                access_scope: null,
+                is_effective: true,
+                status: 'effective',
+                source_kind: 'direct_role',
+                role_id: 'role-1',
+                role_key: 'system_admin',
+                role_name: 'system_admin',
+                group_id: null,
+                group_key: null,
+                group_display_name: null,
+                group_active: null,
+                assignment_origin: null,
+                inherited_from_organization_id: null,
+                inherited_from_geo_unit_id: null,
+                restricted_by_geo_unit_id: null,
+                inactive_reason: null,
+                valid_from: '2026-03-05T10:00:00.000Z',
+                valid_to: null,
+              },
+              {
                 permission_key: 'content.archive',
                 action: 'content.archive',
                 resource_type: 'content',
@@ -144,6 +171,7 @@ describe('resolveUserDetail', () => {
     expect(String(query.mock.calls[1]?.[0])).toContain('AND ar.account_id = a.id');
     expect(String(query.mock.calls[1]?.[0])).toContain('WHERE ag.instance_id = $1');
     expect(String(query.mock.calls[1]?.[0])).toContain('AND ag.account_id = a.id');
+    expect(String(query.mock.calls[1]?.[0])).toContain('p.permission_key = ANY(ARRAY[');
     expect(detail).toMatchObject({
       id: 'bbbbbbbb-bbbb-4111-8bbb-bbbbbbbbbbbb',
       keycloakSubject: 'keycloak-target-1',
@@ -168,6 +196,7 @@ describe('resolveUserDetail', () => {
       permissionTrace: [
         {
           permissionKey: 'content.read',
+          runtimeScope: 'record',
           sourceKind: 'group_role',
           isEffective: true,
           status: 'effective',
@@ -179,7 +208,17 @@ describe('resolveUserDetail', () => {
           restrictedByGeoUnitId: 'geo-child-1',
         },
         {
+          permissionKey: 'media.read',
+          runtimeScope: 'instance',
+          sourceKind: 'direct_role',
+          isEffective: true,
+          status: 'effective',
+          roleKey: 'system_admin',
+          organizationId: undefined,
+        },
+        {
           permissionKey: 'content.archive',
+          runtimeScope: 'record',
           sourceKind: 'direct_role',
           isEffective: false,
           status: 'expired',

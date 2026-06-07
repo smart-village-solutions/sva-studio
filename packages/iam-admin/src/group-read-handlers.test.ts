@@ -66,9 +66,14 @@ const createDeps = (
       info: vi.fn(),
       error: vi.fn(),
     },
+    authorizeGroupReadAccess: vi.fn(async () => null),
     readPage: vi.fn(() => ({ page: 1, pageSize: 20 })),
     readPathSegment: vi.fn(() => groupRow.id),
-    requireRoles: vi.fn(() => null),
+    requireRoles: vi.fn((requestContext, roles, requestId) =>
+      requestContext.user.roles.some((role) => roles.has(role))
+        ? null
+        : createJsonResponse(403, { error: { code: 'forbidden', message: 'forbidden' }, requestId })
+    ),
     resolveActorInfo: vi.fn(async () => ({ actor })),
     withInstanceScopedDb: vi.fn(async (_instanceId, work) => work({ query })),
     ...overrides,
@@ -102,7 +107,7 @@ describe('createGroupReadHandlers', () => {
       pagination: { page: 1, pageSize: 1, total: 2 },
       requestId: 'req-groups',
     });
-    expect(deps.requireRoles).toHaveBeenCalledWith(ctx, expect.any(Set), 'req-workspace');
+    expect(deps.authorizeGroupReadAccess).toHaveBeenCalledWith(expect.any(Request), ctx, 'req-workspace');
     expect(deps.withInstanceScopedDb).toHaveBeenCalledWith('inst-g', expect.any(Function));
     expect(deps.logger.info).toHaveBeenCalledWith(
       'Group list loaded',
@@ -142,10 +147,10 @@ describe('createGroupReadHandlers', () => {
     expect(deps.requireRoles).not.toHaveBeenCalled();
   });
 
-  it('returns role guard errors before touching the database', async () => {
+  it('returns authorizer errors before touching the database', async () => {
     const forbidden = new Response('Forbidden', { status: 403 });
     const deps = createDeps([], {
-      requireRoles: vi.fn(() => forbidden),
+      authorizeGroupReadAccess: vi.fn(async () => forbidden),
     });
     const handlers = createGroupReadHandlers(deps);
 
@@ -153,6 +158,28 @@ describe('createGroupReadHandlers', () => {
 
     expect(response.status).toBe(403);
     expect(deps.withInstanceScopedDb).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when no group read authorizer is configured', async () => {
+    const deps = createDeps(undefined, {
+      authorizeGroupReadAccess: undefined,
+    });
+    const handlers = createGroupReadHandlers(deps);
+
+    const response = await handlers.listGroupsInternal(new Request('http://localhost/api/v1/iam/inst-g/groups'), {
+      ...ctx,
+      user: { ...ctx.user, roles: ['system_admin'] },
+    });
+
+    expect(response.status).toBe(403);
+    expect(deps.withInstanceScopedDb).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+        details: { reason_code: 'missing_group_read_authorizer' },
+      },
+      requestId: 'req-workspace',
+    });
   });
 
   it('returns 400 for invalid group ids', async () => {

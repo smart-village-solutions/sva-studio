@@ -70,7 +70,7 @@ describe('protected routes', () => {
     });
 
     try {
-      await invokeGuard(guard, { roles: ['editor'] }, '/admin/users');
+      await invokeGuard(guard, { roles: ['custom_role'] }, '/admin/users');
       expect.fail('Expected redirect');
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
@@ -106,7 +106,7 @@ describe('protected routes', () => {
     });
 
     try {
-      await invokeGuard(guard, { roles: ['editor'], permissionActions: ['events.read'] }, '/plugins/news');
+      await invokeGuard(guard, { roles: ['custom_role'], permissionActions: ['events.read'] }, '/plugins/news');
       expect.fail('Expected redirect');
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
@@ -134,7 +134,7 @@ describe('protected routes', () => {
     });
 
     try {
-      await invokeGuard(guard, { roles: ['editor'] }, '/plugins/news');
+      await invokeGuard(guard, { roles: ['custom_role'] }, '/plugins/news');
       expect.fail('Expected redirect');
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
@@ -157,7 +157,7 @@ describe('protected routes', () => {
     const guard = createProtectedRoute({ route: '/plugins/news', requiredPermissions: ['news.read'] });
 
     await expect(
-      invokeGuard(guard, { roles: ['editor'], permissionActions: ['news.read', 'events.read'] }, '/plugins/news')
+      invokeGuard(guard, { roles: ['custom_role'], permissionActions: ['news.read', 'events.read'] }, '/plugins/news')
     ).resolves.toBeUndefined();
   });
 
@@ -167,7 +167,7 @@ describe('protected routes', () => {
     await expect(
       invokeGuard(
         guard,
-        { roles: ['editor'], permissionActions: ['news.read'], permissionStatus: 'degraded' },
+        { roles: ['custom_role'], permissionActions: ['news.read'], permissionStatus: 'degraded' },
         '/plugins/news'
       )
     ).resolves.toBeUndefined();
@@ -180,7 +180,7 @@ describe('protected routes', () => {
       invokeGuard(guard, { roles: ['custom_role'], permissionActions: ['iam.user.read'] }, '/admin/users')
     ).resolves.toBeUndefined();
     await expect(
-      invokeGuard(guard, { roles: ['app_manager'], permissionActions: ['news.read'] }, '/admin/users')
+      invokeGuard(guard, { roles: ['custom_role'], permissionActions: ['news.read'] }, '/admin/users')
     ).rejects.toMatchObject(
       expect.objectContaining({
         options: expect.objectContaining({ href: '/?error=auth.insufficientRole' }),
@@ -305,7 +305,7 @@ describe('protected routes', () => {
     });
 
     try {
-      await invokeGuard(guard, { roles: ['editor'] }, '/admin/users');
+      await invokeGuard(guard, { roles: ['custom_role'] }, '/admin/users');
       expect.fail('Expected redirect');
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
@@ -346,7 +346,7 @@ describe('protected routes', () => {
     });
 
     try {
-      await invokeGuard(guard, { roles: ['editor'] }, '/admin/users');
+      await invokeGuard(guard, { roles: ['custom_role'] }, '/admin/users');
       expect.fail('Expected redirect');
     } catch (error) {
       expect(isRedirect(error)).toBe(true);

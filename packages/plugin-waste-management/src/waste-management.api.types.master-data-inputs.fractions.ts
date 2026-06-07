@@ -1,4 +1,4 @@
-import type { WasteLocalizedTextRecord } from '@sva/plugin-sdk';
+import type { WasteFractionReminderCount, WasteLocalizedTextRecord } from '@sva/plugin-sdk';
 
 export type CreateWasteManagementFractionInput = Readonly<{
   id: string;
@@ -9,6 +9,12 @@ export type CreateWasteManagementFractionInput = Readonly<{
   color: string;
   description?: string;
   active: boolean;
+  reminderCount: WasteFractionReminderCount;
+  firstReminderMaxLeadDays?: number;
+  secondReminderMaxLeadDays?: number;
+  reminderChannelPushEnabled: boolean;
+  reminderChannelEmailEnabled: boolean;
+  reminderChannelCalendarEnabled: boolean;
 }>;
 
 export type UpdateWasteManagementFractionInput = Readonly<{
@@ -19,4 +25,10 @@ export type UpdateWasteManagementFractionInput = Readonly<{
   color: string;
   description?: string;
   active: boolean;
+  reminderCount: WasteFractionReminderCount;
+  firstReminderMaxLeadDays?: number;
+  secondReminderMaxLeadDays?: number;
+  reminderChannelPushEnabled: boolean;
+  reminderChannelEmailEnabled: boolean;
+  reminderChannelCalendarEnabled: boolean;
 }>;

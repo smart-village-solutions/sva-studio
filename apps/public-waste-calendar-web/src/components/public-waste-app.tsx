@@ -128,7 +128,9 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
       document.body.append(anchor);
       anchor.click();
       anchor.remove();
-      URL.revokeObjectURL(downloadUrl);
+      setTimeout(() => {
+        URL.revokeObjectURL(downloadUrl);
+      }, 0);
     } catch (error) {
       setPdfError(error instanceof Error ? error.message : 'Die PDF-Datei konnte nicht erzeugt werden.');
     } finally {

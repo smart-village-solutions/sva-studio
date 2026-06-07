@@ -28,6 +28,12 @@ describe('createSubmitFractionHandler', () => {
           color: '#111111',
           description: '',
           active: true,
+          reminderCount: 'twice',
+          firstReminderMaxLeadDays: 7,
+          secondReminderMaxLeadDays: 2,
+          reminderChannelPushEnabled: true,
+          reminderChannelEmailEnabled: false,
+          reminderChannelCalendarEnabled: true,
         },
         setSaving: vi.fn(),
         setMessage: vi.fn(),
@@ -53,6 +59,12 @@ describe('createSubmitFractionHandler', () => {
         containerSize: '120L',
         color: '#111111',
         active: true,
+        reminderCount: 'twice',
+        firstReminderMaxLeadDays: 7,
+        secondReminderMaxLeadDays: 2,
+        reminderChannelPushEnabled: true,
+        reminderChannelEmailEnabled: false,
+        reminderChannelCalendarEnabled: true,
       })
     );
     expect(createWasteManagementFractionMock).not.toHaveBeenCalled();

@@ -179,6 +179,7 @@ const ERROR_CODES = new Set<SvaMainserverConnectionStatus['errorCode']>([
   'database_unavailable',
   'identity_provider_unavailable',
   'missing_credentials',
+  'organization_mainserver_credentials_missing',
   'token_request_failed',
   'unauthorized',
   'forbidden',
@@ -530,12 +531,14 @@ const loadOverviewConfig = async (input: {
 const evaluateOverviewStatus = async (input: {
   readonly instanceId: string;
   readonly userId: string;
+  readonly activeOrganizationId?: string;
   readonly logger: ReturnType<typeof createSdkLogger>;
 }): Promise<SvaMainserverConnectionStatus> => {
   try {
     const status = await getSvaMainserverConnectionStatus({
       instanceId: input.instanceId,
       keycloakSubject: input.userId,
+      activeOrganizationId: input.activeOrganizationId,
     });
     input.logger.info('Interfaces connection status evaluated', {
       operation: 'load_interfaces_overview',
@@ -577,6 +580,7 @@ export const loadSvaMainserverInterfacesOverview = async (
       const status = await evaluateOverviewStatus({
         instanceId: authorized.instanceId,
         userId: ctx.user.id,
+        activeOrganizationId: ctx.activeOrganizationId,
         logger,
       });
 

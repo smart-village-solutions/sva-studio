@@ -45,6 +45,30 @@ test('migration script supports profile-specific postgres targets', () => {
   assert.match(script, /exec env PGPASSWORD="\$\{POSTGRES_PASSWORD\}" "\$\{GOOSE_WRAPPER\}"/);
 });
 
+test('destructive integration scripts isolate themselves from the default local development database', () => {
+  const seedScript = readRepoFile('data/scripts/test-seeds.sh');
+  const rlsScript = readRepoFile('data/scripts/test-rls.sh');
+  const encryptionScript = readRepoFile('data/scripts/test-encryption.sh');
+
+  for (const script of [seedScript, rlsScript, encryptionScript]) {
+    assert.match(script, /PROTECTED_DB_NAMES_REGEX="\$\{PROTECTED_DB_NAMES_REGEX:-\^\(sva_studio\|postgres\)\$\}"/);
+    assert.match(script, /TEST_DB_NAME="\$\{TEST_DB_NAME:-\$\{sanitized_db_name:0:63\}\}"/);
+    assert.match(script, /Refusing to run .* against protected database/);
+    assert.match(script, /DROP DATABASE IF EXISTS "\$\{TEST_DB_NAME\}";/);
+  }
+
+  assert.match(seedScript, /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-migrations\.sh up/);
+  assert.match(seedScript, /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-seeds\.sh/);
+
+  assert.match(rlsScript, /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-migrations\.sh up-to 22/);
+
+  assert.match(
+    encryptionScript,
+    /IAM_DATABASE_URL="\$\{IAM_DATABASE_URL:-postgres:\/\/sva:sva_local_dev_password@localhost:5432\/\$\{TEST_DB_NAME\}\}"/
+  );
+  assert.match(encryptionScript, /POSTGRES_DB="\$\{TEST_DB_NAME\}" bash packages\/data\/scripts\/run-seeds\.sh/);
+});
+
 test('self-service permission change migration keeps admin inserts and rollback fail-closed', () => {
   const sql = readRepoFile('data/migrations/0042_iam_self_service_permission_change_requests.sql');
 
@@ -61,7 +85,7 @@ test('sidebar application permission migration adds navigation permissions for e
   assert.match(sql, /'cockpit\.read', 'cockpit\.read', 'cockpit', 'Show the cockpit link in the sidebar'/);
   assert.match(
     sql,
-    /WHERE role_key IN \('system_admin', 'instance_registry_admin', 'app_manager', 'feature-manager', 'interface-manager', 'designer', 'editor', 'moderator'\)/
+    /WHERE role_key IN \('system_admin', 'instance_registry_admin'\)/
   );
   assert.match(sql, /grant_origin_kind,\s*access_scope/);
   assert.match(sql, /'seed',\s*'all'/);
@@ -104,7 +128,7 @@ test('permission gate backfill migration seeds the new permission model for tena
   assert.match(sql, /'iam\.dsr\.export'/);
   assert.match(sql, /'iam\.deletionRules\.write'/);
   assert.match(sql, /'iam\.monitoring\.read'/);
-  assert.match(sql, /'app_manager', 'iam\.legalText\.read'/);
+  assert.doesNotMatch(sql, /'app_manager', 'iam\.legalText\.read'/);
   assert.match(sql, /'support_admin', 'iam\.dsr\.write'/);
   assert.match(sql, /'security_admin', 'iam\.governance\.export'/);
   assert.match(sql, /grant_origin_kind,\s*access_scope/);
@@ -125,6 +149,19 @@ test('experimental shell permission migration backfills the additive ui gate for
   assert.match(sql, /iam_permission_snapshot_invalidation/);
   assert.match(sql, /experimental_shell_permission_migrated/);
   assert.match(sql, /DELETE FROM iam\.permissions[\s\S]*permission_key = 'experimental\.read'/);
+});
+
+test('legacy standard role grant cleanup migration removes historical seed grants from deprecated tenant defaults', () => {
+  const sql = readRepoFile('data/migrations/0053_iam_legacy_standard_role_grant_cleanup.sql');
+
+  assert.match(sql, /migration_0053_touched_instances/);
+  assert.match(sql, /grant_origin_kind = 'seed'/);
+  assert.match(sql, /role_key IN \(\s*'app_manager',\s*'feature-manager',\s*'interface-manager',\s*'designer',\s*'editor',\s*'moderator'\s*\)/);
+  assert.match(sql, /permission_key IN \(\s*'app\.read',\s*'cockpit\.read',\s*'experimental\.read'/);
+  assert.match(sql, /'iam\.monitoring\.write'/);
+  assert.match(sql, /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/);
+  assert.match(sql, /legacy_standard_role_grants_cleaned/);
+  assert.match(sql, /legacy_standard_role_grants_restored/);
 });
 
 test('runtime artifact verification runs workspace node helper via bash', () => {

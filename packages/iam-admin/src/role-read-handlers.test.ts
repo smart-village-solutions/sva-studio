@@ -46,6 +46,7 @@ const createDeps = (overrides: Partial<RoleReadHandlerDeps<(typeof roles)[number
     getFeatureFlags: vi.fn(() => ({})),
     getWorkspaceContext: vi.fn(() => ({ requestId: 'req-workspace', traceId: 'trace-workspace' })),
     jsonResponse: vi.fn(createJsonResponse),
+    authorizeRoleReadAccess: vi.fn(async () => null),
     listPlatformRolesInternal: vi.fn(async () => createJsonResponse(200, { data: [{ id: 'platform-role' }] })),
     loadPermissions: vi.fn(async () => permissions),
     loadRoleListItems: vi.fn(async () => roles),
@@ -110,6 +111,28 @@ describe('createRoleReadHandlers', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ data: [{ id: 'platform-role' }] });
     expect(deps.loadRoleListItems).not.toHaveBeenCalled();
+  });
+
+  it('fails closed for tenant role reads when no tenant access authorizer is configured', async () => {
+    const deps = createDeps({
+      authorizeRoleReadAccess: undefined,
+    });
+    const handlers = createRoleReadHandlers(deps);
+
+    const response = await handlers.listRolesInternal(new Request('http://localhost/api/v1/iam/roles'), {
+      ...ctx,
+      user: { ...ctx.user, roles: ['system_admin'] },
+    });
+
+    expect(response.status).toBe(403);
+    expect(deps.loadRoleListItems).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+        details: { reason_code: 'missing_role_read_authorizer' },
+      },
+      requestId: 'req-workspace',
+    });
   });
 
   it('lists permissions with a minimum page size of one', async () => {

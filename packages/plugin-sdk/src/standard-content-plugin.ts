@@ -129,15 +129,6 @@ export const createStandardContentPluginSystemRoles = (
     roleName: 'system_admin',
     permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
   },
-  { roleName: 'app_manager', permissionIds: [`${pluginId}.read`] },
-  {
-    roleName: 'feature-manager',
-    permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
-  },
-  { roleName: 'interface-manager', permissionIds: [`${pluginId}.read`] },
-  { roleName: 'designer', permissionIds: [`${pluginId}.read`, `${pluginId}.update`] },
-  { roleName: 'editor', permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`] },
-  { roleName: 'moderator', permissionIds: [`${pluginId}.read`] },
 ];
 
 export const createStandardContentModuleIamContract = (pluginId: string): PluginModuleIamContract =>

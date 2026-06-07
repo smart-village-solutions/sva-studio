@@ -104,7 +104,7 @@ export const WasteManagementPage = () => {
               <a
                 href={calendarWebUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="font-medium underline underline-offset-2"
               >
                 {pt('page.webVersionLinkLabel')}

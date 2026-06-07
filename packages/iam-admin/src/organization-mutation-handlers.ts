@@ -201,9 +201,22 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
   ) => Promise<T>;
 };
 
-const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
 const CREATE_ORGANIZATION_ENDPOINT = 'POST:/api/v1/iam/organizations';
 const ASSIGN_MEMBERSHIP_ENDPOINT = 'POST:/api/v1/iam/organizations/$organizationId/memberships';
+
+const createMissingOrganizationMutationAuthorizerResponse = <TFeatureFlags>(
+  deps: OrganizationMutationHandlerDeps<TFeatureFlags>,
+  requestId?: string
+): Response =>
+  deps.createApiError(
+    403,
+    'forbidden',
+    'Autorisierungsstrategie für Organisationsmutationen ist nicht konfiguriert.',
+    requestId,
+    {
+      reason_code: 'missing_organization_mutation_authorizer',
+    }
+  );
 
 const prepareAdminMutation = async <TFeatureFlags>(
   deps: OrganizationMutationHandlerDeps<TFeatureFlags>,
@@ -217,7 +230,7 @@ const prepareAdminMutation = async <TFeatureFlags>(
   }
   const accessCheck = deps.authorizeOrganizationMutationAccess
     ? await deps.authorizeOrganizationMutationAccess(request, ctx, requestContext.requestId)
-    : deps.requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+    : createMissingOrganizationMutationAuthorizerResponse(deps, requestContext.requestId);
   if (accessCheck) {
     return { error: accessCheck };
   }

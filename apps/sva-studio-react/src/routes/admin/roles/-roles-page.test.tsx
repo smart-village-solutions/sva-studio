@@ -327,18 +327,18 @@ describe('RolesPage', () => {
 
   it('renders platform roles on root scope without tenant mutations', () => {
     const reconcile = vi.fn();
-    useAuthMock.mockReturnValue({ user: { id: 'platform-admin', roles: ['system_admin'] } });
+    useAuthMock.mockReturnValue({ user: { id: 'platform-admin', roles: ['instance_registry_admin'] } });
     useRolesMock.mockReturnValue({
       roles: [
         {
-          id: 'platform:system_admin',
-          roleKey: 'system_admin',
-          roleName: 'system_admin',
-          externalRoleName: 'system_admin',
+          id: 'platform:instance_registry_admin',
+          roleKey: 'instance_registry_admin',
+          roleName: 'instance_registry_admin',
+          externalRoleName: 'instance_registry_admin',
           managedBy: 'external',
           description: 'Platform admin',
           isSystemRole: true,
-          roleLevel: 100,
+          roleLevel: 90,
           memberCount: 0,
           syncState: 'synced',
           permissions: [],
@@ -365,6 +365,30 @@ describe('RolesPage', () => {
     expect(screen.queryByRole('button', { name: 'Rolle löschen' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Plattform-Rollen abgleichen' }));
     expect(reconcile).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not switch into platform scope for rootless sessions without the platform role', () => {
+    useAuthMock.mockReturnValue({ user: { id: 'broken-session', roles: ['system_admin'] } });
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    expect(screen.getByRole('heading', { name: 'Rollenverwaltung' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Plattform-Rollen' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Rolle anlegen' })).toBeTruthy();
   });
 
   it('uses compact icon actions for editable roles', () => {

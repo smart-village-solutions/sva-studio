@@ -1,8 +1,8 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { InstanceDetailPage } from './-instance-detail-page';
+import { InstanceDetailPage, readActionFeedbackClassName } from './-instance-detail-page';
 
 const useInstancesMock = vi.fn();
 
@@ -62,6 +62,13 @@ const activateTab = async (name: string) => {
   });
 };
 
+const openDoctor = async () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Doctor öffnen' }));
+  await waitFor(() => {
+    expect(screen.getByRole('tab', { name: 'Doctor' }).getAttribute('data-state')).toBe('active');
+  });
+};
+
 const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
   instanceId: 'demo',
   displayName: 'Demo',
@@ -118,7 +125,6 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
     tenantAdminClientExists: true,
     tenantAdminExists: true,
     tenantAdminHasSystemAdmin: true,
-    tenantAdminHasInstanceRegistryAdmin: false,
     redirectUrisMatch: true,
     logoutUrisMatch: true,
     webOriginsMatch: true,
@@ -229,20 +235,27 @@ describe('InstanceDetailPage', () => {
       expect(loadInstance).toHaveBeenCalledWith('demo');
     });
 
-    expect(screen.getByRole('tab', { name: 'Überblick' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Konfiguration' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Historie' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Module' })).toBeTruthy();
-    expect(screen.getByText('Bestehenden Realm abgleichen')).toBeTruthy();
-    expect(screen.getByText('Diagnose- und Reconcile-Schritte')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Betrieb' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Doctor' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Einstellungen' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Doctor öffnen' })).toBeTruthy();
+    expect(screen.getByText('Doctor erkennt aktuell Handlungsbedarf.')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Keycloak-Status prüfen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Doctor öffnen' }));
+
+    expect(screen.getByText('Überblick')).toBeTruthy();
+    expect(screen.getByText('Empfohlene Maßnahme')).toBeTruthy();
+    expect(screen.getByText('Reparatur ausführen')).toBeTruthy();
+    expect(screen.getByText('Validieren')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' }).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' })[0]!);
     await waitFor(() => {
       expect(refreshKeycloakStatus).toHaveBeenCalledWith('demo');
       expect(reconcileKeycloak).not.toHaveBeenCalled();
     });
 
-    await activateTab('Konfiguration');
+    await activateTab('Einstellungen');
 
     fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#detail-display-name' }), {
       target: { value: ' Demo Updated ' },
@@ -306,6 +319,33 @@ describe('InstanceDetailPage', () => {
     });
   });
 
+  it('shows a visible tenant-admin reset action inside the doctor repair step and triggers the existing repair intent', async () => {
+    const executeKeycloakProvisioning = vi.fn().mockResolvedValue(true);
+    const loadInstance = vi.fn().mockResolvedValue(true);
+
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        executeKeycloakProvisioning,
+        loadInstance,
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Doctor öffnen' }));
+    expect(screen.getByRole('tab', { name: 'Doctor' }).getAttribute('data-state')).toBe('active');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin neu setzen' }));
+
+    await waitFor(() => {
+      expect(executeKeycloakProvisioning).toHaveBeenCalledWith('demo', {
+        intent: 'reset_tenant_admin',
+        tenantAdminTemporaryPassword: undefined,
+      });
+    });
+    expect(loadInstance).toHaveBeenCalledWith('demo');
+  });
+
   it('shows a visible warning when a provisioning run stays queued without a worker', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-05-06T12:00:00.000Z').getTime());
 
@@ -363,6 +403,7 @@ describe('InstanceDetailPage', () => {
     render(<InstanceDetailPage instanceId="demo" />);
 
     expect(loadInstance).toHaveBeenCalledWith('demo');
+    expect(screen.getByRole('button', { name: 'Doctor öffnen' })).toBeTruthy();
 
     expect(
       screen.getByText(
@@ -371,47 +412,11 @@ describe('InstanceDetailPage', () => {
     ).toBeTruthy();
   });
 
-  it('fades out transient action feedback after 15 seconds and removes it shortly after', async () => {
-    vi.useFakeTimers();
-
-    const refreshKeycloakPreflight = vi.fn().mockResolvedValue(true);
-
-    useInstancesMock.mockReturnValue(
-      createInstancesApiState({
-        selectedInstance: createSelectedInstance({
-          keycloakPreflight: undefined,
-          keycloakStatus: undefined,
-          latestKeycloakProvisioningRun: undefined,
-          keycloakProvisioningRuns: [],
-        }),
-        refreshKeycloakPreflight,
-      })
-    );
-
-    render(<InstanceDetailPage instanceId="demo" />);
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Vorbedingungen prüfen' }));
-      await Promise.resolve();
-    });
-    expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
-
-    const feedbackBeforeFade = screen.getByText('Vorbedingungen wurden aktualisiert.');
-    expect(feedbackBeforeFade).toBeTruthy();
-    expect(feedbackBeforeFade.closest('[role="alert"]')?.className).not.toContain('opacity-0');
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(15_000);
-    });
-
-    const feedbackDuringFade = screen.getByText('Vorbedingungen wurden aktualisiert.');
-    expect(feedbackDuringFade.closest('[role="alert"]')?.className).toContain('opacity-0');
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(300);
-    });
-
-    expect(screen.queryByText('Vorbedingungen wurden aktualisiert.')).toBeNull();
+  it('computes transient action feedback classes for visible and fading states', () => {
+    expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, false)).toContain('opacity-100');
+    expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, true)).toContain('opacity-0');
+    expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, false)).toContain('border-emerald-500/40');
+    expect(readActionFeedbackClassName({ tone: 'warning', message: 'warn' }, false)).toContain('border-amber-500/40');
   });
 
   it('keeps older runs behind the history tab and shows the mismatch hint there', async () => {
@@ -447,11 +452,10 @@ describe('InstanceDetailPage', () => {
 
     expect(screen.queryByText('Älterer Run fehlgeschlagen.')).toBeNull();
 
-    await activateTab('Historie');
+    await activateTab('Doctor');
 
     await waitFor(() => {
-      expect(screen.getByText('Aktueller Keycloak-Lauf')).toBeTruthy();
-      expect(screen.getByText('Ältere Keycloak-Läufe')).toBeTruthy();
+      expect(screen.getByText('Historie')).toBeTruthy();
       expect(screen.getByText('Älterer Run fehlgeschlagen.')).toBeTruthy();
       expect(
         screen.getByText(
@@ -479,7 +483,7 @@ describe('InstanceDetailPage', () => {
 
     render(<InstanceDetailPage instanceId="demo" />);
 
-    expect(screen.getByText('Bestehenden Realm abgleichen')).toBeTruthy();
+    await openDoctor();
     fireEvent.click(screen.getByRole('button', { name: 'Vorbedingungen prüfen' }));
 
     await waitFor(() => {
@@ -499,7 +503,7 @@ describe('InstanceDetailPage', () => {
 
     render(<InstanceDetailPage instanceId="demo" />);
 
-    await activateTab('Module');
+    await activateTab('Betrieb');
 
     expect(await screen.findByText('news')).toBeTruthy();
     expect(screen.getByText('events')).toBeTruthy();
@@ -531,6 +535,8 @@ describe('InstanceDetailPage', () => {
     useInstancesMock.mockImplementation(() => apiState);
 
     render(<InstanceDetailPage instanceId="demo" />);
+
+    await openDoctor();
 
     fireEvent.click(screen.getByRole('button', { name: 'Vorbedingungen prüfen' }));
 
@@ -648,8 +654,8 @@ describe('InstanceDetailPage', () => {
 
     const view = render(<InstanceDetailPage instanceId="demo" />);
 
-    await activateTab('Historie');
-    expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('data-state')).toBe('active');
+    await activateTab('Doctor');
+    expect(screen.getByRole('tab', { name: 'Doctor' }).getAttribute('data-state')).toBe('active');
 
     latestSelection.current = createSelectedInstance({
       updatedAt: '2026-01-02T00:00:00.000Z',
@@ -667,7 +673,7 @@ describe('InstanceDetailPage', () => {
     view.rerender(<InstanceDetailPage instanceId="demo" />);
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Historie' }).getAttribute('data-state')).toBe('active');
+      expect(screen.getByRole('tab', { name: 'Doctor' }).getAttribute('data-state')).toBe('active');
     });
   });
 
@@ -777,7 +783,15 @@ describe('InstanceDetailPage', () => {
 
     render(<InstanceDetailPage instanceId="demo" />);
 
-    expect(screen.getByRole('alert').textContent).toContain(
+    const driftAlert = screen
+      .getAllByRole('alert')
+      .find((alert) =>
+        alert.textContent?.includes(
+          'Für diese Instanz liegt ein Registry- oder Provisioning-Drift vor. Bitte Keycloak-Status, Preflight und letzten Run gemeinsam prüfen.'
+        )
+      );
+
+    expect(driftAlert?.textContent).toContain(
       'Für diese Instanz liegt ein Registry- oder Provisioning-Drift vor. Bitte Keycloak-Status, Preflight und letzten Run gemeinsam prüfen.'
     );
     expect(screen.getByText('Diagnose: Registry- oder Provisioning-Drift')).toBeTruthy();
@@ -809,9 +823,10 @@ describe('InstanceDetailPage', () => {
 
     render(<InstanceDetailPage instanceId="demo" />);
 
-    expect(screen.getByText('Neuen Realm aufbauen')).toBeTruthy();
+    await openDoctor();
+    expect(screen.getByRole('button', { name: 'Provisioning ausführen' })).toBeTruthy();
 
-    await activateTab('Konfiguration');
+    await activateTab('Einstellungen');
 
     await waitFor(() => {
       expect(screen.getByText('Konfiguration vorbereitet')).toBeTruthy();
@@ -892,22 +907,19 @@ describe('InstanceDetailPage', () => {
 
     render(<InstanceDetailPage instanceId="demo" />);
 
-    await activateTab('Module');
+    await activateTab('Betrieb');
     expect(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeTruthy();
     expect(screen.getByText('news')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Admin-Struktur initialisieren' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]!);
-    fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur initialisieren' }));
-    const bootstrapDialog = screen.getByRole('alertdialog', { name: 'Admin-Struktur wirklich initialisieren?' });
-    fireEvent.click(within(bootstrapDialog).getByRole('button', { name: 'Admin-Struktur initialisieren' }));
 
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');
     expect(assignModule).toHaveBeenCalledWith('demo', 'events');
-    expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', ['news']);
+    expect(bootstrapAdminStructure).not.toHaveBeenCalled();
 
-    await activateTab('Historie');
+    await activateTab('Doctor');
     expect(screen.getByText('Historischer Fehler')).toBeTruthy();
     fireEvent.click(screen.getAllByRole('button', { name: 'Run laden' })[1]);
 
@@ -928,6 +940,6 @@ describe('InstanceDetailPage', () => {
     render(<InstanceDetailPage instanceId="demo" />);
 
     expect(screen.getByText('Inhalte werden geladen ...')).toBeTruthy();
-    expect(screen.queryByText('Bestehenden Realm abgleichen')).toBeNull();
+    expect(screen.queryByText('Überblick')).toBeNull();
   });
 });

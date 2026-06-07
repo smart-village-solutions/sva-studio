@@ -234,6 +234,7 @@ describe('instance registry repository', () => {
           created_at: '2026-04-29T09:56:00.000Z',
         },
       ],
+      [{ legacy_artifact_count: 0 }],
     ]);
     const repository = createInstanceRegistryRepository(executor);
 
@@ -285,6 +286,7 @@ describe('instance registry repository', () => {
         },
       ],
       [{ request_id: null, created_at: '2026-04-29T10:02:00.000Z' }],
+      [{ legacy_artifact_count: 0 }],
       [
         {
           sync_state: 'pending',
@@ -296,6 +298,7 @@ describe('instance registry repository', () => {
         },
       ],
       [{ request_id: 'req-pending-1', created_at: '2026-04-29T10:03:00.000Z' }],
+      [{ legacy_artifact_count: 0 }],
     ]);
     const repository = createInstanceRegistryRepository(executor);
 
@@ -313,6 +316,32 @@ describe('instance registry repository', () => {
       status: 'degraded',
       summary: '2 Rollen im Backlog.',
       requestId: 'req-pending-1',
+    });
+  });
+
+  it('marks synced role catalogs as degraded when legacy admin artifacts still exist', async () => {
+    const { executor } = createQueuedExecutor([
+      [
+        {
+          sync_state: 'synced',
+          role_count: 2,
+          failed_count: 0,
+          pending_count: 0,
+          last_synced_at: '2026-04-29T10:02:00.000Z',
+          last_error_code: null,
+        },
+      ],
+      [{ request_id: 'req-synced-1', created_at: '2026-04-29T10:02:00.000Z' }],
+      [{ legacy_artifact_count: 2 }],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.getRoleReconcileSummary('tenant-a')).resolves.toEqual({
+      status: 'degraded',
+      summary: '2 Legacy-Admin-Artefakte erfordern manuelle Bereinigung.',
+      checkedAt: '2026-04-29T10:02:00.000Z',
+      errorCode: 'LEGACY_ADMIN_ARTIFACT_DRIFT',
+      requestId: 'req-synced-1',
     });
   });
 
@@ -544,39 +573,52 @@ describe('instance registry repository', () => {
     expect(permissionUpserts.map((statement) => statement.values[1])).toEqual(['ä.permission', 'z.permission']);
   });
 
-  it('tags bootstrap role grants with bootstrap ownership metadata', async () => {
+  it('syncs protected system-role permissions without relying on bootstrap groups', async () => {
     const { executor, statements } = createQueuedExecutor([]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(
-      repository.syncInstanceAdminBootstrap({
+      repository.syncProtectedSystemRolePermissions({
         instanceId: 'tenant-a',
-        groupKey: 'admins',
-        groupDisplayName: 'Admins',
-        coreRole: {
-          roleKey: 'core_admin',
-          displayName: 'Core Admin',
-          permissionKeys: ['content.read'],
+        role: {
+          roleKey: 'system_admin',
+          displayName: 'System Administrator',
+          roleLevel: 100,
+          permissionKeys: ['cockpit.read', 'iam.user.read'],
         },
-        moduleRoles: [
-          {
-            moduleId: 'news',
-            roleKey: 'news_admin',
-            displayName: 'News Admin',
-            permissionKeys: ['news.read'],
-          },
-        ],
       })
     ).resolves.toBeUndefined();
 
-    const rolePermissionInserts = statements.filter((statement) => statement.text.includes('grant_origin_kind'));
+    const roleUpsert = statements.find(
+      (statement) =>
+        statement.text.includes('INSERT INTO iam.roles') && statement.text.includes('is_system_role = TRUE')
+    );
+    expect(roleUpsert?.values).toEqual([
+      'tenant-a',
+      'system_admin',
+      'System Administrator',
+      'Geschützte Systemrolle System Administrator',
+      100,
+    ]);
+
+    const bootstrapCleanup = statements.find(
+      (statement) =>
+        statement.text.includes('DELETE FROM iam.role_permissions role_permission') &&
+        statement.text.includes("role_permission.grant_origin_kind = 'bootstrap'")
+    );
+    expect(bootstrapCleanup?.values).toEqual(['tenant-a', 'system_admin', ['cockpit.read', 'iam.user.read']]);
+
+    const rolePermissionInserts = statements.filter(
+      (statement) =>
+        statement.text.includes('INSERT INTO iam.role_permissions') &&
+        statement.text.includes('grant_origin_kind') &&
+        statement.values[1] === 'system_admin'
+    );
     expect(rolePermissionInserts).toHaveLength(2);
-    for (const statement of rolePermissionInserts) {
-      expect(statement.text).toContain('grant_origin_kind');
-      expect(statement.text).toContain('grant_origin_module_id');
-      expect(statement.values.at(-2)).toBe('bootstrap');
-      expect(statement.values.at(-1)).toBeNull();
-    }
+    expect(rolePermissionInserts.map((statement) => statement.values)).toEqual([
+      ['tenant-a', 'system_admin', 'cockpit.read'],
+      ['tenant-a', 'system_admin', 'iam.user.read'],
+    ]);
   });
 
   it('resolves hostname variants and returns null when they are missing', async () => {

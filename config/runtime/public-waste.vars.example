@@ -1,0 +1,14 @@
+# Portainer-Stack-Name fuer die oeffentliche Abfallkalender-Webversion.
+PUBLIC_WASTE_STACK_NAME=web-waste-calendar
+
+# SemVer-Image-Tag des dedizierten Frontend-Images.
+PUBLIC_WASTE_IMAGE_TAG=v0.0.0-dev
+
+# Oeffentlicher Host und kanonische Basis-URL.
+PUBLIC_WASTE_PUBLIC_HOST=bb-prignitz.abfallkalender.smart-village.app
+PUBLIC_WASTE_BASE_URL=https://bb-prignitz.abfallkalender.smart-village.app
+
+# Fachliche Runtime-Konfiguration.
+PUBLIC_WASTE_INSTANCE_ID=bb-prignitz
+PUBLIC_WASTE_SCHEMA_NAME=public
+PUBLIC_WASTE_DATABASE_URL=postgres://postgres.example.invalid:5432/waste

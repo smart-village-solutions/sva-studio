@@ -50,6 +50,7 @@ const createDeps = (
       error: vi.fn(),
       info: vi.fn(),
     },
+    authorizeGroupMutationAccess: vi.fn(async () => null),
     notifyPermissionInvalidation: vi.fn(async () => undefined),
     parseRequestBody: vi.fn(async () => ({
       ok: true as const,
@@ -65,7 +66,11 @@ const createDeps = (
     publishGroupEvent: vi.fn(async () => undefined),
     randomUUID: vi.fn(() => groupId),
     readPathSegment: vi.fn((_request, index) => (index === 6 ? groupId : groupId)),
-    requireRoles: vi.fn(() => null),
+    requireRoles: vi.fn((requestContext, roles, requestId) =>
+      requestContext.user.roles.some((role) => roles.has(role))
+        ? null
+        : createJsonResponse(403, { error: { code: 'forbidden', message: 'forbidden' }, requestId })
+    ),
     resolveActorInfo: vi.fn(async () => ({ actor })),
     validateCsrf: vi.fn(() => null),
     withInstanceScopedDb: vi.fn(async (_instanceId, work) => work({ query })),
@@ -121,6 +126,31 @@ describe('createGroupMutationHandlers', () => {
       'req-workspace'
     );
     expect(deps.requireRoles).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when no group mutation authorizer is configured', async () => {
+    const deps = createDeps(undefined, {
+      authorizeGroupMutationAccess: undefined,
+    });
+    const handlers = createGroupMutationHandlers(deps);
+
+    const response = await handlers.createGroupInternal(
+      new Request('http://localhost/api/v1/iam/inst-g/groups', { method: 'POST', body: '{}' }),
+      {
+        ...ctx,
+        user: { ...ctx.user, roles: ['system_admin'] },
+      }
+    );
+
+    expect(response.status).toBe(403);
+    expect(deps.withInstanceScopedDb).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+        details: { reason_code: 'missing_group_mutation_authorizer' },
+      },
+      requestId: 'req-workspace',
+    });
   });
 
   it('maps groups_type_chk violations to invalid_request', async () => {

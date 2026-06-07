@@ -63,7 +63,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
   },
   fieldHints: {
     name: 'Vergeben Sie einen sprechenden Namen, damit die Tour später in Listen und Zuordnungen schnell gefunden wird.',
-    description: 'Optional: kurze Einordnung für interne Hinweise oder Besonderheiten dieser Tour.',
+    description: 'Optional: kurze öffentliche Einordnung oder Besonderheiten dieser Tour.',
     recurrence: 'Standard ist die Pflege über individuelle Termine. Feste Datumsfelder erscheinen nur für echte Turnusvarianten.',
     customDates: 'Pflegen Sie einzelne Abholtage im Jahreskalender und ergänzen Sie bei Bedarf kurze Kommentare.',
     wasteFractions: 'Wählen Sie alle Fraktionen aus, die über diese Tour abgeholt werden.',

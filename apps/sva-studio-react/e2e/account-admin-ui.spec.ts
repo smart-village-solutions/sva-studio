@@ -22,6 +22,16 @@ const adminAuthPayload = {
   },
 };
 
+const platformAuthPayload = {
+  user: {
+    id: 'kc-root-1',
+    name: 'Root Admin',
+    email: 'root@example.com',
+    roles: ['instance_registry_admin'],
+    permissionActions: [],
+  },
+};
+
 const privacyOverviewPayload = {
   data: {
     instanceId: 'de-musterhausen',
@@ -703,7 +713,7 @@ test('tenant admin mutations fail closed in the browser when the admin client co
   await navigateClientSide(page, '/admin/instances/demo');
 
   await expect(page.getByRole('heading', { name: 'Instanzdetails' })).toBeVisible({ timeout: 10000 });
-  await page.getByRole('tab', { name: 'Konfiguration' }).click();
+  await page.getByRole('tab', { name: 'Einstellungen' }).click();
   await expect(page.locator('#detail-auth-client-id')).toHaveValue('sva-studio');
   await expect(page.locator('#detail-admin-username')).toHaveValue('demo-admin');
 
@@ -716,6 +726,343 @@ test('tenant admin mutations fail closed in the browser when the admin client co
 
   await expect(
     page.getByText('Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Bitte zuerst den Instanzvertrag abgleichen.')
+  ).toBeVisible();
+});
+
+test('root control plane exposes tenant IAM reconcile for platform admins', async ({ page }) => {
+  const instanceDetail = {
+    instanceId: 'demo',
+    displayName: 'Demo',
+    status: 'requested',
+    parentDomain: 'studio.example.org',
+    primaryHostname: 'demo.studio.example.org',
+    realmMode: 'existing',
+    authRealm: 'demo',
+    authClientId: 'sva-studio',
+    authClientSecretConfigured: true,
+    tenantAdminClient: {
+      clientId: 'sva-studio-admin',
+      secretConfigured: true,
+    },
+    hostnames: [],
+    assignedModules: ['news'],
+    provisioningRuns: [],
+    auditEvents: [],
+    tenantAdminBootstrap: {
+      username: 'demo-admin',
+      email: 'demo@example.org',
+    },
+    keycloakPreflight: {
+      overallStatus: 'ready',
+      checkedAt: '2026-06-05T10:00:00.000Z',
+      generatedAt: '2026-06-05T10:00:00.000Z',
+      checks: [],
+    },
+    keycloakPlan: {
+      mode: 'existing',
+      overallStatus: 'ready',
+      generatedAt: '2026-06-05T10:00:00.000Z',
+      driftSummary: 'Tenant-IAM-Reconcile empfohlen.',
+      steps: [],
+    },
+    keycloakProvisioningRuns: [],
+    keycloakStatus: {
+      realmExists: true,
+      clientExists: true,
+      tenantAdminClientExists: true,
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+      tenantAdminHasInstanceRegistryAdmin: false,
+      redirectUrisMatch: true,
+      logoutUrisMatch: true,
+      webOriginsMatch: true,
+      clientSecretConfigured: true,
+      tenantClientSecretReadable: true,
+      clientSecretAligned: true,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: true,
+      tenantAdminClientSecretAligned: true,
+      runtimeSecretSource: 'tenant',
+    },
+    latestKeycloakProvisioningRun: {
+      id: 'kc-run-1',
+      intent: 'reconcile',
+      mode: 'existing',
+      overallStatus: 'planned',
+      driftSummary: 'Legacy-Admin-Artefakte müssen bereinigt werden.',
+      requestId: 'req-reconcile-1',
+      steps: [],
+    },
+    tenantIamStatus: {
+      configuration: {
+        status: 'ready',
+        summary: 'Tenant-IAM-Struktur ist vollständig vorhanden.',
+        source: 'registry',
+      },
+      access: {
+        status: 'ready',
+        summary: 'Tenant-IAM-Zugriff ist verifiziert.',
+        source: 'access_probe',
+      },
+      reconcile: {
+        status: 'degraded',
+        summary: '1 Legacy-Admin-Artefakt erfordert manuelle Bereinigung.',
+        source: 'role_reconcile',
+      },
+      overall: {
+        status: 'degraded',
+        summary: 'Tenant-IAM ist eingeschränkt.',
+        source: 'role_reconcile',
+      },
+    },
+  };
+
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(platformAuthPayload),
+    });
+  });
+
+  const fulfillInstanceList = async (route: Parameters<Parameters<typeof page.route>[1]>[0]) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          {
+            instanceId: 'demo',
+            displayName: 'Demo',
+            status: 'requested',
+            parentDomain: 'studio.example.org',
+            primaryHostname: 'demo.studio.example.org',
+            realmMode: 'existing',
+            authRealm: 'demo',
+            authClientId: 'sva-studio',
+            hostnames: [],
+          },
+        ],
+        pagination: {
+          page: 1,
+          pageSize: 1,
+          total: 1,
+        },
+      }),
+    });
+  };
+
+  await page.route('**/api/v1/iam/instances', fulfillInstanceList);
+  await page.route('**/api/v1/iam/instances?**', fulfillInstanceList);
+
+  await page.route('**/api/v1/iam/instances/demo', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: instanceDetail }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/instances/demo/keycloak/status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: instanceDetail.keycloakStatus }),
+    });
+  });
+
+  await gotoHomeAsAuthenticatedUser(page, 'Root Admin');
+  await navigateClientSide(page, '/admin/instances/demo');
+
+  await expect(page.getByRole('heading', { name: 'Instanzdetails' })).toBeVisible({ timeout: 10000 });
+  await page.getByRole('tab', { name: 'Einstellungen' }).click();
+  await expect(page.locator('#detail-auth-client-id')).toHaveValue('sva-studio');
+  await expect(page.locator('#detail-admin-username')).toHaveValue('demo-admin');
+});
+
+test('instance create flow bootstraps tenant admin structure with selected modules', async ({ page }) => {
+  let createRequestBody: Record<string, unknown> | null = null;
+  let bootstrapRequestBody: Record<string, unknown> | null = null;
+
+  const createdInstance = {
+    instanceId: 'demo',
+    displayName: 'Demo',
+    status: 'requested',
+    parentDomain: 'studio.example.org',
+    primaryHostname: 'demo.studio.example.org',
+    realmMode: 'new',
+    authRealm: 'demo',
+    authClientId: 'tenant-client',
+    authClientSecretConfigured: false,
+    hostnames: [],
+  };
+
+  const bootstrappedInstance = {
+    ...createdInstance,
+    assignedModules: ['news', 'events'],
+    provisioningRuns: [],
+    keycloakProvisioningRuns: [],
+    auditEvents: [],
+  };
+
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(platformAuthPayload),
+    });
+  });
+
+  const fulfillInstanceList = async (route: Parameters<Parameters<typeof page.route>[1]>[0]) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [bootstrappedInstance],
+        pagination: {
+          page: 1,
+          pageSize: 1,
+          total: 1,
+        },
+      }),
+    });
+  };
+
+  await page.route('**/api/v1/iam/instances', fulfillInstanceList);
+  await page.route('**/api/v1/iam/instances?**', fulfillInstanceList);
+
+  await page.route('**/api/v1/iam/instances/demo', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          ...bootstrappedInstance,
+          tenantAdminClient: {
+            clientId: 'sva-studio-realm-admin',
+            secretConfigured: true,
+          },
+          keycloakStatus: {
+            realmExists: true,
+            clientExists: true,
+            tenantAdminClientExists: true,
+            tenantAdminExists: true,
+            tenantAdminHasSystemAdmin: true,
+            tenantAdminHasInstanceRegistryAdmin: false,
+            redirectUrisMatch: true,
+            logoutUrisMatch: true,
+            webOriginsMatch: true,
+            clientSecretConfigured: true,
+            tenantClientSecretReadable: true,
+            clientSecretAligned: true,
+            tenantAdminClientSecretConfigured: true,
+            tenantAdminClientSecretReadable: true,
+            tenantAdminClientSecretAligned: true,
+            runtimeSecretSource: 'tenant',
+          },
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/instances/demo/keycloak/status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          tenantAdminHasInstanceRegistryAdmin: false,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: true,
+          runtimeSecretSource: 'tenant',
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/instances', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.fallback();
+      return;
+    }
+
+    createRequestBody = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: createdInstance }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/instances/demo/modules/bootstrap-admin-structure', async (route) => {
+    bootstrapRequestBody = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: bootstrappedInstance }),
+    });
+  });
+
+  await gotoHomeAsAuthenticatedUser(page, 'Root Admin');
+  await navigateClientSide(page, '/admin/instances/new');
+
+  await expect(page.getByRole('heading', { name: 'Neue Instanz anlegen' })).toBeVisible({ timeout: 10000 });
+
+  await page.locator('#instance-id').fill('demo');
+  await page.locator('#instance-display-name').fill('Demo');
+  await page.locator('#instance-parent-domain').fill('studio.example.org');
+  await page.getByRole('button', { name: 'Weiter' }).click();
+
+  await page.locator('#instance-auth-realm').fill('demo');
+  await page.locator('#instance-auth-client-id').fill('tenant-client');
+  await page.getByRole('button', { name: 'Weiter' }).click();
+
+  await page.locator('#instance-admin-username').fill('setup-admin');
+  await page.locator('#instance-admin-email').fill('admin@example.org');
+  await page.getByRole('button', { name: 'Weiter' }).click();
+
+  await page.getByRole('button', { name: 'Instanz anlegen' }).click();
+
+  await expect
+    .poll(() => createRequestBody)
+    .toEqual(
+      expect.objectContaining({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        authRealm: 'demo',
+        authClientId: 'tenant-client',
+      })
+    );
+
+  await page.getByRole('link', { name: 'Setup abschließen' }).click();
+  await expect(page.getByRole('heading', { name: 'Setup abschließen' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' })).toBeVisible();
+
+  await page.getByRole('checkbox', { name: /News/u }).check();
+  await page.getByRole('checkbox', { name: /Events/u }).check();
+  await page.getByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' }).click();
+
+  await expect
+    .poll(() => bootstrapRequestBody)
+    .toEqual({
+      moduleIds: ['news', 'events'],
+    });
+
+  await expect(
+    page.getByText('Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Der Setup-Schritt ist damit abgeschlossen.')
   ).toBeVisible();
 });
 

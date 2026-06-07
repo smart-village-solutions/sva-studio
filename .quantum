@@ -6,5 +6,7 @@ environments:
     compose: deploy/portainer/docker-compose.yml
   - name: demo
     compose: deploy/portainer/docker-compose.demo.yml
+  - name: public-waste
+    compose: deploy/portainer/docker-compose.public-waste.yml
   - name: studio
     compose: deploy/portainer/docker-compose.studio.yml

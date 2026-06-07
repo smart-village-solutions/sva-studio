@@ -100,15 +100,14 @@ const buildRolesCompletionStep = (status: KeycloakTenantStatus): CompletionStep 
   stepKey: 'roles',
   title: 'Realm-Rollen sicherstellen',
   summary:
-    status.tenantAdminHasSystemAdmin && !status.tenantAdminHasInstanceRegistryAdmin
+    status.tenantAdminHasSystemAdmin
       ? 'Die Tenant-Admin-Rollen entsprechen dem Minimalprofil.'
       : 'Die Tenant-Admin-Rollen weichen vom Minimalprofil ab.',
   details: {
     tenantAdminHasSystemAdmin: status.tenantAdminHasSystemAdmin,
-    tenantAdminHasInstanceRegistryAdmin: status.tenantAdminHasInstanceRegistryAdmin,
     titleKey: 'iam.provisioning.steps.roles.title',
   },
-  ok: status.tenantAdminHasSystemAdmin && !status.tenantAdminHasInstanceRegistryAdmin,
+  ok: status.tenantAdminHasSystemAdmin,
 });
 
 const buildTenantAdminCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({

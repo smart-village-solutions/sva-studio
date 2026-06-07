@@ -4,6 +4,7 @@ import type {
   IamRolePermissionAssignmentScope,
   IamUuid,
 } from './authorization-contract';
+import type { IamPermissionRuntimeScope } from './account-management.js';
 import type { WasteManagementSettingsRecord } from '../waste-management-contract.js';
 
 export type ApiErrorCode =
@@ -189,6 +190,7 @@ export type IamUserPermissionTraceItem = {
   readonly action: string;
   readonly resourceType: string;
   readonly resourceId?: string;
+  readonly runtimeScope?: IamPermissionRuntimeScope;
   readonly organizationId?: IamUuid;
   readonly effect: IamPermissionEffect;
   readonly scope?: Readonly<Record<string, unknown>>;
@@ -341,6 +343,7 @@ export type IamRoleListItem = {
     readonly id: IamUuid;
     readonly permissionKey: string;
     readonly description?: string;
+    readonly runtimeScope?: IamPermissionRuntimeScope;
     readonly isScopeAssignable?: boolean;
     readonly supportedAccessScopes?: readonly IamRolePermissionAssignmentScope[];
     readonly accessScope?: IamRolePermissionAssignmentScope;
@@ -517,7 +520,6 @@ export type IamInstanceKeycloakStatus = {
   readonly tenantAdminClientExists: boolean;
   readonly tenantAdminExists: boolean;
   readonly tenantAdminHasSystemAdmin: boolean;
-  readonly tenantAdminHasInstanceRegistryAdmin: boolean;
   readonly redirectUrisMatch: boolean;
   readonly logoutUrisMatch: boolean;
   readonly webOriginsMatch: boolean;

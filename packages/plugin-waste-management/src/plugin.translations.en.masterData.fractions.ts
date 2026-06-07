@@ -43,6 +43,13 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     pdfShortLabel: 'PDF short label',
     description: 'Description',
     active: 'Status',
+    reminderCount: 'Reminder offering',
+    firstReminderMaxLeadDays: 'Maximum lead time reminder 1',
+    secondReminderMaxLeadDays: 'Maximum lead time reminder 2',
+    reminderChannels: 'Notification channels',
+    reminderChannelPushEnabled: 'Push',
+    reminderChannelEmailEnabled: 'Email',
+    reminderChannelCalendarEnabled: 'Calendar',
   },
   filters: {
     open: 'Filter',
@@ -69,6 +76,8 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
       presentationHint: 'Define how the waste type should be recognized and displayed later.',
       visibility: '3. Visibility',
       visibilityHint: 'Decide whether the waste type can be used right away.',
+      reminders: '4. Reminders',
+      remindersHint: 'Control whether residents may subscribe to reminders for this fraction and which limits apply.',
     },
     fieldHints: {
       name: 'This is how the waste type will later appear in lists.',
@@ -80,6 +89,14 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
       containerSize: 'Optional: Only enter a container size if this waste type exists in multiple sizes, for example 120 l or 240 l.',
       color: 'This color will later help users recognize the waste type in calendars and tables.',
       active: 'Only active waste types are available for further planning.',
+      reminderCount: 'Decide whether residents may choose no reminders, one reminder, or two reminders for this fraction.',
+      firstReminderMaxLeadDays: 'The first reminder may be scheduled at most this many days before pickup.',
+      secondReminderMaxLeadDays: 'The second reminder remains independent from reminder 1 and may be scheduled up to this limit before pickup.',
+      reminderChannels: 'These channels apply to the whole fraction, not to individual reminders.',
+      reminderChannelsDisabled: 'Enable at least one reminder first before channels can be offered for this fraction.',
+      reminderChannelPushEnabled: 'Later allows push notifications for this fraction.',
+      reminderChannelEmailEnabled: 'Later allows email notifications for this fraction.',
+      reminderChannelCalendarEnabled: 'Later allows calendar reminders for this fraction.',
     },
     statusHints: {
       active: 'The waste type is immediately available for planning and display.',
@@ -96,6 +113,16 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
       backToList: 'Back to list',
       cancel: 'Cancel',
       savePrimary: 'Save waste type',
+    },
+    reminderCountOptions: {
+      none: 'No reminders',
+      once: 'One reminder',
+      twice: 'Two reminders',
+    },
+    reminderLeadDayOptions: {
+      default: '1 day (default)',
+      day: '{{count}} day',
+      days: '{{count}} days',
     },
     preview: {
       title: 'This is how the waste type will look later',
@@ -116,7 +143,7 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     createTitle: 'Create waste fraction',
     createDescription: 'Create a new fraction for further tour and calendar maintenance.',
     editTitle: 'Edit waste fraction',
-    editDescription: 'Change name, color and visibility of the fraction.',
+    editDescription: 'Change name, color, visibility, and reminder offering of the fraction.',
   },
   deleteDialog: {
     title: 'Delete waste fraction',

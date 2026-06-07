@@ -90,6 +90,9 @@ describe('HomePage', () => {
     expect(
       screen.getByRole('link', { name: 'Open Source Software made with love in Bad Belzig' }).getAttribute('href')
     ).toBe('https://github.com/smart-village-solutions/sva-studio');
+    expect(
+      screen.getByRole('link', { name: 'Open Source Software made with love in Bad Belzig' }).getAttribute('rel')
+    ).toBe('noopener noreferrer');
     expect(screen.getByLabelText('love')).toBeTruthy();
     expect(screen.queryByText('Direkte Einstiege')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Inhalte öffnen' })).toBeNull();

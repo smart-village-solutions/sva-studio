@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 
 import type { WasteManagementTabId } from './search-params.js';
 
-const readOnlyTabIds = ['fractions', 'tours', 'locations', 'scheduling', 'output'] as const satisfies readonly WasteManagementTabId[];
+const readOnlyTabIds = ['fractions', 'tours', 'locations', 'scheduling'] as const satisfies readonly WasteManagementTabId[];
 
 export type WasteManagementUiAccess = Readonly<{
   visibleTabIds: readonly WasteManagementTabId[];
@@ -33,6 +33,10 @@ export const deriveWasteManagementUiAccess = (
   const canManageScheduling = grantedPermissions.has('waste-management.scheduling.manage');
   const canAccessTools = canRunInitialize || canRunMigrations || canRunImport || canRunSeed || canRunReset;
   const visibleTabIds: WasteManagementTabId[] = [...readOnlyTabIds];
+
+  if (canAccessSettings) {
+    visibleTabIds.push('output');
+  }
 
   if (canAccessTools) {
     visibleTabIds.push('tools');

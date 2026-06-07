@@ -61,6 +61,9 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
   - Listeneinträge können additiv `mappingStatus`, `editability` und `diagnostics[]` enthalten.
 - `GET /api/v1/iam/users/{userId}`
   - enthält additiv `groups[]` mit `groupId`, `groupKey`, `displayName`, `groupType`, `origin`, `validFrom`, `validTo`
+  - enthält additiv `permissionTrace[]` mit strukturierten Transparenzfeldern wie `runtimeScope`, `inactiveReason`, `inheritedFromOrganizationId`, `inheritedFromGeoUnitId` und `restrictedByGeoUnitId`
+  - `permissionTrace[].runtimeScope` verwendet die stabilen Werte `instance`, `record` und `organization_context`
+  - instanzweite Trace-Einträge transportieren kein fachlich künstliches `organizationId`, nur weil ein aktiver Organisationskontext vorhanden ist
 - `POST /api/v1/iam/users`
   - akzeptiert additiv `groupIds: string[]` für initiale Gruppenmitgliedschaften im aktiven Instanzkontext
   - akzeptiert weiterhin optionale direkte `roleIds: string[]` als additive Sonderfälle
@@ -158,6 +161,7 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
   - `organization`: Zugriff auf eigene Datensaetze plus Datensaetze der aktiven Session-Organisation
 - V1 gilt nur fuer explizit scope-faehige Datensatzrechte. Admin-, System- und reine Betriebsrechte bleiben binaer.
 - Read-Modelle fuer Rollen und Nutzer duerfen Scope-Information additiv transportieren; bestehende Consumer muessen unbekannte Felder ignorieren koennen.
+- Für Benutzerdetails gilt zusätzlich: `runtimeScope` beschreibt die Laufzeitsemantik der effektiven Permission, `accessScope` nur die Rollen-Zuordnungslogik datensatzbezogener Rechte.
 
 ## Wichtige Vertragszusagen für Gruppen
 

@@ -90,7 +90,7 @@ const HomeOpenSourceClaim = () => (
     <a
       href="https://github.com/smart-village-solutions/sva-studio"
       target="_blank"
-      rel="noreferrer"
+      rel="noopener noreferrer"
       className="inline-flex items-center gap-1 underline-offset-4 transition-colors hover:text-foreground hover:underline"
     >
       <span>{`${t('home.hero.openSourcePrefix')} `}</span>

@@ -121,7 +121,6 @@ describe('service-helpers', () => {
           tenantAdminClientExists: true,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
-          tenantAdminHasInstanceRegistryAdmin: false,
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,

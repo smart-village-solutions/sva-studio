@@ -20,6 +20,7 @@ describe('public waste calendar occurrences', () => {
           tour: {
             id: 'tour-bio',
             name: 'Biotour',
+            description: 'Regelabfuhr fuer die Innenstadt.',
             recurrence: 'biweekly',
             firstDate: '2026-05-20',
             endDate: '2026-06-30',
@@ -35,6 +36,7 @@ describe('public waste calendar occurrences', () => {
           tour: {
             id: 'tour-paper',
             name: 'Papiertour',
+            description: 'Blaue Tonne fuer Papier und Kartonagen.',
             recurrence: 'weekly',
             firstDate: '2026-05-21',
             endDate: '2026-05-28',
@@ -50,6 +52,7 @@ describe('public waste calendar occurrences', () => {
           tour: {
             id: 'tour-custom-preset',
             name: 'Ferientour',
+            description: 'Abweichender Ferienrhythmus.',
             recurrence: null,
             customRecurrenceIntervalDays: 10,
             firstDate: '2026-05-19',
@@ -86,6 +89,8 @@ describe('public waste calendar occurrences', () => {
         fractionId: 'rest',
         fractionLabel: 'Restmüll',
         fractionColor: '#444444',
+        tourName: 'Ferientour',
+        tourDescription: 'Abweichender Ferienrhythmus.',
         note: null,
       },
       {
@@ -94,6 +99,8 @@ describe('public waste calendar occurrences', () => {
         fractionId: 'bio',
         fractionLabel: 'Biotonne',
         fractionColor: '#00AA00',
+        tourName: 'Biotour',
+        tourDescription: 'Regelabfuhr fuer die Innenstadt.',
         note: null,
       },
       {
@@ -102,6 +109,8 @@ describe('public waste calendar occurrences', () => {
         fractionId: 'paper',
         fractionLabel: 'Papier',
         fractionColor: '#0000FF',
+        tourName: 'Papiertour',
+        tourDescription: 'Blaue Tonne fuer Papier und Kartonagen.',
         note: 'Straßenfest',
       },
       {
@@ -110,6 +119,8 @@ describe('public waste calendar occurrences', () => {
         fractionId: 'paper',
         fractionLabel: 'Papier',
         fractionColor: '#0000FF',
+        tourName: 'Papiertour',
+        tourDescription: 'Blaue Tonne fuer Papier und Kartonagen.',
         note: null,
       },
       {
@@ -118,6 +129,8 @@ describe('public waste calendar occurrences', () => {
         fractionId: 'rest',
         fractionLabel: 'Restmüll',
         fractionColor: '#444444',
+        tourName: 'Ferientour',
+        tourDescription: 'Abweichender Ferienrhythmus.',
         note: null,
       },
       {
@@ -126,6 +139,8 @@ describe('public waste calendar occurrences', () => {
         fractionId: 'bio',
         fractionLabel: 'Biotonne',
         fractionColor: '#00AA00',
+        tourName: 'Biotour',
+        tourDescription: 'Regelabfuhr fuer die Innenstadt.',
         note: 'Verschoben wegen Feiertag',
       },
       {
@@ -134,6 +149,8 @@ describe('public waste calendar occurrences', () => {
         fractionId: 'bio',
         fractionLabel: 'Biotonne',
         fractionColor: '#00AA00',
+        tourName: 'Biotour',
+        tourDescription: 'Regelabfuhr fuer die Innenstadt.',
         note: 'Zusatzleerung',
       },
       {
@@ -142,6 +159,8 @@ describe('public waste calendar occurrences', () => {
         fractionId: 'rest',
         fractionLabel: 'Restmüll',
         fractionColor: '#444444',
+        tourName: 'Ferientour',
+        tourDescription: 'Abweichender Ferienrhythmus.',
         note: null,
       },
       {
@@ -150,6 +169,8 @@ describe('public waste calendar occurrences', () => {
         fractionId: 'bio',
         fractionLabel: 'Biotonne',
         fractionColor: '#00AA00',
+        tourName: 'Biotour',
+        tourDescription: 'Regelabfuhr fuer die Innenstadt.',
         note: null,
       },
     ]);

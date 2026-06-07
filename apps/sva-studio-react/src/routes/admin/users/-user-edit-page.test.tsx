@@ -310,6 +310,7 @@ describe('UserEditPage', () => {
             permissionKey: 'content.read',
             action: 'content.read',
             resourceType: 'content',
+            runtimeScope: 'record' as const,
             effect: 'allow' as const,
             isEffective: true,
             status: 'effective' as const,
@@ -326,6 +327,7 @@ describe('UserEditPage', () => {
             permissionKey: 'content.archive',
             action: 'content.archive',
             resourceType: 'content',
+            runtimeScope: 'instance' as const,
             effect: 'deny' as const,
             isEffective: false,
             status: 'expired' as const,
@@ -365,6 +367,8 @@ describe('UserEditPage', () => {
     expect(screen.getByText(/Vererbt ab Organisation: org-root/)).toBeTruthy();
     expect(screen.getByText(/Geo-Freigabe ab: geo-root/)).toBeTruthy();
     expect(screen.getByText(/Geo-Restriktion: geo-child/)).toBeTruthy();
+    expect(screen.getByText('datensatzbezogen')).toBeTruthy();
+    expect(screen.getByText('instanzweit')).toBeTruthy();
     expect(screen.getByText(/Inaktivitätsgrund: Zuweisung abgelaufen/)).toBeTruthy();
   });
 

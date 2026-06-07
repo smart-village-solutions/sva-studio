@@ -10,7 +10,7 @@ import { renderPublicWasteIcal } from './public-waste-ical.server.js';
 import type { PublicWastePdfStaticConfig } from './public-waste-pdf-settings.server.js';
 import type { PublicWasteRepository } from './public-waste-repository.server.js';
 
-const INVALID_REQUEST_MESSAGE = 'Ungueltige Anfrage.';
+const INVALID_REQUEST_MESSAGE = 'Ungültige Anfrage.';
 const NO_PDF_ENTRIES_MESSAGE = 'Für diese Auswahl konnten keine PDF-Termine ermittelt werden.';
 
 const jsonResponse = (payload: unknown, status = 200): Response =>

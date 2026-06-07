@@ -264,9 +264,9 @@ Schulden auf IST-Basis.
 - `roleLevel` bleibt in Rollen-, User- und Audit-Verträgen als Kompatibilitätsfeld sichtbar.
   - Impact: mittel bis hoch (Reviewer können Hierarchie-Logik weiterhin fälschlich als normative Autorisierungsquelle lesen)
   - Maßnahme: separaten Folgechange für den kontrollierten Rückbau von `roleLevel` vorbereiten.
-- Legacy-Standardrollen wie `app_manager`, `designer`, `editor` oder `moderator` bleiben in Bestandsinstanzen sichtbar, obwohl sie nicht mehr normativ führend sind.
-  - Impact: mittel (Operatorsicht und UI können historische Bootstrap-Rollen noch mit aktivem Sollmodell verwechseln)
-  - Maßnahme: Read-Model und Runbooks markieren den Legacy-Status explizit; spätere Cleanup-Phase nur mit Migrations- und Kommunikationspfad.
+- Historische Altrollen wie `app_manager`, `designer`, `editor` oder `moderator` können in Bestandsinstanzen noch sichtbar sein, obwohl sie nicht mehr zum Sollmodell gehören.
+  - Impact: mittel (Operatorsicht und UI können historische Altartefakte noch mit aktiv verwalteten Tenant-Rollen verwechseln)
+  - Maßnahme: Read-Model, Runbooks und Cleanup-Migrationen markieren den Altstatus explizit; neue Seeds oder Default-Verträge dürfen diese Rollen nicht wieder einführen.
 - Einzelne Governance- und Route-Gates arbeiten weiterhin rollennamenbasiert statt vollständig permission- oder scope-zentriert.
   - Impact: mittel bis hoch (weitere Rollenmodelländerungen bleiben unnötig teuer und regressionsanfällig)
   - Maßnahme: Folgechange für verbleibende rollennamenbasierte Gates priorisieren und gegen ADR-046 prüfen.
@@ -389,7 +389,7 @@ Referenzen:
 25. Drift zwischen Transparenz-Read-Models und zugrunde liegenden IAM-Quellen
    - Impact: hoch (Admin- und Compliance-Sichten zeigen unvollständige oder missverständlich normalisierte Daten)
    - Wahrscheinlichkeit: mittel
-   - Maßnahme: Contract-Tests für Governance-/DSR-Mapper, synchrone Pflege von OpenSpec, API-Guide und OpenAPI sowie gezielte Review-Gates bei Feldänderungen
+   - Maßnahme: Contract-Tests für Governance-/DSR-Mapper, synchrone Pflege von OpenSpec, API-Guide und OpenAPI sowie gezielte Review-Gates bei Feldänderungen; für Permission-Transparenz bleiben insbesondere `runtimeScope` und das Fehlen künstlicher `organizationId`-Bindungen bei instanzweiten Rechten prüfrelevant
 
 26. Rollenmatrix-Drift zwischen Route-Guard, Tab-Gating und Backend-Reads
    - Impact: hoch (Overexposure oder unnötige Deny-Zustände in sensiblen Transparenz-Views)

@@ -61,8 +61,14 @@ describe('standard content plugin helpers', () => {
     expect(moduleIam).toEqual({
       moduleId: 'news',
       permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
-      systemRoles: createStandardContentPluginSystemRoles('news'),
+      systemRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+        },
+      ],
     });
+    expect(createStandardContentPluginSystemRoles('news')).toEqual(moduleIam.systemRoles);
   });
 
   it('builds the canonical host-owned admin resource wiring for standard content plugins', () => {

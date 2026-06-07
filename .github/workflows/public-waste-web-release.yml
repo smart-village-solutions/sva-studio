@@ -1,0 +1,117 @@
+name: Public Waste Web Release
+
+on:
+  push:
+    tags:
+      - 'waste-web-v*.*.*'
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: public-waste-web-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release Public Waste Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: web-waste-calendar
+    env:
+      PUBLIC_WASTE_BASE_URL: ${{ vars.PUBLIC_WASTE_BASE_URL }}
+      PUBLIC_WASTE_STACK_NAME: ${{ vars.PUBLIC_WASTE_STACK_NAME || 'web-waste-calendar' }}
+      QUANTUM_ENDPOINT_ID: ${{ vars.QUANTUM_ENDPOINT_ID }}
+      QUANTUM_HOST: ${{ vars.QUANTUM_HOST }}
+      QUANTUM_API_KEY: ${{ secrets.QUANTUM_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          filter: tree:0
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Resolve release metadata
+        id: release
+        run: |
+          set -euo pipefail
+          if [[ ! "${GITHUB_REF}" =~ ^refs/tags/waste-web-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "Ungueltiges Release-Tag: ${GITHUB_REF}" >&2
+            exit 1
+          fi
+          version="${BASH_REMATCH[1]}"
+          image_tag="v${version}"
+          image_name="ghcr.io/smart-village-solutions/public-waste-calendar-web:${image_tag}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "image_tag=${image_tag}" >> "${GITHUB_OUTPUT}"
+          echo "image_name=${image_name}" >> "${GITHUB_OUTPUT}"
+
+      - name: Verify release script contract
+        run: |
+          pnpm exec vitest run scripts/ops/public-waste/portainer-release.test.ts
+          pnpm exec tsc -p tsconfig.scripts.json --noEmit
+
+      - name: Build public waste app
+        run: pnpm nx run public-waste-calendar-web:build
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Build and push public waste image
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --platform linux/amd64 \
+            --progress=plain \
+            --provenance=false \
+            --sbom=false \
+            -f deploy/portainer/Dockerfile.public-waste \
+            -t "${{ steps.release.outputs.image_name }}" \
+            --push \
+            .
+
+      - name: Update Portainer stack image tag
+        run: pnpm exec tsx scripts/ops/public-waste/portainer-release.ts
+
+      - name: Wait for deployed runtime
+        run: |
+          set -euo pipefail
+          base_url="${PUBLIC_WASTE_BASE_URL%/}"
+          if [ -z "${base_url}" ]; then
+            echo "PUBLIC_WASTE_BASE_URL fehlt." >&2
+            exit 1
+          fi
+
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error "${base_url}/health/live" >/dev/null; then
+              break
+            fi
+            echo "Warte auf Runtime-Rollout (${attempt}/30)..."
+            sleep 10
+          done
+
+          curl --fail --silent --show-error "${base_url}/health/live"
+          curl --fail --silent --show-error "${base_url}/" | grep -q '<div id="root"></div>'
+          curl --fail --silent --show-error "${base_url}/api/public-waste/selection" >/dev/null
+
+      - name: Publish release summary
+        if: always()
+        run: |
+          echo 'Public-Waste-Web-Release abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Git-Tag: \`${GITHUB_REF_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image-Tag: \`${{ steps.release.outputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Stack: \`${PUBLIC_WASTE_STACK_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${PUBLIC_WASTE_BASE_URL}" ]; then
+            echo "Smoke-URL: \`${PUBLIC_WASTE_BASE_URL}\`" >> "$GITHUB_STEP_SUMMARY"
+          fi

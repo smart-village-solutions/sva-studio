@@ -32,6 +32,22 @@ WHERE instance_id = $1
 
   return result.rows.map((row) => row.role_id);
 };
+const mergeUniqueRoleIds = (...roleSets: readonly (readonly string[])[]): readonly string[] => {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+
+  for (const roleSet of roleSets) {
+    for (const roleId of roleSet) {
+      if (seen.has(roleId)) {
+        continue;
+      }
+      seen.add(roleId);
+      merged.push(roleId);
+    }
+  }
+
+  return merged;
+};
 
 const resolveTenantAdminIdentityUser = async (input: {
   instanceId: string;
@@ -110,7 +126,7 @@ export const syncTenantAdminBootstrapAccount = async (input: {
       instanceId: input.instanceId,
       accountId: provisioned.accountId,
       existingRoleIds,
-      roleIds: [...existingRoleIds, systemAdminRole.id],
+      roleIds: mergeUniqueRoleIds(existingRoleIds, [systemAdminRole.id]),
     });
 
     await notifyPermissionInvalidation(client, {

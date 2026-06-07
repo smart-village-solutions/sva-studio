@@ -2,6 +2,6 @@
   "instanceId": "bb-prignitz",
   "supabase": {
     "databaseUrl": "${PUBLIC_WASTE_DATABASE_URL}",
-    "schemaName": "public"
+    "schemaName": "${PUBLIC_WASTE_SCHEMA_NAME}"
   }
 }

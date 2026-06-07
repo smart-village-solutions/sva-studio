@@ -1,5 +1,7 @@
 # IAM Platform/Tenant Role Model Refactor Implementation Plan
 
+**Status:** Abgeschlossen im aktuellen Codestand auf `main`. Die in diesem Plan beschriebenen Root-/Tenant-Trennung, Seed-/Bootstrap-Bereinigung, permission-zentrierten Guards und die zugehörige Dokumentation wurden mit PR `#510` umgesetzt. Die Datei liegt nur noch als Umsetzungsnachweis im Archiv; offene Folgearbeit gehört in den Scope-Semantik-Folgeplan.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Root- und Tenant-Rollenmodell sauber trennen, `instance_registry_admin` auf den Root-Realm begrenzen, `system_admin` als einzige geschützte Tenant-Defaultrolle beibehalten und tenantlokale Rechte von kanonischen Standardrollen entkoppeln.

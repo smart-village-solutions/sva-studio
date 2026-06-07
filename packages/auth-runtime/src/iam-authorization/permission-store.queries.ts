@@ -2,6 +2,7 @@ import type { EffectivePermission } from '@sva/core';
 
 import type { QueryClient } from '../db.js';
 
+import { listScopeSensitivePermissionKeys } from './permission-scope-semantics.js';
 import { type PermissionRow, toEffectivePermissions } from './shared-effective-permissions.js';
 import { withInstanceScopedDb } from './shared.js';
 
@@ -12,6 +13,8 @@ export type PermissionLookupInput = {
   geoUnitId?: string;
   geoHierarchy?: readonly string[];
 };
+
+const SCOPE_SENSITIVE_PERMISSION_KEYS = listScopeSensitivePermissionKeys();
 
 const ROLE_ASSIGNMENT_SOURCE_SQL = `
   SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
@@ -69,13 +72,16 @@ WITH target_organization AS (
     AND is_active = true
 )
 ${PERMISSION_ROW_SELECTION_SQL}
-  $3::uuid AS organization_id
+  CASE
+    WHEN rp.access_scope IS NOT NULL OR p.permission_key = ANY($4::text[]) THEN $3::uuid
+    ELSE NULL::uuid
+  END AS organization_id
 ${ROLE_PERMISSION_JOIN_SQL}
  AND source.instance_id = $1
-JOIN iam.account_organizations ao
+LEFT JOIN iam.account_organizations ao
   ON ao.instance_id = source.instance_id
  AND ao.account_id = source.account_id
-JOIN target_organization target
+LEFT JOIN target_organization target
   ON TRUE
 JOIN iam.role_permissions rp
   ON rp.instance_id = source.instance_id
@@ -86,11 +92,26 @@ JOIN iam.permissions p
 WHERE a.keycloak_subject = $2
   AND a.instance_id = $1
   AND (
-    ao.organization_id = target.id
-    OR ao.organization_id = ANY(target.hierarchy_path)
+    (
+      rp.access_scope IS NULL
+      AND NOT (p.permission_key = ANY($4::text[]))
+    )
+    OR (
+      (rp.access_scope IS NOT NULL OR p.permission_key = ANY($4::text[]))
+      AND target.id IS NOT NULL
+      AND (
+        ao.organization_id = target.id
+        OR ao.organization_id = ANY(target.hierarchy_path)
+      )
+    )
   )
 `,
-    [input.instanceId, input.keycloakSubject, input.organizationId]
+    [
+      input.instanceId,
+      input.keycloakSubject,
+      input.organizationId,
+      SCOPE_SENSITIVE_PERMISSION_KEYS,
+    ]
   );
 
   return scopedQuery.rows;
@@ -103,7 +124,10 @@ const listUnscopedPermissionRows = async (
   const unscopedQuery = await client.query<PermissionRow>(
     `
 ${PERMISSION_ROW_SELECTION_SQL}
-  ao.organization_id
+  CASE
+    WHEN rp.access_scope IS NOT NULL OR p.permission_key = ANY($3::text[]) THEN ao.organization_id
+    ELSE NULL::uuid
+  END AS organization_id
 ${ROLE_PERMISSION_JOIN_SQL}
  AND source.instance_id = $1
 LEFT JOIN iam.account_organizations ao
@@ -118,7 +142,7 @@ JOIN iam.permissions p
 WHERE a.keycloak_subject = $2
   AND a.instance_id = $1
 `,
-    [input.instanceId, input.keycloakSubject]
+    [input.instanceId, input.keycloakSubject, SCOPE_SENSITIVE_PERMISSION_KEYS]
   );
 
   return unscopedQuery.rows;

@@ -6,41 +6,78 @@ import {
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 
-const ADMIN_GROUP_KEY = 'admins';
-const ADMIN_GROUP_DISPLAY_NAME = 'Admins';
-const CORE_ADMIN_ROLE_KEY = 'core_admin';
-const CORE_ADMIN_ROLE_DISPLAY_NAME = 'Core Admin';
-const CORE_ADMIN_PERMISSION_KEYS = [
+// Keep this direct system_admin bundle aligned with the seeded tenant baseline until the seed accessor
+// is exposed as a stable cross-package runtime API.
+const SYSTEM_ADMIN_DIRECT_PERMISSION_KEYS = [
   'iam.user.read',
   'iam.user.write',
   'iam.role.read',
   'iam.role.write',
   'iam.org.read',
   'iam.org.write',
+  'iam.legalText.read',
+  'iam.legalText.write',
+  'iam.governance.read',
+  'iam.governance.write',
+  'iam.governance.export',
+  'iam.dsr.read',
+  'iam.dsr.write',
+  'iam.dsr.export',
+  'iam.deletionRules.read',
+  'iam.deletionRules.write',
+  'iam.monitoring.read',
+  'iam.monitoring.write',
+  'experimental.read',
+  'app.read',
+  'cockpit.read',
   'content.read',
   'content.create',
   'content.updateMetadata',
-  'content.publish',
-  'content.manageRevisions',
-  'integration.manage',
-  'feature.toggle',
   'content.updatePayload',
   'content.changeStatus',
+  'content.publish',
   'content.archive',
   'content.restore',
   'content.readHistory',
+  'content.manageRevisions',
   'content.delete',
+  'integration.manage',
+  'feature.toggle',
+  'media.read',
+  'media.create',
+  'media.update',
+  'media.reference.manage',
+  'media.delete',
+  'media.deliver.protected',
 ] as const;
+const SYSTEM_ADMIN_ROLE_KEY = 'system_admin';
+const SYSTEM_ADMIN_DISPLAY_NAME = 'System Administrator';
+const SYSTEM_ADMIN_ROLE_LEVEL = 100;
 
-const toTitleCase = (value: string) =>
-  value
-    .split(/[_-]+/u)
-    .filter((segment) => segment.length > 0)
-    .map((segment) => segment.slice(0, 1).toUpperCase() + segment.slice(1))
-    .join(' ');
+type ProtectedSystemRolePermissionSyncRepository = InstanceRegistryServiceDeps['repository'] & {
+  syncProtectedSystemRolePermissions(input: {
+    instanceId: string;
+    role: {
+      roleKey: string;
+      displayName: string;
+      roleLevel: number;
+      permissionKeys: readonly string[];
+    };
+  }): Promise<void>;
+};
 
-const toModuleAdminRoleKey = (moduleId: string) => `${moduleId}_admin`;
-const toModuleAdminRoleDisplayName = (moduleId: string) => `${toTitleCase(moduleId)} Admin`;
+const syncProtectedSystemAdminPermissions = async (deps: InstanceRegistryServiceDeps, instanceId: string) => {
+  const repository = deps.repository as ProtectedSystemRolePermissionSyncRepository;
+  await repository.syncProtectedSystemRolePermissions({
+    instanceId,
+    role: {
+      roleKey: SYSTEM_ADMIN_ROLE_KEY,
+      displayName: SYSTEM_ADMIN_DISPLAY_NAME,
+      roleLevel: SYSTEM_ADMIN_ROLE_LEVEL,
+      permissionKeys: [...SYSTEM_ADMIN_DIRECT_PERMISSION_KEYS],
+    },
+  });
+};
 
 const createModuleAssignRollbackError = (
   instanceId: string,
@@ -193,22 +230,7 @@ export const createBootstrapAdminStructureHandler =
 
     let bootstrapCompleted = false;
     try {
-      await deps.repository.syncInstanceAdminBootstrap({
-        instanceId: input.instanceId,
-        groupKey: ADMIN_GROUP_KEY,
-        groupDisplayName: ADMIN_GROUP_DISPLAY_NAME,
-        coreRole: {
-          roleKey: CORE_ADMIN_ROLE_KEY,
-          displayName: CORE_ADMIN_ROLE_DISPLAY_NAME,
-          permissionKeys: [...CORE_ADMIN_PERMISSION_KEYS],
-        },
-        moduleRoles: requestedModuleIds.map((moduleId) => ({
-          moduleId,
-          roleKey: toModuleAdminRoleKey(moduleId),
-          displayName: toModuleAdminRoleDisplayName(moduleId),
-          permissionKeys: [...(registry.get(moduleId)?.permissionIds ?? [])],
-        })),
-      });
+      await syncProtectedSystemAdminPermissions(deps, input.instanceId);
       bootstrapCompleted = true;
     } finally {
       await invalidateInstancePermissionSnapshots(
@@ -226,8 +248,7 @@ export const createBootstrapAdminStructureHandler =
       details: {
         assignedModules: assignedModuleIds,
         selectedModuleIds: requestedModuleIds,
-        groupKey: ADMIN_GROUP_KEY,
-        coreRoleKey: CORE_ADMIN_ROLE_KEY,
+        bootstrapMode: 'system_admin_only',
         outcome: 'bootstrapped',
       },
     });
@@ -292,6 +313,7 @@ export const createSeedIamBaselineHandler =
       managedModuleIds: [...registry.keys()],
       contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
     });
+    await syncProtectedSystemAdminPermissions(deps, input.instanceId);
     await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_module_iam_seeded');
     await deps.repository.appendAuditEvent({
       instanceId: input.instanceId,

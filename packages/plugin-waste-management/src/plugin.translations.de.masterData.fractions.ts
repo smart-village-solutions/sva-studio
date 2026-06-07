@@ -43,6 +43,13 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     pdfShortLabel: 'PDF-Kürzel',
     description: 'Beschreibung',
     active: 'Status',
+    reminderCount: 'Erinnerungsangebot',
+    firstReminderMaxLeadDays: 'Maximale Vorlaufzeit Erinnerung 1',
+    secondReminderMaxLeadDays: 'Maximale Vorlaufzeit Erinnerung 2',
+    reminderChannels: 'Benachrichtigungskanäle',
+    reminderChannelPushEnabled: 'Push',
+    reminderChannelEmailEnabled: 'E-Mail',
+    reminderChannelCalendarEnabled: 'Kalender',
   },
   filters: {
     open: 'Filtern',
@@ -69,6 +76,8 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
       presentationHint: 'Legen Sie fest, wie die Abfallart später erkannt und angezeigt wird.',
       visibility: '3. Sichtbarkeit',
       visibilityHint: 'Bestimmen Sie, ob die Abfallart sofort aktiv verwendet werden kann.',
+      reminders: '4. Erinnerungen',
+      remindersHint: 'Steuern Sie, ob Bürger für diese Fraktion Erinnerungen abonnieren dürfen und welche Grenzen dafür gelten.',
     },
     fieldHints: {
       name: 'So wird die Abfallart später in Listen angezeigt.',
@@ -80,6 +89,14 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
       containerSize: 'Optional: Tragen Sie eine Behältergröße nur ein, wenn diese Abfallart in mehreren Größen geführt wird, zum Beispiel 120 l oder 240 l.',
       color: 'Diese Farbe wird später zur Wiedererkennung im Kalender und in Tabellen verwendet.',
       active: 'Nur aktive Abfallarten stehen für die weitere Planung zur Verfügung.',
+      reminderCount: 'Bestimmen Sie, ob Bürger für diese Fraktion keine, eine oder zwei Erinnerungen auswählen dürfen.',
+      firstReminderMaxLeadDays: 'Die erste Erinnerung darf höchstens so viele Tage vor dem Abholtermin liegen.',
+      secondReminderMaxLeadDays: 'Die zweite Erinnerung darf unabhängig von Erinnerung 1 bis zu diesem Wert vorgezogen werden.',
+      reminderChannels: 'Diese Kanäle gelten für die gesamte Fraktion, nicht pro einzelner Erinnerung.',
+      reminderChannelsDisabled: 'Aktivieren Sie zuerst mindestens eine Erinnerung, damit Kanäle für diese Fraktion freigeschaltet werden können.',
+      reminderChannelPushEnabled: 'Erlaubt Push-Benachrichtigungen für diese Fraktion.',
+      reminderChannelEmailEnabled: 'Erlaubt E-Mail-Benachrichtigungen für diese Fraktion.',
+      reminderChannelCalendarEnabled: 'Erlaubt Kalender-Erinnerungen für diese Fraktion.',
     },
     statusHints: {
       active: 'Die Abfallart ist sofort für Planung und Anzeige verfügbar.',
@@ -96,6 +113,16 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
       backToList: 'Zurück zur Liste',
       cancel: 'Abbrechen',
       savePrimary: 'Abfallart speichern',
+    },
+    reminderCountOptions: {
+      none: 'Keine Erinnerungen',
+      once: 'Eine Erinnerung',
+      twice: 'Zwei Erinnerungen',
+    },
+    reminderLeadDayOptions: {
+      default: '1 Tag (Standard)',
+      day: '{{count}} Tag',
+      days: '{{count}} Tage',
     },
     preview: {
       title: 'So sieht die Abfallart später aus',
@@ -116,7 +143,7 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     createTitle: 'Abfallfraktion anlegen',
     createDescription: 'Erstellen Sie eine neue Fraktion für die weitere Touren- und Kalenderpflege.',
     editTitle: 'Abfallfraktion bearbeiten',
-    editDescription: 'Ändern Sie Name, Farbe und Sichtbarkeit der Fraktion.',
+    editDescription: 'Ändern Sie Name, Farbe, Sichtbarkeit und Erinnerungsangebot der Fraktion.',
   },
   deleteDialog: {
     title: 'Abfallfraktion löschen',

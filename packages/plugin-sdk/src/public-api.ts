@@ -15,6 +15,7 @@ export type {
   WasteCustomRecurrencePresetRecord,
   WasteCustomTourDate,
   WasteDateShiftReasonType,
+  WasteFractionReminderCount,
   WasteFractionRecord,
   WasteGlobalDateShiftRecord,
   WasteHolidayRuleRecord,

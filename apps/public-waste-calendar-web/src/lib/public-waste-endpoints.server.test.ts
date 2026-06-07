@@ -142,7 +142,7 @@ describe('public waste endpoints', () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       error: 'invalid_request',
-      message: 'Ungueltige Anfrage.',
+      message: 'Ungültige Anfrage.',
     });
   });
 });

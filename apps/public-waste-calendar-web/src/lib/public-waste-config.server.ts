@@ -43,3 +43,23 @@ export const parsePublicWasteConfig = (input: unknown): PublicWasteConfig => {
     },
   };
 };
+
+export const readPublicWasteConfigFromEnvironment = (
+  env: NodeJS.ProcessEnv = process.env
+): PublicWasteConfig | null => {
+  const instanceId = readString(env.PUBLIC_WASTE_INSTANCE_ID);
+  const databaseUrl = readString(env.PUBLIC_WASTE_DATABASE_URL);
+  const schemaName = readString(env.PUBLIC_WASTE_SCHEMA_NAME);
+
+  if (instanceId === null || databaseUrl === null || schemaName === null) {
+    return null;
+  }
+
+  return {
+    instanceId,
+    supabase: {
+      databaseUrl,
+      schemaName,
+    },
+  };
+};

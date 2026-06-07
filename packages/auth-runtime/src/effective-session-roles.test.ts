@@ -29,7 +29,7 @@ describe('effective session roles', () => {
             rowCount: 3,
             rows: [
               { role_key: 'system_admin' },
-              { role_key: 'app_manager' },
+              { role_key: 'custom_curator' },
               { role_key: 'system_admin' },
             ],
           })),
@@ -39,7 +39,7 @@ describe('effective session roles', () => {
     const user: SessionUser = {
       id: 'kc-user-1',
       instanceId: 'de-musterhausen',
-      roles: ['editor', 'app_manager'],
+      roles: ['custom_editor', 'custom_curator'],
     };
 
     await expect(
@@ -49,7 +49,7 @@ describe('effective session roles', () => {
       })
     ).resolves.toEqual({
       ...user,
-      roles: ['editor', 'app_manager', 'system_admin'],
+      roles: ['custom_editor', 'custom_curator', 'system_admin'],
     });
   });
 
@@ -58,7 +58,7 @@ describe('effective session roles', () => {
     const user: SessionUser = {
       id: 'kc-user-1',
       instanceId: 'de-musterhausen',
-      roles: ['editor'],
+      roles: ['custom_editor'],
     };
 
     await expect(

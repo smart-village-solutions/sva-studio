@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolvePublicWasteBootstrapState } from './public-waste-bootstrap.server.js';
+import {
+  readPublicWasteBootstrapStateFromEnvironment,
+  resolvePublicWasteBootstrapState,
+} from './public-waste-bootstrap.server.js';
 
 describe('public waste bootstrap', () => {
   it('returns a missing-config error state when no raw config is provided', () => {
@@ -19,6 +22,41 @@ describe('public waste bootstrap', () => {
     ).toMatchObject({
       status: 'error',
       reason: 'invalid_config',
+    });
+  });
+
+  it('prefers split PUBLIC_WASTE_* variables and only falls back to PUBLIC_WASTE_CONFIG_JSON when needed', () => {
+    expect(
+      readPublicWasteBootstrapStateFromEnvironment({
+        env: {
+          PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz-env',
+          PUBLIC_WASTE_DATABASE_URL: 'postgres://env',
+          PUBLIC_WASTE_SCHEMA_NAME: 'public-env',
+        },
+        rawConfigJson: JSON.stringify({
+          instanceId: 'bb-prignitz-json',
+          supabase: { databaseUrl: 'postgres://json', schemaName: 'public-json' },
+        }),
+      })
+    ).toMatchObject({
+      status: 'ready',
+      config: {
+        instanceId: 'bb-prignitz-env',
+      },
+    });
+
+    expect(
+      readPublicWasteBootstrapStateFromEnvironment({
+        rawConfigJson: JSON.stringify({
+          instanceId: 'bb-prignitz-json',
+          supabase: { databaseUrl: 'postgres://json', schemaName: 'public-json' },
+        }),
+      })
+    ).toMatchObject({
+      status: 'ready',
+      config: {
+        instanceId: 'bb-prignitz-json',
+      },
     });
   });
 });

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PublicWasteIndexPage } from './index.js';
@@ -113,17 +113,27 @@ describe('PublicWasteIndexPage', () => {
     });
 
     const { unmount } = render(<PublicWasteIndexPage />);
+    await act(async () => {});
 
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Ort suchen' }), {
+      target: { value: 'Rat' },
+    });
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Rathenow' })).toBeTruthy();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Rathenow' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Straße suchen' }), {
+      target: { value: 'Hafen' },
+    });
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Am alten Hafen' })).toBeTruthy();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Am alten Hafen' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Hausnummer suchen' }), {
+      target: { value: '12' },
+    });
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '12' })).toBeTruthy();
     });
@@ -185,7 +195,11 @@ describe('PublicWasteIndexPage', () => {
     });
 
     render(<PublicWasteIndexPage />);
+    await act(async () => {});
 
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Straße suchen' }), {
+      target: { value: 'Ber' },
+    });
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Berliner Straße' })).toBeTruthy();
     });

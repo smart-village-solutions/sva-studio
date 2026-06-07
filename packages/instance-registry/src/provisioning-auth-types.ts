@@ -28,7 +28,6 @@ export type TenantAdminBootstrap = {
 export type TenantAdminStatus = {
   readonly tenantAdminExists: boolean;
   readonly tenantAdminHasSystemAdmin: boolean;
-  readonly tenantAdminHasInstanceRegistryAdmin: boolean;
 };
 
 export type KeycloakReadState = {
@@ -43,7 +42,6 @@ export type KeycloakReadState = {
   readonly keycloakClientSecret: string | null;
   readonly tenantAdminClientSecret: string | null;
   readonly systemAdminRole: KeycloakRoleRepresentation;
-  readonly instanceRegistryAdminRole: KeycloakRoleRepresentation;
 };
 
 export type KeycloakProvisioningInput = {

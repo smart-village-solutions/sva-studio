@@ -103,6 +103,7 @@ export const wasteManagementPluginTranslationsENScheduling = createWasteManageme
   actions: {
     openCreate: 'Create scheduling shift',
     delete: 'Delete',
+    deleteSelected: 'Delete selected',
   },
   create: {
     scope: 'Shift type',

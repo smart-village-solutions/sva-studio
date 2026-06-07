@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   loadDefaultExternalInterfaceRecord: vi.fn(),
   saveExternalInterfaceRecord: vi.fn(),
+  deleteExternalInterfaceRecord: vi.fn(),
   dnsLookup: vi.fn(async () => [{ address: '203.0.113.10', family: 4 }]),
 }));
 
 vi.mock('@sva/data-repositories/server', () => ({
   loadDefaultExternalInterfaceRecord: state.loadDefaultExternalInterfaceRecord,
   saveExternalInterfaceRecord: state.saveExternalInterfaceRecord,
+  deleteExternalInterfaceRecord: state.deleteExternalInterfaceRecord,
 }));
 
 vi.mock('node:dns/promises', () => ({
@@ -19,6 +21,7 @@ describe('settings', () => {
   beforeEach(() => {
     state.loadDefaultExternalInterfaceRecord.mockReset();
     state.saveExternalInterfaceRecord.mockReset();
+    state.deleteExternalInterfaceRecord.mockReset();
     state.dnsLookup.mockReset();
     state.dnsLookup.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
   });
@@ -256,6 +259,39 @@ describe('settings', () => {
           oauthTokenUrl: 'https://new.example.invalid/oauth/token',
         },
       })
+    );
+  });
+
+  it('deletes an existing mainserver settings record by its stored id', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
+      instanceId: 'de-musterhausen',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'api',
+      baseUrl: 'https://mainserver.example/graphql',
+      authMode: 'oauth2',
+      publicConfig: {
+        graphqlBaseUrl: 'https://mainserver.example/graphql',
+        oauthTokenUrl: 'https://mainserver.example/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'ok',
+      lastCheckedAt: '2026-03-15T10:00:00.000Z',
+    });
+    state.deleteExternalInterfaceRecord.mockResolvedValue(true);
+
+    const { deleteSvaMainserverSettings } = await import('./settings');
+
+    await expect(deleteSvaMainserverSettings('de-musterhausen')).resolves.toBe(true);
+    expect(state.deleteExternalInterfaceRecord).toHaveBeenCalledWith(
+      'de-musterhausen',
+      'sva-mainserver:de-musterhausen'
     );
   });
 

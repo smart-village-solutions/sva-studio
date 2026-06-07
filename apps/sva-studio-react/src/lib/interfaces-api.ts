@@ -738,7 +738,6 @@ export const deleteInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
   .inputValidator((data: DeleteInstanceInterfaceInput) => data)
   .handler(async ({ data }): Promise<{ deleted: boolean }> => {
     const dependencies = await loadInterfacesRequestDependencies();
-    const { deleteStoredInterface } = await import('./instance-interfaces-server.js');
     return runWithAuthenticatedInterfacesUser({
       request: dependencies.request,
       fallbackMessage: 'Schnittstelle konnte nicht gelöscht werden.',
@@ -749,7 +748,12 @@ export const deleteInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
           'delete_interface',
           data.instanceId
         );
-        const deleted = await deleteStoredInterface(instanceId, data.id);
+        const isMainserverDelete =
+          data.id === `mainserver:${instanceId}` || data.id === `sva-mainserver:${instanceId}`;
+        const deleted =
+          isMainserverDelete
+            ? await (await import('@sva/sva-mainserver/server')).deleteSvaMainserverSettings(instanceId)
+            : await (await import('./instance-interfaces-server.js')).deleteStoredInterface(instanceId, data.id);
         if (!deleted) {
           throw new Error('interface_not_found');
         }

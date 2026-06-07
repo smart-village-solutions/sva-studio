@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InterfacesPage } from './-interfaces-page';
@@ -372,12 +372,38 @@ describe('InterfacesPage', () => {
       expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    const interfacesTable = screen.getByRole('table', { name: 'Schnittstellen der Instanz' });
+    const s3Row = within(interfacesTable).getByRole('cell', { name: 'Uploads' }).closest('tr');
+    expect(s3Row).toBeTruthy();
+    fireEvent.click(within(s3Row!).getByRole('button', { name: 'Löschen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
 
     await waitFor(() => {
       expect(state.deleteInterface).toHaveBeenCalledWith({
         data: { id: 's3-1', instanceId: 'de-musterhausen' },
+      });
+    });
+  });
+
+  it('deletes the mainserver interface through the destructive confirm dialog', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
+    state.deleteInterface.mockResolvedValue({ deleted: true });
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    const interfacesTable = screen.getByRole('table', { name: 'Schnittstellen der Instanz' });
+    const mainserverRow = within(interfacesTable).getAllByRole('cell', { name: 'SVA Mainserver' })[0]?.closest('tr');
+    expect(mainserverRow).toBeTruthy();
+    fireEvent.click(within(mainserverRow!).getByRole('button', { name: 'Löschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
+
+    await waitFor(() => {
+      expect(state.deleteInterface).toHaveBeenCalledWith({
+        data: { id: 'mainserver:de-musterhausen', instanceId: 'de-musterhausen' },
       });
     });
   });

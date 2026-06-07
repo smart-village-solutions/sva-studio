@@ -58,11 +58,9 @@ const renderInterfaceRowActions = (
     >
       {t('admin.users.actions.edit')}
     </Button>
-    {row.type === 'mainserver' ? null : (
-      <Button type="button" size="sm" variant="destructive" onClick={() => setPendingDelete(row)}>
-        {t('interfaces.edit.deleteAction')}
-      </Button>
-    )}
+    <Button type="button" size="sm" variant="destructive" onClick={() => setPendingDelete(row)}>
+      {t('interfaces.edit.deleteAction')}
+    </Button>
   </>
 );
 

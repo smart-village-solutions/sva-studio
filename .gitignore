@@ -5,6 +5,7 @@
 .vscode/
 .idea/
 .claude/settings.local.json
+.superpowers/brainstorm/
 
 # Node/JavaScript
 node_modules/

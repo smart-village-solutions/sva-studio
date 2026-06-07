@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   upsertStoredInterface: vi.fn(),
   getStoredInterface: vi.fn(),
   deleteStoredInterface: vi.fn(),
+  deleteSvaMainserverSettings: vi.fn(),
   runStoredInterfaceHealthcheck: vi.fn(),
   checkStoredInterfaceHealth: vi.fn(),
   isCustomInterfaceStorageAvailable: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock('@sva/sva-mainserver/server', () => ({
   ...(state.contractModuleLoads++, {}),
   loadSvaMainserverInterfacesOverview: state.loadSvaMainserverInterfacesOverview,
   saveSvaMainserverSettings: state.saveSvaMainserverSettings,
+  deleteSvaMainserverSettings: state.deleteSvaMainserverSettings,
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
@@ -78,6 +80,7 @@ describe('interfaces app adapter', () => {
     state.upsertStoredInterface.mockReset();
     state.getStoredInterface.mockReset();
     state.deleteStoredInterface.mockReset();
+    state.deleteSvaMainserverSettings.mockReset();
     state.runStoredInterfaceHealthcheck.mockReset();
     state.checkStoredInterfaceHealth.mockReset();
     state.isCustomInterfaceStorageAvailable.mockReset();
@@ -774,6 +777,34 @@ describe('interfaces app adapter', () => {
     ).resolves.toEqual({ deleted: true });
 
     expect(state.deleteStoredInterface).toHaveBeenCalledWith('de-musterhausen', 's3-1');
+  });
+
+  it('routes mainserver interface deletions through the dedicated settings adapter', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['interface_manager'],
+          },
+        })
+    );
+    state.deleteSvaMainserverSettings.mockResolvedValue(true);
+
+    const { deleteInstanceInterfaceServerFn } = await import('./interfaces-api');
+
+    await expect(
+      deleteInstanceInterfaceServerFn({
+        data: {
+          instanceId: 'de-musterhausen',
+          id: 'mainserver:de-musterhausen',
+        },
+      })
+    ).resolves.toEqual({ deleted: true });
+
+    expect(state.deleteSvaMainserverSettings).toHaveBeenCalledWith('de-musterhausen');
+    expect(state.deleteStoredInterface).not.toHaveBeenCalled();
   });
 
   it('rejects interface deletions when the store reports no deleted entry', async () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteSchedulingShiftsTable } from '../src/waste-management.scheduling-shifts-table.js';
@@ -316,10 +316,136 @@ describe('WasteSchedulingShiftsTable', () => {
     expect(screen.getByText('scheduling.bulkDeleteDialog.title')).toBeTruthy();
     expect(screen.getByText('scheduling.bulkDeleteDialog.description:1')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.bulkDeleteDialog.confirm' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'scheduling.bulkDeleteDialog.confirm' }));
+    });
 
     expect(onDeleteSchedulingRows).toHaveBeenCalledWith([
       expect.objectContaining({ kind: 'global', id: 'global-1' }),
     ]);
+  });
+
+  it('enables multi-select only for deletable scheduling rows and opens bulk delete via toolbar action', async () => {
+    const onDeleteSchedulingRows = vi.fn(async () => undefined);
+    const clearSelection = vi.fn();
+
+    render(
+      <WasteSchedulingShiftsTable
+        entries={[
+          {
+            id: 'holiday-rule-1',
+            entryType: 'holiday-rule',
+            kind: 'holiday',
+            originalDate: '2025-12-25',
+            actualDate: undefined,
+            contextLabel: 'Weihnachten',
+            sortLabel: 'Weihnachten',
+            canDelete: false,
+            rule: {
+              id: 'holiday-rule-1',
+              holidayDate: '2025-12-25',
+              holidayName: 'Weihnachten',
+              year: 2025,
+              stateCode: 'BB',
+              sourceStatus: 'confirmed',
+              configurationStatus: 'draft',
+              conflictStatus: 'none',
+              createdAt: '2026-05-09T10:00:00.000Z',
+              updatedAt: '2026-05-09T10:00:00.000Z',
+            },
+          },
+          {
+            id: 'global-1',
+            entryType: 'global-shift',
+            kind: 'global',
+            originalDate: '2026-01-01',
+            actualDate: '2026-01-02',
+            contextLabel: 'Alle Touren',
+            sortLabel: 'Alle Touren',
+            canDelete: true,
+            shift: {
+              id: 'global-1',
+              originalDate: '2026-01-01',
+              actualDate: '2026-01-02',
+              description: 'Neujahr',
+              hasYear: true,
+              reasonType: 'holiday',
+              reasonKey: 'holiday.new-year',
+              tourIds: [],
+            },
+          },
+          {
+            id: 'tour-shift-1',
+            entryType: 'tour-shift',
+            kind: 'tour',
+            originalDate: '2026-02-01',
+            actualDate: '2026-02-03',
+            contextLabel: 'Restmüll Nord',
+            sortLabel: 'Restmüll Nord',
+            canDelete: true,
+            shift: {
+              id: 'tour-shift-1',
+              tourId: 'tour-1',
+              originalDate: '2026-02-01',
+              actualDate: '2026-02-03',
+              description: 'Baustelle',
+              hasYear: false,
+              reasonType: 'operational-disruption',
+              reasonKey: 'ops.roadwork',
+              followUpMode: 'propagate-series',
+            },
+          },
+        ] as never}
+        onOpenCreateShiftDialog={vi.fn()}
+        onEditHolidayRule={vi.fn()}
+        onEditGlobalShiftDialog={vi.fn()}
+        onEditTourShiftDialog={vi.fn()}
+        onDeleteSchedulingRows={onDeleteSchedulingRows}
+        saving={false}
+        page={1}
+        pageSize={25}
+        onPageChange={vi.fn()}
+        onSyncPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+      />
+    );
+
+    const tableProps = dataTableMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    const data = tableProps.data as Array<Record<string, unknown>>;
+    const canSelectRow = tableProps.canSelectRow as ((row: Record<string, unknown>) => boolean) | undefined;
+    const bulkActions = tableProps.bulkActions as Array<{
+      label: string;
+      onClick: (context: { selectedRows: Array<Record<string, unknown>>; clearSelection: () => void }) => Promise<void>;
+    }> | undefined;
+
+    expect(tableProps.selectionMode).toBe('multiple');
+    expect(canSelectRow).toBeTruthy();
+    expect(canSelectRow?.(data[0]!)).toBe(false);
+    expect(canSelectRow?.(data[1]!)).toBe(true);
+    expect(canSelectRow?.(data[2]!)).toBe(true);
+    expect(bulkActions).toHaveLength(1);
+    expect(bulkActions?.[0]?.label).toBe('scheduling.actions.deleteSelected');
+
+    await act(async () => {
+      await bulkActions?.[0]?.onClick({
+        selectedRows: [data[1]!, data[2]!],
+        clearSelection,
+      });
+    });
+
+    expect(screen.getByText('scheduling.bulkDeleteDialog.title')).toBeTruthy();
+    expect(screen.getByText('scheduling.bulkDeleteDialog.description:2')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'scheduling.bulkDeleteDialog.confirm' }));
+    });
+
+    expect(onDeleteSchedulingRows).toHaveBeenCalledWith([
+      expect.objectContaining({ kind: 'global', id: 'global-1' }),
+      expect.objectContaining({ kind: 'tour', id: 'tour-shift-1' }),
+    ]);
+    await waitFor(() => {
+      expect(clearSelection).toHaveBeenCalledTimes(1);
+    });
   });
 });

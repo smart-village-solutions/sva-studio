@@ -210,7 +210,7 @@ export const useInterfacesPageController = () => {
   };
 
   const onConfirmDelete = async () => {
-    if (!pendingDelete || pendingDelete.type === 'mainserver') {
+    if (!pendingDelete) {
       setPendingDelete(null);
       return;
     }

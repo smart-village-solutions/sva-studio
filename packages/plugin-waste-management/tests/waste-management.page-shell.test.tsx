@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementPage } from '../src/waste-management.page.js';
 
+const getWasteManagementSettingsMock = vi.hoisted(() => vi.fn(async () => null));
 const navigateMock = vi.fn();
 const searchState = {
   tab: 'tools',
@@ -41,6 +42,10 @@ vi.mock('@sva/plugin-sdk', () => ({
 
 vi.mock('../src/waste-management.ui-access.js', () => ({
   useWasteManagementUiAccess: () => useWasteManagementUiAccessMock(),
+}));
+
+vi.mock('../src/waste-management.api.js', () => ({
+  getWasteManagementSettings: getWasteManagementSettingsMock,
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
@@ -105,6 +110,8 @@ describe('WasteManagementPage shell', () => {
   });
 
   beforeEach(() => {
+    getWasteManagementSettingsMock.mockReset();
+    getWasteManagementSettingsMock.mockResolvedValue(null);
     navigateMock.mockReset();
     useWasteManagementUiAccessMock.mockReset();
     useWasteManagementUiAccessMock.mockReturnValue({
@@ -122,13 +129,17 @@ describe('WasteManagementPage shell', () => {
     searchState.masterDataTab = 'locations';
   });
 
-  it('renders the shell without the global toolbar and resets pagination for tab changes', () => {
+  it('renders the shell without the global toolbar and resets pagination for tab changes', async () => {
+    getWasteManagementSettingsMock.mockResolvedValue({
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+    });
+
     render(<WasteManagementPage />);
 
     expect(screen.getByText('page.title')).toBeTruthy();
     expect(screen.getByText('page.description')).toBeTruthy();
-    const publicCalendarLink = screen.getByRole('link', { name: 'page.publicCalendarLink' });
-    expect(publicCalendarLink.getAttribute('href')).toBe('http://localhost:3002');
+    const publicCalendarLink = await screen.findByRole('link', { name: 'page.webVersionLinkLabel' });
+    expect(publicCalendarLink.getAttribute('href')).toBe('https://bb-prignitz.abfallkalender.smart-village.app/');
     expect(publicCalendarLink.getAttribute('rel')).toBe('noopener noreferrer');
     expect(screen.queryByRole('button', { name: 'change-search' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'change-status' })).toBeNull();
@@ -162,7 +173,7 @@ describe('WasteManagementPage shell', () => {
     searchState.masterDataTab = 'locations';
     useWasteManagementUiAccessMock.mockReturnValue({
       isResolved: true,
-      visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output'],
+      visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling'],
       canAccessSettings: false,
       canAccessTools: false,
       canRunInitialize: false,
@@ -175,7 +186,7 @@ describe('WasteManagementPage shell', () => {
     render(<WasteManagementPage />);
 
     expect(screen.queryByRole('button', { name: 'actions.openSettings' })).toBeNull();
-    expect(screen.getByText('fractions,tours,locations,scheduling,output')).toBeTruthy();
+    expect(screen.getByText('fractions,tours,locations,scheduling')).toBeTruthy();
 
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith({

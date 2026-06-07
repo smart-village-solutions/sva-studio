@@ -4,7 +4,6 @@ import {
   type PublicWasteSelectionState,
   type PublicWasteSelectionStep,
 } from './public-waste-contract.js';
-import { buildPublicWastePdfLinks } from './public-waste-api.js';
 import {
   PUBLIC_WASTE_PREFERENCE_COOKIE,
   readPublicWasteCookieValue,
@@ -15,7 +14,6 @@ import { resolvePublicWasteSelection } from './public-waste-resolver.js';
 
 const DEMO_REFERENCE_DATE = '2026-05-18';
 const DEMO_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
-const DEMO_PDF_TEMPLATE = 'https://example.invalid/public-waste/{year}/{locationKey}.pdf';
 
 const demoRegions = [{ id: 'r-1', label: 'Musterregion' }] as const;
 const demoCities = [
@@ -94,7 +92,6 @@ type DemoPageState =
       readonly selection: Required<PublicWasteSelectionState>;
       readonly selectionSummary: string;
       readonly calendarModel: ReturnType<typeof projectPublicWasteCalendar> & { readonly locationKey: string };
-      readonly pdfLinks: readonly string[];
       readonly icalUrl: string;
       readonly restoredLocationNotice?: string;
     };
@@ -225,11 +222,6 @@ export const resolveDemoPublicWastePageState = (input: {
     selection: completeSelection,
     selectionSummary: buildSelectionSummary(completeSelection),
     calendarModel,
-    pdfLinks: buildPublicWastePdfLinks({
-      urlTemplate: DEMO_PDF_TEMPLATE,
-      locationKey,
-      year: Number(DEMO_REFERENCE_DATE.slice(0, 4)),
-    }),
     icalUrl: buildIcalUrl(completeSelection),
     restoredLocationNotice: input.restoredLocationNotice,
   };

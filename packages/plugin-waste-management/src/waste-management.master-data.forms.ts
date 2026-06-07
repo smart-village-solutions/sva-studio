@@ -29,6 +29,7 @@ import { compactOptionalString, createId, normalizeLocalizedTextRecord } from '.
 export type FractionFormState = {
   readonly id: string;
   readonly name: string;
+  readonly pdfShortLabel: string;
   readonly translations: WasteLocalizedTextRecord;
   readonly containerSize: string;
   readonly color: string;
@@ -56,17 +57,14 @@ export type CollectionLocationFormState = {
   readonly active: boolean;
 };
 
-export type LocationTourLinkBulkFormState = {
-  readonly tourId: string;
-  readonly startDate: string;
-  readonly endDate: string;
-};
+export type LocationTourLinkBulkFormState = { readonly tourId: string; readonly startDate: string; readonly endDate: string };
 const defaultFractionReminderLeadDays = 1;
 
 export const wasteMasterDataFormDefaults = {
   createFraction: (): FractionFormState => ({
     id: createId(),
     name: '',
+    pdfShortLabel: '',
     translations: {},
     containerSize: '',
     color: '#4f6d7a',
@@ -98,6 +96,7 @@ export const wasteMasterDataFormMappers = {
   fractionToForm: (fraction: WasteFractionRecord): FractionFormState => ({
     id: fraction.id,
     name: fraction.name,
+    pdfShortLabel: fraction.pdfShortLabel ?? '',
     translations: fraction.translations ?? {},
     containerSize: fraction.containerSize ?? '',
     color: fraction.color,
@@ -178,6 +177,7 @@ export const wasteMasterDataInputMappers = {
   toCreateFractionInput: (form: FractionFormState): CreateWasteManagementFractionInput => ({
     id: form.id,
     name: form.name.trim(),
+    pdfShortLabel: compactOptionalString(form.pdfShortLabel),
     translations: normalizeLocalizedTextRecord(form.translations),
     containerSize: compactOptionalString(form.containerSize),
     color: form.color.trim(),
@@ -187,6 +187,7 @@ export const wasteMasterDataInputMappers = {
   }),
   toUpdateFractionInput: (form: FractionFormState): UpdateWasteManagementFractionInput => ({
     name: form.name.trim(),
+    pdfShortLabel: compactOptionalString(form.pdfShortLabel),
     translations: normalizeLocalizedTextRecord(form.translations),
     containerSize: compactOptionalString(form.containerSize),
     color: form.color.trim(),
@@ -249,10 +250,8 @@ export const wasteMasterDataInputMappers = {
   }),
   resolveSingleSelectValue: (form: HTMLFormElement, fieldName: string): string => {
     const field = form.elements.namedItem(fieldName);
-    if (!(field instanceof HTMLSelectElement)) {
-      return '';
-    }
-    const values = Array.from(field.options).map((option) => option.value.trim()).filter(Boolean);
-    return values.length === 1 ? values[0] ?? '' : '';
+    const values =
+      field instanceof HTMLSelectElement ? Array.from(field.options).map((option) => option.value.trim()).filter(Boolean) : [];
+    return values.length === 1 ? (values[0] ?? '') : '';
   },
 };

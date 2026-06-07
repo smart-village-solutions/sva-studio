@@ -47,6 +47,9 @@ describe('waste-management settings shared helpers', () => {
         projectUrl: 'https://tenant.example',
         schemaName: 'wm',
         enabled: true,
+        calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+        pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+        pdfContactBlock: 'Abfallberatung 03395 / 1234',
         databaseUrlConfigured: true,
         serviceRoleKeyConfigured: false,
         databaseUrlCiphertext: 'cipher-db',
@@ -67,6 +70,9 @@ describe('waste-management settings shared helpers', () => {
       projectUrl: 'https://tenant.example',
       schemaName: 'wm',
       enabled: true,
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung 03395 / 1234',
       databaseUrlConfigured: true,
       serviceRoleKeyConfigured: false,
       visibleStatus: 'warning',
@@ -105,6 +111,9 @@ describe('waste-management settings shared helpers', () => {
           publicConfig: {
             projectUrl: 'https://tenant.example',
             schemaName: 'wm',
+            calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+            pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+            pdfContactBlock: 'Abfallberatung 03395 / 1234',
             holidayStateCode: 'NW',
             lastHolidaySyncStatus: 'success',
           },
@@ -129,6 +138,22 @@ describe('waste-management settings shared helpers', () => {
       projectUrl: 'https://tenant.example',
       schemaName: 'wm',
       enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      selectedInterfaceName: 'Supabase',
+      selectedInterfaceTypeKey: 'supabase',
+      availableInterfaces: [
+        {
+          id: 'supabase-1',
+          name: 'Supabase',
+          typeKey: 'supabase',
+          enabled: true,
+          visibleStatus: 'error',
+          isSelected: true,
+        },
+      ],
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung 03395 / 1234',
       databaseUrlConfigured: true,
       serviceRoleKeyConfigured: true,
       visibleStatus: 'error',
@@ -148,6 +173,94 @@ describe('waste-management settings shared helpers', () => {
           updatedAt: '2026-05-09T09:30:00.000Z',
         },
       ],
+    });
+  });
+
+  it('returns a not-configured settings shell when no interface can be resolved', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        listInterfaceRecords: vi.fn(async () => []),
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toEqual({
+      instanceId: 'tenant-a',
+      provider: 'supabase',
+      projectUrl: '',
+      schemaName: 'public',
+      enabled: false,
+      availableInterfaces: [],
+      databaseUrlConfigured: false,
+      serviceRoleKeyConfigured: false,
+      visibleStatus: 'not_configured',
+      customRecurrencePresets: [],
+    });
+  });
+
+  it('maps non-supabase interfaces into a not-configured waste settings shell while preserving interface options', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        listInterfaceRecords: vi.fn(async () => [
+          {
+            id: 's3-1',
+            instanceId: 'tenant-a',
+            typeKey: 's3',
+            ownerKind: 'host',
+            ownerId: 'host',
+            displayName: 'S3',
+            alias: 'default',
+            enabled: true,
+            isDefault: true,
+            category: 'object_storage',
+            statusCheckKind: 's3',
+            visibleStatus: 'ok',
+            publicConfig: {
+              wasteManagementSelected: true,
+              calendarWebUrl: 'https://ignored.example',
+            },
+          },
+        ]),
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toEqual({
+      instanceId: 'tenant-a',
+      provider: 'supabase',
+      projectUrl: '',
+      schemaName: 'public',
+      enabled: true,
+      selectedInterfaceId: 's3-1',
+      selectedInterfaceName: 'S3',
+      selectedInterfaceTypeKey: 's3',
+      availableInterfaces: [
+        {
+          id: 's3-1',
+          name: 'S3',
+          typeKey: 's3',
+          enabled: true,
+          visibleStatus: 'ok',
+          isSelected: true,
+        },
+      ],
+      calendarWebUrl: 'https://ignored.example',
+      pdfBrandingAssetUrl: undefined,
+      pdfContactBlock: undefined,
+      databaseUrlConfigured: false,
+      serviceRoleKeyConfigured: false,
+      visibleStatus: 'not_configured',
+      lastCheckedAt: undefined,
+      lastCheckStatus: undefined,
+      lastCheckErrorCode: undefined,
+      lastCheckErrorMessage: undefined,
+      holidayStateCode: undefined,
+      lastHolidaySyncStatus: undefined,
+      lastSuccessfulHolidaySyncAt: undefined,
+      updatedAt: undefined,
+      customRecurrencePresets: [],
     });
   });
 

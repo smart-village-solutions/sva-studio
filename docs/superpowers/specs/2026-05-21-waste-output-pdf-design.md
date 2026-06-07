@@ -1,5 +1,7 @@
 # Design: Waste-Output-PDF im Waste-Management
 
+> Hinweis: Dieses Design ist fachlich überholt. Der aktuelle Zielvertrag liegt in [2026-06-06-public-waste-pdf-export-shift-design.md](./2026-06-06-public-waste-pdf-export-shift-design.md). Das Studio erzeugt keine PDFs mehr; die Erzeugung erfolgt ad hoc in der öffentlichen Web-App.
+
 ## Kontext
 Das Waste-Management besitzt bereits gepflegte Fachdaten zu Abholorten, Touren, Fraktionen und Ausweichterminen. Ein älterer Beispielgenerator unter `scripts/ops/waste-calendar-example-pdf*.ts` zeigt ein passendes Layout, ist aber nicht produktiv nutzbar, weil er mit Platzhalterdaten arbeitet und außerhalb der Studio-Runtime lebt.
 

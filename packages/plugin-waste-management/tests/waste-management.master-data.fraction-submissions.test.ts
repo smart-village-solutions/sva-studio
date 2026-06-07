@@ -22,6 +22,7 @@ describe('createSubmitFractionHandler', () => {
         fractionForm: {
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: '',
           translations: {},
           containerSize: '120L',
           color: '#111111',

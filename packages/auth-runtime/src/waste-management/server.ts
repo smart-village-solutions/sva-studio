@@ -3,7 +3,6 @@ import { sharedWasteManagementDeps, withAuthenticatedWasteManagementHandler } fr
 import {
   wasteManagementEntityLoaders,
   wasteManagementEntitySavers,
-  wasteManagementOutputLoaders,
   wasteManagementOverviewLoaders,
 } from './server-loaders.js';
 
@@ -17,7 +16,6 @@ const {
   createWasteManagementGlobalDateShiftInternal,
   updateWasteManagementHolidayRuleInternal,
   createWasteManagementHouseNumberInternal,
-  createWasteManagementOutputPdfInternal,
   createWasteManagementLocationTourLinkInternal,
   createWasteManagementLocationTourLinksBulkInternal,
   createWasteManagementRegionInternal,
@@ -29,7 +27,6 @@ const {
   deleteWasteManagementTourInternal,
   getWasteManagementHistoryInternal,
   getWasteManagementMasterDataOverviewInternal,
-  getWasteManagementOutputOverviewInternal,
   getWasteManagementSchedulingOverviewInternal,
   getWasteManagementSettingsInternal,
   getWasteManagementToursOverviewInternal,
@@ -59,11 +56,9 @@ const {
   loadMasterDataLocationsOverview,
   loadSchedulingOverview,
   loadToursOverview,
-  loadWasteOutputOverview,
   loadWasteHistoryOverview,
   previewWasteLocationTourPickupDateImport,
 } = wasteManagementOverviewLoaders;
-const { generateWasteOutputPdf } = wasteManagementOutputLoaders;
 const {
   loadWasteCustomRecurrencePresets,
   loadWasteCityById,
@@ -118,13 +113,6 @@ export const wasteManagementHandlers = {
         loadMasterDataOverview,
         loadMasterDataFractionsOverview,
         loadMasterDataLocationsOverview,
-      })
-    ),
-  getOutputOverview: (request: Request): Promise<Response> =>
-    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      getWasteManagementOutputOverviewInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
-        loadWasteOutputOverview,
       })
     ),
   getToursOverview: (request: Request): Promise<Response> =>
@@ -275,13 +263,6 @@ export const wasteManagementHandlers = {
         ...sharedWasteManagementDeps,
         saveWasteCollectionLocation,
         loadWasteCollectionLocationById,
-      })
-    ),
-  createOutputPdf: (request: Request): Promise<Response> =>
-    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      createWasteManagementOutputPdfInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
-        generateWasteOutputPdf,
       })
     ),
   createLocationTourLink: (request: Request): Promise<Response> =>

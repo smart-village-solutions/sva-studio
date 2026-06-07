@@ -2,12 +2,14 @@ import type { WasteCalendarPdfDocument } from './waste-management-output.types.j
 import { PdfBuilder } from './waste-management-output.pdf-builder.js';
 import {
   abbreviateHolidayLabel,
+  BRANDING_BOX,
+  buildBrandingImageCommand,
+  createBrandingImageResource,
   getEntryLabelWidth,
   pad2,
   splitLegendLabel,
   type RgbColor,
 } from './waste-management-output.render.helpers.js';
-
 const PAGE_WIDTH = 841.89;
 const PAGE_HEIGHT = 595.28;
 
@@ -91,18 +93,25 @@ const drawStrokedRectangle = (
     )} RG ${x.toFixed(2)} ${y.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re S`
   );
 };
-
-const renderHeader = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
+const renderHeader = (
+  commands: string[],
+  page: WasteCalendarPdfDocument['pages'][number],
+  imageObjectName?: string
+): void => {
   drawText({ commands, x: 38, top: 40, fontSize: 30, text: page.title, fontName: 'F2' });
   drawText({ commands, x: 38, top: 92, fontSize: 14, text: page.locationLabel, fontName: 'F1' });
-  drawFilledRectangle({ commands, x: 640, top: 28, width: 163, height: 62 }, [0.93, 0.95, 0.98]);
-  drawStrokedRectangle({ commands, x: 640, top: 28, width: 163, height: 62 }, [0.55, 0.62, 0.7], 1);
+  drawFilledRectangle({ commands, x: BRANDING_BOX.x, top: BRANDING_BOX.top, width: BRANDING_BOX.width, height: BRANDING_BOX.height }, [0.93, 0.95, 0.98]);
+  drawStrokedRectangle({ commands, x: BRANDING_BOX.x, top: BRANDING_BOX.top, width: BRANDING_BOX.width, height: BRANDING_BOX.height }, [0.55, 0.62, 0.7], 1);
+  if (page.brandingImage && imageObjectName) {
+    commands.push(buildBrandingImageCommand(page, imageObjectName, PAGE_HEIGHT) ?? '');
+    return;
+  }
   drawCenteredText({
     commands,
-    x: 640,
-    top: 28,
-    width: 163,
-    height: 62,
+    x: BRANDING_BOX.x,
+    top: BRANDING_BOX.top,
+    width: BRANDING_BOX.width,
+    height: BRANDING_BOX.height,
     fontSize: 11,
     text: page.brandingPlaceholderLabel,
     fontName: 'F2',
@@ -174,8 +183,9 @@ const renderMonthGrid = (commands: string[], page: WasteCalendarPdfDocument['pag
 };
 
 const renderNotes = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
-  drawText({ commands, x: 38, top: 525, fontSize: 10.2, text: page.notes[0] ?? '', fontName: 'F1' });
-  drawText({ commands, x: 38, top: 549, fontSize: 10.2, text: page.notes[1] ?? '', fontName: 'F1' });
+  for (const [index, note] of page.notes.slice(0, 4).entries()) {
+    drawText({ commands, x: 38, top: 501 + index * 16, fontSize: 10.2, text: note, fontName: 'F1' });
+  }
 };
 
 const renderLegend = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
@@ -202,31 +212,39 @@ const renderFooter = (commands: string[], page: WasteCalendarPdfDocument['pages'
   drawText({ commands, x: 38, top: 582, fontSize: 9.6, text: page.footerLine, fontName: 'F1' });
 };
 
-const renderPageCommands = (page: WasteCalendarPdfDocument['pages'][number]): string => {
+const renderPageCommands = (
+  page: WasteCalendarPdfDocument['pages'][number],
+  imageObjectName?: string
+): string => {
   const commands: string[] = [];
   drawFilledRectangle({ commands, x: 0, top: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT }, [1, 1, 1]);
-  renderHeader(commands, page);
+  renderHeader(commands, page, imageObjectName);
   renderMonthGrid(commands, page);
   renderNotes(commands, page);
   renderLegend(commands, page);
   renderFooter(commands, page);
   return commands.join('\n');
 };
-
 const escapePdfText = (value: string): string =>
   value.replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)');
-
 export const renderWasteCalendarPdf = (document: WasteCalendarPdfDocument): Buffer => {
   const pdf = new PdfBuilder();
   const regularFontId = pdf.addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
   const boldFontId = pdf.addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
   const pagesId = pdf.reserveObject();
+  const brandingImageResource = createBrandingImageResource({
+    document,
+    addStreamObject: (streamContent, dictionary) => pdf.addStreamObject(streamContent, dictionary),
+  });
   const pageIds = document.pages.map((page) => {
-    const streamId = pdf.addStreamObject(renderPageCommands(page));
+    const streamId = pdf.addStreamObject(renderPageCommands(page, brandingImageResource?.objectName));
+    const xObjectSection = brandingImageResource
+      ? ` /XObject << /${brandingImageResource.objectName} ${brandingImageResource.id} 0 R >>`
+      : '';
     return pdf.addObject(
       `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${PAGE_WIDTH.toFixed(2)} ${PAGE_HEIGHT.toFixed(
         2
-      )}] /Resources << /Font << /F1 ${regularFontId} 0 R /F2 ${boldFontId} 0 R >> >> /Contents ${streamId} 0 R >>`
+      )}] /Resources << /Font << /F1 ${regularFontId} 0 R /F2 ${boldFontId} 0 R >>${xObjectSection} >> /Contents ${streamId} 0 R >>`
     );
   });
 

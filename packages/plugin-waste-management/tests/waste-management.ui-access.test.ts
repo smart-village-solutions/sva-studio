@@ -6,7 +6,7 @@ describe('waste-management.ui-access', () => {
   it('keeps read-only users away from settings and tools tabs', () => {
     const access = deriveWasteManagementUiAccess(['waste-management.read']);
 
-    expect(access.visibleTabIds).toEqual(['fractions', 'tours', 'locations', 'scheduling', 'output']);
+    expect(access.visibleTabIds).toEqual(['fractions', 'tours', 'locations', 'scheduling']);
     expect(access.canAccessSettings).toBe(false);
     expect(access.canAccessTools).toBe(false);
     expect(access.canRunInitialize).toBe(false);

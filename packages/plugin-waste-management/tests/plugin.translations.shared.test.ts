@@ -5,7 +5,10 @@ import { wasteManagementPluginTranslationsDEMasterData } from '../src/plugin.tra
 import { wasteManagementPluginTranslationsDETours } from '../src/plugin.translations.de.tours.js';
 import { createMasterDataEntityTranslations } from '../src/plugin.translations.shared.master-data.js';
 import { createWasteManagementToursTranslations } from '../src/plugin.translations.shared.scheduling.js';
-import { createWasteManagementTabsTranslations } from '../src/plugin.translations.shared.sections.js';
+import {
+  createWasteManagementSettingsTranslations,
+  createWasteManagementTabsTranslations,
+} from '../src/plugin.translations.shared.sections.js';
 
 describe('waste-management translation builders', () => {
   it('builds tab translations with the canonical section structure', () => {
@@ -188,6 +191,96 @@ describe('waste-management translation builders', () => {
       wasteManagement: {
         ...tabs,
         ...tours,
+      },
+    });
+  });
+
+  it('exposes common settings labels under the wasteManagement root', () => {
+    expect(
+      createWasteManagementSettingsTranslations({
+        common: {
+          actions: 'Aktionen',
+        },
+        technical: {
+          title: 'Status',
+          description: 'Beschreibung',
+        },
+        fields: {
+          holidayStateCode: 'Bundesland',
+        },
+        meta: {
+          lastSuccessfulHolidaySyncAtLabel: 'Letzter erfolgreicher Abgleich',
+        },
+        actions: {
+          save: 'Speichern',
+        },
+        messages: {
+          loading: 'Lädt',
+        },
+      })
+    ).toEqual({
+      common: {
+        actions: 'Aktionen',
+      },
+      settings: {
+        technical: {
+          title: 'Status',
+          description: 'Beschreibung',
+        },
+        fields: {
+          holidayStateCode: 'Bundesland',
+        },
+        meta: {
+          lastSuccessfulHolidaySyncAtLabel: 'Letzter erfolgreicher Abgleich',
+        },
+        actions: {
+          save: 'Speichern',
+        },
+        messages: {
+          loading: 'Lädt',
+        },
+      },
+    });
+  });
+
+  it('deep-merges shared and settings common keys without dropping either branch', () => {
+    expect(
+      createWasteManagementPluginTranslationLocale([
+        {
+          common: {
+            active: 'Aktiv',
+            inactive: 'Inaktiv',
+          },
+        },
+        createWasteManagementSettingsTranslations({
+          common: {
+            actions: 'Aktionen',
+          },
+          technical: {
+            title: 'Status',
+            description: 'Beschreibung',
+          },
+          fields: {
+            holidayStateCode: 'Bundesland',
+          },
+          meta: {
+            lastSuccessfulHolidaySyncAtLabel: 'Letzter erfolgreicher Abgleich',
+          },
+          actions: {
+            save: 'Speichern',
+          },
+          messages: {
+            loading: 'Lädt',
+          },
+        }),
+      ])
+    ).toMatchObject({
+      wasteManagement: {
+        common: {
+          actions: 'Aktionen',
+          active: 'Aktiv',
+          inactive: 'Inaktiv',
+        },
       },
     });
   });

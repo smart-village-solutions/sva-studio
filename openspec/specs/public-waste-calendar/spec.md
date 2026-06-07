@@ -124,12 +124,12 @@ Das System SHALL Benutzerinnen und Benutzern erlauben, die sichtbaren Abfallarte
 
 Das System SHALL globale PDF- und iCal-Aktionen aus demselben finalen Standortkontext ableiten wie die Kalenderansicht.
 
-#### Scenario: PDF-Aktionen werden jahresbezogen aus einem URL-Schema abgeleitet
+#### Scenario: PDF-Aktion erzeugt das Dokument ad hoc in der öffentlichen Runtime
 
 - **WHEN** für einen vollständig aufgelösten Standort globale Aktionen angezeigt werden
-- **THEN** stellt die App PDF-Links für Vorjahr, aktuelles Jahr und nächstes Jahr bereit
-- **AND** leitet diese Links serverseitig aus einem konfigurierten URL-Schema ab
-- **AND** die App ist nicht selbst für die PDF-Erzeugung verantwortlich
+- **THEN** kann die App einen PDF-Export für ein gewähltes Jahr und gewählte Fraktionen auslösen
+- **AND** die öffentliche Runtime erzeugt das PDF serverseitig ad hoc
+- **AND** es wird kein persistentes PDF-Artefakt gespeichert
 
 #### Scenario: iCal-Feed liefert alle verfügbaren künftigen Termine
 
@@ -153,4 +153,3 @@ Das System SHALL die öffentliche Abfallkalender-App als reduzierte, iFrame-taug
 - **WHEN** Benutzerinnen oder Benutzer die öffentliche App mit Tastatur oder Screenreader bedienen
 - **THEN** sind Auswahlfluss, Fraktionsfilter, Kalendernavigation, globale Aktionen und Modal grundsätzlich zugänglich
 - **AND** die Capability zielt mindestens auf WCAG 2.1 AA
-

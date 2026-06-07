@@ -32,12 +32,10 @@ describe('public waste bootstrap', () => {
           PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz-env',
           PUBLIC_WASTE_DATABASE_URL: 'postgres://env',
           PUBLIC_WASTE_SCHEMA_NAME: 'public-env',
-          PUBLIC_WASTE_PDF_URL_TEMPLATE: 'https://env.invalid/{locationKey}/{year}.pdf',
         },
         rawConfigJson: JSON.stringify({
           instanceId: 'bb-prignitz-json',
           supabase: { databaseUrl: 'postgres://json', schemaName: 'public-json' },
-          pdf: { urlTemplate: 'https://json.invalid/{locationKey}/{year}.pdf' },
         }),
       })
     ).toMatchObject({
@@ -52,7 +50,6 @@ describe('public waste bootstrap', () => {
         rawConfigJson: JSON.stringify({
           instanceId: 'bb-prignitz-json',
           supabase: { databaseUrl: 'postgres://json', schemaName: 'public-json' },
-          pdf: { urlTemplate: 'https://json.invalid/{locationKey}/{year}.pdf' },
         }),
       })
     ).toMatchObject({

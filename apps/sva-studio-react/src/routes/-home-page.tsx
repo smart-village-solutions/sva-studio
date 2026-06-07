@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from '@tanstack/react-router';
+import { Heart } from 'lucide-react';
 
 import { t } from '../i18n';
 import { readLatestAuthDiagnosticSnapshot } from '../lib/auth-diagnostics';
@@ -82,6 +83,24 @@ const AnonymousHeroActions = ({
       <a href={loginHref}>{t('shell.header.login')}</a>
     </Button>
   </div>
+);
+
+const HomeOpenSourceClaim = () => (
+  <p className="text-sm font-medium text-muted-foreground">
+    <a
+      href="https://github.com/smart-village-solutions/sva-studio"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 underline-offset-4 transition-colors hover:text-foreground hover:underline"
+    >
+      <span>{`${t('home.hero.openSourcePrefix')} `}</span>
+      <span aria-label={t('home.hero.openSourceLoveLabel')} className="inline-flex items-center text-rose-500">
+        <Heart aria-hidden="true" className="h-4 w-4 fill-current" strokeWidth={1.8} />
+        <span className="sr-only">{t('home.hero.openSourceLoveLabel')}</span>
+      </span>
+      <span>{` ${t('home.hero.openSourceSuffix')}`}</span>
+    </a>
+  </p>
 );
 
 const DevAuthPrompt = ({
@@ -270,6 +289,7 @@ export const HomePage = () => {
                 authErrorLoginHref={authErrorLoginHref}
               />
             ) : null}
+            <HomeOpenSourceClaim />
           </div>
         </div>
       </section>

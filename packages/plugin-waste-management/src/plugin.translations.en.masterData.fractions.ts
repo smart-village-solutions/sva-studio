@@ -40,6 +40,7 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     translationEn: 'Label (EN)',
     color: 'Color',
     containerSize: 'Container size',
+    pdfShortLabel: 'PDF short label',
     description: 'Description',
     active: 'Status',
     reminderCount: 'Reminder offering',
@@ -83,6 +84,8 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
       description: 'Describe the waste type briefly and clearly. Maximum 300 characters.',
       translationDe: 'Optional: German label for multilingual output.',
       translationEn: 'Optional: English label for multilingual output.',
+      pdfShortLabel:
+        'Optional: Short label for the PDF legend. If omitted, a short code will later be derived from the fraction label.',
       containerSize: 'Optional: Only enter a container size if this waste type exists in multiple sizes, for example 120 l or 240 l.',
       color: 'This color will later help users recognize the waste type in calendars and tables.',
       active: 'Only active waste types are available for further planning.',

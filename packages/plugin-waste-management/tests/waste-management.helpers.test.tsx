@@ -300,6 +300,7 @@ describe('waste management helper modules', () => {
       wasteMasterDataInputMappers.toCreateFractionInput({
         id: 'fraction-1',
         name: ' Rest ',
+        pdfShortLabel: ' RST ',
         translations: {
           de: ' Restmüll ',
           en: ' ',
@@ -319,6 +320,7 @@ describe('waste management helper modules', () => {
     ).toEqual({
       id: 'fraction-1',
       name: 'Rest',
+      pdfShortLabel: 'RST',
       translations: { de: 'Restmüll' },
       containerSize: '240l',
       color: '#111111',
@@ -336,6 +338,7 @@ describe('waste management helper modules', () => {
       wasteMasterDataFormMappers.fractionToForm({
         id: 'fraction-2',
         name: 'Bio',
+        pdfShortLabel: undefined,
         translations: {},
         containerSize: undefined,
         color: '#16A34A',
@@ -353,6 +356,7 @@ describe('waste management helper modules', () => {
     ).toEqual({
       id: 'fraction-2',
       name: 'Bio',
+      pdfShortLabel: '',
       translations: {},
       containerSize: '',
       color: '#16A34A',

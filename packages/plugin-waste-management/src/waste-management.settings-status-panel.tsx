@@ -50,6 +50,11 @@ export const WasteSettingsStatusPanel = ({
           value: formatUpdatedAt(settings?.lastCheckedAt),
         },
         {
+          id: 'selectedInterface',
+          label: pt('settings.meta.selectedInterfaceLabel'),
+          value: settings?.selectedInterfaceName ?? pt('settings.meta.selectedInterfaceEmpty'),
+        },
+        {
           id: 'holidayStateCode',
           label: pt('settings.meta.holidayStateCodeLabel'),
           value: settings?.holidayStateCode ?? pt('settings.meta.holidayStateCodeEmpty'),
@@ -58,6 +63,11 @@ export const WasteSettingsStatusPanel = ({
           id: 'lastHolidaySyncStatus',
           label: pt('settings.meta.lastHolidaySyncStatusLabel'),
           value: formatHolidaySyncStatus(settings?.lastHolidaySyncStatus, pt),
+        },
+        {
+          id: 'lastSuccessfulHolidaySyncAt',
+          label: pt('settings.meta.lastSuccessfulHolidaySyncAtLabel'),
+          value: formatUpdatedAt(settings?.lastSuccessfulHolidaySyncAt),
         },
       ]}
     />

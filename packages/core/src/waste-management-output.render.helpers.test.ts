@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   abbreviateHolidayLabel,
+  createBrandingImageResource,
   getEntryLabelWidth,
   pad2,
   splitLegendLabel,
@@ -31,5 +32,34 @@ describe('waste-management-output.render.helpers', () => {
     expect(getEntryLabelWidth('A')).toBe(18);
     expect(getEntryLabelWidth('ABC')).toBe(22);
     expect(getEntryLabelWidth('ABCD')).toBe(26);
+  });
+
+  it('passes raw image dictionary entries to the pdf builder without nested brackets', () => {
+    const addStreamObject = vi.fn(() => 17);
+
+    const resource = createBrandingImageResource({
+      document: {
+        pages: [
+          {
+            brandingImage: {
+              width: 4,
+              height: 2,
+              rgbData: new Uint8Array([255, 255, 255, 0, 0, 0, 127, 127, 127, 5, 5, 5, 10, 10, 10, 15, 15, 15]),
+            },
+          },
+        ],
+      } as never,
+      addStreamObject,
+    });
+
+    expect(resource).toEqual({
+      id: 17,
+      objectName: 'Im1',
+    });
+    expect(addStreamObject).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      expect.stringContaining('/Type /XObject /Subtype /Image')
+    );
+    expect(addStreamObject.mock.calls[0]?.[1].startsWith('<<')).toBe(false);
   });
 });

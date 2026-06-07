@@ -216,6 +216,153 @@ describe('public waste repository', () => {
     );
   });
 
+  it('adds imported pickup dates when a tour has no reconstructable recurrence dates', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            link_id: 'link-1',
+            location_id: 'location-1',
+            link_start_date: '2026-01-01',
+            link_end_date: null,
+            tour_id: 'tour-1',
+            tour_name: 'Restmuell',
+            tour_description: 'Importierte Sammeltermine.',
+            tour_recurrence: 'on-demand',
+            tour_custom_recurrence_interval_days: null,
+            tour_first_date: null,
+            tour_end_date: null,
+            tour_custom_dates: null,
+            fraction_id: 'fraction-1',
+            fraction_label: 'Restmuell',
+            fraction_pdf_short_label: 'RM',
+            fraction_color: '#111111',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            location_id: 'location-1',
+            pickup_date: '2026-05-19',
+            tour_id: 'tour-1',
+            tour_name: 'Restmuell',
+            tour_description: 'Importierte Sammeltermine.',
+            fraction_id: 'fraction-1',
+            fraction_label: 'Restmuell',
+            fraction_pdf_short_label: 'RM',
+            fraction_color: '#111111',
+          },
+        ],
+      });
+
+    const repository = createPublicWasteRepository({
+      schemaName: 'waste',
+      execute,
+    });
+
+    await expect(
+      repository.loadCalendarEntries({
+        selection: {
+          cityId: 'city-1',
+          streetId: 'street-1',
+        },
+        referenceDate: '2026-01-01',
+      })
+    ).resolves.toContainEqual(
+      expect.objectContaining({
+        id: 'tour-1:2026-05-19:fraction-1',
+        date: '2026-05-19',
+        fractionId: 'fraction-1',
+        fractionLabel: 'Restmuell',
+        fractionShortLabel: 'RM',
+        tourDescription: 'Importierte Sammeltermine.',
+      })
+    );
+  });
+
+  it('ignores imported pickup dates outside the location-tour link validity window', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            link_id: 'link-1',
+            location_id: 'location-1',
+            link_start_date: '2026-06-01',
+            link_end_date: '2026-06-30',
+            tour_id: 'tour-1',
+            tour_name: 'Restmuell',
+            tour_description: 'Importierte Sammeltermine.',
+            tour_recurrence: 'on-demand',
+            tour_custom_recurrence_interval_days: null,
+            tour_first_date: null,
+            tour_end_date: null,
+            tour_custom_dates: null,
+            fraction_id: 'fraction-1',
+            fraction_label: 'Restmuell',
+            fraction_pdf_short_label: 'RM',
+            fraction_color: '#111111',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 2,
+        rows: [
+          {
+            location_id: 'location-1',
+            pickup_date: '2026-05-19',
+            tour_id: 'tour-1',
+            tour_name: 'Restmuell',
+            tour_description: 'Importierte Sammeltermine.',
+            fraction_id: 'fraction-1',
+            fraction_label: 'Restmuell',
+            fraction_pdf_short_label: 'RM',
+            fraction_color: '#111111',
+          },
+          {
+            location_id: 'location-1',
+            pickup_date: '2026-06-19',
+            tour_id: 'tour-1',
+            tour_name: 'Restmuell',
+            tour_description: 'Importierte Sammeltermine.',
+            fraction_id: 'fraction-1',
+            fraction_label: 'Restmuell',
+            fraction_pdf_short_label: 'RM',
+            fraction_color: '#111111',
+          },
+        ],
+      });
+
+    const repository = createPublicWasteRepository({
+      schemaName: 'waste',
+      execute,
+    });
+
+    await expect(
+      repository.loadCalendarEntries({
+        selection: {
+          cityId: 'city-1',
+          streetId: 'street-1',
+        },
+        referenceDate: '2026-01-01',
+      })
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: 'tour-1:2026-06-19:fraction-1',
+        date: '2026-06-19',
+      }),
+    ]);
+  });
+
   it('prefers exact street matches over catch-all rows for selection summaries', async () => {
     const execute = vi.fn().mockResolvedValueOnce({
       rowCount: 1,

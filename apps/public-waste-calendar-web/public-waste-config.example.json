@@ -3,8 +3,5 @@
   "supabase": {
     "databaseUrl": "${PUBLIC_WASTE_DATABASE_URL}",
     "schemaName": "${PUBLIC_WASTE_SCHEMA_NAME}"
-  },
-  "pdf": {
-    "urlTemplate": "${PUBLIC_WASTE_PDF_URL_TEMPLATE}"
   }
 }

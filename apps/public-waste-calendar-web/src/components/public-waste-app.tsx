@@ -1,8 +1,8 @@
 import React from 'react';
-import { IconCalendarPlus, IconFileTypePdf, IconPencil } from '@tabler/icons-react';
 
 import type {
   PublicWasteCalendarEntry,
+  PublicWasteResolvedSelection,
   PublicWasteSelectableEntry,
 } from '../lib/public-waste-contract.js';
 import {
@@ -11,7 +11,9 @@ import {
 } from '../lib/public-waste-view-model.js';
 import { PublicWasteCalendarPanels } from './public-waste-calendar-panels.js';
 import { PublicWasteEventDialog } from './public-waste-event-dialog.js';
+import { PublicWasteSelectionHeader } from './public-waste-selection-header.js';
 import { PublicWasteSelectionForm, type PublicWasteSelectionPathItem } from './public-waste-selection-form.js';
+import { usePublicWastePdfDownload } from './use-public-waste-pdf-download.js';
 
 type IncompletePublicWasteAppProps = {
   readonly selectionState: 'incomplete';
@@ -23,10 +25,10 @@ type IncompletePublicWasteAppProps = {
 };
 
 type CompletePublicWasteAppProps = {
+  readonly selection: PublicWasteResolvedSelection;
   readonly selectionState: 'complete';
   readonly selectionSummary: string;
   readonly calendarModel: PublicWasteCalendarViewModel;
-  readonly pdfLinks: readonly string[];
   readonly icalUrl: string;
   readonly onChangeLocation: () => void;
 };
@@ -75,55 +77,42 @@ export function PublicWasteApp(props: Readonly<PublicWasteAppProps>) {
 }
 
 function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
-  const [selectedFractions, setSelectedFractions] = React.useState<readonly string[]>(() =>
-    props.calendarModel.fractionOptions.map((fraction) => fraction.id)
-  );
   const [selectedEntry, setSelectedEntry] = React.useState<PublicWasteCalendarEntry | null>(null);
+  const {
+    selectedFractions,
+    pdfYear,
+    pdfRunning,
+    pdfError,
+    yearOptions,
+    setPdfYear,
+    toggleFraction,
+    downloadPdf,
+  } = usePublicWastePdfDownload({
+    selection: props.selection,
+    calendarModel: props.calendarModel,
+  });
   const deferredFractions = React.useDeferredValue(selectedFractions);
   const filteredModel = filterPublicWasteCalendarFractions(props.calendarModel, deferredFractions);
   const [cityLine, streetLine, houseNumberLine] = splitSelectionSummary(props.selectionSummary);
-  const currentYearPdf = props.pdfLinks[1];
-
-  React.useEffect(() => {
-    setSelectedFractions(props.calendarModel.fractionOptions.map((fraction) => fraction.id));
-  }, [props.calendarModel.locationKey, props.calendarModel.fractionOptions]);
-
-  const toggleFraction = (fractionId: string) => {
-    setSelectedFractions((current) =>
-      current.includes(fractionId) ? current.filter((entry) => entry !== fractionId) : [...current, fractionId]
-    );
-  };
 
   return (
     <section className="selection-panel">
-      <div className="selection-header">
-        <div className="selection-header-main">
-          <h2 className="section-title">Abholort</h2>
-          <div className="selection-summary-block">
-            <p className="selection-summary-line">{cityLine}</p>
-            <p className="selection-summary-line">{streetLine}</p>
-            {houseNumberLine ? <p className="selection-summary-line">{houseNumberLine}</p> : null}
-          </div>
-          <div className="selection-summary-action-row">
-            <button type="button" className="selection-summary-link" onClick={props.onChangeLocation}>
-              <IconPencil size={18} stroke={1.75} aria-hidden="true" />
-              <span>Adresse ändern</span>
-            </button>
-          </div>
-        </div>
-        <div className="selection-header-actions">
-          <a href={props.icalUrl} className="header-action-link">
-            <IconCalendarPlus size={18} stroke={1.75} aria-hidden="true" />
-            <span>In Kalender übernehmen</span>
-          </a>
-          {!currentYearPdf ? null : (
-            <a href={currentYearPdf} className="header-action-link">
-              <IconFileTypePdf size={18} stroke={1.75} aria-hidden="true" />
-              <span>Druckversion herunterladen</span>
-            </a>
-          )}
-        </div>
-      </div>
+      <PublicWasteSelectionHeader
+        cityLine={cityLine}
+        streetLine={streetLine}
+        houseNumberLine={houseNumberLine}
+        icalUrl={props.icalUrl}
+        pdfYear={pdfYear}
+        pdfRunning={pdfRunning}
+        selectedFractionCount={selectedFractions.length}
+        yearOptions={yearOptions}
+        onChangeLocation={props.onChangeLocation}
+        onSelectPdfYear={setPdfYear}
+        onDownloadPdf={() => {
+          void downloadPdf();
+        }}
+      />
+      {pdfError ? <p className="body-copy">{pdfError}</p> : null}
       <PublicWasteCalendarPanels
         model={filteredModel}
         onToggleFraction={toggleFraction}

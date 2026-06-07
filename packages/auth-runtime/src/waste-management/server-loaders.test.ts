@@ -144,23 +144,6 @@ const loggerMock = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-const mediaStoragePortMock = vi.hoisted(() => ({
-  readObject: vi.fn(async () => ({
-    body: new TextEncoder().encode(JSON.stringify({ years: [2026] })),
-    byteSize: 16,
-    contentType: 'application/json',
-  })),
-  writeObject: vi.fn(async ({ body }: { body: Uint8Array }) => ({
-    byteSize: body.byteLength,
-    etag: 'etag-1',
-  })),
-  resolveDelivery: vi.fn(async ({ storageKey }: { storageKey: string }) => ({
-    deliveryUrl: `https://cdn.example/${storageKey}`,
-    expiresAt: '2026-05-21T12:00:00.000Z',
-    contentType: 'application/pdf',
-  })),
-}));
-
 const repositoryMocks = vi.hoisted(() => ({
   listWasteFractions: vi.fn(async () => [{ id: 'fraction-1' }]),
   listWasteRegions: vi.fn(async () => [{ id: 'region-1' }]),
@@ -261,10 +244,6 @@ vi.mock('@sva/data-repositories', () => ({
   createWasteMasterDataRepository: createWasteMasterDataRepositoryMock,
 }));
 
-vi.mock('../iam-media/storage-s3.js', () => ({
-  createConfiguredMediaStoragePort: () => mediaStoragePortMock,
-}));
-
 vi.mock('pg', () => ({
   Pool: PoolMock,
 }));
@@ -272,7 +251,6 @@ vi.mock('pg', () => ({
 import {
   wasteManagementEntityLoaders,
   wasteManagementEntitySavers,
-  wasteManagementOutputLoaders,
   wasteManagementOverviewLoaders,
   wasteManagementServerLoaderInternals,
 } from './server-loaders.js';
@@ -373,162 +351,6 @@ describe('waste-management server loaders', () => {
         'repository.list_waste_location_tour_links',
       ])
     );
-  });
-
-  it('resolves stored pdf output links for collection locations from the storage index', async () => {
-    repositoryMocks.listWasteCollectionLocations.mockResolvedValueOnce([
-      {
-        id: 'location-1',
-        cityId: 'city-1',
-        active: true,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      },
-    ]);
-
-    const overview = await wasteManagementOutputLoaders.loadWasteOutputOverview('tenant-a');
-
-    expect(mediaStoragePortMock.readObject).toHaveBeenCalledWith({
-      instanceId: 'tenant-a',
-      storageKey: 'waste-output/collection-locations/location-1/index.json',
-    });
-    expect(mediaStoragePortMock.resolveDelivery).toHaveBeenCalledWith({
-      instanceId: 'tenant-a',
-      assetId: 'waste-output.location-1.2026',
-      storageKey: 'waste-output/collection-locations/location-1/2026.pdf',
-      visibility: 'private',
-    });
-    expect(overview).toEqual({
-      collectionLocations: [
-        {
-          collectionLocationId: 'location-1',
-          pdfs: [
-            {
-              year: 2026,
-              deliveryUrl: 'https://cdn.example/waste-output/collection-locations/location-1/2026.pdf',
-              expiresAt: '2026-05-21T12:00:00.000Z',
-            },
-          ],
-        },
-      ],
-    });
-  });
-
-  it('renders, stores and indexes waste output pdfs deterministically', async () => {
-    repositoryMocks.getWasteCollectionLocationById.mockResolvedValueOnce({
-      id: 'location-1',
-      regionId: 'region-1',
-      cityId: 'city-1',
-      streetId: 'street-1',
-      houseNumberId: 'house-1',
-      active: true,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    });
-    repositoryMocks.listWasteRegions.mockResolvedValueOnce([{ id: 'region-1', name: 'Havelland', createdAt: '', updatedAt: '' }]);
-    repositoryMocks.listWasteCities.mockResolvedValueOnce([{ id: 'city-1', name: 'Rathenow', regionId: 'region-1', createdAt: '', updatedAt: '' }]);
-    repositoryMocks.listWasteStreets.mockResolvedValueOnce([{ id: 'street-1', name: 'Berliner Str.', cityId: 'city-1', createdAt: '', updatedAt: '' }]);
-    repositoryMocks.listWasteHouseNumbers.mockResolvedValueOnce([{ id: 'house-1', number: '12', streetId: 'street-1', createdAt: '', updatedAt: '' }]);
-    repositoryMocks.listWasteLocationTourLinks.mockResolvedValueOnce([
-      { id: 'link-1', locationId: 'location-1', tourId: 'tour-1', createdAt: '', updatedAt: '' },
-    ]);
-    repositoryMocks.listWasteTours.mockResolvedValueOnce([
-      {
-        id: 'tour-1',
-        name: 'Nord',
-        wasteFractionIds: ['fraction-1'],
-        recurrence: null,
-        active: true,
-        createdAt: '',
-        updatedAt: '',
-      },
-    ]);
-    repositoryMocks.listWasteFractions.mockResolvedValueOnce([
-      {
-        id: 'fraction-1',
-        name: 'Bioabfall',
-        color: '#00AA00',
-        active: true,
-        createdAt: '',
-        updatedAt: '',
-      },
-    ]);
-    repositoryMocks.listWasteLocationTourPickupDates.mockResolvedValueOnce([
-      { id: 'pickup-1', locationId: 'location-1', tourId: 'tour-1', pickupDate: '2026-01-14', createdAt: '', updatedAt: '' },
-    ]);
-    repositoryMocks.listWasteTourDateShifts.mockResolvedValueOnce([]);
-    repositoryMocks.listWasteGlobalDateShifts.mockResolvedValueOnce([]);
-    mediaStoragePortMock.readObject.mockRejectedValueOnce(new Error('missing_index'));
-
-    const result = await wasteManagementOutputLoaders.generateWasteOutputPdf({
-      instanceId: 'tenant-a',
-      collectionLocationId: 'location-1',
-      year: 2026,
-    });
-
-    expect(mediaStoragePortMock.writeObject).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'tenant-a',
-        storageKey: 'waste-output/collection-locations/location-1/2026.pdf',
-        contentType: 'application/pdf',
-      })
-    );
-    expect(mediaStoragePortMock.writeObject).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'tenant-a',
-        storageKey: 'waste-output/collection-locations/location-1/index.json',
-        contentType: 'application/json',
-      })
-    );
-    expect(result).toMatchObject({
-      collectionLocationId: 'location-1',
-      year: 2026,
-      storageKey: 'waste-output/collection-locations/location-1/2026.pdf',
-      deliveryUrl: 'https://cdn.example/waste-output/collection-locations/location-1/2026.pdf',
-    });
-    const pdfWrite = mediaStoragePortMock.writeObject.mock.calls.find(
-      ([input]: readonly [{ readonly storageKey: string }]) =>
-        input.storageKey === 'waste-output/collection-locations/location-1/2026.pdf'
-    );
-    const pdfText = Buffer.from((pdfWrite?.[0].body as Uint8Array | undefined) ?? new Uint8Array()).toString('latin1');
-    expect(pdfText).toContain('Havelland, Rathenow, Berliner Str. 12');
-  });
-
-  it('falls back to the collection location id when output labels cannot resolve address references', async () => {
-    repositoryMocks.getWasteCollectionLocationById.mockResolvedValueOnce({
-      id: 'location-1',
-      regionId: 'region-missing',
-      cityId: 'city-missing',
-      streetId: 'street-missing',
-      houseNumberId: 'house-missing',
-      active: true,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    });
-    repositoryMocks.listWasteRegions.mockResolvedValueOnce([]);
-    repositoryMocks.listWasteCities.mockResolvedValueOnce([]);
-    repositoryMocks.listWasteStreets.mockResolvedValueOnce([]);
-    repositoryMocks.listWasteHouseNumbers.mockResolvedValueOnce([]);
-    repositoryMocks.listWasteLocationTourLinks.mockResolvedValueOnce([]);
-    repositoryMocks.listWasteTours.mockResolvedValueOnce([]);
-    repositoryMocks.listWasteFractions.mockResolvedValueOnce([]);
-    repositoryMocks.listWasteLocationTourPickupDates.mockResolvedValueOnce([]);
-    repositoryMocks.listWasteTourDateShifts.mockResolvedValueOnce([]);
-    repositoryMocks.listWasteGlobalDateShifts.mockResolvedValueOnce([]);
-    mediaStoragePortMock.readObject.mockRejectedValueOnce(new Error('missing_index'));
-
-    await wasteManagementOutputLoaders.generateWasteOutputPdf({
-      instanceId: 'tenant-a',
-      collectionLocationId: 'location-1',
-      year: 2026,
-    });
-
-    const pdfWrite = mediaStoragePortMock.writeObject.mock.calls.find(
-      ([input]: readonly [{ readonly storageKey: string }]) =>
-        input.storageKey === 'waste-output/collection-locations/location-1/2026.pdf'
-    );
-    const pdfText = Buffer.from((pdfWrite?.[0].body as Uint8Array | undefined) ?? new Uint8Array()).toString('latin1');
-    expect(pdfText).toContain('location-1');
   });
 
   it('evicts stale waste pools after the idle ttl expires', async () => {

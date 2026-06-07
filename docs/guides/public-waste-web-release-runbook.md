@@ -23,7 +23,6 @@ Diese Variablen werden im Portainer-Stack gepflegt:
 - `PUBLIC_WASTE_INSTANCE_ID`
 - `PUBLIC_WASTE_DATABASE_URL`
 - `PUBLIC_WASTE_SCHEMA_NAME`
-- `PUBLIC_WASTE_PDF_URL_TEMPLATE`
 
 `PUBLIC_WASTE_CONFIG_JSON` ist kein produktionsführender Vertrag mehr. Der
 Wert darf nur für lokale Entwicklung oder Legacy-Kompatibilität bestehen

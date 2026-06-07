@@ -74,9 +74,32 @@ export const createCrudDialog = <const TCopy extends CrudDialogCopy>(copy: TCopy
 
 export const createCrudMessages = <const TCopy extends CrudMessagesCopy>(copy: TCopy) => ({ ...copy }) as const;
 
+const isTranslationRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && Array.isArray(value) === false;
+
+const mergeTranslationSection = (
+  target: Record<string, unknown>,
+  source: TranslationSection,
+): Record<string, unknown> => {
+  for (const [key, value] of Object.entries(source)) {
+    const current = target[key];
+    if (isTranslationRecord(current) && isTranslationRecord(value)) {
+      target[key] = mergeTranslationSection({ ...current }, value);
+      continue;
+    }
+
+    target[key] = value;
+  }
+
+  return target;
+};
+
 export const createWasteManagementPluginTranslationLocale = <const TSections extends readonly TranslationSection[]>(
   sections: TSections,
 ) =>
   ({
-    wasteManagement: Object.assign({}, ...sections) as MergeTranslationSections<TSections>,
+    wasteManagement: sections.reduce<Record<string, unknown>>(
+      (mergedSections, section) => mergeTranslationSection(mergedSections, section),
+      {},
+    ) as MergeTranslationSections<TSections>,
   }) as const;

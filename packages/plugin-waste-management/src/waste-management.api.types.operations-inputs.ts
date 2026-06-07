@@ -17,6 +17,10 @@ export type WasteManagementSettingsInput = Readonly<{
   projectUrl: string;
   schemaName?: string;
   enabled: boolean;
+  selectedInterfaceId?: string;
+  calendarWebUrl?: string;
+  pdfBrandingAssetUrl?: string;
+  pdfContactBlock?: string;
   holidayStateCode?: WasteHolidayStateCode;
   databaseUrl?: string;
   serviceRoleKey?: string;

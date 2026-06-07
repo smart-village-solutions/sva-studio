@@ -1,8 +1,9 @@
 import { createWasteManagementSettingsTranslations } from './plugin.translations.shared.sections.js';
 
 export const wasteManagementPluginTranslationsDESettings = createWasteManagementSettingsTranslations({
-  groupTitle: 'Waste-Datenquelle',
-  groupDescription: 'Pflegen Sie die instanzbezogene Verbindung zur fachlichen Waste-Datenbank über die Host-Fassade.',
+  common: {
+    actions: 'Aktionen',
+  },
   technical: {
     title: 'Technischer Status',
     description: 'Der Host bewertet die aktive Waste-Datenquelle und spiegelt den letzten serverseitigen Verbindungscheck wider.',
@@ -13,6 +14,9 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
     databaseUrl: 'Datenbank-URL',
     serviceRoleKey: 'Service-Role-Key',
     enabled: 'Datenquelle aktivieren',
+    selectedInterface: 'Schnittstelle',
+    selectedInterfacePlaceholder: 'Schnittstelle auswählen',
+    calendarWebUrl: 'Link zur Webversion',
     holidayStateCode: 'Bundesland für Feiertage',
     holidayStateCodePlaceholder: 'Bundesland auswählen',
     customRecurrenceName: 'Name',
@@ -28,10 +32,13 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
     databaseUrlConfiguredLabel: 'Datenbank-URL',
     serviceRoleKeyConfiguredLabel: 'Service-Key',
     lastCheckedAtLabel: 'Letzter Check',
+    selectedInterfaceLabel: 'Gewählte Schnittstelle',
+    selectedInterfaceEmpty: 'Nicht ausgewählt',
     holidayStateCodeLabel: 'Feiertags-Bundesland',
     holidayStateCodeEmpty: 'Nicht gesetzt',
     lastHolidaySyncStatusLabel: 'Letzter Feiertagssync',
     lastHolidaySyncStatusEmpty: 'Noch nicht ausgeführt',
+    lastSuccessfulHolidaySyncAtLabel: 'Letzter erfolgreicher Abgleich',
     holidaySyncSuccess: 'Erfolgreich',
     holidaySyncPartialSuccess: 'Teilweise erfolgreich',
     holidaySyncFailed: 'Fehlgeschlagen',
@@ -40,6 +47,7 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
   actions: {
     save: 'Einstellungen speichern',
     saving: 'Speichert…',
+    cancel: 'Abbrechen',
     runHolidaySync: 'Feiertage neu synchronisieren',
     runningHolidaySync: 'Synchronisiert Feiertage…',
     addCustomRecurrence: 'Abstand hinzufügen',
@@ -58,10 +66,21 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
     holidaySyncSuccess: 'Feiertagssync abgeschlossen: {{status}}.',
     holidaySyncError: 'Die Feiertage konnten nicht neu synchronisiert werden.',
     holidaySyncForbidden: 'Für das erneute Synchronisieren der Feiertage fehlt die Berechtigung.',
-    connectionManagedHint: 'Die Verbindungsdaten bleiben führend über /interfaces verwaltet und werden hier nur gespiegelt.',
-    holidayStateDescription: 'Beim Speichern werden Feiertage für die nächsten zehn Jahre für das gewählte Bundesland synchronisiert.',
-    customRecurrencesTitle: 'Eigene Abstände',
-    customRecurrencesDescription: 'Pflegen Sie zusätzliche Tagesabstände, die anschließend im Tour-Formular als weitere Turnusoptionen erscheinen.',
+    interfaceSelectionTitle: 'Auswahl der Schnittstelle',
+    interfaceSelectionDescription:
+      'Wählen Sie die Schnittstelle, auf deren Basis das Waste-Modul arbeiten soll. Die Eignung wird derzeit nicht eingeschränkt.',
+    holidayStateTitle: 'Auswahl des Bundeslandes',
+    calendarWebUrlDescription:
+      'Tragen Sie hier den Link zur öffentlichen Webversion des Abfallkalenders ein. Er wird im Plugin als Verweis ausgegeben.',
+    calendarWebUrlTitle: 'Link zur Webversion',
+    holidayStateDescription:
+      'Wählen Sie das Bundesland für die Feiertage aus und speichern Sie die Änderung, um den Feiertagsabgleich für die nächsten zehn Jahre auszulösen.',
+    holidayStateOverwriteWarningTitle: 'Bestehende Feiertage überschreiben?',
+    holidayStateOverwriteWarningDescription:
+      'Für diese Instanz wurden bereits Feiertage importiert. Beim Speichern werden die bestehenden Feiertage überschrieben und mit dem gewählten Bundesland neu aufgebaut.',
+    customRecurrencesTitle: 'Eigene Turnusse',
+    customRecurrencesDescription:
+      'Definieren Sie zusätzliche Abholabstände, die anschließend im Tour-Formular als weitere Turnusoptionen erscheinen.',
     customRecurrencesEmpty: 'Es sind noch keine eigenen Abstände hinterlegt.',
     customRecurrenceCreateTitle: 'Eigenen Abstand anlegen',
     customRecurrenceEditTitle: 'Eigenen Abstand bearbeiten',
@@ -69,5 +88,6 @@ export const wasteManagementPluginTranslationsDESettings = createWasteManagement
     customRecurrenceDeleteDescription: 'Der Abstand {{name}} wird entfernt. Falls zugeordnete Touren existieren, verwendet der Server den gewählten Fallback.',
     customRecurrenceFallbackHint: 'Optional: Wählen Sie direkt einen Fallback, falls dieser Abstand bereits Touren zugeordnet ist.',
     customRecurrenceFallbackPlaceholder: 'Keinen Fallback vorauswählen',
+    noInterfacesAvailable: 'Es wurden noch keine externen Schnittstellen für diese Instanz hinterlegt.',
   },
 });

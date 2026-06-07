@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
@@ -9,6 +9,8 @@ import {
   type WasteManagementSearchParams,
   type WasteManagementTabId,
 } from './search-params.js';
+import { getWasteManagementSettings } from './waste-management.api.js';
+import { WasteManagementPageDescription } from './waste-management.page.description.js';
 import { useWasteManagementUiAccess } from './waste-management.ui-access.js';
 import { WasteManagementPageTabs } from './waste-management.page.layout.js';
 
@@ -39,26 +41,13 @@ const updateSearch = (
   });
 };
 
-const resolvePublicWasteCalendarUrl = (): string | null => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const { hostname } = window.location;
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === 'studio.localhost' || hostname.endsWith('.studio.localhost')) {
-    return 'http://localhost:3002';
-  }
-
-  return null;
-};
-
 export const WasteManagementPage = () => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
   const rawSearch = useSearch({ strict: false });
   const search = normalizeWasteManagementSearchParams(rawSearch as Record<string, unknown>);
   const uiAccess = useWasteManagementUiAccess(search.tab);
-  const publicWasteCalendarUrl = resolvePublicWasteCalendarUrl();
+  const [calendarWebUrl, setCalendarWebUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!uiAccess.isResolved || uiAccess.visibleTabIds.includes(search.tab)) {
@@ -82,23 +71,42 @@ export const WasteManagementPage = () => {
     });
   }, [navigate, search, uiAccess.isResolved, uiAccess.visibleTabIds]);
 
+  useEffect(() => {
+    if (!uiAccess.isResolved || !uiAccess.canAccessSettings) {
+      setCalendarWebUrl(null);
+      return;
+    }
+
+    let active = true;
+
+    void getWasteManagementSettings()
+      .then((settings) => {
+        if (!active) {
+          return;
+        }
+        setCalendarWebUrl(settings?.calendarWebUrl ?? null);
+      })
+      .catch(() => {
+        if (active) {
+          setCalendarWebUrl(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [uiAccess.canAccessSettings, uiAccess.isResolved]);
+
   return (
     <StudioOverviewPageTemplate
       title={pt('page.title')}
       description={
-        <>
-          {pt('page.description')}{' '}
-          {publicWasteCalendarUrl ? (
-            <a
-              href={publicWasteCalendarUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-4 hover:text-foreground"
-            >
-              {pt('page.publicCalendarLink')}
-            </a>
-          ) : null}
-        </>
+        <WasteManagementPageDescription
+          description={pt('page.description')}
+          calendarWebUrl={calendarWebUrl}
+          webVersionLead={pt('page.webVersionLead')}
+          webVersionLinkLabel={pt('page.webVersionLinkLabel')}
+        />
       }
     >
       <WasteManagementPageTabs

@@ -14,7 +14,7 @@ const updateManagedField =
     onChange((current) => ({ ...current, [key]: value }));
   };
 
-export const WasteSettingsManagedFields = ({
+export const WasteSettingsTechnicalConfigFields = ({
   form,
   pt,
   onChange,
@@ -71,6 +71,36 @@ export const WasteSettingsManagedFields = ({
         />
         <span className="text-sm text-muted-foreground">{form.enabled ? pt('common.active') : pt('common.inactive')}</span>
       </div>
+    </StudioFieldGroup>
+  );
+};
+
+export const WasteSettingsContentFields = ({
+  form,
+  pt,
+  onChange,
+}: {
+  readonly form: SettingsFormState;
+  readonly pt: Translate;
+  readonly onChange: (next: SettingsFormState | ((current: SettingsFormState) => SettingsFormState)) => void;
+}) => {
+  const updateField = updateManagedField(onChange);
+
+  return (
+    <StudioFieldGroup>
+      <StudioField
+        id="waste-settings-calendar-web-url"
+        label={pt('settings.fields.calendarWebUrl')}
+        description={pt('settings.messages.calendarWebUrlDescription')}
+      >
+        <Input
+          id="waste-settings-calendar-web-url"
+          type="url"
+          value={form.calendarWebUrl}
+          onChange={(event) => updateField('calendarWebUrl', event.target.value)}
+          placeholder="https://abfall.example.de"
+        />
+      </StudioField>
       <StudioField
         id="waste-settings-holiday-state-code"
         label={pt('settings.fields.holidayStateCode')}

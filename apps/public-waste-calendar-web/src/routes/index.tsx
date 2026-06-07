@@ -325,10 +325,10 @@ export function PublicWasteIndexPage() {
           />
         ) : (
           <PublicWasteApp
+            selection={pageState.selection}
             selectionState="complete"
             selectionSummary={pageState.selectionSummary}
             calendarModel={pageState}
-            pdfLinks={pageState.pdfLinks}
             icalUrl={pageState.icalUrl}
             onChangeLocation={handleResetLocation}
           />

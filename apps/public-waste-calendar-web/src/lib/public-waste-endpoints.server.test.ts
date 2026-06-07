@@ -1,8 +1,10 @@
+import * as wasteOutput from '@sva/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
   handlePublicWasteCalendarRequest,
   handlePublicWasteIcalRequest,
+  handlePublicWastePdfRequest,
   handlePublicWasteSelectionRequest,
 } from './public-waste-endpoints.server.js';
 
@@ -45,16 +47,110 @@ describe('public waste endpoints', () => {
       request: new Request(
         'https://example.invalid/public-waste/calendar?regionId=11111111-1111-4111-8111-111111111111&cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&houseNumberId=44444444-4444-4444-8444-444444444444&referenceDate=2026-05-18'
       ),
-      pdfUrlTemplate: 'https://example.invalid/{locationKey}/{year}.pdf',
     });
 
     expect(response.headers.get('content-type')).toContain('application/json');
     await expect(response.json()).resolves.toMatchObject({
-      locationKey:
-        '11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222:33333333-3333-4333-8333-333333333333:44444444-4444-4444-8444-444444444444',
       nextPickupDate: '2026-05-19',
       selectionSummary: 'Musterstadt, Hauptstraße 1',
     });
+  });
+
+  it('returns a binary pdf for the resolved selection and chosen fractions', async () => {
+    const loadBrandingImage = vi.fn().mockResolvedValue({
+      width: 2,
+      height: 1,
+      rgbData: new Uint8Array([255, 255, 255, 0, 0, 0]),
+    });
+    const response = await handlePublicWastePdfRequest({
+      repository: {
+        loadCalendarEntries: vi.fn().mockResolvedValue([
+          {
+            id: 'pickup-1',
+            date: '2026-05-19',
+            fractionId: 'bio',
+            fractionLabel: 'Bioabfall',
+            fractionShortLabel: 'BIO',
+            note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
+          },
+        ]),
+        loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+      },
+      request: new Request(
+        'https://example.invalid/public-waste/pdf?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&houseNumberId=44444444-4444-4444-8444-444444444444&year=2026&fractionId=bio'
+      ),
+      loadPdfStaticConfig: vi.fn().mockResolvedValue({
+        brandingAssetUrl: 'https://cdn.example/logo.svg',
+        contactBlock: 'Abfallberatung 03395 / 1234',
+      }),
+      loadBrandingImage,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('application/pdf');
+    expect(response.headers.get('content-disposition')).toContain('abfallkalender-2026-musterstadt-hauptstra-e-1.pdf');
+    const pdfText = Buffer.from(await response.arrayBuffer()).toString('latin1');
+    expect(pdfText).toContain('Abfallkalender 2026');
+    expect(pdfText).toContain('/Subtype /Image');
+    expect(loadBrandingImage).toHaveBeenCalledWith('https://cdn.example/logo.svg');
+  });
+
+  it('deduplicates fractions per pickup date before rendering the pdf payload', async () => {
+    const buildDocumentSpy = vi.spyOn(wasteOutput, 'buildWasteCalendarPdfDocument');
+
+    await handlePublicWastePdfRequest({
+      repository: {
+        loadCalendarEntries: vi.fn().mockResolvedValue([
+          {
+            id: 'pickup-1',
+            date: '2026-05-19',
+            fractionId: 'bio',
+            fractionLabel: 'Bioabfall',
+            fractionShortLabel: 'BIO',
+            note: null,
+          },
+          {
+            id: 'pickup-2',
+            date: '2026-05-19',
+            fractionId: 'bio',
+            fractionLabel: 'Bioabfall',
+            fractionShortLabel: 'BIO',
+            note: null,
+          },
+          {
+            id: 'pickup-3',
+            date: '2026-05-19',
+            fractionId: 'paper',
+            fractionLabel: 'Papier',
+            fractionShortLabel: 'PAP',
+            note: null,
+          },
+        ]),
+        loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+      },
+      request: new Request(
+        'https://example.invalid/public-waste/pdf?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&year=2026&fractionId=bio&fractionId=paper'
+      ),
+      loadPdfStaticConfig: vi.fn().mockResolvedValue({}),
+    });
+
+    expect(buildDocumentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pickups: [
+          {
+            date: '2026-05-19',
+            fractions: [
+              expect.objectContaining({
+                id: 'bio',
+              }),
+              expect.objectContaining({
+                id: 'paper',
+              }),
+            ],
+          },
+        ],
+      })
+    );
   });
 
   it('returns an iCal feed for the resolved calendar request', async () => {
@@ -91,7 +187,6 @@ describe('public waste endpoints', () => {
       request: new Request(
         'https://example.invalid/public-waste/calendar?cityId=22222222-2222-4222-8222-222222222222&streetId=all&referenceDate=2026-05-18'
       ),
-      pdfUrlTemplate: 'https://example.invalid/{locationKey}/{year}.pdf',
     });
 
     expect(response.status).toBe(200);
@@ -115,7 +210,7 @@ describe('public waste endpoints', () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       error: 'invalid_request',
-      message: 'Ungueltige Anfrage.',
+      message: 'Ungültige Anfrage.',
     });
   });
 });

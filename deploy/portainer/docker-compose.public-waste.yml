@@ -9,7 +9,6 @@ services:
       PUBLIC_WASTE_INSTANCE_ID: '${PUBLIC_WASTE_INSTANCE_ID}'
       PUBLIC_WASTE_DATABASE_URL: '${PUBLIC_WASTE_DATABASE_URL}'
       PUBLIC_WASTE_SCHEMA_NAME: '${PUBLIC_WASTE_SCHEMA_NAME}'
-      PUBLIC_WASTE_PDF_URL_TEMPLATE: '${PUBLIC_WASTE_PDF_URL_TEMPLATE}'
     labels:
       com.sva-studio.component: 'public-waste-app'
       com.sva-studio.environment: 'production'

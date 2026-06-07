@@ -88,6 +88,7 @@ describe('waste-management settings handlers', () => {
       publicConfig: {
         projectUrl: 'https://tenant.example',
         schemaName: 'wm',
+        calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
         holidayStateCode: 'BY',
       },
       secretConfigCiphertext: 'cipher-secret',
@@ -115,6 +116,7 @@ describe('waste-management settings handlers', () => {
         projectUrl: 'https://tenant.example',
         schemaName: 'wm',
         enabled: true,
+        calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
         holidayStateCode: 'NW',
         customRecurrencePresets: [
           { id: 'preset-10', name: '10 Tage', description: 'Ferien', intervalDays: 10 },
@@ -133,27 +135,19 @@ describe('waste-management settings handlers', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(saveExternalInterfaceRecord).toHaveBeenCalledWith({
-      id: 'supabase-1',
-      instanceId: 'tenant-a',
-      typeKey: 'supabase',
-      ownerKind: 'host',
-      ownerId: 'host',
-      displayName: 'Supabase',
-      alias: 'default',
-      enabled: true,
-      isDefault: true,
-      category: 'database',
-      statusCheckKind: 'supabase',
-      visibleStatus: 'ok',
-      secretConfigCiphertext: 'cipher-secret',
-      publicConfig: {
-        projectUrl: 'https://tenant.example',
-        schemaName: 'wm',
-        holidayStateCode: 'NW',
-        lastHolidaySyncStatus: 'success',
-      },
-    });
+    expect(saveExternalInterfaceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'supabase-1',
+        publicConfig: expect.objectContaining({
+          projectUrl: 'https://tenant.example',
+          schemaName: 'wm',
+          calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+          holidayStateCode: 'NW',
+          lastHolidaySyncStatus: 'success',
+          wasteManagementSelected: true,
+        }),
+      })
+    );
     expect(saveWasteCustomRecurrencePresets).toHaveBeenCalledWith('tenant-a', {
       nextItems: [{ id: 'preset-10', name: '10 Tage', description: 'Ferien', intervalDays: 10 }],
       deletedPresetFallbacks: {},
@@ -173,6 +167,20 @@ describe('waste-management settings handlers', () => {
         projectUrl: 'https://tenant.example',
         schemaName: 'wm',
         enabled: true,
+        selectedInterfaceId: 'supabase-1',
+        selectedInterfaceName: 'Supabase',
+        selectedInterfaceTypeKey: 'supabase',
+        availableInterfaces: [
+          {
+            id: 'supabase-1',
+            name: 'Supabase',
+            typeKey: 'supabase',
+            enabled: true,
+            visibleStatus: 'ok',
+            isSelected: true,
+          },
+        ],
+        calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
         databaseUrlConfigured: true,
         serviceRoleKeyConfigured: true,
         visibleStatus: 'ok',

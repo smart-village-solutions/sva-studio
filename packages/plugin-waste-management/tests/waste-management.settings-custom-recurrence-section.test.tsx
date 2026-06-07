@@ -1,3 +1,5 @@
+// @vitest-environment happy-dom
+
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -31,6 +33,8 @@ vi.mock('@sva/studio-ui-react', () => ({
       {children}
     </button>
   ),
+  Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
+  Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
 }));
 
 vi.mock('../src/waste-management.settings-custom-recurrence-dialog.js', () => ({
@@ -71,6 +75,7 @@ describe('WasteSettingsCustomRecurrenceSection', () => {
             value: 'preset-a',
           },
         }}
+        saving={false}
         onChange={onChange}
       />
     );

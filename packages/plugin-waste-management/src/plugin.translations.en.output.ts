@@ -1,37 +1,30 @@
 export const wasteManagementPluginTranslationsENOutput = {
   output: {
     pdf: {
-      title: 'PDF printout',
-      description: 'Generate a yearly calendar for exactly one collection location and one year. An existing PDF for the same combination is silently overwritten.',
+      title: 'PDF content',
+      description: 'Define only the static PDF content here. The actual PDF export is generated in the public waste calendar web app.',
       fields: {
-        collectionLocationId: 'Collection location',
-        collectionLocationUnset: 'Select collection location',
-        year: 'Year',
+        brandingAssetUrl: 'Branding graphic',
+        contactBlock: 'Contact and free-text block',
+      },
+      fieldHints: {
+        brandingAssetUrl: 'This logo or graphic URL is used for the branding area in the PDF header.',
+        contactBlock: 'This text is shown below the calendar as an additional contact or service note.',
       },
       actions: {
-        generate: 'Generate PDF',
-        generating: 'Generating PDF…',
-        open: 'Open PDF',
+        save: 'Save PDF content',
+        saving: 'Saving PDF content…',
       },
       messages: {
-        loading: 'Loading output options.',
-        loadError: 'Waste outputs could not be loaded.',
-        generateSuccess: 'The PDF was generated successfully.',
-        generateError: 'The PDF could not be generated.',
-        generateForbidden: 'Missing permission for waste output.',
+        loading: 'Loading PDF content.',
+        loadError: 'The PDF configuration could not be loaded.',
+        loadForbidden: 'Missing permission for PDF configuration.',
+        saveSuccess: 'The PDF content was saved.',
+        saveError: 'The PDF content could not be saved.',
+        saveForbidden: 'Missing permission for PDF configuration.',
       },
-      empty: {
-        title: 'No collection locations available',
-        body: 'Create a collection location first before generating a PDF printout.',
-      },
-      existing: {
-        title: 'Existing PDFs',
-        empty: 'No PDFs are stored for this collection location yet.',
-        yearLabel: 'Year {{value}}',
-      },
-      result: {
-        title: 'Latest result',
-        description: 'The direct link points to the currently stored artifact for the selected combination.',
+      meta: {
+        runtimeHint: 'The public web version generates the PDF ad hoc based on the selected address, fractions, and year.',
       },
     },
   },

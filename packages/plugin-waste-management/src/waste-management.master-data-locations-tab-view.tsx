@@ -45,7 +45,6 @@ export const WasteMasterDataLocationsTabView = ({
       houseNumbers={controller.filteredHouseNumbers}
       collectionLocations={controller.filteredCollectionLocations}
       locationTourLinks={controller.overview?.locationTourLinks ?? []}
-      outputOverview={controller.outputOverview}
       selectedLocationIds={controller.selectedLocationIds}
       allFilteredLocationsSelected={controller.allFilteredLocationsSelected}
       selectedCollectionLocationsCount={controller.selectedCollectionLocations.length}

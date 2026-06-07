@@ -24,6 +24,7 @@ describe('waste master data repository', () => {
       {
         id: 'fraction-1',
         name: 'Bioabfall',
+        pdf_short_label: null,
         label_translations: { de: 'Bioabfall', en: 'Organic waste' },
         container_size: null,
         color: '#00AA00',
@@ -49,6 +50,7 @@ describe('waste master data repository', () => {
       {
         id: 'fraction-1',
         name: 'Bioabfall',
+        pdfShortLabel: undefined,
         translations: { de: 'Bioabfall', en: 'Organic waste' },
         containerSize: undefined,
         color: '#00AA00',
@@ -77,6 +79,7 @@ describe('waste master data repository', () => {
       {
         id: 'fraction-1',
         name: 'Papier',
+        pdf_short_label: 'PAP',
         label_translations: { de: 'Papier', en: 'Paper' },
         container_size: '240l',
         color: '#0000FF',
@@ -97,6 +100,7 @@ describe('waste master data repository', () => {
     await expect(repository.getWasteFractionById('fraction-1')).resolves.toEqual({
       id: 'fraction-1',
       name: 'Papier',
+      pdfShortLabel: 'PAP',
       translations: { de: 'Papier', en: 'Paper' },
       containerSize: '240l',
       color: '#0000FF',
@@ -119,6 +123,7 @@ describe('waste master data repository', () => {
     await createWasteMasterDataRepository(write.executor).upsertWasteFraction({
       id: 'fraction-2',
       name: 'Restmüll',
+      pdfShortLabel: 'RES',
       translations: { de: 'Restmüll', en: 'Residual waste' },
       containerSize: undefined,
       color: '#444444',
@@ -136,6 +141,7 @@ describe('waste master data repository', () => {
     expect(write.statements[0]?.values).toEqual([
       'fraction-2',
       'Restmüll',
+      'RES',
       JSON.stringify({ de: 'Restmüll', en: 'Residual waste' }),
       null,
       '#444444',
@@ -402,6 +408,8 @@ describe('waste master data repository', () => {
       createWasteMasterDataRepository(list.executor).listWasteCollectionLocations({
         cityId: 'city-1',
         regionId: 'region-1',
+        streetId: 'street-1',
+        houseNumberId: 'house-1',
         active: true,
       })
     ).resolves.toEqual([
@@ -417,11 +425,13 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    expect(list.statements[0]?.values).toEqual(['city-1', 'region-1', true]);
+    expect(list.statements[0]?.values).toEqual(['city-1', 'region-1', 'street-1', 'house-1', true]);
     expect(list.statements[0]?.text).toContain('FROM waste_collection_locations');
     expect(list.statements[0]?.text).toContain('city_id = $1::uuid');
     expect(list.statements[0]?.text).toContain('region_id = $2::uuid');
-    expect(list.statements[0]?.text).toContain('active = $3');
+    expect(list.statements[0]?.text).toContain('street_id = $3::uuid');
+    expect(list.statements[0]?.text).toContain('house_number_id = $4::uuid');
+    expect(list.statements[0]?.text).toContain('active = $5');
 
     const single = createExecutor([
       {
@@ -468,6 +478,9 @@ describe('waste master data repository', () => {
         active: false,
       }).values
     ).toEqual(['location-4', 'city-4', 'region-4', 'street-4', 'house-4', false]);
+
+    expect(wasteMasterDataStatements.listWasteCollectionLocations({}).values).toEqual([]);
+    expect(wasteMasterDataStatements.listWasteCollectionLocations({}).text).not.toContain('WHERE');
   });
 
   it('lists, reads and upserts tours with location counts and custom date payloads', async () => {

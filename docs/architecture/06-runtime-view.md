@@ -54,25 +54,23 @@ Fehlerpfad:
 - Retries dürfen terminale Exporte nicht doppelt erzeugen; der Host-Handler bleibt idempotent.
 - Der DSR-Maintenance-Endpunkt ist für Exportverarbeitung nicht mehr verantwortlich; er deckt nur übrige Housekeeping-Läufe ab.
 
-### Waste-Management: Settings, CRUD, PDF-Ausgabe und technische Tools
+### Waste-Management: Settings, CRUD, PDF-Stamminhalte und technische Tools
 
 1. Ein berechtigter Instanzbenutzer öffnet `/plugins/waste-management`.
 2. Die App-Shell materialisiert die freie Plugin-Route hostgeführt über `@sva/routing` und prüft Guard plus Modulfreigabe fail-closed.
 3. Das Plugin lädt fachliche Leseansichten ausschließlich über `/api/v1/waste-management/settings`, `/history`, `/master-data`, `/tours`, `/scheduling` und `/outputs`.
 4. `@sva/auth-runtime` prüft Session, Instanzkontext, modulbezogene `waste-management.*`-Rechte und den stabilen Fehlervertrag.
-5. Für Settings, PDF-Ausgabe, Seed, Reset, Migrations- und Importpfade löst `@sva/server-runtime` die aktive Waste-Datenquelle der Instanz auf und verwendet dabei serverseitig geschützte Secrets.
+5. Für Settings, Ausgabe-Stamminhalte, Seed, Reset, Migrations- und Importpfade löst `@sva/server-runtime` die aktive Waste-Datenquelle der Instanz auf und verwendet dabei serverseitig geschützte Secrets.
 6. Zentrale Governance-Daten wie Waste-Datenquelle, letzter Connection-Check und Auditspur liegen im Studio-Postgres; die fachlichen Waste-Daten liegen in der instanzbezogenen Waste-Fachdatenbank.
 7. Mutationen gegen Fraktionen, Orte, Abholorte, Touren, Ausweichtermine und Bulk-Zuordnungen laufen immer über dieselbe Host-Fassade und erzeugen zentrale Audit-Events.
-8. Für `POST /api/v1/waste-management/outputs/pdf` lädt der Host alle wirksamen Fraktionen, ortsbezogenen Abholtermine sowie globale und tourbezogene Verschiebungen für genau einen Abholort und genau ein Jahr, rendert daraus serverseitig ein PDF und speichert das Artefakt unter einem deterministischen Schlüssel.
-9. Das Plugin zeigt den resultierenden PDF-Link sofort im Tab `Ausgabe` und nach erneutem Laden zusätzlich direkt in der Tabelle `Abholorte`.
-10. Technische Operationen wie Import, Migration, Seed und Reset starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
-11. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.
+8. Der Tab `Ausgabe` pflegt nur statische PDF-Inhalte wie Branding und Kontaktblock; operative PDF-Erzeugung gehört nicht mehr zum Studio-Laufzeitpfad.
+9. Technische Operationen wie Import, Migration, Seed und Reset starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
+10. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.
 
 Fehlerpfad:
 
 - Fehlt die Modulfreigabe oder die spezifische `waste-management.*`-Berechtigung, blockiert der Host fail-closed vor der Mutation oder dem Jobstart.
 - Fehlt oder driftet die Waste-Datenquelle einer Instanz, antwortet die Fassade mit technischem Fehlervertrag; Secrets werden nie im Plugin oder Browser aufgelöst.
-- Fehlende oder unvollständige Abholortdaten, Terminimporte oder Storage-Zugriffe brechen die PDF-Erzeugung serverseitig mit einem stabilen Fehlervertrag ab; teilweise gerenderte Artefakte werden nicht browserseitig weiterverarbeitet.
 - Ein `Newcms`-ähnlicher Direktzugriff auf Supabase-Funktionen, direkte DB-Connections oder mitportierte Runtime-Hooks ist kein zulässiger Alternativpfad.
 
 ### Öffentlicher Abfallkalender: Auswahl, Restore und Detailansicht
@@ -80,9 +78,16 @@ Fehlerpfad:
 1. Der Browser lädt `apps/public-waste-calendar-web` direkt als öffentliche Oberfläche.
 2. Beim Start liest die App höchstens einen stabilen Standortschlüssel aus genau einem Cookie und versucht daraus die letzte vollständige Auswahl wiederherzustellen.
 3. Ohne gültigen Cookie startet die App im reduzierten Auswahlmodus und zeigt nur die nächste gültige Stufe des Standortflusses an.
-4. Nach vollständiger Auswahl projiziert die App die bekannten Termine in Listenansicht, Fraktionsfilter, PDF-Links und iCal-URL.
+4. Nach vollständiger Auswahl projiziert die App die bekannten Termine in Listenansicht, Fraktionsfilter, PDF-Export und iCal-URL.
 5. Ein Klick auf einen Termin öffnet ein Modal mit Datum, Fraktion und Hinweistext; die globalen Export-Aktionen bleiben außerhalb des Modals sichtbar.
 6. Ein Reload mit gültigem Cookie stellt denselben Standort wieder her und zeigt einen expliziten Hinweis auf die automatisch geladene Adresse.
+
+Erweiterter Exportpfad:
+
+1. Für einen vollständig aufgelösten Standort kann der Browser einen PDF-Export für ein gewähltes Jahr und gewählte Fraktionen anfordern.
+2. Die öffentliche Runtime lädt dafür alle wirksamen Termine des finalen Standortkontexts einschließlich fachlich vererbter übergeordneter Abholorte.
+3. Der Server rendert das PDF ad hoc und liefert es unmittelbar zurück.
+4. Es werden keine persistenten PDF-Artefakte oder später wiederverwendbaren Delivery-Links gespeichert.
 
 Fehlerpfad:
 

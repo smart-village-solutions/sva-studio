@@ -1,5 +1,6 @@
 import { createSdkLogger, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
 import {
+  listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
   saveExternalInterfaceConnectionCheck,
   saveExternalInterfaceRecord,
@@ -38,6 +39,7 @@ export const withAuthenticatedWasteManagementHandler = (
 
 export const sharedWasteManagementDeps = {
   loadDefaultInterfaceRecord: loadDefaultExternalInterfaceRecord,
+  listInterfaceRecords: listExternalInterfaceRecords,
   saveExternalInterfaceRecord,
   saveExternalInterfaceConnectionCheck,
   protectSecret: protectField,

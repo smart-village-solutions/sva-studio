@@ -86,8 +86,6 @@ export type AuthRoutePath =
   | '/iam/admin/data-subject-rights/maintenance'
   | '/api/v1/waste-management/history'
   | '/api/v1/waste-management/master-data'
-  | '/api/v1/waste-management/outputs'
-  | '/api/v1/waste-management/outputs/pdf'
   | '/api/v1/waste-management/fractions'
   | '/api/v1/waste-management/fractions/$fractionId'
   | '/api/v1/waste-management/regions'
@@ -210,8 +208,6 @@ export const authRoutePaths = [
   '/iam/admin/data-subject-rights/maintenance',
   '/api/v1/waste-management/history',
   '/api/v1/waste-management/master-data',
-  '/api/v1/waste-management/outputs',
-  '/api/v1/waste-management/outputs/pdf',
   '/api/v1/waste-management/fractions',
   '/api/v1/waste-management/fractions/$fractionId',
   '/api/v1/waste-management/regions',

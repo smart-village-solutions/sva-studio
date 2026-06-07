@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PublicWasteIndexPage } from './index.js';
@@ -53,11 +53,6 @@ const calendarPayload = {
   yearBuckets: [{ year: '2026', entries: [] }],
   fractionOptions: [{ id: 'bio', label: 'Bioabfall' }],
   selectionSummary: 'Rathenow, Am alten Hafen 12',
-  pdfLinks: [
-    'https://example.invalid/~:22222222-2222-4222-8222-222222222222:33333333-3333-4333-8333-333333333333:44444444-4444-4444-8444-444444444444/2025.pdf',
-    'https://example.invalid/~:22222222-2222-4222-8222-222222222222:33333333-3333-4333-8333-333333333333:44444444-4444-4444-8444-444444444444/2026.pdf',
-    'https://example.invalid/~:22222222-2222-4222-8222-222222222222:33333333-3333-4333-8333-333333333333:44444444-4444-4444-8444-444444444444/2027.pdf',
-  ],
   icalUrl:
     '/api/public-waste/ical?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&houseNumberId=44444444-4444-4444-8444-444444444444&calendarName=Rathenow%2C+Am+alten+Hafen+12',
 } as const;
@@ -67,6 +62,7 @@ describe('PublicWasteIndexPage', () => {
 
   beforeEach(() => {
     document.cookie = 'sva_public_waste_location=; Max-Age=0; Path=/';
+    fetchMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
   });
 
@@ -117,17 +113,27 @@ describe('PublicWasteIndexPage', () => {
     });
 
     const { unmount } = render(<PublicWasteIndexPage />);
+    await act(async () => {});
 
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Ort suchen' }), {
+      target: { value: 'Rat' },
+    });
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Rathenow' })).toBeTruthy();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Rathenow' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Straße suchen' }), {
+      target: { value: 'Hafen' },
+    });
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Am alten Hafen' })).toBeTruthy();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Am alten Hafen' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Hausnummer suchen' }), {
+      target: { value: '12' },
+    });
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '12' })).toBeTruthy();
     });
@@ -170,7 +176,10 @@ describe('PublicWasteIndexPage', () => {
           JSON.stringify({
             status: 'incomplete',
             step: 'street',
-            options: [{ id: '55555555-5555-4555-8555-555555555555', label: 'Berliner Straße' }],
+            options: [
+              { id: '55555555-5555-4555-8555-555555555555', label: 'Berliner Straße' },
+              { id: '77777777-7777-4777-8777-777777777777', label: 'Märkische Allee' },
+            ],
           }),
           { headers: { 'content-type': 'application/json' } }
         );
@@ -186,12 +195,16 @@ describe('PublicWasteIndexPage', () => {
     });
 
     render(<PublicWasteIndexPage />);
+    await act(async () => {});
 
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Straße suchen' }), {
+      target: { value: 'Ber' },
+    });
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Berliner Straße' })).toBeTruthy();
     });
 
-    expect(document.cookie).toContain('sva_public_waste_location=');
+    expect(document.cookie).toBe('');
     expect(document.cookie).not.toContain(
       '~%3A22222222-2222-4222-8222-222222222222%3A33333333-3333-4333-8333-333333333333%3A44444444-4444-4444-8444-444444444444'
     );

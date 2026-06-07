@@ -87,6 +87,8 @@ describe('waste management operations runtime', () => {
 
   it('includes custom recurrence presets, holiday rules and tour preset references in schema statements', () => {
     const statements = applySchemaStatements('wm').join('\n');
+    expect(statements).toContain('pdf_short_label TEXT');
+    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS pdf_short_label TEXT');
     expect(statements).toContain('waste_custom_recurrence_presets');
     expect(statements).toContain('waste_holiday_rules');
     expect(statements).toContain('holiday_date DATE NOT NULL');

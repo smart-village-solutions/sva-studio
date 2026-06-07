@@ -10,7 +10,7 @@ describe('waste-management output pdf', () => {
       pickups: [
         {
           date: '2026-01-14',
-          fractions: [{ id: 'hm', label: 'Hausmuell', color: '#666666' }],
+          fractions: [{ id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666' }],
         },
         {
           date: '2026-01-15',
@@ -33,7 +33,7 @@ describe('waste-management output pdf', () => {
 
     const january = document.pages[0]?.months[0];
     const october = document.pages[1]?.months[3];
-    expect(january?.days.find((day) => day.dayOfMonth === 14)?.entries.map((entry) => entry.code)).toEqual(['HAU']);
+    expect(january?.days.find((day) => day.dayOfMonth === 14)?.entries.map((entry) => entry.code)).toEqual(['HM']);
     expect(january?.days.find((day) => day.dayOfMonth === 15)?.entries).toHaveLength(2);
     expect(october?.days.find((day) => day.dayOfMonth === 3)?.holidayLabel).toBe('Tag der Deutschen Einheit');
     expect(document.pages[0]?.legend.map((entry) => entry.label)).toEqual([
@@ -53,7 +53,7 @@ describe('waste-management output pdf', () => {
         pickups: [
           {
             date: '2026-01-14',
-            fractions: [{ id: 'hm', label: 'Hausmuell', color: '#666666' }],
+            fractions: [{ id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666' }],
           },
         ],
       })
@@ -68,6 +68,36 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('März');
     expect(pdfText).toContain('Juli');
     expect(pdfText).toContain('Hausmuell');
+    expect(pdfText).toContain('HM');
+  });
+
+  it('embeds a branding image when one is provided', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Rathenow, Berliner Str. 12',
+        pickups: [
+          {
+            date: '2026-01-14',
+            fractions: [{ id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666' }],
+          },
+        ],
+        brandingImage: {
+          width: 2,
+          height: 2,
+          rgbData: new Uint8Array([
+            255, 0, 0,
+            0, 255, 0,
+            0, 0, 255,
+            255, 255, 0,
+          ]),
+        },
+      })
+    ).toString('latin1');
+
+    expect(pdfText).toContain('/Subtype /Image');
+    expect(pdfText).toContain('/XObject << /Im1');
+    expect(pdfText).toContain('/Im1 Do');
   });
 
   it('renders legend labels at distinct positions once more than six fractions are present', () => {

@@ -40,6 +40,7 @@ type CalendarEntryRow = {
   readonly tour_custom_dates: readonly { readonly date?: unknown; readonly description?: unknown }[] | null;
   readonly fraction_id: string;
   readonly fraction_label: string;
+  readonly fraction_pdf_short_label: string | null;
   readonly fraction_color: string | null;
 };
 
@@ -57,6 +58,18 @@ type GlobalDateShiftRow = {
   readonly actual_date: string;
   readonly description: string | null;
   readonly tour_ids: readonly string[] | null;
+};
+
+type ImportedPickupDateRow = {
+  readonly location_id: string;
+  readonly pickup_date: string;
+  readonly tour_id: string;
+  readonly tour_name: string;
+  readonly tour_description: string | null;
+  readonly fraction_id: string | null;
+  readonly fraction_label: string | null;
+  readonly fraction_pdf_short_label: string | null;
+  readonly fraction_color: string | null;
 };
 
 export type PublicWasteRepository = ReturnType<typeof createPublicWasteRepository>;
@@ -110,6 +123,36 @@ const normalizeCustomDates = (
       };
     })
     .filter((entry): entry is { readonly date: string; readonly description?: string } => entry !== null);
+};
+
+const compareCalendarEntries = (left: PublicWasteCalendarEntry, right: PublicWasteCalendarEntry): number =>
+  left.date.localeCompare(right.date) || left.fractionLabel.localeCompare(right.fractionLabel, 'de');
+
+const normalizeDateOnly = (value: string | null | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : null;
+};
+
+const parseDateOnlyUtc = (value: string): Date => new Date(`${value}T00:00:00Z`);
+
+const formatDateOnlyUtc = (value: Date): string => value.toISOString().slice(0, 10);
+
+const addYearsUtc = (value: string, years: number): string => {
+  const date = parseDateOnlyUtc(value);
+  date.setUTCFullYear(date.getUTCFullYear() + years);
+  return formatDateOnlyUtc(date);
+};
+
+const isDateWithinRange = (date: string, startDate: string, endDate: string): boolean =>
+  date >= startDate && date <= endDate;
+
+const normalizeShiftDescription = (value: string | null): string | null => {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
 };
 
 export const createPublicWasteRepository = (input: {
@@ -253,6 +296,7 @@ export const createPublicWasteRepository = (input: {
             t.custom_dates AS tour_custom_dates,
             f.id AS fraction_id,
             f.name AS fraction_label,
+            f.pdf_short_label AS fraction_pdf_short_label,
             f.color AS fraction_color
           FROM ${schemaName}.waste_collection_locations cl
           INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
@@ -276,7 +320,7 @@ export const createPublicWasteRepository = (input: {
       });
       const tourIds = Array.from(new Set(linkedToursResult.rows.map((row) => row.tour_id)));
 
-      const [tourDateShiftsResult, globalDateShiftsResult] = await Promise.all([
+      const [tourDateShiftsResult, globalDateShiftsResult, importedPickupDatesResult] = await Promise.all([
         tourIds.length === 0
           ? Promise.resolve({ rowCount: 0, rows: [] as readonly TourDateShiftRow[] })
           : input.execute<TourDateShiftRow>({
@@ -305,6 +349,42 @@ export const createPublicWasteRepository = (input: {
             ORDER BY original_date ASC, actual_date ASC, id ASC;
           `,
         }),
+        input.execute<ImportedPickupDateRow>({
+          text: `
+            SELECT
+              p.location_id::text AS location_id,
+              p.pickup_date::text AS pickup_date,
+              t.id::text AS tour_id,
+              t.name AS tour_name,
+              t.description AS tour_description,
+              f.id AS fraction_id,
+              f.name AS fraction_label,
+              f.pdf_short_label AS fraction_pdf_short_label,
+              f.color AS fraction_color
+            FROM ${schemaName}.waste_collection_locations cl
+            INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
+            INNER JOIN ${schemaName}.waste_location_tour_pickup_dates p
+              ON p.location_id = ltl.location_id
+             AND p.tour_id = ltl.tour_id
+            INNER JOIN ${schemaName}.waste_tours t ON t.id = p.tour_id
+            LEFT JOIN ${schemaName}.waste_fractions f ON f.id::text = ANY(t.waste_fraction_ids)
+            WHERE cl.active = true
+              AND t.active = true
+              AND cl.city_id = $1::uuid
+              ${streetSelectionFilter.text}
+              AND ($4::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $4::uuid)
+              AND ($5::uuid IS NULL OR cl.house_number_id IS NULL OR cl.house_number_id = $5::uuid)
+              AND (ltl.start_date IS NULL OR p.pickup_date >= ltl.start_date)
+              AND (ltl.end_date IS NULL OR p.pickup_date <= ltl.end_date)
+            ORDER BY p.pickup_date ASC, t.name ASC, f.name ASC;
+          `,
+          values: [
+            query.selection.cityId,
+            ...streetSelectionFilter.values,
+            query.selection.regionId ?? null,
+            query.selection.houseNumberId ?? null,
+          ],
+        }),
       ]);
 
       const linkedTours = Array.from(
@@ -328,6 +408,7 @@ export const createPublicWasteRepository = (input: {
                 readonly fractions: {
                   id: string;
                   label: string;
+                  shortLabel?: string;
                   color?: string;
                 }[];
               };
@@ -339,6 +420,7 @@ export const createPublicWasteRepository = (input: {
             ? {
                 id: row.fraction_id,
                 label: row.fraction_label,
+                ...(row.fraction_pdf_short_label ? { shortLabel: row.fraction_pdf_short_label } : {}),
                 ...(row.fraction_color ? { color: row.fraction_color } : {}),
               }
             : null;
@@ -373,7 +455,7 @@ export const createPublicWasteRepository = (input: {
         }, new Map())
       ).map(([, entry]) => entry);
 
-      return calculatePublicWasteCalendarEntries({
+      const calculatedEntries = calculatePublicWasteCalendarEntries({
         referenceDate: query.referenceDate,
         selection: query.selection,
         linkedTours,
@@ -392,6 +474,119 @@ export const createPublicWasteRepository = (input: {
           ...(row.tour_ids ? { tourIds: row.tour_ids } : {}),
         })),
       });
+
+      const windowStart = normalizeDateOnly(query.referenceDate);
+      if (!windowStart) {
+        return calculatedEntries;
+      }
+
+      const windowEnd = addYearsUtc(windowStart, 1);
+      const mergedEntries = new Map(calculatedEntries.map((entry) => [entry.id, entry] as const));
+      const tourShiftEntries: Array<
+        readonly [
+          `${string}:${string}`,
+          { readonly actualDate: string; readonly description: string | null },
+        ]
+      > = [];
+      for (const row of tourDateShiftsResult.rows) {
+        const originalDate = normalizeDateOnly(row.original_date);
+        const actualDate = normalizeDateOnly(row.actual_date);
+        if (!originalDate || !actualDate) {
+          continue;
+        }
+
+        tourShiftEntries.push([
+          `${row.tour_id}:${originalDate}`,
+          {
+            actualDate,
+            description: normalizeShiftDescription(row.description),
+          },
+        ] as const);
+      }
+
+      const tourShiftMap = new Map(tourShiftEntries);
+      const sharedGlobalShiftMap = new Map<string, { readonly actualDate: string; readonly description: string | null }>();
+      const scopedGlobalShiftMap = new Map<
+        string,
+        Map<string, { readonly actualDate: string; readonly description: string | null }>
+      >();
+
+      for (const row of globalDateShiftsResult.rows) {
+        const originalDate = normalizeDateOnly(row.original_date);
+        const actualDate = normalizeDateOnly(row.actual_date);
+        if (!originalDate || !actualDate) {
+          continue;
+        }
+
+        const shift = {
+          actualDate,
+          description: normalizeShiftDescription(row.description),
+        } as const;
+        if (!row.tour_ids || row.tour_ids.length === 0) {
+          sharedGlobalShiftMap.set(originalDate, shift);
+          continue;
+        }
+
+        for (const tourId of row.tour_ids) {
+          const tourShiftEntries = scopedGlobalShiftMap.get(tourId) ?? new Map();
+          tourShiftEntries.set(originalDate, shift);
+          scopedGlobalShiftMap.set(tourId, tourShiftEntries);
+        }
+      }
+
+      const importedPickupDateRows = importedPickupDatesResult?.rows ?? [];
+
+      for (const row of importedPickupDateRows) {
+        const pickupDate = normalizeDateOnly(row.pickup_date);
+        if (!pickupDate || !row.fraction_id || !row.fraction_label) {
+          continue;
+        }
+
+        const hasValidLinkAssignment = linkedTours.some((linkedTour) => {
+          if (linkedTour.locationId !== row.location_id || linkedTour.tour.id !== row.tour_id) {
+            return false;
+          }
+
+          if (linkedTour.startDate && pickupDate < linkedTour.startDate) {
+            return false;
+          }
+
+          if (linkedTour.endDate && pickupDate > linkedTour.endDate) {
+            return false;
+          }
+
+          return true;
+        });
+        if (!hasValidLinkAssignment) {
+          continue;
+        }
+
+        const tourShift = tourShiftMap.get(`${row.tour_id}:${pickupDate}`);
+        const globalShift = scopedGlobalShiftMap.get(row.tour_id)?.get(pickupDate) ?? sharedGlobalShiftMap.get(pickupDate);
+        const shiftedDate = tourShift?.actualDate ?? globalShift?.actualDate ?? pickupDate;
+        if (!isDateWithinRange(shiftedDate, windowStart, windowEnd)) {
+          continue;
+        }
+
+        const entryId = `${row.tour_id}:${shiftedDate}:${row.fraction_id}`;
+        if (mergedEntries.has(entryId)) {
+          continue;
+        }
+
+        mergedEntries.set(entryId, {
+          id: entryId,
+          date: shiftedDate,
+          fractionId: row.fraction_id,
+          fractionLabel: row.fraction_label,
+          ...(row.fraction_pdf_short_label ? { fractionShortLabel: row.fraction_pdf_short_label } : {}),
+          ...(row.fraction_color ? { fractionColor: row.fraction_color } : {}),
+          ...(row.tour_name.trim() ? { tourName: row.tour_name.trim() } : {}),
+          ...(row.tour_description?.trim() ? { tourDescription: row.tour_description.trim() } : {}),
+          note: tourShift?.description ?? globalShift?.description ?? null,
+        });
+      }
+
+      return Array.from(mergedEntries.values()).sort(compareCalendarEntries);
     },
 
     async loadSelectionSummary(query: {

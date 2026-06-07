@@ -132,7 +132,6 @@ describe('waste-management master-data location table views', () => {
               houseNumbersById: new Map(),
               toursById: new Map(),
               locationTourNamesByLocationId: new Map(),
-              outputPdfsByLocationId: new Map(),
             }}
             selectedLocationIds={[]}
             onToggleLocation={vi.fn()}
@@ -149,7 +148,6 @@ describe('waste-management master-data location table views', () => {
     expect(screen.getByText('masterData.locationsWorkspace.table.streetUnavailable')).toBeTruthy();
     expect(screen.getByText('masterData.locationsWorkspace.table.houseNumbersUnavailable')).toBeTruthy();
     expect(screen.getByText('masterData.locationsWorkspace.table.noTours')).toBeTruthy();
-    expect(screen.getByText('masterData.locationsWorkspace.table.noOutputs')).toBeTruthy();
     expect(screen.getByText('common.inactive')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.edit' }));
@@ -161,7 +159,7 @@ describe('waste-management master-data location table views', () => {
     expect(onDeleteLocation).toHaveBeenCalledWith(expect.objectContaining({ id: 'location-1' }));
   });
 
-  it('renders output links with tabnabbing protection', () => {
+  it('renders resolved location values without the removed studio PDF column', () => {
     render(
       <table>
         <tbody>
@@ -183,12 +181,6 @@ describe('waste-management master-data location table views', () => {
               houseNumbersById: new Map([['house-1', { id: 'house-1', number: '12' }]]),
               toursById: new Map(),
               locationTourNamesByLocationId: new Map(),
-              outputPdfsByLocationId: new Map([
-                [
-                  'location-1',
-                  [{ year: 2026, deliveryUrl: 'https://cdn.example/location-1/2026.pdf', expiresAt: '' }],
-                ],
-              ]),
             }}
             selectedLocationIds={[]}
             onToggleLocation={vi.fn()}
@@ -200,10 +192,9 @@ describe('waste-management master-data location table views', () => {
       </table>
     );
 
-    expect(
-      screen.getByRole('link', { name: 'masterData.locationsWorkspace.table.openOutput:{"value":2026}' }).getAttribute(
-        'rel'
-      )
-    ).toBe('noopener noreferrer');
+    expect(screen.getByText('Region')).toBeTruthy();
+    expect(screen.getByText('Stadt')).toBeTruthy();
+    expect(screen.getByText('Straße')).toBeTruthy();
+    expect(screen.getByText('12')).toBeTruthy();
   });
 });

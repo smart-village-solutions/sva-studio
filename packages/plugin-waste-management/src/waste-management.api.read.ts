@@ -2,12 +2,10 @@ import { wasteManagementImportCatalog, type WasteManagementImportProfileCatalogE
 
 import type {
   WasteManagementMasterDataOverview,
-  WasteManagementOutputOverview,
   WasteManagementSchedulingOverview,
-  WasteManagementOutputPdfResult,
   WasteManagementToursOverview,
 } from './waste-management.api.types.js';
-import { requestWasteManagementItem, requestWasteManagementMutation } from './waste-management.api.shared.js';
+import { requestWasteManagementItem } from './waste-management.api.shared.js';
 
 const inFlightWasteReadRequests = new Map<string, Promise<unknown>>();
 
@@ -84,16 +82,3 @@ export const getWasteManagementSchedulingOverview = async (): Promise<WasteManag
       url: '/api/v1/waste-management/scheduling',
     })
   );
-
-export const getWasteManagementOutputOverview = async (): Promise<WasteManagementOutputOverview> =>
-  requestWasteManagementRead('outputs', async () =>
-    requestWasteManagementItem<WasteManagementOutputOverview>({
-      url: '/api/v1/waste-management/outputs',
-    })
-  );
-
-export const createWasteManagementOutputPdf = async (input: {
-  readonly collectionLocationId: string;
-  readonly year: number;
-}): Promise<WasteManagementOutputPdfResult> =>
-  requestWasteManagementMutation('/api/v1/waste-management/outputs/pdf', input);

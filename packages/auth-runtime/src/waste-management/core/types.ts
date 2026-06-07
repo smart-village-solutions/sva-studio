@@ -2,6 +2,7 @@ import type {
   EffectivePermission,
   ExternalInterfaceConnectionCheckRecord,
   ExternalInterfaceRecord,
+  WasteManagementSettingsInterfaceOption,
   StudioJobStartRequest,
   WasteCityRecord,
   WasteCollectionLocationRecord,
@@ -19,8 +20,6 @@ import type {
   WasteManagementHistoryOverview,
   WasteManagementImportSourceFormat,
   WasteManagementMasterDataOverview,
-  WasteManagementOutputOverview,
-  WasteManagementOutputPdfResult,
   WasteManagementSchedulingOverview,
   WasteHolidaySyncStatus,
   WasteManagementToursOverview,
@@ -53,6 +52,7 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     typeKey: string
   ) => Promise<ExternalInterfaceRecord | null>;
+  readonly listInterfaceRecords?: (instanceId: string) => Promise<readonly ExternalInterfaceRecord[]>;
   readonly saveExternalInterfaceRecord?: (record: ExternalInterfaceRecord) => Promise<void>;
   readonly saveExternalInterfaceConnectionCheck?: (record: ExternalInterfaceConnectionCheckRecord) => Promise<void>;
   readonly protectSecret?: (value: string, aad: string) => string | null | undefined;
@@ -103,7 +103,6 @@ export type WasteManagementHandlerDeps = {
   readonly loadMasterDataOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
   readonly loadMasterDataFractionsOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
   readonly loadMasterDataLocationsOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
-  readonly loadWasteOutputOverview?: (instanceId: string) => Promise<WasteManagementOutputOverview>;
   readonly loadToursOverview?: (instanceId: string) => Promise<WasteManagementToursOverview>;
   readonly loadSchedulingOverview?: (instanceId: string) => Promise<WasteManagementSchedulingOverview>;
   readonly syncWasteHolidayRules?: (
@@ -113,11 +112,10 @@ export type WasteManagementHandlerDeps = {
   readonly loadWasteCustomRecurrencePresets?: (
     instanceId: string
   ) => Promise<readonly WasteCustomRecurrencePresetRecord[]>;
-  readonly generateWasteOutputPdf?: (input: {
-    readonly instanceId: string;
-    readonly collectionLocationId: string;
-    readonly year: number;
-  }) => Promise<WasteManagementOutputPdfResult>;
+  readonly mapWasteSettingsInterfaceOptions?: (
+    records: readonly ExternalInterfaceRecord[],
+    selectedInterfaceId?: string
+  ) => readonly WasteManagementSettingsInterfaceOption[];
   readonly previewWasteLocationTourPickupDateImport?: (input: {
     readonly instanceId: string;
     readonly sourceFormat: WasteManagementImportSourceFormat;

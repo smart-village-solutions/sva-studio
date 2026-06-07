@@ -99,7 +99,7 @@ Für `studio` zusätzlich wichtig:
 
 Für `public-waste` zusätzlich wichtig:
 
-- die produktive Runtime liest führend `PUBLIC_WASTE_INSTANCE_ID`, `PUBLIC_WASTE_DATABASE_URL`, `PUBLIC_WASTE_SCHEMA_NAME` und `PUBLIC_WASTE_PDF_URL_TEMPLATE`
+- die produktive Runtime liest führend `PUBLIC_WASTE_INSTANCE_ID`, `PUBLIC_WASTE_DATABASE_URL` und `PUBLIC_WASTE_SCHEMA_NAME`
 - `PUBLIC_WASTE_CONFIG_JSON` ist kein operativer Sollzustand mehr
 - der Release-Workflow führt nach dem Stack-Update Smoke-Checks gegen `/health/live`, `/` und `/api/public-waste/selection` aus
 

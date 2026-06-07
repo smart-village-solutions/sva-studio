@@ -3,6 +3,7 @@ import type { WasteFractionReminderCount, WasteLocalizedTextRecord } from './mas
 export type WasteFractionRecord = {
   readonly id: string;
   readonly name: string;
+  readonly pdfShortLabel?: string;
   readonly translations?: WasteLocalizedTextRecord;
   readonly containerSize?: string;
   readonly color: string;

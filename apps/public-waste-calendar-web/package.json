@@ -11,10 +11,13 @@
     "test:e2e": "playwright test --config playwright.config.ts"
   },
   "dependencies": {
+    "@sva/core": "workspace:*",
+    "@sva/data-repositories": "workspace:*",
     "@tabler/icons-react": "^3.41.1",
     "pg": "^8.16.3",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

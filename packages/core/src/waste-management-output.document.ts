@@ -110,7 +110,20 @@ const buildHolidayMap = (year: number): ReadonlyMap<string, string> => {
   ]);
 };
 
-const buildFractionCode = (label: string, usedCodes: Set<string>): string => {
+const normalizeFractionCode = (value: string): string =>
+  value
+    .replace(/[^A-Za-z0-9]+/g, '')
+    .trim()
+    .toUpperCase()
+    .slice(0, 4);
+
+const buildFractionCode = (label: string, shortLabel: string | undefined, usedCodes: Set<string>): string => {
+  const preferredCode = shortLabel ? normalizeFractionCode(shortLabel) : '';
+  if (preferredCode && !usedCodes.has(preferredCode)) {
+    usedCodes.add(preferredCode);
+    return preferredCode;
+  }
+
   const normalized = label
     .replace(/[^A-Za-z0-9]+/g, ' ')
     .trim()
@@ -149,7 +162,7 @@ const buildEntriesByDate = (pickups: readonly WasteOutputPickupEntry[]) => {
       const legendEntry =
         existingLegend ??
         {
-          code: buildFractionCode(fraction.label, usedCodes),
+          code: buildFractionCode(fraction.label, fraction.shortLabel, usedCodes),
           label: fraction.label,
           fillColor: parseHexColor(fraction.color),
         };
@@ -203,6 +216,8 @@ export const buildWasteCalendarPdfDocument = (input: {
   readonly pickups: readonly WasteOutputPickupEntry[];
   readonly notes?: readonly string[];
   readonly footerLine?: string;
+  readonly brandingPlaceholderLabel?: string;
+  readonly brandingImage?: WasteCalendarPdfDocument['pages'][number]['brandingImage'];
 }): WasteCalendarPdfDocument => {
   const { entriesByDate, legendFractions } = buildEntriesByDate(input.pickups);
   const holidayMap = buildHolidayMap(input.year);
@@ -212,11 +227,12 @@ export const buildWasteCalendarPdfDocument = (input: {
     : [`Stand ${new Date().toISOString().slice(0, 10)}`, 'Alle wirksamen Fraktionen und Verschiebungen sind enthalten.'];
   const footerLine =
     input.footerLine ??
-    `Abfallkalender ${input.year} · ${input.locationLabel} · Erzeugt im Studio Waste-Management`;
+    `Abfallkalender ${input.year} · ${input.locationLabel}`;
   const buildPage = (months: readonly number[]) => ({
     title: `Abfallkalender ${input.year}`,
     locationLabel: input.locationLabel,
-    brandingPlaceholderLabel: 'Kommunales Waste-Management',
+    brandingPlaceholderLabel: input.brandingPlaceholderLabel ?? 'Kommunales Waste-Management',
+    ...(input.brandingImage ? { brandingImage: input.brandingImage } : {}),
     months: months.map((month) => buildMonth(input.year, month, holidayMap, entriesByDate)),
     legend,
     notes,

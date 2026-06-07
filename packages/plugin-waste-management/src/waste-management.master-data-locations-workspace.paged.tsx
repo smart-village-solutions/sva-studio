@@ -17,7 +17,6 @@ export const WasteMasterDataPagedLocationsTable = ({
   | 'houseNumbers'
   | 'collectionLocations'
   | 'locationTourLinks'
-  | 'outputOverview'
   | 'selectedLocationIds'
   | 'allFilteredLocationsSelected'
   | 'selectedCollectionLocationsCount'

@@ -90,20 +90,6 @@ type WasteCollectionLocationState = {
   updatedAt: string;
 };
 
-type WasteOutputPdfState = {
-  year: number;
-  deliveryUrl: string;
-  expiresAt?: string;
-  storageKey?: string;
-};
-
-type WasteOutputOverviewState = {
-  collectionLocations: Array<{
-    collectionLocationId: string;
-    pdfs: WasteOutputPdfState[];
-  }>;
-};
-
 type WasteJobState = {
   id: string;
   jobTypeId: string;
@@ -198,7 +184,6 @@ const mockWasteFacade = async (page: Page, input: {
   readonly streets?: WasteStreetState[];
   readonly houseNumbers?: WasteHouseNumberState[];
   readonly collectionLocations?: WasteCollectionLocationState[];
-  readonly outputOverview?: WasteOutputOverviewState;
   readonly allowFractionCreate?: boolean;
 }) : Promise<WasteHarness> => {
   const settingsState: WasteSettingsState = { ...input.settings };
@@ -210,12 +195,6 @@ const mockWasteFacade = async (page: Page, input: {
   const streetsState = [...(input.streets ?? [])];
   const houseNumbersState = [...(input.houseNumbers ?? [])];
   const collectionLocationsState = [...(input.collectionLocations ?? [])];
-  const outputOverviewState: WasteOutputOverviewState = {
-    collectionLocations: (input.outputOverview?.collectionLocations ?? []).map((entry) => ({
-      collectionLocationId: entry.collectionLocationId,
-      pdfs: [...entry.pdfs],
-    })),
-  };
   const requests = {
     settingsUpdates: [] as Array<Record<string, unknown>>,
     createdFractions: [] as Array<Record<string, unknown>>,
@@ -259,50 +238,6 @@ const mockWasteFacade = async (page: Page, input: {
           houseNumbers: houseNumbersState,
           collectionLocations: collectionLocationsState,
           locationTourLinks: [],
-        }),
-      });
-      return;
-    }
-
-    if (method === 'GET' && path === '/api/v1/waste-management/outputs') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: createApiItem(outputOverviewState),
-      });
-      return;
-    }
-
-    if (method === 'POST' && path === '/api/v1/waste-management/outputs/pdf') {
-      const body = request.postDataJSON() as { collectionLocationId: string; year: number };
-      const pdf: WasteOutputPdfState = {
-        year: body.year,
-        deliveryUrl: `https://cdn.example/waste-output/${body.collectionLocationId}/${body.year}.pdf`,
-        expiresAt: '2026-05-10T13:15:00.000Z',
-        storageKey: `waste-output/collection-locations/${body.collectionLocationId}/${body.year}.pdf`,
-      };
-      const existingEntry = outputOverviewState.collectionLocations.find(
-        (entry) => entry.collectionLocationId === body.collectionLocationId
-      );
-      if (existingEntry) {
-        existingEntry.pdfs = [...existingEntry.pdfs.filter((entry) => entry.year !== body.year), pdf].sort(
-          (left, right) => right.year - left.year
-        );
-      } else {
-        outputOverviewState.collectionLocations.push({
-          collectionLocationId: body.collectionLocationId,
-          pdfs: [pdf],
-        });
-      }
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: createApiItem({
-          collectionLocationId: body.collectionLocationId,
-          year: body.year,
-          deliveryUrl: pdf.deliveryUrl,
-          expiresAt: pdf.expiresAt,
-          storageKey: pdf.storageKey,
         }),
       });
       return;
@@ -723,15 +658,14 @@ test.describe('waste management plugin', () => {
     await page.getByRole('tab', { name: 'Ausgabe' }).click();
     const outputPanel = page.getByRole('tabpanel', { name: 'Ausgabe' });
     await expect(outputPanel).toBeVisible();
-    await outputPanel.locator('select').first().selectOption({ label: 'Nord, Musterhausen, Hauptstraße 7' });
-    await outputPanel.getByLabel('Jahr').fill('2026');
-    await outputPanel.getByRole('button', { name: 'PDF erzeugen' }).click();
-    await expect(page.getByText('Das PDF wurde erfolgreich erzeugt.')).toBeVisible();
-    await expect(page.getByRole('link', { name: 'PDF öffnen' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Jahr 2026' })).toBeVisible();
-
-    await page.getByRole('tab', { name: 'Abholorte' }).click();
-    await expect(page.getByRole('link', { name: '2026' })).toBeVisible();
+    await outputPanel.getByLabel('Branding-Grafik').fill('https://cdn.example/logo.svg');
+    await outputPanel.getByLabel('Kontakt- und Freitextblock').fill('Service-Telefon 03395 123456');
+    await outputPanel.getByRole('button', { name: 'PDF-Inhalte speichern' }).click();
+    await expect(page.getByText('Die PDF-Inhalte wurden gespeichert.')).toBeVisible();
+    expect(harness.requests.settingsUpdates.at(-1)).toMatchObject({
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Service-Telefon 03395 123456',
+    });
 
     expect(harness.requests.startedJobTypes).toEqual([
       'waste-management.import-data',
@@ -833,13 +767,13 @@ test.describe('waste management plugin', () => {
 
     await page.getByRole('button', { name: 'Abstand hinzufügen' }).click();
     await page.locator('#waste-settings-custom-recurrence-name').fill('Ferien 10 Tage');
-    await page.locator('#waste-settings-custom-recurrence-interval-days').fill('10');
+    await page.locator('#waste-settings-custom-recurrence-interval-days').selectOption('10');
     await page.locator('#waste-settings-custom-recurrence-description').fill('Saisonaler Sommerturnus');
     await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
 
     await page.getByRole('button', { name: 'Abstand hinzufügen' }).click();
     await page.locator('#waste-settings-custom-recurrence-name').fill('14 Tage Fallback');
-    await page.locator('#waste-settings-custom-recurrence-interval-days').fill('14');
+    await page.locator('#waste-settings-custom-recurrence-interval-days').selectOption('14');
     await page.locator('#waste-settings-custom-recurrence-description').fill('Fallback für entfernte Sommerturnusse');
     await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
 
@@ -877,11 +811,10 @@ test.describe('waste management plugin', () => {
     await expect(page.getByRole('row', { name: /Ferienroute.*Ferien 10 Tage \(alle 10 Tage\)/ })).toBeVisible();
 
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
-    const presetCards = page.locator('div.rounded-2xl.border.border-border.bg-background');
-    const editedPresetCard = presetCards.filter({ hasText: 'Ferien 10 Tage' }).first();
-    await editedPresetCard.getByRole('button', { name: 'Bearbeiten' }).click();
+    const editedPresetRow = page.getByRole('row', { name: /Ferien 10 Tage.*Alle 10 Tage/ });
+    await editedPresetRow.getByRole('button', { name: 'Bearbeiten' }).click();
     await page.locator('#waste-settings-custom-recurrence-name').fill('Ferien 12 Tage');
-    await page.locator('#waste-settings-custom-recurrence-interval-days').fill('12');
+    await page.locator('#waste-settings-custom-recurrence-interval-days').selectOption('12');
     await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
 
@@ -891,8 +824,8 @@ test.describe('waste management plugin', () => {
     await expect(page.getByRole('row', { name: /Ferienroute.*Ferien 12 Tage \(alle 12 Tage\)/ })).toBeVisible();
 
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
-    const presetCardToDelete = presetCards.filter({ hasText: 'Ferien 12 Tage' }).first();
-    await presetCardToDelete.getByRole('button', { name: 'Löschen' }).click();
+    const presetRowToDelete = page.getByRole('row', { name: /Ferien 12 Tage.*Alle 12 Tage/ });
+    await presetRowToDelete.getByRole('button', { name: 'Löschen' }).click();
     await page.locator('#waste-settings-custom-recurrence-fallback').selectOption({
       label: '14 Tage Fallback (alle 14 Tage)',
     });

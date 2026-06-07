@@ -87,6 +87,8 @@ const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) => {
   return <ArrowUpDown className="h-4 w-4" aria-hidden="true" />;
 };
 
+export const compareAlphabetically = (left: string, right: string) => left.localeCompare(right);
+
 const renderSelectionHeader = <TData,>(
   table: ReturnType<typeof useReactTable<TData>>,
   ariaLabel: string,
@@ -173,14 +175,14 @@ export function StudioDataTable<TData>({
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [isCompact, setIsCompact] = React.useState(false);
   const selectionScopeKey = React.useMemo(
-    () => [...data].map((row) => getRowId(row)).sort().join('\u0000'),
+    () => [...data].map((row) => getRowId(row)).sort(compareAlphabetically).join('\u0000'),
     [data, getRowId]
   );
   const selectableScopeKey = React.useMemo(
     () =>
       [...data]
         .map((row) => `${getRowId(row)}:${canSelectRow ? (canSelectRow(row) ? '1' : '0') : '1'}`)
-        .sort()
+        .sort(compareAlphabetically)
         .join('\u0000'),
     [canSelectRow, data, getRowId]
   );

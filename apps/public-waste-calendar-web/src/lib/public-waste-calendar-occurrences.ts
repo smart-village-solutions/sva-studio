@@ -64,7 +64,6 @@ const normalizeDateOnly = (value: string | undefined): string | null => {
   if (!value) {
     return null;
   }
-
   const normalized = value.trim().slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : null;
 };
@@ -131,7 +130,6 @@ const resolveOccurrenceWindowBound = ({
   if (shiftedOriginalDates.length === 0) {
     return baseBound;
   }
-
   const candidate =
     direction === 'start'
       ? shiftedOriginalDates.reduce((current, value) => (value < current ? value : current), baseBound)
@@ -191,7 +189,6 @@ export const calculatePublicWasteCalendarEntries = (
     return [];
   }
   const windowEnd = addYearsUtc(windowStart, 1);
-
   const entries = new Map<string, PublicWasteCalendarEntry>();
 
   for (const linkedTour of input.linkedTours) {
@@ -224,11 +221,7 @@ export const calculatePublicWasteCalendarEntries = (
       shiftedOriginalDates: relevantShiftOriginalDates,
       direction: 'end',
     });
-    const occurrences = calculateTourOccurrences(
-      linkedTour.tour,
-      occurrenceWindowStart,
-      occurrenceWindowEnd
-    );
+    const occurrences = calculateTourOccurrences(linkedTour.tour, occurrenceWindowStart, occurrenceWindowEnd);
     const tourShiftMap = buildShiftMap(relevantTourDateShifts);
     const globalShiftMap = buildShiftMap(relevantGlobalDateShifts);
 

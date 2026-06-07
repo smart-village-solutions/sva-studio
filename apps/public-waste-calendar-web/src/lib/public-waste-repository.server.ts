@@ -374,6 +374,8 @@ export const createPublicWasteRepository = (input: {
               ${streetSelectionFilter.text}
               AND ($4::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $4::uuid)
               AND ($5::uuid IS NULL OR cl.house_number_id IS NULL OR cl.house_number_id = $5::uuid)
+              AND (ltl.start_date IS NULL OR p.pickup_date >= ltl.start_date)
+              AND (ltl.end_date IS NULL OR p.pickup_date <= ltl.end_date)
             ORDER BY p.pickup_date ASC, t.name ASC, f.name ASC;
           `,
           values: [
@@ -537,6 +539,25 @@ export const createPublicWasteRepository = (input: {
       for (const row of importedPickupDateRows) {
         const pickupDate = normalizeDateOnly(row.pickup_date);
         if (!pickupDate || !row.fraction_id || !row.fraction_label) {
+          continue;
+        }
+
+        const hasValidLinkAssignment = linkedTours.some((linkedTour) => {
+          if (linkedTour.locationId !== row.location_id || linkedTour.tour.id !== row.tour_id) {
+            return false;
+          }
+
+          if (linkedTour.startDate && pickupDate < linkedTour.startDate) {
+            return false;
+          }
+
+          if (linkedTour.endDate && pickupDate > linkedTour.endDate) {
+            return false;
+          }
+
+          return true;
+        });
+        if (!hasValidLinkAssignment) {
           continue;
         }
 

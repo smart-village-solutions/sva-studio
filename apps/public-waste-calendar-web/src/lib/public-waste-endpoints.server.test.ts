@@ -1,3 +1,4 @@
+import * as wasteOutput from '@sva/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -92,6 +93,64 @@ describe('public waste endpoints', () => {
     expect(pdfText).toContain('Abfallkalender 2026');
     expect(pdfText).toContain('/Subtype /Image');
     expect(loadBrandingImage).toHaveBeenCalledWith('https://cdn.example/logo.svg');
+  });
+
+  it('deduplicates fractions per pickup date before rendering the pdf payload', async () => {
+    const buildDocumentSpy = vi.spyOn(wasteOutput, 'buildWasteCalendarPdfDocument');
+
+    await handlePublicWastePdfRequest({
+      repository: {
+        loadCalendarEntries: vi.fn().mockResolvedValue([
+          {
+            id: 'pickup-1',
+            date: '2026-05-19',
+            fractionId: 'bio',
+            fractionLabel: 'Bioabfall',
+            fractionShortLabel: 'BIO',
+            note: null,
+          },
+          {
+            id: 'pickup-2',
+            date: '2026-05-19',
+            fractionId: 'bio',
+            fractionLabel: 'Bioabfall',
+            fractionShortLabel: 'BIO',
+            note: null,
+          },
+          {
+            id: 'pickup-3',
+            date: '2026-05-19',
+            fractionId: 'paper',
+            fractionLabel: 'Papier',
+            fractionShortLabel: 'PAP',
+            note: null,
+          },
+        ]),
+        loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+      },
+      request: new Request(
+        'https://example.invalid/public-waste/pdf?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&year=2026&fractionId=bio&fractionId=paper'
+      ),
+      loadPdfStaticConfig: vi.fn().mockResolvedValue({}),
+    });
+
+    expect(buildDocumentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pickups: [
+          {
+            date: '2026-05-19',
+            fractions: [
+              expect.objectContaining({
+                id: 'bio',
+              }),
+              expect.objectContaining({
+                id: 'paper',
+              }),
+            ],
+          },
+        ],
+      })
+    );
   });
 
   it('returns an iCal feed for the resolved calendar request', async () => {

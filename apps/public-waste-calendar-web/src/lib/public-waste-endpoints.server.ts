@@ -63,11 +63,11 @@ const buildPdfPickups = (
     readonly fractionColor?: string;
   }[]
 ): readonly WasteOutputPickupEntry[] => {
-  const byDate = new Map<string, WasteOutputPickupEntry['fractions'][number][]>();
+  const byDate = new Map<string, Map<string, WasteOutputPickupEntry['fractions'][number]>>();
 
   for (const entry of entries) {
-    const fractions = byDate.get(entry.date) ?? [];
-    fractions.push({
+    const fractions = byDate.get(entry.date) ?? new Map<string, WasteOutputPickupEntry['fractions'][number]>();
+    fractions.set(entry.fractionId, {
       id: entry.fractionId,
       label: entry.fractionLabel,
       shortLabel: entry.fractionShortLabel,
@@ -80,7 +80,7 @@ const buildPdfPickups = (
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([date, fractions]) => ({
       date,
-      fractions: [...fractions].sort((left, right) => left.label.localeCompare(right.label, 'de')),
+      fractions: Array.from(fractions.values()).sort((left, right) => left.label.localeCompare(right.label, 'de')),
     }));
 };
 

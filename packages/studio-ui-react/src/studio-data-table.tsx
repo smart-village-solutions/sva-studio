@@ -176,6 +176,14 @@ export function StudioDataTable<TData>({
     () => [...data].map((row) => getRowId(row)).sort().join('\u0000'),
     [data, getRowId]
   );
+  const selectableScopeKey = React.useMemo(
+    () =>
+      [...data]
+        .map((row) => `${getRowId(row)}:${canSelectRow ? (canSelectRow(row) ? '1' : '0') : '1'}`)
+        .sort()
+        .join('\u0000'),
+    [canSelectRow, data, getRowId]
+  );
 
   React.useLayoutEffect(() => {
     const node = containerRef.current;
@@ -193,8 +201,26 @@ export function StudioDataTable<TData>({
   }, []);
 
   React.useEffect(() => {
-    setRowSelection({});
-  }, [selectionScopeKey]);
+    const availableRowIds = new Set(data.map((row) => getRowId(row)));
+    const selectableRowIds = new Set(
+      data.filter((row) => (canSelectRow ? canSelectRow(row) : true)).map((row) => getRowId(row))
+    );
+
+    setRowSelection((current) => {
+      let changed = false;
+      const next: RowSelectionState = {};
+
+      for (const [rowId, isSelected] of Object.entries(current)) {
+        if (isSelected && availableRowIds.has(rowId) && selectableRowIds.has(rowId)) {
+          next[rowId] = true;
+          continue;
+        }
+        changed = true;
+      }
+
+      return changed ? next : current;
+    });
+  }, [canSelectRow, data, getRowId, selectableScopeKey, selectionScopeKey]);
 
   const clearSelection = React.useCallback(() => {
     setRowSelection({});

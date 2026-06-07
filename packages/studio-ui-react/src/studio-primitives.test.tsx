@@ -472,6 +472,48 @@ describe('studio-ui-react primitives', () => {
     expect((screen.getByLabelText('Ausweichtermine global-1 auswählen') as HTMLInputElement).checked).toBe(true);
   });
 
+  it('prunes selected rows when an unchanged row id becomes non-selectable', () => {
+    const data = [
+      { id: 'global-1', title: 'Global', selectable: true },
+      { id: 'tour-1', title: 'Tour', selectable: true },
+    ];
+
+    const { rerender } = render(
+      <StudioDataTable
+        ariaLabel="Ausweichtermine"
+        labels={tableLabels}
+        data={data}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title }]}
+        emptyState={<p>Keine Daten</p>}
+        canSelectRow={(row) => row.selectable}
+      />
+    );
+
+    const globalCheckbox = screen.getByLabelText('Ausweichtermine global-1 auswählen') as HTMLInputElement;
+    fireEvent.click(globalCheckbox);
+    expect(globalCheckbox.checked).toBe(true);
+
+    rerender(
+      <StudioDataTable
+        ariaLabel="Ausweichtermine"
+        labels={tableLabels}
+        data={[
+          { id: 'global-1', title: 'Global', selectable: false },
+          { id: 'tour-1', title: 'Tour', selectable: true },
+        ]}
+        getRowId={(row) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title }]}
+        emptyState={<p>Keine Daten</p>}
+        canSelectRow={(row) => row.selectable}
+      />
+    );
+
+    const updatedGlobalCheckbox = screen.getByLabelText('Ausweichtermine global-1 auswählen') as HTMLInputElement;
+    expect(updatedGlobalCheckbox.checked).toBe(false);
+    expect(updatedGlobalCheckbox.disabled).toBe(true);
+  });
+
   it('renders table sorting, row actions, toolbar content and clearable bulk actions', () => {
     const onBulk = vi.fn();
     const data = [

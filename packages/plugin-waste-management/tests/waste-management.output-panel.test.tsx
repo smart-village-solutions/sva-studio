@@ -89,6 +89,9 @@ describe('WasteOutputPanel', () => {
     render(<WasteOutputPanel />);
 
     expect(await screen.findByText('output.pdf.title')).toBeTruthy();
+    await waitFor(() => {
+      expect(apiMocks.getWasteManagementSettings).toHaveBeenCalledTimes(1);
+    });
     expect(screen.queryByText('output.pdf.fields.collectionLocationId')).toBeNull();
 
     fireEvent.change(screen.getByLabelText('output.pdf.fields.brandingAssetUrl'), {

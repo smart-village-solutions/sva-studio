@@ -17,7 +17,10 @@ import { WasteOutputConfigurationSection } from './waste-management.output-panel
 
 export const WasteOutputPanel = () => {
   const pt = usePluginTranslation('wasteManagement');
-  const { error, loading, settings, setSettings } = useWasteOutputPanelData(pt);
+  const { error, loading, settings, setSettings } = useWasteOutputPanelData({
+    loadForbiddenMessage: pt('output.pdf.messages.loadForbidden'),
+    loadErrorMessage: pt('output.pdf.messages.loadError'),
+  });
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const [brandingAssetUrl, setBrandingAssetUrl] = useState('');

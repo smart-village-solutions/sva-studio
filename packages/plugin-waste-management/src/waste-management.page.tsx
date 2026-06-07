@@ -72,6 +72,11 @@ export const WasteManagementPage = () => {
   }, [navigate, search, uiAccess.isResolved, uiAccess.visibleTabIds]);
 
   useEffect(() => {
+    if (!uiAccess.isResolved || !uiAccess.canAccessSettings) {
+      setCalendarWebUrl(null);
+      return;
+    }
+
     let active = true;
 
     void getWasteManagementSettings()
@@ -90,7 +95,7 @@ export const WasteManagementPage = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [uiAccess.canAccessSettings, uiAccess.isResolved]);
 
   return (
     <StudioOverviewPageTemplate

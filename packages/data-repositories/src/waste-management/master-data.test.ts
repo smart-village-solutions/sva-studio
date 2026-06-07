@@ -408,6 +408,8 @@ describe('waste master data repository', () => {
       createWasteMasterDataRepository(list.executor).listWasteCollectionLocations({
         cityId: 'city-1',
         regionId: 'region-1',
+        streetId: 'street-1',
+        houseNumberId: 'house-1',
         active: true,
       })
     ).resolves.toEqual([
@@ -423,11 +425,13 @@ describe('waste master data repository', () => {
       },
     ]);
 
-    expect(list.statements[0]?.values).toEqual(['city-1', 'region-1', true]);
+    expect(list.statements[0]?.values).toEqual(['city-1', 'region-1', 'street-1', 'house-1', true]);
     expect(list.statements[0]?.text).toContain('FROM waste_collection_locations');
     expect(list.statements[0]?.text).toContain('city_id = $1::uuid');
     expect(list.statements[0]?.text).toContain('region_id = $2::uuid');
-    expect(list.statements[0]?.text).toContain('active = $3');
+    expect(list.statements[0]?.text).toContain('street_id = $3::uuid');
+    expect(list.statements[0]?.text).toContain('house_number_id = $4::uuid');
+    expect(list.statements[0]?.text).toContain('active = $5');
 
     const single = createExecutor([
       {
@@ -474,6 +478,9 @@ describe('waste master data repository', () => {
         active: false,
       }).values
     ).toEqual(['location-4', 'city-4', 'region-4', 'street-4', 'house-4', false]);
+
+    expect(wasteMasterDataStatements.listWasteCollectionLocations({}).values).toEqual([]);
+    expect(wasteMasterDataStatements.listWasteCollectionLocations({}).text).not.toContain('WHERE');
   });
 
   it('lists, reads and upserts tours with location counts and custom date payloads', async () => {

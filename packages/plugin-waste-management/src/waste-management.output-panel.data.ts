@@ -4,8 +4,6 @@ import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
 import { getWasteManagementSettings } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
 
-type OutputTranslate = (key: string) => string;
-
 type WasteOutputPanelDataState = Readonly<{
   loading: boolean;
   error: string | null;
@@ -13,7 +11,13 @@ type WasteOutputPanelDataState = Readonly<{
   setSettings: (value: WasteManagementSettingsRecord | null) => void;
 }>;
 
-export const useWasteOutputPanelData = (translate: OutputTranslate): WasteOutputPanelDataState => {
+export const useWasteOutputPanelData = ({
+  loadForbiddenMessage,
+  loadErrorMessage,
+}: {
+  readonly loadForbiddenMessage: string;
+  readonly loadErrorMessage: string;
+}): WasteOutputPanelDataState => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<WasteManagementSettingsRecord | null>(null);
@@ -35,9 +39,9 @@ export const useWasteOutputPanelData = (translate: OutputTranslate): WasteOutput
         }
         const errorKey =
           resolveApiErrorCode(loadError) === 'forbidden'
-            ? 'output.pdf.messages.loadForbidden'
-            : 'output.pdf.messages.loadError';
-        setError(translate(errorKey));
+            ? loadForbiddenMessage
+            : loadErrorMessage;
+        setError(errorKey);
       } finally {
         if (active) {
           setLoading(false);
@@ -48,7 +52,7 @@ export const useWasteOutputPanelData = (translate: OutputTranslate): WasteOutput
     return () => {
       active = false;
     };
-  }, [translate]);
+  }, [loadErrorMessage, loadForbiddenMessage]);
 
   return {
     loading,

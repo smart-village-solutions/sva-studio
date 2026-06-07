@@ -14,6 +14,18 @@ const searchMock = vi.fn(() => ({
   status: 'active',
   shiftContext: 'tour',
 }));
+const uiAccessMock = vi.hoisted(() => ({
+  isResolved: true,
+  visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'] as const,
+  canAccessSettings: true,
+  canAccessTools: true,
+  canDuplicateTour: true,
+  canRunInitialize: true,
+  canRunMigrations: true,
+  canRunImport: true,
+  canRunSeed: true,
+  canRunReset: true,
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
@@ -32,29 +44,8 @@ const clickMenuItemContaining = (textFragment: string) => {
 };
 
 vi.mock('../src/waste-management.ui-access.js', () => ({
-  deriveWasteManagementUiAccess: () => ({
-    visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'],
-    canAccessSettings: true,
-    canAccessTools: true,
-    canDuplicateTour: true,
-    canRunInitialize: true,
-    canRunMigrations: true,
-    canRunImport: true,
-    canRunSeed: true,
-    canRunReset: true,
-  }),
-  useWasteManagementUiAccess: () => ({
-    isResolved: true,
-    visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'],
-    canAccessSettings: true,
-    canAccessTools: true,
-    canDuplicateTour: true,
-    canRunInitialize: true,
-    canRunMigrations: true,
-    canRunImport: true,
-    canRunSeed: true,
-    canRunReset: true,
-  }),
+  deriveWasteManagementUiAccess: () => ({ ...uiAccessMock }),
+  useWasteManagementUiAccess: () => ({ ...uiAccessMock }),
 }));
 
 const wasteManagementApiMocks = vi.hoisted(() => ({
@@ -325,6 +316,18 @@ vi.mock('../src/waste-management.api.js', () => wasteManagementApiMocks);
 describe('WasteManagementPage', () => {
   beforeEach(() => {
     cleanup();
+    Object.assign(uiAccessMock, {
+      isResolved: true,
+      visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'],
+      canAccessSettings: true,
+      canAccessTools: true,
+      canDuplicateTour: true,
+      canRunInitialize: true,
+      canRunMigrations: true,
+      canRunImport: true,
+      canRunSeed: true,
+      canRunReset: true,
+    });
     navigateMock.mockReset();
     searchMock.mockReset();
     searchMock.mockImplementation(() => ({
@@ -691,6 +694,25 @@ describe('WasteManagementPage', () => {
     expect(await screen.findByText('wasteManagement.tools.messages.jobStarted')).toBeTruthy();
     expect(await screen.findByText('wasteManagement.tools.meta.lastJobTitle')).toBeTruthy();
     expect(await screen.findByText(/wasteManagement\.tools\.meta\.jobStatusLabel:/)).toBeTruthy();
+  });
+
+  it('does not load settings for the page header when the user cannot access settings', async () => {
+    Object.assign(uiAccessMock, {
+      visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'tools'],
+      canAccessSettings: false,
+    });
+
+    render(<WasteManagementPage />);
+
+    expect(screen.getByText('wasteManagement.page.title')).toBeTruthy();
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.getWasteManagementSettings).not.toHaveBeenCalled();
+    });
+    expect(
+      screen.queryByRole('link', {
+        name: 'wasteManagement.page.webVersionLinkLabel',
+      })
+    ).toBeNull();
   });
 
   it('starts the import job through the waste tools facade with an explicit xlsx source format', async () => {

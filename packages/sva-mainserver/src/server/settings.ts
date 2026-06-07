@@ -1,5 +1,6 @@
 import type { ExternalInterfaceRecord, ExternalInterfaceVisibleStatus } from '@sva/core';
 import {
+  deleteExternalInterfaceRecord,
   loadDefaultExternalInterfaceRecord,
   saveExternalInterfaceRecord,
 } from '@sva/data-repositories/server';
@@ -106,6 +107,15 @@ export const saveSvaMainserverSettings = async (input: {
   await saveExternalInterfaceRecord(record);
 
   return config;
+};
+
+export const deleteSvaMainserverSettings = async (instanceId: string): Promise<boolean> => {
+  const existing = await loadDefaultExternalInterfaceRecord(instanceId, SVA_MAINSERVER_TYPE_KEY);
+  if (!existing) {
+    return false;
+  }
+
+  return deleteExternalInterfaceRecord(instanceId, existing.id);
 };
 
 const mapRecordToConfig = (record: ExternalInterfaceRecord): SvaMainserverInstanceConfig =>

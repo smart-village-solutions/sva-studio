@@ -372,12 +372,32 @@ describe('InterfacesPage', () => {
       expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[1]!);
     fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
 
     await waitFor(() => {
       expect(state.deleteInterface).toHaveBeenCalledWith({
         data: { id: 's3-1', instanceId: 'de-musterhausen' },
+      });
+    });
+  });
+
+  it('deletes the mainserver interface through the destructive confirm dialog', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
+    state.deleteInterface.mockResolvedValue({ deleted: true });
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
+
+    await waitFor(() => {
+      expect(state.deleteInterface).toHaveBeenCalledWith({
+        data: { id: 'mainserver:de-musterhausen', instanceId: 'de-musterhausen' },
       });
     });
   });

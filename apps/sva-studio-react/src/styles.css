@@ -204,18 +204,6 @@
       }
     }
 
-    /* 3. Table-Row-Lift: Y-Axis Scale + Shadow */
-    @keyframes table-row-lift {
-      from {
-        transform: scaleY(1);
-        box-shadow: none;
-      }
-      to {
-        transform: scaleY(1.01);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-      }
-    }
-
     /* 5. Skeleton-Shimmer: Gradient-Animation von links nach rechts */
     @keyframes skeleton-shimmer {
       0% {
@@ -320,10 +308,6 @@
 
     .animate-input-glow:focus-visible {
       animation: input-glow 200ms ease-out forwards;
-    }
-
-    .animate-row-hover:hover {
-      animation: table-row-lift 150ms ease-out forwards;
     }
 
     .animate-skeleton {

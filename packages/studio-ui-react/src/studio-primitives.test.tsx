@@ -665,22 +665,21 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getAllByText('a')).toHaveLength(2);
   });
 
-  it('sorts strings with localeCompare for deterministic alphabetical comparisons', () => {
+  it('sorts strings with a fixed locale and a deterministic tie-breaker', () => {
     const localeCompareSpy = vi
       .spyOn(String.prototype, 'localeCompare')
-      .mockImplementation(function mockLocaleCompare(this: string, other: string) {
-        if (this === 'b' && other === 'a') {
-          return -1;
-        }
-        if (this === 'a' && other === 'b') {
-          return 1;
-        }
+      .mockImplementation(function mockLocaleCompare(
+        this: string,
+        _other: string,
+        _locales?: string | readonly string[],
+        _options?: Intl.CollatorOptions
+      ) {
         return 0;
       });
 
     try {
-      expect(['a', 'b'].sort(compareAlphabetically)).toEqual(['b', 'a']);
-      expect(localeCompareSpy).toHaveBeenCalled();
+      expect(compareAlphabetically('a', 'b')).toBeLessThan(0);
+      expect(localeCompareSpy).toHaveBeenCalledWith('b', 'de');
     } finally {
       localeCompareSpy.mockRestore();
     }

@@ -87,7 +87,18 @@ const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) => {
   return <ArrowUpDown className="h-4 w-4" aria-hidden="true" />;
 };
 
-export const compareAlphabetically = (left: string, right: string): number => left.localeCompare(right, 'de');
+const compareByCodeUnit = (left: string, right: string): number => {
+  if (left < right) {
+    return -1;
+  }
+  if (left > right) {
+    return 1;
+  }
+  return 0;
+};
+
+export const compareAlphabetically = (left: string, right: string) =>
+  left.localeCompare(right, 'de') || compareByCodeUnit(left, right);
 
 const renderSelectionHeader = <TData,>(
   table: ReturnType<typeof useReactTable<TData>>,

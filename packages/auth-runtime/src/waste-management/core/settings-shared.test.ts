@@ -176,6 +176,94 @@ describe('waste-management settings shared helpers', () => {
     });
   });
 
+  it('returns a not-configured settings shell when no interface can be resolved', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        listInterfaceRecords: vi.fn(async () => []),
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toEqual({
+      instanceId: 'tenant-a',
+      provider: 'supabase',
+      projectUrl: '',
+      schemaName: 'public',
+      enabled: false,
+      availableInterfaces: [],
+      databaseUrlConfigured: false,
+      serviceRoleKeyConfigured: false,
+      visibleStatus: 'not_configured',
+      customRecurrencePresets: [],
+    });
+  });
+
+  it('maps non-supabase interfaces into a not-configured waste settings shell while preserving interface options', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        listInterfaceRecords: vi.fn(async () => [
+          {
+            id: 's3-1',
+            instanceId: 'tenant-a',
+            typeKey: 's3',
+            ownerKind: 'host',
+            ownerId: 'host',
+            displayName: 'S3',
+            alias: 'default',
+            enabled: true,
+            isDefault: true,
+            category: 'object_storage',
+            statusCheckKind: 's3',
+            visibleStatus: 'ok',
+            publicConfig: {
+              wasteManagementSelected: true,
+              calendarWebUrl: 'https://ignored.example',
+            },
+          },
+        ]),
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toEqual({
+      instanceId: 'tenant-a',
+      provider: 'supabase',
+      projectUrl: '',
+      schemaName: 'public',
+      enabled: true,
+      selectedInterfaceId: 's3-1',
+      selectedInterfaceName: 'S3',
+      selectedInterfaceTypeKey: 's3',
+      availableInterfaces: [
+        {
+          id: 's3-1',
+          name: 'S3',
+          typeKey: 's3',
+          enabled: true,
+          visibleStatus: 'ok',
+          isSelected: true,
+        },
+      ],
+      calendarWebUrl: 'https://ignored.example',
+      pdfBrandingAssetUrl: undefined,
+      pdfContactBlock: undefined,
+      databaseUrlConfigured: false,
+      serviceRoleKeyConfigured: false,
+      visibleStatus: 'not_configured',
+      lastCheckedAt: undefined,
+      lastCheckStatus: undefined,
+      lastCheckErrorCode: undefined,
+      lastCheckErrorMessage: undefined,
+      holidayStateCode: undefined,
+      lastHolidaySyncStatus: undefined,
+      lastSuccessfulHolidaySyncAt: undefined,
+      updatedAt: undefined,
+      customRecurrencePresets: [],
+    });
+  });
+
   it('runs the default connection probe through a short-lived pg pool', async () => {
     const release = vi.fn();
     const query = vi.fn(async () => ({ rows: [{ '?column?': 1 }] }));

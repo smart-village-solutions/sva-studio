@@ -117,6 +117,32 @@ const buildShiftMap = <TShift extends { readonly originalDate: string; readonly 
       .filter((entry): entry is readonly [string, { readonly actualDate: string; readonly description: string | null }] => entry !== null)
   );
 
+const resolveOccurrenceWindowBound = ({
+  baseBound,
+  linkBound,
+  shiftedOriginalDates,
+  direction,
+}: {
+  readonly baseBound: string;
+  readonly linkBound: string;
+  readonly shiftedOriginalDates: readonly string[];
+  readonly direction: 'start' | 'end';
+}): string => {
+  if (shiftedOriginalDates.length === 0) {
+    return baseBound;
+  }
+
+  const candidate =
+    direction === 'start'
+      ? shiftedOriginalDates.reduce((current, value) => (value < current ? value : current), baseBound)
+      : shiftedOriginalDates.reduce((current, value) => (value > current ? value : current), baseBound);
+
+  if (direction === 'start') {
+    return candidate < linkBound ? linkBound : candidate;
+  }
+  return candidate > linkBound ? linkBound : candidate;
+};
+
 const isDateWithinRange = (date: string, startDate: string, endDate: string): boolean =>
   date >= startDate && date <= endDate;
 
@@ -171,15 +197,40 @@ export const calculatePublicWasteCalendarEntries = (
   for (const linkedTour of input.linkedTours) {
     const linkStartDate = normalizeDateOnly(linkedTour.startDate) ?? windowStart;
     const linkEndDate = normalizeDateOnly(linkedTour.endDate) ?? windowEnd;
+    const effectiveWindowStart = linkStartDate > windowStart ? linkStartDate : windowStart;
+    const effectiveWindowEnd = linkEndDate < windowEnd ? linkEndDate : windowEnd;
+    const relevantTourDateShifts = input.tourDateShifts.filter((shift) => shift.tourId === linkedTour.tour.id);
+    const relevantGlobalDateShifts = input.globalDateShifts.filter(
+      (shift) => !shift.tourIds || shift.tourIds.includes(linkedTour.tour.id)
+    );
+    const relevantShiftOriginalDates = [...relevantTourDateShifts, ...relevantGlobalDateShifts]
+      .flatMap((shift) => {
+        const originalDate = normalizeDateOnly(shift.originalDate);
+        const actualDate = normalizeDateOnly(shift.actualDate);
+        if (!originalDate || !actualDate || !isDateWithinRange(actualDate, windowStart, windowEnd)) {
+          return [];
+        }
+        return [originalDate];
+      });
+    const occurrenceWindowStart = resolveOccurrenceWindowBound({
+      baseBound: effectiveWindowStart,
+      linkBound: linkStartDate,
+      shiftedOriginalDates: relevantShiftOriginalDates,
+      direction: 'start',
+    });
+    const occurrenceWindowEnd = resolveOccurrenceWindowBound({
+      baseBound: effectiveWindowEnd,
+      linkBound: linkEndDate,
+      shiftedOriginalDates: relevantShiftOriginalDates,
+      direction: 'end',
+    });
     const occurrences = calculateTourOccurrences(
       linkedTour.tour,
-      linkStartDate > windowStart ? linkStartDate : windowStart,
-      linkEndDate < windowEnd ? linkEndDate : windowEnd
+      occurrenceWindowStart,
+      occurrenceWindowEnd
     );
-    const tourShiftMap = buildShiftMap(input.tourDateShifts.filter((shift) => shift.tourId === linkedTour.tour.id));
-    const globalShiftMap = buildShiftMap(
-      input.globalDateShifts.filter((shift) => !shift.tourIds || shift.tourIds.includes(linkedTour.tour.id))
-    );
+    const tourShiftMap = buildShiftMap(relevantTourDateShifts);
+    const globalShiftMap = buildShiftMap(relevantGlobalDateShifts);
 
     for (const occurrence of occurrences) {
       const tourShift = tourShiftMap.get(occurrence.date);

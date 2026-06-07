@@ -175,4 +175,52 @@ describe('public waste calendar occurrences', () => {
       },
     ]);
   });
+
+  it('keeps occurrences whose original date is outside the requested window when a shift moves them into it', () => {
+    const entries = calculatePublicWasteCalendarEntries({
+      referenceDate: '2026-01-01',
+      selection: {
+        cityId: 'c-1',
+        streetId: 's-1',
+      },
+      linkedTours: [
+        {
+          linkId: 'link-1',
+          locationId: 'loc-1',
+          startDate: '2025-01-01',
+          endDate: '2026-12-31',
+          tour: {
+            id: 'tour-rest',
+            name: 'Restmüll',
+            recurrence: 'weekly',
+            firstDate: '2025-12-31',
+            endDate: '2025-12-31',
+            fractions: [{ id: 'rest', label: 'Restmüll', color: '#444444' }],
+          },
+        },
+      ],
+      tourDateShifts: [
+        {
+          id: 'shift-tour-1',
+          tourId: 'tour-rest',
+          originalDate: '2025-12-31',
+          actualDate: '2026-01-02',
+          description: 'Verschoben nach Neujahr',
+        },
+      ],
+      globalDateShifts: [],
+    });
+
+    expect(entries).toEqual([
+      {
+        id: 'tour-rest:2026-01-02:rest',
+        date: '2026-01-02',
+        fractionId: 'rest',
+        fractionLabel: 'Restmüll',
+        fractionColor: '#444444',
+        tourName: 'Restmüll',
+        note: 'Verschoben nach Neujahr',
+      },
+    ]);
+  });
 });

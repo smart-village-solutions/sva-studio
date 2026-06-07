@@ -1,9 +1,6 @@
 import { useMemo, useState } from 'react';
 
-import {
-  createEmptyCustomRecurrencePreset,
-  normalizeCustomRecurrencePresetDraft,
-} from './waste-management.settings-custom-recurrence.support.js';
+import { createEmptyCustomRecurrencePreset } from './waste-management.settings-custom-recurrence.support.js';
 import type { CustomRecurrencePresetInputState, DeletedPresetFallbackState } from './waste-management.settings.shared.js';
 
 const upsertCustomRecurrencePreset = (
@@ -47,7 +44,7 @@ const createDefaultDraft = (): CustomRecurrencePresetInputState => ({
   intervalDays: 7,
 });
 
-type UseWasteSettingsCustomRecurrenceControllerInput = {
+type UseWasteSettingsCustomRecurrenceLogicInput = {
   readonly items: readonly CustomRecurrencePresetInputState[];
   readonly deletedPresetFallbacks: Readonly<Record<string, DeletedPresetFallbackState>>;
   readonly onChange: (
@@ -56,11 +53,11 @@ type UseWasteSettingsCustomRecurrenceControllerInput = {
   ) => void;
 };
 
-export const useWasteSettingsCustomRecurrenceController = ({
+export const useWasteSettingsCustomRecurrenceLogic = ({
   items,
   deletedPresetFallbacks,
   onChange,
-}: UseWasteSettingsCustomRecurrenceControllerInput) => {
+}: UseWasteSettingsCustomRecurrenceLogicInput) => {
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CustomRecurrencePresetInputState | null>(null);

@@ -1,6 +1,6 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
-import { useWasteSettingsCustomRecurrenceController } from './waste-management.settings-custom-recurrence.controller.js';
+import { useWasteSettingsCustomRecurrenceLogic } from './waste-management.settings-custom-recurrence.logic.js';
 import type { CustomRecurrencePresetInputState, DeletedPresetFallbackState } from './waste-management.settings.shared.js';
 import { WasteSettingsCustomRecurrenceDeleteDialog } from './waste-management.settings-custom-recurrence-delete-dialog.js';
 import { WasteSettingsCustomRecurrenceDialog } from './waste-management.settings-custom-recurrence-dialog.js';
@@ -24,7 +24,7 @@ export const WasteSettingsCustomRecurrenceSection = ({
   ) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-  const controller = useWasteSettingsCustomRecurrenceController({
+  const controller = useWasteSettingsCustomRecurrenceLogic({
     items,
     deletedPresetFallbacks,
     onChange,

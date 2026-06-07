@@ -40,25 +40,7 @@ const isAcceptedAuthRedirect = (location: string | null | undefined) =>
   );
 
 const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
-  await expect
-    .poll(
-      async () => {
-        const headingVisible = await page
-          .getByRole('heading', { name: 'Schnittstellen' })
-          .isVisible()
-          .catch(() => false);
-        if (headingVisible) {
-          return true;
-        }
-
-        return page
-          .getByText('Schnittstellen werden geladen ...')
-          .isVisible()
-          .catch(() => false);
-      },
-      { timeout }
-    )
-    .toBe(true);
+  await expect(page.getByRole('heading', { name: 'Schnittstellen', exact: true })).toBeVisible({ timeout });
 };
 
 const mockAuthenticatedPluginShell = async (page: Page) => {

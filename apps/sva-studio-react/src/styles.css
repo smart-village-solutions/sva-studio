@@ -338,6 +338,10 @@
       animation: label-float 150ms ease-out forwards;
     }
 
+    .animate-row-hover {
+      @apply transition-colors duration-150 ease-out;
+    }
+
     .animate-collapse-icon:hover {
       animation: collapse-icon-rotate 200ms ease-out forwards;
     }

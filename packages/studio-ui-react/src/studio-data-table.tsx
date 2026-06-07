@@ -399,6 +399,7 @@ export function StudioDataTable<TData>({
                 <Checkbox
                   aria-label={(labels.selectMobileRow ?? labels.selectRow)({ label: ariaLabel, rowId: row.id })}
                   checked={row.getIsSelected()}
+                  disabled={!row.getCanSelect()}
                   ref={undefined}
                   onChange={(event) => row.toggleSelected(event.target.checked)}
                 />

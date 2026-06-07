@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InterfacesPage } from './-interfaces-page';
@@ -372,7 +372,10 @@ describe('InterfacesPage', () => {
       expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[1]!);
+    const interfacesTable = screen.getByRole('table', { name: 'Schnittstellen der Instanz' });
+    const s3Row = within(interfacesTable).getByRole('cell', { name: 'Uploads' }).closest('tr');
+    expect(s3Row).toBeTruthy();
+    fireEvent.click(within(s3Row!).getByRole('button', { name: 'Löschen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
 
     await waitFor(() => {
@@ -392,7 +395,10 @@ describe('InterfacesPage', () => {
       expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    const interfacesTable = screen.getByRole('table', { name: 'Schnittstellen der Instanz' });
+    const mainserverRow = within(interfacesTable).getAllByRole('cell', { name: 'SVA Mainserver' })[0]?.closest('tr');
+    expect(mainserverRow).toBeTruthy();
+    fireEvent.click(within(mainserverRow!).getByRole('button', { name: 'Löschen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
 
     await waitFor(() => {

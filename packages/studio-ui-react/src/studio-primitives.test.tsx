@@ -689,6 +689,48 @@ describe('studio-ui-react primitives', () => {
     expect(disconnect).toHaveBeenCalledTimes(1);
   });
 
+  it('disables non-selectable rows in the compact card layout', () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const disconnect = vi.fn();
+
+    globalThis.ResizeObserver = class {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+
+      observe() {
+        this.callback([{ contentRect: { width: 320 } as DOMRectReadOnly }] as ResizeObserverEntry[], this as ResizeObserver);
+      }
+
+      unobserve = vi.fn();
+
+      disconnect = disconnect;
+    } as typeof ResizeObserver;
+
+    try {
+      const { unmount } = render(
+        <StudioDataTable
+          ariaLabel="Ausweichtermine"
+          labels={tableLabels}
+          data={[
+            { id: 'holiday-1', title: 'Feiertag', selectable: false },
+            { id: 'tour-1', title: 'Tour', selectable: true },
+          ]}
+          getRowId={(row) => row.id}
+          columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title }]}
+          emptyState={<p>Keine Daten</p>}
+          canSelectRow={(row) => row.selectable}
+        />
+      );
+
+      expect((screen.getByLabelText('Ausweichtermine holiday-1 in Kartenansicht auswählen') as HTMLInputElement).disabled).toBe(true);
+      expect((screen.getByLabelText('Ausweichtermine tour-1 in Kartenansicht auswählen') as HTMLInputElement).disabled).toBe(false);
+      unmount();
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+
+    expect(disconnect).toHaveBeenCalledTimes(1);
+  });
+
   it('renders base controls', () => {
     render(
       <>

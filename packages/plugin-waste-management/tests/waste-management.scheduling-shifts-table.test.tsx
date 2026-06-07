@@ -436,7 +436,9 @@ describe('WasteSchedulingShiftsTable', () => {
     expect(screen.getByText('scheduling.bulkDeleteDialog.title')).toBeTruthy();
     expect(screen.getByText('scheduling.bulkDeleteDialog.description:2')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'scheduling.bulkDeleteDialog.confirm' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'scheduling.bulkDeleteDialog.confirm' }));
+    });
 
     expect(onDeleteSchedulingRows).toHaveBeenCalledWith([
       expect.objectContaining({ kind: 'global', id: 'global-1' }),

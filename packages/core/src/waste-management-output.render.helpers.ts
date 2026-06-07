@@ -93,7 +93,7 @@ export const createBrandingImageResource = (input: {
   return {
     id: input.addStreamObject(
       Buffer.from(brandingImage.rgbData),
-      `<< /Type /XObject /Subtype /Image /Width ${brandingImage.width} /Height ${brandingImage.height} /ColorSpace /DeviceRGB /BitsPerComponent 8`
+      `/Type /XObject /Subtype /Image /Width ${brandingImage.width} /Height ${brandingImage.height} /ColorSpace /DeviceRGB /BitsPerComponent 8`
     ),
     objectName: 'Im1',
   } as const;

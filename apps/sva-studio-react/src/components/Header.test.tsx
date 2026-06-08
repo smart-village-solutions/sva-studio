@@ -57,7 +57,7 @@ vi.mock('@tanstack/react-router', () => ({
     to: string;
     children: React.ReactNode;
   } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a {...props} href={to}>
+    <a {...props} data-router-link="true" href={to}>
       {children}
     </a>
   ),
@@ -219,10 +219,14 @@ describe('Header auth actions', () => {
 
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
     expect(screen.getByRole('menuitem', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
+    expect(screen.getByRole('menuitem', { name: 'Mein Konto' }).getAttribute('data-router-link')).toBe('true');
     expect(screen.getByRole('menuitem', { name: 'Datenschutz' }).getAttribute('href')).toBe('/account/privacy');
     expect(screen.getByRole('menuitem', { name: 'Kontoregeln' }).getAttribute('href')).toBe('/account/rules');
-    expect(screen.getByRole('menuitem', { name: 'Passwort ändern' }).getAttribute('aria-disabled')).toBe('true');
-    expect(screen.getByRole('menuitem', { name: 'E-Mail ändern' }).getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByRole('menuitem', { name: 'Passwort ändern' }).getAttribute('href')).toBe(
+      '/auth/account-action?action=update-password&returnTo=%2Faccount'
+    );
+    expect(screen.getByRole('menuitem', { name: 'Passwort ändern' }).getAttribute('data-router-link')).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'E-Mail ändern' })).toBeNull();
     expect(screen.getAllByRole('separator')).toHaveLength(2);
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
     expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();

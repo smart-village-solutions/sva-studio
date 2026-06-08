@@ -12,7 +12,7 @@ import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { t } from '../i18n';
-import { createLoginHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
+import { createAccountActionHref, createLoginHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
 import { clearClientLogoutState } from '../lib/auth-session-state';
 import { hasExperimentalAccess } from '../lib/iam-admin-access';
 import { cn } from '../lib/utils';
@@ -35,6 +35,7 @@ type HeaderDropdownItem = Readonly<{
   disabled?: boolean;
   onSelect?: () => void;
   href?: string;
+  documentNavigation?: boolean;
   render?: React.ReactNode;
 }>;
 
@@ -149,6 +150,21 @@ const HeaderDropdownMenu = ({
                 </span>
               </>
             );
+
+            if (item.href && item.documentNavigation) {
+              return (
+                <a
+                  key={item.id}
+                  href={item.href}
+                  role="menuitem"
+                  aria-disabled={item.disabled ? 'true' : undefined}
+                  className={itemClassName}
+                  onClick={() => setOpen(false)}
+                >
+                  {content}
+                </a>
+              );
+            }
 
             if (item.href) {
               return (
@@ -299,8 +315,12 @@ const HeaderAuthAction = ({
 
   const accountMenuItems: readonly HeaderDropdownItem[] = [
     { id: 'account', label: t('account.profile.title'), href: '/account' },
-    { id: 'password', label: t('shell.header.changePassword'), disabled: true },
-    { id: 'email', label: t('shell.header.changeEmail'), disabled: true },
+    {
+      id: 'password',
+      label: t('shell.header.changePassword'),
+      href: createAccountActionHref('update-password'),
+      documentNavigation: true,
+    },
     {
       id: 'divider-privacy',
       render: <HeaderSectionDivider />,

@@ -1,6 +1,7 @@
 // This file exists so client and server code can share auth routes type-safely.
 export type AuthRoutePath =
   | '/auth/login'
+  | '/auth/account-action'
   | '/auth/dev-login'
   | '/auth/callback'
   | '/auth/me'
@@ -123,6 +124,7 @@ export type AuthRoutePath =
 
 export const authRoutePaths = [
   '/auth/login',
+  '/auth/account-action',
   '/auth/dev-login',
   '/auth/callback',
   '/auth/me',

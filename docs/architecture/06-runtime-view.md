@@ -109,6 +109,20 @@ Fehlerpfad:
 - Die Detailansicht darf historische Vorgänge nicht implizit aus einer limitierten Overview-Liste rekonstruieren; der Laufzeitpfad bleibt immer ein expliziter Detail-Read.
 - Regeln und Datenschutzaktivitäten bleiben UI-seitig getrennt, teilen sich aber denselben Account-Self-Service-Einstieg im Header-Menü.
 
+### Account-Self-Service: Passwort- und E-Mail-Wechsel über Keycloak-AIA
+
+1. Ein authentifizierter Benutzer wählt im Header-Menü `Passwort ändern`.
+2. Das Studio navigiert nicht zu einer eigenen Formularseite, sondern ruft den serverseitigen Einstieg `/auth/account-action?action=...&returnTo=/account` auf.
+3. Der Auth-Runtime-Handler validiert die angeforderte Aktion, normalisiert `returnTo`, erzwingt einen frischen interaktiven Login-Flow und hängt `kc_action` für Keycloak an.
+4. Keycloak führt die eigentliche Credential-Änderung im eigenen Required-Action-Flow aus; sensible Eingaben und Policies bleiben vollständig im IdP.
+5. Nach erfolgreichem Abschluss oder Abbruch landet der Benutzer wieder auf `/account`; der Callback ergänzt dort nur einen kleinen Statusmarker wie `accountAction=password-updated`, `email-update-finished` oder `cancelled`.
+
+Fehlerpfad:
+
+- Unbekannte oder manipulierte Aktionen enden bereits im Host mit `400 invalid_request`.
+- Unsichere oder Auth-nahe Rücksprungziele werden fail-closed auf `/` beziehungsweise `/account` zurückgeführt.
+- Ein Abbruch in Keycloak wird nicht als lokaler Formularfehler interpretiert, sondern als kontrollierter Rücksprungstatus auf die Studio-Kontoseite projiziert.
+
 ### Szenario 1: App-Start + Route-Komposition
 
 1. App lädt `getRouter()` in `apps/sva-studio-react/src/router.tsx`
@@ -514,7 +528,8 @@ Referenzen:
 3. Account wird per `INSERT ... ON CONFLICT (keycloak_subject, instance_id)` idempotent angelegt/aktualisiert.
 4. Erstanlage wird als `user.jit_provisioned` auditierbar protokolliert.
 5. User oeffnet `/account`, Profil wird ueber `GET /api/v1/iam/users/me/profile` geladen.
-6. Aenderungen werden ueber `PATCH /api/v1/iam/users/me/profile` gespeichert.
+6. Tenantlokale Profilaenderungen werden ueber `PATCH /api/v1/iam/users/me/profile` gespeichert.
+7. Passwort- und E-Mail-Wechsel laufen davon getrennt ueber `/auth/account-action` und Keycloak-AIA; `/account` zeigt nach Rueckkehr nur die Statusmeldung an.
 
 Fehlerpfad:
 

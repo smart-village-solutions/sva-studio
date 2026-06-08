@@ -432,15 +432,17 @@ Referenzen:
 Neu hinzugekommene Bausteine im Change `add-account-user-management-ui`:
 
 1. `apps/sva-studio-react/src/routes/account/-account-profile-page.tsx`
-   - Self-Service-Profilseite (`/account`) mit Validierung, Error-Summary, editierbarer E-Mail, editierbarem Benutzernamen und synchronisiertem Profilabgleich nach IAM und Keycloak.
-2. `apps/sva-studio-react/src/routes/admin/users/*`
+   - Self-Service-Profilseite (`/account`) mit Validierung, Error-Summary, tenantlokaler Profilpflege und einer kleinen Studio-owned Rückkehrmeldung nach delegierten Keycloak-Credential-Flows.
+2. `apps/sva-studio-react/src/components/Header.tsx` und `apps/sva-studio-react/src/lib/auth-navigation.ts`
+   - Das Kontomenü startet derzeit nur die Passwort-Änderung über den kanonischen Pfad `/auth/account-action?action=update-password&returnTo=/account`; die E-Mail-Änderung bleibt bis zur serverseitigen Keycloak-Freischaltung ausgeblendet, statt eigene Formularlogik im Browser aufzubauen.
+3. `apps/sva-studio-react/src/routes/admin/users/*`
    - Admin-User-Liste (`/admin/users`) und User-Detailansicht (`/admin/users/$userId`) inklusive Rollen- und Statusverwaltung; Profiländerungen aus `/account` werden bei erneuter Datenladung bzw. In-App-Invalidierung sichtbar.
-3. `apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx`
+4. `apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx`
    - Rollenverwaltung (`/admin/roles`) mit System-/Custom-Rollen und erweiterbarer Berechtigungsmatrix.
-4. `apps/sva-studio-react/src/hooks/use-users.ts`, `use-user.ts`, `use-roles.ts`
+5. `apps/sva-studio-react/src/hooks/use-users.ts`, `use-user.ts`, `use-roles.ts`
    - Frontend-Datenzugriff auf IAM-v1-Endpunkte mit Fehler-/403-Behandlung.
-5. `packages/routing/src/account-ui.routes.ts`
-   - Zentrale Guard-Konfiguration für `/account`, `/admin/users`, `/admin/users/$userId`, `/admin/roles`.
+6. `packages/routing/src/account-ui.routes.ts`, `packages/auth-runtime/src/auth-route-handlers.ts`
+   - Zentrale Guard- und Runtime-Konfiguration für `/account`, `/admin/users`, `/admin/users/$userId`, `/admin/roles` sowie den serverseitigen Keycloak-AIA-Einstieg `/auth/account-action`.
 
 ### Erweiterung 2026-03: Keycloak-Rollen-Katalog-Sync
 

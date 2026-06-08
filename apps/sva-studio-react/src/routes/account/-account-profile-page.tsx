@@ -88,6 +88,27 @@ const editabilityTranslationKeyByValue = {
   blocked: 'account.projection.editability.blocked',
 } as const;
 
+type AccountActionStatus = 'password-updated' | 'email-update-finished' | 'email-update-unavailable' | 'cancelled';
+
+const readAccountActionStatusFromLocation = (): AccountActionStatus | null => {
+  const currentWindow = globalThis.window;
+  if (!currentWindow) {
+    return null;
+  }
+
+  const accountAction = new URLSearchParams(currentWindow.location.search).get('accountAction');
+  if (
+    accountAction === 'password-updated' ||
+    accountAction === 'email-update-finished' ||
+    accountAction === 'email-update-unavailable' ||
+    accountAction === 'cancelled'
+  ) {
+    return accountAction;
+  }
+
+  return null;
+};
+
 const validateForm = (values: ProfileFormValues): ProfileErrors => {
   const errors: ProfileErrors = {};
 
@@ -128,6 +149,7 @@ const getLoadErrorDescription = (error: IamHttpError) => {
 export const AccountProfilePage = () => {
   const { user, isAuthenticated, isLoading: isAuthLoading, hasResolvedSession } = useAuth();
   const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
+  const accountActionStatus = readAccountActionStatusFromLocation();
 
   const [profile, setProfile] = React.useState<IamUserDetail | null>(null);
   const [formValues, setFormValues] = React.useState<ProfileFormValues>(EMPTY_FORM);
@@ -310,6 +332,20 @@ export const AccountProfilePage = () => {
     : null;
   const diagnosticCodes = profile?.diagnostics?.map((diagnostic) => diagnostic.code).join(', ') ?? null;
   const isProfileReadOnly = isPlatformScope;
+  const accountActionMessage =
+    accountActionStatus === 'password-updated'
+      ? t('account.messages.passwordUpdated')
+      : accountActionStatus === 'email-update-finished'
+        ? t('account.messages.emailUpdateFinished')
+        : accountActionStatus === 'email-update-unavailable'
+          ? t('account.messages.emailUpdateUnavailable')
+        : accountActionStatus === 'cancelled'
+          ? t('account.messages.accountActionCancelled')
+          : null;
+  const accountActionAlertClassName =
+    accountActionStatus === 'cancelled'
+      ? 'border-secondary/40 bg-secondary/10 text-secondary'
+      : 'border-primary/40 bg-primary/10 text-primary';
 
   return (
     <section className="space-y-5" aria-busy={isSaving}>
@@ -368,6 +404,12 @@ export const AccountProfilePage = () => {
         <Alert className="border-secondary/40 bg-secondary/10 text-secondary">
           <AlertTitle>{t('account.profile.platformReadOnlyTitle')}</AlertTitle>
           <AlertDescription>{t('account.profile.platformReadOnlyBody')}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {accountActionMessage ? (
+        <Alert className={accountActionAlertClassName} role="status">
+          <AlertDescription>{accountActionMessage}</AlertDescription>
         </Alert>
       ) : null}
 

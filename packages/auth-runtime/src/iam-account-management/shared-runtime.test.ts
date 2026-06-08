@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const originalTenantAdminBaseUrl = process.env.KEYCLOAK_ADMIN_BASE_URL;
+const originalProvisionerBaseUrl = process.env.KEYCLOAK_PROVISIONER_BASE_URL;
 
 const state = vi.hoisted(() => ({
   logger: {
@@ -42,6 +43,7 @@ describe('iam account management shared runtime logging', () => {
     state.getKeycloakAdminClientConfigFromEnv.mockReset();
     state.resolveTenantAdminClientSecret.mockReset();
     process.env.KEYCLOAK_ADMIN_BASE_URL = 'https://keycloak.example.test';
+    delete process.env.KEYCLOAK_PROVISIONER_BASE_URL;
   });
 
   it('logs when the global identity provider configuration cannot be resolved', async () => {
@@ -161,6 +163,32 @@ describe('iam account management shared runtime logging', () => {
       })
     );
   });
+
+  it('uses the provisioner base URL as fallback for tenant admin resolution', async () => {
+    delete process.env.KEYCLOAK_ADMIN_BASE_URL;
+    process.env.KEYCLOAK_PROVISIONER_BASE_URL = 'https://keycloak-provisioner.example.test';
+    state.loadInstanceById.mockResolvedValueOnce({
+      authRealm: 'tenant-realm',
+      tenantAdminClient: { clientId: 'tenant-admin' },
+    });
+    state.resolveTenantAdminClientSecret.mockResolvedValueOnce({ secret: 'tenant-secret' });
+
+    const { resolveIdentityProviderForInstance } = await import('./shared-runtime.js');
+
+    const resolution = await resolveIdentityProviderForInstance('instance-1');
+
+    expect(resolution).toMatchObject({
+      realm: 'tenant-realm',
+      source: 'instance',
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin',
+    });
+    expect(state.logger.warn).not.toHaveBeenCalledWith(
+      'Instance identity provider resolution failed while loading tenant admin credentials',
+      expect.anything()
+    );
+  });
 });
 
 afterAll(() => {
@@ -168,5 +196,10 @@ afterAll(() => {
     delete process.env.KEYCLOAK_ADMIN_BASE_URL;
   } else {
     process.env.KEYCLOAK_ADMIN_BASE_URL = originalTenantAdminBaseUrl;
+  }
+  if (originalProvisionerBaseUrl === undefined) {
+    delete process.env.KEYCLOAK_PROVISIONER_BASE_URL;
+  } else {
+    process.env.KEYCLOAK_PROVISIONER_BASE_URL = originalProvisionerBaseUrl;
   }
 });

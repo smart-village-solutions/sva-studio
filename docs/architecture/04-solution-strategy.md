@@ -164,6 +164,7 @@ Referenzen:
 - Platform-Scope und Tenant-Scope sind strategisch getrennte Admin-Pfade: Platform-Scope nutzt ausschließlich den Platform-Admin-Keycloak-Client, Tenant-Scope ausschließlich den Tenant-Admin-Keycloak-Client der Instanz.
 - Tenant-Listen folgen dem Keycloak-Realm als Benutzergrenze. Fehlende Studio-Zuordnungen werden nicht versteckt, sondern über `mappingStatus`, `editability` und stabile Diagnosecodes angezeigt.
 - Mutationen sind Keycloak-first. Studio-Read-Models werden nachgelagert synchronisiert oder als Drift/Diagnose sichtbar gemacht.
+- Nutzernahe Credential-Änderungen bleiben ebenfalls Keycloak-first: Sichtbar angeboten wird im Studio derzeit nur der Passwort-Wechsel; dieser wird über einen serverseitigen AIA-Einstieg (`/auth/account-action`) kontrolliert in den Keycloak-Self-Service-Flow delegiert. Der E-Mail-Wechsel bleibt bis zur Keycloak-seitigen Freischaltung von `UPDATE_EMAIL` ausgeblendet.
 - `manual_review` bleibt bewusst ein fachlicher Restzustand für nicht deterministisch behebbaren Abgleich; technische Fehler wie `IDP_UNAVAILABLE` und `IDP_FORBIDDEN` bleiben getrennt sichtbar.
 - Browser- und UI-Verträge behalten `classification`, `requestId` und `safeDetails` vollständig, damit Diagnose, Operator-Handlung und Fachzustand nicht auseinanderlaufen.
 

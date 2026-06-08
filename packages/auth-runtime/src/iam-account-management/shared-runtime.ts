@@ -59,7 +59,7 @@ export const resolveIdentityProvider = () => {
 };
 
 const requireTenantAdminBaseUrl = (): string => {
-  const baseUrl = process.env.KEYCLOAK_ADMIN_BASE_URL?.trim();
+  const baseUrl = process.env.KEYCLOAK_ADMIN_BASE_URL?.trim() || process.env.KEYCLOAK_PROVISIONER_BASE_URL?.trim();
   if (!baseUrl) {
     throw new Error('Missing required env: KEYCLOAK_ADMIN_BASE_URL');
   }

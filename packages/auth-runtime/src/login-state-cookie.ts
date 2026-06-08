@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 
-import type { LoginState } from './types.js';
+import { ACCOUNT_ACTION_INTENTS, type LoginState } from './types.js';
 
 export type LoginStateCookiePayload = LoginState & {
   state: string;
@@ -21,6 +21,7 @@ const baseLoginStateCookieSchema = z.object({
   returnTo: z.string().trim().min(1).optional(),
   silent: z.boolean().optional(),
   freshReauthRequested: z.boolean().optional(),
+  accountActionIntent: z.enum(ACCOUNT_ACTION_INTENTS).optional(),
 });
 
 const loginStateCookiePayloadSchema = z.discriminatedUnion('kind', [

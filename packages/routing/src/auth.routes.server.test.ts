@@ -83,6 +83,7 @@ const authServerMocks = vi.hoisted(() => {
   const response = (name: string) => new Response(JSON.stringify({ name }), { status: 200 });
   return {
     loginHandler: vi.fn(async () => response('loginHandler')),
+    accountActionHandler: vi.fn(async () => response('accountActionHandler')),
     devLoginHandler: vi.fn(async () => response('devLoginHandler')),
     callbackHandler: vi.fn(async () => response('callbackHandler')),
     meHandler: vi.fn(async () => response('meHandler')),
@@ -703,6 +704,7 @@ describe('auth.routes.server', () => {
     }
 
     expect(authServerMocks.loginHandler).toHaveBeenCalled();
+    expect(authServerMocks.accountActionHandler).toHaveBeenCalled();
     expect(authServerMocks.devLoginHandler).toHaveBeenCalled();
     expect(authServerMocks.callbackHandler).toHaveBeenCalled();
     expect(authServerMocks.meHandler).toHaveBeenCalled();
@@ -768,6 +770,19 @@ describe('auth.routes.server', () => {
 
     expect(response?.status).toBe(200);
     expect(authServerMocks.loginHandler).toHaveBeenCalledWith(request);
+  });
+
+  it('passes the incoming request to the account-action handler', async () => {
+    const handlers = resolveAuthHandlers('/auth/account-action');
+    const request = new Request('https://bb-guben.studio.example.org/auth/account-action?action=update-password', {
+      method: 'GET',
+      headers: { host: 'bb-guben.studio.example.org' },
+    });
+
+    const response = await handlers.GET?.({ request });
+
+    expect(response?.status).toBe(200);
+    expect(authServerMocks.accountActionHandler).toHaveBeenCalledWith(request);
   });
 
   it('throws for unknown auth path', () => {

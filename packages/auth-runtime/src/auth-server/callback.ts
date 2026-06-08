@@ -21,6 +21,7 @@ type UntrustedLoginState = {
   returnTo?: string;
   silent?: boolean;
   freshReauthRequested?: boolean;
+  accountActionIntent?: 'update-password' | 'update-email';
   kind: ScopeKind;
   instanceId?: string;
 };
@@ -37,6 +38,7 @@ const baseLoginStateSchema = z.object({
   returnTo: z.string().trim().min(1).optional(),
   silent: z.boolean().optional(),
   freshReauthRequested: z.boolean().optional(),
+  accountActionIntent: z.enum(['update-password', 'update-email']).optional(),
 });
 
 const AUTH_TIME_SKEW_MS = 1_000;

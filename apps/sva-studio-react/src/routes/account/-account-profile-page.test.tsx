@@ -65,6 +65,7 @@ describe('AccountProfilePage', () => {
   });
 
   beforeEach(() => {
+    window.history.replaceState({}, '', '/');
     vi.stubGlobal('fetch', fetchMock);
     fetchMock.mockReset();
     getMyProfileMock.mockReset();
@@ -163,6 +164,102 @@ describe('AccountProfilePage', () => {
         preferredLanguage: 'en',
       })
     );
+  });
+
+  it('shows a success status after returning from password update', async () => {
+    window.history.replaceState({}, '', '/account?accountAction=password-updated');
+    getMyProfileMock.mockResolvedValue({
+      data: {
+        id: 'account-1',
+        keycloakSubject: 'subject-1',
+        username: 'jane.doe',
+        displayName: 'Jane Doe',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        status: 'active',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Das Passwort wurde aktualisiert.')).toBeTruthy();
+    });
+  });
+
+  it('shows a completion status after returning from email update', async () => {
+    window.history.replaceState({}, '', '/account?accountAction=email-update-finished');
+    getMyProfileMock.mockResolvedValue({
+      data: {
+        id: 'account-1',
+        keycloakSubject: 'subject-1',
+        username: 'jane.doe',
+        displayName: 'Jane Doe',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        status: 'active',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Die E-Mail-Änderung wurde abgeschlossen.')).toBeTruthy();
+    });
+  });
+
+  it('shows an unavailable status after returning from an unsupported email update flow', async () => {
+    window.history.replaceState({}, '', '/account?accountAction=email-update-unavailable');
+    getMyProfileMock.mockResolvedValue({
+      data: {
+        id: 'account-1',
+        keycloakSubject: 'subject-1',
+        username: 'jane.doe',
+        displayName: 'Jane Doe',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        status: 'active',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Die E-Mail-Änderung ist in dieser Keycloak-Umgebung derzeit nicht verfügbar.')).toBeTruthy();
+    });
+  });
+
+  it('shows a cancellation status after returning from a cancelled account action', async () => {
+    window.history.replaceState({}, '', '/account?accountAction=cancelled&accountActionType=update-email');
+    getMyProfileMock.mockResolvedValue({
+      data: {
+        id: 'account-1',
+        keycloakSubject: 'subject-1',
+        username: 'jane.doe',
+        displayName: 'Jane Doe',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        status: 'active',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Die Aktion wurde abgebrochen.')).toBeTruthy();
+    });
   });
 
   it('does not render a separate privacy cockpit entry point on the profile page', async () => {

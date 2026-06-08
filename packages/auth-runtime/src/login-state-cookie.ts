@@ -21,6 +21,7 @@ const baseLoginStateCookieSchema = z.object({
   returnTo: z.string().trim().min(1).optional(),
   silent: z.boolean().optional(),
   freshReauthRequested: z.boolean().optional(),
+  accountActionIntent: z.enum(['update-password', 'update-email']).optional(),
 });
 
 const loginStateCookiePayloadSchema = z.discriminatedUnion('kind', [

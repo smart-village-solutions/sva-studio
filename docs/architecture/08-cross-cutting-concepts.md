@@ -82,6 +82,7 @@ gleichzeitig beeinflussen.
 - Impersonation ohne Governance-Export-Capability benötigt zusätzlichen Security-Approver
 - DSGVO-Betroffenenrechte im IAM: Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch
 - Account-Self-Service trennt bewusst zwischen Aktivitätscockpit (`/account/privacy`) und Regelseite (`/account/rules`); die UI darf beide Bereiche gemeinsam navigierbar machen, ohne DSR- und Governance-Verträge fachlich zu verwischen
+- Credential-Self-Service im Studio bleibt bewusst delegierend: Sichtbar angeboten wird derzeit nur der Passwort-Wechsel über den serverseitigen Pfad `/auth/account-action`; das Studio speichert oder validiert Credential-nahe Daten nie selbst. Ein E-Mail-Wechsel wird erst nach Keycloak-seitiger Freischaltung von `UPDATE_EMAIL` wieder exponiert.
 - Deep-Links auf einzelne Datenschutzvorgänge laufen immer über einen expliziten `caseId`-Detailread; historische Fälle dürfen nicht aus begrenzten Overview-Listen rekonstruiert werden
 - Löschprozess zweistufig: Soft-Delete (SLA <= 48h) und finale Anonymisierung nach Retention
 - Legal Hold blockiert irreversible Löschschritte bis zur Freigabe
@@ -109,6 +110,7 @@ gleichzeitig beeinflussen.
 - DataClient unterstützt optionale Runtime-Schema-Validierung (`get(path, schema)`) für API-Responses
 - IAM-Server-Fassaden bleiben bewusst dünn; fachliche Erweiterungen gehören in Unterordner und nicht zurück in Monolith-Dateien
 - Profil-Synchronisation mit Keycloak bleibt zulässig, erfolgt aber ausschließlich über dedizierte Profil-/Sync-Flows und nicht implizit über Session- oder Logging-Pfade
+- Profilpflege und Credential-Pflege sind getrennte Verträge: lokale Profildaten laufen über IAM-v1-Profilendpunkte, Credential-Änderungen ausschließlich über Keycloak-Required-Actions mit hostkontrolliertem Rücksprungstatus
 
 ### IAM Multi-Tenancy, Caching und Audit-Logging
 

@@ -126,6 +126,10 @@ vi.mock('./auth-server/logout.js', () => ({
   logoutSession: vi.fn(),
 }));
 
+vi.mock('./keycloak-account-action-support.js', () => ({
+  isUpdateEmailActionSupported: vi.fn(async () => true),
+}));
+
 vi.mock('./redis-session.js', () => ({
   getSession: vi.fn(),
 }));
@@ -766,6 +770,130 @@ describe('loginHandler (full auth path)', () => {
   });
 });
 
+describe('accountActionHandler', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mocks.isMockAuthEnabled.mockReturnValue(false);
+
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValue(authConfigBase as never);
+
+    const { createLoginUrl } = await import('./auth-server/login.js');
+    vi.mocked(createLoginUrl).mockImplementation(async (input) => {
+      const authorizationUrl = new URL('http://localhost/realms/test/protocol/openid-connect/auth');
+      authorizationUrl.searchParams.set('client_id', 'sva-studio-client');
+      if (input?.kcAction) {
+        authorizationUrl.searchParams.set('kc_action', input.kcAction);
+      }
+
+      return {
+        url: authorizationUrl.toString(),
+        state: 'state-abc123def456',
+        loginState: {
+          nonce: 'nonce-xyz789',
+          returnTo: input?.returnTo ?? '/',
+          silent: false,
+        } as never,
+      };
+    });
+
+    const { isUpdateEmailActionSupported } = await import('./keycloak-account-action-support.js');
+    vi.mocked(isUpdateEmailActionSupported).mockResolvedValue(true);
+  });
+
+  it('starts update-password through the canonical account-action route', async () => {
+    const handlers = (await import('./auth-route-handlers.js')) as Record<string, unknown>;
+    const accountActionHandler = handlers.accountActionHandler as (request: Request) => Promise<Response>;
+    const { createLoginUrl } = await import('./auth-server/login.js');
+
+    const response = await accountActionHandler(
+      new Request('https://studio.example.org/auth/account-action?action=update-password&returnTo=%2Faccount')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toContain('kc_action=UPDATE_PASSWORD');
+    expect(createLoginUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kcAction: 'UPDATE_PASSWORD',
+        reauth: true,
+        returnTo: '/account',
+      })
+    );
+  });
+
+  it('starts update-email through the canonical account-action route', async () => {
+    const handlers = (await import('./auth-route-handlers.js')) as Record<string, unknown>;
+    const accountActionHandler = handlers.accountActionHandler as (request: Request) => Promise<Response>;
+    const { createLoginUrl } = await import('./auth-server/login.js');
+
+    const response = await accountActionHandler(
+      new Request('https://studio.example.org/auth/account-action?action=update-email&returnTo=%2Faccount')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toContain('kc_action=UPDATE_EMAIL');
+    expect(createLoginUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kcAction: 'UPDATE_EMAIL',
+        reauth: true,
+        returnTo: '/account',
+      })
+    );
+  });
+
+  it('short-circuits update-email when UPDATE_EMAIL is unsupported on the target Keycloak', async () => {
+    const handlers = (await import('./auth-route-handlers.js')) as Record<string, unknown>;
+    const accountActionHandler = handlers.accountActionHandler as (request: Request) => Promise<Response>;
+    const { createLoginUrl } = await import('./auth-server/login.js');
+    const { isUpdateEmailActionSupported } = await import('./keycloak-account-action-support.js');
+
+    vi.mocked(isUpdateEmailActionSupported).mockResolvedValueOnce(false);
+
+    const response = await accountActionHandler(
+      new Request('https://studio.example.org/auth/account-action?action=update-email&returnTo=%2Faccount')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe(
+      '/account?accountAction=email-update-unavailable&accountActionType=update-email'
+    );
+    expect(createLoginUrl).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown account actions with invalid_request', async () => {
+    const handlers = (await import('./auth-route-handlers.js')) as Record<string, unknown>;
+    const accountActionHandler = handlers.accountActionHandler as (request: Request) => Promise<Response>;
+
+    const response = await accountActionHandler(
+      new Request('https://studio.example.org/auth/account-action?action=destroy-account&returnTo=%2Faccount')
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: 'invalid_request',
+      })
+    );
+  });
+
+  it('sanitizes the return target before forwarding to Keycloak', async () => {
+    const handlers = (await import('./auth-route-handlers.js')) as Record<string, unknown>;
+    const accountActionHandler = handlers.accountActionHandler as (request: Request) => Promise<Response>;
+    const { createLoginUrl } = await import('./auth-server/login.js');
+
+    const response = await accountActionHandler(
+      new Request('https://studio.example.org/auth/account-action?action=update-password&returnTo=%2Fauth%2Flogout')
+    );
+
+    expect(response.status).toBe(302);
+    expect(createLoginUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        returnTo: '/',
+      })
+    );
+  });
+});
+
 describe('logoutHandler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -1086,6 +1214,144 @@ describe('callbackHandler', () => {
         workspaceId: 'platform',
         outcome: 'success',
       })
+    );
+  });
+
+  it('redirects account-action password updates back to /account with a success status', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+    const { handleCallback } = await import('./auth-server/callback.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
+      createdAt: Date.now() - 60_000,
+      returnTo: '/account',
+      silent: false,
+      accountActionIntent: 'update-password',
+      kind: 'platform',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? null : 'encoded-login-state'
+    );
+    vi.mocked(handleCallback).mockResolvedValueOnce({
+      sessionId: 'session-2',
+      user: { id: 'kc-user-1' },
+      expiresAt: 1_800_000_000_000,
+      loginState: null,
+      retryPerformed: false,
+    } as never);
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/account?accountAction=password-updated');
+  });
+
+  it('marks cancelled account actions on the /account return redirect', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
+      createdAt: Date.now() - 60_000,
+      returnTo: '/account',
+      silent: false,
+      accountActionIntent: 'update-email',
+      kind: 'platform',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? null : 'encoded-login-state'
+    );
+
+    const response = await callbackHandler(
+      new Request(
+        'http://localhost/auth/callback?state=state-abc123def456&kc_action=UPDATE_EMAIL&kc_action_status=cancelled'
+      )
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe(
+      '/account?accountAction=cancelled&accountActionType=update-email'
+    );
+  });
+
+  it('marks email account actions as unavailable when Keycloak returns without UPDATE_EMAIL context', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+    const { handleCallback } = await import('./auth-server/callback.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
+      createdAt: Date.now() - 60_000,
+      returnTo: '/account',
+      silent: false,
+      accountActionIntent: 'update-email',
+      kind: 'platform',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? null : 'encoded-login-state'
+    );
+    vi.mocked(handleCallback).mockResolvedValueOnce({
+      sessionId: 'session-2',
+      user: { id: 'kc-user-1' },
+      expiresAt: 1_800_000_000_000,
+      loginState: null,
+      retryPerformed: false,
+    } as never);
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe(
+      '/account?accountAction=email-update-unavailable'
+    );
+  });
+
+  it('prefers the cancelled account-action redirect over the generic callback error branch', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
+      createdAt: Date.now() - 60_000,
+      returnTo: '/account',
+      silent: false,
+      accountActionIntent: 'update-email',
+      kind: 'platform',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? null : 'encoded-login-state'
+    );
+
+    const response = await callbackHandler(
+      new Request(
+        'http://localhost/auth/callback?state=state-abc123def456&error=access_denied&kc_action=UPDATE_EMAIL&kc_action_status=cancelled'
+      )
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe(
+      '/account?accountAction=cancelled&accountActionType=update-email'
     );
   });
 

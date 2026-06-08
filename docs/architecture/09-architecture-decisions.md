@@ -468,6 +468,7 @@ Zuordnung:
 - `ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md`
   - bleibt führend für Session-Lifecycle, Silent-SSO und serverseitig kontrollierte Reauth-Pfade
   - präzisiert für sensitive Root-Host-Mutationen, dass nur serverseitig gebundene Fresh-Reauth-Evidenz innerhalb eines begrenzten Frischefensters zählt
+  - deckt auch den delegierten Keycloak-AIA-Einstieg für sichtbare Self-Service-Credential-Änderungen ab, weil `kc_action` nur serverseitig vorbereitet und mit kontrolliertem Rücksprung verwendet wird; aktuell wird im UI nur der Passwort-Flow exponiert
 - `ADR-030-registry-basierte-instance-freigabe-und-provisioning.md`
   - erweitert den Root-Host-Control-Plane-Vertrag um fail-closed Fresh-Reauth-Guards für kritische Instanz- und Keycloak-Mutationen
   - hält fest, dass lokale Dev-/Mock-Auth-Ausnahmen nur als explizite serverseitige Nicht-Produktiv-Abweichung zulässig sind

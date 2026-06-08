@@ -1,4 +1,5 @@
 export {
+  accountActionHandler,
   callbackHandler,
   devLoginHandler,
   devLogoutHandler,

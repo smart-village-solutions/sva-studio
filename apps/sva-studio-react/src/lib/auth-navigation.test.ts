@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createLoginHref, createSessionExpiredHref, resolveCurrentReturnTo } from './auth-navigation';
+import { createAccountActionHref, createLoginHref, createSessionExpiredHref, resolveCurrentReturnTo } from './auth-navigation';
 
 describe('auth-navigation', () => {
   it('resolves default returnTo on server runtime', () => {
@@ -62,5 +62,14 @@ describe('auth-navigation', () => {
       '/?auth=session-expired&returnTo=%2Fadmin%2Fusers%3Fpage%3D2'
     );
     expect(createSessionExpiredHref('https://evil.example')).toBe('/?auth=session-expired&returnTo=%2F');
+  });
+
+  it('creates account-action hrefs with a canonical account return target', () => {
+    expect(createAccountActionHref('update-password')).toBe(
+      '/auth/account-action?action=update-password&returnTo=%2Faccount'
+    );
+    expect(createAccountActionHref('update-email', '/auth/logout')).toBe(
+      '/auth/account-action?action=update-email&returnTo=%2F'
+    );
   });
 });

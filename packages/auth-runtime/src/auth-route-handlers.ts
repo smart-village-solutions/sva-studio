@@ -14,6 +14,7 @@ import { getAuthConfig, resolveAuthConfigForRequest } from './config.js';
 import { handleCallback } from './auth-server/callback.js';
 import { createLoginUrl } from './auth-server/login.js';
 import { logoutSession } from './auth-server/logout.js';
+import { isUpdateEmailActionSupported } from './keycloak-account-action-support.js';
 import { withAuthenticatedUser } from './middleware.js';
 import { getSession } from './redis-session.js';
 import { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
@@ -345,6 +346,73 @@ const LOGOUT_INTENT_HEADER = 'x-sva-logout-intent';
 const LOGOUT_INTENT_VALUE = 'user';
 const LOGOUT_INTENT_FORM_FIELD = 'logoutIntent';
 
+type AccountActionIntent = 'update-password' | 'update-email';
+type KeycloakAccountAction = 'UPDATE_PASSWORD' | 'UPDATE_EMAIL';
+
+const mapAccountActionToKeycloakAction = (action: string | null): KeycloakAccountAction | null => {
+  if (action === 'update-password') {
+    return 'UPDATE_PASSWORD';
+  }
+
+  if (action === 'update-email') {
+    return 'UPDATE_EMAIL';
+  }
+
+  return null;
+};
+
+const mapKeycloakActionToAccountActionIntent = (action: string | null | undefined): AccountActionIntent | null => {
+  if (action === 'UPDATE_PASSWORD') {
+    return 'update-password';
+  }
+
+  if (action === 'UPDATE_EMAIL') {
+    return 'update-email';
+  }
+
+  return null;
+};
+
+const mapAccountActionIntentToStatus = (
+  accountActionIntent: AccountActionIntent,
+  callbackInput?: ReturnType<typeof resolveCallbackInput>
+): string => {
+  if (accountActionIntent === 'update-password') {
+    return 'password-updated';
+  }
+
+  if (callbackInput?.kcAction !== 'UPDATE_EMAIL') {
+    return 'email-update-unavailable';
+  }
+
+  return 'email-update-finished';
+};
+
+const formatRedirectTarget = (url: URL, request: Request): string => {
+  const requestUrl = new URL(request.url);
+  if (url.origin === requestUrl.origin) {
+    return `${url.pathname}${url.search}${url.hash}`;
+  }
+
+  return url.toString();
+};
+
+const appendAccountActionStatusToRedirectTarget = (
+  request: Request,
+  redirectTarget: string,
+  input: {
+    readonly accountAction: string;
+    readonly accountActionType?: AccountActionIntent;
+  }
+): string => {
+  const redirectUrl = new URL(redirectTarget, request.url);
+  redirectUrl.searchParams.set('accountAction', input.accountAction);
+  if (input.accountActionType) {
+    redirectUrl.searchParams.set('accountActionType', input.accountActionType);
+  }
+  return formatRedirectTarget(redirectUrl, request);
+};
+
 const resolveCallbackInput = (request: Request) => {
   const url = new URL(request.url);
   return {
@@ -352,6 +420,8 @@ const resolveCallbackInput = (request: Request) => {
     state: url.searchParams.get('state'),
     error: url.searchParams.get('error'),
     iss: url.searchParams.get('iss'),
+    kcAction: url.searchParams.get('kc_action'),
+    kcActionStatus: url.searchParams.get('kc_action_status'),
   };
 };
 
@@ -395,6 +465,7 @@ const resolveCookieLoginState = async (request: Request, state: string) => {
     returnTo: await sanitizeReturnTo(request, payload.returnTo),
     silent: payload.silent === true,
     freshReauthRequested: payload.freshReauthRequested === true,
+    accountActionIntent: payload.accountActionIntent,
     ...(payload.kind === 'instance' ? { kind: 'instance' as const, instanceId: payload.instanceId } : { kind: 'platform' as const }),
   };
 };
@@ -475,6 +546,37 @@ const handleCallbackErrorResponse = async (dependencies: CallbackDependencies): 
     eventType: dependencies.cookieLoginState?.silent ? 'silent_reauth_failed' : 'login',
     scope: dependencies.cookieLoginState ?? dependencies.authScope,
   });
+  return response;
+};
+
+const handleCancelledAccountActionResponse = async (
+  request: Request,
+  dependencies: CallbackDependencies
+): Promise<Response | null> => {
+  if (dependencies.callbackInput.kcActionStatus !== 'cancelled') {
+    return null;
+  }
+
+  const accountActionIntent =
+    dependencies.cookieLoginState?.accountActionIntent ??
+    mapKeycloakActionToAccountActionIntent(dependencies.callbackInput.kcAction);
+  const redirectTarget = appendAccountActionStatusToRedirectTarget(
+    request,
+    dependencies.cookieLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT,
+    {
+      accountAction: 'cancelled',
+      ...(accountActionIntent ? { accountActionType: accountActionIntent } : {}),
+    }
+  );
+  const response = createRedirectResponse(redirectTarget);
+  const loginStateDeleteStrategy = attachDeletedCookie(response, dependencies.authConfig.loginStateCookieName);
+  logCallbackCookieCleanup(
+    'Callback cookie cleanup prepared',
+    response,
+    loginStateDeleteStrategy,
+    dependencies.hadSessionCookieOnCallback,
+    dependencies.cookieLoginState ?? dependencies.authScope
+  );
   return response;
 };
 
@@ -1061,6 +1163,56 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
   });
 };
 
+export const accountActionHandler = async (request: Request): Promise<Response> => {
+  return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    try {
+      const url = new URL(request.url);
+      const kcAction = mapAccountActionToKeycloakAction(url.searchParams.get('action'));
+      if (!kcAction) {
+        return toJsonErrorResponse(400, 'invalid_request', 'Unbekannte Account-Aktion.');
+      }
+
+      const returnTo = await sanitizeReturnTo(request, url.searchParams.get('returnTo'));
+      const { authConfig } = await resolveLoginAuthConfig(request);
+      if (kcAction === 'UPDATE_EMAIL' && !(await isUpdateEmailActionSupported(authConfig.authRealm))) {
+        return createRedirectResponse(
+          appendAccountActionStatusToRedirectTarget(request, returnTo, {
+            accountAction: 'email-update-unavailable',
+            accountActionType: 'update-email',
+          })
+        );
+      }
+
+      const { url: authorizationUrl, state, loginState } = await createLoginUrl({
+        returnTo,
+        reauth: true,
+        kcAction,
+        authConfig,
+      });
+      const response = createRedirectResponse(authorizationUrl);
+      attachDebugAuthHeaders(response, { request, authConfig });
+
+      const loginStateCookieStrategy = attachLoginStateCookie(response, {
+        name: authConfig.loginStateCookieName,
+        secret: authConfig.loginStateSecret,
+        payload: { state, ...loginState },
+      });
+
+      logger.info('Account action login state cookie prepared', {
+        operation: 'account_action_init_cookie',
+        strategy: loginStateCookieStrategy,
+        response_set_cookie_count: getSetCookieValues(response.headers).length,
+        account_action: kcAction,
+        ...buildLogContext(getScopeFromAuthConfig(authConfig)),
+      });
+
+      return response;
+    } catch (error) {
+      return createAuthDependencyErrorResponse(request, 'auth_login', error);
+    }
+  });
+};
+
 export const callbackHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     if (isMockAuthEnabled()) {
@@ -1082,6 +1234,11 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
         hadSessionCookieOnCallback,
         callbackInput,
       };
+
+      const cancelledAccountActionResponse = await handleCancelledAccountActionResponse(request, dependencies);
+      if (cancelledAccountActionResponse) {
+        return cancelledAccountActionResponse;
+      }
 
       const callbackErrorResponse = await handleCallbackErrorResponse(dependencies);
       if (callbackErrorResponse) {
@@ -1106,7 +1263,12 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
           authConfig,
         });
         const effectiveLoginState = loginState ?? cookieLoginState;
-        const redirectTarget = effectiveLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT;
+        const redirectTargetBase = effectiveLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT;
+        const redirectTarget = effectiveLoginState?.accountActionIntent
+          ? appendAccountActionStatusToRedirectTarget(request, redirectTargetBase, {
+              accountAction: mapAccountActionIntentToStatus(effectiveLoginState.accountActionIntent, callbackInput),
+            })
+          : redirectTargetBase;
         const isSilent = effectiveLoginState?.silent === true;
         const response = isSilent ? createSilentSsoResponse('success') : createRedirectResponse(redirectTarget);
         logSuccessfulCallback({

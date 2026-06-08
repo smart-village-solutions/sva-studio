@@ -1,6 +1,8 @@
 export const DEFAULT_POST_LOGIN_PATH = '/';
 const SESSION_EXPIRED_AUTH_STATE = 'session-expired';
 
+export type AccountAction = 'update-password' | 'update-email';
+
 export const sanitizeReturnTo = (value: string | null | undefined): string => {
   if (!value) {
     return DEFAULT_POST_LOGIN_PATH;
@@ -38,6 +40,14 @@ export const createLoginHref = (returnTo?: string): string => {
   const normalizedReturnTo = sanitizeReturnTo(returnTo ?? resolveCurrentReturnTo());
   const params = new URLSearchParams({ returnTo: normalizedReturnTo });
   return `/auth/login?${params.toString()}`;
+};
+
+export const createAccountActionHref = (action: AccountAction, returnTo = '/account'): string => {
+  const params = new URLSearchParams({
+    action,
+    returnTo: sanitizeReturnTo(returnTo),
+  });
+  return `/auth/account-action?${params.toString()}`;
 };
 
 export const createSessionExpiredHref = (returnTo?: string): string => {

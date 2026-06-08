@@ -4,10 +4,25 @@ import { createLoginState } from '../redis-session.js';
 import { getScopeFromAuthConfig } from '../scope.js';
 import type { AuthConfig } from '../types.js';
 
+const mapKeycloakAccountActionToIntent = (
+  kcAction: 'UPDATE_PASSWORD' | 'UPDATE_EMAIL' | undefined
+): 'update-password' | 'update-email' | undefined => {
+  if (kcAction === 'UPDATE_PASSWORD') {
+    return 'update-password';
+  }
+
+  if (kcAction === 'UPDATE_EMAIL') {
+    return 'update-email';
+  }
+
+  return undefined;
+};
+
 export const createLoginUrl = async (input?: {
   returnTo?: string;
   silent?: boolean;
   reauth?: boolean;
+  kcAction?: 'UPDATE_PASSWORD' | 'UPDATE_EMAIL';
   authConfig?: AuthConfig;
 }) => {
   const authConfig = input?.authConfig ?? getAuthConfig();
@@ -25,6 +40,7 @@ export const createLoginUrl = async (input?: {
     returnTo: input?.returnTo,
     silent: input?.silent ?? false,
     freshReauthRequested,
+    accountActionIntent: mapKeycloakAccountActionToIntent(input?.kcAction),
     ...getScopeFromAuthConfig(authConfig),
   };
 
@@ -37,6 +53,7 @@ export const createLoginUrl = async (input?: {
     code_challenge_method: 'S256',
     state,
     nonce,
+    ...(input?.kcAction ? { kc_action: input.kcAction } : {}),
     ...(input?.silent ? { prompt: 'none' } : {}),
     ...(freshReauthRequested ? { prompt: 'login', max_age: '0' } : {}),
   });

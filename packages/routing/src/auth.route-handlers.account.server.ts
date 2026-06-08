@@ -10,6 +10,7 @@ const routeHandler =
 
 export const accountAuthHandlerMap = {
   '/auth/login': { GET: routeHandler(authRuntimeRoutes.loginHandler) },
+  '/auth/account-action': { GET: routeHandler(authRuntimeRoutes.accountActionHandler) },
   '/auth/dev-login': { POST: routeHandler(authRuntimeRoutes.devLoginHandler) },
   '/auth/callback': { GET: routeHandler(authRuntimeRoutes.callbackHandler) },
   '/auth/me': { GET: routeHandler(authRuntimeRoutes.meHandler) },

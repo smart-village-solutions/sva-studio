@@ -11,6 +11,7 @@ describe('@sva/auth-runtime package scaffold', () => {
 
   it('exposes auth runtime route contracts through the target edge', () => {
     expect(authRoutePaths).toContain('/auth/login');
+    expect(authRoutePaths).toContain('/auth/account-action');
     expect(authRoutePaths).toContain('/auth/dev-login');
     expect(authRoutePaths).toContain('/auth/dev-logout');
     expect(authRoutePaths).toContain('/api/v1/iam/health/ready');

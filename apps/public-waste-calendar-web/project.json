@@ -20,8 +20,7 @@
         "production",
         "^production",
         "frontendTooling",
-        "{workspaceRoot}/scripts/ci/sync-injected-workspace-packages.ts",
-        "{workspaceRoot}/scripts/ci/run-workspace-node.sh"
+        "{workspaceRoot}/scripts/ci/sync-injected-workspace-packages.ts"
       ],
       "outputs": ["{projectRoot}/dist"],
       "options": {

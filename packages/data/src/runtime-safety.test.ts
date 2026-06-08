@@ -320,3 +320,23 @@ test('injected workspace sync copies dist into pnpm store package copies', () =>
     rmSync(tempRoot, { force: true, recursive: true });
   }
 });
+
+test('public waste build syncs injected workspace packages before vite resolves server imports', () => {
+  const publicWastePackageJson = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'apps/public-waste-calendar-web/package.json'),
+    'utf8'
+  );
+  const publicWasteProjectJson = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'apps/public-waste-calendar-web/project.json'),
+    'utf8'
+  );
+
+  assert.match(
+    publicWastePackageJson,
+    /sync-injected-workspace-packages\.ts \. && rm -rf dist && vite build --outDir dist\/client && pnpm exec tsc -p tsconfig\.server\.json/
+  );
+  assert.match(
+    publicWasteProjectJson,
+    /"dependsOn": \["\^build"\][\s\S]*"inputs": \[[\s\S]*sync-injected-workspace-packages\.ts[\s\S]*run-workspace-node\.sh[\s\S]*\]/
+  );
+});

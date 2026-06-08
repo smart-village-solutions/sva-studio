@@ -16,7 +16,13 @@
       "executor": "nx:run-commands",
       "dependsOn": ["^build"],
       "cache": true,
-      "inputs": ["production", "^production", "frontendTooling"],
+      "inputs": [
+        "production",
+        "^production",
+        "frontendTooling",
+        "{workspaceRoot}/scripts/ci/sync-injected-workspace-packages.ts",
+        "{workspaceRoot}/scripts/ci/run-workspace-node.sh"
+      ],
       "outputs": ["{projectRoot}/dist"],
       "options": {
         "cwd": "apps/public-waste-calendar-web",

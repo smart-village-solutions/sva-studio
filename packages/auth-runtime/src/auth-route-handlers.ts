@@ -378,7 +378,9 @@ const mapAccountActionIntentToStatus = (
   callbackInput?: ReturnType<typeof resolveCallbackInput>
 ): string | null => {
   if (accountActionIntent === 'update-password') {
-    return callbackInput?.kcAction === 'UPDATE_PASSWORD' ? 'password-updated' : null;
+    return callbackInput?.kcAction === 'UPDATE_PASSWORD' && callbackInput.kcActionStatus === 'success'
+      ? 'password-updated'
+      : null;
   }
 
   if (callbackInput?.kcAction !== 'UPDATE_EMAIL') {

@@ -178,6 +178,162 @@ export const readLatestAuthorizePerformanceBenchmark = (input: {
     return latestBenchmarkByActor.get(toActorKey(input))?.result ?? null;
   };
 
+const buildAuthorizePerformanceBasePayload = (input: BenchmarkInput) => ({
+  instanceId: input.actor.instanceId,
+  action: input.request.action,
+  resource: {
+    type: input.request.resourceType,
+    ...(input.request.resourceId ? { id: input.request.resourceId } : {}),
+    ...(input.request.organizationId ? { organizationId: input.request.organizationId } : {}),
+  },
+  context: {
+    ...(input.request.organizationId ? { organizationId: input.request.organizationId } : {}),
+  },
+});
+
+const buildScenarioStableWarmupPayload = (input: {
+  readonly basePayload: ReturnType<typeof buildAuthorizePerformanceBasePayload>;
+  readonly runId: string;
+  readonly scenario: AuthorizePerformanceScenario;
+}) =>
+  input.scenario === 'cache-miss'
+    ? null
+    : buildAuthorizePerformancePayload({
+        basePayload: input.basePayload,
+        runId: input.runId,
+        sampleIndex: 0,
+        scenario: input.scenario,
+      });
+
+const buildScenarioWarmupPayload = (input: {
+  readonly basePayload: ReturnType<typeof buildAuthorizePerformanceBasePayload>;
+  readonly runId: string;
+  readonly sampleIndex: number;
+  readonly scenario: AuthorizePerformanceScenario;
+  readonly stableWarmupPayload: ReturnType<typeof buildAuthorizePerformancePayload> | null;
+}) => {
+  if (input.scenario !== 'cache-miss') {
+    return input.stableWarmupPayload;
+  }
+
+  return buildAuthorizePerformancePayload({
+    basePayload: input.basePayload,
+    runId: `${input.runId}-warmup`,
+    sampleIndex: input.sampleIndex,
+    scenario: input.scenario,
+  });
+};
+
+const maybeInvalidateScopeForScenario = async (scenario: AuthorizePerformanceScenario, actor: BenchmarkActor): Promise<void> => {
+  if (scenario === 'recompute') {
+    await invalidateUserScope(actor);
+  }
+};
+
+const runScenarioWarmup = async (input: {
+  readonly actor: BenchmarkActor;
+  readonly basePayload: ReturnType<typeof buildAuthorizePerformanceBasePayload>;
+  readonly headers: Headers;
+  readonly requestUrl: string;
+  readonly runId: string;
+  readonly scenario: AuthorizePerformanceScenario;
+  readonly warmupRequests: number;
+}): Promise<void> => {
+  const stableWarmupPayload = buildScenarioStableWarmupPayload({
+    basePayload: input.basePayload,
+    runId: input.runId,
+    scenario: input.scenario,
+  });
+
+  for (let index = 0; index < input.warmupRequests; index += 1) {
+    await maybeInvalidateScopeForScenario(input.scenario, input.actor);
+    const warmupPayload = buildScenarioWarmupPayload({
+      basePayload: input.basePayload,
+      runId: input.runId,
+      sampleIndex: index,
+      scenario: input.scenario,
+      stableWarmupPayload,
+    });
+
+    if (!warmupPayload) {
+      throw new Error('warmup_payload_missing');
+    }
+
+    await invokeAuthorize({
+      headers: input.headers,
+      payload: warmupPayload,
+      requestUrl: input.requestUrl,
+    });
+  }
+};
+
+const runScenarioMeasurements = async (input: {
+  readonly actor: BenchmarkActor;
+  readonly basePayload: ReturnType<typeof buildAuthorizePerformanceBasePayload>;
+  readonly headers: Headers;
+  readonly measuredRequests: number;
+  readonly requestUrl: string;
+  readonly runId: string;
+  readonly scenario: AuthorizePerformanceScenario;
+}): Promise<{
+  readonly observedStatuses: string[];
+  readonly samplesMs: number[];
+}> => {
+  const observedStatuses: string[] = [];
+  const samplesMs: number[] = [];
+
+  for (let sampleIndex = 0; sampleIndex < input.measuredRequests; sampleIndex += 1) {
+    await maybeInvalidateScopeForScenario(input.scenario, input.actor);
+    const payload = buildAuthorizePerformancePayload({
+      basePayload: input.basePayload,
+      runId: input.runId,
+      sampleIndex,
+      scenario: input.scenario,
+    });
+    const result = await invokeAuthorize({
+      headers: input.headers,
+      payload,
+      requestUrl: input.requestUrl,
+    });
+
+    samplesMs.push(result.durationMs);
+    observedStatuses.push(result.cacheStatus);
+  }
+
+  return { observedStatuses, samplesMs };
+};
+
+const runScenarioBenchmark = async (input: {
+  readonly actor: BenchmarkActor;
+  readonly basePayload: ReturnType<typeof buildAuthorizePerformanceBasePayload>;
+  readonly headers: Headers;
+  readonly measuredRequests: number;
+  readonly requestUrl: string;
+  readonly runId: string;
+  readonly scenario: AuthorizePerformanceScenario;
+  readonly warmupRequests: number;
+}): Promise<AuthorizePerformanceScenarioResult> => {
+  await runScenarioWarmup(input);
+  const { observedStatuses, samplesMs } = await runScenarioMeasurements(input);
+
+  assertScenarioStatuses({
+    observedStatuses,
+    scenario: input.scenario,
+  });
+
+  const summary = summarizeAuthorizePerformanceDurations(samplesMs);
+  const evaluation = summary.p95Ms < scenarioThresholdMs(input.scenario) ? 'accepted' : 'rejected';
+
+  return {
+    scenario: input.scenario,
+    samplesMs,
+    summary,
+    evaluation,
+    evaluationLabel: evaluation === 'accepted' ? 'erfüllt' : 'nicht erfüllt',
+    observedCacheStatuses: observedStatuses,
+  };
+};
+
 export const runAuthorizePerformanceBenchmark = async (
   input: BenchmarkInput
 ): Promise<AuthorizePerformanceRunResult> => {
@@ -185,97 +341,22 @@ export const runAuthorizePerformanceBenchmark = async (
   const measuredRequests = input.request.measuredRequests ?? DEFAULT_MEASURED_REQUESTS;
   const warmupRequests = input.request.warmupRequests ?? DEFAULT_WARMUP_REQUESTS;
   const runId = generatedAt.getTime().toString(36);
-
-  const basePayload = {
-    instanceId: input.actor.instanceId,
-    action: input.request.action,
-    resource: {
-      type: input.request.resourceType,
-      ...(input.request.resourceId ? { id: input.request.resourceId } : {}),
-      ...(input.request.organizationId ? { organizationId: input.request.organizationId } : {}),
-    },
-    context: {
-      ...(input.request.organizationId ? { organizationId: input.request.organizationId } : {}),
-    },
-  };
+  const basePayload = buildAuthorizePerformanceBasePayload(input);
 
   const scenarios: AuthorizePerformanceScenarioResult[] = [];
   for (const scenario of ['cache-hit', 'cache-miss', 'recompute'] as const) {
-    const observedStatuses = [] as string[];
-
-    const stableWarmupPayload =
-      scenario === 'cache-miss'
-        ? null
-        : buildAuthorizePerformancePayload({
-            basePayload,
-            runId,
-            sampleIndex: 0,
-            scenario,
-          });
-
-    for (let index = 0; index < warmupRequests; index += 1) {
-      if (scenario === 'recompute') {
-        await invalidateUserScope(input.actor);
-      }
-
-      const warmupPayload =
-        scenario === 'cache-miss'
-          ? buildAuthorizePerformancePayload({
-              basePayload,
-              runId: `${runId}-warmup`,
-              sampleIndex: index,
-              scenario,
-            })
-          : stableWarmupPayload;
-
-      if (!warmupPayload) {
-        throw new Error('warmup_payload_missing');
-      }
-
-      await invokeAuthorize({
-        headers: input.requestHeaders,
-        payload: warmupPayload,
-        requestUrl: input.requestUrl,
-      });
-    }
-
-    const samplesMs = [] as number[];
-    for (let sampleIndex = 0; sampleIndex < measuredRequests; sampleIndex += 1) {
-      if (scenario === 'recompute') {
-        await invalidateUserScope(input.actor);
-      }
-
-      const payload = buildAuthorizePerformancePayload({
+    scenarios.push(
+      await runScenarioBenchmark({
+        actor: input.actor,
         basePayload,
-        runId,
-        sampleIndex,
-        scenario,
-      });
-      const result = await invokeAuthorize({
         headers: input.requestHeaders,
-        payload,
+        measuredRequests,
         requestUrl: input.requestUrl,
-      });
-      samplesMs.push(result.durationMs);
-      observedStatuses.push(result.cacheStatus);
-    }
-
-    assertScenarioStatuses({
-      observedStatuses,
-      scenario,
-    });
-
-    const summary = summarizeAuthorizePerformanceDurations(samplesMs);
-    const evaluation = summary.p95Ms < scenarioThresholdMs(scenario) ? 'accepted' : 'rejected';
-
-    scenarios.push({
-      scenario,
-      samplesMs,
-      summary,
-      evaluation,
-      evaluationLabel: evaluation === 'accepted' ? 'erfüllt' : 'nicht erfüllt',
-      observedCacheStatuses: observedStatuses,
-    });
+        runId,
+        scenario,
+        warmupRequests,
+      })
+    );
   }
 
   const result: AuthorizePerformanceRunResult = {

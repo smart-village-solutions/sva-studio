@@ -124,81 +124,135 @@ const sortSourceKinds = (
 ): readonly NonNullable<PermissionRow['source_kind']>[] =>
   [...values].sort((left, right) => SOURCE_KIND_ORDER[left] - SOURCE_KIND_ORDER[right] || left.localeCompare(right));
 
+const buildPermissionBucketKey = (input: {
+  readonly action: string;
+  readonly resourceType: string;
+  readonly resourceId?: string;
+  readonly organizationId?: string | null;
+  readonly effect: IamPermissionEffect;
+  readonly scope?: Record<string, unknown>;
+}): string =>
+  JSON.stringify({
+    action: input.action,
+    resourceType: input.resourceType,
+    resourceId: input.resourceId,
+    organizationId: input.organizationId ?? '',
+    effect: input.effect,
+    scope: input.scope,
+  });
+
+const appendSortedUnique = (values: readonly string[] | undefined, nextValue: string | undefined): readonly string[] | undefined => {
+  if (!nextValue) {
+    return values;
+  }
+
+  return sortStrings(values?.includes(nextValue) ? values : [...(values ?? []), nextValue]);
+};
+
+const mergeSortedSourceKinds = (
+  values: readonly NonNullable<PermissionRow['source_kind']>[] | undefined,
+  nextValue: NonNullable<PermissionRow['source_kind']> | undefined
+): readonly NonNullable<PermissionRow['source_kind']>[] | undefined => {
+  if (!nextValue) {
+    return values;
+  }
+
+  return sortSourceKinds(Array.from(new Set([...(values ?? []), nextValue])));
+};
+
+const createEffectivePermission = (
+  row: PermissionRow,
+  normalized: {
+    readonly action: string;
+    readonly resourceType: string;
+    readonly resourceId?: string;
+    readonly effect: IamPermissionEffect;
+    readonly scope?: Record<string, unknown>;
+    readonly accountId?: string;
+    readonly groupId?: string;
+    readonly groupKey?: string;
+  }
+): EffectivePermission => ({
+  action: normalized.action,
+  resourceType: normalized.resourceType,
+  resourceId: normalized.resourceId,
+  organizationId: row.organization_id ?? undefined,
+  effect: normalized.effect,
+  scope: normalized.scope,
+  ...(normalized.accountId ? { sourceUserIds: [normalized.accountId] } : {}),
+  ...(row.role_id ? { sourceRoleIds: [row.role_id] } : {}),
+  ...(normalized.groupId ? { sourceGroupIds: [normalized.groupId] } : {}),
+  ...(normalized.groupKey ? { groupName: normalized.groupKey } : {}),
+  provenance: row.source_kind ? { sourceKinds: [row.source_kind] } : undefined,
+});
+
+const mergeEffectivePermission = (
+  existing: EffectivePermission,
+  row: PermissionRow,
+  normalized: {
+    readonly accountId?: string;
+    readonly groupId?: string;
+    readonly groupKey?: string;
+  }
+): EffectivePermission => {
+  const sourceUserIds = appendSortedUnique(existing.sourceUserIds, normalized.accountId);
+  const sourceRoleIds = appendSortedUnique(existing.sourceRoleIds, row.role_id ?? undefined);
+  const sourceGroupIds = appendSortedUnique(existing.sourceGroupIds, normalized.groupId);
+  const sourceKinds = mergeSortedSourceKinds(existing.provenance?.sourceKinds, row.source_kind ?? undefined);
+
+  return {
+    ...existing,
+    ...(sourceUserIds ? { sourceUserIds } : {}),
+    ...(sourceRoleIds ? { sourceRoleIds } : {}),
+    ...(sourceGroupIds ? { sourceGroupIds } : {}),
+    ...(normalized.groupKey ?? existing.groupName ? { groupName: normalized.groupKey ?? existing.groupName } : {}),
+    provenance: sourceKinds ? { ...(existing.provenance ?? {}), sourceKinds } : existing.provenance,
+  };
+};
+
+const finalizeEffectivePermission = (permission: EffectivePermission): EffectivePermission => ({
+  ...permission,
+  ...(permission.sourceUserIds ? { sourceUserIds: sortStrings(permission.sourceUserIds) } : {}),
+  ...(permission.sourceRoleIds ? { sourceRoleIds: sortStrings(permission.sourceRoleIds) } : {}),
+  ...(permission.sourceGroupIds ? { sourceGroupIds: sortStrings(permission.sourceGroupIds) } : {}),
+  provenance: permission.provenance?.sourceKinds
+    ? { ...permission.provenance, sourceKinds: sortSourceKinds(permission.provenance.sourceKinds) }
+    : permission.provenance,
+});
+
 export const toEffectivePermissions = (rows: readonly PermissionRow[]): EffectivePermission[] => {
   const buckets = new Map<string, EffectivePermission>();
 
   for (const row of rows) {
-    const action = row.action?.trim() || row.permission_key;
-    const resourceType = row.resource_type?.trim() || readResourceType(row.permission_key);
-    const resourceId = row.resource_id?.trim() || undefined;
-    const effect = row.effect ?? 'allow';
-    const scope = row.scope ?? undefined;
-    const accountId = row.account_id ?? undefined;
-    const groupId = row.group_id ?? undefined;
-    const groupKey = row.group_key ?? undefined;
-    const bucketKey = JSON.stringify({
-      action,
-      resourceType,
-      resourceId,
-      organizationId: row.organization_id ?? '',
-      effect,
-      scope,
+    const normalized = {
+      action: row.action?.trim() || row.permission_key,
+      resourceType: row.resource_type?.trim() || readResourceType(row.permission_key),
+      resourceId: row.resource_id?.trim() || undefined,
+      effect: row.effect ?? 'allow',
+      scope: row.scope ?? undefined,
+      accountId: row.account_id ?? undefined,
+      groupId: row.group_id ?? undefined,
+      groupKey: row.group_key ?? undefined,
+    };
+    const bucketKey = buildPermissionBucketKey({
+      action: normalized.action,
+      resourceType: normalized.resourceType,
+      resourceId: normalized.resourceId,
+      organizationId: row.organization_id,
+      effect: normalized.effect,
+      scope: normalized.scope,
     });
     const existing = buckets.get(bucketKey);
 
     if (!existing) {
-      buckets.set(bucketKey, {
-        action,
-        resourceType,
-        resourceId,
-        organizationId: row.organization_id ?? undefined,
-        effect,
-        scope,
-        ...(accountId ? { sourceUserIds: [accountId] } : {}),
-        ...(row.role_id ? { sourceRoleIds: [row.role_id] } : {}),
-        ...(groupId ? { sourceGroupIds: [groupId] } : {}),
-        ...(groupKey ? { groupName: groupKey } : {}),
-        provenance: row.source_kind ? { sourceKinds: [row.source_kind] } : undefined,
-      });
+      buckets.set(bucketKey, createEffectivePermission(row, normalized));
       continue;
     }
 
-    const sourceUserIds =
-      accountId && !(existing.sourceUserIds ?? []).includes(accountId)
-        ? [...(existing.sourceUserIds ?? []), accountId]
-        : existing.sourceUserIds;
-    const sourceRoleIds =
-      row.role_id && !(existing.sourceRoleIds ?? []).includes(row.role_id)
-        ? [...(existing.sourceRoleIds ?? []), row.role_id]
-        : existing.sourceRoleIds;
-    const sourceGroupIds =
-      groupId && !(existing.sourceGroupIds ?? []).includes(groupId)
-        ? [...(existing.sourceGroupIds ?? []), groupId]
-        : existing.sourceGroupIds;
-    const groupName = groupKey ?? existing.groupName;
-    const sourceKinds = row.source_kind
-      ? sortSourceKinds(Array.from(new Set([...(existing.provenance?.sourceKinds ?? []), row.source_kind])))
-      : existing.provenance?.sourceKinds;
-
-    buckets.set(bucketKey, {
-      ...existing,
-      ...(sourceUserIds ? { sourceUserIds: sortStrings(sourceUserIds) } : {}),
-      ...(sourceRoleIds ? { sourceRoleIds: sortStrings(sourceRoleIds) } : {}),
-      ...(sourceGroupIds ? { sourceGroupIds: sortStrings(sourceGroupIds) } : {}),
-      ...(groupName ? { groupName } : {}),
-      provenance: sourceKinds ? { ...(existing.provenance ?? {}), sourceKinds } : existing.provenance,
-    });
+    buckets.set(bucketKey, mergeEffectivePermission(existing, row, normalized));
   }
 
-  return [...buckets.values()].map((permission) => ({
-    ...permission,
-    ...(permission.sourceUserIds ? { sourceUserIds: sortStrings(permission.sourceUserIds) } : {}),
-    ...(permission.sourceRoleIds ? { sourceRoleIds: sortStrings(permission.sourceRoleIds) } : {}),
-    ...(permission.sourceGroupIds ? { sourceGroupIds: sortStrings(permission.sourceGroupIds) } : {}),
-    provenance: permission.provenance?.sourceKinds
-      ? { ...permission.provenance, sourceKinds: sortSourceKinds(permission.provenance.sourceKinds) }
-      : permission.provenance,
-  }));
+  return [...buckets.values()].map(finalizeEffectivePermission);
 };
 
 export const withInstanceScopedDb = async <T>(

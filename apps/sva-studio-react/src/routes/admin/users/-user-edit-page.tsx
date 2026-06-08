@@ -288,61 +288,21 @@ export const hasUserFormChanges = (baseline: UserFormValues, current: UserFormVa
   baseline.mainserverUserApplicationSecret !== current.mainserverUserApplicationSecret ||
   baseline.mainserverUserApplicationSecretSet !== current.mainserverUserApplicationSecretSet;
 
-export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage }: UserEditPageProps) => {
-  const userApi = useUser(userId);
-  const rolesApi = useRoles();
-  const groupsApi = useGroups();
-  const selectableRoles = React.useMemo(
-    () => rolesApi.roles.filter((role) => isTenantRoleVisible(role)),
-    [rolesApi.roles]
-  );
-  const selectableGroups = React.useMemo(
-    () => groupsApi.groups.filter((group) => group.isActive !== false),
-    [groupsApi.groups]
-  );
-
-  const [activeTab, setActiveTab] = React.useState<UserEditTabKey>('personal');
-  const [formValues, setFormValues] = React.useState<UserFormValues>(() => toFormValues(userApi.user));
-  const [isSaving, setIsSaving] = React.useState(false);
-  const [isSendingPasswordSetupEmail, setIsSendingPasswordSetupEmail] = React.useState(false);
-  const [saveSuccess, setSaveSuccess] = React.useState(false);
-  const [passwordSetupEmailSuccess, setPasswordSetupEmailSuccess] = React.useState(false);
-  const [timeline, setTimeline] = React.useState<Awaited<ReturnType<typeof getUserTimeline>>['data']>([]);
-  const [isLoadingTimeline, setIsLoadingTimeline] = React.useState(false);
-  const [timelineError, setTimelineError] = React.useState<string | null>(null);
-  const [hasLoadedTimeline, setHasLoadedTimeline] = React.useState(false);
-
-  const [unsavedDialogOpen, setUnsavedDialogOpen] = React.useState(false);
-  const [pendingTab, setPendingTab] = React.useState<UserEditTabKey | null>(null);
-
-  React.useEffect(() => {
-    if (!userApi.user) {
-      return;
-    }
-
-    setFormValues(toFormValues(userApi.user));
-  }, [userApi.user]);
-
-  React.useEffect(() => {
-    setTimeline([]);
-    setTimelineError(null);
-    setHasLoadedTimeline(false);
-  }, [userId]);
-
-  const baselineFormValues = React.useMemo(() => toFormValues(userApi.user), [userApi.user]);
+const useUserEditFormState = (user: ReturnType<typeof useUser>['user']) => {
+  const [formValues, setFormValues] = React.useState<UserFormValues>(() => toFormValues(user));
+  const baselineFormValues = React.useMemo(() => toFormValues(user), [user]);
   const hasUnsavedChanges = React.useMemo(
     () => hasUserFormChanges(baselineFormValues, formValues),
     [baselineFormValues, formValues]
   );
-  const effectivePermissionTrace = React.useMemo(
-    () => (userApi.user?.permissionTrace ?? []).filter((entry) => entry.isEffective),
-    [userApi.user?.permissionTrace]
-  );
-  const inactivePermissionTrace = React.useMemo(
-    () => (userApi.user?.permissionTrace ?? []).filter((entry) => !entry.isEffective),
-    [userApi.user?.permissionTrace]
-  );
-  const groupMembershipById = React.useMemo(() => buildGroupMembershipById(userApi.user?.groups), [userApi.user?.groups]);
+
+  React.useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setFormValues(toFormValues(user));
+  }, [user]);
 
   React.useEffect(() => {
     if (!hasUnsavedChanges) {
@@ -359,6 +319,25 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
       window.removeEventListener('beforeunload', onBeforeUnload);
     };
   }, [hasUnsavedChanges]);
+
+  return {
+    formValues,
+    hasUnsavedChanges,
+    setFormValues,
+  };
+};
+
+const useUserTimelineState = (activeTab: UserEditTabKey, userId: string) => {
+  const [timeline, setTimeline] = React.useState<Awaited<ReturnType<typeof getUserTimeline>>['data']>([]);
+  const [isLoadingTimeline, setIsLoadingTimeline] = React.useState(false);
+  const [timelineError, setTimelineError] = React.useState<string | null>(null);
+  const [hasLoadedTimeline, setHasLoadedTimeline] = React.useState(false);
+
+  React.useEffect(() => {
+    setTimeline([]);
+    setTimelineError(null);
+    setHasLoadedTimeline(false);
+  }, [userId]);
 
   React.useEffect(() => {
     if (activeTab !== 'history' || hasLoadedTimeline) {
@@ -411,7 +390,21 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
     }
   }, [userId]);
 
-  const onTabIntent = (nextTab: UserEditTabKey) => {
+  return {
+    hasLoadedTimeline,
+    isLoadingTimeline,
+    reloadTimeline,
+    timeline,
+    timelineError,
+  };
+};
+
+const useUserEditTabState = (hasUnsavedChanges: boolean) => {
+  const [activeTab, setActiveTab] = React.useState<UserEditTabKey>('personal');
+  const [unsavedDialogOpen, setUnsavedDialogOpen] = React.useState(false);
+  const [pendingTab, setPendingTab] = React.useState<UserEditTabKey | null>(null);
+
+  const onTabIntent = React.useCallback((nextTab: UserEditTabKey) => {
     if (nextTab === activeTab) {
       return;
     }
@@ -423,9 +416,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
     }
 
     setActiveTab(nextTab);
-  };
+  }, [activeTab, hasUnsavedChanges]);
 
-  const onTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabIndex: number) => {
+  const onTabKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLButtonElement>, tabIndex: number) => {
     const key = event.key;
     if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(key)) {
       return;
@@ -445,9 +438,31 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
     const direction = key === 'ArrowRight' ? 1 : -1;
     const nextIndex = (tabIndex + direction + TABS.length) % TABS.length;
     onTabIntent(TABS[nextIndex].key);
-  };
+  }, [onTabIntent]);
 
-  const onSave = async (event: React.FormEvent<HTMLFormElement>) => {
+  return {
+    activeTab,
+    onTabIntent,
+    onTabKeyDown,
+    pendingTab,
+    setActiveTab,
+    setPendingTab,
+    setUnsavedDialogOpen,
+    unsavedDialogOpen,
+  };
+};
+
+const useUserSaveActions = (
+  userApi: ReturnType<typeof useUser>,
+  formValues: UserFormValues,
+  setFormValues: React.Dispatch<React.SetStateAction<UserFormValues>>,
+) => {
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [isSendingPasswordSetupEmail, setIsSendingPasswordSetupEmail] = React.useState(false);
+  const [saveSuccess, setSaveSuccess] = React.useState(false);
+  const [passwordSetupEmailSuccess, setPasswordSetupEmailSuccess] = React.useState(false);
+
+  const onSave = React.useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSaving(true);
     setSaveSuccess(false);
@@ -477,9 +492,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
     }
 
     setIsSaving(false);
-  };
+  }, [formValues, setFormValues, userApi]);
 
-  const onSendPasswordSetupEmail = async () => {
+  const onSendPasswordSetupEmail = React.useCallback(async () => {
     if (!userApi.resendPasswordSetupEmail || isSendingPasswordSetupEmail) {
       return;
     }
@@ -494,7 +509,67 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
     }
 
     setIsSendingPasswordSetupEmail(false);
+  }, [isSendingPasswordSetupEmail, userApi]);
+
+  return {
+    isSaving,
+    isSendingPasswordSetupEmail,
+    onSave,
+    onSendPasswordSetupEmail,
+    passwordSetupEmailSuccess,
+    saveSuccess,
+    setPasswordSetupEmailSuccess,
+    setSaveSuccess,
   };
+};
+
+export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage }: UserEditPageProps) => {
+  const userApi = useUser(userId);
+  const rolesApi = useRoles();
+  const groupsApi = useGroups();
+  const selectableRoles = React.useMemo(
+    () => rolesApi.roles.filter((role) => isTenantRoleVisible(role)),
+    [rolesApi.roles]
+  );
+  const selectableGroups = React.useMemo(
+    () => groupsApi.groups.filter((group) => group.isActive !== false),
+    [groupsApi.groups]
+  );
+
+  const { formValues, hasUnsavedChanges, setFormValues } = useUserEditFormState(userApi.user);
+  const {
+    activeTab,
+    onTabIntent,
+    onTabKeyDown,
+    pendingTab,
+    setActiveTab,
+    setPendingTab,
+    setUnsavedDialogOpen,
+    unsavedDialogOpen,
+  } = useUserEditTabState(hasUnsavedChanges);
+  const {
+    isLoadingTimeline,
+    reloadTimeline,
+    timeline,
+    timelineError,
+  } = useUserTimelineState(activeTab, userId);
+  const {
+    isSaving,
+    isSendingPasswordSetupEmail,
+    onSave,
+    onSendPasswordSetupEmail,
+    passwordSetupEmailSuccess,
+    saveSuccess,
+  } = useUserSaveActions(userApi, formValues, setFormValues);
+  const effectivePermissionTrace = React.useMemo(
+    () => (userApi.user?.permissionTrace ?? []).filter((entry) => entry.isEffective),
+    [userApi.user?.permissionTrace]
+  );
+  const inactivePermissionTrace = React.useMemo(
+    () => (userApi.user?.permissionTrace ?? []).filter((entry) => !entry.isEffective),
+    [userApi.user?.permissionTrace]
+  );
+  const groupMembershipById = React.useMemo(() => buildGroupMembershipById(userApi.user?.groups), [userApi.user?.groups]);
 
   if (userApi.isLoading) {
     return (

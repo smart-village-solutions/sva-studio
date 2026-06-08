@@ -34,6 +34,24 @@ const isVisibleForSource = (filter: LogSourceFilter, source: DevelopmentLogRecor
   return filter === 'all' ? true : source === filter;
 };
 
+const stringifyPrimitiveContext = (context: Exclude<unknown, object>): string => {
+  return `${context}`;
+};
+
+const stringifyObjectContext = (context: object): string => {
+  const stringifier = context.toString;
+
+  if (typeof stringifier === 'function' && stringifier !== Object.prototype.toString) {
+    try {
+      return stringifier.call(context);
+    } catch {
+      return Object.prototype.toString.call(context);
+    }
+  }
+
+  return Object.prototype.toString.call(context);
+};
+
 const stringifyContext = (context: unknown): string | null => {
   if (!context) {
     return null;
@@ -43,19 +61,10 @@ const stringifyContext = (context: unknown): string | null => {
     return JSON.stringify(context, null, 2);
   } catch {
     if (typeof context === 'object') {
-      const stringifier = context.toString;
-      if (typeof stringifier === 'function' && stringifier !== Object.prototype.toString) {
-        try {
-          return String(context);
-        } catch {
-          return Object.prototype.toString.call(context);
-        }
-      }
-
-      return Object.prototype.toString.call(context);
+      return stringifyObjectContext(context);
     }
 
-    return String(context);
+    return stringifyPrimitiveContext(context);
   }
 };
 

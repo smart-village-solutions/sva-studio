@@ -167,134 +167,126 @@ const resolveRuntimeAuthDisplay = async (
   };
 };
 
+const createReadyDependencyStatus = <TDiagnostics extends Record<string, unknown>>(diagnostics: TDiagnostics) => ({
+  ready: true as const,
+  diagnostics,
+});
+
+const createFailedDependencyStatus = <TDiagnostics extends Record<string, unknown>>(
+  error: string,
+  diagnostics: TDiagnostics
+) => ({
+  ready: false as const,
+  error,
+  diagnostics,
+});
+
+const resolveReadyDatabaseStatus = async () => {
+  try {
+    const pool = resolvePool();
+    if (!pool) {
+      return createFailedDependencyStatus('IAM database not configured', {
+        dependency: 'database',
+        reason_code: 'database_not_configured',
+      });
+    }
+
+    let client;
+    try {
+      client = await pool.connect();
+    } catch (error) {
+      const bootstrapped = await bootstrapStudioAppDbUserIfNeeded(error);
+      if (!bootstrapped) {
+        throw error;
+      }
+      client = await pool.connect();
+    }
+
+    try {
+      await client.query('SELECT 1;');
+      const schemaGuard = await runCriticalIamSchemaGuard(client);
+      if (!schemaGuard.ok) {
+        return createFailedDependencyStatus(summarizeSchemaGuardFailures(schemaGuard) ?? 'critical_schema_drift', {
+          dependency: 'database',
+          reason_code: 'schema_drift',
+          schema_guard: schemaGuard,
+        });
+      }
+
+      return createReadyDependencyStatus({
+        dependency: 'database',
+        reason_code: 'ready',
+        schema_guard: schemaGuard,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    return createFailedDependencyStatus(error instanceof Error ? error.message : String(error), {
+      dependency: 'database',
+      reason_code: 'database_connection_failed',
+    });
+  }
+};
+
+const resolveReadyRedisStatus = async () => {
+  try {
+    const redisReady = await isRedisAvailable();
+    if (redisReady) {
+      return createReadyDependencyStatus({
+        dependency: 'redis',
+        reason_code: 'ready',
+      });
+    }
+
+    return createFailedDependencyStatus(getLastRedisError() ?? 'Redis ping failed', {
+      dependency: 'redis',
+      reason_code: 'redis_ping_failed',
+    });
+  } catch (error) {
+    return createFailedDependencyStatus(error instanceof Error ? error.message : String(error), {
+      dependency: 'redis',
+      reason_code: 'redis_ping_failed',
+    });
+  }
+};
+
+const resolveReadyKeycloakStatus = async () => {
+  const idp = resolveIdentityProvider();
+  if (!idp) {
+    return createFailedDependencyStatus('Keycloak admin client not configured', {
+      dependency: 'keycloak',
+      reason_code: 'keycloak_admin_not_configured',
+    });
+  }
+
+  if (!isKeycloakIdentityProvider(idp.provider)) {
+    return createReadyDependencyStatus({
+      dependency: 'keycloak',
+      reason_code: 'ready',
+    });
+  }
+
+  try {
+    await trackKeycloakCall('readiness_list_roles', () => idp.provider.listRoles());
+    return createReadyDependencyStatus({
+      dependency: 'keycloak',
+      reason_code: 'ready',
+    });
+  } catch (error) {
+    return createFailedDependencyStatus(error instanceof Error ? error.message : String(error), {
+      dependency: 'keycloak',
+      reason_code: 'keycloak_dependency_failed',
+    });
+  }
+};
+
 export const readyInternal = async (request: Request): Promise<Response> => {
   const requestContext = getWorkspaceContext();
   const runtimeAuth = await resolveRuntimeAuthDisplay(request);
-  const dbStatus = await (async () => {
-    try {
-      const pool = resolvePool();
-      if (!pool) {
-        return { ready: false, error: 'IAM database not configured' };
-      }
-      let client;
-      try {
-        client = await pool.connect();
-      } catch (error) {
-        const bootstrapped = await bootstrapStudioAppDbUserIfNeeded(error);
-        if (!bootstrapped) {
-          throw error;
-        }
-        client = await pool.connect();
-      }
-      try {
-        await client.query('SELECT 1;');
-        const schemaGuard = await runCriticalIamSchemaGuard(client);
-        if (!schemaGuard.ok) {
-          return {
-            ready: false,
-            error: summarizeSchemaGuardFailures(schemaGuard) ?? 'critical_schema_drift',
-            diagnostics: {
-              dependency: 'database',
-              reason_code: 'schema_drift',
-              schema_guard: schemaGuard,
-            },
-          };
-        }
-        return {
-          ready: true as const,
-          diagnostics: {
-            dependency: 'database',
-            reason_code: 'ready',
-            schema_guard: schemaGuard,
-          },
-        };
-      } finally {
-        client.release();
-      }
-    } catch (error) {
-      return {
-        ready: false,
-        error: error instanceof Error ? error.message : String(error),
-        diagnostics: {
-          dependency: 'database',
-          reason_code: 'database_connection_failed',
-        },
-      };
-    }
-  })();
-
-  const redisStatus = await (async () => {
-    try {
-      const redisReady = await isRedisAvailable();
-      return redisReady
-        ? {
-            ready: true as const,
-            diagnostics: {
-              dependency: 'redis',
-              reason_code: 'ready',
-            },
-          }
-        : {
-            ready: false,
-            error: getLastRedisError() ?? 'Redis ping failed',
-            diagnostics: {
-              dependency: 'redis',
-              reason_code: 'redis_ping_failed',
-            },
-          };
-    } catch (error) {
-      return {
-        ready: false,
-        error: error instanceof Error ? error.message : String(error),
-        diagnostics: {
-          dependency: 'redis',
-          reason_code: 'redis_ping_failed',
-        },
-      };
-    }
-  })();
-
-  const keycloakStatus = await (async () => {
-    const idp = resolveIdentityProvider();
-    if (!idp) {
-      return {
-        ready: false,
-        error: 'Keycloak admin client not configured',
-        diagnostics: {
-          dependency: 'keycloak',
-          reason_code: 'keycloak_admin_not_configured',
-        },
-      };
-    }
-    if (isKeycloakIdentityProvider(idp.provider)) {
-      try {
-        await trackKeycloakCall('readiness_list_roles', () => idp.provider.listRoles());
-        return {
-          ready: true as const,
-          diagnostics: {
-            dependency: 'keycloak',
-            reason_code: 'ready',
-          },
-        };
-      } catch (error) {
-        return {
-          ready: false,
-          error: error instanceof Error ? error.message : String(error),
-          diagnostics: {
-            dependency: 'keycloak',
-            reason_code: 'keycloak_dependency_failed',
-          },
-        };
-      }
-    }
-    return {
-      ready: true as const,
-      diagnostics: {
-        dependency: 'keycloak',
-        reason_code: 'ready',
-      },
-    };
-  })();
+  const dbStatus = await resolveReadyDatabaseStatus();
+  const redisStatus = await resolveReadyRedisStatus();
+  const keycloakStatus = await resolveReadyKeycloakStatus();
 
   const authorizationCache = getPermissionCacheHealth();
   const allReady = dbStatus.ready && redisStatus.ready && keycloakStatus.ready;

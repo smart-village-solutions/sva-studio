@@ -85,17 +85,18 @@ export const enrichSessionUserWithEffectiveRoles = async (
   user: SessionUser,
   deps: EffectiveSessionRoleDeps = defaultDeps
 ): Promise<SessionUser> => {
-  if (!user.instanceId) {
+  const instanceId = user.instanceId;
+  if (!instanceId) {
     return user;
   }
 
   try {
     const persistedRoleNames = await deps.withResolvedInstanceDb(
       deps.resolvePool,
-      user.instanceId,
+      instanceId,
       async (client) =>
         loadPersistedEffectiveRoleNames(client, {
-          instanceId: user.instanceId!,
+          instanceId,
           keycloakSubject: user.id,
         })
     );
@@ -115,9 +116,9 @@ export const enrichSessionUserWithEffectiveRoles = async (
   } catch (error) {
     logger.warn('Effective IAM role hydration failed for session user', {
       user_id: user.id,
-      instance_id: user.instanceId,
+      instance_id: instanceId,
       error: error instanceof Error ? error.message : String(error),
-      ...buildLogContext({ kind: 'instance', instanceId: user.instanceId }),
+      ...buildLogContext({ kind: 'instance', instanceId }),
     });
     return user;
   }

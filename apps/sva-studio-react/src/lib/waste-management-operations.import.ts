@@ -315,89 +315,97 @@ export const previewLocationTourPickupDateImport = async (
   };
 };
 
-export const executeImport = async (
+const executeLocationTourPickupDateImport = async (
   repository: WasteRepository,
   input: {
-    readonly profileId: WasteManagementImportProfileId;
-    readonly rows?: readonly GenericImportRow[];
-    readonly parsedLocationTourPickupDates?: WasteLocationTourPickupDateImportParseResult;
+    readonly parsedLocationTourPickupDates: WasteLocationTourPickupDateImportParseResult;
     readonly reportProgress?: (progress: StudioJobProgress) => Promise<void> | void;
   }
 ) => {
-  if (input.profileId === 'waste-management.ortsbezogene-tourtermine') {
-    if (!input.parsedLocationTourPickupDates) {
-      throw new Error('missing_location_tour_pickup_date_import');
+  if (input.parsedLocationTourPickupDates.issues.length > 0) {
+    throw new Error('location_tour_pickup_date_import_has_issues');
+  }
+
+  const planned = await planLocationTourPickupDateImport(repository, {
+    parsed: input.parsedLocationTourPickupDates,
+    persist: true,
+    reportProgress: input.reportProgress,
+  });
+
+  return {
+    rowCount: input.parsedLocationTourPickupDates.validRowCount,
+    createdFractions: planned.summary.fractions.created,
+    createdTours: planned.newTours.length,
+    createdLocations: planned.summary.locations.created,
+    createdAssignments: planned.summary.assignments.created,
+    skippedRows: input.parsedLocationTourPickupDates.invalidRowCount,
+    errorCount: input.parsedLocationTourPickupDates.issues.length,
+  };
+};
+
+const executeGeographyImport = async (
+  repository: WasteRepository,
+  rows: readonly GenericImportRow[],
+  counts: { rows: number; upserts: number }
+) => {
+  for (const row of rows) {
+    await repository.upsertWasteRegion({ id: row.region_id, name: row.region_name });
+    await repository.upsertWasteCity({ id: row.city_id, name: row.city_name, regionId: row.region_id });
+    counts.upserts += 2;
+    if (normalizeOptionalText(row.street_id) && normalizeOptionalText(row.street_name)) {
+      await repository.upsertWasteStreet({ id: row.street_id, name: row.street_name, cityId: row.city_id });
+      counts.upserts += 1;
     }
-    if (input.parsedLocationTourPickupDates.issues.length > 0) {
-      throw new Error('location_tour_pickup_date_import_has_issues');
+    if (
+      normalizeOptionalText(row.house_number_id) &&
+      normalizeOptionalText(row.house_number_value) &&
+      normalizeOptionalText(row.street_id)
+    ) {
+      await repository.upsertWasteHouseNumber({ id: row.house_number_id, number: row.house_number_value, streetId: row.street_id });
+      counts.upserts += 1;
     }
-    const planned = await planLocationTourPickupDateImport(repository, {
-      parsed: input.parsedLocationTourPickupDates,
-      persist: true,
-      reportProgress: input.reportProgress,
+    await repository.upsertWasteCollectionLocation({
+      id: row.location_id,
+      regionId: normalizeOptionalText(row.region_id),
+      cityId: row.city_id,
+      streetId: normalizeOptionalText(row.street_id),
+      houseNumberId: normalizeOptionalText(row.house_number_id),
+      active: parseBoolean(row.active, 'active'),
     });
-    return {
-      rowCount: input.parsedLocationTourPickupDates.validRowCount,
-      createdFractions: planned.summary.fractions.created,
-      createdTours: planned.newTours.length,
-      createdLocations: planned.summary.locations.created,
-      createdAssignments: planned.summary.assignments.created,
-      skippedRows: input.parsedLocationTourPickupDates.invalidRowCount,
-      errorCount: input.parsedLocationTourPickupDates.issues.length,
-    };
+    counts.upserts += 1;
   }
 
-  const rows = input.rows ?? [];
-  const counts = { rows: rows.length, upserts: 0 };
+  return counts;
+};
 
-  if (input.profileId === 'waste-management.geografie-abholorte') {
-    for (const row of rows) {
-      await repository.upsertWasteRegion({ id: row.region_id, name: row.region_name });
-      await repository.upsertWasteCity({ id: row.city_id, name: row.city_name, regionId: row.region_id });
-      counts.upserts += 2;
-      if (normalizeOptionalText(row.street_id) && normalizeOptionalText(row.street_name)) {
-        await repository.upsertWasteStreet({ id: row.street_id, name: row.street_name, cityId: row.city_id });
-        counts.upserts += 1;
-      }
-      if (
-        normalizeOptionalText(row.house_number_id) &&
-        normalizeOptionalText(row.house_number_value) &&
-        normalizeOptionalText(row.street_id)
-      ) {
-        await repository.upsertWasteHouseNumber({ id: row.house_number_id, number: row.house_number_value, streetId: row.street_id });
-        counts.upserts += 1;
-      }
-      await repository.upsertWasteCollectionLocation({
-        id: row.location_id,
-        regionId: normalizeOptionalText(row.region_id),
-        cityId: row.city_id,
-        streetId: normalizeOptionalText(row.street_id),
-        houseNumberId: normalizeOptionalText(row.house_number_id),
-        active: parseBoolean(row.active, 'active'),
-      });
-      counts.upserts += 1;
-    }
-    return counts;
+const executeToursImport = async (
+  repository: WasteRepository,
+  rows: readonly GenericImportRow[],
+  counts: { rows: number; upserts: number }
+) => {
+  for (const row of rows) {
+    await repository.upsertWasteTour({
+      id: row.tour_id,
+      name: row.tour_name,
+      description: normalizeOptionalText(row.description),
+      wasteFractionIds: parseDelimitedStringArray(row.waste_fraction_ids),
+      recurrence: parseRecurrence(row.recurrence) ?? null,
+      firstDate: normalizeOptionalText(row.first_date),
+      endDate: normalizeOptionalText(row.end_date),
+      customDates: parseCustomDates(row.custom_dates),
+      active: parseBoolean(row.active, 'active'),
+    });
+    counts.upserts += 1;
   }
 
-  if (input.profileId === 'waste-management.touren') {
-    for (const row of rows) {
-      await repository.upsertWasteTour({
-        id: row.tour_id,
-        name: row.tour_name,
-        description: normalizeOptionalText(row.description),
-        wasteFractionIds: parseDelimitedStringArray(row.waste_fraction_ids),
-        recurrence: parseRecurrence(row.recurrence) ?? null,
-        firstDate: normalizeOptionalText(row.first_date),
-        endDate: normalizeOptionalText(row.end_date),
-        customDates: parseCustomDates(row.custom_dates),
-        active: parseBoolean(row.active, 'active'),
-      });
-      counts.upserts += 1;
-    }
-    return counts;
-  }
+  return counts;
+};
 
+const executeDateShiftImport = async (
+  repository: WasteRepository,
+  rows: readonly GenericImportRow[],
+  counts: { rows: number; upserts: number }
+) => {
   for (const row of rows) {
     const shiftContext = normalizeOptionalText(row.shift_context);
     if (shiftContext !== 'global' && shiftContext !== 'tour') {
@@ -434,4 +442,34 @@ export const executeImport = async (
   }
 
   return counts;
+};
+
+export const executeImport = async (
+  repository: WasteRepository,
+  input: {
+    readonly profileId: WasteManagementImportProfileId;
+    readonly rows?: readonly GenericImportRow[];
+    readonly parsedLocationTourPickupDates?: WasteLocationTourPickupDateImportParseResult;
+    readonly reportProgress?: (progress: StudioJobProgress) => Promise<void> | void;
+  }
+) => {
+  const rows = input.rows ?? [];
+  const counts = { rows: rows.length, upserts: 0 };
+
+  switch (input.profileId) {
+    case 'waste-management.ortsbezogene-tourtermine':
+      if (!input.parsedLocationTourPickupDates) {
+        throw new Error('missing_location_tour_pickup_date_import');
+      }
+      return executeLocationTourPickupDateImport(repository, {
+        parsedLocationTourPickupDates: input.parsedLocationTourPickupDates,
+        reportProgress: input.reportProgress,
+      });
+    case 'waste-management.geografie-abholorte':
+      return executeGeographyImport(repository, rows, counts);
+    case 'waste-management.touren':
+      return executeToursImport(repository, rows, counts);
+    case 'waste-management.ausweichtermine':
+      return executeDateShiftImport(repository, rows, counts);
+  }
 };

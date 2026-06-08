@@ -87,6 +87,13 @@ const buildDatabaseUnavailableResult = (): Extract<InstancePermissionAuthorizati
   message: 'Berechtigungen konnten nicht geprüft werden.',
 });
 
+const buildMissingInstanceResult = (): Extract<InstancePermissionAuthorizationResult, { ok: false }> => ({
+  ok: false,
+  status: 400,
+  error: 'missing_instance',
+  message: 'Kein Instanzkontext für diese Operation vorhanden.',
+});
+
 const resolveAuthorizationPermissions = async (input: {
   readonly ctx: AuthenticatedRequestContext;
   readonly action: string;
@@ -97,7 +104,11 @@ const resolveAuthorizationPermissions = async (input: {
   | Readonly<{ ok: true; permissions: readonly EffectivePermission[] }>
   | Readonly<{ ok: false; result: Extract<InstancePermissionAuthorizationResult, { ok: false }> }>
 > => {
-  const instanceId = input.ctx.user.instanceId!;
+  const instanceId = input.ctx.user.instanceId;
+  if (!instanceId) {
+    return { ok: false, result: buildMissingInstanceResult() };
+  }
+
   if (input.permissions) {
     return { ok: true, permissions: input.permissions };
   }
@@ -149,12 +160,7 @@ export const authorizeInstancePermissionForUser = async (input: {
 }): Promise<InstancePermissionAuthorizationResult> => {
   const instanceId = input.ctx.user.instanceId;
   if (!instanceId) {
-    return {
-      ok: false,
-      status: 400,
-      error: 'missing_instance',
-      message: 'Kein Instanzkontext für diese Operation vorhanden.',
-    };
+    return buildMissingInstanceResult();
   }
 
   const action = normalizeAuthorizationAction(input.action);

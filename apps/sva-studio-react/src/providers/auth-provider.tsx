@@ -38,7 +38,10 @@ import {
   fetchWithRequestTimeout,
   type IamHttpError,
 } from '../lib/iam-api';
-import { fetchAuthMeSingleFlight } from '../lib/auth-me-singleflight';
+import {
+  type AuthMeResult,
+  fetchAuthMeSingleFlight,
+} from '../lib/auth-me-singleflight';
 
 type SessionUser = {
   id: string;
@@ -375,15 +378,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     [logAuthDebug, recordTrail]
   );
 
-  const loadUser = React.useCallback(
-    async (silent: boolean) => {
-      if (silent && inFlightSilentLoadRef.current) {
-        return inFlightSilentLoadRef.current;
-      }
-
-      const runLoadUser = async () => {
-      const authFlowId = startAuthFlow();
-      const firstAttempt = nextAuthAttempt();
+  const startLoadUserRequest = React.useCallback(
+    (silent: boolean, authFlowId: string, firstAttempt: number) => {
       if (!silent && isMountedRef.current) {
         setIsLoading(true);
       }
@@ -392,188 +388,250 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setError(null);
       }
 
-      try {
-        logBrowserOperationStart(authLogger, 'auth_session_load_started', {
-          auth_flow_id: authFlowId,
-          attempt: firstAttempt,
-          operation: silent ? 'invalidate_permissions' : 'load_session',
-          silent,
-          pathname: globalThis.location?.pathname ?? null,
-        });
-        recordTrail('auth_session_load_started', {
-          attempt: firstAttempt,
-          authFlowId,
-          recoveryStep: silent ? 'invalidate_permissions' : 'load_session',
-          result: 'started',
-        });
-        let result = await fetchAuthMeSingleFlight(() =>
-          fetchWithRequestTimeout(AUTH_ME_ENDPOINT, undefined, { timeoutMs: 5_000 })
-        );
-        logAuthDebug('auth_session_load_response', {
-          silent,
-          status: result.status,
-          ok: result.ok,
-        });
-        if (result.ok) {
-          recordTrail('auth_me_succeeded', {
+      logBrowserOperationStart(authLogger, 'auth_session_load_started', {
+        auth_flow_id: authFlowId,
+        attempt: firstAttempt,
+        operation: silent ? 'invalidate_permissions' : 'load_session',
+        silent,
+        pathname: globalThis.location?.pathname ?? null,
+      });
+      recordTrail('auth_session_load_started', {
+        attempt: firstAttempt,
+        authFlowId,
+        recoveryStep: silent ? 'invalidate_permissions' : 'load_session',
+        result: 'started',
+      });
+    },
+    [recordTrail]
+  );
+
+  const fetchAuthMe = React.useCallback(
+    () =>
+      fetchAuthMeSingleFlight(() =>
+        fetchWithRequestTimeout(AUTH_ME_ENDPOINT, undefined, { timeoutMs: 5_000 })
+      ),
+    []
+  );
+
+  const commitUnauthenticatedSession = React.useCallback(
+    (silent: boolean, authFlowId: string, result: AuthMeResult) => {
+      const shouldClearConfirmedSnapshot = !silent || result.status === 401 || result.status === 403;
+      if (isMountedRef.current) {
+        if (shouldClearConfirmedSnapshot) {
+          setUser(null);
+          setSessionExpiresAt(null);
+        }
+        setHasResolvedSession(true);
+      }
+      authLogger.info('auth_session_unauthenticated', {
+        auth_flow_id: authFlowId,
+        attempt: authAttemptRef.current,
+        operation: silent ? 'invalidate_permissions' : 'load_session',
+        silent,
+        status: result.status,
+        request_id: result.error?.requestId,
+        reason_code: result.error?.safeDetails?.reason_code,
+      });
+    },
+    []
+  );
+
+  const commitAuthenticatedSession = React.useCallback(
+    (silent: boolean, authFlowId: string, result: AuthMeResult) => {
+      const payload = parseAuthUser(result.payload);
+      const expiresAt = parseSessionExpiresAt(result.payload);
+      if (isMountedRef.current) {
+        setUser(payload);
+        setSessionExpiresAt(expiresAt ?? null);
+        setHasResolvedSession(true);
+        setSessionRecoveryFailed(false);
+      }
+      if (payload) {
+        markKnownSession();
+      }
+      logBrowserOperationSuccess(authLogger, 'auth_session_authenticated', {
+        auth_flow_id: authFlowId,
+        attempt: authAttemptRef.current,
+        operation: silent ? 'invalidate_permissions' : 'load_session',
+        silent,
+        has_user: Boolean(payload),
+        roles_count: payload?.roles.length ?? 0,
+        instance_id: payload?.instanceId,
+        expires_at: expiresAt,
+      });
+    },
+    []
+  );
+
+  const commitLoadUserFailure = React.useCallback(
+    (silent: boolean, authFlowId: string, firstAttempt: number, cause: unknown) => {
+      const resolvedError = asIamError(cause);
+      recordTrail('auth_session_load_failed', {
+        attempt: authAttemptRef.current || firstAttempt,
+        authFlowId,
+        ...readAuthDiagnosticMeta(resolvedError),
+        recoveryStep: silent ? 'invalidate_permissions' : 'load_session',
+        result: 'failed',
+      });
+      if (isMountedRef.current) {
+        if (!silent) {
+          setUser(null);
+          setSessionExpiresAt(null);
+          setError(resolvedError);
+        }
+        setHasResolvedSession(true);
+        setIsRecoveringSession(false);
+      }
+      logBrowserOperationFailure(authLogger, 'auth_session_load_failed', resolvedError, {
+        auth_flow_id: authFlowId,
+        attempt: authAttemptRef.current || firstAttempt,
+        operation: silent ? 'invalidate_permissions' : 'load_session',
+        silent,
+      });
+    },
+    [recordTrail]
+  );
+
+  const handleUnauthorizedSession = React.useCallback(
+    async (input: {
+      silent: boolean;
+      authFlowId: string;
+      firstAttempt: number;
+      result: AuthMeResult;
+    }): Promise<AuthMeResult> => {
+      const { authFlowId, firstAttempt, silent } = input;
+      const devAuthSessionActive = hasActiveDevAuthSession();
+      const hadKnownSession = readHadKnownSession();
+      const responseMeta = readAuthDiagnosticMeta(input.result.error);
+      recordTrail('auth_me_401_received', {
+        attempt: firstAttempt,
+        authFlowId,
+        ...responseMeta,
+        recoveryStep: 'initial_auth_me',
+        result: 'failed',
+      });
+
+      if (!silent && isMountedRef.current) {
+        setUser(null);
+        setSessionExpiresAt(null);
+        setHasResolvedSession(true);
+        setIsLoading(false);
+      }
+
+      if (isMountedRef.current) {
+        setIsRecoveringSession(true);
+      }
+
+      const recovered = devAuthSessionActive
+        ? false
+        : await attemptSilentSessionRecovery({
             attempt: firstAttempt,
             authFlowId,
-            result: 'succeeded',
-            status: result.status,
           });
-        }
+      logAuthDebug('auth_silent_recovery_result', { recovered });
 
-        if (!result.ok && result.status === 401) {
-          const devAuthSessionActive = hasActiveDevAuthSession();
-          const hadKnownSession = readHadKnownSession();
-          const responseMeta = readAuthDiagnosticMeta(result.error);
-          recordTrail('auth_me_401_received', {
-            attempt: firstAttempt,
-            authFlowId,
-            ...responseMeta,
-            recoveryStep: 'initial_auth_me',
-            result: 'failed',
-          });
+      if (isMountedRef.current) {
+        setIsRecoveringSession(false);
+      }
 
-          if (!silent && isMountedRef.current) {
-            setUser(null);
-            setSessionExpiresAt(null);
-            setHasResolvedSession(true);
-            setIsLoading(false);
-          }
-
-          if (isMountedRef.current) {
-            setIsRecoveringSession(true);
-          }
-
-          const recovered = devAuthSessionActive
-            ? false
-            : await attemptSilentSessionRecovery({
-                attempt: firstAttempt,
-                authFlowId,
-              });
-          logAuthDebug('auth_silent_recovery_result', { recovered });
-
-          if (isMountedRef.current) {
-            setIsRecoveringSession(false);
-          }
-
-          if (!recovered && hadKnownSession && !silent && isMountedRef.current) {
-            setSessionRecoveryFailed(true);
-            redirectToSessionExpiredNotice({
-              attempt: firstAttempt,
-              authFlowId,
-              ...responseMeta,
-              reasonCode: responseMeta.reasonCode ?? 'silent_recovery_failed',
-              recoveryStep: 'session_expired_redirect',
-              result: 'failed',
-            });
-          }
-
-          if (recovered) {
-            const recoveryAttempt = nextAuthAttempt();
-            result = await fetchAuthMeSingleFlight(() =>
-              fetchWithRequestTimeout(AUTH_ME_ENDPOINT, undefined, { timeoutMs: 5_000 })
-            );
-            logAuthDebug('auth_session_load_response_after_recovery', {
-              status: result.status,
-              ok: result.ok,
-            });
-            recordTrail(result.ok ? 'auth_me_retry_succeeded' : 'auth_me_retry_failed', {
-              attempt: recoveryAttempt,
-              authFlowId,
-              ...readAuthDiagnosticMeta(result.error),
-              recoveryStep: 'post_silent_recovery_auth_me',
-              result: result.ok ? 'succeeded' : 'failed',
-              status: result.status,
-            });
-
-            if (!result.ok && result.status === 401 && hadKnownSession && !silent && isMountedRef.current) {
-              const retryResponseMeta = readAuthDiagnosticMeta(result.error);
-              setSessionRecoveryFailed(true);
-              redirectToSessionExpiredNotice({
-                attempt: recoveryAttempt,
-                authFlowId,
-                ...retryResponseMeta,
-                reasonCode: retryResponseMeta.reasonCode ?? 'session_expired',
-                recoveryStep: 'session_expired_redirect',
-                result: 'failed',
-              });
-            }
-          }
-        }
-
-        if (!result.ok) {
-          const shouldClearConfirmedSnapshot = !silent || result.status === 401 || result.status === 403;
-          if (isMountedRef.current) {
-            if (shouldClearConfirmedSnapshot) {
-              setUser(null);
-              setSessionExpiresAt(null);
-            }
-            setHasResolvedSession(true);
-          }
-          authLogger.info('auth_session_unauthenticated', {
-            auth_flow_id: authFlowId,
-            attempt: authAttemptRef.current,
-            operation: silent ? 'invalidate_permissions' : 'load_session',
-            silent,
-            status: result.status,
-            request_id: result.error?.requestId,
-            reason_code: result.error?.safeDetails?.reason_code,
-          });
-          return;
-        }
-
-        const payload = parseAuthUser(result.payload);
-        const expiresAt = parseSessionExpiresAt(result.payload);
-        if (isMountedRef.current) {
-          setUser(payload);
-          setSessionExpiresAt(expiresAt ?? null);
-          setHasResolvedSession(true);
-          setSessionRecoveryFailed(false);
-        }
-        if (payload) {
-          markKnownSession();
-        }
-        logBrowserOperationSuccess(authLogger, 'auth_session_authenticated', {
-          auth_flow_id: authFlowId,
-          attempt: authAttemptRef.current,
-          operation: silent ? 'invalidate_permissions' : 'load_session',
-          silent,
-          has_user: Boolean(payload),
-          roles_count: payload?.roles.length ?? 0,
-          instance_id: payload?.instanceId,
-          expires_at: expiresAt,
-        });
-      } catch (cause) {
-        const resolvedError = asIamError(cause);
-        recordTrail('auth_session_load_failed', {
-          attempt: authAttemptRef.current || firstAttempt,
+      if (!recovered && hadKnownSession && !silent && isMountedRef.current) {
+        setSessionRecoveryFailed(true);
+        redirectToSessionExpiredNotice({
+          attempt: firstAttempt,
           authFlowId,
-          ...readAuthDiagnosticMeta(resolvedError),
-          recoveryStep: silent ? 'invalidate_permissions' : 'load_session',
+          ...responseMeta,
+          reasonCode: responseMeta.reasonCode ?? 'silent_recovery_failed',
+          recoveryStep: 'session_expired_redirect',
           result: 'failed',
         });
-        if (isMountedRef.current) {
-          if (!silent) {
-            setUser(null);
-            setSessionExpiresAt(null);
-            setError(resolvedError);
-          }
-          setHasResolvedSession(true);
-          setIsRecoveringSession(false);
-        }
-        logBrowserOperationFailure(authLogger, 'auth_session_load_failed', resolvedError, {
-          auth_flow_id: authFlowId,
-          attempt: authAttemptRef.current || firstAttempt,
-          operation: silent ? 'invalidate_permissions' : 'load_session',
-          silent,
-        });
-      } finally {
-        if (!silent && isMountedRef.current) {
-          setIsLoading(false);
-        }
       }
+
+      if (!recovered) {
+        return input.result;
+      }
+
+      const recoveryAttempt = nextAuthAttempt();
+      const recoveryResult = await fetchAuthMe();
+      logAuthDebug('auth_session_load_response_after_recovery', {
+        status: recoveryResult.status,
+        ok: recoveryResult.ok,
+      });
+      recordTrail(recoveryResult.ok ? 'auth_me_retry_succeeded' : 'auth_me_retry_failed', {
+        attempt: recoveryAttempt,
+        authFlowId,
+        ...readAuthDiagnosticMeta(recoveryResult.error),
+        recoveryStep: 'post_silent_recovery_auth_me',
+        result: recoveryResult.ok ? 'succeeded' : 'failed',
+        status: recoveryResult.status,
+      });
+
+      if (!recoveryResult.ok && recoveryResult.status === 401 && hadKnownSession && !silent && isMountedRef.current) {
+        const retryResponseMeta = readAuthDiagnosticMeta(recoveryResult.error);
+        setSessionRecoveryFailed(true);
+        redirectToSessionExpiredNotice({
+          attempt: recoveryAttempt,
+          authFlowId,
+          ...retryResponseMeta,
+          reasonCode: retryResponseMeta.reasonCode ?? 'session_expired',
+          recoveryStep: 'session_expired_redirect',
+          result: 'failed',
+        });
+      }
+
+      return recoveryResult;
+    },
+    [attemptSilentSessionRecovery, fetchAuthMe, logAuthDebug, nextAuthAttempt, recordTrail]
+  );
+
+  const loadUser = React.useCallback(
+    async (silent: boolean) => {
+      if (silent && inFlightSilentLoadRef.current) {
+        return inFlightSilentLoadRef.current;
+      }
+
+      const runLoadUser = async () => {
+        const authFlowId = startAuthFlow();
+        const firstAttempt = nextAuthAttempt();
+        startLoadUserRequest(silent, authFlowId, firstAttempt);
+
+        try {
+          let result = await fetchAuthMe();
+          logAuthDebug('auth_session_load_response', {
+            silent,
+            status: result.status,
+            ok: result.ok,
+          });
+          if (result.ok) {
+            recordTrail('auth_me_succeeded', {
+              attempt: firstAttempt,
+              authFlowId,
+              result: 'succeeded',
+              status: result.status,
+            });
+          }
+
+          if (!result.ok && result.status === 401) {
+            result = await handleUnauthorizedSession({
+              authFlowId,
+              firstAttempt,
+              result,
+              silent,
+            });
+          }
+
+          if (!result.ok) {
+            commitUnauthenticatedSession(silent, authFlowId, result);
+            return;
+          }
+
+          commitAuthenticatedSession(silent, authFlowId, result);
+        } catch (cause) {
+          commitLoadUserFailure(silent, authFlowId, firstAttempt, cause);
+        } finally {
+          if (!silent && isMountedRef.current) {
+            setIsLoading(false);
+          }
+        }
       };
 
       const loadPromise = runLoadUser();
@@ -590,7 +648,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
       }
     },
-    [attemptSilentSessionRecovery, logAuthDebug, nextAuthAttempt, recordTrail, startAuthFlow]
+    [
+      commitAuthenticatedSession,
+      commitLoadUserFailure,
+      commitUnauthenticatedSession,
+      fetchAuthMe,
+      handleUnauthorizedSession,
+      logAuthDebug,
+      nextAuthAttempt,
+      recordTrail,
+      startAuthFlow,
+      startLoadUserRequest,
+    ]
   );
 
   React.useEffect(() => {

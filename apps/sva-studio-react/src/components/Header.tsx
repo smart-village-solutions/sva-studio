@@ -41,6 +41,21 @@ type HeaderDropdownItem = Readonly<{
 const iconButtonClassName =
   'h-10 w-10 rounded-full border border-transparent bg-transparent px-0 text-muted-foreground shadow-none hover:border-border hover:bg-card hover:text-foreground';
 
+type HeaderAuthActionProps = Readonly<{
+  isHydrated: boolean;
+  isLoading: boolean;
+  isAuthLoading: boolean;
+  isAuthenticated: boolean;
+  isDevAuthAvailable?: boolean;
+  hideAnonymousLoginAction: boolean;
+  loginHref: string;
+  loginWithDevAuth?: () => Promise<unknown> | void;
+  logout: () => Promise<unknown> | void;
+  user: { readonly id: string } | null;
+  displayName: string;
+  initials: string;
+}>;
+
 const resolveUserDisplayName = (user: { readonly id: string }) => {
   const candidate = user as { readonly name?: string; readonly displayName?: string };
   return candidate.displayName?.trim() || candidate.name?.trim() || user.id;
@@ -53,6 +68,8 @@ const resolveUserInitials = (value: string) =>
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('') || value.slice(0, 2).toUpperCase();
+
+const HeaderSectionDivider = () => <hr className="my-1 border-border" />;
 
 const HeaderDropdownMenu = ({
   trigger,
@@ -88,12 +105,12 @@ const HeaderDropdownMenu = ({
       }
     };
 
-    window.addEventListener('mousedown', handlePointerDown);
-    window.addEventListener('keydown', handleKeyDown);
+    globalThis.addEventListener('mousedown', handlePointerDown);
+    globalThis.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      window.removeEventListener('mousedown', handlePointerDown);
-      window.removeEventListener('keydown', handleKeyDown);
+      globalThis.removeEventListener('mousedown', handlePointerDown);
+      globalThis.removeEventListener('keydown', handleKeyDown);
     };
   }, [open]);
 
@@ -204,6 +221,126 @@ const HeaderPromptField = ({
   </div>
 );
 
+const HeaderAuthAction = ({
+  isHydrated,
+  isLoading,
+  isAuthLoading,
+  isAuthenticated,
+  isDevAuthAvailable = false,
+  hideAnonymousLoginAction,
+  loginHref,
+  loginWithDevAuth,
+  logout,
+  user,
+  displayName,
+  initials,
+}: HeaderAuthActionProps): React.ReactNode => {
+  if (!isHydrated || isLoading || isAuthLoading) {
+    return (
+      <>
+        <span role="status" aria-live="polite" className="sr-only">
+          {t('shell.header.authLoading')}
+        </span>
+        <span aria-hidden="true" className="h-9 w-28 animate-skeleton rounded-full" />
+      </>
+    );
+  }
+
+  if (!isAuthenticated) {
+    if (hideAnonymousLoginAction) {
+      return null;
+    }
+
+    if (isDevAuthAvailable) {
+      return (
+        <Button type="button" variant="secondary" onClick={() => void loginWithDevAuth?.()}>
+          {t('shell.header.login')}
+        </Button>
+      );
+    }
+
+    return (
+      <Button asChild variant="secondary">
+        <a href={loginHref}>{t('shell.header.login')}</a>
+      </Button>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  const logoutItem: HeaderDropdownItem = isDevAuthAvailable
+    ? {
+        id: 'logout',
+        label: t('shell.header.logout'),
+        onSelect: () => {
+          void logout();
+        },
+      }
+    : {
+        id: 'logout',
+        label: t('shell.header.logout'),
+        render: (
+          <form action="/auth/logout" method="post" onSubmit={() => clearClientLogoutState()}>
+            <input type="hidden" name="logoutIntent" value="user" />
+            <button
+              type="submit"
+              role="menuitem"
+              className="flex w-full items-start gap-3 rounded-md px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
+            >
+              <span className="space-y-0.5">
+                <span className="block text-sm font-medium">{t('shell.header.logout')}</span>
+              </span>
+            </button>
+          </form>
+        ),
+      };
+
+  const accountMenuItems: readonly HeaderDropdownItem[] = [
+    { id: 'account', label: t('account.profile.title'), href: '/account' },
+    { id: 'password', label: t('shell.header.changePassword'), disabled: true },
+    { id: 'email', label: t('shell.header.changeEmail'), disabled: true },
+    {
+      id: 'divider-privacy',
+      render: <HeaderSectionDivider />,
+    },
+    { id: 'privacy', label: t('account.privacy.navLabel'), href: '/account/privacy' },
+    { id: 'rules', label: t('account.rules.navLabel'), href: '/account/rules' },
+    {
+      id: 'divider-session',
+      render: <HeaderSectionDivider />,
+    },
+    logoutItem,
+  ];
+
+  return (
+    <HeaderDropdownMenu
+      align="right"
+      menuLabel={t('shell.header.accountMenu')}
+      items={accountMenuItems}
+      trigger={({ open, toggle, menuId }) => (
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={menuId}
+          className="flex items-center gap-3 rounded-full px-1 py-1 text-left hover:bg-accent/60"
+          onClick={toggle}
+        >
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
+            {initials}
+          </span>
+          <span className="hidden min-w-0 sm:block">
+            <span className="block truncate text-sm font-medium text-foreground">{displayName}</span>
+          </span>
+          <ChevronDown aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+        </button>
+      )}
+    />
+  );
+};
+
 /**
  * Rendert die Kopfzeile mit globalen Aktionen.
  *
@@ -234,103 +371,6 @@ export default function Header({
   React.useEffect(() => {
     setIsHydrated(true);
   }, []);
-
-  let authAction: React.ReactNode = null;
-
-  if (!isHydrated || isLoading || isAuthLoading) {
-    authAction = (
-      <>
-        <span role="status" aria-live="polite" className="sr-only">
-          {t('shell.header.authLoading')}
-        </span>
-        <span aria-hidden="true" className="h-9 w-28 animate-skeleton rounded-full" />
-      </>
-    );
-  } else if (!isAuthenticated) {
-    authAction = hideAnonymousLoginAction
-      ? null
-      : isDevAuthAvailable
-        ? (
-            <Button type="button" variant="secondary" onClick={() => void loginWithDevAuth()}>
-              {t('shell.header.login')}
-            </Button>
-          )
-        : (
-            <Button asChild variant="secondary">
-              <a href={loginHref}>{t('shell.header.login')}</a>
-            </Button>
-          );
-  } else if (user) {
-    const logoutItem: HeaderDropdownItem = isDevAuthAvailable
-      ? {
-          id: 'logout',
-          label: t('shell.header.logout'),
-          onSelect: () => {
-            void logout();
-          },
-        }
-      : {
-          id: 'logout',
-          label: t('shell.header.logout'),
-          render: (
-            <form action="/auth/logout" method="post" onSubmit={() => clearClientLogoutState()}>
-              <input type="hidden" name="logoutIntent" value="user" />
-              <button
-                type="submit"
-                role="menuitem"
-                className="flex w-full items-start gap-3 rounded-md px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
-              >
-                <span className="space-y-0.5">
-                  <span className="block text-sm font-medium">{t('shell.header.logout')}</span>
-                </span>
-              </button>
-            </form>
-          ),
-        };
-
-    const accountMenuItems: readonly HeaderDropdownItem[] = [
-      { id: 'account', label: t('account.profile.title'), href: '/account' },
-      { id: 'password', label: t('shell.header.changePassword'), disabled: true },
-      { id: 'email', label: t('shell.header.changeEmail'), disabled: true },
-      {
-        id: 'divider-privacy',
-        render: <div role="separator" className="my-1 border-t border-border" />,
-      },
-      { id: 'privacy', label: t('account.privacy.navLabel'), href: '/account/privacy' },
-      { id: 'rules', label: t('account.rules.navLabel'), href: '/account/rules' },
-      {
-        id: 'divider-session',
-        render: <div role="separator" className="my-1 border-t border-border" />,
-      },
-      logoutItem,
-    ];
-
-    authAction = (
-      <HeaderDropdownMenu
-        align="right"
-        menuLabel={t('shell.header.accountMenu')}
-        items={accountMenuItems}
-        trigger={({ open, toggle, menuId }) => (
-          <button
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded={open}
-            aria-controls={menuId}
-            className="flex items-center gap-3 rounded-full px-1 py-1 text-left hover:bg-accent/60"
-            onClick={toggle}
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
-              {initials}
-            </span>
-            <span className="hidden min-w-0 sm:block">
-              <span className="block truncate text-sm font-medium text-foreground">{displayName}</span>
-            </span>
-            <ChevronDown aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
-          </button>
-        )}
-      />
-    );
-  }
 
   const languageItems: readonly HeaderDropdownItem[] = [
     {
@@ -446,7 +486,20 @@ export default function Header({
           >
             {resolvedMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
-          {authAction}
+          <HeaderAuthAction
+            isHydrated={isHydrated}
+            isLoading={isLoading}
+            isAuthLoading={isAuthLoading}
+            isAuthenticated={isAuthenticated}
+            isDevAuthAvailable={isDevAuthAvailable}
+            hideAnonymousLoginAction={hideAnonymousLoginAction}
+            loginHref={loginHref}
+            loginWithDevAuth={loginWithDevAuth}
+            logout={logout}
+            user={user}
+            displayName={displayName}
+            initials={initials}
+          />
         </div>
       </div>
     </header>

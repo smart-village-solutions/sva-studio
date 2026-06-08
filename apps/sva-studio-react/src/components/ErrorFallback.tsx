@@ -25,7 +25,7 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
       VITE_ENABLE_ERROR_DEBUG_DETAILS?: string;
     };
   };
-  const browserWindow = typeof globalThis.window !== 'undefined' ? globalThis.window : undefined;
+  const browserWindow = globalThis.window;
   const isLocalDebugHost =
     browserWindow?.location.hostname === 'localhost' || browserWindow?.location.hostname === '127.0.0.1';
   const debugDetailsEnabled = metaEnv.env?.VITE_ENABLE_ERROR_DEBUG_DETAILS === 'true';

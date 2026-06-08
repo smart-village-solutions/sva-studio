@@ -14,6 +14,11 @@ args = [
   "--no-usage-statistics",
 ]
 
+[mcp_servers.sonarcloud]
+url = "https://api.sonarcloud.io/mcp"
+bearer_token_env_var = "SONARCLOUD_TOKEN"
+http_headers = { "SONARQUBE_ORG" = "smart-village-app" }
+
 [features]
 multi_agent = true
 

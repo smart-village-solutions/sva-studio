@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3002",
-    "build": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/sync-injected-workspace-packages.ts . && rm -rf dist && vite build --outDir dist/client && pnpm exec tsc -p tsconfig.server.json",
+    "build": "pnpm exec tsx ../../scripts/ci/sync-injected-workspace-packages.ts . && rm -rf dist && vite build --outDir dist/client && pnpm exec tsc -p tsconfig.server.json",
     "preview": "vite preview",
     "start": "node dist/server/server/main.js",
     "test": "vitest run --passWithNoTests",

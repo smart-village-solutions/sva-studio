@@ -585,7 +585,7 @@ const resolveSuccessfulCallbackRedirectTarget = (
   callbackInput: ReturnType<typeof resolveCallbackInput>,
   effectiveLoginState:
     | {
-        readonly returnTo: string;
+        readonly returnTo?: string;
         readonly accountActionIntent?: AccountActionIntent;
       }
     | null

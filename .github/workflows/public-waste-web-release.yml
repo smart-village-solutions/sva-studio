@@ -57,7 +57,7 @@ jobs:
 
       - name: Build public waste app
         run: |
-          pnpm nx run core:build --skip-nx-cache
+          pnpm nx run data-repositories:build --skip-nx-cache
           pnpm nx run public-waste-calendar-web:build --skip-nx-cache
 
       - name: Setup Docker Buildx

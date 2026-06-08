@@ -9,7 +9,7 @@
       "dependsOn": ["^build"],
       "outputs": ["{projectRoot}/dist"],
       "options": {
-        "command": "tsc -p packages/data-repositories/tsconfig.lib.json"
+        "command": "rm -rf packages/data-repositories/dist packages/data-repositories/tsconfig.lib.tsbuildinfo && tsc -p packages/data-repositories/tsconfig.lib.json"
       }
     },
     "check:runtime": {

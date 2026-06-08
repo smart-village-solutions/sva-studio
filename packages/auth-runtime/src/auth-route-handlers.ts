@@ -580,6 +580,27 @@ const handleCancelledAccountActionResponse = async (
   return response;
 };
 
+const resolveSuccessfulCallbackRedirectTarget = (
+  request: Request,
+  callbackInput: ReturnType<typeof resolveCallbackInput>,
+  effectiveLoginState:
+    | {
+        readonly returnTo: string;
+        readonly accountActionIntent?: AccountActionIntent;
+      }
+    | null
+    | undefined
+): string => {
+  const redirectTargetBase = effectiveLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT;
+  if (!effectiveLoginState?.accountActionIntent) {
+    return redirectTargetBase;
+  }
+
+  return appendAccountActionStatusToRedirectTarget(request, redirectTargetBase, {
+    accountAction: mapAccountActionIntentToStatus(effectiveLoginState.accountActionIntent, callbackInput),
+  });
+};
+
 const handleExpiredCallbackState = async (dependencies: CallbackDependencies): Promise<Response | null> => {
   if (!dependencies.cookieLoginState || !isExpiredLoginState(dependencies.cookieLoginState.createdAt)) {
     return null;
@@ -1263,12 +1284,7 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
           authConfig,
         });
         const effectiveLoginState = loginState ?? cookieLoginState;
-        const redirectTargetBase = effectiveLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT;
-        const redirectTarget = effectiveLoginState?.accountActionIntent
-          ? appendAccountActionStatusToRedirectTarget(request, redirectTargetBase, {
-              accountAction: mapAccountActionIntentToStatus(effectiveLoginState.accountActionIntent, callbackInput),
-            })
-          : redirectTargetBase;
+        const redirectTarget = resolveSuccessfulCallbackRedirectTarget(request, callbackInput, effectiveLoginState);
         const isSilent = effectiveLoginState?.silent === true;
         const response = isSilent ? createSilentSsoResponse('success') : createRedirectResponse(redirectTarget);
         logSuccessfulCallback({

@@ -2,11 +2,11 @@ import { getAuthConfig } from '../config.js';
 import { client, getOidcConfig } from '../oidc.js';
 import { createLoginState } from '../redis-session.js';
 import { getScopeFromAuthConfig } from '../scope.js';
-import type { AuthConfig } from '../types.js';
+import type { AccountActionIntent, AuthConfig } from '../types.js';
 
 const mapKeycloakAccountActionToIntent = (
   kcAction: 'UPDATE_PASSWORD' | 'UPDATE_EMAIL' | undefined
-): 'update-password' | 'update-email' | undefined => {
+): AccountActionIntent | undefined => {
   if (kcAction === 'UPDATE_PASSWORD') {
     return 'update-password';
   }

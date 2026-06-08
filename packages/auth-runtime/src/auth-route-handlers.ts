@@ -40,6 +40,7 @@ import {
 import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
 import { validateCsrf } from './shared/request-security.js';
 import { SessionStoreUnavailableError, TenantAuthResolutionError, TenantScopeConflictError } from './runtime-errors.js';
+import type { AccountActionIntent } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
@@ -346,7 +347,6 @@ const LOGOUT_INTENT_HEADER = 'x-sva-logout-intent';
 const LOGOUT_INTENT_VALUE = 'user';
 const LOGOUT_INTENT_FORM_FIELD = 'logoutIntent';
 
-type AccountActionIntent = 'update-password' | 'update-email';
 type KeycloakAccountAction = 'UPDATE_PASSWORD' | 'UPDATE_EMAIL';
 
 const mapAccountActionToKeycloakAction = (action: string | null): KeycloakAccountAction | null => {
@@ -376,9 +376,9 @@ const mapKeycloakActionToAccountActionIntent = (action: string | null | undefine
 const mapAccountActionIntentToStatus = (
   accountActionIntent: AccountActionIntent,
   callbackInput?: ReturnType<typeof resolveCallbackInput>
-): string => {
+): string | null => {
   if (accountActionIntent === 'update-password') {
-    return 'password-updated';
+    return callbackInput?.kcAction === 'UPDATE_PASSWORD' ? 'password-updated' : null;
   }
 
   if (callbackInput?.kcAction !== 'UPDATE_EMAIL') {
@@ -596,8 +596,13 @@ const resolveSuccessfulCallbackRedirectTarget = (
     return redirectTargetBase;
   }
 
+  const accountAction = mapAccountActionIntentToStatus(effectiveLoginState.accountActionIntent, callbackInput);
+  if (!accountAction) {
+    return redirectTargetBase;
+  }
+
   return appendAccountActionStatusToRedirectTarget(request, redirectTargetBase, {
-    accountAction: mapAccountActionIntentToStatus(effectiveLoginState.accountActionIntent, callbackInput),
+    accountAction,
   });
 };
 

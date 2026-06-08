@@ -1246,11 +1246,47 @@ describe('callbackHandler', () => {
     } as never);
 
     const response = await callbackHandler(
-      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456&kc_action=UPDATE_PASSWORD')
     );
 
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('/account?accountAction=password-updated');
+  });
+
+  it('does not report password-updated when the callback does not confirm UPDATE_PASSWORD', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+    const { handleCallback } = await import('./auth-server/callback.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
+      createdAt: Date.now() - 60_000,
+      returnTo: '/account',
+      silent: false,
+      accountActionIntent: 'update-password',
+      kind: 'platform',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? null : 'encoded-login-state'
+    );
+    vi.mocked(handleCallback).mockResolvedValueOnce({
+      sessionId: 'session-2',
+      user: { id: 'kc-user-1' },
+      expiresAt: 1_800_000_000_000,
+      loginState: null,
+      retryPerformed: false,
+    } as never);
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/account');
   });
 
   it('marks cancelled account actions on the /account return redirect', async () => {

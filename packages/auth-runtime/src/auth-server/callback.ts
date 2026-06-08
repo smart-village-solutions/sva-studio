@@ -8,7 +8,15 @@ import { client, getOidcConfig, invalidateOidcConfig } from '../oidc.js';
 import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.js';
 import { isRetryableTokenExchangeError } from '../error-guards.js';
 import { getScopeFromAuthConfig } from '../scope.js';
-import type { AuthConfig, InstanceScopeRef, LoginState, PlatformScopeRef, ScopeKind } from '../types.js';
+import {
+  ACCOUNT_ACTION_INTENTS,
+  type AccountActionIntent,
+  type AuthConfig,
+  type InstanceScopeRef,
+  type LoginState,
+  type PlatformScopeRef,
+  type ScopeKind,
+} from '../types.js';
 import { runPostLoginTasks } from './post-login-tasks.js';
 import { buildSessionUser, resolveSessionExpiry } from './shared.js';
 
@@ -21,7 +29,7 @@ type UntrustedLoginState = {
   returnTo?: string;
   silent?: boolean;
   freshReauthRequested?: boolean;
-  accountActionIntent?: 'update-password' | 'update-email';
+  accountActionIntent?: AccountActionIntent;
   kind: ScopeKind;
   instanceId?: string;
 };
@@ -38,7 +46,7 @@ const baseLoginStateSchema = z.object({
   returnTo: z.string().trim().min(1).optional(),
   silent: z.boolean().optional(),
   freshReauthRequested: z.boolean().optional(),
-  accountActionIntent: z.enum(['update-password', 'update-email']).optional(),
+  accountActionIntent: z.enum(ACCOUNT_ACTION_INTENTS).optional(),
 });
 
 const AUTH_TIME_SKEW_MS = 1_000;

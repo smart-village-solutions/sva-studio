@@ -149,7 +149,7 @@ const getLoadErrorDescription = (error: IamHttpError) => {
 export const AccountProfilePage = () => {
   const { user, isAuthenticated, isLoading: isAuthLoading, hasResolvedSession } = useAuth();
   const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
-  const accountActionStatus = React.useMemo(() => readAccountActionStatusFromLocation(), []);
+  const accountActionStatus = readAccountActionStatusFromLocation();
 
   const [profile, setProfile] = React.useState<IamUserDetail | null>(null);
   const [formValues, setFormValues] = React.useState<ProfileFormValues>(EMPTY_FORM);

@@ -214,6 +214,37 @@ describe('AccountProfilePage', () => {
     });
   });
 
+  it('re-reads the account action status when the same page is rendered with updated query params', async () => {
+    window.history.replaceState({}, '', '/account?accountAction=password-updated');
+    getMyProfileMock.mockResolvedValue({
+      data: {
+        id: 'account-1',
+        keycloakSubject: 'subject-1',
+        username: 'jane.doe',
+        displayName: 'Jane Doe',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        status: 'active',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+
+    const { rerender } = render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Das Passwort wurde aktualisiert.')).toBeTruthy();
+    });
+
+    window.history.replaceState({}, '', '/account?accountAction=email-update-finished');
+    rerender(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Die E-Mail-Änderung wurde abgeschlossen.')).toBeTruthy();
+    });
+  });
+
   it('shows an unavailable status after returning from an unsupported email update flow', async () => {
     window.history.replaceState({}, '', '/account?accountAction=email-update-unavailable');
     getMyProfileMock.mockResolvedValue({

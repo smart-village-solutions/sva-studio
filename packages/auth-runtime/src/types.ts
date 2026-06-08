@@ -13,7 +13,9 @@ export type InstanceScopeRef = {
 
 export type RuntimeScopeRef = PlatformScopeRef | InstanceScopeRef;
 
-export type AccountActionIntent = 'update-password' | 'update-email';
+export const ACCOUNT_ACTION_INTENTS = ['update-password', 'update-email'] as const;
+
+export type AccountActionIntent = (typeof ACCOUNT_ACTION_INTENTS)[number];
 
 export type SessionUser = {
   id: string;

@@ -161,6 +161,10 @@ describe('pluginWasteManagement contract', () => {
       { eventType: 'waste-management.seed.started', titleKey: 'wasteManagement.audit.seedStarted' },
       { eventType: 'waste-management.reset.started', titleKey: 'wasteManagement.audit.resetStarted' },
       {
+        eventType: 'waste-management.sync-waste-types.started',
+        titleKey: 'wasteManagement.audit.syncWasteTypesStarted',
+      },
+      {
         eventType: 'waste-management.datasource.reconfigured',
         titleKey: 'wasteManagement.audit.dataSourceInitialized',
       },

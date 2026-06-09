@@ -38,7 +38,7 @@ const instanceDbQueryMock = vi.hoisted(() =>
         request_id: 'req-1',
         latest_event_message: 'done',
         error_code: null,
-        total_count: 3,
+        total_count: 4,
       },
       {
         id: 'job-2',
@@ -50,7 +50,7 @@ const instanceDbQueryMock = vi.hoisted(() =>
         latest_event_message: 'failed',
         error_code: 'import_failed',
         error_message: 'Import request failed loudly',
-        total_count: 3,
+        total_count: 4,
       },
       {
         id: 'job-3',
@@ -62,7 +62,19 @@ const instanceDbQueryMock = vi.hoisted(() =>
         latest_event_message: 'cancelled',
         error_code: 'cancelled',
         error_message: null,
-        total_count: 3,
+        total_count: 4,
+      },
+      {
+        id: 'job-4',
+        job_type_id: 'waste-management.sync-waste-types',
+        status: 'succeeded',
+        finished_at: '2026-05-09T09:00:00.000Z',
+        updated_at: '2026-05-09T09:00:00.000Z',
+        request_id: 'req-4',
+        latest_event_message: 'synced',
+        error_code: null,
+        error_message: null,
+        total_count: 4,
       },
     ],
   }))
@@ -113,27 +125,37 @@ const listJobsMock = vi.hoisted(() => vi.fn(async () => ({
       errorPayload: { code: 'cancelled' },
     },
     {
-      id: 'job-4',
+      id: 'job-5',
       jobTypeId: 'other-job',
       status: 'succeeded',
       finishedAt: '2026-05-09T07:00:00.000Z',
       updatedAt: '2026-05-09T07:00:00.000Z',
-      requestId: 'req-4',
+      requestId: 'req-5',
       latestEvent: { message: 'ignored' },
       errorPayload: undefined,
     },
     {
-      id: 'job-5',
+      id: 'job-6',
       jobTypeId: 'waste-management.reset-data',
       status: 'running',
       finishedAt: null,
       updatedAt: '2026-05-09T06:00:00.000Z',
-      requestId: 'req-5',
+      requestId: 'req-6',
       latestEvent: { message: 'running' },
       errorPayload: undefined,
     },
+    {
+      id: 'job-4',
+      jobTypeId: 'waste-management.sync-waste-types',
+      status: 'failed',
+      finishedAt: '2026-05-09T09:00:00.000Z',
+      updatedAt: '2026-05-09T09:00:00.000Z',
+      requestId: 'req-4',
+      latestEvent: { message: 'sync failed' },
+      errorPayload: { code: 'sync_failed' },
+    },
   ],
-  total: 5,
+  total: 6,
 })));
 
 const revealFieldMock = vi.hoisted(() => vi.fn(() => 'revealed-secret'));
@@ -300,8 +322,10 @@ describe('waste-management server loaders', () => {
       ['tenant-a', expect.any(Array), '%fraction%', 10]
     );
     expect(historyOverview.audit.total).toBe(1);
-    expect(historyOverview.technical.total).toBe(4);
-    expect(historyOverview.technical.items).toEqual([
+    expect(historyOverview.technical.total).toBe(5);
+    expect(historyOverview.technical.items).toHaveLength(5);
+    expect(historyOverview.technical.items).toEqual(
+      expect.arrayContaining([
       expect.objectContaining({ id: 'job:job-1:succeeded', eventType: 'migration.succeeded' }),
       expect.objectContaining({
         id: 'job:job-2:failed',
@@ -310,8 +334,14 @@ describe('waste-management server loaders', () => {
         message: 'failed',
       }),
       expect.objectContaining({ id: 'job:job-3:cancelled', eventType: 'seed.failed' }),
+      expect.objectContaining({
+        id: 'job:job-4:succeeded',
+        eventType: 'sync.succeeded',
+        message: 'synced',
+      }),
       expect.objectContaining({ id: 'technical-audit-1' }),
-    ]);
+      ])
+    );
     expect(PoolMock).toHaveBeenCalledTimes(1);
     expect(poolFactoryInstances.at(0)?.end).not.toHaveBeenCalled();
     expect(poolFactoryInstances.at(0)?.query).toHaveBeenCalledWith('SET search_path TO "wm", public;');

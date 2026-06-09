@@ -510,6 +510,9 @@ const mapJobTypeIdToTechnicalEventType = (
   if (jobTypeId === 'waste-management.reset-data') {
     return status === 'succeeded' ? 'reset.succeeded' : 'reset.failed';
   }
+  if (jobTypeId === 'waste-management.sync-waste-types') {
+    return status === 'succeeded' ? 'sync.succeeded' : 'sync.failed';
+  }
   return null;
 };
 

@@ -29,6 +29,7 @@ export const wasteManagementPluginTranslationsENAudit = {
     importStarted: 'Started waste import',
     seedStarted: 'Started waste seed',
     resetStarted: 'Started waste reset',
+    syncWasteTypesStarted: 'Started waste type sync',
     dataSourceInitialized: 'Initialized waste data source',
   },
 } as const;

@@ -21,6 +21,9 @@ const wasteManagementTechnicalEventTypes = [
   'reset.started',
   'reset.succeeded',
   'reset.failed',
+  'sync.started',
+  'sync.succeeded',
+  'sync.failed',
 ] as const;
 
 export type WasteManagementDataSourceProvider = (typeof wasteManagementDataSourceProviders)[number];

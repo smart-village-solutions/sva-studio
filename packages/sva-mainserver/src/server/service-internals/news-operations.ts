@@ -25,18 +25,27 @@ import { listVisibleRecordsWithConfig } from './visible-list.js';
 type SvaMainserverNewsListRequest = SvaMainserverConnectionInput & SvaMainserverNewsListInput;
 
 const deriveEditorialStatusForList = (
-  item: Pick<SvaMainserverNewsItemFragment, 'visible' | 'publishedAt'>,
+  item: Pick<SvaMainserverNewsItemFragment, 'visible' | 'publishedAt' | 'publicationDate'>,
   nowIso: string
 ): 'draft' | 'scheduled' | 'published' => {
   if (item.visible === false) {
     return 'draft';
   }
 
-  return new Date(item.publishedAt).getTime() > new Date(nowIso).getTime() ? 'scheduled' : 'published';
+  const publishedAt = item.publishedAt ?? item.publicationDate ?? '';
+  if (publishedAt.trim().length === 0) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'Mainserver-News ohne Veröffentlichungsdatum erhalten.',
+      statusCode: 502,
+    });
+  }
+
+  return new Date(publishedAt).getTime() > new Date(nowIso).getTime() ? 'scheduled' : 'published';
 };
 
 const matchesNewsListFilters = (
-  item: Pick<SvaMainserverNewsItemFragment, 'visible' | 'publishedAt'>,
+  item: Pick<SvaMainserverNewsItemFragment, 'visible' | 'publishedAt' | 'publicationDate'>,
   input: SvaMainserverNewsListRequest,
   nowIso: string
 ) => {

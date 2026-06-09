@@ -16,6 +16,7 @@ import type {
   SvaMainserverConnectionStatus,
   SvaMainserverEventInput,
   SvaMainserverInstanceConfig,
+  SvaMainserverListQuery,
   SvaMainserverNewsListInput,
   SvaMainserverNewsInput,
   SvaMainserverPoiInput,

@@ -57,4 +57,24 @@ describe('job error mapper', () => {
       message: 'fatal',
     });
   });
+
+  it('treats explicitly permanent plugin causes as permanent before the final attempt', () => {
+    const error = new Error('waste_mainserver_sync_not_implemented') as Error & { cause?: unknown };
+    error.cause = {
+      category: 'permanent',
+      code: 'waste_mainserver_sync_not_implemented',
+    };
+
+    expect(createExecutionErrorPayload(baseJob, error, false)).toEqual({
+      code: 'plugin_operation_execution_failed',
+      category: 'permanent',
+      message: 'waste_mainserver_sync_not_implemented',
+      details: {
+        plugin: {
+          category: 'permanent',
+          code: 'waste_mainserver_sync_not_implemented',
+        },
+      },
+    });
+  });
 });

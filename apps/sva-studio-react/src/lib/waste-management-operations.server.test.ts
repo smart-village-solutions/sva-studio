@@ -221,11 +221,17 @@ describe('waste management operations runtime', () => {
     const runtime = createWasteManagementOperationRuntime();
 
     expect(runtime.syncWasteTypes).toEqual(expect.any(Function));
-    await expect(
-      runtime.syncWasteTypes('instance-1', {
-        operation: 'sync-waste-types',
-      })
-    ).rejects.toThrow('waste_mainserver_sync_not_implemented');
+    const syncPromise = runtime.syncWasteTypes('instance-1', {
+      operation: 'sync-waste-types',
+    });
+
+    await expect(syncPromise).rejects.toThrow('waste_mainserver_sync_not_implemented');
+    await expect(syncPromise).rejects.toMatchObject({
+      cause: {
+        category: 'permanent',
+        code: 'waste_mainserver_sync_not_implemented',
+      },
+    });
   });
 
   it('resolves interface-based waste secrets with the shared default revealSecret path', async () => {

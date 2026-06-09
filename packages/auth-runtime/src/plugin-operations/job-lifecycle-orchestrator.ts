@@ -173,14 +173,15 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
         return;
       }
 
-      const finalFailure = attempts >= maxAttempts;
+      const errorPayload = createExecutionErrorPayload(job, error, attempts >= maxAttempts);
+      const finalFailure = errorPayload.category === 'permanent';
       await stateWriter.markRetriedOrFailed({
         job,
         attempts,
         startedAt,
         workerId,
         progress: getLatestProgress(),
-        errorPayload: createExecutionErrorPayload(job, error, finalFailure),
+        errorPayload,
         finalFailure,
       });
       if (!finalFailure) {

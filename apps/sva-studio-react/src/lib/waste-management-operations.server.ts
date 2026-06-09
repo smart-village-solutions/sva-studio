@@ -168,7 +168,12 @@ export const createWasteManagementOperationRuntime = (
   },
 
   async syncWasteTypes(_instanceId, _input) {
-    throw new Error('waste_mainserver_sync_not_implemented');
+    throw new Error('waste_mainserver_sync_not_implemented', {
+      cause: {
+        category: 'permanent',
+        code: 'waste_mainserver_sync_not_implemented',
+      },
+    });
   },
 
   async resetData(instanceId, input) {

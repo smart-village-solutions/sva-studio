@@ -48,6 +48,7 @@ const technicalActionMap = {
   'waste-management.import.started': 'import.started',
   'waste-management.seed.started': 'seed.started',
   'waste-management.reset.started': 'reset.started',
+  'waste-management.sync-waste-types.started': 'sync.started',
 } as const satisfies Readonly<Record<string, WasteManagementTechnicalHistoryRecord['eventType']>>;
 
 const hasTechnicalAction = (actionId: string): actionId is keyof typeof technicalActionMap =>

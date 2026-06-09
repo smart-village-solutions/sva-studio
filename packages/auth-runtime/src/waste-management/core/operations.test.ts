@@ -19,6 +19,7 @@ const mockedGetWasteManagementImportCatalogEntry = vi.mocked(getWasteManagementI
 
 const actor: AuthenticatedRequestContext = {
   sessionId: 'session-1',
+  activeOrganizationId: 'org-1',
   user: {
     id: 'user-1',
     instanceId: 'tenant-a',
@@ -137,6 +138,21 @@ describe('waste-management operation handlers', () => {
         createToolRequest('https://studio.test/api/v1/waste-management/tools/migrations', {
           targetSchema: 'waste',
         }),
+      deps: () => ({
+        ...createDeps(),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [],
+        })),
+      }),
+      actor,
+      expectedStatus: 403,
+      expectedCode: 'forbidden',
+    },
+    {
+      label: 'sync-waste-types returns forbidden when the master-data permission is missing',
+      handler: wasteManagementOperationHandlers.startWasteManagementSyncWasteTypesInternal,
+      request: () => createToolRequest('https://studio.test/api/v1/waste-management/tools/sync-waste-types', {}),
       deps: () => ({
         ...createDeps(),
         resolvePermissions: vi.fn(async () => ({
@@ -299,6 +315,44 @@ describe('waste-management operation handlers', () => {
       expect.objectContaining({
         actorAccountId: 'account-1',
         instanceId: 'tenant-a',
+      })
+    );
+    expect(response.status).toBe(202);
+  });
+
+  it('creates a dedicated waste-type sync job payload', async () => {
+    const startPluginOperationJob = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'job-2' } }), { status: 202 }));
+
+    const response = await wasteManagementOperationHandlers.startWasteManagementSyncWasteTypesInternal(
+      createToolRequest('https://studio.test/api/v1/waste-management/tools/sync-waste-types', {}),
+      actor,
+      {
+        ...createDeps(),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [
+            {
+              action: 'waste-management.master-data.manage',
+              resourceType: 'waste-management',
+              effect: 'allow' as const,
+            },
+          ],
+        })),
+        startPluginOperationJob,
+      }
+    );
+
+    expect(startPluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
+        data: expect.objectContaining({
+          jobTypeId: 'waste-management.sync-waste-types',
+          input: {
+            operation: 'sync-waste-types',
+            keycloakSubject: 'user-1',
+            activeOrganizationId: 'org-1',
+          },
+        }),
       })
     );
     expect(response.status).toBe(202);

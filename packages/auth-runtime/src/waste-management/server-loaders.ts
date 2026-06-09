@@ -510,6 +510,9 @@ const mapJobTypeIdToTechnicalEventType = (
   if (jobTypeId === 'waste-management.reset-data') {
     return status === 'succeeded' ? 'reset.succeeded' : 'reset.failed';
   }
+  if (jobTypeId === 'waste-management.sync-waste-types') {
+    return status === 'succeeded' ? 'sync.succeeded' : 'sync.failed';
+  }
   return null;
 };
 
@@ -653,6 +656,7 @@ const loadWasteHistoryOverview = async (query: {
       'waste-management.import-data',
       'waste-management.seed-data',
       'waste-management.reset-data',
+      'waste-management.sync-waste-types',
     ] as const;
     const buildJobHistoryWhereClause = (): {
       readonly clause: string;

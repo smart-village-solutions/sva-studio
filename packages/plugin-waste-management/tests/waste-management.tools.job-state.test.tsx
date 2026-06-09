@@ -202,4 +202,134 @@ describe('useWasteTrackedJob', () => {
     expect(setLastJob).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'job-3', status: 'running' }));
     expect(refreshTechnicalHistory).toHaveBeenCalledTimes(1);
   });
+
+  it('invokes the optional terminal callback when a tracked job fails', async () => {
+    const refreshTechnicalHistory = vi.fn(async () => undefined);
+    const setLastJob = vi.fn();
+    const onTerminalJob = vi.fn();
+
+    getWasteManagementJobDetailMock.mockResolvedValue({
+      id: 'job-4',
+      instanceId: 'tenant-a',
+      pluginId: 'waste-management',
+      jobTypeId: 'waste-management.sync-waste-types',
+      queueName: 'plugin-operations',
+      status: 'failed',
+      inputPayload: { operation: 'sync-waste-types' },
+      attempts: 1,
+      maxAttempts: 5,
+      idempotencyKey: 'idem-4',
+      scheduledAt: '2026-05-10T10:00:00.000Z',
+      createdAt: '2026-05-10T10:00:00.000Z',
+      updatedAt: '2026-05-10T10:00:05.000Z',
+      finishedAt: '2026-05-10T10:00:05.000Z',
+      history: [],
+    });
+
+    renderHook(() =>
+      useWasteTrackedJob({
+        lastJob: {
+          id: 'job-4',
+          jobTypeId: 'waste-management.sync-waste-types',
+          status: 'queued',
+        } as never,
+        refreshTechnicalHistory,
+        onTerminalJob,
+        setLastJob,
+      })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(setLastJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'job-4', status: 'failed' }));
+    expect(onTerminalJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'job-4', status: 'failed' }));
+  });
+
+  it('keeps polling stable when the terminal callback identity changes between renders', async () => {
+    const refreshTechnicalHistory = vi.fn(async () => undefined);
+    const setLastJob = vi.fn();
+    const firstOnTerminalJob = vi.fn();
+    const secondOnTerminalJob = vi.fn();
+    const setIntervalSpy = vi.spyOn(window, 'setInterval');
+    const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+
+    getWasteManagementJobDetailMock
+      .mockResolvedValueOnce({
+        id: 'job-5',
+        instanceId: 'tenant-a',
+        pluginId: 'waste-management',
+        jobTypeId: 'waste-management.sync-waste-types',
+        queueName: 'plugin-operations',
+        status: 'running',
+        inputPayload: { operation: 'sync-waste-types' },
+        attempts: 1,
+        maxAttempts: 5,
+        idempotencyKey: 'idem-5',
+        scheduledAt: '2026-05-10T10:00:00.000Z',
+        createdAt: '2026-05-10T10:00:00.000Z',
+        updatedAt: '2026-05-10T10:00:05.000Z',
+        history: [],
+      })
+      .mockResolvedValueOnce({
+        id: 'job-5',
+        instanceId: 'tenant-a',
+        pluginId: 'waste-management',
+        jobTypeId: 'waste-management.sync-waste-types',
+        queueName: 'plugin-operations',
+        status: 'failed',
+        inputPayload: { operation: 'sync-waste-types' },
+        attempts: 1,
+        maxAttempts: 5,
+        idempotencyKey: 'idem-5',
+        scheduledAt: '2026-05-10T10:00:00.000Z',
+        createdAt: '2026-05-10T10:00:00.000Z',
+        updatedAt: '2026-05-10T10:00:10.000Z',
+        finishedAt: '2026-05-10T10:00:10.000Z',
+        history: [],
+      });
+
+    const { rerender } = renderHook(
+      ({ onTerminalJob }) =>
+        useWasteTrackedJob({
+          lastJob: {
+            id: 'job-5',
+            jobTypeId: 'waste-management.sync-waste-types',
+            status: 'queued',
+          } as never,
+          refreshTechnicalHistory,
+          onTerminalJob,
+          setLastJob,
+        }),
+      {
+        initialProps: {
+          onTerminalJob: firstOnTerminalJob,
+        },
+      }
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    expect(clearIntervalSpy).not.toHaveBeenCalled();
+
+    rerender({
+      onTerminalJob: secondOnTerminalJob,
+    });
+
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    expect(clearIntervalSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(10_000);
+      await Promise.resolve();
+    });
+
+    expect(firstOnTerminalJob).not.toHaveBeenCalled();
+    expect(secondOnTerminalJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'job-5', status: 'failed' }));
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+  });
 });

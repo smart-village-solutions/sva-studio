@@ -15,15 +15,21 @@ const createWasteManagementApiError = (code: string, message: string) => new Was
 
 const createIdempotencyKey = () => crypto.randomUUID();
 
-export const requestWasteManagementItem = async <T>(input: {
+export const requestWasteManagementResponse = async <T>(input: {
   readonly url: string;
   readonly init?: RequestInit;
-}): Promise<T> => {
-  const response = await requestMainserverJson<ApiItemResponse<T>, WasteManagementApiError>({
+}): Promise<T> =>
+  await requestMainserverJson<T, WasteManagementApiError>({
     url: input.url,
     init: input.init,
     errorFactory: createWasteManagementApiError,
   });
+
+export const requestWasteManagementItem = async <T>(input: {
+  readonly url: string;
+  readonly init?: RequestInit;
+}): Promise<T> => {
+  const response = await requestWasteManagementResponse<ApiItemResponse<T>>(input);
 
   return response.data;
 };
@@ -43,6 +49,20 @@ export const requestWasteManagementMutation = <T>(
   method = 'POST'
 ) =>
   requestWasteManagementItem<T>({
+    url,
+    init: {
+      method,
+      headers: createMainserverJsonRequestHeaders(),
+      body: body === undefined ? undefined : JSON.stringify(body),
+    },
+  });
+
+export const requestWasteManagementMutationResponse = <T>(
+  url: string,
+  body?: Readonly<Record<string, unknown>>,
+  method = 'POST'
+) =>
+  requestWasteManagementResponse<T>({
     url,
     init: {
       method,

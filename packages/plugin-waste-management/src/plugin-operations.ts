@@ -103,6 +103,22 @@ const wasteManagementPluginJobTypes = [
       detailKeys: ['failed-step', 'failed-table'],
     },
   },
+  {
+    jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncWasteTypes,
+    queue: wasteManagementOperationsContract.queueName,
+    displayName: 'Waste-Typen mit Mainserver synchronisieren',
+    progress: {
+      phaseKeys: ['waste-management.sync-waste-types', 'waste-management.completed'],
+      stepKeys: ['build-static-content', 'push-static-content'],
+    },
+    result: {
+      summaryKeys: ['durationMs'],
+      detailKeys: ['staticContentName', 'version', 'fractionCount'],
+    },
+    errors: {
+      detailKeys: ['failed-step'],
+    },
+  },
 ] satisfies readonly PluginJobTypeDefinition[];
 
 const wasteManagementPluginImportProfiles = [

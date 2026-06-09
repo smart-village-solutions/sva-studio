@@ -7,6 +7,9 @@ const readPluginErrorCause = (error: Error): Record<string, unknown> | undefined
     : undefined;
 };
 
+const hasPermanentPluginCause = (error: Error): boolean =>
+  readPluginErrorCause(error)?.category === 'permanent';
+
 export const createMissingHandlerPayload = (
   job: Pick<StudioJobRecord, 'source' | 'jobTypeId' | 'pluginId'>
 ): StudioJobError => ({
@@ -27,7 +30,7 @@ export const createExecutionErrorPayload = (
   finalFailure: boolean
 ): StudioJobError => ({
   code: job.source === 'plugin' ? 'plugin_operation_execution_failed' : 'studio_job_execution_failed',
-  category: finalFailure ? 'permanent' : 'retryable',
+  category: error instanceof Error && hasPermanentPluginCause(error) ? 'permanent' : finalFailure ? 'permanent' : 'retryable',
   message: error instanceof Error ? error.message : String(error),
   details:
     error instanceof Error

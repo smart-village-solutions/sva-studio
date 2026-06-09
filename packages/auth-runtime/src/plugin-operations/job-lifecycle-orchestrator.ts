@@ -91,6 +91,21 @@ const createHandlerContext = async (
   };
 };
 
+const createOrchestratorStateWriter = (
+  deps: Pick<OrchestratorDeps, 'now'>,
+  repository: RepositoryPort,
+  eventWriter: ReturnType<typeof createJobEventWriter>
+) =>
+  createJobStateWriter({
+    updateJobState: repository.updateJobState,
+    appendStartedEvent: eventWriter.appendStartedEvent,
+    appendSucceededEvent: eventWriter.appendSucceededEvent,
+    appendRetriedEvent: eventWriter.appendRetriedEvent,
+    appendFailedEvent: eventWriter.appendFailedEvent,
+    appendCancelledEvent: eventWriter.appendCancelledEvent,
+    now: deps.now,
+  });
+
 export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
   run: async ({ instanceId, jobId, attempts, maxAttempts }: RunInput): Promise<void> => {
     const repository = await deps.loadRepository(instanceId);
@@ -117,15 +132,7 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
       attempts,
       workerId
     );
-    const stateWriter = createJobStateWriter({
-      updateJobState: repository.updateJobState,
-      appendStartedEvent: eventWriter.appendStartedEvent,
-      appendSucceededEvent: eventWriter.appendSucceededEvent,
-      appendRetriedEvent: eventWriter.appendRetriedEvent,
-      appendFailedEvent: eventWriter.appendFailedEvent,
-      appendCancelledEvent: eventWriter.appendCancelledEvent,
-      now: deps.now,
-    });
+    const stateWriter = createOrchestratorStateWriter(deps, repository, eventWriter);
 
     try {
       await stateWriter.markRunning({
@@ -173,14 +180,15 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
         return;
       }
 
-      const finalFailure = attempts >= maxAttempts;
+      const errorPayload = createExecutionErrorPayload(job, error, attempts >= maxAttempts);
+      const finalFailure = errorPayload.category === 'permanent';
       await stateWriter.markRetriedOrFailed({
         job,
         attempts,
         startedAt,
         workerId,
         progress: getLatestProgress(),
-        errorPayload: createExecutionErrorPayload(job, error, finalFailure),
+        errorPayload,
         finalFailure,
       });
       if (!finalFailure) {

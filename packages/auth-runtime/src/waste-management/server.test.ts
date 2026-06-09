@@ -48,6 +48,7 @@ const coreHandlerMocks = vi.hoisted(() => ({
   startWasteManagementMigrationsInternal: vi.fn(async () => new Response('start-migrations')),
   startWasteManagementResetInternal: vi.fn(async () => new Response('start-reset')),
   startWasteManagementSeedInternal: vi.fn(async () => new Response('start-seed')),
+  startWasteManagementSyncWasteTypesInternal: vi.fn(async () => new Response('start-sync-waste-types')),
   updateWasteManagementCityInternal: vi.fn(async () => new Response('update-city')),
   updateWasteManagementCollectionLocationInternal: vi.fn(async () => new Response('update-location')),
   updateWasteManagementFractionInternal: vi.fn(async () => new Response('update-fraction')),
@@ -234,6 +235,7 @@ describe('wasteManagementHandlers', () => {
         internal: coreHandlerMocks.createWasteManagementFractionInternal,
         deps: {
           ...sharedWasteManagementDepsMock,
+          loadMasterDataFractionsOverview: loaderMocks.loadMasterDataFractionsOverview,
           saveWasteFraction: saverMocks.saveWasteFraction,
           loadWasteFractionById: loaderMocks.loadWasteFractionById,
         },
@@ -243,6 +245,7 @@ describe('wasteManagementHandlers', () => {
         internal: coreHandlerMocks.updateWasteManagementFractionInternal,
         deps: {
           ...sharedWasteManagementDepsMock,
+          loadMasterDataFractionsOverview: loaderMocks.loadMasterDataFractionsOverview,
           saveWasteFraction: saverMocks.saveWasteFraction,
           loadWasteFractionById: loaderMocks.loadWasteFractionById,
         },
@@ -508,6 +511,10 @@ describe('wasteManagementHandlers', () => {
       {
         handlerKey: 'startSeed',
         internal: coreHandlerMocks.startWasteManagementSeedInternal,
+      },
+      {
+        handlerKey: 'startSyncWasteTypes',
+        internal: coreHandlerMocks.startWasteManagementSyncWasteTypesInternal,
       },
       {
         handlerKey: 'startReset',

@@ -105,7 +105,7 @@ describe('iam-governance/waste-audit-read-models', () => {
   it('maps the technical waste audit subset into the technical history shape', async () => {
     const client = buildClient(
       {
-        rowCount: 2,
+        rowCount: 3,
         rows: [
           {
             id: 'log-2',
@@ -134,11 +134,24 @@ describe('iam-governance/waste-audit-read-models', () => {
               result: 'success',
             },
           },
+          {
+            id: 'log-0',
+            event_type: 'plugin_action_authorized',
+            created_at: '2026-05-09T11:55:00.000Z',
+            account_id: 'account-0',
+            request_id: 'req-0',
+            trace_id: 'trace-0',
+            payload: {
+              action_id: 'waste-management.sync-waste-types.started',
+              action_namespace: 'waste-management',
+              result: 'success',
+            },
+          },
         ],
       },
       {
         rowCount: 1,
-        rows: [{ total: 2 }],
+        rows: [{ total: 3 }],
       }
     );
 
@@ -148,7 +161,7 @@ describe('iam-governance/waste-audit-read-models', () => {
       pageSize: 20,
     });
 
-    expect(result.total).toBe(2);
+    expect(result.total).toBe(3);
     expect(result.items).toEqual([
       expect.objectContaining({
         id: 'log-2',
@@ -159,6 +172,11 @@ describe('iam-governance/waste-audit-read-models', () => {
       expect.objectContaining({
         id: 'log-1',
         eventType: 'import.started',
+        outcome: 'started',
+      }),
+      expect.objectContaining({
+        id: 'log-0',
+        eventType: 'sync.started',
         outcome: 'started',
       }),
     ]);

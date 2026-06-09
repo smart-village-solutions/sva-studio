@@ -1,4 +1,5 @@
 import type {
+  StudioJobResponse,
   WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteFractionRecord,
@@ -21,20 +22,35 @@ import type {
   UpdateWasteManagementRegionInput,
   UpdateWasteManagementStreetInput,
 } from './waste-management.api.types.js';
-import { requestWasteManagementMutation } from './waste-management.api.shared.js';
+import {
+  requestWasteManagementMutation,
+  requestWasteManagementMutationResponse,
+} from './waste-management.api.shared.js';
+
+type WasteFractionSyncStatus = 'queued' | 'failed';
+
+export type WasteFractionMutationResponse<T> = Readonly<{
+  data: T;
+  requestId?: string;
+  syncStatus?: WasteFractionSyncStatus;
+  syncJob?: StudioJobResponse['data'];
+}>;
 
 export const createWasteManagementFraction = async (
   input: CreateWasteManagementFractionInput
-): Promise<WasteFractionRecord> => requestWasteManagementMutation('/api/v1/waste-management/fractions', input);
+): Promise<WasteFractionMutationResponse<WasteFractionRecord>> =>
+  requestWasteManagementMutationResponse('/api/v1/waste-management/fractions', input);
 
 export const updateWasteManagementFraction = async (
   fractionId: string,
   input: UpdateWasteManagementFractionInput
-): Promise<WasteFractionRecord> =>
-  requestWasteManagementMutation(`/api/v1/waste-management/fractions/${encodeURIComponent(fractionId)}`, input, 'PUT');
+): Promise<WasteFractionMutationResponse<WasteFractionRecord>> =>
+  requestWasteManagementMutationResponse(`/api/v1/waste-management/fractions/${encodeURIComponent(fractionId)}`, input, 'PUT');
 
-export const deleteWasteManagementFraction = async (fractionId: string): Promise<{ readonly id: string }> =>
-  requestWasteManagementMutation(`/api/v1/waste-management/fractions/${encodeURIComponent(fractionId)}`, undefined, 'DELETE');
+export const deleteWasteManagementFraction = async (
+  fractionId: string
+): Promise<WasteFractionMutationResponse<{ readonly id: string }>> =>
+  requestWasteManagementMutationResponse(`/api/v1/waste-management/fractions/${encodeURIComponent(fractionId)}`, undefined, 'DELETE');
 
 export const createWasteManagementRegion = async (
   input: CreateWasteManagementRegionInput

@@ -276,6 +276,58 @@ describe('plugin operation runner task list', () => {
     );
   });
 
+  it('marks a job as failed immediately for explicitly permanent execution errors', async () => {
+    const updateJobState = vi.fn(async () => null);
+    const appendJobEvent = vi.fn(async () => null);
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobById: vi.fn(async () => baseJob),
+        updateJobState,
+        appendJobEvent,
+      })
+    );
+
+    const handler = vi.fn(async () => {
+      throw new Error('waste_mainserver_sync_not_implemented', {
+        cause: {
+          category: 'permanent',
+          code: 'waste_mainserver_sync_not_implemented',
+        },
+      });
+    });
+
+    const taskList = createPluginOperationTaskList(
+      () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
+    );
+
+    await expect(
+      taskList[studioJobTaskIdentifier]?.(
+        { instanceId: 'tenant-a', jobId: 'job-1' },
+        {
+          job: { attempts: 1, max_attempts: 5 },
+        } as never
+      )
+    ).resolves.toBeUndefined();
+
+    expect(updateJobState).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        jobId: 'job-1',
+        status: 'failed',
+        errorPayload: expect.objectContaining({
+          code: 'plugin_operation_execution_failed',
+          category: 'permanent',
+          details: {
+            plugin: {
+              category: 'permanent',
+              code: 'waste_mainserver_sync_not_implemented',
+            },
+          },
+        }),
+      })
+    );
+  });
+
   it('marks a job as cancelled when the handler cooperatively aborts', async () => {
     const updateJobState = vi.fn(async () => null);
     const appendJobEvent = vi.fn(async () => null);

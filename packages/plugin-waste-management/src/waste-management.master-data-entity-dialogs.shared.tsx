@@ -16,12 +16,14 @@ import type {
   UseFormReset,
 } from 'react-hook-form';
 
+import type { StatusMessage } from './waste-management.page.support.js';
+
 export type BaseProps<TForm> = {
   readonly open: boolean;
   readonly mode: 'create' | 'edit';
   readonly form: TForm;
   readonly saving: boolean;
-  readonly message: { readonly kind: 'success' | 'error'; readonly text: string } | null;
+  readonly message: StatusMessage | null;
   readonly onOpenChange: (open: boolean) => void;
   readonly onChange: (patch: Partial<TForm>) => void;
   readonly onBeforeSubmit?: () => void;

@@ -1,7 +1,17 @@
+import type { WasteFractionRecord } from '@sva/core';
+
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
-import { asApiItem, createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
+import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
+import {
+  createWasteFractionMutationResponse,
+  enqueueWasteTypesSyncAfterFractionMutation,
+  normalizeWasteFractionReminderConfig,
+  normalizeWasteFractionShortLabel,
+  validateUniqueActiveWasteFractionShortLabel,
+  withWasteFractionSyncMetadata,
+} from './fractions-support.js';
 import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementMasterDataSchemas } from './schemas.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
@@ -9,46 +19,6 @@ import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, normalizeOptionalString, requireActorInstanceId, requireDeps } from './utils.js';
 
 const { createWasteFractionSchema, updateWasteFractionSchema } = wasteManagementMasterDataSchemas;
-
-const normalizeWasteFractionReminderConfig = (input: {
-  readonly reminderCount: 'none' | 'once' | 'twice';
-  readonly firstReminderMaxLeadDays?: number;
-  readonly secondReminderMaxLeadDays?: number;
-  readonly reminderChannelPushEnabled: boolean;
-  readonly reminderChannelEmailEnabled: boolean;
-  readonly reminderChannelCalendarEnabled: boolean;
-}) => {
-  if (input.reminderCount === 'none') {
-    return {
-      reminderCount: 'none' as const,
-      firstReminderMaxLeadDays: undefined,
-      secondReminderMaxLeadDays: undefined,
-      reminderChannelPushEnabled: false,
-      reminderChannelEmailEnabled: false,
-      reminderChannelCalendarEnabled: false,
-    };
-  }
-
-  if (input.reminderCount === 'once') {
-    return {
-      reminderCount: 'once' as const,
-      firstReminderMaxLeadDays: input.firstReminderMaxLeadDays,
-      secondReminderMaxLeadDays: undefined,
-      reminderChannelPushEnabled: input.reminderChannelPushEnabled,
-      reminderChannelEmailEnabled: input.reminderChannelEmailEnabled,
-      reminderChannelCalendarEnabled: input.reminderChannelCalendarEnabled,
-    };
-  }
-
-  return {
-    reminderCount: 'twice' as const,
-    firstReminderMaxLeadDays: input.firstReminderMaxLeadDays,
-    secondReminderMaxLeadDays: input.secondReminderMaxLeadDays,
-    reminderChannelPushEnabled: input.reminderChannelPushEnabled,
-    reminderChannelEmailEnabled: input.reminderChannelEmailEnabled,
-    reminderChannelCalendarEnabled: input.reminderChannelCalendarEnabled,
-  };
-};
 
 export const wasteManagementFractionHandlers = {
   createWasteManagementFractionInternal: async (
@@ -76,9 +46,20 @@ export const wasteManagementFractionHandlers = {
     if (!parsed.ok) {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
+    const normalizedShortLabel = normalizeWasteFractionShortLabel(parsed.data.pdfShortLabel);
+    const duplicateShortLabelError = await validateUniqueActiveWasteFractionShortLabel(
+      deps,
+      instanceId,
+      normalizedShortLabel,
+      parsed.data.active,
+      requestId
+    );
+    if (duplicateShortLabelError) {
+      return duplicateShortLabelError;
+    }
     const reminderConfig = normalizeWasteFractionReminderConfig(parsed.data);
 
-    return runWasteCreateMutation({
+    const response = await runWasteCreateMutation({
       deps,
       ctx,
       instanceId,
@@ -96,6 +77,7 @@ export const wasteManagementFractionHandlers = {
         requireDeps(deps.saveWasteFraction, 'saveWasteFraction')(instanceId, {
           id: parsed.data.id,
           name: parsed.data.name.trim(),
+          pdfShortLabel: normalizedShortLabel,
           translations: parsed.data.translations,
           containerSize: normalizeOptionalString(parsed.data.containerSize),
           color: parsed.data.color,
@@ -110,6 +92,13 @@ export const wasteManagementFractionHandlers = {
         }),
       loadSaved: () => requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById')(instanceId, parsed.data.id),
     });
+
+    if (response.status >= 400) {
+      return response;
+    }
+
+    const syncMetadata = await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+    return await withWasteFractionSyncMetadata<WasteFractionRecord>(response, syncMetadata);
   },
   updateWasteManagementFractionInternal: async (
     request: Request,
@@ -141,11 +130,27 @@ export const wasteManagementFractionHandlers = {
     if (!parsed.ok) {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
+    const normalizedShortLabel = normalizeWasteFractionShortLabel(parsed.data.pdfShortLabel);
     const reminderConfig = normalizeWasteFractionReminderConfig(parsed.data);
 
     const loadWasteFraction = requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById');
+    const existing = await loadWasteFraction(instanceId, fractionId);
+    if (!existing) {
+      return createApiError(404, 'not_found', 'Die Waste-Fraktion wurde nicht gefunden.', requestId);
+    }
+    const duplicateShortLabelError = await validateUniqueActiveWasteFractionShortLabel(
+      deps,
+      instanceId,
+      normalizedShortLabel,
+      parsed.data.active,
+      requestId,
+      fractionId
+    );
+    if (duplicateShortLabelError) {
+      return duplicateShortLabelError;
+    }
 
-    return runWasteUpdateMutation({
+    const response = await runWasteUpdateMutation({
       deps,
       ctx,
       instanceId,
@@ -160,11 +165,12 @@ export const wasteManagementFractionHandlers = {
         verificationFailed: 'Die Waste-Fraktion konnte nicht verifiziert werden.',
         persistenceFailed: 'Die Waste-Fraktion konnte nicht gespeichert werden.',
       },
-      loadExisting: () => loadWasteFraction(instanceId, fractionId),
+      loadExisting: async () => existing,
       save: () =>
         requireDeps(deps.saveWasteFraction, 'saveWasteFraction')(instanceId, {
           id: fractionId,
           name: parsed.data.name.trim(),
+          pdfShortLabel: normalizedShortLabel,
           translations: parsed.data.translations,
           containerSize: normalizeOptionalString(parsed.data.containerSize),
           color: parsed.data.color,
@@ -179,6 +185,13 @@ export const wasteManagementFractionHandlers = {
         }),
       loadSaved: () => loadWasteFraction(instanceId, fractionId),
     });
+
+    if (response.status >= 400) {
+      return response;
+    }
+
+    const syncMetadata = await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+    return await withWasteFractionSyncMetadata<WasteFractionRecord>(response, syncMetadata);
   },
   deleteWasteManagementFractionInternal: async (
     request: Request,
@@ -225,10 +238,8 @@ export const wasteManagementFractionHandlers = {
       });
 
       await updateWasteVisibleStatus(deps, instanceId, 'success');
-      return new Response(JSON.stringify(asApiItem({ id: fractionId }, requestId)), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const syncMetadata = await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+      return createWasteFractionMutationResponse(200, { id: fractionId }, requestId, syncMetadata);
     } catch (error) {
       if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
         throw error;

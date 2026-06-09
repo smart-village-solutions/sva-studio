@@ -110,6 +110,7 @@ describe('WasteMasterDataFractionsContent', () => {
     const fraction = {
       id: 'fraction-1',
       name: 'Biotonne',
+      pdfShortLabel: 'BIO',
       description: 'Baseline-Fraktion für Seed-Daten',
       color: '#16A34A',
       containerSize: '120l',
@@ -144,22 +145,30 @@ describe('WasteMasterDataFractionsContent', () => {
     expect(tableProps.sorting).toEqual([{ id: 'nameWithContainerSize', desc: false }]);
     expect((tableProps.columns as Array<{ id: string; sortable?: boolean }>).map((column) => column.id)).toEqual([
       'nameWithContainerSize',
+      'pdfShortLabel',
       'color',
       'description',
       'status',
     ]);
-    expect((tableProps.columns as Array<{ id: string; sortable?: boolean }>).every((column) => column.sortable === true)).toBe(true);
+    expect((tableProps.columns as Array<{ id: string; sortable?: boolean }>).map((column) => column.sortable ?? false)).toEqual([
+      true,
+      false,
+      true,
+      true,
+      true,
+    ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'sort-color' }));
     const updatedTableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
     expect(updatedTableProps.sorting).toEqual([{ id: 'color', desc: true }]);
     expect(onFractionsSortChange).toHaveBeenCalledWith('color', 'desc');
 
-    const [nameColumn, colorColumn, descriptionColumn, statusColumn] = tableProps.columns as Array<{
+    const [nameColumn, pdfShortLabelColumn, colorColumn, descriptionColumn, statusColumn] = tableProps.columns as Array<{
       id: string;
       cell: (row: typeof fraction) => React.ReactNode;
     }>;
     expect(nameColumn.cell(fraction)).toBeTruthy();
+    expect(pdfShortLabelColumn.cell(fraction)).toBeTruthy();
     expect(colorColumn.cell(fraction)).toBeTruthy();
     expect(descriptionColumn.cell(fraction)).toBeTruthy();
     expect(statusColumn.cell(fraction)).toBeTruthy();
@@ -211,6 +220,7 @@ describe('WasteMasterDataFractionsContent', () => {
       {
         id: 'fraction-1',
         name: 'Biotonne',
+        pdfShortLabel: 'BIO',
         description: 'Bio',
         color: '#16A34A',
         containerSize: '240l',
@@ -219,6 +229,7 @@ describe('WasteMasterDataFractionsContent', () => {
       {
         id: 'fraction-2',
         name: 'Papier',
+        pdfShortLabel: undefined,
         description: undefined,
         color: '#2563EB',
         containerSize: undefined,
@@ -258,10 +269,12 @@ describe('WasteMasterDataFractionsContent', () => {
     expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual(['fraction-2', 'fraction-1']);
     expect(screen.queryByRole('button', { name: 'masterData.fractions.filters.reset' })).toBeNull();
 
-    const [, , , statusColumn] = tableProps.columns as Array<{
+    const [, pdfShortLabelColumn, , , statusColumn] = tableProps.columns as Array<{
       id: string;
       cell: (row: (typeof fractions)[number]) => React.ReactNode;
     }>;
+    expect(pdfShortLabelColumn.cell(fractions[0]!)).toBeTruthy();
+    expect(pdfShortLabelColumn.cell(fractions[1]!)).toBeNull();
     const rowActions = tableProps.rowActions as (row: (typeof fractions)[number]) => React.ReactNode;
     render(
       <div>

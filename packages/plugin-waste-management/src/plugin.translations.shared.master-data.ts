@@ -46,7 +46,15 @@ type MasterDataFractionsCopy = Readonly<{
   dialog: CrudDialogCopy;
   deleteDialog: Readonly<Record<string, string>>;
   statusDialog: Readonly<Record<string, string>>;
-  messages: Readonly<CrudMessagesCopy & { deleteSuccess: string; deleteError: string; deleteForbidden: string; deleteConflict: string }>;
+  messages: Readonly<
+    CrudMessagesCopy & {
+      saveConflict: string;
+      deleteSuccess: string;
+      deleteError: string;
+      deleteForbidden: string;
+      deleteConflict: string;
+    }
+  >;
 }>;
 
 type MasterDataFractionsCreateViewCopy = Readonly<{
@@ -66,6 +74,7 @@ type MasterDataFractionsCreateViewCopy = Readonly<{
     description: string;
     translationDe: string;
     translationEn: string;
+    pdfShortLabel: string;
     containerSize: string;
     color: string;
     active: string;
@@ -76,6 +85,7 @@ type MasterDataFractionsCreateViewCopy = Readonly<{
   }>;
   validation: Readonly<{
     nameRequired: string;
+    pdfShortLabelRequired: string;
     colorRequired: string;
   }>;
   meta: Readonly<{

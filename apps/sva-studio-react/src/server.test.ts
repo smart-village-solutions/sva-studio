@@ -190,6 +190,38 @@ describe('server transport', () => {
     await expect(response.text()).resolves.toBe('plain');
   });
 
+  it('refreshes plugin operation handlers on subsequent development requests without restarting the worker', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('plain', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(startFetch);
+    withRequestContextMock.mockImplementation(async (_input, callback) => callback());
+    getWorkspaceContextMock.mockReturnValue({ requestId: 'req-refresh' });
+    createSdkLoggerMock.mockReturnValue({ info: vi.fn() });
+    createServerFunctionRequestDiagnosticsMock.mockReturnValue({
+      isServerFnRequest: false,
+      requestId: 'req-refresh',
+    });
+
+    const mod = await import('./server');
+
+    await mod.default.fetch(new Request('http://localhost:3000/admin/users'));
+    await Promise.resolve();
+    const registrationCountAfterFirstRequest = registerStudioPluginOperationHandlersMock.mock.calls.length;
+    await mod.default.fetch(new Request('http://localhost:3000/admin/users?page=2'));
+    await Promise.resolve();
+
+    expect(registrationCountAfterFirstRequest).toBeGreaterThanOrEqual(1);
+    expect(registerStudioPluginOperationHandlersMock.mock.calls.length).toBeGreaterThan(registrationCountAfterFirstRequest);
+    expect(ensurePluginOperationWorkerStartedMock).toHaveBeenCalledTimes(1);
+    expect(startFetch).toHaveBeenCalledTimes(2);
+  });
+
   it('logs routed server-function requests in development', async () => {
     vi.stubEnv('NODE_ENV', 'development');
 

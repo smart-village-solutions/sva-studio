@@ -4,6 +4,7 @@ import {
   createWasteManagementFraction,
   createWasteManagementRegion,
   deleteWasteManagementFraction,
+  type WasteFractionMutationResponse,
   updateWasteManagementFraction,
   updateWasteManagementRegion,
 } from './waste-management.api.js';
@@ -39,7 +40,9 @@ const setFractionSaveErrorMessage = (ctx: FractionRegionSubmissionHelperContext,
     text:
       code === 'forbidden'
         ? ctx.pt('masterData.fractions.messages.saveForbidden')
-        : ctx.pt('masterData.fractions.messages.saveError'),
+        : code === 'conflict'
+          ? ctx.pt('masterData.fractions.messages.saveConflict')
+          : ctx.pt('masterData.fractions.messages.saveError'),
   });
 };
 
@@ -54,6 +57,24 @@ const setRegionSaveErrorMessage = (ctx: FractionRegionSubmissionHelperContext, e
   });
 };
 
+const applyFractionSyncResult = <T>(
+  ctx: FractionRegionSubmissionHelperContext,
+  response: WasteFractionMutationResponse<T>
+) => {
+  if (response.syncStatus === 'queued' && response.syncJob) {
+    ctx.state.setTrackedSyncWasteTypesJob(response.syncJob);
+    return true;
+  }
+
+  ctx.state.setTrackedSyncWasteTypesJob(null);
+  ctx.state.setMessage({
+    kind: 'warning',
+    text: ctx.pt('masterData.fractions.messages.syncWarning'),
+    retryAction: 'sync-waste-types',
+  });
+  return false;
+};
+
 export const createSubmitFractionHandler =
   (ctx: FractionRegionSubmissionHelperContext) =>
   async (event: React.FormEvent<HTMLFormElement>, mode = ctx.state.dialogMode) => {
@@ -62,22 +83,24 @@ export const createSubmitFractionHandler =
     ctx.state.setMessage(null);
     ctx.state.setLastOutcome(null);
     try {
-      if (mode === 'create') {
-        await createWasteManagementFraction(wasteMasterDataInputMappers.toCreateFractionInput(ctx.state.fractionForm));
-      } else {
-        await updateWasteManagementFraction(
-          ctx.state.fractionForm.id,
-          wasteMasterDataInputMappers.toUpdateFractionInput(ctx.state.fractionForm)
-        );
-      }
+      const response =
+        mode === 'create'
+          ? await createWasteManagementFraction(wasteMasterDataInputMappers.toCreateFractionInput(ctx.state.fractionForm))
+          : await updateWasteManagementFraction(
+              ctx.state.fractionForm.id,
+              wasteMasterDataInputMappers.toUpdateFractionInput(ctx.state.fractionForm)
+            );
+
       await ctx.loadOverview(true);
+      const syncStarted = applyFractionSyncResult(ctx, response);
       applySuccess(
         () => ctx.state.setDialogOpen(false),
         ctx.state.setMessage,
         mode === 'create'
           ? ctx.pt('masterData.fractions.messages.createSuccess')
           : ctx.pt('masterData.fractions.messages.updateSuccess'),
-        () => ctx.state.setLastOutcome(mode === 'create' ? 'fraction-create-success' : 'fraction-update-success')
+        () => ctx.state.setLastOutcome(mode === 'create' ? 'fraction-create-success' : 'fraction-update-success'),
+        syncStarted
       );
     } catch (error) {
       setFractionSaveErrorMessage(ctx, error);
@@ -91,9 +114,12 @@ export const createDeleteFractionHandler = (ctx: FractionRegionSubmissionHelperC
   ctx.state.setMessage(null);
   ctx.state.setLastOutcome(null);
   try {
-    await deleteWasteManagementFraction(fractionId);
+    const response = await deleteWasteManagementFraction(fractionId);
     await ctx.loadOverview(true);
-    ctx.state.setMessage({ kind: 'success', text: ctx.pt('masterData.fractions.messages.deleteSuccess') });
+    const syncStarted = applyFractionSyncResult(ctx, response);
+    if (syncStarted) {
+      ctx.state.setMessage({ kind: 'success', text: ctx.pt('masterData.fractions.messages.deleteSuccess') });
+    }
   } catch (error) {
     setDeleteErrorMessage(ctx, error);
   } finally {
@@ -108,20 +134,30 @@ export const createDeleteFractionsHandler = (ctx: FractionRegionSubmissionHelper
   ctx.state.setLastOutcome(null);
   try {
     const results = await Promise.allSettled(fractionIds.map((fractionId) => deleteWasteManagementFraction(fractionId)));
-    const deletedCount = results.filter((result) => result.status === 'fulfilled').length;
+    const fulfilledResults = results.filter(
+      (result): result is PromiseFulfilledResult<WasteFractionMutationResponse<{ readonly id: string }>> =>
+        result.status === 'fulfilled'
+    );
+    const deletedCount = fulfilledResults.length;
     const failedResults = results.filter((result) => result.status === 'rejected');
     if (deletedCount > 0) {
       await ctx.loadOverview(true);
     }
     if (failedResults.length === 0) {
-      ctx.state.setMessage({ kind: 'success', text: ctx.pt('masterData.fractions.messages.deleteSuccess') });
+      const syncStarted = applyFractionSyncResult(ctx, fulfilledResults[0].value);
+      if (syncStarted) {
+        ctx.state.setMessage({ kind: 'success', text: ctx.pt('masterData.fractions.messages.deleteSuccess') });
+      }
       return;
     }
     if (deletedCount > 0) {
-      ctx.state.setMessage({
-        kind: 'success',
-        text: ctx.pt('masterData.fractions.messages.deletePartialSuccess', { count: deletedCount, total: fractionIds.length }),
-      });
+      const syncStarted = applyFractionSyncResult(ctx, fulfilledResults[0].value);
+      if (syncStarted) {
+        ctx.state.setMessage({
+          kind: 'success',
+          text: ctx.pt('masterData.fractions.messages.deletePartialSuccess', { count: deletedCount, total: fractionIds.length }),
+        });
+      }
       return;
     }
     setDeleteErrorMessage(ctx, failedResults[0]?.reason);
@@ -138,7 +174,7 @@ export const createSetFractionActiveHandler = (ctx: FractionRegionSubmissionHelp
   ctx.state.setMessage(null);
   ctx.state.setLastOutcome(null);
   try {
-    await updateWasteManagementFraction(
+    const response = await updateWasteManagementFraction(
       fraction.id,
       wasteMasterDataInputMappers.toUpdateFractionInput({
         ...wasteMasterDataFormMappers.fractionToForm(fraction),
@@ -146,6 +182,7 @@ export const createSetFractionActiveHandler = (ctx: FractionRegionSubmissionHelp
       })
     );
     await ctx.loadOverview(true);
+    applyFractionSyncResult(ctx, response);
   } catch (error) {
     setFractionSaveErrorMessage(ctx, error);
   } finally {

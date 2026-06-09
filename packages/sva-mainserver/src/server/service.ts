@@ -19,6 +19,7 @@ import type {
   SvaMainserverListQuery,
   SvaMainserverNewsInput,
   SvaMainserverPoiInput,
+  SvaMainserverStaticContentInput,
 } from '../types.js';
 import { loadSvaMainserverInstanceConfig } from './config-store.js';
 import { createAccessTokenProvider } from './service-internals/access-token-provider.js';
@@ -29,6 +30,7 @@ import { mapCategory } from './service-internals/mappers-shared.js';
 import { createNewsOperations } from './service-internals/news-operations.js';
 import { buildLogContext, logger, withObservedHop } from './service-internals/observability.js';
 import { createPoiOperations } from './service-internals/poi-operations.js';
+import { createStaticContentOperations } from './service-internals/static-content-operations.js';
 import {
   DEFAULT_CACHE_MAX_SIZE,
   DEFAULT_CREDENTIAL_CACHE_TTL_MS,
@@ -116,6 +118,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   const newsOperations = createNewsOperations(executeGraphqlWithConfig);
   const eventOperations = createEventOperations(executeGraphqlWithConfig);
   const poiOperations = createPoiOperations(executeGraphqlWithConfig);
+  const staticContentOperations = createStaticContentOperations(executeGraphqlWithConfig);
 
   const getQueryRootTypenameWithConfig = async (
     input: SvaMainserverConnectionInput,
@@ -253,6 +256,13 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     return poiOperations.destroyPoiWithConfig(input, config);
   };
 
+  const createOrUpdateStaticContent = async (
+    input: SvaMainserverConnectionInput & { readonly staticContent: SvaMainserverStaticContentInput }
+  ) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return staticContentOperations.writeStaticContentWithConfig(input, config);
+  };
+
   const getConnectionStatus = async (
     input: SvaMainserverConnectionInput
   ): Promise<SvaMainserverConnectionStatus> => {
@@ -306,6 +316,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   };
 
   return {
+    createOrUpdateStaticContent,
     createEvent,
     createNews,
     createPoi,
@@ -401,3 +412,7 @@ export const updateSvaMainserverPoi = (
 
 export const deleteSvaMainserverPoi = (input: SvaMainserverConnectionInput & { readonly poiId: string }) =>
   getDefaultService().deletePoi(input);
+
+export const createOrUpdateSvaMainserverStaticContent = (
+  input: SvaMainserverConnectionInput & { readonly staticContent: SvaMainserverStaticContentInput }
+) => getDefaultService().createOrUpdateStaticContent(input);

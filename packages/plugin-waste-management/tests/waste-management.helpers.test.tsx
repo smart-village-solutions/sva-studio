@@ -300,7 +300,7 @@ describe('waste management helper modules', () => {
       wasteMasterDataInputMappers.toCreateFractionInput({
         id: 'fraction-1',
         name: ' Rest ',
-        pdfShortLabel: ' RST ',
+        pdfShortLabel: ' rst ',
         translations: {
           de: ' Restmüll ',
           en: ' ',
@@ -327,8 +327,6 @@ describe('waste management helper modules', () => {
       description: 'Beschreibung',
       active: true,
       reminderCount: 'none',
-      firstReminderMaxLeadDays: undefined,
-      secondReminderMaxLeadDays: undefined,
       reminderChannelPushEnabled: false,
       reminderChannelEmailEnabled: false,
       reminderChannelCalendarEnabled: false,
@@ -367,6 +365,34 @@ describe('waste management helper modules', () => {
       secondReminderMaxLeadDays: 1,
       reminderChannelPushEnabled: false,
       reminderChannelEmailEnabled: true,
+      reminderChannelCalendarEnabled: false,
+    });
+
+    expect(
+      wasteMasterDataInputMappers.toUpdateFractionInput({
+        id: 'fraction-3',
+        name: ' Papier ',
+        pdfShortLabel: ' ppk ',
+        translations: {},
+        containerSize: '',
+        color: '#2255aa',
+        description: '',
+        active: true,
+        reminderCount: 'none',
+        firstReminderMaxLeadDays: 1,
+        secondReminderMaxLeadDays: 1,
+        reminderChannelPushEnabled: false,
+        reminderChannelEmailEnabled: false,
+        reminderChannelCalendarEnabled: false,
+      })
+    ).toEqual({
+      name: 'Papier',
+      pdfShortLabel: 'PPK',
+      color: '#2255aa',
+      active: true,
+      reminderCount: 'none',
+      reminderChannelPushEnabled: false,
+      reminderChannelEmailEnabled: false,
       reminderChannelCalendarEnabled: false,
     });
 
@@ -622,14 +648,24 @@ describe('waste management helper modules', () => {
   });
 
   it('covers fraction and region submission handlers for success and forbidden error branches', async () => {
-    const createWasteManagementFractionMock = vi.fn();
-    const updateWasteManagementFractionMock = vi.fn();
+    const createWasteManagementFractionMock = vi.fn(async () => ({
+      data: { id: 'fraction-1' },
+      syncStatus: 'queued',
+      syncJob: { id: 'job-sync-1', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
+    }));
+    const updateWasteManagementFractionMock = vi.fn(async () => ({
+      data: { id: 'fraction-1' },
+      syncStatus: 'queued',
+      syncJob: { id: 'job-sync-2', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
+    }));
     const deleteWasteManagementFractionMock = vi.fn();
     const createWasteManagementRegionMock = vi.fn();
     const updateWasteManagementRegionMock = vi.fn();
-    const applySuccessSpy = vi.fn((close, setMessage, text: string) => {
+    const applySuccessSpy = vi.fn((close, setMessage, text: string, _onSuccess?: () => void, showMessage = true) => {
       close();
-      setMessage({ kind: 'success', text });
+      if (showMessage) {
+        setMessage({ kind: 'success', text });
+      }
     });
 
     vi.doMock('../src/waste-management.api.js', async (importOriginal) => {
@@ -658,6 +694,7 @@ describe('waste management helper modules', () => {
 
     const setSaving = vi.fn();
     const setMessage = vi.fn();
+    const setTrackedSyncWasteTypesJob = vi.fn();
     const setLastOutcome = vi.fn();
     const setDialogOpen = vi.fn();
     const setRegionDialogOpen = vi.fn();
@@ -669,6 +706,7 @@ describe('waste management helper modules', () => {
       regionForm: { id: 'region-1', name: 'Nord' },
       setSaving,
       setMessage,
+      setTrackedSyncWasteTypesJob,
       setLastOutcome,
       setDialogOpen,
       setRegionDialogOpen,
@@ -688,7 +726,8 @@ describe('waste management helper modules', () => {
       expect.any(Function),
       setMessage,
       'masterData.fractions.messages.createSuccess',
-      expect.any(Function)
+      expect.any(Function),
+      true
     );
     expect(setDialogOpen).toHaveBeenCalledWith(false);
 
@@ -717,7 +756,7 @@ describe('waste management helper modules', () => {
     });
 
     state.regionDialogMode = 'edit';
-    updateWasteManagementRegionMock.mockResolvedValueOnce(undefined);
+    updateWasteManagementRegionMock.mockResolvedValueOnce({ id: 'region-1', name: 'Nord' });
     await handlers.onSubmitRegion(createEvent);
     expect(updateWasteManagementRegionMock).toHaveBeenCalledWith(
       'region-1',

@@ -11,13 +11,20 @@ const terminalStatuses = new Set(['succeeded', 'failed', 'cancelled']);
 export const useWasteTrackedJob = ({
   lastJob,
   refreshTechnicalHistory,
+  onTerminalJob,
   setLastJob,
 }: {
   readonly lastJob: StudioJobResponse['data'] | null;
   readonly refreshTechnicalHistory: () => Promise<void>;
+  readonly onTerminalJob?: (job: StudioJobResponse['data']) => void | Promise<void>;
   readonly setLastJob: (job: StudioJobResponse['data'] | null) => void;
 }) => {
   const latestRequestIdRef = useRef(0);
+  const latestOnTerminalJobRef = useRef(onTerminalJob);
+
+  useEffect(() => {
+    latestOnTerminalJobRef.current = onTerminalJob;
+  }, [onTerminalJob]);
 
   useEffect(() => {
     if (!lastJob?.id || terminalStatuses.has(lastJob.status)) {
@@ -45,6 +52,9 @@ export const useWasteTrackedJob = ({
         }
         setLastJob(detail);
         await refreshTechnicalHistory();
+        if (terminalStatuses.has(detail.status)) {
+          await latestOnTerminalJobRef.current?.(detail);
+        }
       } catch {
         if (controller.signal.aborted || isDisposed || requestId !== latestRequestIdRef.current) {
           return;

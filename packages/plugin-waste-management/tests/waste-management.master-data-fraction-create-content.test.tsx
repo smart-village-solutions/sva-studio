@@ -67,6 +67,7 @@ describe('WasteMasterDataFractionCreateContent', () => {
         form={{
           id: 'fraction-1',
           name: 'Biotonne',
+          pdfShortLabel: 'BIO',
           translations: {},
           containerSize: '',
           color: '#16A34A',
@@ -117,6 +118,7 @@ describe('WasteMasterDataFractionCreateContent', () => {
         form={{
           id: 'fraction-1',
           name: 'Biotonne',
+          pdfShortLabel: 'BIO',
           translations: {},
           containerSize: '',
           color: '#16A34A',

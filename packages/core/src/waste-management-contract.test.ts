@@ -35,8 +35,11 @@ describe('waste-management-contract', () => {
       'reset.started',
       'reset.succeeded',
       'reset.failed',
+      'sync.started',
+      'sync.succeeded',
+      'sync.failed',
     ]);
-    expect(wasteManagementDataSourceContract.isTechnicalEventType('seed.failed')).toBe(true);
+    expect(wasteManagementDataSourceContract.isTechnicalEventType('sync.failed')).toBe(true);
     expect(wasteManagementDataSourceContract.isTechnicalEventType('connection-check.pending')).toBe(false);
   });
 });

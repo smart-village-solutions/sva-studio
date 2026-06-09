@@ -110,6 +110,9 @@ export const startWasteManagementSeed = async (input: StartWasteManagementSeedIn
     seedKey: input.seedKey ?? 'baseline',
   });
 
+export const startWasteManagementSyncWasteTypes = async () =>
+  requestWasteManagementJob('/api/v1/waste-management/tools/sync-waste-types', {});
+
 export const startWasteManagementReset = async (input: StartWasteManagementResetInput) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/reset', input);
 

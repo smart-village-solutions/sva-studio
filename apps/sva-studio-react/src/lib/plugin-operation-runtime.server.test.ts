@@ -17,6 +17,7 @@ const createPluginJobExecutionHandlersMock = vi.fn(() => ({
   'waste-management.initialize-data-source': vi.fn(),
   'waste-management.reset-data': vi.fn(),
   'waste-management.seed-data': vi.fn(),
+  'waste-management.sync-waste-types': vi.fn(),
 }));
 
 vi.mock('../../../../packages/plugin-waste-management/src/server.ts', () => ({
@@ -43,6 +44,7 @@ const declaredWasteJobTypeIds = [
   'waste-management.initialize-data-source',
   'waste-management.reset-data',
   'waste-management.seed-data',
+  'waste-management.sync-waste-types',
 ] as const;
 
 const mockWasteBrowserPluginModule = (moduleExports: Record<string, unknown>): void => {
@@ -98,6 +100,7 @@ describe('plugin operation runtime registration', () => {
       'waste-management.initialize-data-source',
       'waste-management.reset-data',
       'waste-management.seed-data',
+      'waste-management.sync-waste-types',
     ]);
     expect(registerPluginOperationExecutionHandlersMock).toHaveBeenCalledWith(handlers);
   }, 30000);
@@ -199,6 +202,7 @@ describe('plugin operation runtime registration', () => {
       'waste-management.initialize-data-source',
       'waste-management.reset-data',
       'waste-management.seed-data',
+      'waste-management.sync-waste-types',
     ]);
   });
 

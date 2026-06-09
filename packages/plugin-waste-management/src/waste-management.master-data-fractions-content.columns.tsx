@@ -11,6 +11,14 @@ const createFractionIdentityColumn = (pt: ReturnType<typeof usePluginTranslation
   cell: (fraction) => <p className="font-medium">{fraction.containerSize ? `${fraction.name} (${fraction.containerSize})` : fraction.name}</p>,
 });
 
+const createFractionShortLabelColumn = (pt: ReturnType<typeof usePluginTranslation>): StudioColumnDef<WasteFractionRecord> => ({
+  id: 'pdfShortLabel',
+  header: pt('masterData.fractions.table.shortLabel'),
+  mobileLabel: pt('masterData.fractions.table.shortLabel'),
+  cell: (fraction) =>
+    fraction.pdfShortLabel ? <span className="font-mono text-sm uppercase">{fraction.pdfShortLabel}</span> : null,
+});
+
 const createFractionColorColumn = (pt: ReturnType<typeof usePluginTranslation>): StudioColumnDef<WasteFractionRecord> => ({
   id: 'color',
   header: pt('masterData.fractions.table.color'),
@@ -100,6 +108,7 @@ export const useFractionColumns = ({
   const pt = usePluginTranslation('wasteManagement');
   return [
     createFractionIdentityColumn(pt),
+    createFractionShortLabelColumn(pt),
     createFractionColorColumn(pt),
     createFractionDescriptionColumn(pt),
     createFractionStatusColumn({ pt, saving, onToggleFractionStatus }),

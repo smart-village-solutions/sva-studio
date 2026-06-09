@@ -12,6 +12,7 @@ import {
 
 const startFetch = createStartHandler(defaultStreamHandler);
 const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'development';
+const devRuntimeRefreshEnabled = diagnosticsEnabled;
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
 const studioJobWorkerEnabled = process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED !== 'false';
 
@@ -80,6 +81,10 @@ const getEnsureStudioJobWorkerStarted = async () => {
 };
 
 const getRegisterStudioPluginOperationHandlers = async () => {
+  if (devRuntimeRefreshEnabled) {
+    return (await import('./lib/plugin-operation-runtime.server')).registerStudioPluginOperationHandlers;
+  }
+
   registerStudioPluginOperationHandlersPromise ??= import('./lib/plugin-operation-runtime.server').then(
     (mod) => mod.registerStudioPluginOperationHandlers
   );
@@ -108,6 +113,19 @@ const getDispatchMainserverPoiRequest = async () => {
 };
 
 const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
+  if (devRuntimeRefreshEnabled) {
+    pluginOperationHandlerRegistrationPromise ??= (async () => {
+      const registerPluginOperationHandlers = await getRegisterStudioPluginOperationHandlers();
+      await registerPluginOperationHandlers();
+    })().finally(() => {
+      pluginOperationHandlerRegistrationPromise = null;
+      registerStudioPluginOperationHandlersPromise = null;
+    });
+
+    await pluginOperationHandlerRegistrationPromise;
+    return;
+  }
+
   pluginOperationHandlerRegistrationPromise ??= (async () => {
     const registerPluginOperationHandlers = await getRegisterStudioPluginOperationHandlers();
     await registerPluginOperationHandlers();
@@ -120,12 +138,23 @@ const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
   await pluginOperationHandlerRegistrationPromise;
 };
 
+const logPluginWorkerBootstrapFailure = async (error: unknown): Promise<void> => {
+  (await getLogger('server-entry-transport')).info('Plugin worker bootstrap failed', {
+    operation: 'plugin_operation_worker_bootstrap',
+    error: error instanceof Error ? error.message : String(error),
+  });
+};
+
 const startPluginOperationWorkerInBackground = (): void => {
   if (!studioJobWorkerEnabled) {
     return;
   }
 
   if (pluginOperationWorkerBootstrapPromise) {
+    if (devRuntimeRefreshEnabled) {
+      void ensurePluginOperationHandlersRegistered().catch((error) => logPluginWorkerBootstrapFailure(error));
+    }
+
     return;
   }
 
@@ -136,10 +165,7 @@ const startPluginOperationWorkerInBackground = (): void => {
       await startWorker();
     } catch (error) {
       pluginOperationWorkerBootstrapPromise = null;
-      (await getLogger('server-entry-transport')).info('Plugin worker bootstrap failed', {
-        operation: 'plugin_operation_worker_bootstrap',
-        error: error instanceof Error ? error.message : String(error),
-      });
+      await logPluginWorkerBootstrapFailure(error);
     }
   })();
 };

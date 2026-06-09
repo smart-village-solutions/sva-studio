@@ -583,6 +583,7 @@ describe('waste-management auth runtime handlers', () => {
     const savedFraction: WasteFractionRecord = {
       id: 'fraction-new',
       name: 'Papier',
+      pdfShortLabel: 'PAP',
       translations: { de: 'Papier', en: 'Paper' },
       containerSize: '120L',
       color: '#123456',
@@ -600,7 +601,22 @@ describe('waste-management auth runtime handlers', () => {
 
     const saveWasteFraction = vi.fn(async () => undefined);
     const loadWasteFractionById = vi.fn(async () => savedFraction);
-
+    const loadMasterDataFractionsOverview = vi.fn(async (): Promise<WasteManagementMasterDataOverview> => ({
+      fractions: [],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    }));
+    const startPluginOperationJob = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ data: { id: 'job-fraction-create' } }), {
+          status: 202,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
     const emitAuditEvent = vi.fn(async () => undefined);
 
     const response = await createWasteManagementFractionInternal(
@@ -614,6 +630,7 @@ describe('waste-management auth runtime handlers', () => {
         body: JSON.stringify({
           id: 'fraction-new',
           name: 'Papier',
+          pdfShortLabel: 'pap',
           translations: { de: 'Papier', en: 'Paper' },
           containerSize: '120L',
           color: '#123456',
@@ -631,8 +648,11 @@ describe('waste-management auth runtime handlers', () => {
       {
         getRequestId: () => 'req-test',
         emitAuditEvent,
+        resolveActorInfo: vi.fn(async () => resolvedActorInfo),
+        loadMasterDataFractionsOverview,
         saveWasteFraction,
         loadWasteFractionById,
+        startPluginOperationJob,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
           permissions: allowPermission('waste-management.master-data.manage'),
@@ -643,6 +663,7 @@ describe('waste-management auth runtime handlers', () => {
     expect(saveWasteFraction).toHaveBeenCalledWith('tenant-a', {
       id: 'fraction-new',
       name: 'Papier',
+      pdfShortLabel: 'PAP',
       translations: { de: 'Papier', en: 'Paper' },
       containerSize: '120L',
       color: '#123456',
@@ -656,9 +677,26 @@ describe('waste-management auth runtime handlers', () => {
       reminderChannelCalendarEnabled: true,
     });
     expect(loadWasteFractionById).toHaveBeenCalledWith('tenant-a', 'fraction-new');
+    expect(startPluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        actorAccountId: 'account-1',
+        endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
+        data: expect.objectContaining({
+          jobTypeId: 'waste-management.sync-waste-types',
+          input: {
+            operation: 'sync-waste-types',
+            keycloakSubject: 'user-1',
+            activeOrganizationId: undefined,
+          },
+        }),
+      })
+    );
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({
       data: savedFraction,
+      syncStatus: 'queued',
+      syncJob: { id: 'job-fraction-create' },
       requestId: 'req-test',
     });
     expect(emitAuditEvent).toHaveBeenCalledWith(
@@ -679,6 +717,7 @@ describe('waste-management auth runtime handlers', () => {
     const existingFraction: WasteFractionRecord = {
       id: 'fraction-1',
       name: 'Restmüll',
+      pdfShortLabel: 'RES',
       color: '#111111',
       active: true,
       reminderCount: 'once',
@@ -692,6 +731,7 @@ describe('waste-management auth runtime handlers', () => {
     const updatedFraction: WasteFractionRecord = {
       ...existingFraction,
       name: 'Restmüll Plus',
+      pdfShortLabel: 'RPL',
       reminderCount: 'none',
       firstReminderMaxLeadDays: undefined,
       secondReminderMaxLeadDays: undefined,
@@ -706,6 +746,22 @@ describe('waste-management auth runtime handlers', () => {
       .mockResolvedValueOnce(existingFraction)
       .mockResolvedValueOnce(updatedFraction);
     const saveWasteFraction = vi.fn(async () => undefined);
+    const loadMasterDataFractionsOverview = vi.fn(async (): Promise<WasteManagementMasterDataOverview> => ({
+      fractions: [],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    }));
+    const startPluginOperationJob = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ data: { id: 'job-fraction-update' } }), {
+          status: 202,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
 
     const response = await updateWasteManagementFractionInternal(
       new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
@@ -717,6 +773,7 @@ describe('waste-management auth runtime handlers', () => {
         },
         body: JSON.stringify({
           name: 'Restmüll Plus',
+          pdfShortLabel: 'rpl',
           translations: { de: 'Restmüll Plus', en: 'Residual waste plus' },
           color: '#111111',
           active: true,
@@ -731,8 +788,11 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        resolveActorInfo: vi.fn(async () => resolvedActorInfo),
+        loadMasterDataFractionsOverview,
         saveWasteFraction,
         loadWasteFractionById,
+        startPluginOperationJob,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
           permissions: allowPermission('waste-management.master-data.manage'),
@@ -743,6 +803,7 @@ describe('waste-management auth runtime handlers', () => {
     expect(saveWasteFraction).toHaveBeenCalledWith('tenant-a', {
       id: 'fraction-1',
       name: 'Restmüll Plus',
+      pdfShortLabel: 'RPL',
       translations: { de: 'Restmüll Plus', en: 'Residual waste plus' },
       containerSize: undefined,
       color: '#111111',
@@ -755,9 +816,26 @@ describe('waste-management auth runtime handlers', () => {
       reminderChannelEmailEnabled: false,
       reminderChannelCalendarEnabled: false,
     });
+    expect(startPluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        actorAccountId: 'account-1',
+        endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
+        data: expect.objectContaining({
+          jobTypeId: 'waste-management.sync-waste-types',
+          input: {
+            operation: 'sync-waste-types',
+            keycloakSubject: 'user-1',
+            activeOrganizationId: undefined,
+          },
+        }),
+      })
+    );
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       data: updatedFraction,
+      syncStatus: 'queued',
+      syncJob: { id: 'job-fraction-update' },
       requestId: 'req-test',
     });
   });

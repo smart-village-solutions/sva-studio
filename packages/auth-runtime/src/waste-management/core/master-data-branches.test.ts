@@ -37,6 +37,21 @@ const createDeps = (action = 'waste-management.master-data.manage') => ({
     activeOrganizationId: 'org-1',
   })),
   emitAuditEvent: vi.fn(async () => undefined),
+  resolveActorInfo: vi.fn(async () => ({
+    actor: {
+      instanceId: 'tenant-a',
+      actorAccountId: 'account-1',
+      requestId: 'req-test',
+      traceId: 'trace-test',
+    },
+  })),
+  startPluginOperationJob: vi.fn(
+    async () =>
+      new Response(JSON.stringify({ data: { id: 'job-1' } }), {
+        status: 202,
+        headers: { 'Content-Type': 'application/json' },
+      })
+  ),
   resolvePermissions: vi.fn(async () => ({
     ok: true as const,
     permissions: [
@@ -46,6 +61,15 @@ const createDeps = (action = 'waste-management.master-data.manage') => ({
         effect: 'allow' as const,
       },
     ],
+  })),
+  loadMasterDataFractionsOverview: vi.fn(async () => ({
+    fractions: [],
+    regions: [],
+    cities: [],
+    streets: [],
+    houseNumbers: [],
+    collectionLocations: [],
+    locationTourLinks: [],
   })),
 });
 
@@ -72,6 +96,7 @@ describe('waste-management master-data branch handlers', () => {
           body: JSON.stringify({
             id: 'fraction-invalid-reminder',
             name: 'Papier',
+            pdfShortLabel: 'PAP',
             color: '#123456',
             active: true,
             reminderCount: 'many',
@@ -243,6 +268,108 @@ describe('waste-management master-data branch handlers', () => {
     });
   });
 
+  it('rejects duplicate active PDF short labels before saving waste fractions', async () => {
+    const duplicateOverview = {
+      fractions: [
+        {
+          id: 'fraction-existing',
+          name: 'Biotonne',
+          pdfShortLabel: 'BIO',
+          color: '#228833',
+          active: true,
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        },
+      ],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    };
+
+    const saveWasteFraction = vi.fn(async () => undefined);
+
+    const createResponse = await wasteManagementFractionHandlers.createWasteManagementFractionInternal(
+      new Request('https://studio.test/api/v1/waste-management/fractions', {
+        method: 'POST',
+        headers: createHeaders(),
+        body: JSON.stringify({
+          id: 'fraction-new',
+          name: 'Biomüll extra',
+          pdfShortLabel: 'bio',
+          color: '#22aa55',
+          active: true,
+          reminderCount: 'none',
+          reminderChannelPushEnabled: false,
+          reminderChannelEmailEnabled: false,
+          reminderChannelCalendarEnabled: false,
+        }),
+      }),
+      actor,
+      {
+        ...createDeps(),
+        saveWasteFraction,
+        loadWasteFractionById: vi.fn(async () => null),
+        loadMasterDataFractionsOverview: vi.fn(async () => duplicateOverview),
+      }
+    );
+
+    expect(createResponse.status).toBe(409);
+    await expect(createResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'conflict',
+        message: expect.stringContaining('BIO'),
+      },
+      requestId: 'req-test',
+    });
+    expect(saveWasteFraction).not.toHaveBeenCalled();
+
+    const updateSaveWasteFraction = vi.fn(async () => undefined);
+    const updateResponse = await wasteManagementFractionHandlers.updateWasteManagementFractionInternal(
+      new Request('https://studio.test/api/v1/waste-management/fractions/fraction-update', {
+        method: 'PUT',
+        headers: createHeaders(),
+        body: JSON.stringify({
+          name: 'Biomüll extra',
+          pdfShortLabel: 'bio',
+          color: '#22aa55',
+          active: true,
+          reminderCount: 'none',
+          reminderChannelPushEnabled: false,
+          reminderChannelEmailEnabled: false,
+          reminderChannelCalendarEnabled: false,
+        }),
+      }),
+      actor,
+      {
+        ...createDeps(),
+        saveWasteFraction: updateSaveWasteFraction,
+        loadWasteFractionById: vi.fn(async () => ({
+          id: 'fraction-update',
+          name: 'Papier',
+          pdfShortLabel: 'PAP',
+          color: '#123456',
+          active: true,
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        })),
+        loadMasterDataFractionsOverview: vi.fn(async () => duplicateOverview),
+      }
+    );
+
+    expect(updateResponse.status).toBe(409);
+    await expect(updateResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'conflict',
+        message: expect.stringContaining('BIO'),
+      },
+      requestId: 'req-test',
+    });
+    expect(updateSaveWasteFraction).not.toHaveBeenCalled();
+  });
+
   it.each([
     {
       label: 'fraction update rejects missing path ids',
@@ -404,6 +531,7 @@ describe('waste-management master-data branch handlers', () => {
           headers: createHeaders(),
           body: JSON.stringify({
             name: 'Rest',
+            pdfShortLabel: 'RES',
             translations: { de: 'Restmüll' },
             color: '#111111',
             active: true,
@@ -630,6 +758,7 @@ describe('waste-management master-data branch handlers', () => {
           body: JSON.stringify({
             id: 'fraction-new',
             name: 'Rest',
+            pdfShortLabel: 'RES',
             translations: { de: 'Restmüll' },
             color: '#111111',
             active: true,
@@ -773,6 +902,7 @@ describe('waste-management master-data branch handlers', () => {
           body: JSON.stringify({
             id: 'fraction-verify',
             name: 'Papier',
+            pdfShortLabel: 'PAP',
             translations: { de: 'Papier' },
             color: '#123456',
             active: true,
@@ -988,6 +1118,7 @@ describe('waste-management master-data branch handlers', () => {
           headers: createHeaders(),
           body: JSON.stringify({
             name: 'Papier',
+            pdfShortLabel: 'PAP',
             translations: { de: 'Papier' },
             color: '#123456',
             active: true,
@@ -1299,6 +1430,7 @@ describe('waste-management master-data branch handlers', () => {
           headers: createHeaders(),
           body: JSON.stringify({
             name: 'Papier',
+            pdfShortLabel: 'PAP',
             translations: { de: 'Papier' },
             color: '#123456',
             active: true,
@@ -1614,6 +1746,7 @@ describe('waste-management master-data branch handlers', () => {
         body: JSON.stringify({
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: 'RES',
           color: '#111111',
           active: true,
           reminderCount: 'none',
@@ -1642,6 +1775,7 @@ describe('waste-management master-data branch handlers', () => {
       deps
     );
     expect(deleteSucceeded.status).toBe(200);
+    expect(deps.startPluginOperationJob).toHaveBeenCalledTimes(1);
 
     const deleteConflict = await wasteManagementFractionHandlers.deleteWasteManagementFractionInternal(
       new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
@@ -1672,6 +1806,7 @@ describe('waste-management master-data branch handlers', () => {
         code: 'database_unavailable',
       },
     });
+    expect(deps.startPluginOperationJob).toHaveBeenCalledTimes(1);
   });
 
   it('covers tour delete success, not-found, conflict, and fallback errors', async () => {

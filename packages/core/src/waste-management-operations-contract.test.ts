@@ -12,6 +12,7 @@ describe('waste-management-operations-contract', () => {
       importData: 'waste-management.import-data',
       seedData: 'waste-management.seed-data',
       resetData: 'waste-management.reset-data',
+      syncWasteTypes: 'waste-management.sync-waste-types',
     });
     expect(wasteManagementOperationsContract.isJobTypeId('waste-management.import-data')).toBe(true);
     expect(wasteManagementOperationsContract.isJobTypeId('waste-management.unknown')).toBe(false);

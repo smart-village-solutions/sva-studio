@@ -38,9 +38,13 @@ export const sharedVitestConfig = defineConfig({
       '@sva/iam-governance/legal-text-sanitize-html': fileURLToPath(
         new URL('../../packages/iam-governance/src/legal-text-sanitize-html.ts', import.meta.url)
       ),
+      '@sva/iam-governance/dsr-export-payload': fileURLToPath(
+        new URL('../../packages/iam-governance/src/dsr-export-payload.ts', import.meta.url)
+      ),
       '@sva/sva-mainserver/server': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.server.ts', import.meta.url)),
       '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
       '@sva/instance-registry': fileURLToPath(new URL('../../packages/instance-registry/src/index.ts', import.meta.url)),
+      '@sva/media': fileURLToPath(new URL('../../packages/media/src/index.ts', import.meta.url)),
       '@sva/plugin-waste-management': fileURLToPath(
         new URL('../../packages/plugin-waste-management/src/index.ts', import.meta.url)
       ),

@@ -203,6 +203,11 @@ const newsTranslationsDe = createNewsLocaleTranslations({
       description: 'Die News wird mit einem frei wählbaren Veröffentlichungszeitpunkt gespeichert.',
     },
   },
+  release: {
+    workflowHintTitle: 'Veröffentlichung erfolgt jetzt im Einstellungs-Tab',
+    workflowHintBody:
+      'Entwurf, Sofort-Veröffentlichung und Zeitsteuerung werden in der vereinfachten Oberfläche zentral unter Einstellungen gepflegt.',
+  },
   actions: {
     create: 'News anlegen',
     update: 'Änderungen speichern',
@@ -476,6 +481,11 @@ const newsTranslationsEn = createNewsLocaleTranslations({
       label: 'Scheduled',
       description: 'The news entry is saved with a freely chosen publication time.',
     },
+  },
+  release: {
+    workflowHintTitle: 'Publication is now handled in the settings tab',
+    workflowHintBody:
+      'Draft, immediate publication, and scheduling are maintained centrally in the simplified settings workflow.',
   },
   actions: {
     create: 'Create news',

@@ -1,4 +1,4 @@
-import type { NewsContentBlock, NewsFormInput, NewsPayload } from './news.types.js';
+import type { NewsContentBlock, NewsContentItem, NewsFormInput } from './news.types.js';
 
 const getVisibleTextLength = (value: string): number => {
   let inTag = false;
@@ -46,7 +46,7 @@ const isHttpsUrl = (value: string): boolean => {
   }
 };
 
-export const validateNewsPayload = (payload: NewsPayload): readonly string[] => {
+export const validateNewsPayload = (payload: NewsContentItem['payload']): readonly string[] => {
   const errors: string[] = [];
 
   if (!payload.teaser || payload.teaser.trim().length === 0 || payload.teaser.length > 500) {

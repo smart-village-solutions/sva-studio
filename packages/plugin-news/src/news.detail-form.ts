@@ -430,9 +430,10 @@ const defineCompatibilityAlias = <TValue>(
   });
 };
 
-const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues): NewsDetailFormValues => {
-  const compatibilityValues = values as CompatibilityFormValues;
-
+const defineCompatibilityMetadataAliases = (
+  compatibilityValues: CompatibilityFormValues,
+  values: NewsDetailEditorialFormValues
+) => {
   defineCompatibilityAlias(compatibilityValues, values, 'keywords', () => ensureLegacySnapshot(values).keywords ?? '', (nextValue) => {
     ensureLegacySnapshot(values).keywords = nextValue;
   });
@@ -496,6 +497,39 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
   defineCompatibilityAlias(
     compatibilityValues,
     values,
+    'pointOfInterestId',
+    () => ensureLegacySnapshot(values).pointOfInterestId ?? '',
+    (nextValue) => {
+      ensureLegacySnapshot(values).pointOfInterestId = nextValue;
+    }
+  );
+};
+
+const defineCompatibilityContentAliases = (
+  compatibilityValues: CompatibilityFormValues,
+  values: NewsDetailEditorialFormValues
+) => {
+  defineCompatibilityAlias(
+    compatibilityValues,
+    values,
+    'teaserImageAssetId',
+    () => ensureLegacySnapshot(values).teaserImageAssetId ?? null,
+    (nextValue) => {
+      ensureLegacySnapshot(values).teaserImageAssetId = nextValue;
+    }
+  );
+  defineCompatibilityAlias(
+    compatibilityValues,
+    values,
+    'headerImageAssetId',
+    () => ensureLegacySnapshot(values).headerImageAssetId ?? null,
+    (nextValue) => {
+      ensureLegacySnapshot(values).headerImageAssetId = nextValue;
+    }
+  );
+  defineCompatibilityAlias(
+    compatibilityValues,
+    values,
     'address',
     () =>
       ensureLegacySnapshot(values).address ?? {
@@ -505,15 +539,6 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
       },
     (nextValue) => {
       ensureLegacySnapshot(values).address = nextValue ?? {};
-    }
-  );
-  defineCompatibilityAlias(
-    compatibilityValues,
-    values,
-    'pointOfInterestId',
-    () => ensureLegacySnapshot(values).pointOfInterestId ?? '',
-    (nextValue) => {
-      ensureLegacySnapshot(values).pointOfInterestId = nextValue;
     }
   );
   defineCompatibilityAlias(
@@ -530,6 +555,12 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
       values.contentMedia = firstBlock.mediaContents;
     }
   );
+};
+
+const defineCompatibilityPublicationAliases = (
+  compatibilityValues: CompatibilityFormValues,
+  values: NewsDetailEditorialFormValues
+) => {
   defineCompatibilityAlias(
     compatibilityValues,
     values,
@@ -556,6 +587,14 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
       ensureLegacySnapshot(values).publicationDate = nextValue;
     }
   );
+};
+
+const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues): NewsDetailFormValues => {
+  const compatibilityValues = values as CompatibilityFormValues;
+
+  defineCompatibilityMetadataAliases(compatibilityValues, values);
+  defineCompatibilityContentAliases(compatibilityValues, values);
+  defineCompatibilityPublicationAliases(compatibilityValues, values);
 
   return compatibilityValues;
 };
@@ -617,6 +656,24 @@ const buildMediaContentMutation = (media: NewsMediaContentFormValue) => {
     ...(sourceUrl ? { sourceUrl } : {}),
   };
 };
+
+const buildEditorialContentBlocks = (
+  values: Pick<NewsDetailFormValues, 'title' | 'contentTeaser' | 'contentBody' | 'contentMedia'>
+): NonNullable<NewsFormInput['contentBlocks']> => [
+  {
+    title: values.title.trim(),
+    intro: values.contentTeaser,
+    body: values.contentBody.trim(),
+    mediaContents: values.contentMedia
+      .map(buildMediaContentMutation)
+      .filter((media) => Object.keys(media).length > 0),
+  },
+];
+
+const shouldIncludePushNotification = (
+  mode: 'create' | 'edit',
+  snapshot: NewsDetailFormValues['__legacySnapshot'] | null
+) => mode === 'create' || snapshot?.pushNotificationsSentAt === undefined;
 
 const normalizeEditorialValues = (values: NewsDetailFormValues): NewsDetailFormValues => {
   const compatibilityValues = values as CompatibilityFormValues;
@@ -706,17 +763,7 @@ export const mapNewsDetailFormValuesToMutation = (
     normalizedValues.sourceUrl.url,
     normalizedValues.sourceUrlDescription || normalizedValues.sourceUrl.description
   );
-
-  const contentBlocks = [
-    {
-      title: normalizedValues.title.trim(),
-      intro: normalizedValues.contentTeaser,
-      body: normalizedValues.contentBody.trim(),
-      mediaContents: normalizedValues.contentMedia
-        .map(buildMediaContentMutation)
-        .filter((media) => Object.keys(media).length > 0),
-    },
-  ];
+  const contentBlocks = buildEditorialContentBlocks(normalizedValues);
 
   return {
     ...mutation,
@@ -724,7 +771,7 @@ export const mapNewsDetailFormValuesToMutation = (
     ...(categories ?? {}),
     ...(sourceUrl ? { sourceUrl } : {}),
     contentBlocks,
-    ...(mode === 'create' || snapshot?.pushNotificationsSentAt === undefined
+    ...(shouldIncludePushNotification(mode, snapshot)
       ? { pushNotification: normalizedValues.pushNotificationEnabled }
       : {}),
   };

@@ -46,6 +46,151 @@ export type NewsDetailContentTabProps = Readonly<{
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;
 
+type ContentFieldBindings = ReturnType<typeof getStudioFormFieldProps>;
+
+type NewsContentTextSectionProps = Readonly<{
+  pt: NewsDetailContentTabProps['pt'];
+  title: string;
+  teaser: string;
+  contentBody: string;
+  teaserField: ContentFieldBindings;
+  bodyField: ContentFieldBindings;
+  register: ReturnType<typeof useFormContext<NewsDetailFormValues>>['register'];
+}>;
+
+function NewsContentTextSection({
+  pt,
+  title,
+  teaser,
+  contentBody,
+  teaserField,
+  bodyField,
+  register,
+}: NewsContentTextSectionProps) {
+  return (
+    <NewsDetailCard
+      title={pt('cards.content.text.title')}
+      description={pt('cards.content.text.description')}
+    >
+      <StudioField id="news-content-headline" label={pt('fields.headline')}>
+        <Input id="news-content-headline" value={title} readOnly />
+      </StudioField>
+
+      <StudioField
+        {...teaserField}
+        label={pt('fields.contentTeaser')}
+        description={pt('fields.characterCount', { count: teaser.length })}
+      >
+        <Textarea {...teaserField.controlProps} className="min-h-24" {...register('contentTeaser')} />
+      </StudioField>
+
+      <StudioField
+        {...bodyField}
+        label={pt('fields.contentBody')}
+        description={pt('fields.characterCount', { count: contentBody.length })}
+        required
+      >
+        <Textarea
+          {...bodyField.controlProps}
+          className="min-h-64"
+          required
+          {...register('contentBody')}
+        />
+      </StudioField>
+    </NewsDetailCard>
+  );
+}
+
+type NewsContentMediaSectionProps = Readonly<{
+  pt: NewsDetailContentTabProps['pt'];
+  mediaField: ContentFieldBindings;
+  fields: readonly { readonly id: string }[];
+  append: (value: NewsMediaContentFormValue) => void;
+  remove: (index: number) => void;
+  register: ReturnType<typeof useFormContext<NewsDetailFormValues>>['register'];
+}>;
+
+function NewsContentMediaSection({
+  pt,
+  mediaField,
+  fields,
+  append,
+  remove,
+  register,
+}: NewsContentMediaSectionProps) {
+  return (
+    <NewsDetailCard
+      title={pt('cards.content.media.title')}
+      description={pt('cards.content.media.description')}
+      actions={
+        <Button type="button" variant="outline" size="sm" onClick={() => append(createDefaultMediaContent())}>
+          {pt('actions.addMedia')}
+        </Button>
+      }
+    >
+      <div id={mediaField.id} className="space-y-3">
+        {fields.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{pt('cards.content.media.empty')}</p>
+        ) : null}
+
+        {fields.map((field, mediaIndex) => (
+          <div key={field.id} className="space-y-3 rounded-xl border border-border/60 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-foreground">
+                {pt('cards.content.media.itemLabel', { index: mediaIndex + 1 })}
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={() => remove(mediaIndex)}>
+                {pt('actions.remove')}
+              </Button>
+            </div>
+            <StudioField id={`news-media-url-${mediaIndex}`} label={pt('fields.mediaUrl')}>
+              <Input
+                id={`news-media-url-${mediaIndex}`}
+                type="url"
+                {...register(`contentMedia.${mediaIndex}.sourceUrl.url`)}
+              />
+            </StudioField>
+            <StudioField id={`news-media-caption-${mediaIndex}`} label={pt('fields.mediaCaption')}>
+              <Input
+                id={`news-media-caption-${mediaIndex}`}
+                {...register(`contentMedia.${mediaIndex}.captionText`)}
+              />
+            </StudioField>
+          </div>
+        ))}
+      </div>
+    </NewsDetailCard>
+  );
+}
+
+type NewsContentSourceSectionProps = Readonly<{
+  pt: NewsDetailContentTabProps['pt'];
+  sourceUrlField: ContentFieldBindings;
+  sourceTextField: ContentFieldBindings;
+  register: ReturnType<typeof useFormContext<NewsDetailFormValues>>['register'];
+}>;
+
+function NewsContentSourceSection({
+  pt,
+  sourceUrlField,
+  sourceTextField,
+  register,
+}: NewsContentSourceSectionProps) {
+  return (
+    <NewsDetailCard
+      title={pt('cards.content.source.title')}
+      description={pt('cards.content.source.description')}
+    >
+      <StudioField {...sourceUrlField} label={pt('fields.sourceUrl')}>
+        <Input {...sourceUrlField.controlProps} type="url" {...register('sourceUrl.url')} />
+      </StudioField>
+      <StudioField {...sourceTextField} label={pt('fields.sourceUrlDescription')}>
+        <Input {...sourceTextField.controlProps} {...register('sourceUrlDescription')} />
+      </StudioField>
+    </NewsDetailCard>
+  );
+}
+
 export function NewsDetailContentTab({ pt }: NewsDetailContentTabProps) {
   const {
     control,
@@ -91,91 +236,29 @@ export function NewsDetailContentTab({ pt }: NewsDetailContentTabProps) {
   return (
     <div className="space-y-6">
       <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
-
-      <NewsDetailCard
-        title={pt('cards.content.text.title')}
-        description={pt('cards.content.text.description')}
-      >
-        <StudioField id="news-content-headline" label={pt('fields.headline')}>
-          <Input id="news-content-headline" value={title} readOnly />
-        </StudioField>
-
-        <StudioField
-          {...teaserField}
-          label={pt('fields.contentTeaser')}
-          description={pt('fields.characterCount', { count: teaser.length })}
-        >
-          <Textarea {...teaserField.controlProps} className="min-h-24" {...register('contentTeaser')} />
-        </StudioField>
-
-        <StudioField
-          {...bodyField}
-          label={pt('fields.contentBody')}
-          description={pt('fields.characterCount', { count: contentBody.length })}
-          required
-        >
-          <Textarea
-            {...bodyField.controlProps}
-            className="min-h-64"
-            required
-            {...register('contentBody')}
-          />
-        </StudioField>
-      </NewsDetailCard>
-
-      <NewsDetailCard
-        title={pt('cards.content.media.title')}
-        description={pt('cards.content.media.description')}
-        actions={
-          <Button type="button" variant="outline" size="sm" onClick={() => append(createDefaultMediaContent())}>
-            {pt('actions.addMedia')}
-          </Button>
-        }
-      >
-        <div id={mediaField.id} className="space-y-3">
-          {fields.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{pt('cards.content.media.empty')}</p>
-          ) : null}
-
-          {fields.map((field, mediaIndex) => (
-            <div key={field.id} className="space-y-3 rounded-xl border border-border/60 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-foreground">
-                  {pt('cards.content.media.itemLabel', { index: mediaIndex + 1 })}
-                </p>
-                <Button type="button" variant="outline" size="sm" onClick={() => remove(mediaIndex)}>
-                  {pt('actions.remove')}
-                </Button>
-              </div>
-              <StudioField id={`news-media-url-${mediaIndex}`} label={pt('fields.mediaUrl')}>
-                <Input
-                  id={`news-media-url-${mediaIndex}`}
-                  type="url"
-                  {...register(`contentMedia.${mediaIndex}.sourceUrl.url`)}
-                />
-              </StudioField>
-              <StudioField id={`news-media-caption-${mediaIndex}`} label={pt('fields.mediaCaption')}>
-                <Input
-                  id={`news-media-caption-${mediaIndex}`}
-                  {...register(`contentMedia.${mediaIndex}.captionText`)}
-                />
-              </StudioField>
-            </div>
-          ))}
-        </div>
-      </NewsDetailCard>
-
-      <NewsDetailCard
-        title={pt('cards.content.source.title')}
-        description={pt('cards.content.source.description')}
-      >
-        <StudioField {...sourceUrlField} label={pt('fields.sourceUrl')}>
-          <Input {...sourceUrlField.controlProps} type="url" {...register('sourceUrl.url')} />
-        </StudioField>
-        <StudioField {...sourceTextField} label={pt('fields.sourceUrlDescription')}>
-          <Input {...sourceTextField.controlProps} {...register('sourceUrlDescription')} />
-        </StudioField>
-      </NewsDetailCard>
+      <NewsContentTextSection
+        pt={pt}
+        title={title}
+        teaser={teaser}
+        contentBody={contentBody}
+        teaserField={teaserField}
+        bodyField={bodyField}
+        register={register}
+      />
+      <NewsContentMediaSection
+        pt={pt}
+        mediaField={mediaField}
+        fields={fields}
+        append={append}
+        remove={remove}
+        register={register}
+      />
+      <NewsContentSourceSection
+        pt={pt}
+        sourceUrlField={sourceUrlField}
+        sourceTextField={sourceTextField}
+        register={register}
+      />
     </div>
   );
 }

@@ -10,6 +10,4 @@ export type {
   NewsFormInput,
   NewsListQuery,
   NewsListResult,
-  NewsPayload,
-  NewsStatus,
 } from './news.types.js';

@@ -20,6 +20,8 @@ export type NewsDetailSettingsTabProps = Readonly<{
   scheduledPublicationField: ScheduledPublicationFieldState;
 }>;
 
+type NewsDetailSettingsFormControl = ReturnType<typeof useFormContext<NewsDetailFormValues>>['control'];
+
 const collectSummaryErrors = (
   fields: readonly ReturnType<typeof getStudioFormFieldProps>[]
 ) => fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
@@ -51,6 +53,144 @@ const formatMetadataDate = (value?: string) => {
   return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
+function NewsPushNotificationCard({
+  control,
+  loadedItem,
+  pt,
+}: Readonly<{
+  control: NewsDetailSettingsFormControl;
+  loadedItem: NewsContentItem | null;
+  pt: NewsDetailSettingsTabProps['pt'];
+}>) {
+  return (
+    <NewsDetailCard
+      title={pt('cards.settings.push.title')}
+      description={pt('cards.settings.push.description')}
+    >
+      {loadedItem?.pushNotificationsSentAt ? (
+        <dl className="space-y-1 text-sm">
+          <dt className="font-medium text-foreground">{pt('fields.pushNotificationsSentAt')}</dt>
+          <dd className="text-muted-foreground">{formatMetadataDate(loadedItem.pushNotificationsSentAt)}</dd>
+        </dl>
+      ) : (
+        <label className="flex items-start gap-3 rounded-xl border border-border/60 p-4 text-sm">
+          <Controller
+            control={control}
+            name="pushNotificationEnabled"
+            render={({ field }) => (
+              <Checkbox
+                checked={field.value}
+                onChange={(event) => field.onChange(event.target.checked)}
+              />
+            )}
+          />
+          <span className="space-y-1">
+            <span className="block font-medium text-foreground">{pt('fields.pushNotification')}</span>
+            <span className="block text-muted-foreground">{pt('cards.settings.push.toggleHint')}</span>
+          </span>
+        </label>
+      )}
+    </NewsDetailCard>
+  );
+}
+
+function NewsPublicationModeFieldset({
+  control,
+  pt,
+}: Readonly<{
+  control: NewsDetailSettingsFormControl;
+  pt: NewsDetailSettingsTabProps['pt'];
+}>) {
+  return (
+    <Controller
+      control={control}
+      name="publicationMode"
+      render={({ field }) => (
+        <fieldset className="space-y-3" aria-label={pt('fields.publicationMode')}>
+          <legend className="text-sm font-medium text-foreground">{pt('fields.publicationMode')}</legend>
+
+          {(['draft', 'immediate', 'scheduled'] as const).map((option) => (
+            <label key={option} className="flex gap-3 rounded-xl border border-border/60 p-4 text-sm">
+              <input
+                type="radio"
+                name={field.name}
+                value={option}
+                checked={field.value === option}
+                onChange={(event) => field.onChange(event.target.value)}
+              />
+              <span className="space-y-1">
+                <span className="block font-medium text-foreground">
+                  {pt(`publicationModes.${option}.label`)}
+                </span>
+                <span className="block text-muted-foreground">
+                  {pt(`publicationModes.${option}.description`)}
+                </span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
+    />
+  );
+}
+
+function NewsPublicationCard({
+  control,
+  loadedItem,
+  mode,
+  pt,
+  publicationMode,
+  scheduledPublicationBindings,
+  scheduledPublicationField,
+}: Readonly<{
+  control: NewsDetailSettingsFormControl;
+  loadedItem: NewsContentItem | null;
+  mode: 'create' | 'edit';
+  pt: NewsDetailSettingsTabProps['pt'];
+  publicationMode: NewsDetailFormValues['publicationMode'];
+  scheduledPublicationBindings: ReturnType<typeof getStudioFormFieldProps>;
+  scheduledPublicationField: ScheduledPublicationFieldState;
+}>) {
+  return (
+    <NewsDetailCard
+      title={pt('cards.settings.publication.title')}
+      description={pt('cards.settings.publication.description')}
+    >
+      <NewsPublicationModeFieldset control={control} pt={pt} />
+
+      {publicationMode === 'scheduled' ? (
+        <StudioField
+          {...scheduledPublicationBindings}
+          label={pt('fields.scheduledPublicationAt')}
+          description={pt('cards.settings.publication.scheduleHint')}
+          required
+        >
+          <Controller
+            control={control}
+            name="scheduledPublicationAt"
+            render={({ field }) => (
+              <Input
+                {...scheduledPublicationBindings.controlProps}
+                type="datetime-local"
+                required
+                value={scheduledPublicationField.value}
+                onChange={(event) => field.onChange(scheduledPublicationField.onChange(event.target.value))}
+              />
+            )}
+          />
+        </StudioField>
+      ) : null}
+
+      {mode === 'edit' ? (
+        <dl className="space-y-1 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm">
+          <dt className="font-medium text-foreground">{pt('fields.publishedAt')}</dt>
+          <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.publishedAt)}</dd>
+        </dl>
+      ) : null}
+    </NewsDetailCard>
+  );
+}
+
 export function NewsDetailSettingsTab({
   loadedItem,
   mode,
@@ -75,100 +215,16 @@ export function NewsDetailSettingsTab({
   return (
     <div className="space-y-6">
       <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
-
-      <NewsDetailCard
-        title={pt('cards.settings.push.title')}
-        description={pt('cards.settings.push.description')}
-      >
-        {loadedItem?.pushNotificationsSentAt ? (
-          <dl className="space-y-1 text-sm">
-            <dt className="font-medium text-foreground">{pt('fields.pushNotificationsSentAt')}</dt>
-            <dd className="text-muted-foreground">{formatMetadataDate(loadedItem.pushNotificationsSentAt)}</dd>
-          </dl>
-        ) : (
-          <label className="flex items-start gap-3 rounded-xl border border-border/60 p-4 text-sm">
-            <Controller
-              control={control}
-              name="pushNotificationEnabled"
-              render={({ field }) => (
-                <Checkbox
-                  checked={field.value}
-                  onChange={(event) => field.onChange(event.target.checked)}
-                />
-              )}
-            />
-            <span className="space-y-1">
-              <span className="block font-medium text-foreground">{pt('fields.pushNotification')}</span>
-              <span className="block text-muted-foreground">{pt('cards.settings.push.toggleHint')}</span>
-            </span>
-          </label>
-        )}
-      </NewsDetailCard>
-
-      <NewsDetailCard
-        title={pt('cards.settings.publication.title')}
-        description={pt('cards.settings.publication.description')}
-      >
-        <Controller
-          control={control}
-          name="publicationMode"
-          render={({ field }) => (
-            <fieldset className="space-y-3" aria-label={pt('fields.publicationMode')}>
-              <legend className="text-sm font-medium text-foreground">{pt('fields.publicationMode')}</legend>
-
-              {(['draft', 'immediate', 'scheduled'] as const).map((option) => (
-                <label key={option} className="flex gap-3 rounded-xl border border-border/60 p-4 text-sm">
-                  <input
-                    type="radio"
-                    name={field.name}
-                    value={option}
-                    checked={field.value === option}
-                    onChange={(event) => field.onChange(event.target.value)}
-                  />
-                  <span className="space-y-1">
-                    <span className="block font-medium text-foreground">
-                      {pt(`publicationModes.${option}.label`)}
-                    </span>
-                    <span className="block text-muted-foreground">
-                      {pt(`publicationModes.${option}.description`)}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </fieldset>
-          )}
-        />
-
-        {publicationMode === 'scheduled' ? (
-          <StudioField
-            {...scheduledPublicationBindings}
-            label={pt('fields.scheduledPublicationAt')}
-            description={pt('cards.settings.publication.scheduleHint')}
-            required
-          >
-            <Controller
-              control={control}
-              name="scheduledPublicationAt"
-              render={({ field }) => (
-                <Input
-                  {...scheduledPublicationBindings.controlProps}
-                  type="datetime-local"
-                  required
-                  value={scheduledPublicationField.value}
-                  onChange={(event) => field.onChange(scheduledPublicationField.onChange(event.target.value))}
-                />
-              )}
-            />
-          </StudioField>
-        ) : null}
-
-        {mode === 'edit' ? (
-          <dl className="space-y-1 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm">
-            <dt className="font-medium text-foreground">{pt('fields.publishedAt')}</dt>
-            <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.publishedAt)}</dd>
-          </dl>
-        ) : null}
-      </NewsDetailCard>
+      <NewsPushNotificationCard control={control} loadedItem={loadedItem} pt={pt} />
+      <NewsPublicationCard
+        control={control}
+        loadedItem={loadedItem}
+        mode={mode}
+        pt={pt}
+        publicationMode={publicationMode}
+        scheduledPublicationBindings={scheduledPublicationBindings}
+        scheduledPublicationField={scheduledPublicationField}
+      />
     </div>
   );
 }

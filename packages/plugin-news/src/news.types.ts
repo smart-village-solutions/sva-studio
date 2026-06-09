@@ -1,4 +1,4 @@
-export type NewsPayload = {
+type NewsPayload = {
   readonly teaser?: string;
   readonly body?: string;
   readonly imageUrl?: string;
@@ -6,7 +6,7 @@ export type NewsPayload = {
   readonly category?: string;
 };
 
-export type NewsStatus = 'published';
+type NewsStatus = 'published';
 
 export type NewsWebUrl = {
   readonly url: string;
@@ -34,7 +34,7 @@ export type NewsCategory = {
   readonly children?: readonly NewsCategory[];
 };
 
-export type NewsMediaContent = {
+type NewsMediaContent = {
   readonly captionText?: string;
   readonly copyright?: string;
   readonly contentType?: string;
@@ -66,12 +66,12 @@ export type NewsContentBlockFormValue = {
   mediaContents: NewsMediaContentFormValue[];
 };
 
-export type NewsDataProvider = {
+type NewsDataProvider = {
   readonly id?: string;
   readonly name?: string;
 };
 
-export type NewsSetting = {
+type NewsSetting = {
   readonly alwaysRecreateOnImport?: string;
   readonly displayOnlySummary?: string;
   readonly onlySummaryLinkText?: string;
@@ -90,7 +90,7 @@ export type NewsListQuery = {
   readonly editorialStatusFilter?: 'all' | 'draft' | 'scheduled' | 'published';
 };
 
-export type NewsPagination = {
+type NewsPagination = {
   readonly page: number;
   readonly pageSize: number;
   readonly hasNextPage: boolean;
@@ -131,11 +131,11 @@ export type NewsAuthorControl =
 
 export type NewsDetailTabId = 'basis' | 'content' | 'settings' | 'history';
 
-export type NewsPublicationMode = 'draft' | 'immediate' | 'scheduled';
+type NewsPublicationMode = 'draft' | 'immediate' | 'scheduled';
 
-export type NewsEditorialStatus = 'draft' | 'scheduled' | 'published';
+type NewsEditorialStatus = 'draft' | 'scheduled' | 'published';
 
-export type NewsLegacyCompatibilitySnapshot = {
+type NewsLegacyCompatibilitySnapshot = {
   readonly visible?: boolean;
   readonly keywords?: string;
   readonly externalId?: string;
@@ -173,7 +173,7 @@ export type NewsDetailCompatibilityField =
   | 'address'
   | 'pointOfInterestId';
 
-export type NewsDetailCompatibilityTouchedState = Partial<Record<NewsDetailCompatibilityField, true>>;
+type NewsDetailCompatibilityTouchedState = Partial<Record<NewsDetailCompatibilityField, true>>;
 
 type NewsDetailEditorialFormFields = {
   title: string;

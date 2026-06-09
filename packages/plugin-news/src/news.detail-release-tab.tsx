@@ -1,7 +1,7 @@
 import { Controller, useFormContext, type FieldError } from 'react-hook-form';
 import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { getStudioFormFieldProps, StudioFormSummaryErrors } from '@sva/studio-ui-react';
-import { Button, Checkbox, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { Checkbox, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
 
@@ -16,8 +16,6 @@ export type NewsDetailReleaseTabProps = Readonly<{
   loadedItem: NewsContentItem | null;
   publishedAtField: ReleaseDateFieldState;
   publicationDateField: ReleaseDateFieldState;
-  onSave: () => void;
-  saveLabel: string;
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;
 
@@ -135,8 +133,6 @@ export function NewsDetailReleaseTab({
   loadedItem,
   publishedAtField,
   publicationDateField,
-  onSave,
-  saveLabel,
   pt,
 }: NewsDetailReleaseTabProps) {
   const {
@@ -230,12 +226,6 @@ export function NewsDetailReleaseTab({
       )}
 
       {mode === 'edit' && loadedItem ? <NewsTechnicalDetailsSection loadedItem={loadedItem} pt={pt} /> : null}
-
-      <div className="flex flex-wrap gap-3">
-        <Button type="button" onClick={onSave}>
-          {saveLabel}
-        </Button>
-      </div>
     </div>
   );
 }

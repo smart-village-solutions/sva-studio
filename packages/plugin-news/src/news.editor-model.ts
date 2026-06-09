@@ -113,6 +113,7 @@ const getMeaningfulAddress = (address?: NewsLegacyCompatibilitySnapshot['address
 };
 
 const createLegacySnapshot = (item: NewsContentItem): NewsLegacyCompatibilitySnapshot => ({
+  visible: item.visible,
   keywords: item.keywords,
   externalId: item.externalId,
   fullVersion: item.fullVersion,
@@ -187,8 +188,21 @@ export const buildNewsSavePayload = (
   existingSnapshot: NewsLegacyCompatibilitySnapshot | null,
   nowIso: string
 ): NewsSavePlan => {
-  const publishedAt = values.publicationMode === 'scheduled' ? values.scheduledPublicationAt : nowIso;
-  const effectivePublicationTimestamp = values.publicationMode === 'draft' ? nowIso : publishedAt;
+  const existingPublishedAt = hasMeaningfulString(existingSnapshot?.publishedAt) ? existingSnapshot.publishedAt : undefined;
+  const wasDraft = existingSnapshot?.visible === false;
+  const wasScheduled =
+    existingSnapshot?.visible !== false &&
+    existingPublishedAt !== undefined &&
+    new Date(existingPublishedAt).getTime() > new Date(nowIso).getTime();
+  const publishedAt =
+    values.publicationMode === 'scheduled'
+      ? values.scheduledPublicationAt
+      : values.publicationMode === 'immediate'
+        ? wasDraft || wasScheduled
+          ? nowIso
+          : existingPublishedAt ?? nowIso
+        : existingPublishedAt ?? nowIso;
+  const effectivePublicationTimestamp = values.publicationMode === 'draft' ? existingPublishedAt ?? nowIso : publishedAt;
   const visible = values.publicationMode !== 'draft';
   const sourceUrlDescription = values.sourceUrlDescription || values.sourceUrl.description || '';
   const charactersToBeShown = getMeaningfulCharactersToBeShown(existingSnapshot?.charactersToBeShown);

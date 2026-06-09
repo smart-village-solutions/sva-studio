@@ -252,8 +252,38 @@ vi.mock('../routes/monitoring/-job-detail-page', () => ({
 
 vi.mock('@sva/plugin-news', () => ({
   NewsCreatePage: ({ initialAuthor }: { initialAuthor?: string }) => (
-    <div data-testid="news-create-page">{initialAuthor ?? ''}</div>
+    <div data-testid="news-create-page">
+      <span data-testid="news-create-author-value">{initialAuthor ?? ''}</span>
+    </div>
   ),
+  NewsDetailPage: ({
+    mode,
+    initialAuthor,
+    authorControl,
+  }: {
+    mode: 'create' | 'edit';
+    initialAuthor?: string;
+    authorControl?:
+      | { kind: 'fixed'; value: string }
+      | {
+          kind: 'selectable';
+          value: string;
+          options: ReadonlyArray<{ value: string; label: string }>;
+        };
+  }) =>
+    mode === 'create' ? (
+      <div data-testid="news-create-page">
+        <span data-testid="news-create-author-kind">{authorControl?.kind ?? 'none'}</span>
+        <span data-testid="news-create-author-value">{authorControl?.value ?? initialAuthor ?? ''}</span>
+        <span data-testid="news-create-author-options">
+          {authorControl?.kind === 'selectable'
+            ? authorControl.options.map((option) => option.label).join('|')
+            : ''}
+        </span>
+      </div>
+    ) : (
+      <div data-testid="news-edit-page" />
+    ),
   NewsEditPage: () => <div data-testid="news-edit-page" />,
 }));
 
@@ -346,8 +376,8 @@ describe('appRouteBindings', () => {
     render(<appRouteBindings.newsEditor />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('news-create-page').textContent).toBe('Stadt Musterhausen');
-    });
+        expect(screen.getByTestId('news-create-author-value').textContent).toBe('Stadt Musterhausen');
+      });
   });
 
   it('falls back to the current user as author when no org-only membership is configured', async () => {
@@ -381,8 +411,8 @@ describe('appRouteBindings', () => {
     render(<appRouteBindings.newsEditor />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('news-create-page').textContent).toBe('Philipp Wilimzig');
-    });
+        expect(screen.getByTestId('news-create-author-value').textContent).toBe('Philipp Wilimzig');
+      });
   });
 
   it('stays stable with an authenticated user while the org context is still empty', async () => {
@@ -396,10 +426,49 @@ describe('appRouteBindings', () => {
     render(<appRouteBindings.newsEditor />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('news-create-page').textContent).toBe('Philipp Wilimzig');
-    });
+        expect(screen.getByTestId('news-create-author-value').textContent).toBe('Philipp Wilimzig');
+      });
 
     expect(routeState.getOrganization).not.toHaveBeenCalled();
+  });
+
+  it('offers organization or personal author choice when contentAuthorPolicy is org_or_personal', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Max Mustermann',
+    };
+    routeState.organizationContext = {
+      activeOrganizationId: 'org-1',
+      organizations: [{ organizationId: 'org-1', displayName: 'Organisation Musterstadt', isActive: true }],
+    };
+    routeState.getOrganization.mockResolvedValue({
+      data: {
+        id: 'org-1',
+        displayName: 'Organisation Musterstadt',
+        organizationKey: 'org-1',
+        organizationType: 'municipality',
+        contentAuthorPolicy: 'org_or_personal',
+        isActive: true,
+        parentOrganizationId: undefined,
+        depth: 0,
+        hierarchyPath: [],
+        metadata: {},
+        memberships: [],
+        children: [],
+      },
+    });
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.newsEditor />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('news-create-author-kind').textContent).toBe('selectable');
+    });
+    expect(screen.getByTestId('news-create-author-value').textContent).toBe('Organisation Musterstadt');
+    expect(screen.getByTestId('news-create-author-options').textContent).toBe(
+      'Organisation Musterstadt|Max Mustermann'
+    );
   });
 
   it('renders lazy bindings and route-param based bindings with normalized params and search values', async () => {

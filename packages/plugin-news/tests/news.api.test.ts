@@ -1,6 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { NewsApiError, createNews, deleteNews, getNews, listNews, listNewsCategories, updateNews } from '../src/news.api.js';
+import {
+  NewsApiError,
+  createNews,
+  deleteNews,
+  getNews,
+  listNews,
+  listNewsCategories,
+  saveNewsEditorItem,
+  updateNews,
+} from '../src/news.api.js';
+import { createDefaultNewsDetailFormValues } from '../src/news.detail-form.js';
 import type { NewsFormInput } from '../src/index.js';
 import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
@@ -25,6 +35,20 @@ const sampleResponse = {
   createdAt: '2026-01-01',
   updatedAt: '2026-01-02',
   publishedAt: sampleInput.publishedAt,
+};
+
+const editorValuesFixture = {
+  ...createDefaultNewsDetailFormValues('Redaktion'),
+  title: 'Neue News',
+  author: 'Redaktion',
+  categories: ['Allgemein'],
+  contentTeaser: 'Kurztext',
+  contentBody: '<p>Inhalt</p>',
+  sourceUrl: {
+    url: 'https://example.org/details',
+    description: '',
+  },
+  publicationMode: 'immediate' as const,
 };
 
 describe('news api', () => {
@@ -120,6 +144,42 @@ describe('news api', () => {
       sourceUrl: sampleInput.sourceUrl,
       pushNotification: true,
     });
+  });
+
+  it('creates a draft with a second visibility request', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: sampleResponse,
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { status: 'ok' },
+        }),
+      } as Response);
+
+    await expect(saveNewsEditorItem({ values: { ...editorValuesFixture, publicationMode: 'draft' } })).resolves.toEqual(
+      expect.objectContaining({
+        id: 'news-1',
+        visible: false,
+      })
+    );
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/mainserver/news',
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/mainserver/news/news-1/visibility',
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ visible: false }) })
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('updates and deletes existing news entries', async () => {

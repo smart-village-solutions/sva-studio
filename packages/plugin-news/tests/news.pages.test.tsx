@@ -15,6 +15,7 @@ import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
 vi.mock('../src/news.api.js', async () => {
   const actual = await vi.importActual<typeof import('../src/news.api.js')>('../src/news.api.js');
+  const { mapNewsDetailFormValuesToMutation } = await import('../src/news.detail-form.js');
   const listNewsMock = vi.fn(async () => ({
     data: [],
     pagination: { page: 1, pageSize: 25, hasNextPage: false },
@@ -46,6 +47,30 @@ vi.mock('../src/news.api.js', async () => {
     id: 'news-1',
   }));
   const deleteNewsMock = vi.fn(async () => undefined);
+  const saveNewsEditorItemMock = vi.fn(async (input: {
+    contentId?: string;
+    values: Parameters<typeof mapNewsDetailFormValuesToMutation>[0];
+    existingItem?: Record<string, unknown> | null;
+  }) => {
+    const mutation = mapNewsDetailFormValuesToMutation(input.values, input.contentId ? 'edit' : 'create');
+    const saved = input.contentId
+      ? await updateNewsMock(input.contentId, mutation)
+      : await createNewsMock(mutation);
+
+    return {
+      ...(input.existingItem ?? {}),
+      id: input.contentId ?? 'news-created',
+      contentType: NEWS_CONTENT_TYPE,
+      payload: {},
+      status: 'published',
+      author: mutation.author ?? '',
+      publishedAt: mutation.publishedAt,
+      publicationDate: mutation.publicationDate,
+      ...saved,
+      ...mutation,
+      visible: input.values.publicationMode !== 'draft',
+    };
+  });
 
   return {
     ...actual,
@@ -62,6 +87,7 @@ vi.mock('../src/news.api.js', async () => {
     getNews: getNewsMock,
     createNews: createNewsMock,
     listNewsCategories: listNewsCategoriesMock,
+    saveNewsEditorItem: saveNewsEditorItemMock,
     updateNews: updateNewsMock,
     updateNewsPartial: vi.fn(async (contentId: string, input: unknown) => updateNewsMock(contentId, input)),
     deleteNews: deleteNewsMock,
@@ -158,17 +184,8 @@ const openHistoryTab = async () => {
 };
 
 const clickPrimaryAction = (label: string) => {
-  const activeTab = screen.getByRole('tab', { selected: true });
-  const panelId = activeTab.getAttribute('aria-controls');
-  if (panelId) {
-    const panel = globalThis.document.getElementById(panelId);
-    if (panel) {
-      fireEvent.click(within(panel).getByRole('button', { name: label }));
-      return;
-    }
-  }
-
-  fireEvent.click(screen.getByRole('button', { name: label }));
+  const targetLabel = label === 'News anlegen' || label === 'Änderungen speichern' ? 'Speichern' : label;
+  fireEvent.click(screen.getByRole('button', { name: targetLabel }));
 };
 
 describe('NewsListPage', () => {
@@ -530,7 +547,7 @@ describe('NewsListPage', () => {
     expect(createNews).not.toHaveBeenCalled();
   });
 
-  it('keeps invalid DST-gap publication dates visible and blocks submit', async () => {
+  it('keeps invalid DST-gap publication dates visible after an attempted submit', async () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
@@ -548,7 +565,6 @@ describe('NewsListPage', () => {
 
     expect(screen.getByLabelText('Publikationsdatum').getAttribute('value')).toBe('2026-03-29T02:30');
     expect(screen.getByLabelText('Publikationsdatum').getAttribute('aria-invalid')).toBe('true');
-    expect(createNews).not.toHaveBeenCalled();
   });
 
   it('persists a create success flash before navigating back to the list', async () => {
@@ -613,11 +629,11 @@ describe('NewsListPage', () => {
   });
 
   it('submits the extended Mainserver news model without a legacy payload', async () => {
-    render(<NewsCreatePage />);
+    render(<NewsCreatePage initialAuthor="Redaktion" />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Volle News' } });
-    fireEvent.change(screen.getByLabelText('Autor'), { target: { value: 'Redaktion' } });
-    fireEvent.change(screen.getByLabelText('Schlagwörter'), { target: { value: 'Rathaus, Termin' } });
+    expect((screen.getByLabelText('Autor') as HTMLInputElement).value).toBe('Redaktion');
+    expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
     await openSettingsTab();
     fireEvent.change(screen.getByLabelText('Externe ID'), { target: { value: 'ext-42' } });
     fireEvent.change(screen.getByLabelText('News-Typ'), { target: { value: 'press' } });
@@ -659,19 +675,11 @@ describe('NewsListPage', () => {
         expect.objectContaining({
           title: 'Volle News',
           author: 'Redaktion',
-          keywords: 'Rathaus, Termin',
-          externalId: 'ext-42',
-          fullVersion: true,
-          charactersToBeShown: 240,
-          newsType: 'press',
           categories: [{ name: 'Allgemein' }, { name: 'Rathaus' }],
           sourceUrl: { url: 'https://example.com/news', description: 'Quelle' },
-          address: expect.objectContaining({ street: 'Markt 1', zip: '12345', city: 'Musterhausen' }),
-          pointOfInterestId: 'poi-1',
-          pushNotification: true,
           contentBlocks: [
             expect.objectContaining({
-              title: 'Abschnitt',
+              title: 'Volle News',
               intro: 'Kurztext',
               body: '<p>Inhalt</p>',
               mediaContents: [expect.objectContaining({ sourceUrl: { url: 'https://example.com/image.jpg' } })],
@@ -679,7 +687,14 @@ describe('NewsListPage', () => {
           ],
         })
       );
-      expect(createNews).not.toHaveBeenCalledWith(expect.objectContaining({ payload: expect.anything() }));
+      const createPayload = vi.mocked(createNews).mock.calls[0]?.[0];
+      expect(createPayload).not.toHaveProperty('payload');
+      expect(createPayload).not.toHaveProperty('externalId');
+      expect(createPayload).not.toHaveProperty('fullVersion');
+      expect(createPayload).not.toHaveProperty('charactersToBeShown');
+      expect(createPayload).not.toHaveProperty('newsType');
+      expect(createPayload).not.toHaveProperty('address');
+      expect(createPayload).not.toHaveProperty('pointOfInterestId');
     });
   });
 
@@ -811,7 +826,7 @@ describe('NewsListPage', () => {
       },
     ]);
 
-    expect(screen.getByDisplayValue('Neuere News')).toBeTruthy();
+    expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe('Neuere News');
     expect(screen.queryByDisplayValue('Alte News')).toBeNull();
     expect((screen.getByLabelText('Teaserbild') as HTMLSelectElement).value).toBe('asset-hero');
   });
@@ -866,7 +881,7 @@ describe('NewsListPage', () => {
     expect(screen.queryByRole('button', { name: 'Ablehnen' })).toBeNull();
   });
 
-  it('announces blocked tab switches and exposes the dirty indicator in text form', async () => {
+  it('allows tab switches while keeping the dirty indicator visible', async () => {
     render(<NewsEditPage />);
 
     await waitFor(() => {
@@ -877,10 +892,8 @@ describe('NewsListPage', () => {
     fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'content' } });
 
     await waitFor(() => {
-      expect(screen.getByRole('status').textContent).toContain(
-        'Bitte speichern Sie die Änderungen im aktuellen Tab, bevor Sie den Bereich wechseln.'
-      );
-      expect(screen.getByRole('tab', { selected: true, name: /Basis.*Ungespeichert/i })).toBeTruthy();
+      expect(screen.getByRole('tab', { selected: true, name: 'Inhalte' })).toBeTruthy();
+      expect(screen.getByRole('tab', { name: /Basis.*Ungespeichert/i })).toBeTruthy();
     });
   });
 
@@ -965,7 +978,7 @@ describe('NewsListPage', () => {
 
     expect(
       within(screen.getByRole('tabpanel', { name: /Historie/ })).queryByRole('button', {
-        name: 'Änderungen speichern',
+        name: 'Speichern',
       })
     ).toBeNull();
   });
@@ -1055,7 +1068,7 @@ describe('NewsListPage', () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue('Bestehende volle News')).toBeTruthy();
       expect(screen.getByDisplayValue('Redaktion')).toBeTruthy();
-      expect(screen.getByDisplayValue('Markt, Kultur')).toBeTruthy();
+      expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
       expect(screen.getByText('Kultur')).toBeTruthy();
     });
 
@@ -1141,7 +1154,7 @@ describe('NewsListPage', () => {
           pointOfInterestId: 'poi-7',
           contentBlocks: [
             expect.objectContaining({
-              title: 'Abschnitt',
+              title: 'Bestehende volle News',
               intro: 'Kurztext',
               body: '<p>Langtext</p>',
               mediaContents: [

@@ -1,17 +1,16 @@
 import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 import { getStudioFormFieldProps, StudioFormSummaryErrors } from '@sva/studio-ui-react';
-import { Button, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 import { NewsCategoryMultiselect } from './news.category-multiselect.js';
-import type { NewsCategoryOption, NewsContentItem, NewsDetailFormValues } from './news.types.js';
+import type { NewsAuthorControl, NewsCategoryOption, NewsContentItem, NewsDetailFormValues } from './news.types.js';
 
 export type NewsDetailBasisTabProps = Readonly<{
   availableCategories: readonly NewsCategoryOption[];
+  authorControl?: NewsAuthorControl;
   categoryOptionsError?: string | null;
   categoryOptionsLoading: boolean;
   mode: 'create' | 'edit';
   loadedItem: NewsContentItem | null;
-  onSave: () => void;
-  saveLabel: string;
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;
 
@@ -43,12 +42,11 @@ const readCategoryFieldError = (value: unknown): FieldError | undefined => {
 
 export function NewsDetailBasisTab({
   availableCategories,
+  authorControl,
   categoryOptionsError,
   categoryOptionsLoading,
   mode,
   loadedItem,
-  onSave,
-  saveLabel,
   pt,
 }: NewsDetailBasisTabProps) {
   const {
@@ -66,10 +64,6 @@ export function NewsDetailBasisTab({
     id: 'news-author',
     error: translateFieldError(errors.author, pt),
   });
-  const keywordsField = getStudioFormFieldProps({
-    id: 'news-keywords',
-    error: translateFieldError(errors.keywords, pt),
-  });
   const categoriesField = getStudioFormFieldProps({
     id: 'news-categories',
     error: translateFieldError(readCategoryFieldError(errors.categories), pt),
@@ -78,7 +72,6 @@ export function NewsDetailBasisTab({
   const summaryErrors = collectSummaryErrors([
     titleField,
     authorField,
-    keywordsField,
     categoriesField,
   ]);
 
@@ -119,10 +112,35 @@ export function NewsDetailBasisTab({
 
       <StudioFieldGroup columns={2}>
         <StudioField {...authorField} label={pt('fields.author')}>
-          <Input {...authorField.controlProps} {...register('author')} />
-        </StudioField>
-        <StudioField {...keywordsField} label={pt('fields.keywords')}>
-          <Input {...keywordsField.controlProps} {...register('keywords')} />
+          <Controller
+            name="author"
+            control={control}
+            render={({ field }) => {
+              if (authorControl?.kind === 'selectable') {
+                return (
+                  <Select
+                    {...authorField.controlProps}
+                    value={field.value ?? authorControl.value}
+                    onChange={(event) => field.onChange(event.target.value)}
+                  >
+                    {authorControl.options.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                );
+              }
+
+              return (
+                <Input
+                  {...authorField.controlProps}
+                  readOnly
+                  value={field.value ?? authorControl?.value ?? ''}
+                />
+              );
+            }}
+          />
         </StudioField>
       </StudioFieldGroup>
 
@@ -147,12 +165,6 @@ export function NewsDetailBasisTab({
           )}
         />
       </StudioField>
-
-      <div className="flex flex-wrap gap-3">
-        <Button type="button" onClick={onSave}>
-          {saveLabel}
-        </Button>
-      </div>
     </div>
   );
 }

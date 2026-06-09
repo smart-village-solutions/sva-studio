@@ -82,10 +82,57 @@ export const updateNews = async (contentId: string, input: NewsFormInput): Promi
 
 export const deleteNews = async (contentId: string): Promise<void> => newsClient.remove(contentId);
 
+export const setNewsVisibility = async (contentId: string, visible: boolean): Promise<void> => {
+  await requestMainserverJson<{ readonly status: string }, NewsApiError>({
+    url: `/api/v1/mainserver/news/${encodeURIComponent(contentId)}/visibility`,
+    errorFactory: (code, message) => new NewsApiError(code, message),
+    init: {
+      method: 'PATCH',
+      body: JSON.stringify({ visible }),
+      headers: createMainserverJsonRequestHeaders(),
+    },
+  });
+};
+
 export const updateNewsPartial = async (
   contentId: string,
   input: Partial<NewsFormInput>
 ): Promise<NewsContentItem> => newsClient.update(contentId, input as NewsFormInput);
+
+export const saveNewsEditorItem = async (input: {
+  readonly contentId?: string;
+  readonly values: NewsDetailFormValues;
+  readonly existingItem?: NewsContentItem | null;
+  readonly now?: () => string;
+}, dependencies?: {
+  readonly createNews?: typeof createNews;
+  readonly updateNews?: typeof updateNews;
+  readonly setNewsVisibility?: typeof setNewsVisibility;
+}): Promise<NewsContentItem> => {
+  const operations = {
+    createNews: dependencies?.createNews ?? createNews,
+    updateNews: dependencies?.updateNews ?? updateNews,
+    setNewsVisibility: dependencies?.setNewsVisibility ?? setNewsVisibility,
+  };
+  const mutation = mapNewsDetailFormValuesToMutation(input.values, input.contentId ? 'edit' : 'create');
+  const visible = input.values.publicationMode !== 'draft';
+  const saved = input.contentId
+    ? await operations.updateNews(input.contentId, mutation)
+    : await operations.createNews(mutation);
+  await operations.setNewsVisibility(saved.id, visible);
+
+  return {
+    ...saved,
+    title: mutation.title,
+    author: mutation.author ?? saved.author,
+    categories: mutation.categories ?? saved.categories,
+    sourceUrl: mutation.sourceUrl ?? saved.sourceUrl,
+    contentBlocks: mutation.contentBlocks ?? saved.contentBlocks,
+    publishedAt: mutation.publishedAt,
+    publicationDate: mutation.publicationDate,
+    visible,
+  };
+};
 
 export const buildNewsBasisMutation = (values: NewsDetailFormValues): Partial<NewsFormInput> =>
   pickMutationFields(mapNewsDetailFormValuesToMutation(values, 'edit'), [

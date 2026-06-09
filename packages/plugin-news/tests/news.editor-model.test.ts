@@ -113,4 +113,19 @@ describe('news.editor-model', () => {
       keywords: 'Rathaus, Termin',
     });
   });
+
+  it('preserves the original publishedAt when editing an already published item in immediate mode', () => {
+    const payload = buildNewsSavePayload(
+      {
+        ...editorValuesFixture,
+        publicationMode: 'immediate',
+        scheduledPublicationAt: '',
+      },
+      editorValuesFixture.__legacySnapshot ?? null,
+      '2026-06-10T08:00:00.000Z'
+    );
+
+    expect(payload.mutation.publishedAt).toBe('2026-06-09T09:00:00.000Z');
+    expect(payload.visible).toBe(true);
+  });
 });

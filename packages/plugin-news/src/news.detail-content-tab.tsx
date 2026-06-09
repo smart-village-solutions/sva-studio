@@ -128,16 +128,12 @@ function ContentBlockSection({
 
 export type NewsDetailContentTabProps = Readonly<{
   mediaOptions: readonly { assetId: string; label: string }[];
-  onSave: () => void;
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
-  saveLabel: string;
 }>;
 
 export function NewsDetailContentTab({
   mediaOptions,
-  onSave,
   pt,
-  saveLabel,
 }: NewsDetailContentTabProps) {
   const {
     control,
@@ -238,12 +234,6 @@ export function NewsDetailContentTab({
             removeBlock={remove}
           />
         ))}
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <Button type="button" onClick={onSave}>
-          {saveLabel}
-        </Button>
       </div>
     </div>
   );

@@ -1,12 +1,10 @@
 import { Controller, useFormContext, type FieldError } from 'react-hook-form';
 import { getStudioFormFieldProps, StudioFormSummaryErrors } from '@sva/studio-ui-react';
-import { Button, Checkbox, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
+import { Checkbox, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import type { NewsDetailFormValues } from './news.types.js';
 
 export type NewsDetailSettingsTabProps = Readonly<{
-  onSave: () => void;
-  saveLabel: string;
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;
 
@@ -28,7 +26,7 @@ const translateFieldError = (
   };
 };
 
-export function NewsDetailSettingsTab({ onSave, saveLabel, pt }: NewsDetailSettingsTabProps) {
+export function NewsDetailSettingsTab({ pt }: NewsDetailSettingsTabProps) {
   const {
     control,
     formState: { errors },
@@ -77,12 +75,6 @@ export function NewsDetailSettingsTab({ onSave, saveLabel, pt }: NewsDetailSetti
           {pt('fields.fullVersion')}
         </label>
         <div />
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <Button type="button" onClick={onSave}>
-          {saveLabel}
-        </Button>
       </div>
     </div>
   );

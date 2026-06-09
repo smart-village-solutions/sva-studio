@@ -118,6 +118,14 @@ export type NewsFormInput = {
   readonly pushNotification?: boolean;
 };
 
+export type NewsAuthorControl =
+  | { readonly kind: 'fixed'; readonly value: string }
+  | {
+      readonly kind: 'selectable';
+      readonly value: string;
+      readonly options: readonly { readonly value: string; readonly label: string }[];
+    };
+
 export type NewsDetailTabId = 'basis' | 'content' | 'release' | 'settings' | 'history';
 
 export type NewsPublicationMode = 'draft' | 'immediate' | 'scheduled';
@@ -125,6 +133,7 @@ export type NewsPublicationMode = 'draft' | 'immediate' | 'scheduled';
 export type NewsEditorialStatus = 'draft' | 'scheduled' | 'published';
 
 export type NewsLegacyCompatibilitySnapshot = {
+  readonly visible?: boolean;
   readonly keywords?: string;
   readonly externalId?: string;
   readonly fullVersion?: boolean;

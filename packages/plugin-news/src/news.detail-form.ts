@@ -22,6 +22,7 @@ type DirtyFieldTree = {
 type DirtyTabState = Record<NewsDetailTabId, boolean>;
 
 type MutableLegacyCompatibilitySnapshot = {
+  visible?: boolean;
   keywords?: string;
   externalId?: string;
   fullVersion?: boolean;
@@ -177,6 +178,7 @@ const mediaContentSchema = z.object({
 });
 
 const legacySnapshotSchema = z.object({
+  visible: z.boolean().optional(),
   keywords: z.string().optional(),
   externalId: z.string().optional(),
   fullVersion: z.boolean().optional(),

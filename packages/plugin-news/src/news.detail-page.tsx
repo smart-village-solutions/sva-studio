@@ -25,16 +25,14 @@ import {
 } from '@sva/studio-ui-react';
 
 import {
-  buildNewsBasisMutation,
-  buildNewsContentMutation,
-  buildNewsReleaseMutation,
-  buildNewsSettingsMutation,
   createNews,
   deleteNews,
   getNews,
   listNewsCategories,
   NewsApiError,
-  updateNewsPartial,
+  saveNewsEditorItem,
+  setNewsVisibility,
+  updateNews,
 } from './news.api.js';
 import { NewsDetailBasisTab } from './news.detail-basis-tab.js';
 import { NewsDetailContentTab } from './news.detail-content-tab.js';
@@ -50,7 +48,13 @@ import {
 } from './news.detail-form.js';
 import { createNewsDetailTabDefinitions } from './news.detail-tabs.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds, pluginNewsMediaPickers } from './plugin.js';
-import type { NewsCategoryOption, NewsContentItem, NewsDetailFormValues, NewsDetailTabId } from './news.types.js';
+import type {
+  NewsAuthorControl,
+  NewsCategoryOption,
+  NewsContentItem,
+  NewsDetailFormValues,
+  NewsDetailTabId,
+} from './news.types.js';
 
 type StatusMessage = Readonly<{
   kind: 'success' | 'error';
@@ -75,44 +79,6 @@ const errorMessageTranslationKeys: Record<string, string> = {
   network_error: 'messages.errors.networkError',
   not_found: 'messages.missingContent',
 };
-
-const basisFieldNames = [
-  'title',
-  'author',
-  'keywords',
-  'categories',
-] as const;
-
-const contentFieldNames = [
-  'teaserImageAssetId',
-  'headerImageAssetId',
-  'contentBlocks',
-  'sourceUrl',
-  'address',
-  'pointOfInterestId',
-] as const;
-
-const releaseFieldNames = [
-  'publishedAt',
-  'publicationDate',
-  'showPublishDate',
-  'pushNotification',
-] as const;
-
-const settingsFieldNames = [
-  'externalId',
-  'newsType',
-  'charactersToBeShown',
-  'fullVersion',
-] as const;
-
-const fieldNamesByTab = {
-  basis: basisFieldNames,
-  content: contentFieldNames,
-  release: releaseFieldNames,
-  settings: settingsFieldNames,
-  history: [],
-} as const satisfies Record<NewsDetailTabId, readonly (keyof NewsDetailFormValues)[]>;
 
 const resolvePluginActionLabel = (
   pt: PluginTranslator,
@@ -179,28 +145,6 @@ const formatDate = (value?: string) => {
   return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
-const getFieldNamesForTab = (tabId: NewsDetailTabId) => fieldNamesByTab[tabId];
-
-const getFieldsToValidate = (mode: 'create' | 'edit', tabId: NewsDetailTabId) =>
-  mode === 'create'
-    ? [...basisFieldNames, ...contentFieldNames, ...releaseFieldNames, ...settingsFieldNames]
-    : getFieldNamesForTab(tabId);
-
-const buildPartialMutationForTab = (tabId: NewsDetailTabId, values: NewsDetailFormValues) => {
-  switch (tabId) {
-    case 'basis':
-      return buildNewsBasisMutation(values);
-    case 'content':
-      return buildNewsContentMutation(values);
-    case 'release':
-      return buildNewsReleaseMutation(values);
-    case 'settings':
-      return buildNewsSettingsMutation(values);
-    case 'history':
-      return {};
-  }
-};
-
 const isDirtyFieldTree = (
   value: FieldNamesMarkedBoolean<NewsDetailFormValues> | undefined
 ): value is FieldNamesMarkedBoolean<NewsDetailFormValues> => Boolean(value);
@@ -260,23 +204,24 @@ export const NewsDetailPage = ({
   mode,
   contentId,
   initialAuthor,
+  authorControl,
 }: Readonly<{
   mode: 'create' | 'edit';
   contentId?: string;
   initialAuthor?: string;
+  authorControl?: NewsAuthorControl;
 }>) => {
   const navigate = useNavigate();
   const pt = React.useCallback<PluginTranslator>(
     (key, variables) => translatePluginKey('news', key, variables),
     []
   );
-  const submitLabel =
-    mode === 'create'
-      ? resolvePluginActionLabel(pt, pluginNewsActionIds.create)
-      : resolvePluginActionLabel(pt, pluginNewsActionIds.update);
   const deleteLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.delete);
+  const headerSaveLabel = (() => {
+    const label = pt('actions.save');
+    return label === 'news.actions.save' ? 'Speichern' : label;
+  })();
   const [activeTab, setActiveTab] = React.useState<NewsDetailTabId>('basis');
-  const [tabStatusMessage, setTabStatusMessage] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
@@ -291,18 +236,18 @@ export const NewsDetailPage = ({
   const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
   const [visitedTabs, setVisitedTabs] = React.useState<readonly NewsDetailTabId[]>(['basis']);
   const editLoadRequestIdRef = React.useRef(0);
+  const formId = React.useId();
+  const resolvedInitialAuthor = (authorControl?.value ?? initialAuthor ?? '').trim();
 
   const methods = useForm<NewsDetailFormValues>({
-    defaultValues: createDefaultNewsDetailFormValues(initialAuthor?.trim() ?? ''),
+    defaultValues: createDefaultNewsDetailFormValues(resolvedInitialAuthor),
     resolver: newsDetailFormResolver,
   });
   const {
     formState,
-    getValues,
     reset,
     setError,
     setValue,
-    trigger,
   } = methods;
 
   const dirtyTabs = React.useMemo(
@@ -328,7 +273,7 @@ export const NewsDetailPage = ({
       return;
     }
 
-    const normalizedInitialAuthor = initialAuthor?.trim() ?? '';
+    const normalizedInitialAuthor = resolvedInitialAuthor;
     if (normalizedInitialAuthor.length === 0) {
       return;
     }
@@ -337,16 +282,11 @@ export const NewsDetailPage = ({
       return;
     }
 
-    const currentAuthor = getValues('author').trim();
-    if (currentAuthor.length > 0) {
-      return;
-    }
-
     setValue('author', normalizedInitialAuthor, {
       shouldDirty: false,
       shouldTouch: false,
     });
-  }, [formState.dirtyFields.author, getValues, initialAuthor, mode, setValue]);
+  }, [formState.dirtyFields.author, mode, resolvedInitialAuthor, setValue]);
 
   React.useEffect(() => {
     let active = true;
@@ -467,65 +407,70 @@ export const NewsDetailPage = ({
     [existingMediaReferenceCount]
   );
 
-  const saveTab = React.useCallback(
-    async (tabId: NewsDetailTabId) => {
-      setStatusMessage(null);
-      const fieldsToValidate = getFieldsToValidate(mode, tabId);
-      if (fieldsToValidate.length > 0) {
-        const valid = await trigger(fieldsToValidate);
-        if (!valid) {
-          setStatusMessage({ kind: 'error', text: pt('messages.validationError') });
-          return;
-        }
-      }
+  const saveCurrentItem = methods.handleSubmit(async (values) => {
+    setStatusMessage(null);
 
-      if (invalidDateInputs.publishedAt) {
-        setError('publishedAt', { type: 'manual', message: 'publishedAt' });
-      }
-      if (invalidDateInputs.publicationDate) {
-        setError('publicationDate', { type: 'manual', message: 'publicationDate' });
-      }
-      if (invalidDateInputs.publishedAt || invalidDateInputs.publicationDate) {
-        setStatusMessage({ kind: 'error', text: pt('messages.validationError') });
+    const publishedAtValidation = parseDatetimeLocalInput(publishedAtInput, methods.getValues('publishedAt'));
+    const publicationDateValidation = parseDatetimeLocalInput(publicationDateInput, methods.getValues('publicationDate'));
+    const nextInvalidDateInputs = {
+      publishedAt: publishedAtValidation.isInvalid,
+      publicationDate: publicationDateValidation.isInvalid,
+    };
+
+    setInvalidDateInputs(nextInvalidDateInputs);
+
+    if (nextInvalidDateInputs.publishedAt) {
+      setError('publishedAt', { type: 'manual', message: 'publishedAt' });
+    }
+    if (nextInvalidDateInputs.publicationDate) {
+      setError('publicationDate', { type: 'manual', message: 'publicationDate' });
+    }
+    if (nextInvalidDateInputs.publishedAt || nextInvalidDateInputs.publicationDate) {
+      setStatusMessage({ kind: 'error', text: pt('messages.validationError') });
+      return;
+    }
+
+    if (mode === 'edit' && !contentId) {
+      setStatusMessage({ kind: 'error', text: pt('messages.missingContent') });
+      return;
+    }
+
+    try {
+      const saved = await saveNewsEditorItem({
+        contentId,
+        values,
+        existingItem: loadedItem ?? null,
+      }, {
+        createNews,
+        updateNews,
+        setNewsVisibility,
+      });
+      await syncMediaReferences(values, saved.id);
+      setExistingMediaReferenceCount(buildNewsMediaReferences(values.teaserImageAssetId, values.headerImageAssetId).length);
+
+      if (mode === 'create') {
+        persistFlashMessage('createSuccess');
+        await navigate({ to: '/admin/content' });
         return;
       }
 
-      const values = getValues();
-
-      try {
-        if (mode === 'create') {
-          const saved = await createNews(mapNewsDetailFormValuesToMutation(values, 'create'));
-          await syncMediaReferences(values, saved.id);
-          persistFlashMessage('createSuccess');
-          await navigate({ to: '/admin/content' });
-          return;
-        }
-
-        if (!contentId) {
-          setStatusMessage({ kind: 'error', text: pt('messages.missingContent') });
-          return;
-        }
-
-        const mutation = buildPartialMutationForTab(tabId, values);
-
-        const hasMutationFields = Object.keys(mutation).length > 0;
-        let targetId = contentId;
-        if (hasMutationFields) {
-          const saved = await updateNewsPartial(contentId, mutation);
-          targetId = saved.id;
-        }
-        if (tabId === 'content') {
-          await syncMediaReferences(values, targetId);
-        }
-
-        reset(values);
-        setStatusMessage({ kind: 'success', text: pt('messages.updateSuccess') });
-      } catch (error) {
-        setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.saveError') });
-      }
-    },
-    [contentId, getValues, invalidDateInputs.publicationDate, invalidDateInputs.publishedAt, mode, navigate, pt, reset, setError, syncMediaReferences, trigger]
-  );
+      const nextValues = {
+        ...mapNewsItemToDetailFormValues(saved),
+        teaserImageAssetId: values.teaserImageAssetId,
+        headerImageAssetId: values.headerImageAssetId,
+      };
+      reset(nextValues);
+      setLoadedItem(saved);
+      setPublishedAtInput(toDatetimeLocalValue(nextValues.publishedAt));
+      setPublicationDateInput(toDatetimeLocalValue(nextValues.publicationDate));
+      setInvalidDateInputs({ publishedAt: false, publicationDate: false });
+      setStatusMessage({ kind: 'success', text: pt('messages.updateSuccess') });
+    } catch (error) {
+      setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.saveError') });
+    }
+  }, () => {
+    setStatusMessage({ kind: 'error', text: pt('messages.validationError') });
+  });
 
   const onDelete = async () => {
     if (!contentId || deletePending) {
@@ -562,16 +507,9 @@ export const NewsDetailPage = ({
       if (nextTab === activeTab) {
         return;
       }
-
-      if (mode === 'edit' && dirtyTabs[activeTab]) {
-        setTabStatusMessage(pt('messages.unsavedTabChanges'));
-        return;
-      }
-
-      setTabStatusMessage(null);
       setActiveTab(nextTab);
     },
-    [activeTab, dirtyTabs, mode, pt]
+    [activeTab]
   );
 
   if (isLoading) {
@@ -594,12 +532,11 @@ export const NewsDetailPage = ({
       panel: (
         <NewsDetailBasisTab
           availableCategories={categoryOptions}
+          authorControl={authorControl}
           categoryOptionsError={categoryOptionsError}
           categoryOptionsLoading={categoryOptionsLoading}
           mode={mode}
           loadedItem={loadedItem}
-          onSave={() => void saveTab('basis')}
-          saveLabel={submitLabel}
           pt={pt}
         />
       ),
@@ -614,9 +551,7 @@ export const NewsDetailPage = ({
       panel: (
         <NewsDetailContentTab
           mediaOptions={mediaOptions}
-          onSave={() => void saveTab('content')}
           pt={pt}
-          saveLabel={submitLabel}
         />
       ),
     },
@@ -651,9 +586,7 @@ export const NewsDetailPage = ({
               return normalizedValue;
             },
           }}
-          onSave={() => void saveTab('release')}
           pt={pt}
-          saveLabel={submitLabel}
         />
       ),
     },
@@ -666,9 +599,7 @@ export const NewsDetailPage = ({
       changeLabel: pt('tabs.changeLabel'),
       panel: (
         <NewsDetailSettingsTab
-          onSave={() => void saveTab('settings')}
           pt={pt}
-          saveLabel={submitLabel}
         />
       ),
     },
@@ -687,6 +618,9 @@ export const NewsDetailPage = ({
       description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
       actions={
         <div className="flex flex-wrap gap-3">
+          <Button type="submit" form={formId}>
+            {headerSaveLabel}
+          </Button>
           <Button asChild variant="outline">
             <Link to="/admin/content">{pt('actions.back')}</Link>
           </Button>
@@ -699,82 +633,86 @@ export const NewsDetailPage = ({
       }
     >
       <FormProvider {...methods}>
-        {statusMessage ? <StudioFormSummary kind={statusMessage.kind}>{statusMessage.text}</StudioFormSummary> : null}
-        <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as NewsDetailTabId)} className="space-y-0">
-          <label className="block md:hidden">
-            <span className="sr-only">{pt('tabs.mobileLabel')}</span>
-            <Select
-              aria-label={pt('tabs.mobileLabel')}
-              className="h-11 rounded-xl border-border/70 bg-card"
-              value={activeTab}
-              onChange={(event) => handleTabChange(event.target.value as NewsDetailTabId)}
-            >
-              {tabs.map((tab) => (
-                <option key={tab.id} value={tab.id}>
-                  {tab.label}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] hidden gap-10 md:flex">
+        <form
+          id={formId}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void saveCurrentItem();
+          }}
+        >
+          {statusMessage ? <StudioFormSummary kind={statusMessage.kind}>{statusMessage.text}</StudioFormSummary> : null}
+          <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as NewsDetailTabId)} className="space-y-0">
+            <label className="block md:hidden">
+              <span className="sr-only">{pt('tabs.mobileLabel')}</span>
+              <Select
+                aria-label={pt('tabs.mobileLabel')}
+                className="h-11 rounded-xl border-border/70 bg-card"
+                value={activeTab}
+                onChange={(event) => handleTabChange(event.target.value as NewsDetailTabId)}
+              >
+                {tabs.map((tab) => (
+                  <option key={tab.id} value={tab.id}>
+                    {tab.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] hidden gap-10 md:flex">
+              {tabs.map((tab) => {
+                const TabIcon = newsTabIconMap[tab.id];
+                const isActive = tab.id === activeTab;
+
+                return (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    onMouseEnter={() => warmTab(tab.id)}
+                    onFocus={() => warmTab(tab.id)}
+                    className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
+                      isActive ? 'mb-[-1px] border-primary text-primary' : 'border-transparent text-muted-foreground'
+                    }`}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <TabIcon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      <span>{tab.label}</span>
+                      {tab.hasChanges && tab.changeLabel ? (
+                        <span className="text-xs font-medium text-foreground">{tab.changeLabel}</span>
+                      ) : null}
+                    </span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
             {tabs.map((tab) => {
-              const TabIcon = newsTabIconMap[tab.id];
-              const isActive = tab.id === activeTab;
+              const shouldKeepMounted = visitedTabs.includes(tab.id) && tab.id !== activeTab;
 
               return (
-                <TabsTrigger
+                <TabsContent
                   key={tab.id}
                   value={tab.id}
-                  onMouseEnter={() => warmTab(tab.id)}
-                  onFocus={() => warmTab(tab.id)}
-                  className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
-                    isActive ? 'mb-[-1px] border-primary text-primary' : 'border-transparent text-muted-foreground'
-                  }`}
+                  forceMount={shouldKeepMounted || undefined}
+                  className="mt-0 data-[state=inactive]:hidden"
                 >
-                  <span className="inline-flex items-center gap-2">
-                    <TabIcon aria-hidden="true" className="h-4 w-4 shrink-0" />
-                    <span>{tab.label}</span>
-                    {tab.hasChanges && tab.changeLabel ? (
-                      <span className="text-xs font-medium text-foreground">{tab.changeLabel}</span>
-                    ) : null}
-                  </span>
-                </TabsTrigger>
+                  <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5 [&_.text-muted-foreground]:text-foreground">
+                    <section
+                      aria-label={tab.title ? String(tab.title) : tab.label}
+                      className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
+                    >
+                      <div className="space-y-1">
+                        <h2 className="text-base font-semibold text-foreground">{tab.title ?? tab.label}</h2>
+                        {tab.description ? (
+                          <p className="text-sm leading-relaxed text-muted-foreground">{tab.description}</p>
+                        ) : null}
+                      </div>
+                      {tab.actions ? <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">{tab.actions}</div> : null}
+                    </section>
+                    {tab.panel}
+                  </div>
+                </TabsContent>
               );
             })}
-          </TabsList>
-
-          {tabStatusMessage ? <StudioFormSummary kind="error">{tabStatusMessage}</StudioFormSummary> : null}
-
-          {tabs.map((tab) => {
-            const shouldKeepMounted = visitedTabs.includes(tab.id) && tab.id !== activeTab;
-
-            return (
-              <TabsContent
-                key={tab.id}
-                value={tab.id}
-                forceMount={shouldKeepMounted || undefined}
-                className="mt-0 data-[state=inactive]:hidden"
-              >
-                <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5 [&_.text-muted-foreground]:text-foreground">
-                  <section
-                    aria-label={tab.title ? String(tab.title) : tab.label}
-                    className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
-                  >
-                    <div className="space-y-1">
-                      <h2 className="text-base font-semibold text-foreground">{tab.title ?? tab.label}</h2>
-                      {tab.description ? (
-                        <p className="text-sm leading-relaxed text-muted-foreground">{tab.description}</p>
-                      ) : null}
-                    </div>
-                    {tab.actions ? <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">{tab.actions}</div> : null}
-                  </section>
-                  {tab.panel}
-                </div>
-              </TabsContent>
-            );
-          })}
-        </Tabs>
-
+          </Tabs>
+        </form>
       </FormProvider>
     </StudioDetailPageTemplate>
   );

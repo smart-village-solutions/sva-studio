@@ -601,6 +601,15 @@ describe('waste-management auth runtime handlers', () => {
 
     const saveWasteFraction = vi.fn(async () => undefined);
     const loadWasteFractionById = vi.fn(async () => savedFraction);
+    const loadMasterDataFractionsOverview = vi.fn(async (): Promise<WasteManagementMasterDataOverview> => ({
+      fractions: [],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    }));
     const startPluginOperationJob = vi.fn(
       async () =>
         new Response(JSON.stringify({ data: { id: 'job-fraction-create' } }), {
@@ -640,6 +649,7 @@ describe('waste-management auth runtime handlers', () => {
         getRequestId: () => 'req-test',
         emitAuditEvent,
         resolveActorInfo: vi.fn(async () => resolvedActorInfo),
+        loadMasterDataFractionsOverview,
         saveWasteFraction,
         loadWasteFractionById,
         startPluginOperationJob,
@@ -685,6 +695,8 @@ describe('waste-management auth runtime handlers', () => {
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({
       data: savedFraction,
+      syncStatus: 'queued',
+      syncJob: { id: 'job-fraction-create' },
       requestId: 'req-test',
     });
     expect(emitAuditEvent).toHaveBeenCalledWith(
@@ -734,6 +746,15 @@ describe('waste-management auth runtime handlers', () => {
       .mockResolvedValueOnce(existingFraction)
       .mockResolvedValueOnce(updatedFraction);
     const saveWasteFraction = vi.fn(async () => undefined);
+    const loadMasterDataFractionsOverview = vi.fn(async (): Promise<WasteManagementMasterDataOverview> => ({
+      fractions: [],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    }));
     const startPluginOperationJob = vi.fn(
       async () =>
         new Response(JSON.stringify({ data: { id: 'job-fraction-update' } }), {
@@ -768,6 +789,7 @@ describe('waste-management auth runtime handlers', () => {
       {
         getRequestId: () => 'req-test',
         resolveActorInfo: vi.fn(async () => resolvedActorInfo),
+        loadMasterDataFractionsOverview,
         saveWasteFraction,
         loadWasteFractionById,
         startPluginOperationJob,
@@ -812,6 +834,8 @@ describe('waste-management auth runtime handlers', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       data: updatedFraction,
+      syncStatus: 'queued',
+      syncJob: { id: 'job-fraction-update' },
       requestId: 'req-test',
     });
   });

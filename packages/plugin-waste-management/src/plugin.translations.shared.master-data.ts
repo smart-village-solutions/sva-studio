@@ -46,7 +46,15 @@ type MasterDataFractionsCopy = Readonly<{
   dialog: CrudDialogCopy;
   deleteDialog: Readonly<Record<string, string>>;
   statusDialog: Readonly<Record<string, string>>;
-  messages: Readonly<CrudMessagesCopy & { deleteSuccess: string; deleteError: string; deleteForbidden: string; deleteConflict: string }>;
+  messages: Readonly<
+    CrudMessagesCopy & {
+      saveConflict: string;
+      deleteSuccess: string;
+      deleteError: string;
+      deleteForbidden: string;
+      deleteConflict: string;
+    }
+  >;
 }>;
 
 type MasterDataFractionsCreateViewCopy = Readonly<{

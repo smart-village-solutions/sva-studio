@@ -158,6 +158,7 @@ export const wasteManagementHandlers = {
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementFractionInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
+        loadMasterDataFractionsOverview,
         saveWasteFraction,
         loadWasteFractionById,
       })
@@ -174,6 +175,7 @@ export const wasteManagementHandlers = {
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementFractionInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
+        loadMasterDataFractionsOverview,
         saveWasteFraction,
         loadWasteFractionById,
       })

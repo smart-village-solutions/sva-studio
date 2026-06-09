@@ -1,8 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const createWasteManagementFractionMock = vi.hoisted(() => vi.fn(async () => undefined));
-const startWasteManagementSyncWasteTypesMock = vi.hoisted(() => vi.fn(async () => undefined));
-const updateWasteManagementFractionMock = vi.hoisted(() => vi.fn(async () => undefined));
+const createWasteManagementFractionMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    data: { id: 'fraction-created' },
+    syncStatus: 'queued',
+    syncJob: { id: 'job-sync-1', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
+  }))
+);
+const updateWasteManagementFractionMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    data: { id: 'fraction-updated' },
+    syncStatus: 'queued',
+    syncJob: { id: 'job-sync-2', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
+  }))
+);
 
 import { createSubmitFractionHandler } from '../src/waste-management.master-data.fraction-region-submissions.helpers.js';
 
@@ -11,17 +22,24 @@ vi.mock('../src/waste-management.api.js', async (importOriginal) => {
   return {
     ...actual,
     createWasteManagementFraction: createWasteManagementFractionMock,
-    startWasteManagementSyncWasteTypes: startWasteManagementSyncWasteTypesMock,
     updateWasteManagementFraction: updateWasteManagementFractionMock,
   };
 });
 
 describe('createSubmitFractionHandler', () => {
   beforeEach(() => {
-    createWasteManagementFractionMock.mockClear();
-    startWasteManagementSyncWasteTypesMock.mockReset();
-    startWasteManagementSyncWasteTypesMock.mockImplementation(async () => undefined);
-    updateWasteManagementFractionMock.mockClear();
+    createWasteManagementFractionMock.mockReset();
+    createWasteManagementFractionMock.mockImplementation(async () => ({
+      data: { id: 'fraction-created' },
+      syncStatus: 'queued',
+      syncJob: { id: 'job-sync-1', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
+    }));
+    updateWasteManagementFractionMock.mockReset();
+    updateWasteManagementFractionMock.mockImplementation(async () => ({
+      data: { id: 'fraction-updated' },
+      syncStatus: 'queued',
+      syncJob: { id: 'job-sync-2', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
+    }));
   });
 
   it('submits edit views through the update path even if dialogMode still says create', async () => {
@@ -81,12 +99,18 @@ describe('createSubmitFractionHandler', () => {
     expect(createWasteManagementFractionMock).not.toHaveBeenCalled();
     expect(ctx.loadOverview).toHaveBeenCalledWith(true);
     expect(ctx.state.setLastOutcome).toHaveBeenCalledWith('fraction-update-success');
-    expect(startWasteManagementSyncWasteTypesMock).toHaveBeenCalledTimes(1);
-    expect(ctx.state.setTrackedSyncWasteTypesJob).toHaveBeenCalledWith(null);
+    expect(ctx.state.setTrackedSyncWasteTypesJob).toHaveBeenCalledWith({
+      id: 'job-sync-2',
+      jobTypeId: 'waste-management.sync-waste-types',
+      status: 'queued',
+    });
   });
 
-  it('downgrades sync start failures to a retryable warning after a successful create', async () => {
-    startWasteManagementSyncWasteTypesMock.mockRejectedValueOnce(new Error('sync_failed'));
+  it('downgrades sync enqueue failures to a retryable warning after a successful create', async () => {
+    createWasteManagementFractionMock.mockResolvedValueOnce({
+      data: { id: 'fraction-created' },
+      syncStatus: 'failed',
+    });
     const ctx = {
       state: {
         dialogMode: 'create',
@@ -125,7 +149,6 @@ describe('createSubmitFractionHandler', () => {
     await createSubmitFractionHandler(ctx)(event, 'create');
 
     expect(createWasteManagementFractionMock).toHaveBeenCalledTimes(1);
-    expect(startWasteManagementSyncWasteTypesMock).toHaveBeenCalledTimes(1);
     expect(ctx.state.setTrackedSyncWasteTypesJob).toHaveBeenCalledWith(null);
     expect(ctx.state.setMessage).toHaveBeenCalledWith({
       kind: 'warning',

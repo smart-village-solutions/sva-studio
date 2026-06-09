@@ -168,6 +168,7 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     deletePartialSuccess: '{{count}} von {{total}} Waste-Fraktionen wurden gelöscht.',
     saveError: 'Die Waste-Fraktion konnte nicht gespeichert werden.',
     saveForbidden: 'Für das Speichern von Waste-Fraktionen fehlt die Berechtigung.',
+    saveConflict: 'Das PDF-Kürzel wird bereits von einer anderen aktiven Waste-Fraktion verwendet.',
     deleteError: 'Die Waste-Fraktion konnte nicht gelöscht werden.',
     deleteForbidden: 'Für das Löschen von Waste-Fraktionen fehlt die Berechtigung.',
     deleteConflict: 'Die Waste-Fraktion kann wegen bestehender Zuordnungen nicht gelöscht werden.',

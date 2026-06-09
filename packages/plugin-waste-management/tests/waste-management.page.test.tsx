@@ -88,12 +88,16 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     ],
   })),
   createWasteManagementFraction: vi.fn(async () => ({
-    id: 'fraction-3',
-    name: 'Papier',
-    color: '#123456',
-    active: true,
-    createdAt: '2026-05-09T10:00:00.000Z',
-    updatedAt: '2026-05-09T10:00:00.000Z',
+    data: {
+      id: 'fraction-3',
+      name: 'Papier',
+      color: '#123456',
+      active: true,
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+    },
+    syncStatus: 'queued',
+    syncJob: { id: 'job-sync-1', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
   })),
   createWasteManagementHouseNumber: vi.fn(async () => ({
     id: 'house-3',
@@ -250,12 +254,16 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     status: 'pending',
   })),
   updateWasteManagementFraction: vi.fn(async () => ({
-    id: 'fraction-1',
-    name: 'Restmüll Plus',
-    color: '#111111',
-    active: true,
-    createdAt: '2026-05-09T10:00:00.000Z',
-    updatedAt: '2026-05-09T12:00:00.000Z',
+    data: {
+      id: 'fraction-1',
+      name: 'Restmüll Plus',
+      color: '#111111',
+      active: true,
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T12:00:00.000Z',
+    },
+    syncStatus: 'queued',
+    syncJob: { id: 'job-sync-1', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
   })),
   updateWasteManagementCity: vi.fn(async () => ({
     id: 'city-1',
@@ -437,12 +445,16 @@ describe('WasteManagementPage', () => {
     wasteManagementApiMocks.updateWasteManagementSettings.mockImplementation(async () => null);
     wasteManagementApiMocks.createWasteManagementFraction.mockReset();
     wasteManagementApiMocks.createWasteManagementFraction.mockImplementation(async () => ({
-      id: 'fraction-3',
-      name: 'Papier',
-      color: '#123456',
-      active: true,
-      createdAt: '2026-05-09T10:00:00.000Z',
-      updatedAt: '2026-05-09T10:00:00.000Z',
+      data: {
+        id: 'fraction-3',
+        name: 'Papier',
+        color: '#123456',
+        active: true,
+        createdAt: '2026-05-09T10:00:00.000Z',
+        updatedAt: '2026-05-09T10:00:00.000Z',
+      },
+      syncStatus: 'queued',
+      syncJob: { id: 'job-sync-1', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
     }));
     wasteManagementApiMocks.createWasteManagementCity.mockReset();
     wasteManagementApiMocks.createWasteManagementCity.mockImplementation(async () => ({
@@ -581,12 +593,16 @@ describe('WasteManagementPage', () => {
     }));
     wasteManagementApiMocks.updateWasteManagementFraction.mockReset();
     wasteManagementApiMocks.updateWasteManagementFraction.mockImplementation(async () => ({
-      id: 'fraction-1',
-      name: 'Restmüll Plus',
-      color: '#111111',
-      active: true,
-      createdAt: '2026-05-09T10:00:00.000Z',
-      updatedAt: '2026-05-09T12:00:00.000Z',
+      data: {
+        id: 'fraction-1',
+        name: 'Restmüll Plus',
+        color: '#111111',
+        active: true,
+        createdAt: '2026-05-09T10:00:00.000Z',
+        updatedAt: '2026-05-09T12:00:00.000Z',
+      },
+      syncStatus: 'queued',
+      syncJob: { id: 'job-sync-1', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
     }));
     wasteManagementApiMocks.updateWasteManagementCity.mockReset();
     wasteManagementApiMocks.updateWasteManagementCity.mockImplementation(async () => ({
@@ -1338,7 +1354,17 @@ describe('WasteManagementPage', () => {
         collectionLocations: [],
         locationTourLinks: [],
       });
-    wasteManagementApiMocks.startWasteManagementSyncWasteTypes.mockRejectedValueOnce(new Error('sync_failed'));
+    wasteManagementApiMocks.createWasteManagementFraction.mockResolvedValueOnce({
+      data: {
+        id: 'fraction-3',
+        name: 'Papier',
+        color: '#123456',
+        active: true,
+        createdAt: '2026-05-09T10:00:00.000Z',
+        updatedAt: '2026-05-09T10:00:00.000Z',
+      },
+      syncStatus: 'failed',
+    });
 
     render(<WasteManagementPage />);
 
@@ -1357,13 +1383,7 @@ describe('WasteManagementPage', () => {
     });
     fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.masterData.fractions.createView.actions.savePrimary' })[0]!);
 
-    await waitFor(() => {
-      expect(wasteManagementApiMocks.startWasteManagementSyncWasteTypes).toHaveBeenCalledTimes(1);
-    });
-
-    expect(
-      screen.getByRole('button', { name: 'wasteManagement.masterData.fractions.actions.retrySync' })
-    ).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'wasteManagement.masterData.fractions.actions.retrySync' })).toBeTruthy();
   });
 
   it('shows a retry action when the queued wasteTypes sync later fails in the worker', async () => {
@@ -1405,6 +1425,17 @@ describe('WasteManagementPage', () => {
         collectionLocations: [],
         locationTourLinks: [],
       });
+    wasteManagementApiMocks.createWasteManagementFraction.mockResolvedValueOnce({
+      data: {
+        id: 'fraction-3',
+        name: 'Papier',
+        color: '#123456',
+        active: true,
+        createdAt: '2026-05-09T10:00:00.000Z',
+        updatedAt: '2026-05-09T10:00:00.000Z',
+      },
+      syncStatus: 'failed',
+    });
     wasteManagementApiMocks.startWasteManagementSyncWasteTypes.mockResolvedValueOnce({
       id: 'job-sync-late-failure',
       jobTypeId: 'waste-management.sync-waste-types',
@@ -1444,6 +1475,7 @@ describe('WasteManagementPage', () => {
       target: { value: '#123456' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.masterData.fractions.createView.actions.savePrimary' })[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: 'wasteManagement.masterData.fractions.actions.retrySync' }));
 
     await waitFor(() => {
       expect(wasteManagementApiMocks.getWasteManagementJobDetail).toHaveBeenCalledWith('job-sync-late-failure', {

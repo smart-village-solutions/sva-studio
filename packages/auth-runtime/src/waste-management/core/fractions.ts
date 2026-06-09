@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { ApiItemResponse, StudioJobRecord, WasteFractionRecord } from '@sva/core';
 import { wasteManagementOperationsContract } from '@sva/core';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
@@ -16,21 +17,109 @@ import { getRequestId, normalizeOptionalString, requireActorInstanceId, requireD
 
 const { createWasteFractionSchema, updateWasteFractionSchema } = wasteManagementMasterDataSchemas;
 const normalizeWasteFractionShortLabel = (value: string): string => value.trim().toUpperCase();
+type WasteFractionSyncStatus = 'queued' | 'failed';
+type WasteFractionSyncMetadata = Readonly<{
+  syncStatus?: WasteFractionSyncStatus;
+  syncJob?: StudioJobRecord;
+}>;
+
+type WasteFractionMutationApiResponse<T> = ApiItemResponse<T> & WasteFractionSyncMetadata;
+
+const withWasteFractionSyncMetadata = async <T>(
+  response: Response,
+  syncMetadata: WasteFractionSyncMetadata
+): Promise<Response> => {
+  const payload = (await response.json()) as ApiItemResponse<T>;
+
+  return new Response(
+    JSON.stringify({
+      ...payload,
+      ...(syncMetadata.syncStatus ? { syncStatus: syncMetadata.syncStatus } : {}),
+      ...(syncMetadata.syncJob ? { syncJob: syncMetadata.syncJob } : {}),
+    } satisfies WasteFractionMutationApiResponse<T>),
+    {
+      status: response.status,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+};
+
+const createWasteFractionMutationResponse = <T>(
+  status: number,
+  data: T,
+  requestId: string | undefined,
+  syncMetadata: WasteFractionSyncMetadata
+): Response =>
+  new Response(
+    JSON.stringify({
+      ...asApiItem(data, requestId),
+      ...(syncMetadata.syncStatus ? { syncStatus: syncMetadata.syncStatus } : {}),
+      ...(syncMetadata.syncJob ? { syncJob: syncMetadata.syncJob } : {}),
+    } satisfies WasteFractionMutationApiResponse<T>),
+    {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+
+const findConflictingActiveFraction = async (
+  deps: WasteManagementHandlerDeps,
+  instanceId: string,
+  shortLabel: string,
+  currentFractionId?: string
+): Promise<WasteFractionRecord | null> => {
+  const overview = await requireDeps(deps.loadMasterDataFractionsOverview, 'loadMasterDataFractionsOverview')(instanceId);
+
+  return (
+    overview.fractions.find((fraction) => {
+      if (!fraction.active || fraction.id === currentFractionId) {
+        return false;
+      }
+
+      return normalizeWasteFractionShortLabel(fraction.pdfShortLabel ?? '') === shortLabel;
+    }) ?? null
+  );
+};
+
+const validateUniqueActiveWasteFractionShortLabel = async (
+  deps: WasteManagementHandlerDeps,
+  instanceId: string,
+  shortLabel: string,
+  active: boolean,
+  requestId?: string,
+  currentFractionId?: string
+): Promise<Response | null> => {
+  if (!active) {
+    return null;
+  }
+
+  const conflictingFraction = await findConflictingActiveFraction(deps, instanceId, shortLabel, currentFractionId);
+  if (!conflictingFraction) {
+    return null;
+  }
+
+  return createApiError(
+    409,
+    'conflict',
+    `Das PDF-Kürzel "${shortLabel}" wird bereits von der aktiven Waste-Fraktion "${conflictingFraction.name}" verwendet.`,
+    requestId
+  );
+};
 
 const enqueueWasteTypesSyncAfterFractionMutation = async (
   request: Request,
   ctx: AuthenticatedRequestContext,
   deps: WasteManagementHandlerDeps,
   instanceId: string
-): Promise<void> => {
+): Promise<WasteFractionSyncMetadata> => {
   const actorResolution = await (deps.resolveActorInfo ??
     ((scopedRequest: Request, scopedCtx: AuthenticatedRequestContext) =>
       resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true })))(request, ctx);
   if ('error' in actorResolution || !actorResolution.actor.actorAccountId) {
-    return;
+    return { syncStatus: 'failed' };
   }
 
-  await (deps.startPluginOperationJob ?? startPluginOperationJobFromFacade)({
+  const response = await (deps.startPluginOperationJob ?? startPluginOperationJobFromFacade)({
     instanceId: actorResolution.actor.instanceId,
     actorAccountId: actorResolution.actor.actorAccountId,
     endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
@@ -47,6 +136,24 @@ const enqueueWasteTypesSyncAfterFractionMutation = async (
       },
     },
   });
+
+  if (!response.ok) {
+    return { syncStatus: 'failed' };
+  }
+
+  try {
+    const payload = (await response.json()) as ApiItemResponse<StudioJobRecord>;
+    if (!payload.data?.id) {
+      return { syncStatus: 'failed' };
+    }
+
+    return {
+      syncStatus: 'queued',
+      syncJob: payload.data,
+    };
+  } catch {
+    return { syncStatus: 'failed' };
+  }
 };
 
 const normalizeWasteFractionReminderConfig = (input: {
@@ -115,6 +222,17 @@ export const wasteManagementFractionHandlers = {
     if (!parsed.ok) {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
+    const normalizedShortLabel = normalizeWasteFractionShortLabel(parsed.data.pdfShortLabel);
+    const duplicateShortLabelError = await validateUniqueActiveWasteFractionShortLabel(
+      deps,
+      instanceId,
+      normalizedShortLabel,
+      parsed.data.active,
+      requestId
+    );
+    if (duplicateShortLabelError) {
+      return duplicateShortLabelError;
+    }
     const reminderConfig = normalizeWasteFractionReminderConfig(parsed.data);
 
     const response = await runWasteCreateMutation({
@@ -135,7 +253,7 @@ export const wasteManagementFractionHandlers = {
         requireDeps(deps.saveWasteFraction, 'saveWasteFraction')(instanceId, {
           id: parsed.data.id,
           name: parsed.data.name.trim(),
-          pdfShortLabel: normalizeWasteFractionShortLabel(parsed.data.pdfShortLabel),
+          pdfShortLabel: normalizedShortLabel,
           translations: parsed.data.translations,
           containerSize: normalizeOptionalString(parsed.data.containerSize),
           color: parsed.data.color,
@@ -151,11 +269,12 @@ export const wasteManagementFractionHandlers = {
       loadSaved: () => requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById')(instanceId, parsed.data.id),
     });
 
-    if (response.status < 400) {
-      await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+    if (response.status >= 400) {
+      return response;
     }
 
-    return response;
+    const syncMetadata = await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+    return await withWasteFractionSyncMetadata<WasteFractionRecord>(response, syncMetadata);
   },
   updateWasteManagementFractionInternal: async (
     request: Request,
@@ -187,9 +306,25 @@ export const wasteManagementFractionHandlers = {
     if (!parsed.ok) {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
+    const normalizedShortLabel = normalizeWasteFractionShortLabel(parsed.data.pdfShortLabel);
     const reminderConfig = normalizeWasteFractionReminderConfig(parsed.data);
 
     const loadWasteFraction = requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById');
+    const existing = await loadWasteFraction(instanceId, fractionId);
+    if (!existing) {
+      return createApiError(404, 'not_found', 'Die Waste-Fraktion wurde nicht gefunden.', requestId);
+    }
+    const duplicateShortLabelError = await validateUniqueActiveWasteFractionShortLabel(
+      deps,
+      instanceId,
+      normalizedShortLabel,
+      parsed.data.active,
+      requestId,
+      fractionId
+    );
+    if (duplicateShortLabelError) {
+      return duplicateShortLabelError;
+    }
 
     const response = await runWasteUpdateMutation({
       deps,
@@ -206,12 +341,12 @@ export const wasteManagementFractionHandlers = {
         verificationFailed: 'Die Waste-Fraktion konnte nicht verifiziert werden.',
         persistenceFailed: 'Die Waste-Fraktion konnte nicht gespeichert werden.',
       },
-      loadExisting: () => loadWasteFraction(instanceId, fractionId),
+      loadExisting: async () => existing,
       save: () =>
         requireDeps(deps.saveWasteFraction, 'saveWasteFraction')(instanceId, {
           id: fractionId,
           name: parsed.data.name.trim(),
-          pdfShortLabel: normalizeWasteFractionShortLabel(parsed.data.pdfShortLabel),
+          pdfShortLabel: normalizedShortLabel,
           translations: parsed.data.translations,
           containerSize: normalizeOptionalString(parsed.data.containerSize),
           color: parsed.data.color,
@@ -227,11 +362,12 @@ export const wasteManagementFractionHandlers = {
       loadSaved: () => loadWasteFraction(instanceId, fractionId),
     });
 
-    if (response.status < 400) {
-      await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+    if (response.status >= 400) {
+      return response;
     }
 
-    return response;
+    const syncMetadata = await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+    return await withWasteFractionSyncMetadata<WasteFractionRecord>(response, syncMetadata);
   },
   deleteWasteManagementFractionInternal: async (
     request: Request,
@@ -278,11 +414,8 @@ export const wasteManagementFractionHandlers = {
       });
 
       await updateWasteVisibleStatus(deps, instanceId, 'success');
-      await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
-      return new Response(JSON.stringify(asApiItem({ id: fractionId }, requestId)), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const syncMetadata = await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+      return createWasteFractionMutationResponse(200, { id: fractionId }, requestId, syncMetadata);
     } catch (error) {
       if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
         throw error;

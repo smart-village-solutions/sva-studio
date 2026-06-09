@@ -648,12 +648,19 @@ describe('waste management helper modules', () => {
   });
 
   it('covers fraction and region submission handlers for success and forbidden error branches', async () => {
-    const createWasteManagementFractionMock = vi.fn();
-    const updateWasteManagementFractionMock = vi.fn();
+    const createWasteManagementFractionMock = vi.fn(async () => ({
+      data: { id: 'fraction-1' },
+      syncStatus: 'queued',
+      syncJob: { id: 'job-sync-1', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
+    }));
+    const updateWasteManagementFractionMock = vi.fn(async () => ({
+      data: { id: 'fraction-1' },
+      syncStatus: 'queued',
+      syncJob: { id: 'job-sync-2', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
+    }));
     const deleteWasteManagementFractionMock = vi.fn();
     const createWasteManagementRegionMock = vi.fn();
     const updateWasteManagementRegionMock = vi.fn();
-    const startWasteManagementSyncWasteTypesMock = vi.fn(async () => undefined);
     const applySuccessSpy = vi.fn((close, setMessage, text: string, _onSuccess?: () => void, showMessage = true) => {
       close();
       if (showMessage) {
@@ -669,7 +676,6 @@ describe('waste management helper modules', () => {
         updateWasteManagementFraction: updateWasteManagementFractionMock,
         deleteWasteManagementFraction: deleteWasteManagementFractionMock,
         createWasteManagementRegion: createWasteManagementRegionMock,
-        startWasteManagementSyncWasteTypes: startWasteManagementSyncWasteTypesMock,
         updateWasteManagementRegion: updateWasteManagementRegionMock,
       };
     });
@@ -750,7 +756,7 @@ describe('waste management helper modules', () => {
     });
 
     state.regionDialogMode = 'edit';
-    updateWasteManagementRegionMock.mockResolvedValueOnce(undefined);
+    updateWasteManagementRegionMock.mockResolvedValueOnce({ id: 'region-1', name: 'Nord' });
     await handlers.onSubmitRegion(createEvent);
     expect(updateWasteManagementRegionMock).toHaveBeenCalledWith(
       'region-1',

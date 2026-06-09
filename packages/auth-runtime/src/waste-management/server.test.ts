@@ -235,6 +235,7 @@ describe('wasteManagementHandlers', () => {
         internal: coreHandlerMocks.createWasteManagementFractionInternal,
         deps: {
           ...sharedWasteManagementDepsMock,
+          loadMasterDataFractionsOverview: loaderMocks.loadMasterDataFractionsOverview,
           saveWasteFraction: saverMocks.saveWasteFraction,
           loadWasteFractionById: loaderMocks.loadWasteFractionById,
         },
@@ -244,6 +245,7 @@ describe('wasteManagementHandlers', () => {
         internal: coreHandlerMocks.updateWasteManagementFractionInternal,
         deps: {
           ...sharedWasteManagementDepsMock,
+          loadMasterDataFractionsOverview: loaderMocks.loadMasterDataFractionsOverview,
           saveWasteFraction: saverMocks.saveWasteFraction,
           loadWasteFractionById: loaderMocks.loadWasteFractionById,
         },

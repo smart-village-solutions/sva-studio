@@ -168,6 +168,7 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     deletePartialSuccess: '{{count}} of {{total}} waste fractions were deleted.',
     saveError: 'The waste fraction could not be saved.',
     saveForbidden: 'Missing permission to save waste fractions.',
+    saveConflict: 'The PDF short label is already used by another active waste fraction.',
     deleteError: 'The waste fraction could not be deleted.',
     deleteForbidden: 'Missing permission to delete waste fractions.',
     deleteConflict: 'The waste fraction cannot be deleted because assignments still exist.',

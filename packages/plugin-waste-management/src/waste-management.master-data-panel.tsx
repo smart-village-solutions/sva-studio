@@ -5,8 +5,32 @@ import { useWasteMasterDataController } from './waste-management.master-data.con
 import { WasteMasterDataDialogs } from './waste-management.master-data-dialogs.js';
 import { WasteMasterDataPanelEmptyState } from './waste-management.master-data-panel.empty-state.js';
 import { WasteMasterDataTabContent } from './waste-management.master-data-tab-content.js';
-import { StatusNotice } from './waste-management.page.support.js';
+import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+
+const hasAnyMasterData = (
+  overview: ReturnType<typeof useWasteMasterDataController>['overview']
+): boolean =>
+  Boolean(
+    overview &&
+      (
+        overview.fractions.length > 0 ||
+        overview.regions.length > 0 ||
+        overview.cities.length > 0 ||
+        overview.streets.length > 0 ||
+        overview.houseNumbers.length > 0 ||
+        overview.collectionLocations.length > 0
+      )
+  );
+
+const retrySyncWasteTypes = async (
+  controller: ReturnType<typeof useWasteMasterDataController>,
+  action: NonNullable<StatusMessage['retryAction']>
+) => {
+  if (action === 'sync-waste-types') {
+    await controller.retrySyncWasteTypes();
+  }
+};
 
 export const WasteMasterDataPanel = ({
   search,
@@ -29,30 +53,13 @@ export const WasteMasterDataPanel = ({
   const dialogs = <WasteMasterDataDialogs controller={controller} />;
   const showFractionFormView = tab === 'fractions' && search.fractionsView !== 'list';
   const showLocationFormView = tab === 'locations' && search.locationsView !== 'list';
-  const hasAnyMasterData = Boolean(
-    controller.overview &&
-      (
-        controller.overview.fractions.length > 0 ||
-        controller.overview.regions.length > 0 ||
-        controller.overview.cities.length > 0 ||
-        controller.overview.streets.length > 0 ||
-        controller.overview.houseNumbers.length > 0 ||
-        controller.overview.collectionLocations.length > 0
-      )
-  );
+  const showEmptyState = !showFractionFormView && !showLocationFormView && !hasAnyMasterData(controller.overview);
 
-  if (!showFractionFormView && !showLocationFormView && !hasAnyMasterData) {
+  if (showEmptyState) {
     return (
       <>
         <div className="space-y-4">
-          <StatusNotice
-            message={controller.message}
-            onRetry={(action) => {
-              if (action === 'sync-waste-types') {
-                void controller.retrySyncWasteTypes();
-              }
-            }}
-          />
+          <StatusNotice message={controller.message} onRetry={(action) => void retrySyncWasteTypes(controller, action)} />
         </div>
         <WasteMasterDataPanelEmptyState controller={controller} search={search} />
         {dialogs}
@@ -63,14 +70,7 @@ export const WasteMasterDataPanel = ({
   return (
     <>
       <div className="space-y-4">
-        <StatusNotice
-          message={controller.message}
-          onRetry={(action) => {
-            if (action === 'sync-waste-types') {
-              void controller.retrySyncWasteTypes();
-            }
-          }}
-        />
+        <StatusNotice message={controller.message} onRetry={(action) => void retrySyncWasteTypes(controller, action)} />
         <WasteMasterDataTabContent controller={controller} search={search} tab={tab} />
       </div>
       {dialogs}

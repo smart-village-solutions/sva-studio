@@ -64,6 +64,89 @@ export const FractionFormActions = ({
   </div>
 );
 
+const FractionDescriptionHint = ({
+  count,
+  pt,
+}: {
+  readonly count: number;
+  readonly pt: ReturnType<typeof usePluginTranslation>;
+}) => (
+  <span className="flex items-center justify-between gap-3">
+    <span>{pt('masterData.fractions.createView.fieldHints.description')}</span>
+    <span className="shrink-0">{pt('masterData.fractions.createView.meta.descriptionCounter', { count })}</span>
+  </span>
+);
+
+const FractionBasicsFields = ({
+  form,
+  submitAttempted,
+  errors,
+  onChange,
+  pt,
+}: {
+  readonly form: FractionFormState;
+  readonly submitAttempted: boolean;
+  readonly errors: FractionFormErrors;
+  readonly onChange: (patch: Partial<FractionFormState>) => void;
+  readonly pt: ReturnType<typeof usePluginTranslation>;
+}) => (
+  <StudioFieldGroup>
+    <StudioField
+      id="waste-fraction-name"
+      label={pt('masterData.fractions.fields.name')}
+      description={pt('masterData.fractions.createView.fieldHints.name')}
+      error={submitAttempted ? errors.name : undefined}
+      required
+    >
+      <Input
+        id="waste-fraction-name"
+        value={form.name}
+        aria-invalid={submitAttempted && errors.name ? 'true' : undefined}
+        onChange={(event) => onChange({ name: event.target.value })}
+      />
+    </StudioField>
+    <StudioField
+      id="waste-fraction-description"
+      label={pt('masterData.fractions.fields.description')}
+      description={<FractionDescriptionHint count={form.description.length} pt={pt} />}
+    >
+      <Textarea
+        id="waste-fraction-description"
+        value={form.description}
+        rows={4}
+        maxLength={300}
+        onChange={(event) => onChange({ description: event.target.value })}
+      />
+    </StudioField>
+    <StudioField
+      id="waste-fraction-pdf-short-label"
+      label={pt('masterData.fractions.fields.pdfShortLabel')}
+      description={pt('masterData.fractions.createView.fieldHints.pdfShortLabel')}
+      error={submitAttempted ? errors.pdfShortLabel : undefined}
+      required
+    >
+      <Input
+        id="waste-fraction-pdf-short-label"
+        value={form.pdfShortLabel}
+        maxLength={12}
+        aria-invalid={submitAttempted && errors.pdfShortLabel ? 'true' : undefined}
+        onChange={(event) => onChange({ pdfShortLabel: event.target.value })}
+      />
+    </StudioField>
+    <StudioField
+      id="waste-fraction-container-size"
+      label={pt('masterData.fractions.fields.containerSize')}
+      description={pt('masterData.fractions.createView.fieldHints.containerSize')}
+    >
+      <Input
+        id="waste-fraction-container-size"
+        value={form.containerSize}
+        onChange={(event) => onChange({ containerSize: event.target.value })}
+      />
+    </StudioField>
+  </StudioFieldGroup>
+);
+
 export const FractionBasicsSection = ({
   form,
   submitAttempted,
@@ -76,73 +159,13 @@ export const FractionBasicsSection = ({
   readonly onChange: (patch: Partial<FractionFormState>) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-  const descriptionLength = form.description.length;
 
   return (
     <FractionSection
       title={pt('masterData.fractions.createView.sections.basics')}
       description={pt('masterData.fractions.createView.sections.basicsHint')}
     >
-      <StudioFieldGroup>
-        <StudioField
-          id="waste-fraction-name"
-          label={pt('masterData.fractions.fields.name')}
-          description={pt('masterData.fractions.createView.fieldHints.name')}
-          error={submitAttempted ? errors.name : undefined}
-          required
-        >
-          <Input
-            id="waste-fraction-name"
-            value={form.name}
-            aria-invalid={submitAttempted && errors.name ? 'true' : undefined}
-            onChange={(event) => onChange({ name: event.target.value })}
-          />
-        </StudioField>
-        <StudioField
-          id="waste-fraction-description"
-          label={pt('masterData.fractions.fields.description')}
-          description={
-            <span className="flex items-center justify-between gap-3">
-              <span>{pt('masterData.fractions.createView.fieldHints.description')}</span>
-              <span className="shrink-0">{pt('masterData.fractions.createView.meta.descriptionCounter', { count: descriptionLength })}</span>
-            </span>
-          }
-        >
-          <Textarea
-            id="waste-fraction-description"
-            value={form.description}
-            rows={4}
-            maxLength={300}
-            onChange={(event) => onChange({ description: event.target.value })}
-          />
-        </StudioField>
-        <StudioField
-          id="waste-fraction-pdf-short-label"
-          label={pt('masterData.fractions.fields.pdfShortLabel')}
-          description={pt('masterData.fractions.createView.fieldHints.pdfShortLabel')}
-          error={submitAttempted ? errors.pdfShortLabel : undefined}
-          required
-        >
-          <Input
-            id="waste-fraction-pdf-short-label"
-            value={form.pdfShortLabel}
-            maxLength={12}
-            aria-invalid={submitAttempted && errors.pdfShortLabel ? 'true' : undefined}
-            onChange={(event) => onChange({ pdfShortLabel: event.target.value })}
-          />
-        </StudioField>
-        <StudioField
-          id="waste-fraction-container-size"
-          label={pt('masterData.fractions.fields.containerSize')}
-          description={pt('masterData.fractions.createView.fieldHints.containerSize')}
-        >
-          <Input
-            id="waste-fraction-container-size"
-            value={form.containerSize}
-            onChange={(event) => onChange({ containerSize: event.target.value })}
-          />
-        </StudioField>
-      </StudioFieldGroup>
+      <FractionBasicsFields form={form} submitAttempted={submitAttempted} errors={errors} onChange={onChange} pt={pt} />
     </FractionSection>
   );
 };

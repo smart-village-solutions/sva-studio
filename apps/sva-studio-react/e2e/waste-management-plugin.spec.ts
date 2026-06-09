@@ -617,6 +617,7 @@ test.describe('waste management plugin', () => {
     await expect(page.getByRole('button', { name: 'Fraktion anlegen' })).toBeVisible();
     await page.getByRole('button', { name: 'Fraktion anlegen' }).click();
     await page.locator('#waste-fraction-name').fill('Papier');
+    await page.locator('#waste-fraction-pdf-short-label').fill('PPK');
     await page.locator('#waste-fraction-color-text').fill('#00aaee');
     await page.locator('#waste-fraction-container-size').fill('240l');
     await page.locator('#waste-fraction-description').fill('Papierfraktion für den E2E-Pfad.');
@@ -629,6 +630,7 @@ test.describe('waste management plugin', () => {
     expect(harness.requests.createdFractions).toHaveLength(1);
     expect(harness.requests.createdFractions[0]).toMatchObject({
       name: 'Papier',
+      pdfShortLabel: 'PPK',
       color: '#00aaee',
       containerSize: '240l',
     });
@@ -721,6 +723,7 @@ test.describe('waste management plugin', () => {
     ).toBeVisible();
     await page.getByRole('button', { name: 'Fraktion anlegen' }).click();
     await page.locator('#waste-fraction-name').fill('Papier Plus');
+    await page.locator('#waste-fraction-pdf-short-label').fill('PP');
     await page.locator('#waste-fraction-color-text').fill('#123456');
     await page.locator('#waste-fraction-create-form').getByRole('button', { name: 'Abfallart speichern' }).click();
     await expect(page.getByText('Für das Speichern von Waste-Fraktionen fehlt die Berechtigung.').first()).toBeVisible();

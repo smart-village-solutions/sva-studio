@@ -73,6 +73,7 @@ const matchRoute = (request: Request): RouteMatch | null => {
 type ParsedNewsInput = {
   readonly news: SvaMainserverNewsInput;
   readonly rawBody: string;
+  readonly visible?: boolean;
 };
 
 type ParseOptions = {
@@ -113,7 +114,6 @@ const readonlyMutationFields = new Set([
   'payload',
   'createdAt',
   'updatedAt',
-  'visible',
   'dataProvider',
   'settings',
   'announcements',
@@ -286,6 +286,11 @@ const parseNewsInput = async (request: Request, options: ParseOptions): Promise<
     return errorJson(400, 'invalid_request', 'Push-Benachrichtigungen sind nur beim Erstellen erlaubt.');
   }
 
+  const visible = readBoolean(body.visible);
+  if ('visible' in body && visible === undefined) {
+    return errorJson(400, 'invalid_request', 'Das Feld "visible" muss als Boolean gesendet werden.');
+  }
+
   const title = readString(body.title);
   const publishedAt = readString(body.publishedAt);
   if (!title || !publishedAt || !isValidDate(publishedAt)) {
@@ -326,6 +331,7 @@ const parseNewsInput = async (request: Request, options: ParseOptions): Promise<
 
   return {
     rawBody,
+    visible,
     news: buildNewsInput({
       body,
       title,
@@ -504,8 +510,12 @@ const handleCollectionCreate = async (
 
   try {
     const data = await createSvaMainserverNews({ ...actor, news: parsed.news });
+    if (parsed.visible === false) {
+      await changeSvaMainserverNewsVisibility({ ...actor, newsId: data.id, visible: false });
+    }
+    const responseData = parsed.visible === undefined ? data : { ...data, visible: parsed.visible };
     logSuccess('mainserver_news_create', data.id);
-    const responseBody = { data };
+    const responseBody = { data: responseData };
     await completeNewsCreateIdempotency({
       actorAccountId,
       instanceId: actorInfo.actor.instanceId,
@@ -552,7 +562,7 @@ const handleItemUpdate = async (
     return actor;
   }
 
-  const response = await updateNewsForRoute(route, actor, parsed.news);
+  const response = await updateNewsForRoute(route, actor, parsed.news, parsed.visible);
   logSuccess('mainserver_news_update', route.newsId);
   return response;
 };
@@ -721,10 +731,14 @@ const updateNewsForRoute = async (
     readonly keycloakSubject: string;
     readonly activeOrganizationId?: string;
   },
-  news: SvaMainserverNewsInput
+  news: SvaMainserverNewsInput,
+  visible?: boolean
 ) => {
   const data = await updateSvaMainserverNews({ ...actor, newsId: route.newsId, news });
-  return json({ data });
+  if (visible !== undefined) {
+    await changeSvaMainserverNewsVisibility({ ...actor, newsId: route.newsId, visible });
+  }
+  return json({ data: visible === undefined ? data : { ...data, visible } });
 };
 
 const changeNewsVisibilityForRoute = async (

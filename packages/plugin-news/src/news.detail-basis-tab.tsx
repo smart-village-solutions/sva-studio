@@ -153,11 +153,21 @@ export function NewsDetailBasisTab({
                 );
               }
 
+              if (authorControl?.kind === 'fixed') {
+                return (
+                  <Input
+                    {...authorField.controlProps}
+                    readOnly
+                    value={field.value ?? authorControl.value}
+                  />
+                );
+              }
+
               return (
                 <Input
                   {...authorField.controlProps}
-                  readOnly
-                  value={field.value ?? authorControl?.value ?? ''}
+                  {...field}
+                  value={field.value ?? ''}
                 />
               );
             }}

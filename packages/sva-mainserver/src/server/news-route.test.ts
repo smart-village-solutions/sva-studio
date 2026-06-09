@@ -273,7 +273,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     });
   });
 
-  it('creates published news and rejects missing publishedAt before GraphQL', async () => {
+  it('creates news and applies draft visibility in the same route flow', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
     state.resolveActorInfo.mockResolvedValue({
@@ -308,6 +308,21 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     const createCall = state.createSvaMainserverNews.mock.calls[0]?.[0] as { news?: Record<string, unknown> } | undefined;
     expect(createCall?.news).toEqual(expect.objectContaining({ contentBlocks: newsInput.contentBlocks, pushNotification: true }));
     expect(createCall?.news).not.toHaveProperty('payload');
+    expect(state.changeSvaMainserverNewsVisibility).not.toHaveBeenCalled();
+
+    state.createSvaMainserverNews.mockResolvedValueOnce({ id: 'news-2' });
+
+    const draft = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-draft' },
+        body: JSON.stringify({ ...newsInput, visible: false }),
+      })
+    );
+    await expect(draft?.json()).resolves.toEqual({ data: { id: 'news-2', visible: false } });
+    expect(state.changeSvaMainserverNewsVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ newsId: 'news-2', visible: false })
+    );
 
     const rejected = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news', {
@@ -317,7 +332,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       })
     );
     expect(rejected?.status).toBe(400);
-    expect(state.createSvaMainserverNews).toHaveBeenCalledTimes(1);
+    expect(state.createSvaMainserverNews).toHaveBeenCalledTimes(2);
   });
 
   it('requires the news update permission before updating news', async () => {
@@ -342,6 +357,30 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       expect.objectContaining({ action: 'news.update' })
     );
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
+  });
+
+  it('updates news and applies visibility changes without a second route authorization', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.updateSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ ...updateNewsInput, visible: false }),
+      })
+    );
+
+    await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1', visible: false } });
+    expect(state.changeSvaMainserverNewsVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ newsId: 'news-1', visible: false })
+    );
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledTimes(1);
   });
 
   it('normalizes nested optional news input before updating', async () => {
@@ -482,7 +521,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
   });
 
-  it('rejects legacy payload, read-only fields and update push notifications before GraphQL', async () => {
+  it('rejects legacy payload, invalid visibility, read-only fields and update push notifications before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
 
@@ -501,6 +540,14 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       })
     );
     expect(readOnly?.status).toBe(400);
+
+    const invalidVisibility = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ ...updateNewsInput, visible: 'nope' }),
+      })
+    );
+    expect(invalidVisibility?.status).toBe(400);
 
     const pushOnUpdate = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', {

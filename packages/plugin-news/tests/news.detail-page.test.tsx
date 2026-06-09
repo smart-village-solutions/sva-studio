@@ -172,6 +172,17 @@ describe('NewsDetailPage', () => {
     ]);
   });
 
+  it('keeps the author editable when no author policy is provided', async () => {
+    render(<NewsDetailPage mode="create" initialAuthor="Max Mustermann" />);
+
+    const authorInput = await screen.findByLabelText('Autor');
+    expect(authorInput.getAttribute('readonly')).toBeNull();
+
+    fireEvent.change(authorInput, { target: { value: 'Erika Musterfrau' } });
+
+    expect((authorInput as HTMLInputElement).value).toBe('Erika Musterfrau');
+  });
+
   it('applies a later author policy update while the author field is still pristine', async () => {
     const { rerender } = render(<NewsDetailPage mode="create" initialAuthor="Max Mustermann" />);
 

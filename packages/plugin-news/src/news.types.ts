@@ -119,6 +119,7 @@ export type NewsFormInput = {
   readonly contentBlocks?: readonly NewsContentBlock[];
   readonly pointOfInterestId?: string;
   readonly pushNotification?: boolean;
+  readonly visible?: boolean;
 };
 
 export type NewsAuthorControl =

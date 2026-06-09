@@ -146,21 +146,14 @@ describe('news api', () => {
     });
   });
 
-  it('creates a draft with a second visibility request', async () => {
+  it('creates a draft with visible=false in the initial create request', async () => {
     const fetchMock = vi.mocked(fetch);
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: sampleResponse,
-        }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: { status: 'ok' },
-        }),
-      } as Response);
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: sampleResponse,
+      }),
+    } as Response);
 
     await expect(saveNewsEditorItem({ values: { ...editorValuesFixture, publicationMode: 'draft' } })).resolves.toEqual(
       expect.objectContaining({
@@ -174,12 +167,14 @@ describe('news api', () => {
       '/api/v1/mainserver/news',
       expect.objectContaining({ method: 'POST' })
     );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      '/api/v1/mainserver/news/news-1/visibility',
-      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ visible: false }) })
+    expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual(
+      expect.objectContaining({
+        title: 'Neue News',
+        author: 'Redaktion',
+        visible: false,
+      })
     );
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('updates and deletes existing news entries', async () => {

@@ -107,19 +107,19 @@ export const saveNewsEditorItem = async (input: {
 }, dependencies?: {
   readonly createNews?: typeof createNews;
   readonly updateNews?: typeof updateNews;
-  readonly setNewsVisibility?: typeof setNewsVisibility;
 }): Promise<NewsContentItem> => {
   const operations = {
     createNews: dependencies?.createNews ?? createNews,
     updateNews: dependencies?.updateNews ?? updateNews,
-    setNewsVisibility: dependencies?.setNewsVisibility ?? setNewsVisibility,
   };
-  const mutation = mapNewsDetailFormValuesToMutation(input.values, input.contentId ? 'edit' : 'create');
   const visible = input.values.publicationMode !== 'draft';
+  const mutation = {
+    ...mapNewsDetailFormValuesToMutation(input.values, input.contentId ? 'edit' : 'create'),
+    visible,
+  } satisfies NewsFormInput;
   const saved = input.contentId
     ? await operations.updateNews(input.contentId, mutation)
     : await operations.createNews(mutation);
-  await operations.setNewsVisibility(saved.id, visible);
 
   return {
     ...saved,

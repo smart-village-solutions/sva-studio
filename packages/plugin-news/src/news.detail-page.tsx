@@ -28,7 +28,6 @@ import {
   listNewsCategories,
   NewsApiError,
   saveNewsEditorItem,
-  setNewsVisibility,
   updateNews,
 } from './news.api.js';
 import { NewsDetailBasisTab } from './news.detail-basis-tab.js';
@@ -216,10 +215,7 @@ export const NewsDetailPage = ({
     []
   );
   const deleteLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.delete);
-  const headerSaveLabel = (() => {
-    const label = pt('actions.save');
-    return label === 'news.actions.save' ? 'Speichern' : label;
-  })();
+  const headerSaveLabel = pt('actions.save');
   const [activeTab, setActiveTab] = React.useState<NewsDetailTabId>('basis');
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
@@ -411,7 +407,6 @@ export const NewsDetailPage = ({
       }, {
         createNews,
         updateNews,
-        setNewsVisibility,
       });
       await syncMediaReferences(values, saved.id);
       setExistingMediaReferenceCount(buildNewsMediaReferences(values.teaserImageAssetId, values.headerImageAssetId).length);

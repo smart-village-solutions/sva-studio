@@ -33,7 +33,7 @@ export const WasteMasterDataFractionCreateContent = ({
   const pt = usePluginTranslation('wasteManagement');
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const errors = useMemo(() => validateFractionForm(form, pt), [form, pt]);
-  const hasErrors = Boolean(errors.name || errors.color);
+  const hasErrors = Boolean(errors.name || errors.pdfShortLabel || errors.color);
   const title = mode === 'create' ? pt('masterData.fractions.createView.title') : pt('masterData.fractions.dialog.editTitle');
   const description =
     mode === 'create'

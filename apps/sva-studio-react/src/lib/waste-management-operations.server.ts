@@ -1,5 +1,6 @@
-import { getWasteManagementImportCatalogEntry, wasteManagementOperationsContract } from '@sva/core';
+import { buildWasteTypesStaticContent, getWasteManagementImportCatalogEntry, wasteManagementOperationsContract } from '@sva/core';
 import { runWasteConnectionCheck } from '@sva/server-runtime';
+import { createOrUpdateSvaMainserverStaticContent } from '@sva/sva-mainserver/server';
 
 import {
   executeImport,
@@ -167,13 +168,34 @@ export const createWasteManagementOperationRuntime = (
     return buildOperationSummary(startedAt, details);
   },
 
-  async syncWasteTypes(_instanceId, _input) {
-    throw new Error('waste_mainserver_sync_not_implemented', {
-      cause: {
-        category: 'permanent',
-        code: 'waste_mainserver_sync_not_implemented',
-      },
+  async syncWasteTypes(instanceId, input) {
+    const startedAt = Date.now();
+    const details = await withWasteClient(deps, instanceId, async ({ repository }) => {
+      const fractions = await repository.listWasteFractions();
+      const artifact = await buildWasteTypesStaticContent(fractions);
+      const writeResult = await createOrUpdateSvaMainserverStaticContent({
+        instanceId,
+        keycloakSubject: normalizeOptionalText(input.keycloakSubject) ?? 'plugin-operation-runtime',
+        activeOrganizationId: normalizeOptionalText(input.activeOrganizationId),
+        staticContent: {
+          name: artifact.name,
+          content: artifact.content,
+          dataType: artifact.dataType,
+          version: artifact.version,
+        },
+      });
+
+      return {
+        operation: 'sync-waste-types',
+        mode: 'executed',
+        staticContentName: artifact.name,
+        version: artifact.version,
+        fractionCount: artifact.fractionCount,
+        staticContentId: writeResult.id,
+      };
     });
+
+    return buildOperationSummary(startedAt, details);
   },
 
   async resetData(instanceId, input) {

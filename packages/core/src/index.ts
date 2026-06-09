@@ -190,6 +190,8 @@ export { buildWasteCalendarPdfDocument, renderWasteCalendarPdf } from './waste-m
 export type {
   WasteCalendarPdfBrandingImage, WasteCalendarPdfDocument, WasteOutputPickupEntry, WasteOutputFraction,
 } from './waste-management-output.types.js';
+export { buildWasteTypesStaticContent } from './waste-management-static-content.js';
+export type { WasteTypeStaticContentEntry, WasteTypesStaticContentArtifact } from './waste-management-static-content.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';
 export {

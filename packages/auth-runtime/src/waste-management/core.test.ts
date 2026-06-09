@@ -583,6 +583,7 @@ describe('waste-management auth runtime handlers', () => {
     const savedFraction: WasteFractionRecord = {
       id: 'fraction-new',
       name: 'Papier',
+      pdfShortLabel: 'PAP',
       translations: { de: 'Papier', en: 'Paper' },
       containerSize: '120L',
       color: '#123456',
@@ -614,6 +615,7 @@ describe('waste-management auth runtime handlers', () => {
         body: JSON.stringify({
           id: 'fraction-new',
           name: 'Papier',
+          pdfShortLabel: 'PAP',
           translations: { de: 'Papier', en: 'Paper' },
           containerSize: '120L',
           color: '#123456',
@@ -643,6 +645,7 @@ describe('waste-management auth runtime handlers', () => {
     expect(saveWasteFraction).toHaveBeenCalledWith('tenant-a', {
       id: 'fraction-new',
       name: 'Papier',
+      pdfShortLabel: 'PAP',
       translations: { de: 'Papier', en: 'Paper' },
       containerSize: '120L',
       color: '#123456',
@@ -679,6 +682,7 @@ describe('waste-management auth runtime handlers', () => {
     const existingFraction: WasteFractionRecord = {
       id: 'fraction-1',
       name: 'Restmüll',
+      pdfShortLabel: 'RES',
       color: '#111111',
       active: true,
       reminderCount: 'once',
@@ -692,6 +696,7 @@ describe('waste-management auth runtime handlers', () => {
     const updatedFraction: WasteFractionRecord = {
       ...existingFraction,
       name: 'Restmüll Plus',
+      pdfShortLabel: 'RPL',
       reminderCount: 'none',
       firstReminderMaxLeadDays: undefined,
       secondReminderMaxLeadDays: undefined,
@@ -717,6 +722,7 @@ describe('waste-management auth runtime handlers', () => {
         },
         body: JSON.stringify({
           name: 'Restmüll Plus',
+          pdfShortLabel: 'RPL',
           translations: { de: 'Restmüll Plus', en: 'Residual waste plus' },
           color: '#111111',
           active: true,
@@ -743,6 +749,7 @@ describe('waste-management auth runtime handlers', () => {
     expect(saveWasteFraction).toHaveBeenCalledWith('tenant-a', {
       id: 'fraction-1',
       name: 'Restmüll Plus',
+      pdfShortLabel: 'RPL',
       translations: { de: 'Restmüll Plus', en: 'Residual waste plus' },
       containerSize: undefined,
       color: '#111111',

@@ -4,6 +4,7 @@ import {
   createWasteManagementFraction,
   createWasteManagementRegion,
   deleteWasteManagementFraction,
+  startWasteManagementSyncWasteTypes,
   updateWasteManagementFraction,
   updateWasteManagementRegion,
 } from './waste-management.api.js';
@@ -54,6 +55,20 @@ const setRegionSaveErrorMessage = (ctx: FractionRegionSubmissionHelperContext, e
   });
 };
 
+const startFractionSyncWithWarning = async (ctx: FractionRegionSubmissionHelperContext) => {
+  try {
+    await startWasteManagementSyncWasteTypes();
+    return true;
+  } catch {
+    ctx.state.setMessage({
+      kind: 'warning',
+      text: ctx.pt('masterData.fractions.messages.syncWarning'),
+      retryAction: 'sync-waste-types',
+    });
+    return false;
+  }
+};
+
 export const createSubmitFractionHandler =
   (ctx: FractionRegionSubmissionHelperContext) =>
   async (event: React.FormEvent<HTMLFormElement>, mode = ctx.state.dialogMode) => {
@@ -71,13 +86,15 @@ export const createSubmitFractionHandler =
         );
       }
       await ctx.loadOverview(true);
+      const syncStarted = await startFractionSyncWithWarning(ctx);
       applySuccess(
         () => ctx.state.setDialogOpen(false),
         ctx.state.setMessage,
         mode === 'create'
           ? ctx.pt('masterData.fractions.messages.createSuccess')
           : ctx.pt('masterData.fractions.messages.updateSuccess'),
-        () => ctx.state.setLastOutcome(mode === 'create' ? 'fraction-create-success' : 'fraction-update-success')
+        () => ctx.state.setLastOutcome(mode === 'create' ? 'fraction-create-success' : 'fraction-update-success'),
+        syncStarted
       );
     } catch (error) {
       setFractionSaveErrorMessage(ctx, error);
@@ -93,7 +110,10 @@ export const createDeleteFractionHandler = (ctx: FractionRegionSubmissionHelperC
   try {
     await deleteWasteManagementFraction(fractionId);
     await ctx.loadOverview(true);
-    ctx.state.setMessage({ kind: 'success', text: ctx.pt('masterData.fractions.messages.deleteSuccess') });
+    const syncStarted = await startFractionSyncWithWarning(ctx);
+    if (syncStarted) {
+      ctx.state.setMessage({ kind: 'success', text: ctx.pt('masterData.fractions.messages.deleteSuccess') });
+    }
   } catch (error) {
     setDeleteErrorMessage(ctx, error);
   } finally {
@@ -114,14 +134,20 @@ export const createDeleteFractionsHandler = (ctx: FractionRegionSubmissionHelper
       await ctx.loadOverview(true);
     }
     if (failedResults.length === 0) {
-      ctx.state.setMessage({ kind: 'success', text: ctx.pt('masterData.fractions.messages.deleteSuccess') });
+      const syncStarted = await startFractionSyncWithWarning(ctx);
+      if (syncStarted) {
+        ctx.state.setMessage({ kind: 'success', text: ctx.pt('masterData.fractions.messages.deleteSuccess') });
+      }
       return;
     }
     if (deletedCount > 0) {
-      ctx.state.setMessage({
-        kind: 'success',
-        text: ctx.pt('masterData.fractions.messages.deletePartialSuccess', { count: deletedCount, total: fractionIds.length }),
-      });
+      const syncStarted = await startFractionSyncWithWarning(ctx);
+      if (syncStarted) {
+        ctx.state.setMessage({
+          kind: 'success',
+          text: ctx.pt('masterData.fractions.messages.deletePartialSuccess', { count: deletedCount, total: fractionIds.length }),
+        });
+      }
       return;
     }
     setDeleteErrorMessage(ctx, failedResults[0]?.reason);
@@ -146,6 +172,7 @@ export const createSetFractionActiveHandler = (ctx: FractionRegionSubmissionHelp
       })
     );
     await ctx.loadOverview(true);
+    await startFractionSyncWithWarning(ctx);
   } catch (error) {
     setFractionSaveErrorMessage(ctx, error);
   } finally {

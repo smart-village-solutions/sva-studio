@@ -29,6 +29,7 @@ const FractionDialogFields = ({
   control,
   errors,
   onChange,
+  pdfShortLabel,
   pt,
   register,
   translations,
@@ -38,6 +39,7 @@ const FractionDialogFields = ({
   readonly control: ReturnType<typeof useForm<FractionFormState>>['control'];
   readonly errors: ReturnType<typeof useForm<FractionFormState>>['formState']['errors'];
   readonly onChange: BaseProps<FractionFormState>['onChange'];
+  readonly pdfShortLabel: FractionFormState['pdfShortLabel'];
   readonly pt: ReturnType<typeof usePluginTranslation>;
   readonly register: ReturnType<typeof useForm<FractionFormState>>['register'];
   readonly translations: FractionFormState['translations'];
@@ -46,11 +48,24 @@ const FractionDialogFields = ({
     id: 'waste-fraction-name',
     error: errors.name,
   });
+  const pdfShortLabelField = getStudioFormFieldProps({
+    id: 'waste-fraction-pdf-short-label',
+    error: errors.pdfShortLabel,
+  });
 
   return (
     <>
-      <StudioFormSummaryErrors errors={collectSummaryErrors([nameField])} />
-      <FractionDialogTextFields clearErrors={clearErrors} nameField={nameField} onChange={onChange} pt={pt} register={register} translations={translations} />
+      <StudioFormSummaryErrors errors={collectSummaryErrors([nameField, pdfShortLabelField])} />
+      <FractionDialogTextFields
+        clearErrors={clearErrors}
+        nameField={nameField}
+        onChange={onChange}
+        pdfShortLabel={pdfShortLabel}
+        pdfShortLabelField={pdfShortLabelField}
+        pt={pt}
+        register={register}
+        translations={translations}
+      />
       <FractionDialogActiveField active={active} control={control} onChange={onChange} pt={pt} />
     </>
   );
@@ -60,6 +75,8 @@ const FractionDialogTextFields = ({
   clearErrors,
   nameField,
   onChange,
+  pdfShortLabel,
+  pdfShortLabelField,
   pt,
   register,
   translations,
@@ -67,6 +84,8 @@ const FractionDialogTextFields = ({
   readonly clearErrors: ReturnType<typeof useForm<FractionFormState>>['clearErrors'];
   readonly nameField: ReturnType<typeof getStudioFormFieldProps>;
   readonly onChange: BaseProps<FractionFormState>['onChange'];
+  readonly pdfShortLabel: FractionFormState['pdfShortLabel'];
+  readonly pdfShortLabelField: ReturnType<typeof getStudioFormFieldProps>;
   readonly pt: ReturnType<typeof usePluginTranslation>;
   readonly register: ReturnType<typeof useForm<FractionFormState>>['register'];
   readonly translations: FractionFormState['translations'];
@@ -80,6 +99,20 @@ const FractionDialogTextFields = ({
           onChange: (event) => {
             clearErrors('name');
             onChange({ name: event.target.value });
+          },
+        })}
+      />
+    </StudioField>
+    <StudioField {...pdfShortLabelField} label={pt('masterData.fractions.fields.pdfShortLabel')}>
+      <Input
+        {...pdfShortLabelField.controlProps}
+        value={pdfShortLabel}
+        maxLength={12}
+        {...register('pdfShortLabel', {
+          required: pt('masterData.fractions.fields.pdfShortLabel'),
+          onChange: (event) => {
+            clearErrors('pdfShortLabel');
+            onChange({ pdfShortLabel: event.target.value });
           },
         })}
       />
@@ -217,6 +250,7 @@ const FractionDialogForm = ({
             control={control}
             errors={errors}
             onChange={onChange}
+            pdfShortLabel={watch('pdfShortLabel')}
             pt={pt}
             register={register}
             translations={watch('translations')}

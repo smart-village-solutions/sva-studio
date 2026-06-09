@@ -33,7 +33,7 @@ const withWasteFractionReminderValidation = <TSchema extends z.ZodObject>(schema
 const wasteFractionSchemaBase = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1),
-  pdfShortLabel: z.string().trim().min(1).max(12).optional(),
+  pdfShortLabel: z.string().trim().min(1).max(12),
   translations: z.record(z.string().trim().min(1), z.string().trim().min(1)).optional(),
   containerSize: z.string().trim().min(1).optional(),
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, 'Ungültiger Hex-Farbwert.'),

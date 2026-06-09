@@ -34,6 +34,7 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     create: 'Save fraction',
     save: 'Save changes',
     saving: 'Saving…',
+    retrySync: 'Retry sync',
   },
   fields: {
     name: 'Name',
@@ -85,8 +86,7 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
       description: 'Describe the waste type briefly and clearly. Maximum 300 characters.',
       translationDe: 'Optional: German label for multilingual output.',
       translationEn: 'Optional: English label for multilingual output.',
-      pdfShortLabel:
-        'Optional: Short label for the PDF legend. If omitted, a short code will later be derived from the fraction label.',
+      pdfShortLabel: 'Required: Short label for the PDF legend. This short label is used directly in PDF output and legends.',
       containerSize: 'Optional: Only enter a container size if this waste type exists in multiple sizes, for example 120 l or 240 l.',
       color: 'This color will later help users recognize the waste type in calendars and tables.',
       active: 'Only active waste types are available for further planning.',
@@ -105,6 +105,7 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     },
     validation: {
       nameRequired: 'Please enter a name.',
+      pdfShortLabelRequired: 'Please enter a PDF short label.',
       colorRequired: 'Please enter a valid hex color.',
     },
     meta: {
@@ -170,5 +171,8 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     deleteError: 'The waste fraction could not be deleted.',
     deleteForbidden: 'Missing permission to delete waste fractions.',
     deleteConflict: 'The waste fraction cannot be deleted because assignments still exist.',
+    syncWarning:
+      'The fraction change was saved, but wasteTypes could not be synchronized with the mainserver.',
+    syncRetryStarted: 'The wasteTypes synchronization was started again.',
   },
 } as const;

@@ -14,6 +14,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Button,
   Input,
   StudioConfirmDialog,
   StudioField,
@@ -24,8 +25,9 @@ import * as XLSX from 'xlsx';
 import { WasteManagementApiError } from './waste-management.api.js';
 
 export type StatusMessage = {
-  readonly kind: 'success' | 'error';
+  readonly kind: 'success' | 'error' | 'warning';
   readonly text: string;
+  readonly retryAction?: 'sync-waste-types';
 };
 
 export type TechnicalStatusTone = 'neutral' | 'success' | 'warning' | 'error';
@@ -150,13 +152,33 @@ export const readFileAsDataUrl = async (file: File): Promise<string> =>
     reader.readAsDataURL(file);
   });
 
-export const StatusNotice = ({ message }: { readonly message: StatusMessage | null }) => {
+export const StatusNotice = ({
+  message,
+  onRetry,
+}: {
+  readonly message: StatusMessage | null;
+  readonly onRetry?: (action: NonNullable<StatusMessage['retryAction']>) => void;
+}) => {
   const pt = usePluginTranslation('wasteManagement');
+  const retryAction = message?.retryAction;
 
   return message ? (
     <Alert>
-      <AlertTitle>{message.kind === 'success' ? pt('common.statusSuccessTitle') : pt('common.statusErrorTitle')}</AlertTitle>
-      <AlertDescription>{message.text}</AlertDescription>
+      <AlertTitle>
+        {message.kind === 'success'
+          ? pt('common.statusSuccessTitle')
+          : message.kind === 'warning'
+            ? pt('common.statusWarningTitle')
+            : pt('common.statusErrorTitle')}
+      </AlertTitle>
+      <AlertDescription className="space-y-3">
+        <p>{message.text}</p>
+        {retryAction && onRetry ? (
+          <Button type="button" variant="outline" size="sm" onClick={() => onRetry(retryAction)}>
+            {pt('masterData.fractions.actions.retrySync')}
+          </Button>
+        ) : null}
+      </AlertDescription>
     </Alert>
   ) : null;
 };

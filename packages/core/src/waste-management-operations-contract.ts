@@ -62,6 +62,8 @@ export type WasteManagementResetJobInput = {
 
 export type WasteManagementSyncWasteTypesJobInput = {
   readonly operation: 'sync-waste-types';
+  readonly keycloakSubject?: string;
+  readonly activeOrganizationId?: string;
 };
 
 export type WasteManagementJobInput =

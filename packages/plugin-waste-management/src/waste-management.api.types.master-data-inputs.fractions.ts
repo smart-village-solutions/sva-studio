@@ -3,7 +3,7 @@ import type { WasteFractionReminderCount, WasteLocalizedTextRecord } from '@sva/
 export type CreateWasteManagementFractionInput = Readonly<{
   id: string;
   name: string;
-  pdfShortLabel?: string;
+  pdfShortLabel: string;
   translations?: WasteLocalizedTextRecord;
   containerSize?: string;
   color: string;
@@ -19,7 +19,7 @@ export type CreateWasteManagementFractionInput = Readonly<{
 
 export type UpdateWasteManagementFractionInput = Readonly<{
   name: string;
-  pdfShortLabel?: string;
+  pdfShortLabel: string;
   translations?: WasteLocalizedTextRecord;
   containerSize?: string;
   color: string;

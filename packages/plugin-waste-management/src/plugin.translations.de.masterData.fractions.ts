@@ -34,6 +34,7 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     create: 'Fraktion speichern',
     save: 'Änderungen speichern',
     saving: 'Speichert…',
+    retrySync: 'Erneut synchronisieren',
   },
   fields: {
     name: 'Name',
@@ -85,8 +86,7 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
       description: 'Beschreiben Sie die Abfallart kurz und verständlich. Maximal 300 Zeichen.',
       translationDe: 'Optional: deutsche Bezeichnung für mehrsprachige Ausgaben.',
       translationEn: 'Optional: englische Bezeichnung für mehrsprachige Ausgaben.',
-      pdfShortLabel:
-        'Optional: Kürzel für die PDF-Legende. Wenn nichts gepflegt ist, wird später ein Kürzel aus der Bezeichnung abgeleitet.',
+      pdfShortLabel: 'Pflichtfeld: Kürzel für die PDF-Legende. Dieses Kürzel wird direkt für Ausgabe und Legende verwendet.',
       containerSize: 'Optional: Tragen Sie eine Behältergröße nur ein, wenn diese Abfallart in mehreren Größen geführt wird, zum Beispiel 120 l oder 240 l.',
       color: 'Diese Farbe wird später zur Wiedererkennung im Kalender und in Tabellen verwendet.',
       active: 'Nur aktive Abfallarten stehen für die weitere Planung zur Verfügung.',
@@ -105,6 +105,7 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     },
     validation: {
       nameRequired: 'Bitte geben Sie einen Namen ein.',
+      pdfShortLabelRequired: 'Bitte geben Sie ein PDF-Kürzel ein.',
       colorRequired: 'Bitte geben Sie eine gültige Farbe im Hex-Format an.',
     },
     meta: {
@@ -170,5 +171,8 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     deleteError: 'Die Waste-Fraktion konnte nicht gelöscht werden.',
     deleteForbidden: 'Für das Löschen von Waste-Fraktionen fehlt die Berechtigung.',
     deleteConflict: 'Die Waste-Fraktion kann wegen bestehender Zuordnungen nicht gelöscht werden.',
+    syncWarning:
+      'Die Fraktionsänderung wurde gespeichert, aber wasteTypes konnte nicht mit dem Mainserver synchronisiert werden.',
+    syncRetryStarted: 'Die Synchronisation von wasteTypes wurde erneut gestartet.',
   },
 } as const;

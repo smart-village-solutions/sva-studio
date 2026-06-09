@@ -66,6 +66,7 @@ type MasterDataFractionsCreateViewCopy = Readonly<{
     description: string;
     translationDe: string;
     translationEn: string;
+    pdfShortLabel: string;
     containerSize: string;
     color: string;
     active: string;
@@ -76,6 +77,7 @@ type MasterDataFractionsCreateViewCopy = Readonly<{
   }>;
   validation: Readonly<{
     nameRequired: string;
+    pdfShortLabelRequired: string;
     colorRequired: string;
   }>;
   meta: Readonly<{

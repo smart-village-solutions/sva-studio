@@ -43,6 +43,13 @@ export type SvaMainserverConnectionInput = {
   readonly activeOrganizationId?: string;
 };
 
+export type SvaMainserverStaticContentInput = {
+  readonly name: string;
+  readonly content: string;
+  readonly dataType: 'JSON';
+  readonly version: string;
+};
+
 export type SvaMainserverListQuery = {
   readonly page: number;
   readonly pageSize: number;

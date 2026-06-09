@@ -352,6 +352,8 @@ export const wasteManagementOperationHandlers = {
       auditActionId: 'waste-management.sync-waste-types.started',
       toPayload: () => ({
         operation: 'sync-waste-types',
+        keycloakSubject: ctx.user.id,
+        activeOrganizationId: ctx.activeOrganizationId,
       }),
     }),
   startWasteManagementResetInternal: async (

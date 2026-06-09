@@ -112,7 +112,7 @@ Beispielhaft:
 
 ```json
 {
-  "bio": {
+  "BIO": {
     "label": "Biotonne auf Abruf",
     "color": "#8B4513",
     "selected_color": "#8B4513",
@@ -122,6 +122,16 @@ Beispielhaft:
     "active": true,
     "description": "Nur auf Abruf",
     "container_size": null,
+    "reminders": {
+      "reminder_count": "none",
+      "first_reminder_max_lead_days": null,
+      "second_reminder_max_lead_days": null,
+      "channels": {
+        "push": false,
+        "email": false,
+        "calendar": false
+      }
+    },
     "translations": {
       "de": "Biotonne auf Abruf"
     }
@@ -131,36 +141,42 @@ Beispielhaft:
 
 Leitlinien:
 
-- JSON-Key basiert auf dem vorhandenen Kürzel und wird für den Export normalisiert.
+- JSON-Key basiert direkt auf dem gepflegten Kürzel und wird kanonisch in Großbuchstaben exportiert.
 - Das interne Fraktionsmodell wird dafür nicht erweitert.
 - Bestehende Pflichtfelder bleiben erhalten.
-- Zusätzliche Felder werden nur ergänzend exportiert.
+- Das vorhandene Erinnerungsmodell wird ergänzend als strukturierter Block `reminders` exportiert.
+- Die Kanalfreigaben gelten auf Fraktionsebene und werden daher gemeinsam unter `reminders.channels` ausgegeben.
 
 ### 4. Versionierung
 
-Die Mainserver-Mutation verwendet eine inhaltsbasierte `version`.
-
-Empfehlung:
-
-- Hash des serialisierten JSON-Inhalts
+Die Mainserver-Mutation schreibt `version` bewusst als leeren String.
 
 Begründung:
 
-- identischer Inhalt ergibt identische Version
-- Retries bleiben stabil
-- unnötige Versionssprünge durch reine Zeitstempel entfallen
+- Das Mainserver-Schema erwartet für diesen Anwendungsfall kein fachliches Versionskonzept.
+- Der zwischen Studio und Mainserver abgestimmte Write-Pfad arbeitet mit leerem `version`-Feld.
+- Retries bleiben damit kompatibel zum aktuell erwarteten Mainserver-Verhalten.
 
 ### 5. Mainserver-Aufruf
 
-Die Jobausführung schreibt das Exportartefakt mit folgender Mutation:
+Die Jobausführung liest zuerst die vorhandene Datei-ID und schreibt das Exportartefakt anschließend mit dieser ID erneut:
 
 ```graphql
+query {
+  publicJsonFile(
+    name: "wastetypes"
+  ) {
+    id
+  }
+}
+
 mutation {
   createOrUpdateStaticContent(
-    name: "wasteTypes"
+    name: "wastetypes"
+    id: "1707"
     content: "{...}"
-    dataType: "JSON"
-    version: "x"
+    dataType: "json"
+    version: ""
   ) {
     id
   }

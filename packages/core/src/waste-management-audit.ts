@@ -46,7 +46,10 @@ export type WasteManagementTechnicalHistoryRecord = {
     | 'seed.failed'
     | 'reset.started'
     | 'reset.succeeded'
-    | 'reset.failed';
+    | 'reset.failed'
+    | 'sync.started'
+    | 'sync.succeeded'
+    | 'sync.failed';
   readonly outcome: WasteManagementTechnicalHistoryOutcome;
   readonly occurredAt: string;
   readonly source: 'audit' | 'job';

@@ -7,6 +7,7 @@ import type { FractionFormState } from './waste-management.master-data.forms.js'
 
 export type FractionFormErrors = {
   readonly name?: string;
+  readonly pdfShortLabel?: string;
   readonly color?: string;
 };
 
@@ -18,6 +19,9 @@ export const validateFractionForm = (
   pt: ReturnType<typeof usePluginTranslation>
 ): FractionFormErrors => ({
   name: form.name.trim() ? undefined : pt('masterData.fractions.createView.validation.nameRequired'),
+  pdfShortLabel: form.pdfShortLabel.trim()
+    ? undefined
+    : pt('masterData.fractions.createView.validation.pdfShortLabelRequired'),
   color: isHexColor(form.color) ? undefined : pt('masterData.fractions.createView.validation.colorRequired'),
 });
 
@@ -116,11 +120,14 @@ export const FractionBasicsSection = ({
           id="waste-fraction-pdf-short-label"
           label={pt('masterData.fractions.fields.pdfShortLabel')}
           description={pt('masterData.fractions.createView.fieldHints.pdfShortLabel')}
+          error={submitAttempted ? errors.pdfShortLabel : undefined}
+          required
         >
           <Input
             id="waste-fraction-pdf-short-label"
             value={form.pdfShortLabel}
             maxLength={12}
+            aria-invalid={submitAttempted && errors.pdfShortLabel ? 'true' : undefined}
             onChange={(event) => onChange({ pdfShortLabel: event.target.value })}
           />
         </StudioField>

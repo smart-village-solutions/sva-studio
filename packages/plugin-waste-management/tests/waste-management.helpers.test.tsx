@@ -327,8 +327,6 @@ describe('waste management helper modules', () => {
       description: 'Beschreibung',
       active: true,
       reminderCount: 'none',
-      firstReminderMaxLeadDays: undefined,
-      secondReminderMaxLeadDays: undefined,
       reminderChannelPushEnabled: false,
       reminderChannelEmailEnabled: false,
       reminderChannelCalendarEnabled: false,
@@ -367,6 +365,34 @@ describe('waste management helper modules', () => {
       secondReminderMaxLeadDays: 1,
       reminderChannelPushEnabled: false,
       reminderChannelEmailEnabled: true,
+      reminderChannelCalendarEnabled: false,
+    });
+
+    expect(
+      wasteMasterDataInputMappers.toUpdateFractionInput({
+        id: 'fraction-3',
+        name: ' Papier ',
+        pdfShortLabel: ' PPK ',
+        translations: {},
+        containerSize: '',
+        color: '#2255aa',
+        description: '',
+        active: true,
+        reminderCount: 'none',
+        firstReminderMaxLeadDays: 1,
+        secondReminderMaxLeadDays: 1,
+        reminderChannelPushEnabled: false,
+        reminderChannelEmailEnabled: false,
+        reminderChannelCalendarEnabled: false,
+      })
+    ).toEqual({
+      name: 'Papier',
+      pdfShortLabel: 'PPK',
+      color: '#2255aa',
+      active: true,
+      reminderCount: 'none',
+      reminderChannelPushEnabled: false,
+      reminderChannelEmailEnabled: false,
       reminderChannelCalendarEnabled: false,
     });
 
@@ -627,9 +653,12 @@ describe('waste management helper modules', () => {
     const deleteWasteManagementFractionMock = vi.fn();
     const createWasteManagementRegionMock = vi.fn();
     const updateWasteManagementRegionMock = vi.fn();
-    const applySuccessSpy = vi.fn((close, setMessage, text: string) => {
+    const startWasteManagementSyncWasteTypesMock = vi.fn(async () => undefined);
+    const applySuccessSpy = vi.fn((close, setMessage, text: string, _onSuccess?: () => void, showMessage = true) => {
       close();
-      setMessage({ kind: 'success', text });
+      if (showMessage) {
+        setMessage({ kind: 'success', text });
+      }
     });
 
     vi.doMock('../src/waste-management.api.js', async (importOriginal) => {
@@ -640,6 +669,7 @@ describe('waste management helper modules', () => {
         updateWasteManagementFraction: updateWasteManagementFractionMock,
         deleteWasteManagementFraction: deleteWasteManagementFractionMock,
         createWasteManagementRegion: createWasteManagementRegionMock,
+        startWasteManagementSyncWasteTypes: startWasteManagementSyncWasteTypesMock,
         updateWasteManagementRegion: updateWasteManagementRegionMock,
       };
     });
@@ -688,7 +718,8 @@ describe('waste management helper modules', () => {
       expect.any(Function),
       setMessage,
       'masterData.fractions.messages.createSuccess',
-      expect.any(Function)
+      expect.any(Function),
+      true
     );
     expect(setDialogOpen).toHaveBeenCalledWith(false);
 

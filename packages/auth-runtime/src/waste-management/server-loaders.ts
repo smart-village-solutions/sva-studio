@@ -656,6 +656,7 @@ const loadWasteHistoryOverview = async (query: {
       'waste-management.import-data',
       'waste-management.seed-data',
       'waste-management.reset-data',
+      'waste-management.sync-waste-types',
     ] as const;
     const buildJobHistoryWhereClause = (): {
       readonly clause: string;

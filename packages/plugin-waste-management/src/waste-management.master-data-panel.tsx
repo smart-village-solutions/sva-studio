@@ -44,6 +44,16 @@ export const WasteMasterDataPanel = ({
   if (!showFractionFormView && !showLocationFormView && !hasAnyMasterData) {
     return (
       <>
+        <div className="space-y-4">
+          <StatusNotice
+            message={controller.message}
+            onRetry={(action) => {
+              if (action === 'sync-waste-types') {
+                void controller.retrySyncWasteTypes();
+              }
+            }}
+          />
+        </div>
         <WasteMasterDataPanelEmptyState controller={controller} search={search} />
         {dialogs}
       </>
@@ -53,7 +63,14 @@ export const WasteMasterDataPanel = ({
   return (
     <>
       <div className="space-y-4">
-        <StatusNotice message={controller.message} />
+        <StatusNotice
+          message={controller.message}
+          onRetry={(action) => {
+            if (action === 'sync-waste-types') {
+              void controller.retrySyncWasteTypes();
+            }
+          }}
+        />
         <WasteMasterDataTabContent controller={controller} search={search} tab={tab} />
       </div>
       {dialogs}

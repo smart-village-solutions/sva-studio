@@ -222,6 +222,11 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     jobTypeId: 'waste-management.seed-data',
     status: 'pending',
   })),
+  startWasteManagementSyncWasteTypes: vi.fn(async () => ({
+    id: 'job-sync-1',
+    jobTypeId: 'waste-management.sync-waste-types',
+    status: 'pending',
+  })),
   startWasteManagementReset: vi.fn(async () => ({
     id: 'job-3',
     jobTypeId: 'waste-management.reset-data',
@@ -1238,21 +1243,92 @@ describe('WasteManagementPage', () => {
     fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.description'), {
       target: { value: 'Blaue Tonne' },
     });
+    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.pdfShortLabel'), {
+      target: { value: 'PAP' },
+    });
     fireEvent.change(document.getElementById('waste-fraction-color-text') as HTMLInputElement, {
       target: { value: '#123456' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.masterData.fractions.createView.actions.savePrimary' })[0]!);
 
     await waitFor(() => {
-      expect(wasteManagementApiMocks.createWasteManagementFraction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Papier',
-          description: 'Blaue Tonne',
-          color: '#123456',
-          active: true,
-        })
+        expect(wasteManagementApiMocks.createWasteManagementFraction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'Papier',
+            description: 'Blaue Tonne',
+            pdfShortLabel: 'PAP',
+            color: '#123456',
+            active: true,
+          })
       );
     });
+  });
+
+  it('shows a retry action when the follow-up wasteTypes sync cannot be started', async () => {
+    searchMock.mockImplementation(() => ({
+      tab: 'fractions',
+      masterDataTab: 'fractions',
+      fractionsView: 'create',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+    }));
+    wasteManagementApiMocks.getWasteManagementMasterDataOverview
+      .mockResolvedValueOnce({
+        fractions: [],
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        collectionLocations: [],
+        locationTourLinks: [],
+      })
+      .mockResolvedValueOnce({
+        fractions: [
+          {
+            id: 'fraction-3',
+            name: 'Papier',
+            color: '#123456',
+            active: true,
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ],
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        collectionLocations: [],
+        locationTourLinks: [],
+      });
+    wasteManagementApiMocks.startWasteManagementSyncWasteTypes.mockRejectedValueOnce(new Error('sync_failed'));
+
+    render(<WasteManagementPage />);
+
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.name'), {
+      target: { value: 'Papier' },
+    });
+    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.pdfShortLabel'), {
+      target: { value: 'PAP' },
+    });
+    fireEvent.change(document.getElementById('waste-fraction-color-text') as HTMLInputElement, {
+      target: { value: '#123456' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.masterData.fractions.createView.actions.savePrimary' })[0]!);
+
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.startWasteManagementSyncWasteTypes).toHaveBeenCalledTimes(1);
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'wasteManagement.masterData.fractions.actions.retrySync' })
+    ).toBeTruthy();
   });
 
   it('creates a waste region from the master-data dialog', async () => {

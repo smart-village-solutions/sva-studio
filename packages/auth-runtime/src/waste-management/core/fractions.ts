@@ -96,6 +96,7 @@ export const wasteManagementFractionHandlers = {
         requireDeps(deps.saveWasteFraction, 'saveWasteFraction')(instanceId, {
           id: parsed.data.id,
           name: parsed.data.name.trim(),
+          pdfShortLabel: parsed.data.pdfShortLabel.trim(),
           translations: parsed.data.translations,
           containerSize: normalizeOptionalString(parsed.data.containerSize),
           color: parsed.data.color,
@@ -165,6 +166,7 @@ export const wasteManagementFractionHandlers = {
         requireDeps(deps.saveWasteFraction, 'saveWasteFraction')(instanceId, {
           id: fractionId,
           name: parsed.data.name.trim(),
+          pdfShortLabel: parsed.data.pdfShortLabel.trim(),
           translations: parsed.data.translations,
           containerSize: normalizeOptionalString(parsed.data.containerSize),
           color: parsed.data.color,

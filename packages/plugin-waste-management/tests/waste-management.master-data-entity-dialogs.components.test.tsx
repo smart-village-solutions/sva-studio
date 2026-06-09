@@ -90,6 +90,7 @@ describe('waste-management.master-data-entity-dialogs components', () => {
         mode="create"
         form={{
           name: 'Restmüll',
+          pdfShortLabel: 'RES',
           translations: { de: 'Rest', en: '' },
           color: '#111111',
           containerSize: '120L',
@@ -118,12 +119,18 @@ describe('waste-management.master-data-entity-dialogs components', () => {
     fireEvent.change(screen.getByLabelText('masterData.fractions.fields.translationEn'), {
       target: { value: 'Residual waste' },
     });
+    fireEvent.change(screen.getByLabelText('masterData.fractions.fields.pdfShortLabel'), {
+      target: { value: 'RSD' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.cancel' }));
     const submitButton = screen.getByRole('button', { name: 'masterData.fractions.actions.create' });
     fireEvent.click(submitButton);
 
     expect(onChange).toHaveBeenCalledWith({
       translations: { de: 'Rest', en: 'Residual waste' },
+    });
+    expect(onChange).toHaveBeenCalledWith({
+      pdfShortLabel: 'RSD',
     });
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
@@ -289,6 +296,7 @@ describe('waste-management.master-data-entity-dialogs components', () => {
         mode="create"
         form={{
           name: '',
+          pdfShortLabel: '',
           translations: { de: '', en: '' },
           color: '',
           containerSize: '',
@@ -312,6 +320,7 @@ describe('waste-management.master-data-entity-dialogs components', () => {
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.create' }));
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('alert').textContent).toContain('masterData.fractions.fields.name');
+    expect(screen.getByRole('alert').textContent).toContain('masterData.fractions.fields.pdfShortLabel');
 
     rerender(
       <CityDialog

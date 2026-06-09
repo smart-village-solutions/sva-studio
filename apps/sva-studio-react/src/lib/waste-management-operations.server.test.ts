@@ -10,6 +10,8 @@ import { createWasteManagementOperationRuntime } from './waste-management-operat
 import { applySchemaStatements } from './waste-management-operations.schema.js';
 import { resolveRuntimeDataSource } from './waste-management-operations.shared.js';
 
+const createOrUpdateSvaMainserverStaticContentMock = vi.hoisted(() => vi.fn());
+
 const createInterfaceRecord = (schemaName = 'wm'): ExternalInterfaceRecord => ({
   id: 'iface-1',
   instanceId: 'instance-1',
@@ -48,6 +50,8 @@ describe('waste management operations runtime', () => {
     vi.resetModules();
     vi.doUnmock('@sva/server-runtime');
     vi.doUnmock('@sva/data-repositories');
+    vi.doUnmock('@sva/sva-mainserver/server');
+    createOrUpdateSvaMainserverStaticContentMock.mockReset();
   });
 
   it('applies schema migrations against the resolved waste schema', async () => {
@@ -217,20 +221,87 @@ describe('waste management operations runtime', () => {
     });
   });
 
-  it('provides a fail-fast syncWasteTypes runtime method', async () => {
-    const runtime = createWasteManagementOperationRuntime();
-
-    expect(runtime.syncWasteTypes).toEqual(expect.any(Function));
-    const syncPromise = runtime.syncWasteTypes('instance-1', {
-      operation: 'sync-waste-types',
+  it('syncs wasteTypes static content to the mainserver', async () => {
+    vi.doMock('@sva/sva-mainserver/server', () => ({
+      createOrUpdateSvaMainserverStaticContent: createOrUpdateSvaMainserverStaticContentMock,
+    }));
+    createOrUpdateSvaMainserverStaticContentMock.mockResolvedValue({
+      id: 'static-1',
     });
 
-    await expect(syncPromise).rejects.toThrow('waste_mainserver_sync_not_implemented');
-    await expect(syncPromise).rejects.toMatchObject({
-      cause: {
-        category: 'permanent',
-        code: 'waste_mainserver_sync_not_implemented',
-      },
+    const repository = createRepositoryMock({
+      listWasteFractions: vi.fn(async () => [
+        {
+          id: 'fraction-bio',
+          name: 'Biotonne auf Abruf',
+          pdfShortLabel: 'BIO',
+          translations: { de: 'Biotonne auf Abruf' },
+          containerSize: undefined,
+          color: '#8B4513',
+          description: 'Nur auf Abruf',
+          active: true,
+          reminderCount: 'none',
+          reminderChannelPushEnabled: false,
+          reminderChannelEmailEnabled: false,
+          reminderChannelCalendarEnabled: false,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]),
+    });
+    const runtime = await createRuntimeWithRepositoryMock(repository);
+
+    const result = await runtime.syncWasteTypes('instance-1', {
+      operation: 'sync-waste-types',
+      keycloakSubject: 'user-1',
+      activeOrganizationId: 'org-1',
+    });
+
+    expect(createOrUpdateSvaMainserverStaticContentMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'instance-1',
+        keycloakSubject: 'user-1',
+        activeOrganizationId: 'org-1',
+        staticContent: expect.objectContaining({
+          name: 'wasteTypes',
+          dataType: 'JSON',
+          version: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+          content: JSON.stringify(
+            {
+              BIO: {
+                label: 'Biotonne auf Abruf',
+                color: '#8B4513',
+                selected_color: '#8B4513',
+                id: 'fraction-bio',
+                short_label: 'BIO',
+                active: true,
+                description: 'Nur auf Abruf',
+                container_size: null,
+                translations: { de: 'Biotonne auf Abruf' },
+                reminders: {
+                  reminder_count: 'none',
+                  first_reminder_max_lead_days: null,
+                  second_reminder_max_lead_days: null,
+                  channels: {
+                    push: false,
+                    email: false,
+                    calendar: false,
+                  },
+                },
+              },
+            },
+            null,
+            2
+          ),
+        }),
+      })
+    );
+    expect(result.details).toMatchObject({
+      operation: 'sync-waste-types',
+      mode: 'executed',
+      staticContentName: 'wasteTypes',
+      fractionCount: 1,
+      staticContentId: 'static-1',
     });
   });
 
@@ -299,9 +370,13 @@ describe('waste management operations runtime', () => {
 
   it('reads import workbooks from inline base64 data urls', async () => {
     const repository = createRepositoryMock();
-    vi.doMock('@sva/data-repositories', () => ({
-      createWasteMasterDataRepository: vi.fn(() => repository),
-    }));
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteMasterDataRepository: vi.fn(() => repository),
+      };
+    });
 
     const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
@@ -885,9 +960,13 @@ const createRuntimeWithRepositoryMock = async (
   repository: ReturnType<typeof createRepositoryMock>,
   workbookBytes: Uint8Array = createToursWorkbookBytes()
 ) => {
-  vi.doMock('@sva/data-repositories', () => ({
-    createWasteMasterDataRepository: vi.fn(() => repository),
-  }));
+  vi.doMock('@sva/data-repositories', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    return {
+      ...actual,
+      createWasteMasterDataRepository: vi.fn(() => repository),
+    };
+  });
 
   const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
   return createRuntime({

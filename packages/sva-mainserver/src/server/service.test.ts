@@ -61,6 +61,7 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
 });
 
 import {
+  createOrUpdateSvaMainserverStaticContent,
   createSvaMainserverEvent,
   createSvaMainserverNews,
   createSvaMainserverPoi,
@@ -349,6 +350,85 @@ describe('createSvaMainserverService', () => {
       id: 'news-1',
     });
     await expect(deleteSvaMainserverNews({ ...connection, newsId: 'news-1' })).resolves.toEqual({ id: 'news-1' });
+  });
+
+  it('creates or updates static content with typed GraphQL variables', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { publicJsonFile: { id: '1707' } } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createOrUpdateStaticContent: { id: 77 } } }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.createOrUpdateStaticContent({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        staticContent: {
+          name: 'wasteTypes',
+          content: '{"bio":{"label":"Biotonne"}}',
+          dataType: 'JSON',
+          version: 'sha256:abc',
+        },
+      })
+    ).resolves.toEqual({ id: '77' });
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      baseConfig.graphqlBaseUrl,
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringMatching(/publicJsonFile/),
+      })
+    );
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      3,
+      baseConfig.graphqlBaseUrl,
+      expect.objectContaining({
+        method: 'POST',
+      })
+    );
+    const thirdCallBody = String(fetchImpl.mock.calls[2]?.[1]?.body ?? '');
+    expect(thirdCallBody).toContain('createOrUpdateStaticContent');
+    expect(thirdCallBody).toContain('"name":"wastetypes"');
+    expect(thirdCallBody).toContain('"id":"1707"');
+    expect(thirdCallBody).toContain('"dataType":"json"');
+    expect(thirdCallBody).toContain('"version":""');
+  });
+
+  it('routes the default static content helper through the default service', async () => {
+    state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'user',
+      credentials: { apiKey: 'key-1', apiSecret: 'secret-1' },
+    });
+
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { publicJsonFile: { id: '1707' } } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createOrUpdateStaticContent: { id: 'static-1' } } }));
+
+    vi.stubGlobal('fetch', fetchImpl);
+
+    await expect(
+      createOrUpdateSvaMainserverStaticContent({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        staticContent: {
+          name: 'wasteTypes',
+          content: '{"bio":{"label":"Biotonne"}}',
+          dataType: 'JSON',
+          version: 'sha256:def',
+        },
+      })
+    ).resolves.toEqual({ id: 'static-1' });
   });
 
   it('lists, reads, writes and deletes events and POI with typed GraphQL variables', async () => {
@@ -1161,6 +1241,7 @@ describe('createSvaMainserverService', () => {
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'graphql_error',
+      errorMessage: expect.stringContaining('boom'),
     });
   });
 
@@ -1388,6 +1469,7 @@ describe('createSvaMainserverService', () => {
     await expect(statusPromise).resolves.toMatchObject({
       status: 'error',
       errorCode: 'graphql_error',
+      errorMessage: expect.stringContaining('boom'),
     });
   });
 });

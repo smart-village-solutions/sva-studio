@@ -177,7 +177,7 @@ export const wasteMasterDataInputMappers = {
   toCreateFractionInput: (form: FractionFormState): CreateWasteManagementFractionInput => ({
     id: form.id,
     name: form.name.trim(),
-    pdfShortLabel: compactOptionalString(form.pdfShortLabel),
+    pdfShortLabel: form.pdfShortLabel.trim(),
     translations: normalizeLocalizedTextRecord(form.translations),
     containerSize: compactOptionalString(form.containerSize),
     color: form.color.trim(),
@@ -187,7 +187,7 @@ export const wasteMasterDataInputMappers = {
   }),
   toUpdateFractionInput: (form: FractionFormState): UpdateWasteManagementFractionInput => ({
     name: form.name.trim(),
-    pdfShortLabel: compactOptionalString(form.pdfShortLabel),
+    pdfShortLabel: form.pdfShortLabel.trim(),
     translations: normalizeLocalizedTextRecord(form.translations),
     containerSize: compactOptionalString(form.containerSize),
     color: form.color.trim(),

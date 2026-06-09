@@ -3,6 +3,7 @@ import {
   createWasteMasterDataDerivedState,
   createWasteMasterDataResetActions,
 } from './waste-management.master-data.derived.js';
+import { startWasteManagementSyncWasteTypes } from './waste-management.api.js';
 import { useWasteMasterDataDataLoading } from './waste-management.master-data.loaders.js';
 import { createWasteMasterDataSubmitHandlers } from './waste-management.master-data.submissions.js';
 import type { WasteManagementSearchParams } from './search-params.js';
@@ -24,6 +25,22 @@ export const useWasteMasterDataController = (pt: Translate, search: WasteManagem
     selectedCollectionLocationIds: derivedState.selectedCollectionLocations.map((location) => location.id),
   });
   const resetActions = createWasteMasterDataResetActions(state);
+  const retrySyncWasteTypes = async () => {
+    state.setMessage(null);
+    try {
+      await startWasteManagementSyncWasteTypes();
+      state.setMessage({
+        kind: 'success',
+        text: pt('masterData.fractions.messages.syncRetryStarted'),
+      });
+    } catch {
+      state.setMessage({
+        kind: 'warning',
+        text: pt('masterData.fractions.messages.syncWarning'),
+        retryAction: 'sync-waste-types',
+      });
+    }
+  };
 
   return {
     ...state,
@@ -33,5 +50,6 @@ export const useWasteMasterDataController = (pt: Translate, search: WasteManagem
     ...submitHandlers,
     ...resetActions,
     reloadOverview: loadOverview,
+    retrySyncWasteTypes,
   };
 };

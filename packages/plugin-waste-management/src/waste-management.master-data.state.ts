@@ -40,11 +40,14 @@ export const applySuccess = (
   closeDialog: () => void,
   setMessage: (message: StatusMessage | null) => void,
   text: string,
-  onSuccess?: () => void
+  onSuccess?: () => void,
+  showMessage = true
 ) => {
   startTransition(() => {
     closeDialog();
     onSuccess?.();
-    setMessage({ kind: 'success', text });
+    if (showMessage) {
+      setMessage({ kind: 'success', text });
+    }
   });
 };

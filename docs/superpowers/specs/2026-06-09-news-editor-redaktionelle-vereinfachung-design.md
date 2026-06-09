@@ -19,6 +19,7 @@ Zusätzlich soll die Oberfläche redaktionell vereinfacht werden:
 - Die Oberfläche orientiert sich an redaktionellen Aufgaben statt an der 1:1-Abbildung des GraphQL-Modells.
 - `Speichern` sichert immer den gesamten Formularzustand über alle Tabs.
 - Entwürfe werden über die separate Visibility-Mutation auf unsichtbar gesetzt und bleiben in der Studio-Newsliste sichtbar.
+- In der Studio-Inhaltsliste bleibt für Redakteure jeder Inhalt sichtbar; Sichtbarkeit wird dort zusätzlich direkt über einen Schieberegler steuerbar.
 - Die vereinfachte Oberfläche mappt weiterhin auf das bestehende News-Modell, insbesondere auf den ersten `contentBlock`.
 - Push-Benachrichtigungen bleiben pro News maximal einmal auslösbar.
 
@@ -94,9 +95,11 @@ Diese Entscheidung hält den Change inhaltlich auf den News-Editor fokussiert, l
 ### 1. Grundstruktur der Seite
 
 - Die bestehende Tab-Hülle bleibt erhalten.
-- Jedes Tabpanel besitzt weiterhin eine äußere Workspace-Fläche mit Titel, Beschreibung und rechts platziertem globalem `Speichern`-Button.
+- Die Seite erhält eine globale Save-Action oben rechts außerhalb der Tabs.
+- Diese Save-Action ist als Gesamtspeichern erkennbar und unabhängig vom aktiven Tab.
+- Jedes Tabpanel besitzt weiterhin eine äußere Workspace-Fläche mit Titel und Beschreibung.
 - Innerhalb des Panels werden die Inhalte in weiße Cards gegliedert.
-- Der Save-Button speichert immer das gesamte Formular, unabhängig davon, in welchem Tab er ausgelöst wird.
+- Der Save-Button speichert immer das gesamte Formular über alle Tabs.
 - Dirty-Indikatoren können pro Tab sichtbar bleiben, blockieren den Tabwechsel aber nicht mehr tabweise.
 
 ### 2. Tabs und Cards
@@ -116,8 +119,9 @@ Card `Titel & Kategorien`
 Card `Autor & Metadaten`
 
 - Der Autor wird aus Benutzer- und Organisationskontext vorbelegt.
-- Bei `org_only` ist das Feld gesperrt und zeigt die aktive Organisation als Autor.
-- Bei `org_or_personal` wird zwischen zulässigen Autorquellen gewählt: aktive Organisation oder aktueller Benutzer.
+- Das Feld wird nie als Freitext dargestellt.
+- Bei `org_only` ist der Autor fest gesetzt und als nicht editierbarer Wert sichtbar.
+- Bei `org_or_personal` wird zwischen zulässigen Autorquellen über ein Dropdown gewählt: aktive Organisation oder aktueller Benutzer.
 - Wenn keine aktive Organisation vorhanden ist, bleibt nur der Benutzer als Autorquelle.
 - Im Edit-Modus zeigt die Card zusätzlich:
   - `Erstellt`
@@ -130,7 +134,9 @@ Card `Autor & Metadaten`
 
 Card `Textinhalt`
 
-- `Headline` wird hier als read-only Spiegel des ersten `contentBlock.title` angezeigt.
+- Redaktionell wird der Titel im Tab `Basis` erstellt und bearbeitet.
+- Technisch wird dieser Titel weiterhin in `contentBlocks[0].title` geschrieben.
+- `Headline` wird im Tab `Inhalte` nur noch als read-only Information angezeigt.
 - `Teaser` wird als einfaches Textfeld geführt und auf `contentBlocks[0].intro` gemappt.
 - `Inhalt` wird als Rich-Text-Feld geführt und auf `contentBlocks[0].body` gemappt.
 - Für den Rich-Text wird der vorhandene Studio-Rich-Text-Editor wiederverwendet.
@@ -139,7 +145,9 @@ Card `Medien`
 
 - Alle in Studio bearbeitbaren Medien liegen ausschließlich im ersten `contentBlock.mediaContents`.
 - `teaserImageAssetId` und `headerImageAssetId` werden nicht mehr angezeigt und nicht mehr aktiv bearbeitet.
-- Die Card zeigt eine vereinfachte Liste der zugeordneten Medien mit Hinzufügen und Entfernen.
+- Die Card zeigt ein vereinfachtes Medienfeld mit einer zugehörigen Liste der angehängten Dateien.
+- Dieses Feld darf mehrere Dateien enthalten.
+- Die Vereinfachung ist fachlich vertretbar, weil die angebundene App ebenfalls nur diese angehängten Medien nutzt.
 - Upload/Drag-and-Drop wird im UI-Pfad vorbereitet; die spätere Galerieauswahl bleibt explizit außerhalb dieses Changes.
 
 Card `Quelle`
@@ -194,7 +202,6 @@ Relevante UI-Felder:
 - `authorMode`
 - `author`
 - `categories[]`
-- `contentHeadline`
 - `contentTeaser`
 - `contentBody`
 - `contentMedia[]`
@@ -207,7 +214,7 @@ Relevante UI-Felder:
 ### 2. Mapping auf die bestehende News-Struktur
 
 - `title` bleibt das explizite Titelfeld der News.
-- `contentHeadline` wird auf `contentBlocks[0].title` gemappt.
+- `title` wird zusätzlich auf `contentBlocks[0].title` gespiegelt.
 - `contentTeaser` wird auf `contentBlocks[0].intro` gemappt.
 - `contentBody` wird auf `contentBlocks[0].body` gemappt.
 - `contentMedia[]` wird auf `contentBlocks[0].mediaContents` gemappt.
@@ -288,6 +295,7 @@ Dafür wird der Studio-Lesepfad vom öffentlichen Sichtbarkeitsfilter getrennt:
 
 - öffentliche bzw. sichtbarkeitsorientierte Listen blenden `visible=false` weiterhin aus
 - die Studio-Newsliste fordert News inklusive unsichtbarer Datensätze an
+- für Redakteure bleiben damit alle News sichtbar, weil sie sonst den Veröffentlichungszustand nicht ändern könnten
 
 Technisch wird dafür ein expliziter Studio-Lesepfad benötigt, zum Beispiel über einen dedizierten Parameter oder eine getrennte interne Listenoperation. Wichtig ist nicht die konkrete URL-Form, sondern die klare Semantik: authentifizierte Studio-Listen dürfen Drafts sehen, öffentliche Pfade nicht.
 
@@ -296,6 +304,21 @@ In der Liste wird ein verständlicher redaktioneller Status angezeigt:
 - `Entwurf`
 - `Geplant`
 - `Veröffentlicht`
+
+Zusätzlich erhält die Studio-Inhaltsliste eine eigene Sichtbarkeitsinteraktion:
+
+- pro Zeile gibt es einen Schieberegler für `sichtbar` / `nicht sichtbar`
+- der Schieberegler arbeitet gegen dieselbe Visibility-Operation wie der Editor
+- die Zeile bleibt auch nach dem Umschalten sichtbar und wechselt nur ihren redaktionellen Status
+- dieses Listenmuster ist so geschnitten, dass es später auch für andere Content-Typen nutzbar ist
+
+Zusätzlich gibt es ein passendes Filterkriterium:
+
+- `Alle`
+- `Sichtbar`
+- `Nicht sichtbar`
+
+Der Sichtbarkeitsfilter ergänzt den bestehenden redaktionellen Statusfilter, ersetzt ihn aber nicht.
 
 ## Historie
 
@@ -309,7 +332,7 @@ In der Liste wird ein verständlicher redaktioneller Status angezeigt:
 ### Plugin-News UI
 
 - baut die Tab-Inhalte in Card-Sektionen um
-- ersetzt tabweise Save-Buttons durch globale Save-Actions in der Panel-Header-Zone
+- ersetzt tabweise Save-Buttons durch eine globale Save-Action im Seitenkopf oberhalb der Tabs
 - führt das vereinfachte Formularmodell ein
 - verwendet den bestehenden Rich-Text-Editor
 
@@ -333,6 +356,8 @@ In der Liste wird ein verständlicher redaktioneller Status angezeigt:
 
 - lädt Drafts mit
 - zeigt redaktionellen Status statt nur technischer Felder
+- bietet einen Schieberegler pro Zeile für den Visibility-Wechsel
+- ergänzt ein Filterkriterium für `sichtbar` / `nicht sichtbar`
 
 ## Fehlerbehandlung
 
@@ -340,6 +365,7 @@ In der Liste wird ein verständlicher redaktioneller Status angezeigt:
 - Ist kein zulässiger Autor konfigurierbar, wird ein klarer Fehler in der Autoren-Card gezeigt.
 - Fehler in Kategorien-, Historien- oder Medien-Nebenpfaden bleiben lokal an der jeweiligen Card sichtbar.
 - Ein Save-Fehler betrifft weiterhin das Gesamtformular und wird zentral als Formularzusammenfassung ausgegeben.
+- Schlägt ein Visibility-Wechsel direkt in der Liste fehl, bleibt die Zeile sichtbar und zeigt den Fehler kontextnah am Schieberegler.
 
 ## Tests
 
@@ -351,6 +377,7 @@ In der Liste wird ein verständlicher redaktioneller Status angezeigt:
 - Push-Einmaligkeit
 - Card-Struktur und Leerzustände
 - Tabellenansicht der Historie
+- Titelbearbeitung in `Basis` bei gleichzeitigem Schreiben nach `contentBlocks[0].title`
 
 ### Adapter- und Routentests
 
@@ -358,6 +385,8 @@ In der Liste wird ein verständlicher redaktioneller Status angezeigt:
 - sofortige Veröffentlichung mit `visible=true` und aktuellem Zeitpunkt
 - zeitgesteuerte Veröffentlichung mit vergangenem und zukünftigem Zeitpunkt
 - Studio-Liste inklusive unsichtbarer News
+- Sichtbarkeitswechsel per Listenschieberegler
+- Sichtbarkeitsfilter `Alle` / `Sichtbar` / `Nicht sichtbar`
 
 ### E2E
 

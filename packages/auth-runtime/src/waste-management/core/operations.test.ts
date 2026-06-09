@@ -19,6 +19,7 @@ const mockedGetWasteManagementImportCatalogEntry = vi.mocked(getWasteManagementI
 
 const actor: AuthenticatedRequestContext = {
   sessionId: 'session-1',
+  activeOrganizationId: 'org-1',
   user: {
     id: 'user-1',
     instanceId: 'tenant-a',
@@ -333,6 +334,8 @@ describe('waste-management operation handlers', () => {
           jobTypeId: 'waste-management.sync-waste-types',
           input: {
             operation: 'sync-waste-types',
+            keycloakSubject: 'user-1',
+            activeOrganizationId: 'org-1',
           },
         }),
       })

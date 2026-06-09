@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const expectedTechnicalHistoryJobTypeIds = [
+  'waste-management.initialize-data-source',
+  'waste-management.apply-migrations',
+  'waste-management.import-data',
+  'waste-management.seed-data',
+  'waste-management.reset-data',
+  'waste-management.sync-waste-types',
+] as const;
+
 const resolveWasteDataSourceMock = vi.hoisted(() => vi.fn(async () => ({
   instanceId: 'tenant-a',
   schemaName: 'wm',
@@ -881,15 +890,15 @@ describe('waste-management server loaders', () => {
 
     expect(instanceDbQueryMock).toHaveBeenCalledWith(
       expect.stringContaining("COALESCE(j.request_id, '') ILIKE $3"),
-      ['tenant-a', expect.any(Array), '%req-2%', 10]
+      ['tenant-a', expectedTechnicalHistoryJobTypeIds, '%req-2%', 10]
     );
     expect(instanceDbQueryMock).toHaveBeenCalledWith(
       expect.stringContaining("COALESCE(j.error_payload ->> 'message', '') ILIKE $3"),
-      ['tenant-a', expect.any(Array), '%req-2%', 10]
+      ['tenant-a', expectedTechnicalHistoryJobTypeIds, '%req-2%', 10]
     );
     expect(instanceDbQueryMock).toHaveBeenCalledWith(
       expect.stringContaining("COALESCE(j.error_payload ->> 'code', '') ILIKE $3"),
-      ['tenant-a', expect.any(Array), '%req-2%', 10]
+      ['tenant-a', expectedTechnicalHistoryJobTypeIds, '%req-2%', 10]
     );
   });
 
@@ -986,7 +995,7 @@ describe('waste-management server loaders', () => {
     );
     expect(instanceDbQueryMock).toHaveBeenCalledWith(
       expect.stringContaining('FROM iam.studio_jobs j'),
-      ['tenant-a', expect.any(Array), 4]
+      ['tenant-a', expectedTechnicalHistoryJobTypeIds, 4]
     );
   });
 });

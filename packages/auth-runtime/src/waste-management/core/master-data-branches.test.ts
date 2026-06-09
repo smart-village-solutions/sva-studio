@@ -72,6 +72,7 @@ describe('waste-management master-data branch handlers', () => {
           body: JSON.stringify({
             id: 'fraction-invalid-reminder',
             name: 'Papier',
+            pdfShortLabel: 'PAP',
             color: '#123456',
             active: true,
             reminderCount: 'many',
@@ -404,6 +405,7 @@ describe('waste-management master-data branch handlers', () => {
           headers: createHeaders(),
           body: JSON.stringify({
             name: 'Rest',
+            pdfShortLabel: 'RES',
             translations: { de: 'Restmüll' },
             color: '#111111',
             active: true,
@@ -630,6 +632,7 @@ describe('waste-management master-data branch handlers', () => {
           body: JSON.stringify({
             id: 'fraction-new',
             name: 'Rest',
+            pdfShortLabel: 'RES',
             translations: { de: 'Restmüll' },
             color: '#111111',
             active: true,
@@ -773,6 +776,7 @@ describe('waste-management master-data branch handlers', () => {
           body: JSON.stringify({
             id: 'fraction-verify',
             name: 'Papier',
+            pdfShortLabel: 'PAP',
             translations: { de: 'Papier' },
             color: '#123456',
             active: true,
@@ -988,6 +992,7 @@ describe('waste-management master-data branch handlers', () => {
           headers: createHeaders(),
           body: JSON.stringify({
             name: 'Papier',
+            pdfShortLabel: 'PAP',
             translations: { de: 'Papier' },
             color: '#123456',
             active: true,
@@ -1299,6 +1304,7 @@ describe('waste-management master-data branch handlers', () => {
           headers: createHeaders(),
           body: JSON.stringify({
             name: 'Papier',
+            pdfShortLabel: 'PAP',
             translations: { de: 'Papier' },
             color: '#123456',
             active: true,
@@ -1614,6 +1620,7 @@ describe('waste-management master-data branch handlers', () => {
         body: JSON.stringify({
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: 'RES',
           color: '#111111',
           active: true,
           reminderCount: 'none',

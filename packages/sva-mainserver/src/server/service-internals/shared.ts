@@ -171,9 +171,15 @@ export const parseGraphqlPayload = <TResult>(payload: unknown): TResult => {
 
   const result = payloadResult.data as GraphqlResponse<TResult>;
   if (result.errors && result.errors.length > 0) {
+    const errorMessages = result.errors
+      .map((error) => error.message?.trim())
+      .filter((message): message is string => Boolean(message));
     throw toSvaMainserverError({
       code: 'graphql_error',
-      message: `GraphQL-Antwort des SVA-Mainservers enthielt ${result.errors.length} Fehler.`,
+      message:
+        errorMessages.length > 0
+          ? `GraphQL-Antwort des SVA-Mainservers enthielt ${result.errors.length} Fehler: ${errorMessages.join(' | ')}`
+          : `GraphQL-Antwort des SVA-Mainservers enthielt ${result.errors.length} Fehler.`,
       statusCode: 502,
     });
   }

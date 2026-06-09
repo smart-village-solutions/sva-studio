@@ -781,7 +781,7 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
     ['address'],
     ['pointOfInterestId'],
   ].some((path) => hasDirtyPath(dirtyFields, path)),
-  release: [
+  settings: [
     ['publishedAt'],
     ['publicationDate'],
     ['showPublishDate'],
@@ -789,8 +789,6 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
     ['pushNotificationEnabled'],
     ['publicationMode'],
     ['scheduledPublicationAt'],
-  ].some((path) => hasDirtyPath(dirtyFields, path)),
-  settings: [
     ['externalId'],
     ['newsType'],
     ['charactersToBeShown'],

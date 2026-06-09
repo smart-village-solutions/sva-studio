@@ -3,13 +3,10 @@ import { FormProvider, useForm, type FieldNamesMarkedBoolean } from 'react-hook-
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   findHostMediaReferenceAssetId,
-  formatDateTimeInEditorTimeZone,
   fromDatetimeLocalValue,
-  listHostMediaAssets,
   listHostMediaReferencesByTarget,
   replaceHostMediaReferences,
   toDatetimeLocalValue,
-  toHostMediaFieldOptions,
   translatePluginKey,
 } from '@sva/plugin-sdk';
 import {
@@ -37,12 +34,10 @@ import {
 import { NewsDetailBasisTab } from './news.detail-basis-tab.js';
 import { NewsDetailContentTab } from './news.detail-content-tab.js';
 import { NewsDetailHistoryTab } from './news.detail-history-tab.js';
-import { NewsDetailReleaseTab } from './news.detail-release-tab.js';
 import { NewsDetailSettingsTab } from './news.detail-settings-tab.js';
 import {
   createDefaultNewsDetailFormValues,
   deriveDirtyNewsDetailTabs,
-  mapNewsDetailFormValuesToMutation,
   mapNewsItemToDetailFormValues,
   newsDetailFormResolver,
 } from './news.detail-form.js';
@@ -61,10 +56,7 @@ type StatusMessage = Readonly<{
   text: string;
 }>;
 
-type FlashMessageCode = 'createSuccess' | 'deleteSuccess';
 type PluginTranslator = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
-
-const newsFlashStorageKey = 'news-plugin-flash-message';
 
 const errorMessageTranslationKeys: Record<string, string> = {
   missing_credentials: 'messages.errors.missingCredentials',
@@ -104,14 +96,6 @@ const resolveNewsErrorMessage = (pt: PluginTranslator, error: unknown, fallbackK
   return pt(fallbackKey);
 };
 
-const persistFlashMessage = (code: FlashMessageCode) => {
-  if (typeof globalThis.window === 'undefined') {
-    return;
-  }
-
-  globalThis.window.sessionStorage.setItem(newsFlashStorageKey, code);
-};
-
 const parseDatetimeLocalInput = (value: string, referenceValue?: string) => {
   if (value.trim().length === 0) {
     return { isInvalid: false, normalizedValue: '' };
@@ -138,13 +122,6 @@ const shouldSyncMediaReferences = (
   mediaReferences: ReturnType<typeof buildNewsMediaReferences>
 ): boolean => mediaReferences.length > 0 || existingMediaReferenceCount > 0;
 
-const formatDate = (value?: string) => {
-  if (!value) {
-    return '—';
-  }
-  return formatDateTimeInEditorTimeZone(value) ?? value;
-};
-
 const isDirtyFieldTree = (
   value: FieldNamesMarkedBoolean<NewsDetailFormValues> | undefined
 ): value is FieldNamesMarkedBoolean<NewsDetailFormValues> => Boolean(value);
@@ -168,13 +145,6 @@ const NewsTabContentIcon = ({ className }: NewsTabIconProps) => (
   </svg>
 );
 
-const NewsTabReleaseIcon = ({ className }: NewsTabIconProps) => (
-  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-    <path d="M5 12h11" />
-    <path d="m12 5 7 7-7 7" />
-  </svg>
-);
-
 const NewsTabSettingsIcon = ({ className }: NewsTabIconProps) => (
   <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
     <path d="M4 7h10" />
@@ -195,7 +165,6 @@ const NewsTabHistoryIcon = ({ className }: NewsTabIconProps) => (
 const newsTabIconMap = {
   basis: NewsTabBasisIcon,
   content: NewsTabContentIcon,
-  release: NewsTabReleaseIcon,
   settings: NewsTabSettingsIcon,
   history: NewsTabHistoryIcon,
 } as const satisfies Record<NewsDetailTabId, (props: NewsTabIconProps) => React.JSX.Element>;
@@ -226,10 +195,8 @@ export const NewsDetailPage = ({
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
   const [loadedItem, setLoadedItem] = React.useState<NewsContentItem | null>(null);
-  const [publishedAtInput, setPublishedAtInput] = React.useState('');
-  const [publicationDateInput, setPublicationDateInput] = React.useState('');
-  const [invalidDateInputs, setInvalidDateInputs] = React.useState({ publishedAt: false, publicationDate: false });
-  const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
+  const [scheduledPublicationInput, setScheduledPublicationInput] = React.useState('');
+  const [invalidScheduledPublicationInput, setInvalidScheduledPublicationInput] = React.useState(false);
   const [categoryOptions, setCategoryOptions] = React.useState<readonly NewsCategoryOption[]>([]);
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
@@ -246,7 +213,6 @@ export const NewsDetailPage = ({
   const {
     formState,
     reset,
-    setError,
     setValue,
   } = methods;
 
@@ -261,7 +227,6 @@ export const NewsDetailPage = ({
         : {
             basis: false,
             content: false,
-            release: false,
             settings: false,
             history: false,
           },
@@ -318,12 +283,6 @@ export const NewsDetailPage = ({
   }, [pt]);
 
   React.useEffect(() => {
-    void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
-      .then((assets) => setMediaOptions(toHostMediaFieldOptions(assets)))
-      .catch(() => setMediaOptions([]));
-  }, []);
-
-  React.useEffect(() => {
     if (mode !== 'edit') {
       return;
     }
@@ -345,9 +304,8 @@ export const NewsDetailPage = ({
 
         const nextValues = mapNewsItemToDetailFormValues(item);
         reset(nextValues);
-        setPublishedAtInput(toDatetimeLocalValue(nextValues.publishedAt));
-        setPublicationDateInput(toDatetimeLocalValue(nextValues.publicationDate));
-        setInvalidDateInputs({ publishedAt: false, publicationDate: false });
+        setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
+        setInvalidScheduledPublicationInput(false);
         setLoadedItem(item);
 
         void listHostMediaReferencesByTarget({
@@ -410,26 +368,6 @@ export const NewsDetailPage = ({
   const saveCurrentItem = methods.handleSubmit(async (values) => {
     setStatusMessage(null);
 
-    const publishedAtValidation = parseDatetimeLocalInput(publishedAtInput, methods.getValues('publishedAt'));
-    const publicationDateValidation = parseDatetimeLocalInput(publicationDateInput, methods.getValues('publicationDate'));
-    const nextInvalidDateInputs = {
-      publishedAt: publishedAtValidation.isInvalid,
-      publicationDate: publicationDateValidation.isInvalid,
-    };
-
-    setInvalidDateInputs(nextInvalidDateInputs);
-
-    if (nextInvalidDateInputs.publishedAt) {
-      setError('publishedAt', { type: 'manual', message: 'publishedAt' });
-    }
-    if (nextInvalidDateInputs.publicationDate) {
-      setError('publicationDate', { type: 'manual', message: 'publicationDate' });
-    }
-    if (nextInvalidDateInputs.publishedAt || nextInvalidDateInputs.publicationDate) {
-      setStatusMessage({ kind: 'error', text: pt('messages.validationError') });
-      return;
-    }
-
     if (mode === 'edit' && !contentId) {
       setStatusMessage({ kind: 'error', text: pt('messages.missingContent') });
       return;
@@ -449,7 +387,6 @@ export const NewsDetailPage = ({
       setExistingMediaReferenceCount(buildNewsMediaReferences(values.teaserImageAssetId, values.headerImageAssetId).length);
 
       if (mode === 'create') {
-        persistFlashMessage('createSuccess');
         await navigate({ to: '/admin/content' });
         return;
       }
@@ -461,9 +398,8 @@ export const NewsDetailPage = ({
       };
       reset(nextValues);
       setLoadedItem(saved);
-      setPublishedAtInput(toDatetimeLocalValue(nextValues.publishedAt));
-      setPublicationDateInput(toDatetimeLocalValue(nextValues.publicationDate));
-      setInvalidDateInputs({ publishedAt: false, publicationDate: false });
+      setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
+      setInvalidScheduledPublicationInput(false);
       setStatusMessage({ kind: 'success', text: pt('messages.updateSuccess') });
     } catch (error) {
       setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.saveError') });
@@ -485,7 +421,6 @@ export const NewsDetailPage = ({
 
     try {
       await deleteNews(contentId);
-      persistFlashMessage('deleteSuccess');
       await navigate({ to: '/admin/content' });
     } catch (error) {
       setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.deleteError') });
@@ -524,11 +459,6 @@ export const NewsDetailPage = ({
       description: pt('tabs.basis.description'),
       hasChanges: dirtyTabs.basis,
       changeLabel: pt('tabs.changeLabel'),
-      actions: mode === 'edit' && loadedItem ? (
-        <span className="text-sm text-muted-foreground">
-          {pt('tabs.basis.metaSummaryInline', { publishedAt: formatDate(loadedItem.publishedAt) })}
-        </span>
-      ) : null,
       panel: (
         <NewsDetailBasisTab
           availableCategories={categoryOptions}
@@ -548,47 +478,7 @@ export const NewsDetailPage = ({
       description: pt('tabs.content.description'),
       hasChanges: dirtyTabs.content,
       changeLabel: pt('tabs.changeLabel'),
-      panel: (
-        <NewsDetailContentTab
-          mediaOptions={mediaOptions}
-          pt={pt}
-        />
-      ),
-    },
-    {
-      id: 'release',
-      label: pt('tabs.release.label'),
-      title: pt('tabs.release.title'),
-      description: pt('tabs.release.description'),
-      hasChanges: dirtyTabs.release,
-      changeLabel: pt('tabs.changeLabel'),
-      panel: (
-        <NewsDetailReleaseTab
-          mode={mode}
-          loadedItem={loadedItem}
-          publishedAtField={{
-            value: publishedAtInput,
-            isInvalid: invalidDateInputs.publishedAt,
-            onChange: (nextValue) => {
-              const { isInvalid, normalizedValue } = parseDatetimeLocalInput(nextValue, methods.getValues('publishedAt'));
-              setPublishedAtInput(nextValue);
-              setInvalidDateInputs((current) => ({ ...current, publishedAt: isInvalid }));
-              return normalizedValue;
-            },
-          }}
-          publicationDateField={{
-            value: publicationDateInput,
-            isInvalid: invalidDateInputs.publicationDate,
-            onChange: (nextValue) => {
-              const { isInvalid, normalizedValue } = parseDatetimeLocalInput(nextValue, methods.getValues('publicationDate'));
-              setPublicationDateInput(nextValue);
-              setInvalidDateInputs((current) => ({ ...current, publicationDate: isInvalid }));
-              return normalizedValue;
-            },
-          }}
-          pt={pt}
-        />
-      ),
+      panel: <NewsDetailContentTab pt={pt} />,
     },
     {
       id: 'settings',
@@ -599,7 +489,22 @@ export const NewsDetailPage = ({
       changeLabel: pt('tabs.changeLabel'),
       panel: (
         <NewsDetailSettingsTab
+          loadedItem={loadedItem}
+          mode={mode}
           pt={pt}
+          scheduledPublicationField={{
+            value: scheduledPublicationInput,
+            isInvalid: invalidScheduledPublicationInput,
+            onChange: (nextValue) => {
+              const { isInvalid, normalizedValue } = parseDatetimeLocalInput(
+                nextValue,
+                methods.getValues('scheduledPublicationAt')
+              );
+              setScheduledPublicationInput(nextValue);
+              setInvalidScheduledPublicationInput(isInvalid);
+              return normalizedValue;
+            },
+          }}
         />
       ),
     },
@@ -693,7 +598,7 @@ export const NewsDetailPage = ({
                   forceMount={shouldKeepMounted || undefined}
                   className="mt-0 data-[state=inactive]:hidden"
                 >
-                  <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5 [&_.text-muted-foreground]:text-foreground">
+                  <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
                     <section
                       aria-label={tab.title ? String(tab.title) : tab.label}
                       className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"

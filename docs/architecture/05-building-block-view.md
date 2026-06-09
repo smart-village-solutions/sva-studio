@@ -78,9 +78,10 @@ Abhängigkeiten des aktuellen Systems.
 11. Plugin News (`packages/plugin-news`)
    - produktives Fachplugin für Mainserver-News mit pluginnahem Modell `news.article`
    - eigene Listen- und Editor-Ansichten, plugin-beigestellte Admin-Ressourcen-Spezialisierungen, Navigation und Übersetzungen
-   - bildet das vollständige Mainserver-`NewsItem`-Modell über dedizierte Felder ab; `contentBlocks` sind der führende Langinhalt
+   - kapselt ein redaktionell vereinfachtes Editor-Mapping in `news.editor-model.ts`, das UI-Felder gezielt auf `contentBlocks[0]`, Kategorien, Veröffentlichungsmodus und den nachgelagerten Visibility-Schritt abbildet
+   - verwendet in der Bearbeitung card-basierte Tabpanels mit globalem Speichern, während Legacy-Felder außerhalb der vereinfachten Oberfläche bei Updates aus dem geladenen Datensatz erhalten bleiben
    - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
-   - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an
+   - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an; die Studio-Liste lädt Entwürfe ausdrücklich mit `includeInvisible=true`
 12. Plugin Waste Management (`packages/plugin-waste-management`)
    - freies Fachplugin unter `/plugins/waste-management` für Waste-Stammdaten, Touren, Ausweichtermine, PDF-Stamminhalte, technische Werkzeuge und instanzbezogene Einstellungen
    - konsumiert ausschließlich hostgeführte Endpunkte unter `/api/v1/waste-management/*`

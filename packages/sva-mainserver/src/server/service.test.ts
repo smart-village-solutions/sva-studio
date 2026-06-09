@@ -864,6 +864,63 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('filters studio news by editorial status after including invisible items', async () => {
+    const now = new Date().toISOString();
+    const futurePublishedAt = new Date(Date.now() + 60_000).toISOString();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            newsItems: [
+              {
+                id: 'news-visible',
+                title: 'Visible',
+                payload: { teaser: 'Kurztext', body: '<p>Body</p>' },
+                publishedAt: now,
+                visible: true,
+              },
+              {
+                id: 'news-draft',
+                title: 'Draft',
+                payload: { teaser: 'Entwurf', body: '<p>Draft</p>' },
+                publishedAt: now,
+                visible: false,
+              },
+              {
+                id: 'news-scheduled',
+                title: 'Scheduled',
+                payload: { teaser: 'Geplant', body: '<p>Scheduled</p>' },
+                publishedAt: futurePublishedAt,
+                visible: true,
+              },
+            ],
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listNews({
+        instanceId: 'instance-1',
+        keycloakSubject: 'user-1',
+        page: 1,
+        pageSize: 25,
+        includeInvisible: true,
+        visibilityFilter: 'hidden',
+        editorialStatusFilter: 'draft',
+      })
+    ).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'news-draft', visible: false })],
+    });
+  });
+
   it('calls changeVisibility with recordType NewsItem', async () => {
     const fetchImpl = vi
       .fn()

@@ -81,14 +81,15 @@ describe('news.detail-history-tab', () => {
       expect(screen.getByText('history.actions.created')).toBeTruthy();
     });
 
-    const items = screen.getAllByRole('listitem');
-    expect(items).toHaveLength(2);
-    expect(items[0]?.textContent).toContain('history.actions.created');
-    expect(items[0]?.textContent).toContain('formatted:2026-05-21T10:00:00.000Z');
-    expect(items[0]?.textContent).toContain('history.byline:actor=Editor One');
-    expect(items[1]?.textContent).toContain('history.actions.updated');
-    expect(items[1]?.textContent).toContain('Titel angepasst');
-    expect(items[1]?.textContent).toContain('history.changedFields:fields=title');
+    const rows = screen.getAllByRole('row');
+    expect(rows).toHaveLength(3);
+    expect(screen.getByRole('table', { name: 'history.tableLabel' })).toBeTruthy();
+    expect(rows[1]?.textContent).toContain('history.actions.created');
+    expect(rows[1]?.textContent).toContain('formatted:2026-05-21T10:00:00.000Z');
+    expect(rows[1]?.textContent).toContain('Editor One');
+    expect(rows[1]?.textContent).toContain('history.emptySummary');
+    expect(rows[2]?.textContent).toContain('history.actions.updated');
+    expect(rows[2]?.textContent).toContain('Titel angepasst');
   });
 
   it.each([

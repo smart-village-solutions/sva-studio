@@ -85,6 +85,9 @@ type NewsAnnouncementSummary = {
 export type NewsListQuery = {
   readonly page: number;
   readonly pageSize: number;
+  readonly includeInvisible?: boolean;
+  readonly visibilityFilter?: 'all' | 'visible' | 'hidden';
+  readonly editorialStatusFilter?: 'all' | 'draft' | 'scheduled' | 'published';
 };
 
 export type NewsPagination = {
@@ -126,7 +129,7 @@ export type NewsAuthorControl =
       readonly options: readonly { readonly value: string; readonly label: string }[];
     };
 
-export type NewsDetailTabId = 'basis' | 'content' | 'release' | 'settings' | 'history';
+export type NewsDetailTabId = 'basis' | 'content' | 'settings' | 'history';
 
 export type NewsPublicationMode = 'draft' | 'immediate' | 'scheduled';
 

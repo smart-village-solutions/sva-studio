@@ -55,6 +55,8 @@ export type SvaMainserverListQuery = {
 
 export type SvaMainserverNewsListInput = SvaMainserverListQuery & {
   readonly includeInvisible?: boolean;
+  readonly visibilityFilter?: 'all' | 'visible' | 'hidden';
+  readonly editorialStatusFilter?: 'all' | 'draft' | 'scheduled' | 'published';
 };
 
 export type SvaMainserverListPagination = {

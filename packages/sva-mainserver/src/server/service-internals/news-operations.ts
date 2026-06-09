@@ -24,6 +24,39 @@ import { listVisibleRecordsWithConfig } from './visible-list.js';
 
 type SvaMainserverNewsListRequest = SvaMainserverConnectionInput & SvaMainserverNewsListInput;
 
+const deriveEditorialStatusForList = (
+  item: Pick<SvaMainserverNewsItemFragment, 'visible' | 'publishedAt'>,
+  nowIso: string
+): 'draft' | 'scheduled' | 'published' => {
+  if (item.visible === false) {
+    return 'draft';
+  }
+
+  return new Date(item.publishedAt).getTime() > new Date(nowIso).getTime() ? 'scheduled' : 'published';
+};
+
+const matchesNewsListFilters = (
+  item: Pick<SvaMainserverNewsItemFragment, 'visible' | 'publishedAt'>,
+  input: SvaMainserverNewsListRequest,
+  nowIso: string
+) => {
+  const matchesVisibility =
+    input.visibilityFilter === 'hidden'
+      ? item.visible === false
+      : input.visibilityFilter === 'visible'
+        ? item.visible !== false
+        : input.includeInvisible === true
+          ? true
+          : item.visible !== false;
+  const editorialStatus = deriveEditorialStatusForList(item, nowIso);
+  const matchesEditorialStatus =
+    input.editorialStatusFilter && input.editorialStatusFilter !== 'all'
+      ? editorialStatus === input.editorialStatusFilter
+      : true;
+
+  return matchesVisibility && matchesEditorialStatus;
+};
+
 const buildNewsMutationVariables = (input: {
   readonly news: SvaMainserverNewsInput;
   readonly newsId?: string;
@@ -55,7 +88,7 @@ export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) 
     input: SvaMainserverNewsListRequest,
     config: SvaMainserverInstanceConfig
   ): Promise<SvaMainserverListResult<SvaMainserverNewsItem>> => {
-    const includeInvisible = input.includeInvisible === true;
+    const nowIso = new Date().toISOString();
 
     return listVisibleRecordsWithConfig<
       SvaMainserverNewsListResponse,
@@ -70,7 +103,7 @@ export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) 
         operationName: 'SvaMainserverNewsList',
         order: 'publishedAt_DESC',
         readItems: (response) => response.newsItems ?? [],
-        isVisible: includeInvisible ? () => true : (item) => item.visible !== false,
+        isVisible: (item) => matchesNewsListFilters(item, input, nowIso),
         mapItem: mapNewsItem,
       }
     );

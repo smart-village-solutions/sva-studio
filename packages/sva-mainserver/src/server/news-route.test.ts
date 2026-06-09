@@ -136,6 +136,8 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       keycloakSubject: 'subject-1',
       activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       includeInvisible: false,
+      visibilityFilter: 'all',
+      editorialStatusFilter: 'all',
       page: 1,
       pageSize: 25,
     });
@@ -170,6 +172,8 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       keycloakSubject: 'subject-1',
       activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       includeInvisible: true,
+      visibilityFilter: 'all',
+      editorialStatusFilter: 'all',
       page: 1,
       pageSize: 25,
     });
@@ -232,6 +236,38 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       keycloakSubject: 'subject-1',
       activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       includeInvisible: false,
+      visibilityFilter: 'all',
+      editorialStatusFilter: 'all',
+      page: 1,
+      pageSize: 25,
+    });
+  });
+
+  it('passes visibility and editorial status filters through the studio news list route', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [{ id: 'news-draft' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    await dispatchSvaMainserverNewsRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/news?includeInvisible=true&visibilityFilter=hidden&editorialStatusFilter=draft'
+      )
+    );
+
+    expect(state.listSvaMainserverNews).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      includeInvisible: true,
+      visibilityFilter: 'hidden',
+      editorialStatusFilter: 'draft',
       page: 1,
       pageSize: 25,
     });

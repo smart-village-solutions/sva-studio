@@ -83,6 +83,27 @@ type ParsedVisibilityInput = {
   readonly visible: boolean;
 };
 
+const normalizeVisibilityFilter = (value: string | null): 'all' | 'visible' | 'hidden' => {
+  switch (value) {
+    case 'visible':
+    case 'hidden':
+      return value;
+    default:
+      return 'all';
+  }
+};
+
+const normalizeEditorialStatusFilter = (value: string | null): 'all' | 'draft' | 'scheduled' | 'published' => {
+  switch (value) {
+    case 'draft':
+    case 'scheduled':
+    case 'published':
+      return value;
+    default:
+      return 'all';
+  }
+};
+
 const toPayloadHash = (rawBody: string): string => createHash('sha256').update(rawBody).digest('hex');
 
 const readonlyMutationFields = new Set([
@@ -670,9 +691,18 @@ const listNewsForRequest = async (
     readonly activeOrganizationId?: string;
   }
 ) => {
-  const includeInvisible = new URL(request.url).searchParams.get('includeInvisible') === 'true';
+  const searchParams = new URL(request.url).searchParams;
+  const includeInvisible = searchParams.get('includeInvisible') === 'true';
+  const visibilityFilter = normalizeVisibilityFilter(searchParams.get('visibilityFilter'));
+  const editorialStatusFilter = normalizeEditorialStatusFilter(searchParams.get('editorialStatusFilter'));
 
-  return listSvaMainserverNews({ ...actor, ...parseMainserverListQuery(request), includeInvisible });
+  return listSvaMainserverNews({
+    ...actor,
+    ...parseMainserverListQuery(request),
+    includeInvisible,
+    visibilityFilter,
+    editorialStatusFilter,
+  });
 };
 
 const getNewsForRoute = async (

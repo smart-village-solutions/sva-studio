@@ -223,7 +223,7 @@ describe('News editor pages', () => {
     vi.mocked(deleteNews).mockResolvedValue(undefined);
     paramsMock.mockReturnValue({ contentId: 'news-1' });
     window.sessionStorage.clear();
-    registerPluginTranslationResolver((key) => {
+    registerPluginTranslationResolver((key, variables) => {
       const labels: Record<string, string> = {
         'news.messages.loading': 'News werden geladen.',
         'news.messages.loadError': 'News konnten nicht geladen werden.',
@@ -240,11 +240,19 @@ describe('News editor pages', () => {
         'news.messages.unsavedTabChanges': 'Bitte speichern Sie die Änderungen im aktuellen Tab, bevor Sie den Bereich wechseln.',
         'news.messages.errors.forbidden': 'Keine Berechtigung für Mainserver-News.',
         'news.messages.errors.graphqlError': 'Der Mainserver hat die News-Anfrage abgelehnt.',
-        'news.messages.errors.invalidRequest': 'Die News-Anfrage ist ungültig.',
+        'news.messages.errors.integrationDisabled': 'Die Mainserver-Integration ist für diese Instanz deaktiviert.',
+        'news.messages.errors.invalidRequest': 'Die News-Daten sind unvollständig oder ungültig.',
+        'news.messages.errors.invalidConfig': 'Die Mainserver-Konfiguration für News ist ungültig.',
+        'news.messages.errors.details': 'Details: {{message}}',
         'news.messages.errors.invalidResponse': 'Der Mainserver hat eine ungültige News-Antwort geliefert.',
+        'news.messages.errors.organizationMainserverCredentialsMissing':
+          'Für die aktive Organisation fehlen Mainserver-Credentials.',
+        'news.messages.errors.configNotFound': 'Für diese Instanz ist keine Mainserver-Konfiguration hinterlegt.',
         'news.messages.errors.missingCredentials': 'Mainserver-Credentials fehlen.',
         'news.messages.errors.missingInstance': 'Kein Instanzkontext vorhanden.',
         'news.messages.errors.networkError': 'Der Mainserver ist nicht erreichbar.',
+        'news.messages.errors.tokenRequestFailed': 'Die Authentifizierung am Mainserver ist fehlgeschlagen.',
+        'news.messages.errors.unauthorized': 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
         'news.empty.title': 'Noch keine News vorhanden',
         'news.empty.description': 'Legen Sie den ersten News-Eintrag an.',
         'news.pagination.ariaLabel': 'News-Pagination',
@@ -400,7 +408,11 @@ describe('News editor pages', () => {
         'news.fields.headerImage': 'Headerbild',
         'news.fields.mediaPlaceholder': 'Medium auswählen',
       };
-      return labels[key] ?? key;
+      const template = labels[key] ?? key;
+      return template.replace(/\{\{(\w+)\}\}/g, (_match, variableName: string) => {
+        const value = variables?.[variableName];
+        return value === undefined ? `{{${variableName}}}` : String(value);
+      });
     });
     vi.mocked(listHostMediaAssets).mockResolvedValue([
       { id: 'asset-hero', metadata: { title: 'Hero Asset' } },
@@ -625,6 +637,75 @@ describe('News editor pages', () => {
     });
 
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('combines the general invalid-request error with the concrete backend detail', async () => {
+    vi.mocked(createNews).mockRejectedValueOnce(
+      new NewsApiError('invalid_request', 'Titel und Veröffentlichungsdatum sind erforderlich.')
+    );
+
+    render(<NewsCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    await openContentTab();
+    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
+    await openReleaseTab();
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-04-14T09:30' } });
+    clickPrimaryAction('News anlegen');
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'Die News-Daten sind unvollständig oder ungültig. Details: Titel und Veröffentlichungsdatum sind erforderlich.'
+        )
+      ).toBeTruthy();
+    });
+  });
+
+  it('combines the invalid-config error with the concrete backend detail', async () => {
+    vi.mocked(createNews).mockRejectedValueOnce(
+      new NewsApiError('invalid_config', 'Die OAuth-Konfiguration der Instanz ist unvollständig.')
+    );
+
+    render(<NewsCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    await openContentTab();
+    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
+    await openReleaseTab();
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-04-14T09:30' } });
+    clickPrimaryAction('News anlegen');
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'Die Mainserver-Konfiguration für News ist ungültig. Details: Die OAuth-Konfiguration der Instanz ist unvollständig.'
+        )
+      ).toBeTruthy();
+    });
+  });
+
+  it('keeps graphql errors generic even when the backend returns a technical detail', async () => {
+    vi.mocked(createNews).mockRejectedValueOnce(
+      new NewsApiError('graphql_error', 'Upstream resolver timeout after 30s')
+    );
+
+    render(<NewsCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    await openContentTab();
+    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
+    await openReleaseTab();
+    fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), { target: { value: '2026-04-14T09:30' } });
+    clickPrimaryAction('News anlegen');
+
+    await waitFor(() => {
+      expect(screen.getByText('Der Mainserver hat die News-Anfrage abgelehnt.')).toBeTruthy();
+    });
+    expect(screen.queryByText(/Details:/)).toBeNull();
   });
 
   it('shows a load error when loading an existing news entry fails', async () => {

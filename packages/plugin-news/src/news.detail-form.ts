@@ -10,7 +10,6 @@ import type {
   NewsDetailFormValues,
   NewsDetailTabId,
   NewsFormInput,
-  NewsLegacyCompatibilitySnapshot,
   NewsMediaContentFormValue,
   NewsWebUrl,
 } from './news.types.js';
@@ -67,15 +66,6 @@ type CompatibilityFormValues = NewsDetailFormValues & {
 const emptyWebUrl = (): NewsWebUrl => ({
   url: '',
   description: '',
-});
-
-const defaultMediaContent = (): NewsMediaContentFormValue => ({
-  captionText: '',
-  copyright: '',
-  contentType: 'image',
-  height: '',
-  width: '',
-  sourceUrl: emptyWebUrl(),
 });
 
 const createEmptyLegacySnapshot = (): MutableLegacyCompatibilitySnapshot => ({});

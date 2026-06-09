@@ -1,4 +1,4 @@
-import { Controller, useFieldArray, useFormContext, useWatch, type FieldError } from 'react-hook-form';
+import { useFieldArray, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 import { Button, Input, StudioField, StudioFormSummaryErrors, Textarea, getStudioFormFieldProps } from '@sva/studio-ui-react';
 
 import { NewsDetailCard } from './news.detail-card.js';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { useParams } from '@tanstack/react-router';
 
 import { NewsDetailPage } from './news.detail-page.js';

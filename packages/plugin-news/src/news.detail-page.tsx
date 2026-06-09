@@ -59,7 +59,13 @@ type StatusMessage = Readonly<{
 type PluginTranslator = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
 const errorMessageTranslationKeys: Record<string, string> = {
+  config_not_found: 'messages.errors.configNotFound',
+  integration_disabled: 'messages.errors.integrationDisabled',
+  invalid_config: 'messages.errors.invalidConfig',
   missing_credentials: 'messages.errors.missingCredentials',
+  organization_mainserver_credentials_missing: 'messages.errors.organizationMainserverCredentialsMissing',
+  token_request_failed: 'messages.errors.tokenRequestFailed',
+  unauthorized: 'messages.errors.unauthorized',
   forbidden: 'messages.errors.forbidden',
   graphql_error: 'messages.errors.graphqlError',
   invalid_response: 'messages.errors.invalidResponse',
@@ -71,6 +77,17 @@ const errorMessageTranslationKeys: Record<string, string> = {
   network_error: 'messages.errors.networkError',
   not_found: 'messages.missingContent',
 };
+
+const detailFriendlyErrorCodes = new Set([
+  'config_not_found',
+  'integration_disabled',
+  'invalid_config',
+  'invalid_request',
+  'missing_credentials',
+  'missing_instance',
+  'organization_mainserver_credentials_missing',
+  'forbidden',
+]);
 
 const resolvePluginActionLabel = (
   pt: PluginTranslator,
@@ -90,7 +107,20 @@ const resolveNewsErrorMessage = (pt: PluginTranslator, error: unknown, fallbackK
   if (error instanceof NewsApiError) {
     const key = errorMessageTranslationKeys[error.code];
     if (key) {
-      return pt(key);
+      const genericMessage = pt(key);
+      const detail = error.message.trim();
+      const hasMeaningfulDetail =
+        detailFriendlyErrorCodes.has(error.code) &&
+        detail.length > 0 &&
+        detail !== error.code &&
+        detail.startsWith('http_') === false &&
+        detail !== genericMessage;
+
+      if (hasMeaningfulDetail) {
+        return `${genericMessage} ${pt('messages.errors.details', { message: detail })}`;
+      }
+
+      return genericMessage;
     }
   }
   return pt(fallbackKey);

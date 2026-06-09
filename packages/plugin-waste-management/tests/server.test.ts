@@ -181,6 +181,11 @@ describe('waste management plugin server handlers', () => {
         inputPayload: { operation: 'reset-data' },
         expectedDetailKeys: ['confirmationTokenLength', 'deletedRows'],
       },
+      {
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncWasteTypes,
+        inputPayload: { operation: 'sync-waste-types' },
+        expectedDetailKeys: ['staticContentName', 'version', 'fractionCount'],
+      },
     ] as const;
 
     for (const scenario of scenarios) {
@@ -364,6 +369,15 @@ const createRuntime = (
       operation: 'reset-data',
       confirmationTokenLength: 5,
       deletedRows: { waste_regions: 1 },
+    },
+  })),
+  syncWasteTypes: vi.fn(async () => ({
+    durationMs: 1,
+    details: {
+      operation: 'sync-waste-types',
+      staticContentName: 'wasteTypes',
+      version: '2026.06.09',
+      fractionCount: 5,
     },
   })),
   ...overrides,

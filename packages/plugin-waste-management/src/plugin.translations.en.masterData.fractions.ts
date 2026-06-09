@@ -8,6 +8,7 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     caption: 'Table of waste fractions with status, metadata, and actions.',
     name: 'Fraction',
     nameWithContainerSize: 'Name (Container size)',
+    shortLabel: 'Short label',
     selection: 'Selection',
     status: 'Status',
     color: 'Color',

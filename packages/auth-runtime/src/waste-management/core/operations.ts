@@ -19,6 +19,7 @@ const {
   startMigrationsSchema,
   startResetSchema,
   startSeedSchema,
+  startSyncWasteTypesSchema,
 } =
   wasteManagementOperationSchemas;
 
@@ -336,6 +337,21 @@ export const wasteManagementOperationHandlers = {
       toPayload: () => ({
         operation: 'seed-data',
         seedKey: 'baseline',
+      }),
+    }),
+  startWasteManagementSyncWasteTypesInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> =>
+    startToolJob(request, ctx, deps, {
+      requiredPermission: 'waste-management.settings.manage',
+      endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
+      schema: startSyncWasteTypesSchema,
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncWasteTypes,
+      auditActionId: 'waste-management.sync-waste-types.started',
+      toPayload: () => ({
+        operation: 'sync-waste-types',
       }),
     }),
   startWasteManagementResetInternal: async (

@@ -138,6 +138,7 @@ export type {
   WasteManagementMasterDataOverview,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
+  WasteManagementSyncWasteTypesJobInput,
   WasteManagementSettingsInterfaceOption,
   WasteManagementSettingsRecord,
   WasteRegionRecord,

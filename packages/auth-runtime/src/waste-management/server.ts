@@ -37,6 +37,7 @@ const {
   startWasteManagementMigrationsInternal,
   startWasteManagementResetInternal,
   startWasteManagementSeedInternal,
+  startWasteManagementSyncWasteTypesInternal,
   updateWasteManagementCityInternal,
   updateWasteManagementCollectionLocationInternal,
   updateWasteManagementFractionInternal,
@@ -403,6 +404,10 @@ export const wasteManagementHandlers = {
   startSeed: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       startWasteManagementSeedInternal(nextRequest, ctx)
+    ),
+  startSyncWasteTypes: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      startWasteManagementSyncWasteTypesInternal(nextRequest, ctx)
     ),
   startReset: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>

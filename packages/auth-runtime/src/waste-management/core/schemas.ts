@@ -235,6 +235,8 @@ const startSeedSchema = z.object({
   seedKey: z.literal('baseline').default('baseline'),
 });
 
+const startSyncWasteTypesSchema = z.object({});
+
 const startResetSchema = z.object({
   confirmationToken: z.string().trim().refine(
     (value) => value === wasteManagementOperationsContract.resetConfirmationToken,
@@ -283,5 +285,6 @@ export const wasteManagementOperationSchemas = {
   startImportSchema,
   previewLocationTourPickupDateImportSchema,
   startSeedSchema,
+  startSyncWasteTypesSchema,
   startResetSchema,
 } as const;

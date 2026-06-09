@@ -27,6 +27,7 @@ import {
   startWasteManagementHolidaySync,
   startWasteManagementReset,
   startWasteManagementSeed,
+  startWasteManagementSyncWasteTypes,
   updateWasteManagementHolidayRule,
   updateWasteManagementFraction,
   updateWasteManagementCity,
@@ -1355,16 +1356,18 @@ describe('waste-management api client', () => {
     );
   });
 
-  it('starts initialize, migration, seed and reset jobs with idempotency keys', async () => {
+  it('starts initialize, migration, seed, waste-type sync and reset jobs with idempotency keys', async () => {
     fetchMock
       .mockResolvedValueOnce(createJobResponse('waste-management.initialize-data-source'))
       .mockResolvedValueOnce(createJobResponse('waste-management.apply-migrations'))
       .mockResolvedValueOnce(createJobResponse('waste-management.seed-data'))
+      .mockResolvedValueOnce(createJobResponse('waste-management.sync-waste-types'))
       .mockResolvedValueOnce(createJobResponse('waste-management.reset-data'));
 
     await startWasteManagementInitialize({ targetSchema: 'wm' });
     await startWasteManagementMigrations({ targetSchema: 'wm', requestedByVersion: '2026.05.0' });
     await startWasteManagementSeed();
+    await startWasteManagementSyncWasteTypes();
     await startWasteManagementReset({ confirmationToken: 'RESET' });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -1393,6 +1396,14 @@ describe('waste-management api client', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       4,
+      '/api/v1/waste-management/tools/sync-waste-types',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({}),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
       '/api/v1/waste-management/tools/reset',
       expect.objectContaining({
         method: 'POST',

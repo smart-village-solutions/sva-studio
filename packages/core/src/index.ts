@@ -139,6 +139,7 @@ export type {
   WasteManagementJobTypeId,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
+  WasteManagementSyncWasteTypesJobInput,
 } from './waste-management-operations-contract.js';
 export type {
   WasteDateShiftReasonType,

@@ -304,6 +304,42 @@ describe('waste-management operation handlers', () => {
     expect(response.status).toBe(202);
   });
 
+  it('creates a dedicated waste-type sync job payload', async () => {
+    const startPluginOperationJob = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'job-2' } }), { status: 202 }));
+
+    const response = await wasteManagementOperationHandlers.startWasteManagementSyncWasteTypesInternal(
+      createToolRequest('https://studio.test/api/v1/waste-management/tools/sync-waste-types', {}),
+      actor,
+      {
+        ...createDeps(),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [
+            {
+              action: 'waste-management.settings.manage',
+              resourceType: 'waste-management',
+              effect: 'allow' as const,
+            },
+          ],
+        })),
+        startPluginOperationJob,
+      }
+    );
+
+    expect(startPluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
+        data: expect.objectContaining({
+          jobTypeId: 'waste-management.sync-waste-types',
+          input: {
+            operation: 'sync-waste-types',
+          },
+        }),
+      })
+    );
+    expect(response.status).toBe(202);
+  });
+
   it('rejects tool starts when the actor membership cannot be resolved to an IAM account', async () => {
     const startPluginOperationJob = vi.fn();
 

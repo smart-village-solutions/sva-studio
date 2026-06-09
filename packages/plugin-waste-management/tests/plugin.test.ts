@@ -82,6 +82,7 @@ describe('pluginWasteManagement contract', () => {
       'waste-management.import-data',
       'waste-management.seed-data',
       'waste-management.reset-data',
+      'waste-management.sync-waste-types',
     ]);
   });
 

@@ -4,6 +4,7 @@ const wasteManagementJobTypeIds = {
   importData: 'waste-management.import-data',
   seedData: 'waste-management.seed-data',
   resetData: 'waste-management.reset-data',
+  syncWasteTypes: 'waste-management.sync-waste-types',
 } as const;
 
 const wasteManagementResetConfirmationToken = 'RESET' as const;
@@ -59,12 +60,17 @@ export type WasteManagementResetJobInput = {
   readonly confirmationToken: string;
 };
 
+export type WasteManagementSyncWasteTypesJobInput = {
+  readonly operation: 'sync-waste-types';
+};
+
 export type WasteManagementJobInput =
   | WasteManagementInitializeJobInput
   | WasteManagementApplyMigrationsJobInput
   | WasteManagementImportJobInput
   | WasteManagementSeedJobInput
-  | WasteManagementResetJobInput;
+  | WasteManagementResetJobInput
+  | WasteManagementSyncWasteTypesJobInput;
 
 export const wasteManagementOperationsContract = {
   pluginId: 'waste-management',

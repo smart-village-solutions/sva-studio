@@ -8,6 +8,7 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     caption: 'Tabelle der Waste-Abfallfraktionen mit Status, Metadaten und Aktionen.',
     name: 'Fraktion',
     nameWithContainerSize: 'Name (Gefäßgröße)',
+    shortLabel: 'Kürzel',
     selection: 'Auswahl',
     status: 'Status',
     color: 'Farbe',

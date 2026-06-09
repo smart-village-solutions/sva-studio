@@ -116,6 +116,7 @@ export type AuthRoutePath =
   | '/api/v1/waste-management/tools/imports/preview'
   | '/api/v1/waste-management/tools/migrations'
   | '/api/v1/waste-management/tools/seed'
+  | '/api/v1/waste-management/tools/sync-waste-types'
   | '/api/v1/waste-management/tools/reset'
   | '/api/v1/plugin-operations/jobs'
   | '/api/v1/plugin-operations/jobs/$jobId'
@@ -238,6 +239,7 @@ export const authRoutePaths = [
   '/api/v1/waste-management/tools/imports/preview',
   '/api/v1/waste-management/tools/migrations',
   '/api/v1/waste-management/tools/seed',
+  '/api/v1/waste-management/tools/sync-waste-types',
   '/api/v1/waste-management/tools/reset',
   '/api/v1/plugin-operations/jobs',
   '/api/v1/plugin-operations/jobs/$jobId',

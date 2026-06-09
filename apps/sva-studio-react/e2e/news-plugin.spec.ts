@@ -343,7 +343,7 @@ const fulfillContentRoute = async (
       contentType: 'news.article',
       status: 'published',
       publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : '2026-04-13T12:10:00.000Z',
-      visible: true,
+      visible: body.visible !== false,
       categories: Array.isArray(body.categories) ? (body.categories as NewsRecord['categories']) : [],
       sourceUrl: typeof body.sourceUrl === 'object' ? (body.sourceUrl as NewsRecord['sourceUrl']) : undefined,
       categoryName: typeof body.categoryName === 'string' ? body.categoryName : undefined,
@@ -370,6 +370,7 @@ const fulfillContentRoute = async (
     }
     item.title = String(body.title ?? item.title);
     item.publishedAt = typeof body.publishedAt === 'string' ? body.publishedAt : item.publishedAt;
+    item.visible = typeof body.visible === 'boolean' ? body.visible : item.visible;
     item.categories = Array.isArray(body.categories) ? (body.categories as NewsRecord['categories']) : item.categories;
     item.sourceUrl = typeof body.sourceUrl === 'object' ? (body.sourceUrl as NewsRecord['sourceUrl']) : item.sourceUrl;
     item.categoryName = typeof body.categoryName === 'string' ? body.categoryName : item.categoryName;
@@ -446,7 +447,7 @@ test.describe('news plugin', () => {
         contentType: 'news.article',
         status: 'published',
         publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : '2026-04-13T12:10:00.000Z',
-        visible: true,
+        visible: body.visible !== false,
         categories: Array.isArray(body.categories) ? (body.categories as NewsRecord['categories']) : [],
         sourceUrl: typeof body.sourceUrl === 'object' ? (body.sourceUrl as NewsRecord['sourceUrl']) : undefined,
         categoryName: typeof body.categoryName === 'string' ? body.categoryName : undefined,

@@ -5,6 +5,7 @@ import type {
   WasteManagementInitializeJobInput,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
+  WasteManagementSyncWasteTypesJobInput,
 } from '@sva/core';
 import type { loadDefaultExternalInterfaceRecord, listExternalInterfaceRecords } from '@sva/data-repositories/server';
 
@@ -48,5 +49,6 @@ export type WasteManagementOperationRuntime = {
     progressReporter?: WasteImportProgressReporter
   ) => Promise<OperationSummary>;
   seedData: (instanceId: string, input: WasteManagementSeedJobInput) => Promise<OperationSummary>;
+  syncWasteTypes: (instanceId: string, input: WasteManagementSyncWasteTypesJobInput) => Promise<OperationSummary>;
   resetData: (instanceId: string, input: WasteManagementResetJobInput) => Promise<OperationSummary>;
 };

@@ -167,6 +167,10 @@ export const createWasteManagementOperationRuntime = (
     return buildOperationSummary(startedAt, details);
   },
 
+  async syncWasteTypes(_instanceId, _input) {
+    throw new Error('waste_mainserver_sync_not_implemented');
+  },
+
   async resetData(instanceId, input) {
     const startedAt = Date.now();
     const normalizedConfirmationToken = input.confirmationToken.trim();

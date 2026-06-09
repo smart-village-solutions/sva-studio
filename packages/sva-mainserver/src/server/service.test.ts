@@ -814,6 +814,90 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('keeps invisible upstream news in studio mode', async () => {
+    const publishedAt = '2026-04-14T09:30:00.000Z';
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            newsItems: [
+              {
+                id: 'news-visible',
+                title: 'Visible',
+                payload: { teaser: 'Kurztext', body: '<p>Body</p>' },
+                publishedAt,
+                visible: true,
+              },
+              {
+                id: 'news-draft',
+                title: 'Draft',
+                payload: { teaser: 'Entwurf', body: '<p>Draft</p>' },
+                publishedAt,
+                visible: false,
+              },
+            ],
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listNews({
+        instanceId: 'instance-1',
+        keycloakSubject: 'user-1',
+        page: 1,
+        pageSize: 25,
+        includeInvisible: true,
+      })
+    ).resolves.toMatchObject({
+      data: expect.arrayContaining([
+        expect.objectContaining({ id: 'news-visible', visible: true }),
+        expect.objectContaining({ id: 'news-draft', visible: false }),
+      ]),
+    });
+  });
+
+  it('calls changeVisibility with recordType NewsItem', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            changeVisibility: { statusCode: 200, success: true, message: 'ok' },
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await service.changeNewsVisibility({
+      instanceId: 'instance-1',
+      keycloakSubject: 'user-1',
+      newsId: 'news-1',
+      visible: false,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"recordType":"NewsItem"'),
+      })
+    );
+  });
+
   it('maps invalid news payloads to an empty payload fallback', async () => {
     const publishedAt = '2026-04-14T09:30:00.000Z';
     const fetchImpl = vi

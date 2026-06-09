@@ -28,6 +28,7 @@ import { createEventOperations } from './service-internals/event-operations.js';
 import { createFetchWithRetry, createGraphqlExecutor } from './service-internals/graphql-client.js';
 import { mapCategory } from './service-internals/mappers-shared.js';
 import { createNewsOperations } from './service-internals/news-operations.js';
+import { createNewsVisibilityOperations } from './service-internals/news-visibility-operations.js';
 import { buildLogContext, logger, withObservedHop } from './service-internals/observability.js';
 import { createPoiOperations } from './service-internals/poi-operations.js';
 import { createStaticContentOperations } from './service-internals/static-content-operations.js';
@@ -116,6 +117,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   });
 
   const newsOperations = createNewsOperations(executeGraphqlWithConfig);
+  const newsVisibilityOperations = createNewsVisibilityOperations(executeGraphqlWithConfig);
   const eventOperations = createEventOperations(executeGraphqlWithConfig);
   const poiOperations = createPoiOperations(executeGraphqlWithConfig);
   const staticContentOperations = createStaticContentOperations(executeGraphqlWithConfig);
@@ -200,6 +202,13 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   const deleteNews = async (input: SvaMainserverConnectionInput & { readonly newsId: string }) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return newsOperations.destroyNewsWithConfig(input, config);
+  };
+
+  const changeNewsVisibility = async (
+    input: SvaMainserverConnectionInput & { readonly newsId: string; readonly visible: boolean }
+  ) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    await newsVisibilityOperations.changeNewsVisibilityWithConfig(input, config);
   };
 
   const listEvents = async (input: SvaMainserverListInput) => {
@@ -320,6 +329,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     createEvent,
     createNews,
     createPoi,
+    changeNewsVisibility,
     deleteEvent,
     deleteNews,
     deletePoi,
@@ -375,6 +385,10 @@ export const createSvaMainserverNews = (
 export const updateSvaMainserverNews = (
   input: SvaMainserverConnectionInput & { readonly newsId: string; readonly news: SvaMainserverNewsInput }
 ) => getDefaultService().updateNews(input);
+
+export const changeSvaMainserverNewsVisibility = (
+  input: SvaMainserverConnectionInput & { readonly newsId: string; readonly visible: boolean }
+) => getDefaultService().changeNewsVisibility(input);
 
 export const deleteSvaMainserverNews = (input: SvaMainserverConnectionInput & { readonly newsId: string }) =>
   getDefaultService().deleteNews(input);

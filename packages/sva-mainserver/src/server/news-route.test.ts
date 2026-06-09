@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   getSvaMainserverNews: vi.fn(),
   createSvaMainserverNews: vi.fn(),
   updateSvaMainserverNews: vi.fn(),
+  changeSvaMainserverNewsVisibility: vi.fn(),
   deleteSvaMainserverNews: vi.fn(),
 }));
 
@@ -33,6 +34,7 @@ vi.mock('./service.js', async (importOriginal) => {
     getSvaMainserverNews: state.getSvaMainserverNews,
     createSvaMainserverNews: state.createSvaMainserverNews,
     updateSvaMainserverNews: state.updateSvaMainserverNews,
+    changeSvaMainserverNewsVisibility: state.changeSvaMainserverNewsVisibility,
     deleteSvaMainserverNews: state.deleteSvaMainserverNews,
   };
 });
@@ -133,6 +135,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
       activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      includeInvisible: false,
       page: 1,
       pageSize: 25,
     });
@@ -194,6 +197,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
       activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      includeInvisible: false,
       page: 1,
       pageSize: 25,
     });
@@ -462,6 +466,29 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       newsId: 'news-1',
     });
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
+  });
+
+  it('handles PATCH /api/v1/mainserver/news/:id/visibility', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.changeSvaMainserverNewsVisibility.mockResolvedValue(undefined);
+
+    const request = createRequest('https://studio.test/api/v1/mainserver/news/news-1/visibility', {
+      method: 'PATCH',
+      body: JSON.stringify({ visible: false }),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    await dispatchSvaMainserverNewsRequest(request);
+
+    expect(state.changeSvaMainserverNewsVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ newsId: 'news-1', visible: false })
+    );
   });
 
   it('rejects mutating requests without CSRF and idempotency safeguards', async () => {

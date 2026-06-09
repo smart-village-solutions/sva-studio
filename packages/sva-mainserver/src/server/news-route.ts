@@ -26,6 +26,7 @@ import {
 import { SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import {
+  changeSvaMainserverNewsVisibility,
   createSvaMainserverNews,
   deleteSvaMainserverNews,
   getSvaMainserverNews,
@@ -43,7 +44,8 @@ const logger = createSdkLogger({ component: 'sva-mainserver-news-route', level: 
 type RouteMatch =
   | { readonly kind: 'collection' }
   | { readonly kind: 'categories' }
-  | { readonly kind: 'item'; readonly newsId: string };
+  | { readonly kind: 'item'; readonly newsId: string }
+  | { readonly kind: 'itemVisibility'; readonly newsId: string };
 
 const matchRoute = (request: Request): RouteMatch | null => {
   const pathname = new URL(request.url).pathname;
@@ -52,6 +54,12 @@ const matchRoute = (request: Request): RouteMatch | null => {
   }
   if (pathname === NEWS_COLLECTION_PATH) {
     return { kind: 'collection' };
+  }
+  if (pathname.endsWith('/visibility') && pathname.startsWith(NEWS_ITEM_PATH_PREFIX)) {
+    const newsId = decodeURIComponent(pathname.slice(NEWS_ITEM_PATH_PREFIX.length, -'/visibility'.length));
+    if (newsId.length > 0 && newsId.includes('/') === false) {
+      return { kind: 'itemVisibility', newsId };
+    }
   }
   if (pathname.startsWith(NEWS_ITEM_PATH_PREFIX)) {
     const newsId = decodeURIComponent(pathname.slice(NEWS_ITEM_PATH_PREFIX.length));
@@ -69,6 +77,10 @@ type ParsedNewsInput = {
 
 type ParseOptions = {
   readonly allowPushNotification: boolean;
+};
+
+type ParsedVisibilityInput = {
+  readonly visible: boolean;
 };
 
 const toPayloadHash = (rawBody: string): string => createHash('sha256').update(rawBody).digest('hex');
@@ -308,6 +320,26 @@ const parseNewsInput = async (request: Request, options: ParseOptions): Promise<
   };
 };
 
+const parseVisibilityInput = async (request: Request): Promise<ParsedVisibilityInput | Response> => {
+  let body: unknown;
+  try {
+    body = (await request.json()) as unknown;
+  } catch {
+    return errorJson(400, 'invalid_request', 'Request-Body muss gültiges JSON sein.');
+  }
+
+  if (!isRecord(body)) {
+    return errorJson(400, 'invalid_request', 'Sichtbarkeitsdaten müssen als Objekt gesendet werden.');
+  }
+
+  const visible = readBoolean(body.visible);
+  if (visible === undefined) {
+    return errorJson(400, 'invalid_request', 'Das Feld "visible" muss als Boolean gesendet werden.');
+  }
+
+  return { visible };
+};
+
 const validateMutationRequest = (request: Request, requestId?: string): Response | null => {
   const csrfError = validateCsrf(request, requestId);
   if (csrfError) {
@@ -526,6 +558,33 @@ const handleItemDelete = async (
   return response;
 };
 
+const handleVisibilityUpdate = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'itemVisibility' }>,
+  ctx: AuthenticatedRequestContext,
+  requestId: string | undefined,
+  logSuccess: (operation: string, newsId?: string) => void
+) => {
+  const csrfError = validateMutationRequest(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const parsed = await parseVisibilityInput(request);
+  if (isResponse(parsed)) {
+    return parsed;
+  }
+
+  const actor = await authorizeOrResponse(ctx, 'news.update', route.newsId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const response = await changeNewsVisibilityForRoute(route, actor, parsed.visible);
+  logSuccess('mainserver_news_visibility_update', route.newsId);
+  return response;
+};
+
 const toMainserverErrorResponse = (error: unknown): Response => {
   if (error instanceof SvaMainserverError) {
     const status =
@@ -610,7 +669,11 @@ const listNewsForRequest = async (
     readonly keycloakSubject: string;
     readonly activeOrganizationId?: string;
   }
-) => listSvaMainserverNews({ ...actor, ...parseMainserverListQuery(request) });
+) => {
+  const includeInvisible = new URL(request.url).searchParams.get('includeInvisible') === 'true';
+
+  return listSvaMainserverNews({ ...actor, ...parseMainserverListQuery(request), includeInvisible });
+};
 
 const getNewsForRoute = async (
   route: Extract<RouteMatch, { kind: 'item' }>,
@@ -632,6 +695,19 @@ const updateNewsForRoute = async (
 ) => {
   const data = await updateSvaMainserverNews({ ...actor, newsId: route.newsId, news });
   return json({ data });
+};
+
+const changeNewsVisibilityForRoute = async (
+  route: Extract<RouteMatch, { kind: 'itemVisibility' }>,
+  actor: {
+    readonly instanceId: string;
+    readonly keycloakSubject: string;
+    readonly activeOrganizationId?: string;
+  },
+  visible: boolean
+) => {
+  await changeSvaMainserverNewsVisibility({ ...actor, newsId: route.newsId, visible });
+  return json({ data: { id: route.newsId, visible } });
 };
 
 const deleteNewsForRoute = async (
@@ -682,6 +758,10 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       return await handleItemUpdate(request, route, ctx, workspaceContext.requestId, logSuccess);
     }
 
+    if (route.kind === 'itemVisibility' && request.method === 'PATCH') {
+      return await handleVisibilityUpdate(request, route, ctx, workspaceContext.requestId, logSuccess);
+    }
+
     if (route.kind === 'item' && request.method === 'DELETE') {
       return await handleItemDelete(request, route, ctx, workspaceContext.requestId, logSuccess);
     }
@@ -695,7 +775,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       actor_id: ctx.user.id,
       instance_id: ctx.user.instanceId,
       content_type: NEWS_CONTENT_TYPE,
-      content_id: route.kind === 'item' ? route.newsId : undefined,
+      content_id: route.kind === 'item' || route.kind === 'itemVisibility' ? route.newsId : undefined,
       method: request.method,
       error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
     });

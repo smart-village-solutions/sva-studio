@@ -51,8 +51,10 @@ export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) 
   listNewsWithConfig: async (
     input: SvaMainserverListInput,
     config: SvaMainserverInstanceConfig
-  ): Promise<SvaMainserverListResult<SvaMainserverNewsItem>> =>
-    listVisibleRecordsWithConfig<SvaMainserverNewsListQuery, SvaMainserverNewsItemFragment, SvaMainserverNewsItem>(
+  ): Promise<SvaMainserverListResult<SvaMainserverNewsItem>> => {
+    const includeInvisible = input.includeInvisible === true;
+
+    return listVisibleRecordsWithConfig<SvaMainserverNewsListQuery, SvaMainserverNewsItemFragment, SvaMainserverNewsItem>(
       input,
       config,
       executeGraphqlWithConfig,
@@ -61,10 +63,11 @@ export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) 
         operationName: 'SvaMainserverNewsList',
         order: 'publishedAt_DESC',
         readItems: (response) => response.newsItems ?? [],
-        isVisible: (item) => item.visible !== false,
+        isVisible: includeInvisible ? () => true : (item) => item.visible !== false,
         mapItem: mapNewsItem,
       }
-    ),
+    );
+  },
 
   getNewsWithConfig: async (
     input: SvaMainserverConnectionInput & { readonly newsId: string },

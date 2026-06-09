@@ -37,6 +37,21 @@ const createDeps = (action = 'waste-management.master-data.manage') => ({
     activeOrganizationId: 'org-1',
   })),
   emitAuditEvent: vi.fn(async () => undefined),
+  resolveActorInfo: vi.fn(async () => ({
+    actor: {
+      instanceId: 'tenant-a',
+      actorAccountId: 'account-1',
+      requestId: 'req-test',
+      traceId: 'trace-test',
+    },
+  })),
+  startPluginOperationJob: vi.fn(
+    async () =>
+      new Response(JSON.stringify({ data: { id: 'job-1' } }), {
+        status: 202,
+        headers: { 'Content-Type': 'application/json' },
+      })
+  ),
   resolvePermissions: vi.fn(async () => ({
     ok: true as const,
     permissions: [
@@ -1649,6 +1664,7 @@ describe('waste-management master-data branch handlers', () => {
       deps
     );
     expect(deleteSucceeded.status).toBe(200);
+    expect(deps.startPluginOperationJob).toHaveBeenCalledTimes(1);
 
     const deleteConflict = await wasteManagementFractionHandlers.deleteWasteManagementFractionInternal(
       new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
@@ -1679,6 +1695,7 @@ describe('waste-management master-data branch handlers', () => {
         code: 'database_unavailable',
       },
     });
+    expect(deps.startPluginOperationJob).toHaveBeenCalledTimes(1);
   });
 
   it('covers tour delete success, not-found, conflict, and fallback errors', async () => {

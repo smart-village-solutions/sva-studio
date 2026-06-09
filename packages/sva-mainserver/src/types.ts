@@ -46,8 +46,6 @@ export type SvaMainserverConnectionInput = {
 export type SvaMainserverStaticContentInput = {
   readonly name: string;
   readonly content: string;
-  readonly dataType?: 'JSON' | 'json';
-  readonly version?: string;
 };
 
 export type SvaMainserverListQuery = {

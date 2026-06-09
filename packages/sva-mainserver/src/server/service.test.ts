@@ -397,6 +397,7 @@ describe('createSvaMainserverService', () => {
     expect(thirdCallBody).toContain('"id":"1707"');
     expect(thirdCallBody).toContain('"dataType":"json"');
     expect(thirdCallBody).toContain('"version":""');
+    expect(thirdCallBody).not.toContain('"dataType":"JSON"');
   });
 
   it('routes the default static content helper through the default service', async () => {

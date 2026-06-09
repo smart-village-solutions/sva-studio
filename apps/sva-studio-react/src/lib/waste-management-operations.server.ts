@@ -9,7 +9,11 @@ import {
   previewLocationTourPickupDateImport,
 } from './waste-management-operations.import.js';
 import { baselineIds, seedWasteBaseline } from './waste-management-operations.seed.js';
-import { applySchemaStatements, inspectWasteSchema } from './waste-management-operations.schema.js';
+import {
+  applySchemaStatements,
+  buildWasteFractionShortLabelBackfillStatement,
+  inspectWasteSchema,
+} from './waste-management-operations.schema.js';
 import {
   buildOperationSummary,
   defaultCreatePool,
@@ -177,7 +181,8 @@ const createSyncWasteTypesOperation = (
   deps: WasteOperationRuntimeDeps
 ): WasteManagementOperationRuntime['syncWasteTypes'] => async (instanceId, input) => {
   const startedAt = Date.now();
-  const details = await withWasteClient(deps, instanceId, async ({ repository }) => {
+  const details = await withWasteClient(deps, instanceId, async ({ client, repository }) => {
+    await client.query(buildWasteFractionShortLabelBackfillStatement('waste_fractions'));
     const fractions = await repository.listWasteFractions();
     const artifact = await buildWasteTypesStaticContent(fractions);
     const writeResult = await createOrUpdateSvaMainserverStaticContent({
@@ -187,8 +192,6 @@ const createSyncWasteTypesOperation = (
       staticContent: {
         name: artifact.name,
         content: artifact.content,
-        dataType: artifact.dataType,
-        version: artifact.version,
       },
     });
 

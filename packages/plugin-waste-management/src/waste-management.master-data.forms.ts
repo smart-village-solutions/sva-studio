@@ -59,6 +59,7 @@ export type CollectionLocationFormState = {
 
 export type LocationTourLinkBulkFormState = { readonly tourId: string; readonly startDate: string; readonly endDate: string };
 const defaultFractionReminderLeadDays = 1;
+const normalizeFractionShortLabel = (value: string): string => value.trim().toUpperCase();
 
 export const wasteMasterDataFormDefaults = {
   createFraction: (): FractionFormState => ({
@@ -177,7 +178,7 @@ export const wasteMasterDataInputMappers = {
   toCreateFractionInput: (form: FractionFormState): CreateWasteManagementFractionInput => ({
     id: form.id,
     name: form.name.trim(),
-    pdfShortLabel: form.pdfShortLabel.trim(),
+    pdfShortLabel: normalizeFractionShortLabel(form.pdfShortLabel),
     translations: normalizeLocalizedTextRecord(form.translations),
     containerSize: compactOptionalString(form.containerSize),
     color: form.color.trim(),
@@ -187,7 +188,7 @@ export const wasteMasterDataInputMappers = {
   }),
   toUpdateFractionInput: (form: FractionFormState): UpdateWasteManagementFractionInput => ({
     name: form.name.trim(),
-    pdfShortLabel: form.pdfShortLabel.trim(),
+    pdfShortLabel: normalizeFractionShortLabel(form.pdfShortLabel),
     translations: normalizeLocalizedTextRecord(form.translations),
     containerSize: compactOptionalString(form.containerSize),
     color: form.color.trim(),

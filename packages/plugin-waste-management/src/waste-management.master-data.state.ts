@@ -1,3 +1,4 @@
+import type { StudioJobResponse } from '@sva/plugin-sdk';
 import { type StatusMessage } from './waste-management.page.support.js';
 import { startTransition, useState } from 'react';
 import type { WasteManagementMasterDataOverview } from './waste-management.api.js';
@@ -9,6 +10,7 @@ export const useWasteMasterDataState = () => {
   const [overview, setOverview] = useState<WasteManagementMasterDataOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<StatusMessage | null>(null);
+  const [trackedSyncWasteTypesJob, setTrackedSyncWasteTypesJob] = useState<StudioJobResponse['data'] | null>(null);
   const [lastOutcome, setLastOutcome] = useState<
     'fraction-create-success' | 'fraction-update-success' | 'location-create-success' | 'location-update-success' | null
   >(null);
@@ -21,6 +23,7 @@ export const useWasteMasterDataState = () => {
     overview,
     error,
     message,
+    trackedSyncWasteTypesJob,
     lastOutcome,
     saving,
     ...entityState,
@@ -29,6 +32,7 @@ export const useWasteMasterDataState = () => {
     setOverview,
     setError,
     setMessage,
+    setTrackedSyncWasteTypesJob,
     setLastOutcome,
     setSaving,
   };

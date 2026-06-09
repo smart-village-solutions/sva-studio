@@ -7,7 +7,10 @@ import * as XLSX from 'xlsx';
 import type { SqlClient, WasteOperationSqlPool } from './waste-management-operations.types.js';
 
 import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
-import { applySchemaStatements } from './waste-management-operations.schema.js';
+import {
+  applySchemaStatements,
+  buildWasteFractionShortLabelBackfillStatement,
+} from './waste-management-operations.schema.js';
 import { resolveRuntimeDataSource } from './waste-management-operations.shared.js';
 
 const createOrUpdateSvaMainserverStaticContentMock = vi.hoisted(() => vi.fn());
@@ -93,6 +96,8 @@ describe('waste management operations runtime', () => {
     const statements = applySchemaStatements('wm').join('\n');
     expect(statements).toContain('pdf_short_label TEXT');
     expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS pdf_short_label TEXT');
+    expect(statements).toContain(buildWasteFractionShortLabelBackfillStatement('"wm".waste_fractions'));
+    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ALTER COLUMN pdf_short_label SET NOT NULL');
     expect(statements).toContain('waste_custom_recurrence_presets');
     expect(statements).toContain('waste_holiday_rules');
     expect(statements).toContain('holiday_date DATE NOT NULL');
@@ -229,6 +234,7 @@ describe('waste management operations runtime', () => {
       id: 'static-1',
     });
 
+    const query = vi.fn(async () => ({ rowCount: 0, rows: [] }));
     const repository = createRepositoryMock({
       listWasteFractions: vi.fn(async () => [
         {
@@ -249,7 +255,7 @@ describe('waste management operations runtime', () => {
         },
       ]),
     });
-    const runtime = await createRuntimeWithRepositoryMock(repository);
+    const runtime = await createRuntimeWithRepositoryMock(repository, createToursWorkbookBytes(), query);
 
     const result = await runtime.syncWasteTypes('instance-1', {
       operation: 'sync-waste-types',
@@ -262,10 +268,8 @@ describe('waste management operations runtime', () => {
         instanceId: 'instance-1',
         keycloakSubject: 'user-1',
         activeOrganizationId: 'org-1',
-        staticContent: expect.objectContaining({
+        staticContent: {
           name: 'wasteTypes',
-          dataType: 'JSON',
-          version: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
           content: JSON.stringify(
             {
               BIO: {
@@ -293,9 +297,11 @@ describe('waste management operations runtime', () => {
             null,
             2
           ),
-        }),
+        },
       })
     );
+    expect(query).toHaveBeenCalledWith('SET search_path TO "wm", public;');
+    expect(query).toHaveBeenCalledWith(buildWasteFractionShortLabelBackfillStatement('waste_fractions'));
     expect(result.details).toMatchObject({
       operation: 'sync-waste-types',
       mode: 'executed',
@@ -958,7 +964,8 @@ const createRepositoryMockBase = () => ({
 
 const createRuntimeWithRepositoryMock = async (
   repository: ReturnType<typeof createRepositoryMock>,
-  workbookBytes: Uint8Array = createToursWorkbookBytes()
+  workbookBytes: Uint8Array = createToursWorkbookBytes(),
+  query: SqlClient['query'] = vi.fn(async () => ({ rowCount: 0, rows: [] }))
 ) => {
   vi.doMock('@sva/data-repositories', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@sva/data-repositories')>();
@@ -972,7 +979,7 @@ const createRuntimeWithRepositoryMock = async (
   return createRuntime({
     loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
     revealSecret: vi.fn(revealSupabaseSecretConfig),
-    createPool: vi.fn(() => createPoolMock(createSqlClientMock(vi.fn(async () => ({ rowCount: 0, rows: [] }))))),
+    createPool: vi.fn(() => createPoolMock(createSqlClientMock(query))),
     readBinarySource: vi.fn(async () => workbookBytes),
   });
 };

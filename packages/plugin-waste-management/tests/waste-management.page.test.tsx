@@ -165,6 +165,23 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     audit: { items: [], total: 0 },
     technical: { items: [], total: 0 },
   })),
+  getWasteManagementJobDetail: vi.fn(async () => ({
+    id: 'job-sync-1',
+    instanceId: 'tenant-a',
+    pluginId: 'waste-management',
+    jobTypeId: 'waste-management.sync-waste-types',
+    queueName: 'plugin-operations',
+    status: 'succeeded',
+    inputPayload: { operation: 'sync-waste-types' },
+    attempts: 1,
+    maxAttempts: 5,
+    idempotencyKey: 'idem-sync-1',
+    scheduledAt: '2026-05-10T10:00:00.000Z',
+    createdAt: '2026-05-10T10:00:00.000Z',
+    updatedAt: '2026-05-10T10:00:05.000Z',
+    finishedAt: '2026-05-10T10:00:05.000Z',
+    history: [],
+  })),
   getWasteManagementImportCatalog: vi.fn(() => [
     {
       profileId: 'waste-management.geografie-abholorte',
@@ -357,6 +374,24 @@ describe('WasteManagementPage', () => {
     wasteManagementApiMocks.getWasteManagementHistoryOverview.mockImplementation(async () => ({
       audit: { items: [], total: 0 },
       technical: { items: [], total: 0 },
+    }));
+    wasteManagementApiMocks.getWasteManagementJobDetail.mockReset();
+    wasteManagementApiMocks.getWasteManagementJobDetail.mockImplementation(async () => ({
+      id: 'job-sync-1',
+      instanceId: 'tenant-a',
+      pluginId: 'waste-management',
+      jobTypeId: 'waste-management.sync-waste-types',
+      queueName: 'plugin-operations',
+      status: 'succeeded',
+      inputPayload: { operation: 'sync-waste-types' },
+      attempts: 1,
+      maxAttempts: 5,
+      idempotencyKey: 'idem-sync-1',
+      scheduledAt: '2026-05-10T10:00:00.000Z',
+      createdAt: '2026-05-10T10:00:00.000Z',
+      updatedAt: '2026-05-10T10:00:05.000Z',
+      finishedAt: '2026-05-10T10:00:05.000Z',
+      history: [],
     }));
     wasteManagementApiMocks.getWasteManagementImportCatalog.mockReset();
     wasteManagementApiMocks.getWasteManagementImportCatalog.mockImplementation(() => [
@@ -1324,6 +1359,96 @@ describe('WasteManagementPage', () => {
 
     await waitFor(() => {
       expect(wasteManagementApiMocks.startWasteManagementSyncWasteTypes).toHaveBeenCalledTimes(1);
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'wasteManagement.masterData.fractions.actions.retrySync' })
+    ).toBeTruthy();
+  });
+
+  it('shows a retry action when the queued wasteTypes sync later fails in the worker', async () => {
+    searchMock.mockImplementation(() => ({
+      tab: 'fractions',
+      masterDataTab: 'fractions',
+      fractionsView: 'create',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+    }));
+    wasteManagementApiMocks.getWasteManagementMasterDataOverview
+      .mockResolvedValueOnce({
+        fractions: [],
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        collectionLocations: [],
+        locationTourLinks: [],
+      })
+      .mockResolvedValue({
+        fractions: [
+          {
+            id: 'fraction-3',
+            name: 'Papier',
+            color: '#123456',
+            active: true,
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          },
+        ],
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        collectionLocations: [],
+        locationTourLinks: [],
+      });
+    wasteManagementApiMocks.startWasteManagementSyncWasteTypes.mockResolvedValueOnce({
+      id: 'job-sync-late-failure',
+      jobTypeId: 'waste-management.sync-waste-types',
+      status: 'queued',
+    });
+    wasteManagementApiMocks.getWasteManagementJobDetail.mockResolvedValueOnce({
+      id: 'job-sync-late-failure',
+      instanceId: 'tenant-a',
+      pluginId: 'waste-management',
+      jobTypeId: 'waste-management.sync-waste-types',
+      queueName: 'plugin-operations',
+      status: 'failed',
+      inputPayload: { operation: 'sync-waste-types' },
+      attempts: 1,
+      maxAttempts: 5,
+      idempotencyKey: 'idem-sync-late-failure',
+      scheduledAt: '2026-05-10T10:00:00.000Z',
+      createdAt: '2026-05-10T10:00:00.000Z',
+      updatedAt: '2026-05-10T10:00:05.000Z',
+      finishedAt: '2026-05-10T10:00:05.000Z',
+      history: [],
+    });
+
+    render(<WasteManagementPage />);
+
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.name'), {
+      target: { value: 'Papier' },
+    });
+    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.pdfShortLabel'), {
+      target: { value: 'PAP' },
+    });
+    fireEvent.change(document.getElementById('waste-fraction-color-text') as HTMLInputElement, {
+      target: { value: '#123456' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: 'wasteManagement.masterData.fractions.createView.actions.savePrimary' })[0]!);
+
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.getWasteManagementJobDetail).toHaveBeenCalledWith('job-sync-late-failure', {
+        signal: expect.any(AbortSignal),
+      });
     });
 
     expect(

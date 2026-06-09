@@ -233,7 +233,7 @@ Kernidee:
 
 Für den aktuellen Waste-PDF-Export-Shift ist wichtig:
 
-- Das optionale Fraktionskürzel `waste_fractions.pdf_short_label` gehört zur externen Waste-Fachdatenbank, nicht zur zentralen Studio-DB.
+- Das verpflichtende Fraktionskürzel `waste_fractions.pdf_short_label` gehört zur externen Waste-Fachdatenbank, nicht zur zentralen Studio-DB; Legacy-Daten werden im runtime-nahen Waste-Migrationspfad deterministisch aus Fraktionsname oder ID backfilled.
 - Die zugehörige Schemaquelle liegt aktuell im runtime-nahen Waste-Migrationspfad unter `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`.
 - PDF-bezogene Stamminhalte wie `calendarWebUrl`, `pdfBrandingAssetUrl` und `pdfContactBlock` liegen dagegen weiterhin in der zentralen Studio-DB als Teil von `iam.instance_external_interfaces.public_config`.
 

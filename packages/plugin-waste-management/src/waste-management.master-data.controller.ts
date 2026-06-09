@@ -6,10 +6,13 @@ import {
 import { startWasteManagementSyncWasteTypes } from './waste-management.api.js';
 import { useWasteMasterDataDataLoading } from './waste-management.master-data.loaders.js';
 import { createWasteMasterDataSubmitHandlers } from './waste-management.master-data.submissions.js';
+import { useWasteTrackedJob } from './waste-management.tools.job-state.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteMasterDataState } from './waste-management.master-data.state.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
+
+const noopRefreshTechnicalHistory = async () => undefined;
 
 export const useWasteMasterDataController = (pt: Translate, search: WasteManagementSearchParams) => {
   const state = useWasteMasterDataState();
@@ -25,15 +28,33 @@ export const useWasteMasterDataController = (pt: Translate, search: WasteManagem
     selectedCollectionLocationIds: derivedState.selectedCollectionLocations.map((location) => location.id),
   });
   const resetActions = createWasteMasterDataResetActions(state);
+
+  useWasteTrackedJob({
+    lastJob: state.trackedSyncWasteTypesJob,
+    refreshTechnicalHistory: noopRefreshTechnicalHistory,
+    setLastJob: state.setTrackedSyncWasteTypesJob,
+    onTerminalJob: async (job) => {
+      if (job.status === 'failed' || job.status === 'cancelled') {
+        state.setMessage({
+          kind: 'warning',
+          text: pt('masterData.fractions.messages.syncWarning'),
+          retryAction: 'sync-waste-types',
+        });
+      }
+    },
+  });
+
   const retrySyncWasteTypes = async () => {
     state.setMessage(null);
     try {
-      await startWasteManagementSyncWasteTypes();
+      const job = await startWasteManagementSyncWasteTypes();
+      state.setTrackedSyncWasteTypesJob(job ?? null);
       state.setMessage({
         kind: 'success',
         text: pt('masterData.fractions.messages.syncRetryStarted'),
       });
     } catch {
+      state.setTrackedSyncWasteTypesJob(null);
       state.setMessage({
         kind: 'warning',
         text: pt('masterData.fractions.messages.syncWarning'),

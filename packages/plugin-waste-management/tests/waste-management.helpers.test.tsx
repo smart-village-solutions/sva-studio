@@ -300,7 +300,7 @@ describe('waste management helper modules', () => {
       wasteMasterDataInputMappers.toCreateFractionInput({
         id: 'fraction-1',
         name: ' Rest ',
-        pdfShortLabel: ' RST ',
+        pdfShortLabel: ' rst ',
         translations: {
           de: ' Restmüll ',
           en: ' ',
@@ -372,7 +372,7 @@ describe('waste management helper modules', () => {
       wasteMasterDataInputMappers.toUpdateFractionInput({
         id: 'fraction-3',
         name: ' Papier ',
-        pdfShortLabel: ' PPK ',
+        pdfShortLabel: ' ppk ',
         translations: {},
         containerSize: '',
         color: '#2255aa',
@@ -688,6 +688,7 @@ describe('waste management helper modules', () => {
 
     const setSaving = vi.fn();
     const setMessage = vi.fn();
+    const setTrackedSyncWasteTypesJob = vi.fn();
     const setLastOutcome = vi.fn();
     const setDialogOpen = vi.fn();
     const setRegionDialogOpen = vi.fn();
@@ -699,6 +700,7 @@ describe('waste management helper modules', () => {
       regionForm: { id: 'region-1', name: 'Nord' },
       setSaving,
       setMessage,
+      setTrackedSyncWasteTypesJob,
       setLastOutcome,
       setDialogOpen,
       setRegionDialogOpen,

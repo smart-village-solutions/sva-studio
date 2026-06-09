@@ -21,6 +21,15 @@ ORDER BY table_name ASC;
   };
 };
 
+const wasteFractionShortLabelBackfillExpression =
+  "COALESCE(NULLIF(UPPER(LEFT(REGEXP_REPLACE(name, '[^[:alnum:]]+', '', 'g'), 3)), ''), UPPER(LEFT(REPLACE(id::text, '-', ''), 3)))";
+
+export const buildWasteFractionShortLabelBackfillStatement = (tableReference: string): string => `
+UPDATE ${tableReference}
+SET pdf_short_label = ${wasteFractionShortLabelBackfillExpression}
+WHERE pdf_short_label IS NULL OR BTRIM(pdf_short_label) = '';
+`.trim();
+
 export const applySchemaStatements = (schemaName: string): readonly string[] => {
   const schema = quoteIdentifier(schemaName);
   return [
@@ -34,6 +43,8 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_collection_locations (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), city_id UUID NOT NULL REFERENCES ${schema}.waste_cities(id) ON DELETE CASCADE, region_id UUID REFERENCES ${schema}.waste_regions(id) ON DELETE SET NULL, street_id UUID REFERENCES ${schema}.waste_streets(id) ON DELETE SET NULL, house_number_id UUID REFERENCES ${schema}.waste_house_numbers(id) ON DELETE SET NULL, active BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_fractions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, pdf_short_label TEXT, label_translations JSONB, container_size TEXT, color TEXT NOT NULL DEFAULT '#808080', description TEXT, active BOOLEAN NOT NULL DEFAULT TRUE, reminder_count TEXT NOT NULL DEFAULT 'none' CHECK (reminder_count IN ('none', 'once', 'twice')), first_reminder_max_lead_days INTEGER CHECK (first_reminder_max_lead_days BETWEEN 1 AND 14), second_reminder_max_lead_days INTEGER CHECK (second_reminder_max_lead_days BETWEEN 1 AND 14), reminder_channel_push_enabled BOOLEAN NOT NULL DEFAULT FALSE, reminder_channel_email_enabled BOOLEAN NOT NULL DEFAULT FALSE, reminder_channel_calendar_enabled BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
     `ALTER TABLE ${schema}.waste_fractions ADD COLUMN IF NOT EXISTS pdf_short_label TEXT;`,
+    buildWasteFractionShortLabelBackfillStatement(`${schema}.waste_fractions`),
+    `ALTER TABLE ${schema}.waste_fractions ALTER COLUMN pdf_short_label SET NOT NULL;`,
     `ALTER TABLE ${schema}.waste_fractions ADD COLUMN IF NOT EXISTS reminder_count TEXT NOT NULL DEFAULT 'none';`,
     `ALTER TABLE ${schema}.waste_fractions ADD COLUMN IF NOT EXISTS first_reminder_max_lead_days INTEGER;`,
     `ALTER TABLE ${schema}.waste_fractions ADD COLUMN IF NOT EXISTS second_reminder_max_lead_days INTEGER;`,

@@ -57,9 +57,11 @@ const setRegionSaveErrorMessage = (ctx: FractionRegionSubmissionHelperContext, e
 
 const startFractionSyncWithWarning = async (ctx: FractionRegionSubmissionHelperContext) => {
   try {
-    await startWasteManagementSyncWasteTypes();
+    const job = await startWasteManagementSyncWasteTypes();
+    ctx.state.setTrackedSyncWasteTypesJob(job ?? null);
     return true;
   } catch {
+    ctx.state.setTrackedSyncWasteTypesJob(null);
     ctx.state.setMessage({
       kind: 'warning',
       text: ctx.pt('masterData.fractions.messages.syncWarning'),

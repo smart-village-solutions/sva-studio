@@ -46,6 +46,7 @@ describe('createSubmitFractionHandler', () => {
         },
         setSaving: vi.fn(),
         setMessage: vi.fn(),
+        setTrackedSyncWasteTypesJob: vi.fn(),
         setLastOutcome: vi.fn(),
         setDialogOpen: vi.fn(),
       },
@@ -81,6 +82,7 @@ describe('createSubmitFractionHandler', () => {
     expect(ctx.loadOverview).toHaveBeenCalledWith(true);
     expect(ctx.state.setLastOutcome).toHaveBeenCalledWith('fraction-update-success');
     expect(startWasteManagementSyncWasteTypesMock).toHaveBeenCalledTimes(1);
+    expect(ctx.state.setTrackedSyncWasteTypesJob).toHaveBeenCalledWith(null);
   });
 
   it('downgrades sync start failures to a retryable warning after a successful create', async () => {
@@ -106,6 +108,7 @@ describe('createSubmitFractionHandler', () => {
         },
         setSaving: vi.fn(),
         setMessage: vi.fn(),
+        setTrackedSyncWasteTypesJob: vi.fn(),
         setLastOutcome: vi.fn(),
         setDialogOpen: vi.fn(),
       },
@@ -123,6 +126,7 @@ describe('createSubmitFractionHandler', () => {
 
     expect(createWasteManagementFractionMock).toHaveBeenCalledTimes(1);
     expect(startWasteManagementSyncWasteTypesMock).toHaveBeenCalledTimes(1);
+    expect(ctx.state.setTrackedSyncWasteTypesJob).toHaveBeenCalledWith(null);
     expect(ctx.state.setMessage).toHaveBeenCalledWith({
       kind: 'warning',
       text: 'masterData.fractions.messages.syncWarning',

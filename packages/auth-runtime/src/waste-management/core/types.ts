@@ -45,6 +45,19 @@ export type SaveWasteCustomRecurrencePresetsInput = {
   readonly deletedPresetFallbacks: Readonly<Record<string, WasteCustomRecurrencePresetFallback>>;
 };
 
+type ResolveWasteActorInfoResult =
+  | {
+      readonly actor: {
+        readonly instanceId: string;
+        readonly requestId?: string;
+        readonly traceId?: string;
+        readonly actorAccountId?: string;
+      };
+    }
+  | {
+      readonly error: Response;
+    };
+
 export type WasteManagementHandlerDeps = {
   readonly getRequestId?: () => string | undefined;
   readonly getSessionById?: (sessionId: string) => Promise<Session | undefined>;
@@ -75,19 +88,7 @@ export type WasteManagementHandlerDeps = {
   readonly resolveActorInfo?: (
     request: Request,
     ctx: AuthenticatedRequestContext
-  ) => Promise<
-    | {
-        readonly actor: {
-          readonly instanceId: string;
-          readonly requestId?: string;
-          readonly traceId?: string;
-          readonly actorAccountId?: string;
-        };
-      }
-    | {
-        readonly error: Response;
-      }
-  >;
+  ) => Promise<ResolveWasteActorInfoResult>;
   readonly startPluginOperationJob?: (input: {
     readonly instanceId: string;
     readonly actorAccountId: string;

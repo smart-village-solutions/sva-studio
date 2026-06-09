@@ -60,7 +60,7 @@
 - `createOrUpdateStaticContent` ist laut lokalem Mainserver-Snapshot bereits vorhanden; ein vorgelagerter Schema-/Contract-Change ist nicht Teil dieses Plans.
 - Der Snapshot enthält **keinen** lesbaren Query-Pfad für `StaticContent`/`AppUserContent`; bestehende `icon`-Werte können deshalb nicht vor dem Überschreiben konserviert werden.
 - Konsequenz für diese Iteration: Das generierte `wasteTypes`-Artefakt exportiert nur Felder, die aus dem bestehenden Fraktionsmodell ableitbar sind. `icon` bleibt bewusst außen vor, bis es eine eigene Quelle im Studio oder einen lesbaren Mainserver-Query-Pfad gibt.
-- Für den manuellen Retry wird **keine** neue IAM-Permission eingeführt; der technische Startpfad verwendet wie die übrigen Waste-Admin-Operationen `waste-management.settings.manage`.
+- Für den manuellen Retry wird **keine** neue IAM-Permission eingeführt; der technische Startpfad verwendet wie die Fraktionspflege `waste-management.master-data.manage`.
 
 ### Task 1: Add The Dedicated Waste Sync Job Contract And Start Endpoint
 
@@ -112,7 +112,11 @@ expect(startPluginOperationJob).toHaveBeenCalledWith(
   expect.objectContaining({
     data: expect.objectContaining({
       jobTypeId: 'waste-management.sync-waste-types',
-      input: { operation: 'sync-waste-types' },
+      input: {
+        operation: 'sync-waste-types',
+        keycloakSubject: actor.user.id,
+        activeOrganizationId: actor.activeOrganizationId,
+      },
     }),
   })
 );
@@ -201,12 +205,16 @@ export const startWasteManagementSyncWasteTypes = async () =>
 // packages/auth-runtime/src/waste-management/core/operations.ts
 startWasteManagementSyncWasteTypesInternal: async (request, ctx, deps = {}) =>
   startToolJob(request, ctx, deps, {
-    requiredPermission: 'waste-management.settings.manage',
+    requiredPermission: 'waste-management.master-data.manage',
     endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
-    schema: z.object({}),
+    schema: startSyncWasteTypesSchema,
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncWasteTypes,
     auditActionId: 'waste-management.sync-waste-types.started',
-    toPayload: () => ({ operation: 'sync-waste-types' }),
+    toPayload: () => ({
+      operation: 'sync-waste-types',
+      keycloakSubject: ctx.user.id,
+      activeOrganizationId: ctx.activeOrganizationId,
+    }),
   }),
 ```
 

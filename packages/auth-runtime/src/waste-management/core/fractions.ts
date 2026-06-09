@@ -1,14 +1,53 @@
+import { randomUUID } from 'node:crypto';
+
+import { wasteManagementOperationsContract } from '@sva/core';
+
 import type { AuthenticatedRequestContext } from '../../middleware.js';
+import { resolveActorInfo } from '../../iam-account-management/shared.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { asApiItem, createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
 import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
+import { startPluginOperationJobFromFacade } from './operations-support.js';
 import { wasteManagementMasterDataSchemas } from './schemas.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, normalizeOptionalString, requireActorInstanceId, requireDeps } from './utils.js';
 
 const { createWasteFractionSchema, updateWasteFractionSchema } = wasteManagementMasterDataSchemas;
+const normalizeWasteFractionShortLabel = (value: string): string => value.trim().toUpperCase();
+
+const enqueueWasteTypesSyncAfterFractionMutation = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  deps: WasteManagementHandlerDeps,
+  instanceId: string
+): Promise<void> => {
+  const actorResolution = await (deps.resolveActorInfo ??
+    ((scopedRequest: Request, scopedCtx: AuthenticatedRequestContext) =>
+      resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true })))(request, ctx);
+  if ('error' in actorResolution || !actorResolution.actor.actorAccountId) {
+    return;
+  }
+
+  await (deps.startPluginOperationJob ?? startPluginOperationJobFromFacade)({
+    instanceId: actorResolution.actor.instanceId,
+    actorAccountId: actorResolution.actor.actorAccountId,
+    endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
+    idempotencyKey: `waste-sync:${instanceId}:${randomUUID()}`,
+    requestId: actorResolution.actor.requestId ?? getRequestId(deps),
+    scheduledAt: new Date().toISOString(),
+    data: {
+      pluginId: wasteManagementOperationsContract.pluginId,
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncWasteTypes,
+      input: {
+        operation: 'sync-waste-types',
+        keycloakSubject: ctx.user.id,
+        activeOrganizationId: ctx.activeOrganizationId,
+      },
+    },
+  });
+};
 
 const normalizeWasteFractionReminderConfig = (input: {
   readonly reminderCount: 'none' | 'once' | 'twice';
@@ -78,7 +117,7 @@ export const wasteManagementFractionHandlers = {
     }
     const reminderConfig = normalizeWasteFractionReminderConfig(parsed.data);
 
-    return runWasteCreateMutation({
+    const response = await runWasteCreateMutation({
       deps,
       ctx,
       instanceId,
@@ -96,7 +135,7 @@ export const wasteManagementFractionHandlers = {
         requireDeps(deps.saveWasteFraction, 'saveWasteFraction')(instanceId, {
           id: parsed.data.id,
           name: parsed.data.name.trim(),
-          pdfShortLabel: parsed.data.pdfShortLabel.trim(),
+          pdfShortLabel: normalizeWasteFractionShortLabel(parsed.data.pdfShortLabel),
           translations: parsed.data.translations,
           containerSize: normalizeOptionalString(parsed.data.containerSize),
           color: parsed.data.color,
@@ -111,6 +150,12 @@ export const wasteManagementFractionHandlers = {
         }),
       loadSaved: () => requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById')(instanceId, parsed.data.id),
     });
+
+    if (response.status < 400) {
+      await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+    }
+
+    return response;
   },
   updateWasteManagementFractionInternal: async (
     request: Request,
@@ -146,7 +191,7 @@ export const wasteManagementFractionHandlers = {
 
     const loadWasteFraction = requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById');
 
-    return runWasteUpdateMutation({
+    const response = await runWasteUpdateMutation({
       deps,
       ctx,
       instanceId,
@@ -166,7 +211,7 @@ export const wasteManagementFractionHandlers = {
         requireDeps(deps.saveWasteFraction, 'saveWasteFraction')(instanceId, {
           id: fractionId,
           name: parsed.data.name.trim(),
-          pdfShortLabel: parsed.data.pdfShortLabel.trim(),
+          pdfShortLabel: normalizeWasteFractionShortLabel(parsed.data.pdfShortLabel),
           translations: parsed.data.translations,
           containerSize: normalizeOptionalString(parsed.data.containerSize),
           color: parsed.data.color,
@@ -181,6 +226,12 @@ export const wasteManagementFractionHandlers = {
         }),
       loadSaved: () => loadWasteFraction(instanceId, fractionId),
     });
+
+    if (response.status < 400) {
+      await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
+    }
+
+    return response;
   },
   deleteWasteManagementFractionInternal: async (
     request: Request,
@@ -227,6 +278,7 @@ export const wasteManagementFractionHandlers = {
       });
 
       await updateWasteVisibleStatus(deps, instanceId, 'success');
+      await enqueueWasteTypesSyncAfterFractionMutation(request, ctx, deps, instanceId);
       return new Response(JSON.stringify(asApiItem({ id: fractionId }, requestId)), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },

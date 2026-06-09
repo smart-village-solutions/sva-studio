@@ -175,6 +175,25 @@ describe('news.detail-form', () => {
     });
   });
 
+  it('keeps an existing distinct publicationDate when only compatibility publishedAt changes on edit', () => {
+    const values = mapNewsItemToDetailFormValues(sampleItem);
+
+    values.publishedAt = '2026-06-01T12:00:00.000Z';
+
+    expect(mapNewsDetailFormValuesToMutation(values, 'edit')).toMatchObject({
+      publishedAt: '2026-06-01T12:00:00.000Z',
+      publicationDate: '2026-05-24T08:00:00.000Z',
+      title: 'Rathaus informiert',
+      contentBlocks: [
+        expect.objectContaining({
+          title: 'Rathaus informiert',
+          intro: 'Kurzer Einstieg',
+          body: '<p>Ausfuehrlicher Inhalt</p>',
+        }),
+      ],
+    });
+  });
+
   it('serializes edit payloads from the simplified fields even when compatibility data disagrees', () => {
     const values = mapNewsItemToDetailFormValues(sampleItem);
 

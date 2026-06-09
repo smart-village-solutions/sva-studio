@@ -196,6 +196,8 @@ export const buildNewsSavePayload = (
   const publicationDate =
     values.__compatibilityTouched?.publicationDate && hasMeaningfulString(existingSnapshot?.publicationDate)
       ? existingSnapshot.publicationDate
+      : values.__compatibilityTouched?.publishedAt && hasMeaningfulString(existingSnapshot?.publicationDate)
+      ? existingSnapshot.publicationDate
       : effectivePublicationTimestamp;
 
   return {

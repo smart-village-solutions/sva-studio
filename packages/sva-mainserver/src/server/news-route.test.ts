@@ -145,6 +145,40 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     });
   });
 
+  it('passes includeInvisible=true through the studio news list route', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        organizationId: '11111111-1111-1111-8111-111111111111',
+      },
+      permissions: [],
+    });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [{ id: 'news-visible' }, { id: 'news-draft' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      new Request('https://studio.test/api/v1/mainserver/news?includeInvisible=true')
+    );
+
+    expect(state.listSvaMainserverNews).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      includeInvisible: true,
+      page: 1,
+      pageSize: 25,
+    });
+    await expect(response?.json()).resolves.toEqual({
+      data: [{ id: 'news-visible' }, { id: 'news-draft' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+  });
+
   it('lists available categories through the mainserver categories endpoint', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.authorizeContentPrimitiveForUser.mockResolvedValue({

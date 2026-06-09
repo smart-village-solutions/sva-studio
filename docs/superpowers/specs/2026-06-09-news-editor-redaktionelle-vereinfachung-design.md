@@ -11,14 +11,14 @@ Zusätzlich soll die Oberfläche redaktionell vereinfacht werden:
 - nur noch ein globales `Speichern`
 - weniger technische Felder
 - klarere Gruppierung nach Arbeitsaufgaben
-- ein echter Entwurfsmodus auf Basis von `visible=false`
+- ein echter Entwurfsmodus auf Basis der separaten Visibility-Mutation
 
 ## Ziele
 
 - Die News-Detailansicht arbeitet innerhalb jedes Tabpanels mit klar getrennten weißen Cards.
 - Die Oberfläche orientiert sich an redaktionellen Aufgaben statt an der 1:1-Abbildung des GraphQL-Modells.
 - `Speichern` sichert immer den gesamten Formularzustand über alle Tabs.
-- Entwürfe werden mit `visible=false` gespeichert und bleiben in der Studio-Newsliste sichtbar.
+- Entwürfe werden über die separate Visibility-Mutation auf unsichtbar gesetzt und bleiben in der Studio-Newsliste sichtbar.
 - Die vereinfachte Oberfläche mappt weiterhin auf das bestehende News-Modell, insbesondere auf den ersten `contentBlock`.
 - Push-Benachrichtigungen bleiben pro News maximal einmal auslösbar.
 
@@ -36,7 +36,9 @@ Zusätzlich soll die Oberfläche redaktionell vereinfacht werden:
 - Das Formular speichert heute tabweise Teilmutationen.
 - Die Oberfläche verwendet aktuell Felder wie `keywords`, `externalId`, `newsType`, `charactersToBeShown`, `fullVersion`, `pointOfInterestId`, `teaserImageAssetId` und `headerImageAssetId`.
 - Die Mainserver-News-Typen sind lokal auf `status: 'published'` und ein Pflichtfeld `publishedAt` zugeschnitten.
-- Das Upstream-Newsmodell liefert `visible`, die aktuelle Studio-/Mainserver-Route behandelt dieses Feld im Write-Pfad aber als readonly.
+- Das Upstream-Newsmodell liefert `visible`.
+- Die echte GraphQL-API verwendet für Sichtbarkeit eine separate Mutation `changeVisibility(id, recordType, visible)`.
+- Der aktuelle lokale Studio-/Mainserver-Adapter bildet diese Visibility-Mutation für News noch nicht ab.
 - Die Studio-Newsliste liest aktuell denselben News-Pfad, der unsichtbare News herausfiltert.
 - Die Historie existiert bereits über `fetchIamContentHistory`, wird aber im Detailtab als Timeline-ähnliche Liste dargestellt.
 
@@ -55,13 +57,13 @@ Nachteile:
 - Entwurfsmodus bleibt unecht
 - technische Felder und tabweise Saves bleiben bestehen
 
-### Ansatz B: Redaktionelle UI-Vereinfachung mit Adapter-Mapping und `visible=false` als Entwurf
+### Ansatz B: Redaktionelle UI-Vereinfachung mit Adapter-Mapping und separater Visibility-Steuerung für Entwürfe
 
-Die Oberfläche wird fachlich neu geschnitten, speichert aber weiterhin in die bestehende News-Struktur. `visible=false` dient als Entwurfsmodus. Studio-Liste und Mainserver-Adapter werden dafür gezielt erweitert.
+Die Oberfläche wird fachlich neu geschnitten, speichert aber weiterhin in die bestehende News-Struktur. Der Entwurfsmodus wird über die separate Mutation `changeVisibility(..., visible: false)` hergestellt. Studio-Liste und Mainserver-Adapter werden dafür gezielt erweitert.
 
 Vorteile:
 - klarer redaktioneller Workflow
-- vorhandenes Upstream-Feld `visible` wird sinnvoll genutzt
+- vorhandene Upstream-Sichtbarkeitslogik wird sinnvoll genutzt
 - keine unnötige Parallelpersistenz
 - UI und Studio-Liste bilden Entwürfe konsistent ab
 
@@ -83,9 +85,9 @@ Nachteile:
 
 ## Entscheidung
 
-Es wird Ansatz B umgesetzt: redaktionelle UI-Vereinfachung mit gezieltem Adapter-Mapping und `visible=false` als Entwurfsmodus.
+Es wird Ansatz B umgesetzt: redaktionelle UI-Vereinfachung mit gezieltem Adapter-Mapping und separater Visibility-Steuerung als Entwurfsmodus.
 
-Diese Entscheidung hält den Change inhaltlich auf den News-Editor fokussiert, löst aber den Entwurfsmodus fachlich korrekt statt nur kosmetisch. Das vorhandene Upstream-Feld `visible` wird bewusst als redaktioneller Veröffentlichungszustand genutzt. Dafür werden der News-Write-Pfad und die Studio-Newsliste erweitert, ohne einen zweiten Persistenzpfad einzuführen.
+Diese Entscheidung hält den Change inhaltlich auf den News-Editor fokussiert, löst aber den Entwurfsmodus fachlich korrekt statt nur kosmetisch. Die vorhandene Upstream-Sichtbarkeitslogik wird bewusst als redaktioneller Veröffentlichungszustand genutzt. Dafür werden der News-Write-Pfad, eine dedizierte Visibility-Operation und die Studio-Newsliste erweitert, ohne einen zweiten Persistenzpfad einzuführen.
 
 ## Zielbild
 
@@ -164,9 +166,9 @@ Card `Veröffentlichung`
   - `Entwurf`
   - `Sofort veröffentlichen`
   - `Zeitgesteuert`
-- `Entwurf` speichert mit `visible=false`.
-- `Sofort veröffentlichen` speichert mit `visible=true` und `publishedAt=jetzt`.
-- `Zeitgesteuert` speichert mit `visible=true` und einem frei wählbaren Veröffentlichungszeitpunkt.
+- `Entwurf` speichert News-Inhalt und setzt die Sichtbarkeit anschließend über `changeVisibility(..., false)` auf unsichtbar.
+- `Sofort veröffentlichen` speichert News-Inhalt und stellt die Sichtbarkeit anschließend über `changeVisibility(..., true)` sicher.
+- `Zeitgesteuert` speichert News-Inhalt mit einem frei wählbaren Veröffentlichungszeitpunkt und stellt die Sichtbarkeit anschließend über `changeVisibility(..., true)` sicher.
 - Der gewählte Zeitpunkt darf in der Vergangenheit oder Zukunft liegen.
 - Bei bereits gespeicherten News zeigt die Card zusätzlich das tatsächliche Veröffentlichungsdatum des Datensatzes.
 
@@ -238,38 +240,45 @@ Regel:
 
 ### 1. Redaktionelle Statusableitung
 
-Der für Studio sichtbare Status wird aus `visible` und `publishedAt` abgeleitet:
+Der für Studio sichtbare Status wird aus Sichtbarkeit und `publishedAt` abgeleitet:
 
-- `visible=false` => `Entwurf`
-- `visible=true` und `publishedAt` in der Zukunft => `Geplant`
-- `visible=true` und `publishedAt` in der Vergangenheit oder Gegenwart => `Veröffentlicht`
+- unsichtbar => `Entwurf`
+- sichtbar und `publishedAt` in der Zukunft => `Geplant`
+- sichtbar und `publishedAt` in der Vergangenheit oder Gegenwart => `Veröffentlicht`
 
 Ein separater Mainserver-Status für Drafts wird nicht eingeführt.
 
 ### 2. Persistenzregeln
 
-Der Change erweitert den lokalen News-Vertrag gezielt:
+Der Change erweitert den lokalen Studio-Adapter gezielt:
 
-- `visible` wird im News-Write-Pfad schreibbar.
-- `publishedAt` wird für Entwürfe optional.
-- `publishedAt` bleibt für sichtbare News verpflichtend.
+- die normale News-Mutation bleibt für Inhaltsfelder zuständig
+- die separate Mutation `changeVisibility(id, recordType, visible)` wird als neue Operation ergänzt
+- für News wird dabei `recordType: 'NewsItem'` verwendet
+- der Sichtbarkeitswechsel gilt beim Anlegen und Bearbeiten gleichermaßen
+- `publishedAt` bleibt Bestandteil der normalen News-Mutation
 
 Konkrete Regeln:
 
 - `Entwurf`
-  - `visible=false`
-  - `publishedAt` wird nicht gesetzt
-  - `publicationDate` wird nicht gesetzt
+  - News-Inhalt wird zuerst über `createNews/updateNews` gespeichert
+  - danach wird `changeVisibility(..., false)` ausgeführt
+  - `publishedAt` bleibt als technischer Zeitwert gesetzt
+  - bei neuen Entwürfen wird dafür standardmäßig der Save-Zeitpunkt verwendet
 - `Sofort veröffentlichen`
-  - `visible=true`
-  - `publishedAt=jetzt`
+  - `createNews/updateNews` setzt `publishedAt=jetzt`
+  - danach wird `changeVisibility(..., true)` ausgeführt
   - `publicationDate` folgt demselben Zeitpunkt
 - `Zeitgesteuert`
-  - `visible=true`
-  - `publishedAt=<gewählter Zeitpunkt>`
+  - `createNews/updateNews` setzt `publishedAt=<gewählter Zeitpunkt>`
+  - danach wird `changeVisibility(..., true)` ausgeführt
   - `publicationDate=<gewählter Zeitpunkt>`
 
-Die lokale Mainserver-Route und die Typen werden so erweitert, dass diese Regeln explizit zulässig sind. Ein implizites „Tricksen“ mit künstlichen Draft-Zeitpunkten findet nicht statt.
+Wichtig:
+
+- Der Sichtbarkeitswechsel ist immer ein zweiter technischer Schritt nach der Inhaltsmutation.
+- Das gilt sowohl beim erstmaligen Anlegen als auch bei späteren Wechseln `Entwurf <-> sichtbar`.
+- Der redaktionelle Status `Entwurf` wird im Studio aus der Unsichtbarkeit abgeleitet, nicht aus einem leeren `publishedAt`.
 
 ## Studio-Liste
 
@@ -307,15 +316,18 @@ In der Liste wird ein verständlicher redaktioneller Status angezeigt:
 ### Plugin-News Mapping
 
 - liest und schreibt `contentBlocks[0]` als primäres Redaktionsmodell
-- kapselt die Ableitung zwischen `publicationMode`, `visible`, `publishedAt` und `publicationDate`
+- kapselt die Ableitung zwischen `publicationMode`, Sichtbarkeit, `publishedAt` und `publicationDate`
 - erhält nicht sichtbare Legacy-Felder bei Updates
 
 ### SVA-Mainserver Route und Operations
 
-- erweitert den lokalen News-Write-Vertrag um `visible`
-- erlaubt Draft-Speicherung ohne `publishedAt`
-- reicht `visible` an den GraphQL-Mutationspfad weiter
-- passt den lokalen generierten/gemappten News-Contract so an, dass Drafts nicht bereits vor dem UI-Pfad scheitern
+- ergänzt eine dedizierte News-Visibility-Operation für `changeVisibility(id, recordType, visible)`
+- verwendet dafür den Record-Typ `NewsItem`
+- orchestriert beim Speichern zwei Schritte:
+  - `createNews/updateNews`
+  - danach optional `changeVisibility`
+- hält den normalen News-Mutationsvertrag frei von direktem `visible`-Schreiben
+- passt den lokalen Adapter so an, dass Studio-Status und Visibility-Wechsel konsistent zusammenarbeiten
 
 ### Studio-Newsliste
 
@@ -342,7 +354,7 @@ In der Liste wird ein verständlicher redaktioneller Status angezeigt:
 
 ### Adapter- und Routentests
 
-- Draft-Save mit `visible=false` ohne `publishedAt`
+- Draft-Save mit nachgelagertem `changeVisibility(..., false)`
 - sofortige Veröffentlichung mit `visible=true` und aktuellem Zeitpunkt
 - zeitgesteuerte Veröffentlichung mit vergangenem und zukünftigem Zeitpunkt
 - Studio-Liste inklusive unsichtbarer News
@@ -357,8 +369,9 @@ In der Liste wird ein verständlicher redaktioneller Status angezeigt:
 ## Auswirkungen und Risiken
 
 - Der Change berührt nicht nur das Plugin, sondern auch den lokalen Mainserver-Adapter und den Studio-Listenpfad.
-- Die Einführung von `visible` im Write-Pfad muss mit dem realen Upstream-GraphQL-Vertrag synchron gehalten werden.
+- Die neue lokale Visibility-Operation muss mit dem realen Upstream-GraphQL-Vertrag synchron gehalten werden.
 - Die globale Save-Logik darf versteckte Legacy-Felder bei Updates nicht verlieren.
+- Der zweite technische Schritt `changeVisibility` braucht ein sauberes Fehlerverhalten, damit klar ist, ob der Inhalts-Save erfolgreich war, aber der Sichtbarkeitswechsel nicht.
 - Der vereinfachte Fokus auf `contentBlocks[0]` ist bewusst redaktionell sinnvoll, setzt aber voraus, dass zusätzliche Content-Blöcke nicht parallel in derselben UI gepflegt werden sollen.
 
 ## Umsetzungshinweise

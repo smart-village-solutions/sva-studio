@@ -184,6 +184,9 @@ export const governanceAuthHandlerMap = {
   '/api/v1/waste-management/tools/seed': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startSeed),
   },
+  '/api/v1/waste-management/tools/sync-waste-types': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startSyncWasteTypes),
+  },
   '/api/v1/waste-management/tools/reset': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startReset),
   },

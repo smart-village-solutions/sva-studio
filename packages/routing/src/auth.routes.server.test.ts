@@ -176,6 +176,7 @@ const authServerMocks = vi.hoisted(() => {
       startImport: vi.fn(async () => response('startWasteManagementImportHandler')),
       previewLocationTourPickupDateImport: vi.fn(async () => response('previewLocationTourPickupDateImportHandler')),
       startSeed: vi.fn(async () => response('startWasteManagementSeedHandler')),
+      startSyncWasteTypes: vi.fn(async () => response('startWasteManagementSyncWasteTypesHandler')),
       startReset: vi.fn(async () => response('startWasteManagementResetHandler')),
     },
     listContentsHandler: vi.fn(async () => response('listContentsHandler')),
@@ -477,6 +478,7 @@ describe('auth.routes.server', () => {
     const importHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/imports');
     const importPreviewHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/imports/preview');
     const seedHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/seed');
+    const syncWasteTypesHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/sync-waste-types');
     const resetHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/reset');
 
     expect(masterDataHandlers?.GET).toBeDefined();
@@ -507,6 +509,7 @@ describe('auth.routes.server', () => {
     expect(migrationsHandlers?.POST).toBeDefined();
     expect(importHandlers?.POST).toBeDefined();
     expect(seedHandlers?.POST).toBeDefined();
+    expect(syncWasteTypesHandlers?.POST).toBeDefined();
     expect(resetHandlers?.POST).toBeDefined();
 
     await masterDataHandlers.GET?.({
@@ -625,6 +628,9 @@ describe('auth.routes.server', () => {
     await seedHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/seed', { method: 'POST' }),
     });
+    await syncWasteTypesHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tools/sync-waste-types', { method: 'POST' }),
+    });
     await resetHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/reset', { method: 'POST' }),
     });
@@ -663,6 +669,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.startImport).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.previewLocationTourPickupDateImport).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startSeed).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.startSyncWasteTypes).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startReset).toHaveBeenCalled();
   });
 

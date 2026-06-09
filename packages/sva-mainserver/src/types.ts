@@ -51,6 +51,9 @@ export type SvaMainserverStaticContentInput = {
 export type SvaMainserverListQuery = {
   readonly page: number;
   readonly pageSize: number;
+};
+
+export type SvaMainserverNewsListInput = SvaMainserverListQuery & {
   readonly includeInvisible?: boolean;
 };
 

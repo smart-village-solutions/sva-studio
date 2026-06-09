@@ -16,7 +16,7 @@ import type {
   SvaMainserverConnectionStatus,
   SvaMainserverEventInput,
   SvaMainserverInstanceConfig,
-  SvaMainserverListQuery,
+  SvaMainserverNewsListInput,
   SvaMainserverNewsInput,
   SvaMainserverPoiInput,
   SvaMainserverStaticContentInput,
@@ -177,7 +177,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     return (response.categories ?? []).map(mapCategory).filter(defined);
   };
 
-  const listNews = async (input: SvaMainserverListInput) => {
+  const listNews = async (input: SvaMainserverConnectionInput & SvaMainserverNewsListInput) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return newsOperations.listNewsWithConfig(input, config);
   };
@@ -372,7 +372,7 @@ export const getSvaMainserverMutationRootTypename = (input: SvaMainserverConnect
 export const listSvaMainserverCategories = (input: SvaMainserverConnectionInput) =>
   getDefaultService().listCategories(input);
 
-export const listSvaMainserverNews = (input: SvaMainserverConnectionInput & SvaMainserverListQuery) =>
+export const listSvaMainserverNews = (input: SvaMainserverConnectionInput & SvaMainserverNewsListInput) =>
   getDefaultService().listNews(input);
 
 export const getSvaMainserverNews = (input: SvaMainserverConnectionInput & { readonly newsId: string }) =>

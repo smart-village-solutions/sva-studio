@@ -871,7 +871,7 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(
         createJsonResponse(200, {
           data: {
-            changeVisibility: { statusCode: 200, success: true, message: 'ok' },
+            changeVisibility: { id: 1, status: 'ok', statusCode: 200 },
           },
         })
       );
@@ -896,6 +896,37 @@ describe('createSvaMainserverService', () => {
         body: expect.stringContaining('"recordType":"NewsItem"'),
       })
     );
+  });
+
+  it('rejects invalid changeVisibility responses', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            changeVisibility: { id: 1, status: 'failed', statusCode: 500 },
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.changeNewsVisibility({
+        instanceId: 'instance-1',
+        keycloakSubject: 'user-1',
+        newsId: 'news-1',
+        visible: false,
+      })
+    ).rejects.toMatchObject({
+      code: 'invalid_response',
+      statusCode: 502,
+    });
   });
 
   it('maps invalid news payloads to an empty payload fallback', async () => {

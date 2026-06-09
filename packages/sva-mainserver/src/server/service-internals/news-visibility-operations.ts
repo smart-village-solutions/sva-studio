@@ -21,7 +21,7 @@ export const createNewsVisibilityOperations = (executeGraphqlWithConfig: Graphql
       config
     );
 
-    if (!response.changeVisibility || response.changeVisibility.success === false) {
+    if (!response.changeVisibility) {
       throw toSvaMainserverError({
         code: 'invalid_response',
         message: 'SVA-Mainserver konnte die Sichtbarkeit der News nicht aktualisieren.',

@@ -2,6 +2,7 @@ import type {
   SvaMainserverConnectionInput,
   SvaMainserverInstanceConfig,
   SvaMainserverListResult,
+  SvaMainserverNewsListInput,
   SvaMainserverNewsInput,
   SvaMainserverNewsItem,
 } from '../../types.js';
@@ -14,12 +15,14 @@ import {
   type SvaMainserverDestroyNewsMutation,
   type SvaMainserverNewsDetailQuery,
   type SvaMainserverNewsItemFragment,
-  type SvaMainserverNewsListQuery,
+  type SvaMainserverNewsListQuery as SvaMainserverNewsListResponse,
 } from '../../generated/news.js';
 
 import { mapNewsItem, mapOptionalNewsItem } from './news-mappers.js';
-import { assertPublishedAt, toSvaMainserverError, type GraphqlExecutor, type SvaMainserverListInput } from './shared.js';
+import { assertPublishedAt, toSvaMainserverError, type GraphqlExecutor } from './shared.js';
 import { listVisibleRecordsWithConfig } from './visible-list.js';
+
+type SvaMainserverNewsListRequest = SvaMainserverConnectionInput & SvaMainserverNewsListInput;
 
 const buildNewsMutationVariables = (input: {
   readonly news: SvaMainserverNewsInput;
@@ -49,12 +52,16 @@ const buildNewsMutationVariables = (input: {
 
 export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
   listNewsWithConfig: async (
-    input: SvaMainserverListInput,
+    input: SvaMainserverNewsListRequest,
     config: SvaMainserverInstanceConfig
   ): Promise<SvaMainserverListResult<SvaMainserverNewsItem>> => {
     const includeInvisible = input.includeInvisible === true;
 
-    return listVisibleRecordsWithConfig<SvaMainserverNewsListQuery, SvaMainserverNewsItemFragment, SvaMainserverNewsItem>(
+    return listVisibleRecordsWithConfig<
+      SvaMainserverNewsListResponse,
+      SvaMainserverNewsItemFragment,
+      SvaMainserverNewsItem
+    >(
       input,
       config,
       executeGraphqlWithConfig,

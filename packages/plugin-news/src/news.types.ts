@@ -120,11 +120,23 @@ export type NewsFormInput = {
 
 export type NewsDetailTabId = 'basis' | 'content' | 'release' | 'settings' | 'history';
 
+export type NewsPublicationMode = 'draft' | 'immediate' | 'scheduled';
+
+export type NewsEditorialStatus = 'draft' | 'scheduled' | 'published';
+
 export type NewsDetailFormValues = {
   title: string;
   author: string;
-  keywords: string;
   categories: string[];
+  contentTeaser: string;
+  contentBody: string;
+  contentMedia: NewsMediaContentFormValue[];
+  sourceUrl: NewsWebUrl;
+  sourceUrlDescription: string;
+  pushNotificationEnabled: boolean;
+  publicationMode: NewsPublicationMode;
+  scheduledPublicationAt: string;
+  keywords: string;
   publishedAt: string;
   publicationDate: string;
   externalId: string;
@@ -136,13 +148,18 @@ export type NewsDetailFormValues = {
   teaserImageAssetId: string | null;
   headerImageAssetId: string | null;
   contentBlocks: NewsContentBlockFormValue[];
-  sourceUrl: NewsWebUrl;
   address: {
     street: string;
     zip: string;
     city: string;
   };
   pointOfInterestId: string;
+};
+
+export type NewsSavePlan = {
+  readonly mutation: NewsFormInput;
+  readonly visible: boolean;
+  readonly editorialStatus: NewsEditorialStatus;
 };
 
 export type NewsContentItem = {

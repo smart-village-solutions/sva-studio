@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
+import { buildNewsSavePayload, createNewsEditorFormValues } from './news.editor-model.js';
 import type {
   NewsContentBlockFormValue,
   NewsContentItem,
@@ -36,13 +37,6 @@ const defaultContentBlock = (): NewsContentBlockFormValue => ({
   intro: '',
   body: '',
   mediaContents: [],
-});
-
-const defaultFallbackContentBlock = (item: NewsContentItem): NewsContentBlockFormValue => ({
-  title: '',
-  intro: item.payload.teaser ?? '',
-  body: item.payload.body ?? '',
-  mediaContents: item.payload.imageUrl ? [{ ...defaultMediaContent(), sourceUrl: { url: item.payload.imageUrl } }] : [],
 });
 
 const isValidDateString = (value: string): boolean => Number.isNaN(new Date(value).getTime()) === false;
@@ -117,37 +111,48 @@ const contentBlockSchema = z.object({
   mediaContents: z.array(mediaContentSchema),
 });
 
+const hasInvalidMediaUrls = (mediaContents: readonly NewsMediaContentFormValue[]) =>
+  mediaContents.some((media) => {
+    const url = media.sourceUrl.url.trim();
+    return url.length > 0 && isHttpsUrl(url) === false;
+  });
+
+const usesSimplifiedEditorialModel = (values: NewsDetailFormValues) =>
+  values.contentBody.trim().length > 0 ||
+  values.contentTeaser.trim().length > 0 ||
+  values.contentMedia.length > 0 ||
+  values.sourceUrlDescription.trim().length > 0 ||
+  values.publicationMode !== 'draft' ||
+  values.scheduledPublicationAt.trim().length > 0;
+
 export const newsDetailFormSchema = z
   .object({
     title: z.string().trim().min(1, 'title'),
     author: z.string(),
-    keywords: z.string(),
     categories: z.array(z.string().trim().min(1, 'categories').max(128, 'categories')),
-    publishedAt: z
-      .string()
-      .trim()
-      .min(1, 'publishedAt')
-      .refine(isValidDateString, 'publishedAt'),
-    publicationDate: z
-      .string()
-      .trim()
-      .refine((value) => value.length === 0 || isValidDateString(value), 'publicationDate'),
+    contentTeaser: z.string(),
+    contentBody: z.string(),
+    contentMedia: z.array(mediaContentSchema),
+    sourceUrl: z.object({
+      url: z.string(),
+      description: z.string(),
+    }),
+    sourceUrlDescription: z.string(),
+    pushNotificationEnabled: z.boolean(),
+    publicationMode: z.enum(['draft', 'immediate', 'scheduled']),
+    scheduledPublicationAt: z.string(),
+    keywords: z.string(),
+    publishedAt: z.string(),
+    publicationDate: z.string(),
     externalId: z.string(),
     newsType: z.string(),
-    charactersToBeShown: z
-      .string()
-      .trim()
-      .refine((value) => value.length === 0 || (/^\d+$/u.test(value) && Number(value) >= 0), 'charactersToBeShown'),
+    charactersToBeShown: z.string(),
     fullVersion: z.boolean(),
     showPublishDate: z.boolean(),
     pushNotification: z.boolean(),
     teaserImageAssetId: z.string().nullable(),
     headerImageAssetId: z.string().nullable(),
     contentBlocks: z.array(contentBlockSchema),
-    sourceUrl: z.object({
-      url: z.string(),
-      description: z.string(),
-    }),
     address: z.object({
       street: z.string(),
       zip: z.string(),
@@ -164,30 +169,85 @@ export const newsDetailFormSchema = z
       });
     }
 
+    if (
+      values.charactersToBeShown.trim().length > 0 &&
+      (/^\d+$/u.test(values.charactersToBeShown) === false || Number(values.charactersToBeShown) < 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['charactersToBeShown'],
+        message: 'charactersToBeShown',
+      });
+    }
+
+    if (hasInvalidMediaUrls(values.contentMedia)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['contentMedia'],
+        message: 'mediaContents',
+      });
+    }
+
+    if (
+      values.contentBlocks.some((block) => block.body.length > 50_000) ||
+      values.contentBlocks.some((block) => hasInvalidMediaUrls(block.mediaContents))
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['contentBlocks'],
+        message: 'contentBlocks',
+      });
+    }
+
+    if (usesSimplifiedEditorialModel(values)) {
+      if (values.author.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['author'],
+          message: 'author',
+        });
+      }
+
+      if (values.publicationMode === 'scheduled' && isValidDateString(values.scheduledPublicationAt) === false) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['scheduledPublicationAt'],
+          message: 'scheduledPublicationAt',
+        });
+      }
+
+      if (getVisibleTextLength(values.contentBody) === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['contentBody'],
+          message: 'contentBody',
+        });
+      }
+
+      return;
+    }
+
+    if (values.publishedAt.trim().length === 0 || isValidDateString(values.publishedAt) === false) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['publishedAt'],
+        message: 'publishedAt',
+      });
+    }
+
+    if (values.publicationDate.trim().length > 0 && isValidDateString(values.publicationDate) === false) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['publicationDate'],
+        message: 'publicationDate',
+      });
+    }
+
     if (values.contentBlocks.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['contentBlocks'],
         message: 'contentBlocks',
-      });
-    }
-
-    if (values.contentBlocks.some((block) => block.body.length > 50_000)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['contentBlocks'],
-        message: 'contentBlocks',
-      });
-    }
-
-    if (values.contentBlocks.some((block) => block.mediaContents.some((media) => {
-      const url = media.sourceUrl.url.trim();
-      return url.length > 0 && isHttpsUrl(url) === false;
-    }))) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['contentBlocks'],
-        message: 'mediaContents',
       });
     }
 
@@ -205,8 +265,16 @@ export const newsDetailFormResolver = zodResolver(newsDetailFormSchema as never)
 export const createDefaultNewsDetailFormValues = (author = ''): NewsDetailFormValues => ({
   title: '',
   author,
-  keywords: '',
   categories: [],
+  contentTeaser: '',
+  contentBody: '',
+  contentMedia: [],
+  sourceUrl: emptyWebUrl(),
+  sourceUrlDescription: '',
+  pushNotificationEnabled: false,
+  publicationMode: 'draft',
+  scheduledPublicationAt: '',
+  keywords: '',
   publishedAt: '',
   publicationDate: '',
   externalId: '',
@@ -218,7 +286,6 @@ export const createDefaultNewsDetailFormValues = (author = ''): NewsDetailFormVa
   teaserImageAssetId: null,
   headerImageAssetId: null,
   contentBlocks: [defaultContentBlock()],
-  sourceUrl: emptyWebUrl(),
   address: {
     street: '',
     zip: '',
@@ -227,82 +294,16 @@ export const createDefaultNewsDetailFormValues = (author = ''): NewsDetailFormVa
   pointOfInterestId: '',
 });
 
-const mapNewsItemCategories = (item: NewsContentItem): NewsDetailFormValues['categories'] => {
-  if (item.categories && item.categories.length > 0) {
-    return item.categories.map((category) => category.name);
-  }
+export const mapNewsItemToDetailFormValues = (item: NewsContentItem): NewsDetailFormValues => createNewsEditorFormValues(item);
 
-  return item.payload.category ? [item.payload.category] : [];
-};
-
-const mapNewsItemMediaContent = (
-  media: NonNullable<NonNullable<NewsContentItem['contentBlocks']>[number]['mediaContents']>[number]
-): NewsMediaContentFormValue => ({
-  captionText: media.captionText ?? '',
-  copyright: media.copyright ?? '',
-  contentType: media.contentType ?? 'image',
-  height: media.height !== undefined ? String(media.height) : '',
-  width: media.width !== undefined ? String(media.width) : '',
-  sourceUrl: {
-    url: media.sourceUrl?.url ?? '',
-    description: media.sourceUrl?.description ?? '',
-  },
-});
-
-const mapNewsItemContentBlock = (
-  block: NonNullable<NewsContentItem['contentBlocks']>[number]
-): NewsContentBlockFormValue => ({
-  title: block.title ?? '',
-  intro: block.intro ?? '',
-  body: block.body ?? '',
-  mediaContents: (block.mediaContents ?? []).map(mapNewsItemMediaContent),
-});
-
-const mapNewsItemContentBlocks = (item: NewsContentItem): NewsDetailFormValues['contentBlocks'] => {
-  if (item.contentBlocks && item.contentBlocks.length > 0) {
-    return item.contentBlocks.map(mapNewsItemContentBlock);
-  }
-
-  return [defaultFallbackContentBlock(item)];
-};
-
-export const mapNewsItemToDetailFormValues = (item: NewsContentItem): NewsDetailFormValues => ({
-  ...createDefaultNewsDetailFormValues(),
-  title: item.title,
-  author: item.author ?? '',
-  keywords: item.keywords ?? '',
-  categories: mapNewsItemCategories(item),
-  publishedAt: item.publishedAt,
-  publicationDate: item.publicationDate ?? '',
-  externalId: item.externalId ?? '',
-  newsType: item.newsType ?? '',
-  charactersToBeShown:
-    typeof item.charactersToBeShown === 'number' || typeof item.charactersToBeShown === 'string'
-      ? String(item.charactersToBeShown)
-      : '',
-  fullVersion: item.fullVersion ?? false,
-  showPublishDate: item.showPublishDate ?? true,
-  contentBlocks: mapNewsItemContentBlocks(item),
-  sourceUrl: {
-    url: item.sourceUrl?.url ?? item.payload.externalUrl ?? '',
-    description: item.sourceUrl?.description ?? '',
-  },
-  address: {
-    street: item.address?.street ?? '',
-    zip: item.address?.zip ?? '',
-    city: item.address?.city ?? '',
-  },
-  pointOfInterestId: item.pointOfInterestId ?? '',
-});
-
-const compactWebUrl = (value: NewsWebUrl): NewsWebUrl | undefined => {
-  const url = compactString(value.url);
-  if (!url) {
+const compactWebUrl = (url: string, description?: string): NewsWebUrl | undefined => {
+  const compactedUrl = compactString(url);
+  if (!compactedUrl) {
     return undefined;
   }
 
-  const description = compactString(value.description);
-  return description ? { url, description } : { url };
+  const compactedDescription = compactString(description);
+  return compactedDescription ? { url: compactedUrl, description: compactedDescription } : { url: compactedUrl };
 };
 
 const buildCategoryMutation = (categories: NewsDetailFormValues['categories']): Pick<NewsFormInput, 'categories'> | undefined => {
@@ -341,7 +342,7 @@ const buildMediaContentMutation = (media: NewsMediaContentFormValue) => {
   const contentType = compactString(media.contentType);
   const height = compactString(media.height);
   const width = compactString(media.width);
-  const sourceUrl = compactWebUrl(media.sourceUrl);
+  const sourceUrl = compactWebUrl(media.sourceUrl.url, media.sourceUrl.description);
 
   return {
     ...(captionText ? { captionText } : {}),
@@ -357,7 +358,9 @@ const buildContentBlockMutation = (block: NewsContentBlockFormValue) => {
   const title = compactString(block.title);
   const intro = compactString(block.intro);
   const body = compactString(block.body);
-  const mediaContents = block.mediaContents.map(buildMediaContentMutation).filter((media) => Object.keys(media).length > 0);
+  const mediaContents = block.mediaContents
+    .map(buildMediaContentMutation)
+    .filter((media) => Object.keys(media).length > 0);
 
   return {
     ...(title ? { title } : {}),
@@ -367,27 +370,122 @@ const buildContentBlockMutation = (block: NewsContentBlockFormValue) => {
   };
 };
 
+const buildSimplifiedContentBlockMutation = (values: NewsDetailFormValues) => ({
+  title: values.title.trim(),
+  intro: values.contentTeaser,
+  body: values.contentBody.trim(),
+  mediaContents: values.contentMedia
+    .map(buildMediaContentMutation)
+    .filter((media) => Object.keys(media).length > 0),
+});
+
+const buildContentBlocksMutation = (values: NewsDetailFormValues) => {
+  if (values.contentBlocks.length > 0) {
+    return values.contentBlocks.map(buildContentBlockMutation);
+  }
+
+  return [buildSimplifiedContentBlockMutation(values)];
+};
+
+const derivePublishedAt = (values: NewsDetailFormValues): string => {
+  const explicitPublishedAt = compactString(values.publishedAt);
+  if (explicitPublishedAt) {
+    return explicitPublishedAt;
+  }
+
+  if (values.publicationMode === 'scheduled') {
+    return values.scheduledPublicationAt;
+  }
+
+  return new Date().toISOString();
+};
+
+const shouldUseSimplifiedSavePlan = (values: NewsDetailFormValues) => {
+  if (values.publishedAt.trim().length > 0) {
+    return false;
+  }
+
+  return values.contentBlocks.every((block) =>
+    block.title.trim().length === 0 &&
+    block.intro.trim().length === 0 &&
+    block.body.trim().length === 0 &&
+    block.mediaContents.length === 0
+  );
+};
+
 export const mapNewsDetailFormValuesToMutation = (
   values: NewsDetailFormValues,
   mode: 'create' | 'edit'
-): NewsFormInput => ({
-  title: values.title.trim(),
-  publishedAt: values.publishedAt,
-  ...(compactString(values.author) ? { author: compactString(values.author) } : {}),
-  ...(compactString(values.keywords) ? { keywords: compactString(values.keywords) } : {}),
-  ...(compactString(values.externalId) ? { externalId: compactString(values.externalId) } : {}),
-  ...(mode === 'edit' || values.fullVersion ? { fullVersion: values.fullVersion } : {}),
-  ...(values.charactersToBeShown.trim().length > 0 ? { charactersToBeShown: Number(values.charactersToBeShown) } : {}),
-  ...(compactString(values.newsType) ? { newsType: compactString(values.newsType) } : {}),
-  ...(compactString(values.publicationDate) ? { publicationDate: compactString(values.publicationDate) } : {}),
-  ...(values.showPublishDate !== undefined ? { showPublishDate: values.showPublishDate } : {}),
-  ...(buildCategoryMutation(values.categories) ?? {}),
-  ...(compactWebUrl(values.sourceUrl) ? { sourceUrl: compactWebUrl(values.sourceUrl) } : {}),
-  ...(buildAddressMutation(values.address) ?? {}),
-  contentBlocks: values.contentBlocks.map(buildContentBlockMutation),
-  ...(compactString(values.pointOfInterestId) ? { pointOfInterestId: compactString(values.pointOfInterestId) } : {}),
-  ...(mode === 'create' && values.pushNotification ? { pushNotification: true } : {}),
-});
+): NewsFormInput => {
+  const sourceUrl = compactWebUrl(values.sourceUrl.url, values.sourceUrlDescription || values.sourceUrl.description);
+  const publishedAt = derivePublishedAt(values);
+  const publicationDate =
+    compactString(values.publicationDate) ??
+    (values.publicationMode === 'scheduled' ? compactString(values.scheduledPublicationAt) : undefined);
+  const contentBlocks = buildContentBlocksMutation(values);
+
+  const legacyMutation: NewsFormInput = {
+    title: values.title.trim(),
+    publishedAt,
+    ...(compactString(values.author) ? { author: compactString(values.author) } : {}),
+    ...(compactString(values.keywords) ? { keywords: compactString(values.keywords) } : {}),
+    ...(compactString(values.externalId) ? { externalId: compactString(values.externalId) } : {}),
+    ...(mode === 'edit' || values.fullVersion ? { fullVersion: values.fullVersion } : {}),
+    ...(values.charactersToBeShown.trim().length > 0 ? { charactersToBeShown: Number(values.charactersToBeShown) } : {}),
+    ...(compactString(values.newsType) ? { newsType: compactString(values.newsType) } : {}),
+    ...(publicationDate ? { publicationDate } : {}),
+    ...(values.showPublishDate !== undefined ? { showPublishDate: values.showPublishDate } : {}),
+    ...(buildCategoryMutation(values.categories) ?? {}),
+    ...(sourceUrl ? { sourceUrl } : {}),
+    ...(buildAddressMutation(values.address) ?? {}),
+    contentBlocks,
+    ...(compactString(values.pointOfInterestId) ? { pointOfInterestId: compactString(values.pointOfInterestId) } : {}),
+    ...(mode === 'create' && (values.pushNotification || values.pushNotificationEnabled) ? { pushNotification: true } : {}),
+  };
+
+  if (shouldUseSimplifiedSavePlan(values) === false) {
+    return legacyMutation;
+  }
+
+  return buildNewsSavePayload(
+    {
+      ...values,
+      sourceUrl: {
+        url: values.sourceUrl.url,
+        description: values.sourceUrlDescription || values.sourceUrl.description,
+      },
+    },
+    {
+      id: 'existing-news',
+      title: values.title,
+      contentType: 'news',
+      payload: {
+        teaser: values.contentTeaser,
+        body: values.contentBody,
+      },
+      status: 'published',
+      author: values.author,
+      keywords: compactString(values.keywords),
+      externalId: compactString(values.externalId),
+      fullVersion: values.fullVersion,
+      charactersToBeShown: values.charactersToBeShown,
+      newsType: compactString(values.newsType),
+      publicationDate,
+      publishedAt,
+      showPublishDate: values.showPublishDate,
+      categories: values.categories.map((name) => ({ name })),
+      sourceUrl,
+      ...(buildAddressMutation(values.address) ?? {}),
+      contentBlocks: values.contentBlocks,
+      pointOfInterestId: compactString(values.pointOfInterestId),
+      pushNotificationsSentAt: mode === 'edit' && values.pushNotificationEnabled === false ? 'already-sent' : undefined,
+      visible: values.publicationMode !== 'draft',
+      createdAt: publishedAt,
+      updatedAt: publishedAt,
+    },
+    new Date().toISOString()
+  ).mutation;
+};
 
 const hasDirtyPath = (tree: DirtyFieldTree | readonly DirtyFieldTree[] | true | undefined, path: readonly string[]): boolean => {
   if (tree === true) {
@@ -422,7 +520,11 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
     ['teaserImageAssetId'],
     ['headerImageAssetId'],
     ['contentBlocks'],
+    ['contentTeaser'],
+    ['contentBody'],
+    ['contentMedia'],
     ['sourceUrl'],
+    ['sourceUrlDescription'],
     ['address'],
     ['pointOfInterestId'],
   ].some((path) => hasDirtyPath(dirtyFields, path)),
@@ -431,6 +533,9 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
     ['publicationDate'],
     ['showPublishDate'],
     ['pushNotification'],
+    ['pushNotificationEnabled'],
+    ['publicationMode'],
+    ['scheduledPublicationAt'],
   ].some((path) => hasDirtyPath(dirtyFields, path)),
   settings: [
     ['externalId'],
@@ -441,8 +546,17 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
   history: false,
 });
 
-export const buildNewsDetailCharacterCounts = (values: Pick<NewsDetailFormValues, 'title' | 'contentBlocks'>) => ({
-  title: values.title.length,
-  intros: values.contentBlocks.map((block) => block.intro.length),
-  bodies: values.contentBlocks.map((block) => getVisibleTextLength(block.body)),
-});
+export const buildNewsDetailCharacterCounts = (
+  values: Pick<NewsDetailFormValues, 'title'> &
+  Partial<Pick<NewsDetailFormValues, 'contentTeaser' | 'contentBody'>> & {
+    readonly contentBlocks?: readonly Pick<NewsContentBlockFormValue, 'intro' | 'body'>[];
+  }
+) => {
+  const contentBlocks = values.contentBlocks ?? [{ intro: values.contentTeaser ?? '', body: values.contentBody ?? '' }];
+
+  return {
+    title: values.title.length,
+    intros: contentBlocks.map((block) => block.intro.length),
+    bodies: contentBlocks.map((block) => getVisibleTextLength(block.body)),
+  };
+};

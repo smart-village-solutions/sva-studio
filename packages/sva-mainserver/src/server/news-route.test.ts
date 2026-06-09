@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   getSvaMainserverNews: vi.fn(),
   createSvaMainserverNews: vi.fn(),
   updateSvaMainserverNews: vi.fn(),
+  changeSvaMainserverNewsVisibility: vi.fn(),
   deleteSvaMainserverNews: vi.fn(),
 }));
 
@@ -33,6 +34,7 @@ vi.mock('./service.js', async (importOriginal) => {
     getSvaMainserverNews: state.getSvaMainserverNews,
     createSvaMainserverNews: state.createSvaMainserverNews,
     updateSvaMainserverNews: state.updateSvaMainserverNews,
+    changeSvaMainserverNewsVisibility: state.changeSvaMainserverNewsVisibility,
     deleteSvaMainserverNews: state.deleteSvaMainserverNews,
   };
 });
@@ -133,11 +135,50 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
       activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      includeInvisible: false,
+      visibilityFilter: 'all',
+      editorialStatusFilter: 'all',
       page: 1,
       pageSize: 25,
     });
     await expect(response?.json()).resolves.toEqual({
       data: [{ id: 'news-1' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+  });
+
+  it('passes includeInvisible=true through the studio news list route', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        organizationId: '11111111-1111-1111-8111-111111111111',
+      },
+      permissions: [],
+    });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [{ id: 'news-visible' }, { id: 'news-draft' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      new Request('https://studio.test/api/v1/mainserver/news?includeInvisible=true')
+    );
+
+    expect(state.listSvaMainserverNews).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      includeInvisible: true,
+      visibilityFilter: 'all',
+      editorialStatusFilter: 'all',
+      page: 1,
+      pageSize: 25,
+    });
+    await expect(response?.json()).resolves.toEqual({
+      data: [{ id: 'news-visible' }, { id: 'news-draft' }],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
   });
@@ -194,12 +235,45 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
       activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      includeInvisible: false,
+      visibilityFilter: 'all',
+      editorialStatusFilter: 'all',
       page: 1,
       pageSize: 25,
     });
   });
 
-  it('creates published news and rejects missing publishedAt before GraphQL', async () => {
+  it('passes visibility and editorial status filters through the studio news list route', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [{ id: 'news-draft' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    await dispatchSvaMainserverNewsRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/news?includeInvisible=true&visibilityFilter=hidden&editorialStatusFilter=draft'
+      )
+    );
+
+    expect(state.listSvaMainserverNews).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      includeInvisible: true,
+      visibilityFilter: 'hidden',
+      editorialStatusFilter: 'draft',
+      page: 1,
+      pageSize: 25,
+    });
+  });
+
+  it('creates news and applies draft visibility in the same route flow', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
     state.resolveActorInfo.mockResolvedValue({
@@ -234,6 +308,21 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     const createCall = state.createSvaMainserverNews.mock.calls[0]?.[0] as { news?: Record<string, unknown> } | undefined;
     expect(createCall?.news).toEqual(expect.objectContaining({ contentBlocks: newsInput.contentBlocks, pushNotification: true }));
     expect(createCall?.news).not.toHaveProperty('payload');
+    expect(state.changeSvaMainserverNewsVisibility).not.toHaveBeenCalled();
+
+    state.createSvaMainserverNews.mockResolvedValueOnce({ id: 'news-2' });
+
+    const draft = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-draft' },
+        body: JSON.stringify({ ...newsInput, visible: false }),
+      })
+    );
+    await expect(draft?.json()).resolves.toEqual({ data: { id: 'news-2', visible: false } });
+    expect(state.changeSvaMainserverNewsVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ newsId: 'news-2', visible: false })
+    );
 
     const rejected = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news', {
@@ -243,7 +332,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       })
     );
     expect(rejected?.status).toBe(400);
-    expect(state.createSvaMainserverNews).toHaveBeenCalledTimes(1);
+    expect(state.createSvaMainserverNews).toHaveBeenCalledTimes(2);
   });
 
   it('requires the news update permission before updating news', async () => {
@@ -268,6 +357,30 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       expect.objectContaining({ action: 'news.update' })
     );
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
+  });
+
+  it('updates news and applies visibility changes without a second route authorization', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.updateSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ ...updateNewsInput, visible: false }),
+      })
+    );
+
+    await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1', visible: false } });
+    expect(state.changeSvaMainserverNewsVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ newsId: 'news-1', visible: false })
+    );
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledTimes(1);
   });
 
   it('normalizes nested optional news input before updating', async () => {
@@ -408,7 +521,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
   });
 
-  it('rejects legacy payload, read-only fields and update push notifications before GraphQL', async () => {
+  it('rejects legacy payload, invalid visibility, read-only fields and update push notifications before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
 
@@ -427,6 +540,14 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       })
     );
     expect(readOnly?.status).toBe(400);
+
+    const invalidVisibility = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ ...updateNewsInput, visible: 'nope' }),
+      })
+    );
+    expect(invalidVisibility?.status).toBe(400);
 
     const pushOnUpdate = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
@@ -462,6 +583,29 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       newsId: 'news-1',
     });
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
+  });
+
+  it('handles PATCH /api/v1/mainserver/news/:id/visibility', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.changeSvaMainserverNewsVisibility.mockResolvedValue(undefined);
+
+    const request = createRequest('https://studio.test/api/v1/mainserver/news/news-1/visibility', {
+      method: 'PATCH',
+      body: JSON.stringify({ visible: false }),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    await dispatchSvaMainserverNewsRequest(request);
+
+    expect(state.changeSvaMainserverNewsVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ newsId: 'news-1', visible: false })
+    );
   });
 
   it('rejects mutating requests without CSRF and idempotency safeguards', async () => {

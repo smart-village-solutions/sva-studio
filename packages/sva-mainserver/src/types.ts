@@ -53,6 +53,12 @@ export type SvaMainserverListQuery = {
   readonly pageSize: number;
 };
 
+export type SvaMainserverNewsListInput = SvaMainserverListQuery & {
+  readonly includeInvisible?: boolean;
+  readonly visibilityFilter?: 'all' | 'visible' | 'hidden';
+  readonly editorialStatusFilter?: 'all' | 'draft' | 'scheduled' | 'published';
+};
+
 export type SvaMainserverListPagination = {
   readonly page: number;
   readonly pageSize: number;

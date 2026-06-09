@@ -1,7 +1,7 @@
 import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
 import type { IamOrganizationContextOption, IamOrganizationDetail } from '@sva/core';
 import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events/events.pages';
-import { NewsCreatePage, NewsEditPage } from '@sva/plugin-news';
+import { NewsDetailPage, NewsEditPage, type NewsAuthorControl } from '@sva/plugin-news';
 import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi/poi.pages';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
@@ -51,28 +51,37 @@ const resolveUserDisplayName = (user: { readonly id: string }) => {
 
 const EMPTY_ORGANIZATIONS: readonly IamOrganizationContextOption[] = [];
 
-const resolveNewsInitialAuthor = (input: {
+const resolveNewsAuthorControl = (input: {
   readonly organizations: readonly IamOrganizationContextOption[];
   readonly organizationDetails: ReadonlyMap<string, IamOrganizationDetail>;
   readonly userDisplayName?: string;
-}): string | undefined => {
-  const organizationAuthors = input.organizations
-    .filter((organization) => organization.isActive)
-    .filter(
-      (organization) => input.organizationDetails.get(organization.organizationId)?.contentAuthorPolicy === 'org_only'
-    )
-    .map((organization) => organization.displayName.trim())
-    .filter((displayName) => displayName.length > 0);
+}): NewsAuthorControl => {
+  const activeOrganization = input.organizations.find((organization) => organization.isActive);
+  const userDisplayName = input.userDisplayName?.trim() || 'Benutzer';
+  const organizationName = activeOrganization?.displayName.trim() ?? '';
+  const policy = activeOrganization
+    ? input.organizationDetails.get(activeOrganization.organizationId)?.contentAuthorPolicy
+    : undefined;
 
-  if (organizationAuthors.length > 0) {
-    return organizationAuthors.join(', ');
+  if (policy === 'org_only' && organizationName.length > 0) {
+    return { kind: 'fixed', value: organizationName };
   }
 
-  const normalizedUserDisplayName = input.userDisplayName?.trim();
-  return normalizedUserDisplayName && normalizedUserDisplayName.length > 0 ? normalizedUserDisplayName : undefined;
+  if (policy === 'org_or_personal' && organizationName.length > 0) {
+    return {
+      kind: 'selectable',
+      value: organizationName,
+      options: [
+        { value: organizationName, label: organizationName },
+        { value: userDisplayName, label: userDisplayName },
+      ],
+    };
+  }
+
+  return { kind: 'fixed', value: userDisplayName };
 };
 
-const useNewsCreateInitialAuthor = () => {
+const useNewsCreateAuthorControl = () => {
   const { isAuthenticated, user } = useAuth();
   const organizationContext = useOrganizationContext();
   const [organizationDetails, setOrganizationDetails] = React.useState<ReadonlyMap<string, IamOrganizationDetail>>(
@@ -125,7 +134,7 @@ const useNewsCreateInitialAuthor = () => {
     };
   }, [activeOrganizations, isAuthenticated, organizationIdsKey]);
 
-  return resolveNewsInitialAuthor({
+  return resolveNewsAuthorControl({
     organizations,
     organizationDetails,
     userDisplayName: user ? resolveUserDisplayName(user) : undefined,
@@ -148,8 +157,8 @@ const LazyMonitoringOverviewPage = React.lazy(async () => {
 const MonitoringRoutePage = () => renderLazyPage(LazyMonitoringOverviewPage);
 
 const NewsCreateRoutePage = () => {
-  const initialAuthor = useNewsCreateInitialAuthor();
-  return <NewsCreatePage initialAuthor={initialAuthor} />;
+  const authorControl = useNewsCreateAuthorControl();
+  return <NewsDetailPage mode="create" authorControl={authorControl} />;
 };
 
 const HelpPlaceholderRoutePage = () => (

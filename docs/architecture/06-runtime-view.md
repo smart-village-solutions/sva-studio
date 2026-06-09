@@ -191,9 +191,11 @@ Fehlerpfad:
 5. Die Editoren senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
 6. Die App-Fassade prüft Session, `instanceId`, aktiven Organisationskontext, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.
 7. `@sva/sva-mainserver/server` lädt über getrennte interne Provider Endpunktkonfiguration, organisationsgebundene oder persönliche Credentials, OAuth2-Token und den GraphQL-Transport.
-8. Ressourcenspezifische Operations-Module für News, Events und POI rufen denselben Transport-Port auf; News nutzt das vollständige Mainserver-Modell mit dedizierten Feldern, Events und POI nutzen eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug.
-9. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
-10. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
+8. Ressourcenspezifische Operations-Module für News, Events und POI rufen denselben Transport-Port auf; das News-Plugin übersetzt dabei den vereinfachten Redaktionseditor in ein Save-Plan-Modell mit `contentBlocks[0]`, Veröffentlichungsmodus und optionaler Push-Auslösung, während Events und POI eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug nutzen.
+9. Beim Speichern von News laufen zwei technische Schritte: zuerst `createNews` oder `updateNews`, danach für den redaktionellen Zustand ein separater `changeVisibility(recordType: "NewsItem")`-Aufruf.
+10. Die host-owned Studio-Newsliste liest denselben Pfad mit `includeInvisible=true` und filtert redaktionelle Stati (`Entwurf`, `Geplant`, `Veröffentlicht`) erst auf Studio-Seite aus Sichtbarkeit und `publishedAt`.
+11. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
+12. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
 
 Fehlerpfad:
 

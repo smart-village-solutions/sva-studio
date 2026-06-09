@@ -13,6 +13,12 @@ type NewsRecord = {
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
+  visible?: boolean;
+  categories?: readonly { readonly name: string }[];
+  sourceUrl?: {
+    readonly url?: string;
+    readonly description?: string;
+  };
   categoryName?: string;
   payload: {
     teaser?: string;
@@ -285,6 +291,27 @@ const fulfillContentRoute = async (
     return;
   }
 
+  const visibilityMatch = path.match(/^\/api\/v1\/mainserver\/news\/([^/]+)\/visibility$/);
+  if (visibilityMatch && method === 'PATCH') {
+    const contentId = visibilityMatch[1];
+    const body = request.postDataJSON() as { visible?: boolean };
+    const item = newsItems.find((entry) => entry.id === contentId);
+
+    if (!item) {
+      await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'not_found' }) });
+      return;
+    }
+
+    item.visible = body.visible !== false;
+    item.updatedAt = '2026-04-13T12:15:00.000Z';
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { status: 'ok' } }),
+    });
+    return;
+  }
+
   const detailMatch = path.match(/^\/api\/v1\/mainserver\/news\/([^/]+)$/);
   if (!detailMatch) {
     await route.fallback();
@@ -316,6 +343,9 @@ const fulfillContentRoute = async (
       contentType: 'news.article',
       status: 'published',
       publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : '2026-04-13T12:10:00.000Z',
+      visible: body.visible !== false,
+      categories: Array.isArray(body.categories) ? (body.categories as NewsRecord['categories']) : [],
+      sourceUrl: typeof body.sourceUrl === 'object' ? (body.sourceUrl as NewsRecord['sourceUrl']) : undefined,
       categoryName: typeof body.categoryName === 'string' ? body.categoryName : undefined,
       payload: {},
       contentBlocks: Array.isArray(body.contentBlocks) ? (body.contentBlocks as NewsRecord['contentBlocks']) : [],
@@ -340,6 +370,9 @@ const fulfillContentRoute = async (
     }
     item.title = String(body.title ?? item.title);
     item.publishedAt = typeof body.publishedAt === 'string' ? body.publishedAt : item.publishedAt;
+    item.visible = typeof body.visible === 'boolean' ? body.visible : item.visible;
+    item.categories = Array.isArray(body.categories) ? (body.categories as NewsRecord['categories']) : item.categories;
+    item.sourceUrl = typeof body.sourceUrl === 'object' ? (body.sourceUrl as NewsRecord['sourceUrl']) : item.sourceUrl;
     item.categoryName = typeof body.categoryName === 'string' ? body.categoryName : item.categoryName;
     item.contentBlocks = Array.isArray(body.contentBlocks) ? (body.contentBlocks as NewsRecord['contentBlocks']) : item.contentBlocks;
     item.updatedAt = '2026-04-13T12:20:00.000Z';
@@ -370,7 +403,7 @@ test.describe('news plugin', () => {
     await page.route('**/api/v1/iam/media**', routeNewsMediaRequests);
   });
 
-  test('supports news CRUD including delete', async ({ page }) => {
+  test('supports draft creation, publication, and delete in the simplified news editor', async ({ page }) => {
     const newsItems: NewsRecord[] = [];
     let createdBody: Record<string, unknown> | undefined;
 
@@ -392,6 +425,11 @@ test.describe('news plugin', () => {
 
     await page.route('**/api/v1/mainserver/news**', async (route) => {
       const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (path !== '/api/v1/mainserver/news') {
+        await route.fallback();
+        return;
+      }
       if (request.method() === 'GET') {
         await route.fulfill({
           status: 200,
@@ -409,6 +447,9 @@ test.describe('news plugin', () => {
         contentType: 'news.article',
         status: 'published',
         publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : '2026-04-13T12:10:00.000Z',
+        visible: body.visible !== false,
+        categories: Array.isArray(body.categories) ? (body.categories as NewsRecord['categories']) : [],
+        sourceUrl: typeof body.sourceUrl === 'object' ? (body.sourceUrl as NewsRecord['sourceUrl']) : undefined,
         categoryName: typeof body.categoryName === 'string' ? body.categoryName : undefined,
         payload: {},
         contentBlocks: Array.isArray(body.contentBlocks) ? (body.contentBlocks as NewsRecord['contentBlocks']) : [],
@@ -423,7 +464,7 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/mainserver/news/*', async (route) => {
+    await page.route('**/api/v1/mainserver/news/**', async (route) => {
       await fulfillContentRoute(route, newsItems);
     });
     await page.route('**/api/v1/mainserver/categories', async (route) => {
@@ -445,8 +486,7 @@ test.describe('news plugin', () => {
     await expectPluginPageHeading(page, /News-Eintrag anlegen|news\.editor\.createTitle/);
 
     await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News');
-    await page.locator('#news-author').fill('Redaktion Musterhausen');
-    await page.locator('#news-keywords').fill('stadt, kultur');
+    await expect(page.locator('#news-author')).toHaveValue('Editor One');
     const categorySearch = page.getByRole('combobox', { name: /Kategorien suchen|news\.fields\.categoriesSearch/ });
     const addCategoryButton = page.getByRole('button', { name: /Kategorie hinzufügen|news\.actions\.addCategory/ });
     await expect(categorySearch).toBeVisible();
@@ -455,44 +495,30 @@ test.describe('news plugin', () => {
     await categorySearch.fill('Kultur');
     await addCategoryButton.click();
 
-    await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
-    await page.locator('#news-external-id').fill('cms-42');
-    await page.locator('#news-type').fill('press_release');
-
     await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
-    await page.locator('#news-block-intro-0').fill('Kurztext');
-    await page.locator('#news-block-body-0').fill('<p>Inhalt</p>');
+    await page.locator('#news-content-teaser').fill('Kurztext');
+    await page.locator('#news-content-body').fill('<p>Inhalt</p>');
     await page.locator('#news-source-url').fill('https://example.com/news/source');
     await page.locator('#news-source-description').fill('Quellseite');
-    await page.locator('#news-address-street').fill('Marktplatz 1');
-    await page.locator('#news-address-zip').fill('12345');
-    await page.locator('#news-address-city').fill('Musterhausen');
-    await page.locator('#news-poi').fill('poi-1');
     await page.getByRole('button', { name: /Medium hinzufügen|news\.actions\.addMedia/ }).click();
-    await page.locator('#news-media-url-0-0').fill('https://example.com/news/image.jpg');
-    await page.locator('#news-media-caption-0-0').fill('Titelbild');
+    await page.locator('#news-media-url-0').fill('https://example.com/news/image.jpg');
+    await page.locator('#news-media-caption-0').fill('Titelbild');
 
-    await openNewsDetailTab(page, /Freigabe|news\.tabs\.release/);
-    const releasePanel = page.getByRole('tabpanel', { name: /Freigabe|news\.tabs\.release/ });
-    await releasePanel.locator('#news-release-published-at').fill('2026-04-14T09:30');
-    await releasePanel.locator('#news-release-publication-date').fill('2026-04-14T08:30');
-    await releasePanel.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
+    await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
+    await page.getByRole('radio', { name: /Entwurf|news\.publicationModes\.draft/ }).click();
+    await page.getByRole('button', { name: /Speichern|news\.actions\.save/ }).click();
 
-    await expectContentOverviewUrl(page);
-    await expect(page.locator('main table').getByText('Erste News')).toBeVisible();
+    await expect.poll(() => newsItems.length).toBe(1);
+    expect(newsItems).toHaveLength(1);
     expect(createdBody).toMatchObject({
       title: 'Erste News',
-      author: 'Redaktion Musterhausen',
-      keywords: 'stadt, kultur',
-      externalId: 'cms-42',
-      newsType: 'press_release',
+      author: 'Editor One',
       sourceUrl: { url: 'https://example.com/news/source', description: 'Quellseite' },
-      address: { street: 'Marktplatz 1', zip: '12345', city: 'Musterhausen' },
-      pointOfInterestId: 'poi-1',
     });
     expect(createdBody?.categories).toEqual([{ name: 'Allgemein' }, { name: 'Kultur' }]);
     expect(createdBody?.contentBlocks).toEqual([
       {
+        title: 'Erste News',
         intro: 'Kurztext',
         body: '<p>Inhalt</p>',
         mediaContents: [
@@ -504,14 +530,18 @@ test.describe('news plugin', () => {
         ],
       },
     ]);
+    expect(newsItems[0]?.visible).toBe(false);
 
     await navigateClientSide(page, '/admin/news/news-1');
     await expectPluginPageHeading(page, /News-Eintrag bearbeiten|news\.editor\.editTitle/);
 
-    await openNewsDetailTab(page, /Basis|news\.tabs\.basis/);
-    await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News aktualisiert');
-    await page.getByRole('button', { name: /Änderungen speichern|news\.actions\.save/ }).click();
+    await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
+    await page.getByRole('radio', { name: /Sofort veröffentlichen|news\.publicationModes\.immediate/ }).click();
+    await page.getByRole('button', { name: /Speichern|news\.actions\.save/ }).click();
     await expect(page.getByRole('status')).toContainText(/gespeichert|aktualisiert|news\.messages\.updateSuccess/);
+    expect(newsItems[0]?.visible).toBe(true);
+
+    await navigateClientSide(page, '/admin/news/news-1');
 
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|news\.actions\.delete/ }).click();
@@ -616,7 +646,7 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/mainserver/news/*', async (route) => {
+    await page.route('**/api/v1/mainserver/news/**', async (route) => {
       await fulfillContentRoute(route, newsItems);
     });
     await page.route('**/api/v1/mainserver/categories', async (route) => {

@@ -1,4 +1,4 @@
-export type NewsPayload = {
+type NewsPayload = {
   readonly teaser?: string;
   readonly body?: string;
   readonly imageUrl?: string;
@@ -6,7 +6,7 @@ export type NewsPayload = {
   readonly category?: string;
 };
 
-export type NewsStatus = 'published';
+type NewsStatus = 'published';
 
 export type NewsWebUrl = {
   readonly url: string;
@@ -34,7 +34,7 @@ export type NewsCategory = {
   readonly children?: readonly NewsCategory[];
 };
 
-export type NewsMediaContent = {
+type NewsMediaContent = {
   readonly captionText?: string;
   readonly copyright?: string;
   readonly contentType?: string;
@@ -66,12 +66,12 @@ export type NewsContentBlockFormValue = {
   mediaContents: NewsMediaContentFormValue[];
 };
 
-export type NewsDataProvider = {
+type NewsDataProvider = {
   readonly id?: string;
   readonly name?: string;
 };
 
-export type NewsSetting = {
+type NewsSetting = {
   readonly alwaysRecreateOnImport?: string;
   readonly displayOnlySummary?: string;
   readonly onlySummaryLinkText?: string;
@@ -85,9 +85,12 @@ type NewsAnnouncementSummary = {
 export type NewsListQuery = {
   readonly page: number;
   readonly pageSize: number;
+  readonly includeInvisible?: boolean;
+  readonly visibilityFilter?: 'all' | 'visible' | 'hidden';
+  readonly editorialStatusFilter?: 'all' | 'draft' | 'scheduled' | 'published';
 };
 
-export type NewsPagination = {
+type NewsPagination = {
   readonly page: number;
   readonly pageSize: number;
   readonly hasNextPage: boolean;
@@ -116,33 +119,110 @@ export type NewsFormInput = {
   readonly contentBlocks?: readonly NewsContentBlock[];
   readonly pointOfInterestId?: string;
   readonly pushNotification?: boolean;
+  readonly visible?: boolean;
 };
 
-export type NewsDetailTabId = 'basis' | 'content' | 'release' | 'settings' | 'history';
+export type NewsAuthorControl =
+  | { readonly kind: 'fixed'; readonly value: string }
+  | {
+      readonly kind: 'selectable';
+      readonly value: string;
+      readonly options: readonly { readonly value: string; readonly label: string }[];
+    };
 
-export type NewsDetailFormValues = {
+export type NewsDetailTabId = 'basis' | 'content' | 'settings' | 'history';
+
+type NewsPublicationMode = 'draft' | 'immediate' | 'scheduled';
+
+type NewsEditorialStatus = 'draft' | 'scheduled' | 'published';
+
+type NewsLegacyCompatibilitySnapshot = {
+  readonly visible?: boolean;
+  readonly keywords?: string;
+  readonly externalId?: string;
+  readonly fullVersion?: boolean;
+  readonly charactersToBeShown?: number | string;
+  readonly newsType?: string;
+  readonly publishedAt?: string;
+  readonly publicationDate?: string;
+  readonly showPublishDate?: boolean;
+  readonly address?: {
+    readonly street?: string;
+    readonly zip?: string;
+    readonly city?: string;
+  };
+  readonly pointOfInterestId?: string;
+  readonly pushNotificationsSentAt?: string;
+  readonly teaserImageAssetId?: string | null;
+  readonly headerImageAssetId?: string | null;
+  readonly legacyContentBlocks?: NewsContentBlockFormValue[];
+};
+
+export type NewsDetailCompatibilityField =
+  | 'keywords'
+  | 'publishedAt'
+  | 'publicationDate'
+  | 'externalId'
+  | 'newsType'
+  | 'charactersToBeShown'
+  | 'fullVersion'
+  | 'showPublishDate'
+  | 'pushNotification'
+  | 'teaserImageAssetId'
+  | 'headerImageAssetId'
+  | 'contentBlocks'
+  | 'address'
+  | 'pointOfInterestId';
+
+type NewsDetailCompatibilityTouchedState = Partial<Record<NewsDetailCompatibilityField, true>>;
+
+type NewsDetailEditorialFormFields = {
   title: string;
   author: string;
-  keywords: string;
   categories: string[];
-  publishedAt: string;
-  publicationDate: string;
-  externalId: string;
-  newsType: string;
-  charactersToBeShown: string;
-  fullVersion: boolean;
-  showPublishDate: boolean;
-  pushNotification: boolean;
-  teaserImageAssetId: string | null;
-  headerImageAssetId: string | null;
-  contentBlocks: NewsContentBlockFormValue[];
+  contentTeaser: string;
+  contentBody: string;
+  contentMedia: NewsMediaContentFormValue[];
   sourceUrl: NewsWebUrl;
-  address: {
-    street: string;
-    zip: string;
-    city: string;
+  sourceUrlDescription: string;
+  pushNotificationEnabled: boolean;
+  publicationMode: NewsPublicationMode;
+  scheduledPublicationAt: string;
+};
+
+export type NewsDetailEditorialFormValues = NewsDetailEditorialFormFields & {
+  __legacySnapshot?: NewsLegacyCompatibilitySnapshot;
+  __compatibilityTouched?: NewsDetailCompatibilityTouchedState;
+};
+
+type NewsDetailCompatibilityAliases = {
+  // Internal compatibility aliases for still-unported page/tab code.
+  readonly keywords?: string;
+  readonly publishedAt?: string;
+  readonly publicationDate?: string;
+  readonly externalId?: string;
+  readonly newsType?: string;
+  readonly charactersToBeShown?: string;
+  readonly fullVersion?: boolean;
+  readonly showPublishDate?: boolean;
+  readonly pushNotification?: boolean;
+  readonly teaserImageAssetId: string | null;
+  readonly headerImageAssetId: string | null;
+  readonly contentBlocks?: NewsContentBlockFormValue[];
+  readonly address?: {
+    readonly street?: string;
+    readonly zip?: string;
+    readonly city?: string;
   };
-  pointOfInterestId: string;
+  readonly pointOfInterestId?: string;
+};
+
+export type NewsDetailFormValues = NewsDetailEditorialFormValues & NewsDetailCompatibilityAliases;
+
+export type NewsSavePlan = {
+  readonly mutation: NewsFormInput;
+  readonly visible: boolean;
+  readonly editorialStatus: NewsEditorialStatus;
 };
 
 export type NewsContentItem = {

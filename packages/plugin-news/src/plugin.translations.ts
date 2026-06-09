@@ -20,6 +20,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
   },
   fields: {
     title: 'Titel',
+    headline: 'Headline',
     author: 'Autor',
     status: 'Status',
     createdAt: 'Erstellt am',
@@ -35,11 +36,15 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     showPublishDate: 'Publikationsdatum anzeigen',
     pushNotification: 'Push-Benachrichtigung senden',
     categories: 'Kategorien',
-    categoriesHelp: 'Waehlen Sie keine, eine oder mehrere Kategorien aus.',
+    categoriesHelp: 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
     categoriesSearch: 'Kategorien suchen',
-    categoriesSearchPlaceholder: 'Kategorie suchen oder auswaehlen',
+    categoriesSearchPlaceholder: 'Kategorie suchen oder auswählen',
     sourceUrl: 'Quell-URL',
     sourceUrlDescription: 'Quellbeschreibung',
+    contentTeaser: 'Teaser',
+    contentBody: 'Inhalt',
+    publicationMode: 'Veröffentlichungsmodus',
+    scheduledPublicationAt: 'Zeitpunkt der Veröffentlichung',
     mediaPlaceholder: 'Medium auswählen',
     street: 'Straße',
     zip: 'PLZ',
@@ -57,6 +62,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     technicalDetails: 'Technische Details',
     dataProvider: 'Datenanbieter',
     visible: 'Sichtbar',
+    visibleFor: 'Sichtbarkeit für {{title}}',
     likeCount: 'Likes',
     likedByMe: 'Von mir geliked',
     pushNotificationsSentAt: 'Push gesendet am',
@@ -73,24 +79,17 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     basis: {
       label: 'Basis',
       title: 'Basisdaten',
-      description: 'Metadaten, Veröffentlichung und redaktionelle Kerndaten des News-Eintrags.',
-      metaSummaryTitle: 'Aktuelle Metadaten',
-      metaSummaryInline: 'Veröffentlicht: {{publishedAt}}',
+      description: 'Titel, Kategorien, Autor und redaktionelle Metadaten des News-Eintrags.',
     },
     content: {
       label: 'Inhalte',
       title: 'Inhalte',
-      description: 'Inhaltsblöcke, Medien, Quellen und ortsbezogene Angaben.',
-    },
-    release: {
-      label: 'Freigabe',
-      title: 'Freigabe',
-      description: 'Veröffentlichung, Sichtbarkeit und workflow-nahe Hinweise des News-Eintrags.',
+      description: 'Textinhalt, Medien und Quelle der News.',
     },
     settings: {
       label: 'Einstellungen',
-      title: 'Erweiterte Einstellungen',
-      description: 'Technische und aussteuerungsnahe Steuerfelder des News-Eintrags.',
+      title: 'Einstellungen',
+      description: 'Push-Benachrichtigung und redaktionelle Veröffentlichungslogik.',
     },
     history: {
       label: 'Historie',
@@ -98,16 +97,63 @@ const newsTranslationsDe = createNewsLocaleTranslations({
       description: 'Nachvollziehbare Änderungen und Statuswechsel dieses News-Eintrags.',
     },
   },
-  release: {
-    workflowHintTitle: 'Workflow-Hinweis',
-    workflowHintBody: 'Weitere Freigabeschritte folgen erst mit einem erweiterten Backend-Vertrag.',
+  cards: {
+    basis: {
+      titleCategories: {
+        title: 'Titel & Kategorien',
+        description: 'Pflegen Sie den redaktionellen Titel und ordnen Sie passende Kategorien zu.',
+      },
+      authorMeta: {
+        title: 'Autor & Metadaten',
+        description: 'Autorenschaft und zeitliche Einordnung dieses News-Eintrags.',
+      },
+    },
+    content: {
+      text: {
+        title: 'Textinhalt',
+        description: 'Headline, Teaser und Hauptinhalt der News.',
+      },
+      media: {
+        title: 'Medien',
+        description: 'Alle Studio-bearbeitbaren Medien werden dem ersten Inhaltsblock zugeordnet.',
+        empty: 'Noch keine Medien zugeordnet.',
+        itemLabel: 'Medium {{index}}',
+      },
+      source: {
+        title: 'Quelle',
+        description: 'Optionaler Link und Linktext für weiterführende Informationen.',
+      },
+    },
+    settings: {
+      push: {
+        title: 'Push-Benachrichtigungen',
+        description: 'Push kann pro News genau einmal ausgelöst werden.',
+        toggleHint: 'Beim Speichern einer veröffentlichten News wird die Push-Benachrichtigung versendet.',
+      },
+      publication: {
+        title: 'Veröffentlichung',
+        description: 'Führen Sie die Redaktion durch Entwurf, Sofort-Veröffentlichung oder Zeitsteuerung.',
+        scheduleHint: 'Der Zeitpunkt kann in der Vergangenheit oder Zukunft liegen.',
+      },
+    },
+    history: {
+      title: 'Historie',
+      description: 'Alle nachvollziehbaren Änderungen dieses News-Eintrags.',
+    },
   },
   history: {
     createHint: 'Die Historie wird nach dem ersten Speichern verfügbar.',
     loading: 'Historie wird geladen.',
     empty: 'Noch keine Historie vorhanden.',
-    byline: 'Von {{actor}}',
+    emptySummary: 'Keine zusätzliche Zusammenfassung vorhanden.',
     changedFields: 'Geänderte Felder: {{fields}}',
+    tableLabel: 'Historie der News',
+    columns: {
+      time: 'Zeitpunkt',
+      action: 'Aktion',
+      actor: 'Akteur',
+      summary: 'Zusammenfassung',
+    },
     actions: {
       created: 'Erstellt',
       updated: 'Aktualisiert',
@@ -123,9 +169,49 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     yes: 'Ja',
     no: 'Nein',
   },
+  statuses: {
+    draft: 'Entwurf',
+    scheduled: 'Geplant',
+    published: 'Veröffentlicht',
+  },
+  filters: {
+    visibility: {
+      label: 'Sichtbarkeit',
+      all: 'Alle',
+      visible: 'Sichtbare',
+      hidden: 'Entwürfe',
+    },
+    editorialStatus: {
+      label: 'Redaktioneller Status',
+      all: 'Alle Stati',
+      draft: 'Entwurf',
+      scheduled: 'Geplant',
+      published: 'Veröffentlicht',
+    },
+  },
+  publicationModes: {
+    draft: {
+      label: 'Entwurf',
+      description: 'Die News bleibt im Studio sichtbar, aber außerhalb unsichtbar.',
+    },
+    immediate: {
+      label: 'Sofort veröffentlichen',
+      description: 'Die News wird direkt sichtbar veröffentlicht.',
+    },
+    scheduled: {
+      label: 'Zeitgesteuert',
+      description: 'Die News wird mit einem frei wählbaren Veröffentlichungszeitpunkt gespeichert.',
+    },
+  },
+  release: {
+    workflowHintTitle: 'Veröffentlichung erfolgt jetzt im Einstellungs-Tab',
+    workflowHintBody:
+      'Entwurf, Sofort-Veröffentlichung und Zeitsteuerung werden in der vereinfachten Oberfläche zentral unter Einstellungen gepflegt.',
+  },
   actions: {
     create: 'News anlegen',
     update: 'Änderungen speichern',
+    save: 'Speichern',
     back: 'Zurück zur Liste',
     edit: 'Bearbeiten',
     delete: 'Löschen',
@@ -162,11 +248,18 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     categoryOptionsLoadError: 'Die Kategorien konnten nicht geladen werden.',
     unsavedTabChanges: 'Bitte speichern Sie die Änderungen im aktuellen Tab, bevor Sie den Bereich wechseln.',
     errors: {
+      configNotFound: 'Für diese Instanz ist keine Mainserver-Konfiguration hinterlegt.',
+      integrationDisabled: 'Die Mainserver-Integration ist für diese Instanz deaktiviert.',
+      invalidConfig: 'Die Mainserver-Konfiguration für News ist ungültig.',
       missingCredentials: 'Mainserver-Credentials fehlen für diesen Benutzer.',
+      organizationMainserverCredentialsMissing: 'Für die aktive Organisation fehlen Mainserver-Credentials.',
+      tokenRequestFailed: 'Die Authentifizierung am Mainserver ist fehlgeschlagen.',
+      unauthorized: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
       forbidden: 'Für diese News-Operation fehlt die Berechtigung.',
       graphqlError: 'Der Mainserver konnte die News-Operation nicht ausführen.',
       invalidResponse: 'Der Mainserver hat eine unerwartete News-Antwort geliefert.',
       invalidRequest: 'Die News-Daten sind unvollständig oder ungültig.',
+      details: 'Details: {{message}}',
       csrfValidationFailed:
         'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
       idempotencyKeyRequired: 'Die Sicherheitskennung für die News-Erstellung fehlt.',
@@ -179,9 +272,11 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     title: 'Der Titel ist erforderlich.',
     publishedAt: 'Das Veröffentlichungsdatum ist erforderlich.',
     publicationDate: 'Das Publikationsdatum ist ungültig.',
+    scheduledPublicationAt: 'Der geplante Veröffentlichungszeitpunkt ist ungültig.',
     charactersToBeShown: 'Die Zeichenbegrenzung muss eine nicht-negative Ganzzahl sein.',
     categories: 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
     sourceUrl: 'Die Quell-URL muss mit https:// beginnen.',
+    contentBody: 'Der Inhalt ist erforderlich.',
     contentBlocks:
       'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.',
     mediaContents: 'Medien-URLs müssen mit https:// beginnen.',
@@ -204,6 +299,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
   },
   fields: {
     title: 'Title',
+    headline: 'Headline',
     author: 'Author',
     status: 'Status',
     createdAt: 'Created at',
@@ -224,6 +320,10 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     categoriesSearchPlaceholder: 'Search or select a category',
     sourceUrl: 'Source URL',
     sourceUrlDescription: 'Source description',
+    contentTeaser: 'Teaser',
+    contentBody: 'Content',
+    publicationMode: 'Publication mode',
+    scheduledPublicationAt: 'Publication time',
     mediaPlaceholder: 'Select media',
     street: 'Street',
     zip: 'ZIP',
@@ -241,6 +341,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     technicalDetails: 'Technical details',
     dataProvider: 'Data provider',
     visible: 'Visible',
+    visibleFor: 'Visibility for {{title}}',
     likeCount: 'Likes',
     likedByMe: 'Liked by me',
     pushNotificationsSentAt: 'Push sent at',
@@ -257,24 +358,17 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     basis: {
       label: 'Basics',
       title: 'Basics',
-      description: 'Metadata, publication details, and editorial core fields of the news entry.',
-      metaSummaryTitle: 'Current metadata',
-      metaSummaryInline: 'Published: {{publishedAt}}',
+      description: 'Title, categories, author, and editorial metadata of the news entry.',
     },
     content: {
       label: 'Content',
       title: 'Content',
-      description: 'Content blocks, media, source data, and location details.',
-    },
-    release: {
-      label: 'Release',
-      title: 'Release',
-      description: 'Publication, visibility, and workflow-related guidance for the news entry.',
+      description: 'Text content, media, and source information for the news entry.',
     },
     settings: {
       label: 'Settings',
-      title: 'Advanced settings',
-      description: 'Technical and delivery-related control fields for the news entry.',
+      title: 'Settings',
+      description: 'Push notifications and editorial publication logic.',
     },
     history: {
       label: 'History',
@@ -282,16 +376,63 @@ const newsTranslationsEn = createNewsLocaleTranslations({
       description: 'Traceable changes and status transitions for this news entry.',
     },
   },
-  release: {
-    workflowHintTitle: 'Workflow hint',
-    workflowHintBody: 'Additional workflow steps will follow once the backend contract is extended.',
+  cards: {
+    basis: {
+      titleCategories: {
+        title: 'Title & Categories',
+        description: 'Maintain the editorial title and assign matching categories.',
+      },
+      authorMeta: {
+        title: 'Author & Metadata',
+        description: 'Authorship and timestamps of this news entry.',
+      },
+    },
+    content: {
+      text: {
+        title: 'Text Content',
+        description: 'Headline, teaser, and main content of the news entry.',
+      },
+      media: {
+        title: 'Media',
+        description: 'All editable Studio media is assigned to the first content block.',
+        empty: 'No media assigned yet.',
+        itemLabel: 'Media {{index}}',
+      },
+      source: {
+        title: 'Source',
+        description: 'Optional link and link text for further information.',
+      },
+    },
+    settings: {
+      push: {
+        title: 'Push Notifications',
+        description: 'Push can only be triggered once per news entry.',
+        toggleHint: 'Saving a published news entry sends the push notification.',
+      },
+      publication: {
+        title: 'Publication',
+        description: 'Guide editors through draft, immediate publication, or scheduling.',
+        scheduleHint: 'The selected time may lie in the past or future.',
+      },
+    },
+    history: {
+      title: 'History',
+      description: 'All traceable changes for this news entry.',
+    },
   },
   history: {
     createHint: 'History becomes available after the first save.',
     loading: 'History is loading.',
     empty: 'No history available yet.',
-    byline: 'By {{actor}}',
+    emptySummary: 'No additional summary available.',
     changedFields: 'Changed fields: {{fields}}',
+    tableLabel: 'News history',
+    columns: {
+      time: 'Time',
+      action: 'Action',
+      actor: 'Actor',
+      summary: 'Summary',
+    },
     actions: {
       created: 'Created',
       updated: 'Updated',
@@ -307,9 +448,49 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     yes: 'Yes',
     no: 'No',
   },
+  statuses: {
+    draft: 'Draft',
+    scheduled: 'Scheduled',
+    published: 'Published',
+  },
+  filters: {
+    visibility: {
+      label: 'Visibility',
+      all: 'All',
+      visible: 'Visible',
+      hidden: 'Drafts',
+    },
+    editorialStatus: {
+      label: 'Editorial status',
+      all: 'All statuses',
+      draft: 'Draft',
+      scheduled: 'Scheduled',
+      published: 'Published',
+    },
+  },
+  publicationModes: {
+    draft: {
+      label: 'Draft',
+      description: 'The news entry remains visible in Studio but invisible elsewhere.',
+    },
+    immediate: {
+      label: 'Publish immediately',
+      description: 'The news entry becomes visible right away.',
+    },
+    scheduled: {
+      label: 'Scheduled',
+      description: 'The news entry is saved with a freely chosen publication time.',
+    },
+  },
+  release: {
+    workflowHintTitle: 'Publication is now handled in the settings tab',
+    workflowHintBody:
+      'Draft, immediate publication, and scheduling are maintained centrally in the simplified settings workflow.',
+  },
   actions: {
     create: 'Create news',
     update: 'Save changes',
+    save: 'Save',
     back: 'Back to list',
     edit: 'Edit',
     delete: 'Delete',
@@ -346,11 +527,18 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     categoryOptionsLoadError: 'Failed to load categories.',
     unsavedTabChanges: 'Please save the changes in the current tab before switching sections.',
     errors: {
+      configNotFound: 'No Mainserver configuration exists for this instance.',
+      integrationDisabled: 'The Mainserver integration is disabled for this instance.',
+      invalidConfig: 'The Mainserver configuration for news is invalid.',
       missingCredentials: 'Mainserver credentials are missing for this user.',
+      organizationMainserverCredentialsMissing: 'Mainserver credentials are missing for the active organization.',
+      tokenRequestFailed: 'Authentication with the Mainserver failed.',
+      unauthorized: 'Your session is no longer valid. Please sign in again.',
       forbidden: 'You do not have permission for this news operation.',
       graphqlError: 'The Mainserver could not execute the news operation.',
       invalidResponse: 'The Mainserver returned an unexpected news response.',
       invalidRequest: 'The news data is incomplete or invalid.',
+      details: 'Details: {{message}}',
       csrfValidationFailed:
         'Security validation failed. Please reload the page and try again.',
       idempotencyKeyRequired: 'The safety key for creating this news entry is missing.',
@@ -363,9 +551,11 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     title: 'The title is required.',
     publishedAt: 'The publication date is required.',
     publicationDate: 'The publication date is invalid.',
+    scheduledPublicationAt: 'The scheduled publication time is invalid.',
     charactersToBeShown: 'The character limit must be a non-negative integer.',
     categories: 'Categories need a name with at most 128 characters.',
     sourceUrl: 'The source URL must start with https://.',
+    contentBody: 'The content is required.',
     contentBlocks:
       'At least one content block needs body content and must not exceed 50,000 characters.',
     mediaContents: 'Media URLs must start with https://.',

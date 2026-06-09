@@ -1,7 +1,8 @@
-import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
-import { Button, Input, MediaReferenceField, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
-import { buildNewsDetailCharacterCounts } from './news.detail-form.js';
-import type { NewsContentBlockFormValue, NewsDetailFormValues, NewsMediaContentFormValue } from './news.types.js';
+import { useFieldArray, useFormContext, useWatch, type FieldError } from 'react-hook-form';
+import { Button, Input, StudioField, StudioFormSummaryErrors, Textarea, getStudioFormFieldProps } from '@sva/studio-ui-react';
+
+import { NewsDetailCard } from './news.detail-card.js';
+import type { NewsDetailFormValues, NewsMediaContentFormValue } from './news.types.js';
 
 const createDefaultMediaContent = (): NewsMediaContentFormValue => ({
   captionText: '',
@@ -15,130 +16,182 @@ const createDefaultMediaContent = (): NewsMediaContentFormValue => ({
   },
 });
 
-const createDefaultContentBlock = (): NewsContentBlockFormValue => ({
-  title: '',
-  intro: '',
-  body: '',
-  mediaContents: [],
-});
+const collectSummaryErrors = (
+  fields: readonly ReturnType<typeof getStudioFormFieldProps>[]
+) => fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
 
-type MediaFieldsProps = Readonly<{
-  blockIndex: number;
+const translateFieldError = (
+  error: FieldError | undefined,
+  pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string
+): FieldError | undefined => {
+  if (!error || typeof error.message !== 'string') {
+    return error;
+  }
+
+  return {
+    ...error,
+    message: pt(`validation.${error.message}`),
+  };
+};
+
+const readNestedFieldError = (value: unknown): FieldError | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+
+  return 'message' in value || 'type' in value ? (value as FieldError) : undefined;
+};
+
+export type NewsDetailContentTabProps = Readonly<{
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;
 
-function MediaFields({ blockIndex, pt }: MediaFieldsProps) {
-  const { control, register } = useFormContext<NewsDetailFormValues>();
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: `contentBlocks.${blockIndex}.mediaContents`,
-  });
+type ContentFieldBindings = ReturnType<typeof getStudioFormFieldProps>;
 
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h4 className="text-sm font-medium">{pt('fields.mediaContents')}</h4>
-        <Button type="button" variant="outline" size="sm" onClick={() => append(createDefaultMediaContent())}>
-          {pt('actions.addMedia')}
-        </Button>
-      </div>
-
-      {fields.map((field, mediaIndex) => (
-        <div key={field.id} className="grid gap-3 border-t border-border pt-3 md:grid-cols-2">
-          <StudioField id={`news-media-url-${blockIndex}-${mediaIndex}`} label={pt('fields.mediaUrl')}>
-            <Input id={`news-media-url-${blockIndex}-${mediaIndex}`} type="url" {...register(`contentBlocks.${blockIndex}.mediaContents.${mediaIndex}.sourceUrl.url`)} />
-          </StudioField>
-          <StudioField id={`news-media-caption-${blockIndex}-${mediaIndex}`} label={pt('fields.mediaCaption')}>
-            <Input id={`news-media-caption-${blockIndex}-${mediaIndex}`} {...register(`contentBlocks.${blockIndex}.mediaContents.${mediaIndex}.captionText`)} />
-          </StudioField>
-          <StudioField id={`news-media-type-${blockIndex}-${mediaIndex}`} label={pt('fields.mediaContentType')}>
-            <Input id={`news-media-type-${blockIndex}-${mediaIndex}`} {...register(`contentBlocks.${blockIndex}.mediaContents.${mediaIndex}.contentType`)} />
-          </StudioField>
-          <div className="flex items-end justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={() => remove(mediaIndex)}>
-              {pt('actions.remove')}
-            </Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-type ContentBlockSectionProps = Readonly<{
-  blockIndex: number;
-  hasContentBlocksError: boolean;
-  introCount: number;
-  bodyCount: number;
-  pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
-  removeBlock: (index: number) => void;
+type NewsContentTextSectionProps = Readonly<{
+  pt: NewsDetailContentTabProps['pt'];
+  title: string;
+  teaser: string;
+  contentBody: string;
+  teaserField: ContentFieldBindings;
+  bodyField: ContentFieldBindings;
+  register: ReturnType<typeof useFormContext<NewsDetailFormValues>>['register'];
 }>;
 
-function ContentBlockSection({
-  blockIndex,
-  hasContentBlocksError,
-  introCount,
-  bodyCount,
+function NewsContentTextSection({
   pt,
-  removeBlock,
-}: ContentBlockSectionProps) {
-  const { register } = useFormContext<NewsDetailFormValues>();
-
+  title,
+  teaser,
+  contentBody,
+  teaserField,
+  bodyField,
+  register,
+}: NewsContentTextSectionProps) {
   return (
-    <section className="space-y-4 border-t border-border pt-4">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold">{pt('fields.contentBlock')}</h3>
-        <Button type="button" variant="outline" size="sm" onClick={() => removeBlock(blockIndex)}>
-          {pt('actions.remove')}
-        </Button>
-      </div>
-
-      <StudioFieldGroup columns={2}>
-        <StudioField id={`news-block-title-${blockIndex}`} label={pt('fields.blockTitle')}>
-          <Input id={`news-block-title-${blockIndex}`} {...register(`contentBlocks.${blockIndex}.title`)} />
-        </StudioField>
-        <StudioField
-          id={`news-block-intro-${blockIndex}`}
-          label={pt('fields.blockIntro')}
-          description={pt('fields.characterCount', { count: introCount })}
-        >
-          <Input id={`news-block-intro-${blockIndex}`} {...register(`contentBlocks.${blockIndex}.intro`)} />
-        </StudioField>
-      </StudioFieldGroup>
+    <NewsDetailCard
+      title={pt('cards.content.text.title')}
+      description={pt('cards.content.text.description')}
+    >
+      <StudioField id="news-content-headline" label={pt('fields.headline')}>
+        <Input id="news-content-headline" value={title} readOnly />
+      </StudioField>
 
       <StudioField
-        id={`news-block-body-${blockIndex}`}
-        label={pt('fields.blockBody')}
-        description={pt('fields.characterCount', { count: bodyCount })}
+        {...teaserField}
+        label={pt('fields.contentTeaser')}
+        description={pt('fields.characterCount', { count: teaser.length })}
+      >
+        <Textarea {...teaserField.controlProps} className="min-h-24" {...register('contentTeaser')} />
+      </StudioField>
+
+      <StudioField
+        {...bodyField}
+        label={pt('fields.contentBody')}
+        description={pt('fields.characterCount', { count: contentBody.length })}
         required
       >
         <Textarea
-          id={`news-block-body-${blockIndex}`}
-          className="min-h-48"
-          aria-describedby={hasContentBlocksError ? 'news-content-blocks-error' : undefined}
-          aria-invalid={hasContentBlocksError || undefined}
-          {...register(`contentBlocks.${blockIndex}.body`)}
+          {...bodyField.controlProps}
+          className="min-h-64"
+          required
+          {...register('contentBody')}
         />
       </StudioField>
-
-      <MediaFields blockIndex={blockIndex} pt={pt} />
-    </section>
+    </NewsDetailCard>
   );
 }
 
-export type NewsDetailContentTabProps = Readonly<{
-  mediaOptions: readonly { assetId: string; label: string }[];
-  onSave: () => void;
-  pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
-  saveLabel: string;
+type NewsContentMediaSectionProps = Readonly<{
+  pt: NewsDetailContentTabProps['pt'];
+  mediaField: ContentFieldBindings;
+  fields: readonly { readonly id: string }[];
+  append: (value: NewsMediaContentFormValue) => void;
+  remove: (index: number) => void;
+  register: ReturnType<typeof useFormContext<NewsDetailFormValues>>['register'];
 }>;
 
-export function NewsDetailContentTab({
-  mediaOptions,
-  onSave,
+function NewsContentMediaSection({
   pt,
-  saveLabel,
-}: NewsDetailContentTabProps) {
+  mediaField,
+  fields,
+  append,
+  remove,
+  register,
+}: NewsContentMediaSectionProps) {
+  return (
+    <NewsDetailCard
+      title={pt('cards.content.media.title')}
+      description={pt('cards.content.media.description')}
+      actions={
+        <Button type="button" variant="outline" size="sm" onClick={() => append(createDefaultMediaContent())}>
+          {pt('actions.addMedia')}
+        </Button>
+      }
+    >
+      <div id={mediaField.id} className="space-y-3">
+        {fields.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{pt('cards.content.media.empty')}</p>
+        ) : null}
+
+        {fields.map((field, mediaIndex) => (
+          <div key={field.id} className="space-y-3 rounded-xl border border-border/60 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-foreground">
+                {pt('cards.content.media.itemLabel', { index: mediaIndex + 1 })}
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={() => remove(mediaIndex)}>
+                {pt('actions.remove')}
+              </Button>
+            </div>
+            <StudioField id={`news-media-url-${mediaIndex}`} label={pt('fields.mediaUrl')}>
+              <Input
+                id={`news-media-url-${mediaIndex}`}
+                type="url"
+                {...register(`contentMedia.${mediaIndex}.sourceUrl.url`)}
+              />
+            </StudioField>
+            <StudioField id={`news-media-caption-${mediaIndex}`} label={pt('fields.mediaCaption')}>
+              <Input
+                id={`news-media-caption-${mediaIndex}`}
+                {...register(`contentMedia.${mediaIndex}.captionText`)}
+              />
+            </StudioField>
+          </div>
+        ))}
+      </div>
+    </NewsDetailCard>
+  );
+}
+
+type NewsContentSourceSectionProps = Readonly<{
+  pt: NewsDetailContentTabProps['pt'];
+  sourceUrlField: ContentFieldBindings;
+  sourceTextField: ContentFieldBindings;
+  register: ReturnType<typeof useFormContext<NewsDetailFormValues>>['register'];
+}>;
+
+function NewsContentSourceSection({
+  pt,
+  sourceUrlField,
+  sourceTextField,
+  register,
+}: NewsContentSourceSectionProps) {
+  return (
+    <NewsDetailCard
+      title={pt('cards.content.source.title')}
+      description={pt('cards.content.source.description')}
+    >
+      <StudioField {...sourceUrlField} label={pt('fields.sourceUrl')}>
+        <Input {...sourceUrlField.controlProps} type="url" {...register('sourceUrl.url')} />
+      </StudioField>
+      <StudioField {...sourceTextField} label={pt('fields.sourceUrlDescription')}>
+        <Input {...sourceTextField.controlProps} {...register('sourceUrlDescription')} />
+      </StudioField>
+    </NewsDetailCard>
+  );
+}
+
+export function NewsDetailContentTab({ pt }: NewsDetailContentTabProps) {
   const {
     control,
     formState: { errors },
@@ -146,105 +199,66 @@ export function NewsDetailContentTab({
   } = useFormContext<NewsDetailFormValues>();
   const { fields, append, remove } = useFieldArray({
     control,
-    name: 'contentBlocks',
+    name: 'contentMedia',
   });
   const title = useWatch({ control, name: 'title' }) ?? '';
-  const contentBlocks = useWatch({ control, name: 'contentBlocks' }) ?? [];
-  const characterCounts = buildNewsDetailCharacterCounts({ title, contentBlocks });
-  const hasContentBlocksError = Boolean(errors.contentBlocks);
+  const teaser = useWatch({ control, name: 'contentTeaser' }) ?? '';
+  const contentBody = useWatch({ control, name: 'contentBody' }) ?? '';
+
+  const teaserField = getStudioFormFieldProps({
+    id: 'news-content-teaser',
+    error: translateFieldError(errors.contentTeaser, pt),
+  });
+  const bodyField = getStudioFormFieldProps({
+    id: 'news-content-body',
+    error: translateFieldError(errors.contentBody, pt),
+  });
+  const sourceUrlField = getStudioFormFieldProps({
+    id: 'news-source-url',
+    error: translateFieldError(readNestedFieldError(errors.sourceUrl?.url), pt),
+  });
+  const sourceTextField = getStudioFormFieldProps({
+    id: 'news-source-description',
+    error: translateFieldError(errors.sourceUrlDescription, pt),
+  });
+  const mediaField = getStudioFormFieldProps({
+    id: 'news-content-media',
+    error: translateFieldError(readNestedFieldError(errors.contentMedia), pt),
+  });
+  const summaryErrors = collectSummaryErrors([
+    teaserField,
+    bodyField,
+    sourceUrlField,
+    sourceTextField,
+    mediaField,
+  ]);
 
   return (
     <div className="space-y-6">
-      <StudioFieldGroup columns={2}>
-        <Controller
-          control={control}
-          name="teaserImageAssetId"
-          render={({ field }) => (
-            <MediaReferenceField
-              id="news-teaser-image"
-              label={pt('fields.teaserImage')}
-              value={field.value}
-              options={mediaOptions}
-              onChange={field.onChange}
-              placeholder={pt('fields.mediaPlaceholder')}
-              clearLabel={pt('actions.clearMedia')}
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="headerImageAssetId"
-          render={({ field }) => (
-            <MediaReferenceField
-              id="news-header-image"
-              label={pt('fields.headerImage')}
-              value={field.value}
-              options={mediaOptions}
-              onChange={field.onChange}
-              placeholder={pt('fields.mediaPlaceholder')}
-              clearLabel={pt('actions.clearMedia')}
-            />
-          )}
-        />
-      </StudioFieldGroup>
-
-      <StudioFieldGroup columns={2}>
-        <StudioField id="news-source-url" label={pt('fields.sourceUrl')}>
-          <Input id="news-source-url" type="url" {...register('sourceUrl.url')} />
-        </StudioField>
-        <StudioField id="news-source-description" label={pt('fields.sourceUrlDescription')}>
-          <Input id="news-source-description" {...register('sourceUrl.description')} />
-        </StudioField>
-      </StudioFieldGroup>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <StudioField id="news-address-street" label={pt('fields.street')}>
-          <Input id="news-address-street" {...register('address.street')} />
-        </StudioField>
-        <StudioField id="news-address-zip" label={pt('fields.zip')}>
-          <Input id="news-address-zip" {...register('address.zip')} />
-        </StudioField>
-        <StudioField id="news-address-city" label={pt('fields.city')}>
-          <Input id="news-address-city" {...register('address.city')} />
-        </StudioField>
-      </div>
-
-      <StudioField id="news-poi" label={pt('fields.pointOfInterestId')}>
-        <Input id="news-poi" {...register('pointOfInterestId')} />
-      </StudioField>
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold">{pt('fields.contentBlocks')}</h2>
-          <Button type="button" variant="outline" onClick={() => append(createDefaultContentBlock())}>
-            {pt('actions.addContentBlock')}
-          </Button>
-        </div>
-
-        {hasContentBlocksError ? (
-          <p id="news-content-blocks-error" className="text-sm text-destructive">
-            {pt('validation.contentBlocks')}
-          </p>
-        ) : null}
-
-        {fields.map((field, blockIndex) => (
-          <ContentBlockSection
-            key={field.id}
-            blockIndex={blockIndex}
-            hasContentBlocksError={hasContentBlocksError}
-            introCount={characterCounts.intros[blockIndex] ?? 0}
-            bodyCount={characterCounts.bodies[blockIndex] ?? 0}
-            pt={pt}
-            removeBlock={remove}
-          />
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <Button type="button" onClick={onSave}>
-          {saveLabel}
-        </Button>
-      </div>
+      <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
+      <NewsContentTextSection
+        pt={pt}
+        title={title}
+        teaser={teaser}
+        contentBody={contentBody}
+        teaserField={teaserField}
+        bodyField={bodyField}
+        register={register}
+      />
+      <NewsContentMediaSection
+        pt={pt}
+        mediaField={mediaField}
+        fields={fields}
+        append={append}
+        remove={remove}
+        register={register}
+      />
+      <NewsContentSourceSection
+        pt={pt}
+        sourceUrlField={sourceUrlField}
+        sourceTextField={sourceTextField}
+        register={register}
+      />
     </div>
   );
 }

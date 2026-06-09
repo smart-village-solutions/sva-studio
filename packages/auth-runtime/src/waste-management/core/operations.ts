@@ -345,7 +345,7 @@ export const wasteManagementOperationHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> =>
     startToolJob(request, ctx, deps, {
-      requiredPermission: 'waste-management.settings.manage',
+      requiredPermission: 'waste-management.master-data.manage',
       endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',
       schema: startSyncWasteTypesSchema,
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncWasteTypes,

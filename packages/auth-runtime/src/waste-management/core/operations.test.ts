@@ -150,6 +150,21 @@ describe('waste-management operation handlers', () => {
       expectedCode: 'forbidden',
     },
     {
+      label: 'sync-waste-types returns forbidden when the master-data permission is missing',
+      handler: wasteManagementOperationHandlers.startWasteManagementSyncWasteTypesInternal,
+      request: () => createToolRequest('https://studio.test/api/v1/waste-management/tools/sync-waste-types', {}),
+      deps: () => ({
+        ...createDeps(),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [],
+        })),
+      }),
+      actor,
+      expectedStatus: 403,
+      expectedCode: 'forbidden',
+    },
+    {
       label: 'reset rejects a missing actor instance id',
       handler: wasteManagementOperationHandlers.startWasteManagementResetInternal,
       request: () =>
@@ -317,7 +332,7 @@ describe('waste-management operation handlers', () => {
           ok: true as const,
           permissions: [
             {
-              action: 'waste-management.settings.manage',
+              action: 'waste-management.master-data.manage',
               resourceType: 'waste-management',
               effect: 'allow' as const,
             },

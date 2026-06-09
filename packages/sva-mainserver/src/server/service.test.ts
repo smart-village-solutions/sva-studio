@@ -372,8 +372,6 @@ describe('createSvaMainserverService', () => {
         staticContent: {
           name: 'wasteTypes',
           content: '{"bio":{"label":"Biotonne"}}',
-          dataType: 'JSON',
-          version: 'sha256:abc',
         },
       })
     ).resolves.toEqual({ id: '77' });
@@ -424,8 +422,6 @@ describe('createSvaMainserverService', () => {
         staticContent: {
           name: 'wasteTypes',
           content: '{"bio":{"label":"Biotonne"}}',
-          dataType: 'JSON',
-          version: 'sha256:def',
         },
       })
     ).resolves.toEqual({ id: 'static-1' });

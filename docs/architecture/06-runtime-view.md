@@ -64,7 +64,7 @@ Fehlerpfad:
 6. Zentrale Governance-Daten wie Waste-Datenquelle, letzter Connection-Check und Auditspur liegen im Studio-Postgres; die fachlichen Waste-Daten liegen in der instanzbezogenen Waste-Fachdatenbank.
 7. Mutationen gegen Fraktionen, Orte, Abholorte, Touren, Ausweichtermine und Bulk-Zuordnungen laufen immer über dieselbe Host-Fassade und erzeugen zentrale Audit-Events.
 8. Erfolgreiche Fraktionsmutationen starten zusätzlich asynchron den dedizierten Job `waste-management.sync-waste-types`.
-9. Die Studio-Runtime lädt dafür die aktiven Fraktionen, baut in `@sva/core` das `wasteTypes`-JSON mit stabilen Kürzel-/Fallback-Keys und schreibt es über `@sva/sva-mainserver` per `createOrUpdateStaticContent` auf den Mainserver.
+9. Die Studio-Runtime lädt dafür die aktiven Fraktionen, baut in `@sva/core` das `wasteTypes`-JSON mit stabilen PDF-Kürzel-Keys und schreibt es über `@sva/sva-mainserver` per `createOrUpdateStaticContent` auf den Mainserver.
 10. Der Tab `Ausgabe` pflegt nur statische PDF-Inhalte wie Branding und Kontaktblock; operative PDF-Erzeugung gehört nicht mehr zum Studio-Laufzeitpfad.
 11. Technische Operationen wie Import, Migration, Seed, Reset und `sync-waste-types` starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
 12. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.

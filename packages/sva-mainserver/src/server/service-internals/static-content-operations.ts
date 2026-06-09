@@ -31,6 +31,21 @@ export const createStaticContentOperations = (executeGraphqlWithConfig: GraphqlE
       config
     );
     const existingId = existingFile.publicJsonFile?.id;
+    const variables =
+      existingId === null || existingId === undefined
+        ? {
+            name: normalizedName,
+            content: input.staticContent.content,
+            dataType: 'json' as const,
+            version: '',
+          }
+        : {
+            id: String(existingId),
+            name: normalizedName,
+            content: input.staticContent.content,
+            dataType: 'json' as const,
+            version: '',
+          };
 
     const response = await executeGraphqlWithConfig<SvaMainserverCreateOrUpdateStaticContentMutation>(
       {
@@ -43,13 +58,7 @@ export const createStaticContentOperations = (executeGraphqlWithConfig: GraphqlE
           existingId === null || existingId === undefined
             ? 'SvaMainserverCreateOrUpdateStaticContent'
             : 'SvaMainserverCreateOrUpdateStaticContentWithId',
-        variables: {
-          ...input.staticContent,
-          name: normalizedName,
-          ...(existingId === null || existingId === undefined ? {} : { id: String(existingId) }),
-          dataType: 'json',
-          version: '',
-        },
+        variables,
       },
       config
     );

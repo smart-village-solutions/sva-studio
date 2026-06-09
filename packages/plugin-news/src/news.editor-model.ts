@@ -80,6 +80,38 @@ const mapNewsItemCategories = (item: NewsContentItem): string[] => {
   return item.payload.category ? [item.payload.category] : [];
 };
 
+const hasMeaningfulString = (value?: string | null): value is string => Boolean(value && value.trim().length > 0);
+
+const getMeaningfulCharactersToBeShown = (value?: number | string) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value > 0 ? value : undefined;
+  }
+
+  if (typeof value === 'string') {
+    const trimmedValue = value.trim();
+    if (trimmedValue.length === 0) {
+      return undefined;
+    }
+
+    const parsedValue = Number(trimmedValue);
+    return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : undefined;
+  }
+
+  return undefined;
+};
+
+const getMeaningfulAddress = (address?: NewsLegacyCompatibilitySnapshot['address']) => {
+  if (!address) {
+    return undefined;
+  }
+
+  const street = hasMeaningfulString(address.street) ? address.street : undefined;
+  const zip = hasMeaningfulString(address.zip) ? address.zip : undefined;
+  const city = hasMeaningfulString(address.city) ? address.city : undefined;
+
+  return street || zip || city ? { ...(street ? { street } : {}), ...(zip ? { zip } : {}), ...(city ? { city } : {}) } : undefined;
+};
+
 const createLegacySnapshot = (item: NewsContentItem): NewsLegacyCompatibilitySnapshot => ({
   keywords: item.keywords,
   externalId: item.externalId,
@@ -146,6 +178,7 @@ export const createNewsEditorFormValues = (item: NewsContentItem): NewsDetailEdi
     publicationMode: editorialStatus === 'draft' ? 'draft' : editorialStatus === 'scheduled' ? 'scheduled' : 'immediate',
     scheduledPublicationAt: editorialStatus === 'scheduled' ? item.publishedAt : '',
     __legacySnapshot: createLegacySnapshot(item),
+    __compatibilityTouched: {},
   };
 };
 
@@ -158,26 +191,30 @@ export const buildNewsSavePayload = (
   const effectivePublicationTimestamp = values.publicationMode === 'draft' ? nowIso : publishedAt;
   const visible = values.publicationMode !== 'draft';
   const sourceUrlDescription = values.sourceUrlDescription || values.sourceUrl.description || '';
+  const charactersToBeShown = getMeaningfulCharactersToBeShown(existingSnapshot?.charactersToBeShown);
+  const address = getMeaningfulAddress(existingSnapshot?.address);
+  const publicationDate =
+    values.__compatibilityTouched?.publicationDate && hasMeaningfulString(existingSnapshot?.publicationDate)
+      ? existingSnapshot.publicationDate
+      : effectivePublicationTimestamp;
 
   return {
     visible,
     editorialStatus: deriveNewsEditorialStatus({ visible, publishedAt }, nowIso),
     mutation: {
-      ...(existingSnapshot?.externalId !== undefined ? { externalId: existingSnapshot.externalId } : {}),
-      ...(existingSnapshot?.keywords !== undefined ? { keywords: existingSnapshot.keywords } : {}),
+      ...(hasMeaningfulString(existingSnapshot?.externalId) ? { externalId: existingSnapshot.externalId } : {}),
+      ...(hasMeaningfulString(existingSnapshot?.keywords) ? { keywords: existingSnapshot.keywords } : {}),
       ...(existingSnapshot?.fullVersion !== undefined ? { fullVersion: existingSnapshot.fullVersion } : {}),
-      ...(existingSnapshot?.charactersToBeShown !== undefined
-        ? { charactersToBeShown: Number(existingSnapshot.charactersToBeShown) }
-        : {}),
-      ...(existingSnapshot?.newsType !== undefined ? { newsType: existingSnapshot.newsType } : {}),
+      ...(charactersToBeShown !== undefined ? { charactersToBeShown } : {}),
+      ...(hasMeaningfulString(existingSnapshot?.newsType) ? { newsType: existingSnapshot.newsType } : {}),
       ...(existingSnapshot?.showPublishDate !== undefined ? { showPublishDate: existingSnapshot.showPublishDate } : {}),
-      ...(existingSnapshot?.address ? { address: existingSnapshot.address } : {}),
-      ...(existingSnapshot?.pointOfInterestId !== undefined ? { pointOfInterestId: existingSnapshot.pointOfInterestId } : {}),
+      ...(address ? { address } : {}),
+      ...(hasMeaningfulString(existingSnapshot?.pointOfInterestId) ? { pointOfInterestId: existingSnapshot.pointOfInterestId } : {}),
       title: values.title,
       author: values.author,
       categories: values.categories.map((name) => ({ name })),
       publishedAt: effectivePublicationTimestamp,
-      publicationDate: effectivePublicationTimestamp,
+      publicationDate,
       sourceUrl: {
         url: values.sourceUrl.url,
         description: sourceUrlDescription,

@@ -145,6 +145,24 @@ export type NewsLegacyCompatibilitySnapshot = {
   readonly legacyContentBlocks?: NewsContentBlockFormValue[];
 };
 
+export type NewsDetailCompatibilityField =
+  | 'keywords'
+  | 'publishedAt'
+  | 'publicationDate'
+  | 'externalId'
+  | 'newsType'
+  | 'charactersToBeShown'
+  | 'fullVersion'
+  | 'showPublishDate'
+  | 'pushNotification'
+  | 'teaserImageAssetId'
+  | 'headerImageAssetId'
+  | 'contentBlocks'
+  | 'address'
+  | 'pointOfInterestId';
+
+export type NewsDetailCompatibilityTouchedState = Partial<Record<NewsDetailCompatibilityField, true>>;
+
 type NewsDetailEditorialFormFields = {
   title: string;
   author: string;
@@ -161,6 +179,7 @@ type NewsDetailEditorialFormFields = {
 
 export type NewsDetailEditorialFormValues = NewsDetailEditorialFormFields & {
   __legacySnapshot?: NewsLegacyCompatibilitySnapshot;
+  __compatibilityTouched?: NewsDetailCompatibilityTouchedState;
 };
 
 type NewsDetailCompatibilityAliases = {

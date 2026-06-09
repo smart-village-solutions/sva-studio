@@ -141,31 +141,59 @@ describe('news.detail-form', () => {
     })).resolves.not.toHaveProperty('externalId');
   });
 
+  it('omits untouched compatibility defaults from serialized mutations', () => {
+    const values = createDefaultNewsDetailFormValues('Redaktion');
+
+    values.title = 'Neue News';
+    values.contentTeaser = 'Teaser';
+    values.contentBody = '<p>Body</p>';
+
+    const mutation = mapNewsDetailFormValuesToMutation(values, 'create');
+
+    expect(mutation).not.toHaveProperty('externalId');
+    expect(mutation).not.toHaveProperty('keywords');
+    expect(mutation).not.toHaveProperty('newsType');
+    expect(mutation).not.toHaveProperty('pointOfInterestId');
+    expect(mutation).not.toHaveProperty('address');
+    expect(mutation).not.toHaveProperty('charactersToBeShown');
+  });
+
+  it('preserves compatibility publicationDate edits distinct from publishedAt', () => {
+    const values = createDefaultNewsDetailFormValues('Redaktion');
+
+    values.contentBlocks = [{ title: 'Block', intro: 'Teaser', body: '<p>Body</p>', mediaContents: [] }];
+    values.publishedAt = '2026-06-01T12:00:00.000Z';
+    values.publicationDate = '2026-05-31T18:30:00.000Z';
+
+    const mutation = mapNewsDetailFormValuesToMutation(values, 'create');
+
+    expect(mutation).toMatchObject({
+      title: 'Block',
+      publishedAt: '2026-06-01T12:00:00.000Z',
+      publicationDate: '2026-05-31T18:30:00.000Z',
+      contentBlocks: [expect.objectContaining({ title: 'Block', intro: 'Teaser', body: '<p>Body</p>' })],
+    });
+  });
+
   it('serializes edit payloads from the simplified fields even when compatibility data disagrees', () => {
-    const values = {
-      ...mapNewsItemToDetailFormValues(sampleItem),
-      title: 'Aktualisierte News',
-      contentTeaser: 'Neuer Teaser',
-      contentBody: '<p>Neuer Inhalt</p>',
-      publicationMode: 'scheduled' as const,
-      scheduledPublicationAt: '2026-06-01T12:00:00.000Z',
-      pushNotificationEnabled: true,
-      __legacySnapshot: {
-        ...mapNewsItemToDetailFormValues(sampleItem).__legacySnapshot,
-        publishedAt: '2026-05-24T09:00:00.000Z',
-        publicationDate: '2026-05-24T08:00:00.000Z',
+    const values = mapNewsItemToDetailFormValues(sampleItem);
+
+    values.contentBlocks = [
+      {
+        title: 'Legacy Abschnitt',
+        intro: 'Legacy Teaser',
+        body: '<p>Legacy Inhalt</p>',
+        mediaContents: [],
       },
-      publishedAt: '2020-01-01T00:00:00.000Z',
-      publicationDate: '2020-01-01T00:00:00.000Z',
-      contentBlocks: [
-        {
-          title: 'Legacy Abschnitt',
-          intro: 'Legacy Teaser',
-          body: '<p>Legacy Inhalt</p>',
-          mediaContents: [],
-        },
-      ],
-    };
+    ];
+    values.publishedAt = '2020-01-01T00:00:00.000Z';
+    values.publicationDate = '2020-01-01T00:00:00.000Z';
+    values.title = 'Aktualisierte News';
+    values.contentTeaser = 'Neuer Teaser';
+    values.contentBody = '<p>Neuer Inhalt</p>';
+    values.publicationMode = 'scheduled';
+    values.scheduledPublicationAt = '2026-06-01T12:00:00.000Z';
+    values.pushNotificationEnabled = true;
 
     expect(mapNewsDetailFormValuesToMutation(values, 'edit')).toMatchObject({
       externalId: 'ext-42',
@@ -177,7 +205,7 @@ describe('news.detail-form', () => {
       keywords: 'Rathaus, Termin',
       title: 'Aktualisierte News',
       publishedAt: '2026-06-01T12:00:00.000Z',
-      publicationDate: '2026-06-01T12:00:00.000Z',
+      publicationDate: '2020-01-01T00:00:00.000Z',
       contentBlocks: [
         expect.objectContaining({
           title: 'Aktualisierte News',

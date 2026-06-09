@@ -5,6 +5,7 @@ import { buildNewsSavePayload, createNewsEditorFormValues } from './news.editor-
 import type {
   NewsContentBlockFormValue,
   NewsContentItem,
+  NewsDetailCompatibilityField,
   NewsDetailEditorialFormValues,
   NewsDetailFormValues,
   NewsDetailTabId,
@@ -77,6 +78,8 @@ const defaultMediaContent = (): NewsMediaContentFormValue => ({
 });
 
 const createEmptyLegacySnapshot = (): MutableLegacyCompatibilitySnapshot => ({});
+
+const createEmptyCompatibilityTouched = () => ({});
 
 const defaultContentBlock = (): NewsContentBlockFormValue => ({
   title: '',
@@ -370,6 +373,14 @@ const ensureLegacySnapshot = (values: NewsDetailEditorialFormValues): MutableLeg
   return values.__legacySnapshot as MutableLegacyCompatibilitySnapshot;
 };
 
+const ensureCompatibilityTouched = (values: NewsDetailEditorialFormValues) => {
+  if (!values.__compatibilityTouched) {
+    values.__compatibilityTouched = createEmptyCompatibilityTouched();
+  }
+
+  return values.__compatibilityTouched;
+};
+
 const toCompatibilityContentBlocks = (values: NewsDetailEditorialFormValues): NewsContentBlockFormValue[] => [
   {
     title: values.title,
@@ -407,7 +418,8 @@ const syncPublicationModeFromPublishedAt = (values: NewsDetailEditorialFormValue
 
 const defineCompatibilityAlias = <TValue>(
   values: CompatibilityFormValues,
-  key: string,
+  editorialValues: NewsDetailEditorialFormValues,
+  key: NewsDetailCompatibilityField,
   getValue: () => TValue,
   setValue: (nextValue: TValue) => void
 ) => {
@@ -419,24 +431,28 @@ const defineCompatibilityAlias = <TValue>(
     configurable: true,
     enumerable: true,
     get: getValue,
-    set: setValue,
+    set: (nextValue: TValue) => {
+      ensureCompatibilityTouched(editorialValues)[key] = true;
+      setValue(nextValue);
+    },
   });
 };
 
 const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues): NewsDetailFormValues => {
   const compatibilityValues = values as CompatibilityFormValues;
 
-  defineCompatibilityAlias(compatibilityValues, 'keywords', () => ensureLegacySnapshot(values).keywords ?? '', (nextValue) => {
+  defineCompatibilityAlias(compatibilityValues, values, 'keywords', () => ensureLegacySnapshot(values).keywords ?? '', (nextValue) => {
     ensureLegacySnapshot(values).keywords = nextValue;
   });
-  defineCompatibilityAlias(compatibilityValues, 'externalId', () => ensureLegacySnapshot(values).externalId ?? '', (nextValue) => {
+  defineCompatibilityAlias(compatibilityValues, values, 'externalId', () => ensureLegacySnapshot(values).externalId ?? '', (nextValue) => {
     ensureLegacySnapshot(values).externalId = nextValue;
   });
-  defineCompatibilityAlias(compatibilityValues, 'newsType', () => ensureLegacySnapshot(values).newsType ?? '', (nextValue) => {
+  defineCompatibilityAlias(compatibilityValues, values, 'newsType', () => ensureLegacySnapshot(values).newsType ?? '', (nextValue) => {
     ensureLegacySnapshot(values).newsType = nextValue;
   });
   defineCompatibilityAlias(
     compatibilityValues,
+    values,
     'charactersToBeShown',
     () => {
       const currentValue = ensureLegacySnapshot(values).charactersToBeShown;
@@ -446,11 +462,12 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
       ensureLegacySnapshot(values).charactersToBeShown = nextValue;
     }
   );
-  defineCompatibilityAlias(compatibilityValues, 'fullVersion', () => ensureLegacySnapshot(values).fullVersion ?? false, (nextValue) => {
+  defineCompatibilityAlias(compatibilityValues, values, 'fullVersion', () => ensureLegacySnapshot(values).fullVersion ?? false, (nextValue) => {
     ensureLegacySnapshot(values).fullVersion = nextValue;
   });
   defineCompatibilityAlias(
     compatibilityValues,
+    values,
     'showPublishDate',
     () => ensureLegacySnapshot(values).showPublishDate ?? true,
     (nextValue) => {
@@ -459,6 +476,7 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
   );
   defineCompatibilityAlias(
     compatibilityValues,
+    values,
     'pushNotification',
     () => values.pushNotificationEnabled,
     (nextValue) => {
@@ -467,6 +485,7 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
   );
   defineCompatibilityAlias(
     compatibilityValues,
+    values,
     'teaserImageAssetId',
     () => ensureLegacySnapshot(values).teaserImageAssetId ?? null,
     (nextValue) => {
@@ -475,6 +494,7 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
   );
   defineCompatibilityAlias(
     compatibilityValues,
+    values,
     'headerImageAssetId',
     () => ensureLegacySnapshot(values).headerImageAssetId ?? null,
     (nextValue) => {
@@ -483,6 +503,7 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
   );
   defineCompatibilityAlias(
     compatibilityValues,
+    values,
     'address',
     () =>
       ensureLegacySnapshot(values).address ?? {
@@ -496,6 +517,7 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
   );
   defineCompatibilityAlias(
     compatibilityValues,
+    values,
     'pointOfInterestId',
     () => ensureLegacySnapshot(values).pointOfInterestId ?? '',
     (nextValue) => {
@@ -504,6 +526,7 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
   );
   defineCompatibilityAlias(
     compatibilityValues,
+    values,
     'contentBlocks',
     () => buildCompatibilityContentBlocks(values),
     (nextValue) => {
@@ -517,6 +540,7 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
   );
   defineCompatibilityAlias(
     compatibilityValues,
+    values,
     'publishedAt',
     () => {
       const snapshot = ensureLegacySnapshot(values);
@@ -533,6 +557,7 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
   );
   defineCompatibilityAlias(
     compatibilityValues,
+    values,
     'publicationDate',
     () => ensureLegacySnapshot(values).publicationDate ?? '',
     (nextValue) => {
@@ -557,6 +582,7 @@ export const createDefaultNewsDetailFormValues = (author = ''): NewsDetailFormVa
     publicationMode: 'draft',
     scheduledPublicationAt: '',
     __legacySnapshot: createEmptyLegacySnapshot(),
+    __compatibilityTouched: createEmptyCompatibilityTouched(),
   });
 
 export const mapNewsItemToDetailFormValues = (item: NewsContentItem): NewsDetailFormValues =>
@@ -626,50 +652,51 @@ const normalizeEditorialValues = (values: NewsDetailFormValues): NewsDetailFormV
 const syncSnapshotFromCompatibilityValues = (values: NewsDetailFormValues) => {
   const compatibilityValues = values as CompatibilityFormValues;
   const snapshot = ensureLegacySnapshot(values);
+  const touched = ensureCompatibilityTouched(values);
 
-  if (typeof compatibilityValues.keywords === 'string') {
+  if (touched.keywords && typeof compatibilityValues.keywords === 'string') {
     snapshot.keywords = compatibilityValues.keywords;
   }
-  if (typeof compatibilityValues.externalId === 'string') {
+  if (touched.externalId && typeof compatibilityValues.externalId === 'string') {
     snapshot.externalId = compatibilityValues.externalId;
   }
-  if (typeof compatibilityValues.newsType === 'string') {
+  if (touched.newsType && typeof compatibilityValues.newsType === 'string') {
     snapshot.newsType = compatibilityValues.newsType;
   }
-  if (typeof compatibilityValues.charactersToBeShown === 'string') {
+  if (touched.charactersToBeShown && typeof compatibilityValues.charactersToBeShown === 'string') {
     snapshot.charactersToBeShown = compatibilityValues.charactersToBeShown;
   }
-  if (typeof compatibilityValues.fullVersion === 'boolean') {
+  if (touched.fullVersion && typeof compatibilityValues.fullVersion === 'boolean') {
     snapshot.fullVersion = compatibilityValues.fullVersion;
   }
-  if (typeof compatibilityValues.showPublishDate === 'boolean') {
+  if (touched.showPublishDate && typeof compatibilityValues.showPublishDate === 'boolean') {
     snapshot.showPublishDate = compatibilityValues.showPublishDate;
   }
-  if (typeof compatibilityValues.pushNotification === 'boolean') {
+  if (touched.pushNotification && typeof compatibilityValues.pushNotification === 'boolean') {
     values.pushNotificationEnabled = compatibilityValues.pushNotification;
   }
-  if (typeof compatibilityValues.publishedAt === 'string' && compatibilityValues.publishedAt.trim().length > 0) {
+  if (touched.publishedAt && typeof compatibilityValues.publishedAt === 'string') {
     snapshot.publishedAt = compatibilityValues.publishedAt;
     if (values.publicationMode === 'draft' && values.scheduledPublicationAt.trim().length === 0) {
       syncPublicationModeFromPublishedAt(values, compatibilityValues.publishedAt);
     }
   }
-  if (typeof compatibilityValues.publicationDate === 'string') {
+  if (touched.publicationDate && typeof compatibilityValues.publicationDate === 'string') {
     snapshot.publicationDate = compatibilityValues.publicationDate;
   }
-  if (compatibilityValues.address && typeof compatibilityValues.address === 'object') {
+  if (touched.address && compatibilityValues.address && typeof compatibilityValues.address === 'object') {
     snapshot.address = compatibilityValues.address;
   }
-  if (typeof compatibilityValues.pointOfInterestId === 'string') {
+  if (touched.pointOfInterestId && typeof compatibilityValues.pointOfInterestId === 'string') {
     snapshot.pointOfInterestId = compatibilityValues.pointOfInterestId;
   }
-  if (compatibilityValues.teaserImageAssetId !== undefined) {
+  if (touched.teaserImageAssetId && compatibilityValues.teaserImageAssetId !== undefined) {
     snapshot.teaserImageAssetId = compatibilityValues.teaserImageAssetId;
   }
-  if (compatibilityValues.headerImageAssetId !== undefined) {
+  if (touched.headerImageAssetId && compatibilityValues.headerImageAssetId !== undefined) {
     snapshot.headerImageAssetId = compatibilityValues.headerImageAssetId;
   }
-  if (Array.isArray(compatibilityValues.contentBlocks)) {
+  if (touched.contentBlocks && Array.isArray(compatibilityValues.contentBlocks)) {
     snapshot.legacyContentBlocks = compatibilityValues.contentBlocks;
   }
 };

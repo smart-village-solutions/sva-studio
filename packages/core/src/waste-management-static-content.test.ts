@@ -115,4 +115,13 @@ describe('buildWasteTypesStaticContent', () => {
       ])
     ).rejects.toThrow('duplicate_waste_type_key:BIO');
   });
+
+  it('sorts waste type keys deterministically without relying on runtime locale', async () => {
+    const artifact = await buildWasteTypesStaticContent([
+      createFraction({ id: 'fraction-umlaut', pdfShortLabel: 'ÄB' }),
+      createFraction({ id: 'fraction-ascii', pdfShortLabel: 'ZA' }),
+    ]);
+
+    expect(Object.keys(JSON.parse(artifact.content) as Record<string, unknown>)).toEqual(['ZA', 'ÄB']);
+  });
 });

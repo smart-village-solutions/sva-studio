@@ -344,10 +344,35 @@ describe('waste-management api client', () => {
             data: {
               id: 'fraction-3',
               name: 'Papier',
+              pdfShortLabel: 'PPK',
               color: '#123456',
               active: true,
+              translations: { de: 'Papier', en: 'Paper' },
+              description: null,
+              containerSize: null,
+              reminderCount: 'none',
+              reminderChannelPushEnabled: false,
+              reminderChannelEmailEnabled: false,
+              reminderChannelCalendarEnabled: false,
               createdAt: '2026-05-09T10:00:00.000Z',
               updatedAt: '2026-05-09T10:00:00.000Z',
+            },
+            syncStatus: 'queued',
+            syncJob: {
+              id: 'job-1',
+              instanceId: 'tenant-a',
+              pluginId: 'waste-management',
+              jobTypeId: 'waste-management.sync-waste-types',
+              queueName: 'plugin-operations',
+              status: 'queued',
+              inputPayload: { operation: 'sync-waste-types' },
+              attempts: 0,
+              maxAttempts: 5,
+              idempotencyKey: 'idem-1',
+              scheduledAt: '2026-05-09T10:00:00.000Z',
+              createdAt: '2026-05-09T10:00:00.000Z',
+              updatedAt: '2026-05-09T10:00:00.000Z',
+              history: [],
             },
           }),
           { status: 201, headers: { 'Content-Type': 'application/json' } }
@@ -359,28 +384,67 @@ describe('waste-management api client', () => {
             data: {
               id: 'fraction-3',
               name: 'Papier Plus',
+              pdfShortLabel: 'PPK+',
               color: '#123456',
               active: true,
+              translations: { de: 'Papier Plus', en: 'Paper Plus' },
+              description: null,
+              containerSize: null,
+              reminderCount: 'once',
+              firstReminderMaxLeadDays: 2,
+              reminderChannelPushEnabled: true,
+              reminderChannelEmailEnabled: false,
+              reminderChannelCalendarEnabled: false,
               createdAt: '2026-05-09T10:00:00.000Z',
               updatedAt: '2026-05-09T12:00:00.000Z',
             },
+            syncStatus: 'queued',
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         )
       );
 
-    await createWasteManagementFraction({
-      id: 'fraction-3',
-      name: 'Papier',
-      translations: { de: 'Papier', en: 'Paper' },
-      color: '#123456',
-      active: true,
+    await expect(
+      createWasteManagementFraction({
+        id: 'fraction-3',
+        name: 'Papier',
+        pdfShortLabel: 'PPK',
+        translations: { de: 'Papier', en: 'Paper' },
+        color: '#123456',
+        active: true,
+        reminderCount: 'none',
+        reminderChannelPushEnabled: false,
+        reminderChannelEmailEnabled: false,
+        reminderChannelCalendarEnabled: false,
+      })
+    ).resolves.toMatchObject({
+      data: expect.objectContaining({
+        id: 'fraction-3',
+        name: 'Papier',
+        pdfShortLabel: 'PPK',
+      }),
+      syncStatus: 'queued',
     });
-    await updateWasteManagementFraction('fraction-3', {
-      name: 'Papier Plus',
-      translations: { de: 'Papier Plus', en: 'Paper Plus' },
-      color: '#123456',
-      active: true,
+    await expect(
+      updateWasteManagementFraction('fraction-3', {
+        name: 'Papier Plus',
+        pdfShortLabel: 'PPK+',
+        translations: { de: 'Papier Plus', en: 'Paper Plus' },
+        color: '#123456',
+        active: true,
+        reminderCount: 'once',
+        firstReminderMaxLeadDays: 2,
+        reminderChannelPushEnabled: true,
+        reminderChannelEmailEnabled: false,
+        reminderChannelCalendarEnabled: false,
+      })
+    ).resolves.toMatchObject({
+      data: expect.objectContaining({
+        id: 'fraction-3',
+        name: 'Papier Plus',
+        pdfShortLabel: 'PPK+',
+      }),
+      syncStatus: 'queued',
     });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -391,9 +455,14 @@ describe('waste-management api client', () => {
         body: JSON.stringify({
           id: 'fraction-3',
           name: 'Papier',
+          pdfShortLabel: 'PPK',
           translations: { de: 'Papier', en: 'Paper' },
           color: '#123456',
           active: true,
+          reminderCount: 'none',
+          reminderChannelPushEnabled: false,
+          reminderChannelEmailEnabled: false,
+          reminderChannelCalendarEnabled: false,
         }),
       })
     );
@@ -404,9 +473,15 @@ describe('waste-management api client', () => {
         method: 'PUT',
         body: JSON.stringify({
           name: 'Papier Plus',
+          pdfShortLabel: 'PPK+',
           translations: { de: 'Papier Plus', en: 'Paper Plus' },
           color: '#123456',
           active: true,
+          reminderCount: 'once',
+          firstReminderMaxLeadDays: 2,
+          reminderChannelPushEnabled: true,
+          reminderChannelEmailEnabled: false,
+          reminderChannelCalendarEnabled: false,
         }),
       })
     );

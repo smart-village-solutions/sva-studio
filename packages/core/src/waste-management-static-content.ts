@@ -31,6 +31,13 @@ export type WasteTypesStaticContentArtifact = {
 };
 
 const normalizeWasteTypeKey = (value: string): string => value.trim().toUpperCase();
+const compareWasteTypeKeys = (leftKey: string, rightKey: string): number => {
+  if (leftKey === rightKey) {
+    return 0;
+  }
+
+  return leftKey < rightKey ? -1 : 1;
+};
 
 const toWasteTypeEntry = (fraction: WasteFractionRecord, shortLabel: string): WasteTypeStaticContentEntry => ({
   label: fraction.name,
@@ -80,7 +87,7 @@ export const buildWasteTypesStaticContent = async (
       }
       return [key, toWasteTypeEntry(fraction, key)] as const;
     })
-    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
+    .sort(([leftKey], [rightKey]) => compareWasteTypeKeys(leftKey, rightKey));
 
   const payload: Record<string, WasteTypeStaticContentEntry> = {};
   for (const [key, entry] of entries) {

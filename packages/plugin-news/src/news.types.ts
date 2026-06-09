@@ -124,7 +124,28 @@ export type NewsPublicationMode = 'draft' | 'immediate' | 'scheduled';
 
 export type NewsEditorialStatus = 'draft' | 'scheduled' | 'published';
 
-export type NewsDetailFormValues = {
+export type NewsLegacyCompatibilitySnapshot = {
+  readonly keywords?: string;
+  readonly externalId?: string;
+  readonly fullVersion?: boolean;
+  readonly charactersToBeShown?: number | string;
+  readonly newsType?: string;
+  readonly publishedAt?: string;
+  readonly publicationDate?: string;
+  readonly showPublishDate?: boolean;
+  readonly address?: {
+    readonly street?: string;
+    readonly zip?: string;
+    readonly city?: string;
+  };
+  readonly pointOfInterestId?: string;
+  readonly pushNotificationsSentAt?: string;
+  readonly teaserImageAssetId?: string | null;
+  readonly headerImageAssetId?: string | null;
+  readonly legacyContentBlocks?: NewsContentBlockFormValue[];
+};
+
+type NewsDetailEditorialFormFields = {
   title: string;
   author: string;
   categories: string[];
@@ -136,25 +157,35 @@ export type NewsDetailFormValues = {
   pushNotificationEnabled: boolean;
   publicationMode: NewsPublicationMode;
   scheduledPublicationAt: string;
-  keywords: string;
-  publishedAt: string;
-  publicationDate: string;
-  externalId: string;
-  newsType: string;
-  charactersToBeShown: string;
-  fullVersion: boolean;
-  showPublishDate: boolean;
-  pushNotification: boolean;
-  teaserImageAssetId: string | null;
-  headerImageAssetId: string | null;
-  contentBlocks: NewsContentBlockFormValue[];
-  address: {
-    street: string;
-    zip: string;
-    city: string;
-  };
-  pointOfInterestId: string;
 };
+
+export type NewsDetailEditorialFormValues = NewsDetailEditorialFormFields & {
+  __legacySnapshot?: NewsLegacyCompatibilitySnapshot;
+};
+
+type NewsDetailCompatibilityAliases = {
+  // Internal compatibility aliases for still-unported page/tab code.
+  readonly keywords?: string;
+  readonly publishedAt?: string;
+  readonly publicationDate?: string;
+  readonly externalId?: string;
+  readonly newsType?: string;
+  readonly charactersToBeShown?: string;
+  readonly fullVersion?: boolean;
+  readonly showPublishDate?: boolean;
+  readonly pushNotification?: boolean;
+  readonly teaserImageAssetId: string | null;
+  readonly headerImageAssetId: string | null;
+  readonly contentBlocks?: NewsContentBlockFormValue[];
+  readonly address?: {
+    readonly street?: string;
+    readonly zip?: string;
+    readonly city?: string;
+  };
+  readonly pointOfInterestId?: string;
+};
+
+export type NewsDetailFormValues = NewsDetailEditorialFormValues & NewsDetailCompatibilityAliases;
 
 export type NewsSavePlan = {
   readonly mutation: NewsFormInput;

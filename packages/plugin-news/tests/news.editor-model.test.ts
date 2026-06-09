@@ -60,6 +60,20 @@ const editorValuesFixture: NewsDetailFormValues = {
 };
 
 describe('news.editor-model', () => {
+  it('stores legacy update fields in a hidden snapshot for compatibility-driven updates', () => {
+    const values = createNewsEditorFormValues(newsItemFixture);
+
+    expect(values.__legacySnapshot).toMatchObject({
+      externalId: 'legacy-external-id',
+      newsType: 'legacy-news-type',
+      charactersToBeShown: 240,
+      fullVersion: true,
+      showPublishDate: false,
+      pointOfInterestId: 'poi-7',
+      keywords: 'Rathaus, Termin',
+    });
+  });
+
   it('falls back to the first content block headline when the explicit title is empty', () => {
     expect(
       createNewsEditorFormValues({
@@ -83,7 +97,11 @@ describe('news.editor-model', () => {
   });
 
   it('preserves hidden legacy fields on update payloads', () => {
-    const payload = buildNewsSavePayload(editorValuesFixture, newsItemFixture, '2026-06-09T10:00:00.000Z').mutation;
+    const payload = buildNewsSavePayload(
+      editorValuesFixture,
+      editorValuesFixture.__legacySnapshot ?? null,
+      '2026-06-09T10:00:00.000Z'
+    ).mutation;
 
     expect(payload).toMatchObject({
       externalId: 'legacy-external-id',

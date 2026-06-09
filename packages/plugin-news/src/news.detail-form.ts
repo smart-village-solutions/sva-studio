@@ -5,9 +5,11 @@ import { buildNewsSavePayload, createNewsEditorFormValues } from './news.editor-
 import type {
   NewsContentBlockFormValue,
   NewsContentItem,
+  NewsDetailEditorialFormValues,
   NewsDetailFormValues,
   NewsDetailTabId,
   NewsFormInput,
+  NewsLegacyCompatibilitySnapshot,
   NewsMediaContentFormValue,
   NewsWebUrl,
 } from './news.types.js';
@@ -17,6 +19,48 @@ type DirtyFieldTree = {
 };
 
 type DirtyTabState = Record<NewsDetailTabId, boolean>;
+
+type MutableLegacyCompatibilitySnapshot = {
+  keywords?: string;
+  externalId?: string;
+  fullVersion?: boolean;
+  charactersToBeShown?: number | string;
+  newsType?: string;
+  publishedAt?: string;
+  publicationDate?: string;
+  showPublishDate?: boolean;
+  address?: {
+    street?: string;
+    zip?: string;
+    city?: string;
+  };
+  pointOfInterestId?: string;
+  pushNotificationsSentAt?: string;
+  teaserImageAssetId?: string | null;
+  headerImageAssetId?: string | null;
+  legacyContentBlocks?: NewsContentBlockFormValue[];
+};
+
+type CompatibilityFormValues = NewsDetailFormValues & {
+  keywords?: string;
+  publishedAt?: string;
+  publicationDate?: string;
+  externalId?: string;
+  newsType?: string;
+  charactersToBeShown?: string;
+  fullVersion?: boolean;
+  showPublishDate?: boolean;
+  pushNotification?: boolean;
+  teaserImageAssetId?: string | null;
+  headerImageAssetId?: string | null;
+  contentBlocks?: NewsContentBlockFormValue[];
+  address?: {
+    street?: string;
+    zip?: string;
+    city?: string;
+  };
+  pointOfInterestId?: string;
+};
 
 const emptyWebUrl = (): NewsWebUrl => ({
   url: '',
@@ -32,6 +76,8 @@ const defaultMediaContent = (): NewsMediaContentFormValue => ({
   sourceUrl: emptyWebUrl(),
 });
 
+const createEmptyLegacySnapshot = (): MutableLegacyCompatibilitySnapshot => ({});
+
 const defaultContentBlock = (): NewsContentBlockFormValue => ({
   title: '',
   intro: '',
@@ -40,6 +86,29 @@ const defaultContentBlock = (): NewsContentBlockFormValue => ({
 });
 
 const isValidDateString = (value: string): boolean => Number.isNaN(new Date(value).getTime()) === false;
+
+const isValidLocalDateTimeString = (value: string): boolean => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/u.exec(value);
+  if (!match) {
+    return false;
+  }
+
+  const [, yearString, monthString, dayString, hourString, minuteString] = match;
+  const year = Number(yearString);
+  const month = Number(monthString);
+  const day = Number(dayString);
+  const hour = Number(hourString);
+  const minute = Number(minuteString);
+  const date = new Date(year, month - 1, day, hour, minute, 0, 0);
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day &&
+    date.getHours() === hour &&
+    date.getMinutes() === minute
+  );
+};
 
 const isHttpsUrl = (value: string): boolean => {
   try {
@@ -104,12 +173,31 @@ const mediaContentSchema = z.object({
   }),
 });
 
-const contentBlockSchema = z.object({
-  title: z.string(),
-  intro: z.string(),
-  body: z.string(),
-  mediaContents: z.array(mediaContentSchema),
-});
+const legacySnapshotSchema = z.object({
+  keywords: z.string().optional(),
+  externalId: z.string().optional(),
+  fullVersion: z.boolean().optional(),
+  charactersToBeShown: z.union([z.number(), z.string()]).optional(),
+  newsType: z.string().optional(),
+  publishedAt: z.string().optional(),
+  publicationDate: z.string().optional(),
+  showPublishDate: z.boolean().optional(),
+  address: z.object({
+    street: z.string().optional(),
+    zip: z.string().optional(),
+    city: z.string().optional(),
+  }).optional(),
+  pointOfInterestId: z.string().optional(),
+  pushNotificationsSentAt: z.string().optional(),
+  teaserImageAssetId: z.string().nullable().optional(),
+  headerImageAssetId: z.string().nullable().optional(),
+  legacyContentBlocks: z.array(z.object({
+    title: z.string(),
+    intro: z.string(),
+    body: z.string(),
+    mediaContents: z.array(mediaContentSchema),
+  })).optional(),
+}).optional();
 
 const hasInvalidMediaUrls = (mediaContents: readonly NewsMediaContentFormValue[]) =>
   mediaContents.some((media) => {
@@ -117,13 +205,46 @@ const hasInvalidMediaUrls = (mediaContents: readonly NewsMediaContentFormValue[]
     return url.length > 0 && isHttpsUrl(url) === false;
   });
 
-const usesSimplifiedEditorialModel = (values: NewsDetailFormValues) =>
-  values.contentBody.trim().length > 0 ||
-  values.contentTeaser.trim().length > 0 ||
-  values.contentMedia.length > 0 ||
-  values.sourceUrlDescription.trim().length > 0 ||
-  values.publicationMode !== 'draft' ||
-  values.scheduledPublicationAt.trim().length > 0;
+const readCompatibilityString = (values: Record<string, unknown>, key: string): string | undefined => {
+  const value = values[key];
+  return typeof value === 'string' ? value : undefined;
+};
+
+const isStrictlyValidCompatibilityDate = (value: string): boolean => {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/u.test(value)) {
+    return isValidLocalDateTimeString(value);
+  }
+
+  return isValidDateString(value);
+};
+
+const readCompatibilityContentBlocks = (values: Record<string, unknown>): NewsContentBlockFormValue[] => {
+  const rawValue = values.contentBlocks;
+  if (Array.isArray(rawValue) === false) {
+    return [];
+  }
+
+  return rawValue.filter((entry): entry is NewsContentBlockFormValue => {
+    if (!entry || typeof entry !== 'object') {
+      return false;
+    }
+
+    const candidate = entry as Record<string, unknown>;
+    return (
+      typeof candidate.title === 'string' &&
+      typeof candidate.intro === 'string' &&
+      typeof candidate.body === 'string' &&
+      Array.isArray(candidate.mediaContents)
+    );
+  });
+};
+
+const usesLegacyPageCompatibility = (values: Record<string, unknown>) =>
+  'publishedAt' in values ||
+  'publicationDate' in values ||
+  'contentBlocks' in values ||
+  'keywords' in values ||
+  'externalId' in values;
 
 export const newsDetailFormSchema = z
   .object({
@@ -141,42 +262,25 @@ export const newsDetailFormSchema = z
     pushNotificationEnabled: z.boolean(),
     publicationMode: z.enum(['draft', 'immediate', 'scheduled']),
     scheduledPublicationAt: z.string(),
-    keywords: z.string(),
-    publishedAt: z.string(),
-    publicationDate: z.string(),
-    externalId: z.string(),
-    newsType: z.string(),
-    charactersToBeShown: z.string(),
-    fullVersion: z.boolean(),
-    showPublishDate: z.boolean(),
-    pushNotification: z.boolean(),
-    teaserImageAssetId: z.string().nullable(),
-    headerImageAssetId: z.string().nullable(),
-    contentBlocks: z.array(contentBlockSchema),
-    address: z.object({
-      street: z.string(),
-      zip: z.string(),
-      city: z.string(),
-    }),
-    pointOfInterestId: z.string(),
+    __legacySnapshot: legacySnapshotSchema,
   })
+  .passthrough()
   .superRefine((values, ctx) => {
+    const compatibilityMode = usesLegacyPageCompatibility(values as Record<string, unknown>);
+
+    if (compatibilityMode === false && values.author.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['author'],
+        message: 'author',
+      });
+    }
+
     if (values.sourceUrl.url.trim().length > 0 && isHttpsUrl(values.sourceUrl.url) === false) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['sourceUrl', 'url'],
         message: 'sourceUrl',
-      });
-    }
-
-    if (
-      values.charactersToBeShown.trim().length > 0 &&
-      (/^\d+$/u.test(values.charactersToBeShown) === false || Number(values.charactersToBeShown) < 0)
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['charactersToBeShown'],
-        message: 'charactersToBeShown',
       });
     }
 
@@ -188,46 +292,41 @@ export const newsDetailFormSchema = z
       });
     }
 
-    if (
-      values.contentBlocks.some((block) => block.body.length > 50_000) ||
-      values.contentBlocks.some((block) => hasInvalidMediaUrls(block.mediaContents))
-    ) {
+    if (values.publicationMode === 'scheduled' && isValidDateString(values.scheduledPublicationAt) === false) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['contentBlocks'],
-        message: 'contentBlocks',
+        path: ['scheduledPublicationAt'],
+        message: 'scheduledPublicationAt',
       });
     }
 
-    if (usesSimplifiedEditorialModel(values)) {
-      if (values.author.trim().length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['author'],
-          message: 'author',
-        });
-      }
+    if (getVisibleTextLength(values.contentBody) === 0) {
+      const compatibilityBlocks = readCompatibilityContentBlocks(values as Record<string, unknown>);
+      const fallbackBody = compatibilityBlocks[0]?.body ?? '';
 
-      if (values.publicationMode === 'scheduled' && isValidDateString(values.scheduledPublicationAt) === false) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['scheduledPublicationAt'],
-          message: 'scheduledPublicationAt',
-        });
-      }
-
-      if (getVisibleTextLength(values.contentBody) === 0) {
+      if (getVisibleTextLength(fallbackBody) === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['contentBody'],
           message: 'contentBody',
         });
-      }
 
-      return;
+        if (compatibilityMode) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['contentBlocks'],
+            message: 'contentBlocks',
+          });
+        }
+      }
     }
 
-    if (values.publishedAt.trim().length === 0 || isValidDateString(values.publishedAt) === false) {
+    const compatibilityPublishedAt = readCompatibilityString(values as Record<string, unknown>, 'publishedAt');
+    if (
+      compatibilityPublishedAt &&
+      compatibilityPublishedAt.trim().length > 0 &&
+      isStrictlyValidCompatibilityDate(compatibilityPublishedAt) === false
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['publishedAt'],
@@ -235,7 +334,12 @@ export const newsDetailFormSchema = z
       });
     }
 
-    if (values.publicationDate.trim().length > 0 && isValidDateString(values.publicationDate) === false) {
+    const compatibilityPublicationDate = readCompatibilityString(values as Record<string, unknown>, 'publicationDate');
+    if (
+      compatibilityPublicationDate &&
+      compatibilityPublicationDate.trim().length > 0 &&
+      isStrictlyValidCompatibilityDate(compatibilityPublicationDate) === false
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['publicationDate'],
@@ -243,58 +347,220 @@ export const newsDetailFormSchema = z
       });
     }
 
-    if (values.contentBlocks.length === 0) {
+    const compatibilityCharactersToBeShown = readCompatibilityString(values as Record<string, unknown>, 'charactersToBeShown');
+    if (
+      compatibilityCharactersToBeShown &&
+      (/^\d+$/u.test(compatibilityCharactersToBeShown) === false || Number(compatibilityCharactersToBeShown) < 0)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['contentBlocks'],
-        message: 'contentBlocks',
-      });
-    }
-
-    if (values.contentBlocks.some((block) => getVisibleTextLength(block.body) > 0) === false) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['contentBlocks'],
-        message: 'contentBlocks',
+        path: ['charactersToBeShown'],
+        message: 'charactersToBeShown',
       });
     }
   });
 
 export const newsDetailFormResolver = zodResolver(newsDetailFormSchema as never);
 
-export const createDefaultNewsDetailFormValues = (author = ''): NewsDetailFormValues => ({
-  title: '',
-  author,
-  categories: [],
-  contentTeaser: '',
-  contentBody: '',
-  contentMedia: [],
-  sourceUrl: emptyWebUrl(),
-  sourceUrlDescription: '',
-  pushNotificationEnabled: false,
-  publicationMode: 'draft',
-  scheduledPublicationAt: '',
-  keywords: '',
-  publishedAt: '',
-  publicationDate: '',
-  externalId: '',
-  newsType: '',
-  charactersToBeShown: '',
-  fullVersion: false,
-  showPublishDate: true,
-  pushNotification: false,
-  teaserImageAssetId: null,
-  headerImageAssetId: null,
-  contentBlocks: [defaultContentBlock()],
-  address: {
-    street: '',
-    zip: '',
-    city: '',
-  },
-  pointOfInterestId: '',
-});
+const ensureLegacySnapshot = (values: NewsDetailEditorialFormValues): MutableLegacyCompatibilitySnapshot => {
+  if (!values.__legacySnapshot) {
+    values.__legacySnapshot = createEmptyLegacySnapshot();
+  }
 
-export const mapNewsItemToDetailFormValues = (item: NewsContentItem): NewsDetailFormValues => createNewsEditorFormValues(item);
+  return values.__legacySnapshot as MutableLegacyCompatibilitySnapshot;
+};
+
+const toCompatibilityContentBlocks = (values: NewsDetailEditorialFormValues): NewsContentBlockFormValue[] => [
+  {
+    title: values.title,
+    intro: values.contentTeaser,
+    body: values.contentBody,
+    mediaContents: values.contentMedia,
+  },
+];
+
+const buildCompatibilityContentBlocks = (values: NewsDetailEditorialFormValues): NewsContentBlockFormValue[] => {
+  const { legacyContentBlocks = [] } = ensureLegacySnapshot(values);
+  const [, ...remainingBlocks] = legacyContentBlocks;
+
+  return [toCompatibilityContentBlocks(values)[0], ...remainingBlocks];
+};
+
+const syncPublicationModeFromPublishedAt = (values: NewsDetailEditorialFormValues, nextValue: string) => {
+  const trimmedValue = nextValue.trim();
+
+  if (trimmedValue.length === 0) {
+    values.publicationMode = 'draft';
+    values.scheduledPublicationAt = '';
+    return;
+  }
+
+  if (isStrictlyValidCompatibilityDate(trimmedValue) === false) {
+    values.publicationMode = 'draft';
+    values.scheduledPublicationAt = '';
+    return;
+  }
+
+  values.publicationMode = 'scheduled';
+  values.scheduledPublicationAt = trimmedValue;
+};
+
+const defineCompatibilityAlias = <TValue>(
+  values: CompatibilityFormValues,
+  key: string,
+  getValue: () => TValue,
+  setValue: (nextValue: TValue) => void
+) => {
+  if (Object.prototype.hasOwnProperty.call(values, key)) {
+    return;
+  }
+
+  Object.defineProperty(values, key, {
+    configurable: true,
+    enumerable: true,
+    get: getValue,
+    set: setValue,
+  });
+};
+
+const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues): NewsDetailFormValues => {
+  const compatibilityValues = values as CompatibilityFormValues;
+
+  defineCompatibilityAlias(compatibilityValues, 'keywords', () => ensureLegacySnapshot(values).keywords ?? '', (nextValue) => {
+    ensureLegacySnapshot(values).keywords = nextValue;
+  });
+  defineCompatibilityAlias(compatibilityValues, 'externalId', () => ensureLegacySnapshot(values).externalId ?? '', (nextValue) => {
+    ensureLegacySnapshot(values).externalId = nextValue;
+  });
+  defineCompatibilityAlias(compatibilityValues, 'newsType', () => ensureLegacySnapshot(values).newsType ?? '', (nextValue) => {
+    ensureLegacySnapshot(values).newsType = nextValue;
+  });
+  defineCompatibilityAlias(
+    compatibilityValues,
+    'charactersToBeShown',
+    () => {
+      const currentValue = ensureLegacySnapshot(values).charactersToBeShown;
+      return currentValue === undefined ? '' : String(currentValue);
+    },
+    (nextValue) => {
+      ensureLegacySnapshot(values).charactersToBeShown = nextValue;
+    }
+  );
+  defineCompatibilityAlias(compatibilityValues, 'fullVersion', () => ensureLegacySnapshot(values).fullVersion ?? false, (nextValue) => {
+    ensureLegacySnapshot(values).fullVersion = nextValue;
+  });
+  defineCompatibilityAlias(
+    compatibilityValues,
+    'showPublishDate',
+    () => ensureLegacySnapshot(values).showPublishDate ?? true,
+    (nextValue) => {
+      ensureLegacySnapshot(values).showPublishDate = nextValue;
+    }
+  );
+  defineCompatibilityAlias(
+    compatibilityValues,
+    'pushNotification',
+    () => values.pushNotificationEnabled,
+    (nextValue) => {
+      values.pushNotificationEnabled = nextValue;
+    }
+  );
+  defineCompatibilityAlias(
+    compatibilityValues,
+    'teaserImageAssetId',
+    () => ensureLegacySnapshot(values).teaserImageAssetId ?? null,
+    (nextValue) => {
+      ensureLegacySnapshot(values).teaserImageAssetId = nextValue;
+    }
+  );
+  defineCompatibilityAlias(
+    compatibilityValues,
+    'headerImageAssetId',
+    () => ensureLegacySnapshot(values).headerImageAssetId ?? null,
+    (nextValue) => {
+      ensureLegacySnapshot(values).headerImageAssetId = nextValue;
+    }
+  );
+  defineCompatibilityAlias(
+    compatibilityValues,
+    'address',
+    () =>
+      ensureLegacySnapshot(values).address ?? {
+        street: '',
+        zip: '',
+        city: '',
+      },
+    (nextValue) => {
+      ensureLegacySnapshot(values).address = nextValue ?? {};
+    }
+  );
+  defineCompatibilityAlias(
+    compatibilityValues,
+    'pointOfInterestId',
+    () => ensureLegacySnapshot(values).pointOfInterestId ?? '',
+    (nextValue) => {
+      ensureLegacySnapshot(values).pointOfInterestId = nextValue;
+    }
+  );
+  defineCompatibilityAlias(
+    compatibilityValues,
+    'contentBlocks',
+    () => buildCompatibilityContentBlocks(values),
+    (nextValue) => {
+      const firstBlock = nextValue?.[0] ?? defaultContentBlock();
+      ensureLegacySnapshot(values).legacyContentBlocks = nextValue;
+      values.title = firstBlock.title || values.title;
+      values.contentTeaser = firstBlock.intro;
+      values.contentBody = firstBlock.body;
+      values.contentMedia = firstBlock.mediaContents;
+    }
+  );
+  defineCompatibilityAlias(
+    compatibilityValues,
+    'publishedAt',
+    () => {
+      const snapshot = ensureLegacySnapshot(values);
+      if (values.publicationMode === 'scheduled') {
+        return values.scheduledPublicationAt;
+      }
+
+      return snapshot.publishedAt ?? '';
+    },
+    (nextValue) => {
+      ensureLegacySnapshot(values).publishedAt = nextValue;
+      syncPublicationModeFromPublishedAt(values, nextValue);
+    }
+  );
+  defineCompatibilityAlias(
+    compatibilityValues,
+    'publicationDate',
+    () => ensureLegacySnapshot(values).publicationDate ?? '',
+    (nextValue) => {
+      ensureLegacySnapshot(values).publicationDate = nextValue;
+    }
+  );
+
+  return compatibilityValues;
+};
+
+export const createDefaultNewsDetailFormValues = (author = ''): NewsDetailFormValues =>
+  attachLegacyCompatibilityAliases({
+    title: '',
+    author,
+    categories: [],
+    contentTeaser: '',
+    contentBody: '',
+    contentMedia: [],
+    sourceUrl: emptyWebUrl(),
+    sourceUrlDescription: '',
+    pushNotificationEnabled: false,
+    publicationMode: 'draft',
+    scheduledPublicationAt: '',
+    __legacySnapshot: createEmptyLegacySnapshot(),
+  });
+
+export const mapNewsItemToDetailFormValues = (item: NewsContentItem): NewsDetailFormValues =>
+  attachLegacyCompatibilityAliases(createNewsEditorFormValues(item));
 
 const compactWebUrl = (url: string, description?: string): NewsWebUrl | undefined => {
   const compactedUrl = compactString(url);
@@ -316,26 +582,6 @@ const buildCategoryMutation = (categories: NewsDetailFormValues['categories']): 
   };
 };
 
-const buildAddressMutation = (
-  address: NewsDetailFormValues['address']
-): Pick<NewsFormInput, 'address'> | undefined => {
-  const street = compactString(address.street);
-  const zip = compactString(address.zip);
-  const city = compactString(address.city);
-
-  if (!street && !zip && !city) {
-    return undefined;
-  }
-
-  return {
-    address: {
-      ...(street ? { street } : {}),
-      ...(zip ? { zip } : {}),
-      ...(city ? { city } : {}),
-    },
-  };
-};
-
 const buildMediaContentMutation = (media: NewsMediaContentFormValue) => {
   const captionText = compactString(media.captionText);
   const copyright = compactString(media.copyright);
@@ -354,137 +600,115 @@ const buildMediaContentMutation = (media: NewsMediaContentFormValue) => {
   };
 };
 
-const buildContentBlockMutation = (block: NewsContentBlockFormValue) => {
-  const title = compactString(block.title);
-  const intro = compactString(block.intro);
-  const body = compactString(block.body);
-  const mediaContents = block.mediaContents
-    .map(buildMediaContentMutation)
-    .filter((media) => Object.keys(media).length > 0);
+const normalizeEditorialValues = (values: NewsDetailFormValues): NewsDetailFormValues => {
+  const compatibilityValues = values as CompatibilityFormValues;
+  const compatibilityContentBlocks = Array.isArray(compatibilityValues.contentBlocks) ? compatibilityValues.contentBlocks : [];
 
-  return {
-    ...(title ? { title } : {}),
-    ...(intro ? { intro } : {}),
-    ...(body ? { body: block.body.trim() } : {}),
-    ...(mediaContents.length > 0 ? { mediaContents } : {}),
-  };
+  if (values.title.length === 0 && compatibilityContentBlocks[0]?.title) {
+    values.title = compatibilityContentBlocks[0].title;
+  }
+
+  if (values.contentTeaser.length === 0 && compatibilityContentBlocks[0]?.intro) {
+    values.contentTeaser = compatibilityContentBlocks[0].intro;
+  }
+
+  if (values.contentBody.length === 0 && compatibilityContentBlocks[0]?.body) {
+    values.contentBody = compatibilityContentBlocks[0].body;
+  }
+
+  if (values.contentMedia.length === 0 && compatibilityContentBlocks[0]?.mediaContents) {
+    values.contentMedia = compatibilityContentBlocks[0].mediaContents;
+  }
+
+  return values;
 };
 
-const buildSimplifiedContentBlockMutation = (values: NewsDetailFormValues) => ({
-  title: values.title.trim(),
-  intro: values.contentTeaser,
-  body: values.contentBody.trim(),
-  mediaContents: values.contentMedia
-    .map(buildMediaContentMutation)
-    .filter((media) => Object.keys(media).length > 0),
-});
+const syncSnapshotFromCompatibilityValues = (values: NewsDetailFormValues) => {
+  const compatibilityValues = values as CompatibilityFormValues;
+  const snapshot = ensureLegacySnapshot(values);
 
-const buildContentBlocksMutation = (values: NewsDetailFormValues) => {
-  if (values.contentBlocks.length > 0) {
-    return values.contentBlocks.map(buildContentBlockMutation);
+  if (typeof compatibilityValues.keywords === 'string') {
+    snapshot.keywords = compatibilityValues.keywords;
   }
-
-  return [buildSimplifiedContentBlockMutation(values)];
-};
-
-const derivePublishedAt = (values: NewsDetailFormValues): string => {
-  const explicitPublishedAt = compactString(values.publishedAt);
-  if (explicitPublishedAt) {
-    return explicitPublishedAt;
+  if (typeof compatibilityValues.externalId === 'string') {
+    snapshot.externalId = compatibilityValues.externalId;
   }
-
-  if (values.publicationMode === 'scheduled') {
-    return values.scheduledPublicationAt;
+  if (typeof compatibilityValues.newsType === 'string') {
+    snapshot.newsType = compatibilityValues.newsType;
   }
-
-  return new Date().toISOString();
-};
-
-const shouldUseSimplifiedSavePlan = (values: NewsDetailFormValues) => {
-  if (values.publishedAt.trim().length > 0) {
-    return false;
+  if (typeof compatibilityValues.charactersToBeShown === 'string') {
+    snapshot.charactersToBeShown = compatibilityValues.charactersToBeShown;
   }
-
-  return values.contentBlocks.every((block) =>
-    block.title.trim().length === 0 &&
-    block.intro.trim().length === 0 &&
-    block.body.trim().length === 0 &&
-    block.mediaContents.length === 0
-  );
+  if (typeof compatibilityValues.fullVersion === 'boolean') {
+    snapshot.fullVersion = compatibilityValues.fullVersion;
+  }
+  if (typeof compatibilityValues.showPublishDate === 'boolean') {
+    snapshot.showPublishDate = compatibilityValues.showPublishDate;
+  }
+  if (typeof compatibilityValues.pushNotification === 'boolean') {
+    values.pushNotificationEnabled = compatibilityValues.pushNotification;
+  }
+  if (typeof compatibilityValues.publishedAt === 'string' && compatibilityValues.publishedAt.trim().length > 0) {
+    snapshot.publishedAt = compatibilityValues.publishedAt;
+    if (values.publicationMode === 'draft' && values.scheduledPublicationAt.trim().length === 0) {
+      syncPublicationModeFromPublishedAt(values, compatibilityValues.publishedAt);
+    }
+  }
+  if (typeof compatibilityValues.publicationDate === 'string') {
+    snapshot.publicationDate = compatibilityValues.publicationDate;
+  }
+  if (compatibilityValues.address && typeof compatibilityValues.address === 'object') {
+    snapshot.address = compatibilityValues.address;
+  }
+  if (typeof compatibilityValues.pointOfInterestId === 'string') {
+    snapshot.pointOfInterestId = compatibilityValues.pointOfInterestId;
+  }
+  if (compatibilityValues.teaserImageAssetId !== undefined) {
+    snapshot.teaserImageAssetId = compatibilityValues.teaserImageAssetId;
+  }
+  if (compatibilityValues.headerImageAssetId !== undefined) {
+    snapshot.headerImageAssetId = compatibilityValues.headerImageAssetId;
+  }
+  if (Array.isArray(compatibilityValues.contentBlocks)) {
+    snapshot.legacyContentBlocks = compatibilityValues.contentBlocks;
+  }
 };
 
 export const mapNewsDetailFormValuesToMutation = (
   values: NewsDetailFormValues,
   mode: 'create' | 'edit'
 ): NewsFormInput => {
-  const sourceUrl = compactWebUrl(values.sourceUrl.url, values.sourceUrlDescription || values.sourceUrl.description);
-  const publishedAt = derivePublishedAt(values);
-  const publicationDate =
-    compactString(values.publicationDate) ??
-    (values.publicationMode === 'scheduled' ? compactString(values.scheduledPublicationAt) : undefined);
-  const contentBlocks = buildContentBlocksMutation(values);
+  const normalizedValues = normalizeEditorialValues({ ...values });
+  syncSnapshotFromCompatibilityValues(normalizedValues);
+  const snapshot = normalizedValues.__legacySnapshot ?? null;
+  const mutation = buildNewsSavePayload(normalizedValues, snapshot, new Date().toISOString()).mutation;
+  const categories = buildCategoryMutation(normalizedValues.categories);
+  const sourceUrl = compactWebUrl(
+    normalizedValues.sourceUrl.url,
+    normalizedValues.sourceUrlDescription || normalizedValues.sourceUrl.description
+  );
 
-  const legacyMutation: NewsFormInput = {
-    title: values.title.trim(),
-    publishedAt,
-    ...(compactString(values.author) ? { author: compactString(values.author) } : {}),
-    ...(compactString(values.keywords) ? { keywords: compactString(values.keywords) } : {}),
-    ...(compactString(values.externalId) ? { externalId: compactString(values.externalId) } : {}),
-    ...(mode === 'edit' || values.fullVersion ? { fullVersion: values.fullVersion } : {}),
-    ...(values.charactersToBeShown.trim().length > 0 ? { charactersToBeShown: Number(values.charactersToBeShown) } : {}),
-    ...(compactString(values.newsType) ? { newsType: compactString(values.newsType) } : {}),
-    ...(publicationDate ? { publicationDate } : {}),
-    ...(values.showPublishDate !== undefined ? { showPublishDate: values.showPublishDate } : {}),
-    ...(buildCategoryMutation(values.categories) ?? {}),
+  const contentBlocks = [
+    {
+      title: normalizedValues.title.trim(),
+      intro: normalizedValues.contentTeaser,
+      body: normalizedValues.contentBody.trim(),
+      mediaContents: normalizedValues.contentMedia
+        .map(buildMediaContentMutation)
+        .filter((media) => Object.keys(media).length > 0),
+    },
+  ];
+
+  return {
+    ...mutation,
+    ...(compactString(normalizedValues.author) ? { author: compactString(normalizedValues.author) } : {}),
+    ...(categories ?? {}),
     ...(sourceUrl ? { sourceUrl } : {}),
-    ...(buildAddressMutation(values.address) ?? {}),
     contentBlocks,
-    ...(compactString(values.pointOfInterestId) ? { pointOfInterestId: compactString(values.pointOfInterestId) } : {}),
-    ...(mode === 'create' && (values.pushNotification || values.pushNotificationEnabled) ? { pushNotification: true } : {}),
+    ...(mode === 'create' || snapshot?.pushNotificationsSentAt === undefined
+      ? { pushNotification: normalizedValues.pushNotificationEnabled }
+      : {}),
   };
-
-  if (shouldUseSimplifiedSavePlan(values) === false) {
-    return legacyMutation;
-  }
-
-  return buildNewsSavePayload(
-    {
-      ...values,
-      sourceUrl: {
-        url: values.sourceUrl.url,
-        description: values.sourceUrlDescription || values.sourceUrl.description,
-      },
-    },
-    {
-      id: 'existing-news',
-      title: values.title,
-      contentType: 'news',
-      payload: {
-        teaser: values.contentTeaser,
-        body: values.contentBody,
-      },
-      status: 'published',
-      author: values.author,
-      keywords: compactString(values.keywords),
-      externalId: compactString(values.externalId),
-      fullVersion: values.fullVersion,
-      charactersToBeShown: values.charactersToBeShown,
-      newsType: compactString(values.newsType),
-      publicationDate,
-      publishedAt,
-      showPublishDate: values.showPublishDate,
-      categories: values.categories.map((name) => ({ name })),
-      sourceUrl,
-      ...(buildAddressMutation(values.address) ?? {}),
-      contentBlocks: values.contentBlocks,
-      pointOfInterestId: compactString(values.pointOfInterestId),
-      pushNotificationsSentAt: mode === 'edit' && values.pushNotificationEnabled === false ? 'already-sent' : undefined,
-      visible: values.publicationMode !== 'draft',
-      createdAt: publishedAt,
-      updatedAt: publishedAt,
-    },
-    new Date().toISOString()
-  ).mutation;
 };
 
 const hasDirtyPath = (tree: DirtyFieldTree | readonly DirtyFieldTree[] | true | undefined, path: readonly string[]): boolean => {

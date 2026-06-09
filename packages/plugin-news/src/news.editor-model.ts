@@ -1,9 +1,11 @@
 import type {
   NewsContentBlockFormValue,
   NewsContentItem,
+  NewsDetailEditorialFormValues,
   NewsDetailFormValues,
   NewsEditorialStatus,
   NewsFormInput,
+  NewsLegacyCompatibilitySnapshot,
   NewsMediaContentFormValue,
   NewsMediaContent,
   NewsSavePlan,
@@ -78,6 +80,29 @@ const mapNewsItemCategories = (item: NewsContentItem): string[] => {
   return item.payload.category ? [item.payload.category] : [];
 };
 
+const createLegacySnapshot = (item: NewsContentItem): NewsLegacyCompatibilitySnapshot => ({
+  keywords: item.keywords,
+  externalId: item.externalId,
+  fullVersion: item.fullVersion,
+  charactersToBeShown: item.charactersToBeShown,
+  newsType: item.newsType,
+  publishedAt: item.publishedAt,
+  publicationDate: item.publicationDate,
+  showPublishDate: item.showPublishDate,
+  address: item.address
+    ? {
+        street: item.address.street,
+        zip: item.address.zip,
+        city: item.address.city,
+      }
+    : undefined,
+  pointOfInterestId: item.pointOfInterestId,
+  pushNotificationsSentAt: item.pushNotificationsSentAt,
+  teaserImageAssetId: null,
+  headerImageAssetId: null,
+  legacyContentBlocks: mapNewsItemContentBlocks(item),
+});
+
 const buildFirstContentBlock = (
   values: Pick<NewsDetailFormValues, 'title' | 'contentTeaser' | 'contentBody' | 'contentMedia'>
 ): NewsFormInput['contentBlocks'] => [
@@ -100,7 +125,7 @@ export const deriveNewsEditorialStatus = (
   return new Date(input.publishedAt).getTime() > new Date(nowIso).getTime() ? 'scheduled' : 'published';
 };
 
-export const createNewsEditorFormValues = (item: NewsContentItem): NewsDetailFormValues => {
+export const createNewsEditorFormValues = (item: NewsContentItem): NewsDetailEditorialFormValues => {
   const contentBlocks = mapNewsItemContentBlocks(item);
   const firstBlock = contentBlocks[0];
   const editorialStatus = deriveNewsEditorialStatus(item, new Date().toISOString());
@@ -120,36 +145,17 @@ export const createNewsEditorFormValues = (item: NewsContentItem): NewsDetailFor
     pushNotificationEnabled: false,
     publicationMode: editorialStatus === 'draft' ? 'draft' : editorialStatus === 'scheduled' ? 'scheduled' : 'immediate',
     scheduledPublicationAt: editorialStatus === 'scheduled' ? item.publishedAt : '',
-    keywords: item.keywords ?? '',
-    publishedAt: item.publishedAt,
-    publicationDate: item.publicationDate ?? '',
-    externalId: item.externalId ?? '',
-    newsType: item.newsType ?? '',
-    charactersToBeShown:
-      typeof item.charactersToBeShown === 'number' || typeof item.charactersToBeShown === 'string'
-        ? String(item.charactersToBeShown)
-        : '',
-    fullVersion: item.fullVersion ?? false,
-    showPublishDate: item.showPublishDate ?? true,
-    pushNotification: false,
-    teaserImageAssetId: null,
-    headerImageAssetId: null,
-    contentBlocks,
-    address: {
-      street: item.address?.street ?? '',
-      zip: item.address?.zip ?? '',
-      city: item.address?.city ?? '',
-    },
-    pointOfInterestId: item.pointOfInterestId ?? '',
+    __legacySnapshot: createLegacySnapshot(item),
   };
 };
 
 export const buildNewsSavePayload = (
-  values: NewsDetailFormValues,
-  existingItem: NewsContentItem | null,
+  values: NewsDetailEditorialFormValues,
+  existingSnapshot: NewsLegacyCompatibilitySnapshot | null,
   nowIso: string
 ): NewsSavePlan => {
   const publishedAt = values.publicationMode === 'scheduled' ? values.scheduledPublicationAt : nowIso;
+  const effectivePublicationTimestamp = values.publicationMode === 'draft' ? nowIso : publishedAt;
   const visible = values.publicationMode !== 'draft';
   const sourceUrlDescription = values.sourceUrlDescription || values.sourceUrl.description || '';
 
@@ -157,27 +163,27 @@ export const buildNewsSavePayload = (
     visible,
     editorialStatus: deriveNewsEditorialStatus({ visible, publishedAt }, nowIso),
     mutation: {
-      ...(existingItem?.externalId !== undefined ? { externalId: existingItem.externalId } : {}),
-      ...(existingItem?.keywords !== undefined ? { keywords: existingItem.keywords } : {}),
-      ...(existingItem?.fullVersion !== undefined ? { fullVersion: existingItem.fullVersion } : {}),
-      ...(existingItem?.charactersToBeShown !== undefined
-        ? { charactersToBeShown: Number(existingItem.charactersToBeShown) }
+      ...(existingSnapshot?.externalId !== undefined ? { externalId: existingSnapshot.externalId } : {}),
+      ...(existingSnapshot?.keywords !== undefined ? { keywords: existingSnapshot.keywords } : {}),
+      ...(existingSnapshot?.fullVersion !== undefined ? { fullVersion: existingSnapshot.fullVersion } : {}),
+      ...(existingSnapshot?.charactersToBeShown !== undefined
+        ? { charactersToBeShown: Number(existingSnapshot.charactersToBeShown) }
         : {}),
-      ...(existingItem?.newsType !== undefined ? { newsType: existingItem.newsType } : {}),
-      ...(existingItem?.showPublishDate !== undefined ? { showPublishDate: existingItem.showPublishDate } : {}),
-      ...(existingItem?.address ? { address: existingItem.address } : {}),
-      ...(existingItem?.pointOfInterestId !== undefined ? { pointOfInterestId: existingItem.pointOfInterestId } : {}),
+      ...(existingSnapshot?.newsType !== undefined ? { newsType: existingSnapshot.newsType } : {}),
+      ...(existingSnapshot?.showPublishDate !== undefined ? { showPublishDate: existingSnapshot.showPublishDate } : {}),
+      ...(existingSnapshot?.address ? { address: existingSnapshot.address } : {}),
+      ...(existingSnapshot?.pointOfInterestId !== undefined ? { pointOfInterestId: existingSnapshot.pointOfInterestId } : {}),
       title: values.title,
       author: values.author,
       categories: values.categories.map((name) => ({ name })),
-      publishedAt: values.publicationMode === 'draft' ? nowIso : publishedAt,
-      publicationDate: values.publicationMode === 'draft' ? nowIso : publishedAt,
+      publishedAt: effectivePublicationTimestamp,
+      publicationDate: effectivePublicationTimestamp,
       sourceUrl: {
         url: values.sourceUrl.url,
         description: sourceUrlDescription,
       },
       contentBlocks: buildFirstContentBlock(values),
-      ...(existingItem?.pushNotificationsSentAt ? {} : { pushNotification: values.pushNotificationEnabled }),
+      ...(existingSnapshot?.pushNotificationsSentAt ? {} : { pushNotification: values.pushNotificationEnabled }),
     },
   };
 };

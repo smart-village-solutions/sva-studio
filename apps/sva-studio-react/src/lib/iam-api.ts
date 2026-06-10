@@ -19,6 +19,7 @@ import type {
   IamDsrSelfServiceOverview,
   IamSelfServiceActivityItem,
   IamGovernanceCaseListItem,
+  InstanceAuditRun,
   IamInstanceDetail,
   IamInstanceListItem,
   IamLegalTextListItem,
@@ -1227,6 +1228,31 @@ export const getInstance = async (
   instanceId: string
 ): Promise<ApiItemResponse<IamInstanceDetail>> =>
   requestJson<ApiItemResponse<IamInstanceDetail>>(`/api/v1/iam/instances/${instanceId}`);
+
+export const getInstanceAuditRun = async (
+  query: {
+    readonly instanceIds?: readonly string[];
+    readonly includeOnlyActive?: boolean;
+  } = {}
+): Promise<ApiItemResponse<InstanceAuditRun>> => {
+  const params = new URLSearchParams();
+  for (const instanceId of query.instanceIds ?? []) {
+    params.append('instanceId', instanceId);
+  }
+  if (typeof query.includeOnlyActive === 'boolean') {
+    params.set('includeOnlyActive', String(query.includeOnlyActive));
+  }
+
+  const suffix = params.toString();
+  return requestJson<ApiItemResponse<InstanceAuditRun>>(
+    `/api/v1/iam/instances/audit${suffix ? `?${suffix}` : ''}`
+  );
+};
+
+export const getSingleInstanceAuditRun = async (
+  instanceId: string
+): Promise<ApiItemResponse<InstanceAuditRun>> =>
+  requestJson<ApiItemResponse<InstanceAuditRun>>(`/api/v1/iam/instances/${instanceId}/audit`);
 
 export const createInstance = async (
   payload: CreateInstancePayload

@@ -1,4 +1,4 @@
-import type { IamInstanceDetail, IamInstanceListItem } from '@sva/core';
+import type { IamInstanceDetail, IamInstanceListItem, InstanceAuditRun } from '@sva/core';
 import React from 'react';
 
 import {
@@ -12,6 +12,8 @@ import {
   getInstanceKeycloakStatus,
   getInstanceKeycloakPreflight,
   getInstanceKeycloakProvisioningRun,
+  getInstanceAuditRun,
+  getSingleInstanceAuditRun,
   getInstance,
   IamHttpError,
   listInstances,
@@ -80,9 +82,12 @@ export const useInstances = () => {
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [instances, setInstances] = React.useState<readonly IamInstanceListItem[]>([]);
   const [selectedInstance, setSelectedInstance] = React.useState<IamInstanceDetail | null>(null);
+  const [instancesAuditRun, setInstancesAuditRun] = React.useState<InstanceAuditRun | null>(null);
+  const [instanceAuditRun, setInstanceAuditRun] = React.useState<InstanceAuditRun | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [statusLoading, setStatusLoading] = React.useState(false);
+  const [auditLoading, setAuditLoading] = React.useState(false);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
@@ -259,6 +264,53 @@ export const useInstances = () => {
     [invalidatePermissionsAfter403]
   );
 
+  const refreshInstanceAudit = React.useCallback(
+    async (instanceId: string) => {
+      setAuditLoading(true);
+      setMutationError(null);
+      try {
+        const response = await getSingleInstanceAuditRun(instanceId);
+        setInstanceAuditRun(response.data);
+        return response.data;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 403) {
+          await invalidatePermissions();
+        }
+        setMutationError(resolvedError);
+        return null;
+      } finally {
+        setAuditLoading(false);
+      }
+    },
+    [invalidatePermissions]
+  );
+
+  const refreshInstancesAudit = React.useCallback(
+    async (input?: { includeOnlyActive?: boolean; instanceIds?: readonly string[] }) => {
+      setAuditLoading(true);
+      setMutationError(null);
+      try {
+        const response = await getInstanceAuditRun({
+          includeOnlyActive: input?.includeOnlyActive ?? true,
+          instanceIds: input?.instanceIds,
+        });
+        setInstancesAuditRun(response.data);
+        return response.data;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 403) {
+          await invalidatePermissions();
+        }
+        setMutationError(resolvedError);
+        return null;
+      } finally {
+        setAuditLoading(false);
+      }
+    },
+    [invalidatePermissions]
+  );
+
   const mutate = React.useCallback(
     async <T>(
       action: () => Promise<{ data: T }>,
@@ -279,6 +331,7 @@ export const useInstances = () => {
         await refetch();
         if (instanceId) {
           await loadInstance(instanceId);
+          await refreshInstanceAudit(instanceId);
         }
         logBrowserOperationSuccess(instancesLogger, 'instance_mutation_succeeded', {
           operation,
@@ -304,15 +357,18 @@ export const useInstances = () => {
         return null;
       }
     },
-    [invalidatePermissions, loadInstance, refetch]
+    [invalidatePermissions, loadInstance, refetch, refreshInstanceAudit]
   );
 
   return {
     instances,
     selectedInstance,
+    instancesAuditRun,
+    instanceAuditRun,
     isLoading,
     detailLoading,
     statusLoading,
+    auditLoading,
     error,
     mutationError,
     filters,
@@ -320,7 +376,12 @@ export const useInstances = () => {
     setStatus: (value: InstanceStatusFilter) => setFilters((current) => ({ ...current, status: value })),
     refetch,
     loadInstance,
-    clearSelectedInstance: () => setSelectedInstance(null),
+    refreshInstancesAudit,
+    refreshInstanceAudit,
+    clearSelectedInstance: () => {
+      setSelectedInstance(null);
+      setInstanceAuditRun(null);
+    },
     clearMutationError: () => setMutationError(null),
     createInstance: async (payload: CreateInstancePayload) =>
       mutate(() => createInstance(payload), payload.instanceId, 'create_instance'),

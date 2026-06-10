@@ -14,6 +14,10 @@
       "types": "./dist/http-contracts.d.ts",
       "default": "./dist/http-contracts.js"
     },
+    "./http-audit-handlers": {
+      "types": "./dist/http-audit-handlers.d.ts",
+      "default": "./dist/http-audit-handlers.js"
+    },
     "./http-guards": {
       "types": "./dist/http-guards.d.ts",
       "default": "./dist/http-guards.js"

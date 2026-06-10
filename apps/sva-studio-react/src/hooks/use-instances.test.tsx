@@ -28,6 +28,8 @@ const reconcileInstanceKeycloakMock = vi.fn();
 const activateInstanceMock = vi.fn();
 const suspendInstanceMock = vi.fn();
 const archiveInstanceMock = vi.fn();
+const getInstanceAuditRunMock = vi.fn();
+const getSingleInstanceAuditRunMock = vi.fn();
 const authMockValue = {
   invalidatePermissions: vi.fn(),
 };
@@ -68,6 +70,8 @@ vi.mock('../lib/iam-api', () => ({
   getInstanceKeycloakStatus: (...args: unknown[]) => getInstanceKeycloakStatusMock(...args),
   getInstanceKeycloakPreflight: (...args: unknown[]) => getInstanceKeycloakPreflightMock(...args),
   getInstanceKeycloakProvisioningRun: (...args: unknown[]) => getInstanceKeycloakProvisioningRunMock(...args),
+  getInstanceAuditRun: (...args: unknown[]) => getInstanceAuditRunMock(...args),
+  getSingleInstanceAuditRun: (...args: unknown[]) => getSingleInstanceAuditRunMock(...args),
   planInstanceKeycloakProvisioning: (...args: unknown[]) => planInstanceKeycloakProvisioningMock(...args),
   executeInstanceKeycloakProvisioning: (...args: unknown[]) => executeInstanceKeycloakProvisioningMock(...args),
   probeTenantIamAccess: (...args: unknown[]) => probeTenantIamAccessMock(...args),
@@ -132,6 +136,45 @@ describe('useInstances', () => {
     });
     getInstanceKeycloakProvisioningRunMock.mockResolvedValue({
       data: null,
+    });
+    getInstanceAuditRunMock.mockResolvedValue({
+      data: {
+        generatedAt: '2026-06-10T10:00:00.000Z',
+        overallStatus: 'pass',
+        summary: {
+          totalInstances: 1,
+          passedInstances: 1,
+          warnedInstances: 0,
+          failedInstances: 0,
+          skippedInstances: 0,
+        },
+        checks: [],
+        instances: [],
+      },
+    });
+    getSingleInstanceAuditRunMock.mockResolvedValue({
+      data: {
+        generatedAt: '2026-06-10T10:00:00.000Z',
+        overallStatus: 'pass',
+        summary: {
+          totalInstances: 1,
+          passedInstances: 1,
+          warnedInstances: 0,
+          failedInstances: 0,
+          skippedInstances: 0,
+        },
+        checks: [],
+        instances: [
+          {
+            instanceId: 'demo',
+            displayName: 'Demo',
+            primaryHostname: 'demo.studio.example.org',
+            status: 'active',
+            overallStatus: 'pass',
+            checks: [],
+          },
+        ],
+      },
     });
     planInstanceKeycloakProvisioningMock.mockResolvedValue({
       data: {
@@ -319,6 +362,7 @@ describe('useInstances', () => {
     expect(suspendInstanceMock).toHaveBeenCalledTimes(1);
     expect(archiveInstanceMock).toHaveBeenCalledTimes(1);
     expect(getInstanceMock).toHaveBeenCalled();
+    expect(getSingleInstanceAuditRunMock).toHaveBeenCalled();
     expect(browserLoggerMock.info).toHaveBeenCalledWith(
       'instance_mutation_succeeded',
       expect.objectContaining({
@@ -850,5 +894,32 @@ describe('useInstances', () => {
 
     expect(bootstrapInstanceAdminStructureMock).toHaveBeenCalledWith('demo', ['news']);
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads a full audit run for the instances overview', async () => {
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const auditRun = await result.current.refreshInstancesAudit();
+      expect(auditRun).toEqual(
+        expect.objectContaining({
+          overallStatus: 'pass',
+          summary: expect.objectContaining({
+            totalInstances: 1,
+          }),
+        })
+      );
+    });
+
+    expect(getInstanceAuditRunMock).toHaveBeenCalledWith({ includeOnlyActive: true });
+    expect(result.current.instancesAuditRun).toEqual(
+      expect.objectContaining({
+        overallStatus: 'pass',
+      })
+    );
   });
 });

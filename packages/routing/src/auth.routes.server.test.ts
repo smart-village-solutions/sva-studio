@@ -118,7 +118,9 @@ const authServerMocks = vi.hoisted(() => {
     removeGroupMembershipHandler: vi.fn(async () => response('removeGroupMembershipHandler')),
     instanceRegistryHandlers: {
       listInstances: vi.fn(async () => response('listInstancesHandler')),
+      getInstanceAuditRun: vi.fn(async () => response('getInstanceAuditRunHandler')),
       getInstance: vi.fn(async () => response('getInstanceHandler')),
+      getSingleInstanceAuditRun: vi.fn(async () => response('getSingleInstanceAuditRunHandler')),
       createInstance: vi.fn(async () => response('createInstanceHandler')),
       updateInstance: vi.fn(async () => response('updateInstanceHandler')),
       getInstanceKeycloakStatus: vi.fn(async () => response('getInstanceKeycloakStatusHandler')),
@@ -742,6 +744,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.getMediaDeliveryHandler).toHaveBeenCalled();
     expect(authServerMocks.replaceMediaReferencesHandler).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.updateInstance).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.getInstanceAuditRun).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.getSingleInstanceAuditRun).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakStatus).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakPreflight).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.planInstanceKeycloakProvisioning).toHaveBeenCalled();

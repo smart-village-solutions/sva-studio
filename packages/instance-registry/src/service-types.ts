@@ -1,4 +1,5 @@
 import type {
+  InstanceAuditRun,
   InstanceRealmMode,
   InstanceStatus,
   IamInstanceDetail,
@@ -87,6 +88,12 @@ export type InstanceRegistryService = {
   }): Promise<IamTenantIamStatus | null>;
   getKeycloakProvisioningRun(instanceId: string, runId: string): Promise<KeycloakTenantProvisioningRun | null>;
   reconcileKeycloak(input: ReconcileInstanceKeycloakInput): Promise<KeycloakTenantStatus | null>;
+  runInstanceAudit(input?: {
+    instanceIds?: readonly string[];
+    includeOnlyActive?: boolean;
+    actorId?: string;
+    requestId?: string;
+  }): Promise<InstanceAuditRun>;
   resolveRuntimeInstance(host: string): Promise<ResolveRuntimeInstanceResult>;
   isTrafficAllowed(status: InstanceStatus): boolean;
 };

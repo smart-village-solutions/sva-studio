@@ -203,11 +203,15 @@ describe('Keycloak admin client', () => {
   it('reads env-based configs and prefers runtime secrets when available', async () => {
     state.getKeycloakAdminClientSecret.mockReturnValue('secret-from-runtime');
     state.getKeycloakProvisionerClientSecret.mockReturnValue('provisioner-from-runtime');
+    vi.stubEnv('SVA_RUNTIME_PROFILE', 'local-keycloak');
     vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', 'https://keycloak.example');
     vi.stubEnv('KEYCLOAK_ADMIN_REALM', 'master');
     vi.stubEnv('KEYCLOAK_ADMIN_CLIENT_ID', 'studio');
     vi.stubEnv('KEYCLOAK_ADMIN_CLIENT_SECRET', 'secret-from-env');
+    vi.stubEnv('KEYCLOAK_PROVISIONER_BASE_URL', 'https://keycloak.example');
+    vi.stubEnv('KEYCLOAK_PROVISIONER_REALM', 'master');
     vi.stubEnv('KEYCLOAK_PROVISIONER_CLIENT_ID', 'tenant-provisioner');
+    vi.stubEnv('KEYCLOAK_PROVISIONER_CLIENT_SECRET', 'provisioner-secret-from-env');
 
     const { getKeycloakAdminClientConfigFromEnv, getKeycloakProvisionerClientConfigFromEnv } = await import(
       './core.js'
@@ -225,6 +229,22 @@ describe('Keycloak admin client', () => {
       clientId: 'tenant-provisioner',
       clientSecret: 'provisioner-from-runtime',
     });
+  });
+
+  it('fails closed for local-keycloak when provisioner env is missing', async () => {
+    state.getKeycloakAdminClientSecret.mockReturnValue('secret-from-runtime');
+    state.getKeycloakProvisionerClientSecret.mockReturnValue('provisioner-from-runtime');
+    vi.stubEnv('SVA_RUNTIME_PROFILE', 'local-keycloak');
+    vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', 'https://keycloak.example');
+    vi.stubEnv('KEYCLOAK_ADMIN_REALM', 'svs-intern-studio-staging');
+    vi.stubEnv('KEYCLOAK_ADMIN_CLIENT_ID', 'sva-studio-iam-service');
+    vi.stubEnv('KEYCLOAK_ADMIN_CLIENT_SECRET', 'secret-from-env');
+
+    const { getKeycloakProvisionerClientConfigFromEnv } = await import('./core.js');
+
+    expect(() => getKeycloakProvisionerClientConfigFromEnv()).toThrow(
+      'Missing required provisioner env for local-keycloak: KEYCLOAK_PROVISIONER_REALM'
+    );
   });
 
   it('synchronizes managed realm roles while preserving built-ins and unmanaged roles', async () => {

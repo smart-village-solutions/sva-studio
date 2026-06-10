@@ -157,9 +157,12 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
 const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   instances: [],
   selectedInstance: createSelectedInstance(),
+  instancesAuditRun: null,
+  instanceAuditRun: null,
   isLoading: false,
   detailLoading: false,
   statusLoading: false,
+  auditLoading: false,
   error: null,
   mutationError: null as
     | {
@@ -179,6 +182,8 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   setStatus: vi.fn(),
   refetch: vi.fn(),
   loadInstance: vi.fn().mockResolvedValue(true),
+  refreshInstancesAudit: vi.fn().mockResolvedValue(true),
+  refreshInstanceAudit: vi.fn().mockResolvedValue(true),
   clearSelectedInstance: vi.fn(),
   clearMutationError: vi.fn(),
   createInstance: vi.fn().mockResolvedValue(true),

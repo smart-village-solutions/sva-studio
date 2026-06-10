@@ -13,6 +13,7 @@ export const buildMissingRealmStatus = (
   realmExists: false,
   clientExists: false,
   tenantAdminClientExists: false,
+  systemAdminRoleExists: false,
   tenantAdminExists: false,
   tenantAdminHasSystemAdmin: false,
   redirectUrisMatch: false,
@@ -264,6 +265,7 @@ export const buildKeycloakStatus = (
     realmExists: true,
     clientExists: Boolean(input.state.clientRepresentation),
     tenantAdminClientExists: Boolean(input.state.tenantAdminClientRepresentation),
+    systemAdminRoleExists: Boolean(input.state.systemAdminRole),
     ...input.state.tenantAdminStatus,
     redirectUrisMatch: equalSets(input.state.clientRepresentation?.redirectUris ?? [], input.state.expectedClient.redirectUris),
     logoutUrisMatch: equalSets(

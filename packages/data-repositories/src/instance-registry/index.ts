@@ -234,6 +234,7 @@ export type InstanceRegistryRepository = {
     instanceId: string;
     role: ProtectedSystemRolePermissionBundleRecord;
   }): Promise<void>;
+  countLocalSystemAdminAssignments(instanceId: string): Promise<number>;
   getAuthClientSecretCiphertext(instanceId: string): Promise<string | null>;
   getTenantAdminClientSecretCiphertext(instanceId: string): Promise<string | null>;
   resolveHostname(hostname: string): Promise<InstanceRegistryRecord | null>;
@@ -844,6 +845,35 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
         )
       );
     }
+  },
+
+  async countLocalSystemAdminAssignments(instanceId) {
+    const rows = await queryRows<{ assignment_count: number | string }>(
+      executor,
+      statement(
+        `
+SELECT COUNT(DISTINCT ar.account_id)::int AS assignment_count
+FROM iam.account_roles ar
+JOIN iam.roles r
+  ON r.instance_id = ar.instance_id
+ AND r.id = ar.role_id
+JOIN iam.accounts a
+  ON a.instance_id = ar.instance_id
+ AND a.id = ar.account_id
+JOIN iam.instance_memberships im
+  ON im.instance_id = ar.instance_id
+ AND im.account_id = ar.account_id
+WHERE ar.instance_id = $1
+  AND r.role_key = 'system_admin'
+  AND ar.valid_from <= NOW()
+  AND (ar.valid_to IS NULL OR ar.valid_to > NOW());
+`,
+        [instanceId]
+      )
+    );
+
+    const rawCount = rows[0]?.assignment_count;
+    return typeof rawCount === 'string' ? Number.parseInt(rawCount, 10) || 0 : rawCount ?? 0;
   },
 
   async getAuthClientSecretCiphertext(instanceId) {

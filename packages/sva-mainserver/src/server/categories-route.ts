@@ -1,5 +1,5 @@
 import {
-  authorizeContentPrimitiveForUser,
+  authorizeInstancePermissionForUser,
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
@@ -9,7 +9,6 @@ import { errorJson, json } from './content-route-helpers.js';
 import { SvaMainserverError } from './errors.js';
 import { listSvaMainserverCategories } from './service.js';
 
-const CATEGORY_ACCESS_CONTENT_TYPE = 'news.article';
 const CATEGORY_COLLECTION_PATH = '/api/v1/mainserver/categories';
 const logger = createSdkLogger({ component: 'sva-mainserver-categories-route', level: 'info' });
 
@@ -45,16 +44,13 @@ const toMainserverErrorResponse = (error: unknown): Response => {
     return errorJson(status, error.code, error.message);
   }
 
-  return errorJson(500, 'internal_error', 'Mainserver-News-Anfrage ist fehlgeschlagen.');
+  return errorJson(500, 'internal_error', 'Mainserver-Kategorien-Anfrage ist fehlgeschlagen.');
 };
 
 const authorizeOrResponse = async (ctx: AuthenticatedRequestContext): Promise<CategoriesActor | Response> => {
-  const result = await authorizeContentPrimitiveForUser({
+  const result = await authorizeInstancePermissionForUser({
     ctx,
-    action: 'content.read',
-    resource: {
-      contentType: CATEGORY_ACCESS_CONTENT_TYPE,
-    },
+    action: 'categories.read',
   });
 
   if (!result.ok) {
@@ -65,8 +61,7 @@ const authorizeOrResponse = async (ctx: AuthenticatedRequestContext): Promise<Ca
       trace_id: workspaceContext.traceId,
       actor_id: ctx.user.id,
       instance_id: ctx.user.instanceId,
-      content_type: CATEGORY_ACCESS_CONTENT_TYPE,
-      action: 'content.read',
+      action: 'categories.read',
       error_code: result.error,
     });
     return errorJson(result.status, result.error, result.message);
@@ -75,7 +70,7 @@ const authorizeOrResponse = async (ctx: AuthenticatedRequestContext): Promise<Ca
   return {
     instanceId: result.actor.instanceId,
     keycloakSubject: result.actor.keycloakSubject,
-    activeOrganizationId: result.actor.organizationId ?? ctx.activeOrganizationId,
+    activeOrganizationId: ctx.activeOrganizationId,
   };
 };
 
@@ -83,7 +78,7 @@ const dispatchAuthenticated = async (request: Request, ctx: AuthenticatedRequest
   const workspaceContext = getWorkspaceContext();
 
   if (request.method !== 'GET') {
-    return errorJson(405, 'method_not_allowed', 'Methode wird für Mainserver-News nicht unterstützt.');
+    return errorJson(405, 'method_not_allowed', 'Methode wird für Mainserver-Kategorien nicht unterstützt.');
   }
 
   try {
@@ -99,7 +94,7 @@ const dispatchAuthenticated = async (request: Request, ctx: AuthenticatedRequest
       trace_id: workspaceContext.traceId,
       actor_id: ctx.user.id,
       instance_id: ctx.user.instanceId,
-      content_type: CATEGORY_ACCESS_CONTENT_TYPE,
+      action: 'categories.read',
       method: 'GET',
       count: data.length,
     });
@@ -111,7 +106,7 @@ const dispatchAuthenticated = async (request: Request, ctx: AuthenticatedRequest
       trace_id: workspaceContext.traceId,
       actor_id: ctx.user.id,
       instance_id: ctx.user.instanceId,
-      content_type: CATEGORY_ACCESS_CONTENT_TYPE,
+      action: 'categories.read',
       method: 'GET',
       error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
     });

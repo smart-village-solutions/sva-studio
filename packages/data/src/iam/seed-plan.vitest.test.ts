@@ -53,6 +53,10 @@ const pluginContentPermissions = [
   'poi.create',
   'poi.update',
   'poi.delete',
+  'categories.read',
+  'categories.create',
+  'categories.update',
+  'categories.delete',
 ] as const;
 
 const seedDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../seeds');
@@ -100,6 +104,10 @@ describe('iamSeedPlan content permissions', () => {
         'news.update',
         'events.create',
         'poi.delete',
+        'categories.read',
+        'categories.create',
+        'categories.update',
+        'categories.delete',
         'integration.manage',
         'feature.toggle',
       ])

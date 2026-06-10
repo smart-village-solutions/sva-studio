@@ -54,6 +54,10 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111140', 'poi.create', 'Create POI plugin content'],
   ['40111111-1111-1111-1111-111111111141', 'poi.update', 'Update POI plugin content'],
   ['40111111-1111-1111-1111-111111111142', 'poi.delete', 'Delete POI plugin content'],
+  ['40111111-1111-1111-1111-111111111164', 'categories.read', 'Read categories plugin content'],
+  ['40111111-1111-1111-1111-111111111165', 'categories.create', 'Create categories plugin content'],
+  ['40111111-1111-1111-1111-111111111166', 'categories.update', 'Update categories plugin content'],
+  ['40111111-1111-1111-1111-111111111167', 'categories.delete', 'Delete categories plugin content'],
 ] as const satisfies readonly [string, PermissionKey, string][];
 export const rootOnlySeedPermissionKeys = ['instance.registry.manage'] as const satisfies readonly PermissionKey[];
 const rootOnlySeedPermissionKeySet: ReadonlySet<PermissionKey> = new Set(rootOnlySeedPermissionKeys);

@@ -9,7 +9,7 @@ describe('iam seed plan', () => {
   });
 
   it('keeps the canonical permission catalog in sync with the seed integration expectations', () => {
-    assert.equal(iamSeedPlan.permissions.length, 53);
+    assert.equal(iamSeedPlan.permissions.length, 57);
   });
 
   it('uses unique role slugs and keycloak subjects', () => {
@@ -66,6 +66,10 @@ describe('iam seed plan', () => {
     );
     assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'media.read')?.resourceType, 'media');
     assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'news.update')?.resourceType, 'news');
+    assert.equal(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'categories.read')?.resourceType,
+      'categories'
+    );
     assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'app.read')?.resourceType, 'app');
     assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'cockpit.read')?.resourceType, 'cockpit');
     assert.equal(

@@ -8,6 +8,12 @@ const categoriesTranslationsDe = createCategoriesLocaleTranslations({
   navigation: {
     title: 'Kategorien',
   },
+  permissions: {
+    read: 'Kategorien lesen',
+    create: 'Kategorien anlegen',
+    update: 'Kategorien bearbeiten',
+    delete: 'Kategorien löschen',
+  },
   list: {
     title: 'Kategorien',
     description: 'Lesen Sie die Kategorien aus dem Mainserver in einer schreibgeschuetzten Uebersicht.',
@@ -51,6 +57,12 @@ const categoriesTranslationsDe = createCategoriesLocaleTranslations({
 const categoriesTranslationsEn = createCategoriesLocaleTranslations({
   navigation: {
     title: 'Categories',
+  },
+  permissions: {
+    read: 'Read categories',
+    create: 'Create categories',
+    update: 'Update categories',
+    delete: 'Delete categories',
   },
   list: {
     title: 'Categories',

@@ -2,13 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
-  authorizeContentPrimitiveForUser: vi.fn(),
+  authorizeInstancePermissionForUser: vi.fn(),
   listSvaMainserverCategories: vi.fn(),
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
-  authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
+  authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
 }));
 
 vi.mock('./service.js', async (importOriginal) => {
@@ -52,17 +52,17 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       new Request('https://studio.test/api/v1/mainserver/categories', { method: 'PUT' })
     );
 
-    expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
+    expect(state.authorizeInstancePermissionForUser).not.toHaveBeenCalled();
     expect(response?.status).toBe(405);
     await expect(response?.json()).resolves.toEqual({
       error: 'method_not_allowed',
-      message: 'Methode wird für Mainserver-News nicht unterstützt.',
+      message: 'Methode wird für Mainserver-Kategorien nicht unterstützt.',
     });
   });
 
   it('returns local authorization failures without calling the service', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
-    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+    state.authorizeInstancePermissionForUser.mockResolvedValue({
       ok: false,
       status: 403,
       error: 'forbidden',
@@ -83,12 +83,11 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
 
   it('lists categories through a dedicated route boundary', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
-    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+    state.authorizeInstancePermissionForUser.mockResolvedValue({
       ok: true,
       actor: {
         instanceId: 'de-musterhausen',
         keycloakSubject: 'subject-1',
-        organizationId: '11111111-1111-1111-8111-111111111111',
       },
       permissions: [],
     });
@@ -98,8 +97,8 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       new Request('https://studio.test/api/v1/mainserver/categories')
     );
 
-    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'content.read' })
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'categories.read' })
     );
     expect(state.listSvaMainserverCategories).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
@@ -113,12 +112,11 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
 
   it('preserves the prior generic internal error contract', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
-    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+    state.authorizeInstancePermissionForUser.mockResolvedValue({
       ok: true,
       actor: {
         instanceId: 'de-musterhausen',
         keycloakSubject: 'subject-1',
-        organizationId: '11111111-1111-1111-8111-111111111111',
       },
       permissions: [],
     });
@@ -131,7 +129,7 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     expect(response?.status).toBe(500);
     await expect(response?.json()).resolves.toEqual({
       error: 'internal_error',
-      message: 'Mainserver-News-Anfrage ist fehlgeschlagen.',
+      message: 'Mainserver-Kategorien-Anfrage ist fehlgeschlagen.',
     });
   });
 });

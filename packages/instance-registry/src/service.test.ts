@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
 vi.mock('@sva/server-runtime', async () => {
@@ -65,6 +65,7 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     revokeModule: vi.fn(async () => true),
     syncAssignedModuleIam: vi.fn(async () => undefined),
     syncProtectedSystemRolePermissions: vi.fn(async () => undefined),
+    countLocalSystemAdminAssignments: vi.fn(async () => 1),
     getAuthClientSecretCiphertext: vi.fn(async () => 'auth-cipher'),
     getTenantAdminClientSecretCiphertext: vi.fn(async () => 'tenant-admin-cipher'),
     resolveHostname: vi.fn(async () => baseInstance),
@@ -190,6 +191,10 @@ const createDeps = (
 });
 
 describe('instance registry service facade', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('lists instances with latest provisioning run summaries', async () => {
     const repository = createRepository();
     const service = createInstanceRegistryService(createDeps(repository));
@@ -203,6 +208,187 @@ describe('instance registry service facade', () => {
 
     expect(repository.listInstances).toHaveBeenCalledWith({ search: 'Demo', status: 'requested' });
     expect(repository.listLatestProvisioningRuns).toHaveBeenCalledWith(['demo']);
+  });
+
+  it('builds a single-instance audit run with explicit checks', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 200 })) as typeof fetch
+    );
+
+    const repository = createRepository({
+      countLocalSystemAdminAssignments: vi.fn(async () => 2),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        getKeycloakStatus: vi.fn(async () => ({
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          systemAdminRoleExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: true,
+          runtimeSecretSource: 'tenant',
+        })),
+      })
+    );
+
+    await expect(
+      service.runInstanceAudit({
+        instanceIds: ['demo'],
+        includeOnlyActive: false,
+        actorId: 'actor-1',
+        requestId: 'req-audit-1',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        actorId: 'actor-1',
+        requestId: 'req-audit-1',
+        includeOnlyActive: false,
+        overallStatus: 'fail',
+        checks: expect.arrayContaining([
+          expect.objectContaining({
+            checkId: 'run.targets.present',
+            status: 'pass',
+          }),
+        ]),
+        instances: [
+          expect.objectContaining({
+            instanceId: 'demo',
+            overallStatus: 'fail',
+            checks: expect.arrayContaining([
+              expect.objectContaining({
+                checkId: 'instance.url.reachable',
+                status: 'pass',
+              }),
+              expect.objectContaining({
+                checkId: 'registry.instance.active',
+                status: 'fail',
+              }),
+              expect.objectContaining({
+                checkId: 'keycloak.role.systemAdmin.exists',
+                status: 'pass',
+              }),
+              expect.objectContaining({
+                checkId: 'localIam.systemAdminAssignment.exists',
+                actual: '2 aktive Zuordnungen',
+              }),
+            ]),
+          }),
+        ],
+      })
+    );
+  });
+
+  it('marks dependent keycloak checks as skipped when the realm cannot be read', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 503 })) as typeof fetch
+    );
+
+    const service = createInstanceRegistryService(
+      createDeps(createRepository(), {
+        getKeycloakStatus: vi.fn(async () => {
+          throw new Error('keycloak unavailable');
+        }),
+      })
+    );
+
+    const result = await service.runInstanceAudit({
+      instanceIds: ['demo'],
+      includeOnlyActive: false,
+    });
+
+    expect(result.instances[0]?.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkId: 'keycloak.realm.exists',
+          status: 'fail',
+          actual: 'keycloak unavailable',
+        }),
+        expect.objectContaining({
+          checkId: 'keycloak.client.login.exists',
+          status: 'skip',
+        }),
+      ])
+    );
+  });
+
+  it('supports running the audit without an explicit input object', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 200 })) as typeof fetch
+    );
+
+    const service = createInstanceRegistryService(
+      createDeps(createRepository(), {
+        getKeycloakStatus: vi.fn(async () => ({
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          systemAdminRoleExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: true,
+          runtimeSecretSource: 'tenant',
+        })),
+      })
+    );
+
+    const result = await service.runInstanceAudit();
+    expect(result.includeOnlyActive).toBe(true);
+    expect(result.targetInstanceIds).toEqual(['demo']);
+  });
+
+  it('fails the run check when no active target instances can be resolved', async () => {
+    const repository = createRepository({
+      listInstances: vi.fn(async () => []),
+      getInstanceById: vi.fn(async () => ({ ...baseInstance, status: 'archived' as const })),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    const fromList = await service.runInstanceAudit();
+    expect(fromList.overallStatus).toBe('fail');
+    expect(fromList.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkId: 'run.targets.present',
+          status: 'fail',
+          actual: '0 Instanzen',
+        }),
+      ])
+    );
+
+    const fromRequestedIds = await service.runInstanceAudit({
+      instanceIds: ['demo'],
+      includeOnlyActive: true,
+    });
+    expect(fromRequestedIds.instances).toEqual([]);
+    expect(fromRequestedIds.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkId: 'run.targets.present',
+          status: 'fail',
+        }),
+      ])
+    );
   });
 
   it('rejects duplicate create requests before mutating state', async () => {
@@ -1276,6 +1462,7 @@ describe('instance registry service facade', () => {
       realmExists: false,
       clientExists: false,
       tenantAdminClientExists: false,
+      systemAdminRoleExists: false,
       tenantAdminExists: false,
       tenantAdminHasSystemAdmin: false,
       redirectUrisMatch: false,
@@ -1314,6 +1501,7 @@ describe('instance registry service facade', () => {
       realmExists: false,
       clientExists: false,
       tenantAdminClientExists: false,
+      systemAdminRoleExists: false,
       tenantAdminExists: false,
       tenantAdminHasSystemAdmin: false,
       redirectUrisMatch: false,

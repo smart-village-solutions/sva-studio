@@ -50,6 +50,10 @@ export {
   type UpdateInstancePayload,
 } from './mutation-input-builders.js';
 export {
+  createInstanceRegistryAuditHttpHandlers,
+  type InstanceRegistryAuditHttpDeps,
+} from './http-audit-handlers.js';
+export {
   createInstanceRegistryKeycloakHttpHandlers,
   type InstanceRegistryKeycloakHttpDeps,
 } from './http-keycloak-handlers.js';
@@ -124,6 +128,7 @@ export {
 } from './provisioning-auth-utils.js';
 export type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 export { createInstanceRegistryService } from './service.js';
+export { createRunInstanceAuditHandler } from './service-audit.js';
 export { createGetInstanceDetail, loadKeycloakDetailArtifacts } from './service-detail.js';
 export {
   createExecuteKeycloakProvisioningHandler,

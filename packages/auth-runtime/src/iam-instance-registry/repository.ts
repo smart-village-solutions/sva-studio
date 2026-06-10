@@ -183,6 +183,7 @@ const registryRuntime = createInstanceRegistryRuntime({
     loadWasteDataSourceRecord,
     saveWasteDataSourceRecord,
     readKeycloakStateViaProvisioner,
+    getKeycloakStatus: getWorkerKeycloakStatus,
     probeTenantIamAccess,
   },
   provisioningWorkerServiceDeps: {

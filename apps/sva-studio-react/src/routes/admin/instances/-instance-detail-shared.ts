@@ -20,9 +20,8 @@ export {
   type IamTenantIamAxisStatus,
 };
 
-type InstanceKeycloakRequirement = (typeof INSTANCE_KEYCLOAK_REQUIREMENTS)[number];
 export type IamInstanceKeycloakStatus = NonNullable<IamInstanceDetail['keycloakStatus']>;
-export type InstanceKeycloakStatusField = InstanceKeycloakRequirement['statusField'];
+export type InstanceKeycloakStatusField = Exclude<keyof IamInstanceKeycloakStatus, 'runtimeSecretSource'>;
 
 const CONFIGURATION_STATUS_LABELS = {
   complete: 'admin.instances.configuration.overall.complete',
@@ -46,6 +45,7 @@ export const KEYCLOAK_STATUS_LABELS = {
   tenantAdminClientExists: 'admin.instances.keycloakStatus.tenantAdminClientExists',
   tenantAdminExists: 'admin.instances.keycloakStatus.tenantAdminExists',
   tenantAdminHasSystemAdmin: 'admin.instances.keycloakStatus.tenantAdminHasSystemAdmin',
+  systemAdminRoleExists: 'admin.instances.keycloakStatus.systemAdminRoleExists',
   redirectUrisMatch: 'admin.instances.keycloakStatus.redirectUrisMatch',
   logoutUrisMatch: 'admin.instances.keycloakStatus.logoutUrisMatch',
   webOriginsMatch: 'admin.instances.keycloakStatus.webOriginsMatch',

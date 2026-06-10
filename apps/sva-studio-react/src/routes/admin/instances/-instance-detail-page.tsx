@@ -8,6 +8,7 @@ import { t } from '../../../i18n';
 import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { InstanceDetailBetriebSection } from './-instance-detail-betrieb-section';
+import { InstanceDetailAuditSection } from './-instance-detail-audit-section';
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
 import { InstanceDetailDoctorSection } from './-instance-detail-doctor-section';
 import { InstanceDetailHeader } from './-instance-detail-header';
@@ -328,6 +329,15 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     statusLoading,
   ]);
 
+  React.useEffect(() => {
+    const selectedInstanceId = selectedInstance?.instanceId;
+    if (!selectedInstanceId) {
+      return;
+    }
+
+    void instancesApi.refreshInstanceAudit(selectedInstanceId);
+  }, [instancesApi.refreshInstanceAudit, selectedInstance?.instanceId]);
+
   const onUpdateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedInstance || !detailFormValues) {
@@ -548,6 +558,11 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 onRevokeModule={instancesApi.revokeModule}
                 onSeedIamBaseline={instancesApi.seedIamBaseline}
                 onBootstrapAdminStructure={instancesApi.bootstrapAdminStructure}
+              />
+              <InstanceDetailAuditSection
+                auditRun={instancesApi.instanceAuditRun}
+                auditLoading={instancesApi.auditLoading}
+                onRefresh={async () => instancesApi.refreshInstanceAudit(selectedInstance.instanceId)}
               />
             </TabsContent>
 

@@ -1679,6 +1679,15 @@ const requireEnv = (key: string): string => {
   return value;
 };
 
+const requireProvisionerEnvForLocalKeycloak = (key: 'BASE_URL' | 'REALM' | 'CLIENT_ID' | 'CLIENT_SECRET'): string => {
+  const envKey = `KEYCLOAK_PROVISIONER_${key}`;
+  const value = process.env[envKey];
+  if (!value) {
+    throw new Error(`Missing required provisioner env for local-keycloak: ${envKey}`);
+  }
+  return value;
+};
+
 export const getKeycloakAdminClientConfigFromEnv = (realm = requireEnv('KEYCLOAK_ADMIN_REALM')): KeycloakAdminClientConfig => ({
   baseUrl: requireEnv('KEYCLOAK_ADMIN_BASE_URL'),
   realm,
@@ -1687,8 +1696,13 @@ export const getKeycloakAdminClientConfigFromEnv = (realm = requireEnv('KEYCLOAK
   clientSecret: getKeycloakAdminClientSecret() ?? requireEnv('KEYCLOAK_ADMIN_CLIENT_SECRET'),
 });
 
-const readProvisionerEnv = (key: 'BASE_URL' | 'REALM' | 'CLIENT_ID' | 'CLIENT_SECRET'): string =>
-  process.env[`KEYCLOAK_PROVISIONER_${key}`] || requireEnv(`KEYCLOAK_ADMIN_${key}`);
+const readProvisionerEnv = (key: 'BASE_URL' | 'REALM' | 'CLIENT_ID' | 'CLIENT_SECRET'): string => {
+  if (process.env.SVA_RUNTIME_PROFILE?.trim() === 'local-keycloak') {
+    return requireProvisionerEnvForLocalKeycloak(key);
+  }
+
+  return process.env[`KEYCLOAK_PROVISIONER_${key}`] || requireEnv(`KEYCLOAK_ADMIN_${key}`);
+};
 
 export const getKeycloakProvisionerClientConfigFromEnv = (
   realm = readProvisionerEnv('REALM')

@@ -18,9 +18,11 @@ import {
 } from './core.js';
 import {
   executeInstanceKeycloakProvisioningInternal,
+  getInstanceAuditRunInternal,
   getInstanceKeycloakPreflightInternal,
   getInstanceKeycloakProvisioningRunInternal,
   getInstanceKeycloakStatusInternal,
+  getSingleInstanceAuditRunInternal,
   planInstanceKeycloakProvisioningInternal,
   probeTenantIamAccessInternal,
   reconcileInstanceKeycloakInternal,
@@ -62,8 +64,12 @@ export const instanceRegistryHandlers = {
     withAuthenticatedRegistryHandler(request, createInstanceInternal),
   updateInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, updateInstanceInternal),
+  getInstanceAuditRun: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, getInstanceAuditRunInternal),
   getInstanceKeycloakStatus: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, getInstanceKeycloakStatusInternal),
+  getSingleInstanceAuditRun: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, getSingleInstanceAuditRunInternal),
   getInstanceKeycloakPreflight: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, getInstanceKeycloakPreflightInternal),
   planInstanceKeycloakProvisioning: async (request: Request): Promise<Response> =>

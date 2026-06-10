@@ -2,7 +2,10 @@ import { asApiItem, createApiError } from '../iam-account-management/api-helpers
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { jsonResponse } from '../db.js';
 import { getWorkspaceContext } from '@sva/server-runtime';
-import { createInstanceRegistryKeycloakHttpHandlers } from '@sva/instance-registry/http-keycloak-handlers';
+import {
+  createInstanceRegistryAuditHttpHandlers,
+  createInstanceRegistryKeycloakHttpHandlers,
+} from '@sva/instance-registry';
 
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { ensurePlatformAccess, requireFreshReauth } from './http.js';
@@ -27,10 +30,32 @@ const keycloakHttpHandlers = createInstanceRegistryKeycloakHttpHandlers<Authenti
   withRegistryService,
 });
 
+const auditHttpHandlers = createInstanceRegistryAuditHttpHandlers<AuthenticatedRequestContext>({
+  getRequestId: () => getWorkspaceContext().requestId,
+  createApiError: (status, code, message, requestId, details) =>
+    createApiError(status, code as Parameters<typeof createApiError>[1], message, requestId, details),
+  jsonResponse,
+  asApiItem,
+  mapReadError: mapInstanceMutationError,
+  ensurePlatformAccess,
+  withRegistryService,
+  getActorId: (ctx) => ctx.user.id,
+});
+
 export const getInstanceKeycloakStatusInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => keycloakHttpHandlers.getInstanceKeycloakStatus(request, ctx);
+
+export const getInstanceAuditRunInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => auditHttpHandlers.getInstanceAuditRun(request, ctx);
+
+export const getSingleInstanceAuditRunInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => auditHttpHandlers.getSingleInstanceAuditRun(request, ctx);
 
 export const getInstanceKeycloakPreflightInternal = async (
   request: Request,

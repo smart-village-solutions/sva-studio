@@ -12,9 +12,15 @@ export const instanceAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.listInstances),
     POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.createInstance),
   },
+  '/api/v1/iam/instances/audit': {
+    GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstanceAuditRun),
+  },
   '/api/v1/iam/instances/$instanceId': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstance),
     PATCH: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.updateInstance),
+  },
+  '/api/v1/iam/instances/$instanceId/audit': {
+    GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getSingleInstanceAuditRun),
   },
   '/api/v1/iam/instances/$instanceId/keycloak/status': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstanceKeycloakStatus),

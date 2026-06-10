@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type IamKeycloakObjectDiagnostic,
+  instanceAuditCheckScopes,
+  instanceAuditCheckStatuses,
+  type InstanceAuditRun,
   type IamUserPermissionTraceItem,
   iamRuntimeDiagnosticClassifications,
   iamRuntimeDiagnosticStatuses,
@@ -128,5 +131,29 @@ describe('account-management-contract runtime diagnostics exports', () => {
     expect(entry.inheritedFromOrganizationId).toBe('11111111-1111-4111-8111-111111111111');
     expect(entry.restrictedByGeoUnitId).toBe('33333333-3333-4333-8333-333333333333');
     expect(entry.inactiveReason).toBe('group_disabled');
+  });
+
+  it('exports stable instance audit enums and response shapes for root diagnostics', () => {
+    expect(instanceAuditCheckStatuses).toEqual(['pass', 'fail', 'warn', 'skip']);
+    expect(instanceAuditCheckScopes).toEqual(['instance', 'registry', 'keycloak', 'localIam', 'run']);
+
+    const run: InstanceAuditRun = {
+      generatedAt: '2026-06-10T08:00:00.000Z',
+      includeOnlyActive: true,
+      targetInstanceIds: ['bb-guben'],
+      overallStatus: 'warn',
+      summary: {
+        totalInstances: 1,
+        passCount: 3,
+        failCount: 0,
+        warnCount: 1,
+        skipCount: 0,
+      },
+      checks: [],
+      instances: [],
+    };
+
+    expect(run.summary.totalInstances).toBe(1);
+    expect(run.overallStatus).toBe('warn');
   });
 });

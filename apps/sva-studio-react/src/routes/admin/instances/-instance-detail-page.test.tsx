@@ -157,9 +157,12 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
 const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   instances: [],
   selectedInstance: createSelectedInstance(),
+  instancesAuditRun: null,
+  instanceAuditRun: null,
   isLoading: false,
   detailLoading: false,
   statusLoading: false,
+  auditLoading: false,
   error: null,
   mutationError: null as
     | {
@@ -179,6 +182,8 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   setStatus: vi.fn(),
   refetch: vi.fn(),
   loadInstance: vi.fn().mockResolvedValue(true),
+  refreshInstancesAudit: vi.fn().mockResolvedValue(true),
+  refreshInstanceAudit: vi.fn().mockResolvedValue(true),
   clearSelectedInstance: vi.fn(),
   clearMutationError: vi.fn(),
   createInstance: vi.fn().mockResolvedValue(true),
@@ -410,6 +415,36 @@ describe('InstanceDetailPage', () => {
         'Für diesen Provisioning-Auftrag hat noch kein Worker übernommen. Bitte den Provisioning-Worker prüfen oder lokal starten und den Lauf danach erneut anstoßen.',
       ),
     ).toBeTruthy();
+  });
+
+  it('does not re-run the audit refresh when detail polling replaces the instance object with the same id', async () => {
+    const refreshInstanceAudit = vi.fn().mockResolvedValue(true);
+    const loadInstance = vi.fn().mockResolvedValue(true);
+    const firstState = createInstancesApiState({
+      loadInstance,
+      refreshInstanceAudit,
+      selectedInstance: createSelectedInstance({ displayName: 'Demo A' }),
+    });
+    const secondState = createInstancesApiState({
+      loadInstance,
+      refreshInstanceAudit,
+      selectedInstance: createSelectedInstance({ displayName: 'Demo B' }),
+    });
+
+    useInstancesMock.mockReturnValueOnce(firstState).mockReturnValue(secondState);
+
+    const view = render(<InstanceDetailPage instanceId="demo" />);
+
+    await waitFor(() => {
+      expect(refreshInstanceAudit).toHaveBeenCalledTimes(1);
+    });
+
+    view.rerender(<InstanceDetailPage instanceId="demo" />);
+
+    await waitFor(() => {
+      expect(loadInstance).toHaveBeenCalledWith('demo');
+    });
+    expect(refreshInstanceAudit).toHaveBeenCalledTimes(1);
   });
 
   it('computes transient action feedback classes for visible and fading states', () => {

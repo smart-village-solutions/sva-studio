@@ -28,6 +28,8 @@ const reconcileInstanceKeycloakMock = vi.fn();
 const activateInstanceMock = vi.fn();
 const suspendInstanceMock = vi.fn();
 const archiveInstanceMock = vi.fn();
+const getInstanceAuditRunMock = vi.fn();
+const getSingleInstanceAuditRunMock = vi.fn();
 const authMockValue = {
   invalidatePermissions: vi.fn(),
 };
@@ -68,6 +70,8 @@ vi.mock('../lib/iam-api', () => ({
   getInstanceKeycloakStatus: (...args: unknown[]) => getInstanceKeycloakStatusMock(...args),
   getInstanceKeycloakPreflight: (...args: unknown[]) => getInstanceKeycloakPreflightMock(...args),
   getInstanceKeycloakProvisioningRun: (...args: unknown[]) => getInstanceKeycloakProvisioningRunMock(...args),
+  getInstanceAuditRun: (...args: unknown[]) => getInstanceAuditRunMock(...args),
+  getSingleInstanceAuditRun: (...args: unknown[]) => getSingleInstanceAuditRunMock(...args),
   planInstanceKeycloakProvisioning: (...args: unknown[]) => planInstanceKeycloakProvisioningMock(...args),
   executeInstanceKeycloakProvisioning: (...args: unknown[]) => executeInstanceKeycloakProvisioningMock(...args),
   probeTenantIamAccess: (...args: unknown[]) => probeTenantIamAccessMock(...args),
@@ -132,6 +136,45 @@ describe('useInstances', () => {
     });
     getInstanceKeycloakProvisioningRunMock.mockResolvedValue({
       data: null,
+    });
+    getInstanceAuditRunMock.mockResolvedValue({
+      data: {
+        generatedAt: '2026-06-10T10:00:00.000Z',
+        overallStatus: 'pass',
+        summary: {
+          totalInstances: 1,
+          passedInstances: 1,
+          warnedInstances: 0,
+          failedInstances: 0,
+          skippedInstances: 0,
+        },
+        checks: [],
+        instances: [],
+      },
+    });
+    getSingleInstanceAuditRunMock.mockResolvedValue({
+      data: {
+        generatedAt: '2026-06-10T10:00:00.000Z',
+        overallStatus: 'pass',
+        summary: {
+          totalInstances: 1,
+          passedInstances: 1,
+          warnedInstances: 0,
+          failedInstances: 0,
+          skippedInstances: 0,
+        },
+        checks: [],
+        instances: [
+          {
+            instanceId: 'demo',
+            displayName: 'Demo',
+            primaryHostname: 'demo.studio.example.org',
+            status: 'active',
+            overallStatus: 'pass',
+            checks: [],
+          },
+        ],
+      },
     });
     planInstanceKeycloakProvisioningMock.mockResolvedValue({
       data: {
@@ -319,6 +362,7 @@ describe('useInstances', () => {
     expect(suspendInstanceMock).toHaveBeenCalledTimes(1);
     expect(archiveInstanceMock).toHaveBeenCalledTimes(1);
     expect(getInstanceMock).toHaveBeenCalled();
+    expect(getSingleInstanceAuditRunMock).toHaveBeenCalled();
     expect(browserLoggerMock.info).toHaveBeenCalledWith(
       'instance_mutation_succeeded',
       expect.objectContaining({
@@ -850,5 +894,341 @@ describe('useInstances', () => {
 
     expect(bootstrapInstanceAdminStructureMock).toHaveBeenCalledWith('demo', ['news']);
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads a full audit run for the instances overview', async () => {
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const auditRun = await result.current.refreshInstancesAudit();
+      expect(auditRun).toEqual(
+        expect.objectContaining({
+          overallStatus: 'pass',
+          summary: expect.objectContaining({
+            totalInstances: 1,
+          }),
+        })
+      );
+    });
+
+    expect(getInstanceAuditRunMock).toHaveBeenCalledWith({ includeOnlyActive: true });
+    expect(result.current.instancesAuditRun).toEqual(
+      expect.objectContaining({
+        overallStatus: 'pass',
+      })
+    );
+  });
+
+  it('loads and clears the single-instance audit state', async () => {
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const auditRun = await result.current.refreshInstanceAudit('demo');
+      expect(auditRun).toEqual(
+        expect.objectContaining({
+          overallStatus: 'pass',
+        })
+      );
+    });
+
+    expect(getSingleInstanceAuditRunMock).toHaveBeenCalledWith('demo');
+    expect(result.current.instanceAuditRun).toEqual(
+      expect.objectContaining({
+        overallStatus: 'pass',
+      })
+    );
+
+    act(() => {
+      result.current.clearSelectedInstance();
+    });
+
+    expect(result.current.instanceAuditRun).toBeNull();
+  });
+
+  it('surfaces audit refresh failures and invalidates permissions on 403', async () => {
+    getSingleInstanceAuditRunMock.mockRejectedValueOnce({
+      status: 403,
+      code: 'forbidden',
+      message: 'nope',
+    });
+    getInstanceAuditRunMock.mockRejectedValueOnce({
+      status: 403,
+      code: 'forbidden',
+      message: 'still nope',
+    });
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      expect(await result.current.refreshInstanceAudit('demo')).toBeNull();
+    });
+
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({ status: 403, code: 'forbidden' })
+    );
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      expect(
+        await result.current.refreshInstancesAudit({
+          includeOnlyActive: false,
+          instanceIds: ['demo', 'bb-guben'],
+        })
+      ).toBeNull();
+    });
+
+    expect(getInstanceAuditRunMock).toHaveBeenCalledWith({
+      includeOnlyActive: false,
+      instanceIds: ['demo', 'bb-guben'],
+    });
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves an existing detail error while a successful audit refresh runs', async () => {
+    getInstanceKeycloakStatusMock.mockRejectedValueOnce({
+      status: 502,
+      code: 'keycloak_unavailable',
+      message: 'Keycloak unavailable',
+    });
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({
+        status: 502,
+        code: 'keycloak_unavailable',
+      })
+    );
+
+    await act(async () => {
+      await result.current.refreshInstanceAudit('demo');
+    });
+
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({
+        status: 502,
+        code: 'keycloak_unavailable',
+      })
+    );
+  });
+
+  it('ignores stale single-instance audit responses after switching to another instance', async () => {
+    const demoAudit = createDeferred<{
+      data: {
+        generatedAt: string;
+        includeOnlyActive: boolean;
+        targetInstanceIds: string[];
+        overallStatus: string;
+        summary: {
+          totalInstances: number;
+          passedInstances?: number;
+          warnedInstances?: number;
+          failedInstances?: number;
+          skippedInstances?: number;
+          passCount?: number;
+          warnCount?: number;
+          failCount?: number;
+          skipCount?: number;
+        };
+        checks: never[];
+        instances: Array<{ instanceId: string; displayName: string; primaryHostname: string; status: string; overallStatus: string; checks: never[] }>;
+      };
+    }>();
+
+    getSingleInstanceAuditRunMock
+      .mockImplementationOnce(() => demoAudit.promise)
+      .mockResolvedValueOnce({
+        data: {
+          generatedAt: '2026-06-10T10:05:00.000Z',
+          includeOnlyActive: true,
+          targetInstanceIds: ['bb-guben'],
+          overallStatus: 'pass',
+          summary: {
+            totalInstances: 1,
+            passCount: 1,
+            failCount: 0,
+            warnCount: 0,
+            skipCount: 0,
+          },
+          checks: [],
+          instances: [
+            {
+              instanceId: 'bb-guben',
+              displayName: 'BB Guben',
+              primaryHostname: 'bb-guben.studio.smart-village.app',
+              status: 'active',
+              overallStatus: 'pass',
+              checks: [],
+            },
+          ],
+        },
+      });
+
+    getInstanceMock
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          status: 'active',
+          parentDomain: 'studio.example.org',
+          primaryHostname: 'demo.studio.example.org',
+          hostnames: [],
+          provisioningRuns: [],
+          keycloakProvisioningRuns: [],
+          auditEvents: [],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'bb-guben',
+          displayName: 'BB Guben',
+          status: 'active',
+          parentDomain: 'studio.smart-village.app',
+          primaryHostname: 'bb-guben.studio.smart-village.app',
+          hostnames: [],
+          provisioningRuns: [],
+          keycloakProvisioningRuns: [],
+          auditEvents: [],
+        },
+      });
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    const firstAuditPromise = result.current.refreshInstanceAudit('demo');
+
+    await act(async () => {
+      await result.current.loadInstance('bb-guben');
+      await result.current.refreshInstanceAudit('bb-guben');
+    });
+
+    await act(async () => {
+      demoAudit.resolve({
+        data: {
+          generatedAt: '2026-06-10T10:00:00.000Z',
+          includeOnlyActive: true,
+          targetInstanceIds: ['demo'],
+          overallStatus: 'pass',
+          summary: {
+            totalInstances: 1,
+            passCount: 1,
+            failCount: 0,
+            warnCount: 0,
+            skipCount: 0,
+          },
+          checks: [],
+          instances: [
+            {
+              instanceId: 'demo',
+              displayName: 'Demo',
+              primaryHostname: 'demo.studio.example.org',
+              status: 'active',
+              overallStatus: 'pass',
+              checks: [],
+            },
+          ],
+        },
+      });
+      await firstAuditPromise;
+    });
+
+    expect(result.current.selectedInstance?.instanceId).toBe('bb-guben');
+    expect(result.current.instanceAuditRun?.targetInstanceIds).toEqual(['bb-guben']);
+    expect(result.current.instanceAuditRun?.instances[0]?.instanceId).toBe('bb-guben');
+  });
+
+  it('keeps auditLoading true while overlapping audit requests are still pending', async () => {
+    let resolveSingleAudit: ((value: unknown) => void) | undefined;
+    let resolveOverviewAudit: ((value: unknown) => void) | undefined;
+
+    getSingleInstanceAuditRunMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSingleAudit = resolve;
+        })
+    );
+    getInstanceAuditRunMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveOverviewAudit = resolve;
+        })
+    );
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    let singleAuditPromise: Promise<unknown> | undefined;
+    let overviewAuditPromise: Promise<unknown> | undefined;
+
+    await act(async () => {
+      singleAuditPromise = result.current.refreshInstanceAudit('demo');
+      overviewAuditPromise = result.current.refreshInstancesAudit();
+    });
+
+    expect(result.current.auditLoading).toBe(true);
+
+    await act(async () => {
+      resolveSingleAudit?.({
+        data: {
+          generatedAt: '2026-06-10T12:00:00.000Z',
+          includeOnlyActive: true,
+          targetInstanceIds: ['demo'],
+          overallStatus: 'pass',
+          summary: { totalInstances: 1, passCount: 1, failCount: 0, warnCount: 0, skipCount: 0 },
+          checks: [],
+          instances: [],
+        },
+      });
+      await Promise.resolve();
+    });
+
+    expect(result.current.auditLoading).toBe(true);
+
+    await act(async () => {
+      resolveOverviewAudit?.({
+        data: {
+          generatedAt: '2026-06-10T12:00:00.000Z',
+          includeOnlyActive: true,
+          targetInstanceIds: ['demo'],
+          overallStatus: 'pass',
+          summary: { totalInstances: 1, passCount: 1, failCount: 0, warnCount: 0, skipCount: 0 },
+          checks: [],
+          instances: [],
+        },
+      });
+      await Promise.all([singleAuditPromise, overviewAuditPromise]);
+    });
+
+    expect(result.current.auditLoading).toBe(false);
   });
 });

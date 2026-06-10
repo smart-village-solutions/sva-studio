@@ -1,4 +1,4 @@
-import type { IamInstanceDetail, IamInstanceListItem } from '@sva/core';
+import type { IamInstanceDetail, IamInstanceListItem, InstanceAuditRun } from '@sva/core';
 import React from 'react';
 
 import {
@@ -12,6 +12,8 @@ import {
   getInstanceKeycloakStatus,
   getInstanceKeycloakPreflight,
   getInstanceKeycloakProvisioningRun,
+  getInstanceAuditRun,
+  getSingleInstanceAuditRun,
   getInstance,
   IamHttpError,
   listInstances,
@@ -80,16 +82,32 @@ export const useInstances = () => {
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [instances, setInstances] = React.useState<readonly IamInstanceListItem[]>([]);
   const [selectedInstance, setSelectedInstance] = React.useState<IamInstanceDetail | null>(null);
+  const [instancesAuditRun, setInstancesAuditRun] = React.useState<InstanceAuditRun | null>(null);
+  const [instanceAuditRun, setInstanceAuditRun] = React.useState<InstanceAuditRun | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [statusLoading, setStatusLoading] = React.useState(false);
+  const [auditLoading, setAuditLoading] = React.useState(false);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
+  const pendingAuditRequestsRef = React.useRef(0);
+  const currentDetailInstanceIdRef = React.useRef<string | null>(null);
+  const latestInstanceAuditRequestRef = React.useRef(0);
 
   React.useEffect(() => {
     const timer = globalThis.setTimeout(() => setDebouncedSearch(filters.search.trim()), 250);
     return () => globalThis.clearTimeout(timer);
   }, [filters.search]);
+
+  const beginAuditRequest = React.useCallback(() => {
+    pendingAuditRequestsRef.current += 1;
+    setAuditLoading(true);
+  }, []);
+
+  const endAuditRequest = React.useCallback(() => {
+    pendingAuditRequestsRef.current = Math.max(0, pendingAuditRequestsRef.current - 1);
+    setAuditLoading(pendingAuditRequestsRef.current > 0);
+  }, []);
 
   const updateSelectedForInstance = React.useCallback(
     (instanceId: string, updater: (current: IamInstanceDetail) => IamInstanceDetail) => {
@@ -188,6 +206,10 @@ export const useInstances = () => {
 
   const loadInstance = React.useCallback(
     async (instanceId: string) => {
+      if (currentDetailInstanceIdRef.current !== instanceId) {
+        setInstanceAuditRun(null);
+      }
+      currentDetailInstanceIdRef.current = instanceId;
       logBrowserOperationStart(instancesLogger, 'instance_detail_load_started', {
         operation: 'get_instance_detail',
         instance_id: instanceId,
@@ -259,6 +281,64 @@ export const useInstances = () => {
     [invalidatePermissionsAfter403]
   );
 
+  const refreshInstanceAudit = React.useCallback(
+    async (instanceId: string) => {
+      beginAuditRequest();
+      if (currentDetailInstanceIdRef.current === null) {
+        currentDetailInstanceIdRef.current = instanceId;
+      }
+      const requestToken = latestInstanceAuditRequestRef.current + 1;
+      latestInstanceAuditRequestRef.current = requestToken;
+      try {
+        const response = await getSingleInstanceAuditRun(instanceId);
+        const targetInstanceIds = response.data.targetInstanceIds ?? [instanceId];
+        const isLatestRequest = latestInstanceAuditRequestRef.current === requestToken;
+        const targetsRequestedInstance =
+          targetInstanceIds.length === 0 || targetInstanceIds.includes(instanceId);
+        const matchesCurrentDetail =
+          currentDetailInstanceIdRef.current === null || currentDetailInstanceIdRef.current === instanceId;
+        if (isLatestRequest && matchesCurrentDetail && targetsRequestedInstance) {
+          setInstanceAuditRun(response.data);
+        }
+        return response.data;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 403) {
+          await invalidatePermissions();
+        }
+        setMutationError((current) => current ?? resolvedError);
+        return null;
+      } finally {
+        endAuditRequest();
+      }
+    },
+    [beginAuditRequest, endAuditRequest, invalidatePermissions]
+  );
+
+  const refreshInstancesAudit = React.useCallback(
+    async (input?: { includeOnlyActive?: boolean; instanceIds?: readonly string[] }) => {
+      beginAuditRequest();
+      try {
+        const response = await getInstanceAuditRun({
+          includeOnlyActive: input?.includeOnlyActive ?? true,
+          instanceIds: input?.instanceIds,
+        });
+        setInstancesAuditRun(response.data);
+        return response.data;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 403) {
+          await invalidatePermissions();
+        }
+        setMutationError((current) => current ?? resolvedError);
+        return null;
+      } finally {
+        endAuditRequest();
+      }
+    },
+    [beginAuditRequest, endAuditRequest, invalidatePermissions]
+  );
+
   const mutate = React.useCallback(
     async <T>(
       action: () => Promise<{ data: T }>,
@@ -279,6 +359,7 @@ export const useInstances = () => {
         await refetch();
         if (instanceId) {
           await loadInstance(instanceId);
+          await refreshInstanceAudit(instanceId);
         }
         logBrowserOperationSuccess(instancesLogger, 'instance_mutation_succeeded', {
           operation,
@@ -304,15 +385,18 @@ export const useInstances = () => {
         return null;
       }
     },
-    [invalidatePermissions, loadInstance, refetch]
+    [invalidatePermissions, loadInstance, refetch, refreshInstanceAudit]
   );
 
   return {
     instances,
     selectedInstance,
+    instancesAuditRun,
+    instanceAuditRun,
     isLoading,
     detailLoading,
     statusLoading,
+    auditLoading,
     error,
     mutationError,
     filters,
@@ -320,7 +404,13 @@ export const useInstances = () => {
     setStatus: (value: InstanceStatusFilter) => setFilters((current) => ({ ...current, status: value })),
     refetch,
     loadInstance,
-    clearSelectedInstance: () => setSelectedInstance(null),
+    refreshInstancesAudit,
+    refreshInstanceAudit,
+    clearSelectedInstance: () => {
+      currentDetailInstanceIdRef.current = null;
+      setSelectedInstance(null);
+      setInstanceAuditRun(null);
+    },
     clearMutationError: () => setMutationError(null),
     createInstance: async (payload: CreateInstancePayload) =>
       mutate(() => createInstance(payload), payload.instanceId, 'create_instance'),

@@ -518,6 +518,7 @@ export type IamInstanceKeycloakStatus = {
   readonly realmExists: boolean;
   readonly clientExists: boolean;
   readonly tenantAdminClientExists: boolean;
+  readonly systemAdminRoleExists: boolean;
   readonly tenantAdminExists: boolean;
   readonly tenantAdminHasSystemAdmin: boolean;
   readonly redirectUrisMatch: boolean;
@@ -530,6 +531,53 @@ export type IamInstanceKeycloakStatus = {
   readonly tenantAdminClientSecretReadable: boolean;
   readonly tenantAdminClientSecretAligned: boolean;
   readonly runtimeSecretSource: 'tenant' | 'global';
+};
+
+export const instanceAuditCheckStatuses = ['pass', 'fail', 'warn', 'skip'] as const;
+
+export type InstanceAuditCheckStatus = (typeof instanceAuditCheckStatuses)[number];
+
+export const instanceAuditCheckScopes = ['instance', 'registry', 'keycloak', 'localIam', 'run'] as const;
+
+export type InstanceAuditCheckScope = (typeof instanceAuditCheckScopes)[number];
+
+export type InstanceAuditCheck = {
+  readonly checkId: string;
+  readonly title: string;
+  readonly scope: InstanceAuditCheckScope;
+  readonly status: InstanceAuditCheckStatus;
+  readonly expected: string;
+  readonly actual: string;
+  readonly evidenceSource: string;
+  readonly message: string;
+  readonly remediationHint?: string;
+};
+
+export type InstanceAuditInstanceResult = {
+  readonly instanceId: string;
+  readonly displayName: string;
+  readonly status: InstanceStatus;
+  readonly primaryHostname: string;
+  readonly overallStatus: InstanceAuditCheckStatus;
+  readonly checks: readonly InstanceAuditCheck[];
+};
+
+export type InstanceAuditRun = {
+  readonly generatedAt: string;
+  readonly requestId?: string;
+  readonly actorId?: string;
+  readonly includeOnlyActive: boolean;
+  readonly targetInstanceIds: readonly string[];
+  readonly overallStatus: InstanceAuditCheckStatus;
+  readonly summary: {
+    readonly totalInstances: number;
+    readonly passCount: number;
+    readonly failCount: number;
+    readonly warnCount: number;
+    readonly skipCount: number;
+  };
+  readonly checks: readonly InstanceAuditCheck[];
+  readonly instances: readonly InstanceAuditInstanceResult[];
 };
 
 export type IamInstanceKeycloakPreflight = {

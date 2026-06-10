@@ -37,9 +37,11 @@ import {
   getDataExportStatus,
   buildMyDataExportDownloadUrl,
   getInstance,
+  getInstanceAuditRun,
   getInstanceKeycloakPreflight,
   getInstanceKeycloakProvisioningRun,
   getInstanceKeycloakStatus,
+  getSingleInstanceAuditRun,
   getRuntimeHealth,
   getLatestAuthorizePerformanceRun,
   getMyDataSubjectRights,
@@ -1015,6 +1017,11 @@ describe('iam-api instance helpers', () => {
 
     await listInstances({ search: 'demo', status: 'active' });
     await getInstance('demo');
+    await getInstanceAuditRun({
+      includeOnlyActive: false,
+      instanceIds: ['demo', 'bb-guben'],
+    });
+    await getSingleInstanceAuditRun('demo');
     await createInstance({
       instanceId: 'demo',
       displayName: 'Demo',
@@ -1060,6 +1067,16 @@ describe('iam-api instance helpers', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
+      '/api/v1/iam/instances/audit?instanceId=demo&instanceId=bb-guben&includeOnlyActive=false',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/api/v1/iam/instances/demo/audit',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
       '/api/v1/iam/instances',
       expect.objectContaining({
         method: 'POST',
@@ -1069,7 +1086,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      4,
+      6,
       '/api/v1/iam/instances/demo',
       expect.objectContaining({
         method: 'PATCH',
@@ -1079,22 +1096,22 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      5,
+      7,
       '/api/v1/iam/health/ready',
       expect.objectContaining({ credentials: 'include' })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      6,
+      8,
       '/api/v1/iam/instances/demo/keycloak/status',
       expect.objectContaining({ credentials: 'include' })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      7,
+      9,
       '/api/v1/iam/instances/demo/keycloak/preflight',
       expect.objectContaining({ credentials: 'include' })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      8,
+      10,
       '/api/v1/iam/instances/demo/keycloak/plan',
       expect.objectContaining({
         method: 'POST',
@@ -1105,7 +1122,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      9,
+      11,
       '/api/v1/iam/instances/demo/keycloak/execute',
       expect.objectContaining({
         method: 'POST',
@@ -1115,12 +1132,12 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      10,
+      12,
       '/api/v1/iam/instances/demo/keycloak/runs/run-1',
       expect.objectContaining({ credentials: 'include' })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      11,
+      13,
       '/api/v1/iam/instances/demo/keycloak/reconcile',
       expect.objectContaining({
         method: 'POST',
@@ -1130,7 +1147,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      12,
+      14,
       '/api/v1/iam/instances/demo/tenant-iam/access-probe',
       expect.objectContaining({
         method: 'POST',
@@ -1141,7 +1158,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      13,
+      15,
       '/api/v1/iam/instances/demo/activate',
       expect.objectContaining({
         method: 'POST',
@@ -1152,7 +1169,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      14,
+      16,
       '/api/v1/iam/instances/demo/suspend',
       expect.objectContaining({
         method: 'POST',
@@ -1160,12 +1177,42 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      15,
+      17,
       '/api/v1/iam/instances/demo/archive',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ status: 'archived' }),
       })
+    );
+  });
+
+  it('builds audit helper URLs for collection and detail reads', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(JSON.stringify({ data: null }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await getInstanceAuditRun();
+    await getInstanceAuditRun({ includeOnlyActive: true, instanceIds: ['demo'] });
+    await getSingleInstanceAuditRun('demo');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/iam/instances/audit',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/iam/instances/audit?instanceId=demo&includeOnlyActive=true',
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/iam/instances/demo/audit',
+      expect.objectContaining({ credentials: 'include' })
     );
   });
 });

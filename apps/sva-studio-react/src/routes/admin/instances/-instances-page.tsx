@@ -15,6 +15,7 @@ import { Select } from '../../../components/ui/select';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
 import { getErrorMessage } from './-instance-error-messages';
+import { InstanceAuditRunSection } from './-instance-audit-run-section';
 import { INSTANCE_STATUS_LABELS } from './-instances-shared-types';
 
 type InstanceRow = IamInstanceListItem;
@@ -85,9 +86,19 @@ export const InstancesPage = () => {
         primaryAction={{
           label: t('admin.instances.actions.create'),
           render: (
-            <Button asChild>
-              <Link to="/admin/instances/new">{t('admin.instances.actions.create')}</Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void instancesApi.refreshInstancesAudit()}
+                disabled={instancesApi.auditLoading}
+              >
+                {instancesApi.auditLoading ? t('admin.instances.audit.loadingAll') : t('admin.instances.audit.runAll')}
+              </Button>
+              <Button asChild>
+                <Link to="/admin/instances/new">{t('admin.instances.actions.create')}</Link>
+              </Button>
+            </div>
           ),
         }}
       >
@@ -162,6 +173,26 @@ export const InstancesPage = () => {
           </AlertDescription>
         </Alert>
       ) : null}
+
+      {instancesApi.mutationError ? (
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{getErrorMessage(instancesApi.mutationError)}</span>
+            <IamRuntimeDiagnosticDetails error={instancesApi.mutationError} />
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <InstanceAuditRunSection
+        title={t('admin.instances.audit.overviewTitle')}
+        subtitle={t('admin.instances.audit.overviewSubtitle')}
+        emptyMessage={t('admin.instances.audit.overviewEmpty')}
+        refreshLabel={t('admin.instances.audit.runAll')}
+        loadingLabel={t('admin.instances.audit.loadingAll')}
+        auditRun={instancesApi.instancesAuditRun}
+        auditLoading={instancesApi.auditLoading}
+        onRefresh={() => instancesApi.refreshInstancesAudit()}
+      />
     </section>
   );
 };

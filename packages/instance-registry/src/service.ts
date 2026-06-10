@@ -6,6 +6,7 @@ import {
   createProvisioningRequestHandler,
   createUpdateInstanceHandler,
 } from './service-instance-mutations.js';
+import { createRunInstanceAuditHandler } from './service-audit.js';
 import {
   createExecuteKeycloakProvisioningHandler,
   createGetKeycloakPreflightHandler,
@@ -42,6 +43,7 @@ export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps)
   getKeycloakProvisioningRun: createGetKeycloakProvisioningRunHandler(deps),
   getKeycloakStatus: createGetKeycloakStatusHandler(deps),
   reconcileKeycloak: createReconcileKeycloakHandler(deps),
+  runInstanceAudit: createRunInstanceAuditHandler(deps),
   resolveRuntimeInstance: createRuntimeResolver(deps.repository),
   isTrafficAllowed: isTrafficEnabledInstanceStatus,
 });

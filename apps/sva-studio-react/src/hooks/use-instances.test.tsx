@@ -995,4 +995,72 @@ describe('useInstances', () => {
     });
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(2);
   });
+
+  it('keeps auditLoading true while overlapping audit requests are still pending', async () => {
+    let resolveSingleAudit: ((value: unknown) => void) | undefined;
+    let resolveOverviewAudit: ((value: unknown) => void) | undefined;
+
+    getSingleInstanceAuditRunMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSingleAudit = resolve;
+        })
+    );
+    getInstanceAuditRunMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveOverviewAudit = resolve;
+        })
+    );
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    let singleAuditPromise: Promise<unknown> | undefined;
+    let overviewAuditPromise: Promise<unknown> | undefined;
+
+    await act(async () => {
+      singleAuditPromise = result.current.refreshInstanceAudit('demo');
+      overviewAuditPromise = result.current.refreshInstancesAudit();
+    });
+
+    expect(result.current.auditLoading).toBe(true);
+
+    await act(async () => {
+      resolveSingleAudit?.({
+        data: {
+          generatedAt: '2026-06-10T12:00:00.000Z',
+          includeOnlyActive: true,
+          targetInstanceIds: ['demo'],
+          overallStatus: 'pass',
+          summary: { totalInstances: 1, passCount: 1, failCount: 0, warnCount: 0, skipCount: 0 },
+          checks: [],
+          instances: [],
+        },
+      });
+      await Promise.resolve();
+    });
+
+    expect(result.current.auditLoading).toBe(true);
+
+    await act(async () => {
+      resolveOverviewAudit?.({
+        data: {
+          generatedAt: '2026-06-10T12:00:00.000Z',
+          includeOnlyActive: true,
+          targetInstanceIds: ['demo'],
+          overallStatus: 'pass',
+          summary: { totalInstances: 1, passCount: 1, failCount: 0, warnCount: 0, skipCount: 0 },
+          checks: [],
+          instances: [],
+        },
+      });
+      await Promise.all([singleAuditPromise, overviewAuditPromise]);
+    });
+
+    expect(result.current.auditLoading).toBe(false);
+  });
 });

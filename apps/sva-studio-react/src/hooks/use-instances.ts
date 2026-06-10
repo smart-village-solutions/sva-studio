@@ -90,11 +90,22 @@ export const useInstances = () => {
   const [auditLoading, setAuditLoading] = React.useState(false);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
+  const pendingAuditRequestsRef = React.useRef(0);
 
   React.useEffect(() => {
     const timer = globalThis.setTimeout(() => setDebouncedSearch(filters.search.trim()), 250);
     return () => globalThis.clearTimeout(timer);
   }, [filters.search]);
+
+  const beginAuditRequest = React.useCallback(() => {
+    pendingAuditRequestsRef.current += 1;
+    setAuditLoading(true);
+  }, []);
+
+  const endAuditRequest = React.useCallback(() => {
+    pendingAuditRequestsRef.current = Math.max(0, pendingAuditRequestsRef.current - 1);
+    setAuditLoading(pendingAuditRequestsRef.current > 0);
+  }, []);
 
   const updateSelectedForInstance = React.useCallback(
     (instanceId: string, updater: (current: IamInstanceDetail) => IamInstanceDetail) => {
@@ -266,7 +277,7 @@ export const useInstances = () => {
 
   const refreshInstanceAudit = React.useCallback(
     async (instanceId: string) => {
-      setAuditLoading(true);
+      beginAuditRequest();
       setMutationError(null);
       try {
         const response = await getSingleInstanceAuditRun(instanceId);
@@ -280,15 +291,15 @@ export const useInstances = () => {
         setMutationError(resolvedError);
         return null;
       } finally {
-        setAuditLoading(false);
+        endAuditRequest();
       }
     },
-    [invalidatePermissions]
+    [beginAuditRequest, endAuditRequest, invalidatePermissions]
   );
 
   const refreshInstancesAudit = React.useCallback(
     async (input?: { includeOnlyActive?: boolean; instanceIds?: readonly string[] }) => {
-      setAuditLoading(true);
+      beginAuditRequest();
       setMutationError(null);
       try {
         const response = await getInstanceAuditRun({
@@ -305,10 +316,10 @@ export const useInstances = () => {
         setMutationError(resolvedError);
         return null;
       } finally {
-        setAuditLoading(false);
+        endAuditRequest();
       }
     },
-    [invalidatePermissions]
+    [beginAuditRequest, endAuditRequest, invalidatePermissions]
   );
 
   const mutate = React.useCallback(

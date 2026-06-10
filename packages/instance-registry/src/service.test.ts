@@ -323,6 +323,74 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('supports running the audit without an explicit input object', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 200 })) as typeof fetch
+    );
+
+    const service = createInstanceRegistryService(
+      createDeps(createRepository(), {
+        getKeycloakStatus: vi.fn(async () => ({
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          systemAdminRoleExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: true,
+          runtimeSecretSource: 'tenant',
+        })),
+      })
+    );
+
+    const result = await service.runInstanceAudit();
+    expect(result.includeOnlyActive).toBe(true);
+    expect(result.targetInstanceIds).toEqual(['demo']);
+  });
+
+  it('fails the run check when no active target instances can be resolved', async () => {
+    const repository = createRepository({
+      listInstances: vi.fn(async () => []),
+      getInstanceById: vi.fn(async () => ({ ...baseInstance, status: 'archived' as const })),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    const fromList = await service.runInstanceAudit();
+    expect(fromList.overallStatus).toBe('fail');
+    expect(fromList.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkId: 'run.targets.present',
+          status: 'fail',
+          actual: '0 Instanzen',
+        }),
+      ])
+    );
+
+    const fromRequestedIds = await service.runInstanceAudit({
+      instanceIds: ['demo'],
+      includeOnlyActive: true,
+    });
+    expect(fromRequestedIds.instances).toEqual([]);
+    expect(fromRequestedIds.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkId: 'run.targets.present',
+          status: 'fail',
+        }),
+      ])
+    );
+  });
+
   it('rejects duplicate create requests before mutating state', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => baseInstance),

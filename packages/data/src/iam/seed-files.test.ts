@@ -96,4 +96,12 @@ describe('iam seed sql contracts', () => {
     assert.match(sql, /allow_content_preference_override = EXCLUDED\.allow_content_preference_override/);
     assert.match(sql, /updated_at = NOW\(\)/);
   });
+
+  it('assigns the categories module to seeded instances with mainserver content modules', () => {
+    const defaultSeedSql = readSeed('0001_iam_personas.sql');
+    const bbGubenSeedSql = readSeed('0002_bb_guben_permissions.sql');
+
+    assert.match(defaultSeedSql, /\('de-musterhausen', 'categories'\)/);
+    assert.match(bbGubenSeedSql, /\('bb-guben', 'categories'\)/);
+  });
 });

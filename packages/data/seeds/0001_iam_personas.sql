@@ -58,6 +58,7 @@ SET
 
 INSERT INTO iam.instance_modules (instance_id, module_id)
 VALUES
+  ('de-musterhausen', 'categories'),
   ('de-musterhausen', 'news'),
   ('de-musterhausen', 'events')
 ON CONFLICT (instance_id, module_id) DO NOTHING;

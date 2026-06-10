@@ -183,6 +183,18 @@ test('categories permission migration backfills additive plugin permissions with
   assert.doesNotMatch(sql, /DELETE FROM iam\.role_permissions/);
 });
 
+test('categories instance-module migration backfills additive module assignments for mainserver content tenants', () => {
+  const sql = readRepoFile('data/migrations/0055_iam_categories_instance_modules.sql');
+
+  assert.match(sql, /INSERT INTO iam\.instance_modules \(instance_id, module_id\)/);
+  assert.match(sql, /SELECT DISTINCT/);
+  assert.match(sql, /'categories'/);
+  assert.match(sql, /module_id IN \('news', 'events', 'poi'\)/);
+  assert.match(sql, /ON CONFLICT \(instance_id, module_id\) DO NOTHING/);
+  assert.match(sql, /non-destructive rollback intentionally omitted/i);
+  assert.doesNotMatch(sql, /DELETE FROM iam\.instance_modules/);
+});
+
 test('runtime artifact verification runs workspace node helper via bash', () => {
   const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
 

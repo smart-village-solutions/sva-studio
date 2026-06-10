@@ -180,6 +180,9 @@ export const i18nResources = {
       poi: {
         description: 'Veröffentlicht Orte und zugehörige Standortinformationen für den Mandanten.',
       },
+      categories: {
+        description: 'Stellt die Mainserver-Kategorien als redaktionelles Begleitmodul für News, Termine und Orte bereit.',
+      },
       'waste-management': {
         description: 'Aktiviert die Abfallwirtschaft mit Stammdaten, Tourenplanung und Betriebswerkzeugen.',
       },
@@ -3835,6 +3838,9 @@ export const i18nResources = {
       },
       poi: {
         description: 'Publishes places and related location information for the tenant.',
+      },
+      categories: {
+        description: 'Provides Mainserver categories as an editorial companion module for news, events, and places.',
       },
       'waste-management': {
         description: 'Enables waste management with master data, route planning, and operations tooling.',

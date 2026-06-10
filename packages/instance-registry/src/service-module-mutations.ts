@@ -53,6 +53,18 @@ const SYSTEM_ADMIN_DIRECT_PERMISSION_KEYS = [
 const SYSTEM_ADMIN_ROLE_KEY = 'system_admin';
 const SYSTEM_ADMIN_DISPLAY_NAME = 'System Administrator';
 const SYSTEM_ADMIN_ROLE_LEVEL = 100;
+const CATEGORIES_MODULE_ID = 'categories';
+const categoriesCompanionSourceModuleIds = new Set(['news', 'events', 'poi']);
+
+const withRequiredCompanionModules = (moduleIds: readonly string[]): string[] => {
+  const normalizedModuleIds = Array.from(new Set(moduleIds.map((moduleId) => moduleId.trim()).filter(Boolean)));
+
+  if (normalizedModuleIds.some((moduleId) => categoriesCompanionSourceModuleIds.has(moduleId))) {
+    normalizedModuleIds.push(CATEGORIES_MODULE_ID);
+  }
+
+  return Array.from(new Set(normalizedModuleIds)).sort((left, right) => left.localeCompare(right, 'de'));
+};
 
 type ProtectedSystemRolePermissionSyncRepository = InstanceRegistryServiceDeps['repository'] & {
   syncProtectedSystemRolePermissions(input: {
@@ -144,8 +156,21 @@ export const createAssignModuleHandler =
     }
 
     let assignedModuleIds: readonly string[];
+    const newlyAssignedModuleIds = [input.moduleId];
     try {
-      assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+      const assignedAfterPrimaryInsert = await deps.repository.listAssignedModules(input.instanceId);
+      const desiredAssignedModuleIds = withRequiredCompanionModules(assignedAfterPrimaryInsert);
+
+      for (const moduleId of desiredAssignedModuleIds) {
+        if (!assignedAfterPrimaryInsert.includes(moduleId)) {
+          const companionInserted = await deps.repository.assignModule(input.instanceId, moduleId);
+          if (companionInserted) {
+            newlyAssignedModuleIds.push(moduleId);
+          }
+        }
+      }
+
+      assignedModuleIds = withRequiredCompanionModules(await deps.repository.listAssignedModules(input.instanceId));
       await deps.repository.syncAssignedModuleIam({
         instanceId: input.instanceId,
         managedModuleIds: [...registry.keys()],
@@ -153,7 +178,9 @@ export const createAssignModuleHandler =
       });
     } catch (error) {
       try {
-        await deps.repository.revokeModule(input.instanceId, input.moduleId);
+        for (const moduleId of [...newlyAssignedModuleIds].reverse()) {
+          await deps.repository.revokeModule(input.instanceId, moduleId);
+        }
       } catch (rollbackError) {
         throw createModuleAssignRollbackError(input.instanceId, input.moduleId, error, rollbackError);
       }
@@ -185,9 +212,7 @@ export const createBootstrapAdminStructureHandler =
     }
 
     const registry = requireModuleIamRegistry(deps);
-    const requestedModuleIds = Array.from(new Set(input.moduleIds.map((moduleId) => moduleId.trim()).filter(Boolean))).sort(
-      (left, right) => left.localeCompare(right, 'de')
-    );
+    const requestedModuleIds = withRequiredCompanionModules(input.moduleIds);
 
     if (requestedModuleIds.some((moduleId) => !registry.has(moduleId))) {
       return { ok: false, reason: 'unknown_module' };

@@ -1,5 +1,5 @@
 import {
-  authorizeInstancePermissionForUser,
+  authorizeContentPrimitiveForUser,
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
@@ -48,7 +48,7 @@ const toMainserverErrorResponse = (error: unknown): Response => {
 };
 
 const authorizeOrResponse = async (ctx: AuthenticatedRequestContext): Promise<CategoriesActor | Response> => {
-  const result = await authorizeInstancePermissionForUser({
+  const result = await authorizeContentPrimitiveForUser({
     ctx,
     action: 'categories.read',
   });
@@ -70,7 +70,7 @@ const authorizeOrResponse = async (ctx: AuthenticatedRequestContext): Promise<Ca
   return {
     instanceId: result.actor.instanceId,
     keycloakSubject: result.actor.keycloakSubject,
-    activeOrganizationId: ctx.activeOrganizationId,
+    activeOrganizationId: result.actor.organizationId ?? ctx.activeOrganizationId,
   };
 };
 

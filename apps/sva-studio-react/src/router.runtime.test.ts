@@ -166,7 +166,7 @@ describe('router runtime helpers', () => {
 
     expect(createMockRouteGuardUser()).toEqual({
       instanceId: 'de-musterhausen',
-      assignedModules: ['news', 'events', 'poi', 'media', 'waste-management'],
+      assignedModules: ['categories', 'events', 'media', 'news', 'poi', 'waste-management'],
       roles: ['system_admin'],
       permissionActions: [
         'iam.user.read',
@@ -208,6 +208,9 @@ describe('router runtime helpers', () => {
         'media.delete',
         'media.deliver.protected',
         'categories.read',
+        'categories.create',
+        'categories.update',
+        'categories.delete',
         'news.read',
         'events.read',
         'poi.read',

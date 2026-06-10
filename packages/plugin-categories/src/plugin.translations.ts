@@ -41,6 +41,11 @@ const categoriesTranslationsDe = createCategoriesLocaleTranslations({
   messages: {
     loading: 'Kategorien werden geladen.',
     loadError: 'Kategorien konnten nicht geladen werden.',
+    loadErrorMissingCredentials:
+      'Für den aktuellen Kontext fehlen Mainserver-Zugangsdaten. Bitte wählen Sie eine Organisation mit gepflegten Mainserver-Credentials oder hinterlegen Sie persönliche Mainserver-Zugangsdaten.',
+    loadErrorIntegrationDisabled: 'Die Mainserver-Integration ist für diese Instanz derzeit nicht aktiv.',
+    loadErrorConfigMissing: 'Für diese Instanz ist noch keine Mainserver-Konfiguration hinterlegt.',
+    loadErrorForbidden: 'Zum Laden der Kategorien fehlt die Berechtigung categories.read.',
     actionsHint: 'Die Seite ist vorerst read-only.',
   },
   values: {
@@ -91,6 +96,11 @@ const categoriesTranslationsEn = createCategoriesLocaleTranslations({
   messages: {
     loading: 'Loading categories.',
     loadError: 'Categories could not be loaded.',
+    loadErrorMissingCredentials:
+      'Mainserver credentials are missing for the current context. Select an organization with configured Mainserver credentials or store personal Mainserver credentials.',
+    loadErrorIntegrationDisabled: 'The Mainserver integration is currently disabled for this instance.',
+    loadErrorConfigMissing: 'No Mainserver configuration has been stored for this instance yet.',
+    loadErrorForbidden: 'The categories.read permission is required to load categories.',
     actionsHint: 'This page is read-only for now.',
   },
   values: {

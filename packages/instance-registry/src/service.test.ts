@@ -120,6 +120,20 @@ const createDeps = (
   saveWasteDataSourceRecord: vi.fn(async () => undefined),
   moduleIamRegistry: new Map([
     [
+      'categories',
+      {
+        moduleId: 'categories',
+        ownerPluginId: 'categories',
+        permissionIds: ['categories.read', 'categories.create', 'categories.update', 'categories.delete'],
+        systemRoles: [
+          {
+            roleName: 'system_admin',
+            permissionIds: ['categories.read', 'categories.create', 'categories.update', 'categories.delete'],
+          },
+        ],
+      },
+    ],
+    [
       'news',
       {
         moduleId: 'news',
@@ -678,11 +692,11 @@ describe('instance registry service facade', () => {
   it('assigns a module, syncs IAM baseline and returns the refreshed detail', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
-      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      listAssignedModules: vi.fn(async () => ['categories', 'events', 'news']),
       getInstanceById: vi
         .fn()
         .mockResolvedValueOnce(baseInstance)
-        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['news', 'events'] }),
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['categories', 'events', 'news'] }),
     });
     const service = createInstanceRegistryService(createDeps(repository));
 
@@ -697,7 +711,7 @@ describe('instance registry service facade', () => {
     ).resolves.toEqual({
       ok: true,
       instance: expect.objectContaining({
-        assignedModules: ['news', 'events'],
+        assignedModules: ['categories', 'events', 'news'],
       }),
     });
 
@@ -705,8 +719,9 @@ describe('instance registry service facade', () => {
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
-        managedModuleIds: expect.arrayContaining(['news', 'events', 'waste-management']),
+        managedModuleIds: expect.arrayContaining(['categories', 'news', 'events', 'waste-management']),
         contracts: expect.arrayContaining([
+          expect.objectContaining({ moduleId: 'categories' }),
           expect.objectContaining({ moduleId: 'news' }),
           expect.objectContaining({ moduleId: 'events' }),
         ]),
@@ -753,7 +768,7 @@ describe('instance registry service facade', () => {
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
-        managedModuleIds: ['news', 'events', 'waste-management'],
+        managedModuleIds: ['categories', 'news', 'events', 'waste-management'],
         contracts: expect.arrayContaining([
           expect.objectContaining({ moduleId: 'news' }),
           expect.objectContaining({
@@ -772,11 +787,11 @@ describe('instance registry service facade', () => {
   it('bootstraps the editable admin structure and assigns selected modules first', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
-      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['news', 'events']),
+      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['categories', 'events', 'news']),
       getInstanceById: vi
         .fn()
         .mockResolvedValueOnce(baseInstance)
-        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['news', 'events'] }),
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['categories', 'events', 'news'] }),
     });
     const service = createInstanceRegistryService(createDeps(repository));
 
@@ -791,16 +806,17 @@ describe('instance registry service facade', () => {
     ).resolves.toEqual({
       ok: true,
       instance: expect.objectContaining({
-        assignedModules: ['news', 'events'],
+        assignedModules: ['categories', 'events', 'news'],
       }),
     });
 
-    expect(repository.assignModule).toHaveBeenCalledTimes(1);
-    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.assignModule).toHaveBeenCalledTimes(2);
+    expect(repository.assignModule).toHaveBeenNthCalledWith(1, 'demo', 'categories');
+    expect(repository.assignModule).toHaveBeenNthCalledWith(2, 'demo', 'events');
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
-        managedModuleIds: expect.arrayContaining(['news', 'events', 'waste-management']),
+        managedModuleIds: expect.arrayContaining(['categories', 'news', 'events', 'waste-management']),
       })
     );
     expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalledWith({
@@ -822,7 +838,7 @@ describe('instance registry service facade', () => {
       expect.objectContaining({
         eventType: 'instance_admin_bootstrapped',
         details: expect.objectContaining({
-          assignedModules: ['news', 'events'],
+          assignedModules: ['categories', 'events', 'news'],
           bootstrapMode: 'system_admin_only',
         }),
       })
@@ -851,7 +867,8 @@ describe('instance registry service facade', () => {
       })
     ).rejects.toThrow('admin_bootstrap_failed');
 
-    expect(repository.assignModule).not.toHaveBeenCalled();
+    expect(repository.assignModule).toHaveBeenCalledTimes(1);
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'categories');
     expect(repository.revokeModule).not.toHaveBeenCalled();
     expect(repository.syncAssignedModuleIam).toHaveBeenCalled();
     expect(deps.invalidatePermissionSnapshots).toHaveBeenCalledWith({
@@ -1009,8 +1026,9 @@ describe('instance registry service facade', () => {
       listAssignedModules: vi
         .fn()
         .mockResolvedValueOnce(['news', 'events'])
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce(['news']),
+        .mockResolvedValueOnce(['categories', 'events', 'news'])
+        .mockResolvedValueOnce(['categories', 'events'])
+        .mockResolvedValueOnce(['categories', 'events']),
     });
     const deps = createDeps(repository);
     const service = createInstanceRegistryService(deps);
@@ -1204,7 +1222,7 @@ describe('instance registry service facade', () => {
       listAssignedModules: vi.fn(async () => []),
       getInstanceById: vi
         .fn()
-        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['news'] })
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['categories', 'news'] })
         .mockResolvedValueOnce({ ...baseInstance, assignedModules: [] }),
     });
     const service = createInstanceRegistryService(createDeps(repository));
@@ -1225,7 +1243,7 @@ describe('instance registry service facade', () => {
       }),
     });
 
-    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'news');
+    expect(repository.revokeModule).toHaveBeenNthCalledWith(1, 'demo', 'news');
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'instance_module_revoked',

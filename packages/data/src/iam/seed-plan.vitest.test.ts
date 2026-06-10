@@ -61,6 +61,7 @@ const pluginContentPermissions = [
 
 const seedDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../seeds');
 const personaSeedSql = readFileSync(resolve(seedDir, '0001_iam_personas.sql'), 'utf8');
+const bbGubenSeedSql = readFileSync(resolve(seedDir, '0002_bb_guben_permissions.sql'), 'utf8');
 
 describe('iamSeedPlan content permissions', () => {
   it('includes deletion-rules defaults in the seed plan', () => {
@@ -141,5 +142,10 @@ describe('iamSeedPlan content permissions', () => {
     expect(personaSeedSql).not.toContain("('app_manager', 'experimental.read')");
     expect(personaSeedSql).not.toContain("('app_manager', 'app.read')");
     expect(personaSeedSql).not.toContain("('app_manager', 'cockpit.read')");
+  });
+
+  it('assigns the categories module to seeded instances with mainserver content modules', () => {
+    expect(personaSeedSql).toContain("('de-musterhausen', 'categories')");
+    expect(bbGubenSeedSql).toContain("('bb-guben', 'categories')");
   });
 });

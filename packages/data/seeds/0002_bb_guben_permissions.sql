@@ -35,6 +35,7 @@ ON CONFLICT (hostname) DO NOTHING;
 
 INSERT INTO iam.instance_modules (instance_id, module_id)
 VALUES
+  ('bb-guben', 'categories'),
   ('bb-guben', 'poi')
 ON CONFLICT (instance_id, module_id) DO NOTHING;
 

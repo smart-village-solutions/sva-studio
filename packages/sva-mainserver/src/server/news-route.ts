@@ -43,7 +43,6 @@ type RouteMatch =
   | { readonly kind: 'collection' }
   | { readonly kind: 'item'; readonly newsId: string }
   | { readonly kind: 'itemVisibility'; readonly newsId: string };
-  | { readonly kind: 'item'; readonly newsId: string };
 
 const matchRoute = (request: Request): RouteMatch | null => {
   const pathname = new URL(request.url).pathname;

@@ -47,6 +47,7 @@ const createStandardContentContract = (pluginId: string, descriptionKey: string)
   };
 };
 
+const categoriesModuleIamContract = createStandardContentContract('categories', 'plugins.categories.description');
 const newsModuleIamContract = createStandardContentContract('news', 'plugins.news.description');
 const eventsModuleIamContract = createStandardContentContract('events', 'plugins.events.description');
 const poiModuleIamContract = createStandardContentContract('poi', 'plugins.poi.description');
@@ -118,6 +119,7 @@ const mediaModuleIamContract: StudioModuleIamContract = {
 };
 
 export const studioPluginModuleIamContracts = [
+  categoriesModuleIamContract,
   newsModuleIamContract,
   eventsModuleIamContract,
   poiModuleIamContract,

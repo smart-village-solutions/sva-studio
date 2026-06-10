@@ -651,6 +651,100 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
   });
 
+  it('zeigt den Kategorien-Link auch ohne content.read, solange categories.read vorhanden ist', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-2',
+        name: 'Editor',
+        roles: ['editor'],
+        assignedModules: ['categories'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'blocked',
+        canRead: false,
+        canCreate: false,
+        canUpdate: false,
+        reasonCode: 'content_read_missing',
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['categories.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.getByRole('link', { name: 'Kategorien' }).getAttribute('href')).toBe('/categories');
+    expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
+  });
+
+  it('versteckt den Kategorien-Link ohne zugewiesenes Kategorien-Modul trotz categories.read', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-2',
+        name: 'Editor',
+        roles: ['editor'],
+        assignedModules: ['news'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'blocked',
+        canRead: false,
+        canCreate: false,
+        canUpdate: false,
+        reasonCode: 'content_read_missing',
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['categories.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.queryByRole('link', { name: 'Kategorien' })).toBeNull();
+  });
+
+  it('versteckt den Kategorien-Link ohne categories.read trotz content.read', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-2',
+        name: 'Editor',
+        roles: ['editor'],
+        assignedModules: ['categories'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['news.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.getByRole('link', { name: 'Inhalte' }).getAttribute('href')).toBe('/admin/content');
+    expect(screen.queryByRole('link', { name: 'Kategorien' })).toBeNull();
+  });
+
   it('zeigt im Bereich Anwendungen nur den App-Link mit app.read-Berechtigung', () => {
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,

@@ -64,6 +64,10 @@ export type PermissionKey =
   | 'poi.create'
   | 'poi.update'
   | 'poi.delete'
+  | 'categories.read'
+  | 'categories.create'
+  | 'categories.update'
+  | 'categories.delete'
   | 'integration.manage'
   | 'feature.toggle'
   | 'instance.registry.manage';

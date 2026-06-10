@@ -1,5 +1,6 @@
 import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
 import type { IamOrganizationContextOption, IamOrganizationDetail } from '@sva/core';
+import { CategoriesPage } from '@sva/plugin-categories';
 import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events/events.pages';
 import { NewsDetailPage, NewsEditPage, type NewsAuthorControl } from '@sva/plugin-news';
 import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi/poi.pages';
@@ -140,10 +141,6 @@ const useNewsCreateAuthorControl = () => {
     userDisplayName: user ? resolveUserDisplayName(user) : undefined,
   });
 };
-
-const CategoriesPlaceholderRoutePage = () => (
-  <PlaceholderPage section={t('shell.sidebar.sections.dataManagement')} title={t('shell.sidebar.categories')} />
-);
 
 const AppPlaceholderRoutePage = () => (
   <PlaceholderPage section={t('shell.sidebar.sections.applications')} title={t('shell.sidebar.app')} />
@@ -384,7 +381,7 @@ export const appRouteBindings: StudioAppRouteBindings = {
   poiEditor: PoiCreatePage,
   media: MediaPage,
   adminMedia: MediaPage,
-  categories: CategoriesPlaceholderRoutePage,
+  categories: CategoriesPage,
   app: AppPlaceholderRoutePage,
   interfaces: InterfacesRoutePage,
   help: HelpPlaceholderRoutePage,

@@ -1,0 +1,11 @@
+{
+  "pluginId": "categories",
+  "version": "0.0.1",
+  "sdkVersion": "0.0.1",
+  "hostCompatibility": {
+    "studioVersionRange": "^0.0.1"
+  },
+  "entryPoints": {
+    "browser": "./dist/index.js"
+  }
+}

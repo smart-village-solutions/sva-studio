@@ -11,6 +11,7 @@ import {
 describe('@sva/studio-module-iam', () => {
   it('publishes the canonical studio module contracts and registry', () => {
     expect(studioPluginModuleIamContracts.map((contract) => contract.moduleId)).toEqual([
+      'categories',
       'news',
       'events',
       'poi',
@@ -18,6 +19,7 @@ describe('@sva/studio-module-iam', () => {
     ]);
     expect(studioHostModuleIamContracts.map((contract) => contract.moduleId)).toEqual(['media']);
     expect(studioModuleIamContracts.map((contract) => contract.moduleId)).toEqual([
+      'categories',
       'news',
       'events',
       'poi',
@@ -51,6 +53,18 @@ describe('@sva/studio-module-iam', () => {
   });
 
   it('exposes normalized standard-content contracts for plugin modules', () => {
+    expect(getStudioModuleIamContract('categories')).toMatchObject({
+      moduleId: 'categories',
+      namespace: 'categories',
+      ownerPluginId: 'categories',
+      permissionIds: ['categories.read', 'categories.create', 'categories.update', 'categories.delete'],
+      tenantBootstrapRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: ['categories.read', 'categories.create', 'categories.update', 'categories.delete'],
+        },
+      ],
+    });
     expect(getStudioModuleIamContract('news')).toMatchObject({
       moduleId: 'news',
       namespace: 'news',

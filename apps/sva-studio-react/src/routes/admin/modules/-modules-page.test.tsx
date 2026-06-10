@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { studioModuleIamContracts as realStudioModuleIamContracts } from '@sva/studio-module-iam';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -131,6 +131,7 @@ describe('ModulesPage', () => {
     expect(screen.getByText('Module schalten Bereiche frei')).toBeTruthy();
     expect(screen.getByText('Rollen vergeben Berechtigungen')).toBeTruthy();
     expect(screen.getByText('news')).toBeTruthy();
+    expect(screen.getByText('categories')).toBeTruthy();
     expect(screen.getByText('events')).toBeTruthy();
     expect(screen.getByText('media')).toBeTruthy();
     expect(screen.getByText('waste-management')).toBeTruthy();
@@ -144,7 +145,9 @@ describe('ModulesPage', () => {
     expect(screen.getByRole('dialog', { name: 'Modul wirklich entziehen?' })).toBeTruthy();
     expect(revokeModule).not.toHaveBeenCalled();
     fireEvent.click(screen.getAllByRole('button', { name: 'Modul entziehen' })[1]!);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]!);
+    const eventsModuleCard = screen.getByText('events').closest('div.rounded-lg');
+    expect(eventsModuleCard).toBeTruthy();
+    fireEvent.click(within(eventsModuleCard as HTMLElement).getByRole('button', { name: 'Modul zuweisen' }));
 
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');
     expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', ['news']);

@@ -58,6 +58,7 @@ SET
 
 INSERT INTO iam.instance_modules (instance_id, module_id)
 VALUES
+  ('de-musterhausen', 'categories'),
   ('de-musterhausen', 'news'),
   ('de-musterhausen', 'events')
 ON CONFLICT (instance_id, module_id) DO NOTHING;
@@ -229,7 +230,11 @@ VALUES
   ('40111111-1111-1111-1111-111111111139', 'de-musterhausen', 'poi.read', 'poi.read', 'poi', NULL, 'allow', '{}'::jsonb, 'Read POI plugin content'),
   ('40111111-1111-1111-1111-111111111140', 'de-musterhausen', 'poi.create', 'poi.create', 'poi', NULL, 'allow', '{}'::jsonb, 'Create POI plugin content'),
   ('40111111-1111-1111-1111-111111111141', 'de-musterhausen', 'poi.update', 'poi.update', 'poi', NULL, 'allow', '{}'::jsonb, 'Update POI plugin content'),
-  ('40111111-1111-1111-1111-111111111142', 'de-musterhausen', 'poi.delete', 'poi.delete', 'poi', NULL, 'allow', '{}'::jsonb, 'Delete POI plugin content')
+  ('40111111-1111-1111-1111-111111111142', 'de-musterhausen', 'poi.delete', 'poi.delete', 'poi', NULL, 'allow', '{}'::jsonb, 'Delete POI plugin content'),
+  ('40111111-1111-1111-1111-111111111164', 'de-musterhausen', 'categories.read', 'categories.read', 'categories', NULL, 'allow', '{}'::jsonb, 'Read categories plugin content'),
+  ('40111111-1111-1111-1111-111111111165', 'de-musterhausen', 'categories.create', 'categories.create', 'categories', NULL, 'allow', '{}'::jsonb, 'Create categories plugin content'),
+  ('40111111-1111-1111-1111-111111111166', 'de-musterhausen', 'categories.update', 'categories.update', 'categories', NULL, 'allow', '{}'::jsonb, 'Update categories plugin content'),
+  ('40111111-1111-1111-1111-111111111167', 'de-musterhausen', 'categories.delete', 'categories.delete', 'categories', NULL, 'allow', '{}'::jsonb, 'Delete categories plugin content')
 ON CONFLICT (instance_id, permission_key) DO UPDATE
 SET
   action = EXCLUDED.action,
@@ -330,7 +335,8 @@ FROM (
     ('system_admin', 'media.read'), ('system_admin', 'media.create'), ('system_admin', 'media.update'), ('system_admin', 'media.reference.manage'), ('system_admin', 'media.delete'), ('system_admin', 'media.deliver.protected'),
     ('system_admin', 'news.read'), ('system_admin', 'news.create'), ('system_admin', 'news.update'), ('system_admin', 'news.delete'),
     ('system_admin', 'events.read'), ('system_admin', 'events.create'), ('system_admin', 'events.update'), ('system_admin', 'events.delete'),
-    ('system_admin', 'poi.read'), ('system_admin', 'poi.create'), ('system_admin', 'poi.update'), ('system_admin', 'poi.delete')
+    ('system_admin', 'poi.read'), ('system_admin', 'poi.create'), ('system_admin', 'poi.update'), ('system_admin', 'poi.delete'),
+    ('system_admin', 'categories.read'), ('system_admin', 'categories.create'), ('system_admin', 'categories.update'), ('system_admin', 'categories.delete')
 ) AS assignments(role_key, permission_key)
 JOIN iam.roles roles
   ON roles.instance_id = 'de-musterhausen'

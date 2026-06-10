@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildNewsDetailCharacterCounts,
   createDefaultNewsDetailFormValues,
+  deriveDirtyNewsDetailTabs,
   mapNewsDetailFormValuesToMutation,
   mapNewsItemToDetailFormValues,
   newsDetailFormSchema,
@@ -232,6 +234,190 @@ describe('news.detail-form', () => {
           body: '<p>Neuer Inhalt</p>',
         }),
       ],
+    });
+  });
+
+  it('validates the compatibility-only schema branches for legacy fields and invalid urls', async () => {
+    await expect(
+      newsDetailFormSchema.parseAsync({
+        ...createDefaultNewsDetailFormValues(),
+        title: 'Legacy News',
+        author: '',
+        categories: [],
+        contentTeaser: '',
+        contentBody: '<p>   </p>',
+        contentMedia: [
+          {
+            captionText: '',
+            copyright: '',
+            contentType: '',
+            height: '',
+            width: '',
+            sourceUrl: { url: 'http://example.org/image.jpg', description: '' },
+          },
+        ],
+        sourceUrl: { url: 'http://example.org/details', description: '' },
+        sourceUrlDescription: '',
+        publicationMode: 'draft',
+        scheduledPublicationAt: '',
+        publishedAt: '2026-02-31T12:00',
+        publicationDate: '2026-13-01T12:00',
+        charactersToBeShown: '-1',
+        contentBlocks: [{ title: '', intro: '', body: '<p> </p>', mediaContents: [] }],
+      })
+    ).rejects.toThrow();
+  });
+
+  it('accepts legacy fallback content blocks and local compatibility timestamps when they are valid', async () => {
+    await expect(
+      newsDetailFormSchema.parseAsync({
+        ...createDefaultNewsDetailFormValues(),
+        title: 'Legacy News',
+        author: '',
+        categories: [],
+        contentTeaser: '',
+        contentBody: '<p>   </p>',
+        contentMedia: [],
+        sourceUrl: { url: '', description: '' },
+        sourceUrlDescription: '',
+        publicationMode: 'draft',
+        scheduledPublicationAt: '',
+        publishedAt: '2026-02-28T12:30',
+        publicationDate: '2026-02-28T12:45',
+        charactersToBeShown: '0',
+        contentBlocks: [{ title: 'Legacy', intro: 'Fallback', body: '<p>Body</p>', mediaContents: [] }],
+      })
+    ).resolves.toMatchObject({
+      publishedAt: '2026-02-28T12:30',
+      publicationDate: '2026-02-28T12:45',
+    });
+  });
+
+  it('normalizes editor content from compatibility content blocks and touched aliases', () => {
+    const values = createDefaultNewsDetailFormValues();
+
+    values.contentBlocks = [
+      {
+        title: 'Legacy Titel',
+        intro: 'Legacy Teaser',
+        body: '<p>Legacy Inhalt</p>',
+        mediaContents: [
+          {
+            captionText: 'Bild',
+            copyright: 'CC',
+            contentType: 'image/jpeg',
+            height: '320',
+            width: '640',
+            sourceUrl: { url: 'https://example.org/image.jpg', description: 'Bildquelle' },
+          },
+        ],
+      },
+    ];
+    values.keywords = 'Rathaus';
+    values.externalId = 'ext-42';
+    values.newsType = 'meldung';
+    values.charactersToBeShown = '180';
+    values.fullVersion = true;
+    values.showPublishDate = false;
+    values.pushNotification = true;
+    values.publishedAt = '2026-06-01T12:30';
+    values.publicationDate = '2026-05-31T18:45:00.000Z';
+    values.address = {
+      street: 'Marktplatz 1',
+      zip: '12345',
+      city: 'Musterstadt',
+    };
+    values.pointOfInterestId = 'poi-1';
+    values.teaserImageAssetId = 'teaser-1';
+    values.headerImageAssetId = 'header-1';
+
+    const mutation = mapNewsDetailFormValuesToMutation(values, 'edit');
+
+    expect(mutation).toMatchObject({
+      title: 'Legacy Titel',
+      keywords: 'Rathaus',
+      externalId: 'ext-42',
+      newsType: 'meldung',
+      charactersToBeShown: 180,
+      fullVersion: true,
+      showPublishDate: false,
+      publishedAt: '2026-06-01T12:30',
+      publicationDate: '2026-05-31T18:45:00.000Z',
+      address: {
+        street: 'Marktplatz 1',
+        zip: '12345',
+        city: 'Musterstadt',
+      },
+      pointOfInterestId: 'poi-1',
+      contentBlocks: [
+        {
+          title: 'Legacy Titel',
+          intro: 'Legacy Teaser',
+          body: '<p>Legacy Inhalt</p>',
+          mediaContents: [
+            {
+              captionText: 'Bild',
+              copyright: 'CC',
+              contentType: 'image/jpeg',
+              height: 320,
+              width: 640,
+              sourceUrl: { url: 'https://example.org/image.jpg', description: 'Bildquelle' },
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('maps publishedAt compatibility edits back into draft and scheduled publication modes', () => {
+    const draftValues = createDefaultNewsDetailFormValues();
+    draftValues.publishedAt = '';
+
+    mapNewsDetailFormValuesToMutation(draftValues, 'edit');
+    expect(draftValues.publicationMode).toBe('draft');
+    expect(draftValues.scheduledPublicationAt).toBe('');
+
+    const invalidValues = createDefaultNewsDetailFormValues();
+    invalidValues.publishedAt = 'invalid-date';
+
+    mapNewsDetailFormValuesToMutation(invalidValues, 'edit');
+    expect(invalidValues.publicationMode).toBe('draft');
+    expect(invalidValues.scheduledPublicationAt).toBe('');
+
+    const scheduledValues = createDefaultNewsDetailFormValues();
+    scheduledValues.publishedAt = '2026-06-01T12:30';
+
+    mapNewsDetailFormValuesToMutation(scheduledValues, 'edit');
+    expect(scheduledValues.publicationMode).toBe('scheduled');
+    expect(scheduledValues.scheduledPublicationAt).toBe('2026-06-01T12:30');
+  });
+
+  it('derives dirty tabs and character counts from simplified and compatibility-driven fields', () => {
+    expect(
+      deriveDirtyNewsDetailTabs({
+        categories: true,
+        contentMedia: [{ sourceUrl: true }],
+        pushNotificationEnabled: true,
+      })
+    ).toEqual({
+      basis: true,
+      content: true,
+      settings: true,
+      history: false,
+    });
+
+    expect(
+      buildNewsDetailCharacterCounts({
+        title: 'Titel',
+        contentBlocks: [
+          { intro: 'Kurz', body: '<p>Mehr Text</p>' },
+          { intro: 'Noch eins', body: '<p>Body 2</p>' },
+        ],
+      })
+    ).toEqual({
+      title: 5,
+      intros: [4, 9],
+      bodies: [9, 6],
     });
   });
 });

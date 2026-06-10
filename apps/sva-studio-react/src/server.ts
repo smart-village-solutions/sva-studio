@@ -61,6 +61,9 @@ let dispatchMainserverEventsRequestPromise:
 let dispatchMainserverPoiRequestPromise:
   | Promise<typeof import('./lib/mainserver-poi-api.server')['dispatchMainserverPoiRequest']>
   | null = null;
+let dispatchMainserverCategoriesRequestPromise:
+  | Promise<typeof import('./lib/mainserver-categories-api.server')['dispatchMainserverCategoriesRequest']>
+  | null = null;
 let pluginOperationHandlerRegistrationPromise: Promise<void> | null = null;
 let pluginOperationWorkerBootstrapPromise: Promise<void> | null = null;
 const getSdk = async (): Promise<RequestContextSdk> => {
@@ -110,6 +113,13 @@ const getDispatchMainserverPoiRequest = async () => {
     (mod) => mod.dispatchMainserverPoiRequest
   );
   return dispatchMainserverPoiRequestPromise;
+};
+
+const getDispatchMainserverCategoriesRequest = async () => {
+  dispatchMainserverCategoriesRequestPromise ??= import('./lib/mainserver-categories-api.server').then(
+    (mod) => mod.dispatchMainserverCategoriesRequest
+  );
+  return dispatchMainserverCategoriesRequestPromise;
 };
 
 const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
@@ -233,6 +243,16 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       status: mainserverPoiResponse.status,
     });
     return mainserverPoiResponse;
+  }
+
+  const dispatchMainserverCategoriesRequest = await getDispatchMainserverCategoriesRequest();
+  const mainserverCategoriesResponse = await dispatchMainserverCategoriesRequest(request);
+
+  if (mainserverCategoriesResponse) {
+    await logServerEntryDebug('Server entry mainserver categories route dispatched', {
+      status: mainserverCategoriesResponse.status,
+    });
+    return mainserverCategoriesResponse;
   }
 
   if (studioJobWorkerEnabled) {

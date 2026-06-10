@@ -119,6 +119,7 @@ const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio
 const COCKPIT_URL = 'https://cockpit.guben.de';
 const APP_LINK_PERMISSION = 'app.read';
 const COCKPIT_LINK_PERMISSION = 'cockpit.read';
+const CATEGORIES_READ_PERMISSION = 'categories.read';
 const sidebarLogger = createOperationLogger('sidebar', 'debug');
 
 const pluginIconBySection = {
@@ -775,6 +776,15 @@ export default function Sidebar({
           contentAccessApi.permissionActions,
           contentAccessApi.isLoading
         )));
+  const canAccessCategories =
+    canAccessWorkspace &&
+    (devAuthAvailable ||
+      (isModuleAssignedToUser('categories', user) &&
+        hasPermissionAction(
+          CATEGORIES_READ_PERMISSION,
+          contentAccessApi.permissionActions,
+          contentAccessApi.isLoading
+        )));
   const canAccessAdminUsers =
     isAuthenticated && isIamAdminEnabled() && (hasUserAdminAccess(user) || hasPlatformInstanceAdminAccess(user));
   const canAccessAdminOrganizations =
@@ -877,6 +887,10 @@ export default function Sidebar({
               label: t('shell.sidebar.content'),
               icon: IconArticle,
             },
+          ]
+        : []),
+      ...(canAccessCategories
+        ? [
             {
               kind: 'link' as const,
               id: 'categories',

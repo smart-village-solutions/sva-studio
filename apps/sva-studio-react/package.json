@@ -28,6 +28,7 @@
     "@sva/iam-admin": "workspace:*",
     "@sva/iam-governance": "workspace:*",
     "@sva/monitoring-client": "workspace:*",
+    "@sva/plugin-categories": "workspace:*",
     "@sva/plugin-events": "workspace:*",
     "@sva/plugin-news": "workspace:*",
     "@sva/plugin-poi": "workspace:*",

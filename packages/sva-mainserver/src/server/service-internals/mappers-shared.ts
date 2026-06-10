@@ -251,6 +251,17 @@ export const mapCategory = (value: CategoryLike): SvaMainserverCategory | null =
   };
 };
 
+const hasNonBlankString = (value: string | null | undefined): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+const hasIncompleteCategoryTree = (value: CategoryLike): boolean => {
+  if (!hasNonBlankString(value.name)) {
+    return true;
+  }
+
+  return (value.children ?? []).some(hasIncompleteCategoryTree);
+};
+
 export const mapMediaContent = (value: z.infer<typeof mediaContentSchema>): SvaMainserverMediaContent => ({
   ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
   ...(optionalString(value.captionText) ? { captionText: optionalString(value.captionText) } : {}),

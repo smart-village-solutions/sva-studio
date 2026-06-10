@@ -40,6 +40,14 @@ Das News-Plugin nutzt produktiv keine lokalen IAM-Content-Datensätze mehr. Der 
 | `PATCH /api/v1/mainserver/news/$newsId` | `content.updateMetadata`, `content.updatePayload` | `createNewsItem(id, forceCreate: false)` | Update-Semantik ohne `payload` und mit vollständiger `contentBlocks`-Liste wurde gegen Staging bestätigt. |
 | `DELETE /api/v1/mainserver/news/$newsId` | `content.delete` | `destroyRecord(id, recordType: "NewsItem")` | Fachlich ein harter Löschpfad; kein lokaler Soft-Delete und kein Dual-Write. |
 
+## Kategorien
+
+Die Kategorien-Fassade ist kein News-spezifischer Spezialfall mehr. Der Host schützt `/api/v1/mainserver/categories` über die eigenständige Instanz-Permission `categories.read`, damit sowohl die Kategorienseite als auch Facheditoren dieselbe fachliche Freigabe verwenden.
+
+| Studio-Methode | Lokale Primitive | Mainserver-Operation | Hinweis |
+| --- | --- | --- | --- |
+| `GET /api/v1/mainserver/categories` | `categories.read` | `categories` | Liefert die aktuell hostseitig validierte flache Kategorienliste mit optionalem `parent`-Kontext für die read-only Kategorienseite und für Editor-Auswahllisten. |
+
 Lokale Altinhalte mit `contentType = news.article` oder dem Legacy-Typ `news` werden nicht migriert und nicht mehr produktiv angezeigt. Falls solche Datensätze noch in der IAM-Content-Tabelle vorhanden sind, dienen sie nur noch als Altquelle für manuelle Analyse oder einen späteren operatorgeführten Export.
 
 Das News-`payload` ist nur noch Legacy-Lesefallback. Neue und aktualisierte News schreiben dedizierte Mainserver-Felder wie `author`, `keywords`, `publicationDate`, `sourceUrl`, `address`, `categories`, `contentBlocks` und `pointOfInterestId`; `payload` wird bei Create/Update nicht mehr gesendet. Fehlen bei alten News `contentBlocks`, leitet der Adapter aus vorhandenen Payload-Werten einen virtuellen ersten Inhaltsblock für den Editor ab.

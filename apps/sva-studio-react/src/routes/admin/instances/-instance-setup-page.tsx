@@ -23,6 +23,7 @@ type InstanceSetupPageProps = Readonly<{
 }>;
 
 const adminBootstrapModuleLabels = {
+  categories: 'admin.instances.adminBootstrap.modules.categories',
   news: 'admin.instances.adminBootstrap.modules.news',
   events: 'admin.instances.adminBootstrap.modules.events',
   poi: 'admin.instances.adminBootstrap.modules.poi',

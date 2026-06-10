@@ -252,6 +252,217 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('rejects categories responses that omit required category ids', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            categories: [
+              {
+                name: 'Allgemein',
+                position: 1,
+                tagList: 'amt',
+              },
+            ],
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listCategories({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).rejects.toMatchObject({
+      code: 'invalid_response',
+      statusCode: 502,
+    });
+  });
+
+  it('rejects categories responses that omit required category names', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            categories: [
+              {
+                id: 'cat-root',
+                name: null,
+                position: 1,
+                tagList: 'amt',
+              },
+            ],
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listCategories({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).rejects.toMatchObject({
+      code: 'invalid_response',
+      statusCode: 502,
+    });
+  });
+
+  it('rejects categories responses with blank required ids and names', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            categories: [
+              {
+                id: '   ',
+                name: 'Allgemein',
+                position: 1,
+              },
+              {
+                id: 'cat-child',
+                name: '   ',
+                position: 2,
+              },
+            ],
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listCategories({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).rejects.toMatchObject({
+      code: 'invalid_response',
+      statusCode: 502,
+    });
+  });
+
+  it('rejects categories responses when the top-level categories field is missing', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: {} }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listCategories({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).rejects.toMatchObject({
+      code: 'invalid_response',
+      statusCode: 502,
+    });
+  });
+
+  it('treats null categories responses as an empty snapshot', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            categories: null,
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listCategories({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toEqual([]);
+  });
+
+  it('returns the fetched flat category snapshot with parent names', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            categories: [
+              {
+                id: 'cat-root',
+                name: 'Allgemein',
+                position: 1,
+                tagList: 'amt, buerger',
+                parent: null,
+              },
+              {
+                id: 'cat-child',
+                name: 'Unterkategorie',
+                position: 2,
+                tagList: 'vor-ort',
+                parent: {
+                  name: 'Allgemein',
+                },
+              },
+            ],
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listCategories({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toEqual([
+      {
+        id: 'cat-root',
+        name: 'Allgemein',
+        position: 1,
+        tagList: 'amt, buerger',
+      },
+      {
+        id: 'cat-child',
+        name: 'Unterkategorie',
+        position: 2,
+        tagList: 'vor-ort',
+        parent: {
+          name: 'Allgemein',
+        },
+      },
+    ]);
+
+    const categoriesRequest = JSON.parse(fetchImpl.mock.calls[1]?.[1]?.body as string) as {
+      query?: string;
+      operationName?: string;
+      variables?: unknown;
+    };
+    expect(categoriesRequest.operationName).toBe('SvaMainserverCategoriesList');
+    expect(categoriesRequest.variables).toBeUndefined();
+    expect(categoriesRequest.query).toContain('parent {');
+    expect(categoriesRequest.query).not.toContain('children {');
+  });
+
   it('lists, creates, updates and deletes news with typed GraphQL variables', async () => {
     const item = {
       id: 'news-1',

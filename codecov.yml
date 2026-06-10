@@ -70,6 +70,7 @@ coverage:
         - packages/instance-registry/
         - packages/media/
         - packages/monitoring-client/
+        - packages/plugin-categories/
         - packages/plugin-events/
         - packages/plugin-news/
         - packages/plugin-poi/

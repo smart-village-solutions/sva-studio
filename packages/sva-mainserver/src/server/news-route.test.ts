@@ -8,7 +8,6 @@ const state = vi.hoisted(() => ({
   resolveActorInfo: vi.fn(),
   validateCsrf: vi.fn(),
   listSvaMainserverNews: vi.fn(),
-  listSvaMainserverCategories: vi.fn(),
   getSvaMainserverNews: vi.fn(),
   createSvaMainserverNews: vi.fn(),
   updateSvaMainserverNews: vi.fn(),
@@ -30,7 +29,6 @@ vi.mock('./service.js', async (importOriginal) => {
   return {
     ...actual,
     listSvaMainserverNews: state.listSvaMainserverNews,
-    listSvaMainserverCategories: state.listSvaMainserverCategories,
     getSvaMainserverNews: state.getSvaMainserverNews,
     createSvaMainserverNews: state.createSvaMainserverNews,
     updateSvaMainserverNews: state.updateSvaMainserverNews,
@@ -182,39 +180,6 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
   });
-
-  it('lists available categories through the mainserver categories endpoint', async () => {
-    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
-    state.authorizeContentPrimitiveForUser.mockResolvedValue({
-      ok: true,
-      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
-      permissions: [],
-    });
-    state.listSvaMainserverCategories.mockResolvedValue([
-      { id: 'cat-1', name: 'Allgemein', children: [] },
-      { id: 'cat-2', name: 'Rathaus', children: [] },
-    ]);
-
-    const response = await dispatchSvaMainserverNewsRequest(
-      new Request('https://studio.test/api/v1/mainserver/categories')
-    );
-
-    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'news.read' })
-    );
-    expect(state.listSvaMainserverCategories).toHaveBeenCalledWith({
-      instanceId: 'de-musterhausen',
-      keycloakSubject: 'subject-1',
-      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
-    });
-    await expect(response?.json()).resolves.toEqual({
-      data: [
-        { id: 'cat-1', name: 'Allgemein', children: [] },
-        { id: 'cat-2', name: 'Rathaus', children: [] },
-      ],
-    });
-  });
-
   it('normalizes invalid pagination query parameters for news lists', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.authorizeContentPrimitiveForUser.mockResolvedValue({

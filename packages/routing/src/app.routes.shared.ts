@@ -99,7 +99,13 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
     requiredPermissions: ['media.read'],
   },
   { binding: 'media', path: uiRoutePaths.media, guard: 'account' },
-  { binding: 'categories', path: uiRoutePaths.categories, guard: 'account' },
+  {
+    binding: 'categories',
+    path: uiRoutePaths.categories,
+    guard: 'content',
+    requiredModuleId: 'categories',
+    requiredPermissions: ['categories.read'],
+  },
   { binding: 'app', path: uiRoutePaths.app, guard: 'account' },
   { binding: 'interfaces', path: uiRoutePaths.interfaces },
   { binding: 'help', path: uiRoutePaths.help },
@@ -181,9 +187,7 @@ export const createUiRouteFactories = (
   ];
 };
 
-export const mapPluginGuardToAccountGuard = (
-  guard?: PluginRouteGuard
-): 'content' | 'contentCreate' | 'contentDetail' | null => {
+export const mapPluginGuardToAccountGuard = (guard?: PluginRouteGuard): 'content' | 'contentCreate' | 'contentDetail' | null => {
   switch (guard) {
     case 'content.read':
       return 'content';
@@ -206,9 +210,7 @@ export const mapPluginGuardToAccountGuard = (
 
 export const getPluginRouteFactories = (
   pluginDefinitions: readonly PluginDefinition[] = [],
-  options: {
-    readonly diagnostics?: RoutingDiagnosticsHook;
-  } = {}
+  options: { readonly diagnostics?: RoutingDiagnosticsHook } = {}
 ): readonly AppRouteFactory[] => {
   const diagnostics = options.diagnostics;
   return pluginDefinitions.flatMap((pluginDefinition) =>

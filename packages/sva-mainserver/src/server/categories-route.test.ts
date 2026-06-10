@@ -2,13 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
-  authorizeInstancePermissionForUser: vi.fn(),
+  authorizeContentPrimitiveForUser: vi.fn(),
   listSvaMainserverCategories: vi.fn(),
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
-  authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
+  authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
 }));
 
 vi.mock('./service.js', async (importOriginal) => {
@@ -52,7 +52,7 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       new Request('https://studio.test/api/v1/mainserver/categories', { method: 'PUT' })
     );
 
-    expect(state.authorizeInstancePermissionForUser).not.toHaveBeenCalled();
+    expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
     expect(response?.status).toBe(405);
     await expect(response?.json()).resolves.toEqual({
       error: 'method_not_allowed',
@@ -62,7 +62,7 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
 
   it('returns local authorization failures without calling the service', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
-    state.authorizeInstancePermissionForUser.mockResolvedValue({
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
       ok: false,
       status: 403,
       error: 'forbidden',
@@ -83,36 +83,37 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
 
   it('lists categories through a dedicated route boundary', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
-    state.authorizeInstancePermissionForUser.mockResolvedValue({
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
       ok: true,
       actor: {
         instanceId: 'de-musterhausen',
         keycloakSubject: 'subject-1',
+        organizationId: '22222222-2222-2222-8222-222222222222',
       },
       permissions: [],
     });
-    state.listSvaMainserverCategories.mockResolvedValue([{ id: 'cat-1', name: 'Allgemein', children: [] }]);
+    state.listSvaMainserverCategories.mockResolvedValue([{ id: 'cat-1', name: 'Allgemein' }]);
 
     const response = await dispatchSvaMainserverCategoriesRequest(
       new Request('https://studio.test/api/v1/mainserver/categories')
     );
 
-    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'categories.read' })
     );
     expect(state.listSvaMainserverCategories).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
-      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      activeOrganizationId: '22222222-2222-2222-8222-222222222222',
     });
     await expect(response?.json()).resolves.toEqual({
-      data: [{ id: 'cat-1', name: 'Allgemein', children: [] }],
+      data: [{ id: 'cat-1', name: 'Allgemein' }],
     });
   });
 
   it('preserves the prior generic internal error contract', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
-    state.authorizeInstancePermissionForUser.mockResolvedValue({
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
       ok: true,
       actor: {
         instanceId: 'de-musterhausen',

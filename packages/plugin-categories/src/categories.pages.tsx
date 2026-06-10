@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatDateTimeInEditorTimeZone, translatePluginKey } from '@sva/plugin-sdk';
+import { translatePluginKey } from '@sva/plugin-sdk';
 import {
   Button,
   StudioDataTable,
@@ -31,14 +31,6 @@ const createTableLabels = (
   selectRow: ({ label }) => label,
   selectMobileRow: ({ label }) => label,
 });
-
-const formatDate = (value?: string, fallback = '—') => {
-  if (!value) {
-    return fallback;
-  }
-
-  return formatDateTimeInEditorTimeZone(value) ?? value;
-};
 
 const renderTags = (row: CategoryTableRow, emptyLabel: string) => {
   if (row.tags.length === 0) {
@@ -76,6 +68,31 @@ const renderDisabledActions = (row: CategoryTableRow, pt: PluginTranslator) => (
 const usePluginTranslator = (): PluginTranslator =>
   React.useCallback<PluginTranslator>((key, variables) => translatePluginKey('categories', key, variables), []);
 
+const readCategoriesErrorCode = (error: unknown): string | null => {
+  if (typeof error !== 'object' || error === null) {
+    return null;
+  }
+
+  const { code } = error as { code?: unknown };
+  return typeof code === 'string' && code.trim().length > 0 ? code : null;
+};
+
+const resolveLoadErrorMessage = (error: unknown, pt: PluginTranslator): string => {
+  switch (readCategoriesErrorCode(error)) {
+    case 'missing_credentials':
+    case 'organization_mainserver_credentials_missing':
+      return pt('messages.loadErrorMissingCredentials');
+    case 'integration_disabled':
+      return pt('messages.loadErrorIntegrationDisabled');
+    case 'config_not_found':
+      return pt('messages.loadErrorConfigMissing');
+    case 'forbidden':
+      return pt('messages.loadErrorForbidden');
+    default:
+      return pt('messages.loadError');
+  }
+};
+
 const useCategoryColumns = (pt: PluginTranslator): readonly StudioColumnDef<CategoryTableRow>[] =>
   React.useMemo(
     () => [
@@ -104,11 +121,6 @@ const useCategoryColumns = (pt: PluginTranslator): readonly StudioColumnDef<Cate
         header: pt('fields.tags'),
         cell: (row) => renderTags(row, pt('values.notAvailable')),
       },
-      {
-        id: 'updatedAt',
-        header: pt('fields.updatedAt'),
-        cell: (row) => formatDate(row.updatedAt, pt('values.notAvailable')),
-      },
     ],
     [pt]
   );
@@ -125,9 +137,9 @@ const useCategoriesPageState = (pt: PluginTranslator): CategoriesPageState => {
     try {
       const categories = await listCategories();
       setRows(flattenCategoriesForTable(categories));
-    } catch {
+    } catch (error) {
       setRows([]);
-      setError(pt('messages.loadError'));
+      setError(resolveLoadErrorMessage(error, pt));
     } finally {
       setIsLoading(false);
     }

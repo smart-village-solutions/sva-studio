@@ -1,12 +1,11 @@
-export type CategoryTreeItem = Readonly<{
+export type CategoryListItem = Readonly<{
   id: string;
   name: string;
-  iconName?: string;
+  parent?: Readonly<{
+    name: string;
+  }>;
   position?: number;
   tagList?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  children: readonly CategoryTreeItem[];
 }>;
 
 export type CategoryTableRow = Readonly<{
@@ -16,14 +15,11 @@ export type CategoryTableRow = Readonly<{
   name: string;
   hierarchyLabel: string;
   level: number;
-  iconName?: string;
   position?: number;
   tags: readonly string[];
   tagsDisplay: string;
-  createdAt?: string;
-  updatedAt?: string;
 }>;
 
 export type CategoriesListResponse = Readonly<{
-  data: readonly CategoryTreeItem[];
+  data: readonly CategoryListItem[];
 }>;

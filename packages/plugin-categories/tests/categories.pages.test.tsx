@@ -31,7 +31,6 @@ describe('CategoriesPage', () => {
         'categories.fields.hierarchy': 'Hierarchie',
         'categories.fields.position': 'Position',
         'categories.fields.tags': 'Tags',
-        'categories.fields.updatedAt': 'Aktualisiert',
         'categories.fields.createdAt': 'Erstellt am',
         'categories.values.notAvailable': '—',
         'categories.values.readOnlyHint': 'Aktionen werden in einem spaeteren Schritt freigeschaltet.',
@@ -43,6 +42,14 @@ describe('CategoriesPage', () => {
         'categories.empty.description': 'Sobald Kategorien vorhanden sind, erscheinen sie hier als flache Tabelle.',
         'categories.messages.loading': 'Kategorien werden geladen.',
         'categories.messages.loadError': 'Kategorien konnten nicht geladen werden.',
+        'categories.messages.loadErrorMissingCredentials':
+          'Für den aktuellen Kontext fehlen Mainserver-Zugangsdaten. Bitte wählen Sie eine Organisation mit gepflegten Mainserver-Credentials oder hinterlegen Sie persönliche Mainserver-Zugangsdaten.',
+        'categories.messages.loadErrorIntegrationDisabled':
+          'Die Mainserver-Integration ist für diese Instanz derzeit nicht aktiv.',
+        'categories.messages.loadErrorConfigMissing':
+          'Für diese Instanz ist noch keine Mainserver-Konfiguration hinterlegt.',
+        'categories.messages.loadErrorForbidden':
+          'Zum Laden der Kategorien fehlt die Berechtigung categories.read.',
         'categories.messages.actionsHint': 'Die Seite ist vorerst read-only.',
         'categories.table.ariaLabel': 'Kategorien-Tabelle',
         'categories.table.caption': 'Flache Ansicht der Mainserver-Kategorien',
@@ -67,17 +74,15 @@ describe('CategoriesPage', () => {
         name: 'Service',
         position: 1,
         tagList: 'amt, buerger',
-        updatedAt: '2026-06-09T10:15:00.000Z',
-        children: [
-          {
-            id: 'cat-child',
-            name: 'Buergerbuero',
-            position: 2,
-            tagList: 'vor-ort',
-            updatedAt: '2026-06-09T10:20:00.000Z',
-            children: [],
-          },
-        ],
+      },
+      {
+        id: 'cat-child',
+        name: 'Buergerbuero',
+        position: 2,
+        tagList: 'vor-ort',
+        parent: {
+          name: 'Service',
+        },
       },
     ]);
 
@@ -88,11 +93,11 @@ describe('CategoriesPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Kategorien' })).toBeTruthy();
       expect(screen.getByRole('table', { name: 'Kategorien-Tabelle' })).toBeTruthy();
-      expect(screen.getAllByText('Service / Buergerbuero').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Service').length).toBeGreaterThan(0);
       expect(screen.getAllByText('amt').length).toBeGreaterThan(0);
       expect(screen.getAllByText('buerger').length).toBeGreaterThan(0);
       expect(screen.queryByRole('columnheader', { name: 'Icon' })).toBeNull();
-      expect(screen.getByRole('columnheader', { name: 'Aktualisiert' })).toBeTruthy();
+      expect(screen.queryByRole('columnheader', { name: 'Aktualisiert' })).toBeNull();
     });
 
     expect(screen.getAllByRole('button', { name: 'Bearbeiten' }).at(0)?.hasAttribute('disabled')).toBe(true);
@@ -115,6 +120,25 @@ describe('CategoriesPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Aktuell wurden keine Kategorien aus dem Mainserver geladen.')).toBeTruthy();
       expect(screen.getByText('Sobald Kategorien vorhanden sind, erscheinen sie hier als flache Tabelle.')).toBeTruthy();
+    });
+  });
+
+  it('renders a specific guidance message for missing Mainserver credentials', async () => {
+    state.listCategories.mockRejectedValueOnce(
+      Object.assign(new Error('Für die aktive Organisation fehlen Mainserver-Credentials.'), {
+        code: 'organization_mainserver_credentials_missing',
+        name: 'CategoriesApiError',
+      })
+    );
+
+    render(<CategoriesPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'Für den aktuellen Kontext fehlen Mainserver-Zugangsdaten. Bitte wählen Sie eine Organisation mit gepflegten Mainserver-Credentials oder hinterlegen Sie persönliche Mainserver-Zugangsdaten.'
+        )
+      ).toBeTruthy();
     });
   });
 });

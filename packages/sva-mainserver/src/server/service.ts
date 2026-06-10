@@ -27,12 +27,6 @@ import { createAccessTokenProvider } from './service-internals/access-token-prov
 import { createCredentialProvider, createDefaultCredentialReader } from './service-internals/credentials.js';
 import { createEventOperations } from './service-internals/event-operations.js';
 import { createFetchWithRetry, createGraphqlExecutor } from './service-internals/graphql-client.js';
-import {
-  categorySchema,
-  hasIncompleteCategoryTree,
-  mapCategory,
-  requireCategoryIds,
-} from './service-internals/mappers-shared.js';
 import { createNewsOperations } from './service-internals/news-operations.js';
 import { createNewsVisibilityOperations } from './service-internals/news-visibility-operations.js';
 import { buildLogContext, logger, withObservedHop } from './service-internals/observability.js';
@@ -44,7 +38,6 @@ import {
   DEFAULT_RETRY_BASE_DELAY_MS,
   DEFAULT_TOKEN_SKEW_MS,
   DEFAULT_UPSTREAM_TIMEOUT_MS,
-  defined,
   normalizeUnexpectedError,
   toSvaMainserverError,
   unwrapSettledResult,
@@ -68,6 +61,98 @@ export type SvaMainserverServiceOptions = {
   readonly tokenCacheMaxSize?: number;
   readonly retryBaseDelayMs?: number;
   readonly randomIntImpl?: (min: number, max: number) => number;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
+
+const readRequiredCategoryField = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const readOptionalCategoryField = (value: unknown): string | undefined | null => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const readOptionalTagList = (value: unknown): string | undefined | null => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : '';
+};
+
+const readOptionalPosition = (value: unknown): number | undefined | null => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value !== 'number' || Number.isFinite(value) === false) {
+    return null;
+  }
+
+  return value;
+};
+
+const readOptionalCategoryParent = (
+  value: unknown
+): SvaMainserverCategoriesListItem['parent'] | undefined | null => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (isRecord(value) === false) {
+    return null;
+  }
+
+  const name = readOptionalCategoryField(value.name);
+  if (name === null) {
+    return null;
+  }
+
+  return name ? { name } : undefined;
+};
+
+const normalizeCategoryListItem = (value: unknown): SvaMainserverCategoriesListItem | null => {
+  if (isRecord(value) === false) {
+    return null;
+  }
+
+  const id = readRequiredCategoryField(value.id);
+  const name = readRequiredCategoryField(value.name);
+  const position = readOptionalPosition(value.position);
+  const tagList = readOptionalTagList(value.tagList);
+  const parent = readOptionalCategoryParent(value.parent);
+
+  if (!id || !name || position === null || tagList === null || parent === null) {
+    return null;
+  }
+
+  return {
+    id,
+    name,
+    ...(parent ? { parent } : {}),
+    ...(position !== undefined ? { position } : {}),
+    ...(tagList !== undefined ? { tagList } : {}),
+  };
 };
 
 export const createSvaMainserverService = (options: SvaMainserverServiceOptions = {}) => {
@@ -185,7 +270,6 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
         ...input,
         document: svaMainserverCategoriesListDocument,
         operationName: 'SvaMainserverCategoriesList',
-        variables: { order: 'name_ASC' },
       },
       config
     );
@@ -198,30 +282,16 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       throw createInvalidCategoriesResponseError();
     }
 
-    const parsedCategories = categorySchema.array().safeParse(response.categories);
-    if (!parsedCategories.success) {
-      throw createInvalidCategoriesResponseError();
-    }
-
-    if (parsedCategories.data.some(hasIncompleteCategoryTree)) {
-      throw createInvalidCategoriesResponseError();
-    }
-
-    const normalizedCategories = parsedCategories.data.map(mapCategory);
-    if (normalizedCategories.some((category) => category === null)) {
-      throw createInvalidCategoriesResponseError();
-    }
-
-    const categoriesWithRequiredIds: SvaMainserverCategoriesListItem[] = [];
-    for (const category of normalizedCategories.filter(defined)) {
-      const categoryWithRequiredId = requireCategoryIds(category);
-      if (!categoryWithRequiredId) {
+    const categories: SvaMainserverCategoriesListItem[] = [];
+    for (const category of response.categories) {
+      const normalizedCategory = normalizeCategoryListItem(category);
+      if (!normalizedCategory) {
         throw createInvalidCategoriesResponseError();
       }
-      categoriesWithRequiredIds.push(categoryWithRequiredId);
+      categories.push(normalizedCategory);
     }
 
-    return categoriesWithRequiredIds;
+    return categories;
   };
 
   const listNews = async (input: SvaMainserverConnectionInput & SvaMainserverNewsListInput) => {

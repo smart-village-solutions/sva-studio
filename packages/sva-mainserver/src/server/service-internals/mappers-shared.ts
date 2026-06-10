@@ -4,7 +4,6 @@ import type {
   SvaMainserverAccessibilityInformation,
   SvaMainserverAddress,
   SvaMainserverCategory,
-  SvaMainserverCategoriesListItem,
   SvaMainserverContact,
   SvaMainserverDate,
   SvaMainserverLocation,
@@ -261,28 +260,6 @@ export const hasIncompleteCategoryTree = (value: CategoryLike): boolean => {
   }
 
   return (value.children ?? []).some(hasIncompleteCategoryTree);
-};
-
-export const requireCategoryIds = (value: SvaMainserverCategory): SvaMainserverCategoriesListItem | null => {
-  const id = hasNonBlankString(value.id) ? value.id : undefined;
-  if (!id) {
-    return null;
-  }
-
-  const children: SvaMainserverCategoriesListItem[] = [];
-  for (const child of value.children) {
-    const childWithRequiredId = requireCategoryIds(child);
-    if (!childWithRequiredId) {
-      return null;
-    }
-    children.push(childWithRequiredId);
-  }
-
-  return {
-    ...value,
-    id,
-    children,
-  };
 };
 
 export const mapMediaContent = (value: z.infer<typeof mediaContentSchema>): SvaMainserverMediaContent => ({

@@ -261,9 +261,9 @@ describe('createSvaMainserverService', () => {
           data: {
             categories: [
               {
-                id: 'cat-root',
                 name: 'Allgemein',
-                children: [{ name: 'Unterkategorie' }],
+                position: 1,
+                tagList: 'amt',
               },
             ],
           },
@@ -284,7 +284,7 @@ describe('createSvaMainserverService', () => {
     });
   });
 
-  it('rejects categories responses that omit required nested category names', async () => {
+  it('rejects categories responses that omit required category names', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -294,8 +294,9 @@ describe('createSvaMainserverService', () => {
             categories: [
               {
                 id: 'cat-root',
-                name: 'Allgemein',
-                children: [{ id: 'cat-child', name: null }],
+                name: null,
+                position: 1,
+                tagList: 'amt',
               },
             ],
           },
@@ -327,7 +328,12 @@ describe('createSvaMainserverService', () => {
               {
                 id: '   ',
                 name: 'Allgemein',
-                children: [{ id: 'cat-child', name: '   ' }],
+                position: 1,
+              },
+              {
+                id: 'cat-child',
+                name: '   ',
+                position: 2,
               },
             ],
           },
@@ -391,7 +397,7 @@ describe('createSvaMainserverService', () => {
     ).resolves.toEqual([]);
   });
 
-  it('returns the fetched category tree snapshot with guaranteed ids', async () => {
+  it('returns the fetched flat category snapshot with parent names', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -402,25 +408,18 @@ describe('createSvaMainserverService', () => {
               {
                 id: 'cat-root',
                 name: 'Allgemein',
-                children: [
-                  {
-                    id: 'cat-child',
-                    name: 'Unterkategorie',
-                    children: [
-                      {
-                        id: 'cat-grandchild',
-                        name: 'Ebene 3',
-                        children: [
-                          {
-                            id: 'cat-great-grandchild',
-                            name: 'Ebene 4',
-                            children: [],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                ],
+                position: 1,
+                tagList: 'amt, buerger',
+                parent: null,
+              },
+              {
+                id: 'cat-child',
+                name: 'Unterkategorie',
+                position: 2,
+                tagList: 'vor-ort',
+                parent: {
+                  name: 'Allgemein',
+                },
               },
             ],
           },
@@ -439,34 +438,29 @@ describe('createSvaMainserverService', () => {
       {
         id: 'cat-root',
         name: 'Allgemein',
-        children: [
-          {
-            id: 'cat-child',
-            name: 'Unterkategorie',
-            children: [
-              {
-                id: 'cat-grandchild',
-                name: 'Ebene 3',
-                children: [
-                  {
-                    id: 'cat-great-grandchild',
-                    name: 'Ebene 4',
-                    children: [],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
+        position: 1,
+        tagList: 'amt, buerger',
+      },
+      {
+        id: 'cat-child',
+        name: 'Unterkategorie',
+        position: 2,
+        tagList: 'vor-ort',
+        parent: {
+          name: 'Allgemein',
+        },
       },
     ]);
 
     const categoriesRequest = JSON.parse(fetchImpl.mock.calls[1]?.[1]?.body as string) as {
       query?: string;
       operationName?: string;
+      variables?: unknown;
     };
     expect(categoriesRequest.operationName).toBe('SvaMainserverCategoriesList');
-    expect(categoriesRequest.query?.match(/children\s*{/g)).toHaveLength(4);
+    expect(categoriesRequest.variables).toBeUndefined();
+    expect(categoriesRequest.query).toContain('parent {');
+    expect(categoriesRequest.query).not.toContain('children {');
   });
 
   it('lists, creates, updates and deletes news with typed GraphQL variables', async () => {

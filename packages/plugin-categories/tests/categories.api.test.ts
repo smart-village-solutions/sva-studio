@@ -4,38 +4,33 @@ import {
   CategoriesApiError,
   flattenCategoriesForTable,
   listCategories,
-  type CategoryTreeItem,
+  type CategoryListItem,
 } from '../src/categories.api.js';
 
-const sampleTree: readonly CategoryTreeItem[] = [
+const sampleCategories: readonly CategoryListItem[] = [
   {
     id: 'cat-root',
     name: 'Service',
-    iconName: 'folder',
     position: 1,
     tagList: 'amt, buerger',
-    createdAt: '2026-06-09T10:00:00.000Z',
-    updatedAt: '2026-06-09T10:15:00.000Z',
-    children: [
-      {
-        id: 'cat-child',
-        name: 'Buergerbuero',
-        iconName: 'office',
-        position: 2,
-        tagList: 'vor-ort',
-        createdAt: '2026-06-09T10:05:00.000Z',
-        updatedAt: '2026-06-09T10:20:00.000Z',
-        children: [
-          {
-            id: 'cat-leaf',
-            name: 'Terminservice',
-            position: 3,
-            tagList: '',
-            children: [],
-          },
-        ],
-      },
-    ],
+  },
+  {
+    id: 'cat-child',
+    name: 'Buergerbuero',
+    position: 2,
+    tagList: 'vor-ort',
+    parent: {
+      name: 'Service',
+    },
+  },
+  {
+    id: 'cat-leaf',
+    name: 'Terminservice',
+    position: 3,
+    tagList: '',
+    parent: {
+      name: 'Buergerbuero',
+    },
   },
 ];
 
@@ -48,8 +43,8 @@ describe('plugin-categories api', () => {
     vi.unstubAllGlobals();
   });
 
-  it('flattens hierarchical categories into table rows', () => {
-    expect(flattenCategoriesForTable(sampleTree)).toEqual([
+  it('maps flat categories into table rows', () => {
+    expect(flattenCategoriesForTable(sampleCategories)).toEqual([
       {
         id: 'cat-root',
         categoryId: 'cat-root',
@@ -57,34 +52,28 @@ describe('plugin-categories api', () => {
         name: 'Service',
         hierarchyLabel: '—',
         level: 0,
-        iconName: 'folder',
         position: 1,
         tags: ['amt', 'buerger'],
         tagsDisplay: 'amt, buerger',
-        createdAt: '2026-06-09T10:00:00.000Z',
-        updatedAt: '2026-06-09T10:15:00.000Z',
       },
       {
         id: 'cat-child',
         categoryId: 'cat-child',
         actionTargetId: 'cat-child',
         name: 'Buergerbuero',
-        hierarchyLabel: 'Service / Buergerbuero',
-        level: 1,
-        iconName: 'office',
+        hierarchyLabel: 'Service',
+        level: 0,
         position: 2,
         tags: ['vor-ort'],
         tagsDisplay: 'vor-ort',
-        createdAt: '2026-06-09T10:05:00.000Z',
-        updatedAt: '2026-06-09T10:20:00.000Z',
       },
       {
         id: 'cat-leaf',
         categoryId: 'cat-leaf',
         actionTargetId: 'cat-leaf',
         name: 'Terminservice',
-        hierarchyLabel: 'Service / Buergerbuero / Terminservice',
-        level: 2,
+        hierarchyLabel: 'Buergerbuero',
+        level: 0,
         position: 3,
         tags: [],
         tagsDisplay: '—',
@@ -92,15 +81,15 @@ describe('plugin-categories api', () => {
     ]);
   });
 
-  it('loads categories from the host endpoint', async () => {
+  it('loads flat categories from the host endpoint', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        data: sampleTree,
+        data: sampleCategories,
       }),
     } as Response);
 
-    await expect(listCategories()).resolves.toEqual(sampleTree);
+    await expect(listCategories()).resolves.toEqual(sampleCategories);
     expect(fetch).toHaveBeenCalledWith(
       '/api/v1/mainserver/categories',
       expect.objectContaining({
@@ -109,7 +98,7 @@ describe('plugin-categories api', () => {
     );
   });
 
-  it('accepts explicit empty tag lists, trims optional strings, and supports a custom fetch implementation', async () => {
+  it('accepts optional parent, trims optional strings, and supports a custom fetch implementation', async () => {
     const customFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -117,11 +106,10 @@ describe('plugin-categories api', () => {
           {
             id: 'cat-root',
             name: 'Service',
-            iconName: '   ',
             tagList: '',
-            createdAt: '   ',
-            updatedAt: '2026-06-09T10:15:00.000Z',
-            children: [],
+            parent: {
+              name: '   ',
+            },
           },
         ],
       }),
@@ -132,8 +120,6 @@ describe('plugin-categories api', () => {
         id: 'cat-root',
         name: 'Service',
         tagList: '',
-        updatedAt: '2026-06-09T10:15:00.000Z',
-        children: [],
       },
     ]);
 
@@ -181,32 +167,8 @@ describe('plugin-categories api', () => {
       ok: true,
       json: async () => ({
         data: [
-          sampleTree[0],
-          { id: 'broken-node', children: [] },
-        ],
-      }),
-    } as Response);
-
-    await expect(listCategories()).rejects.toMatchObject({
-      code: 'invalid_categories_payload',
-    } satisfies Partial<CategoriesApiError>);
-  });
-
-  it('rejects malformed nested children instead of dropping them', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        data: [
-          {
-            ...sampleTree[0],
-            children: [
-              {
-                id: 'broken-child',
-                position: 2,
-                children: [],
-              },
-            ],
-          },
+          sampleCategories[0],
+          { id: 'broken-node' },
         ],
       }),
     } as Response);
@@ -223,7 +185,6 @@ describe('plugin-categories api', () => {
         data: [
           {
             name: 'Service',
-            children: [],
           },
         ],
       }),
@@ -235,43 +196,31 @@ describe('plugin-categories api', () => {
   });
 
   it('accepts duplicate-name siblings when their upstream ids are distinct', async () => {
-    const duplicateNameTree: readonly CategoryTreeItem[] = [
+    const duplicateNameCategories: readonly CategoryListItem[] = [
       {
-        id: 'cat-root',
-        name: 'Service',
-        children: [
-          {
-            id: 'cat-child-a',
-            name: 'Beratung',
-            children: [],
-          },
-          {
-            id: 'cat-child-b',
-            name: 'Beratung',
-            children: [],
-          },
-        ],
+        id: 'cat-child-a',
+        name: 'Beratung',
+        parent: {
+          name: 'Service',
+        },
+      },
+      {
+        id: 'cat-child-b',
+        name: 'Beratung',
+        parent: {
+          name: 'Service',
+        },
       },
     ];
 
-    expect(flattenCategoriesForTable(duplicateNameTree)).toEqual([
-      {
-        id: 'cat-root',
-        categoryId: 'cat-root',
-        actionTargetId: 'cat-root',
-        name: 'Service',
-        hierarchyLabel: '—',
-        level: 0,
-        tags: [],
-        tagsDisplay: '—',
-      },
+    expect(flattenCategoriesForTable(duplicateNameCategories)).toEqual([
       {
         id: 'cat-child-a',
         categoryId: 'cat-child-a',
         actionTargetId: 'cat-child-a',
         name: 'Beratung',
-        hierarchyLabel: 'Service / Beratung',
-        level: 1,
+        hierarchyLabel: 'Service',
+        level: 0,
         tags: [],
         tagsDisplay: '—',
       },
@@ -280,8 +229,8 @@ describe('plugin-categories api', () => {
         categoryId: 'cat-child-b',
         actionTargetId: 'cat-child-b',
         name: 'Beratung',
-        hierarchyLabel: 'Service / Beratung',
-        level: 1,
+        hierarchyLabel: 'Service',
+        level: 0,
         tags: [],
         tagsDisplay: '—',
       },

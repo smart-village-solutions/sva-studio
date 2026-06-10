@@ -233,6 +233,7 @@ describe('app.routes', () => {
       context: {
         auth: {
           getUser: async () => ({
+            assignedModules: ['categories'],
             permissionActions: ['categories.read'],
           }),
         },

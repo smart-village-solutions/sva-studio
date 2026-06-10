@@ -24,7 +24,7 @@ describe('CategoriesPage', () => {
       const labels: Record<string, string> = {
         'categories.navigation.title': 'Kategorien',
         'categories.list.title': 'Kategorien',
-        'categories.list.description': 'Lesen Sie die Kategorien aus dem Mainserver in einer schreibgeschuetzten Uebersicht.',
+        'categories.list.description': 'Lesen Sie die Kategorien aus dem Mainserver in einer schreibgeschützten Übersicht.',
         'categories.fields.actions': 'Aktionen',
         'categories.fields.name': 'Name',
         'categories.fields.id': 'ID',
@@ -33,7 +33,7 @@ describe('CategoriesPage', () => {
         'categories.fields.tags': 'Tags',
         'categories.fields.createdAt': 'Erstellt am',
         'categories.values.notAvailable': '—',
-        'categories.values.readOnlyHint': 'Aktionen werden in einem spaeteren Schritt freigeschaltet.',
+        'categories.values.readOnlyHint': 'Aktionen werden in einem späteren Schritt freigeschaltet.',
         'categories.actions.edit': 'Bearbeiten',
         'categories.actions.createChild': 'Neue Unterkategorie',
         'categories.actions.delete': 'Löschen',

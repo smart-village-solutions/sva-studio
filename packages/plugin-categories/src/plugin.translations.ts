@@ -16,7 +16,7 @@ const categoriesTranslationsDe = createCategoriesLocaleTranslations({
   },
   list: {
     title: 'Kategorien',
-    description: 'Lesen Sie die Kategorien aus dem Mainserver in einer schreibgeschuetzten Uebersicht.',
+    description: 'Lesen Sie die Kategorien aus dem Mainserver in einer schreibgeschützten Übersicht.',
   },
   fields: {
     actions: 'Aktionen',
@@ -50,7 +50,7 @@ const categoriesTranslationsDe = createCategoriesLocaleTranslations({
   },
   values: {
     notAvailable: '—',
-    readOnlyHint: 'Aktionen werden in einem spaeteren Schritt freigeschaltet.',
+    readOnlyHint: 'Aktionen werden in einem späteren Schritt freigeschaltet.',
   },
   table: {
     ariaLabel: 'Kategorien-Tabelle',

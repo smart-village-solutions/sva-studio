@@ -87,6 +87,7 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
     'media.reference.manage',
     'media.delete',
     'media.deliver.protected',
+    'categories.read',
     'news.read',
     'events.read',
     'poi.read',

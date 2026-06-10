@@ -779,11 +779,12 @@ export default function Sidebar({
   const canAccessCategories =
     canAccessWorkspace &&
     (devAuthAvailable ||
-      hasPermissionAction(
-        CATEGORIES_READ_PERMISSION,
-        contentAccessApi.permissionActions,
-        contentAccessApi.isLoading
-      ));
+      (isModuleAssignedToUser('categories', user) &&
+        hasPermissionAction(
+          CATEGORIES_READ_PERMISSION,
+          contentAccessApi.permissionActions,
+          contentAccessApi.isLoading
+        )));
   const canAccessAdminUsers =
     isAuthenticated && isIamAdminEnabled() && (hasUserAdminAccess(user) || hasPlatformInstanceAdminAccess(user));
   const canAccessAdminOrganizations =

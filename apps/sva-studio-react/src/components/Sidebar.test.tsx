@@ -658,6 +658,7 @@ describe('Sidebar', () => {
         id: 'user-2',
         name: 'Editor',
         roles: ['editor'],
+        assignedModules: ['categories'],
       },
       isAuthenticated: true,
     });
@@ -682,6 +683,37 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
   });
 
+  it('versteckt den Kategorien-Link ohne zugewiesenes Kategorien-Modul trotz categories.read', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-2',
+        name: 'Editor',
+        roles: ['editor'],
+        assignedModules: ['news'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'blocked',
+        canRead: false,
+        canCreate: false,
+        canUpdate: false,
+        reasonCode: 'content_read_missing',
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['categories.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.queryByRole('link', { name: 'Kategorien' })).toBeNull();
+  });
+
   it('versteckt den Kategorien-Link ohne categories.read trotz content.read', () => {
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,
@@ -689,6 +721,7 @@ describe('Sidebar', () => {
         id: 'user-2',
         name: 'Editor',
         roles: ['editor'],
+        assignedModules: ['categories'],
       },
       isAuthenticated: true,
     });

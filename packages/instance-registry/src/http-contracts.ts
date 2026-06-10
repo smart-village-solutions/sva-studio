@@ -39,13 +39,21 @@ const tenantAdminClientSchema = z
   })
   .optional();
 
+const reservedInstanceIds = new Set(['audit']);
+
+const instanceIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine((value) => !reservedInstanceIds.has(value), 'Reservierte Instanz-ID');
+
 export const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
   status: z.enum(instanceStatuses).optional(),
 });
 
 export const createInstanceSchema = z.object({
-  instanceId: z.string().trim().min(1),
+  instanceId: instanceIdSchema,
   displayName: z.string().trim().min(1),
   parentDomain: z.string().trim().min(1),
   realmMode: z.enum(['new', 'existing']),

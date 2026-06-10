@@ -6,7 +6,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { join, posix, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 type SyncFallowSkillSnapshotOptions = {
@@ -22,6 +22,7 @@ type SyncFallowSkillSnapshotResult = {
 
 const FALLOW_PACKAGE_NAME = 'fallow';
 const FALLOW_SKILL_RELATIVE_PATH = join('node_modules', FALLOW_PACKAGE_NAME, 'skills', 'fallow');
+const FALLOW_SKILL_SOURCE_RELATIVE_PATH = posix.join('node_modules', FALLOW_PACKAGE_NAME, 'skills', 'fallow');
 const FALLOW_PACKAGE_JSON_RELATIVE_PATH = join('node_modules', FALLOW_PACKAGE_NAME, 'package.json');
 const TARGET_SKILL_RELATIVE_PATH = join('.agents', 'skills', 'fallow');
 const UPSTREAM_METADATA_FILENAME = '.upstream.json';
@@ -61,7 +62,7 @@ export const syncFallowSkillSnapshot = (
     `${JSON.stringify(
       {
         packageName: FALLOW_PACKAGE_NAME,
-        sourceRelativePath: FALLOW_SKILL_RELATIVE_PATH,
+        sourceRelativePath: FALLOW_SKILL_SOURCE_RELATIVE_PATH,
         sourceVersion,
       },
       null,

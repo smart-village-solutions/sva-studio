@@ -417,6 +417,36 @@ describe('InstanceDetailPage', () => {
     ).toBeTruthy();
   });
 
+  it('does not re-run the audit refresh when detail polling replaces the instance object with the same id', async () => {
+    const refreshInstanceAudit = vi.fn().mockResolvedValue(true);
+    const loadInstance = vi.fn().mockResolvedValue(true);
+    const firstState = createInstancesApiState({
+      loadInstance,
+      refreshInstanceAudit,
+      selectedInstance: createSelectedInstance({ displayName: 'Demo A' }),
+    });
+    const secondState = createInstancesApiState({
+      loadInstance,
+      refreshInstanceAudit,
+      selectedInstance: createSelectedInstance({ displayName: 'Demo B' }),
+    });
+
+    useInstancesMock.mockReturnValueOnce(firstState).mockReturnValue(secondState);
+
+    const view = render(<InstanceDetailPage instanceId="demo" />);
+
+    await waitFor(() => {
+      expect(refreshInstanceAudit).toHaveBeenCalledTimes(1);
+    });
+
+    view.rerender(<InstanceDetailPage instanceId="demo" />);
+
+    await waitFor(() => {
+      expect(loadInstance).toHaveBeenCalledWith('demo');
+    });
+    expect(refreshInstanceAudit).toHaveBeenCalledTimes(1);
+  });
+
   it('computes transient action feedback classes for visible and fading states', () => {
     expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, false)).toContain('opacity-100');
     expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, true)).toContain('opacity-0');

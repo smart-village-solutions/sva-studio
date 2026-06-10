@@ -857,9 +857,6 @@ FROM iam.account_roles ar
 JOIN iam.roles r
   ON r.instance_id = ar.instance_id
  AND r.id = ar.role_id
-JOIN iam.accounts a
-  ON a.instance_id = ar.instance_id
- AND a.id = ar.account_id
 JOIN iam.instance_memberships im
   ON im.instance_id = ar.instance_id
  AND im.account_id = ar.account_id

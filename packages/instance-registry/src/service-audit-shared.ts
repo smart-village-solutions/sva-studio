@@ -57,6 +57,35 @@ export const createSkipCheck = (
     message,
   });
 
+export const mapWithConcurrencyLimit = async <TInput, TResult>(
+  items: readonly TInput[],
+  limit: number,
+  worker: (item: TInput, index: number) => Promise<TResult>
+): Promise<TResult[]> => {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const results: TResult[] = new Array(items.length);
+  let nextIndex = 0;
+
+  const runWorker = async () => {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await worker(items[currentIndex] as TInput, currentIndex);
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      await runWorker();
+    })
+  );
+
+  return results;
+};
+
 export const toSummary = (
   instances: readonly InstanceAuditInstanceResult[],
   runChecks: readonly InstanceAuditCheck[]

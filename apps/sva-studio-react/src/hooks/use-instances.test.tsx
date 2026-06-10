@@ -922,4 +922,77 @@ describe('useInstances', () => {
       })
     );
   });
+
+  it('loads and clears the single-instance audit state', async () => {
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const auditRun = await result.current.refreshInstanceAudit('demo');
+      expect(auditRun).toEqual(
+        expect.objectContaining({
+          overallStatus: 'pass',
+        })
+      );
+    });
+
+    expect(getSingleInstanceAuditRunMock).toHaveBeenCalledWith('demo');
+    expect(result.current.instanceAuditRun).toEqual(
+      expect.objectContaining({
+        overallStatus: 'pass',
+      })
+    );
+
+    act(() => {
+      result.current.clearSelectedInstance();
+    });
+
+    expect(result.current.instanceAuditRun).toBeNull();
+  });
+
+  it('surfaces audit refresh failures and invalidates permissions on 403', async () => {
+    getSingleInstanceAuditRunMock.mockRejectedValueOnce({
+      status: 403,
+      code: 'forbidden',
+      message: 'nope',
+    });
+    getInstanceAuditRunMock.mockRejectedValueOnce({
+      status: 403,
+      code: 'forbidden',
+      message: 'still nope',
+    });
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      expect(await result.current.refreshInstanceAudit('demo')).toBeNull();
+    });
+
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({ status: 403, code: 'forbidden' })
+    );
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      expect(
+        await result.current.refreshInstancesAudit({
+          includeOnlyActive: false,
+          instanceIds: ['demo', 'bb-guben'],
+        })
+      ).toBeNull();
+    });
+
+    expect(getInstanceAuditRunMock).toHaveBeenCalledWith({
+      includeOnlyActive: false,
+      instanceIds: ['demo', 'bb-guben'],
+    });
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(2);
+  });
 });

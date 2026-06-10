@@ -9,6 +9,7 @@ import {
   CHECK_IDS,
   aggregateStatuses,
   createCheck,
+  mapWithConcurrencyLimit,
   toSummary,
 } from './service-audit-shared.js';
 import {
@@ -17,6 +18,8 @@ import {
   probeInstanceUrlReachability,
 } from './service-audit-registry.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+
+const INSTANCE_AUDIT_CONCURRENCY = 3;
 
 const buildInstanceAuditResult = async (
   deps: InstanceRegistryServiceDeps,
@@ -68,15 +71,14 @@ export const createRunInstanceAuditHandler =
     includeOnlyActive?: boolean;
     actorId?: string;
     requestId?: string;
-  }): Promise<InstanceAuditRun> => {
+  } = {}): Promise<InstanceAuditRun> => {
     const includeOnlyActive = input.includeOnlyActive ?? true;
     const requestedInstanceIds = [...new Set((input.instanceIds ?? []).map((instanceId) => instanceId.trim()).filter(Boolean))];
 
     const instances =
       requestedInstanceIds.length > 0
         ? (
-            await Promise.all(
-              requestedInstanceIds.map(async (instanceId) => {
+            await mapWithConcurrencyLimit(requestedInstanceIds, INSTANCE_AUDIT_CONCURRENCY, async (instanceId) => {
                 const instance = await deps.repository.getInstanceById(instanceId);
                 if (!instance) {
                   return null;
@@ -86,7 +88,6 @@ export const createRunInstanceAuditHandler =
                 }
                 return instance;
               })
-            )
           ).filter((instance): instance is NonNullable<typeof instance> => Boolean(instance))
         : await deps.repository.listInstances(includeOnlyActive ? { status: 'active' } : undefined);
 
@@ -119,7 +120,11 @@ export const createRunInstanceAuditHandler =
           ];
 
     const results = (
-      await Promise.all(instances.map((instance) => buildInstanceAuditResult(deps, instance.instanceId)))
+      await mapWithConcurrencyLimit(
+        instances,
+        INSTANCE_AUDIT_CONCURRENCY,
+        async (instance) => buildInstanceAuditResult(deps, instance.instanceId)
+      )
     ).filter((instance): instance is InstanceAuditInstanceResult => Boolean(instance));
 
     const overallStatus = aggregateStatuses([

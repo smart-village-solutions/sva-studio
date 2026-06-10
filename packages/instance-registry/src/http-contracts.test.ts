@@ -58,6 +58,19 @@ describe('http-contracts', () => {
     expect(result.success).toBe(true);
   });
 
+  it('rejects reserved instance ids for audit routes', () => {
+    const result = createInstanceSchema.safeParse({
+      instanceId: 'audit',
+      displayName: 'Demo',
+      parentDomain: 'studio.smart-village.app',
+      realmMode: 'new',
+      authRealm: 'de-test',
+      authClientId: 'sva-studio',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it('ignores legacy waste-management settings in create requests', () => {
     const result = createInstanceSchema.safeParse({
       instanceId: 'de-test',

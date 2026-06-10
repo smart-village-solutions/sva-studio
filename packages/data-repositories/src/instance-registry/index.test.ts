@@ -148,6 +148,8 @@ describe('instance registry repository', () => {
     await expect(repository.countLocalSystemAdminAssignments('tenant-a')).resolves.toBe(2);
     expect(statements[0]?.text).toContain('COUNT(DISTINCT ar.account_id)::int AS assignment_count');
     expect(statements[0]?.text).toContain("r.role_key = 'system_admin'");
+    expect(statements[0]?.text).not.toContain('a.instance_id');
+    expect(statements[0]?.text).toContain('JOIN iam.instance_memberships im');
   });
 
   it('lists assigned modules for an instance', async () => {

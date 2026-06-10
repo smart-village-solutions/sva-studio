@@ -330,12 +330,13 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   ]);
 
   React.useEffect(() => {
-    if (!selectedInstance) {
+    const selectedInstanceId = selectedInstance?.instanceId;
+    if (!selectedInstanceId) {
       return;
     }
 
-    void instancesApi.refreshInstanceAudit(selectedInstance.instanceId);
-  }, [instancesApi.refreshInstanceAudit, selectedInstance]);
+    void instancesApi.refreshInstanceAudit(selectedInstanceId);
+  }, [instancesApi.refreshInstanceAudit, selectedInstance?.instanceId]);
 
   const onUpdateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

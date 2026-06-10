@@ -2,6 +2,50 @@ import type { InstanceAuditCheck } from '@sva/core';
 
 import { CHECK_IDS, createCheck } from './service-audit-shared.js';
 
+const hasConfiguredValue = (value?: string): value is string => typeof value === 'string' && value.trim().length > 0;
+
+const createConfiguredValueCheck = (input: {
+  checkId: string;
+  title: string;
+  expected: string;
+  configuredValue?: string;
+  configuredMessage: string;
+  missingMessage: string;
+  remediationHint: string;
+}): InstanceAuditCheck =>
+  createCheck({
+    checkId: input.checkId,
+    title: input.title,
+    scope: 'registry',
+    status: hasConfiguredValue(input.configuredValue) ? 'pass' : 'fail',
+    expected: input.expected,
+    actual: hasConfiguredValue(input.configuredValue) ? input.configuredValue : 'leer',
+    evidenceSource: 'instance_registry',
+    message: hasConfiguredValue(input.configuredValue) ? input.configuredMessage : input.missingMessage,
+    remediationHint: hasConfiguredValue(input.configuredValue) ? undefined : input.remediationHint,
+  });
+
+const createSecretConfiguredCheck = (input: {
+  checkId: string;
+  title: string;
+  configured: boolean;
+  expected: string;
+  configuredMessage: string;
+  missingMessage: string;
+  remediationHint: string;
+}): InstanceAuditCheck =>
+  createCheck({
+    checkId: input.checkId,
+    title: input.title,
+    scope: 'registry',
+    status: input.configured ? 'pass' : 'fail',
+    expected: input.expected,
+    actual: input.configured ? 'konfiguriert' : 'nicht konfiguriert',
+    evidenceSource: 'instance_registry',
+    message: input.configured ? input.configuredMessage : input.missingMessage,
+    remediationHint: input.configured ? undefined : input.remediationHint,
+  });
+
 export const probeInstanceUrlReachability = async (primaryHostname: string): Promise<InstanceAuditCheck> => {
   const controller = new AbortController();
   const timeout = globalThis.setTimeout(() => controller.abort(), 8_000);
@@ -66,76 +110,50 @@ export const createRegistryChecks = (input: {
         : 'Die Instanz ist in der Registry nicht als aktiv markiert.',
     remediationHint: input.status === 'active' ? undefined : 'Registry-Status und Lifecycle der Instanz prüfen.',
   }),
-  createCheck({
+  createConfiguredValueCheck({
     checkId: CHECK_IDS.registryRealmPresent,
     title: 'Registry-Realm vorhanden',
-    scope: 'registry',
-    status: input.authRealm.trim().length > 0 ? 'pass' : 'fail',
     expected: 'Nicht-leerer authRealm',
-    actual: input.authRealm.trim().length > 0 ? input.authRealm : 'leer',
-    evidenceSource: 'instance_registry',
-    message:
-      input.authRealm.trim().length > 0
-        ? 'Ein Auth-Realm ist im Registry-Vertrag hinterlegt.'
-        : 'Im Registry-Vertrag fehlt der Auth-Realm.',
-    remediationHint: input.authRealm.trim().length > 0 ? undefined : 'Instanzvertrag um einen gültigen Auth-Realm ergänzen.',
+    configuredValue: input.authRealm,
+    configuredMessage: 'Ein Auth-Realm ist im Registry-Vertrag hinterlegt.',
+    missingMessage: 'Im Registry-Vertrag fehlt der Auth-Realm.',
+    remediationHint: 'Instanzvertrag um einen gültigen Auth-Realm ergänzen.',
   }),
-  createCheck({
+  createConfiguredValueCheck({
     checkId: CHECK_IDS.registryLoginClientPresent,
     title: 'Registry-Login-Client vorhanden',
-    scope: 'registry',
-    status: input.authClientId.trim().length > 0 ? 'pass' : 'fail',
     expected: 'Nicht-leere authClientId',
-    actual: input.authClientId.trim().length > 0 ? input.authClientId : 'leer',
-    evidenceSource: 'instance_registry',
-    message:
-      input.authClientId.trim().length > 0
-        ? 'Ein Login-Client ist im Registry-Vertrag hinterlegt.'
-        : 'Im Registry-Vertrag fehlt die Login-Client-ID.',
-    remediationHint:
-      input.authClientId.trim().length > 0 ? undefined : 'Instanzvertrag um die Login-Client-ID ergänzen.',
+    configuredValue: input.authClientId,
+    configuredMessage: 'Ein Login-Client ist im Registry-Vertrag hinterlegt.',
+    missingMessage: 'Im Registry-Vertrag fehlt die Login-Client-ID.',
+    remediationHint: 'Instanzvertrag um die Login-Client-ID ergänzen.',
   }),
-  createCheck({
+  createConfiguredValueCheck({
     checkId: CHECK_IDS.registryTenantAdminClientPresent,
     title: 'Registry-Tenant-Admin-Client vorhanden',
-    scope: 'registry',
-    status: input.tenantAdminClientId ? 'pass' : 'fail',
     expected: 'Tenant-Admin-Client-ID konfiguriert',
-    actual: input.tenantAdminClientId ?? 'nicht konfiguriert',
-    evidenceSource: 'instance_registry',
-    message: input.tenantAdminClientId
-      ? 'Ein Tenant-Admin-Client ist im Registry-Vertrag hinterlegt.'
-      : 'Im Registry-Vertrag fehlt der Tenant-Admin-Client.',
-    remediationHint:
-      input.tenantAdminClientId ? undefined : 'Instanzvertrag um Tenant-Admin-Client-ID und Secret ergänzen.',
+    configuredValue: input.tenantAdminClientId,
+    configuredMessage: 'Ein Tenant-Admin-Client ist im Registry-Vertrag hinterlegt.',
+    missingMessage: 'Im Registry-Vertrag fehlt der Tenant-Admin-Client.',
+    remediationHint: 'Instanzvertrag um Tenant-Admin-Client-ID und Secret ergänzen.',
   }),
-  createCheck({
+  createSecretConfiguredCheck({
     checkId: CHECK_IDS.registryLoginSecretConfigured,
     title: 'Registry-Login-Secret konfiguriert',
-    scope: 'registry',
-    status: input.authClientSecretConfigured ? 'pass' : 'fail',
+    configured: input.authClientSecretConfigured,
     expected: 'Login-Client-Secret hinterlegt',
-    actual: input.authClientSecretConfigured ? 'konfiguriert' : 'nicht konfiguriert',
-    evidenceSource: 'instance_registry',
-    message: input.authClientSecretConfigured
-      ? 'Für den Login-Client ist ein Secret in der Registry hinterlegt.'
-      : 'Für den Login-Client fehlt das Secret in der Registry.',
-    remediationHint:
-      input.authClientSecretConfigured ? undefined : 'Login-Client-Secret in der Root-Instanz nachpflegen.',
+    configuredMessage: 'Für den Login-Client ist ein Secret in der Registry hinterlegt.',
+    missingMessage: 'Für den Login-Client fehlt das Secret in der Registry.',
+    remediationHint: 'Login-Client-Secret in der Root-Instanz nachpflegen.',
   }),
-  createCheck({
+  createSecretConfiguredCheck({
     checkId: CHECK_IDS.registryTenantAdminSecretConfigured,
     title: 'Registry-Tenant-Admin-Secret konfiguriert',
-    scope: 'registry',
-    status: input.tenantAdminSecretConfigured ? 'pass' : 'fail',
+    configured: input.tenantAdminSecretConfigured,
     expected: 'Tenant-Admin-Client-Secret hinterlegt',
-    actual: input.tenantAdminSecretConfigured ? 'konfiguriert' : 'nicht konfiguriert',
-    evidenceSource: 'instance_registry',
-    message: input.tenantAdminSecretConfigured
-      ? 'Für den Tenant-Admin-Client ist ein Secret in der Registry hinterlegt.'
-      : 'Für den Tenant-Admin-Client fehlt das Secret in der Registry.',
-    remediationHint:
-      input.tenantAdminSecretConfigured ? undefined : 'Tenant-Admin-Client-Secret in der Root-Instanz nachpflegen.',
+    configuredMessage: 'Für den Tenant-Admin-Client ist ein Secret in der Registry hinterlegt.',
+    missingMessage: 'Für den Tenant-Admin-Client fehlt das Secret in der Registry.',
+    remediationHint: 'Tenant-Admin-Client-Secret in der Root-Instanz nachpflegen.',
   }),
 ];
 

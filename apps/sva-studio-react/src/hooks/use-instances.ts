@@ -91,6 +91,8 @@ export const useInstances = () => {
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
   const pendingAuditRequestsRef = React.useRef(0);
+  const currentDetailInstanceIdRef = React.useRef<string | null>(null);
+  const latestInstanceAuditRequestRef = React.useRef(0);
 
   React.useEffect(() => {
     const timer = globalThis.setTimeout(() => setDebouncedSearch(filters.search.trim()), 250);
@@ -204,6 +206,10 @@ export const useInstances = () => {
 
   const loadInstance = React.useCallback(
     async (instanceId: string) => {
+      if (currentDetailInstanceIdRef.current !== instanceId) {
+        setInstanceAuditRun(null);
+      }
+      currentDetailInstanceIdRef.current = instanceId;
       logBrowserOperationStart(instancesLogger, 'instance_detail_load_started', {
         operation: 'get_instance_detail',
         instance_id: instanceId,
@@ -278,17 +284,29 @@ export const useInstances = () => {
   const refreshInstanceAudit = React.useCallback(
     async (instanceId: string) => {
       beginAuditRequest();
-      setMutationError(null);
+      if (currentDetailInstanceIdRef.current === null) {
+        currentDetailInstanceIdRef.current = instanceId;
+      }
+      const requestToken = latestInstanceAuditRequestRef.current + 1;
+      latestInstanceAuditRequestRef.current = requestToken;
       try {
         const response = await getSingleInstanceAuditRun(instanceId);
-        setInstanceAuditRun(response.data);
+        const targetInstanceIds = response.data.targetInstanceIds ?? [instanceId];
+        const isLatestRequest = latestInstanceAuditRequestRef.current === requestToken;
+        const targetsRequestedInstance =
+          targetInstanceIds.length === 0 || targetInstanceIds.includes(instanceId);
+        const matchesCurrentDetail =
+          currentDetailInstanceIdRef.current === null || currentDetailInstanceIdRef.current === instanceId;
+        if (isLatestRequest && matchesCurrentDetail && targetsRequestedInstance) {
+          setInstanceAuditRun(response.data);
+        }
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
         if (resolvedError.status === 403) {
           await invalidatePermissions();
         }
-        setMutationError(resolvedError);
+        setMutationError((current) => current ?? resolvedError);
         return null;
       } finally {
         endAuditRequest();
@@ -300,7 +318,6 @@ export const useInstances = () => {
   const refreshInstancesAudit = React.useCallback(
     async (input?: { includeOnlyActive?: boolean; instanceIds?: readonly string[] }) => {
       beginAuditRequest();
-      setMutationError(null);
       try {
         const response = await getInstanceAuditRun({
           includeOnlyActive: input?.includeOnlyActive ?? true,
@@ -313,7 +330,7 @@ export const useInstances = () => {
         if (resolvedError.status === 403) {
           await invalidatePermissions();
         }
-        setMutationError(resolvedError);
+        setMutationError((current) => current ?? resolvedError);
         return null;
       } finally {
         endAuditRequest();
@@ -390,6 +407,7 @@ export const useInstances = () => {
     refreshInstancesAudit,
     refreshInstanceAudit,
     clearSelectedInstance: () => {
+      currentDetailInstanceIdRef.current = null;
       setSelectedInstance(null);
       setInstanceAuditRun(null);
     },

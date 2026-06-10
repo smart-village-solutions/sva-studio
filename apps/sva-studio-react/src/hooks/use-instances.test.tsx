@@ -996,6 +996,174 @@ describe('useInstances', () => {
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(2);
   });
 
+  it('preserves an existing detail error while a successful audit refresh runs', async () => {
+    getInstanceKeycloakStatusMock.mockRejectedValueOnce({
+      status: 502,
+      code: 'keycloak_unavailable',
+      message: 'Keycloak unavailable',
+    });
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({
+        status: 502,
+        code: 'keycloak_unavailable',
+      })
+    );
+
+    await act(async () => {
+      await result.current.refreshInstanceAudit('demo');
+    });
+
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({
+        status: 502,
+        code: 'keycloak_unavailable',
+      })
+    );
+  });
+
+  it('ignores stale single-instance audit responses after switching to another instance', async () => {
+    const demoAudit = createDeferred<{
+      data: {
+        generatedAt: string;
+        includeOnlyActive: boolean;
+        targetInstanceIds: string[];
+        overallStatus: string;
+        summary: {
+          totalInstances: number;
+          passedInstances?: number;
+          warnedInstances?: number;
+          failedInstances?: number;
+          skippedInstances?: number;
+          passCount?: number;
+          warnCount?: number;
+          failCount?: number;
+          skipCount?: number;
+        };
+        checks: never[];
+        instances: Array<{ instanceId: string; displayName: string; primaryHostname: string; status: string; overallStatus: string; checks: never[] }>;
+      };
+    }>();
+
+    getSingleInstanceAuditRunMock
+      .mockImplementationOnce(() => demoAudit.promise)
+      .mockResolvedValueOnce({
+        data: {
+          generatedAt: '2026-06-10T10:05:00.000Z',
+          includeOnlyActive: true,
+          targetInstanceIds: ['bb-guben'],
+          overallStatus: 'pass',
+          summary: {
+            totalInstances: 1,
+            passCount: 1,
+            failCount: 0,
+            warnCount: 0,
+            skipCount: 0,
+          },
+          checks: [],
+          instances: [
+            {
+              instanceId: 'bb-guben',
+              displayName: 'BB Guben',
+              primaryHostname: 'bb-guben.studio.smart-village.app',
+              status: 'active',
+              overallStatus: 'pass',
+              checks: [],
+            },
+          ],
+        },
+      });
+
+    getInstanceMock
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          status: 'active',
+          parentDomain: 'studio.example.org',
+          primaryHostname: 'demo.studio.example.org',
+          hostnames: [],
+          provisioningRuns: [],
+          keycloakProvisioningRuns: [],
+          auditEvents: [],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'bb-guben',
+          displayName: 'BB Guben',
+          status: 'active',
+          parentDomain: 'studio.smart-village.app',
+          primaryHostname: 'bb-guben.studio.smart-village.app',
+          hostnames: [],
+          provisioningRuns: [],
+          keycloakProvisioningRuns: [],
+          auditEvents: [],
+        },
+      });
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    const firstAuditPromise = result.current.refreshInstanceAudit('demo');
+
+    await act(async () => {
+      await result.current.loadInstance('bb-guben');
+      await result.current.refreshInstanceAudit('bb-guben');
+    });
+
+    await act(async () => {
+      demoAudit.resolve({
+        data: {
+          generatedAt: '2026-06-10T10:00:00.000Z',
+          includeOnlyActive: true,
+          targetInstanceIds: ['demo'],
+          overallStatus: 'pass',
+          summary: {
+            totalInstances: 1,
+            passCount: 1,
+            failCount: 0,
+            warnCount: 0,
+            skipCount: 0,
+          },
+          checks: [],
+          instances: [
+            {
+              instanceId: 'demo',
+              displayName: 'Demo',
+              primaryHostname: 'demo.studio.example.org',
+              status: 'active',
+              overallStatus: 'pass',
+              checks: [],
+            },
+          ],
+        },
+      });
+      await firstAuditPromise;
+    });
+
+    expect(result.current.selectedInstance?.instanceId).toBe('bb-guben');
+    expect(result.current.instanceAuditRun?.targetInstanceIds).toEqual(['bb-guben']);
+    expect(result.current.instanceAuditRun?.instances[0]?.instanceId).toBe('bb-guben');
+  });
+
   it('keeps auditLoading true while overlapping audit requests are still pending', async () => {
     let resolveSingleAudit: ((value: unknown) => void) | undefined;
     let resolveOverviewAudit: ((value: unknown) => void) | undefined;

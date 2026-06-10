@@ -30,6 +30,29 @@ const readStatusClassName = (status: InstanceAuditCheck['status']) => {
   }
 };
 
+const formatAuditDetailValue = (value: unknown): string => {
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false';
+  }
+  if (typeof value === 'number' || typeof value === 'bigint') {
+    return String(value);
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value === null) {
+    return 'null';
+  }
+  if (value === undefined) {
+    return 'undefined';
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
 const AuditCheckList = ({ checks }: { checks: readonly InstanceAuditCheck[] }) => (
   <div className="space-y-3">
     {groupChecksByScope(checks).map((group) => (
@@ -61,6 +84,19 @@ const AuditCheckList = ({ checks }: { checks: readonly InstanceAuditCheck[] }) =
                   <dd>{check.evidenceSource}</dd>
                 </div>
               </dl>
+              {check.details && Object.keys(check.details).length > 0 ? (
+                <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                  <p className="font-medium">{t('admin.instances.audit.details')}</p>
+                  <dl className="grid gap-2 md:grid-cols-2">
+                    {Object.entries(check.details).map(([key, value]) => (
+                      <div key={key}>
+                        <dt className="font-medium">{key}</dt>
+                        <dd className="break-all">{formatAuditDetailValue(value)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ) : null}
               {check.remediationHint ? (
                 <p className="mt-2 text-xs text-muted-foreground">
                   <span className="font-medium">{t('admin.instances.audit.remediationHint')}</span> {check.remediationHint}

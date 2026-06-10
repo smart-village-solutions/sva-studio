@@ -11,7 +11,14 @@ const logger = createSdkLogger({ component: 'iam-instance-registry-audit', level
 export const resolveKeycloakStatus = async (
   deps: InstanceRegistryServiceDeps,
   instanceId: string
-): Promise<{ status: KeycloakTenantStatus | null; evidenceSource: string; error?: string }> => {
+): Promise<{
+  status: KeycloakTenantStatus | null;
+  evidenceSource: string;
+  error?: string;
+  fallbackStatus?: KeycloakTenantStatus | null;
+  fallbackEvidenceSource?: string;
+  fallbackError?: string;
+}> => {
   const loaded = await loadInstanceWithSecret(deps, instanceId);
   if (!loaded) {
     return { status: null, evidenceSource: 'instance_registry' };
@@ -39,7 +46,29 @@ export const resolveKeycloakStatus = async (
         instance_id: instanceId,
         error: message,
       });
-      return { status: null, evidenceSource: 'keycloak_live', error: message };
+      try {
+        const fallback = await createGetKeycloakStatusHandler(deps)(instanceId);
+        return {
+          status: null,
+          evidenceSource: 'keycloak_live',
+          error: message,
+          fallbackStatus: fallback,
+          fallbackEvidenceSource: 'keycloak_snapshot',
+        };
+      } catch (fallbackError) {
+        const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        logger.warn('instance_audit_keycloak_fallback_failed', {
+          instance_id: instanceId,
+          error: fallbackMessage,
+        });
+        return {
+          status: null,
+          evidenceSource: 'keycloak_live',
+          error: message,
+          fallbackEvidenceSource: 'keycloak_snapshot',
+          fallbackError: fallbackMessage,
+        };
+      }
     }
   }
 

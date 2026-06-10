@@ -14,6 +14,12 @@ import {
 import { flattenCategoriesForTable, listCategories, type CategoryTableRow } from './categories.api.js';
 
 type PluginTranslator = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
+type CategoriesPageState = {
+  readonly rows: readonly CategoryTableRow[];
+  readonly isLoading: boolean;
+  readonly error: string | null;
+  readonly reload: () => Promise<void>;
+};
 
 const createTableLabels = (
   pt: PluginTranslator
@@ -67,17 +73,11 @@ const renderDisabledActions = (row: CategoryTableRow, pt: PluginTranslator) => (
   </div>
 );
 
-export function CategoriesPage() {
-  const pt = React.useCallback<PluginTranslator>(
-    (key, variables) => translatePluginKey('categories', key, variables),
-    []
-  );
-  const tableLabels = React.useMemo(() => createTableLabels(pt), [pt]);
-  const [rows, setRows] = React.useState<readonly CategoryTableRow[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+const usePluginTranslator = (): PluginTranslator =>
+  React.useCallback<PluginTranslator>((key, variables) => translatePluginKey('categories', key, variables), []);
 
-  const columns = React.useMemo<readonly StudioColumnDef<CategoryTableRow>[]>(
+const useCategoryColumns = (pt: PluginTranslator): readonly StudioColumnDef<CategoryTableRow>[] =>
+  React.useMemo(
     () => [
       {
         id: 'name',
@@ -113,7 +113,12 @@ export function CategoriesPage() {
     [pt]
   );
 
-  const load = React.useCallback(async () => {
+const useCategoriesPageState = (pt: PluginTranslator): CategoriesPageState => {
+  const [rows, setRows] = React.useState<readonly CategoryTableRow[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const reload = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -129,54 +134,96 @@ export function CategoriesPage() {
   }, [pt]);
 
   React.useEffect(() => {
-    void load();
-  }, [load]);
+    void reload();
+  }, [reload]);
+
+  return {
+    rows,
+    isLoading,
+    error,
+    reload,
+  };
+};
+
+const CategoriesPageToolbar = ({
+  pt,
+  count,
+}: {
+  readonly pt: PluginTranslator;
+  readonly count: number;
+}) => (
+  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+    <span>{pt('table.countLabel', { count })}</span>
+    <span>{pt('values.readOnlyHint')}</span>
+  </div>
+);
+
+const CategoriesPageContent = ({
+  pt,
+  state,
+  tableLabels,
+  columns,
+}: {
+  readonly pt: PluginTranslator;
+  readonly state: CategoriesPageState;
+  readonly tableLabels: StudioDataTableLabels;
+  readonly columns: readonly StudioColumnDef<CategoryTableRow>[];
+}) => {
+  if (state.isLoading) {
+    return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
+  }
+
+  if (state.error) {
+    return (
+      <div className="space-y-3">
+        <StudioErrorState>{state.error}</StudioErrorState>
+        <Button type="button" variant="outline" onClick={() => void state.reload()}>
+          {pt('actions.reload')}
+        </Button>
+      </div>
+    );
+  }
+
+  if (state.rows.length === 0) {
+    return (
+      <StudioEmptyState>
+        <h2 className="text-lg font-medium">{pt('empty.title')}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{pt('empty.description')}</p>
+      </StudioEmptyState>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">{pt('messages.actionsHint')}</p>
+      <StudioDataTable
+        ariaLabel={pt('table.ariaLabel')}
+        caption={pt('table.caption')}
+        labels={tableLabels}
+        data={state.rows}
+        columns={columns}
+        rowActions={(row) => renderDisabledActions(row, pt)}
+        emptyState={null}
+        getRowId={(row) => row.id}
+        selectionMode="none"
+      />
+    </div>
+  );
+};
+
+export function CategoriesPage() {
+  const pt = usePluginTranslator();
+  const tableLabels = React.useMemo(() => createTableLabels(pt), [pt]);
+  const columns = useCategoryColumns(pt);
+  const state = useCategoriesPageState(pt);
 
   return (
     <StudioOverviewPageTemplate
       title={pt('list.title')}
       description={pt('list.description')}
-      toolbar={
-        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <span>{pt('table.countLabel', { count: rows.length })}</span>
-          <span>{pt('values.readOnlyHint')}</span>
-        </div>
-      }
+      toolbar={<CategoriesPageToolbar pt={pt} count={state.rows.length} />}
     >
-      {isLoading ? <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState> : null}
-
-      {!isLoading && error ? (
-        <div className="space-y-3">
-          <StudioErrorState>{error}</StudioErrorState>
-          <Button type="button" variant="outline" onClick={() => void load()}>
-            {pt('actions.reload')}
-          </Button>
-        </div>
-      ) : null}
-
-      {!isLoading && !error && rows.length === 0 ? (
-        <StudioEmptyState>
-          <h2 className="text-lg font-medium">{pt('empty.title')}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{pt('empty.description')}</p>
-        </StudioEmptyState>
-      ) : null}
-
-      {!isLoading && !error && rows.length > 0 ? (
-        <div className="space-y-4">
-          <p className="text-xs text-muted-foreground">{pt('messages.actionsHint')}</p>
-          <StudioDataTable
-            ariaLabel={pt('table.ariaLabel')}
-            caption={pt('table.caption')}
-            labels={tableLabels}
-            data={rows}
-            columns={columns}
-            rowActions={(row) => renderDisabledActions(row, pt)}
-            emptyState={null}
-            getRowId={(row) => row.id}
-            selectionMode="none"
-          />
-        </div>
-      ) : null}
+      <CategoriesPageContent pt={pt} state={state} tableLabels={tableLabels} columns={columns} />
     </StudioOverviewPageTemplate>
   );
 }

@@ -368,6 +368,29 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('treats null categories responses as an empty snapshot', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            categories: null,
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listCategories({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toEqual([]);
+  });
+
   it('returns the fetched category tree snapshot with guaranteed ids', async () => {
     const fetchImpl = vi
       .fn()

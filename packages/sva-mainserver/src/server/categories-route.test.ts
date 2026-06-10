@@ -38,6 +38,13 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     vi.resetAllMocks();
   });
 
+  it('ignores unrelated routes without touching auth', async () => {
+    const response = await dispatchSvaMainserverCategoriesRequest(new Request('https://studio.test/api/v1/mainserver/news'));
+
+    expect(response).toBeNull();
+    expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
+  });
+
   it('returns method_not_allowed for unsupported methods on the matched categories path', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
 
@@ -50,6 +57,27 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     await expect(response?.json()).resolves.toEqual({
       error: 'method_not_allowed',
       message: 'Methode wird für Mainserver-News nicht unterstützt.',
+    });
+  });
+
+  it('returns local authorization failures without calling the service', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Keine Berechtigung.',
+    });
+
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories')
+    );
+
+    expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+    expect(response?.status).toBe(403);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'forbidden',
+      message: 'Keine Berechtigung.',
     });
   });
 
@@ -71,7 +99,7 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     );
 
     expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'news.read' })
+      expect.objectContaining({ action: 'content.read' })
     );
     expect(state.listSvaMainserverCategories).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',

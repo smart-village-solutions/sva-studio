@@ -109,6 +109,42 @@ describe('plugin-categories api', () => {
     );
   });
 
+  it('accepts explicit empty tag lists, trims optional strings, and supports a custom fetch implementation', async () => {
+    const customFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            id: 'cat-root',
+            name: 'Service',
+            iconName: '   ',
+            tagList: '',
+            createdAt: '   ',
+            updatedAt: '2026-06-09T10:15:00.000Z',
+            children: [],
+          },
+        ],
+      }),
+    } as Response);
+
+    await expect(listCategories(customFetch)).resolves.toEqual([
+      {
+        id: 'cat-root',
+        name: 'Service',
+        tagList: '',
+        updatedAt: '2026-06-09T10:15:00.000Z',
+        children: [],
+      },
+    ]);
+
+    expect(customFetch).toHaveBeenCalledWith(
+      '/api/v1/mainserver/categories',
+      expect.objectContaining({
+        credentials: 'include',
+      })
+    );
+  });
+
   it('surfaces stable typed errors for non-ok responses', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: false,

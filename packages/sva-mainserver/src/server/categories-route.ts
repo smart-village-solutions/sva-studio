@@ -9,7 +9,7 @@ import { errorJson, json } from './content-route-helpers.js';
 import { SvaMainserverError } from './errors.js';
 import { listSvaMainserverCategories } from './service.js';
 
-const NEWS_CONTENT_TYPE = 'news.article';
+const CATEGORY_ACCESS_CONTENT_TYPE = 'news.article';
 const CATEGORY_COLLECTION_PATH = '/api/v1/mainserver/categories';
 const logger = createSdkLogger({ component: 'sva-mainserver-categories-route', level: 'info' });
 
@@ -51,9 +51,9 @@ const toMainserverErrorResponse = (error: unknown): Response => {
 const authorizeOrResponse = async (ctx: AuthenticatedRequestContext): Promise<CategoriesActor | Response> => {
   const result = await authorizeContentPrimitiveForUser({
     ctx,
-    action: 'news.read',
+    action: 'content.read',
     resource: {
-      contentType: NEWS_CONTENT_TYPE,
+      contentType: CATEGORY_ACCESS_CONTENT_TYPE,
     },
   });
 
@@ -65,8 +65,8 @@ const authorizeOrResponse = async (ctx: AuthenticatedRequestContext): Promise<Ca
       trace_id: workspaceContext.traceId,
       actor_id: ctx.user.id,
       instance_id: ctx.user.instanceId,
-      content_type: NEWS_CONTENT_TYPE,
-      action: 'news.read',
+      content_type: CATEGORY_ACCESS_CONTENT_TYPE,
+      action: 'content.read',
       error_code: result.error,
     });
     return errorJson(result.status, result.error, result.message);
@@ -99,7 +99,7 @@ const dispatchAuthenticated = async (request: Request, ctx: AuthenticatedRequest
       trace_id: workspaceContext.traceId,
       actor_id: ctx.user.id,
       instance_id: ctx.user.instanceId,
-      content_type: NEWS_CONTENT_TYPE,
+      content_type: CATEGORY_ACCESS_CONTENT_TYPE,
       method: 'GET',
       count: data.length,
     });
@@ -111,7 +111,7 @@ const dispatchAuthenticated = async (request: Request, ctx: AuthenticatedRequest
       trace_id: workspaceContext.traceId,
       actor_id: ctx.user.id,
       instance_id: ctx.user.instanceId,
-      content_type: NEWS_CONTENT_TYPE,
+      content_type: CATEGORY_ACCESS_CONTENT_TYPE,
       method: 'GET',
       error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
     });

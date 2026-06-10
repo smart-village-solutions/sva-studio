@@ -190,6 +190,10 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       config
     );
 
+    if (response.categories === null) {
+      return [];
+    }
+
     if (!Array.isArray(response.categories)) {
       throw createInvalidCategoriesResponseError();
     }

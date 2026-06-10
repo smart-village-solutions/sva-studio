@@ -99,7 +99,7 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
     requiredPermissions: ['media.read'],
   },
   { binding: 'media', path: uiRoutePaths.media, guard: 'account' },
-  { binding: 'categories', path: uiRoutePaths.categories, guard: 'account' },
+  { binding: 'categories', path: uiRoutePaths.categories, guard: 'content' },
   { binding: 'app', path: uiRoutePaths.app, guard: 'account' },
   { binding: 'interfaces', path: uiRoutePaths.interfaces },
   { binding: 'help', path: uiRoutePaths.help },

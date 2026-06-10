@@ -15,6 +15,7 @@ export class CategoriesApiError extends Error {
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
+const invalidCategoriesPayload = () => new CategoriesApiError('invalid_categories_payload');
 
 const compactString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
@@ -25,54 +26,102 @@ const compactString = (value: unknown): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const normalizeCategoryTreeItem = (value: unknown): CategoryTreeItem => {
+const expectRecord = (value: unknown): Record<string, unknown> => {
   if (isRecord(value) === false) {
-    throw new CategoriesApiError('invalid_categories_payload');
+    throw invalidCategoriesPayload();
   }
 
-  const id = compactString(value.id);
-  const name = compactString(value.name);
-  if (!id || !name) {
-    throw new CategoriesApiError('invalid_categories_payload');
+  return value;
+};
+
+const requireCategoryField = (value: unknown): string => {
+  const normalized = compactString(value);
+  if (!normalized) {
+    throw invalidCategoriesPayload();
   }
 
-  if (value.children !== undefined && Array.isArray(value.children) === false) {
-    throw new CategoriesApiError('invalid_categories_payload');
+  return normalized;
+};
+
+const readChildren = (value: unknown): readonly unknown[] => {
+  if (value === undefined) {
+    return [];
   }
 
-  if (value.position !== undefined && (typeof value.position !== 'number' || Number.isFinite(value.position) === false)) {
-    throw new CategoriesApiError('invalid_categories_payload');
+  if (Array.isArray(value) === false) {
+    throw invalidCategoriesPayload();
   }
 
-  if (value.iconName !== undefined && typeof value.iconName !== 'string') {
-    throw new CategoriesApiError('invalid_categories_payload');
+  return value;
+};
+
+const readPosition = (value: unknown): number | undefined => {
+  if (value === undefined) {
+    return undefined;
   }
 
-  if (value.tagList !== undefined && typeof value.tagList !== 'string') {
-    throw new CategoriesApiError('invalid_categories_payload');
+  if (typeof value !== 'number' || Number.isFinite(value) === false) {
+    throw invalidCategoriesPayload();
   }
 
-  if (value.createdAt !== undefined && typeof value.createdAt !== 'string') {
-    throw new CategoriesApiError('invalid_categories_payload');
+  return value;
+};
+
+const readOptionalString = (value: unknown): string | undefined => {
+  if (value === undefined) {
+    return undefined;
   }
 
-  if (value.updatedAt !== undefined && typeof value.updatedAt !== 'string') {
-    throw new CategoriesApiError('invalid_categories_payload');
+  if (typeof value !== 'string') {
+    throw invalidCategoriesPayload();
   }
 
-  const rawChildren = Array.isArray(value.children) ? value.children : [];
-  const children = rawChildren.map(normalizeCategoryTreeItem);
+  return value;
+};
 
-  return {
-    id,
-    name,
-    ...(compactString(value.iconName) ? { iconName: compactString(value.iconName) } : {}),
-    ...(typeof value.position === 'number' ? { position: value.position } : {}),
-    ...(compactString(value.tagList) || value.tagList === '' ? { tagList: typeof value.tagList === 'string' ? value.tagList : '' } : {}),
-    ...(compactString(value.createdAt) ? { createdAt: compactString(value.createdAt) } : {}),
-    ...(compactString(value.updatedAt) ? { updatedAt: compactString(value.updatedAt) } : {}),
-    children,
-  };
+const readOptionalTrimmedString = (value: unknown): string | undefined => compactString(readOptionalString(value));
+
+const readTagList = (value: unknown): string | undefined => {
+  const tagList = readOptionalString(value);
+  if (tagList === undefined) {
+    return undefined;
+  }
+
+  return compactString(tagList) ?? '';
+};
+
+const buildCategoryTreeItem = (input: {
+  readonly id: string;
+  readonly name: string;
+  readonly children: readonly CategoryTreeItem[];
+  readonly iconName?: string;
+  readonly position?: number;
+  readonly tagList?: string;
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
+}): CategoryTreeItem => ({
+  id: input.id,
+  name: input.name,
+  ...(input.iconName ? { iconName: input.iconName } : {}),
+  ...(input.position !== undefined ? { position: input.position } : {}),
+  ...(input.tagList !== undefined ? { tagList: input.tagList } : {}),
+  ...(input.createdAt ? { createdAt: input.createdAt } : {}),
+  ...(input.updatedAt ? { updatedAt: input.updatedAt } : {}),
+  children: input.children,
+});
+
+const normalizeCategoryTreeItem = (value: unknown): CategoryTreeItem => {
+  const record = expectRecord(value);
+  return buildCategoryTreeItem({
+    id: requireCategoryField(record.id),
+    name: requireCategoryField(record.name),
+    iconName: readOptionalTrimmedString(record.iconName),
+    position: readPosition(record.position),
+    tagList: readTagList(record.tagList),
+    createdAt: readOptionalTrimmedString(record.createdAt),
+    updatedAt: readOptionalTrimmedString(record.updatedAt),
+    children: readChildren(record.children).map(normalizeCategoryTreeItem),
+  });
 };
 
 const normalizeCategoryTree = (value: unknown): readonly CategoryTreeItem[] | null => {
@@ -132,7 +181,7 @@ export const listCategories = async (fetchImpl?: typeof fetch): Promise<readonly
 
   const categories = normalizeCategoryTree(response.data);
   if (categories === null) {
-    throw new CategoriesApiError('invalid_categories_payload');
+    throw invalidCategoriesPayload();
   }
 
   return categories;

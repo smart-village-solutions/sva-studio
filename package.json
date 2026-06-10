@@ -88,6 +88,7 @@
     "benchmark:sva-mainserver": "node scripts/ops/benchmark-sva-mainserver.mjs",
     "iam:account-deletion-rules:run": "node --import tsx scripts/ops/run-iam-account-deletion-rules.mjs",
     "iam:retention:run": "node scripts/ops/run-iam-retention.mjs",
+    "fallow:sync-skills": "tsx scripts/ops/sync-fallow-skills.ts",
     "knip:scan": "knip -c knip.json --no-progress --no-exit-code --reporter compact",
     "hooks:install": "git config core.hooksPath .githooks"
   },
@@ -115,6 +116,7 @@
     "@vitest/coverage-v8": "^4.1.5",
     "autoprefixer": "10.5.0",
     "eslint": "^10.3.0",
+    "fallow": "2.90.0",
     "happy-dom": "^20.8.9",
     "knip": "^6.14.0",
     "nx": "22.7.4",

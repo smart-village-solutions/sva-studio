@@ -63,6 +63,9 @@ importers:
       eslint:
         specifier: ^10.3.0
         version: 10.4.0(jiti@2.7.0)
+      fallow:
+        specifier: 2.90.0
+        version: 2.90.0
       happy-dom:
         specifier: ^20.8.9
         version: 20.9.0
@@ -138,7 +141,7 @@ importers:
         version: link:../../packages/core
       '@sva/data-repositories':
         specifier: workspace:*
-        version: file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+        version: link:../../packages/data-repositories
       '@tabler/icons-react':
         specifier: ^3.41.1
         version: 3.44.0(react@19.2.6)
@@ -2091,6 +2094,46 @@ packages:
       '@noble/hashes':
         optional: true
 
+  '@fallow-cli/darwin-arm64@2.90.0':
+    resolution: {integrity: sha512-T/rdIpCziDErCKEfePvSFTlRw8wVL1H+SuvFgFRjInTXq4EaF5HuqnsqX4smouxmFYLboDu3/qntQv4E+mDOuA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@fallow-cli/darwin-x64@2.90.0':
+    resolution: {integrity: sha512-6+SDyXMVo65WbhsmJ0xqDuRy3PaQ4/6EIN/oB4UYAwEQV0o2HbMg3FCDnXvPAU9sUDkOCf3DcJEyxA8zp/9X7w==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@fallow-cli/linux-arm64-gnu@2.90.0':
+    resolution: {integrity: sha512-Rpcl/Tzhe+MUOVO2B3HG1a98qgMS4a9MXOQMhTKNNElSJESNAkfwWEPUUHF6cTVqQYOqSK0YxNw5TMFxK1wrOA==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@fallow-cli/linux-arm64-musl@2.90.0':
+    resolution: {integrity: sha512-VAlrHu5ChXdIPerEr0F/E/OrwL2ol6wR2Rn4YSmQQvhiYCqehwRjc7wSvLCar+/n3V/QDDX537VN87pzNhuUNQ==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@fallow-cli/linux-x64-gnu@2.90.0':
+    resolution: {integrity: sha512-OnvgWAg0SkTWmXm/Pypnhv6QHxeOJhVAU7U6S5FSFqELAWc66vFiBHIR13B5614rE9H57d8es0JRba+QnjAP9w==}
+    cpu: [x64]
+    os: [linux]
+
+  '@fallow-cli/linux-x64-musl@2.90.0':
+    resolution: {integrity: sha512-+jU6dLN504MgOJLKM4hgNFqWxuXeoSFF5cNOA6Yv+6UgMKZ6RGItBzIZweLg45FOSJdYLJ0su4+OzrF2nLtNSw==}
+    cpu: [x64]
+    os: [linux]
+
+  '@fallow-cli/win32-arm64-msvc@2.90.0':
+    resolution: {integrity: sha512-7TUl4CaebyxX6zWBUqWJQN4hoOxlmYwP1UW1oZCdAuettu+f9u5N/UhAJ/IAsqg6jIVq2uUUGHHmkuvlbkDCiw==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@fallow-cli/win32-x64-msvc@2.90.0':
+    resolution: {integrity: sha512-Uzb2IVbfppUqbJjOWMlOA/UkrecvD9F4CYag/5kWk5Tn45smDI97whn0hJUbFxPJixgOqTxXn9yVZzyQSoHz9g==}
+    cpu: [x64]
+    os: [win32]
+
   '@graphile/logger@0.2.0':
     resolution: {integrity: sha512-jjcWBokl9eb1gVJ85QmoaQ73CQ52xAaOCF29ukRbYNl6lY+ts0ErTaDYOBlejcbUs2OpaiqYLO5uDhyLFzWw4w==}
 
@@ -3981,18 +4024,6 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
-  '@sva/core@file:packages/core':
-    resolution: {directory: packages/core, type: directory}
-
-  '@sva/data-repositories@file:packages/data-repositories':
-    resolution: {directory: packages/data-repositories, type: directory}
-
-  '@sva/monitoring-client@file:packages/monitoring-client':
-    resolution: {directory: packages/monitoring-client, type: directory}
-
-  '@sva/server-runtime@file:packages/server-runtime':
-    resolution: {directory: packages/server-runtime, type: directory}
-
   '@tabler/icons-react@3.44.0':
     resolution: {integrity: sha512-8+rvzBbVm/1Z3sG3x7GUNAaxIKxwgz8xaMhRs23nrCnMTKRFAhEC+82zAIFeAA0seXdrAGX5HFCkaLpGK2rVHg==}
     peerDependencies:
@@ -5164,6 +5195,11 @@ packages:
 
   extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
+
+  fallow@2.90.0:
+    resolution: {integrity: sha512-5kScBfVCmmP8v8JwIkEHM0nkg4pb7jfP6+gHeakUMtGnzxwqkvkSaItGWR+aNEqtBw56Vrohl9P/3T4KekhVNQ==}
+    engines: {node: '>=16'}
+    hasBin: true
 
   fast-check@3.23.2:
     resolution: {integrity: sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==}
@@ -8135,6 +8171,30 @@ snapshots:
 
   '@exodus/bytes@1.15.1': {}
 
+  '@fallow-cli/darwin-arm64@2.90.0':
+    optional: true
+
+  '@fallow-cli/darwin-x64@2.90.0':
+    optional: true
+
+  '@fallow-cli/linux-arm64-gnu@2.90.0':
+    optional: true
+
+  '@fallow-cli/linux-arm64-musl@2.90.0':
+    optional: true
+
+  '@fallow-cli/linux-x64-gnu@2.90.0':
+    optional: true
+
+  '@fallow-cli/linux-x64-musl@2.90.0':
+    optional: true
+
+  '@fallow-cli/win32-arm64-msvc@2.90.0':
+    optional: true
+
+  '@fallow-cli/win32-x64-msvc@2.90.0':
+    optional: true
+
   '@graphile/logger@0.2.0': {}
 
   '@grpc/grpc-js@1.14.4':
@@ -9983,47 +10043,6 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@sva/core@file:packages/core': {}
-
-  '@sva/data-repositories@file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
-    dependencies:
-      '@sva/core': file:packages/core
-      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
-      pg: 8.21.0
-    transitivePeerDependencies:
-      - '@opentelemetry/core'
-      - pg-native
-      - supports-color
-
-  '@sva/monitoring-client@file:packages/monitoring-client(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
-    dependencies:
-      '@opentelemetry/api': 1.9.1
-      '@opentelemetry/api-logs': 0.218.0
-      '@opentelemetry/auto-instrumentations-node': 0.76.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
-      '@opentelemetry/exporter-logs-otlp-http': 0.218.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/exporter-metrics-otlp-http': 0.218.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/resources': 2.7.1(@opentelemetry/api@1.9.1)
-      '@opentelemetry/sdk-logs': 0.218.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/sdk-metrics': 2.7.1(@opentelemetry/api@1.9.1)
-      '@opentelemetry/sdk-node': 0.218.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/semantic-conventions': 1.41.1
-      '@sva/core': file:packages/core
-    transitivePeerDependencies:
-      - '@opentelemetry/core'
-      - supports-color
-
-  '@sva/server-runtime@file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
-    dependencies:
-      '@opentelemetry/api': 1.9.1
-      '@opentelemetry/sdk-node': 0.218.0(@opentelemetry/api@1.9.1)
-      '@sva/core': file:packages/core
-      '@sva/monitoring-client': file:packages/monitoring-client(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
-      winston: 3.19.0
-      winston-transport: 4.9.0
-    transitivePeerDependencies:
-      - '@opentelemetry/core'
-      - supports-color
-
   '@tabler/icons-react@3.44.0(react@19.2.6)':
     dependencies:
       '@tabler/icons': 3.44.0
@@ -11311,6 +11330,19 @@ snapshots:
   exsolve@1.0.8: {}
 
   extend@3.0.2: {}
+
+  fallow@2.90.0:
+    dependencies:
+      detect-libc: 2.1.2
+    optionalDependencies:
+      '@fallow-cli/darwin-arm64': 2.90.0
+      '@fallow-cli/darwin-x64': 2.90.0
+      '@fallow-cli/linux-arm64-gnu': 2.90.0
+      '@fallow-cli/linux-arm64-musl': 2.90.0
+      '@fallow-cli/linux-x64-gnu': 2.90.0
+      '@fallow-cli/linux-x64-musl': 2.90.0
+      '@fallow-cli/win32-arm64-msvc': 2.90.0
+      '@fallow-cli/win32-x64-msvc': 2.90.0
 
   fast-check@3.23.2:
     dependencies:

@@ -2096,6 +2096,7 @@ export const i18nResources = {
           success:
             'Die Tenant-Admin-Struktur wurde erfolgreich synchronisiert. Der Setup-Schritt ist damit abgeschlossen.',
           modules: {
+            categories: 'Kategorien',
             news: 'News',
             events: 'Events',
             poi: 'POI',
@@ -5733,6 +5734,7 @@ export const i18nResources = {
           success:
             'The tenant admin structure was synchronized successfully. This setup step is now complete.',
           modules: {
+            categories: 'Categories',
             news: 'News',
             events: 'Events',
             poi: 'POI',

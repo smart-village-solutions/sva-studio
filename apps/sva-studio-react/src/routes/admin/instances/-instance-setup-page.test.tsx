@@ -26,6 +26,14 @@ vi.mock('../../../hooks/use-instances', () => ({
 vi.mock('../../../lib/plugins', () => ({
   studioModuleIamContracts: [
     {
+      moduleId: 'categories',
+      namespace: 'categories',
+      ownerPluginId: 'categories',
+      descriptionKey: 'plugins.categories.description',
+      permissionIds: ['categories.read'],
+      systemRoles: [],
+    },
+    {
       moduleId: 'news',
       namespace: 'news',
       ownerPluginId: 'news',
@@ -191,6 +199,7 @@ describe('InstanceSetupPage', () => {
     });
 
     expect(screen.getByRole('heading', { name: 'Setup abschließen' })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: /Kategorien/u })).toBeTruthy();
     expect(screen.getByText('Setup-Status')).toBeTruthy();
     expect(screen.getByText('Tenant-Admin-Struktur')).toBeTruthy();
     expect(screen.queryByRole('tab')).toBeNull();

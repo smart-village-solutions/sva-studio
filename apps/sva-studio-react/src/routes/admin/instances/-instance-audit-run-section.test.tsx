@@ -77,6 +77,10 @@ describe('InstanceAuditRunSection', () => {
                   actual: 'TypeError',
                   evidenceSource: 'https_probe',
                   message: 'Die Instanz-URL konnte nicht erreicht werden.',
+                  details: {
+                    responseStatus: 503,
+                    source: 'live_probe',
+                  },
                   remediationHint: 'DNS und Ingress pruefen.',
                 },
               ],
@@ -91,5 +95,8 @@ describe('InstanceAuditRunSection', () => {
     expect(screen.getByText('Instanz-URL erreichbar')).toBeTruthy();
     expect(screen.getByText('DNS und Ingress pruefen.')).toBeTruthy();
     expect(screen.getByText('Zielinstanzen geladen')).toBeTruthy();
+    expect(screen.getByText('Details')).toBeTruthy();
+    expect(screen.getByText('responseStatus')).toBeTruthy();
+    expect(screen.getByText('503')).toBeTruthy();
   });
 });

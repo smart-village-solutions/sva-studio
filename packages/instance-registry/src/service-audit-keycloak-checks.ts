@@ -2,25 +2,81 @@ import type { InstanceAuditCheck } from '@sva/core';
 import type { KeycloakTenantStatus } from './keycloak-types.js';
 import { CHECK_IDS, createCheck, createSkipCheck } from './service-audit-shared.js';
 
-const createRealmUnavailableChecks = (evidenceSource: string, keycloakError?: string): readonly InstanceAuditCheck[] => [
-  createCheck({
-    checkId: CHECK_IDS.keycloakRealmExists,
-    title: 'Keycloak-Realm vorhanden',
-    scope: 'keycloak',
-    status: 'fail',
-    expected: 'Realm im Keycloak vorhanden',
-    actual: keycloakError ?? 'nicht lesbar',
-    evidenceSource,
-    message: 'Der Keycloak-Realm konnte nicht gelesen werden.',
-    remediationHint: 'Technischen Keycloak-Zugriff, Realm-Namen und Verbindungsdaten prüfen.',
-  }),
-  createSkipCheck(CHECK_IDS.keycloakLoginClientExists, 'Keycloak-Login-Client vorhanden', 'keycloak', 'Login-Client im Realm vorhanden', evidenceSource, 'Wird erst geprüft, wenn der Realm erfolgreich gelesen werden kann.'),
-  createSkipCheck(CHECK_IDS.keycloakLoginSecretAligned, 'Keycloak-Login-Secret abgeglichen', 'keycloak', 'Registry-Secret stimmt mit Keycloak überein', evidenceSource, 'Wird erst geprüft, wenn Realm und Login-Client erfolgreich gelesen werden können.'),
-  createSkipCheck(CHECK_IDS.keycloakTenantAdminClientExists, 'Keycloak-Tenant-Admin-Client vorhanden', 'keycloak', 'Tenant-Admin-Client im Realm vorhanden', evidenceSource, 'Wird erst geprüft, wenn der Realm erfolgreich gelesen werden kann.'),
-  createSkipCheck(CHECK_IDS.keycloakTenantAdminSecretAligned, 'Keycloak-Tenant-Admin-Secret abgeglichen', 'keycloak', 'Registry-Secret stimmt mit Keycloak überein', evidenceSource, 'Wird erst geprüft, wenn Realm und Tenant-Admin-Client erfolgreich gelesen werden können.'),
-  createSkipCheck(CHECK_IDS.keycloakSystemAdminRoleExists, 'Keycloak-Rolle system_admin vorhanden', 'keycloak', 'Realm-Rolle system_admin vorhanden', evidenceSource, 'Wird erst geprüft, wenn der Realm erfolgreich gelesen werden kann.'),
-  createSkipCheck(CHECK_IDS.keycloakSystemAdminUserExists, 'Keycloak-User mit system_admin vorhanden', 'keycloak', 'Mindestens ein User mit system_admin vorhanden', evidenceSource, 'Wird erst geprüft, wenn Realm, Rolle und Tenant-Admin-Status verfügbar sind.'),
-];
+const createRealmUnavailableChecks = (input: {
+  evidenceSource: string;
+  keycloakError?: string;
+  fallbackStatus?: KeycloakTenantStatus | null;
+  fallbackEvidenceSource?: string;
+  fallbackError?: string;
+}): readonly InstanceAuditCheck[] => {
+  const hasFallback = input.fallbackStatus != null;
+  const accessStatus: InstanceAuditCheck['status'] = hasFallback ? 'warn' : 'fail';
+  const accessDetails: Record<string, unknown> = {
+    primaryEvidenceSource: input.evidenceSource,
+  };
+
+  if (input.keycloakError) {
+    accessDetails.primaryError = input.keycloakError;
+  }
+  if (input.fallbackEvidenceSource) {
+    accessDetails.secondaryEvidenceSource = input.fallbackEvidenceSource;
+  }
+  if (input.fallbackError) {
+    accessDetails.secondaryError = input.fallbackError;
+  }
+  if (input.fallbackStatus) {
+    accessDetails.secondaryRealmExists = input.fallbackStatus.realmExists;
+    accessDetails.secondaryLoginClientExists = input.fallbackStatus.clientExists;
+    accessDetails.secondaryTenantAdminClientExists = input.fallbackStatus.tenantAdminClientExists;
+    accessDetails.secondarySystemAdminRoleExists = input.fallbackStatus.systemAdminRoleExists;
+    accessDetails.secondaryRuntimeSecretSource = input.fallbackStatus.runtimeSecretSource;
+  }
+
+  return [
+    ...(input.keycloakError || hasFallback
+      ? [
+          createCheck({
+            checkId: CHECK_IDS.keycloakAccessRead,
+            title: 'Technischer Keycloak-Zugriff',
+            scope: 'keycloak',
+            status: accessStatus,
+            expected: 'Live-Lesung des Tenant-Realms erfolgreich',
+            actual: input.keycloakError ?? 'nicht lesbar',
+            evidenceSource: input.evidenceSource,
+            details: accessDetails,
+            message: hasFallback
+              ? 'Die Live-Lesung des Tenant-Realm ist fehlgeschlagen. Ein sekundärer Snapshot-/Vertragspfad war noch auswertbar, ersetzt aber keinen erfolgreichen Live-Zugriff.'
+              : 'Die Live-Lesung des Tenant-Realm ist fehlgeschlagen.',
+            remediationHint: hasFallback
+              ? 'Technischen Live-Keycloak-Zugriff und Credential-Verdrahtung prüfen; sekundäre Snapshot-Befunde nur als Referenz nutzen.'
+              : 'Technischen Keycloak-Zugriff, Realm-Namen und Verbindungsdaten prüfen.',
+          }),
+        ]
+      : []),
+    createCheck({
+      checkId: CHECK_IDS.keycloakRealmExists,
+      title: 'Keycloak-Realm vorhanden',
+      scope: 'keycloak',
+      status: hasFallback ? 'warn' : 'fail',
+      expected: hasFallback ? 'Realm im Keycloak live lesbar' : 'Realm im Keycloak vorhanden',
+      actual: hasFallback ? 'live_nicht_verifiziert' : input.keycloakError ?? 'nicht lesbar',
+      evidenceSource: input.evidenceSource,
+      details: hasFallback ? accessDetails : undefined,
+      message: hasFallback
+        ? 'Der Tenant-Realm konnte live nicht gelesen werden. Ein sekundärer Snapshot-/Vertragspfad liefert nur Referenzdaten und ersetzt keinen erfolgreichen Live-Read.'
+        : 'Der Keycloak-Realm konnte nicht gelesen werden.',
+      remediationHint: hasFallback
+        ? 'Technischen Live-Keycloak-Zugriff und die verwendeten Runtime-Credentials prüfen.'
+        : 'Technischen Keycloak-Zugriff, Realm-Namen und Verbindungsdaten prüfen.',
+    }),
+    createSkipCheck(CHECK_IDS.keycloakLoginClientExists, 'Keycloak-Login-Client vorhanden', 'keycloak', 'Login-Client im Realm vorhanden', input.evidenceSource, 'Wird erst geprüft, wenn der Tenant-Realm live gelesen werden kann.'),
+    createSkipCheck(CHECK_IDS.keycloakLoginSecretAligned, 'Keycloak-Login-Secret abgeglichen', 'keycloak', 'Registry-Secret stimmt mit Keycloak überein', input.evidenceSource, 'Wird erst geprüft, wenn Tenant-Realm und Login-Client live gelesen werden können.'),
+    createSkipCheck(CHECK_IDS.keycloakTenantAdminClientExists, 'Keycloak-Tenant-Admin-Client vorhanden', 'keycloak', 'Tenant-Admin-Client im Realm vorhanden', input.evidenceSource, 'Wird erst geprüft, wenn der Tenant-Realm live gelesen werden kann.'),
+    createSkipCheck(CHECK_IDS.keycloakTenantAdminSecretAligned, 'Keycloak-Tenant-Admin-Secret abgeglichen', 'keycloak', 'Registry-Secret stimmt mit Keycloak überein', input.evidenceSource, 'Wird erst geprüft, wenn Tenant-Realm und Tenant-Admin-Client live gelesen werden können.'),
+    createSkipCheck(CHECK_IDS.keycloakSystemAdminRoleExists, 'Keycloak-Rolle system_admin vorhanden', 'keycloak', 'Realm-Rolle system_admin vorhanden', input.evidenceSource, 'Wird erst geprüft, wenn der Tenant-Realm live gelesen werden kann.'),
+    createSkipCheck(CHECK_IDS.keycloakSystemAdminUserExists, 'Keycloak-User mit system_admin vorhanden', 'keycloak', 'Mindestens ein User mit system_admin vorhanden', input.evidenceSource, 'Wird erst geprüft, wenn Tenant-Realm, Rolle und Tenant-Admin-Status live gelesen werden können.'),
+  ];
+};
 
 const createPresenceCheck = (input: {
   checkId: string;
@@ -174,9 +230,18 @@ export const buildKeycloakChecks = (input: {
   keycloakStatus: KeycloakTenantStatus | null;
   keycloakEvidenceSource: string;
   keycloakError?: string;
+  fallbackStatus?: KeycloakTenantStatus | null;
+  fallbackEvidenceSource?: string;
+  fallbackError?: string;
 }): readonly InstanceAuditCheck[] => {
   if (!input.keycloakStatus) {
-    return createRealmUnavailableChecks(input.keycloakEvidenceSource, input.keycloakError);
+    return createRealmUnavailableChecks({
+      evidenceSource: input.keycloakEvidenceSource,
+      keycloakError: input.keycloakError,
+      fallbackStatus: input.fallbackStatus,
+      fallbackEvidenceSource: input.fallbackEvidenceSource,
+      fallbackError: input.fallbackError,
+    });
   }
 
   const realmChecks = createRealmChecks(input.keycloakStatus, input.keycloakEvidenceSource);

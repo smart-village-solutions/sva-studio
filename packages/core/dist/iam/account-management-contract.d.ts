@@ -400,6 +400,7 @@ export type InstanceAuditCheck = {
     readonly actual: string;
     readonly evidenceSource: string;
     readonly message: string;
+    readonly details?: Readonly<Record<string, unknown>>;
     readonly remediationHint?: string;
 };
 export type InstanceAuditInstanceResult = {

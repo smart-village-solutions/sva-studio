@@ -31,12 +31,95 @@ describe('service-audit-keycloak-checks', () => {
 
     expect(checks[0]).toEqual(
       expect.objectContaining({
-        checkId: 'keycloak.realm.exists',
+        checkId: 'keycloak.access.read',
         status: 'fail',
         actual: 'boom',
       })
     );
-    expect(checks.slice(1).every((check) => check.status === 'skip')).toBe(true);
+    expect(checks[1]).toEqual(
+      expect.objectContaining({
+        checkId: 'keycloak.realm.exists',
+        status: 'fail',
+      })
+    );
+    expect(checks.slice(2).every((check) => check.status === 'skip')).toBe(true);
+  });
+
+  it('reports live keycloak access drift as warn and exposes fallback details', () => {
+    const checks = buildKeycloakChecks({
+      keycloakStatus: null,
+      keycloakEvidenceSource: 'keycloak_live',
+      keycloakError: 'HTTP 403 Forbidden',
+      fallbackEvidenceSource: 'keycloak_snapshot',
+      fallbackStatus: {
+        ...baseStatus,
+        realmExists: false,
+        clientExists: false,
+        tenantAdminClientExists: false,
+        systemAdminRoleExists: false,
+        tenantAdminExists: false,
+        tenantAdminHasSystemAdmin: false,
+        clientSecretConfigured: false,
+        tenantClientSecretReadable: false,
+        clientSecretAligned: false,
+        tenantAdminClientSecretConfigured: false,
+        tenantAdminClientSecretReadable: false,
+        tenantAdminClientSecretAligned: false,
+        runtimeSecretSource: 'global',
+      },
+    });
+
+    expect(checks[0]).toEqual(
+      expect.objectContaining({
+        checkId: 'keycloak.access.read',
+        status: 'warn',
+        actual: 'HTTP 403 Forbidden',
+        details: expect.objectContaining({
+          primaryEvidenceSource: 'keycloak_live',
+          secondaryEvidenceSource: 'keycloak_snapshot',
+          secondaryRuntimeSecretSource: 'global',
+        }),
+      }),
+    );
+    expect(checks[1]).toEqual(
+      expect.objectContaining({
+        checkId: 'keycloak.realm.exists',
+        status: 'warn',
+        actual: 'live_nicht_verifiziert',
+      }),
+    );
+    expect(checks.slice(2).every((check) => check.status === 'skip')).toBe(true);
+  });
+
+  it('keeps live and fallback read failures as hard audit failures', () => {
+    const checks = buildKeycloakChecks({
+      keycloakStatus: null,
+      keycloakEvidenceSource: 'keycloak_live',
+      keycloakError: 'HTTP 403 Forbidden',
+      fallbackEvidenceSource: 'keycloak_snapshot',
+      fallbackError: 'snapshot unavailable',
+    });
+
+    expect(checks[0]).toEqual(
+      expect.objectContaining({
+        checkId: 'keycloak.access.read',
+        status: 'fail',
+        actual: 'HTTP 403 Forbidden',
+        details: expect.objectContaining({
+          primaryEvidenceSource: 'keycloak_live',
+          primaryError: 'HTTP 403 Forbidden',
+          secondaryEvidenceSource: 'keycloak_snapshot',
+          secondaryError: 'snapshot unavailable',
+        }),
+      }),
+    );
+    expect(checks[1]).toEqual(
+      expect.objectContaining({
+        checkId: 'keycloak.realm.exists',
+        status: 'fail',
+        actual: 'HTTP 403 Forbidden',
+      }),
+    );
   });
 
   it('skips dependent checks when the realm is missing', () => {

@@ -13,6 +13,7 @@ export const CHECK_IDS = {
   registryTenantAdminClientPresent: 'registry.tenantAdminClient.present',
   registryLoginSecretConfigured: 'registry.loginSecret.configured',
   registryTenantAdminSecretConfigured: 'registry.tenantAdminSecret.configured',
+  keycloakAccessRead: 'keycloak.access.read',
   keycloakRealmExists: 'keycloak.realm.exists',
   keycloakLoginClientExists: 'keycloak.client.login.exists',
   keycloakLoginSecretAligned: 'keycloak.client.login.secretAligned',

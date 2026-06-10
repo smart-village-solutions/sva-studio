@@ -311,9 +311,18 @@ describe('instance registry service facade', () => {
     expect(result.instances[0]?.checks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          checkId: 'keycloak.realm.exists',
-          status: 'fail',
+          checkId: 'keycloak.access.read',
+          status: 'warn',
           actual: 'keycloak unavailable',
+          details: expect.objectContaining({
+            primaryEvidenceSource: 'keycloak_live',
+            secondaryEvidenceSource: 'keycloak_snapshot',
+          }),
+        }),
+        expect.objectContaining({
+          checkId: 'keycloak.realm.exists',
+          status: 'warn',
+          actual: 'live_nicht_verifiziert',
         }),
         expect.objectContaining({
           checkId: 'keycloak.client.login.exists',

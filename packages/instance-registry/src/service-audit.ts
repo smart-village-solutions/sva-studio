@@ -50,6 +50,9 @@ const buildInstanceAuditResult = async (
       keycloakStatus: keycloak.status,
       keycloakEvidenceSource: keycloak.evidenceSource,
       keycloakError: keycloak.error,
+      fallbackStatus: keycloak.fallbackStatus,
+      fallbackEvidenceSource: keycloak.fallbackEvidenceSource,
+      fallbackError: keycloak.fallbackError,
     }),
     createLocalIamCheck(localSystemAdminCount),
   ];

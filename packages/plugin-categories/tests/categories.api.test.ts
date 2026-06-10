@@ -178,6 +178,69 @@ describe('plugin-categories api', () => {
     } satisfies Partial<CategoriesApiError>);
   });
 
+  it('rejects malformed parent and position payload fields', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            id: 'cat-root',
+            name: 'Service',
+            parent: 'invalid-parent',
+            position: Number.NaN,
+          },
+        ],
+      }),
+    } as Response);
+
+    await expect(listCategories()).rejects.toMatchObject({
+      code: 'invalid_categories_payload',
+    } satisfies Partial<CategoriesApiError>);
+  });
+
+  it('rejects malformed optional string fields but tolerates blank parent names and tag lists', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              id: 'cat-root',
+              name: 'Service',
+              parent: { name: '   ' },
+              tagList: 12,
+            },
+          ],
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              id: 'cat-root',
+              name: 'Service',
+              parent: { name: '   ' },
+              tagList: '   ',
+            },
+          ],
+        }),
+      } as Response);
+
+    await expect(listCategories()).rejects.toMatchObject({
+      code: 'invalid_categories_payload',
+    } satisfies Partial<CategoriesApiError>);
+
+    await expect(listCategories()).resolves.toEqual([
+      {
+        id: 'cat-root',
+        name: 'Service',
+        tagList: '',
+      },
+    ]);
+  });
+
   it('rejects categories without upstream ids', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,

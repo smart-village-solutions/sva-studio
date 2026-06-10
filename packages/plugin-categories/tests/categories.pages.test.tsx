@@ -78,8 +78,7 @@ describe('CategoriesPage', () => {
       {
         id: 'cat-child',
         name: 'Buergerbuero',
-        position: 2,
-        tagList: 'vor-ort',
+        tagList: '',
         parent: {
           name: 'Service',
         },
@@ -96,6 +95,7 @@ describe('CategoriesPage', () => {
       expect(screen.getAllByText('Service').length).toBeGreaterThan(0);
       expect(screen.getAllByText('amt').length).toBeGreaterThan(0);
       expect(screen.getAllByText('buerger').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
       expect(screen.queryByRole('columnheader', { name: 'Icon' })).toBeNull();
       expect(screen.queryByRole('columnheader', { name: 'Aktualisiert' })).toBeNull();
     });
@@ -139,6 +139,29 @@ describe('CategoriesPage', () => {
           'Für den aktuellen Kontext fehlen Mainserver-Zugangsdaten. Bitte wählen Sie eine Organisation mit gepflegten Mainserver-Credentials oder hinterlegen Sie persönliche Mainserver-Zugangsdaten.'
         )
       ).toBeTruthy();
+    });
+  });
+
+  it('renders dedicated load guidance for the remaining known categories error codes', async () => {
+    state.listCategories
+      .mockRejectedValueOnce(Object.assign(new Error('integration disabled'), { code: 'integration_disabled' }))
+      .mockRejectedValueOnce(Object.assign(new Error('missing config'), { code: 'config_not_found' }))
+      .mockRejectedValueOnce(Object.assign(new Error('forbidden'), { code: 'forbidden' }));
+
+    render(<CategoriesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Die Mainserver-Integration ist für diese Instanz derzeit nicht aktiv.')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut laden' }));
+    await waitFor(() => {
+      expect(screen.getByText('Für diese Instanz ist noch keine Mainserver-Konfiguration hinterlegt.')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut laden' }));
+    await waitFor(() => {
+      expect(screen.getByText('Zum Laden der Kategorien fehlt die Berechtigung categories.read.')).toBeTruthy();
     });
   });
 });

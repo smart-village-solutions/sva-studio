@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  buildNewsBasisMutation,
+  buildNewsContentMutation,
+  buildNewsReleaseMutation,
+  buildNewsSettingsMutation,
   NewsApiError,
   createNews,
   deleteNews,
@@ -8,7 +12,9 @@ import {
   listNews,
   listNewsCategories,
   saveNewsEditorItem,
+  setNewsVisibility,
   updateNews,
+  updateNewsPartial,
 } from '../src/news.api.js';
 import { createDefaultNewsDetailFormValues } from '../src/news.detail-form.js';
 import type { NewsFormInput } from '../src/index.js';
@@ -206,6 +212,38 @@ describe('news api', () => {
     );
   });
 
+  it('updates partial payloads and toggles visibility through the dedicated endpoint', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: sampleResponse,
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: 'ok' }),
+      } as Response);
+
+    await expect(updateNewsPartial('news-1', { title: 'Nur Titel' })).resolves.toEqual(
+      expect.objectContaining({ id: 'news-1' })
+    );
+    await expect(setNewsVisibility('news-1/with slash', false)).resolves.toBeUndefined();
+
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/mainserver/news/news-1',
+      expect.objectContaining({ method: 'PATCH' })
+    );
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]?.[1]?.body as string)).toEqual({ title: 'Nur Titel' });
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/mainserver/news/news-1%2Fwith%20slash/visibility',
+      expect.objectContaining({ method: 'PATCH' })
+    );
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[1]?.[1]?.body as string)).toEqual({ visible: false });
+  });
+
   it('loads a single news item and surfaces non-ok responses as typed errors', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
@@ -247,5 +285,107 @@ describe('news api', () => {
       code: 'http_502',
       message: 'http_502',
     } satisfies Partial<NewsApiError>);
+  });
+
+  it('builds scoped partial mutations from the simplified editor model', () => {
+    const values = createDefaultNewsDetailFormValues('Redaktion');
+    values.title = 'Neue News';
+    values.categories = ['Allgemein'];
+    values.contentTeaser = 'Kurztext';
+    values.contentBody = '<p>Inhalt</p>';
+    values.sourceUrl = {
+      url: 'https://example.org/details',
+      description: '',
+    };
+    values.externalId = 'ext-42';
+    values.newsType = 'meldung';
+    values.charactersToBeShown = '180';
+    values.fullVersion = true;
+    values.publicationDate = '2026-04-12T08:00:00.000Z';
+    values.publishedAt = '2026-04-13T09:00:00.000Z';
+    values.showPublishDate = false;
+    values.pointOfInterestId = 'poi-1';
+    values.address = {
+      street: 'Marktplatz 1',
+      zip: '12345',
+      city: 'Musterstadt',
+    };
+
+    expect(buildNewsBasisMutation(values)).toEqual({
+      title: 'Neue News',
+      author: 'Redaktion',
+      categories: [{ name: 'Allgemein' }],
+    });
+    expect(buildNewsContentMutation(values)).toEqual({
+      sourceUrl: { url: 'https://example.org/details' },
+      contentBlocks: [{ title: 'Neue News', intro: 'Kurztext', body: '<p>Inhalt</p>', mediaContents: [] }],
+      address: {
+        street: 'Marktplatz 1',
+        zip: '12345',
+        city: 'Musterstadt',
+      },
+      pointOfInterestId: 'poi-1',
+    });
+    expect(buildNewsReleaseMutation(values)).toEqual({
+      publishedAt: expect.any(String),
+      publicationDate: expect.any(String),
+      showPublishDate: false,
+    });
+    expect(buildNewsSettingsMutation(values)).toEqual({
+      externalId: 'ext-42',
+      fullVersion: true,
+      charactersToBeShown: 180,
+      newsType: 'meldung',
+    });
+  });
+
+  it('routes editor saves through the injected update operation for existing news items', async () => {
+    const updateNewsMock = vi.fn().mockResolvedValue({
+      id: 'news-1',
+      title: 'Persistierter Titel',
+      contentType: NEWS_CONTENT_TYPE,
+      payload: {},
+      contentBlocks: [{ intro: 'Persistierter Teaser', body: '<p>Persistierter Inhalt</p>' }],
+      status: 'draft',
+      author: 'Persistierter Autor',
+      categories: [{ name: 'Persistiert' }],
+      sourceUrl: { url: 'https://persisted.example.org', description: 'Persistiert' },
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-02',
+      visible: false,
+    });
+
+    const values = createDefaultNewsDetailFormValues();
+    values.title = 'Neue News';
+    values.contentTeaser = 'Kurztext';
+    values.contentBody = '<p>Inhalt</p>';
+    values.publicationMode = 'draft';
+
+    await expect(
+      saveNewsEditorItem(
+        {
+          contentId: 'news-1',
+          values,
+        },
+        {
+          updateNews: updateNewsMock,
+        }
+      )
+    ).resolves.toEqual(
+      expect.objectContaining({
+        author: '',
+        categories: [],
+        sourceUrl: { url: '', description: '' },
+        contentBlocks: [{ title: 'Neue News', intro: 'Kurztext', body: '<p>Inhalt</p>', mediaContents: [] }],
+        visible: false,
+      })
+    );
+    expect(updateNewsMock).toHaveBeenCalledWith(
+      'news-1',
+      expect.objectContaining({
+        title: 'Neue News',
+        visible: false,
+      })
+    );
   });
 });

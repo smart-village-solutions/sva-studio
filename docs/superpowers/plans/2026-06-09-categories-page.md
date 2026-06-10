@@ -77,6 +77,8 @@
   - Replace the placeholder binding with the plugin page.
 - `apps/sva-studio-react/src/routing/app-route-bindings.test.tsx`
   - Stop expecting `/categories` to be a placeholder and assert the plugin route.
+- `packages/data/migrations/0054_iam_categories_permissions.sql`
+  - Additive Backfill-Migration für bestehende lokale IAM-Datenbanken, damit `categories.*` ohne Datenverlust ergänzt wird.
 
 ### Existing files to consult while implementing
 

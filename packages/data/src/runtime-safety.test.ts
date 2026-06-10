@@ -164,6 +164,25 @@ test('legacy standard role grant cleanup migration removes historical seed grant
   assert.match(sql, /legacy_standard_role_grants_restored/);
 });
 
+test('categories permission migration backfills additive plugin permissions without deleting existing tenant data', () => {
+  const sql = readRepoFile('data/migrations/0054_iam_categories_permissions.sql');
+
+  assert.match(sql, /'categories\.read'/);
+  assert.match(sql, /'categories\.create'/);
+  assert.match(sql, /'categories\.update'/);
+  assert.match(sql, /'categories\.delete'/);
+  assert.match(sql, /ON CONFLICT \(instance_id, permission_key\) DO UPDATE/);
+  assert.match(sql, /'system_admin', 'categories\.read'/);
+  assert.match(sql, /'system_admin', 'categories\.delete'/);
+  assert.match(sql, /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/);
+  assert.match(sql, /ON CONFLICT \(instance_id, role_id, permission_id\) DO NOTHING/);
+  assert.match(sql, /iam_permission_snapshot_invalidation/);
+  assert.match(sql, /categories_permissions_migrated/);
+  assert.match(sql, /non-destructive rollback intentionally omitted/i);
+  assert.doesNotMatch(sql, /DELETE FROM iam\.permissions/);
+  assert.doesNotMatch(sql, /DELETE FROM iam\.role_permissions/);
+});
+
 test('runtime artifact verification runs workspace node helper via bash', () => {
   const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
 

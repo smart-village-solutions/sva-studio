@@ -102,7 +102,7 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   {
     binding: 'categories',
     path: uiRoutePaths.categories,
-    guard: 'account',
+    guard: 'content',
     requiredModuleId: 'categories',
     requiredPermissions: ['categories.read'],
   },

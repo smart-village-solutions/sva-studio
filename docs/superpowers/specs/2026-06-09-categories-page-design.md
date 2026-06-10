@@ -2,7 +2,7 @@
 
 ## Kontext
 
-Im Studio existiert bereits ein Menüpunkt `Kategorien` in der Sidebar, die Zielroute `/categories` rendert aktuell aber nur eine Placeholder-Seite. Gleichzeitig liefert die bestehende Mainserver-Integration bereits Kategorien als hierarchisches Modell mit Metadaten wie `id`, `name`, `position`, `tagList`, `updatedAt` und `children`.
+Im Studio existiert bereits ein Menüpunkt `Kategorien` in der Sidebar, die Zielroute `/categories` rendert aktuell aber nur eine Placeholder-Seite. Gleichzeitig liefert die bestehende Mainserver-Integration bereits Kategorien als flache Liste mit Metadaten wie `id`, `name`, optionalem `parent`, `position` und `tagList`.
 
 Ursprünglich war eine app-lokale Kategorienseite in `apps/sva-studio-react` vorgesehen. Fachlich wäre das aber eine unsaubere Ownership: Die Kategorienseite wäre dann kein eigener Ausbaupunkt, sondern nur eine weitere Spezialansicht der App. Gleichzeitig soll die Kategorien-UI nicht direkt an News gekoppelt bleiben, obwohl der heutige Read-Pfad noch im News-Route-Handler hängt.
 
@@ -15,7 +15,7 @@ Deshalb wird die erste Ausbaustufe als echtes neues Workspace-Plugin umgesetzt. 
 - Das Plugin kapselt die Kategorien-spezifische Studio-UI und das Kategorien-Read-/Flattening-Modell.
 - Die technische Mainserver-Integration bleibt in `packages/sva-mainserver`.
 - Der Kategorien-Read-Pfad wird aus der News-spezifischen Route-Boundary herausgelöst und einer categories-spezifischen Host-Boundary zugeordnet.
-- Die Tabelle zeigt in der ersten Ausbaustufe die Kerndaten `Name`, `ID`, `Hierarchie`, `Position`, `Tags`, `Aktualisiert` und `Aktionen`.
+- Die Tabelle zeigt in der ersten Ausbaustufe die Kerndaten `Name`, `ID`, `Hierarchie`, `Position`, `Tags` und `Aktionen`.
 - Die Aktionen `Bearbeiten`, `Neue Unterkategorie` und `Löschen` sind sichtbar, aber deaktiviert.
 
 ## Nicht-Ziele
@@ -149,7 +149,6 @@ Die Tabelle enthält in der ersten Ausbaustufe folgende Spalten:
 - `Hierarchie`
 - `Position`
 - `Tags`
-- `Aktualisiert`
 - `Aktionen`
 
 Leitlinien pro Spalte:
@@ -159,7 +158,6 @@ Leitlinien pro Spalte:
 - `Hierarchie`: lesbarer Pfad- oder Parent-Kontext der Kategorie in flacher Form.
 - `Position`: numerischer Positionswert, sofern vorhanden.
 - `Tags`: Anzeigedarstellung auf Basis von `tagList`.
-- `Aktualisiert`: letzter bekannter Änderungszeitpunkt.
 - `Aktionen`: sichtbare, deaktivierte Steuerflächen für spätere CRUD-Fälle.
 
 ### 6. Hierarchie-Darstellung
@@ -185,7 +183,6 @@ Das Zeilenmodell enthält mindestens:
 - `hierarchyLabel`
 - `position`
 - `tagsDisplay`
-- `updatedAt`
 - `actionTargetId`
 
 Architekturprinzipien:
@@ -288,7 +285,7 @@ Mindestens abzudecken:
 - Die Plugin-Seite rendert eine echte Kategorien-Tabelle.
 - Die Spalte `Hierarchie` bildet Parent-/Pfadkontext nachvollziehbar ab.
 - `tagList` wird als `Tags`-Anzeige robust gerendert.
-- Fehlende `position`, `tagList` oder `updatedAt` führen zu stabilen Leerwerten statt zu kaputtem Rendering.
+- Fehlende `position` oder `tagList` führen zu stabilen Leerwerten statt zu kaputtem Rendering.
 - Fehlerzustand wird sichtbar gerendert.
 - Leerzustand wird sichtbar gerendert.
 - Die Aktionen `Bearbeiten`, `Neue Unterkategorie` und `Löschen` sind sichtbar und deaktiviert.

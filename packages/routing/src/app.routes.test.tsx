@@ -261,7 +261,7 @@ describe('app.routes', () => {
     expect(guardSpies.account).toHaveBeenCalledWith({ href: '/account' });
     expect(guardSpies.accountPrivacyDetail).toHaveBeenCalledWith({ href: '/account/privacy/case-1' });
     expect(guardSpies.accountRules).toHaveBeenCalledWith({ href: '/account/rules' });
-    expect(guardSpies.account).toHaveBeenCalledWith(
+    expect(guardSpies.content).toHaveBeenCalledWith(
       expect.objectContaining({ href: '/categories' })
     );
     expect(guardSpies.media).toHaveBeenCalledWith(
@@ -280,7 +280,7 @@ describe('app.routes', () => {
       '/account/privacy/$caseId'
     );
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('accountRules', undefined, '/account/rules');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/categories');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/categories');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('media', undefined, '/admin/media/$mediaId/usage');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/admin/content');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');

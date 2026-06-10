@@ -46,7 +46,7 @@ Die Kategorien-Fassade ist kein News-spezifischer Spezialfall mehr. Der Host sch
 
 | Studio-Methode | Lokale Primitive | Mainserver-Operation | Hinweis |
 | --- | --- | --- | --- |
-| `GET /api/v1/mainserver/categories` | `categories.read` | `categories` | Liefert den hierarchischen Mainserver-Kategoriensnapshot für die read-only Kategorienseite und für Editor-Auswahllisten. |
+| `GET /api/v1/mainserver/categories` | `categories.read` | `categories` | Liefert die aktuell hostseitig validierte flache Kategorienliste mit optionalem `parent`-Kontext für die read-only Kategorienseite und für Editor-Auswahllisten. |
 
 Lokale Altinhalte mit `contentType = news.article` oder dem Legacy-Typ `news` werden nicht migriert und nicht mehr produktiv angezeigt. Falls solche Datensätze noch in der IAM-Content-Tabelle vorhanden sind, dienen sie nur noch als Altquelle für manuelle Analyse oder einen späteren operatorgeführten Export.
 

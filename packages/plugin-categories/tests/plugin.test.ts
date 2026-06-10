@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { pluginCategories } from '../src/index.js';
+
+const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('pluginCategories contract', () => {
   it('exposes the categories plugin contract with its own permission set', () => {
@@ -39,7 +42,7 @@ describe('pluginCategories contract', () => {
 
   it('keeps the manifest capability contract minimal for the current scaffold', () => {
     const manifest = JSON.parse(
-      readFileSync(resolve(process.cwd(), 'plugin.manifest.json'), 'utf8')
+      readFileSync(resolve(packageRoot, 'plugin.manifest.json'), 'utf8')
     ) as {
       hostCompatibility?: {
         requiredCapabilities?: readonly string[];

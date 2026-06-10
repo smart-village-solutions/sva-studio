@@ -254,7 +254,7 @@ export const mapCategory = (value: CategoryLike): SvaMainserverCategory | null =
 const hasNonBlankString = (value: string | null | undefined): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 
-export const hasIncompleteCategoryTree = (value: CategoryLike): boolean => {
+const hasIncompleteCategoryTree = (value: CategoryLike): boolean => {
   if (!hasNonBlankString(value.name)) {
     return true;
   }

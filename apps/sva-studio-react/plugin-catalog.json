@@ -1,5 +1,11 @@
 [
   {
+    "pluginId": "categories",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-categories"
+  },
+  {
     "pluginId": "news",
     "sourceType": "workspace",
     "enabled": true,

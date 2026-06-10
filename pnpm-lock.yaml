@@ -236,6 +236,9 @@ importers:
       '@sva/monitoring-client':
         specifier: workspace:*
         version: link:../../packages/monitoring-client
+      '@sva/plugin-categories':
+        specifier: workspace:*
+        version: link:../../packages/plugin-categories
       '@sva/plugin-events':
         specifier: workspace:*
         version: link:../../packages/plugin-events
@@ -669,6 +672,46 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.1.5
         version: 4.1.7(vitest@4.1.7)
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.7)(happy-dom@20.9.0)(jsdom@29.1.1)(msw@2.14.6(@types/node@25.9.1)(typescript@6.0.3))(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+
+  packages/plugin-categories:
+    dependencies:
+      '@sva/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
+      '@sva/studio-ui-react':
+        specifier: workspace:*
+        version: link:../studio-ui-react
+      '@tanstack/react-router':
+        specifier: 1.170.8
+        version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      react:
+        specifier: ^19.2.0
+        version: 19.2.6
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.6(react@19.2.6)
+    devDependencies:
+      '@testing-library/react':
+        specifier: ^16.2.0
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.2.15
+      '@types/react-dom':
+        specifier: ^19.2.0
+        version: 19.2.3(@types/react@19.2.15)
+      '@vitest/coverage-v8':
+        specifier: ^4.1.5
+        version: 4.1.7(vitest@4.1.7)
+      jsdom:
+        specifier: ^29.1.0
+        version: 29.1.1
+      tooling-testing:
+        specifier: workspace:*
+        version: link:../../tooling/testing
       vitest:
         specifier: ^4.1.5
         version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.7)(happy-dom@20.9.0)(jsdom@29.1.1)(msw@2.14.6(@types/node@25.9.1)(typescript@6.0.3))(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))

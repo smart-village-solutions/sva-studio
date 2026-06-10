@@ -297,6 +297,10 @@ vi.mock('@sva/plugin-poi/poi.pages', () => ({
   PoiEditPage: () => <div data-testid="poi-edit-page" />,
 }));
 
+vi.mock('@sva/plugin-categories', () => ({
+  CategoriesPage: () => <div data-testid="categories-page">plugin categories</div>,
+}));
+
 describe('appRouteBindings', () => {
   beforeEach(() => {
     routeState.params = {};
@@ -315,11 +319,10 @@ describe('appRouteBindings', () => {
     cleanup();
   });
 
-  it('renders all placeholder bindings with translated section and title metadata', async () => {
+  it('renders remaining placeholder bindings with translated section and title metadata', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
 
     const cases: Array<[keyof typeof appRouteBindings, string]> = [
-      ['categories', 'Data management|Categories'],
       ['app', 'Applications|App'],
       ['help', 'Help|Help'],
       ['support', 'Support|Support'],
@@ -332,6 +335,15 @@ describe('appRouteBindings', () => {
       expect(screen.getByTestId('placeholder-page').textContent).toBe(expectedText);
       cleanup();
     }
+  });
+
+  it('renders the concrete categories plugin page instead of the placeholder', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.categories />);
+
+    expect(screen.getByTestId('categories-page').textContent).toBe('plugin categories');
+    expect(screen.queryByTestId('placeholder-page')).toBeNull();
   });
 
   it('renders the concrete modules binding instead of the system placeholder', async () => {

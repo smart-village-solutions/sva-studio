@@ -11,7 +11,7 @@ import {
   type SvaMainserverCategoriesListQuery,
 } from '../generated/categories.js';
 import type {
-  SvaMainserverCategory,
+  SvaMainserverCategoriesListItem,
   SvaMainserverConnectionInput,
   SvaMainserverConnectionStatus,
   SvaMainserverEventInput,
@@ -27,7 +27,12 @@ import { createAccessTokenProvider } from './service-internals/access-token-prov
 import { createCredentialProvider, createDefaultCredentialReader } from './service-internals/credentials.js';
 import { createEventOperations } from './service-internals/event-operations.js';
 import { createFetchWithRetry, createGraphqlExecutor } from './service-internals/graphql-client.js';
-import { mapCategory } from './service-internals/mappers-shared.js';
+import {
+  categorySchema,
+  hasIncompleteCategoryTree,
+  mapCategory,
+  requireCategoryIds,
+} from './service-internals/mappers-shared.js';
 import { createNewsOperations } from './service-internals/news-operations.js';
 import { createNewsVisibilityOperations } from './service-internals/news-visibility-operations.js';
 import { buildLogContext, logger, withObservedHop } from './service-internals/observability.js';
@@ -39,8 +44,9 @@ import {
   DEFAULT_RETRY_BASE_DELAY_MS,
   DEFAULT_TOKEN_SKEW_MS,
   DEFAULT_UPSTREAM_TIMEOUT_MS,
-  normalizeUnexpectedError,
   defined,
+  normalizeUnexpectedError,
+  toSvaMainserverError,
   unwrapSettledResult,
   type CredentialValue,
   type SvaMainserverListInput,
@@ -163,7 +169,16 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     return getMutationRootTypenameWithConfig(input, config);
   };
 
-  const listCategories = async (input: SvaMainserverConnectionInput): Promise<readonly SvaMainserverCategory[]> => {
+  const createInvalidCategoriesResponseError = () =>
+    toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'GraphQL-Antwort des SVA-Mainservers enthielt Kategorien ohne erforderliche IDs oder Namen.',
+      statusCode: 502,
+    });
+
+  const listCategories = async (
+    input: SvaMainserverConnectionInput
+  ): Promise<readonly SvaMainserverCategoriesListItem[]> => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     const response = await executeGraphqlWithConfig<SvaMainserverCategoriesListQuery>(
       {
@@ -175,7 +190,34 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       config
     );
 
-    return (response.categories ?? []).map(mapCategory).filter(defined);
+    if (!Array.isArray(response.categories)) {
+      throw createInvalidCategoriesResponseError();
+    }
+
+    const parsedCategories = categorySchema.array().safeParse(response.categories);
+    if (!parsedCategories.success) {
+      throw createInvalidCategoriesResponseError();
+    }
+
+    if (parsedCategories.data.some(hasIncompleteCategoryTree)) {
+      throw createInvalidCategoriesResponseError();
+    }
+
+    const normalizedCategories = parsedCategories.data.map(mapCategory);
+    if (normalizedCategories.some((category) => category === null)) {
+      throw createInvalidCategoriesResponseError();
+    }
+
+    const categoriesWithRequiredIds: SvaMainserverCategoriesListItem[] = [];
+    for (const category of normalizedCategories.filter(defined)) {
+      const categoryWithRequiredId = requireCategoryIds(category);
+      if (!categoryWithRequiredId) {
+        throw createInvalidCategoriesResponseError();
+      }
+      categoriesWithRequiredIds.push(categoryWithRequiredId);
+    }
+
+    return categoriesWithRequiredIds;
   };
 
   const listNews = async (input: SvaMainserverConnectionInput & SvaMainserverNewsListInput) => {

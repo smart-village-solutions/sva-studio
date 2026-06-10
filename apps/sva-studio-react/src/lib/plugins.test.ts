@@ -249,12 +249,19 @@ describe('plugin action alias lookup', () => {
       owner_plugin_id: 'news',
     });
 
-    expect(studioBuildTimeRegistry.plugins).toHaveLength(4);
+    expect(studioBuildTimeRegistry.plugins).toHaveLength(5);
     expect(studioPluginCatalogIssues).toEqual([]);
-    expect(studioPluginCatalog.map((entry) => entry.pluginId)).toEqual(['news', 'events', 'poi', 'waste-management']);
+    expect(studioPluginCatalog.map((entry) => entry.pluginId)).toEqual([
+      'categories',
+      'news',
+      'events',
+      'poi',
+      'waste-management',
+    ]);
     expect(studioPluginCatalog.every((entry) => entry.sourceType === 'workspace' && entry.enabled)).toBe(true);
     expect(studioPluginSnapshot.registry).toBe(studioBuildTimeRegistry);
     expect(studioPluginSnapshot.pluginSources.map((source) => source.pluginId)).toEqual([
+      'categories',
       'news',
       'events',
       'poi',

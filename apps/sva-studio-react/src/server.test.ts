@@ -6,6 +6,7 @@ const dispatchAuthRouteRequestMock = vi.fn();
 const dispatchMainserverNewsRequestMock = vi.fn();
 const dispatchMainserverEventsRequestMock = vi.fn();
 const dispatchMainserverPoiRequestMock = vi.fn();
+const dispatchMainserverCategoriesRequestMock = vi.fn();
 const ensurePluginOperationWorkerStartedMock = vi.fn();
 const getWorkspaceContextMock = vi.fn();
 const withRequestContextMock = vi.fn();
@@ -50,6 +51,10 @@ vi.mock('./lib/mainserver-poi-api.server', () => ({
   dispatchMainserverPoiRequest: dispatchMainserverPoiRequestMock,
 }));
 
+vi.mock('./lib/mainserver-categories-api.server', () => ({
+  dispatchMainserverCategoriesRequest: dispatchMainserverCategoriesRequestMock,
+}));
+
 vi.mock('./lib/server-function-request-diagnostics.server', () => ({
   createServerFunctionRequestDiagnostics: createServerFunctionRequestDiagnosticsMock,
   normalizeServerFnBase: vi.fn(() => '/_server'),
@@ -71,6 +76,7 @@ describe('server transport', () => {
     dispatchMainserverNewsRequestMock.mockReset();
     dispatchMainserverEventsRequestMock.mockReset();
     dispatchMainserverPoiRequestMock.mockReset();
+    dispatchMainserverCategoriesRequestMock.mockReset();
     ensurePluginOperationWorkerStartedMock.mockReset();
     ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     getWorkspaceContextMock.mockReset();
@@ -163,6 +169,34 @@ describe('server transport', () => {
     await expect(response.text()).resolves.toBe('poi');
   });
 
+  it('bypasses mainserver categories requests before auth routing', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchMainserverCategoriesRequestMock.mockResolvedValue(
+      new Response('categories', { status: 200 })
+    );
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(startFetch);
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/mainserver/categories')
+    );
+
+    expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverCategoriesRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+    expect(startFetch).not.toHaveBeenCalled();
+    await expect(response.text()).resolves.toBe('categories');
+  });
+
   it('bypasses diagnostics for non server-function requests in development', async () => {
     vi.stubEnv('NODE_ENV', 'development');
 
@@ -198,6 +232,7 @@ describe('server transport', () => {
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
     withRequestContextMock.mockImplementation(async (_input, callback) => callback());
@@ -217,7 +252,9 @@ describe('server transport', () => {
     await Promise.resolve();
 
     expect(registrationCountAfterFirstRequest).toBeGreaterThanOrEqual(1);
-    expect(registerStudioPluginOperationHandlersMock.mock.calls.length).toBeGreaterThan(registrationCountAfterFirstRequest);
+    expect(registerStudioPluginOperationHandlersMock.mock.calls.length).toBeGreaterThan(
+      registrationCountAfterFirstRequest
+    );
     expect(ensurePluginOperationWorkerStartedMock).toHaveBeenCalledTimes(1);
     expect(startFetch).toHaveBeenCalledTimes(2);
   });

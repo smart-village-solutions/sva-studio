@@ -4,6 +4,7 @@ import type {
   SvaMainserverAccessibilityInformation,
   SvaMainserverAddress,
   SvaMainserverCategory,
+  SvaMainserverCategoriesListItem,
   SvaMainserverContact,
   SvaMainserverDate,
   SvaMainserverLocation,
@@ -248,6 +249,39 @@ export const mapCategory = (value: CategoryLike): SvaMainserverCategory | null =
     ...(optionalString(value.createdAt) ? { createdAt: optionalString(value.createdAt) } : {}),
     ...(optionalString(value.updatedAt) ? { updatedAt: optionalString(value.updatedAt) } : {}),
     children: (value.children ?? []).map(mapCategory).filter(defined),
+  };
+};
+
+const hasNonBlankString = (value: string | null | undefined): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+export const hasIncompleteCategoryTree = (value: CategoryLike): boolean => {
+  if (!hasNonBlankString(value.name)) {
+    return true;
+  }
+
+  return (value.children ?? []).some(hasIncompleteCategoryTree);
+};
+
+export const requireCategoryIds = (value: SvaMainserverCategory): SvaMainserverCategoriesListItem | null => {
+  const id = hasNonBlankString(value.id) ? value.id : undefined;
+  if (!id) {
+    return null;
+  }
+
+  const children: SvaMainserverCategoriesListItem[] = [];
+  for (const child of value.children) {
+    const childWithRequiredId = requireCategoryIds(child);
+    if (!childWithRequiredId) {
+      return null;
+    }
+    children.push(childWithRequiredId);
+  }
+
+  return {
+    ...value,
+    id,
+    children,
   };
 };
 

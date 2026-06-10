@@ -126,6 +126,11 @@ export type SvaMainserverCategory = {
   readonly children: readonly SvaMainserverCategory[];
 };
 
+export type SvaMainserverCategoriesListItem = Omit<SvaMainserverCategory, 'id' | 'children'> & {
+  readonly id: string;
+  readonly children: readonly SvaMainserverCategoriesListItem[];
+};
+
 export type SvaMainserverMediaContentInput = {
   readonly captionText?: string;
   readonly copyright?: string;

@@ -27,6 +27,35 @@ const categoryFields = `
     iconName
     position
     tagList
+    createdAt
+    updatedAt
+    children {
+      id
+      name
+      iconName
+      position
+      tagList
+      createdAt
+      updatedAt
+      children {
+        id
+        name
+        iconName
+        position
+        tagList
+        createdAt
+        updatedAt
+        children {
+          id
+          name
+          iconName
+          position
+          tagList
+          createdAt
+          updatedAt
+        }
+      }
+    }
   }
 `;
 

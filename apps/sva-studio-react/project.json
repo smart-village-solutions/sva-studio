@@ -14,6 +14,7 @@
       "inputs": [
         "default",
         "{workspaceRoot}/scripts/ci/check-i18n-keys.ts",
+        "{workspaceRoot}/packages/plugin-categories/src/**",
         "{workspaceRoot}/packages/plugin-news/src/**",
         "{workspaceRoot}/packages/plugin-events/src/**",
         "{workspaceRoot}/packages/plugin-poi/src/**",

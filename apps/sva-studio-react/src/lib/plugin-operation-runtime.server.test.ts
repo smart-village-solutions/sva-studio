@@ -17,6 +17,7 @@ const createPluginJobExecutionHandlersMock = vi.fn(() => ({
   'waste-management.initialize-data-source': vi.fn(),
   'waste-management.reset-data': vi.fn(),
   'waste-management.seed-data': vi.fn(),
+  'waste-management.sync-mainserver': vi.fn(),
   'waste-management.sync-waste-types': vi.fn(),
 }));
 
@@ -44,6 +45,7 @@ const declaredWasteJobTypeIds = [
   'waste-management.initialize-data-source',
   'waste-management.reset-data',
   'waste-management.seed-data',
+  'waste-management.sync-mainserver',
   'waste-management.sync-waste-types',
 ] as const;
 
@@ -100,6 +102,7 @@ describe('plugin operation runtime registration', () => {
       'waste-management.initialize-data-source',
       'waste-management.reset-data',
       'waste-management.seed-data',
+      'waste-management.sync-mainserver',
       'waste-management.sync-waste-types',
     ]);
     expect(registerPluginOperationExecutionHandlersMock).toHaveBeenCalledWith(handlers);
@@ -202,6 +205,7 @@ describe('plugin operation runtime registration', () => {
       'waste-management.initialize-data-source',
       'waste-management.reset-data',
       'waste-management.seed-data',
+      'waste-management.sync-mainserver',
       'waste-management.sync-waste-types',
     ]);
   });

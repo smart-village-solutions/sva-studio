@@ -96,6 +96,11 @@ type WasteManagementToolsCopy = Readonly<{
     title: string;
     description: string;
   }>;
+  sync: Readonly<{
+    actionLabel: string;
+    startSuccess: string;
+    startError: string;
+  }>;
   reset: Readonly<{
     title: string;
     description: string;
@@ -182,6 +187,7 @@ export const createWasteManagementToolsTranslations = <const TCopy extends Waste
       imports: copy.imports,
       migrations: copy.migrations,
       seed: copy.seed,
+      sync: copy.sync,
       reset: copy.reset,
       actions: copy.actions,
       messages: copy.messages,

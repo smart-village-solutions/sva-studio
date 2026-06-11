@@ -14,6 +14,7 @@ import {
 import { resolveRuntimeDataSource } from './waste-management-operations.shared.js';
 
 const createOrUpdateSvaMainserverStaticContentMock = vi.hoisted(() => vi.fn());
+const runWasteManagementMainserverSyncForInstanceMock = vi.hoisted(() => vi.fn());
 
 const createInterfaceRecord = (schemaName = 'wm'): ExternalInterfaceRecord => ({
   id: 'iface-1',
@@ -54,7 +55,11 @@ describe('waste management operations runtime', () => {
     vi.doUnmock('@sva/server-runtime');
     vi.doUnmock('@sva/data-repositories');
     vi.doUnmock('@sva/sva-mainserver/server');
+    vi.doMock('./waste-management-mainserver-sync.server.js', () => ({
+      runWasteManagementMainserverSyncForInstance: runWasteManagementMainserverSyncForInstanceMock,
+    }));
     createOrUpdateSvaMainserverStaticContentMock.mockReset();
+    runWasteManagementMainserverSyncForInstanceMock.mockReset();
   });
 
   it('applies schema migrations against the resolved waste schema', async () => {
@@ -308,6 +313,34 @@ describe('waste management operations runtime', () => {
       staticContentName: 'wasteTypes',
       fractionCount: 1,
       staticContentId: 'static-1',
+    });
+  });
+
+  it('delegates mainserver sync jobs to the dedicated sync helper', async () => {
+    runWasteManagementMainserverSyncForInstanceMock.mockResolvedValue({
+      studioItemCount: 4,
+      mainserverItemCount: 3,
+      createCount: 2,
+      deleteCount: 1,
+      errorCount: 0,
+      createItems: [],
+      deleteItems: [],
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime();
+
+    await expect(runtime.syncMainserver('de-musterhausen', { operation: 'sync-mainserver' })).resolves.toMatchObject({
+      details: expect.objectContaining({
+        operation: 'sync-mainserver',
+        createCount: 2,
+        deleteCount: 1,
+      }),
+    });
+    expect(runWasteManagementMainserverSyncForInstanceMock).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      runtimeDeps: {},
+      syncInput: { operation: 'sync-mainserver' },
     });
   });
 

@@ -32,6 +32,7 @@ import { createNewsVisibilityOperations } from './service-internals/news-visibil
 import { buildLogContext, logger, withObservedHop } from './service-internals/observability.js';
 import { createPoiOperations } from './service-internals/poi-operations.js';
 import { createStaticContentOperations } from './service-internals/static-content-operations.js';
+import { createWasteOperations, type SvaMainserverWasteSyncItem } from './service-internals/waste-operations.js';
 import {
   DEFAULT_CACHE_MAX_SIZE,
   DEFAULT_CREDENTIAL_CACHE_TTL_MS,
@@ -213,6 +214,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   const eventOperations = createEventOperations(executeGraphqlWithConfig);
   const poiOperations = createPoiOperations(executeGraphqlWithConfig);
   const staticContentOperations = createStaticContentOperations(executeGraphqlWithConfig);
+  const wasteOperations = createWasteOperations(executeGraphqlWithConfig);
 
   const getQueryRootTypenameWithConfig = async (
     input: SvaMainserverConnectionInput,
@@ -389,6 +391,25 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     return staticContentOperations.writeStaticContentWithConfig(input, config);
   };
 
+  const listWasteSyncSnapshot = async (input: SvaMainserverConnectionInput) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return await wasteOperations.listWasteSyncSnapshotWithConfig(input, config);
+  };
+
+  const createWastePickupTimes = async (
+    input: SvaMainserverConnectionInput & { readonly items: readonly SvaMainserverWasteSyncItem[] }
+  ) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    await wasteOperations.createWastePickupTimesWithConfig(input, config);
+  };
+
+  const deleteWastePickupTimes = async (
+    input: SvaMainserverConnectionInput & { readonly items: readonly SvaMainserverWasteSyncItem[] }
+  ) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    await wasteOperations.deleteWastePickupTimesWithConfig(input, config);
+  };
+
   const getConnectionStatus = async (
     input: SvaMainserverConnectionInput
   ): Promise<SvaMainserverConnectionStatus> => {
@@ -460,6 +481,9 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     listEvents,
     listNews,
     listPoi,
+    listWasteSyncSnapshot,
+    createWastePickupTimes,
+    deleteWastePickupTimes,
     updateEvent,
     updateNews,
     updatePoi,
@@ -547,3 +571,14 @@ export const deleteSvaMainserverPoi = (input: SvaMainserverConnectionInput & { r
 export const createOrUpdateSvaMainserverStaticContent = (
   input: SvaMainserverConnectionInput & { readonly staticContent: SvaMainserverStaticContentInput }
 ) => getDefaultService().createOrUpdateStaticContent(input);
+
+export const listSvaMainserverWasteSyncSnapshot = (input: SvaMainserverConnectionInput) =>
+  getDefaultService().listWasteSyncSnapshot(input);
+
+export const createSvaMainserverWastePickupTimes = (
+  input: SvaMainserverConnectionInput & { readonly items: readonly SvaMainserverWasteSyncItem[] }
+) => getDefaultService().createWastePickupTimes(input);
+
+export const deleteSvaMainserverWastePickupTimes = (
+  input: SvaMainserverConnectionInput & { readonly items: readonly SvaMainserverWasteSyncItem[] }
+) => getDefaultService().deleteWastePickupTimes(input);

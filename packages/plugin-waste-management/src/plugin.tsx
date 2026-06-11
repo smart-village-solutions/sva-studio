@@ -148,6 +148,10 @@ export const wasteManagementAuditEventDefinitions = definePluginAuditEvents('was
     titleKey: 'wasteManagement.audit.resetStarted',
   },
   {
+    eventType: 'waste-management.mainserver-sync.started',
+    titleKey: 'wasteManagement.audit.mainserverSyncStarted',
+  },
+  {
     eventType: 'waste-management.sync-waste-types.started',
     titleKey: 'wasteManagement.audit.syncWasteTypesStarted',
   },

@@ -187,6 +187,10 @@ export const emitMethodNotAllowedDiagnostic = (
 export const verifyRouteDiagnosticsLogger = () => logger;
 
 export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers, routePath?: string): AuthHandlers => {
+  if (!handlers || typeof handlers !== 'object') {
+    throw new Error(`invalid_auth_route_handlers:${routePath ?? 'unknown-route'}`);
+  }
+
   const wrapped: AuthHandlers = {};
   for (const [method, handler] of Object.entries(handlers) as [string, NonNullable<AuthHandlers[keyof AuthHandlers]>][]) {
     (wrapped as Record<string, typeof handler>)[method] = async (ctx) => {

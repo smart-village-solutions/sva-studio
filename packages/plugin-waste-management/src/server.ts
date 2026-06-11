@@ -8,6 +8,7 @@ import {
   type WasteManagementJobInput,
   type WasteManagementResetJobInput,
   type WasteManagementSeedJobInput,
+  type WasteManagementSyncMainserverJobInput,
   type WasteManagementSyncWasteTypesJobInput,
 } from '@sva/plugin-sdk';
 
@@ -145,6 +146,13 @@ export type WasteManagementOperationRuntime = {
   readonly resetData: (
     instanceId: string,
     payload: WasteManagementResetJobInput
+  ) => Promise<{
+    readonly durationMs: number;
+    readonly details: Record<string, unknown>;
+  }>;
+  readonly syncMainserver: (
+    instanceId: string,
+    payload: WasteManagementSyncMainserverJobInput
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
@@ -327,6 +335,13 @@ export const createWasteManagementPluginOperationExecutionHandlers = (
       expectedOperation: 'reset-data',
       phaseKey: 'waste-management.reset',
       execute: (runtimeArg, instanceId, payload) => runtimeArg.resetData(instanceId, payload),
+    })(runtime),
+  [wasteManagementOperationsContract.jobTypeIds.syncMainserver]:
+    createOperationHandler<WasteManagementSyncMainserverJobInput>({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncMainserver,
+      expectedOperation: 'sync-mainserver',
+      phaseKey: 'waste-management.mainserver-sync',
+      execute: (runtimeArg, instanceId, payload) => runtimeArg.syncMainserver(instanceId, payload),
     })(runtime),
   [wasteManagementOperationsContract.jobTypeIds.syncWasteTypes]:
     createOperationHandler<WasteManagementSyncWasteTypesJobInput>({

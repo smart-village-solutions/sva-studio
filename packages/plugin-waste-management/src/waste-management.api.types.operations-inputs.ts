@@ -137,6 +137,8 @@ export type StartWasteManagementSeedInput = Readonly<{
   seedKey?: 'baseline';
 }>;
 
+export type StartWasteManagementMainserverSyncInput = Readonly<Record<string, never>>;
+
 export type StartWasteManagementSyncWasteTypesInput = Readonly<Record<never, never>>;
 
 export type StartWasteManagementResetInput = Readonly<{

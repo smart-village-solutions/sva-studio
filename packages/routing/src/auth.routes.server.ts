@@ -44,7 +44,11 @@ export const resolveAuthHandlers = (path: string): AuthHandlers => {
   if (!isAuthRoutePath(path)) {
     throw new Error(`Unknown auth route path: ${path}`);
   }
-  return authHandlerMap[path];
+  const handlers = authHandlerMap[path];
+  if (!handlers) {
+    throw new Error(`Missing auth handlers for route path: ${path}`);
+  }
+  return handlers;
 };
 
 verifyAuthRouteHandlerCoverage(authRoutePaths, authHandlerMap);

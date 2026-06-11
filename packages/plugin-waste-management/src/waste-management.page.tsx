@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
+import { Button, StudioOverviewPageTemplate } from '@sva/studio-ui-react';
 
 import {
   normalizeWasteManagementSearchParams,
@@ -9,9 +9,10 @@ import {
   type WasteManagementSearchParams,
   type WasteManagementTabId,
 } from './search-params.js';
-import { getWasteManagementSettings } from './waste-management.api.js';
+import { getWasteManagementSettings, startWasteManagementMainserverSync } from './waste-management.api.js';
 import { WasteManagementPageDescription } from './waste-management.page.description.js';
 import { useWasteManagementUiAccess } from './waste-management.ui-access.js';
+import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { WasteManagementPageTabs } from './waste-management.page.layout.js';
 
 const toMasterDataTab = (tab: WasteManagementTabId): WasteManagementMasterDataTabId | undefined => {
@@ -48,6 +49,8 @@ export const WasteManagementPage = () => {
   const search = normalizeWasteManagementSearchParams(rawSearch as Record<string, unknown>);
   const uiAccess = useWasteManagementUiAccess(search.tab);
   const [calendarWebUrl, setCalendarWebUrl] = useState<string | null>(null);
+  const [syncRunning, setSyncRunning] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
 
   useEffect(() => {
     if (!uiAccess.isResolved || uiAccess.visibleTabIds.includes(search.tab)) {
@@ -108,6 +111,35 @@ export const WasteManagementPage = () => {
           webVersionLinkLabel={pt('page.webVersionLinkLabel')}
         />
       }
+      primaryAction={
+        uiAccess.canRunMainserverSync ? (
+          <Button
+            type="button"
+            disabled={syncRunning}
+            onClick={async () => {
+              setStatusMessage(null);
+              setSyncRunning(true);
+              try {
+                await startWasteManagementMainserverSync({});
+                setStatusMessage({
+                  kind: 'success',
+                  text: pt('tools.sync.startSuccess'),
+                });
+              } catch {
+                setStatusMessage({
+                  kind: 'error',
+                  text: pt('tools.sync.startError'),
+                });
+              } finally {
+                setSyncRunning(false);
+              }
+            }}
+          >
+            {pt('tools.sync.actionLabel')}
+          </Button>
+        ) : null
+      }
+      toolbar={statusMessage ? <StatusNotice message={statusMessage} /> : null}
     >
       <WasteManagementPageTabs
         pt={pt}

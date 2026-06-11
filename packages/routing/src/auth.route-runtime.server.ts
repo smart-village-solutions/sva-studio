@@ -69,19 +69,25 @@ export const verifyRouteHandlerCoverage = (
   const handlerKeys = Object.keys(handlers);
   const missingPaths = paths.filter((path) => !handlerKeys.includes(path));
   const extraPaths = handlerKeys.filter((path) => !paths.includes(path));
+  const missingHandlerMaps = handlerKeys.filter((path) => handlers[path] == null);
   const invalidHandlers = handlerKeys.flatMap((path) =>
     Object.entries(handlers[path] ?? {})
       .filter(([, handler]) => handler !== undefined && typeof handler !== 'function')
       .map(([method]) => `${path}#${method}`)
   );
 
-  if (invalidHandlers.length > 0) {
+  if (missingHandlerMaps.length > 0 || invalidHandlers.length > 0) {
     log.warn('Auth route mapping contains invalid handler registrations', {
+      missing_handler_maps: missingHandlerMaps.join(','),
       invalid_handlers: invalidHandlers.join(','),
       path_count: paths.length,
       handler_count: handlerKeys.length,
     });
-    throw new Error(`Invalid auth route handler registration: ${invalidHandlers.join(', ')}`);
+    const parts = [
+      missingHandlerMaps.length > 0 ? `missing handler maps: ${missingHandlerMaps.join(', ')}` : '',
+      invalidHandlers.length > 0 ? `invalid handlers: ${invalidHandlers.join(', ')}` : '',
+    ].filter(Boolean);
+    throw new Error(`Invalid auth route handler registration: ${parts.join('; ')}`);
   }
 
   if (missingPaths.length === 0 && extraPaths.length === 0) {

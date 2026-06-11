@@ -29,6 +29,7 @@ export const wasteManagementPluginTranslationsDEAudit = {
     "importStarted": "Waste-Import gestartet",
     "seedStarted": "Waste-Seed gestartet",
     "resetStarted": "Waste-Reset gestartet",
+    "mainserverSyncStarted": "Waste-Mainserver-Synchronisierung gestartet",
     "syncWasteTypesStarted": "Waste-Typen-Synchronisierung gestartet",
     "dataSourceInitialized": "Waste-Datenquelle initialisiert"
   }

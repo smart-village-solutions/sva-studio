@@ -235,6 +235,8 @@ const startSeedSchema = z.object({
   seedKey: z.literal('baseline').default('baseline'),
 });
 
+const startMainserverSyncSchema = z.object({});
+
 const startSyncWasteTypesSchema = z.object({});
 
 const startResetSchema = z.object({
@@ -285,6 +287,7 @@ export const wasteManagementOperationSchemas = {
   startImportSchema,
   previewLocationTourPickupDateImportSchema,
   startSeedSchema,
+  startMainserverSyncSchema,
   startSyncWasteTypesSchema,
   startResetSchema,
 } as const;

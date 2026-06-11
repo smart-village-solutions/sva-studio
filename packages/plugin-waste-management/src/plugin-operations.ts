@@ -104,6 +104,22 @@ const wasteManagementPluginJobTypes = [
     },
   },
   {
+    jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncMainserver,
+    queue: wasteManagementOperationsContract.queueName,
+    displayName: 'Waste-Mainserver synchronisieren',
+    progress: {
+      phaseKeys: ['waste-management.mainserver-sync', 'waste-management.completed'],
+      stepKeys: ['load-studio-state', 'sync-mainserver', 'complete-operation'],
+    },
+    result: {
+      summaryKeys: ['durationMs'],
+      detailKeys: ['studioItemCount', 'mainserverItemCount', 'createCount', 'deleteCount', 'errorCount'],
+    },
+    errors: {
+      detailKeys: ['failed-step', 'failed-item-key'],
+    },
+  },
+  {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncWasteTypes,
     queue: wasteManagementOperationsContract.queueName,
     displayName: 'Waste-Typen mit Mainserver synchronisieren',

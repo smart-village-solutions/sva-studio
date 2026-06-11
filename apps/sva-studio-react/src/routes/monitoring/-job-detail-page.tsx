@@ -15,6 +15,7 @@ import {
 import {
   formatMonitoringJobDateTime,
   formatMonitoringJobProgressSummary,
+  extractMonitoringJobWriteSummary,
   getMonitoringJobCurrentStep,
   monitoringJobStaleStateLabelKeyByValue,
   monitoringJobStatusLabelKeyByValue,
@@ -50,6 +51,7 @@ const jobsErrorMessage = (error: IamHttpError | null): string => {
 export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps) => {
   const jobApi = usePluginOperationJobDetail(jobId);
   const job = jobApi.detail;
+  const writeSummary = job ? extractMonitoringJobWriteSummary(job) : null;
 
   return (
     <section className="space-y-6">
@@ -141,7 +143,34 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
               <CardHeader>
                 <CardTitle>{t('monitoring.jobs.detail.resultTitle')}</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {writeSummary ? (
+                  <section className="space-y-3" aria-label={t('monitoring.jobs.detail.writeSummaryTitle')}>
+                    <h2 className="text-sm font-medium text-foreground">{t('monitoring.jobs.detail.writeSummaryTitle')}</h2>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                      <div className="rounded-lg border bg-muted/20 p-3">
+                        <p className="text-xs text-muted-foreground">{t('monitoring.jobs.detail.writeSummaryWritten')}</p>
+                        <p className="text-2xl font-semibold text-foreground">{writeSummary.writtenCount}</p>
+                      </div>
+                      <div className="rounded-lg border bg-muted/20 p-3">
+                        <p className="text-xs text-muted-foreground">{t('monitoring.jobs.detail.writeSummaryDeleted')}</p>
+                        <p className="text-2xl font-semibold text-foreground">{writeSummary.deletedCount}</p>
+                      </div>
+                      <div className="rounded-lg border bg-muted/20 p-3">
+                        <p className="text-xs text-muted-foreground">{t('monitoring.jobs.detail.writeSummaryStudio')}</p>
+                        <p className="text-2xl font-semibold text-foreground">{writeSummary.studioCount}</p>
+                      </div>
+                      <div className="rounded-lg border bg-muted/20 p-3">
+                        <p className="text-xs text-muted-foreground">{t('monitoring.jobs.detail.writeSummaryMainserver')}</p>
+                        <p className="text-2xl font-semibold text-foreground">{writeSummary.mainserverCount}</p>
+                      </div>
+                      <div className="rounded-lg border bg-muted/20 p-3">
+                        <p className="text-xs text-muted-foreground">{t('monitoring.jobs.detail.writeSummaryErrors')}</p>
+                        <p className="text-2xl font-semibold text-foreground">{writeSummary.errorCount}</p>
+                      </div>
+                    </div>
+                  </section>
+                ) : null}
                 <pre className="overflow-x-auto rounded-lg bg-muted/40 p-4 text-xs text-foreground">
                   {formatStructuredValue(job.resultPayload)}
                 </pre>

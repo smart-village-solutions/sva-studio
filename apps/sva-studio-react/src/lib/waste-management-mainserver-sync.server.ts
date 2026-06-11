@@ -35,6 +35,7 @@ type WasteMaterializationSyncState = Omit<WasteMaterializationContext, 'currentY
   readonly cities: readonly WasteCityRecord[];
   readonly fractions: readonly WasteFractionRecord[];
   readonly locations: readonly WasteCollectionLocationRecord[];
+  readonly locationTourPickupDates: NonNullable<WasteMaterializationContext['locationTourPickupDates']>;
   readonly streets: readonly WasteStreetRecord[];
   readonly tours: readonly WasteTourRecord[];
   readonly links: readonly WasteLocationTourLinkRecord[];
@@ -60,14 +61,12 @@ export const buildWasteSyncKey = (item: {
   pickupDate: string;
   wasteType: string;
   street: string;
-  zip?: string;
   city?: string;
 }): string =>
   [
     item.pickupDate,
     normalizeKeyPart(item.wasteType),
     normalizeKeyPart(item.street),
-    normalizeKeyPart(item.zip),
     normalizeKeyPart(item.city),
   ].join('::');
 
@@ -97,6 +96,7 @@ const buildStudioRowsFromSyncState = (
   return buildStudioRowsFromMaterialization({
     pickupDates: buildMaterializedLocationTourPickupDates({
       ...studioState,
+      locationTourPickupDates: studioState.locationTourPickupDates,
       currentYear,
       nextYear,
     }),
@@ -156,6 +156,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     fractions: await repository.listWasteFractions(),
     links: await repository.listWasteLocationTourLinks(),
     locations: await repository.listWasteCollectionLocations(),
+    locationTourPickupDates: await repository.listWasteLocationTourPickupDates(),
     cities: await repository.listWasteCities(),
     streets: await repository.listWasteStreets(),
     tourDateShifts: await repository.listWasteTourDateShifts(),

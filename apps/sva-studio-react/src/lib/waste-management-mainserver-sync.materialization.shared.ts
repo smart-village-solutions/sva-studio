@@ -5,6 +5,7 @@ import type {
   WasteGlobalDateShiftRecord,
   WasteHolidayRuleRecord,
   WasteLocationTourLinkRecord,
+  WasteLocationTourPickupDateRecord,
 } from '@sva/core';
 
 export type MaterializationRuleCoverage = 'single_pickup' | 'rest_of_week';
@@ -28,6 +29,7 @@ const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 export type WasteMaterializationContext = {
   readonly tours: readonly WasteTourRecord[];
   readonly links: readonly WasteLocationTourLinkRecord[];
+  readonly locationTourPickupDates?: readonly WasteLocationTourPickupDateRecord[];
   readonly tourDateShifts: readonly WasteTourDateShiftRecord[];
   readonly globalDateShifts: readonly WasteGlobalDateShiftRecord[];
   readonly holidayRules: readonly WasteHolidayRuleRecord[];
@@ -44,6 +46,23 @@ export const parseIsoDateUtc = (value: string): Date | undefined => {
 };
 
 export const toIsoDate = (value: Date): string => value.toISOString().slice(0, 10);
+
+export const setIsoDateYear = (value: string, year: number): string | undefined => {
+  const date = parseIsoDateUtc(value);
+  if (!date) {
+    return undefined;
+  }
+
+  const expectedMonth = date.getUTCMonth();
+  const expectedDay = date.getUTCDate();
+  const shiftedDate = new Date(date);
+  shiftedDate.setUTCFullYear(year);
+  if (shiftedDate.getUTCMonth() !== expectedMonth || shiftedDate.getUTCDate() !== expectedDay) {
+    return undefined;
+  }
+
+  return toIsoDate(shiftedDate);
+};
 
 export const addDays = (value: string, days: number): string | undefined => {
   const date = parseIsoDateUtc(value);
@@ -125,13 +144,31 @@ const resolveAdvanceDays = (
   if (recurrence === 'fourweekly') {
     return 28;
   }
-  if (recurrence === 'yearly') {
-    return 365;
-  }
   if (recurrence === 'custom' && typeof customRecurrenceIntervalDays === 'number' && customRecurrenceIntervalDays > 0) {
     return customRecurrenceIntervalDays;
   }
   return null;
+};
+
+const advanceRecurrenceDate = (
+  current: Date,
+  recurrence: WasteTourRecord['recurrence'],
+  customRecurrenceIntervalDays: number | undefined
+): Date | null => {
+  if (recurrence === 'yearly') {
+    const next = new Date(current);
+    next.setUTCFullYear(next.getUTCFullYear() + 1);
+    return next;
+  }
+
+  const step = resolveAdvanceDays(recurrence, customRecurrenceIntervalDays);
+  if (step === null) {
+    return null;
+  }
+
+  const next = new Date(current);
+  next.setUTCDate(next.getUTCDate() + step);
+  return next;
 };
 
 export const getEffectiveYearWindow = (currentYear: number, nextYear: number): readonly number[] => {
@@ -182,13 +219,12 @@ export const collectRecurrenceDates = (
     return [...dates];
   }
 
-  const step = resolveAdvanceDays(tour.recurrence, tour.customRecurrenceIntervalDays);
-  if (step === null) {
+  const startDate = parseIsoDateUtc(tour.firstDate ?? '');
+  if (!startDate) {
     return [...dates];
   }
 
-  const startDate = parseIsoDateUtc(tour.firstDate ?? '');
-  if (!startDate) {
+  if (advanceRecurrenceDate(startDate, tour.recurrence, tour.customRecurrenceIntervalDays) === null) {
     return [...dates];
   }
 
@@ -201,8 +237,11 @@ export const collectRecurrenceDates = (
     if (yearSet.has(current.getUTCFullYear())) {
       dates.add(entry);
     }
-    current = new Date(current);
-    current.setUTCDate(current.getUTCDate() + step);
+    const next = advanceRecurrenceDate(current, tour.recurrence, tour.customRecurrenceIntervalDays);
+    if (!next) {
+      break;
+    }
+    current = next;
   }
 
   return [...dates];

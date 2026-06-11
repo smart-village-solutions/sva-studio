@@ -15,6 +15,8 @@ import {
   isAllowedByRuleYear,
   isDateAffectedByRule,
   isDateInRange,
+  parseIsoDateUtc,
+  setIsoDateYear,
   shiftDirection,
   toCoverage,
   toDirectionFromHolidayStrategy,
@@ -39,16 +41,61 @@ const sortMaterializationRules = (
   left: Pick<MaterializationRule, 'triggerDate' | 'source' | 'shiftDays'>,
   right: Pick<MaterializationRule, 'triggerDate' | 'source' | 'shiftDays'>
 ): number => {
+  const sourcePriority: Record<MaterializationRule['source'], number> = {
+    tour: 0,
+    global: 1,
+    holiday: 2,
+  };
   if (left.triggerDate !== right.triggerDate) {
     return left.triggerDate.localeCompare(right.triggerDate);
   }
   if (left.source !== right.source) {
-    return left.source.localeCompare(right.source);
+    return sourcePriority[left.source] - sourcePriority[right.source];
   }
   if (left.shiftDays !== right.shiftDays) {
     return left.shiftDays - right.shiftDays;
   }
   return 0;
+};
+
+const isShiftRelevantToYearWindow = (
+  originalDate: string,
+  actualDate: string,
+  hasYear: boolean,
+  yearWindow: readonly number[]
+): boolean => {
+  if (!hasYear) {
+    return true;
+  }
+
+  return (
+    isAllowedByRuleYear(originalDate, true, yearWindow) ||
+    isAllowedByRuleYear(actualDate, true, yearWindow)
+  );
+};
+
+const expandRuleAcrossYearWindow = (
+  rule: MaterializationRule,
+  yearWindow: readonly number[]
+): readonly MaterializationRule[] => {
+  if (rule.hasYear) {
+    return [rule];
+  }
+
+  return yearWindow.flatMap((year) => {
+    const triggerDate = setIsoDateYear(rule.triggerDate, year);
+    if (!triggerDate || !parseIsoDateUtc(triggerDate)) {
+      return [];
+    }
+
+    return [
+      {
+        ...rule,
+        triggerDate,
+        hasYear: true,
+      },
+    ];
+  });
 };
 
 const buildMaterializationRules = (input: WasteMaterializationContext): readonly MaterializationRule[] => {
@@ -69,10 +116,10 @@ const buildMaterializationRules = (input: WasteMaterializationContext): readonly
       coverage: toCoverage(shift.followUpMode),
       hasYear: shift.hasYear,
     };
-
-    if (isAllowedByRuleYear(rule.triggerDate, rule.hasYear, yearWindow)) {
-      tourRules.push(rule);
+    if (!isShiftRelevantToYearWindow(shift.originalDate, shift.actualDate, shift.hasYear, yearWindow)) {
+      continue;
     }
+    tourRules.push(...expandRuleAcrossYearWindow(rule, yearWindow));
   }
 
   const globalRules: MaterializationRule[] = [];
@@ -91,10 +138,10 @@ const buildMaterializationRules = (input: WasteMaterializationContext): readonly
       appliesToTourIds: shift.tourIds,
       hasYear: shift.hasYear,
     };
-
-    if (isAllowedByRuleYear(rule.triggerDate, rule.hasYear, yearWindow)) {
-      globalRules.push(rule);
+    if (!isShiftRelevantToYearWindow(shift.originalDate, shift.actualDate, shift.hasYear, yearWindow)) {
+      continue;
     }
+    globalRules.push(...expandRuleAcrossYearWindow(rule, yearWindow));
   }
 
   const holidayRules: MaterializationRule[] = [];
@@ -110,7 +157,7 @@ const buildMaterializationRules = (input: WasteMaterializationContext): readonly
     const candidate: MaterializationRule = {
       source: 'holiday' as const,
       triggerDate: rule.holidayDate,
-      shiftDays: direction === 'advance' ? 1 : 1,
+      shiftDays: 1,
       direction,
       coverage: rule.scope === 'full-week' ? 'rest_of_week' : 'single_pickup',
       hasYear: true,
@@ -152,8 +199,22 @@ export type MaterializedLocationTourPickupDateRecord = Omit<WasteLocationTourPic
 
 export const buildMaterializedLocationTourPickupDates = (input: WasteMaterializationContext): readonly MaterializedLocationTourPickupDateRecord[] => {
   const yearWindow = getEffectiveYearWindow(input.currentYear, input.nextYear);
+  const collectionYearWindow = Array.from(new Set([yearWindow[0] - 1, ...yearWindow])).sort();
+  const syncYearSet = new Set(yearWindow);
   const rules = buildMaterializationRules({ ...input, currentYear: yearWindow[0], nextYear: yearWindow[1] });
   const tourById = new Map(input.tours.map((tour) => [tour.id, tour] as const));
+  const importedPickupDatesByLocationTourKey = new Map<string, string[]>();
+  for (const pickupDate of input.locationTourPickupDates ?? []) {
+    const parsedPickupDate = parseIsoDateUtc(pickupDate.pickupDate);
+    if (!parsedPickupDate || !collectionYearWindow.includes(parsedPickupDate.getUTCFullYear())) {
+      continue;
+    }
+
+    const key = `${pickupDate.locationId}::${pickupDate.tourId}`;
+    const entries = importedPickupDatesByLocationTourKey.get(key) ?? [];
+    entries.push(pickupDate.pickupDate);
+    importedPickupDatesByLocationTourKey.set(key, entries);
+  }
   const pickupDates: MaterializedLocationTourPickupDateRecord[] = [];
 
   for (const link of input.links) {
@@ -162,8 +223,13 @@ export const buildMaterializedLocationTourPickupDates = (input: WasteMaterializa
       continue;
     }
 
-    let dates: readonly string[] = collectRecurrenceDates(tour, yearWindow)
+    const locationTourKey = `${link.locationId}::${link.tourId}`;
+    let dates: readonly string[] = [
+      ...collectRecurrenceDates(tour, collectionYearWindow),
+      ...(importedPickupDatesByLocationTourKey.get(locationTourKey) ?? []),
+    ]
       .filter((date) => isDateInRange(date, link.startDate, link.endDate))
+      .filter((date, index, entries) => entries.indexOf(date) === index)
       .sort();
     if (dates.length === 0) {
       continue;
@@ -178,6 +244,14 @@ export const buildMaterializedLocationTourPickupDates = (input: WasteMaterializa
       if (dates.length === 0) {
         break;
       }
+    }
+
+    dates = dates.filter((date) => {
+      const parsedDate = parseIsoDateUtc(date);
+      return parsedDate ? syncYearSet.has(parsedDate.getUTCFullYear()) : false;
+    });
+    if (dates.length === 0) {
+      continue;
     }
 
     for (const pickupDate of dates) {
@@ -234,7 +308,7 @@ export const buildStudioRowsFromMaterialization = (input: {
     const tour = tourById.get(pickupDate.tourId);
     const location = locationById.get(pickupDate.locationId);
     const link = linkByLocationTourKey.get(`${pickupDate.locationId}::${pickupDate.tourId}`);
-    if (!tour || !location || !link) {
+    if (!tour || !location || !link || !location.active) {
       return [];
     }
 
@@ -243,9 +317,10 @@ export const buildStudioRowsFromMaterialization = (input: {
       return [];
     }
 
-    const street = location.streetId
-      ? streetById.get(location.streetId)?.name?.trim() ?? `location-${location.id}`
-      : `location-${location.id}`;
+    const street = location.streetId ? streetById.get(location.streetId)?.name?.trim() : undefined;
+    if (!street) {
+      return [];
+    }
 
     return tour.wasteFractionIds.flatMap((fractionId) => {
       const fraction = fractionById.get(fractionId);
@@ -258,7 +333,6 @@ export const buildStudioRowsFromMaterialization = (input: {
         pickupDate.pickupDate,
         wasteType.toLocaleLowerCase('de-DE'),
         street.toLocaleLowerCase('de-DE'),
-        (undefined as string | undefined),
         city.toLocaleLowerCase('de-DE'),
       ];
 

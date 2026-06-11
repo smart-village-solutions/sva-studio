@@ -38,6 +38,14 @@ type WasteSyncClientState = {
     createdAt: string;
     updatedAt: string;
   }[];
+  readonly locationTourPickupDates: readonly {
+    id: string;
+    locationId: string;
+    tourId: string;
+    pickupDate: string;
+    createdAt: string;
+    updatedAt: string;
+  }[];
   readonly cities: readonly {
     id: string;
     name: string;
@@ -114,6 +122,7 @@ const withWasteClientMock = vi.hoisted(() => vi.fn(async () => ({
   fractions: [],
   links: [],
   locations: [],
+  locationTourPickupDates: [],
   cities: [],
   streets: [],
   tourDateShifts: [],
@@ -150,6 +159,7 @@ describe('waste-management-mainserver-sync.server', () => {
       fractions: [],
       links: [],
       locations: [],
+      locationTourPickupDates: [],
       cities: [],
       streets: [],
       tourDateShifts: [],
@@ -162,7 +172,7 @@ describe('waste-management-mainserver-sync.server', () => {
     const result = await runWasteManagementMainserverSync({
       studioRows: [
         {
-          key: '2026-01-10::restmüll::hauptstraße::16928::musterhausen',
+          key: '2026-01-10::restmüll::hauptstraße::musterhausen',
           pickupDate: '2026-01-10',
           wasteType: 'Restmüll',
           street: 'Hauptstraße',
@@ -173,7 +183,7 @@ describe('waste-management-mainserver-sync.server', () => {
       mainserverRows: [
         {
           id: 'pickup-2',
-          key: '2026-01-17::restmüll::hauptstraße::16928::musterhausen',
+          key: '2026-01-17::restmüll::hauptstraße::musterhausen',
           pickupDate: '2026-01-17',
           wasteType: 'Restmüll',
           street: 'Hauptstraße',
@@ -205,7 +215,7 @@ describe('waste-management-mainserver-sync.server', () => {
     const result = await runWasteManagementMainserverSync({
       studioRows: [
         {
-          key: '2026-01-10::restmüll::hauptstraße::::musterhausen',
+          key: '2026-01-10::restmüll::hauptstraße::musterhausen',
           pickupDate: '2026-01-10',
           wasteType: 'Restmüll',
           street: 'Hauptstraße',
@@ -273,6 +283,136 @@ describe('waste-management-mainserver-sync.server', () => {
     expect(deleteSvaMainserverWastePickupTimesMock).not.toHaveBeenCalled();
   });
 
+  it('matches studio and mainserver rows even when only mainserver provides a ZIP code', async () => {
+    const result = await runWasteManagementMainserverSync({
+      studioRows: [
+        {
+          key: '2026-01-10::restmüll::hauptstraße::musterhausen',
+          pickupDate: '2026-01-10',
+          wasteType: 'Restmüll',
+          street: 'Hauptstraße',
+          city: 'Musterhausen',
+        },
+      ],
+      mainserverRows: [
+        {
+          id: 'pickup-1',
+          key: '2026-01-10::restmüll::hauptstraße::musterhausen',
+          pickupDate: '2026-01-10',
+          wasteType: 'Restmüll',
+          street: 'Hauptstraße',
+          zip: '16928',
+          city: 'Musterhausen',
+        },
+      ],
+      dryRun: false,
+    });
+
+    expect(result.createCount).toBe(0);
+    expect(result.deleteCount).toBe(0);
+  });
+
+  it('includes imported location pickup dates in the mainserver sync materialization', async () => {
+    withWasteClientMock.mockResolvedValueOnce({
+      tours: [
+        {
+          id: 'tour-1',
+          name: 'Rundtour',
+          wasteFractionIds: ['fraction-1'],
+          recurrence: 'on-demand',
+          customDates: [],
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      fractions: [
+        {
+          id: 'fraction-1',
+          name: 'Restmüll',
+          color: '#f00',
+          active: true,
+          reminderCount: 'none',
+          reminderChannelPushEnabled: false,
+          reminderChannelEmailEnabled: false,
+          reminderChannelCalendarEnabled: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      links: [
+        {
+          id: 'link-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locations: [
+        {
+          id: 'location-1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locationTourPickupDates: [
+        {
+          id: 'pickup-date-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          pickupDate: '2026-02-03',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      cities: [
+        {
+          id: 'city-1',
+          name: 'Musterhausen',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      streets: [
+        {
+          id: 'street-1',
+          cityId: 'city-1',
+          name: 'Hauptstraße',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      tourDateShifts: [],
+      globalDateShifts: [],
+      holidayRules: [],
+    });
+
+    const result = await runWasteManagementMainserverSyncForInstance({
+      instanceId: 'instance-1',
+      runtimeDeps: {
+        now: () => new Date('2026-01-15T00:00:00.000Z'),
+      },
+      syncInput: {
+        operation: 'sync-mainserver',
+      },
+    });
+
+    expect(result.createItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pickupDate: '2026-02-03',
+          wasteType: 'Restmüll',
+          street: 'Hauptstraße',
+          city: 'Musterhausen',
+        }),
+      ])
+    );
+  });
+
   it('materializes studio rows from tour recurrence and date-shift rules before sync', async () => {
     withWasteClientMock.mockResolvedValueOnce({
       tours: [
@@ -320,6 +460,7 @@ describe('waste-management-mainserver-sync.server', () => {
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
       ],
+      locationTourPickupDates: [],
       cities: [
         {
           id: 'city-1',

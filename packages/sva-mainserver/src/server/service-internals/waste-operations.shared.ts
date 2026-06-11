@@ -1,5 +1,4 @@
 import type { SvaMainserverConnectionInput, SvaMainserverInstanceConfig } from '../../types.js';
-
 import { toSvaMainserverError, type GraphqlExecutor } from './shared.js';
 
 export type SvaMainserverWasteSyncItem = Readonly<{
@@ -24,7 +23,6 @@ export type SvaMainserverWasteSyncSnapshot = Readonly<{
   }>[];
   pickupTimes: readonly SvaMainserverWasteSyncItem[];
 }>;
-
 type WasteToursQuery = {
   readonly wasteTours?: ReadonlyArray<{
     readonly id?: string | number | null;
@@ -32,7 +30,6 @@ type WasteToursQuery = {
     readonly wasteType?: string | null;
   } | null> | null;
 };
-
 type WasteLocationTypesQuery = {
   readonly wasteLocationTypes?: ReadonlyArray<{
     readonly id?: string | number | null;
@@ -50,20 +47,17 @@ type WasteLocationTypesQuery = {
     } | null> | null;
   } | null> | null;
 };
-
 type CreateWastePickUpTimesMutation = {
   readonly createWastePickUpTimes?: {
     readonly success?: boolean | null;
     readonly errors?: readonly (string | null)[] | null;
   } | null;
 };
-
 type DestroyWastePickUpTimeMutation = {
   readonly destroyWastePickUpTime?: {
     readonly id?: string | number | null;
   } | null;
 };
-
 const svaMainserverWasteToursDocument = `
 query SvaMainserverWasteTours {
   wasteTours {
@@ -73,7 +67,6 @@ query SvaMainserverWasteTours {
   }
 }
 `;
-
 const svaMainserverWasteLocationTypesDocument = `
 query SvaMainserverWasteLocationTypes(
   $tourId: ID!
@@ -97,7 +90,6 @@ query SvaMainserverWasteLocationTypes(
   }
 }
 `;
-
 const svaMainserverCreateWastePickUpTimesDocument = `
 mutation SvaMainserverCreateWastePickUpTimes(
   $inputs: [WastePickUpTimeSimplifiedInput!]!
@@ -110,7 +102,6 @@ mutation SvaMainserverCreateWastePickUpTimes(
   }
 }
 `;
-
 const svaMainserverDestroyWastePickUpTimeByIdsDocument = `
 mutation SvaMainserverDestroyWastePickUpTimeByIds(
   $ids: [ID!]!
@@ -122,7 +113,6 @@ mutation SvaMainserverDestroyWastePickUpTimeByIds(
   }
 }
 `;
-
 const svaMainserverDestroyWastePickUpTimeByValueDocument = `
 mutation SvaMainserverDestroyWastePickUpTimeByValue(
   $pickupDate: String!
@@ -136,12 +126,10 @@ mutation SvaMainserverDestroyWastePickUpTimeByValue(
   }
 }
 `;
-
 const trimToUndefined = (value: string | null | undefined): string | undefined => {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
 };
-
 const requireNonEmpty = (value: string | null | undefined, fieldName: string): string => {
   const trimmed = trimToUndefined(value);
   if (!trimmed) {
@@ -153,7 +141,6 @@ const requireNonEmpty = (value: string | null | undefined, fieldName: string): s
   }
   return trimmed;
 };
-
 const mapPickupTime = (
   locationType: NonNullable<NonNullable<WasteLocationTypesQuery['wasteLocationTypes']>[number]>,
   pickupTime: NonNullable<NonNullable<typeof locationType.pickUpTimes>[number]>
@@ -166,7 +153,6 @@ const mapPickupTime = (
   city: trimToUndefined(locationType.address?.city),
   note: trimToUndefined(pickupTime.note),
 });
-
 const assertCreateMutationSucceeded = (response: CreateWastePickUpTimesMutation): void => {
   const success = response.createWastePickUpTimes?.success;
   if (success) {
@@ -187,7 +173,6 @@ const assertCreateMutationSucceeded = (response: CreateWastePickUpTimesMutation)
     statusCode: 502,
   });
 };
-
 const toDeleteVariables = (item: SvaMainserverWasteSyncItem) => ({
   pickupDate: item.pickupDate,
   wasteLocationType: {
@@ -206,7 +191,6 @@ const toDeleteVariables = (item: SvaMainserverWasteSyncItem) => ({
     },
   },
 });
-
 export const listWasteSyncSnapshotWithConfig = async (
   executeGraphqlWithConfig: GraphqlExecutor,
   input: SvaMainserverConnectionInput,
@@ -220,7 +204,6 @@ export const listWasteSyncSnapshotWithConfig = async (
     },
     config
   );
-
   const tours =
     toursResponse.wasteTours
       ?.filter((tour): tour is NonNullable<(typeof toursResponse.wasteTours)[number]> => Boolean(tour))
@@ -243,7 +226,6 @@ export const listWasteSyncSnapshotWithConfig = async (
         },
         config
       );
-
       return (
         response.wasteLocationTypes
           ?.filter(
@@ -259,7 +241,6 @@ export const listWasteSyncSnapshotWithConfig = async (
     pickupTimes: pickupTimeBatches.flat(),
   };
 };
-
 export const createWastePickupTimesWithConfig = async (
   executeGraphqlWithConfig: GraphqlExecutor,
   input: SvaMainserverConnectionInput & { readonly items: readonly SvaMainserverWasteSyncItem[] },
@@ -268,7 +249,6 @@ export const createWastePickupTimesWithConfig = async (
   if (input.items.length === 0) {
     return;
   }
-
   const response = await executeGraphqlWithConfig<CreateWastePickUpTimesMutation>(
     {
       ...input,
@@ -291,10 +271,8 @@ export const createWastePickupTimesWithConfig = async (
     },
     config
   );
-
   assertCreateMutationSucceeded(response);
 };
-
 export const deleteWastePickupTimesWithConfig = async (
   executeGraphqlWithConfig: GraphqlExecutor,
   input: SvaMainserverConnectionInput & { readonly items: readonly SvaMainserverWasteSyncItem[] },
@@ -316,7 +294,6 @@ export const deleteWastePickupTimesWithConfig = async (
       config
     );
   }
-
   for (const item of itemsWithoutIds) {
     await executeGraphqlWithConfig<DestroyWastePickUpTimeMutation>(
       {

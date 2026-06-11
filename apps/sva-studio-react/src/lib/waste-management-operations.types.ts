@@ -3,11 +3,17 @@ import type {
   WasteManagementApplyMigrationsJobInput,
   WasteManagementImportJobInput,
   WasteManagementInitializeJobInput,
+  WasteManagementJobInput,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
   WasteManagementSyncWasteTypesJobInput,
 } from '@sva/core';
 import type { loadDefaultExternalInterfaceRecord, listExternalInterfaceRecords } from '@sva/data-repositories/server';
+
+type WasteManagementSyncMainserverJobInput = Extract<
+  WasteManagementJobInput,
+  { readonly operation: 'sync-mainserver' }
+>;
 
 export type SqlClient = {
   query: <TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) => Promise<{
@@ -49,6 +55,7 @@ export type WasteManagementOperationRuntime = {
     progressReporter?: WasteImportProgressReporter
   ) => Promise<OperationSummary>;
   seedData: (instanceId: string, input: WasteManagementSeedJobInput) => Promise<OperationSummary>;
+  syncMainserver: (instanceId: string, input: WasteManagementSyncMainserverJobInput) => Promise<OperationSummary>;
   syncWasteTypes: (instanceId: string, input: WasteManagementSyncWasteTypesJobInput) => Promise<OperationSummary>;
   resetData: (instanceId: string, input: WasteManagementResetJobInput) => Promise<OperationSummary>;
 };

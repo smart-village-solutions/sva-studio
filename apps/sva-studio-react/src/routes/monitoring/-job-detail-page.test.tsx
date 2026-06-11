@@ -177,6 +177,48 @@ describe('MonitoringJobDetailPage', () => {
     expect(screen.getAllByText(/service_unavailable/).length).toBeGreaterThan(0);
   });
 
+  it('renders a write summary for waste mainserver sync jobs', async () => {
+    usePluginOperationJobDetailMock.mockReturnValue({
+      detail: {
+        ...detailRecord,
+        status: 'succeeded',
+        pluginId: 'waste-management',
+        jobTypeId: 'waste-management.sync-mainserver',
+        resultPayload: {
+          summary: {
+            durationMs: 258,
+          },
+          plugin: {
+            operation: 'sync-mainserver',
+            mode: 'executed',
+            studioItemCount: 42,
+            mainserverItemCount: 39,
+            createCount: 7,
+            deleteCount: 3,
+            errorCount: 0,
+          },
+        },
+        errorPayload: undefined,
+      },
+      error: null,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<MonitoringJobDetailPage jobId="job-1" />);
+
+    expect(await screen.findByText('Schreibübersicht')).toBeTruthy();
+    expect(screen.getByText('Geschrieben')).toBeTruthy();
+    expect(screen.getByText('Gelöscht')).toBeTruthy();
+    expect(screen.getByText('Studio-Datensätze')).toBeTruthy();
+    expect(screen.getByText('Mainserver-Datensätze')).toBeTruthy();
+    expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+    expect(screen.getByText('7')).toBeTruthy();
+    expect(screen.getByText('3')).toBeTruthy();
+    expect(screen.getByText('42')).toBeTruthy();
+    expect(screen.getByText('39')).toBeTruthy();
+  });
+
   it('renders loading, empty history, and mapped errors', async () => {
     usePluginOperationJobDetailMock
       .mockReturnValueOnce({

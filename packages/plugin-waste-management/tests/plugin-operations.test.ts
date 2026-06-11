@@ -26,6 +26,10 @@ describe('waste management plugin operations', () => {
         jobTypeId: 'waste-management.reset-data',
       }),
       expect.objectContaining({
+        jobTypeId: 'waste-management.sync-mainserver',
+        queue: 'plugin-operations',
+      }),
+      expect.objectContaining({
         jobTypeId: 'waste-management.sync-waste-types',
         queue: 'plugin-operations',
       }),

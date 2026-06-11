@@ -15,6 +15,7 @@ export type WasteManagementUiAccess = Readonly<{
   canRunImport: boolean;
   canRunSeed: boolean;
   canRunReset: boolean;
+  canRunMainserverSync: boolean;
   canDeleteHistoryEntries: boolean;
 }>;
 
@@ -31,7 +32,8 @@ export const deriveWasteManagementUiAccess = (
   const canRunReset = grantedPermissions.has('waste-management.reset.execute');
   const canManageTours = grantedPermissions.has('waste-management.tours.manage');
   const canManageScheduling = grantedPermissions.has('waste-management.scheduling.manage');
-  const canAccessTools = canRunInitialize || canRunMigrations || canRunImport || canRunSeed || canRunReset;
+  const canAccessTools =
+    canRunInitialize || canRunMigrations || canRunImport || canRunSeed || canRunReset || canManageScheduling;
   const visibleTabIds: WasteManagementTabId[] = [...readOnlyTabIds];
 
   if (canAccessSettings) {
@@ -60,6 +62,7 @@ export const deriveWasteManagementUiAccess = (
     canRunImport,
     canRunSeed,
     canRunReset,
+    canRunMainserverSync: canManageScheduling,
     canDeleteHistoryEntries: false,
   };
 };

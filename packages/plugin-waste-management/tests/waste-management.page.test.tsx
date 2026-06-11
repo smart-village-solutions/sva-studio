@@ -24,6 +24,7 @@ const uiAccessMock = vi.hoisted(() => ({
   canRunMigrations: true,
   canRunImport: true,
   canRunSeed: true,
+  canRunMainserverSync: true,
   canRunReset: true,
 }));
 
@@ -241,6 +242,11 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
   startWasteManagementSeed: vi.fn(async () => ({
     id: 'job-2',
     jobTypeId: 'waste-management.seed-data',
+    status: 'pending',
+  })),
+  startWasteManagementMainserverSync: vi.fn(async () => ({
+    id: 'job-mainserver-sync-1',
+    jobTypeId: 'waste-management.sync-mainserver',
     status: 'pending',
   })),
   startWasteManagementSyncWasteTypes: vi.fn(async () => ({
@@ -756,6 +762,7 @@ describe('WasteManagementPage', () => {
     Object.assign(uiAccessMock, {
       visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'tools'],
       canAccessSettings: false,
+      canRunMainserverSync: false,
     });
 
     render(<WasteManagementPage />);

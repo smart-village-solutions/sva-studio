@@ -52,4 +52,15 @@ describe('waste-management.ui-access', () => {
       ]).canDuplicateTour
     ).toBe(true);
   });
+
+  it('allows the mainserver sync action with scheduling management access', () => {
+    const access = deriveWasteManagementUiAccess([
+      'waste-management.read',
+      'waste-management.scheduling.manage',
+    ]);
+
+    expect(access.canRunMainserverSync).toBe(true);
+    expect(access.canAccessTools).toBe(true);
+    expect(access.visibleTabIds).toEqual(['fractions', 'tours', 'locations', 'scheduling', 'tools']);
+  });
 });

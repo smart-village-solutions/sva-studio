@@ -70,7 +70,7 @@ describe('auth.route-runtime.server', () => {
     expect(response.headers.get('Allow')).toBe('GET');
   });
 
-  it('treats undefined handler maps as empty coverage entries instead of crashing', () => {
+  it('flags undefined handler maps as invalid coverage entries', () => {
     const logger = { warn: vi.fn() };
 
     expect(() =>
@@ -81,9 +81,14 @@ describe('auth.route-runtime.server', () => {
         },
         logger
       )
-    ).not.toThrow();
+    ).toThrow('Invalid auth route handler registration');
 
-    expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Auth route mapping contains invalid handler registrations',
+      expect.objectContaining({
+        missing_handler_maps: '/auth/login',
+      })
+    );
   });
 
   it('includes the request id in generated method-not-allowed responses when available', async () => {

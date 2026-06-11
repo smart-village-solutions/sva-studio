@@ -16,6 +16,7 @@ const {
   previewLocationTourPickupDateImportSchema,
   startImportSchema,
   startInitializeSchema,
+  startMainserverSyncSchema,
   startMigrationsSchema,
   startResetSchema,
   startSeedSchema,
@@ -337,6 +338,23 @@ export const wasteManagementOperationHandlers = {
       toPayload: () => ({
         operation: 'seed-data',
         seedKey: 'baseline',
+      }),
+    }),
+  startWasteManagementMainserverSyncInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> =>
+    startToolJob(request, ctx, deps, {
+      requiredPermission: 'waste-management.scheduling.manage',
+      endpoint: 'POST:/api/v1/waste-management/tools/mainserver-sync',
+      schema: startMainserverSyncSchema,
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncMainserver,
+      auditActionId: 'waste-management.mainserver-sync.started',
+      toPayload: () => ({
+        operation: 'sync-mainserver',
+        keycloakSubject: ctx.user.id,
+        activeOrganizationId: ctx.activeOrganizationId,
       }),
     }),
   startWasteManagementSyncWasteTypesInternal: async (

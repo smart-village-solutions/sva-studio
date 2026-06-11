@@ -84,6 +84,11 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     title: 'Seed',
     description: 'Populates the waste data source through the generic job capability with the baseline.',
   },
+  sync: {
+    actionLabel: 'Synchronize',
+    startSuccess: 'Mainserver synchronization was started.',
+    startError: 'Mainserver synchronization could not be started.',
+  },
   reset: {
     title: 'Reset',
     description: 'Reset remains a high-risk path and requires an explicit confirmation token.',

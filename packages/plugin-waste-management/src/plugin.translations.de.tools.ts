@@ -84,6 +84,11 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     title: 'Seed',
     description: 'Füllt die Waste-Datenquelle über die generische Job-Fähigkeit mit der Baseline.',
   },
+  sync: {
+    actionLabel: 'Synchronisieren',
+    startSuccess: 'Mainserver-Synchronisierung wurde gestartet.',
+    startError: 'Mainserver-Synchronisierung konnte nicht gestartet werden.',
+  },
   reset: {
     title: 'Reset',
     description: 'Reset bleibt ein hochriskanter Pfad und verlangt ein explizites Bestätigungstoken.',

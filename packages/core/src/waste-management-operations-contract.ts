@@ -4,6 +4,7 @@ const wasteManagementJobTypeIds = {
   importData: 'waste-management.import-data',
   seedData: 'waste-management.seed-data',
   resetData: 'waste-management.reset-data',
+  syncMainserver: 'waste-management.sync-mainserver',
   syncWasteTypes: 'waste-management.sync-waste-types',
 } as const;
 
@@ -72,6 +73,11 @@ export type WasteManagementJobInput =
   | WasteManagementImportJobInput
   | WasteManagementSeedJobInput
   | WasteManagementResetJobInput
+  | {
+      readonly operation: 'sync-mainserver';
+      readonly keycloakSubject?: string;
+      readonly activeOrganizationId?: string;
+    }
   | WasteManagementSyncWasteTypesJobInput;
 
 export const wasteManagementOperationsContract = {

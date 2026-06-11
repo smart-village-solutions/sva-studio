@@ -46,6 +46,7 @@ const coreHandlerMocks = vi.hoisted(() => ({
   startWasteManagementInitializeInternal: vi.fn(async () => new Response('start-initialize')),
   startWasteManagementImportInternal: vi.fn(async () => new Response('start-import')),
   startWasteManagementMigrationsInternal: vi.fn(async () => new Response('start-migrations')),
+  startWasteManagementMainserverSyncInternal: vi.fn(async () => new Response('start-mainserver-sync')),
   startWasteManagementResetInternal: vi.fn(async () => new Response('start-reset')),
   startWasteManagementSeedInternal: vi.fn(async () => new Response('start-seed')),
   startWasteManagementSyncWasteTypesInternal: vi.fn(async () => new Response('start-sync-waste-types')),
@@ -511,6 +512,10 @@ describe('wasteManagementHandlers', () => {
       {
         handlerKey: 'startSeed',
         internal: coreHandlerMocks.startWasteManagementSeedInternal,
+      },
+      {
+        handlerKey: 'startMainserverSync',
+        internal: coreHandlerMocks.startWasteManagementMainserverSyncInternal,
       },
       {
         handlerKey: 'startSyncWasteTypes',

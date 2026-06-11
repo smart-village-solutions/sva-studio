@@ -182,6 +182,11 @@ describe('waste management plugin server handlers', () => {
         expectedDetailKeys: ['confirmationTokenLength', 'deletedRows'],
       },
       {
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncMainserver,
+        inputPayload: { operation: 'sync-mainserver' },
+        expectedDetailKeys: ['studioItemCount', 'mainserverItemCount', 'createCount', 'deleteCount', 'errorCount'],
+      },
+      {
         jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncWasteTypes,
         inputPayload: { operation: 'sync-waste-types' },
         expectedDetailKeys: ['staticContentName', 'version', 'fractionCount'],
@@ -369,6 +374,17 @@ const createRuntime = (
       operation: 'reset-data',
       confirmationTokenLength: 5,
       deletedRows: { waste_regions: 1 },
+    },
+  })),
+  syncMainserver: vi.fn(async () => ({
+    durationMs: 1,
+    details: {
+      operation: 'sync-mainserver',
+      studioItemCount: 4,
+      mainserverItemCount: 3,
+      createCount: 1,
+      deleteCount: 2,
+      errorCount: 0,
     },
   })),
   syncWasteTypes: vi.fn(async () => ({

@@ -14,6 +14,7 @@ import {
   buildWasteFractionShortLabelBackfillStatement,
   inspectWasteSchema,
 } from './waste-management-operations.schema.js';
+import { runWasteManagementMainserverSyncForInstance } from './waste-management-mainserver-sync.server.js';
 import {
   buildOperationSummary,
   defaultCreatePool,
@@ -177,6 +178,26 @@ const createSeedDataOperation = (
   return buildOperationSummary(startedAt, details);
 };
 
+const createSyncMainserverOperation = (
+  deps: WasteOperationRuntimeDeps
+): WasteManagementOperationRuntime['syncMainserver'] => async (instanceId, input) => {
+  const startedAt = Date.now();
+  const details = await runWasteManagementMainserverSyncForInstance({
+    instanceId,
+    runtimeDeps: deps,
+    syncInput: input,
+  });
+  return buildOperationSummary(startedAt, {
+    operation: 'sync-mainserver',
+    mode: 'executed',
+    studioItemCount: details.studioItemCount,
+    mainserverItemCount: details.mainserverItemCount,
+    createCount: details.createCount,
+    deleteCount: details.deleteCount,
+    errorCount: details.errorCount,
+  });
+};
+
 const createSyncWasteTypesOperation = (
   deps: WasteOperationRuntimeDeps
 ): WasteManagementOperationRuntime['syncWasteTypes'] => async (instanceId, input) => {
@@ -255,6 +276,7 @@ export const createWasteManagementOperationRuntime = (
   applyMigrations: createApplyMigrationsOperation(deps),
   importData: createImportDataOperation(deps),
   seedData: createSeedDataOperation(deps),
+  syncMainserver: createSyncMainserverOperation(deps),
   syncWasteTypes: createSyncWasteTypesOperation(deps),
   resetData: createResetDataOperation(deps),
 });

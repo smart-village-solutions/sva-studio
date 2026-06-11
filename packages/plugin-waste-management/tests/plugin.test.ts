@@ -82,6 +82,7 @@ describe('pluginWasteManagement contract', () => {
       'waste-management.import-data',
       'waste-management.seed-data',
       'waste-management.reset-data',
+      'waste-management.sync-mainserver',
       'waste-management.sync-waste-types',
     ]);
   });
@@ -160,6 +161,10 @@ describe('pluginWasteManagement contract', () => {
       { eventType: 'waste-management.import.started', titleKey: 'wasteManagement.audit.importStarted' },
       { eventType: 'waste-management.seed.started', titleKey: 'wasteManagement.audit.seedStarted' },
       { eventType: 'waste-management.reset.started', titleKey: 'wasteManagement.audit.resetStarted' },
+      {
+        eventType: 'waste-management.mainserver-sync.started',
+        titleKey: 'wasteManagement.audit.mainserverSyncStarted',
+      },
       {
         eventType: 'waste-management.sync-waste-types.started',
         titleKey: 'wasteManagement.audit.syncWasteTypesStarted',

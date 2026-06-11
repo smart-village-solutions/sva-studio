@@ -5,6 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WasteManagementPage } from '../src/waste-management.page.js';
 
 const getWasteManagementSettingsMock = vi.hoisted(() => vi.fn(async () => null));
+const startWasteManagementMainserverSyncMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    id: 'job-sync-1',
+    status: 'queued',
+    jobTypeId: 'waste-management.sync-mainserver',
+  }))
+);
 const navigateMock = vi.fn();
 const searchState = {
   tab: 'tools',
@@ -28,6 +35,7 @@ const useWasteManagementUiAccessMock = vi.fn(() => ({
   canRunMigrations: true,
   canRunImport: true,
   canRunSeed: true,
+  canRunMainserverSync: true,
   canRunReset: true,
 }));
 
@@ -46,9 +54,15 @@ vi.mock('../src/waste-management.ui-access.js', () => ({
 
 vi.mock('../src/waste-management.api.js', () => ({
   getWasteManagementSettings: getWasteManagementSettingsMock,
+  startWasteManagementMainserverSync: startWasteManagementMainserverSyncMock,
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
+  Alert: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  AlertTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  AlertDescription: ({ children, className }: { readonly children: React.ReactNode; readonly className?: string }) => (
+    <div className={className}>{children}</div>
+  ),
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
   StudioOverviewPageTemplate: ({
     title,
@@ -123,7 +137,14 @@ describe('WasteManagementPage shell', () => {
       canRunMigrations: true,
       canRunImport: true,
       canRunSeed: true,
+      canRunMainserverSync: true,
       canRunReset: true,
+    });
+    startWasteManagementMainserverSyncMock.mockReset();
+    startWasteManagementMainserverSyncMock.mockResolvedValue({
+      id: 'job-sync-1',
+      status: 'queued',
+      jobTypeId: 'waste-management.sync-mainserver',
     });
     searchState.tab = 'tools';
     searchState.masterDataTab = 'locations';
@@ -180,6 +201,7 @@ describe('WasteManagementPage shell', () => {
       canRunMigrations: false,
       canRunImport: false,
       canRunSeed: false,
+      canRunMainserverSync: false,
       canRunReset: false,
     });
 
@@ -210,6 +232,16 @@ describe('WasteManagementPage shell', () => {
         },
         replace: true,
       });
+    });
+  });
+
+  it('renders the header sync action and starts the mainserver sync job', async () => {
+    render(<WasteManagementPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'tools.sync.actionLabel' }));
+
+    await waitFor(() => {
+      expect(startWasteManagementMainserverSyncMock).toHaveBeenCalledWith({});
     });
   });
 });

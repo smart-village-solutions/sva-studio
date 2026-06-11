@@ -138,7 +138,6 @@ export type {
   WasteManagementJobInput,
   WasteManagementJobTypeId,
   WasteManagementResetJobInput,
-  WasteManagementSyncMainserverJobInput,
   WasteManagementSeedJobInput,
   WasteManagementSyncWasteTypesJobInput,
 } from './waste-management-operations-contract.js';

@@ -13,8 +13,8 @@ import {
 import {
   buildMaterializedLocationTourPickupDates,
   buildStudioRowsFromMaterialization,
-  type WasteMaterializationContext,
 } from './waste-management-mainserver-sync.materialization.js';
+import type { WasteMaterializationContext } from './waste-management-mainserver-sync.materialization.shared.js';
 
 import type { WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 import { withWasteClient } from './waste-management-operations.shared.js';

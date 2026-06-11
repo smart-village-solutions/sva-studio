@@ -8,7 +8,6 @@ import {
   type WasteManagementJobInput,
   type WasteManagementResetJobInput,
   type WasteManagementSeedJobInput,
-  type WasteManagementSyncMainserverJobInput,
   type WasteManagementSyncWasteTypesJobInput,
 } from '@sva/plugin-sdk';
 
@@ -30,6 +29,10 @@ const createProgress = (input: {
 });
 
 type WasteManagementJobProgress = ReturnType<typeof createProgress>;
+type WasteManagementSyncMainserverJobInput = Extract<
+  WasteManagementJobInput,
+  { readonly operation: 'sync-mainserver' }
+>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;

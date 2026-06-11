@@ -1,9 +1,11 @@
 import type {
+  WasteCityRecord,
   WasteTourRecord,
   WasteLocationTourLinkRecord,
   WasteCollectionLocationRecord,
   WasteFractionRecord,
   WasteLocationTourPickupDateRecord,
+  WasteStreetRecord,
 } from '@sva/core';
 import {
   addDays,
@@ -211,6 +213,8 @@ export const buildStudioRowsFromMaterialization = (input: {
   readonly fractions: readonly WasteFractionRecord[];
   readonly links: readonly WasteLocationTourLinkRecord[];
   readonly locations: readonly WasteCollectionLocationRecord[];
+  readonly cities: readonly WasteCityRecord[];
+  readonly streets: readonly WasteStreetRecord[];
 }): readonly {
   readonly pickupDate: string;
   readonly wasteType: string;
@@ -222,6 +226,8 @@ export const buildStudioRowsFromMaterialization = (input: {
   const tourById = new Map(input.tours.map((tour) => [tour.id, tour] as const));
   const fractionById = new Map(input.fractions.map((fraction) => [fraction.id, fraction] as const));
   const locationById = new Map(input.locations.map((location) => [location.id, location] as const));
+  const cityById = new Map(input.cities.map((city) => [city.id, city] as const));
+  const streetById = new Map(input.streets.map((street) => [street.id, street] as const));
   const linkByLocationTourKey = new Map(input.links.map((link) => [`${link.locationId}::${link.tourId}`, link] as const));
 
   return input.pickupDates.flatMap((pickupDate) => {
@@ -232,8 +238,14 @@ export const buildStudioRowsFromMaterialization = (input: {
       return [];
     }
 
-    const street = location.streetId ? location.streetId : `location-${location.id}`;
-    const city = location.cityId;
+    const city = cityById.get(location.cityId)?.name?.trim();
+    if (!city) {
+      return [];
+    }
+
+    const street = location.streetId
+      ? streetById.get(location.streetId)?.name?.trim() ?? `location-${location.id}`
+      : `location-${location.id}`;
 
     return tour.wasteFractionIds.flatMap((fractionId) => {
       const fraction = fractionById.get(fractionId);

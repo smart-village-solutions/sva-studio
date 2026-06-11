@@ -82,7 +82,7 @@ export const extractMonitoringJobWriteSummary = (job: Pick<StudioJobDetail, 'job
   }
 
   const operation = plugin.operation;
-  if (job.jobTypeId !== 'waste-management.sync-mainserver' && operation !== 'sync-mainserver') {
+  if (job.jobTypeId !== 'waste-management.sync-mainserver' || operation !== 'sync-mainserver') {
     return null;
   }
 

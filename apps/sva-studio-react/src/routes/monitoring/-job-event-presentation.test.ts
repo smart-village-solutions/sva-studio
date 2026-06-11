@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { StudioJobEventRecord } from '@sva/core';
+import type { StudioJobDetail } from '@sva/core';
 
 import {
   formatMonitoringJobEventMessage,
@@ -9,6 +10,7 @@ import {
   resolveMonitoringJobEventTone,
 } from './-job-event-presentation';
 import {
+  extractMonitoringJobWriteSummary,
   formatMonitoringJobDateTime,
   formatMonitoringJobProgressSummary,
   getMonitoringJobCurrentStep,
@@ -111,5 +113,48 @@ describe('monitoring job event presentation', () => {
       })
     ).toBe('Normalisieren');
     expect(getMonitoringJobCurrentStep(undefined)).toBe('Nicht verfügbar');
+  });
+
+  it('renders the write summary only for the expected waste mainserver sync job type and operation', () => {
+    const job = {
+      jobTypeId: 'waste-management.sync-mainserver',
+      resultPayload: {
+        plugin: {
+          operation: 'sync-mainserver',
+          createCount: 7,
+          deleteCount: 3,
+          studioItemCount: 42,
+          mainserverItemCount: 39,
+          errorCount: 0,
+        },
+      },
+    } satisfies Pick<StudioJobDetail, 'jobTypeId' | 'resultPayload'>;
+
+    expect(extractMonitoringJobWriteSummary(job)).toEqual({
+      writtenCount: 7,
+      deletedCount: 3,
+      studioCount: 42,
+      mainserverCount: 39,
+      errorCount: 0,
+    });
+
+    expect(
+      extractMonitoringJobWriteSummary({
+        ...job,
+        resultPayload: {
+          plugin: {
+            ...job.resultPayload.plugin,
+            operation: 'other-operation',
+          },
+        },
+      })
+    ).toBeNull();
+
+    expect(
+      extractMonitoringJobWriteSummary({
+        ...job,
+        jobTypeId: 'waste-management.sync-waste-types',
+      })
+    ).toBeNull();
   });
 });

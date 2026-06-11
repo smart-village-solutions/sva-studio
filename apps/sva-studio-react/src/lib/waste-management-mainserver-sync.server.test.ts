@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type WasteSyncClientState = {
   readonly tours: readonly {
@@ -33,7 +33,21 @@ type WasteSyncClientState = {
   readonly locations: readonly {
     id: string;
     cityId: string;
+    streetId?: string;
     active: true | false;
+    createdAt: string;
+    updatedAt: string;
+  }[];
+  readonly cities: readonly {
+    id: string;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+  }[];
+  readonly streets: readonly {
+    id: string;
+    cityId: string;
+    name: string;
     createdAt: string;
     updatedAt: string;
   }[];
@@ -80,7 +94,19 @@ type WasteSyncClientState = {
   }[];
 };
 
-const listSvaMainserverWasteSyncSnapshotMock = vi.hoisted(() => vi.fn(async () => ({ pickupTimes: [] })));
+const listSvaMainserverWasteSyncSnapshotMock = vi.hoisted(() =>
+  vi.fn(
+    async (): Promise<{
+      pickupTimes: Array<{
+        id?: string;
+        pickupDate: string;
+        wasteType: string;
+        street: string;
+        city?: string;
+      }>;
+    }> => ({ pickupTimes: [] })
+  )
+);
 const createSvaMainserverWastePickupTimesMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteSvaMainserverWastePickupTimesMock = vi.hoisted(() => vi.fn(async () => undefined));
 const withWasteClientMock = vi.hoisted(() => vi.fn(async () => ({
@@ -88,6 +114,8 @@ const withWasteClientMock = vi.hoisted(() => vi.fn(async () => ({
   fractions: [],
   links: [],
   locations: [],
+  cities: [],
+  streets: [],
   tourDateShifts: [],
   globalDateShifts: [],
   holidayRules: [],
@@ -109,6 +137,27 @@ import {
 } from './waste-management-mainserver-sync.server.js';
 
 describe('waste-management-mainserver-sync.server', () => {
+  beforeEach(() => {
+    listSvaMainserverWasteSyncSnapshotMock.mockReset();
+    listSvaMainserverWasteSyncSnapshotMock.mockResolvedValue({ pickupTimes: [] });
+    createSvaMainserverWastePickupTimesMock.mockReset();
+    createSvaMainserverWastePickupTimesMock.mockResolvedValue(undefined);
+    deleteSvaMainserverWastePickupTimesMock.mockReset();
+    deleteSvaMainserverWastePickupTimesMock.mockResolvedValue(undefined);
+    withWasteClientMock.mockReset();
+    withWasteClientMock.mockResolvedValue({
+      tours: [],
+      fractions: [],
+      links: [],
+      locations: [],
+      cities: [],
+      streets: [],
+      tourDateShifts: [],
+      globalDateShifts: [],
+      holidayRules: [],
+    } as unknown as WasteSyncClientState);
+  });
+
   it('computes create and delete sets from normalized Studio and Mainserver rows', async () => {
     const result = await runWasteManagementMainserverSync({
       studioRows: [
@@ -197,6 +246,33 @@ describe('waste-management-mainserver-sync.server', () => {
     expect(deleteSvaMainserverWastePickupTimesMock).not.toHaveBeenCalled();
   });
 
+  it('does not delete mainserver rows outside the synchronized year window', async () => {
+    listSvaMainserverWasteSyncSnapshotMock.mockResolvedValueOnce({
+      pickupTimes: [
+        {
+          id: 'pickup-2030',
+          pickupDate: '2030-01-10',
+          wasteType: 'Restmüll',
+          street: 'Hauptstraße',
+          city: 'Musterhausen',
+        },
+      ],
+    });
+
+    const result = await runWasteManagementMainserverSyncForInstance({
+      instanceId: 'instance-1',
+      runtimeDeps: {
+        now: () => new Date('2026-06-15T00:00:00.000Z'),
+      },
+      syncInput: {
+        operation: 'sync-mainserver',
+      },
+    });
+
+    expect(result.deleteCount).toBe(0);
+    expect(deleteSvaMainserverWastePickupTimesMock).not.toHaveBeenCalled();
+  });
+
   it('materializes studio rows from tour recurrence and date-shift rules before sync', async () => {
     withWasteClientMock.mockResolvedValueOnce({
       tours: [
@@ -238,7 +314,25 @@ describe('waste-management-mainserver-sync.server', () => {
         {
           id: 'location-1',
           cityId: 'city-1',
+          streetId: 'street-1',
           active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      cities: [
+        {
+          id: 'city-1',
+          name: 'Musterhausen',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      streets: [
+        {
+          id: 'street-1',
+          cityId: 'city-1',
+          name: 'Hauptstraße',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -280,10 +374,14 @@ describe('waste-management-mainserver-sync.server', () => {
           expect.objectContaining({
             pickupDate: '2026-01-05',
             wasteType: 'Restmüll',
+            street: 'Hauptstraße',
+            city: 'Musterhausen',
           }),
           expect.objectContaining({
             pickupDate: '2026-01-13',
             wasteType: 'Restmüll',
+            street: 'Hauptstraße',
+            city: 'Musterhausen',
           }),
         ]),
       })

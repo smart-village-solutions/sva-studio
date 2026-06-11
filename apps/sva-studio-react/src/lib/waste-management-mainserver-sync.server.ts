@@ -1,7 +1,9 @@
 import type {
+  WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteFractionRecord,
   WasteLocationTourLinkRecord,
+  WasteStreetRecord,
   WasteTourRecord,
 } from '@sva/core';
 import {
@@ -14,7 +16,11 @@ import {
   buildMaterializedLocationTourPickupDates,
   buildStudioRowsFromMaterialization,
 } from './waste-management-mainserver-sync.materialization.js';
-import type { WasteMaterializationContext } from './waste-management-mainserver-sync.materialization.shared.js';
+import {
+  getEffectiveYearWindow,
+  parseIsoDateUtc,
+  type WasteMaterializationContext,
+} from './waste-management-mainserver-sync.materialization.shared.js';
 
 import type { WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 import { withWasteClient } from './waste-management-operations.shared.js';
@@ -26,8 +32,10 @@ type WasteManagementSyncMainserverJobInput = {
 };
 
 type WasteMaterializationSyncState = Omit<WasteMaterializationContext, 'currentYear' | 'nextYear'> & {
+  readonly cities: readonly WasteCityRecord[];
   readonly fractions: readonly WasteFractionRecord[];
   readonly locations: readonly WasteCollectionLocationRecord[];
+  readonly streets: readonly WasteStreetRecord[];
   readonly tours: readonly WasteTourRecord[];
   readonly links: readonly WasteLocationTourLinkRecord[];
 };
@@ -68,6 +76,18 @@ const toSyncRow = (item: SvaMainserverWasteSyncItem): WasteSyncRow => ({
   key: buildWasteSyncKey(item),
 });
 
+const filterSyncRowsToYearWindow = (
+  rows: readonly WasteSyncRow[],
+  currentYear: number,
+  nextYear: number
+): readonly WasteSyncRow[] => {
+  const yearWindow = new Set(getEffectiveYearWindow(currentYear, nextYear));
+  return rows.filter((row) => {
+    const pickupDate = parseIsoDateUtc(row.pickupDate);
+    return pickupDate ? yearWindow.has(pickupDate.getUTCFullYear()) : false;
+  });
+};
+
 const buildStudioRowsFromSyncState = (
   studioState: WasteMaterializationSyncState,
   now: Date
@@ -84,6 +104,8 @@ const buildStudioRowsFromSyncState = (
     fractions: studioState.fractions,
     links: studioState.links,
     locations: studioState.locations,
+    cities: studioState.cities,
+    streets: studioState.streets,
   }).map(toSyncRow);
 };
 
@@ -134,12 +156,16 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     fractions: await repository.listWasteFractions(),
     links: await repository.listWasteLocationTourLinks(),
     locations: await repository.listWasteCollectionLocations(),
+    cities: await repository.listWasteCities(),
+    streets: await repository.listWasteStreets(),
     tourDateShifts: await repository.listWasteTourDateShifts(),
     globalDateShifts: await repository.listWasteGlobalDateShifts(),
     holidayRules: await repository.listWasteHolidayRules(),
   }));
 
   const now = input.runtimeDeps?.now?.() ?? new Date();
+  const currentYear = now.getUTCFullYear();
+  const nextYear = currentYear + 1;
   const studioRows = buildStudioRowsFromSyncState(studioState, now);
   const keycloakSubject = input.syncInput.keycloakSubject?.trim() || 'plugin-operation-runtime';
   const activeOrganizationId = input.syncInput.activeOrganizationId?.trim() || undefined;
@@ -148,7 +174,11 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     keycloakSubject,
     activeOrganizationId,
   });
-  const mainserverRows = mainserverSnapshot.pickupTimes.map(toSyncRow);
+  const mainserverRows = filterSyncRowsToYearWindow(
+    mainserverSnapshot.pickupTimes.map(toSyncRow),
+    currentYear,
+    nextYear
+  );
 
   return await runWasteManagementMainserverSync({
     studioRows,

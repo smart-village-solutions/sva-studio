@@ -61,6 +61,12 @@ export type WasteManagementResetJobInput = {
   readonly confirmationToken: string;
 };
 
+export type WasteManagementSyncMainserverJobInput = {
+  readonly operation: 'sync-mainserver';
+  readonly keycloakSubject?: string;
+  readonly activeOrganizationId?: string;
+};
+
 export type WasteManagementSyncWasteTypesJobInput = {
   readonly operation: 'sync-waste-types';
   readonly keycloakSubject?: string;
@@ -73,11 +79,7 @@ export type WasteManagementJobInput =
   | WasteManagementImportJobInput
   | WasteManagementSeedJobInput
   | WasteManagementResetJobInput
-  | {
-      readonly operation: 'sync-mainserver';
-      readonly keycloakSubject?: string;
-      readonly activeOrganizationId?: string;
-    }
+  | WasteManagementSyncMainserverJobInput
   | WasteManagementSyncWasteTypesJobInput;
 
 export const wasteManagementOperationsContract = {

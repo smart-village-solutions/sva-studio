@@ -110,7 +110,7 @@ jobs:
 
       - name: Upload to Codecov
         if: always() && env.CODECOV_TOKEN != '' && (github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.coverage_mode != 'skip'))
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ env.CODECOV_TOKEN }}
           files: ./apps/**/coverage/lcov.info,./packages/**/coverage/lcov.info

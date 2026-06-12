@@ -954,6 +954,33 @@ describe('resolveTenantRuntimeTargets', () => {
     ]);
   });
 
+  it('keeps explicit hosts when the registry only hydrates the auth realm', () => {
+    expect(
+      mergeExplicitTenantTargetsWithRegistry(
+        [
+          {
+            authRealm: 'hb-meinquartier',
+            host: 'hb-meinquartier.preview.smart-village.app',
+            instanceId: 'hb-meinquartier',
+          },
+        ],
+        [
+          {
+            authRealm: 'saas-hb-meinquartier',
+            host: 'hb-meinquartier.studio.smart-village.app',
+            instanceId: 'hb-meinquartier',
+          },
+        ]
+      )
+    ).toEqual([
+      {
+        authRealm: 'saas-hb-meinquartier',
+        host: 'hb-meinquartier.preview.smart-village.app',
+        instanceId: 'hb-meinquartier',
+      },
+    ]);
+  });
+
   it('keeps the explicit tenant scope as fallback when the registry has no matching instance entry', () => {
     expect(
       mergeExplicitTenantTargetsWithRegistry(

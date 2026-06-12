@@ -83,6 +83,11 @@ const pickPreferredBucketObject = (
   return candidate.storageKey.localeCompare(current.storageKey) >= 0 ? candidate : current;
 };
 
+const isGeneratedVariantObject = (instanceId: string, storageKey: string): boolean => {
+  const segments = storageKey.split('/').filter((segment) => segment.length > 0);
+  return segments[0] === instanceId && segments[1] === 'variants';
+};
+
 export const mergeMediaListingPage = (input: {
   instanceId: string;
   page: number;
@@ -110,7 +115,7 @@ export const mergeMediaListingPage = (input: {
   const deduplicatedBucketObjects = includeUnregisteredItems
     ? Array.from(
         input.bucketObjects.reduce<Map<string, MediaStorageObjectSummary>>((accumulator, entry) => {
-          if (registeredKeys.has(entry.storageKey)) {
+          if (registeredKeys.has(entry.storageKey) || isGeneratedVariantObject(input.instanceId, entry.storageKey)) {
             return accumulator;
           }
 

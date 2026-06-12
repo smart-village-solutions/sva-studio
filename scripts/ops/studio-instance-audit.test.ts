@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { inspectLocalStudioIam } from './studio-instance-audit/local-iam.ts';
 import { loadAuditTargets } from './studio-instance-audit/registry.ts';
 import { inspectTenantSecrets } from './studio-instance-audit/secrets.ts';
+import { runHttpChecks } from './studio-instance-audit/http-checks.ts';
 import { assertStudioAuditRuntime } from './studio-instance-audit/runtime.ts';
 import { runStudioInstanceAuditCli } from './studio-instance-audit.ts';
 
@@ -86,6 +87,33 @@ describe('loadAuditTargets', () => {
         tenantAdminUsername: 'ada.admin',
       },
     ]);
+  });
+});
+
+describe('runHttpChecks', () => {
+  it('passes an abort timeout signal into both reachability probes', async () => {
+    const fetchImplMock = vi.fn(async () => new Response(null, { status: 200 }));
+    const fetchImpl = fetchImplMock as typeof fetch;
+
+    await runHttpChecks(
+      {
+        instanceId: 'bb-guben',
+        primaryHostname: 'bb-guben.studio.smart-village.app',
+      },
+      {
+        fetchImpl,
+        timeoutMs: 1234,
+      },
+    );
+
+    expect(fetchImplMock).toHaveBeenCalledTimes(2);
+    for (const [, requestInit] of fetchImplMock.mock
+      .calls as unknown as Array<[string, RequestInit | undefined]>) {
+      expect(requestInit).toMatchObject({
+        redirect: 'manual',
+        signal: expect.any(AbortSignal),
+      });
+    }
   });
 });
 

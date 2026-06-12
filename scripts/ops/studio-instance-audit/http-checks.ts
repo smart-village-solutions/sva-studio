@@ -4,14 +4,15 @@ const okStatus = (status: number) => status >= 200 && status < 400;
 
 export const runHttpChecks = async (
   target: Pick<AuditRegistryTarget, 'instanceId' | 'primaryHostname'>,
-  deps: { fetchImpl?: typeof fetch } = {},
+  deps: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
 ): Promise<{ checks: readonly AuditCheckResult[] }> => {
   const fetchImpl = deps.fetchImpl ?? fetch;
+  const timeoutMs = deps.timeoutMs ?? 10_000;
   const origin = `https://${target.primaryHostname}`;
 
   const [rootResponse, loginResponse] = await Promise.allSettled([
-    fetchImpl(`${origin}/`, { redirect: 'manual' }),
-    fetchImpl(`${origin}/auth/login`, { redirect: 'manual' }),
+    fetchImpl(`${origin}/`, { redirect: 'manual', signal: AbortSignal.timeout(timeoutMs) }),
+    fetchImpl(`${origin}/auth/login`, { redirect: 'manual', signal: AbortSignal.timeout(timeoutMs) }),
   ]);
 
   const checks: AuditCheckResult[] = [];

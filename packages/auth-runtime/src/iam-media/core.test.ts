@@ -35,6 +35,7 @@ const createService = () => ({
           technical: {},
         }
   ),
+  getAssetByStorageKey: vi.fn(async () => null),
   getUsageImpact: vi.fn(async (_instanceId: string, assetId: string) => ({
     assetId,
     totalReferences: 1,
@@ -761,7 +762,7 @@ describe('media http handlers', () => {
 
   it('registers an existing bucket object as a managed media asset', async () => {
     const service = createService();
-    service.listAssets = vi.fn(async () => []);
+    service.getAssetByStorageKey = vi.fn(async () => null);
 
     const handlers = createMediaHttpHandlers({
       withMediaService: async (_instanceId, work) => work(service as never),
@@ -789,6 +790,7 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(201);
+    expect(service.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 42);
     expect(service.upsertAsset).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'asset-registered',
@@ -799,6 +801,119 @@ describe('media http handlers', () => {
         processingStatus: 'ready',
       })
     );
+    expect(service.applyStorageUsageDelta).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      totalBytesDelta: 42,
+      assetCountDelta: 1,
+    });
+  });
+
+  it('returns the existing asset when the bucket object is already registered by storage key', async () => {
+    const service = createService();
+    service.getAssetByStorageKey = vi.fn(async () => ({
+      id: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'cms_uploads/photo.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 42,
+      visibility: 'public',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {},
+      technical: {},
+      updatedAt: '2026-04-29T19:00:00.000Z',
+    }));
+
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'asset-registered',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.registerBucketMedia(
+      new Request('http://localhost/api/v1/iam/media/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'tenant-a',
+          storageKey: 'cms_uploads/photo.jpg',
+          fileName: 'photo.jpg',
+          byteSize: 42,
+          mimeType: 'image/jpeg',
+          visibility: 'public',
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    expect(service.upsertAsset).not.toHaveBeenCalled();
+    expect(service.applyStorageUsageDelta).not.toHaveBeenCalled();
+  });
+
+  it('rejects registration of cross-instance managed storage keys', async () => {
+    const service = createService();
+
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'asset-registered',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.registerBucketMedia(
+      new Request('http://localhost/api/v1/iam/media/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'tenant-a',
+          storageKey: 'tenant-b/originals/photo.jpg',
+          fileName: 'photo.jpg',
+          byteSize: 42,
+          mimeType: 'image/jpeg',
+          visibility: 'public',
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(403);
+    expect(service.upsertAsset).not.toHaveBeenCalled();
+  });
+
+  it('rejects registration of generated variant objects', async () => {
+    const service = createService();
+
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'asset-registered',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.registerBucketMedia(
+      new Request('http://localhost/api/v1/iam/media/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'tenant-a',
+          storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
+          fileName: 'thumbnail.webp',
+          byteSize: 42,
+          mimeType: 'image/webp',
+          visibility: 'public',
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(400);
+    expect(service.upsertAsset).not.toHaveBeenCalled();
   });
 
   it('returns a conflict when the upload would exceed the storage quota', async () => {

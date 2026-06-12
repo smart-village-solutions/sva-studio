@@ -303,7 +303,7 @@ describe('service-audit helpers', () => {
 
     expect(checks[0]).toMatchObject({
       checkId: 'keycloak.access.read',
-      status: 'warn',
+      status: 'fail',
       actual: 'HTTP 403 Forbidden',
       details: expect.objectContaining({
         primaryEvidenceSource: 'keycloak_live',
@@ -314,8 +314,8 @@ describe('service-audit helpers', () => {
     });
     expect(checks[1]).toMatchObject({
       checkId: 'keycloak.realm.exists',
-      status: 'warn',
-      actual: 'live_nicht_verifiziert',
+      status: 'fail',
+      actual: 'HTTP 403 Forbidden',
     });
   });
 

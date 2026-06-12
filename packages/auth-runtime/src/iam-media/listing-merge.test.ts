@@ -149,6 +149,32 @@ describe('mergeMediaListingPage', () => {
     expect(result.total).toBe(3);
   });
 
+  it('filters generated variants out of the unregistered bucket listing', () => {
+    const result = mergeMediaListingPage({
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 10,
+      registeredAssets: [],
+      bucketObjects: [
+        {
+          storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
+          byteSize: 12,
+          lastModified: '2026-06-11T09:00:00.000Z',
+        },
+        {
+          storageKey: 'tenant-a/uploads/2026/06/photo.jpg',
+          byteSize: 8,
+          lastModified: '2026-06-11T08:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(result.items.map((item) => ('id' in item ? item.id : item.storageKey))).toEqual([
+      'tenant-a/uploads/2026/06/photo.jpg',
+    ]);
+    expect(result.total).toBe(1);
+  });
+
   it('keeps the freshest duplicate bucket metadata when repeated storage keys disagree across pages', () => {
     const result = mergeMediaListingPage({
       instanceId: 'tenant-a',

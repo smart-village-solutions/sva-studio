@@ -84,7 +84,7 @@ const createRealmUnavailableChecks = (input: {
   fallbackEvidenceSource?: string;
   fallbackError?: string;
 }): readonly InstanceAuditCheck[] => {
-  const hasFallback = Boolean(input.fallbackEvidenceSource);
+  const hasFallback = Boolean(input.fallbackEvidenceSource && input.fallbackStatus);
   const accessStatus: InstanceAuditCheck['status'] = hasFallback ? 'warn' : 'fail';
   const accessDetails: Record<string, unknown> = {
     primaryEvidenceSource: input.evidenceSource,

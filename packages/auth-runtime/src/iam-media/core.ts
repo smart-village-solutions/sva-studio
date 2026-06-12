@@ -157,6 +157,29 @@ const resolveBodyScopedInstanceId = (requestedInstanceId: string | undefined, us
   return { ok: true, instanceId };
 };
 
+const isManagedTenantStorageKeyForAnotherInstance = (instanceId: string, storageKey: string): boolean => {
+  const segments = storageKey.split('/').filter((segment) => segment.length > 0);
+  if (segments.length < 2) {
+    return false;
+  }
+
+  const [firstSegment, secondSegment] = segments;
+  return firstSegment !== instanceId && ['originals', 'uploads', 'variants'].includes(secondSegment ?? '');
+};
+
+const isGeneratedVariantStorageKey = (instanceId: string, storageKey: string): boolean => {
+  const segments = storageKey.split('/').filter((segment) => segment.length > 0);
+  if (segments.length === 0) {
+    return false;
+  }
+
+  if (segments[0] === 'variants') {
+    return true;
+  }
+
+  return segments[0] === instanceId && segments[1] === 'variants';
+};
+
 type MediaHttpHandlerDeps = {
   readonly withMediaService: <T>(instanceId: string, work: (service: MediaService) => Promise<T>) => Promise<T>;
   readonly storagePort: MediaStoragePort;
@@ -692,16 +715,27 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return mapAuthorizationFailure(authorization);
     }
 
-    const existingAsset = await deps.withMediaService(instanceId, async (service) => {
-      const existing = await service.listAssets({
-        instanceId,
-        search: parsed.data.storageKey,
-        limit: 25,
-        offset: 0,
-      });
+    if (isGeneratedVariantStorageKey(instanceId, parsed.data.storageKey)) {
+      return createApiError(
+        400,
+        'invalid_request',
+        'Generierte Varianten koennen nicht als eigenstaendige Medienobjekte registriert werden.',
+        getRequestId()
+      );
+    }
 
-      return existing.find((asset) => asset.storageKey === parsed.data.storageKey) ?? null;
-    });
+    if (isManagedTenantStorageKeyForAnotherInstance(instanceId, parsed.data.storageKey)) {
+      return createApiError(
+        403,
+        'forbidden',
+        'Der Storage-Key gehoert nicht zum aktiven Instanzkontext.',
+        getRequestId()
+      );
+    }
+
+    const existingAsset = await deps.withMediaService(instanceId, (service) =>
+      service.getAssetByStorageKey(instanceId, parsed.data.storageKey)
+    );
 
     if (existingAsset) {
       await emitMediaAuditEvent({
@@ -716,6 +750,17 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       });
 
       return jsonResponse(200, asApiItem(assertSupportedListAssetVisibility(existingAsset), getRequestId()));
+    }
+
+    const storageQuotaCheck = await deps.withMediaService(instanceId, (service) =>
+      service.wouldExceedStorageQuota(instanceId, parsed.data.byteSize)
+    );
+
+    if (storageQuotaCheck.wouldExceed) {
+      return createApiError(409, 'conflict', 'Speicherkontingent der Instanz würde überschritten.', getRequestId(), {
+        reason: 'storage_quota_exceeded',
+        maxBytes: storageQuotaCheck.maxBytes,
+      });
     }
 
     const assetId = deps.createId();
@@ -742,6 +787,11 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     await deps.withMediaService(instanceId, async (service) => {
       await service.upsertAsset(nextAsset);
+      await service.applyStorageUsageDelta({
+        instanceId,
+        totalBytesDelta: parsed.data.byteSize,
+        assetCountDelta: 1,
+      });
     });
 
     await emitMediaAuditEvent({

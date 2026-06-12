@@ -2281,7 +2281,17 @@ const mergeExplicitTenantTargetsWithRegistry = (
     registryTargets.map((target) => [target.instanceId, target] as const)
   );
 
-  return explicitTargets.map((target) => registryByInstanceId.get(target.instanceId) ?? target);
+  return explicitTargets.map((target) => {
+    const registryTarget = registryByInstanceId.get(target.instanceId);
+    if (!registryTarget) {
+      return target;
+    }
+
+    return {
+      ...target,
+      authRealm: registryTarget.authRealm,
+    };
+  });
 };
 
 const loadRegistryTenantTargets = (

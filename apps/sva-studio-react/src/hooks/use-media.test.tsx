@@ -1,7 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useCreateMediaUpload, useMediaDetail, useMediaLibrary } from './use-media';
+import {
+  deriveMimeTypeFromUnregisteredMedia,
+  useCreateMediaUpload,
+  useMediaDetail,
+  useMediaLibrary,
+  useRegisterBucketMedia,
+} from './use-media';
 import { getMediaLibraryItemKey } from '../lib/iam-api';
 
 type MediaUsageResponse = {
@@ -31,6 +37,7 @@ const listMediaMock = vi.fn();
 const getMediaMock = vi.fn();
 const getMediaUsageMock = vi.fn();
 const initializeMediaUploadMock = vi.fn();
+const registerBucketMediaMock = vi.fn();
 const updateMediaMock = vi.fn();
 const getMediaDeliveryMock = vi.fn();
 const deleteMediaMock = vi.fn();
@@ -53,6 +60,7 @@ vi.mock('../lib/iam-api', () => ({
   initializeMediaUpload: (...args: Parameters<typeof initializeMediaUploadMock>) => initializeMediaUploadMock(...args),
   isRegisteredMediaAsset: (asset: { id?: string }) => typeof asset.id === 'string',
   listMedia: (...args: Parameters<typeof listMediaMock>) => listMediaMock(...args),
+  registerBucketMedia: (...args: Parameters<typeof registerBucketMediaMock>) => registerBucketMediaMock(...args),
   updateMedia: (...args: Parameters<typeof updateMediaMock>) => updateMediaMock(...args),
 }));
 
@@ -114,6 +122,36 @@ function MediaUploadProbe() {
   );
 }
 
+function MediaRegisterProbe() {
+  const media = useRegisterBucketMedia();
+
+  return (
+    <div>
+      <span data-testid="mutation-error">{media.mutationError?.code ?? 'none'}</span>
+      <button
+        type="button"
+        onClick={() =>
+          void media.registerMedia({
+            storageKey: 'instance-1/uploads/example.jpg',
+            fileName: 'example.jpg',
+            byteSize: 1234,
+            mimeType: 'image/jpeg',
+            visibility: 'public',
+            metadata: {
+              title: 'example',
+            },
+          })
+        }
+      >
+        register
+      </button>
+      <button type="button" onClick={() => media.clearMutationError()}>
+        clear
+      </button>
+    </div>
+  );
+}
+
 function MediaDetailProbe(props: { readonly assetId: string | null }) {
   const media = useMediaDetail(props.assetId);
 
@@ -160,6 +198,7 @@ describe('useMediaLibrary', () => {
     getMediaMock.mockReset();
     getMediaUsageMock.mockReset();
     initializeMediaUploadMock.mockReset();
+    registerBucketMediaMock.mockReset();
     updateMediaMock.mockReset();
     getMediaDeliveryMock.mockReset();
     deleteMediaMock.mockReset();
@@ -655,6 +694,102 @@ describe('useCreateMediaUpload', () => {
       expect(screen.getByTestId('mutation-error').textContent).toBe('none');
     }
   );
+});
+
+describe('useRegisterBucketMedia', () => {
+  beforeEach(() => {
+    invalidatePermissionsMock.mockReset();
+    registerBucketMediaMock.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('registers bucket assets successfully and leaves mutation errors clear', async () => {
+    registerBucketMediaMock.mockResolvedValue({
+      data: {
+        id: 'asset-registered',
+        instanceId: 'instance-1',
+        storageKey: 'instance-1/uploads/example.jpg',
+        mediaType: 'image',
+        mimeType: 'image/jpeg',
+        byteSize: 1234,
+        visibility: 'public',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {
+          title: 'example',
+        },
+        technical: {},
+      },
+    });
+
+    render(<MediaRegisterProbe />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'register' }));
+
+    await waitFor(() => {
+      expect(registerBucketMediaMock).toHaveBeenCalledWith({
+        storageKey: 'instance-1/uploads/example.jpg',
+        fileName: 'example.jpg',
+        byteSize: 1234,
+        mimeType: 'image/jpeg',
+        visibility: 'public',
+        metadata: {
+          title: 'example',
+        },
+      });
+    });
+
+    expect(screen.getByTestId('mutation-error').textContent).toBe('none');
+  });
+
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])(
+    'stores mutation errors, supports clearing them, and invalidates permissions on protected register responses (status $status, code $code)',
+    async (protectedError) => {
+      registerBucketMediaMock.mockRejectedValue(protectedError);
+
+      render(<MediaRegisterProbe />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'register' }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('mutation-error').textContent).toBe(protectedError.code);
+      });
+
+      expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByRole('button', { name: 'clear' }));
+
+      expect(screen.getByTestId('mutation-error').textContent).toBe('none');
+    }
+  );
+});
+
+describe('deriveMimeTypeFromUnregisteredMedia', () => {
+  it.each([
+    ['banner.jpg', 'image/jpeg'],
+    ['manual.pdf', 'application/pdf'],
+    ['archive.bin', 'application/octet-stream'],
+  ])('derives %s as %s', (fileName, expectedMimeType) => {
+    expect(
+      deriveMimeTypeFromUnregisteredMedia({
+        source: 'bucket',
+        registrationStatus: 'unregistered',
+        storageKey: `instance-1/uploads/${fileName}`,
+        fileName,
+        folderPath: 'uploads',
+        relativePath: `uploads/${fileName}`,
+        byteSize: 2048,
+        updatedAt: '2026-06-11T09:00:00.000Z',
+        lastModified: '2026-06-11T09:00:00.000Z',
+      })
+    ).toBe(expectedMimeType);
+  });
 });
 
 describe('useMediaDetail', () => {

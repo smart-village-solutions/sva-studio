@@ -2,9 +2,12 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { listHostMediaReferencesByTarget, registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getEvent } from '../src/events.api.js';
+import { createEvent, deleteEvent, getEvent, updateEvent } from '../src/events.api.js';
 
 import { EventsDetailPage } from '../src/events.detail-page.js';
+
+const navigateMock = vi.fn();
+const replaceHostMediaReferencesMock = vi.fn(async (input: unknown) => input);
 
 vi.mock('../src/events.api.js', () => ({
   createEvent: vi.fn(),
@@ -22,33 +25,46 @@ vi.mock('@sva/plugin-sdk', async () => {
     ...actual,
     listHostMediaAssets: vi.fn(async () => []),
     listHostMediaReferencesByTarget: vi.fn(async () => []),
-    replaceHostMediaReferences: vi.fn(async (input: unknown) => input),
+    replaceHostMediaReferences: (...args: Parameters<typeof replaceHostMediaReferencesMock>) =>
+      replaceHostMediaReferencesMock(...args),
   };
 });
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-  useNavigate: () => vi.fn(),
+  useNavigate: () => navigateMock,
 }));
 
 describe('EventsDetailPage', () => {
   beforeEach(() => {
+    navigateMock.mockReset();
+    replaceHostMediaReferencesMock.mockClear();
+    vi.unstubAllGlobals();
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
         'events.detail.createTitle': 'Event anlegen',
         'events.detail.editTitle': 'Event bearbeiten',
         'events.actions.save': 'Speichern',
+        'events.actions.delete': 'Löschen',
         'events.detailTabs.basis.title': 'Basis',
         'events.detailTabs.content.title': 'Inhalt',
         'events.detailTabs.settings.title': 'Einstellungen',
         'events.detailTabs.history.title': 'Historie',
+        'events.tabs.mobileLabel': 'Bereich',
+        'events.tabs.ariaLabel': 'Bereiche',
         'events.cards.content.dates.title': 'Termine',
         'events.cards.content.addresses.title': 'Orte und Adressen',
         'events.cards.content.contact.title': 'Kontakt',
         'events.cards.content.links.title': 'Links',
         'events.cards.content.recurrence.title': 'Wiederholung',
         'events.cards.content.poi.title': 'POI-Verknüpfung',
+        'events.fields.title': 'Titel',
+        'events.fields.url': 'URL',
+        'events.fields.dateStart': 'Startdatum',
+        'events.messages.validationError': 'Bitte Eingaben prüfen.',
         'events.history.empty.title': 'Noch keine Historie verfügbar.',
+        'events.messages.updateSuccess': 'Event aktualisiert.',
+        'events.actions.deleteConfirm': 'Wirklich löschen?',
       };
 
       return labels[key] ?? key;
@@ -114,6 +130,90 @@ describe('EventsDetailPage', () => {
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Stadtfest')).toBeTruthy();
+    });
+  });
+
+  it('blocks submission on invalid title, invalid date input, and non-https links', async () => {
+    render(<EventsDetailPage mode="create" />);
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
+    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: 'invalid-date' } });
+    fireEvent.change(screen.getByLabelText('URL'), { target: { value: 'http://example.com/events' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createEvent)).not.toHaveBeenCalled();
+    });
+
+    expect(screen.getByDisplayValue('http://example.com/events')).toBeTruthy();
+  });
+
+  it('updates events and preserves the loaded header image reference on save', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+      description: 'Innenstadt',
+      dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
+      addresses: [{ street: 'Marktplatz 1', city: 'Musterhausen' }],
+      urls: [{ url: 'https://example.com/events' }],
+    } as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
+      {
+        id: 'reference-1',
+        assetId: 'asset-1',
+        role: 'header_image',
+      },
+    ] as never);
+    vi.mocked(updateEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+    } as never);
+
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Stadtfest')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(updateEvent)).toHaveBeenCalledTimes(1);
+      expect(replaceHostMediaReferencesMock).toHaveBeenCalledWith({
+        fetch: expect.any(Function),
+        targetType: 'events',
+        targetId: 'event-1',
+        references: [
+          {
+            assetId: 'asset-1',
+            role: 'header_image',
+            sortOrder: 0,
+          },
+        ],
+      });
+      expect(screen.getByText('Event aktualisiert.')).toBeTruthy();
+    });
+  });
+
+  it('deletes events after confirmation and returns to the content overview', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+      dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
+    } as never);
+    vi.stubGlobal('confirm', vi.fn(() => true));
+
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Stadtfest')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(deleteEvent)).toHaveBeenCalledWith('event-1');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
     });
   });
 });

@@ -53,6 +53,11 @@ export type ReadMediaObjectInput = Readonly<{
   storageKey: string;
 }>;
 
+export type StatMediaObjectInput = Readonly<{
+  instanceId: string;
+  storageKey: string;
+}>;
+
 export type WriteMediaObjectInput = Readonly<{
   instanceId: string;
   storageKey: string;
@@ -69,6 +74,11 @@ export type MediaStoragePort = {
   listObjects(input: ListMediaStorageObjectsInput): Promise<MediaStorageObjectList>;
   prepareUpload(input: PrepareMediaUploadInput): Promise<MediaUploadPreparation>;
   resolveDelivery(input: ResolveMediaDeliveryInput): Promise<MediaDeliveryResolution>;
+  statObject(input: StatMediaObjectInput): Promise<{
+    byteSize: number;
+    contentType?: string;
+    etag?: string;
+  }>;
   readObject(input: ReadMediaObjectInput): Promise<{
     body: Uint8Array;
     byteSize: number;
@@ -89,6 +99,13 @@ export class MediaStorageUnavailableError extends Error {
   }
 }
 
+export class MediaStorageObjectNotFoundError extends Error {
+  constructor() {
+    super('media_storage_object_not_found');
+    this.name = 'MediaStorageObjectNotFoundError';
+  }
+}
+
 export const createUnavailableMediaStoragePort = (): MediaStoragePort => ({
   async listObjects() {
     throw new MediaStorageUnavailableError();
@@ -97,6 +114,9 @@ export const createUnavailableMediaStoragePort = (): MediaStoragePort => ({
     throw new MediaStorageUnavailableError();
   },
   async resolveDelivery() {
+    throw new MediaStorageUnavailableError();
+  },
+  async statObject() {
     throw new MediaStorageUnavailableError();
   },
   async readObject() {

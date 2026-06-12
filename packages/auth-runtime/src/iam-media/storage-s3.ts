@@ -1,5 +1,13 @@
 import { listExternalInterfaceRecords } from '@sva/data-repositories/server';
-import { DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client, type S3ClientConfig } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+  type S3ClientConfig,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { resolveExternalInterface } from '@sva/server-runtime';
 
@@ -22,7 +30,7 @@ import type {
   PrepareMediaUploadInput,
   ResolveMediaDeliveryInput,
 } from './storage-port.js';
-import { MediaStorageUnavailableError } from './storage-port.js';
+import { MediaStorageObjectNotFoundError, MediaStorageUnavailableError } from './storage-port.js';
 import { createMediaStorageInstancePrefix, isListableMediaStorageKey } from './storage-key-paths.js';
 
 type SignedUrlResolver = (client: S3Client, command: PutObjectCommand | GetObjectCommand, expiresIn: number) => Promise<string>;
@@ -171,6 +179,23 @@ export const createS3ClientConfig = (config: MediaStorageConfig): S3ClientConfig
   },
 });
 
+const isMissingS3ObjectError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const statusCode =
+    '$metadata' in error &&
+    typeof error.$metadata === 'object' &&
+    error.$metadata !== null &&
+    'httpStatusCode' in error.$metadata &&
+    typeof error.$metadata.httpStatusCode === 'number'
+      ? error.$metadata.httpStatusCode
+      : null;
+
+  return statusCode === 404 || error.name === 'NotFound' || error.name === 'NoSuchKey';
+};
+
 export const createS3MediaStoragePort = (
   config: MediaStorageConfig,
   options?: {
@@ -270,6 +295,29 @@ export const createS3MediaStoragePort = (
     };
   };
 
+  const statObject = async (input: { instanceId: string; storageKey: string }) => {
+    try {
+      const response = await client.send(
+        new HeadObjectCommand({
+          Bucket: config.bucket,
+          Key: input.storageKey,
+        })
+      );
+
+      return {
+        byteSize: typeof response.ContentLength === 'number' ? response.ContentLength : 0,
+        contentType: response.ContentType,
+        etag: response.ETag,
+      };
+    } catch (error) {
+      if (isMissingS3ObjectError(error)) {
+        throw new MediaStorageObjectNotFoundError();
+      }
+
+      throw error;
+    }
+  };
+
   const readObject = async (input: { instanceId: string; storageKey: string }) => {
     const response = await client.send(
       new GetObjectCommand({
@@ -320,6 +368,7 @@ export const createS3MediaStoragePort = (
     listObjects,
     prepareUpload,
     resolveDelivery,
+    statObject,
     readObject,
     writeObject,
     deleteObject,

@@ -15,7 +15,12 @@ import { asApiItem, asApiList, createApiError, parseRequestBody, readInstanceIdF
 import { jsonResponse } from '../db.js';
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../middleware.js';
 import { emitAuthAuditEvent } from '../audit-events.js';
-import { createUnavailableMediaStoragePort, MediaStorageUnavailableError, type MediaStoragePort } from './storage-port.js';
+import {
+  createUnavailableMediaStoragePort,
+  MediaStorageObjectNotFoundError,
+  MediaStorageUnavailableError,
+  type MediaStoragePort,
+} from './storage-port.js';
 import { withMediaService } from './repository.js';
 import type { MediaService } from './service.js';
 import { createConfiguredMediaStoragePortForInstance } from './storage-s3.js';
@@ -348,6 +353,20 @@ const resolveMediaStoragePort = async (
   }
 
   return deps.storagePort;
+};
+
+const readTrustedBucketObjectMetadata = async (
+  deps: Pick<MediaHttpHandlerDeps, 'storagePort' | 'resolveStoragePort'>,
+  instanceId: string,
+  storageKey: string
+): Promise<{
+  byteSize: number;
+}> => {
+  const storagePort = await resolveMediaStoragePort(deps, instanceId);
+  const object = await storagePort.statObject({ instanceId, storageKey });
+  return {
+    byteSize: object.byteSize,
+  };
 };
 
 export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
@@ -752,8 +771,27 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return jsonResponse(200, asApiItem(assertSupportedListAssetVisibility(existingAsset), getRequestId()));
     }
 
+    let trustedBucketObject: { byteSize: number };
+    try {
+      trustedBucketObject = await readTrustedBucketObjectMetadata(deps, instanceId, parsed.data.storageKey);
+    } catch (error) {
+      if (error instanceof MediaStorageObjectNotFoundError) {
+        return createApiError(404, 'not_found', 'Bucket-Objekt nicht gefunden.', getRequestId());
+      }
+      if (error instanceof MediaStorageUnavailableError) {
+        return handleMediaStorageUnavailable({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.create',
+          resourceType: 'media_asset',
+        });
+      }
+      throw error;
+    }
+
     const storageQuotaCheck = await deps.withMediaService(instanceId, (service) =>
-      service.wouldExceedStorageQuota(instanceId, parsed.data.byteSize)
+      service.wouldExceedStorageQuota(instanceId, trustedBucketObject.byteSize)
     );
 
     if (storageQuotaCheck.wouldExceed) {
@@ -771,7 +809,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       storageKey: parsed.data.storageKey,
       mediaType: 'image',
       mimeType: parsed.data.mimeType,
-      byteSize: parsed.data.byteSize,
+      byteSize: trustedBucketObject.byteSize,
       visibility: parsed.data.visibility,
       uploadStatus: 'processed',
       processingStatus: 'ready',
@@ -789,7 +827,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       await service.upsertAsset(nextAsset);
       await service.applyStorageUsageDelta({
         instanceId,
-        totalBytesDelta: parsed.data.byteSize,
+        totalBytesDelta: trustedBucketObject.byteSize,
         assetCountDelta: 1,
       });
     });

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createMediaHttpHandlers } from './core.js';
-import { MediaStorageUnavailableError } from './storage-port.js';
+import { MediaStorageObjectNotFoundError, MediaStorageUnavailableError } from './storage-port.js';
 
 const allowAuthorization = vi.fn(async () => ({ ok: true } as const));
 const emitAuditEvent = vi.fn(async () => undefined);
@@ -763,10 +763,18 @@ describe('media http handlers', () => {
   it('registers an existing bucket object as a managed media asset', async () => {
     const service = createService();
     service.getAssetByStorageKey = vi.fn(async () => null);
+    const storagePort = {
+      statObject: vi.fn(async () => ({
+        byteSize: 84,
+        contentType: 'image/jpeg',
+      })),
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(),
+    };
 
     const handlers = createMediaHttpHandlers({
       withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      storagePort: storagePort as never,
       authorizeAction: allowAuthorization,
       createId: () => 'asset-registered',
       now: () => '2026-04-29T19:00:00.000Z',
@@ -790,20 +798,24 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(201);
-    expect(service.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 42);
+    expect(storagePort.statObject).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      storageKey: 'cms_uploads/photo.jpg',
+    });
+    expect(service.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 84);
     expect(service.upsertAsset).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'asset-registered',
         storageKey: 'cms_uploads/photo.jpg',
         mimeType: 'image/jpeg',
-        byteSize: 42,
+        byteSize: 84,
         uploadStatus: 'processed',
         processingStatus: 'ready',
       })
     );
     expect(service.applyStorageUsageDelta).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
-      totalBytesDelta: 42,
+      totalBytesDelta: 84,
       assetCountDelta: 1,
     });
   });
@@ -850,6 +862,92 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(200);
+    expect(service.upsertAsset).not.toHaveBeenCalled();
+    expect(service.applyStorageUsageDelta).not.toHaveBeenCalled();
+  });
+
+  it('uses the trusted storage byte size instead of the client-provided bucket media size', async () => {
+    const service = createService();
+    service.getAssetByStorageKey = vi.fn(async () => null);
+    const storagePort = {
+      statObject: vi.fn(async () => ({
+        byteSize: 512,
+        contentType: 'image/jpeg',
+      })),
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(),
+    };
+
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'asset-registered',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.registerBucketMedia(
+      new Request('http://localhost/api/v1/iam/media/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'tenant-a',
+          storageKey: 'cms_uploads/photo.jpg',
+          fileName: 'photo.jpg',
+          byteSize: 1,
+          mimeType: 'image/jpeg',
+          visibility: 'public',
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(201);
+    expect(service.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 512);
+    expect(service.upsertAsset).toHaveBeenCalledWith(expect.objectContaining({ byteSize: 512 }));
+    expect(service.applyStorageUsageDelta).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      totalBytesDelta: 512,
+      assetCountDelta: 1,
+    });
+  });
+
+  it('returns not found when the bucket object no longer exists during registration', async () => {
+    const service = createService();
+    service.getAssetByStorageKey = vi.fn(async () => null);
+    const storagePort = {
+      statObject: vi.fn(async () => {
+        throw new MediaStorageObjectNotFoundError();
+      }),
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(),
+    };
+
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'asset-registered',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.registerBucketMedia(
+      new Request('http://localhost/api/v1/iam/media/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'tenant-a',
+          storageKey: 'cms_uploads/photo.jpg',
+          fileName: 'photo.jpg',
+          byteSize: 42,
+          mimeType: 'image/jpeg',
+          visibility: 'public',
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(404);
     expect(service.upsertAsset).not.toHaveBeenCalled();
     expect(service.applyStorageUsageDelta).not.toHaveBeenCalled();
   });

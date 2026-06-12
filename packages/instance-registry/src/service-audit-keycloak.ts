@@ -9,6 +9,14 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-audit', level: 'info' });
 
+type RealmUnavailableInput = {
+  evidenceSource: string;
+  keycloakError?: string;
+  fallbackStatus?: KeycloakTenantStatus | null;
+  fallbackEvidenceSource?: string;
+  fallbackError?: string;
+};
+
 export const resolveKeycloakStatus = async (
   deps: InstanceRegistryServiceDeps,
   instanceId: string
@@ -77,18 +85,12 @@ export const resolveKeycloakStatus = async (
   return { status: fallback, evidenceSource: 'keycloak_snapshot' };
 };
 
-const createRealmUnavailableChecks = (input: {
-  evidenceSource: string;
-  keycloakError?: string;
-  fallbackStatus?: KeycloakTenantStatus | null;
-  fallbackEvidenceSource?: string;
-  fallbackError?: string;
-}): readonly InstanceAuditCheck[] => {
-  const hasFallback = Boolean(input.fallbackEvidenceSource && input.fallbackStatus);
-  const accessStatus: InstanceAuditCheck['status'] = hasFallback ? 'warn' : 'fail';
-  const accessDetails: Record<string, unknown> = {
-    primaryEvidenceSource: input.evidenceSource,
-  };
+const hasUsableFallbackStatus = (input: RealmUnavailableInput): boolean =>
+  Boolean(input.fallbackEvidenceSource && input.fallbackStatus);
+
+const createRealmUnavailableAccessDetails = (input: RealmUnavailableInput): Record<string, unknown> => {
+  const accessDetails: Record<string, unknown> = { primaryEvidenceSource: input.evidenceSource };
+
   if (input.keycloakError) {
     accessDetails.primaryError = input.keycloakError;
   }
@@ -105,27 +107,43 @@ const createRealmUnavailableChecks = (input: {
     accessDetails.secondaryRuntimeSecretSource = input.fallbackStatus.runtimeSecretSource;
   }
 
+  return accessDetails;
+};
+
+const createRealmUnavailableAccessCheck = (
+  input: RealmUnavailableInput,
+  hasFallback: boolean,
+  accessDetails: Record<string, unknown>
+): InstanceAuditCheck | null => {
+  if (!input.keycloakError && !hasFallback) {
+    return null;
+  }
+
+  return createCheck({
+    checkId: CHECK_IDS.keycloakAccessRead,
+    title: 'Technischer Keycloak-Zugriff',
+    scope: 'keycloak',
+    status: hasFallback ? 'warn' : 'fail',
+    expected: 'Live-Lesung des Tenant-Realms erfolgreich',
+    actual: input.keycloakError ?? 'nicht lesbar',
+    evidenceSource: input.evidenceSource,
+    details: accessDetails,
+    message: hasFallback
+      ? 'Die Live-Lesung des Tenant-Realm ist fehlgeschlagen. Ein sekundärer Snapshot-/Vertragspfad war noch auswertbar, ersetzt aber keinen erfolgreichen Live-Zugriff.'
+      : 'Die Live-Lesung des Tenant-Realm ist fehlgeschlagen.',
+    remediationHint: hasFallback
+      ? 'Technischen Live-Keycloak-Zugriff und Credential-Verdrahtung prüfen; sekundäre Snapshot-Befunde nur als Referenz nutzen.'
+      : 'Technischen Keycloak-Zugriff, Realm-Namen und Verbindungsdaten prüfen.',
+  });
+};
+
+const createRealmUnavailableChecks = (input: RealmUnavailableInput): readonly InstanceAuditCheck[] => {
+  const hasFallback = hasUsableFallbackStatus(input);
+  const accessDetails = createRealmUnavailableAccessDetails(input);
+  const accessCheck = createRealmUnavailableAccessCheck(input, hasFallback, accessDetails);
+
   return [
-  ...(input.keycloakError || hasFallback
-    ? [
-        createCheck({
-          checkId: CHECK_IDS.keycloakAccessRead,
-          title: 'Technischer Keycloak-Zugriff',
-          scope: 'keycloak',
-          status: accessStatus,
-          expected: 'Live-Lesung des Tenant-Realms erfolgreich',
-          actual: input.keycloakError ?? 'nicht lesbar',
-          evidenceSource: input.evidenceSource,
-          details: accessDetails,
-          message: hasFallback
-            ? 'Die Live-Lesung des Tenant-Realm ist fehlgeschlagen. Ein sekundärer Snapshot-/Vertragspfad war noch auswertbar, ersetzt aber keinen erfolgreichen Live-Zugriff.'
-            : 'Die Live-Lesung des Tenant-Realm ist fehlgeschlagen.',
-          remediationHint: hasFallback
-            ? 'Technischen Live-Keycloak-Zugriff und Credential-Verdrahtung prüfen; sekundäre Snapshot-Befunde nur als Referenz nutzen.'
-            : 'Technischen Keycloak-Zugriff, Realm-Namen und Verbindungsdaten prüfen.',
-        }),
-      ]
-    : []),
+  ...(accessCheck ? [accessCheck] : []),
   createCheck({
     checkId: CHECK_IDS.keycloakRealmExists,
     title: 'Keycloak-Realm vorhanden',

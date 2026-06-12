@@ -55,7 +55,7 @@ describe('MediaReferenceField', () => {
 
   it('does not emit duplicate key warnings when multiple options share the same asset id', () => {
     const onChange = vi.fn();
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     render(
       <MediaReferenceField

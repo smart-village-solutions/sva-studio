@@ -6,6 +6,12 @@ const createPoiLocaleTranslations = <TPoi extends Readonly<Record<string, unknow
 const poiTranslationsDe = createPoiLocaleTranslations({
   navigation: { title: 'POI' },
   list: { title: 'POI', description: 'Points of Interest aus dem Mainserver bearbeiten.' },
+  detail: {
+    createTitle: 'POI anlegen',
+    createDescription: 'Erstellen Sie einen neuen Point of Interest.',
+    editTitle: 'POI bearbeiten',
+    editDescription: 'Aktualisieren oder löschen Sie den Point of Interest.',
+  },
   editor: {
     createTitle: 'POI anlegen',
     createDescription: 'Erstellen Sie einen neuen Point of Interest.',
@@ -26,17 +32,22 @@ const poiTranslationsDe = createPoiLocaleTranslations({
     phone: 'Telefon',
     email: 'E-Mail',
     url: 'Web-URL',
+    urlDescription: 'Link-Beschreibung',
     mediaPlaceholder: 'Medium auswählen',
     weekday: 'Wochentag',
     timeFrom: 'Öffnet',
     timeTo: 'Schließt',
+    open: 'Geöffnet',
     tags: 'Tags',
     payload: 'Payload JSON',
     actions: 'Aktionen',
+    createdAt: 'Erstellt',
+    updatedAt: 'Aktualisiert',
   },
   actions: {
-    create: 'POI anlegen',
+    create: 'Anlegen',
     update: 'Änderungen speichern',
+    save: 'Speichern',
     edit: 'Bearbeiten',
     delete: 'Löschen',
     back: 'Zurück zur Liste',
@@ -52,6 +63,39 @@ const poiTranslationsDe = createPoiLocaleTranslations({
     createSuccess: 'POI wurde erstellt.',
     updateSuccess: 'POI wurde aktualisiert.',
     validationError: 'Bitte korrigieren Sie die markierten Felder.',
+  },
+  tabs: {
+    ariaLabel: 'Detailbereiche',
+    mobileLabel: 'Bereich auswählen',
+  },
+  detailTabs: {
+    basis: { title: 'Basis', description: 'Stammdaten und Veröffentlichungsstatus.' },
+    content: { title: 'Inhalt', description: 'Beschreibungen, Lage, Kontakt und Zusatzdaten.' },
+    settings: { title: 'Einstellungen', description: 'Medien und sekundäre Konfigurationen.' },
+    history: { title: 'Historie', description: 'Änderungs- und Aktivitätsverlauf.' },
+  },
+  cards: {
+    basis: {
+      identity: { title: 'Basisdaten', description: 'Name, Kategorie und Aktivstatus.' },
+      meta: { title: 'Metadaten', description: 'Zeitliche Einordnung des Eintrags.' },
+    },
+    content: {
+      descriptions: { title: 'Beschreibungen', description: 'Redaktionelle Beschreibungen des POI.' },
+      contact: { title: 'Kontakt', description: 'Kontaktinformationen für den POI.' },
+      location: { title: 'Lage und Adresse', description: 'Adressdaten des POI.' },
+      openingHours: { title: 'Öffnungszeiten', description: 'Aktuelle Öffnungsinformationen.' },
+      links: { title: 'Weblinks', description: 'Externe Verweise zum POI.' },
+      payload: { title: 'Zusatzdaten', description: 'Zusätzliche Mainserver-Daten als JSON.' },
+    },
+    settings: {
+      media: { title: 'Medien', description: 'Teaserbild für die Übersicht.' },
+    },
+  },
+  history: {
+    empty: {
+      title: 'Noch keine Historie verfügbar.',
+      description: 'Historienereignisse für POI werden in einem späteren Schritt angebunden.',
+    },
   },
   empty: { title: 'Noch keine POI vorhanden', description: 'Legen Sie den ersten POI an.' },
   pagination: {
@@ -75,6 +119,12 @@ const poiTranslationsDe = createPoiLocaleTranslations({
 const poiTranslationsEn = createPoiLocaleTranslations({
   navigation: { title: 'POI' },
   list: { title: 'POI', description: 'Edit Mainserver points of interest.' },
+  detail: {
+    createTitle: 'Create POI',
+    createDescription: 'Create a new point of interest.',
+    editTitle: 'Edit POI',
+    editDescription: 'Update or delete the point of interest.',
+  },
   editor: {
     createTitle: 'Create POI',
     createDescription: 'Create a new point of interest.',
@@ -95,17 +145,22 @@ const poiTranslationsEn = createPoiLocaleTranslations({
     phone: 'Phone',
     email: 'Email',
     url: 'Web URL',
+    urlDescription: 'Link description',
     mediaPlaceholder: 'Select media',
     weekday: 'Weekday',
     timeFrom: 'Opens',
     timeTo: 'Closes',
+    open: 'Open',
     tags: 'Tags',
     payload: 'Payload JSON',
     actions: 'Actions',
+    createdAt: 'Created',
+    updatedAt: 'Updated',
   },
   actions: {
-    create: 'Create POI',
+    create: 'Create',
     update: 'Save changes',
+    save: 'Save',
     edit: 'Edit',
     delete: 'Delete',
     back: 'Back to list',
@@ -121,6 +176,39 @@ const poiTranslationsEn = createPoiLocaleTranslations({
     createSuccess: 'POI was created.',
     updateSuccess: 'POI was updated.',
     validationError: 'Please correct the highlighted fields.',
+  },
+  tabs: {
+    ariaLabel: 'Detail sections',
+    mobileLabel: 'Select section',
+  },
+  detailTabs: {
+    basis: { title: 'Basics', description: 'Master data and publication status.' },
+    content: { title: 'Content', description: 'Descriptions, location, contact, and additional data.' },
+    settings: { title: 'Settings', description: 'Media and secondary configuration.' },
+    history: { title: 'History', description: 'Change and activity history.' },
+  },
+  cards: {
+    basis: {
+      identity: { title: 'Core data', description: 'Name, category, and activation state.' },
+      meta: { title: 'Metadata', description: 'Temporal information for the record.' },
+    },
+    content: {
+      descriptions: { title: 'Descriptions', description: 'Editorial descriptions for the POI.' },
+      contact: { title: 'Contact', description: 'Contact information for the POI.' },
+      location: { title: 'Location and address', description: 'Address data of the POI.' },
+      openingHours: { title: 'Opening hours', description: 'Current opening information.' },
+      links: { title: 'Web links', description: 'External references for the POI.' },
+      payload: { title: 'Additional data', description: 'Additional Mainserver data as JSON.' },
+    },
+    settings: {
+      media: { title: 'Media', description: 'Teaser image for the overview.' },
+    },
+  },
+  history: {
+    empty: {
+      title: 'No history available yet.',
+      description: 'POI history entries will be connected in a later step.',
+    },
   },
   empty: { title: 'No POI yet', description: 'Create the first POI.' },
   pagination: {

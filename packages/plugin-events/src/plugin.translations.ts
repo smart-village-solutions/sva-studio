@@ -7,6 +7,12 @@ const createEventsLocaleTranslations = <TEvents extends Readonly<Record<string, 
 const eventsTranslationsDe = createEventsLocaleTranslations({
   navigation: { title: 'Events' },
   list: { title: 'Events', description: 'Veranstaltungen aus dem Mainserver bearbeiten.' },
+  detail: {
+    createTitle: 'Event anlegen',
+    createDescription: 'Erstellen Sie einen neuen Veranstaltungseintrag.',
+    editTitle: 'Event bearbeiten',
+    editDescription: 'Aktualisieren oder löschen Sie den Veranstaltungseintrag.',
+  },
   editor: {
     createTitle: 'Event anlegen',
     createDescription: 'Erstellen Sie einen neuen Veranstaltungseintrag.',
@@ -29,15 +35,19 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     phone: 'Telefon',
     email: 'E-Mail',
     url: 'Web-URL',
+    urlDescription: 'Link-Beschreibung',
     mediaPlaceholder: 'Medium auswählen',
     tags: 'Tags',
     pointOfInterestId: 'Zugehöriger POI',
     repeat: 'Wiederholung',
     actions: 'Aktionen',
+    createdAt: 'Erstellt',
+    updatedAt: 'Aktualisiert',
   },
   actions: {
-    create: 'Event anlegen',
+    create: 'Anlegen',
     update: 'Änderungen speichern',
+    save: 'Speichern',
     edit: 'Bearbeiten',
     delete: 'Löschen',
     back: 'Zurück zur Liste',
@@ -54,6 +64,40 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     updateSuccess: 'Event wurde aktualisiert.',
     deleteSuccess: 'Event wurde gelöscht.',
     validationError: 'Bitte korrigieren Sie die markierten Felder.',
+  },
+  tabs: {
+    ariaLabel: 'Detailbereiche',
+    mobileLabel: 'Bereich auswählen',
+  },
+  detailTabs: {
+    basis: { title: 'Basis', description: 'Stammdaten und redaktionelle Kerndaten.' },
+    content: { title: 'Inhalt', description: 'Termine, Orte, Kontakt und inhaltliche Daten.' },
+    settings: { title: 'Einstellungen', description: 'Medien und sekundäre Konfigurationen.' },
+    history: { title: 'Historie', description: 'Änderungs- und Aktivitätsverlauf.' },
+  },
+  cards: {
+    basis: {
+      identity: { title: 'Basisdaten', description: 'Titel und Kategorie des Events.' },
+      meta: { title: 'Metadaten', description: 'Zeitliche Einordnung des Eintrags.' },
+    },
+    content: {
+      descriptions: { title: 'Beschreibung', description: 'Redaktioneller Kerntext des Events.' },
+      dates: { title: 'Termine', description: 'Start- und Endzeit des Events.' },
+      addresses: { title: 'Orte und Adressen', description: 'Adresse des Veranstaltungsorts.' },
+      contact: { title: 'Kontakt', description: 'Kontaktmöglichkeiten für Rückfragen.' },
+      links: { title: 'Links', description: 'Externe Verweise zum Event.' },
+      recurrence: { title: 'Wiederholung', description: 'Wiederkehrende Durchführung des Events.' },
+      poi: { title: 'POI-Verknüpfung', description: 'Zuordnung zu einem bestehenden POI.' },
+    },
+    settings: {
+      media: { title: 'Medien', description: 'Headerbild für die Detailseite.' },
+    },
+  },
+  history: {
+    empty: {
+      title: 'Noch keine Historie verfügbar.',
+      description: 'Historienereignisse für Events werden in einem späteren Schritt angebunden.',
+    },
   },
   empty: { title: 'Noch keine Events vorhanden', description: 'Legen Sie das erste Event an.' },
   pagination: {
@@ -73,6 +117,12 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
 const eventsTranslationsEn = createEventsLocaleTranslations({
   navigation: { title: 'Events' },
   list: { title: 'Events', description: 'Edit Mainserver event records.' },
+  detail: {
+    createTitle: 'Create event',
+    createDescription: 'Create a new event record.',
+    editTitle: 'Edit event',
+    editDescription: 'Update or delete the event record.',
+  },
   editor: {
     createTitle: 'Create event',
     createDescription: 'Create a new event record.',
@@ -95,15 +145,19 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     phone: 'Phone',
     email: 'Email',
     url: 'Web URL',
+    urlDescription: 'Link description',
     mediaPlaceholder: 'Select media',
     tags: 'Tags',
     pointOfInterestId: 'Related POI',
     repeat: 'Repeating',
     actions: 'Actions',
+    createdAt: 'Created',
+    updatedAt: 'Updated',
   },
   actions: {
-    create: 'Create event',
+    create: 'Create',
     update: 'Save changes',
+    save: 'Save',
     edit: 'Edit',
     delete: 'Delete',
     back: 'Back to list',
@@ -120,6 +174,40 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     updateSuccess: 'Event was updated.',
     deleteSuccess: 'Event was deleted.',
     validationError: 'Please correct the highlighted fields.',
+  },
+  tabs: {
+    ariaLabel: 'Detail sections',
+    mobileLabel: 'Select section',
+  },
+  detailTabs: {
+    basis: { title: 'Basics', description: 'Core metadata and editorial basics.' },
+    content: { title: 'Content', description: 'Dates, locations, contacts, and content data.' },
+    settings: { title: 'Settings', description: 'Media and secondary configuration.' },
+    history: { title: 'History', description: 'Change and activity history.' },
+  },
+  cards: {
+    basis: {
+      identity: { title: 'Core data', description: 'Title and event category.' },
+      meta: { title: 'Metadata', description: 'Temporal information for the record.' },
+    },
+    content: {
+      descriptions: { title: 'Description', description: 'Editorial core text for the event.' },
+      dates: { title: 'Dates', description: 'Start and end timing of the event.' },
+      addresses: { title: 'Locations and addresses', description: 'Venue address.' },
+      contact: { title: 'Contact', description: 'Contact information for inquiries.' },
+      links: { title: 'Links', description: 'External references for the event.' },
+      recurrence: { title: 'Recurrence', description: 'Recurring execution of the event.' },
+      poi: { title: 'POI relation', description: 'Link to an existing point of interest.' },
+    },
+    settings: {
+      media: { title: 'Media', description: 'Header image for the detail page.' },
+    },
+  },
+  history: {
+    empty: {
+      title: 'No history available yet.',
+      description: 'Event history entries will be connected in a later step.',
+    },
   },
   empty: { title: 'No events yet', description: 'Create the first event.' },
   pagination: {

@@ -110,17 +110,23 @@ const navigateClientSide = async (page: Page, targetPath: string) => {
 };
 
 const expectPluginPageHeading = async (page: Page, pattern: RegExp) => {
-  await expect(page.locator('main h1').filter({ hasText: pattern })).toBeVisible();
+  await Promise.any([
+    page.locator('main h1').filter({ hasText: pattern }).waitFor({ state: 'visible' }),
+    page
+      .getByRole('navigation', { name: /Brotkrumen-Navigation/ })
+      .getByText(pattern)
+      .waitFor({ state: 'visible' }),
+  ]);
 };
 
 const expectEventOrPoiEditorReady = async (page: Page, path: '/admin/events/new' | '/admin/poi/new') => {
   if (path === '/admin/events/new') {
-    await expectPluginPageHeading(page, /Event anlegen|events\.editor\.createTitle/);
+    await expectPluginPageHeading(page, /Event anlegen|events\.detail\.createTitle|events\.editor\.createTitle/);
     await expect(page.locator('#event-title')).toBeVisible();
     return;
   }
 
-  await expectPluginPageHeading(page, /POI anlegen|poi\.editor\.createTitle/);
+  await expectPluginPageHeading(page, /POI anlegen|poi\.detail\.createTitle|poi\.editor\.createTitle/);
   await expect(page.locator('#poi-name')).toBeVisible();
 };
 
@@ -202,6 +208,37 @@ const mockSharedShellRequests = async (page: Page) => {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { activeOrganizationId: null, organizations: [] } }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/media**', async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+
+    if (path === '/api/v1/iam/media/references' && request.method() === 'PUT') {
+      const body = request.postDataJSON() as {
+        targetType?: string;
+        targetId?: string;
+        references?: unknown[];
+      };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            targetType: body.targetType ?? '',
+            targetId: body.targetId ?? '',
+            references: Array.isArray(body.references) ? body.references : [],
+          },
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
     });
   });
 };
@@ -325,7 +362,7 @@ const routeEvents = async (route: Route, events: EventRecord[]) => {
   const method = request.method();
   const path = new URL(request.url()).pathname;
 
-  if (path === '/api/v1/mainserver/events') {
+  if (path === '/api/v1/mainserver/events' || path === '/api/v1/mainserver/events/') {
     if (method === 'GET') {
       await route.fulfill({
         status: 200,
@@ -358,7 +395,7 @@ const routeEvents = async (route: Route, events: EventRecord[]) => {
     }
   }
 
-  const detailMatch = path.match(/^\/api\/v1\/mainserver\/events\/([^/]+)$/);
+  const detailMatch = path.match(/^\/api\/v1\/mainserver\/events\/([^/]+)\/?$/);
   if (!detailMatch) {
     await route.fallback();
     return;
@@ -400,7 +437,7 @@ const routePoi = async (route: Route, pois: PoiRecord[]) => {
   const method = request.method();
   const path = new URL(request.url()).pathname;
 
-  if (path === '/api/v1/mainserver/poi') {
+  if (path === '/api/v1/mainserver/poi' || path === '/api/v1/mainserver/poi/') {
     if (method === 'GET') {
       await route.fulfill({
         status: 200,
@@ -434,7 +471,7 @@ const routePoi = async (route: Route, pois: PoiRecord[]) => {
     }
   }
 
-  const detailMatch = path.match(/^\/api\/v1\/mainserver\/poi\/([^/]+)$/);
+  const detailMatch = path.match(/^\/api\/v1\/mainserver\/poi\/([^/]+)\/?$/);
   if (!detailMatch) {
     await route.fallback();
     return;
@@ -480,10 +517,10 @@ test.describe('events and POI plugins', () => {
     const pois: PoiRecord[] = [];
     const events: EventRecord[] = [];
 
-    await page.route('**/api/v1/mainserver/events**', async (route) => {
+    await page.route(/\/api\/v1\/mainserver\/events(?:\/.*)?(?:\?.*)?$/, async (route) => {
       await routeEvents(route, events);
     });
-    await page.route('**/api/v1/mainserver/poi**', async (route) => {
+    await page.route(/\/api\/v1\/mainserver\/poi(?:\/.*)?(?:\?.*)?$/, async (route) => {
       await routePoi(route, pois);
     });
     await routeUnifiedContentOverview(page, () => events, () => pois);
@@ -495,10 +532,11 @@ test.describe('events and POI plugins', () => {
 
     await navigateClientSide(page, '/admin/poi/new');
     await expect(page).toHaveURL(/\/admin\/poi\/new$/);
-    await expectPluginPageHeading(page, /POI anlegen|poi\.editor\.createTitle/);
+    await expectPluginPageHeading(page, /POI anlegen|poi\.detail\.createTitle|poi\.editor\.createTitle/);
 
     await page.locator('#poi-name').fill('Rathaus');
     await page.locator('#poi-category').fill('Verwaltung');
+    await page.getByRole('tab', { name: /Inhalt|poi\.detailTabs\.content\.title/ }).click();
     await page.locator('#poi-description').fill('Zentraler Servicepunkt');
     await page.locator('#poi-mobile-description').fill('Servicepunkt');
     await page.locator('#poi-street').fill('Marktplatz 1');
@@ -508,13 +546,14 @@ test.describe('events and POI plugins', () => {
     await page.locator('#poi-weekday').fill('Montag');
     await page.locator('#poi-time-from').fill('09:00');
     await page.locator('#poi-payload').fill('{"source":"e2e"}');
-    await page.getByRole('button', { name: /POI anlegen|poi\.actions\.create/ }).click();
+    await page.getByRole('button', { name: /Speichern|poi\.actions\.save/ }).click();
 
     await expect(page).toHaveURL(/\/admin\/poi\/poi-1$/);
-    await expectPluginPageHeading(page, /POI bearbeiten|poi\.editor\.editTitle/);
+    await expectPluginPageHeading(page, /POI bearbeiten|poi\.detail\.editTitle|poi\.editor\.editTitle/);
 
+    await page.getByRole('tab', { name: /Basis|poi\.detailTabs\.basis\.title/ }).click();
     await page.locator('#poi-name').fill('Rathaus aktualisiert');
-    await page.getByRole('button', { name: /Änderungen speichern|poi\.actions\.update/ }).click();
+    await page.getByRole('button', { name: /Speichern|poi\.actions\.save/ }).click();
     await expect(page.getByRole('status')).toContainText(/gespeichert|aktualisiert|poi\.messages\.updateSuccess/);
 
     page.once('dialog', (dialog) => dialog.accept());
@@ -540,10 +579,10 @@ test.describe('events and POI plugins', () => {
       },
     ];
 
-    await page.route('**/api/v1/mainserver/events**', async (route) => {
+    await page.route(/\/api\/v1\/mainserver\/events(?:\/.*)?(?:\?.*)?$/, async (route) => {
       await routeEvents(route, events);
     });
-    await page.route('**/api/v1/mainserver/poi**', async (route) => {
+    await page.route(/\/api\/v1\/mainserver\/poi(?:\/.*)?(?:\?.*)?$/, async (route) => {
       await routePoi(route, pois);
     });
     await routeUnifiedContentOverview(page, () => events, () => pois);
@@ -559,6 +598,7 @@ test.describe('events and POI plugins', () => {
 
     await page.locator('#event-title').fill('Stadtfest');
     await page.locator('#event-category').fill('Kultur');
+    await page.getByRole('tab', { name: /Inhalt|events\.detailTabs\.content\.title/ }).click();
     await page.locator('#event-description').fill('Sommerfest in der Innenstadt');
     await page.locator('#event-date-start').fill('2026-04-14T09:30');
     await page.locator('#event-street').fill('Marktplatz');
@@ -566,13 +606,14 @@ test.describe('events and POI plugins', () => {
     await page.locator('#event-email').fill('events@example.com');
     await page.locator('#event-url').fill('https://example.com/event');
     await page.locator('#event-poi').selectOption('poi-1');
-    await page.getByRole('button', { name: /Event anlegen|events\.actions\.create/ }).click();
+    await page.getByRole('button', { name: /Speichern|events\.actions\.save/ }).click();
 
     await expect(page).toHaveURL(/\/admin\/events\/event-1$/);
-    await expectPluginPageHeading(page, /Event bearbeiten|events\.editor\.editTitle/);
+    await expectPluginPageHeading(page, /Event bearbeiten|events\.detail\.editTitle|events\.editor\.editTitle/);
 
+    await page.getByRole('tab', { name: /Basis|events\.detailTabs\.basis\.title/ }).click();
     await page.locator('#event-title').fill('Stadtfest aktualisiert');
-    await page.getByRole('button', { name: /Änderungen speichern|events\.actions\.update/ }).click();
+    await page.getByRole('button', { name: /Speichern|events\.actions\.save/ }).click();
     await expect(page.getByRole('status')).toContainText(/gespeichert|aktualisiert|events\.messages\.updateSuccess/);
 
     const deleteResponsePromise = page.waitForResponse((response) => {

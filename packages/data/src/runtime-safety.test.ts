@@ -195,6 +195,27 @@ test('categories instance-module migration backfills additive module assignments
   assert.doesNotMatch(sql, /DELETE FROM iam\.instance_modules/);
 });
 
+test('system admin core permission backfill migration restores missing tenant iam account-management grants additively', () => {
+  const sql = readRepoFile('data/migrations/0056_iam_system_admin_core_permissions.sql');
+
+  assert.match(sql, /'iam\.user\.read'/);
+  assert.match(sql, /'iam\.user\.write'/);
+  assert.match(sql, /'iam\.role\.read'/);
+  assert.match(sql, /'iam\.role\.write'/);
+  assert.match(sql, /'iam\.org\.read'/);
+  assert.match(sql, /'iam\.org\.write'/);
+  assert.match(sql, /'system_admin', 'iam\.user\.read'/);
+  assert.match(sql, /'system_admin', 'iam\.org\.write'/);
+  assert.match(sql, /ON CONFLICT \(instance_id, permission_key\) DO UPDATE/);
+  assert.match(sql, /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/);
+  assert.match(sql, /ON CONFLICT \(instance_id, role_id, permission_id\) DO NOTHING/);
+  assert.match(sql, /iam_permission_snapshot_invalidation/);
+  assert.match(sql, /system_admin_core_permissions_migrated/);
+  assert.match(sql, /non-destructive rollback intentionally omitted/i);
+  assert.doesNotMatch(sql, /DELETE FROM iam\.permissions/);
+  assert.doesNotMatch(sql, /DELETE FROM iam\.role_permissions/);
+});
+
 test('runtime artifact verification runs workspace node helper via bash', () => {
   const script = readFileSync(resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'), 'utf8');
 

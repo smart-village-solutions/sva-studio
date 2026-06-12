@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { IamMediaAsset } from '../../../lib/iam-api';
+import type { IamRegisteredMediaAsset, IamUnregisteredMediaAsset } from '../../../lib/iam-api';
 
 import {
   countMediaPriorityBuckets,
@@ -8,10 +8,10 @@ import {
 } from './-media-library-view-model';
 
 const createAsset = (
-  overrides: Partial<IamMediaAsset> = {},
-  metadata: Partial<IamMediaAsset['metadata']> = {},
+  overrides: Partial<IamRegisteredMediaAsset> = {},
+  metadata: Partial<IamRegisteredMediaAsset['metadata']> = {},
   technical: Record<string, unknown> = {}
-): IamMediaAsset => ({
+): IamRegisteredMediaAsset => ({
   id: 'asset-1',
   instanceId: 'instance-1',
   storageKey: 'media/asset-1',
@@ -27,6 +27,21 @@ const createAsset = (
     ...metadata,
   },
   technical,
+  ...overrides,
+});
+
+const createUnregisteredAsset = (
+  overrides: Partial<IamUnregisteredMediaAsset> = {}
+): IamUnregisteredMediaAsset => ({
+  source: 'bucket',
+  registrationStatus: 'unregistered',
+  storageKey: 'instance-1/uploads/2026/06/photo.jpg',
+  fileName: 'photo.jpg',
+  folderPath: 'uploads/2026/06',
+  relativePath: 'uploads/2026/06/photo.jpg',
+  byteSize: 512,
+  updatedAt: '2026-06-11T10:00:00.000Z',
+  lastModified: '2026-06-11T10:00:00.000Z',
   ...overrides,
 });
 
@@ -55,6 +70,7 @@ describe('resolveMediaCardState', () => {
     expect(resolveMediaCardState(createAsset(), 2, 'ready')).toBe('ready');
     expect(resolveMediaCardState(createAsset(), null, 'loading')).toBe('ready');
     expect(resolveMediaCardState(createAsset(), null, 'unavailable')).toBe('ready');
+    expect(resolveMediaCardState(createUnregisteredAsset(), null, 'unavailable')).toBe('new');
   });
 });
 
@@ -100,6 +116,22 @@ describe('countMediaPriorityBuckets', () => {
     ).toEqual({
       blocked: 0,
       newItems: 0,
+      unused: 0,
+    });
+  });
+
+  it('counts unregistered bucket items as new work', () => {
+    const bucketOnly = createUnregisteredAsset();
+
+    expect(
+      countMediaPriorityBuckets([bucketOnly], {
+        [bucketOnly.storageKey]: null,
+      }, {
+        [bucketOnly.storageKey]: 'unavailable',
+      })
+    ).toEqual({
+      blocked: 0,
+      newItems: 1,
       unused: 0,
     });
   });

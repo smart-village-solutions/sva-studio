@@ -107,6 +107,7 @@ export {
   getMediaHandler,
   getMediaUsageHandler,
   initializeMediaUploadHandler,
+  registerBucketMediaHandler,
   listMediaReferencesHandler,
   listMediaHandler,
   replaceMediaReferencesHandler,

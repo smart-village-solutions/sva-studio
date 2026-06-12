@@ -9,13 +9,19 @@ import {
   IamHttpError,
   listMedia,
   deleteMedia as deleteMediaRequest,
+  getMediaLibraryItemKey,
+  isRegisteredMediaAsset,
   updateMedia,
+  registerBucketMedia,
   type IamMediaAsset,
   type IamMediaDelivery,
+  type IamRegisteredMediaAsset,
+  type IamUnregisteredMediaAsset,
   type IamMediaUsageImpact,
   type InitializeMediaUploadPayload,
   type InitializeMediaUploadResponse,
   type MediaListQuery,
+  type RegisterBucketMediaPayload,
   type UpdateMediaPayload,
 } from '../lib/iam-api';
 import {
@@ -45,8 +51,14 @@ type UseCreateMediaUploadResult = {
   readonly initializeUpload: (payload: InitializeMediaUploadPayload) => Promise<InitializeMediaUploadResponse | null>;
 };
 
+type UseRegisterBucketMediaResult = {
+  readonly mutationError: IamHttpError | null;
+  readonly clearMutationError: () => void;
+  readonly registerMedia: (payload: RegisterBucketMediaPayload) => Promise<IamRegisteredMediaAsset | null>;
+};
+
 type UseMediaDetailResult = {
-  readonly asset: IamMediaAsset | null;
+  readonly asset: IamRegisteredMediaAsset | null;
   readonly usage: IamMediaUsageImpact | null;
   readonly delivery: IamMediaDelivery | null;
   readonly isLoading: boolean;
@@ -94,11 +106,15 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       if (requestId !== latestRequestRef.current) {
         return;
       }
+      const registeredAssets = response.data.filter(isRegisteredMediaAsset);
       const initialUsageByAssetId = Object.fromEntries(
-        response.data.map((asset) => [asset.id, null] as const)
+        response.data.map((asset) => [getMediaLibraryItemKey(asset), null] as const)
       );
       const initialUsageStatusByAssetId = Object.fromEntries(
-        response.data.map((asset) => [asset.id, 'loading'] as const)
+        response.data.map((asset) => [
+          getMediaLibraryItemKey(asset),
+          isRegisteredMediaAsset(asset) ? 'loading' : 'unavailable',
+        ] as const)
       );
       setAssets(response.data);
       setUsageByAssetId(initialUsageByAssetId);
@@ -107,20 +123,20 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       setPageSize(response.pagination.pageSize);
       setTotal(response.pagination.total);
       setIsLoading(false);
-      setIsUsageLoading(response.data.length > 0);
+      setIsUsageLoading(registeredAssets.length > 0);
       logBrowserOperationSuccess(mediaLogger, 'media_library_refetch_succeeded', {
         operation: 'list_media',
         item_count: response.data.length,
       });
 
-      if (response.data.length === 0) {
+      if (registeredAssets.length === 0) {
         return;
       }
 
-      let remainingUsageRequests = response.data.length;
+      let remainingUsageRequests = registeredAssets.length;
       let protectedUsageFailureHandled = false;
 
-      for (const asset of response.data) {
+      for (const asset of registeredAssets) {
         void getMediaUsage(asset.id)
           .then((usageResponse) => {
             if (requestId !== latestRequestRef.current) {
@@ -129,11 +145,11 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
 
             setUsageByAssetId((current) => ({
               ...current,
-              [asset.id]: usageResponse.data.totalReferences,
+              [getMediaLibraryItemKey(asset)]: usageResponse.data.totalReferences,
             }));
             setUsageStatusByAssetId((current) => ({
               ...current,
-              [asset.id]: 'ready',
+              [getMediaLibraryItemKey(asset)]: 'ready',
             }));
           })
           .catch(async (cause) => {
@@ -156,7 +172,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
 
             setUsageStatusByAssetId((current) => ({
               ...current,
-              [asset.id]: 'unavailable',
+              [getMediaLibraryItemKey(asset)]: 'unavailable',
             }));
           })
           .finally(() => {
@@ -250,11 +266,65 @@ export const useCreateMediaUpload = (): UseCreateMediaUploadResult => {
   };
 };
 
+export const useRegisterBucketMedia = (): UseRegisterBucketMediaResult => {
+  const { invalidatePermissions } = useAuth();
+  const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
+
+  const runMutation = React.useCallback(
+    async (payload: RegisterBucketMediaPayload) => {
+      setMutationError(null);
+      try {
+        const response = await registerBucketMedia(payload);
+        return response.data;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
+          await invalidatePermissions();
+        }
+        setMutationError(resolvedError);
+        return null;
+      }
+    },
+    [invalidatePermissions]
+  );
+
+  return {
+    mutationError,
+    clearMutationError: () => setMutationError(null),
+    registerMedia: runMutation,
+  };
+};
+
+export const deriveMimeTypeFromUnregisteredMedia = (asset: IamUnregisteredMediaAsset): string => {
+  const extension = asset.fileName.split('.').pop()?.trim().toLowerCase();
+
+  switch (extension) {
+    case 'avif':
+      return 'image/avif';
+    case 'gif':
+      return 'image/gif';
+    case 'jpeg':
+    case 'jpg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'svg':
+      return 'image/svg+xml';
+    case 'webp':
+      return 'image/webp';
+    case 'pdf':
+      return 'application/pdf';
+    default:
+      return 'application/octet-stream';
+  }
+};
+
 export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => {
   const { invalidatePermissions } = useAuth();
-  const [asset, setAsset] = React.useState<IamMediaAsset | null>(null);
+  const [asset, setAsset] = React.useState<IamRegisteredMediaAsset | null>(null);
   const [usage, setUsage] = React.useState<IamMediaUsageImpact | null>(null);
   const [delivery, setDelivery] = React.useState<IamMediaDelivery | null>(null);
+  const [autoResolvedDeliveryAssetId, setAutoResolvedDeliveryAssetId] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
@@ -264,6 +334,7 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
       setAsset(null);
       setUsage(null);
       setDelivery(null);
+      setAutoResolvedDeliveryAssetId(null);
       setError(null);
       setIsLoading(false);
       return;
@@ -280,6 +351,8 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
       const [assetResponse, usageResponse] = await Promise.all([getMedia(assetId), getMediaUsage(assetId)]);
       setAsset(assetResponse.data);
       setUsage(usageResponse.data);
+      setDelivery(null);
+      setAutoResolvedDeliveryAssetId(null);
       logBrowserOperationSuccess(mediaLogger, 'media_detail_refetch_succeeded', {
         operation: 'get_media_detail',
         asset_id: assetId,
@@ -293,6 +366,7 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
       setAsset(null);
       setUsage(null);
       setDelivery(null);
+      setAutoResolvedDeliveryAssetId(null);
       setError(resolvedError);
       logBrowserOperationFailure(mediaLogger, 'media_detail_refetch_failed', resolvedError, {
         operation: 'get_media_detail',
@@ -360,6 +434,20 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
       return null;
     }
   }, [assetId, invalidatePermissions]);
+
+  const resolveDeliveryRef = React.useRef<(() => Promise<IamMediaDelivery | null>) | null>(null);
+  resolveDeliveryRef.current = resolveDelivery;
+
+  React.useEffect(() => {
+    if (!asset || delivery || autoResolvedDeliveryAssetId === asset.id || !asset.mimeType.startsWith('image/')) {
+      return;
+    }
+
+    setAutoResolvedDeliveryAssetId(asset.id);
+    void (async () => {
+      await resolveDeliveryRef.current?.();
+    })();
+  }, [asset, autoResolvedDeliveryAssetId, delivery]);
 
   const deleteMedia = React.useCallback(async () => {
     if (!assetId) {

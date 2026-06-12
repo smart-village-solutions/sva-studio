@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useCreateMediaUpload, useMediaDetail, useMediaLibrary } from './use-media';
+import { getMediaLibraryItemKey } from '../lib/iam-api';
 
 type MediaUsageResponse = {
   data: {
@@ -45,10 +46,12 @@ const browserLoggerState = vi.hoisted(() => ({
 vi.mock('../lib/iam-api', () => ({
   asIamError: (error: unknown) => error,
   deleteMedia: (...args: Parameters<typeof deleteMediaMock>) => deleteMediaMock(...args),
+  getMediaLibraryItemKey: (asset: { id?: string; storageKey: string }) => asset.id ?? asset.storageKey,
   getMedia: (...args: Parameters<typeof getMediaMock>) => getMediaMock(...args),
   getMediaDelivery: (...args: Parameters<typeof getMediaDeliveryMock>) => getMediaDeliveryMock(...args),
   getMediaUsage: (...args: Parameters<typeof getMediaUsageMock>) => getMediaUsageMock(...args),
   initializeMediaUpload: (...args: Parameters<typeof initializeMediaUploadMock>) => initializeMediaUploadMock(...args),
+  isRegisteredMediaAsset: (asset: { id?: string }) => typeof asset.id === 'string',
   listMedia: (...args: Parameters<typeof listMediaMock>) => listMediaMock(...args),
   updateMedia: (...args: Parameters<typeof updateMediaMock>) => updateMediaMock(...args),
 }));
@@ -66,8 +69,10 @@ vi.mock('@sva/monitoring-client/logging', () => ({
 function MediaLibraryProbe(props: { readonly search?: string; readonly visibility?: 'all' | 'public' | 'protected' }) {
   const media = useMediaLibrary(props);
   const firstAsset = media.assets[0];
-  const firstUsageCount = firstAsset ? media.usageByAssetId[firstAsset.id] : null;
-  const firstUsageStatus = firstAsset ? media.usageStatusByAssetId[firstAsset.id] ?? 'none' : 'none';
+  const firstUsageCount = firstAsset ? media.usageByAssetId[getMediaLibraryItemKey(firstAsset)] : null;
+  const firstUsageStatus = firstAsset
+    ? media.usageStatusByAssetId[getMediaLibraryItemKey(firstAsset)] ?? 'none'
+    : 'none';
 
   return (
     <div>
@@ -218,6 +223,41 @@ describe('useMediaLibrary', () => {
     await waitFor(() => {
       expect(listMediaMock).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it('keeps unregistered bucket files in the list and skips usage enrichment for them', async () => {
+    listMediaMock.mockResolvedValue({
+      data: [
+        {
+          source: 'bucket',
+          registrationStatus: 'unregistered',
+          storageKey: 'instance-1/uploads/2026/06/manual.pdf',
+          fileName: 'manual.pdf',
+          folderPath: 'uploads/2026/06',
+          relativePath: 'uploads/2026/06/manual.pdf',
+          byteSize: 2048,
+          updatedAt: '2026-06-11T09:00:00.000Z',
+          lastModified: '2026-06-11T09:00:00.000Z',
+        },
+      ],
+      pagination: {
+        page: 1,
+        pageSize: 25,
+        total: 1,
+      },
+    });
+
+    render(<MediaLibraryProbe />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('false');
+      expect(screen.getByTestId('usage-loading').textContent).toBe('false');
+      expect(screen.getByTestId('asset-count').textContent).toBe('1');
+      expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
+      expect(screen.getByTestId('usage-status').textContent).toBe('unavailable');
+    });
+
+    expect(getMediaUsageMock).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -643,14 +683,14 @@ describe('useMediaDetail', () => {
     expect(getMediaUsageMock).not.toHaveBeenCalled();
   });
 
-  it('keeps media detail usage available while delivery is still unresolved', async () => {
+  it('keeps media detail usage available while delivery stays unresolved for non-visual assets', async () => {
     getMediaMock.mockResolvedValue({
       data: {
         id: 'asset-2',
         instanceId: 'instance-1',
         storageKey: 'media/asset-2',
-        mediaType: 'image',
-        mimeType: 'image/png',
+        mediaType: 'document',
+        mimeType: 'application/pdf',
         byteSize: 2048,
         visibility: 'protected',
         uploadStatus: 'processed',
@@ -675,6 +715,49 @@ describe('useMediaDetail', () => {
       expect(screen.getByTestId('usage-count').textContent).toBe('1');
       expect(screen.getByTestId('delivery-url').textContent).toBe('none');
     });
+
+    expect(getMediaDeliveryMock).not.toHaveBeenCalled();
+  });
+
+  it('auto-resolves delivery for visual assets so previews can render immediately', async () => {
+    getMediaMock.mockResolvedValue({
+      data: {
+        id: 'asset-2',
+        instanceId: 'instance-1',
+        storageKey: 'media/asset-2',
+        mediaType: 'image',
+        mimeType: 'image/png',
+        byteSize: 2048,
+        visibility: 'protected',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: { title: 'Initial' },
+        technical: {},
+      },
+    });
+    getMediaUsageMock.mockResolvedValue({
+      data: {
+        assetId: 'asset-2',
+        totalReferences: 1,
+        references: [],
+      },
+    });
+    getMediaDeliveryMock.mockResolvedValue({
+      data: {
+        assetId: 'asset-2',
+        visibility: 'protected',
+        deliveryUrl: 'https://delivery.example.test/asset-2.png',
+      },
+    });
+
+    render(<MediaDetailProbe assetId="asset-2" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('false');
+      expect(screen.getByTestId('delivery-url').textContent).toBe('https://delivery.example.test/asset-2.png');
+    });
+
+    expect(getMediaDeliveryMock).toHaveBeenCalledWith('asset-2');
   });
 
   it('loads asset and usage data, updates metadata, and refreshes detail state', async () => {
@@ -958,7 +1041,7 @@ describe('useMediaDetail', () => {
       fireEvent.click(screen.getByRole('button', { name: 'clear' }));
 
       expect(screen.getByTestId('mutation-error').textContent).toBe('none');
-      expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
+      expect(invalidatePermissionsMock).toHaveBeenCalledTimes(2);
     }
   );
 

@@ -190,6 +190,7 @@ const authServerMocks = vi.hoisted(() => {
     deleteContentHandler: vi.fn(async () => response('deleteContentHandler')),
     getContentHistoryHandler: vi.fn(async () => response('getContentHistoryHandler')),
     listMediaHandler: vi.fn(async () => response('listMediaHandler')),
+    registerBucketMediaHandler: vi.fn(async () => response('registerBucketMediaHandler')),
     listMediaReferencesHandler: vi.fn(async () => response('listMediaReferencesHandler')),
     initializeMediaUploadHandler: vi.fn(async () => response('initializeMediaUploadHandler')),
     completeMediaUploadHandler: vi.fn(async () => response('completeMediaUploadHandler')),

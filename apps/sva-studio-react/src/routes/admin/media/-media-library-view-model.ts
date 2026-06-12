@@ -1,4 +1,4 @@
-import type { IamMediaAsset } from '../../../lib/iam-api';
+import { getMediaLibraryItemKey, isRegisteredMediaAsset, type IamMediaAsset } from '../../../lib/iam-api';
 
 export type MediaLibraryCardState = 'ready' | 'new' | 'blocked' | 'unused';
 
@@ -18,6 +18,10 @@ export const resolveMediaCardState = (
   referenceCount: number | null,
   usageStatus: 'loading' | 'ready' | 'unavailable' = 'ready'
 ): MediaLibraryCardState => {
+  if (!isRegisteredMediaAsset(asset)) {
+    return 'new';
+  }
+
   if (
     asset.processingStatus === 'failed' ||
     asset.uploadStatus === 'failed' ||
@@ -44,8 +48,9 @@ export const countMediaPriorityBuckets = (
 ): MediaPriorityBuckets =>
   assets.reduce<MediaPriorityBuckets>(
     (counts, asset) => {
-      const referenceCount = usageByAssetId[asset.id] ?? null;
-      const usageStatus = usageStatusByAssetId[asset.id] ?? 'unavailable';
+      const assetKey = getMediaLibraryItemKey(asset);
+      const referenceCount = usageByAssetId[assetKey] ?? null;
+      const usageStatus = usageStatusByAssetId[assetKey] ?? 'unavailable';
       const state = resolveMediaCardState(asset, referenceCount, usageStatus);
 
       return {

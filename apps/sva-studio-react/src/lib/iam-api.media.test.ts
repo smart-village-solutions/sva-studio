@@ -11,7 +11,7 @@ vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
 
-import { deleteMedia, getMediaDelivery, initializeMediaUpload, listMedia, updateMedia } from './iam-api';
+import { deleteMedia, getMediaDelivery, initializeMediaUpload, listMedia, registerBucketMedia, updateMedia } from './iam-api';
 
 describe('iam-api media helpers', () => {
   beforeEach(() => {
@@ -127,6 +127,41 @@ describe('iam-api media helpers', () => {
       '/api/v1/iam/media/asset-1',
       expect.objectContaining({
         method: 'DELETE',
+      })
+    );
+  });
+
+  it('posts bucket registration payloads to the dedicated endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { id: 'asset-registered' } }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'media-idempotency-2' });
+
+    await registerBucketMedia({
+      storageKey: 'cms_uploads/photo.jpg',
+      fileName: 'photo.jpg',
+      byteSize: 42,
+      mimeType: 'image/jpeg',
+      visibility: 'public',
+      metadata: { title: 'photo' },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/media/register',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          storageKey: 'cms_uploads/photo.jpg',
+          fileName: 'photo.jpg',
+          byteSize: 42,
+          mimeType: 'image/jpeg',
+          visibility: 'public',
+          metadata: { title: 'photo' },
+        }),
       })
     );
   });

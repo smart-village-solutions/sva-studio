@@ -1,3 +1,5 @@
+import type { MediaVisibility } from '@sva/media';
+
 export type MediaUploadPreparation = Readonly<{
   uploadUrl: string;
   method: 'PUT';
@@ -10,6 +12,24 @@ export type MediaDeliveryResolution = Readonly<{
   deliveryUrl: string;
   expiresAt: string;
   contentType?: string;
+}>;
+
+export type MediaStorageObjectSummary = Readonly<{
+  storageKey: string;
+  byteSize: number;
+  lastModified: string | null;
+  previewUrl?: string | null;
+}>;
+
+export type ListMediaStorageObjectsInput = Readonly<{
+  instanceId: string;
+  limit: number;
+  cursor?: string;
+}>;
+
+export type MediaStorageObjectList = Readonly<{
+  items: readonly MediaStorageObjectSummary[];
+  nextCursor: string | null;
 }>;
 
 export type PrepareMediaUploadInput = Readonly<{
@@ -25,7 +45,7 @@ export type ResolveMediaDeliveryInput = Readonly<{
   instanceId: string;
   assetId: string;
   storageKey: string;
-  visibility: string;
+  visibility: MediaVisibility;
 }>;
 
 export type ReadMediaObjectInput = Readonly<{
@@ -46,6 +66,7 @@ export type DeleteMediaObjectInput = Readonly<{
 }>;
 
 export type MediaStoragePort = {
+  listObjects(input: ListMediaStorageObjectsInput): Promise<MediaStorageObjectList>;
   prepareUpload(input: PrepareMediaUploadInput): Promise<MediaUploadPreparation>;
   resolveDelivery(input: ResolveMediaDeliveryInput): Promise<MediaDeliveryResolution>;
   readObject(input: ReadMediaObjectInput): Promise<{
@@ -69,6 +90,9 @@ export class MediaStorageUnavailableError extends Error {
 }
 
 export const createUnavailableMediaStoragePort = (): MediaStoragePort => ({
+  async listObjects() {
+    throw new MediaStorageUnavailableError();
+  },
   async prepareUpload() {
     throw new MediaStorageUnavailableError();
   },

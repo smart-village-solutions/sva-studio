@@ -77,6 +77,9 @@ export const instanceAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.getContentHistoryHandler),
   },
   '/api/v1/iam/media': { GET: routeHandler(authRuntimeRoutes.listMediaHandler) },
+  '/api/v1/iam/media/register': {
+    POST: routeHandler(authRuntimeRoutes.registerBucketMediaHandler),
+  },
   '/api/v1/iam/media/references': {
     GET: routeHandler(authRuntimeRoutes.listMediaReferencesHandler),
     PUT: routeHandler(authRuntimeRoutes.replaceMediaReferencesHandler),

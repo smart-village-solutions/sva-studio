@@ -1,9 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { t } from '../../../i18n';
-import type { IamMediaAsset } from '../../../lib/iam-api';
+import type { IamRegisteredMediaAsset } from '../../../lib/iam-api';
 
 type MediaDetailMetadataSectionProps = Readonly<{
-  asset: IamMediaAsset;
+  asset: IamRegisteredMediaAsset;
 }>;
 
 const readTextValue = (value: string | undefined): string => value?.trim() || t('media.values.notAvailable');

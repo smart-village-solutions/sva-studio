@@ -98,19 +98,19 @@ export const assertStudioAuditRuntime = (input: {
   }
 
   if (!input.commandExists('kcadm.sh')) {
-    throw new Error('kcadm.sh ist nicht verfuegbar.');
+    throw new Error('kcadm.sh ist nicht verfügbar.');
   }
 
   if (!input.commandExists('quantum-cli')) {
-    throw new Error('quantum-cli ist nicht verfuegbar.');
+    throw new Error('quantum-cli ist nicht verfügbar.');
   }
 
   if (!runtimeEnv.SVA_STACK_NAME?.trim()) {
-    throw new Error('SVA_STACK_NAME fehlt fuer das studio-Instanz-Audit.');
+    throw new Error('SVA_STACK_NAME fehlt für das studio-Instanz-Audit.');
   }
 
   if (!(runtimeEnv.QUANTUM_ENDPOINT?.trim() || runtimeEnv.PORTAINER_ENDPOINT?.trim())) {
-    throw new Error('QUANTUM_ENDPOINT fehlt fuer das studio-Instanz-Audit.');
+    throw new Error('QUANTUM_ENDPOINT fehlt für das studio-Instanz-Audit.');
   }
 
   return {

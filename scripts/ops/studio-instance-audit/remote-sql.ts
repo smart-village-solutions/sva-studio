@@ -4,13 +4,14 @@ import type { StudioAuditRuntime } from './runtime.ts';
 type QueryJsonRow = Record<string, unknown>;
 
 const shellEscape = (value: string) => `'${value.replaceAll("'", `'\"'\"'`)}'`;
+export const sqlLiteral = (value: string) => `'${value.replaceAll("'", "''")}'`;
 
 const stripTrailingSemicolon = (sql: string) => sql.trim().replace(/;+\s*$/u, '');
 
 const getConfiguredStackName = (env: NodeJS.ProcessEnv) => {
   const stackName = env.SVA_STACK_NAME?.trim();
   if (!stackName) {
-    throw new Error('SVA_STACK_NAME fehlt fuer das Remote-Instanz-Audit.');
+    throw new Error('SVA_STACK_NAME fehlt für das Remote-Instanz-Audit.');
   }
 
   return stackName;
@@ -19,7 +20,7 @@ const getConfiguredStackName = (env: NodeJS.ProcessEnv) => {
 const getConfiguredQuantumEndpoint = (env: NodeJS.ProcessEnv) => {
   const endpoint = env.QUANTUM_ENDPOINT?.trim() || env.PORTAINER_ENDPOINT?.trim();
   if (!endpoint) {
-    throw new Error('QUANTUM_ENDPOINT fehlt fuer das Remote-Instanz-Audit.');
+    throw new Error('QUANTUM_ENDPOINT fehlt für das Remote-Instanz-Audit.');
   }
 
   return endpoint;
@@ -58,7 +59,7 @@ const runRemoteSql = (runtime: StudioAuditRuntime, sql: string) => {
       `sh -lc ${shellEscape(remoteScript)}`,
     ],
     runtime.env,
-    { failureMessage: 'Remote-SQL-Abfrage fuer das Studio-Instanz-Audit fehlgeschlagen.' },
+    { failureMessage: 'Remote-SQL-Abfrage für das Studio-Instanz-Audit fehlgeschlagen.' },
   );
 };
 

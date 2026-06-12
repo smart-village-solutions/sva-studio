@@ -275,6 +275,49 @@ describe('mergeMediaListingPage', () => {
     expect(result.total).toBe(1);
   });
 
+  it('keeps metadata and mime-type search matches for registered assets', () => {
+    const result = mergeMediaListingPage({
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 10,
+      search: 'hero',
+      registeredAssets: [
+        {
+          id: 'asset-1',
+          instanceId: 'tenant-a',
+          storageKey: 'tenant-a/originals/a1.jpg',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 10,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: { title: 'Homepage Hero', altText: 'Stadtpanorama' },
+          technical: {},
+          updatedAt: '2026-06-11T08:00:00.000Z',
+        },
+        {
+          id: 'asset-2',
+          instanceId: 'tenant-a',
+          storageKey: 'tenant-a/originals/a2.pdf',
+          mediaType: 'document',
+          mimeType: 'application/pdf',
+          byteSize: 11,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {},
+          technical: {},
+          updatedAt: '2026-06-11T07:00:00.000Z',
+        },
+      ],
+      bucketObjects: [],
+    });
+
+    expect(result.items.map((item) => ('id' in item ? item.id : item.storageKey))).toEqual(['asset-1']);
+    expect(result.total).toBe(1);
+  });
+
   it('excludes unregistered bucket items when a visibility filter is present', () => {
     const result = mergeMediaListingPage({
       instanceId: 'tenant-a',

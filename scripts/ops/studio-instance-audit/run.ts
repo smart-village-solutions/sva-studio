@@ -66,7 +66,7 @@ const buildInstanceResult = async (
     const httpResult = await runHttpChecks(target);
     checks.push(...httpResult.checks);
   } catch (error) {
-    checks.push(toFailureCheck('http.inspect', 'HTTP-Erreichbarkeit wurde geprueft', error));
+    checks.push(toFailureCheck('http.inspect', 'HTTP-Erreichbarkeit wurde geprüft', error));
   }
 
   let secretResult: Awaited<ReturnType<typeof inspectTenantSecrets>> = { checks: [] };
@@ -84,14 +84,14 @@ const buildInstanceResult = async (
     });
     checks.push(...keycloakResult.checks);
   } catch (error) {
-    checks.push(toFailureCheck('keycloak.inspect', 'Keycloak-Konfiguration wurde geprueft', error));
+    checks.push(toFailureCheck('keycloak.inspect', 'Keycloak-Konfiguration wurde geprüft', error));
   }
 
   try {
     const localIamResult = await inspectLocalStudioIam(sqlClient, target.instanceId);
     checks.push(...localIamResult.checks);
   } catch (error) {
-    checks.push(toFailureCheck('local_iam.inspect', 'Lokale IAM-Daten wurden geprueft', error));
+    checks.push(toFailureCheck('local_iam.inspect', 'Lokale IAM-Daten wurden geprüft', error));
   }
 
   return {
@@ -128,7 +128,7 @@ export const executeStudioInstanceAudit = async (
     const targets = await loadAuditTargets(sqlClient);
     if (targets.length === 0) {
       throw new Error(
-        'Das Instanz-Audit hat 0 aktive Registry-Targets geladen. Das ist fuer das studio-Profil unplausibel und deutet auf einen fehlerhaften Remote-SQL-Transport hin.'
+        'Das Instanz-Audit hat 0 aktive Registry-Targets geladen. Das ist für das studio-Profil unplausibel und deutet auf einen fehlerhaften Remote-SQL-Transport hin.'
       );
     }
     const instances = await Promise.all(targets.map((target) => buildInstanceResult(sqlClient, target)));

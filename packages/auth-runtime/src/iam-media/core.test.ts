@@ -566,6 +566,65 @@ describe('media http handlers', () => {
     expect(storagePort.listObjects).not.toHaveBeenCalled();
   });
 
+  it('keeps registered media available when storage is unavailable but visibility excludes bucket items', async () => {
+    const service = createService();
+    service.listAssets = vi.fn(async () => [
+      {
+        id: 'asset-1',
+        instanceId: 'tenant-a',
+        storageKey: 'tenant-a/originals/asset-1.jpg',
+        mediaType: 'image',
+        mimeType: 'image/jpeg',
+        byteSize: 100,
+        visibility: 'public',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {},
+        technical: {},
+        updatedAt: '2026-06-11T08:00:00.000Z',
+      },
+    ]);
+    service.countAssets = vi.fn(async () => 1);
+
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: {} as never,
+      resolveStoragePort: vi.fn(async () => {
+        throw new MediaStorageUnavailableError('storage unavailable');
+      }),
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.listMedia(
+      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&visibility=public&page=1&pageSize=10'),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: [
+        {
+          id: 'asset-1',
+          instanceId: 'tenant-a',
+          storageKey: 'tenant-a/originals/asset-1.jpg',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 100,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {},
+          technical: {},
+          updatedAt: '2026-06-11T08:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, pageSize: 10, total: 1 },
+    });
+  });
+
   it('returns invalid_request for unsupported visibility filters before touching storage', async () => {
     const service = createService();
     const storagePort = {

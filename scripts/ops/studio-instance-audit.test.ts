@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { inspectLocalStudioIam } from './studio-instance-audit/local-iam.ts';
 import { loadAuditTargets } from './studio-instance-audit/registry.ts';
+import { inspectTenantSecrets } from './studio-instance-audit/secrets.ts';
 import { assertStudioAuditRuntime } from './studio-instance-audit/runtime.ts';
 import { runStudioInstanceAuditCli } from './studio-instance-audit.ts';
 
@@ -84,5 +86,35 @@ describe('loadAuditTargets', () => {
         tenantAdminUsername: 'ada.admin',
       },
     ]);
+  });
+});
+
+describe('studio instance audit sql escaping', () => {
+  it('escapes instance ids in tenant secret queries', async () => {
+    let receivedSql = '';
+    const queryOne: Parameters<typeof inspectTenantSecrets>[0]['queryOne'] = async <T extends Record<string, unknown>>(
+      sql: string
+    ) => {
+      receivedSql = sql;
+      return null;
+    };
+
+    await inspectTenantSecrets({ queryOne }, `tenant' OR '1'='1`);
+
+    expect(receivedSql).toContain(`WHERE id = 'tenant'' OR ''1''=''1'`);
+  });
+
+  it('escapes instance ids in local iam queries', async () => {
+    let receivedSql = '';
+    const queryOne: Parameters<typeof inspectLocalStudioIam>[0]['queryOne'] = async <T extends Record<string, unknown>>(
+      sql: string
+    ) => {
+      receivedSql = sql;
+      return { count: 0 } as unknown as T;
+    };
+
+    await inspectLocalStudioIam({ queryOne }, `tenant' OR '1'='1`);
+
+    expect(receivedSql).toContain(`WHERE ar.instance_id = 'tenant'' OR ''1''=''1'`);
   });
 });

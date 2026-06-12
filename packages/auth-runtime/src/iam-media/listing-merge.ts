@@ -26,15 +26,22 @@ const normalizeSearchTerm = (value: string | undefined): string | undefined => {
 const buildSearchableFields = (input: {
   instanceId: string;
   storageKey: string;
+  metadata?: Readonly<Record<string, unknown>>;
+  mimeType?: string;
 }): readonly string[] => {
   const pathInfo = deriveMediaPathInfo(input);
-  return [input.storageKey, pathInfo.fileName, pathInfo.folderPath, pathInfo.relativePath];
+  const title = typeof input.metadata?.['title'] === 'string' ? input.metadata['title'] : '';
+  const altText = typeof input.metadata?.['altText'] === 'string' ? input.metadata['altText'] : '';
+
+  return [input.storageKey, pathInfo.fileName, pathInfo.folderPath, pathInfo.relativePath, title, altText, input.mimeType ?? ''];
 };
 
 const matchesSearch = (input: {
   instanceId: string;
   storageKey: string;
   normalizedSearch?: string;
+  metadata?: Readonly<Record<string, unknown>>;
+  mimeType?: string;
 }): boolean => {
   const { normalizedSearch } = input;
   if (!normalizedSearch) {
@@ -44,6 +51,8 @@ const matchesSearch = (input: {
   return buildSearchableFields({
     instanceId: input.instanceId,
     storageKey: input.storageKey,
+    metadata: input.metadata,
+    mimeType: input.mimeType,
   }).some((field) => field.toLocaleLowerCase().includes(normalizedSearch));
 };
 
@@ -92,6 +101,8 @@ export const mergeMediaListingPage = (input: {
       instanceId: input.instanceId,
       storageKey: asset.storageKey,
       normalizedSearch,
+      metadata: asset.metadata,
+      mimeType: asset.mimeType,
     })
   );
   const includeUnregisteredItems = !input.visibility?.trim();

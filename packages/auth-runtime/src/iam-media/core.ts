@@ -357,7 +357,6 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     return withMediaStorageGuard(
       async () => {
-        const storagePort = await resolveMediaStoragePort(deps, instanceId);
         try {
           const registeredAssets = await deps.withMediaService(instanceId, async (service) => {
             const filter = {
@@ -379,6 +378,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
           const bucketObjects: MediaStorageObjectSummary[] = [];
           if (!visibility) {
+            const storagePort = await resolveMediaStoragePort(deps, instanceId);
             let cursor: string | undefined;
 
             do {

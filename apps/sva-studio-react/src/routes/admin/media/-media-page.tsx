@@ -9,6 +9,11 @@ import { decodeBucketMediaId } from './-media-ui.shared.js';
 const readSearchValue = (value: unknown): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined;
 
+const readByteSize = (value: unknown): number => {
+  const parsed = typeof value === 'number' ? value : Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 export const MediaPage = () => {
   const { pathname } = useLocation();
   const { mediaId } = useParams({ strict: false });
@@ -30,7 +35,7 @@ export const MediaPage = () => {
             fileName: readSearchValue(search.fileName) ?? bucketStorageKey.split('/').pop() ?? bucketStorageKey,
             folderPath: readSearchValue(search.folderPath) ?? '',
             relativePath: readSearchValue(search.relativePath) ?? bucketStorageKey,
-            byteSize: typeof search.byteSize === 'number' ? search.byteSize : Number(search.byteSize ?? 0),
+            byteSize: readByteSize(search.byteSize),
             updatedAt: readSearchValue(search.updatedAt) ?? null,
             lastModified: readSearchValue(search.lastModified) ?? null,
             previewUrl: readSearchValue(search.previewUrl) ?? null,

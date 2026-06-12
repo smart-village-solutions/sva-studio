@@ -28,8 +28,16 @@ vi.mock('./-media-detail-page.js', () => ({
 }));
 
 vi.mock('./-media-unregistered-detail-page.js', () => ({
-  MediaUnregisteredDetailPage: ({ asset }: { readonly asset: { storageKey: string } | null }) => (
-    <section data-testid="media-unregistered-detail-page" data-storage-key={asset?.storageKey ?? ''} />
+  MediaUnregisteredDetailPage: ({
+    asset,
+  }: {
+    readonly asset: { storageKey: string; byteSize: number } | null;
+  }) => (
+    <section
+      data-testid="media-unregistered-detail-page"
+      data-storage-key={asset?.storageKey ?? ''}
+      data-byte-size={String(asset?.byteSize ?? '')}
+    />
   ),
 }));
 
@@ -108,6 +116,19 @@ describe('MediaPage', () => {
     expect(screen.getByTestId('media-unregistered-detail-page').getAttribute('data-storage-key')).toBe(
       'cms_uploads/photo.jpg'
     );
+    expect(screen.getByTestId('media-unregistered-detail-page').getAttribute('data-byte-size')).toBe('42');
     expect(screen.queryByTestId('media-detail-page')).toBeNull();
+  });
+
+  it('falls back to byteSize 0 when the search param is not numeric', () => {
+    useLocationMock.mockReturnValue({ pathname: '/admin/media/bucket:Y21zX3VwbG9hZHMvcGhvdG8uanBn' });
+    useParamsMock.mockReturnValue({ mediaId: 'bucket:Y21zX3VwbG9hZHMvcGhvdG8uanBn' });
+    useSearchMock.mockReturnValue({
+      byteSize: 'not-a-number',
+    });
+
+    render(<MediaPage />);
+
+    expect(screen.getByTestId('media-unregistered-detail-page').getAttribute('data-byte-size')).toBe('0');
   });
 });

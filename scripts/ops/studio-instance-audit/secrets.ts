@@ -1,6 +1,7 @@
-import { revealField } from '../../../packages/auth-runtime/src/iam-account-management/encryption.ts';
 import type { AuditCheckResult } from './model.ts';
 import type { createStudioRemoteSqlClient } from './remote-sql.ts';
+import { sqlLiteral } from './remote-sql.ts';
+import { revealField } from '../../../packages/auth-runtime/src/iam-account-management/encryption.ts';
 
 type RemoteSqlClient = ReturnType<typeof createStudioRemoteSqlClient>;
 
@@ -28,7 +29,7 @@ SELECT
   auth_client_secret_ciphertext,
   tenant_admin_client_secret_ciphertext
 FROM iam.instances
-WHERE id = '${instanceId}'
+WHERE id = ${sqlLiteral(instanceId)}
 LIMIT 1
 `);
 

@@ -180,11 +180,20 @@ export const fromDatetimeLocalValue = (value: string, referenceValue?: string): 
   return '';
 };
 
-export const toHostMediaFieldOptions = (assets: readonly HostMediaAssetListItem[]): readonly HostMediaFieldOption[] =>
-  assets.map((asset) => ({
-    assetId: asset.id,
-    label: String(asset.metadata?.title ?? asset.id),
-  }));
+export const toHostMediaFieldOptions = (assets: readonly HostMediaAssetListItem[]): readonly HostMediaFieldOption[] => {
+  const seenAssetIds = new Set<string>();
+
+  return assets.flatMap((asset) => {
+    if (seenAssetIds.has(asset.id)) {
+      return [];
+    }
+    seenAssetIds.add(asset.id);
+    return [{
+      assetId: asset.id,
+      label: String(asset.metadata?.title ?? asset.id),
+    }];
+  });
+};
 
 export const findHostMediaReferenceAssetId = (
   references: readonly HostMediaReferenceSelection[],

@@ -91,6 +91,7 @@ describe('content-ui-utils', () => {
     expect(
       toHostMediaFieldOptions([
         { id: 'asset-1', metadata: { title: 'Titelbild' } },
+        { id: 'asset-1', metadata: { title: 'Titelbild Duplikat' } },
         { id: 'asset-2' },
       ])
     ).toEqual([

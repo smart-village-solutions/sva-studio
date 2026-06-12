@@ -1,3 +1,5 @@
+import type { WasteManagementSyncMainserverJobInput } from './waste-management-sync-mainserver-job-input.js';
+
 const wasteManagementJobTypeIds = {
   initializeDataSource: 'waste-management.initialize-data-source',
   applyMigrations: 'waste-management.apply-migrations',
@@ -59,12 +61,6 @@ export type WasteManagementSeedJobInput = {
 export type WasteManagementResetJobInput = {
   readonly operation: 'reset-data';
   readonly confirmationToken: string;
-};
-
-export type WasteManagementSyncMainserverJobInput = {
-  readonly operation: 'sync-mainserver';
-  readonly keycloakSubject?: string;
-  readonly activeOrganizationId?: string;
 };
 
 export type WasteManagementSyncWasteTypesJobInput = {

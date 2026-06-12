@@ -2785,6 +2785,126 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Lange Assignment-Submission-Funktionen in kleinere Mapper und Validatoren aufteilen (packages/plugin-waste-management/src/waste-management.tours.assignments-submissions.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-media/storage-s3.ts:fileLines": {
+      "ticketId": "QUAL-AUTH-RUNTIME-MEDIA-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Storage-S3-Datei in kleinere Listing-, Konfigurations- und Delivery-Bausteine aufteilen (packages/auth-runtime/src/iam-media/storage-s3.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/hooks/use-media.ts:fileLines": {
+      "ticketId": "QUAL-FRONTEND-MEDIA-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "useMedia in kleinere Query-, Selection- und Mutation-Helfer zerlegen (apps/sva-studio-react/src/hooks/use-media.ts)"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-audit-keycloak.ts:fileLines": {
+      "ticketId": "QUAL-INSTANCE-REGISTRY-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Keycloak-Audit-Datei in kleinere Reader-, Mapping- und Check-Module aufteilen (packages/instance-registry/src/service-audit-keycloak.ts)"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-audit-keycloak.ts:functionLines": {
+      "ticketId": "QUAL-INSTANCE-REGISTRY-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange Keycloak-Audit-Orchestrierung in kleinere Check- und Aggregationsschritte aufteilen (packages/instance-registry/src/service-audit-keycloak.ts)"
+    },
+    "ops-scripts:scripts/ops/studio-instance-audit/keycloak.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-STUDIO-AUDIT-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Keycloak-Audit-Verzweigungen in kleinere Client-, Realm- und Check-Bausteine zerlegen (scripts/ops/studio-instance-audit/keycloak.ts)"
+    },
+    "ops-scripts:scripts/ops/studio-instance-audit/keycloak.ts:fileLines": {
+      "ticketId": "QUAL-STUDIO-AUDIT-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Keycloak-Audit-Datei in kleinere Auth-, Fetch- und Bewertungsmodule splitten (scripts/ops/studio-instance-audit/keycloak.ts)"
+    },
+    "ops-scripts:scripts/ops/studio-instance-audit/keycloak.ts:functionLines": {
+      "ticketId": "QUAL-STUDIO-AUDIT-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange Keycloak-Audit-Funktionen in kleinere Request-, Parse- und Summary-Schritte aufteilen (scripts/ops/studio-instance-audit/keycloak.ts)"
+    },
+    "packages-default:packages/plugin-events/src/events.detail-content-tab.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Content-Tab-Verzweigungen in kleinere Feldgruppen und Section-Renderer zerlegen (packages/plugin-events/src/events.detail-content-tab.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.detail-content-tab.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Langen Events-Content-Tab in kleinere Untersektionen und Form-Bausteine aufteilen (packages/plugin-events/src/events.detail-content-tab.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.detail-form.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Detail-Form-Mapping in kleinere Parser-, Mapper- und Normalisierungshelfer zerlegen (packages/plugin-events/src/events.detail-form.ts)"
+    },
+    "packages-default:packages/plugin-events/src/events.detail-page.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Detail-Page-Verzweigungen in kleinere Workspace-, Tab- und Action-Bausteine zerlegen (packages/plugin-events/src/events.detail-page.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.detail-page.tsx:fileLines": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Events-Detail-Page-Datei in kleinere Screen-, Toolbar- und Section-Module splitten (packages/plugin-events/src/events.detail-page.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.detail-page.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange Events-Detail-Page-Komponente in kleinere Presentational- und State-Bausteine aufteilen (packages/plugin-events/src/events.detail-page.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/index.ts:publicExports": {
+      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-004",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Plugin-Events-Exports in kleinere Re-Export-Segmente und API-Kanten aufteilen (packages/plugin-events/src/index.ts)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-content-tab.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Content-Tab-Verzweigungen in kleinere Feldgruppen und Section-Renderer zerlegen (packages/plugin-poi/src/poi.detail-content-tab.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-content-tab.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Langen POI-Content-Tab in kleinere Untersektionen und Form-Bausteine aufteilen (packages/plugin-poi/src/poi.detail-content-tab.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-form.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Detail-Form-Mapping in kleinere Parser-, Mapper- und Normalisierungshelfer zerlegen (packages/plugin-poi/src/poi.detail-form.ts)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-page.tsx:cyclomaticComplexity": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Detail-Page-Verzweigungen in kleinere Workspace-, Tab- und Action-Bausteine zerlegen (packages/plugin-poi/src/poi.detail-page.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-page.tsx:fileLines": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "POI-Detail-Page-Datei in kleinere Screen-, Toolbar- und Section-Module splitten (packages/plugin-poi/src/poi.detail-page.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.detail-page.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-POI-DETAIL-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Lange POI-Detail-Page-Komponente in kleinere Presentational- und State-Bausteine aufteilen (packages/plugin-poi/src/poi.detail-page.tsx)"
     }
   }
 }

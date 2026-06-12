@@ -203,6 +203,43 @@ describe('media storage s3 adapter', () => {
     );
   });
 
+  it('falls back to signed delivery when public delivery is requested without a public base url', async () => {
+    const signed = vi.fn().mockResolvedValue('https://downloads.example.test/get');
+    const port = createS3MediaStoragePort(
+      {
+        endpoint: 'https://minio.example.test',
+        region: 'eu-central-1',
+        bucket: 'media-bucket',
+        accessKeyId: 'access',
+        secretAccessKey: 'secret',
+        signedUrlTtlSeconds: 900,
+      },
+      {
+        client: {} as never,
+        getSignedUrl: signed,
+      }
+    );
+
+    await expect(
+      port.resolveDelivery({
+        instanceId: 'tenant-a',
+        assetId: 'asset-1',
+        storageKey: 'tenant-a/originals/asset-1.jpg',
+        visibility: 'public',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        deliveryUrl: 'https://downloads.example.test/get',
+      })
+    );
+
+    expect(signed).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(GetObjectCommand),
+      900
+    );
+  });
+
   it('lists objects from the configured instance prefix and filters pseudo-folder keys', async () => {
     const send = vi.fn().mockResolvedValue({
       Contents: [
@@ -267,6 +304,128 @@ describe('media storage s3 adapter', () => {
       MaxKeys: 25,
       ContinuationToken: 'cursor-current',
     });
+  });
+
+  it('adds encoded preview urls and normalizes missing size and modified date fields', async () => {
+    const send = vi.fn().mockResolvedValue({
+      Contents: [
+        {
+          Key: 'tenant-a/uploads/summer photo #1.jpg',
+        },
+        {
+          Key: '',
+          Size: 99,
+        },
+      ],
+    });
+
+    const port = createS3MediaStoragePort(
+      {
+        endpoint: 'https://minio.example.test',
+        region: 'eu-central-1',
+        bucket: 'media-bucket',
+        accessKeyId: 'access',
+        secretAccessKey: 'secret',
+        publicBaseUrl: 'https://cdn.example.test/media',
+        signedUrlTtlSeconds: 900,
+      },
+      {
+        client: { send } as unknown as S3Client,
+        getSignedUrl: vi.fn(),
+      }
+    );
+
+    await expect(
+      port.listObjects({
+        instanceId: 'tenant-a',
+        limit: 25,
+      })
+    ).resolves.toEqual({
+      items: [
+        {
+          storageKey: 'tenant-a/uploads/summer photo #1.jpg',
+          byteSize: 0,
+          lastModified: null,
+          previewUrl: 'https://cdn.example.test/media/tenant-a/uploads/summer%20photo%20%231.jpg',
+        },
+      ],
+      nextCursor: null,
+    });
+  });
+
+  it('reads, writes, and deletes objects against the configured bucket', async () => {
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce({
+        Body: {
+          transformToByteArray: vi.fn(async () => Uint8Array.from([1, 2, 3])),
+        },
+        ContentType: 'image/png',
+        ETag: '"read-etag"',
+      })
+      .mockResolvedValueOnce({
+        ETag: '"write-etag"',
+      })
+      .mockResolvedValueOnce({});
+
+    const port = createS3MediaStoragePort(
+      {
+        endpoint: 'https://minio.example.test',
+        region: 'eu-central-1',
+        bucket: 'media-bucket',
+        accessKeyId: 'access',
+        secretAccessKey: 'secret',
+        signedUrlTtlSeconds: 900,
+      },
+      {
+        client: { send } as unknown as S3Client,
+        getSignedUrl: vi.fn(),
+      }
+    );
+
+    await expect(
+      port.readObject({
+        instanceId: 'tenant-a',
+        storageKey: 'tenant-a/originals/asset-1.png',
+      })
+    ).resolves.toEqual({
+      body: Uint8Array.from([1, 2, 3]),
+      byteSize: 3,
+      contentType: 'image/png',
+      etag: '"read-etag"',
+    });
+
+    await expect(
+      port.writeObject({
+        instanceId: 'tenant-a',
+        storageKey: 'tenant-a/originals/asset-1.png',
+        body: Uint8Array.from([4, 5]),
+        contentType: 'image/png',
+      })
+    ).resolves.toEqual({
+      byteSize: 2,
+      etag: '"write-etag"',
+    });
+
+    await expect(
+      port.deleteObject({
+        instanceId: 'tenant-a',
+        storageKey: 'tenant-a/originals/asset-1.png',
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('falls back to environment config when no s3 interface is available for an instance', async () => {
+    listExternalInterfaceRecordsMock.mockResolvedValue([]);
+    vi.stubEnv('MEDIA_STORAGE_ENDPOINT', 'https://minio.example.test');
+    vi.stubEnv('MEDIA_STORAGE_BUCKET', 'media-bucket');
+    vi.stubEnv('MEDIA_STORAGE_ACCESS_KEY_ID', 'access');
+    vi.stubEnv('MEDIA_STORAGE_SECRET_ACCESS_KEY', 'secret');
+
+    const port = await createConfiguredMediaStoragePortForInstance('de-musterhausen');
+
+    expect(port).toBeDefined();
+    expect(resolveExternalInterfaceMock).not.toHaveBeenCalled();
   });
 
   it('lists objects from the bucket root when the bucket itself is instance-scoped', async () => {

@@ -64,6 +64,7 @@ describe('PoiDetailPage', () => {
         'poi.history.empty.title': 'Noch keine Historie verfügbar.',
         'poi.messages.createSuccess': 'POI erstellt.',
         'poi.messages.updateSuccess': 'POI aktualisiert.',
+        'poi.messages.deleteError': 'POI konnte nicht gelöscht werden.',
         'poi.actions.deleteConfirm': 'Wirklich löschen?',
       };
 
@@ -145,6 +146,31 @@ describe('PoiDetailPage', () => {
     expect(screen.getByDisplayValue('http://example.com/poi')).toBeTruthy();
   });
 
+  it('keeps the basis tab active when the name is missing', async () => {
+    render(<PoiDetailPage mode="create" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
+      expect(screen.getByLabelText('Name')).toBeTruthy();
+    });
+  });
+
+  it('keeps the content tab active when only the web url is invalid', async () => {
+    render(<PoiDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    fireEvent.change(await screen.findByLabelText('URL'), { target: { value: 'http://invalid.example' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
+      expect(screen.getByLabelText('URL')).toBeTruthy();
+    });
+  });
+
   it('updates poi items and preserves the loaded teaser image reference on save', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
@@ -191,6 +217,115 @@ describe('PoiDetailPage', () => {
         ],
       });
       expect(screen.getByText('POI aktualisiert.')).toBeTruthy();
+    });
+  });
+
+  it('creates poi items, skips media replacement without references, and navigates to the new detail page', async () => {
+    vi.mocked(createPoi).mockResolvedValueOnce({
+      id: 'poi-created',
+      name: 'Neuer POI',
+    } as never);
+
+    render(<PoiDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createPoi)).toHaveBeenCalledTimes(1);
+      expect(replaceHostMediaReferencesMock).not.toHaveBeenCalled();
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/poi/$id', params: { id: 'poi-created' } });
+    });
+  });
+
+  it('shows translated fallback errors when loading or saving fails unexpectedly', async () => {
+    vi.mocked(getPoi).mockRejectedValueOnce(new Error('load boom'));
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('poi.messages.missingContent')).toBeTruthy();
+    });
+
+    cleanup();
+    vi.mocked(createPoi).mockRejectedValueOnce(new Error('save boom'));
+
+    render(<PoiDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('poi.messages.saveError')).toBeTruthy();
+    });
+  });
+
+  it('does not delete or navigate away when deletion is cancelled', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      payload: {},
+    } as never);
+    vi.stubGlobal('confirm', vi.fn(() => false));
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    expect(vi.mocked(deletePoi)).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('shows the delete fallback error when deleting fails unexpectedly', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      payload: {},
+    } as never);
+    vi.mocked(deletePoi).mockRejectedValueOnce(new Error('delete boom'));
+    vi.stubGlobal('confirm', vi.fn(() => true));
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('POI konnte nicht gelöscht werden.')).toBeTruthy();
+      expect(navigateMock).not.toHaveBeenCalled();
+    });
+  });
+
+  it('falls back to zero existing media references when loading media links fails', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      payload: {},
+    } as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockRejectedValueOnce(new Error('media boom'));
+    vi.mocked(updatePoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+    } as never);
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Rathaus')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(updatePoi)).toHaveBeenCalledTimes(1);
+      expect(replaceHostMediaReferencesMock).not.toHaveBeenCalled();
     });
   });
 

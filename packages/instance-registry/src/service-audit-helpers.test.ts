@@ -33,6 +33,25 @@ const createDeps = (repository: InstanceRegistryRepository, overrides: Partial<I
   }) as unknown as InstanceRegistryServiceDeps;
 
 describe('service-audit helpers', () => {
+  const baseKeycloakStatus = {
+    realmExists: true,
+    clientExists: true,
+    tenantAdminClientExists: true,
+    tenantAdminExists: true,
+    tenantAdminHasSystemAdmin: true,
+    systemAdminRoleExists: true,
+    redirectUrisMatch: true,
+    logoutUrisMatch: true,
+    webOriginsMatch: true,
+    clientSecretConfigured: true,
+    tenantClientSecretReadable: true,
+    clientSecretAligned: true,
+    tenantAdminClientSecretConfigured: true,
+    tenantAdminClientSecretReadable: true,
+    tenantAdminClientSecretAligned: true,
+    runtimeSecretSource: 'tenant' as const,
+  };
+
   it('aggregates pass, warn, fail and skip statuses deterministically', () => {
     expect(aggregateStatuses(['pass'])).toBe('pass');
     expect(aggregateStatuses(['warn'])).toBe('warn');
@@ -119,6 +138,89 @@ describe('service-audit helpers', () => {
     expect(result.fallbackStatus).toBeTruthy();
   });
 
+  it('reports separate fallback errors when live and snapshot keycloak reads both fail', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authIssuerUrl: 'https://auth.example.org/realms/demo',
+        authClientSecretConfigured: false,
+        tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
+        tenantAdminBootstrap: { username: 'tenant-admin' },
+      })),
+      listKeycloakProvisioningRuns: vi.fn(async () => {
+        throw new Error('snapshot unavailable');
+      }),
+    });
+
+    const result = await resolveKeycloakStatus(
+      createDeps(repository, {
+        getKeycloakStatus: vi.fn(async () => {
+          throw new Error('HTTP 403 Forbidden');
+        }),
+      }),
+      'demo',
+    );
+
+    expect(result).toMatchObject({
+      status: null,
+      evidenceSource: 'keycloak_live',
+      error: 'HTTP 403 Forbidden',
+      fallbackEvidenceSource: 'keycloak_snapshot',
+      fallbackError: 'snapshot unavailable',
+    });
+    expect(result.fallbackStatus).toBeUndefined();
+  });
+
+  it('prefers live keycloak evidence when a direct reader is available', async () => {
+    const liveStatus = {
+      realmExists: true,
+      clientExists: true,
+      tenantAdminClientExists: true,
+      systemAdminRoleExists: true,
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+      redirectUrisMatch: true,
+      logoutUrisMatch: true,
+      webOriginsMatch: true,
+      clientSecretConfigured: true,
+      tenantClientSecretReadable: true,
+      clientSecretAligned: true,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: true,
+      tenantAdminClientSecretAligned: true,
+      runtimeSecretSource: 'tenant' as const,
+    };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authIssuerUrl: 'https://auth.example.org/realms/demo',
+        authClientSecretConfigured: true,
+        tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: true },
+        tenantAdminBootstrap: { username: 'tenant-admin' },
+      })),
+    });
+
+    const result = await resolveKeycloakStatus(
+      createDeps(repository, {
+        getKeycloakStatus: vi.fn(async () => liveStatus),
+      }),
+      'demo',
+    );
+
+    expect(result).toEqual({
+      status: liveStatus,
+      evidenceSource: 'keycloak_live',
+    });
+  });
+
   it('returns realm-only checks when the keycloak status says the realm is missing', () => {
     const checks = buildKeycloakChecks({
       keycloakEvidenceSource: 'keycloak_live',
@@ -188,6 +290,107 @@ describe('service-audit helpers', () => {
       actual: 'live_nicht_verifiziert',
     });
     expect(checks.slice(2).every((check) => check.status === 'skip')).toBe(true);
+  });
+
+  it('keeps live and fallback read failures as hard audit failures', () => {
+    const checks = buildKeycloakChecks({
+      keycloakEvidenceSource: 'keycloak_live',
+      keycloakError: 'HTTP 403 Forbidden',
+      keycloakStatus: null,
+      fallbackEvidenceSource: 'keycloak_snapshot',
+      fallbackError: 'snapshot unavailable',
+    });
+
+    expect(checks[0]).toMatchObject({
+      checkId: 'keycloak.access.read',
+      status: 'warn',
+      actual: 'HTTP 403 Forbidden',
+      details: expect.objectContaining({
+        primaryEvidenceSource: 'keycloak_live',
+        primaryError: 'HTTP 403 Forbidden',
+        secondaryEvidenceSource: 'keycloak_snapshot',
+        secondaryError: 'snapshot unavailable',
+      }),
+    });
+    expect(checks[1]).toMatchObject({
+      checkId: 'keycloak.realm.exists',
+      status: 'warn',
+      actual: 'live_nicht_verifiziert',
+    });
+  });
+
+  it('reports missing clients and mismatched secrets explicitly for direct keycloak evidence', () => {
+    const checks = buildKeycloakChecks({
+      keycloakEvidenceSource: 'keycloak_live',
+      keycloakStatus: {
+        ...baseKeycloakStatus,
+        clientExists: false,
+        tenantAdminClientExists: true,
+        tenantAdminClientSecretAligned: false,
+      },
+    });
+
+    expect(checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ checkId: 'keycloak.client.login.exists', status: 'fail', actual: 'fehlt' }),
+        expect.objectContaining({ checkId: 'keycloak.client.login.secretAligned', status: 'skip' }),
+        expect.objectContaining({
+          checkId: 'keycloak.client.tenantAdmin.secretAligned',
+          status: 'fail',
+          actual: 'abweichend',
+        }),
+      ]),
+    );
+  });
+
+  it('distinguishes between missing system-admin role, missing tenant admin user, and missing role assignment', () => {
+    const missingRoleChecks = buildKeycloakChecks({
+      keycloakEvidenceSource: 'keycloak_live',
+      keycloakStatus: {
+        ...baseKeycloakStatus,
+        systemAdminRoleExists: false,
+      },
+    });
+    expect(missingRoleChecks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ checkId: 'keycloak.role.systemAdmin.exists', status: 'fail' }),
+        expect.objectContaining({ checkId: 'keycloak.user.systemAdmin.exists', status: 'skip' }),
+      ]),
+    );
+
+    const missingUserChecks = buildKeycloakChecks({
+      keycloakEvidenceSource: 'keycloak_live',
+      keycloakStatus: {
+        ...baseKeycloakStatus,
+        tenantAdminExists: false,
+      },
+    });
+    expect(missingUserChecks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkId: 'keycloak.user.systemAdmin.exists',
+          status: 'fail',
+          actual: 'kein_benutzer_nachweis',
+        }),
+      ]),
+    );
+
+    const missingAssignmentChecks = buildKeycloakChecks({
+      keycloakEvidenceSource: 'keycloak_live',
+      keycloakStatus: {
+        ...baseKeycloakStatus,
+        tenantAdminHasSystemAdmin: false,
+      },
+    });
+    expect(missingAssignmentChecks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkId: 'keycloak.user.systemAdmin.exists',
+          status: 'fail',
+          actual: 'benutzer_ohne_system_admin',
+        }),
+      ]),
+    );
   });
 
   it('returns a failing run when requested instances resolve to none', async () => {

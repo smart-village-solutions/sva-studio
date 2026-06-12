@@ -895,6 +895,96 @@ describe('useMediaDetail', () => {
     expect(getMediaDeliveryMock).toHaveBeenCalledWith('asset-2');
   });
 
+  it('does not auto-resolve delivery more than once for the same visual asset', async () => {
+    getMediaMock.mockResolvedValue({
+      data: {
+        id: 'asset-repeat',
+        instanceId: 'instance-1',
+        storageKey: 'media/asset-repeat',
+        mediaType: 'image',
+        mimeType: 'image/png',
+        byteSize: 2048,
+        visibility: 'protected',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: { title: 'Repeat' },
+        technical: {},
+      },
+    });
+    getMediaUsageMock.mockResolvedValue({
+      data: {
+        assetId: 'asset-repeat',
+        totalReferences: 1,
+        references: [],
+      },
+    });
+    getMediaDeliveryMock.mockRejectedValue({
+      status: 503,
+      code: 'delivery_unavailable',
+      message: 'Delivery unavailable',
+    });
+
+    render(<MediaDetailProbe assetId="asset-repeat" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('false');
+      expect(screen.getByTestId('mutation-error').textContent).toBe('delivery_unavailable');
+    });
+
+    expect(getMediaDeliveryMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'clear' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mutation-error').textContent).toBe('none');
+    });
+
+    expect(getMediaDeliveryMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('stores delivery errors and invalidates permissions on protected resolve responses (status $status)', async (protectedError) => {
+    getMediaMock.mockResolvedValue({
+      data: {
+        id: 'asset-delivery',
+        instanceId: 'instance-1',
+        storageKey: 'media/asset-delivery',
+        mediaType: 'document',
+        mimeType: 'application/pdf',
+        byteSize: 2048,
+        visibility: 'protected',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: { title: 'Doc' },
+        technical: {},
+      },
+    });
+    getMediaUsageMock.mockResolvedValue({
+      data: {
+        assetId: 'asset-delivery',
+        totalReferences: 1,
+        references: [],
+      },
+    });
+    getMediaDeliveryMock.mockRejectedValue(protectedError);
+
+    render(<MediaDetailProbe assetId="asset-delivery" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('false');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'delivery' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mutation-error').textContent).toBe(protectedError.code);
+    });
+
+    expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
+  });
+
   it('loads asset and usage data, updates metadata, and refreshes detail state', async () => {
     getMediaMock
       .mockResolvedValueOnce({

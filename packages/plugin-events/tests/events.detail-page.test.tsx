@@ -64,6 +64,7 @@ describe('EventsDetailPage', () => {
         'events.messages.validationError': 'Bitte Eingaben prüfen.',
         'events.history.empty.title': 'Noch keine Historie verfügbar.',
         'events.messages.updateSuccess': 'Event aktualisiert.',
+        'events.messages.deleteError': 'Event konnte nicht gelöscht werden.',
         'events.actions.deleteConfirm': 'Wirklich löschen?',
       };
 
@@ -148,6 +149,32 @@ describe('EventsDetailPage', () => {
     expect(screen.getByDisplayValue('http://example.com/events')).toBeTruthy();
   });
 
+  it('keeps the basis tab active when the title is missing', async () => {
+    render(<EventsDetailPage mode="create" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createEvent)).not.toHaveBeenCalled();
+    });
+
+    expect(screen.getByLabelText('Titel')).toBeTruthy();
+  });
+
+  it('keeps the content tab active when only the event url is invalid', async () => {
+    render(<EventsDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Neues Event' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    fireEvent.change(await screen.findByLabelText('URL'), { target: { value: 'http://invalid.example' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createEvent)).not.toHaveBeenCalled();
+      expect(screen.getByLabelText('URL')).toBeTruthy();
+    });
+  });
+
   it('updates events and preserves the loaded header image reference on save', async () => {
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1',
@@ -192,6 +219,115 @@ describe('EventsDetailPage', () => {
         ],
       });
       expect(screen.getByText('Event aktualisiert.')).toBeTruthy();
+    });
+  });
+
+  it('creates events, skips media replacement without references, and navigates to the new detail page', async () => {
+    vi.mocked(createEvent).mockResolvedValueOnce({
+      id: 'event-created',
+      title: 'Neues Event',
+    } as never);
+
+    render(<EventsDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Neues Event' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(createEvent)).toHaveBeenCalledTimes(1);
+      expect(replaceHostMediaReferencesMock).not.toHaveBeenCalled();
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/events/$id', params: { id: 'event-created' } });
+    });
+  });
+
+  it('shows translated fallback errors when loading or saving fails unexpectedly', async () => {
+    vi.mocked(getEvent).mockRejectedValueOnce(new Error('load boom'));
+
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('events.messages.missingContent')).toBeTruthy();
+    });
+
+    cleanup();
+    vi.mocked(createEvent).mockRejectedValueOnce(new Error('save boom'));
+
+    render(<EventsDetailPage mode="create" />);
+
+    fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Neues Event' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('events.messages.saveError')).toBeTruthy();
+    });
+  });
+
+  it('does not delete or navigate away when deletion is cancelled', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+      dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
+    } as never);
+    vi.stubGlobal('confirm', vi.fn(() => false));
+
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Stadtfest')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    expect(vi.mocked(deleteEvent)).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('shows the delete fallback error when deleting fails unexpectedly', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+      dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
+    } as never);
+    vi.mocked(deleteEvent).mockRejectedValueOnce(new Error('delete boom'));
+    vi.stubGlobal('confirm', vi.fn(() => true));
+
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Stadtfest')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Event konnte nicht gelöscht werden.')).toBeTruthy();
+      expect(navigateMock).not.toHaveBeenCalled();
+    });
+  });
+
+  it('falls back to zero existing media references when loading media links fails', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+      dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
+    } as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockRejectedValueOnce(new Error('media boom'));
+    vi.mocked(updateEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+    } as never);
+
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Stadtfest')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(updateEvent)).toHaveBeenCalledTimes(1);
+      expect(replaceHostMediaReferencesMock).not.toHaveBeenCalled();
     });
   });
 

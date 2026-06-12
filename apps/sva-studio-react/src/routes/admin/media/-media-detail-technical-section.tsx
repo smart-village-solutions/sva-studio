@@ -1,9 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { t } from '../../../i18n';
-import type { IamMediaAsset, IamMediaDelivery } from '../../../lib/iam-api';
+import type { IamMediaDelivery, IamRegisteredMediaAsset } from '../../../lib/iam-api';
 
 type MediaDetailTechnicalSectionProps = Readonly<{
-  asset: IamMediaAsset;
+  asset: IamRegisteredMediaAsset;
   delivery: IamMediaDelivery | null;
 }>;
 

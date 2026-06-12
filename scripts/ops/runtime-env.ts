@@ -2232,7 +2232,8 @@ const syncLocalTenantSecretsToRegistry = async (env: NodeJS.ProcessEnv): Promise
 
 const buildTenantTargetsFromInstanceIds = (
   instanceIds: readonly string[],
-  parentDomain: string | undefined
+  parentDomain: string | undefined,
+  realmOverrides?: ReadonlyMap<string, string>
 ): readonly TenantRuntimeTarget[] => {
   if (!parentDomain) {
     return [];
@@ -2241,8 +2242,56 @@ const buildTenantTargetsFromInstanceIds = (
   return instanceIds.map((instanceId) => ({
     instanceId,
     host: `${instanceId}.${parentDomain}`,
-    authRealm: instanceId,
+    authRealm: realmOverrides?.get(instanceId) ?? instanceId,
   }));
+};
+
+const parseTenantRealmOverrides = (rawValue: string | undefined): ReadonlyMap<string, string> => {
+  const entries = (rawValue ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .flatMap((entry) => {
+      const separatorIndex = entry.indexOf('=');
+      if (separatorIndex <= 0 || separatorIndex === entry.length - 1) {
+        return [];
+      }
+
+      const instanceId = entry.slice(0, separatorIndex).trim();
+      const authRealm = entry.slice(separatorIndex + 1).trim();
+      if (instanceId.length === 0 || authRealm.length === 0) {
+        return [];
+      }
+
+      return [[instanceId, authRealm] as const];
+    });
+
+  return new Map(entries);
+};
+
+const mergeExplicitTenantTargetsWithRegistry = (
+  explicitTargets: readonly TenantRuntimeTarget[],
+  registryTargets: readonly TenantRuntimeTarget[]
+): readonly TenantRuntimeTarget[] => {
+  if (explicitTargets.length === 0 || registryTargets.length === 0) {
+    return explicitTargets;
+  }
+
+  const registryByInstanceId = new Map(
+    registryTargets.map((target) => [target.instanceId, target] as const)
+  );
+
+  return explicitTargets.map((target) => {
+    const registryTarget = registryByInstanceId.get(target.instanceId);
+    if (!registryTarget) {
+      return target;
+    }
+
+    return {
+      ...target,
+      authRealm: registryTarget.authRealm,
+    };
+  });
 };
 
 const loadRegistryTenantTargets = (
@@ -2310,9 +2359,22 @@ const resolveTenantRuntimeTargets = async (
 ): Promise<TenantRuntimeTargetResolution> => {
   const explicitTargets = buildTenantTargetsFromInstanceIds(
     parseInstanceIdList(env.SVA_TENANT_SCOPE_INSTANCE_IDS),
-    env.SVA_PARENT_DOMAIN?.trim()
+    env.SVA_PARENT_DOMAIN?.trim(),
+    parseTenantRealmOverrides(env.SVA_TENANT_REALM_OVERRIDES)
   );
   if (explicitTargets.length > 0) {
+    if (isRemoteRuntimeProfile(runtimeProfile)) {
+      try {
+        const registryTargets = loadRegistryTenantTargets(runtimeProfile, env);
+        return {
+          source: 'explicit_env',
+          targets: mergeExplicitTenantTargetsWithRegistry(explicitTargets, registryTargets),
+        };
+      } catch {
+        // Fall back to the explicit env scope even when the registry lookup is temporarily unavailable.
+      }
+    }
+
     return {
       source: 'explicit_env',
       targets: explicitTargets,
@@ -2335,7 +2397,8 @@ const resolveTenantRuntimeTargets = async (
 
   const legacyTargets = buildTenantTargetsFromInstanceIds(
     parseInstanceIdList(env.SVA_ALLOWED_INSTANCE_IDS),
-    env.SVA_PARENT_DOMAIN?.trim()
+    env.SVA_PARENT_DOMAIN?.trim(),
+    parseTenantRealmOverrides(env.SVA_TENANT_REALM_OVERRIDES)
   );
   if (legacyTargets.length > 0) {
     return {
@@ -5927,6 +5990,8 @@ export const runtimeEnvRemoteVerification = {
   buildLocalProvisioningWorkerCheck,
   buildStudioImageVerifyEvidenceCheck,
   decorateDoctorCheck,
+  mergeExplicitTenantTargetsWithRegistry,
+  parseTenantRealmOverrides,
   readStudioImageVerifyEvidence,
   repairLocalRuntimeWithDeps,
   requireLocalInstanceRegistryReconciliationInput,

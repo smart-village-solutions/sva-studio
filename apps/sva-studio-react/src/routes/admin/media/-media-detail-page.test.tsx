@@ -88,6 +88,9 @@ describe('MediaDetailPage', () => {
     render(<MediaDetailPage assetId="asset-2" />);
 
     expect(screen.getByRole('heading', { name: 'Detail Asset' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'Ausschnitt der Bühnenbeleuchtung' }).getAttribute('src')).toBe(
+      'https://delivery.example.test'
+    );
     expect(screen.getByText('1 Verwendung')).toBeTruthy();
     expect(screen.getByText('Geschützt')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Auslieferungslink erzeugen' })).toBeTruthy();

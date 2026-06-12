@@ -72,7 +72,10 @@ describe('PoiListPage', () => {
         'poi.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
         'poi.empty.title': 'Noch keine POI vorhanden',
         'poi.actions.create': 'POI anlegen',
+        'poi.actions.save': 'Speichern',
         'poi.actions.update': 'Änderungen speichern',
+        'poi.actions.back': 'Zurück zur Liste',
+        'poi.actions.delete': 'Löschen',
         'poi.actions.clearMedia': 'Medium entfernen',
         'poi.fields.actions': 'Aktionen',
         'poi.fields.name': 'Name',
@@ -85,16 +88,48 @@ describe('PoiListPage', () => {
         'poi.fields.city': 'Ort',
         'poi.fields.email': 'E-Mail',
         'poi.fields.url': 'Web-URL',
+        'poi.fields.urlDescription': 'Link-Beschreibung',
         'poi.fields.weekday': 'Wochentag',
         'poi.fields.timeFrom': 'Öffnet',
+        'poi.fields.open': 'Geöffnet',
         'poi.fields.payload': 'Payload JSON',
         'poi.fields.mediaPlaceholder': 'Medium auswählen',
+        'poi.fields.createdAt': 'Erstellt',
+        'poi.fields.updatedAt': 'Aktualisiert',
         'poi.pagination.ariaLabel': 'POI-Pagination',
         'poi.pagination.previous': 'Zurück',
         'poi.pagination.next': 'Weiter',
         'poi.pagination.pageLabel': 'Seite {{page}}',
         'poi.values.notAvailable': 'Nicht verfügbar',
         'poi.values.active': 'Ja',
+        'poi.detail.createTitle': 'POI anlegen',
+        'poi.detail.createDescription': 'Erstellen Sie einen neuen Point of Interest.',
+        'poi.detail.editTitle': 'POI bearbeiten',
+        'poi.detail.editDescription': 'Aktualisieren oder löschen Sie den Point of Interest.',
+        'poi.detailTabs.basis.title': 'Basis',
+        'poi.detailTabs.content.title': 'Inhalt',
+        'poi.detailTabs.settings.title': 'Einstellungen',
+        'poi.detailTabs.history.title': 'Historie',
+        'poi.cards.basis.identity.title': 'Basisdaten',
+        'poi.cards.basis.identity.description': 'Name, Kategorie und Aktivstatus.',
+        'poi.cards.basis.meta.title': 'Metadaten',
+        'poi.cards.basis.meta.description': 'Zeitliche Einordnung des Eintrags.',
+        'poi.cards.content.descriptions.title': 'Beschreibungen',
+        'poi.cards.content.descriptions.description': 'Redaktionelle Beschreibungen des POI.',
+        'poi.cards.content.location.title': 'Lage und Adresse',
+        'poi.cards.content.location.description': 'Adressdaten des POI.',
+        'poi.cards.content.contact.title': 'Kontakt',
+        'poi.cards.content.contact.description': 'Kontaktinformationen für den POI.',
+        'poi.cards.content.openingHours.title': 'Öffnungszeiten',
+        'poi.cards.content.openingHours.description': 'Aktuelle Öffnungsinformationen.',
+        'poi.cards.content.links.title': 'Weblinks',
+        'poi.cards.content.links.description': 'Externe Verweise zum POI.',
+        'poi.cards.content.payload.title': 'Zusatzdaten',
+        'poi.cards.content.payload.description': 'Zusätzliche Mainserver-Daten als JSON.',
+        'poi.cards.settings.media.title': 'Medien',
+        'poi.cards.settings.media.description': 'Teaserbild für die Übersicht.',
+        'poi.history.empty.title': 'Noch keine Historie verfügbar.',
+        'poi.history.empty.description': 'Historienereignisse für POI werden in einem späteren Schritt angebunden.',
         'poi.editor.createTitle': 'POI anlegen',
         'poi.editor.createDescription': 'Erstellen Sie einen neuen Point of Interest.',
         'poi.editor.editTitle': 'POI bearbeiten',
@@ -145,10 +180,18 @@ describe('PoiListPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Rathaus' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Beschreibung')).toBeTruthy();
+    });
     fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Bürgerservice vor Ort' } });
-    fireEvent.change(screen.getByLabelText('Teaserbild'), { target: { value: 'asset-teaser' } });
     fireEvent.change(screen.getByLabelText('Web-URL'), { target: { value: 'https://example.com/poi' } });
-    fireEvent.click(screen.getByRole('button', { name: 'POI anlegen' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Teaserbild')).toBeTruthy();
+    });
+    fireEvent.change(screen.getByLabelText('Teaserbild'), { target: { value: 'asset-teaser' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
       expect(createPoi).toHaveBeenCalledWith(
@@ -185,12 +228,19 @@ describe('PoiListPage', () => {
     await waitFor(() => {
       expect(getPoi).toHaveBeenCalledWith('poi-1');
       expect(screen.getByDisplayValue('Stadtbibliothek')).toBeTruthy();
-      expect((screen.getByLabelText('Teaserbild') as HTMLSelectElement).value).toBe('asset-teaser');
     });
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
+    await waitFor(() => {
+      expect((screen.getByLabelText('Teaserbild') as HTMLSelectElement).value).toBe('asset-teaser');
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Medium entfernen' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Basis' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Name')).toBeTruthy();
+    });
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Aktualisierte Stadtbibliothek' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
       expect(updatePoi).toHaveBeenCalledWith(
@@ -213,14 +263,18 @@ describe('PoiListPage', () => {
       expect(screen.getByDisplayValue('Stadtbibliothek')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
       expect(screen.getByText('POI wurde aktualisiert.')).toBeTruthy();
     });
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Web-URL')).toBeTruthy();
+    });
     fireEvent.change(screen.getByLabelText('Web-URL'), { target: { value: 'http://invalid.example' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
       expect(screen.queryByText('POI wurde aktualisiert.')).toBeNull();

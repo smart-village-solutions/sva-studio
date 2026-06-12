@@ -1,4 +1,4 @@
-import type { IamMediaAsset } from '../../../lib/iam-api';
+import { getMediaLibraryItemKey, type IamMediaAsset } from '../../../lib/iam-api';
 
 import { MediaAssetCard } from './-media-asset-card.js';
 
@@ -13,13 +13,13 @@ export const MediaAssetGrid = ({
   usageByAssetId,
   usageStatusByAssetId,
 }: MediaAssetGridProps) => (
-  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
     {assets.map((asset) => (
       <MediaAssetCard
-        key={asset.id}
+        key={getMediaLibraryItemKey(asset)}
         asset={asset}
-        referenceCount={usageByAssetId[asset.id] ?? null}
-        usageStatus={usageStatusByAssetId[asset.id] ?? 'unavailable'}
+        referenceCount={usageByAssetId[getMediaLibraryItemKey(asset)] ?? null}
+        usageStatus={usageStatusByAssetId[getMediaLibraryItemKey(asset)] ?? 'unavailable'}
       />
     ))}
   </div>

@@ -42,7 +42,7 @@ export const MediaLibraryToolbar = ({
             value={String(pageSize)}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
           >
-            {[25, 50, 100].map((option) => (
+            {[18, 36, 72, 144].map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>

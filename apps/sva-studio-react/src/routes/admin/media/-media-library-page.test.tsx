@@ -113,6 +113,31 @@ describe('MediaLibraryPage', () => {
           },
           technical: {},
         },
+        {
+          source: 'bucket',
+          registrationStatus: 'unregistered',
+          storageKey: 'instance-1/uploads/2026/06/manual.pdf',
+          fileName: 'manual.pdf',
+          folderPath: 'uploads/2026/06',
+          relativePath: 'uploads/2026/06/manual.pdf',
+          byteSize: 64_000,
+          updatedAt: '2026-06-11T10:00:00.000Z',
+          lastModified: '2026-06-11T10:00:00.000Z',
+          previewUrl: null,
+        },
+        {
+          source: 'bucket',
+          registrationStatus: 'unregistered',
+          storageKey: 'instance-1/cms_uploads/mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg',
+          fileName: 'mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg',
+          folderPath: 'cms_uploads',
+          relativePath: 'cms_uploads/mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg',
+          byteSize: 64_000,
+          updatedAt: '2026-06-11T11:00:00.000Z',
+          lastModified: '2026-06-11T11:00:00.000Z',
+          previewUrl:
+            'https://fileserver.smart-village.app/de-musterhausen/cms_uploads/mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg',
+        },
       ],
       usageByAssetId: {
         'asset-ready': 3,
@@ -120,6 +145,8 @@ describe('MediaLibraryPage', () => {
         'asset-new': 2,
         'asset-unused': 0,
         'asset-pdf': 4,
+        'instance-1/uploads/2026/06/manual.pdf': null,
+        'instance-1/cms_uploads/mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg': null,
       },
       usageStatusByAssetId: {
         'asset-ready': 'ready',
@@ -127,13 +154,15 @@ describe('MediaLibraryPage', () => {
         'asset-new': 'ready',
         'asset-unused': 'ready',
         'asset-pdf': 'ready',
+        'instance-1/uploads/2026/06/manual.pdf': 'unavailable',
+        'instance-1/cms_uploads/mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg': 'unavailable',
       },
       isUsageLoading: false,
       isLoading: false,
       error: null,
       page: 1,
-      pageSize: 25,
-      total: 5,
+      pageSize: 36,
+      total: 7,
       refetch: vi.fn(),
     });
   });
@@ -142,14 +171,14 @@ describe('MediaLibraryPage', () => {
     cleanup();
   });
 
-  it('renders intake and priority shelves above the asset grid', () => {
+  it('renders the intake shelf above the asset grid', () => {
     render(<MediaLibraryPage />);
 
     expect(screen.getByRole('heading', { name: 'Medienbibliothek' })).toBeTruthy();
     expect(screen.getByText('Quick Intake')).toBeTruthy();
-    expect(screen.getByText('Blockiert')).toBeTruthy();
-    expect(screen.getByText('Neu')).toBeTruthy();
-    expect(screen.getByText('Ungenutzt')).toBeTruthy();
+    expect(screen.queryByText('Blockiert')).toBeNull();
+    expect(screen.queryByText('Neu')).toBeNull();
+    expect(screen.queryByText('Ungenutzt')).toBeNull();
   });
 
   it('renders asset cards with usage and status hints instead of the raw table', () => {
@@ -171,6 +200,28 @@ describe('MediaLibraryPage', () => {
     expect(screen.getByText('PDF')).toBeTruthy();
   });
 
+  it('renders unregistered bucket files flat with folder info and without an unregistered badge', () => {
+    render(<MediaLibraryPage />);
+
+    const manualLink = screen.getByRole('link', { name: /manual\.pdf/i });
+    expect(manualLink).toBeTruthy();
+    expect(screen.getByText('Ordner: uploads/2026/06')).toBeTruthy();
+    expect(screen.queryByText('Nicht registriert')).toBeNull();
+    expect(manualLink.getAttribute('href')).toContain('/admin/media/bucket:');
+  });
+
+  it('renders derived image previews for unregistered bucket images', () => {
+    render(<MediaLibraryPage />);
+
+    const preview = screen.getByRole('img', {
+      name: 'mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg',
+    });
+
+    expect(preview.getAttribute('src')).toBe(
+      'https://fileserver.smart-village.app/de-musterhausen/cms_uploads/mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg'
+    );
+  });
+
   it('renders the empty state when no library assets are available', () => {
     useMediaLibraryMock.mockReturnValue({
       assets: [],
@@ -180,7 +231,7 @@ describe('MediaLibraryPage', () => {
       isLoading: false,
       error: null,
       page: 1,
-      pageSize: 25,
+      pageSize: 36,
       total: 0,
       refetch: vi.fn(),
     });
@@ -203,7 +254,7 @@ describe('MediaLibraryPage', () => {
       isLoading: false,
       error: { code: 'database_unavailable' },
       page: 1,
-      pageSize: 25,
+      pageSize: 36,
       total: 0,
       refetch: vi.fn(),
     });
@@ -247,7 +298,7 @@ describe('MediaLibraryPage', () => {
       isLoading: false,
       error: null,
       page: 1,
-      pageSize: 25,
+      pageSize: 36,
       total: 1,
       refetch: vi.fn(),
     });
@@ -288,7 +339,7 @@ describe('MediaLibraryPage', () => {
       isLoading: false,
       error: null,
       page: 1,
-      pageSize: 25,
+      pageSize: 36,
       total: 1,
       refetch: vi.fn(),
     });
@@ -346,7 +397,7 @@ describe('MediaLibraryPage', () => {
       isLoading: false,
       error: null,
       page: 1,
-      pageSize: 25,
+      pageSize: 36,
       total: 2,
       refetch: vi.fn(),
     });
@@ -387,19 +438,19 @@ describe('MediaLibraryPage', () => {
       isLoading: false,
       error: null,
       page: 1,
-      pageSize: 25,
+      pageSize: 36,
       total: 60,
       refetch: vi.fn(),
     });
 
     render(<MediaLibraryPage />);
 
-    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 25 });
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 36 });
 
     fireEvent.click(screen.getByRole('button', { name: 'Nächste Seite' }));
-    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 2, pageSize: 25 });
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 2, pageSize: 36 });
 
-    fireEvent.change(screen.getByLabelText('Einträge pro Seite'), { target: { value: '50' } });
-    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 50 });
+    fireEvent.change(screen.getByLabelText('Einträge pro Seite'), { target: { value: '72' } });
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 72 });
   });
 });

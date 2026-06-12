@@ -2,10 +2,10 @@ import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent } from '../../../components/ui/card';
 import { t } from '../../../i18n';
-import type { IamMediaAsset, IamMediaDelivery } from '../../../lib/iam-api';
+import type { IamMediaDelivery, IamRegisteredMediaAsset } from '../../../lib/iam-api';
 
 type MediaDetailWorkspaceHeaderProps = Readonly<{
-  asset: IamMediaAsset;
+  asset: IamRegisteredMediaAsset;
   usageCount: number;
   delivery: IamMediaDelivery | null;
   onResolveDelivery: () => void;
@@ -14,6 +14,11 @@ type MediaDetailWorkspaceHeaderProps = Readonly<{
 
 const usageCountLabel = (count: number): string =>
   count === 1 ? t('media.library.usageCountOne') : t('media.library.usageCountOther', { count });
+
+const isVisualPreview = (mimeType: string | undefined): boolean => typeof mimeType === 'string' && mimeType.startsWith('image/');
+
+const previewAltText = (asset: IamRegisteredMediaAsset): string =>
+  asset.metadata.altText?.trim() || asset.metadata.title?.trim() || asset.id;
 
 export const MediaDetailWorkspaceHeader = ({
   asset,
@@ -24,19 +29,29 @@ export const MediaDetailWorkspaceHeader = ({
 }: MediaDetailWorkspaceHeaderProps) => (
   <Card className="overflow-hidden border-border/70 bg-card/95 shadow-shell">
     <CardContent className="grid gap-6 p-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,1fr)]">
-      <div className="rounded-3xl border border-border/60 bg-[radial-gradient(circle_at_top_left,_rgba(14,116,144,0.2),_transparent_50%),linear-gradient(145deg,rgba(255,255,255,0.96),rgba(226,232,240,0.78))] p-6">
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-            {t('media.detail.previewEyebrow')}
-          </p>
-          <div className="space-y-2">
-            <p className="text-2xl font-semibold text-foreground">{t('media.detail.previewTitle')}</p>
-            <p className="max-w-md text-sm text-muted-foreground">{t('media.detail.previewBody')}</p>
+      <div className="overflow-hidden rounded-3xl border border-border/60 bg-muted">
+        {delivery?.deliveryUrl && isVisualPreview(asset.mimeType) ? (
+          <img
+            alt={previewAltText(asset)}
+            className="h-full min-h-80 w-full object-cover"
+            src={delivery.deliveryUrl}
+          />
+        ) : (
+          <div className="flex min-h-80 items-center bg-[radial-gradient(circle_at_top_left,_rgba(14,116,144,0.2),_transparent_50%),linear-gradient(145deg,rgba(255,255,255,0.96),rgba(226,232,240,0.78))] p-6">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                {t('media.detail.previewEyebrow')}
+              </p>
+              <div className="space-y-2">
+                <p className="text-2xl font-semibold text-foreground">{t('media.detail.previewTitle')}</p>
+                <p className="max-w-md text-sm text-muted-foreground">{t('media.detail.previewBody')}</p>
+              </div>
+              <div className="inline-flex rounded-full border border-foreground/10 bg-white/75 px-3 py-1 text-xs font-medium text-foreground">
+                {asset.mimeType}
+              </div>
+            </div>
           </div>
-          <div className="inline-flex rounded-full border border-foreground/10 bg-white/75 px-3 py-1 text-xs font-medium text-foreground">
-            {asset.mimeType}
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="space-y-5">

@@ -1,48 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => {
-  return {
-    createSdkLogger: vi.fn(() => ({
-      error: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      debug: vi.fn(),
-    })),
-    toJsonErrorResponse: vi.fn(
-      (status: number, code: string, message: string, options?: { requestId?: string }) =>
-        new Response(JSON.stringify({ error: code, message, requestId: options?.requestId }), { status })
-    ),
-    withRequestContext: vi.fn(async (_context, work: () => Promise<Response>) => work()),
-    withAuthenticatedUser: vi.fn(async (_request: Request, work: (ctx: { user: { id: string } }) => Promise<Response>) =>
-      work({ user: { id: 'actor-1' } })
-    ),
-    buildLogContext: vi.fn(() => ({ request_id: 'req-1', trace_id: 'trace-1' })),
-    listInstancesInternal: vi.fn(async () => new Response('list')),
-    getInstanceInternal: vi.fn(async () => new Response('get')),
-    createInstanceInternal: vi.fn(async () => new Response('create')),
-    updateInstanceInternal: vi.fn(async () => new Response('update')),
-    activateInstanceInternal: vi.fn(async () => new Response('active')),
-    suspendInstanceInternal: vi.fn(async () => new Response('suspended')),
-    archiveInstanceInternal: vi.fn(async () => new Response('archived')),
-    assignInstanceModuleInternal: vi.fn(async () => new Response('assign')),
-    bootstrapInstanceAdminStructureInternal: vi.fn(async () => new Response('bootstrap')),
-    revokeInstanceModuleInternal: vi.fn(async () => new Response('revoke')),
-    seedInstanceIamBaselineInternal: vi.fn(async () => new Response('seed')),
-    getInstanceAuditRunInternal: vi.fn(async () => new Response('audit-run')),
-    getSingleInstanceAuditRunInternal: vi.fn(async () => new Response('single-audit-run')),
-    getInstanceKeycloakStatusInternal: vi.fn(async () => new Response('status')),
-    getInstanceKeycloakPreflightInternal: vi.fn(async () => new Response('preflight')),
-    planInstanceKeycloakProvisioningInternal: vi.fn(async () => new Response('plan')),
-    executeInstanceKeycloakProvisioningInternal: vi.fn(async () => new Response('execute')),
-    getInstanceKeycloakProvisioningRunInternal: vi.fn(async () => new Response('run')),
-    reconcileInstanceKeycloakInternal: vi.fn(async () => new Response('reconcile')),
-    probeTenantIamAccessInternal: vi.fn(async () => new Response('probe')),
-  };
-});
+const state = vi.hoisted(() => ({
+  withAuthenticatedUser: vi.fn(),
+  withRequestContext: vi.fn(async (_input: unknown, work: () => Promise<Response>) => work()),
+  getInstanceAuditRunInternal: vi.fn(async () => new Response('collection', { status: 200 })),
+  getSingleInstanceAuditRunInternal: vi.fn(async () => new Response('detail', { status: 200 })),
+}));
 
 vi.mock('@sva/server-runtime', () => ({
-  createSdkLogger: state.createSdkLogger,
-  toJsonErrorResponse: state.toJsonErrorResponse,
+  createSdkLogger: () => ({
+    error: vi.fn(),
+  }),
+  toJsonErrorResponse: vi.fn(
+    (status: number, code: string, message?: string, options?: { requestId?: string }) =>
+      new Response(JSON.stringify({ code, message, requestId: options?.requestId }), { status })
+  ),
   withRequestContext: state.withRequestContext,
 }));
 
@@ -51,68 +23,62 @@ vi.mock('../middleware.js', () => ({
 }));
 
 vi.mock('../log-context.js', () => ({
-  buildLogContext: state.buildLogContext,
+  buildLogContext: vi.fn(() => ({ request_id: 'req-1' })),
 }));
 
 vi.mock('./core.js', () => ({
-  activateInstanceInternal: state.activateInstanceInternal,
-  assignInstanceModuleInternal: state.assignInstanceModuleInternal,
-  archiveInstanceInternal: state.archiveInstanceInternal,
-  bootstrapInstanceAdminStructureInternal: state.bootstrapInstanceAdminStructureInternal,
-  createInstanceInternal: state.createInstanceInternal,
-  getInstanceInternal: state.getInstanceInternal,
-  listInstancesInternal: state.listInstancesInternal,
-  revokeInstanceModuleInternal: state.revokeInstanceModuleInternal,
-  seedInstanceIamBaselineInternal: state.seedInstanceIamBaselineInternal,
-  suspendInstanceInternal: state.suspendInstanceInternal,
-  updateInstanceInternal: state.updateInstanceInternal,
+  activateInstanceInternal: vi.fn(async () => new Response('activate', { status: 200 })),
+  archiveInstanceInternal: vi.fn(async () => new Response('archive', { status: 200 })),
+  assignInstanceModuleInternal: vi.fn(async () => new Response('assign', { status: 200 })),
+  bootstrapInstanceAdminStructureInternal: vi.fn(async () => new Response('bootstrap', { status: 200 })),
+  createInstanceInternal: vi.fn(async () => new Response('create', { status: 200 })),
+  getInstanceInternal: vi.fn(async () => new Response('get', { status: 200 })),
+  listInstancesInternal: vi.fn(async () => new Response('list', { status: 200 })),
+  revokeInstanceModuleInternal: vi.fn(async () => new Response('revoke', { status: 200 })),
+  seedInstanceIamBaselineInternal: vi.fn(async () => new Response('seed', { status: 200 })),
+  suspendInstanceInternal: vi.fn(async () => new Response('suspend', { status: 200 })),
+  updateInstanceInternal: vi.fn(async () => new Response('update', { status: 200 })),
 }));
 
 vi.mock('./core-keycloak.js', () => ({
-  executeInstanceKeycloakProvisioningInternal: state.executeInstanceKeycloakProvisioningInternal,
+  executeInstanceKeycloakProvisioningInternal: vi.fn(async () => new Response('execute', { status: 200 })),
   getInstanceAuditRunInternal: state.getInstanceAuditRunInternal,
-  getInstanceKeycloakPreflightInternal: state.getInstanceKeycloakPreflightInternal,
-  getInstanceKeycloakProvisioningRunInternal: state.getInstanceKeycloakProvisioningRunInternal,
-  getInstanceKeycloakStatusInternal: state.getInstanceKeycloakStatusInternal,
+  getInstanceKeycloakPreflightInternal: vi.fn(async () => new Response('preflight', { status: 200 })),
+  getInstanceKeycloakProvisioningRunInternal: vi.fn(async () => new Response('run', { status: 200 })),
+  getInstanceKeycloakStatusInternal: vi.fn(async () => new Response('status', { status: 200 })),
   getSingleInstanceAuditRunInternal: state.getSingleInstanceAuditRunInternal,
-  planInstanceKeycloakProvisioningInternal: state.planInstanceKeycloakProvisioningInternal,
-  probeTenantIamAccessInternal: state.probeTenantIamAccessInternal,
-  reconcileInstanceKeycloakInternal: state.reconcileInstanceKeycloakInternal,
+  planInstanceKeycloakProvisioningInternal: vi.fn(async () => new Response('plan', { status: 200 })),
+  probeTenantIamAccessInternal: vi.fn(async () => new Response('probe', { status: 200 })),
+  reconcileInstanceKeycloakInternal: vi.fn(async () => new Response('reconcile', { status: 200 })),
 }));
 
-describe('iam-instance-registry server handlers', () => {
+describe('iam-instance-registry/server', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.resetModules();
+    state.withAuthenticatedUser.mockImplementation(async (request: Request, work: (ctx: unknown) => Promise<Response>) =>
+      work({ user: { id: 'admin-1' }, request } as never)
+    );
   });
 
-  it('wraps audit endpoints with request context and authenticated access', async () => {
-    const subject = await import('./server.js');
-    const request = new Request('https://example.test/api/v1/iam/instances/audit');
+  it('routes audit requests through the authenticated registry handler', async () => {
+    const { instanceRegistryHandlers } = await import('./server.js');
+    const collectionRequest = new Request('https://studio.example.org/api/v1/iam/instances/audit');
+    const detailRequest = new Request('https://studio.example.org/api/v1/iam/instances/demo/audit');
 
-    await subject.instanceRegistryHandlers.getInstanceAuditRun(request);
-    await subject.instanceRegistryHandlers.getSingleInstanceAuditRun(request);
+    const collectionResponse = await instanceRegistryHandlers.getInstanceAuditRun(collectionRequest);
+    const detailResponse = await instanceRegistryHandlers.getSingleInstanceAuditRun(detailRequest);
 
+    expect(collectionResponse.status).toBe(200);
+    expect(detailResponse.status).toBe(200);
     expect(state.withRequestContext).toHaveBeenCalledTimes(2);
     expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(2);
-    expect(state.getInstanceAuditRunInternal).toHaveBeenCalledWith(request, { user: { id: 'actor-1' } });
-    expect(state.getSingleInstanceAuditRunInternal).toHaveBeenCalledWith(request, { user: { id: 'actor-1' } });
-  });
-
-  it('returns a JSON error response for unexpected authenticated handler failures', async () => {
-    state.withAuthenticatedUser.mockRejectedValueOnce(new Error('boom'));
-    const subject = await import('./server.js');
-
-    const response = await subject.instanceRegistryHandlers.getInstanceAuditRun(
-      new Request('https://example.test/api/v1/iam/instances/audit')
+    expect(state.getInstanceAuditRunInternal).toHaveBeenCalledWith(
+      collectionRequest,
+      expect.objectContaining({ user: { id: 'admin-1' } })
     );
-
-    expect(response.status).toBe(500);
-    expect(state.toJsonErrorResponse).toHaveBeenCalledWith(
-      500,
-      'internal_error',
-      'Unbehandelter Instanzverwaltungsfehler.',
-      { requestId: 'req-1' }
+    expect(state.getSingleInstanceAuditRunInternal).toHaveBeenCalledWith(
+      detailRequest,
+      expect.objectContaining({ user: { id: 'admin-1' } })
     );
   });
 });

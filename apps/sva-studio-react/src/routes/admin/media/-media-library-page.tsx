@@ -10,8 +10,6 @@ import type { IamHttpError } from '../../../lib/iam-api';
 import { MediaAssetGrid } from './-media-asset-grid.js';
 import { MediaIntakeShelf } from './-media-intake-shelf.js';
 import { MediaLibraryToolbar } from './-media-library-toolbar.js';
-import { MediaPriorityShelf } from './-media-priority-shelf.js';
-import { countMediaPriorityBuckets } from './-media-library-view-model.js';
 
 const mediaErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {
@@ -30,14 +28,9 @@ const mediaErrorMessage = (error: IamHttpError | null): string => {
 
 export const MediaLibraryPage = () => {
   const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(25);
+  const [pageSize, setPageSize] = React.useState(36);
   const mediaApi = useMediaLibrary({ page, pageSize });
   const totalPages = Math.max(1, Math.ceil(mediaApi.total / Math.max(1, mediaApi.pageSize)));
-  const priorityBuckets = countMediaPriorityBuckets(
-    mediaApi.assets,
-    mediaApi.usageByAssetId,
-    mediaApi.usageStatusByAssetId
-  );
 
   React.useEffect(() => {
     if (page > totalPages) {
@@ -76,11 +69,6 @@ export const MediaLibraryPage = () => {
       </header>
 
       <MediaIntakeShelf />
-      <MediaPriorityShelf
-        blocked={priorityBuckets.blocked}
-        newItems={priorityBuckets.newItems}
-        unused={priorityBuckets.unused}
-      />
       <MediaLibraryToolbar
         page={mediaApi.page}
         pageCount={totalPages}

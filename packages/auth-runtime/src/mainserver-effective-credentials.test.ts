@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   readSvaMainserverCredentialsWithStatus: vi.fn(),
@@ -19,6 +19,14 @@ vi.mock('./iam-account-management/shared-runtime.js', () => ({
 }));
 
 describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
+  let readEffectiveSvaMainserverCredentialsWithStatus: typeof import('./mainserver-effective-credentials.js').readEffectiveSvaMainserverCredentialsWithStatus;
+
+  beforeAll(async () => {
+    ({ readEffectiveSvaMainserverCredentialsWithStatus } = await import(
+      './mainserver-effective-credentials.js'
+    ));
+  });
+
   beforeEach(() => {
     vi.resetAllMocks();
   });
@@ -36,10 +44,6 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
           ],
         })),
       })
-    );
-
-    const { readEffectiveSvaMainserverCredentialsWithStatus } = await import(
-      './mainserver-effective-credentials.js'
     );
 
     await expect(
@@ -82,10 +86,6 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
       },
     });
 
-    const { readEffectiveSvaMainserverCredentialsWithStatus } = await import(
-      './mainserver-effective-credentials.js'
-    );
-
     await expect(
       readEffectiveSvaMainserverCredentialsWithStatus({
         instanceId: 'de-musterhausen',
@@ -117,10 +117,6 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
       })
     );
 
-    const { readEffectiveSvaMainserverCredentialsWithStatus } = await import(
-      './mainserver-effective-credentials.js'
-    );
-
     await expect(
       readEffectiveSvaMainserverCredentialsWithStatus({
         instanceId: 'de-musterhausen',
@@ -142,10 +138,6 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
       },
     });
 
-    const { readEffectiveSvaMainserverCredentialsWithStatus } = await import(
-      './mainserver-effective-credentials.js'
-    );
-
     await expect(
       readEffectiveSvaMainserverCredentialsWithStatus({
         instanceId: 'de-musterhausen',
@@ -164,10 +156,6 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
 
   it('propagates database_unavailable when the org lookup fails', async () => {
     state.withInstanceScopedDb.mockRejectedValue(new Error('db unavailable'));
-
-    const { readEffectiveSvaMainserverCredentialsWithStatus } = await import(
-      './mainserver-effective-credentials.js'
-    );
 
     await expect(
       readEffectiveSvaMainserverCredentialsWithStatus({

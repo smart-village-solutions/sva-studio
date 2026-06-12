@@ -97,6 +97,7 @@ export type MediaAssetListFilter = {
 export type MediaRepository = {
   upsertAsset(input: MediaAssetRecord): Promise<void>;
   getAssetById(instanceId: string, assetId: string): Promise<MediaAssetRecord | null>;
+  getAssetByStorageKey(instanceId: string, storageKey: string): Promise<MediaAssetRecord | null>;
   listAssets(filter: MediaAssetListFilter): Promise<readonly MediaAssetRecord[]>;
   countAssets(filter: Omit<MediaAssetListFilter, 'limit' | 'offset'>): Promise<number>;
   deleteAsset(instanceId: string, assetId: string): Promise<void>;
@@ -319,6 +320,30 @@ WHERE instance_id = $1
 LIMIT 1;
 `,
   values: [instanceId, assetId],
+});
+
+const getAssetByStorageKeyStatement = (instanceId: string, storageKey: string): SqlStatement => ({
+  text: `
+SELECT
+  id,
+  instance_id,
+  storage_key,
+  media_type,
+  mime_type,
+  byte_size,
+  visibility,
+  upload_status,
+  processing_status,
+  metadata,
+  technical,
+  created_at,
+  updated_at
+FROM iam.media_assets
+WHERE instance_id = $1
+  AND storage_key = $2
+LIMIT 1
+`,
+  values: [instanceId, storageKey],
 });
 
 const deleteAssetStatement = (instanceId: string, assetId: string): SqlStatement => ({
@@ -676,6 +701,10 @@ export const createMediaRepository = (executor: SqlExecutor): MediaRepository =>
     const result = await executor.execute<MediaAssetRow>(getAssetByIdStatement(instanceId, assetId));
     return result.rows[0] ? mapAssetRow(result.rows[0]) : null;
   },
+  async getAssetByStorageKey(instanceId, storageKey) {
+    const result = await executor.execute<MediaAssetRow>(getAssetByStorageKeyStatement(instanceId, storageKey));
+    return result.rows[0] ? mapAssetRow(result.rows[0]) : null;
+  },
   async listAssets(filter) {
     const result = await executor.execute<MediaAssetRow>(listAssetsStatement(filter));
     return result.rows.map(mapAssetRow);
@@ -760,6 +789,7 @@ export const createMediaRepository = (executor: SqlExecutor): MediaRepository =>
 export const mediaStatements = {
   upsertAsset: upsertAssetStatement,
   getAssetById: getAssetByIdStatement,
+  getAssetByStorageKey: getAssetByStorageKeyStatement,
   listAssets: listAssetsStatement,
   countAssets: countAssetsStatement,
   deleteAsset: deleteAssetStatement,

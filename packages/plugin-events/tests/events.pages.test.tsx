@@ -70,8 +70,11 @@ describe('EventsListPage', () => {
         'events.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
         'events.empty.title': 'Noch keine Events vorhanden',
         'events.actions.create': 'Event anlegen',
+        'events.actions.save': 'Speichern',
         'events.actions.update': 'Änderungen speichern',
         'events.actions.clearMedia': 'Medium entfernen',
+        'events.actions.back': 'Zurück zur Liste',
+        'events.actions.delete': 'Löschen',
         'events.fields.actions': 'Aktionen',
         'events.fields.title': 'Titel',
         'events.fields.description': 'Beschreibung',
@@ -83,13 +86,49 @@ describe('EventsListPage', () => {
         'events.fields.city': 'Ort',
         'events.fields.email': 'E-Mail',
         'events.fields.url': 'Web-URL',
+        'events.fields.urlDescription': 'Link-Beschreibung',
         'events.fields.mediaPlaceholder': 'Medium auswählen',
         'events.fields.pointOfInterestId': 'Zugehöriger POI',
         'events.fields.repeat': 'Wiederholung',
+        'events.fields.phone': 'Telefon',
+        'events.fields.timeStart': 'Startzeit',
+        'events.fields.timeEnd': 'Endzeit',
+        'events.fields.createdAt': 'Erstellt',
+        'events.fields.updatedAt': 'Aktualisiert',
         'events.pagination.ariaLabel': 'Events-Pagination',
         'events.pagination.previous': 'Zurück',
         'events.pagination.next': 'Weiter',
         'events.pagination.pageLabel': 'Seite {{page}}',
+        'events.detail.createTitle': 'Event anlegen',
+        'events.detail.createDescription': 'Erstellen Sie einen neuen Veranstaltungseintrag.',
+        'events.detail.editTitle': 'Event bearbeiten',
+        'events.detail.editDescription': 'Aktualisieren oder löschen Sie den Veranstaltungseintrag.',
+        'events.detailTabs.basis.title': 'Basis',
+        'events.detailTabs.content.title': 'Inhalt',
+        'events.detailTabs.settings.title': 'Einstellungen',
+        'events.detailTabs.history.title': 'Historie',
+        'events.cards.basis.identity.title': 'Basisdaten',
+        'events.cards.basis.identity.description': 'Titel und Kategorie des Events.',
+        'events.cards.basis.meta.title': 'Metadaten',
+        'events.cards.basis.meta.description': 'Zeitliche Einordnung des Eintrags.',
+        'events.cards.content.descriptions.title': 'Beschreibung',
+        'events.cards.content.descriptions.description': 'Redaktioneller Kerntext des Events.',
+        'events.cards.content.dates.title': 'Termine',
+        'events.cards.content.dates.description': 'Start- und Endzeit des Events.',
+        'events.cards.content.addresses.title': 'Orte und Adressen',
+        'events.cards.content.addresses.description': 'Adresse des Veranstaltungsorts.',
+        'events.cards.content.contact.title': 'Kontakt',
+        'events.cards.content.contact.description': 'Kontaktmöglichkeiten für Rückfragen.',
+        'events.cards.content.links.title': 'Links',
+        'events.cards.content.links.description': 'Externe Verweise zum Event.',
+        'events.cards.content.recurrence.title': 'Wiederholung',
+        'events.cards.content.recurrence.description': 'Wiederkehrende Durchführung des Events.',
+        'events.cards.content.poi.title': 'POI-Verknüpfung',
+        'events.cards.content.poi.description': 'Zuordnung zu einem bestehenden POI.',
+        'events.cards.settings.media.title': 'Medien',
+        'events.cards.settings.media.description': 'Headerbild für die Detailseite.',
+        'events.history.empty.title': 'Noch keine Historie verfügbar.',
+        'events.history.empty.description': 'Historienereignisse für Events werden in einem späteren Schritt angebunden.',
         'events.editor.createTitle': 'Event anlegen',
         'events.editor.createDescription': 'Erstellen Sie einen neuen Veranstaltungseintrag.',
         'events.editor.editTitle': 'Event bearbeiten',
@@ -140,11 +179,21 @@ describe('EventsListPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Konzertabend' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Beschreibung')).toBeTruthy();
+    });
+
     fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Live im Stadtpark' } });
-    fireEvent.change(screen.getByLabelText('Headerbild'), { target: { value: 'asset-header' } });
     fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-04-14T09:30' } });
     fireEvent.change(screen.getByLabelText('Web-URL'), { target: { value: 'https://example.com/events' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Event anlegen' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Headerbild')).toBeTruthy();
+    });
+    fireEvent.change(screen.getByLabelText('Headerbild'), { target: { value: 'asset-header' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
       expect(createEvent).toHaveBeenCalledWith(
@@ -172,8 +221,12 @@ describe('EventsListPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Konzertabend' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Startdatum')).toBeTruthy();
+    });
     fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-03-29T02:30' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Event anlegen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
       expect(screen.getByText('Bitte korrigieren Sie die markierten Felder.')).toBeTruthy();
@@ -201,18 +254,20 @@ describe('EventsListPage', () => {
     await waitFor(() => {
       expect(getEvent).toHaveBeenCalledWith('event-1');
       expect(screen.getByDisplayValue('Bestehendes Event')).toBeTruthy();
-      expect((screen.getByLabelText('Headerbild') as HTMLSelectElement).value).toBe('asset-header');
     });
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Einstellungen' }));
+    await waitFor(() => {
+      expect((screen.getByLabelText('Headerbild') as HTMLSelectElement).value).toBe('asset-header');
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Medium entfernen' }));
-    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Aktualisiertes Event' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
       expect(updateEvent).toHaveBeenCalledWith(
         'event-1',
         expect.objectContaining({
-          title: 'Aktualisiertes Event',
+          title: 'Bestehendes Event',
           description: 'Beschreibung',
           urls: [{ url: 'https://example.com/events' }],
         })

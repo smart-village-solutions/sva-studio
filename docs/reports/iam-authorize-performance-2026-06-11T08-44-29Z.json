@@ -1,0 +1,144 @@
+{
+  "generatedAt": "2026-06-11T08:44:29.459Z",
+  "measuredOn": "server",
+  "actor": {
+    "instanceId": "de-musterhausen",
+    "keycloakSubject": "4d633499-5d51-450f-aa29-e6c44be016db"
+  },
+  "request": {
+    "action": "content.read",
+    "resourceType": "content"
+  },
+  "configuration": {
+    "measuredRequests": 12,
+    "warmupRequests": 2
+  },
+  "scenarios": [
+    {
+      "scenario": "cache-hit",
+      "samplesMs": [
+        286.81633400171995,
+        364.8167910054326,
+        305.6600410044193,
+        371.7537920027971,
+        279.26945900171995,
+        354.6084579974413,
+        280.20745800435543,
+        477.75537499785423,
+        312.3231249973178,
+        390.0814999938011,
+        260.9065829962492,
+        513.756834000349
+      ],
+      "summary": {
+        "count": 12,
+        "minMs": 260.9065829962492,
+        "maxMs": 513.756834000349,
+        "avgMs": 349.82964583362144,
+        "p50Ms": 312.3231249973178,
+        "p95Ms": 513.756834000349,
+        "p99Ms": 513.756834000349
+      },
+      "evaluation": "rejected",
+      "evaluationLabel": "nicht erfüllt",
+      "observedCacheStatuses": [
+        "hit",
+        "hit",
+        "hit",
+        "hit",
+        "hit",
+        "hit",
+        "hit",
+        "hit",
+        "hit",
+        "hit",
+        "hit",
+        "hit"
+      ]
+    },
+    {
+      "scenario": "cache-miss",
+      "samplesMs": [
+        555.3699169978499,
+        210.5774170011282,
+        628.5057500004768,
+        270.9509999975562,
+        188.79183299839497,
+        179.6701250001788,
+        179.01795800030231,
+        172.51083299517632,
+        164.5217919945717,
+        179.16891700029373,
+        215.01274999976158,
+        202.64341600239277
+      ],
+      "summary": {
+        "count": 12,
+        "minMs": 164.5217919945717,
+        "maxMs": 628.5057500004768,
+        "avgMs": 262.2284756656736,
+        "p50Ms": 188.79183299839497,
+        "p95Ms": 628.5057500004768,
+        "p99Ms": 628.5057500004768
+      },
+      "evaluation": "rejected",
+      "evaluationLabel": "nicht erfüllt",
+      "observedCacheStatuses": [
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss"
+      ]
+    },
+    {
+      "scenario": "recompute",
+      "samplesMs": [
+        204.39954099804163,
+        161.5422499999404,
+        152.31149999797344,
+        157.3659590035677,
+        158.1324580013752,
+        169.0324999988079,
+        153.05954200029373,
+        167.1837499961257,
+        149.86583399772644,
+        160.31029199808836,
+        163.23604100197554,
+        147.21441699564457
+      ],
+      "summary": {
+        "count": 12,
+        "minMs": 147.21441699564457,
+        "maxMs": 204.39954099804163,
+        "avgMs": 161.97117366579673,
+        "p50Ms": 158.1324580013752,
+        "p95Ms": 204.39954099804163,
+        "p99Ms": 204.39954099804163
+      },
+      "evaluation": "accepted",
+      "evaluationLabel": "erfüllt",
+      "observedCacheStatuses": [
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss",
+        "miss"
+      ]
+    }
+  ]
+}

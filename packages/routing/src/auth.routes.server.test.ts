@@ -190,6 +190,7 @@ const authServerMocks = vi.hoisted(() => {
     deleteContentHandler: vi.fn(async () => response('deleteContentHandler')),
     getContentHistoryHandler: vi.fn(async () => response('getContentHistoryHandler')),
     listMediaHandler: vi.fn(async () => response('listMediaHandler')),
+    registerBucketMediaHandler: vi.fn(async () => response('registerBucketMediaHandler')),
     listMediaReferencesHandler: vi.fn(async () => response('listMediaReferencesHandler')),
     initializeMediaUploadHandler: vi.fn(async () => response('initializeMediaUploadHandler')),
     completeMediaUploadHandler: vi.fn(async () => response('completeMediaUploadHandler')),
@@ -804,6 +805,41 @@ describe('auth.routes.server', () => {
 
   it('throws for unknown auth path', () => {
     expect(() => resolveAuthHandlers('/auth/unknown')).toThrow('Unknown auth route path');
+  });
+
+  it('throws for declared auth paths when the handler map is incomplete', async () => {
+    vi.resetModules();
+    vi.doMock('./auth.route-handlers.account.server.js', async () => {
+      const actual = await vi.importActual<typeof import('./auth.route-handlers.account.server.js')>(
+        './auth.route-handlers.account.server.js'
+      );
+      return {
+        ...actual,
+        accountAuthHandlerMap: {
+          ...actual.accountAuthHandlerMap,
+          '/auth/login': undefined,
+        },
+      };
+    });
+    vi.doMock('./auth.route-runtime.server.js', async () => {
+      const actual = await vi.importActual<typeof import('./auth.route-runtime.server.js')>(
+        './auth.route-runtime.server.js'
+      );
+      return {
+        ...actual,
+        verifyRouteHandlerCoverage: vi.fn(),
+      };
+    });
+
+    const isolatedModule = await import('./auth.routes.server');
+
+    expect(() => isolatedModule.resolveAuthHandlers('/auth/login')).toThrow(
+      'Missing auth handlers for route path: /auth/login'
+    );
+
+    vi.doUnmock('./auth.route-handlers.account.server.js');
+    vi.doUnmock('./auth.route-runtime.server.js');
+    vi.resetModules();
   });
 
   it('matches static and parameterized runtime auth paths', () => {

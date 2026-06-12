@@ -316,9 +316,9 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
 3. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`
    - erweitert den generischen Content-Write-Pfad um contentType-spezifische Payload-Validierung und Sanitisierung
 4. `packages/plugin-news/src/*`, `packages/plugin-events/src/*`, `packages/plugin-poi/src/*`
-   - kapseln Listen-, Editor-, Detail- und Delete-Flows als fachliche Spezialisierungen unter der SDK-Boundary
+   - kapseln Listen-, tabbasierte Detail-/Editorseiten und Delete-Flows als fachliche Spezialisierungen unter der SDK-Boundary
    - registrieren `adminResources` mit `resourceId` `news.content`, `events.content` und `poi.content`, jeweils auf Basis der Host-Views `content`, `contentCreate` und `contentDetail`
-   - liefern über `contentUi` optionale Bindings für `list`, `detail` und `editor`, während Route, Guard, Shell und Persistenz host-owned bleiben
+   - liefern über `contentUi` optionale Bindings für `list`, `detail` und `editor`; Events und POI nutzen dabei dieselbe feste Tab-Struktur `Basis` / `Inhalt` / `Einstellungen` / `Historie` wie News, während Route, Guard, Shell und Persistenz host-owned bleiben
    - beziehen gemeinsame Standard-Metadaten, Mainserver-CRUD-Basis und kleine Hilfsfunktionen aus `@sva/plugin-sdk`, ohne einander zu importieren
    - schreiben ihre Fachdaten über hostgeführte Fassaden; Legacy-`payload` bleibt nur dort Lesefallback, wo die jeweilige Fassade ihn noch toleriert
 

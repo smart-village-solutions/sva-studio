@@ -65,23 +65,29 @@ describe('PoiCreatePage', () => {
   it('maps validation errors through the shared StudioField bridge before submit', async () => {
     render(<PoiCreatePage />);
 
+    fireEvent.click(screen.getByRole('tab', { name: 'detailTabs.content.title' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('fields.url')).toBeTruthy();
+    });
     fireEvent.change(screen.getByLabelText('fields.url'), {
       target: { value: 'http://invalid.example' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'actions.create' }));
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('validation.name');
-      expect(screen.getByRole('alert').textContent).toContain('validation.webUrls');
+      expect(screen.getAllByRole('alert').some((element) => element.textContent?.includes('validation.name'))).toBe(true);
+      expect(screen.getAllByRole('alert').some((element) => element.textContent?.includes('validation.webUrls'))).toBe(true);
     });
 
-    const nameInput = screen.getByLabelText('fields.name');
     const urlInput = screen.getByLabelText('fields.url');
+    fireEvent.click(screen.getByRole('link', { name: 'validation.name' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('fields.name')).toBeTruthy();
+    });
+    const nameInput = screen.getByLabelText('fields.name');
 
     expect(nameInput.getAttribute('aria-invalid')).toBe('true');
     expect(urlInput.getAttribute('aria-invalid')).toBe('true');
-
-    fireEvent.click(screen.getByRole('link', { name: 'validation.name' }));
 
     expect(document.activeElement).toBe(nameInput);
     expect(createPoiMock).not.toHaveBeenCalled();
@@ -93,17 +99,25 @@ describe('PoiCreatePage', () => {
     fireEvent.change(screen.getByLabelText('fields.name'), {
       target: { value: 'Valid POI' },
     });
+    fireEvent.click(screen.getByRole('tab', { name: 'detailTabs.content.title' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('fields.url')).toBeTruthy();
+    });
     fireEvent.change(screen.getByLabelText('fields.url'), {
       target: { value: 'https://example.com' },
+    });
+    fireEvent.click(screen.getByRole('tab', { name: 'detailTabs.basis.title' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('fields.categoryName')).toBeTruthy();
     });
     fireEvent.change(screen.getByLabelText('fields.categoryName'), {
       target: { value: 'x'.repeat(129) },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'actions.create' }));
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('validation.categoryName');
+      expect(screen.getAllByRole('alert').some((element) => element.textContent?.includes('validation.categoryName'))).toBe(true);
     });
 
     expect(screen.getByLabelText('fields.categoryName').getAttribute('aria-invalid')).toBe('true');
@@ -125,14 +139,18 @@ describe('PoiCreatePage', () => {
     fireEvent.change(screen.getByLabelText('fields.name'), {
       target: { value: ' Test POI ' },
     });
+    fireEvent.click(screen.getByRole('tab', { name: 'detailTabs.content.title' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('fields.payload')).toBeTruthy();
+    });
     fireEvent.change(screen.getByLabelText('fields.payload'), {
       target: { value: '{"hero":' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'actions.create' }));
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('validation.payload');
+      expect(screen.getAllByRole('alert').some((element) => element.textContent?.includes('validation.payload'))).toBe(true);
     });
 
     const payloadInput = screen.getByLabelText('fields.payload');
@@ -142,7 +160,7 @@ describe('PoiCreatePage', () => {
     fireEvent.change(payloadInput, {
       target: { value: '{"hero":"Willkommen"}' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'actions.create' }));
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
 
     await waitFor(() => {
       expect(createPoiMock).toHaveBeenCalledWith(

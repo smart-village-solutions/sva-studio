@@ -509,7 +509,7 @@ export type MediaMetadata = Readonly<{
   }>;
 }>;
 
-export type IamMediaAsset = Readonly<{
+export type IamRegisteredMediaAsset = Readonly<{
   id: string;
   instanceId: string;
   storageKey: string;
@@ -524,6 +524,21 @@ export type IamMediaAsset = Readonly<{
   createdAt?: string;
   updatedAt?: string;
 }>;
+
+export type IamUnregisteredMediaAsset = Readonly<{
+  source: 'bucket';
+  registrationStatus: 'unregistered';
+  storageKey: string;
+  fileName: string;
+  folderPath: string;
+  relativePath: string;
+  byteSize: number;
+  updatedAt?: string | null;
+  lastModified?: string | null;
+  previewUrl?: string | null;
+}>;
+
+export type IamMediaAsset = IamRegisteredMediaAsset | IamUnregisteredMediaAsset;
 
 export type IamMediaUsageReference = Readonly<{
   id: string;
@@ -574,6 +589,16 @@ export type UpdateMediaPayload = Readonly<{
   metadata: UpdateMediaMetadataPayload;
 }>;
 
+export type RegisterBucketMediaPayload = Readonly<{
+  instanceId?: string;
+  storageKey: string;
+  fileName: string;
+  byteSize: number;
+  mimeType: string;
+  visibility?: MediaVisibility;
+  metadata?: UpdateMediaMetadataPayload;
+}>;
+
 export type IamMediaDelivery = Readonly<{
   assetId: string;
   visibility: MediaVisibility;
@@ -587,6 +612,13 @@ export type MediaListQuery = {
   readonly page?: number;
   readonly pageSize?: number;
 };
+
+export const isRegisteredMediaAsset = (
+  asset: IamMediaAsset
+): asset is IamRegisteredMediaAsset => 'id' in asset;
+
+export const getMediaLibraryItemKey = (asset: IamMediaAsset): string =>
+  isRegisteredMediaAsset(asset) ? asset.id : asset.storageKey;
 
 export type OrganizationsQuery = {
   readonly page: number;
@@ -1148,8 +1180,10 @@ export const listMedia = async (
   );
 };
 
-export const getMedia = async (assetId: string): Promise<ApiItemResponse<IamMediaAsset>> =>
-  requestJson<ApiItemResponse<IamMediaAsset>>(`/api/v1/iam/media/${assetId}`);
+export const getMedia = async (
+  assetId: string
+): Promise<ApiItemResponse<IamRegisteredMediaAsset>> =>
+  requestJson<ApiItemResponse<IamRegisteredMediaAsset>>(`/api/v1/iam/media/${assetId}`);
 
 export const getMediaUsage = async (
   assetId: string
@@ -1165,11 +1199,20 @@ export const initializeMediaUpload = async (
     true
   );
 
+export const registerBucketMedia = async (
+  payload: RegisterBucketMediaPayload
+): Promise<ApiItemResponse<IamRegisteredMediaAsset>> =>
+  postJson<ApiItemResponse<IamRegisteredMediaAsset>, RegisterBucketMediaPayload>(
+    '/api/v1/iam/media/register',
+    payload,
+    true
+  );
+
 export const updateMedia = async (
   assetId: string,
   payload: UpdateMediaPayload
-): Promise<ApiItemResponse<IamMediaAsset>> =>
-  patchJson<ApiItemResponse<IamMediaAsset>, UpdateMediaPayload>(
+): Promise<ApiItemResponse<IamRegisteredMediaAsset>> =>
+  patchJson<ApiItemResponse<IamRegisteredMediaAsset>, UpdateMediaPayload>(
     `/api/v1/iam/media/${assetId}`,
     payload
   );

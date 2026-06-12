@@ -676,6 +676,7 @@ export const i18nResources = {
       },
       actions: {
         create: 'Medium vorbereiten',
+        register: 'Als Medium registrieren',
         open: 'Öffnen',
         save: 'Metadaten speichern',
         delete: 'Medium löschen',
@@ -756,6 +757,8 @@ export const i18nResources = {
       meta: {
         title: 'Technische Daten',
         id: 'Asset-ID',
+        storageKey: 'Storage-Key',
+        folder: 'Ordner',
         mimeType: 'MIME-Typ',
         byteSize: 'Größe',
         createdAt: 'Erstellt am',
@@ -822,6 +825,9 @@ export const i18nResources = {
           preview: 'Bildvorschau',
           document: 'Dokument',
           fallback: 'Dokumentenansicht ohne Bildvorschau',
+          unknownType: 'Unbekannt',
+          unregistered: 'Nicht registriert',
+          folderValue: 'Ordner: {{folder}}',
         },
         toolbar: {
           title: 'Bibliotheksfokus',
@@ -832,6 +838,15 @@ export const i18nResources = {
           previous: 'Vorherige Seite',
           next: 'Nächste Seite',
         },
+      },
+      unregistered: {
+        subtitle:
+          'Dieses Objekt liegt bereits im Bucket, ist aber noch nicht als verwaltetes Medienobjekt im Studio registriert.',
+        metadataTitle: 'Vorgeschlagene Registrierung',
+        metadataDescription:
+          'Diese Angaben werden beim Registrieren als Startwerte für das Medienobjekt übernommen.',
+        technicalDescription: 'Technische Bucket-Informationen für dieses unregistrierte Objekt.',
+        altTextHint: 'Wird bei der Registrierung später fachlich ergänzt.',
       },
       errors: {
         forbidden: 'Unzureichende Berechtigungen für diese Medienaktion.',
@@ -4373,6 +4388,7 @@ export const i18nResources = {
       },
       actions: {
         create: 'Prepare media',
+        register: 'Register as media asset',
         open: 'Open',
         save: 'Save metadata',
         delete: 'Delete media',
@@ -4451,6 +4467,8 @@ export const i18nResources = {
       meta: {
         title: 'Technical details',
         id: 'Asset ID',
+        storageKey: 'Storage key',
+        folder: 'Folder',
         mimeType: 'MIME type',
         byteSize: 'Size',
         createdAt: 'Created at',
@@ -4516,6 +4534,9 @@ export const i18nResources = {
           preview: 'Image preview',
           document: 'Document',
           fallback: 'Document preview without image thumbnail',
+          unknownType: 'Unknown',
+          unregistered: 'Unregistered',
+          folderValue: 'Folder: {{folder}}',
         },
         toolbar: {
           title: 'Library focus',
@@ -4526,6 +4547,15 @@ export const i18nResources = {
           previous: 'Previous page',
           next: 'Next page',
         },
+      },
+      unregistered: {
+        subtitle:
+          'This object already exists in the bucket but has not been registered in Studio as a managed media asset yet.',
+        metadataTitle: 'Suggested registration',
+        metadataDescription:
+          'These values will be used as initial metadata when the media asset is registered.',
+        technicalDescription: 'Technical bucket details for this unregistered object.',
+        altTextHint: 'Will be completed later during editorial review.',
       },
       errors: {
         forbidden: 'Insufficient permissions for this media action.',

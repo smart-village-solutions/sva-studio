@@ -3,17 +3,12 @@ import type {
   WasteManagementApplyMigrationsJobInput,
   WasteManagementImportJobInput,
   WasteManagementInitializeJobInput,
-  WasteManagementJobInput,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
+  WasteManagementSyncMainserverJobInput,
   WasteManagementSyncWasteTypesJobInput,
 } from '@sva/core';
 import type { loadDefaultExternalInterfaceRecord, listExternalInterfaceRecords } from '@sva/data-repositories/server';
-
-type WasteManagementSyncMainserverJobInput = Extract<
-  WasteManagementJobInput,
-  { readonly operation: 'sync-mainserver' }
->;
 
 export type SqlClient = {
   query: <TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) => Promise<{

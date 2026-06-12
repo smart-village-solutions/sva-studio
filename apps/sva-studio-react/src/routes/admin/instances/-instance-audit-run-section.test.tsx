@@ -4,84 +4,74 @@ import { describe, expect, it, vi } from 'vitest';
 import { InstanceAuditRunSection } from './-instance-audit-run-section';
 
 describe('InstanceAuditRunSection', () => {
-  it('renders the empty state and triggers a refresh', () => {
+  it('renders fail and skip checks and triggers refresh', () => {
     const onRefresh = vi.fn(async () => undefined);
 
     render(
       <InstanceAuditRunSection
         title="Audit"
-        subtitle="Prueft aktive Instanzen."
-        emptyMessage="Kein Ergebnis"
+        subtitle="Prueft alle Instanzen."
+        emptyMessage="Keine Daten"
         refreshLabel="Audit starten"
         loadingLabel="Laeuft"
-        auditRun={null}
         auditLoading={false}
         onRefresh={onRefresh}
-      />
-    );
-
-    expect(screen.getByText('Kein Ergebnis')).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Audit starten' }));
-    expect(onRefresh).toHaveBeenCalledTimes(1);
-  });
-
-  it('renders run and instance checks including remediation hints', () => {
-    render(
-      <InstanceAuditRunSection
-        title="Audit"
-        subtitle="Prueft aktive Instanzen."
-        emptyMessage="Kein Ergebnis"
-        refreshLabel="Audit starten"
-        loadingLabel="Laeuft"
-        auditLoading={true}
-        onRefresh={vi.fn(async () => undefined)}
         auditRun={{
           generatedAt: '2026-06-10T10:00:00.000Z',
           includeOnlyActive: true,
-          targetInstanceIds: ['bb-guben'],
+          targetInstanceIds: ['demo'],
           overallStatus: 'fail',
           summary: {
             totalInstances: 1,
-            passCount: 3,
+            passCount: 0,
             failCount: 1,
             warnCount: 0,
-            skipCount: 0,
+            skipCount: 1,
           },
           checks: [
             {
               checkId: 'run.targets.present',
-              title: 'Zielinstanzen geladen',
+              title: 'Ziele geladen',
               scope: 'run',
-              status: 'pass',
-              expected: 'Mindestens eine Zielinstanz',
-              actual: '1 Instanz',
+              status: 'skip',
+              expected: 'Instanzen vorhanden',
+              actual: 'nicht geprüft',
               evidenceSource: 'instance_registry',
-              message: 'Instanzen wurden geladen.',
+              message: 'Noch nicht geprüft.',
             },
           ],
           instances: [
             {
-              instanceId: 'bb-guben',
-              displayName: 'BB Guben',
+              instanceId: 'demo',
+              displayName: 'Demo',
+              primaryHostname: 'demo.example.org',
               status: 'active',
-              primaryHostname: 'bb-guben.studio.smart-village.app',
               overallStatus: 'fail',
               checks: [
                 {
                   checkId: 'instance.url.reachable',
-                  title: 'Instanz-URL erreichbar',
+                  title: 'Instanz erreichbar',
                   scope: 'instance',
                   status: 'fail',
                   expected: 'HTTP 200',
-                  actual: 'TypeError',
+                  actual: 'HTTP 503',
                   evidenceSource: 'https_probe',
-                  message: 'Die Instanz-URL konnte nicht erreicht werden.',
+                  message: 'Instanz antwortet nicht korrekt.',
                   details: {
                     responseStatus: 503,
                     source: 'live_probe',
                   },
-                  remediationHint: 'DNS und Ingress pruefen.',
+                  remediationHint: 'Ingress prüfen.',
+                },
+                {
+                  checkId: 'registry.instance.active',
+                  title: 'Registry aktiv',
+                  scope: 'registry',
+                  status: 'pass',
+                  expected: 'active',
+                  actual: 'active',
+                  evidenceSource: 'instance_registry',
+                  message: 'Instanz ist aktiv.',
                 },
               ],
             },
@@ -90,13 +80,26 @@ describe('InstanceAuditRunSection', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: 'Laeuft' }).hasAttribute('disabled')).toBe(true);
-    expect(screen.getByText('BB Guben')).toBeTruthy();
-    expect(screen.getByText('Instanz-URL erreichbar')).toBeTruthy();
-    expect(screen.getByText('DNS und Ingress pruefen.')).toBeTruthy();
-    expect(screen.getByText('Zielinstanzen geladen')).toBeTruthy();
+    expect(screen.getByText('HTTP 503')).toBeTruthy();
+    expect(screen.getByText('nicht geprüft')).toBeTruthy();
     expect(screen.getByText('Details')).toBeTruthy();
     expect(screen.getByText('responseStatus')).toBeTruthy();
     expect(screen.getByText('503')).toBeTruthy();
+
+    const failBadge = screen.getAllByText('Fail').find((element) => element.tagName === 'SPAN');
+    expect(failBadge).toBeTruthy();
+    expect(failBadge?.className).toContain('text-destructive');
+
+    const skipBadge = screen.getAllByText('Skip').find((element) => element.tagName === 'SPAN');
+    expect(skipBadge).toBeTruthy();
+    expect(skipBadge?.className).toContain('text-muted-foreground');
+
+    const passBadge = screen.getAllByText('Pass').find((element) => element.tagName === 'SPAN');
+    expect(passBadge).toBeTruthy();
+    expect(passBadge?.className).toContain('text-emerald-700');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Audit starten' }));
+
+    expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 });

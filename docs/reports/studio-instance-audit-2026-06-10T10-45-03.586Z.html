@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Studio Instanz-Audit</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --border: #d7dde5;
+        --card: #ffffff;
+        --fail: #b42318;
+        --ink: #122033;
+        --muted: #5f6f82;
+        --page: #f4f7fb;
+        --pass: #117a37;
+        --warn: #b26b00;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; background: var(--page); color: var(--ink); }
+      main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 48px; }
+      h1, h2 { margin: 0; }
+      p { color: var(--muted); }
+      .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 24px 0; }
+      .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; }
+      .status-pass { color: var(--pass); }
+      .status-warn { color: var(--warn); }
+      .status-fail { color: var(--fail); }
+      table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+      th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+      .instance + .instance { margin-top: 20px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Studio Instanz-Audit</h1>
+      <p>Profil: studio<br />Erstellt: 2026-06-10T10:45:03.585Z<br />Gesamtstatus: <strong class="status-pass">pass</strong></p>
+      <section class="summary">
+        <article class="card"><strong class="status-pass">0</strong><br />Pass</article>
+        <article class="card"><strong class="status-warn">0</strong><br />Warn</article>
+        <article class="card"><strong class="status-fail">0</strong><br />Fail</article>
+      </section>
+      
+    </main>
+  </body>
+</html>

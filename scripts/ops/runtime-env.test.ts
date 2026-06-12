@@ -19,6 +19,8 @@ const {
   buildLocalProvisioningWorkerCheck,
   buildStudioImageVerifyEvidenceCheck,
   decorateDoctorCheck,
+  mergeExplicitTenantTargetsWithRegistry,
+  parseTenantRealmOverrides,
   readStudioImageVerifyEvidence,
   repairLocalRuntimeWithDeps,
   requireLocalInstanceRegistryReconciliationInput,
@@ -905,6 +907,90 @@ describe('resolveTenantRuntimeTargets', () => {
       },
     ]);
   });
+
+  it('uses configured tenant realm overrides for allowlist-derived tenant scopes', async () => {
+    const resolution = await resolveTenantRuntimeTargets('studio', {
+      SVA_PARENT_DOMAIN: 'studio.smart-village.app',
+      SVA_ALLOWED_INSTANCE_IDS: 'hb-meinquartier',
+      SVA_TENANT_REALM_OVERRIDES: 'hb-meinquartier=saas-hb-meinquartier',
+    });
+
+    expect(resolution).toEqual({
+      source: 'legacy_allowlist_fallback',
+      targets: [
+        {
+          authRealm: 'saas-hb-meinquartier',
+          host: 'hb-meinquartier.studio.smart-village.app',
+          instanceId: 'hb-meinquartier',
+        },
+      ],
+    });
+  });
+
+  it('hydrates explicit remote tenant scopes with the registry auth realm when available', () => {
+    expect(
+      mergeExplicitTenantTargetsWithRegistry(
+        [
+          {
+            authRealm: 'hb-meinquartier',
+            host: 'hb-meinquartier.studio.smart-village.app',
+            instanceId: 'hb-meinquartier',
+          },
+        ],
+        [
+          {
+            authRealm: 'saas-hb-meinquartier',
+            host: 'hb-meinquartier.studio.smart-village.app',
+            instanceId: 'hb-meinquartier',
+          },
+        ]
+      )
+    ).toEqual([
+      {
+        authRealm: 'saas-hb-meinquartier',
+        host: 'hb-meinquartier.studio.smart-village.app',
+        instanceId: 'hb-meinquartier',
+      },
+    ]);
+  });
+
+  it('keeps the explicit tenant scope as fallback when the registry has no matching instance entry', () => {
+    expect(
+      mergeExplicitTenantTargetsWithRegistry(
+        [
+          {
+            authRealm: 'hb-meinquartier',
+            host: 'hb-meinquartier.studio.smart-village.app',
+            instanceId: 'hb-meinquartier',
+          },
+        ],
+        [
+          {
+            authRealm: 'bb-guben',
+            host: 'bb-guben.studio.smart-village.app',
+            instanceId: 'bb-guben',
+          },
+        ]
+      )
+    ).toEqual([
+      {
+        authRealm: 'hb-meinquartier',
+          host: 'hb-meinquartier.studio.smart-village.app',
+          instanceId: 'hb-meinquartier',
+        },
+    ]);
+  });
+
+  it('parses tenant realm overrides from env syntax', () => {
+    expect(
+      Array.from(
+        parseTenantRealmOverrides('hb-meinquartier=saas-hb-meinquartier,de-musterhausen=de-musterhausen').entries()
+      )
+    ).toEqual([
+      ['hb-meinquartier', 'saas-hb-meinquartier'],
+      ['de-musterhausen', 'de-musterhausen'],
+    ]);
+  });
 });
 
 describe('selectReleaseBlockingTenantTargets', () => {
@@ -949,7 +1035,7 @@ describe('selectSmokeTenantTargets', () => {
       instanceId: 'de-studio-sandbox',
     },
     {
-      authRealm: 'hb-meinquartier',
+      authRealm: 'saas-hb-meinquartier',
       host: 'hb-meinquartier.studio.smart-village.app',
       instanceId: 'hb-meinquartier',
     },

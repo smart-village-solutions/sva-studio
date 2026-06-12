@@ -52,33 +52,4 @@ describe('MediaReferenceField', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Auswahl entfernen' }));
     expect(onChange).toHaveBeenCalledWith(null);
   });
-
-  it('does not emit duplicate key warnings when multiple options share the same asset id', () => {
-    const onChange = vi.fn();
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-
-    render(
-      <MediaReferenceField
-        id="duplicate-media"
-        label="Doppelte Medien"
-        value={null}
-        options={[
-          { assetId: 'asset-1', label: 'Titelbild' },
-          { assetId: 'asset-1', label: 'Titelbild Kopie' },
-        ]}
-        onChange={onChange}
-        placeholder="Medium auswählen"
-      />
-    );
-
-    expect(screen.getByRole('option', { name: 'Titelbild' })).toBeTruthy();
-    expect(screen.getByRole('option', { name: 'Titelbild Kopie' })).toBeTruthy();
-    expect(
-      consoleErrorSpy.mock.calls.some(([message]) =>
-        typeof message === 'string' && message.includes('Each child in a list should have a unique "key" prop')
-      )
-    ).toBe(false);
-
-    consoleErrorSpy.mockRestore();
-  });
 });

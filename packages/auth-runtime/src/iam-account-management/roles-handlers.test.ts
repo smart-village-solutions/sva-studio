@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   authorizeInstancePermissionForUser: vi.fn(async () => ({ ok: true as const })),
@@ -96,6 +96,12 @@ vi.mock('./shared-runtime.js', () => ({
 }));
 
 describe('roles-handlers listPermissionsInternal', () => {
+  let listPermissionsInternal: typeof import('./roles-handlers.js').listPermissionsInternal;
+
+  beforeAll(async () => {
+    ({ listPermissionsInternal } = await import('./roles-handlers.js'));
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.query.mockResolvedValue({
@@ -123,8 +129,6 @@ describe('roles-handlers listPermissionsInternal', () => {
   });
 
   it('returns runtimeScope metadata and filters root-only permissions from tenant permission lists', async () => {
-    const { listPermissionsInternal } = await import('./roles-handlers.js');
-
     const response = await listPermissionsInternal(new Request('http://localhost/api/v1/iam/permissions'), {
       sessionId: 'session-1',
       user: {

@@ -63,7 +63,7 @@ export const parsePluginArchitectureAllowlist = (value: unknown): readonly Plugi
       resolvedTarget,
       kind: kind as PluginArchitectureImportKind,
       reason,
-      ...(ticket ? { ticket } : {}),
+      ...(ticket !== undefined ? { ticket } : {}),
     };
   });
 };

@@ -352,10 +352,47 @@ export const pluginDrift = authorize;
     ]);
   });
 
+  it('preserves ticket strings exactly when present', () => {
+    const allowlist = parsePluginArchitectureAllowlist([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/core/waste-management',
+        resolvedTarget: '@sva/core/waste-management',
+        kind: 'type',
+        reason: 'Brownfield bridge until SDK contract exists',
+        ticket: '',
+      },
+    ]);
+
+    expect(allowlist).toEqual([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/core/waste-management',
+        resolvedTarget: '@sva/core/waste-management',
+        kind: 'type',
+        reason: 'Brownfield bridge until SDK contract exists',
+        ticket: '',
+      },
+    ]);
+  });
+
   it('parses the file-based JSON allowlist smoke test', () => {
     const allowlistFile = readFileSync(path.join(process.cwd(), 'config', 'plugin-architecture-allowlist.json'), 'utf8');
     const parsed = JSON.parse(allowlistFile) as unknown;
+    const allowlist = parsePluginArchitectureAllowlist(parsed);
 
-    expect(() => parsePluginArchitectureAllowlist(parsed)).not.toThrow();
+    expect(allowlist).toEqual([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/studio-module-iam',
+        resolvedTarget: '@sva/studio-module-iam',
+        kind: 'runtime',
+        reason: 'Brownfield bridge to the host-owned IAM registry until a plugin-facing contract exists.',
+        ticket: 'QUAL-123',
+      },
+    ]);
   });
 });

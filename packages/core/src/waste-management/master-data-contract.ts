@@ -16,9 +16,30 @@ const wasteHolidayRuleStrategies = ['advance', 'postpone'] as const;
 export type WasteDateShiftReasonType = (typeof wasteDateShiftReasonTypes)[number];
 export type WasteTourDateShiftFollowUpMode = (typeof wasteTourDateShiftFollowUpModes)[number];
 export type WasteFractionReminderCount = (typeof wasteFractionReminderCounts)[number];
+export type WasteFractionReminderChannel = 'push' | 'email' | 'calendar';
 export type WasteHolidayStateCode = (typeof wasteHolidayStateCodes)[number];
 export type WasteHolidayRuleScope = (typeof wasteHolidayRuleScopes)[number];
 export type WasteHolidayRuleStrategy = (typeof wasteHolidayRuleStrategies)[number];
+
+export type WasteFractionReminderSlot = Readonly<{
+  id: string;
+  maxLeadDays: number;
+  defaultLeadDays: number;
+}>;
+
+export type WasteFractionReminderChannelConfig = Readonly<{
+  slots: readonly WasteFractionReminderSlot[];
+}>;
+
+export type WasteFractionReminderChannels = Readonly<Record<WasteFractionReminderChannel, boolean>>;
+
+export type WasteFractionReminderConfig = Readonly<{
+  reminderCount: WasteFractionReminderCount;
+  channels: WasteFractionReminderChannels;
+  push?: WasteFractionReminderChannelConfig;
+  email?: WasteFractionReminderChannelConfig;
+  calendar?: WasteFractionReminderChannelConfig;
+}>;
 
 export const wasteManagementMasterDataContract = {
   dateShiftReasonTypes: wasteDateShiftReasonTypes,
@@ -42,5 +63,3 @@ export const wasteManagementMasterDataContract = {
   isWasteHolidayRuleStrategy: (value: string): value is WasteHolidayRuleStrategy =>
     (wasteHolidayRuleStrategies as readonly string[]).includes(value),
 } as const;
-
-export type WasteLocalizedTextRecord = Readonly<Record<string, string>>;

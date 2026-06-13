@@ -11,12 +11,14 @@ const createFraction = (overrides: Partial<WasteFractionRecord> = {}): WasteFrac
   description: 'Nur auf Abruf',
   translations: { de: 'Biotonne auf Abruf' },
   active: true,
-  reminderCount: 'none',
-  firstReminderMaxLeadDays: undefined,
-  secondReminderMaxLeadDays: undefined,
-  reminderChannelPushEnabled: false,
-  reminderChannelEmailEnabled: false,
-  reminderChannelCalendarEnabled: false,
+  reminderConfig: {
+    reminderCount: 'none',
+    channels: {
+      push: false,
+      email: false,
+      calendar: false,
+    },
+  },
   createdAt: '2026-06-09T10:00:00.000Z',
   updatedAt: '2026-06-09T10:00:00.000Z',
   ...overrides,
@@ -34,12 +36,42 @@ describe('buildWasteTypesStaticContent', () => {
         description: undefined,
         containerSize: '240 l',
         translations: { de: 'Papiertonne 240 l', en: 'Paper bin 240 l' },
-        reminderCount: 'twice',
-        firstReminderMaxLeadDays: 7,
-        secondReminderMaxLeadDays: 2,
-        reminderChannelPushEnabled: true,
-        reminderChannelEmailEnabled: false,
-        reminderChannelCalendarEnabled: true,
+        reminderConfig: {
+          reminderCount: 'twice',
+          channels: {
+            push: true,
+            email: false,
+            calendar: true,
+          },
+          push: {
+            slots: [
+              {
+                id: 'fraction-paper:push:first',
+                maxLeadDays: 7,
+                defaultLeadDays: 1,
+              },
+              {
+                id: 'fraction-paper:push:second',
+                maxLeadDays: 2,
+                defaultLeadDays: 1,
+              },
+            ],
+          },
+          calendar: {
+            slots: [
+              {
+                id: 'fraction-paper:calendar:first',
+                maxLeadDays: 7,
+                defaultLeadDays: 1,
+              },
+              {
+                id: 'fraction-paper:calendar:second',
+                maxLeadDays: 2,
+                defaultLeadDays: 1,
+              },
+            ],
+          },
+        },
       }),
       createFraction({
         id: 'fraction-inactive',
@@ -68,8 +100,6 @@ describe('buildWasteTypesStaticContent', () => {
         translations: { de: 'Biotonne auf Abruf' },
         reminders: {
           reminder_count: 'none',
-          first_reminder_max_lead_days: null,
-          second_reminder_max_lead_days: null,
           channels: {
             push: false,
             email: false,
@@ -89,12 +119,38 @@ describe('buildWasteTypesStaticContent', () => {
         translations: { de: 'Papiertonne 240 l', en: 'Paper bin 240 l' },
         reminders: {
           reminder_count: 'twice',
-          first_reminder_max_lead_days: 7,
-          second_reminder_max_lead_days: 2,
           channels: {
             push: true,
             email: false,
             calendar: true,
+          },
+          push: {
+            slots: [
+              {
+                id: 'fraction-paper:push:first',
+                max_lead_days: 7,
+                default_lead_days: 1,
+              },
+              {
+                id: 'fraction-paper:push:second',
+                max_lead_days: 2,
+                default_lead_days: 1,
+              },
+            ],
+          },
+          calendar: {
+            slots: [
+              {
+                id: 'fraction-paper:calendar:first',
+                max_lead_days: 7,
+                default_lead_days: 1,
+              },
+              {
+                id: 'fraction-paper:calendar:second',
+                max_lead_days: 2,
+                default_lead_days: 1,
+              },
+            ],
           },
         },
       },

@@ -59,6 +59,9 @@ vi.mock('@sva/plugin-sdk', () => ({
     return value === '2026-05-10T10:00:00.000Z' ? '10.05.2026, 12:00:00,000' : value;
   },
   usePluginTranslation: () => (key: string) => key,
+  wasteManagementMasterDataContract: {
+    fractionReminderLeadDayMin: 1,
+  },
   wasteManagementOperationsContract: {
     resetConfirmationToken: 'RESET',
   },
@@ -310,12 +313,10 @@ describe('waste management helper modules', () => {
         color: ' #111111 ',
         description: ' Beschreibung ',
         active: true,
-        reminderCount: 'none',
-        firstReminderMaxLeadDays: 14,
-        secondReminderMaxLeadDays: 7,
-        reminderChannelPushEnabled: true,
-        reminderChannelEmailEnabled: true,
-        reminderChannelCalendarEnabled: true,
+        reminderConfig: {
+          reminderCount: 'none',
+          channels: { push: true, email: true, calendar: true },
+        },
       })
     ).toEqual({
       id: 'fraction-1',
@@ -326,10 +327,10 @@ describe('waste management helper modules', () => {
       color: '#111111',
       description: 'Beschreibung',
       active: true,
-      reminderCount: 'none',
-      reminderChannelPushEnabled: false,
-      reminderChannelEmailEnabled: false,
-      reminderChannelCalendarEnabled: false,
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: { push: false, email: false, calendar: false },
+      },
     });
 
     expect(
@@ -342,12 +343,13 @@ describe('waste management helper modules', () => {
         color: '#16A34A',
         description: undefined,
         active: false,
-        reminderCount: 'once',
-        firstReminderMaxLeadDays: 5,
-        secondReminderMaxLeadDays: undefined,
-        reminderChannelPushEnabled: false,
-        reminderChannelEmailEnabled: true,
-        reminderChannelCalendarEnabled: false,
+        reminderConfig: {
+          reminderCount: 'once',
+          channels: { push: false, email: true, calendar: false },
+          email: {
+            slots: [{ id: 'fraction-2:email:first', maxLeadDays: 5, defaultLeadDays: 1 }],
+          },
+        },
         createdAt: '2026-05-10T10:00:00.000Z',
         updatedAt: '2026-05-10T10:00:00.000Z',
       })
@@ -360,12 +362,83 @@ describe('waste management helper modules', () => {
       color: '#16A34A',
       description: '',
       active: false,
-      reminderCount: 'once',
-      firstReminderMaxLeadDays: 5,
-      secondReminderMaxLeadDays: 1,
-      reminderChannelPushEnabled: false,
-      reminderChannelEmailEnabled: true,
-      reminderChannelCalendarEnabled: false,
+      reminderConfig: {
+        reminderCount: 'once',
+        channels: { push: false, email: true, calendar: false },
+        email: {
+          slots: [{ id: 'fraction-2:email:first', maxLeadDays: 5, defaultLeadDays: 1 }],
+        },
+      },
+    });
+
+    expect(
+      wasteMasterDataFormMappers.fractionToForm({
+        id: 'fraction-legacy',
+        name: 'Legacy',
+        pdfShortLabel: undefined,
+        translations: {},
+        containerSize: undefined,
+        color: '#111111',
+        description: undefined,
+        active: true,
+        reminderConfig: {
+          reminderCount: 'once',
+          channels: { push: false, email: false, calendar: false },
+        },
+        createdAt: '2026-05-10T10:00:00.000Z',
+        updatedAt: '2026-05-10T10:00:00.000Z',
+      })
+    ).toEqual({
+      id: 'fraction-legacy',
+      name: 'Legacy',
+      pdfShortLabel: '',
+      translations: {},
+      containerSize: '',
+      color: '#111111',
+      description: '',
+      active: true,
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: { push: false, email: false, calendar: false },
+      },
+    });
+
+    expect(
+      wasteMasterDataFormMappers.fractionToForm({
+        id: 'fraction-clamp',
+        name: 'Clamp',
+        pdfShortLabel: undefined,
+        translations: {},
+        containerSize: undefined,
+        color: '#111111',
+        description: undefined,
+        active: true,
+        reminderConfig: {
+          reminderCount: 'once',
+          channels: { push: true, email: false, calendar: false },
+          push: {
+            slots: [{ id: 'fraction-clamp:push:first', maxLeadDays: 5, defaultLeadDays: 9 }],
+          },
+        },
+        createdAt: '2026-05-10T10:00:00.000Z',
+        updatedAt: '2026-05-10T10:00:00.000Z',
+      })
+    ).toEqual({
+      id: 'fraction-clamp',
+      name: 'Clamp',
+      pdfShortLabel: '',
+      translations: {},
+      containerSize: '',
+      color: '#111111',
+      description: '',
+      active: true,
+      reminderConfig: {
+        reminderCount: 'once',
+        channels: { push: true, email: false, calendar: false },
+        push: {
+          slots: [{ id: 'fraction-clamp:push:first', maxLeadDays: 5, defaultLeadDays: 5 }],
+        },
+      },
     });
 
     expect(
@@ -378,22 +451,20 @@ describe('waste management helper modules', () => {
         color: '#2255aa',
         description: '',
         active: true,
-        reminderCount: 'none',
-        firstReminderMaxLeadDays: 1,
-        secondReminderMaxLeadDays: 1,
-        reminderChannelPushEnabled: false,
-        reminderChannelEmailEnabled: false,
-        reminderChannelCalendarEnabled: false,
+        reminderConfig: {
+          reminderCount: 'none',
+          channels: { push: false, email: false, calendar: false },
+        },
       })
     ).toEqual({
       name: 'Papier',
       pdfShortLabel: 'PPK',
       color: '#2255aa',
       active: true,
-      reminderCount: 'none',
-      reminderChannelPushEnabled: false,
-      reminderChannelEmailEnabled: false,
-      reminderChannelCalendarEnabled: false,
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: { push: false, email: false, calendar: false },
+      },
     });
 
     expect(
@@ -510,6 +581,10 @@ describe('waste management helper modules', () => {
       color: '#123456',
       description: undefined,
       active: true,
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: { push: false, email: false, calendar: false },
+      },
       createdAt: '2026-05-10T10:00:00.000Z',
       updatedAt: '2026-05-10T10:00:00.000Z',
     });

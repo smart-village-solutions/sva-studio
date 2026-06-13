@@ -73,12 +73,10 @@ describe('WasteMasterDataFractionCreateContent', () => {
           color: '#16A34A',
           description: '',
           active: true,
-          reminderCount: 'none',
-          firstReminderMaxLeadDays: 1,
-          secondReminderMaxLeadDays: 1,
-          reminderChannelPushEnabled: false,
-          reminderChannelEmailEnabled: false,
-          reminderChannelCalendarEnabled: false,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: { push: false, email: false, calendar: false },
+          },
         }}
         saving={false}
         onChange={onChange}
@@ -88,7 +86,7 @@ describe('WasteMasterDataFractionCreateContent', () => {
     );
 
     expect(screen.getByText('masterData.fractions.createView.sections.reminders')).toBeTruthy();
-    expect(screen.queryByLabelText('masterData.fractions.fields.secondReminderMaxLeadDays')).toBeNull();
+    expect(document.getElementById('waste-fraction-push-slot-1-max-lead-days')).toBeNull();
     expect(
       screen.getByRole('switch', { name: 'masterData.fractions.fields.reminderChannelPushEnabled' }).hasAttribute('disabled')
     ).toBe(true);
@@ -104,12 +102,10 @@ describe('WasteMasterDataFractionCreateContent', () => {
     });
 
     expect(onChange).toHaveBeenCalledWith({
-      reminderCount: 'twice',
-      firstReminderMaxLeadDays: 1,
-      secondReminderMaxLeadDays: 1,
-      reminderChannelPushEnabled: false,
-      reminderChannelEmailEnabled: false,
-      reminderChannelCalendarEnabled: false,
+      reminderConfig: {
+        reminderCount: 'twice',
+        channels: { push: false, email: false, calendar: false },
+      },
     });
 
     rerender(
@@ -124,12 +120,16 @@ describe('WasteMasterDataFractionCreateContent', () => {
           color: '#16A34A',
           description: '',
           active: true,
-          reminderCount: 'twice',
-          firstReminderMaxLeadDays: 7,
-          secondReminderMaxLeadDays: 2,
-          reminderChannelPushEnabled: false,
-          reminderChannelEmailEnabled: true,
-          reminderChannelCalendarEnabled: false,
+          reminderConfig: {
+            reminderCount: 'twice',
+            channels: { push: false, email: true, calendar: false },
+            email: {
+              slots: [
+                { id: 'fraction-1:email:first', maxLeadDays: 7, defaultLeadDays: 1 },
+                { id: 'fraction-1:email:second', maxLeadDays: 2, defaultLeadDays: 1 },
+              ],
+            },
+          },
         }}
         saving={false}
         onChange={onChange}
@@ -138,7 +138,66 @@ describe('WasteMasterDataFractionCreateContent', () => {
       />
     );
 
-    const secondReminderSelect = document.getElementById('waste-fraction-second-reminder-max-lead-days');
+    expect(document.getElementById('waste-fraction-push-slot-1-max-lead-days')).toBeNull();
+    expect(document.getElementById('waste-fraction-email-slot-1-max-lead-days')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('switch', { name: 'masterData.fractions.fields.reminderChannelPushEnabled' }));
+    expect(onChange).toHaveBeenCalledWith({
+      reminderConfig: {
+        reminderCount: 'twice',
+        channels: { push: true, email: true, calendar: false },
+        push: {
+          slots: [
+            { id: 'fraction-1:push:first', maxLeadDays: 1, defaultLeadDays: 1 },
+            { id: 'fraction-1:push:second', maxLeadDays: 1, defaultLeadDays: 1 },
+          ],
+        },
+        email: {
+          slots: [
+            { id: 'fraction-1:email:first', maxLeadDays: 7, defaultLeadDays: 1 },
+            { id: 'fraction-1:email:second', maxLeadDays: 2, defaultLeadDays: 1 },
+          ],
+        },
+      },
+    });
+
+    rerender(
+      <WasteMasterDataFractionCreateContent
+        mode="edit"
+        form={{
+          id: 'fraction-1',
+          name: 'Biotonne',
+          pdfShortLabel: 'BIO',
+          translations: {},
+          containerSize: '',
+          color: '#16A34A',
+          description: '',
+          active: true,
+          reminderConfig: {
+            reminderCount: 'twice',
+            channels: { push: true, email: true, calendar: false },
+            push: {
+              slots: [
+                { id: 'fraction-1:push:first', maxLeadDays: 7, defaultLeadDays: 1 },
+                { id: 'fraction-1:push:second', maxLeadDays: 2, defaultLeadDays: 1 },
+              ],
+            },
+            email: {
+              slots: [
+                { id: 'fraction-1:email:first', maxLeadDays: 7, defaultLeadDays: 1 },
+                { id: 'fraction-1:email:second', maxLeadDays: 2, defaultLeadDays: 1 },
+              ],
+            },
+          },
+        }}
+        saving={false}
+        onChange={onChange}
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    const secondReminderSelect = document.getElementById('waste-fraction-push-slot-2-max-lead-days');
     expect(secondReminderSelect).toBeTruthy();
     if (!(secondReminderSelect instanceof HTMLSelectElement)) {
       throw new Error('missing second reminder select');
@@ -147,10 +206,52 @@ describe('WasteMasterDataFractionCreateContent', () => {
     fireEvent.change(secondReminderSelect, {
       target: { value: '14' },
     });
-    expect(onChange).toHaveBeenCalledWith({ secondReminderMaxLeadDays: 14 });
+    expect(onChange).toHaveBeenCalledWith({
+      reminderConfig: {
+        reminderCount: 'twice',
+        channels: { push: true, email: true, calendar: false },
+        push: {
+          slots: [
+            { id: 'fraction-1:push:first', maxLeadDays: 7, defaultLeadDays: 1 },
+            { id: 'fraction-1:push:second', maxLeadDays: 14, defaultLeadDays: 1 },
+          ],
+        },
+        email: {
+          slots: [
+            { id: 'fraction-1:email:first', maxLeadDays: 7, defaultLeadDays: 1 },
+            { id: 'fraction-1:email:second', maxLeadDays: 2, defaultLeadDays: 1 },
+          ],
+        },
+      },
+    });
 
-    fireEvent.click(screen.getByRole('switch', { name: 'masterData.fractions.fields.reminderChannelPushEnabled' }));
-    expect(onChange).toHaveBeenCalledWith({ reminderChannelPushEnabled: true });
+    const secondReminderDefaultSelect = document.getElementById('waste-fraction-push-slot-2-default-lead-days');
+    expect(secondReminderDefaultSelect).toBeTruthy();
+    if (!(secondReminderDefaultSelect instanceof HTMLSelectElement)) {
+      throw new Error('missing second reminder default select');
+    }
+
+    fireEvent.change(secondReminderDefaultSelect, {
+      target: { value: '14' },
+    });
+    expect(onChange).toHaveBeenCalledWith({
+      reminderConfig: {
+        reminderCount: 'twice',
+        channels: { push: true, email: true, calendar: false },
+        push: {
+          slots: [
+            { id: 'fraction-1:push:first', maxLeadDays: 7, defaultLeadDays: 1 },
+            { id: 'fraction-1:push:second', maxLeadDays: 2, defaultLeadDays: 2 },
+          ],
+        },
+        email: {
+          slots: [
+            { id: 'fraction-1:email:first', maxLeadDays: 7, defaultLeadDays: 1 },
+            { id: 'fraction-1:email:second', maxLeadDays: 2, defaultLeadDays: 1 },
+          ],
+        },
+      },
+    });
 
     fireEvent.submit(document.getElementById('waste-fraction-create-form') as HTMLFormElement);
     expect(onSubmit).toHaveBeenCalledTimes(1);

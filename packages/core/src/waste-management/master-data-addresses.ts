@@ -1,4 +1,7 @@
-import type { WasteFractionReminderCount, WasteLocalizedTextRecord } from './master-data-contract.js';
+import type {
+  WasteFractionReminderConfig,
+} from './master-data-contract.js';
+import type { WasteLocalizedTextRecord } from './master-data-localized-text.js';
 
 export type WasteFractionRecord = {
   readonly id: string;
@@ -9,12 +12,7 @@ export type WasteFractionRecord = {
   readonly color: string;
   readonly description?: string;
   readonly active: boolean;
-  readonly reminderCount: WasteFractionReminderCount;
-  readonly firstReminderMaxLeadDays?: number;
-  readonly secondReminderMaxLeadDays?: number;
-  readonly reminderChannelPushEnabled: boolean;
-  readonly reminderChannelEmailEnabled: boolean;
-  readonly reminderChannelCalendarEnabled: boolean;
+  readonly reminderConfig: WasteFractionReminderConfig;
   readonly createdAt: string;
   readonly updatedAt: string;
 };

@@ -60,6 +60,10 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
+  wasteManagementMasterDataContract: {
+    fractionReminderLeadDayMin: 1,
+    fractionReminderLeadDayMax: 14,
+  },
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({

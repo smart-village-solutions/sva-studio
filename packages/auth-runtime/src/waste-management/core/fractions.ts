@@ -57,7 +57,7 @@ export const wasteManagementFractionHandlers = {
     if (duplicateShortLabelError) {
       return duplicateShortLabelError;
     }
-    const reminderConfig = normalizeWasteFractionReminderConfig(parsed.data);
+    const reminderConfig = normalizeWasteFractionReminderConfig(parsed.data.reminderConfig);
 
     const response = await runWasteCreateMutation({
       deps,
@@ -83,12 +83,7 @@ export const wasteManagementFractionHandlers = {
           color: parsed.data.color,
           description: normalizeOptionalString(parsed.data.description),
           active: parsed.data.active,
-          reminderCount: reminderConfig.reminderCount,
-          firstReminderMaxLeadDays: reminderConfig.firstReminderMaxLeadDays,
-          secondReminderMaxLeadDays: reminderConfig.secondReminderMaxLeadDays,
-          reminderChannelPushEnabled: reminderConfig.reminderChannelPushEnabled,
-          reminderChannelEmailEnabled: reminderConfig.reminderChannelEmailEnabled,
-          reminderChannelCalendarEnabled: reminderConfig.reminderChannelCalendarEnabled,
+          reminderConfig,
         }),
       loadSaved: () => requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById')(instanceId, parsed.data.id),
     });
@@ -131,7 +126,7 @@ export const wasteManagementFractionHandlers = {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
     const normalizedShortLabel = normalizeWasteFractionShortLabel(parsed.data.pdfShortLabel);
-    const reminderConfig = normalizeWasteFractionReminderConfig(parsed.data);
+    const reminderConfig = normalizeWasteFractionReminderConfig(parsed.data.reminderConfig);
 
     const loadWasteFraction = requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById');
     const existing = await loadWasteFraction(instanceId, fractionId);
@@ -176,12 +171,7 @@ export const wasteManagementFractionHandlers = {
           color: parsed.data.color,
           description: normalizeOptionalString(parsed.data.description),
           active: parsed.data.active,
-          reminderCount: reminderConfig.reminderCount,
-          firstReminderMaxLeadDays: reminderConfig.firstReminderMaxLeadDays,
-          secondReminderMaxLeadDays: reminderConfig.secondReminderMaxLeadDays,
-          reminderChannelPushEnabled: reminderConfig.reminderChannelPushEnabled,
-          reminderChannelEmailEnabled: reminderConfig.reminderChannelEmailEnabled,
-          reminderChannelCalendarEnabled: reminderConfig.reminderChannelCalendarEnabled,
+          reminderConfig,
         }),
       loadSaved: () => loadWasteFraction(instanceId, fractionId),
     });

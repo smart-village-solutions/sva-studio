@@ -2,7 +2,7 @@ import type {
   WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteFractionRecord,
-  WasteFractionReminderCount,
+  WasteFractionReminderConfig,
   WasteHouseNumberRecord,
   WasteLocalizedTextRecord,
   WasteRegionRecord,
@@ -24,6 +24,10 @@ import type {
   UpdateWasteManagementRegionInput,
   UpdateWasteManagementStreetInput,
 } from './waste-management.api.js';
+import {
+  createDefaultReminderChannels,
+  normalizeFractionReminderConfig,
+} from './waste-management.master-data.fraction-reminder-config.js';
 import { compactOptionalString, createId, normalizeLocalizedTextRecord } from './waste-management.master-data.form-helpers.js';
 
 export type FractionFormState = {
@@ -35,12 +39,7 @@ export type FractionFormState = {
   readonly color: string;
   readonly description: string;
   readonly active: boolean;
-  readonly reminderCount: WasteFractionReminderCount;
-  readonly firstReminderMaxLeadDays?: number;
-  readonly secondReminderMaxLeadDays?: number;
-  readonly reminderChannelPushEnabled: boolean;
-  readonly reminderChannelEmailEnabled: boolean;
-  readonly reminderChannelCalendarEnabled: boolean;
+  readonly reminderConfig: WasteFractionReminderConfig;
 };
 
 export type RegionFormState = { readonly id: string; readonly name: string };
@@ -58,7 +57,6 @@ export type CollectionLocationFormState = {
 };
 
 export type LocationTourLinkBulkFormState = { readonly tourId: string; readonly startDate: string; readonly endDate: string };
-const defaultFractionReminderLeadDays = 1;
 const normalizeFractionShortLabel = (value: string): string => value.trim().toUpperCase();
 
 export const wasteMasterDataFormDefaults = {
@@ -71,12 +69,10 @@ export const wasteMasterDataFormDefaults = {
     color: '#4f6d7a',
     description: '',
     active: true,
-    reminderCount: 'none',
-    firstReminderMaxLeadDays: defaultFractionReminderLeadDays,
-    secondReminderMaxLeadDays: defaultFractionReminderLeadDays,
-    reminderChannelPushEnabled: false,
-    reminderChannelEmailEnabled: false,
-    reminderChannelCalendarEnabled: false,
+    reminderConfig: {
+      reminderCount: 'none',
+      channels: createDefaultReminderChannels(),
+    },
   }),
   createRegion: (): RegionFormState => ({ id: createId(), name: '' }),
   createCity: (): CityFormState => ({ id: createId(), name: '', regionId: '' }),
@@ -103,12 +99,7 @@ export const wasteMasterDataFormMappers = {
     color: fraction.color,
     description: fraction.description ?? '',
     active: fraction.active,
-    reminderCount: fraction.reminderCount,
-    firstReminderMaxLeadDays: fraction.firstReminderMaxLeadDays ?? defaultFractionReminderLeadDays,
-    secondReminderMaxLeadDays: fraction.secondReminderMaxLeadDays ?? defaultFractionReminderLeadDays,
-    reminderChannelPushEnabled: fraction.reminderChannelPushEnabled,
-    reminderChannelEmailEnabled: fraction.reminderChannelEmailEnabled,
-    reminderChannelCalendarEnabled: fraction.reminderChannelCalendarEnabled,
+    reminderConfig: normalizeFractionReminderConfig(fraction.id, fraction.reminderConfig),
   }),
   regionToForm: (region: WasteRegionRecord): RegionFormState => ({ id: region.id, name: region.name }),
   cityToForm: (city: WasteCityRecord): CityFormState => ({ id: city.id, name: city.name, regionId: city.regionId ?? '' }),
@@ -130,49 +121,9 @@ export const wasteMasterDataFormMappers = {
 
 const toFractionReminderInput = (
   form: FractionFormState
-): Pick<
-  CreateWasteManagementFractionInput,
-  | 'reminderCount'
-  | 'firstReminderMaxLeadDays'
-  | 'secondReminderMaxLeadDays'
-  | 'reminderChannelPushEnabled'
-  | 'reminderChannelEmailEnabled'
-  | 'reminderChannelCalendarEnabled'
-> => {
-  const firstReminderMaxLeadDays = form.firstReminderMaxLeadDays ?? defaultFractionReminderLeadDays;
-  const secondReminderMaxLeadDays = form.secondReminderMaxLeadDays ?? defaultFractionReminderLeadDays;
-
-  if (form.reminderCount === 'none') {
-    return {
-      reminderCount: 'none',
-      firstReminderMaxLeadDays: undefined,
-      secondReminderMaxLeadDays: undefined,
-      reminderChannelPushEnabled: false,
-      reminderChannelEmailEnabled: false,
-      reminderChannelCalendarEnabled: false,
-    };
-  }
-
-  if (form.reminderCount === 'once') {
-    return {
-      reminderCount: 'once',
-      firstReminderMaxLeadDays,
-      secondReminderMaxLeadDays: undefined,
-      reminderChannelPushEnabled: form.reminderChannelPushEnabled,
-      reminderChannelEmailEnabled: form.reminderChannelEmailEnabled,
-      reminderChannelCalendarEnabled: form.reminderChannelCalendarEnabled,
-    };
-  }
-
-  return {
-    reminderCount: 'twice',
-    firstReminderMaxLeadDays,
-    secondReminderMaxLeadDays,
-    reminderChannelPushEnabled: form.reminderChannelPushEnabled,
-    reminderChannelEmailEnabled: form.reminderChannelEmailEnabled,
-    reminderChannelCalendarEnabled: form.reminderChannelCalendarEnabled,
-  };
-};
+): Pick<CreateWasteManagementFractionInput, 'reminderConfig'> => ({
+  reminderConfig: normalizeFractionReminderConfig(form.id, form.reminderConfig),
+});
 
 export const wasteMasterDataInputMappers = {
   toCreateFractionInput: (form: FractionFormState): CreateWasteManagementFractionInput => ({

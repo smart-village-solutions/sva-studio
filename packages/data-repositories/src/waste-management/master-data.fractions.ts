@@ -2,45 +2,15 @@ import type { WasteFractionListFilter, WasteFractionRecord } from '@sva/core';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
-import { buildLikePattern, normalizeLocalizedTextRecord } from './master-data.shared.js';
-
-type WasteFractionRow = {
-  readonly id: string;
-  readonly name: string;
-  readonly pdf_short_label: string | null;
-  readonly label_translations: unknown;
-  readonly container_size: string | null;
-  readonly color: string;
-  readonly description: string | null;
-  readonly active: boolean;
-  readonly reminder_count: WasteFractionRecord['reminderCount'] | null;
-  readonly first_reminder_max_lead_days: number | null;
-  readonly second_reminder_max_lead_days: number | null;
-  readonly reminder_channel_push_enabled: boolean | null;
-  readonly reminder_channel_email_enabled: boolean | null;
-  readonly reminder_channel_calendar_enabled: boolean | null;
-  readonly created_at: string;
-  readonly updated_at: string;
-};
-
-const mapWasteFractionRow = (row: WasteFractionRow): WasteFractionRecord => ({
-  id: row.id,
-  name: row.name,
-  pdfShortLabel: row.pdf_short_label ?? undefined,
-  translations: normalizeLocalizedTextRecord(row.label_translations),
-  containerSize: row.container_size ?? undefined,
-  color: row.color,
-  description: row.description ?? undefined,
-  active: row.active,
-  reminderCount: row.reminder_count ?? 'none',
-  firstReminderMaxLeadDays: row.first_reminder_max_lead_days ?? undefined,
-  secondReminderMaxLeadDays: row.second_reminder_max_lead_days ?? undefined,
-  reminderChannelPushEnabled: row.reminder_channel_push_enabled ?? false,
-  reminderChannelEmailEnabled: row.reminder_channel_email_enabled ?? false,
-  reminderChannelCalendarEnabled: row.reminder_channel_calendar_enabled ?? false,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-});
+import {
+  mapWasteFractionRow,
+  type WasteFractionRow,
+} from './master-data.fractions.shared.js';
+import {
+  serializeReminderConfig,
+  toLegacyReminderColumns,
+} from './master-data.fractions.persistence.js';
+import { buildLikePattern } from './master-data.shared.js';
 
 const buildFractionListStatement = (filter: WasteFractionListFilter = {}): SqlStatement => {
   const values: SqlPrimitive[] = [];
@@ -67,6 +37,7 @@ SELECT
   color,
   description,
   active,
+  reminder_config,
   reminder_count,
   first_reminder_max_lead_days,
   second_reminder_max_lead_days,
@@ -94,6 +65,7 @@ SELECT
   color,
   description,
   active,
+  reminder_config,
   reminder_count,
   first_reminder_max_lead_days,
   second_reminder_max_lead_days,
@@ -111,8 +83,11 @@ LIMIT 1;
 
 const buildFractionUpsertStatement = (
   input: Omit<WasteFractionRecord, 'createdAt' | 'updatedAt'>
-): SqlStatement => ({
-  text: `
+): SqlStatement => {
+  const legacyReminderColumns = toLegacyReminderColumns(input.reminderConfig);
+
+  return {
+    text: `
 INSERT INTO waste_fractions (
   id,
   name,
@@ -122,6 +97,7 @@ INSERT INTO waste_fractions (
   color,
   description,
   active,
+  reminder_config,
   reminder_count,
   first_reminder_max_lead_days,
   second_reminder_max_lead_days,
@@ -129,7 +105,7 @@ INSERT INTO waste_fractions (
   reminder_channel_email_enabled,
   reminder_channel_calendar_enabled
 )
-VALUES ($1::uuid, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+VALUES ($1::uuid, $2, $3, $4::jsonb, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13, $14, $15)
 ON CONFLICT (id) DO UPDATE
 SET name = EXCLUDED.name,
     pdf_short_label = EXCLUDED.pdf_short_label,
@@ -138,6 +114,7 @@ SET name = EXCLUDED.name,
     color = EXCLUDED.color,
     description = EXCLUDED.description,
     active = EXCLUDED.active,
+    reminder_config = EXCLUDED.reminder_config,
     reminder_count = EXCLUDED.reminder_count,
     first_reminder_max_lead_days = EXCLUDED.first_reminder_max_lead_days,
     second_reminder_max_lead_days = EXCLUDED.second_reminder_max_lead_days,
@@ -146,23 +123,25 @@ SET name = EXCLUDED.name,
     reminder_channel_calendar_enabled = EXCLUDED.reminder_channel_calendar_enabled,
     updated_at = NOW();
 `,
-  values: [
-    input.id,
-    input.name,
-    input.pdfShortLabel ?? null,
-    input.translations ? JSON.stringify(input.translations) : null,
-    input.containerSize ?? null,
-    input.color,
-    input.description ?? null,
-    input.active,
-    input.reminderCount,
-    input.firstReminderMaxLeadDays ?? null,
-    input.secondReminderMaxLeadDays ?? null,
-    input.reminderChannelPushEnabled,
-    input.reminderChannelEmailEnabled,
-    input.reminderChannelCalendarEnabled,
-  ],
-});
+    values: [
+      input.id,
+      input.name,
+      input.pdfShortLabel ?? null,
+      input.translations ? JSON.stringify(input.translations) : null,
+      input.containerSize ?? null,
+      input.color,
+      input.description ?? null,
+      input.active,
+      serializeReminderConfig(input.reminderConfig),
+      legacyReminderColumns.reminderCount,
+      legacyReminderColumns.firstReminderMaxLeadDays,
+      legacyReminderColumns.secondReminderMaxLeadDays,
+      legacyReminderColumns.reminderChannelPushEnabled,
+      legacyReminderColumns.reminderChannelEmailEnabled,
+      legacyReminderColumns.reminderChannelCalendarEnabled,
+    ],
+  };
+};
 
 const buildFractionDeleteStatement = (id: string): SqlStatement => ({
   text: `

@@ -5,7 +5,7 @@ Die fachliche und technische Ausgestaltung ist im begleitenden Design-Dokument b
 - `docs/superpowers/specs/2026-06-04-waste-fraction-reminder-settings-design.md`
 
 Kernpunkte:
-- Reminder-Felder liegen direkt auf `waste_fractions`
-- Kanalfreigaben gelten global pro Fraktion
-- die zweite Erinnerung bleibt unabhängig von der ersten, ohne Ordnungsregel
-- UI, API und Persistenz normalisieren nicht relevante Felder auf einen kanonischen Zustand
+- die Reminder-Konfiguration liegt fachlich führend als JSONB an `waste_fractions`
+- Kanalfreigaben gelten global pro Fraktion und verweisen auf kanalbezogene Slot-Listen
+- Slot-IDs bleiben persistent stabil und werden bei der Migration deterministisch aus Fraktion, Channel und Slotposition erzeugt
+- UI, API und Persistenz normalisieren die Konfiguration auf ein kanonisches JSON-Schema

@@ -234,6 +234,8 @@ Kernidee:
 Für den aktuellen Waste-PDF-Export-Shift ist wichtig:
 
 - Das verpflichtende Fraktionskürzel `waste_fractions.pdf_short_label` gehört zur externen Waste-Fachdatenbank, nicht zur zentralen Studio-DB; Legacy-Daten werden im runtime-nahen Waste-Migrationspfad deterministisch aus Fraktionsname oder ID backfilled.
+- Die Reminder-Konfiguration der externen Tabelle `waste_fractions` verwendet dort `reminder_config JSONB` als Source of Truth; die früheren Flachspalten (`reminder_count`, `first_reminder_max_lead_days`, `second_reminder_max_lead_days`, `reminder_channel_*_enabled`) bleiben im runtime-nahen Schema nur als Migrationsquelle und Kompatibilitätsoberfläche erhalten.
+- Der runtime-nahe Backfill in `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts` schreibt `reminder_config` deterministisch aus den Legacy-Spalten und überschreibt vorhandene JSON-Konfigurationen nicht.
 - Die zugehörige Schemaquelle liegt aktuell im runtime-nahen Waste-Migrationspfad unter `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`.
 - PDF-bezogene Stamminhalte wie `calendarWebUrl`, `pdfBrandingAssetUrl` und `pdfContactBlock` liegen dagegen weiterhin in der zentralen Studio-DB als Teil von `iam.instance_external_interfaces.public_config`.
 

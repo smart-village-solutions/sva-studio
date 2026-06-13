@@ -37,6 +37,7 @@
     },
     "test:types": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "options": {
         "command": "tsc -p packages/plugin-sdk/tsconfig.lib.json --noEmit"
       }

@@ -152,42 +152,50 @@ export const enqueueWasteTypesSyncAfterFractionMutation = async (
   }
 };
 
-export const normalizeWasteFractionReminderConfig = (input: {
-  readonly reminderCount: 'none' | 'once' | 'twice';
-  readonly firstReminderMaxLeadDays?: number;
-  readonly secondReminderMaxLeadDays?: number;
-  readonly reminderChannelPushEnabled: boolean;
-  readonly reminderChannelEmailEnabled: boolean;
-  readonly reminderChannelCalendarEnabled: boolean;
-}) => {
-  if (input.reminderCount === 'none') {
-    return {
-      reminderCount: 'none' as const,
-      firstReminderMaxLeadDays: undefined,
-      secondReminderMaxLeadDays: undefined,
-      reminderChannelPushEnabled: false,
-      reminderChannelEmailEnabled: false,
-      reminderChannelCalendarEnabled: false,
-    };
-  }
+type WasteReminderChannelKey = keyof WasteFractionRecord['reminderConfig']['channels'];
 
-  if (input.reminderCount === 'once') {
-    return {
-      reminderCount: 'once' as const,
-      firstReminderMaxLeadDays: input.firstReminderMaxLeadDays,
-      secondReminderMaxLeadDays: undefined,
-      reminderChannelPushEnabled: input.reminderChannelPushEnabled,
-      reminderChannelEmailEnabled: input.reminderChannelEmailEnabled,
-      reminderChannelCalendarEnabled: input.reminderChannelCalendarEnabled,
-    };
+const normalizeWasteFractionReminderChannel = (
+  enabled: boolean,
+  slotCount: number,
+  config: WasteFractionRecord['reminderConfig'][WasteReminderChannelKey]
+) => {
+  if (!enabled || !config) {
+    return undefined;
   }
 
   return {
-    reminderCount: 'twice' as const,
-    firstReminderMaxLeadDays: input.firstReminderMaxLeadDays,
-    secondReminderMaxLeadDays: input.secondReminderMaxLeadDays,
-    reminderChannelPushEnabled: input.reminderChannelPushEnabled,
-    reminderChannelEmailEnabled: input.reminderChannelEmailEnabled,
-    reminderChannelCalendarEnabled: input.reminderChannelCalendarEnabled,
+    slots: config.slots.slice(0, slotCount),
+  };
+};
+
+export const normalizeWasteFractionReminderConfig = (
+  input: WasteFractionRecord['reminderConfig']
+): WasteFractionRecord['reminderConfig'] => {
+  if (input.reminderCount === 'none') {
+    return {
+      reminderCount: 'none',
+      channels: {
+        push: false,
+        email: false,
+        calendar: false,
+      },
+    };
+  }
+
+  const slotCount = input.reminderCount === 'once' ? 1 : 2;
+  const channels = {
+    push: input.channels.push,
+    email: input.channels.email,
+    calendar: input.channels.calendar,
+  } as const;
+
+  return {
+    reminderCount: input.reminderCount,
+    channels,
+    ...(channels.push ? { push: normalizeWasteFractionReminderChannel(true, slotCount, input.push) ?? { slots: [] } } : {}),
+    ...(channels.email ? { email: normalizeWasteFractionReminderChannel(true, slotCount, input.email) ?? { slots: [] } } : {}),
+    ...(channels.calendar
+      ? { calendar: normalizeWasteFractionReminderChannel(true, slotCount, input.calendar) ?? { slots: [] } }
+      : {}),
   };
 };

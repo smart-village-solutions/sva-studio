@@ -30,12 +30,29 @@ describe('waste master data repository', () => {
         color: '#00AA00',
         description: null,
         active: true,
+        reminder_config: {
+          reminder_count: 'once',
+          channels: {
+            push: true,
+            email: false,
+            calendar: false,
+          },
+          push: {
+            slots: [
+              {
+                id: 'push:first',
+                max_lead_days: 3,
+                default_lead_days: 1,
+              },
+            ],
+          },
+        },
         reminder_count: 'none',
         first_reminder_max_lead_days: null,
         second_reminder_max_lead_days: null,
         reminder_channel_push_enabled: false,
-        reminder_channel_email_enabled: false,
-        reminder_channel_calendar_enabled: false,
+        reminder_channel_email_enabled: true,
+        reminder_channel_calendar_enabled: true,
         created_at: '2026-05-09T10:00:00.000Z',
         updated_at: '2026-05-09T11:00:00.000Z',
       },
@@ -56,12 +73,23 @@ describe('waste master data repository', () => {
         color: '#00AA00',
         description: undefined,
         active: true,
-        reminderCount: 'none',
-        firstReminderMaxLeadDays: undefined,
-        secondReminderMaxLeadDays: undefined,
-        reminderChannelPushEnabled: false,
-        reminderChannelEmailEnabled: false,
-        reminderChannelCalendarEnabled: false,
+        reminderConfig: {
+          reminderCount: 'once',
+          channels: {
+            push: true,
+            email: false,
+            calendar: false,
+          },
+          push: {
+            slots: [
+              {
+                id: 'push:first',
+                maxLeadDays: 3,
+                defaultLeadDays: 1,
+              },
+            ],
+          },
+        },
         createdAt: '2026-05-09T10:00:00.000Z',
         updatedAt: '2026-05-09T11:00:00.000Z',
       },
@@ -69,6 +97,7 @@ describe('waste master data repository', () => {
 
     expect(statements[0]?.values).toEqual([true, '%Bio%']);
     expect(statements[0]?.text).toContain('FROM waste_fractions');
+    expect(statements[0]?.text).toContain('reminder_config');
     expect(statements[0]?.text).toContain('label_translations');
     expect(statements[0]?.text).toContain('active = $1');
     expect(statements[0]?.text).toContain('name ILIKE $2');
@@ -85,12 +114,48 @@ describe('waste master data repository', () => {
         color: '#0000FF',
         description: 'Blaue Tonne',
         active: false,
-        reminder_count: 'twice',
-        first_reminder_max_lead_days: 7,
-        second_reminder_max_lead_days: 2,
-        reminder_channel_push_enabled: true,
-        reminder_channel_email_enabled: false,
-        reminder_channel_calendar_enabled: true,
+        reminder_config: {
+          reminder_count: 'twice',
+          channels: {
+            push: true,
+            email: false,
+            calendar: true,
+          },
+          push: {
+            slots: [
+              {
+                id: 'push:first',
+                max_lead_days: 7,
+                default_lead_days: 1,
+              },
+              {
+                id: 'push:second',
+                max_lead_days: 2,
+                default_lead_days: 1,
+              },
+            ],
+          },
+          calendar: {
+            slots: [
+              {
+                id: 'calendar:first',
+                max_lead_days: 7,
+                default_lead_days: 1,
+              },
+              {
+                id: 'calendar:second',
+                max_lead_days: 2,
+                default_lead_days: 1,
+              },
+            ],
+          },
+        },
+        reminder_count: 'none',
+        first_reminder_max_lead_days: 1,
+        second_reminder_max_lead_days: 1,
+        reminder_channel_push_enabled: false,
+        reminder_channel_email_enabled: true,
+        reminder_channel_calendar_enabled: false,
         created_at: '2026-05-09T10:00:00.000Z',
         updated_at: '2026-05-09T11:00:00.000Z',
       },
@@ -106,12 +171,42 @@ describe('waste master data repository', () => {
       color: '#0000FF',
       description: 'Blaue Tonne',
       active: false,
-      reminderCount: 'twice',
-      firstReminderMaxLeadDays: 7,
-      secondReminderMaxLeadDays: 2,
-      reminderChannelPushEnabled: true,
-      reminderChannelEmailEnabled: false,
-      reminderChannelCalendarEnabled: true,
+      reminderConfig: {
+        reminderCount: 'twice',
+        channels: {
+          push: true,
+          email: false,
+          calendar: true,
+        },
+        push: {
+          slots: [
+            {
+              id: 'push:first',
+              maxLeadDays: 7,
+              defaultLeadDays: 1,
+            },
+            {
+              id: 'push:second',
+              maxLeadDays: 2,
+              defaultLeadDays: 1,
+            },
+          ],
+        },
+        calendar: {
+          slots: [
+            {
+              id: 'calendar:first',
+              maxLeadDays: 7,
+              defaultLeadDays: 1,
+            },
+            {
+              id: 'calendar:second',
+              maxLeadDays: 2,
+              defaultLeadDays: 1,
+            },
+          ],
+        },
+      },
       createdAt: '2026-05-09T10:00:00.000Z',
       updatedAt: '2026-05-09T11:00:00.000Z',
     });
@@ -129,15 +224,36 @@ describe('waste master data repository', () => {
       color: '#444444',
       description: undefined,
       active: true,
-      reminderCount: 'once',
-      firstReminderMaxLeadDays: 5,
-      secondReminderMaxLeadDays: undefined,
-      reminderChannelPushEnabled: true,
-      reminderChannelEmailEnabled: true,
-      reminderChannelCalendarEnabled: false,
+      reminderConfig: {
+        reminderCount: 'once',
+        channels: {
+          push: true,
+          email: true,
+          calendar: false,
+        },
+        push: {
+          slots: [
+            {
+              id: 'push:first',
+              maxLeadDays: 5,
+              defaultLeadDays: 1,
+            },
+          ],
+        },
+        email: {
+          slots: [
+            {
+              id: 'email:first',
+              maxLeadDays: 5,
+              defaultLeadDays: 1,
+            },
+          ],
+        },
+      },
     });
 
     expect(write.statements[0]?.text).toContain('ON CONFLICT (id) DO UPDATE');
+    expect(write.statements[0]?.text).toContain('reminder_config');
     expect(write.statements[0]?.values).toEqual([
       'fraction-2',
       'Restmüll',
@@ -147,6 +263,32 @@ describe('waste master data repository', () => {
       '#444444',
       null,
       true,
+      JSON.stringify({
+        reminder_count: 'once',
+        channels: {
+          push: true,
+          email: true,
+          calendar: false,
+        },
+        push: {
+          slots: [
+            {
+              id: 'push:first',
+              max_lead_days: 5,
+              default_lead_days: 1,
+            },
+          ],
+        },
+        email: {
+          slots: [
+            {
+              id: 'email:first',
+              max_lead_days: 5,
+              default_lead_days: 1,
+            },
+          ],
+        },
+      }),
       'once',
       5,
       null,
@@ -154,6 +296,131 @@ describe('waste master data repository', () => {
       true,
       false,
     ]);
+  });
+
+  it('fails closed for legacy reminder rows without active channels', async () => {
+    const { executor } = createExecutor([
+      {
+        id: 'fraction-legacy',
+        name: 'Legacy',
+        pdf_short_label: null,
+        label_translations: {},
+        container_size: null,
+        color: '#111111',
+        description: null,
+        active: true,
+        reminder_config: null,
+        reminder_count: 'once',
+        first_reminder_max_lead_days: 7,
+        second_reminder_max_lead_days: null,
+        reminder_channel_push_enabled: false,
+        reminder_channel_email_enabled: false,
+        reminder_channel_calendar_enabled: false,
+        created_at: '2026-05-09T10:00:00.000Z',
+        updated_at: '2026-05-09T11:00:00.000Z',
+      },
+    ]);
+
+    await expect(createWasteMasterDataRepository(executor).getWasteFractionById('fraction-legacy')).resolves.toMatchObject({
+      id: 'fraction-legacy',
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: {
+          push: false,
+          email: false,
+          calendar: false,
+        },
+      },
+    });
+  });
+
+  it('fails closed for json reminder rows without active channels', async () => {
+    const { executor } = createExecutor([
+      {
+        id: 'fraction-json-no-channel',
+        name: 'JSON',
+        pdf_short_label: null,
+        label_translations: {},
+        container_size: null,
+        color: '#111111',
+        description: null,
+        active: true,
+        reminder_config: {
+          reminder_count: 'once',
+          channels: {
+            push: false,
+            email: false,
+            calendar: false,
+          },
+        },
+        reminder_count: 'none',
+        first_reminder_max_lead_days: null,
+        second_reminder_max_lead_days: null,
+        reminder_channel_push_enabled: false,
+        reminder_channel_email_enabled: false,
+        reminder_channel_calendar_enabled: false,
+        created_at: '2026-05-09T10:00:00.000Z',
+        updated_at: '2026-05-09T11:00:00.000Z',
+      },
+    ]);
+
+    await expect(createWasteMasterDataRepository(executor).getWasteFractionById('fraction-json-no-channel')).resolves.toMatchObject({
+      id: 'fraction-json-no-channel',
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: {
+          push: false,
+          email: false,
+          calendar: false,
+        },
+      },
+    });
+  });
+
+  it('prefers legacy reminder columns when json reminder_config is stale', async () => {
+    const { executor } = createExecutor([
+      {
+        id: 'fraction-stale-json',
+        name: 'Stale',
+        pdf_short_label: 'STA',
+        label_translations: {},
+        container_size: null,
+        color: '#111111',
+        description: null,
+        active: true,
+        reminder_config: {
+          reminder_count: 'none',
+          channels: {
+            push: false,
+            email: false,
+            calendar: false,
+          },
+        },
+        reminder_count: 'once',
+        first_reminder_max_lead_days: 7,
+        second_reminder_max_lead_days: null,
+        reminder_channel_push_enabled: true,
+        reminder_channel_email_enabled: false,
+        reminder_channel_calendar_enabled: false,
+        created_at: '2026-05-09T10:00:00.000Z',
+        updated_at: '2026-05-09T11:00:00.000Z',
+      },
+    ]);
+
+    await expect(createWasteMasterDataRepository(executor).getWasteFractionById('fraction-stale-json')).resolves.toMatchObject({
+      id: 'fraction-stale-json',
+      reminderConfig: {
+        reminderCount: 'once',
+        channels: {
+          push: true,
+          email: false,
+          calendar: false,
+        },
+        push: {
+          slots: [{ id: 'fraction-stale-json:push:first', maxLeadDays: 7, defaultLeadDays: 1 }],
+        },
+      },
+    });
   });
 
   it('lists regions and cities with search and region filters', async () => {

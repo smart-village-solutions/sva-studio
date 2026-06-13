@@ -203,12 +203,7 @@ const persistLocationTourPickupDateImportPlan = async (
       color: fraction.color,
       description: fraction.description,
       active: fraction.active,
-      reminderCount: fraction.reminderCount,
-      firstReminderMaxLeadDays: fraction.firstReminderMaxLeadDays,
-      secondReminderMaxLeadDays: fraction.secondReminderMaxLeadDays,
-      reminderChannelPushEnabled: fraction.reminderChannelPushEnabled,
-      reminderChannelEmailEnabled: fraction.reminderChannelEmailEnabled,
-      reminderChannelCalendarEnabled: fraction.reminderChannelCalendarEnabled,
+      reminderConfig: fraction.reminderConfig,
     });
   }
   for (const tour of plan.upserts.tours) {

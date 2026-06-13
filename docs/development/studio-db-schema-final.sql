@@ -3627,10 +3627,19 @@ CREATE POLICY role_permissions_isolation_policy ON iam.role_permissions USING ((
 
 CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
 
+--
+-- Runtime-managed external waste schema note
+--
+-- Die externe Waste-Fachdatenbank führt `waste_fractions.reminder_config`
+-- als JSONB-Source-of-Truth für Erinnerungen.
+-- Legacy-Flachspalten bleiben dort nur als Migrationsquelle und
+-- Kompatibilitätsoberfläche erhalten und sind bewusst nicht Teil dieses
+-- migrationsbasierten Studio-Snapshots.
+--
+
 
 --
 -- PostgreSQL database dump complete
 --
 
 \unrestrict KcbbagD8WOzRgJn0OSe4YhE5CZn8mBQnhAjg4Wp51NWmy3mtAmHl7loiFu7Py7M
-

@@ -174,6 +174,10 @@ describe('WasteMasterDataTabContent', () => {
             description: 'Altpapier',
             containerSize: '240L',
             active: true,
+            reminderConfig: {
+              reminderCount: 'none',
+              channels: { push: false, email: false, calendar: false },
+            },
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
           },

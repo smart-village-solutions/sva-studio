@@ -350,10 +350,10 @@ describe('waste-management api client', () => {
               translations: { de: 'Papier', en: 'Paper' },
               description: null,
               containerSize: null,
-              reminderCount: 'none',
-              reminderChannelPushEnabled: false,
-              reminderChannelEmailEnabled: false,
-              reminderChannelCalendarEnabled: false,
+              reminderConfig: {
+                reminderCount: 'none',
+                channels: { push: false, email: false, calendar: false },
+              },
               createdAt: '2026-05-09T10:00:00.000Z',
               updatedAt: '2026-05-09T10:00:00.000Z',
             },
@@ -390,11 +390,13 @@ describe('waste-management api client', () => {
               translations: { de: 'Papier Plus', en: 'Paper Plus' },
               description: null,
               containerSize: null,
-              reminderCount: 'once',
-              firstReminderMaxLeadDays: 2,
-              reminderChannelPushEnabled: true,
-              reminderChannelEmailEnabled: false,
-              reminderChannelCalendarEnabled: false,
+              reminderConfig: {
+                reminderCount: 'once',
+                channels: { push: true, email: false, calendar: false },
+                push: {
+                  slots: [{ id: 'fraction-3:push:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+                },
+              },
               createdAt: '2026-05-09T10:00:00.000Z',
               updatedAt: '2026-05-09T12:00:00.000Z',
             },
@@ -412,10 +414,10 @@ describe('waste-management api client', () => {
         translations: { de: 'Papier', en: 'Paper' },
         color: '#123456',
         active: true,
-        reminderCount: 'none',
-        reminderChannelPushEnabled: false,
-        reminderChannelEmailEnabled: false,
-        reminderChannelCalendarEnabled: false,
+        reminderConfig: {
+          reminderCount: 'none',
+          channels: { push: false, email: false, calendar: false },
+        },
       })
     ).resolves.toMatchObject({
       data: expect.objectContaining({
@@ -432,11 +434,13 @@ describe('waste-management api client', () => {
         translations: { de: 'Papier Plus', en: 'Paper Plus' },
         color: '#123456',
         active: true,
-        reminderCount: 'once',
-        firstReminderMaxLeadDays: 2,
-        reminderChannelPushEnabled: true,
-        reminderChannelEmailEnabled: false,
-        reminderChannelCalendarEnabled: false,
+        reminderConfig: {
+          reminderCount: 'once',
+          channels: { push: true, email: false, calendar: false },
+          push: {
+            slots: [{ id: 'fraction-3:push:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+          },
+        },
       })
     ).resolves.toMatchObject({
       data: expect.objectContaining({
@@ -459,10 +463,10 @@ describe('waste-management api client', () => {
           translations: { de: 'Papier', en: 'Paper' },
           color: '#123456',
           active: true,
-          reminderCount: 'none',
-          reminderChannelPushEnabled: false,
-          reminderChannelEmailEnabled: false,
-          reminderChannelCalendarEnabled: false,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: { push: false, email: false, calendar: false },
+          },
         }),
       })
     );
@@ -477,11 +481,13 @@ describe('waste-management api client', () => {
           translations: { de: 'Papier Plus', en: 'Paper Plus' },
           color: '#123456',
           active: true,
-          reminderCount: 'once',
-          firstReminderMaxLeadDays: 2,
-          reminderChannelPushEnabled: true,
-          reminderChannelEmailEnabled: false,
-          reminderChannelCalendarEnabled: false,
+          reminderConfig: {
+            reminderCount: 'once',
+            channels: { push: true, email: false, calendar: false },
+            push: {
+              slots: [{ id: 'fraction-3:push:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+            },
+          },
         }),
       })
     );

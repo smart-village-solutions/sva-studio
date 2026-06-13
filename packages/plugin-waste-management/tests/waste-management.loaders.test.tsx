@@ -21,6 +21,9 @@ const apiMocks = vi.hoisted(() => ({
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
+  wasteManagementMasterDataContract: {
+    fractionReminderLeadDayMin: 1,
+  },
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({

@@ -3,7 +3,6 @@ import {
   type WasteTourRecurrence,
 } from '@sva/core';
 import { z } from 'zod';
-import { wasteManagementOperationSchemas } from './operation-schemas.js';
 
 const wasteFractionReminderCountSchema = z.enum(wasteManagementMasterDataContract.fractionReminderCounts);
 const wasteFractionReminderLeadDaySchema = z

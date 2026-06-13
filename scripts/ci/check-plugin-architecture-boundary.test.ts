@@ -234,6 +234,72 @@ export { staticContent } from '../../core/src/waste-management/static-content.js
     );
   });
 
+  it('detects workspace edges from require calls and dynamic imports', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createWorkspacePackage(workspaceRoot, 'core', {
+      packageName: '@sva/core',
+      sourceFiles: {
+        'src/admin-resources.ts': 'export const adminResources = true;\n',
+        'src/public-api.ts': 'export const runtimeValue = true;\n',
+      },
+    });
+    createPluginPackage(workspaceRoot, 'plugin-dynamic-edges', {
+      packageName: '@sva/plugin-dynamic-edges',
+      sourceFiles: {
+        'src/index.ts': `
+const adminResources = require('../../core/src/admin-resources.js');
+export const loadRuntimeValue = async () => import('../../core/src/public-api.js');
+export { adminResources };
+`,
+      },
+    });
+
+    const violations = await collectPluginArchitectureViolations(workspaceRoot);
+
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          importSpecifier: '../../core/src/admin-resources.js',
+          kind: 'runtime',
+          resolvedTarget: '@sva/core/admin-resources',
+        }),
+        expect.objectContaining({
+          importSpecifier: '../../core/src/public-api.js',
+          kind: 'runtime',
+          resolvedTarget: '@sva/core/public-api',
+        }),
+      ])
+    );
+  });
+
+  it('normalizes top-level src files to package subpaths instead of the package root', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createWorkspacePackage(workspaceRoot, 'core', {
+      packageName: '@sva/core',
+      sourceFiles: {
+        'src/admin-resources.ts': 'export const adminResources = true;\n',
+      },
+    });
+    createPluginPackage(workspaceRoot, 'plugin-top-level-subpath', {
+      packageName: '@sva/plugin-top-level-subpath',
+      sourceFiles: {
+        'src/index.ts': `export { adminResources } from '../../core/src/admin-resources.js';\n`,
+      },
+    });
+
+    const violations = await collectPluginArchitectureViolations(workspaceRoot);
+
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          importSpecifier: '../../core/src/admin-resources.js',
+          kind: 'reexport',
+          resolvedTarget: '@sva/core/admin-resources',
+        }),
+      ])
+    );
+  });
+
   it('detects forbidden workspace dependencies, imports and path signals', async () => {
     const workspaceRoot = createTempWorkspace();
     createPluginPackage(workspaceRoot, 'plugin-drift', {

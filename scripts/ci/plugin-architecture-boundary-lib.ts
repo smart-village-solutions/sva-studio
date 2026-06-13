@@ -124,7 +124,7 @@ const normalizeWorkspaceResolvedTarget = (packageName: string, resolvedRelativeP
   const withoutExtension = sourceSubpath.replace(/\.[^.]+$/, '');
   const cleaned = withoutExtension.replace(/\/index$/, '');
   const segments = cleaned.split('/');
-  if (!withoutExtension.endsWith('/index')) {
+  if (segments.length > 1 && !withoutExtension.endsWith('/index')) {
     segments.pop();
   }
   return segments.length > 0 ? `${packageName}/${segments.join('/')}` : packageName;
@@ -190,12 +190,13 @@ const matchesReviewRequiredPathSignal = (relativePath: string, signal: string): 
 const getWorkspaceImportEdges = (sourceFile: ts.SourceFile): readonly WorkspaceImportEdge[] => {
   const edges: WorkspaceImportEdge[] = [];
 
-  sourceFile.forEachChild((node) => {
+  const visit = (node: ts.Node): void => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       edges.push({
         importSpecifier: node.moduleSpecifier.text,
         kind: node.importClause?.isTypeOnly ? 'type' : 'runtime',
       });
+      ts.forEachChild(node, visit);
       return;
     }
 
@@ -204,8 +205,29 @@ const getWorkspaceImportEdges = (sourceFile: ts.SourceFile): readonly WorkspaceI
         importSpecifier: node.moduleSpecifier.text,
         kind: node.isTypeOnly ? 'type' : 'reexport',
       });
+      ts.forEachChild(node, visit);
+      return;
     }
-  });
+
+    if (
+      ts.isCallExpression(node) &&
+      (
+        node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && node.expression.text === 'require')
+      ) &&
+      node.arguments.length > 0 &&
+      ts.isStringLiteral(node.arguments[0])
+    ) {
+      edges.push({
+        importSpecifier: node.arguments[0].text,
+        kind: 'runtime',
+      });
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
 
   return edges;
 };

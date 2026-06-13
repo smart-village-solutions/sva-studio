@@ -10,6 +10,7 @@ import {
   parsePluginArchitectureBaseline,
   type PluginArchitectureViolation,
 } from './check-plugin-architecture-boundary.ts';
+import { parsePluginArchitectureAllowlist } from './plugin-architecture-boundary-baseline.ts';
 
 const tempDirs: string[] = [];
 
@@ -297,6 +298,32 @@ export const pluginDrift = authorize;
         rule: 'workspace-dependency',
         subject: '@sva/core',
         message: 'legacy dependency',
+      },
+    ]);
+  });
+
+  it('parses the JSON allowlist with exact import-edge entries', () => {
+    const allowlist = parsePluginArchitectureAllowlist([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/core/waste-management',
+        resolvedTarget: '@sva/core/waste-management',
+        kind: 'type',
+        reason: 'Brownfield bridge until SDK contract exists',
+        ticket: 'QUAL-123',
+      },
+    ]);
+
+    expect(allowlist).toEqual([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/core/waste-management',
+        resolvedTarget: '@sva/core/waste-management',
+        kind: 'type',
+        reason: 'Brownfield bridge until SDK contract exists',
+        ticket: 'QUAL-123',
       },
     ]);
   });

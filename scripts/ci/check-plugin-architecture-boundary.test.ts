@@ -8,7 +8,9 @@ import {
   collectPluginArchitectureViolations,
   diffViolationsAgainstBaseline,
   parsePluginArchitectureBaseline,
-  runPluginArchitectureBoundaryCheck,
+  reportPluginArchitectureBoundaryGuardResult,
+  runPluginArchitectureBoundaryGuard,
+  type PluginArchitectureBoundaryCheckResult,
   type PluginArchitectureViolation,
 } from './check-plugin-architecture-boundary.ts';
 import { parsePluginArchitectureAllowlist } from './plugin-architecture-boundary-baseline.ts';
@@ -301,7 +303,7 @@ export { adminResources };
     );
   });
 
-  it('keeps the check non-blocking while still reporting non-allowlisted violations', async () => {
+  it('defaults the guard to warn-only while still reporting non-allowlisted violations', async () => {
     const workspaceRoot = createTempWorkspace();
     createWorkspacePackage(workspaceRoot, 'core', {
       packageName: '@sva/core',
@@ -318,8 +320,9 @@ export const pluginValue = runtimeValue;
       },
     });
 
-    const result = await runPluginArchitectureBoundaryCheck(workspaceRoot, [], { mode: 'warn' });
+    const result = await runPluginArchitectureBoundaryGuard(workspaceRoot, []);
 
+    expect(result.mode).toBe('warn');
     expect(result.exitCode).toBe(0);
     expect(result.violations).toHaveLength(1);
     expect(result.unallowlistedViolations).toHaveLength(1);
@@ -333,6 +336,35 @@ export const pluginValue = runtimeValue;
         resolvedTarget: '@sva/core',
       }),
     ]);
+  });
+
+  it('suppresses warn-only CLI output when every violation is allowlisted', () => {
+    const warnings: string[] = [];
+    const logger = {
+      warn: (message: string) => {
+        warnings.push(message);
+      },
+    };
+    const allowlistedResult: PluginArchitectureBoundaryCheckResult = {
+      mode: 'warn',
+      violations: [
+        {
+          packageName: '@sva/plugin-warning',
+          relativePath: path.posix.join('packages', 'plugin-warning', 'src', 'index.ts'),
+          rule: 'workspace-import',
+          subject: '@sva/core',
+          message: 'allowlisted import',
+          kind: 'runtime',
+          importSpecifier: '@sva/core',
+          resolvedTarget: '@sva/core',
+        },
+      ],
+      unallowlistedViolations: [],
+      exitCode: 0,
+    };
+
+    expect(reportPluginArchitectureBoundaryGuardResult(allowlistedResult, logger)).toBe(false);
+    expect(warnings).toEqual([]);
   });
 
   it('detects forbidden workspace dependencies, imports and path signals', async () => {

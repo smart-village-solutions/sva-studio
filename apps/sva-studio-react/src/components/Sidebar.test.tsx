@@ -4,6 +4,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { IamContentAccessSummary } from '@sva/core';
 import { pluginNews } from '@sva/plugin-news';
 
 import { mergeI18nResources } from '../i18n';
@@ -99,6 +100,67 @@ const unauthenticatedAuthState = {
   refetch: vi.fn(),
   logout: vi.fn(),
   invalidatePermissions: vi.fn(),
+};
+
+type SidebarContentAccessState = {
+  readonly access: IamContentAccessSummary | null;
+  readonly permissionActions: readonly string[];
+  readonly isLoading: boolean;
+  readonly error: unknown;
+};
+
+const defaultEditableAccessState: IamContentAccessSummary = {
+  state: 'editable' as const,
+  canRead: true,
+  canCreate: true,
+  canUpdate: true,
+  organizationIds: [],
+  sourceKinds: ['direct_role'],
+};
+
+const defaultReadOnlyAccessState: IamContentAccessSummary = {
+  state: 'read_only' as const,
+  canRead: true,
+  canCreate: false,
+  canUpdate: false,
+  organizationIds: [],
+  sourceKinds: ['direct_role'],
+};
+
+const defaultBlockedAccessState: IamContentAccessSummary = {
+  state: 'blocked' as const,
+  canRead: false,
+  canCreate: false,
+  canUpdate: false,
+  reasonCode: 'content_read_missing',
+  organizationIds: [],
+  sourceKinds: [],
+};
+
+const createAuthenticatedAuthState = (user: Record<string, unknown>) => ({
+  ...unauthenticatedAuthState,
+  user,
+  isAuthenticated: true,
+});
+
+const createContentAccessState = (
+  overrides: Partial<SidebarContentAccessState> = {}
+): SidebarContentAccessState => ({
+  access: defaultEditableAccessState,
+  permissionActions: ['news.read'],
+  isLoading: false,
+  error: null,
+  ...overrides,
+});
+
+const setupSidebarSession = (input: Readonly<{
+  user?: Record<string, unknown> | null;
+  contentAccess?: ReturnType<typeof createContentAccessState>;
+}>) => {
+  useAuthMock.mockReturnValue(
+    input.user ? createAuthenticatedAuthState(input.user) : unauthenticatedAuthState
+  );
+  useContentAccessMock.mockReturnValue(input.contentAccess ?? createContentAccessState());
 };
 
 beforeEach(() => {
@@ -280,21 +342,17 @@ describe('Sidebar', () => {
   });
 
   it('zeigt Benutzerliste und Rollen auch fuer Plattform-Admins ohne Tenant-Role-Permissions an', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
+    setupSidebarSession({
       user: {
         id: 'user-1',
         name: 'Platform Admin',
         roles: ['instance_registry_admin'],
         permissionActions: [],
       },
-      isAuthenticated: true,
-    });
-    useContentAccessMock.mockReturnValue({
-      access: null,
-      permissionActions: [],
-      isLoading: false,
-      error: null,
+      contentAccess: createContentAccessState({
+        access: null,
+        permissionActions: [],
+      }),
     });
 
     render(<Sidebar />);
@@ -308,28 +366,19 @@ describe('Sidebar', () => {
   });
 
   it('rendert Schnittstellen mit integration.manage auch ohne Legacy-Rollenname', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
+    setupSidebarSession({
       user: {
         id: 'user-1',
         name: 'Interface Manager',
         roles: ['custom_operator'],
         permissionActions: ['integration.manage', 'experimental.read'],
       },
-      isAuthenticated: true,
-    });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'read_only',
-        canRead: true,
-        canCreate: false,
-        canUpdate: false,
-        reasonCode: 'content_update_missing',
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      isLoading: false,
-      error: null,
+      contentAccess: createContentAccessState({
+        access: {
+          ...defaultReadOnlyAccessState,
+          reasonCode: 'content_update_missing',
+        },
+      }),
     });
 
     render(<Sidebar />);
@@ -351,28 +400,16 @@ describe('Sidebar', () => {
   });
 
   it('zeigt den Modullink fuer Tenant-Nutzer ohne Root-Systemrechte', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
+    setupSidebarSession({
       user: {
         id: 'tenant-user',
         name: 'Tenant User',
         instanceId: 'de-musterhausen',
         roles: ['editor'],
       },
-      isAuthenticated: true,
-    });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'read_only',
-        canRead: true,
-        canCreate: false,
-        canUpdate: false,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['news.read'],
-      isLoading: false,
-      error: null,
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+      }),
     });
 
     render(<Sidebar />);
@@ -531,27 +568,15 @@ describe('Sidebar', () => {
   });
 
   it('versteckt den Inhalte-Link ohne effektive Content-Leseberechtigung', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
+    setupSidebarSession({
       user: {
         id: 'user-2',
         name: 'Viewer',
         roles: ['viewer'],
       },
-      isAuthenticated: true,
-    });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'blocked',
-        canRead: false,
-        canCreate: false,
-        canUpdate: false,
-        reasonCode: 'content_read_missing',
-        organizationIds: [],
-        sourceKinds: [],
-      },
-      isLoading: false,
-      error: null,
+      contentAccess: createContentAccessState({
+        access: defaultBlockedAccessState,
+      }),
     });
 
     render(<Sidebar />);
@@ -560,28 +585,13 @@ describe('Sidebar', () => {
   });
 
   it('versteckt den Medien-Link ohne media.read-Berechtigung oder ohne Modulzuweisung', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
+    setupSidebarSession({
       user: {
         id: 'user-2',
         name: 'Editor',
         roles: ['editor'],
         assignedModules: ['news'],
       },
-      isAuthenticated: true,
-    });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'editable',
-        canRead: true,
-        canCreate: true,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['news.read'],
-      isLoading: false,
-      error: null,
     });
 
     render(<Sidebar />);
@@ -590,28 +600,16 @@ describe('Sidebar', () => {
   });
 
   it('zeigt den Medien-Link nur bei zugewiesenem Modul und media.read-Berechtigung', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
+    setupSidebarSession({
       user: {
         id: 'user-2',
         name: 'Editor',
         roles: ['editor'],
         assignedModules: ['media'],
       },
-      isAuthenticated: true,
-    });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'editable',
-        canRead: true,
-        canCreate: true,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['media.read'],
-      isLoading: false,
-      error: null,
+      contentAccess: createContentAccessState({
+        permissionActions: ['media.read'],
+      }),
     });
 
     render(<Sidebar />);
@@ -620,29 +618,20 @@ describe('Sidebar', () => {
   });
 
   it('zeigt den Medien-Link auch ohne content.read, solange media-Modul und media.read vorhanden sind', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
+    setupSidebarSession({
       user: {
         id: 'user-2',
         name: 'Editor',
         roles: ['editor'],
         assignedModules: ['media'],
       },
-      isAuthenticated: true,
-    });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'blocked',
-        canRead: false,
-        canCreate: false,
-        canUpdate: false,
-        reasonCode: 'content_read_missing',
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['media.read'],
-      isLoading: false,
-      error: null,
+      contentAccess: createContentAccessState({
+        access: {
+          ...defaultBlockedAccessState,
+          sourceKinds: ['direct_role'],
+        },
+        permissionActions: ['media.read'],
+      }),
     });
 
     render(<Sidebar />);
@@ -652,29 +641,20 @@ describe('Sidebar', () => {
   });
 
   it('zeigt den Kategorien-Link auch ohne content.read, solange categories.read vorhanden ist', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
+    setupSidebarSession({
       user: {
         id: 'user-2',
         name: 'Editor',
         roles: ['editor'],
         assignedModules: ['categories'],
       },
-      isAuthenticated: true,
-    });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'blocked',
-        canRead: false,
-        canCreate: false,
-        canUpdate: false,
-        reasonCode: 'content_read_missing',
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['categories.read'],
-      isLoading: false,
-      error: null,
+      contentAccess: createContentAccessState({
+        access: {
+          ...defaultBlockedAccessState,
+          sourceKinds: ['direct_role'],
+        },
+        permissionActions: ['categories.read'],
+      }),
     });
 
     render(<Sidebar />);
@@ -684,29 +664,20 @@ describe('Sidebar', () => {
   });
 
   it('versteckt den Kategorien-Link ohne zugewiesenes Kategorien-Modul trotz categories.read', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
+    setupSidebarSession({
       user: {
         id: 'user-2',
         name: 'Editor',
         roles: ['editor'],
         assignedModules: ['news'],
       },
-      isAuthenticated: true,
-    });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'blocked',
-        canRead: false,
-        canCreate: false,
-        canUpdate: false,
-        reasonCode: 'content_read_missing',
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['categories.read'],
-      isLoading: false,
-      error: null,
+      contentAccess: createContentAccessState({
+        access: {
+          ...defaultBlockedAccessState,
+          sourceKinds: ['direct_role'],
+        },
+        permissionActions: ['categories.read'],
+      }),
     });
 
     render(<Sidebar />);
@@ -715,28 +686,13 @@ describe('Sidebar', () => {
   });
 
   it('versteckt den Kategorien-Link ohne categories.read trotz content.read', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
+    setupSidebarSession({
       user: {
         id: 'user-2',
         name: 'Editor',
         roles: ['editor'],
         assignedModules: ['categories'],
       },
-      isAuthenticated: true,
-    });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'editable',
-        canRead: true,
-        canCreate: true,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['news.read'],
-      isLoading: false,
-      error: null,
     });
 
     render(<Sidebar />);

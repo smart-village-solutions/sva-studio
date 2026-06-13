@@ -72,6 +72,15 @@ vi.mock('./instance-interface-healthcheck.server.js', () => ({
 }));
 
 describe('interfaces app adapter', () => {
+  const setAuthenticatedUserContext = (user: { id: string; instanceId?: string; roles: string[] }) => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (
+        _request: Request,
+        handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>
+      ) => handler({ user })
+    );
+  };
+
   beforeEach(() => {
     vi.resetModules();
     state.loadSvaMainserverInterfacesOverview.mockReset();
@@ -150,16 +159,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('loads stored interfaces for custom-role users when integration.manage is granted', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['custom_operator'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['custom_operator'],
+    });
     state.loadSvaMainserverInterfacesOverview.mockResolvedValue({
       instanceId: 'de-musterhausen',
       config: null,
@@ -213,16 +217,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('omits supabase from the available types when the waste-management module is not assigned', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
     state.loadSvaMainserverInterfacesOverview.mockResolvedValue({
       instanceId: 'de-musterhausen',
       config: null,
@@ -247,16 +246,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('fails closed to default interface types when assigned modules are missing at runtime', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
     state.loadSvaMainserverInterfacesOverview.mockResolvedValue({
       instanceId: 'de-musterhausen',
       config: null,
@@ -335,16 +329,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('rejects list requests when integration.manage is denied before reading stored entries', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['app_manager'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['app_manager'],
+    });
     state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
       ok: false,
       status: 403,
@@ -371,16 +360,11 @@ describe('interfaces app adapter', () => {
       oauthTokenUrl: 'https://mainserver.example/oauth/token',
       enabled: true,
     };
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['system_admin'],
+    });
     state.saveSvaMainserverSettings.mockResolvedValue(config);
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
@@ -396,16 +380,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('sanitizes internal save errors before surfacing them to clients', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['system_admin'],
+    });
     state.saveSvaMainserverSettings.mockRejectedValue(new Error('Error: boom\n    at save (/srv/app.ts:1:1)'));
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
@@ -422,16 +401,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('rejects save requests from users without interfaces permissions', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['editor'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['editor'],
+    });
     state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
       ok: false,
       status: 403,
@@ -453,16 +427,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('rejects save requests when the enabled flag is missing', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['system_admin'],
+    });
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
 
@@ -479,15 +448,10 @@ describe('interfaces app adapter', () => {
   });
 
   it('rejects save requests when the instance context is missing', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      roles: ['system_admin'],
+    });
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
 
@@ -505,16 +469,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('preserves invalid_config errors from settings validation with their affected field', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['system_admin'],
+    });
     state.saveSvaMainserverSettings.mockRejectedValue({
       code: 'invalid_config',
       message: 'Die konfigurierte Upstream-URL graphql_base_url ist ungültig.',
@@ -535,16 +494,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('rejects interface upserts for foreign instance ids before mutating stored interfaces', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
 
     const { upsertInstanceInterfaceServerFn } = await import('./interfaces-api');
 

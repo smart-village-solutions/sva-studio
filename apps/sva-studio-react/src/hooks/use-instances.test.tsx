@@ -44,6 +44,16 @@ const createDeferred = <T,>() => {
   return { promise, resolve, reject };
 };
 
+const renderUseInstancesHook = () => renderHook(() => useInstances());
+
+const waitForInstancesLoaded = async (
+  result: ReturnType<typeof renderUseInstancesHook>['result']
+) => {
+  await waitFor(() => {
+    expect(result.current.isLoading).toBe(false);
+  });
+};
+
 vi.mock('../lib/iam-api', () => ({
   IamHttpError: class IamHttpError extends Error {
     status: number;
@@ -283,7 +293,7 @@ describe('useInstances', () => {
   });
 
   it('loads instances, debounces filters, and manages selection state', async () => {
-    const { result } = renderHook(() => useInstances());
+    const { result } = renderUseInstancesHook();
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -323,11 +333,8 @@ describe('useInstances', () => {
   });
 
   it('runs mutations, refetches, and reloads instance details', async () => {
-    const { result } = renderHook(() => useInstances());
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
 
     await act(async () => {
       await result.current.createInstance({
@@ -373,11 +380,8 @@ describe('useInstances', () => {
   });
 
   it('merges tenant IAM status from explicit access probes into the selected instance', async () => {
-    const { result } = renderHook(() => useInstances());
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
 
     await act(async () => {
       await result.current.loadInstance('demo');
@@ -427,11 +431,8 @@ describe('useInstances', () => {
       message: 'forbidden',
     });
 
-    const { result } = renderHook(() => useInstances());
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
 
     expect(result.current.error?.status).toBe(403);
     expect(result.current.instances).toEqual([]);
@@ -479,11 +480,8 @@ describe('useInstances', () => {
       message: 'Keycloak unavailable',
     });
 
-    const { result } = renderHook(() => useInstances());
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
 
     await act(async () => {
       await result.current.loadInstance('demo');
@@ -506,11 +504,8 @@ describe('useInstances', () => {
       message: 'forbidden',
     });
 
-    const { result } = renderHook(() => useInstances());
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
 
     await act(async () => {
       await result.current.loadInstance('demo');
@@ -536,11 +531,8 @@ describe('useInstances', () => {
       message: 'forbidden',
     });
 
-    const { result } = renderHook(() => useInstances());
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
 
     const loadPromise = result.current.loadInstance('demo');
 
@@ -572,11 +564,8 @@ describe('useInstances', () => {
       message: 'kaputt',
     });
 
-    const { result } = renderHook(() => useInstances());
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
 
     await act(async () => {
       await result.current.loadInstance('demo');

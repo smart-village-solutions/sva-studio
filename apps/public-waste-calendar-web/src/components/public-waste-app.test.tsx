@@ -1,7 +1,31 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PublicWasteApp } from './public-waste-app.js';
+import {
+  createPublicWasteCalendarEntryFixture,
+  createPublicWasteCalendarModelFixture,
+  expectPublicWasteSelectionHeader,
+  publicWasteSelectionFixture,
+  publicWasteSelectionSummaryFixture,
+} from './public-waste-test-fixtures.js';
+
+type CompletePublicWasteAppTestProps = Extract<ComponentProps<typeof PublicWasteApp>, { selectionState: 'complete' }>;
+
+const renderCompletePublicWasteApp = (overrides: Partial<CompletePublicWasteAppTestProps> = {}) => {
+  render(
+    <PublicWasteApp
+      selection={publicWasteSelectionFixture}
+      selectionState="complete"
+      selectionSummary={publicWasteSelectionSummaryFixture}
+      calendarModel={createPublicWasteCalendarModelFixture()}
+      icalUrl="https://example.invalid/calendar.ics"
+      onChangeLocation={() => undefined}
+      {...overrides}
+    />
+  );
+};
 
 describe('PublicWasteApp', () => {
   const fetchMock = vi.fn<typeof fetch>();
@@ -12,46 +36,14 @@ describe('PublicWasteApp', () => {
   });
 
   it('renders header actions for calendar import and the on-demand pdf export', () => {
-    render(
-      <PublicWasteApp
-        selection={{
-          regionId: 'r-1',
-          cityId: 'c-1',
-          streetId: 's-1',
-          houseNumberId: 'h-1',
-        }}
-        selectionState="complete"
-        selectionSummary="Musterstadt, Hauptstraße 12"
-        calendarModel={{
-          locationKey: 'r-1:c-1:s-1:h-1',
-          nextPickupDate: '2026-05-19',
-          listEntries: [
-            {
-              id: 'pickup-1',
-              date: '2026-05-19',
-              fractionId: 'bio',
-              fractionLabel: 'Bioabfall',
-              fractionColor: '#00AA00',
-              note: null,
-            },
-          ],
-          monthBuckets: [],
-          yearBuckets: [],
-          fractionOptions: [{ id: 'bio', label: 'Bioabfall' }],
-        }}
-        icalUrl="https://example.invalid/calendar.ics"
-        onChangeLocation={() => undefined}
-      />
-    );
+    renderCompletePublicWasteApp();
 
     expect(screen.getByRole('link', { name: 'In Kalender übernehmen' }).getAttribute('href')).toBe(
       'https://example.invalid/calendar.ics'
     );
     expect(screen.getByRole('button', { name: 'Druckversion herunterladen' })).toBeTruthy();
     expect(screen.getByLabelText('PDF-Jahr')).toBeTruthy();
-    expect(screen.getByText('Musterstadt')).toBeTruthy();
-    expect(screen.getByText('Hauptstraße')).toBeTruthy();
-    expect(screen.getByText('12')).toBeTruthy();
+    expectPublicWasteSelectionHeader();
     expect(screen.getByRole('button', { name: 'Adresse ändern' })).toBeTruthy();
   });
 
@@ -68,37 +60,7 @@ describe('PublicWasteApp', () => {
       })
     );
 
-    render(
-      <PublicWasteApp
-        selection={{
-          regionId: 'r-1',
-          cityId: 'c-1',
-          streetId: 's-1',
-          houseNumberId: 'h-1',
-        }}
-        selectionState="complete"
-        selectionSummary="Musterstadt, Hauptstraße 12"
-        calendarModel={{
-          locationKey: 'r-1:c-1:s-1:h-1',
-          nextPickupDate: '2026-05-19',
-          listEntries: [
-            {
-              id: 'pickup-1',
-              date: '2026-05-19',
-              fractionId: 'bio',
-              fractionLabel: 'Bioabfall',
-              fractionColor: '#00AA00',
-              note: null,
-            },
-          ],
-          monthBuckets: [],
-          yearBuckets: [],
-          fractionOptions: [{ id: 'bio', label: 'Bioabfall' }],
-        }}
-        icalUrl="https://example.invalid/calendar.ics"
-        onChangeLocation={() => undefined}
-      />
-    );
+    renderCompletePublicWasteApp();
 
     const anchorClick = vi.fn();
     const appendSpy = vi.spyOn(document.body, 'append').mockImplementation(() => undefined);
@@ -138,57 +100,31 @@ describe('PublicWasteApp', () => {
   });
 
   it('starts with all fractions selected and filters the visible entries without clearing the selection summary', () => {
-    render(
-      <PublicWasteApp
-        selection={{
-          regionId: 'r-1',
-          cityId: 'c-1',
-          streetId: 's-1',
-          houseNumberId: 'h-1',
-        }}
-        selectionState="complete"
-        selectionSummary="Musterstadt, Hauptstraße 12"
-        calendarModel={{
-          locationKey: 'r-1:c-1:s-1:h-1',
-          nextPickupDate: '2026-05-19',
-          listEntries: [
-            {
-              id: 'pickup-1',
-              date: '2026-05-19',
-              fractionId: 'bio',
-              fractionLabel: 'Bioabfall',
-              fractionColor: '#00AA00',
-              note: null,
-            },
-            {
-              id: 'pickup-2',
-              date: '2026-05-20',
-              fractionId: 'paper',
-              fractionLabel: 'Papier',
-              fractionColor: '#0000FF',
-              note: null,
-            },
-          ],
-          monthBuckets: [],
-          yearBuckets: [],
-          fractionOptions: [
-            { id: 'bio', label: 'Bioabfall' },
-            { id: 'paper', label: 'Papier' },
-          ],
-        }}
-        icalUrl="https://example.invalid/calendar.ics"
-        onChangeLocation={() => undefined}
-      />
-    );
+    renderCompletePublicWasteApp({
+      calendarModel: createPublicWasteCalendarModelFixture({
+        listEntries: [
+          createPublicWasteCalendarEntryFixture(),
+          createPublicWasteCalendarEntryFixture({
+            id: 'pickup-2',
+            date: '2026-05-20',
+            fractionId: 'paper',
+            fractionLabel: 'Papier',
+            fractionColor: '#0000FF',
+          }),
+        ],
+        fractionOptions: [
+          { id: 'bio', label: 'Bioabfall' },
+          { id: 'paper', label: 'Papier' },
+        ],
+      }),
+    });
 
     expect((screen.getByRole('checkbox', { name: 'Bioabfall' }) as HTMLInputElement).checked).toBe(true);
     expect((screen.getByRole('checkbox', { name: 'Papier' }) as HTMLInputElement).checked).toBe(true);
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Bioabfall' }));
 
-    expect(screen.getByText('Musterstadt')).toBeTruthy();
-    expect(screen.getByText('Hauptstraße')).toBeTruthy();
-    expect(screen.getByText('12')).toBeTruthy();
+    expectPublicWasteSelectionHeader();
     expect(screen.getByRole('heading', { name: 'Mai 2026' })).toBeTruthy();
     const pickupLists = screen.getAllByRole('list');
     expect(pickupLists.at(-1)?.textContent).not.toContain('Bioabfall');
@@ -196,48 +132,24 @@ describe('PublicWasteApp', () => {
   });
 
   it('allows deselecting all fractions so that no pickup entries remain visible', () => {
-    render(
-      <PublicWasteApp
-        selection={{
-          regionId: 'r-1',
-          cityId: 'c-1',
-          streetId: 's-1',
-          houseNumberId: 'h-1',
-        }}
-        selectionState="complete"
-        selectionSummary="Musterstadt, Hauptstraße 12"
-        calendarModel={{
-          locationKey: 'r-1:c-1:s-1:h-1',
-          nextPickupDate: '2026-05-19',
-          listEntries: [
-            {
-              id: 'pickup-1',
-              date: '2026-05-19',
-              fractionId: 'bio',
-              fractionLabel: 'Bioabfall',
-              fractionColor: '#00AA00',
-              note: null,
-            },
-            {
-              id: 'pickup-2',
-              date: '2026-05-20',
-              fractionId: 'paper',
-              fractionLabel: 'Papier',
-              fractionColor: '#0000FF',
-              note: null,
-            },
-          ],
-          monthBuckets: [],
-          yearBuckets: [],
-          fractionOptions: [
-            { id: 'bio', label: 'Bioabfall' },
-            { id: 'paper', label: 'Papier' },
-          ],
-        }}
-        icalUrl="https://example.invalid/calendar.ics"
-        onChangeLocation={() => undefined}
-      />
-    );
+    renderCompletePublicWasteApp({
+      calendarModel: createPublicWasteCalendarModelFixture({
+        listEntries: [
+          createPublicWasteCalendarEntryFixture(),
+          createPublicWasteCalendarEntryFixture({
+            id: 'pickup-2',
+            date: '2026-05-20',
+            fractionId: 'paper',
+            fractionLabel: 'Papier',
+            fractionColor: '#0000FF',
+          }),
+        ],
+        fractionOptions: [
+          { id: 'bio', label: 'Bioabfall' },
+          { id: 'paper', label: 'Papier' },
+        ],
+      }),
+    });
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Bioabfall' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Papier' }));
@@ -270,39 +182,17 @@ describe('PublicWasteApp', () => {
   });
 
   it('opens a pickup detail dialog when an entry is activated and keeps global actions outside the dialog', () => {
-    render(
-      <PublicWasteApp
-        selection={{
-          regionId: 'r-1',
-          cityId: 'c-1',
-          streetId: 's-1',
-          houseNumberId: 'h-1',
-        }}
-        selectionState="complete"
-        selectionSummary="Musterstadt, Hauptstraße 12"
-        calendarModel={{
-          locationKey: 'r-1:c-1:s-1:h-1',
-          nextPickupDate: '2026-05-19',
-          listEntries: [
-            {
-              id: 'pickup-1',
-              date: '2026-05-19',
-              fractionId: 'bio',
-              fractionLabel: 'Bioabfall',
-              fractionColor: '#00AA00',
-              tourName: 'Biotour Nord',
-              tourDescription: 'Wöchentliche Leerung im Innenstadtbereich.',
-              note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
-            },
-          ],
-          monthBuckets: [],
-          yearBuckets: [],
-          fractionOptions: [{ id: 'bio', label: 'Bioabfall' }],
-        }}
-        icalUrl="https://example.invalid/calendar.ics"
-        onChangeLocation={() => undefined}
-      />
-    );
+    renderCompletePublicWasteApp({
+      calendarModel: createPublicWasteCalendarModelFixture({
+        listEntries: [
+          createPublicWasteCalendarEntryFixture({
+            tourName: 'Biotour Nord',
+            tourDescription: 'Wöchentliche Leerung im Innenstadtbereich.',
+            note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
+          }),
+        ],
+      }),
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'Termin Bioabfall am 2026-05-19' }));
 

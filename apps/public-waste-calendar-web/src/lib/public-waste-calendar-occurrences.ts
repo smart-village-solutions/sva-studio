@@ -1,4 +1,12 @@
 import type { PublicWasteCalendarEntry, PublicWasteResolvedSelection } from './public-waste-contract.js';
+import {
+  addYearsUtc,
+  createDateAdvanceStrategy,
+  formatDateOnlyUtc,
+  isDateWithinRange,
+  normalizeDateOnly,
+  parseDateOnlyUtc,
+} from './public-waste-date-utils.js';
 
 type PublicWasteLinkedFraction = {
   readonly id: string;
@@ -60,46 +68,6 @@ type Occurrence = {
 const compareEntries = (left: PublicWasteCalendarEntry, right: PublicWasteCalendarEntry): number =>
   left.date.localeCompare(right.date) || left.fractionLabel.localeCompare(right.fractionLabel, 'de');
 
-const normalizeDateOnly = (value: string | undefined): string | null => {
-  if (!value) {
-    return null;
-  }
-  const normalized = value.trim().slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : null;
-};
-
-const parseDateOnlyUtc = (value: string): Date => new Date(`${value}T00:00:00Z`);
-
-const formatDateOnlyUtc = (value: Date): string => value.toISOString().slice(0, 10);
-
-const addYearsUtc = (value: string, years: number): string => {
-  const date = parseDateOnlyUtc(value);
-  date.setUTCFullYear(date.getUTCFullYear() + years);
-  return formatDateOnlyUtc(date);
-};
-
-const resolveAdvanceStrategy = (
-  recurrence: PublicWasteLinkedTour['tour']['recurrence'],
-  customRecurrenceIntervalDays?: number
-): ((current: Date) => void) | null => {
-  if (typeof customRecurrenceIntervalDays === 'number' && customRecurrenceIntervalDays > 0) {
-    return (current) => current.setUTCDate(current.getUTCDate() + customRecurrenceIntervalDays);
-  }
-  if (recurrence === 'weekly') {
-    return (current) => current.setUTCDate(current.getUTCDate() + 7);
-  }
-  if (recurrence === 'biweekly') {
-    return (current) => current.setUTCDate(current.getUTCDate() + 14);
-  }
-  if (recurrence === 'fourweekly') {
-    return (current) => current.setUTCDate(current.getUTCDate() + 28);
-  }
-  if (recurrence === 'yearly') {
-    return (current) => current.setUTCFullYear(current.getUTCFullYear() + 1);
-  }
-  return null;
-};
-
 const buildShiftMap = <TShift extends { readonly originalDate: string; readonly actualDate: string; readonly description?: string }>(
   shifts: readonly TShift[]
 ): Map<string, { readonly actualDate: string; readonly description: string | null }> =>
@@ -141,9 +109,6 @@ const resolveOccurrenceWindowBound = ({
   return candidate > linkBound ? linkBound : candidate;
 };
 
-const isDateWithinRange = (date: string, startDate: string, endDate: string): boolean =>
-  date >= startDate && date <= endDate;
-
 const calculateTourOccurrences = (
   tour: PublicWasteLinkedTour['tour'],
   windowStart: string,
@@ -154,7 +119,7 @@ const calculateTourOccurrences = (
   const recurringStartDate = normalizeDateOnly(tour.firstDate);
   if ((tour.recurrence || tour.customRecurrenceIntervalDays) && recurringStartDate) {
     const recurringEndDate = normalizeDateOnly(tour.endDate) ?? windowEnd;
-    const advance = resolveAdvanceStrategy(tour.recurrence, tour.customRecurrenceIntervalDays);
+    const advance = createDateAdvanceStrategy(tour.recurrence, tour.customRecurrenceIntervalDays);
     if (advance) {
       const current = parseDateOnlyUtc(recurringStartDate);
       const end = parseDateOnlyUtc(recurringEndDate);

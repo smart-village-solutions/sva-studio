@@ -178,6 +178,7 @@ export {
   mergePluginTranslations,
 } from './plugins.js';
 export type {
+  // fallow-ignore-next-line unused-type
   LoadedPluginEntry,
   PluginCatalogEntry,
   PluginCatalogSourceType,
@@ -243,8 +244,10 @@ export type {
   StandardContentPluginActionIds,
   StandardContentPluginActionName,
   StandardContentPluginActionOptions,
+  // fallow-ignore-next-line unused-type
   StandardContentPluginContribution,
   StandardContentPluginContributionOptions,
+  // fallow-ignore-next-line unused-type
   StandardContentPluginDefinitionOptions,
 } from './standard-content-plugin.js';
 export {

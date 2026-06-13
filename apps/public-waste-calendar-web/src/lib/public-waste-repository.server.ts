@@ -7,6 +7,7 @@ import type {
 } from './public-waste-contract.js';
 import { calculatePublicWasteCalendarEntries } from './public-waste-calendar-occurrences.js';
 import { PUBLIC_WASTE_CATCH_ALL_STREET_ID } from './public-waste-contract.js';
+import { addYearsUtc, isDateWithinRange, normalizeDateOnly } from './public-waste-date-utils.js';
 
 type SqlExecutionResult<TRow> = {
   readonly rowCount: number;
@@ -127,28 +128,6 @@ const normalizeCustomDates = (
 
 const compareCalendarEntries = (left: PublicWasteCalendarEntry, right: PublicWasteCalendarEntry): number =>
   left.date.localeCompare(right.date) || left.fractionLabel.localeCompare(right.fractionLabel, 'de');
-
-const normalizeDateOnly = (value: string | null | undefined): string | null => {
-  if (!value) {
-    return null;
-  }
-
-  const normalized = value.trim().slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : null;
-};
-
-const parseDateOnlyUtc = (value: string): Date => new Date(`${value}T00:00:00Z`);
-
-const formatDateOnlyUtc = (value: Date): string => value.toISOString().slice(0, 10);
-
-const addYearsUtc = (value: string, years: number): string => {
-  const date = parseDateOnlyUtc(value);
-  date.setUTCFullYear(date.getUTCFullYear() + years);
-  return formatDateOnlyUtc(date);
-};
-
-const isDateWithinRange = (date: string, startDate: string, endDate: string): boolean =>
-  date >= startDate && date <= endDate;
 
 const normalizeShiftDescription = (value: string | null): string | null => {
   const normalized = value?.trim();

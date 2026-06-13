@@ -17,6 +17,7 @@ export type WasteFractionRecord = {
   readonly updatedAt: string;
 };
 
+// fallow-ignore-next-line unused-type
 export type WasteFractionListFilter = {
   readonly active?: boolean;
   readonly search?: string;
@@ -29,6 +30,7 @@ export type WasteRegionRecord = {
   readonly updatedAt: string;
 };
 
+// fallow-ignore-next-line unused-type
 export type WasteRegionListFilter = {
   readonly search?: string;
 };
@@ -41,6 +43,7 @@ export type WasteCityRecord = {
   readonly updatedAt: string;
 };
 
+// fallow-ignore-next-line unused-type
 export type WasteCityListFilter = {
   readonly regionId?: string;
   readonly search?: string;
@@ -54,6 +57,7 @@ export type WasteStreetRecord = {
   readonly updatedAt: string;
 };
 
+// fallow-ignore-next-line unused-type
 export type WasteStreetListFilter = {
   readonly cityId?: string;
   readonly search?: string;
@@ -67,6 +71,7 @@ export type WasteHouseNumberRecord = {
   readonly updatedAt: string;
 };
 
+// fallow-ignore-next-line unused-type
 export type WasteHouseNumberListFilter = {
   readonly streetId?: string;
   readonly search?: string;
@@ -83,6 +88,7 @@ export type WasteCollectionLocationRecord = {
   readonly updatedAt: string;
 };
 
+// fallow-ignore-next-line unused-type
 export type WasteCollectionLocationListFilter = {
   readonly cityId?: string;
   readonly regionId?: string;

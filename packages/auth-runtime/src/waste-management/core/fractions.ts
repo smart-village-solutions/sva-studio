@@ -1,9 +1,8 @@
 import type { WasteFractionRecord } from '@sva/core';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
-import { validateCsrf } from '../../shared/request-security.js';
-import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
-import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
+import { createApiError, parseRequestBody } from '../../shared/request-helpers.js';
+import { emitWasteAuditEvent } from './auth.js';
 import {
   createWasteFractionMutationResponse,
   enqueueWasteTypesSyncAfterFractionMutation,
@@ -12,11 +11,15 @@ import {
   validateUniqueActiveWasteFractionShortLabel,
   withWasteFractionSyncMetadata,
 } from './fractions-support.js';
+import {
+  authorizeWasteMasterDataMutationPathRequest,
+  authorizeWasteMasterDataMutationRequest,
+} from './master-data-request-guards.js';
 import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementMasterDataSchemas } from './schemas.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-import { getRequestId, normalizeOptionalString, requireActorInstanceId, requireDeps } from './utils.js';
+import { normalizeOptionalString, requireDeps } from './utils.js';
 
 const { createWasteFractionSchema, updateWasteFractionSchema } = wasteManagementMasterDataSchemas;
 
@@ -26,21 +29,11 @@ export const wasteManagementFractionHandlers = {
     ctx: AuthenticatedRequestContext,
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
-    const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.master-data.manage', deps, requestId);
-    if (authError) {
-      return authError;
+    const authorized = await authorizeWasteMasterDataMutationRequest(request, ctx, deps);
+    if (authorized instanceof Response) {
+      return authorized;
     }
-
-    const instanceId = requireActorInstanceId(ctx, requestId);
-    if (instanceId instanceof Response) {
-      return instanceId;
-    }
-
-    const csrfError = validateCsrf(request, requestId);
-    if (csrfError) {
-      return csrfError;
-    }
+    const { instanceId, requestId } = authorized;
 
     const parsed = await parseRequestBody(request, createWasteFractionSchema);
     if (!parsed.ok) {
@@ -100,26 +93,13 @@ export const wasteManagementFractionHandlers = {
     ctx: AuthenticatedRequestContext,
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
-    const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.master-data.manage', deps, requestId);
-    if (authError) {
-      return authError;
+    const authorized = await authorizeWasteMasterDataMutationPathRequest(request, ctx, deps, {
+      resourceIdName: 'fractionId',
+    });
+    if (authorized instanceof Response) {
+      return authorized;
     }
-
-    const instanceId = requireActorInstanceId(ctx, requestId);
-    if (instanceId instanceof Response) {
-      return instanceId;
-    }
-
-    const fractionId = readPathSegment(request, 4)?.trim();
-    if (!fractionId) {
-      return createApiError(400, 'invalid_request', 'fractionId fehlt im Pfad.', requestId);
-    }
-
-    const csrfError = validateCsrf(request, requestId);
-    if (csrfError) {
-      return csrfError;
-    }
+    const { instanceId, requestId, resourceId: fractionId } = authorized;
 
     const parsed = await parseRequestBody(request, updateWasteFractionSchema);
     if (!parsed.ok) {
@@ -188,26 +168,13 @@ export const wasteManagementFractionHandlers = {
     ctx: AuthenticatedRequestContext,
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
-    const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.master-data.manage', deps, requestId);
-    if (authError) {
-      return authError;
+    const authorized = await authorizeWasteMasterDataMutationPathRequest(request, ctx, deps, {
+      resourceIdName: 'fractionId',
+    });
+    if (authorized instanceof Response) {
+      return authorized;
     }
-
-    const instanceId = requireActorInstanceId(ctx, requestId);
-    if (instanceId instanceof Response) {
-      return instanceId;
-    }
-
-    const fractionId = readPathSegment(request, 4)?.trim();
-    if (!fractionId) {
-      return createApiError(400, 'invalid_request', 'fractionId fehlt im Pfad.', requestId);
-    }
-
-    const csrfError = validateCsrf(request, requestId);
-    if (csrfError) {
-      return csrfError;
-    }
+    const { instanceId, requestId, resourceId: fractionId } = authorized;
 
     try {
       const existing = await requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById')(instanceId, fractionId);

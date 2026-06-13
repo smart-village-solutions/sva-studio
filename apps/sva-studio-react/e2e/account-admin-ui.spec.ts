@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
+import { createEmptyPaginatedDataResponse } from './studio-shell.helpers';
+
 const adminAuthPayload = {
   user: {
     id: 'kc-admin-1',
@@ -194,10 +196,7 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        data: [],
-        pagination: { page: 1, pageSize: 0, total: 0 },
-      }),
+      body: createEmptyPaginatedDataResponse(),
     });
   });
 

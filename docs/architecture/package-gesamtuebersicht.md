@@ -114,11 +114,23 @@ Das Package zeigt das Zielmuster für produktive Fachplugins im Workspace.
 
 Seine Aufgabe ist nicht die allgemeine Plugin-Infrastruktur, sondern die konkrete fachliche Erweiterung für Events.
 
+### `@sva/plugin-categories`
+
+`@sva/plugin-categories` ist ein kleines Fachplugin für Mainserver-Kategorien. Es stellt aktuell keine generische Content-Admin-Ressource bereit, sondern eine eigene Fachseite unter `/categories` und die dazugehörigen Modul-IAM- und Berechtigungsdefinitionen.
+
+Das Package ist damit ein realer Workspace-Baustein und kein reines Zielbild-Artefakt. Es ergänzt insbesondere News, Events und POI um eine redaktionelle Kategorienpflege.
+
 ### `@sva/plugin-poi`
 
 `@sva/plugin-poi` ist das fachliche Plugin für Points of Interest. Das Package enthält POI-spezifische Modelle, Validierung, API-Anbindung und UI-Bausteine.
 
 Wie die anderen Fachplugins nutzt es die öffentliche Plugin-Grenze des Hosts, statt interne App- oder Core-Module direkt zu importieren.
+
+### `@sva/plugin-waste-management`
+
+`@sva/plugin-waste-management` ist das fachlich breiteste Workspace-Plugin. Es bündelt administrative Oberflächen für Waste-Stammdaten, Touren, Terminverschiebungen, technische Import-/Seed-/Reset-Werkzeuge und instanzbezogene Einstellungen.
+
+Architektonisch ist es bewusst ein Brownfield-Fall: Die UI lebt im Plugin, alle fachlichen Datenzugriffe und technischen Operationen laufen jedoch hostgeführt über `/api/v1/waste-management/*` und den generischen Plugin-Jobpfad. Das Package ist damit produktiv relevant, aber kein uneingeschränktes Referenzmuster für schlanke Standard-Content-Plugins.
 
 ### `packages/plugin-example`
 
@@ -138,6 +150,22 @@ Es ist also kein modernes Zielpackage mehr, sondern ein kontrollierter Übergang
 
 `@sva/sdk` war ein früheres Kompatibilitätspaket für gebündelte Plugin- und Runtime-Imports. Der aktive Workspace führt diese Fassade nicht mehr. Frühere Altpfade sind direkt auf `@sva/plugin-sdk`, `@sva/server-runtime`, `@sva/core` und `@sva/monitoring-client/logging` umgestellt.
 
+## 7. Ergänzende Apps und Tooling
+
+### `apps/public-waste-calendar-web`
+
+`public-waste-calendar-web` ist eine eigenständige öffentliche React-/Node-App für den Bürgerfluss des Abfallkalenders. Sie besitzt eine eigene UI, eine eigene Node-Runtime unter `src/server/**` und einen separaten Releasepfad, nutzt für ihren Serverteil aber bewusst gemeinsame Workspace-Verträge aus `@sva/core` und `@sva/data-repositories`.
+
+Die App ist fachlich eng mit Waste-Management verbunden, aber technisch von der Studio-Admin-Shell getrennt.
+
+### `apps/project-report`
+
+`project-report` ist eine kleine interne Hilfs-App für lokale, read-only Projektstatusdarstellung. Sie ist kein zentraler Produktbaustein des Studios, gehört aber zum tatsächlichen Workspace-Bestand und besitzt eigene Nx-Targets für Build, Lint sowie Unit- und Type-Tests.
+
+### `tooling/testing`
+
+`tooling/testing` ist kein deploybares Produktmodul, sondern die gemeinsame Test-Foundation für HTTP-nahe Frontend-Tests. Hier liegen insbesondere MSW-Konventionen, Test-Utilities und wiederverwendbare Infrastrukturbausteine für selektive, paketübergreifende Testläufe.
+
 ## Empfohlene Lesereihenfolge für neue Entwicklerinnen und Entwickler
 
 Wer das Monorepo verstehen will, sollte die Packages in dieser Reihenfolge lesen:
@@ -152,8 +180,10 @@ Wer das Monorepo verstehen will, sollte die Packages in dieser Reihenfolge lesen
 8. `@sva/routing`
 9. `@sva/studio-ui-react`
 10. `@sva/sva-mainserver`
-11. `@sva/plugin-news`, `@sva/plugin-events`, `@sva/plugin-poi`
-12. `@sva/data` nur noch als Kompatibilitäts- und Betriebs-Kontext
+11. `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events`, `@sva/plugin-poi`
+12. `@sva/plugin-waste-management` als Brownfield-Sonderfall
+13. `apps/public-waste-calendar-web` für den getrennten öffentlichen Waste-Laufzeitpfad
+14. `@sva/data` nur noch als Kompatibilitäts- und Betriebs-Kontext
 
 ## Verwandte Dokumentation
 

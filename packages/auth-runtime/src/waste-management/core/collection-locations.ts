@@ -1,11 +1,13 @@
 import type { AuthenticatedRequestContext } from '../../middleware.js';
-import { validateCsrf } from '../../shared/request-security.js';
-import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
-import { authorizeWasteManagementAction, getAuthorizedWasteManagementInstanceId } from './auth.js';
+import { createApiError, parseRequestBody } from '../../shared/request-helpers.js';
+import {
+  authorizeWasteMasterDataMutationPathRequest,
+  authorizeWasteMasterDataMutationRequest,
+} from './master-data-request-guards.js';
 import { runWasteCreateMutation, runWasteDeleteMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementMasterDataSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-import { getRequestId, normalizeOptionalString, requireDeps } from './utils.js';
+import { normalizeOptionalString, requireDeps } from './utils.js';
 
 const { createWasteCollectionLocationSchema, updateWasteCollectionLocationSchema } = wasteManagementMasterDataSchemas;
 
@@ -56,18 +58,11 @@ export const wasteManagementCollectionLocationHandlers = {
     ctx: AuthenticatedRequestContext,
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
-    const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.master-data.manage', deps, requestId);
-    if (authError) {
-      return authError;
+    const authorized = await authorizeWasteMasterDataMutationRequest(request, ctx, deps);
+    if (authorized instanceof Response) {
+      return authorized;
     }
-
-    const instanceId = getAuthorizedWasteManagementInstanceId(ctx);
-
-    const csrfError = validateCsrf(request, requestId);
-    if (csrfError) {
-      return csrfError;
-    }
+    const { instanceId, requestId } = authorized;
 
     const parsed = await parseRequestBody(request, createWasteCollectionLocationSchema);
     if (!parsed.ok) {
@@ -103,23 +98,13 @@ export const wasteManagementCollectionLocationHandlers = {
     ctx: AuthenticatedRequestContext,
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
-    const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.master-data.manage', deps, requestId);
-    if (authError) {
-      return authError;
+    const authorized = await authorizeWasteMasterDataMutationPathRequest(request, ctx, deps, {
+      resourceIdName: 'locationId',
+    });
+    if (authorized instanceof Response) {
+      return authorized;
     }
-
-    const instanceId = getAuthorizedWasteManagementInstanceId(ctx);
-
-    const locationId = readPathSegment(request, 4)?.trim();
-    if (!locationId) {
-      return createApiError(400, 'invalid_request', 'locationId fehlt im Pfad.', requestId);
-    }
-
-    const csrfError = validateCsrf(request, requestId);
-    if (csrfError) {
-      return csrfError;
-    }
+    const { instanceId, requestId, resourceId: locationId } = authorized;
 
     const parsed = await parseRequestBody(request, updateWasteCollectionLocationSchema);
     if (!parsed.ok) {
@@ -158,22 +143,13 @@ export const wasteManagementCollectionLocationHandlers = {
     ctx: AuthenticatedRequestContext,
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
-    const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.master-data.manage', deps, requestId);
-    if (authError) {
-      return authError;
+    const authorized = await authorizeWasteMasterDataMutationPathRequest(request, ctx, deps, {
+      resourceIdName: 'locationId',
+    });
+    if (authorized instanceof Response) {
+      return authorized;
     }
-
-    const instanceId = getAuthorizedWasteManagementInstanceId(ctx);
-    const locationId = readPathSegment(request, 4)?.trim();
-    if (!locationId) {
-      return createApiError(400, 'invalid_request', 'locationId fehlt im Pfad.', requestId);
-    }
-
-    const csrfError = validateCsrf(request, requestId);
-    if (csrfError) {
-      return csrfError;
-    }
+    const { instanceId, requestId, resourceId: locationId } = authorized;
 
     const loadCollectionLocation = requireDeps(
       deps.loadWasteCollectionLocationById,

@@ -7,55 +7,9 @@ import {
   saveLocalProjectStatusUpdate,
   type LocalProjectStatusPatchRequest,
 } from './project-status-api';
+import { createProjectStatusReportFixture } from './project-report-test-fixtures';
 
-const validReportFixture: ProjectStatusReport = {
-  meta: {
-    version: '1.0.0',
-    updatedAt: '2026-06-02',
-    source: 'test',
-  },
-  statusModel: {
-    idea: 0,
-    commissioned: 0,
-    planned: 10,
-    prototype: 20,
-    implementation: 45,
-    optimization: 70,
-    testing: 80,
-    acceptance: 90,
-    done: 100,
-  },
-  healthModel: ['on_track', 'needs_attention', 'at_risk', 'blocked'],
-  priorityModel: {
-    must: '1: Muss sein',
-    replacement_required: '2: Notwendig für die Ablösung des Alt-Systems',
-    valuable: '3: Neu, aber sehr sinnvoll',
-    requested: '4: Neu und gewünscht',
-    funded_optional: '5: Nicht so wichtig, aber finanziert',
-    unfunded_nice_to_have: '6: Nice to have, noch ohne Finanzierung',
-    irrelevant: '7: Irrelevant',
-  },
-  milestones: [
-    {
-      id: 'M1',
-      title: 'Alpha',
-      plannedEffortPt: 3,
-      sortOrder: 1,
-      workPackages: [
-        {
-          id: 'WP-1',
-          title: 'Paket',
-          area: 'A',
-          priority: 'must',
-          effortPt: 3,
-          status: 'planned',
-          health: 'on_track',
-          dependsOn: [],
-        },
-      ],
-    },
-  ],
-};
+const validReportFixture: ProjectStatusReport = createProjectStatusReportFixture() as ProjectStatusReport;
 
 const patchPayload: LocalProjectStatusPatchRequest = {
   workPackageId: 'WP-1',

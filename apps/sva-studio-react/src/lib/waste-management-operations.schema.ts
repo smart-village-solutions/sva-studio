@@ -30,6 +30,84 @@ SET pdf_short_label = ${wasteFractionShortLabelBackfillExpression}
 WHERE pdf_short_label IS NULL OR BTRIM(pdf_short_label) = '';
 `.trim();
 
+const buildWasteFractionReminderConfigBackfillStatement = (tableReference: string): string => `
+UPDATE ${tableReference}
+SET reminder_config = jsonb_strip_nulls(
+  jsonb_build_object(
+    'reminder_count',
+    CASE
+      WHEN reminder_count IN ('once', 'twice') THEN reminder_count
+      ELSE 'none'
+    END,
+    'channels',
+    CASE
+      WHEN reminder_count IN ('once', 'twice') THEN jsonb_build_object(
+        'push', COALESCE(reminder_channel_push_enabled, FALSE),
+        'email', COALESCE(reminder_channel_email_enabled, FALSE),
+        'calendar', COALESCE(reminder_channel_calendar_enabled, FALSE)
+      )
+      ELSE jsonb_build_object(
+        'push', FALSE,
+        'email', FALSE,
+        'calendar', FALSE
+      )
+    END,
+    'push',
+    CASE
+      WHEN reminder_count IN ('once', 'twice') AND COALESCE(reminder_channel_push_enabled, FALSE) THEN jsonb_build_object(
+        'slots',
+        CASE
+          WHEN reminder_count = 'twice' THEN jsonb_build_array(
+            jsonb_build_object('id', id::text || ':push:first', 'max_lead_days', COALESCE(first_reminder_max_lead_days, 1), 'default_lead_days', 1),
+            jsonb_build_object('id', id::text || ':push:second', 'max_lead_days', COALESCE(second_reminder_max_lead_days, 1), 'default_lead_days', 1)
+          )
+          ELSE jsonb_build_array(
+            jsonb_build_object('id', id::text || ':push:first', 'max_lead_days', COALESCE(first_reminder_max_lead_days, 1), 'default_lead_days', 1)
+          )
+        END
+      )
+      ELSE NULL
+    END,
+    'email',
+    CASE
+      WHEN reminder_count IN ('once', 'twice') AND COALESCE(reminder_channel_email_enabled, FALSE) THEN jsonb_build_object(
+        'slots',
+        CASE
+          WHEN reminder_count = 'twice' THEN jsonb_build_array(
+            jsonb_build_object('id', id::text || ':email:first', 'max_lead_days', COALESCE(first_reminder_max_lead_days, 1), 'default_lead_days', 1),
+            jsonb_build_object('id', id::text || ':email:second', 'max_lead_days', COALESCE(second_reminder_max_lead_days, 1), 'default_lead_days', 1)
+          )
+          ELSE jsonb_build_array(
+            jsonb_build_object('id', id::text || ':email:first', 'max_lead_days', COALESCE(first_reminder_max_lead_days, 1), 'default_lead_days', 1)
+          )
+        END
+      )
+      ELSE NULL
+    END,
+    'calendar',
+    CASE
+      WHEN reminder_count IN ('once', 'twice') AND COALESCE(reminder_channel_calendar_enabled, FALSE) THEN jsonb_build_object(
+        'slots',
+        CASE
+          WHEN reminder_count = 'twice' THEN jsonb_build_array(
+            jsonb_build_object('id', id::text || ':calendar:first', 'max_lead_days', COALESCE(first_reminder_max_lead_days, 1), 'default_lead_days', 1),
+            jsonb_build_object('id', id::text || ':calendar:second', 'max_lead_days', COALESCE(second_reminder_max_lead_days, 1), 'default_lead_days', 1)
+          )
+          ELSE jsonb_build_array(
+            jsonb_build_object('id', id::text || ':calendar:first', 'max_lead_days', COALESCE(first_reminder_max_lead_days, 1), 'default_lead_days', 1)
+          )
+        END
+      )
+      ELSE NULL
+    END
+  )
+)
+WHERE reminder_config IS NULL;
+`.trim();
+
+const defaultWasteFractionReminderConfigJson =
+  `'{"reminder_count":"none","channels":{"push":false,"email":false,"calendar":false}}'::jsonb`;
+
 export const applySchemaStatements = (schemaName: string): readonly string[] => {
   const schema = quoteIdentifier(schemaName);
   return [
@@ -41,7 +119,7 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_streets (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, city_id UUID NOT NULL REFERENCES ${schema}.waste_cities(id) ON DELETE CASCADE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_house_numbers (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), number TEXT NOT NULL, street_id UUID NOT NULL REFERENCES ${schema}.waste_streets(id) ON DELETE CASCADE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_collection_locations (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), city_id UUID NOT NULL REFERENCES ${schema}.waste_cities(id) ON DELETE CASCADE, region_id UUID REFERENCES ${schema}.waste_regions(id) ON DELETE SET NULL, street_id UUID REFERENCES ${schema}.waste_streets(id) ON DELETE SET NULL, house_number_id UUID REFERENCES ${schema}.waste_house_numbers(id) ON DELETE SET NULL, active BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
-    `CREATE TABLE IF NOT EXISTS ${schema}.waste_fractions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, pdf_short_label TEXT, label_translations JSONB, container_size TEXT, color TEXT NOT NULL DEFAULT '#808080', description TEXT, active BOOLEAN NOT NULL DEFAULT TRUE, reminder_count TEXT NOT NULL DEFAULT 'none' CHECK (reminder_count IN ('none', 'once', 'twice')), first_reminder_max_lead_days INTEGER CHECK (first_reminder_max_lead_days BETWEEN 1 AND 14), second_reminder_max_lead_days INTEGER CHECK (second_reminder_max_lead_days BETWEEN 1 AND 14), reminder_channel_push_enabled BOOLEAN NOT NULL DEFAULT FALSE, reminder_channel_email_enabled BOOLEAN NOT NULL DEFAULT FALSE, reminder_channel_calendar_enabled BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
+    `CREATE TABLE IF NOT EXISTS ${schema}.waste_fractions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, pdf_short_label TEXT, label_translations JSONB, container_size TEXT, color TEXT NOT NULL DEFAULT '#808080', description TEXT, active BOOLEAN NOT NULL DEFAULT TRUE, reminder_count TEXT NOT NULL DEFAULT 'none' CHECK (reminder_count IN ('none', 'once', 'twice')), first_reminder_max_lead_days INTEGER CHECK (first_reminder_max_lead_days BETWEEN 1 AND 14), second_reminder_max_lead_days INTEGER CHECK (second_reminder_max_lead_days BETWEEN 1 AND 14), reminder_channel_push_enabled BOOLEAN NOT NULL DEFAULT FALSE, reminder_channel_email_enabled BOOLEAN NOT NULL DEFAULT FALSE, reminder_channel_calendar_enabled BOOLEAN NOT NULL DEFAULT FALSE, reminder_config JSONB NOT NULL DEFAULT ${defaultWasteFractionReminderConfigJson}, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
     `ALTER TABLE ${schema}.waste_fractions ADD COLUMN IF NOT EXISTS pdf_short_label TEXT;`,
     buildWasteFractionShortLabelBackfillStatement(`${schema}.waste_fractions`),
     `ALTER TABLE ${schema}.waste_fractions ALTER COLUMN pdf_short_label SET NOT NULL;`,
@@ -51,6 +129,10 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `ALTER TABLE ${schema}.waste_fractions ADD COLUMN IF NOT EXISTS reminder_channel_push_enabled BOOLEAN NOT NULL DEFAULT FALSE;`,
     `ALTER TABLE ${schema}.waste_fractions ADD COLUMN IF NOT EXISTS reminder_channel_email_enabled BOOLEAN NOT NULL DEFAULT FALSE;`,
     `ALTER TABLE ${schema}.waste_fractions ADD COLUMN IF NOT EXISTS reminder_channel_calendar_enabled BOOLEAN NOT NULL DEFAULT FALSE;`,
+    `ALTER TABLE ${schema}.waste_fractions ADD COLUMN IF NOT EXISTS reminder_config JSONB;`,
+    buildWasteFractionReminderConfigBackfillStatement(`${schema}.waste_fractions`),
+    `ALTER TABLE ${schema}.waste_fractions ALTER COLUMN reminder_config SET DEFAULT ${defaultWasteFractionReminderConfigJson};`,
+    `ALTER TABLE ${schema}.waste_fractions ALTER COLUMN reminder_config SET NOT NULL;`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_fractions_reminder_count_check' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_fractions') THEN ALTER TABLE ${schema}.waste_fractions ADD CONSTRAINT waste_fractions_reminder_count_check CHECK (reminder_count IN ('none', 'once', 'twice')); END IF; END $$;`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_fractions_first_reminder_max_lead_days_check' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_fractions') THEN ALTER TABLE ${schema}.waste_fractions ADD CONSTRAINT waste_fractions_first_reminder_max_lead_days_check CHECK (first_reminder_max_lead_days IS NULL OR first_reminder_max_lead_days BETWEEN 1 AND 14); END IF; END $$;`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_fractions_second_reminder_max_lead_days_check' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_fractions') THEN ALTER TABLE ${schema}.waste_fractions ADD CONSTRAINT waste_fractions_second_reminder_max_lead_days_check CHECK (second_reminder_max_lead_days IS NULL OR second_reminder_max_lead_days BETWEEN 1 AND 14); END IF; END $$;`,

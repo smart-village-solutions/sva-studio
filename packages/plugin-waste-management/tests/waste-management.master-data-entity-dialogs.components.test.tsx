@@ -96,12 +96,10 @@ describe('waste-management.master-data-entity-dialogs components', () => {
           containerSize: '120L',
           description: 'Hausmüll',
           active: true,
-          reminderCount: 'none',
-          firstReminderMaxLeadDays: 1,
-          secondReminderMaxLeadDays: 1,
-          reminderChannelPushEnabled: false,
-          reminderChannelEmailEnabled: false,
-          reminderChannelCalendarEnabled: false,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: { push: false, email: false, calendar: false },
+          },
         } as never}
         saving={false}
         message={{ kind: 'success', text: 'gespeichert' } as never}
@@ -302,12 +300,10 @@ describe('waste-management.master-data-entity-dialogs components', () => {
           containerSize: '',
           description: '',
           active: true,
-          reminderCount: 'none',
-          firstReminderMaxLeadDays: 1,
-          secondReminderMaxLeadDays: 1,
-          reminderChannelPushEnabled: false,
-          reminderChannelEmailEnabled: false,
-          reminderChannelCalendarEnabled: false,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: { push: false, email: false, calendar: false },
+          },
         } as never}
         saving={false}
         message={null}

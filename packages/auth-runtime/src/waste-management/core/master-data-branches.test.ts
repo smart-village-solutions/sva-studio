@@ -31,6 +31,17 @@ const createHeaders = () => ({
   'x-requested-with': 'XMLHttpRequest',
 });
 
+const noneReminderConfigPayload = {
+  reminderConfig: {
+    reminderCount: 'none',
+    channels: {
+      push: false,
+      email: false,
+      calendar: false,
+    },
+  },
+} as const;
+
 const createDeps = (action = 'waste-management.master-data.manage') => ({
   getRequestId: () => 'req-test',
   getSessionById: vi.fn(async () => ({
@@ -99,13 +110,17 @@ describe('waste-management master-data branch handlers', () => {
             pdfShortLabel: 'PAP',
             color: '#123456',
             active: true,
-            reminderCount: 'many',
-            reminderChannelPushEnabled: false,
-            reminderChannelEmailEnabled: false,
-            reminderChannelCalendarEnabled: false,
+            reminderConfig: {
+              reminderCount: 'many',
+              channels: {
+                push: false,
+                email: false,
+                calendar: false,
+              },
+            },
           }),
         }),
-      expectedMessage: /reminderCount/i,
+      expectedMessage: /reminderConfig|reminderCount/i,
     },
     {
       label: 'region create rejects invalid payloads',
@@ -301,10 +316,7 @@ describe('waste-management master-data branch handlers', () => {
           pdfShortLabel: 'bio',
           color: '#22aa55',
           active: true,
-          reminderCount: 'none',
-          reminderChannelPushEnabled: false,
-          reminderChannelEmailEnabled: false,
-          reminderChannelCalendarEnabled: false,
+          ...noneReminderConfigPayload,
         }),
       }),
       actor,
@@ -336,10 +348,7 @@ describe('waste-management master-data branch handlers', () => {
           pdfShortLabel: 'bio',
           color: '#22aa55',
           active: true,
-          reminderCount: 'none',
-          reminderChannelPushEnabled: false,
-          reminderChannelEmailEnabled: false,
-          reminderChannelCalendarEnabled: false,
+          ...noneReminderConfigPayload,
         }),
       }),
       actor,
@@ -352,6 +361,14 @@ describe('waste-management master-data branch handlers', () => {
           pdfShortLabel: 'PAP',
           color: '#123456',
           active: true,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: {
+              push: false,
+              email: false,
+              calendar: false,
+            },
+          },
           createdAt: '2026-05-09T10:00:00.000Z',
           updatedAt: '2026-05-09T10:00:00.000Z',
         })),
@@ -381,10 +398,7 @@ describe('waste-management master-data branch handlers', () => {
           body: JSON.stringify({
             name: 'Rest',
             active: true,
-            reminderCount: 'none',
-            reminderChannelPushEnabled: false,
-            reminderChannelEmailEnabled: false,
-            reminderChannelCalendarEnabled: false,
+            ...noneReminderConfigPayload,
           }),
         }),
       expectedMessage: 'fractionId fehlt im Pfad.',
@@ -535,10 +549,7 @@ describe('waste-management master-data branch handlers', () => {
             translations: { de: 'Restmüll' },
             color: '#111111',
             active: true,
-            reminderCount: 'none',
-            reminderChannelPushEnabled: false,
-            reminderChannelEmailEnabled: false,
-            reminderChannelCalendarEnabled: false,
+            ...noneReminderConfigPayload,
           }),
         }),
       deps: () => ({
@@ -762,10 +773,7 @@ describe('waste-management master-data branch handlers', () => {
             translations: { de: 'Restmüll' },
             color: '#111111',
             active: true,
-            reminderCount: 'none',
-            reminderChannelPushEnabled: false,
-            reminderChannelEmailEnabled: false,
-            reminderChannelCalendarEnabled: false,
+            ...noneReminderConfigPayload,
           }),
         }),
       deps: () => ({
@@ -906,10 +914,7 @@ describe('waste-management master-data branch handlers', () => {
             translations: { de: 'Papier' },
             color: '#123456',
             active: true,
-            reminderCount: 'none',
-            reminderChannelPushEnabled: false,
-            reminderChannelEmailEnabled: false,
-            reminderChannelCalendarEnabled: false,
+            ...noneReminderConfigPayload,
           }),
         }),
       deps: () => ({
@@ -1122,10 +1127,7 @@ describe('waste-management master-data branch handlers', () => {
             translations: { de: 'Papier' },
             color: '#123456',
             active: true,
-            reminderCount: 'none',
-            reminderChannelPushEnabled: false,
-            reminderChannelEmailEnabled: false,
-            reminderChannelCalendarEnabled: false,
+            ...noneReminderConfigPayload,
           }),
         }),
       deps: () => {
@@ -1434,10 +1436,7 @@ describe('waste-management master-data branch handlers', () => {
             translations: { de: 'Papier' },
             color: '#123456',
             active: true,
-            reminderCount: 'none',
-            reminderChannelPushEnabled: false,
-            reminderChannelEmailEnabled: false,
-            reminderChannelCalendarEnabled: false,
+            ...noneReminderConfigPayload,
           }),
         }),
       deps: () => ({
@@ -1749,10 +1748,7 @@ describe('waste-management master-data branch handlers', () => {
           pdfShortLabel: 'RES',
           color: '#111111',
           active: true,
-          reminderCount: 'none',
-          reminderChannelPushEnabled: false,
-          reminderChannelEmailEnabled: false,
-          reminderChannelCalendarEnabled: false,
+          ...noneReminderConfigPayload,
         }),
       }),
       actor,

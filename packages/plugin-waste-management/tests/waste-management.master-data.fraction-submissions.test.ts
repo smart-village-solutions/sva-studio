@@ -55,12 +55,22 @@ describe('createSubmitFractionHandler', () => {
           color: '#111111',
           description: '',
           active: true,
-          reminderCount: 'twice',
-          firstReminderMaxLeadDays: 7,
-          secondReminderMaxLeadDays: 2,
-          reminderChannelPushEnabled: true,
-          reminderChannelEmailEnabled: false,
-          reminderChannelCalendarEnabled: true,
+          reminderConfig: {
+            reminderCount: 'twice',
+            channels: { push: true, email: false, calendar: true },
+            push: {
+              slots: [
+                { id: 'fraction-1:push:first', maxLeadDays: 7, defaultLeadDays: 1 },
+                { id: 'fraction-1:push:second', maxLeadDays: 2, defaultLeadDays: 1 },
+              ],
+            },
+            calendar: {
+              slots: [
+                { id: 'fraction-1:calendar:first', maxLeadDays: 7, defaultLeadDays: 1 },
+                { id: 'fraction-1:calendar:second', maxLeadDays: 2, defaultLeadDays: 1 },
+              ],
+            },
+          },
         },
         setSaving: vi.fn(),
         setMessage: vi.fn(),
@@ -88,12 +98,22 @@ describe('createSubmitFractionHandler', () => {
         containerSize: '120L',
         color: '#111111',
         active: true,
-        reminderCount: 'twice',
-        firstReminderMaxLeadDays: 7,
-        secondReminderMaxLeadDays: 2,
-        reminderChannelPushEnabled: true,
-        reminderChannelEmailEnabled: false,
-        reminderChannelCalendarEnabled: true,
+        reminderConfig: {
+          reminderCount: 'twice',
+          channels: { push: true, email: false, calendar: true },
+          push: {
+            slots: [
+              { id: 'fraction-1:push:first', maxLeadDays: 7, defaultLeadDays: 1 },
+              { id: 'fraction-1:push:second', maxLeadDays: 2, defaultLeadDays: 1 },
+            ],
+          },
+          calendar: {
+            slots: [
+              { id: 'fraction-1:calendar:first', maxLeadDays: 7, defaultLeadDays: 1 },
+              { id: 'fraction-1:calendar:second', maxLeadDays: 2, defaultLeadDays: 1 },
+            ],
+          },
+        },
       })
     );
     expect(createWasteManagementFractionMock).not.toHaveBeenCalled();
@@ -123,12 +143,10 @@ describe('createSubmitFractionHandler', () => {
           color: '#228833',
           description: '',
           active: true,
-          reminderCount: 'none',
-          firstReminderMaxLeadDays: undefined,
-          secondReminderMaxLeadDays: undefined,
-          reminderChannelPushEnabled: false,
-          reminderChannelEmailEnabled: false,
-          reminderChannelCalendarEnabled: false,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: { push: false, email: false, calendar: false },
+          },
         },
         setSaving: vi.fn(),
         setMessage: vi.fn(),

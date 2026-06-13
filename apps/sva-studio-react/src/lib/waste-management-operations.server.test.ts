@@ -99,6 +99,13 @@ describe('waste management operations runtime', () => {
 
   it('includes custom recurrence presets, holiday rules and tour preset references in schema statements', () => {
     const statements = applySchemaStatements('wm').join('\n');
+    expect(statements).toContain('reminder_config JSONB');
+    expect(statements).toContain('CREATE TABLE IF NOT EXISTS "wm".waste_fractions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL');
+    expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS reminder_config JSONB');
+    expect(statements).toContain('UPDATE "wm".waste_fractions');
+    expect(statements).toContain("SET reminder_config = jsonb_strip_nulls");
+    expect(statements).toContain("WHERE reminder_config IS NULL");
+    expect(statements).toContain(`id::text || ':push:first'`);
     expect(statements).toContain('pdf_short_label TEXT');
     expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS pdf_short_label TEXT');
     expect(statements).toContain(buildWasteFractionShortLabelBackfillStatement('"wm".waste_fractions'));
@@ -251,10 +258,14 @@ describe('waste management operations runtime', () => {
           color: '#8B4513',
           description: 'Nur auf Abruf',
           active: true,
-          reminderCount: 'none',
-          reminderChannelPushEnabled: false,
-          reminderChannelEmailEnabled: false,
-          reminderChannelCalendarEnabled: false,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: {
+              push: false,
+              email: false,
+              calendar: false,
+            },
+          },
           createdAt: '',
           updatedAt: '',
         },
@@ -289,8 +300,6 @@ describe('waste management operations runtime', () => {
                 translations: { de: 'Biotonne auf Abruf' },
                 reminders: {
                   reminder_count: 'none',
-                  first_reminder_max_lead_days: null,
-                  second_reminder_max_lead_days: null,
                   channels: {
                     push: false,
                     email: false,

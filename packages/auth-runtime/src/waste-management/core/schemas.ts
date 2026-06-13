@@ -12,20 +12,67 @@ const wasteFractionReminderLeadDaySchema = z
   .min(wasteManagementMasterDataContract.fractionReminderLeadDayMin)
   .max(wasteManagementMasterDataContract.fractionReminderLeadDayMax);
 
-const withWasteFractionReminderValidation = <TSchema extends z.ZodObject>(schema: TSchema) =>
-  schema.superRefine((value, ctx) => {
-    if ((value.reminderCount === 'once' || value.reminderCount === 'twice') && value.firstReminderMaxLeadDays === undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['firstReminderMaxLeadDays'],
-        message: 'firstReminderMaxLeadDays ist erforderlich, wenn Erinnerungen aktiviert sind.',
-      });
+const wasteFractionReminderSlotSchema = z.object({
+  id: z.string().trim().min(1),
+  maxLeadDays: wasteFractionReminderLeadDaySchema,
+  defaultLeadDays: wasteFractionReminderLeadDaySchema,
+});
+
+const wasteFractionReminderChannelSchema = z.object({
+  slots: z.array(wasteFractionReminderSlotSchema).max(2),
+});
+
+const wasteFractionReminderConfigSchema = z
+  .object({
+    reminderCount: wasteFractionReminderCountSchema,
+    channels: z.object({
+      push: z.boolean(),
+      email: z.boolean(),
+      calendar: z.boolean(),
+    }),
+    push: wasteFractionReminderChannelSchema.optional(),
+    email: wasteFractionReminderChannelSchema.optional(),
+    calendar: wasteFractionReminderChannelSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    const requiredSlotCount = value.reminderCount === 'none' ? 0 : value.reminderCount === 'once' ? 1 : 2;
+    const channels: Array<keyof typeof value.channels> = ['push', 'email', 'calendar'];
+
+    if (requiredSlotCount === 0) {
+      return;
     }
-    if (value.reminderCount === 'twice' && value.secondReminderMaxLeadDays === undefined) {
+
+    for (const channel of channels) {
+      if (!value.channels[channel]) {
+        continue;
+      }
+
+      const channelConfig = value[channel];
+      if (!channelConfig || channelConfig.slots.length < requiredSlotCount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [channel, 'slots'],
+          message: `Für den Kanal "${channel}" werden ${requiredSlotCount} Reminder-Slot(s) benötigt.`,
+        });
+      }
+    }
+  });
+
+const withWasteFractionReminderValidation = <
+  TSchema extends z.ZodObject<{ reminderConfig: typeof wasteFractionReminderConfigSchema }>,
+>(
+  schema: TSchema
+) =>
+  schema.superRefine((value: z.infer<TSchema>, ctx) => {
+    if (value.reminderConfig.reminderCount === 'none') {
+      return;
+    }
+
+    if (!value.reminderConfig.channels.push && !value.reminderConfig.channels.email && !value.reminderConfig.channels.calendar) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['secondReminderMaxLeadDays'],
-        message: 'secondReminderMaxLeadDays ist erforderlich, wenn zwei Erinnerungen aktiviert sind.',
+        path: ['reminderConfig', 'channels'],
+        message: 'Mindestens ein Kanal muss aktiviert sein, wenn Erinnerungen konfiguriert sind.',
       });
     }
   });
@@ -39,13 +86,8 @@ const wasteFractionSchemaBase = z.object({
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, 'Ungültiger Hex-Farbwert.'),
   description: z.string().trim().min(1).optional(),
   active: z.boolean(),
-  reminderCount: wasteFractionReminderCountSchema,
-  firstReminderMaxLeadDays: wasteFractionReminderLeadDaySchema.optional(),
-  secondReminderMaxLeadDays: wasteFractionReminderLeadDaySchema.optional(),
-  reminderChannelPushEnabled: z.boolean(),
-  reminderChannelEmailEnabled: z.boolean(),
-  reminderChannelCalendarEnabled: z.boolean(),
-  });
+  reminderConfig: wasteFractionReminderConfigSchema,
+});
 
 const createWasteFractionSchema = withWasteFractionReminderValidation(wasteFractionSchemaBase);
 

@@ -589,12 +589,26 @@ describe('waste-management auth runtime handlers', () => {
       color: '#123456',
       description: 'Blaue Tonne',
       active: true,
-      reminderCount: 'twice',
-      firstReminderMaxLeadDays: 10,
-      secondReminderMaxLeadDays: 3,
-      reminderChannelPushEnabled: true,
-      reminderChannelEmailEnabled: false,
-      reminderChannelCalendarEnabled: true,
+      reminderConfig: {
+        reminderCount: 'twice',
+        channels: {
+          push: true,
+          email: false,
+          calendar: true,
+        },
+        push: {
+          slots: [
+            { id: 'fraction-new:push:first', maxLeadDays: 10, defaultLeadDays: 1 },
+            { id: 'fraction-new:push:second', maxLeadDays: 3, defaultLeadDays: 1 },
+          ],
+        },
+        calendar: {
+          slots: [
+            { id: 'fraction-new:calendar:first', maxLeadDays: 10, defaultLeadDays: 1 },
+            { id: 'fraction-new:calendar:second', maxLeadDays: 3, defaultLeadDays: 1 },
+          ],
+        },
+      },
       createdAt: '2026-05-09T12:00:00.000Z',
       updatedAt: '2026-05-09T12:30:00.000Z',
     };
@@ -636,12 +650,26 @@ describe('waste-management auth runtime handlers', () => {
           color: '#123456',
           description: 'Blaue Tonne',
           active: true,
-          reminderCount: 'twice',
-          firstReminderMaxLeadDays: 10,
-          secondReminderMaxLeadDays: 3,
-          reminderChannelPushEnabled: true,
-          reminderChannelEmailEnabled: false,
-          reminderChannelCalendarEnabled: true,
+          reminderConfig: {
+            reminderCount: 'twice',
+            channels: {
+              push: true,
+              email: false,
+              calendar: true,
+            },
+            push: {
+              slots: [
+                { id: 'fraction-new:push:first', maxLeadDays: 10, defaultLeadDays: 1 },
+                { id: 'fraction-new:push:second', maxLeadDays: 3, defaultLeadDays: 1 },
+              ],
+            },
+            calendar: {
+              slots: [
+                { id: 'fraction-new:calendar:first', maxLeadDays: 10, defaultLeadDays: 1 },
+                { id: 'fraction-new:calendar:second', maxLeadDays: 3, defaultLeadDays: 1 },
+              ],
+            },
+          },
         }),
       }),
       actor,
@@ -669,12 +697,26 @@ describe('waste-management auth runtime handlers', () => {
       color: '#123456',
       description: 'Blaue Tonne',
       active: true,
-      reminderCount: 'twice',
-      firstReminderMaxLeadDays: 10,
-      secondReminderMaxLeadDays: 3,
-      reminderChannelPushEnabled: true,
-      reminderChannelEmailEnabled: false,
-      reminderChannelCalendarEnabled: true,
+      reminderConfig: {
+        reminderCount: 'twice',
+        channels: {
+          push: true,
+          email: false,
+          calendar: true,
+        },
+        push: {
+          slots: [
+            { id: 'fraction-new:push:first', maxLeadDays: 10, defaultLeadDays: 1 },
+            { id: 'fraction-new:push:second', maxLeadDays: 3, defaultLeadDays: 1 },
+          ],
+        },
+        calendar: {
+          slots: [
+            { id: 'fraction-new:calendar:first', maxLeadDays: 10, defaultLeadDays: 1 },
+            { id: 'fraction-new:calendar:second', maxLeadDays: 3, defaultLeadDays: 1 },
+          ],
+        },
+      },
     });
     expect(loadWasteFractionById).toHaveBeenCalledWith('tenant-a', 'fraction-new');
     expect(startPluginOperationJob).toHaveBeenCalledWith(
@@ -720,11 +762,20 @@ describe('waste-management auth runtime handlers', () => {
       pdfShortLabel: 'RES',
       color: '#111111',
       active: true,
-      reminderCount: 'once',
-      firstReminderMaxLeadDays: 7,
-      reminderChannelPushEnabled: true,
-      reminderChannelEmailEnabled: true,
-      reminderChannelCalendarEnabled: false,
+      reminderConfig: {
+        reminderCount: 'once',
+        channels: {
+          push: true,
+          email: true,
+          calendar: false,
+        },
+        push: {
+          slots: [{ id: 'fraction-1:push:first', maxLeadDays: 7, defaultLeadDays: 1 }],
+        },
+        email: {
+          slots: [{ id: 'fraction-1:email:first', maxLeadDays: 7, defaultLeadDays: 1 }],
+        },
+      },
       createdAt: '2026-05-09T10:00:00.000Z',
       updatedAt: '2026-05-09T10:00:00.000Z',
     };
@@ -732,12 +783,14 @@ describe('waste-management auth runtime handlers', () => {
       ...existingFraction,
       name: 'Restmüll Plus',
       pdfShortLabel: 'RPL',
-      reminderCount: 'none',
-      firstReminderMaxLeadDays: undefined,
-      secondReminderMaxLeadDays: undefined,
-      reminderChannelPushEnabled: false,
-      reminderChannelEmailEnabled: false,
-      reminderChannelCalendarEnabled: false,
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: {
+          push: false,
+          email: false,
+          calendar: false,
+        },
+      },
       updatedAt: '2026-05-09T12:30:00.000Z',
     };
 
@@ -777,12 +830,23 @@ describe('waste-management auth runtime handlers', () => {
           translations: { de: 'Restmüll Plus', en: 'Residual waste plus' },
           color: '#111111',
           active: true,
-          reminderCount: 'none',
-          firstReminderMaxLeadDays: 8,
-          secondReminderMaxLeadDays: 2,
-          reminderChannelPushEnabled: true,
-          reminderChannelEmailEnabled: true,
-          reminderChannelCalendarEnabled: true,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: {
+              push: true,
+              email: true,
+              calendar: true,
+            },
+            push: {
+              slots: [{ id: 'fraction-1:push:first', maxLeadDays: 8, defaultLeadDays: 1 }],
+            },
+            email: {
+              slots: [{ id: 'fraction-1:email:first', maxLeadDays: 8, defaultLeadDays: 1 }],
+            },
+            calendar: {
+              slots: [{ id: 'fraction-1:calendar:first', maxLeadDays: 8, defaultLeadDays: 1 }],
+            },
+          },
         }),
       }),
       actor,
@@ -809,12 +873,14 @@ describe('waste-management auth runtime handlers', () => {
       color: '#111111',
       description: undefined,
       active: true,
-      reminderCount: 'none',
-      firstReminderMaxLeadDays: undefined,
-      secondReminderMaxLeadDays: undefined,
-      reminderChannelPushEnabled: false,
-      reminderChannelEmailEnabled: false,
-      reminderChannelCalendarEnabled: false,
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: {
+          push: false,
+          email: false,
+          calendar: false,
+        },
+      },
     });
     expect(startPluginOperationJob).toHaveBeenCalledWith(
       expect.objectContaining({

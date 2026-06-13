@@ -1,5 +1,17 @@
 import type { WasteFractionRecord, WasteLocalizedTextRecord } from './waste-management-master-data.js';
 
+type WasteReminderChannel = keyof WasteFractionRecord['reminderConfig']['channels'];
+
+type WasteReminderSlot = {
+  readonly id: string;
+  readonly max_lead_days: number;
+  readonly default_lead_days: number;
+};
+
+type WasteReminderChannelConfig = {
+  readonly slots: readonly WasteReminderSlot[];
+};
+
 export type WasteTypeStaticContentEntry = {
   readonly label: string;
   readonly color: string;
@@ -11,14 +23,11 @@ export type WasteTypeStaticContentEntry = {
   readonly container_size: string | null;
   readonly translations: WasteLocalizedTextRecord;
   readonly reminders: {
-    readonly reminder_count: WasteFractionRecord['reminderCount'];
-    readonly first_reminder_max_lead_days: number | null;
-    readonly second_reminder_max_lead_days: number | null;
-    readonly channels: {
-      readonly push: boolean;
-      readonly email: boolean;
-      readonly calendar: boolean;
-    };
+    readonly reminder_count: WasteFractionRecord['reminderConfig']['reminderCount'];
+    readonly channels: WasteFractionRecord['reminderConfig']['channels'];
+    readonly push?: WasteReminderChannelConfig;
+    readonly email?: WasteReminderChannelConfig;
+    readonly calendar?: WasteReminderChannelConfig;
   };
 };
 
@@ -31,6 +40,45 @@ export type WasteTypesStaticContentArtifact = {
 };
 
 const normalizeWasteTypeKey = (value: string): string => value.trim().toUpperCase();
+const toReminderChannelConfig = (
+  channelConfig: WasteFractionRecord['reminderConfig'][WasteReminderChannel]
+): WasteReminderChannelConfig | undefined => {
+  if (!channelConfig) {
+    return undefined;
+  }
+
+  return {
+    slots: channelConfig.slots.map((slot) => ({
+      id: slot.id,
+      max_lead_days: slot.maxLeadDays,
+      default_lead_days: slot.defaultLeadDays,
+    })),
+  };
+};
+
+const normalizeReminderConfigForStaticContent = (
+  reminderConfig: WasteFractionRecord['reminderConfig']
+): WasteFractionRecord['reminderConfig'] => {
+  if (reminderConfig.reminderCount === 'none') {
+    return {
+      reminderCount: 'none',
+      channels: {
+        push: false,
+        email: false,
+        calendar: false,
+      },
+    };
+  }
+
+  return {
+    reminderCount: reminderConfig.reminderCount,
+    channels: reminderConfig.channels,
+    ...(reminderConfig.channels.push && reminderConfig.push ? { push: reminderConfig.push } : {}),
+    ...(reminderConfig.channels.email && reminderConfig.email ? { email: reminderConfig.email } : {}),
+    ...(reminderConfig.channels.calendar && reminderConfig.calendar ? { calendar: reminderConfig.calendar } : {}),
+  };
+};
+
 const compareWasteTypeKeys = (leftKey: string, rightKey: string): number => {
   if (leftKey === rightKey) {
     return 0;
@@ -49,16 +97,20 @@ const toWasteTypeEntry = (fraction: WasteFractionRecord, shortLabel: string): Wa
   description: fraction.description ?? null,
   container_size: fraction.containerSize ?? null,
   translations: fraction.translations ?? {},
-  reminders: {
-    reminder_count: fraction.reminderCount,
-    first_reminder_max_lead_days: fraction.firstReminderMaxLeadDays ?? null,
-    second_reminder_max_lead_days: fraction.secondReminderMaxLeadDays ?? null,
-    channels: {
-      push: fraction.reminderChannelPushEnabled,
-      email: fraction.reminderChannelEmailEnabled,
-      calendar: fraction.reminderChannelCalendarEnabled,
-    },
-  },
+  reminders: (() => {
+    const reminderConfig = normalizeReminderConfigForStaticContent(fraction.reminderConfig);
+    const push = toReminderChannelConfig(reminderConfig.push);
+    const email = toReminderChannelConfig(reminderConfig.email);
+    const calendar = toReminderChannelConfig(reminderConfig.calendar);
+
+    return {
+      reminder_count: reminderConfig.reminderCount,
+      channels: reminderConfig.channels,
+      ...(push ? { push } : {}),
+      ...(email ? { email } : {}),
+      ...(calendar ? { calendar } : {}),
+    };
+  })(),
 });
 
 const hashContent = async (value: string): Promise<`sha256:${string}`> => {

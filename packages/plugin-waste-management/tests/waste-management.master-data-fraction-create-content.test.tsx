@@ -225,6 +225,34 @@ describe('WasteMasterDataFractionCreateContent', () => {
       },
     });
 
+    const secondReminderDefaultSelect = document.getElementById('waste-fraction-push-slot-2-default-lead-days');
+    expect(secondReminderDefaultSelect).toBeTruthy();
+    if (!(secondReminderDefaultSelect instanceof HTMLSelectElement)) {
+      throw new Error('missing second reminder default select');
+    }
+
+    fireEvent.change(secondReminderDefaultSelect, {
+      target: { value: '14' },
+    });
+    expect(onChange).toHaveBeenCalledWith({
+      reminderConfig: {
+        reminderCount: 'twice',
+        channels: { push: true, email: true, calendar: false },
+        push: {
+          slots: [
+            { id: 'fraction-1:push:first', maxLeadDays: 7, defaultLeadDays: 1 },
+            { id: 'fraction-1:push:second', maxLeadDays: 2, defaultLeadDays: 2 },
+          ],
+        },
+        email: {
+          slots: [
+            { id: 'fraction-1:email:first', maxLeadDays: 7, defaultLeadDays: 1 },
+            { id: 'fraction-1:email:second', maxLeadDays: 2, defaultLeadDays: 1 },
+          ],
+        },
+      },
+    });
+
     fireEvent.submit(document.getElementById('waste-fraction-create-form') as HTMLFormElement);
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });

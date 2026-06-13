@@ -334,6 +334,95 @@ describe('waste master data repository', () => {
     });
   });
 
+  it('fails closed for json reminder rows without active channels', async () => {
+    const { executor } = createExecutor([
+      {
+        id: 'fraction-json-no-channel',
+        name: 'JSON',
+        pdf_short_label: null,
+        label_translations: {},
+        container_size: null,
+        color: '#111111',
+        description: null,
+        active: true,
+        reminder_config: {
+          reminder_count: 'once',
+          channels: {
+            push: false,
+            email: false,
+            calendar: false,
+          },
+        },
+        reminder_count: 'none',
+        first_reminder_max_lead_days: null,
+        second_reminder_max_lead_days: null,
+        reminder_channel_push_enabled: false,
+        reminder_channel_email_enabled: false,
+        reminder_channel_calendar_enabled: false,
+        created_at: '2026-05-09T10:00:00.000Z',
+        updated_at: '2026-05-09T11:00:00.000Z',
+      },
+    ]);
+
+    await expect(createWasteMasterDataRepository(executor).getWasteFractionById('fraction-json-no-channel')).resolves.toMatchObject({
+      id: 'fraction-json-no-channel',
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: {
+          push: false,
+          email: false,
+          calendar: false,
+        },
+      },
+    });
+  });
+
+  it('prefers legacy reminder columns when json reminder_config is stale', async () => {
+    const { executor } = createExecutor([
+      {
+        id: 'fraction-stale-json',
+        name: 'Stale',
+        pdf_short_label: 'STA',
+        label_translations: {},
+        container_size: null,
+        color: '#111111',
+        description: null,
+        active: true,
+        reminder_config: {
+          reminder_count: 'none',
+          channels: {
+            push: false,
+            email: false,
+            calendar: false,
+          },
+        },
+        reminder_count: 'once',
+        first_reminder_max_lead_days: 7,
+        second_reminder_max_lead_days: null,
+        reminder_channel_push_enabled: true,
+        reminder_channel_email_enabled: false,
+        reminder_channel_calendar_enabled: false,
+        created_at: '2026-05-09T10:00:00.000Z',
+        updated_at: '2026-05-09T11:00:00.000Z',
+      },
+    ]);
+
+    await expect(createWasteMasterDataRepository(executor).getWasteFractionById('fraction-stale-json')).resolves.toMatchObject({
+      id: 'fraction-stale-json',
+      reminderConfig: {
+        reminderCount: 'once',
+        channels: {
+          push: true,
+          email: false,
+          calendar: false,
+        },
+        push: {
+          slots: [{ id: 'fraction-stale-json:push:first', maxLeadDays: 7, defaultLeadDays: 1 }],
+        },
+      },
+    });
+  });
+
   it('lists regions and cities with search and region filters', async () => {
     const region = createExecutor([
       {

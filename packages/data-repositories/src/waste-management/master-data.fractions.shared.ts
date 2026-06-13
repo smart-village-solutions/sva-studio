@@ -138,6 +138,9 @@ const hasEnabledReminderChannel = (
   channels: WasteFractionRecord['reminderConfig']['channels']
 ): boolean => channels.push || channels.email || channels.calendar;
 
+const isEmptyReminderConfig = (config: WasteFractionRecord['reminderConfig']): boolean =>
+  config.reminderCount === 'none' && !hasEnabledReminderChannel(config.channels);
+
 const normalizeReminderConfigFromLegacy = (row: WasteFractionRow): WasteFractionRecord['reminderConfig'] => {
   if (!row.reminder_count || row.reminder_count === 'none') {
     return emptyWasteFractionReminderConfig;
@@ -189,6 +192,10 @@ const normalizeReminderConfigFromJson = (value: unknown): WasteFractionRecord['r
     calendar: channelsRecord.calendar === true,
   } as const;
 
+  if (!hasEnabledReminderChannel(channels)) {
+    return emptyWasteFractionReminderConfig;
+  }
+
   return {
     reminderCount,
     channels,
@@ -196,6 +203,21 @@ const normalizeReminderConfigFromJson = (value: unknown): WasteFractionRecord['r
     ...(channels.email ? { email: normalizeReminderChannelConfig(candidate.email) ?? { slots: [] } } : {}),
     ...(channels.calendar ? { calendar: normalizeReminderChannelConfig(candidate.calendar) ?? { slots: [] } } : {}),
   };
+};
+
+const resolveReminderConfig = (row: WasteFractionRow): WasteFractionRecord['reminderConfig'] => {
+  const legacyConfig = normalizeReminderConfigFromLegacy(row);
+  const jsonConfig = normalizeReminderConfigFromJson(row.reminder_config);
+
+  if (jsonConfig === null) {
+    return legacyConfig;
+  }
+
+  if (isEmptyReminderConfig(jsonConfig) && !isEmptyReminderConfig(legacyConfig)) {
+    return legacyConfig;
+  }
+
+  return jsonConfig;
 };
 
 export const mapWasteFractionRow = (row: WasteFractionRow): WasteFractionRecord => ({
@@ -207,7 +229,7 @@ export const mapWasteFractionRow = (row: WasteFractionRow): WasteFractionRecord 
   color: row.color,
   description: row.description ?? undefined,
   active: row.active,
-  reminderConfig: normalizeReminderConfigFromJson(row.reminder_config) ?? normalizeReminderConfigFromLegacy(row),
+  reminderConfig: resolveReminderConfig(row),
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });

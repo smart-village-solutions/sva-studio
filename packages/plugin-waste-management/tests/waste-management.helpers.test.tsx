@@ -401,6 +401,44 @@ describe('waste management helper modules', () => {
     });
 
     expect(
+      wasteMasterDataFormMappers.fractionToForm({
+        id: 'fraction-clamp',
+        name: 'Clamp',
+        pdfShortLabel: undefined,
+        translations: {},
+        containerSize: undefined,
+        color: '#111111',
+        description: undefined,
+        active: true,
+        reminderConfig: {
+          reminderCount: 'once',
+          channels: { push: true, email: false, calendar: false },
+          push: {
+            slots: [{ id: 'fraction-clamp:push:first', maxLeadDays: 5, defaultLeadDays: 9 }],
+          },
+        },
+        createdAt: '2026-05-10T10:00:00.000Z',
+        updatedAt: '2026-05-10T10:00:00.000Z',
+      })
+    ).toEqual({
+      id: 'fraction-clamp',
+      name: 'Clamp',
+      pdfShortLabel: '',
+      translations: {},
+      containerSize: '',
+      color: '#111111',
+      description: '',
+      active: true,
+      reminderConfig: {
+        reminderCount: 'once',
+        channels: { push: true, email: false, calendar: false },
+        push: {
+          slots: [{ id: 'fraction-clamp:push:first', maxLeadDays: 5, defaultLeadDays: 5 }],
+        },
+      },
+    });
+
+    expect(
       wasteMasterDataInputMappers.toUpdateFractionInput({
         id: 'fraction-3',
         name: ' Papier ',

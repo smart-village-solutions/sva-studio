@@ -123,6 +123,34 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: /reminderConfig|reminderCount/i,
     },
     {
+      label: 'fraction create rejects reminder defaults above the channel max lead days',
+      handler: wasteManagementFractionHandlers.createWasteManagementFractionInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/fractions', {
+          method: 'POST',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            id: 'fraction-invalid-reminder-default',
+            name: 'Papier',
+            pdfShortLabel: 'PAP',
+            color: '#123456',
+            active: true,
+            reminderConfig: {
+              reminderCount: 'once',
+              channels: {
+                push: true,
+                email: false,
+                calendar: false,
+              },
+              push: {
+                slots: [{ id: 'fraction-invalid-reminder-default:push:first', maxLeadDays: 7, defaultLeadDays: 14 }],
+              },
+            },
+          }),
+        }),
+      expectedMessage: /defaultLeadDays|maxLeadDays/i,
+    },
+    {
       label: 'region create rejects invalid payloads',
       handler: wasteManagementRegionHandlers.createWasteManagementRegionInternal,
       request: () =>

@@ -11,11 +11,21 @@ const wasteFractionReminderLeadDaySchema = z
   .min(wasteManagementMasterDataContract.fractionReminderLeadDayMin)
   .max(wasteManagementMasterDataContract.fractionReminderLeadDayMax);
 
-const wasteFractionReminderSlotSchema = z.object({
-  id: z.string().trim().min(1),
-  maxLeadDays: wasteFractionReminderLeadDaySchema,
-  defaultLeadDays: wasteFractionReminderLeadDaySchema,
-});
+const wasteFractionReminderSlotSchema = z
+  .object({
+    id: z.string().trim().min(1),
+    maxLeadDays: wasteFractionReminderLeadDaySchema,
+    defaultLeadDays: wasteFractionReminderLeadDaySchema,
+  })
+  .superRefine((value, ctx) => {
+    if (value.defaultLeadDays > value.maxLeadDays) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['defaultLeadDays'],
+        message: 'defaultLeadDays darf maxLeadDays nicht überschreiten.',
+      });
+    }
+  });
 
 const wasteFractionReminderChannelSchema = z.object({
   slots: z.array(wasteFractionReminderSlotSchema).max(2),

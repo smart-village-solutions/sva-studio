@@ -13,7 +13,7 @@ export type PluginArchitectureAllowlistEntry = {
   resolvedTarget: string;
   kind: PluginArchitectureImportKind;
   reason: string;
-  ticket?: string;
+  ticket: string;
 };
 
 const RULES = new Set<PluginArchitectureViolationRule>([
@@ -43,17 +43,14 @@ export const parsePluginArchitectureAllowlist = (value: unknown): readonly Plugi
       typeof importSpecifier !== 'string' ||
       typeof resolvedTarget !== 'string' ||
       typeof kind !== 'string' ||
-      typeof reason !== 'string'
+      typeof reason !== 'string' ||
+      typeof ticket !== 'string'
     ) {
       throw new Error(`Allowlist entry ${index} is incomplete or invalid.`);
     }
 
     if (!IMPORT_KINDS.has(kind as PluginArchitectureImportKind)) {
       throw new Error(`Allowlist entry ${index} uses unknown kind ${String(kind)}.`);
-    }
-
-    if (ticket !== undefined && typeof ticket !== 'string') {
-      throw new Error(`Allowlist entry ${index} has invalid ticket.`);
     }
 
     return {
@@ -63,7 +60,7 @@ export const parsePluginArchitectureAllowlist = (value: unknown): readonly Plugi
       resolvedTarget,
       kind: kind as PluginArchitectureImportKind,
       reason,
-      ...(ticket ? { ticket } : {}),
+      ticket,
     };
   });
 };

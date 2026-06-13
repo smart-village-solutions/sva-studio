@@ -327,4 +327,19 @@ export const pluginDrift = authorize;
       },
     ]);
   });
+
+  it('rejects JSON allowlist entries without a required ticket', () => {
+    expect(() =>
+      parsePluginArchitectureAllowlist([
+        {
+          plugin: 'waste-management',
+          sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+          importSpecifier: '@sva/core/waste-management',
+          resolvedTarget: '@sva/core/waste-management',
+          kind: 'type',
+          reason: 'Brownfield bridge until SDK contract exists',
+        },
+      ])
+    ).toThrowError('Allowlist entry 0 is incomplete or invalid.');
+  });
 });

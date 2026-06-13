@@ -1,7 +1,7 @@
 import type {
   WasteFractionReminderConfig,
-  WasteLocalizedTextRecord,
 } from './master-data-contract.js';
+import type { WasteLocalizedTextRecord } from './master-data-localized-text.js';
 
 export type WasteFractionRecord = {
   readonly id: string;

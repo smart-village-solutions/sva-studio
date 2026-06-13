@@ -369,6 +369,38 @@ describe('waste management helper modules', () => {
     });
 
     expect(
+      wasteMasterDataFormMappers.fractionToForm({
+        id: 'fraction-legacy',
+        name: 'Legacy',
+        pdfShortLabel: undefined,
+        translations: {},
+        containerSize: undefined,
+        color: '#111111',
+        description: undefined,
+        active: true,
+        reminderConfig: {
+          reminderCount: 'once',
+          channels: { push: false, email: false, calendar: false },
+        },
+        createdAt: '2026-05-10T10:00:00.000Z',
+        updatedAt: '2026-05-10T10:00:00.000Z',
+      })
+    ).toEqual({
+      id: 'fraction-legacy',
+      name: 'Legacy',
+      pdfShortLabel: '',
+      translations: {},
+      containerSize: '',
+      color: '#111111',
+      description: '',
+      active: true,
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: { push: false, email: false, calendar: false },
+      },
+    });
+
+    expect(
       wasteMasterDataInputMappers.toUpdateFractionInput({
         id: 'fraction-3',
         name: ' Papier ',

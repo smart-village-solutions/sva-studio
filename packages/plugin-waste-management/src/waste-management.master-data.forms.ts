@@ -2,11 +2,7 @@ import type {
   WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteFractionRecord,
-  WasteFractionReminderChannel,
-  WasteFractionReminderChannelConfig,
-  WasteFractionReminderCount,
   WasteFractionReminderConfig,
-  WasteFractionReminderSlot,
   WasteHouseNumberRecord,
   WasteLocalizedTextRecord,
   WasteRegionRecord,
@@ -28,6 +24,10 @@ import type {
   UpdateWasteManagementRegionInput,
   UpdateWasteManagementStreetInput,
 } from './waste-management.api.js';
+import {
+  createDefaultReminderChannels,
+  normalizeFractionReminderConfig,
+} from './waste-management.master-data.fraction-reminder-config.js';
 import { compactOptionalString, createId, normalizeLocalizedTextRecord } from './waste-management.master-data.form-helpers.js';
 
 export type FractionFormState = {
@@ -57,94 +57,7 @@ export type CollectionLocationFormState = {
 };
 
 export type LocationTourLinkBulkFormState = { readonly tourId: string; readonly startDate: string; readonly endDate: string };
-const defaultFractionReminderLeadDays = 1;
 const normalizeFractionShortLabel = (value: string): string => value.trim().toUpperCase();
-const createDefaultReminderChannels = (): WasteFractionReminderConfig['channels'] => ({
-  push: false,
-  email: false,
-  calendar: false,
-});
-
-const getReminderSlotCount = (reminderCount: WasteFractionReminderCount): number =>
-  reminderCount === 'twice' ? 2 : reminderCount === 'once' ? 1 : 0;
-
-const getReminderSlotId = (fractionId: string, channel: WasteFractionReminderChannel, index: number): string =>
-  `${fractionId}:${channel}:${index === 0 ? 'first' : 'second'}`;
-
-const normalizeReminderSlot = (
-  fractionId: string,
-  channel: WasteFractionReminderChannel,
-  index: number,
-  slot?: WasteFractionReminderSlot
-): WasteFractionReminderSlot => ({
-  id: slot?.id?.trim() || getReminderSlotId(fractionId, channel, index),
-  maxLeadDays: slot?.maxLeadDays ?? defaultFractionReminderLeadDays,
-  defaultLeadDays: slot?.defaultLeadDays ?? defaultFractionReminderLeadDays,
-});
-
-const normalizeReminderChannelConfig = (
-  fractionId: string,
-  channel: WasteFractionReminderChannel,
-  slots: readonly WasteFractionReminderSlot[] | undefined,
-  reminderCount: WasteFractionReminderCount
-): WasteFractionReminderChannelConfig => ({
-  slots: Array.from({ length: getReminderSlotCount(reminderCount) }, (_, index) =>
-    normalizeReminderSlot(fractionId, channel, index, slots?.[index])
-  ),
-});
-
-export const normalizeFractionReminderConfig = (
-  fractionId: string,
-  reminderConfig?: WasteFractionReminderConfig | null
-): WasteFractionReminderConfig => {
-  if (!reminderConfig || reminderConfig.reminderCount === 'none') {
-    return {
-      reminderCount: 'none',
-      channels: createDefaultReminderChannels(),
-    };
-  }
-
-  const channels = {
-    push: Boolean(reminderConfig.channels.push),
-    email: Boolean(reminderConfig.channels.email),
-    calendar: Boolean(reminderConfig.channels.calendar),
-  };
-
-  return {
-    reminderCount: reminderConfig.reminderCount,
-    channels,
-    ...(channels.push
-      ? {
-          push: normalizeReminderChannelConfig(
-            fractionId,
-            'push',
-            reminderConfig.push?.slots,
-            reminderConfig.reminderCount
-          ),
-        }
-      : {}),
-    ...(channels.email
-      ? {
-          email: normalizeReminderChannelConfig(
-            fractionId,
-            'email',
-            reminderConfig.email?.slots,
-            reminderConfig.reminderCount
-          ),
-        }
-      : {}),
-    ...(channels.calendar
-      ? {
-          calendar: normalizeReminderChannelConfig(
-            fractionId,
-            'calendar',
-            reminderConfig.calendar?.slots,
-            reminderConfig.reminderCount
-          ),
-        }
-      : {}),
-  };
-};
 
 export const wasteMasterDataFormDefaults = {
   createFraction: (): FractionFormState => ({

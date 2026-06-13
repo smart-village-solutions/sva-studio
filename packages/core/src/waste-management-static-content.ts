@@ -1,4 +1,5 @@
-import type { WasteFractionRecord, WasteLocalizedTextRecord } from './waste-management-master-data.js';
+import type { WasteFractionRecord } from './waste-management-master-data.js';
+import type { WasteLocalizedTextRecord } from './waste-management/master-data-localized-text.js';
 
 type WasteReminderChannel = keyof WasteFractionRecord['reminderConfig']['channels'];
 

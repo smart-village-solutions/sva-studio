@@ -3630,10 +3630,10 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 --
 -- Runtime-managed external waste schema note
 --
--- Die externe Waste-Fachdatenbank fuehrt `waste_fractions.reminder_config`
--- als JSONB-Source-of-Truth fuer Erinnerungen.
+-- Die externe Waste-Fachdatenbank führt `waste_fractions.reminder_config`
+-- als JSONB-Source-of-Truth für Erinnerungen.
 -- Legacy-Flachspalten bleiben dort nur als Migrationsquelle und
--- Kompatibilitaetsoberflaeche erhalten und sind bewusst nicht Teil dieses
+-- Kompatibilitätsoberfläche erhalten und sind bewusst nicht Teil dieses
 -- migrationsbasierten Studio-Snapshots.
 --
 

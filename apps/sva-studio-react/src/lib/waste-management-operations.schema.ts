@@ -36,7 +36,11 @@ SET reminder_config = jsonb_strip_nulls(
   jsonb_build_object(
     'reminder_count',
     CASE
-      WHEN reminder_count IN ('once', 'twice') THEN reminder_count
+      WHEN reminder_count IN ('once', 'twice') AND (
+        COALESCE(reminder_channel_push_enabled, FALSE) OR
+        COALESCE(reminder_channel_email_enabled, FALSE) OR
+        COALESCE(reminder_channel_calendar_enabled, FALSE)
+      ) THEN reminder_count
       ELSE 'none'
     END,
     'channels',

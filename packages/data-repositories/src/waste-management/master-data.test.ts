@@ -298,6 +298,42 @@ describe('waste master data repository', () => {
     ]);
   });
 
+  it('fails closed for legacy reminder rows without active channels', async () => {
+    const { executor } = createExecutor([
+      {
+        id: 'fraction-legacy',
+        name: 'Legacy',
+        pdf_short_label: null,
+        label_translations: {},
+        container_size: null,
+        color: '#111111',
+        description: null,
+        active: true,
+        reminder_config: null,
+        reminder_count: 'once',
+        first_reminder_max_lead_days: 7,
+        second_reminder_max_lead_days: null,
+        reminder_channel_push_enabled: false,
+        reminder_channel_email_enabled: false,
+        reminder_channel_calendar_enabled: false,
+        created_at: '2026-05-09T10:00:00.000Z',
+        updated_at: '2026-05-09T11:00:00.000Z',
+      },
+    ]);
+
+    await expect(createWasteMasterDataRepository(executor).getWasteFractionById('fraction-legacy')).resolves.toMatchObject({
+      id: 'fraction-legacy',
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: {
+          push: false,
+          email: false,
+          calendar: false,
+        },
+      },
+    });
+  });
+
   it('lists regions and cities with search and region filters', async () => {
     const region = createExecutor([
       {

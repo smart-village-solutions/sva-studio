@@ -126,6 +126,16 @@ describe('waste management operations runtime', () => {
     expect(statements).toContain('waste_fractions_reminder_count_check');
   });
 
+  it('normalizes legacy reminders without active channels to none during reminder_config backfill', () => {
+    const statements = applySchemaStatements('wm').join('\n');
+
+    expect(statements).toMatch(
+      /WHEN reminder_count IN \('once', 'twice'\) AND \(\s*COALESCE\(reminder_channel_push_enabled, FALSE\) OR\s*COALESCE\(reminder_channel_email_enabled, FALSE\) OR\s*COALESCE\(reminder_channel_calendar_enabled, FALSE\)\s*\) THEN reminder_count/s
+    );
+    expect(statements).toContain("'reminder_count'");
+    expect(statements).toContain("ELSE 'none'");
+  });
+
   it('parses geography imports as a dry run from an xlsx workbook', async () => {
     const query = vi
       .fn()

@@ -63,5 +63,3 @@ export const wasteManagementMasterDataContract = {
   isWasteHolidayRuleStrategy: (value: string): value is WasteHolidayRuleStrategy =>
     (wasteHolidayRuleStrategies as readonly string[]).includes(value),
 } as const;
-
-export type WasteLocalizedTextRecord = Readonly<Record<string, string>>;

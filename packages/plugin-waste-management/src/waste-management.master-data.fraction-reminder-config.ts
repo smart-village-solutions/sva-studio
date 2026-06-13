@@ -1,10 +1,10 @@
-import { wasteManagementMasterDataContract } from '@sva/core';
-import type {
-  WasteFractionReminderChannel,
-  WasteFractionReminderChannelConfig,
-  WasteFractionReminderCount,
-  WasteFractionReminderConfig,
-  WasteFractionReminderSlot,
+import {
+  wasteManagementMasterDataContract,
+  type WasteFractionReminderChannel,
+  type WasteFractionReminderChannelConfig,
+  type WasteFractionReminderCount,
+  type WasteFractionReminderConfig,
+  type WasteFractionReminderSlot,
 } from '@sva/plugin-sdk';
 
 const defaultFractionReminderLeadDays = wasteManagementMasterDataContract.fractionReminderLeadDayMin;

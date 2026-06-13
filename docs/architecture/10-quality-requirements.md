@@ -177,10 +177,11 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - lokale Basis-Control-Duplikate für Button, Input, Select, Tabs, Dialog, Alert, Badge, Table oder DataTable in `packages/plugin-*` sind unzulässig
   - fachliche Wrapper bleiben zulässig, wenn sie Studio-Primitives komponieren und Accessibility-/Design-Token-Semantik erhalten
 - Plugin-Architecture-Boundary:
-  - `pnpm check:plugin-architecture-boundary` muss fuer Plugin-Packages gruen sein
-  - der Check blockiert neue Workspace-Dependencies, Source-Imports und Host-Signale ausserhalb des dokumentierten Plugin-Vertrags
-  - Brownfield-Abweichungen sind nur mit maschinenlesbarer Baseline unter `docs/reports/plugin-architecture-boundary-baseline.md` tolerierbar
-  - Baseline-Aenderungen und neue Advanced-Path-Faehigkeiten gelten als review-pflichtige Architekturereignisse
+  - `pnpm check:plugin-architecture-boundary` laeuft im ersten Rollout warn-only fuer `packages/plugin-*`
+  - der Check bewertet direkte, relative, Runtime-, Type- und Re-Export-Kanten sowie Workspace-Dependencies ausserhalb des dokumentierten Plugin-Vertrags
+  - `@sva/plugin-sdk` und `@sva/studio-ui-react` sind die einzigen erlaubten internen Plugin-Einstiegspunkte
+  - Brownfield-Abweichungen sind nur mit maschinenlesbarer Allowlist unter `config/plugin-architecture-allowlist.json` tolerierbar
+  - Allowlist-Aenderungen, neue Advanced-Path-Faehigkeiten und verbleibende Brownfield-Historie in `docs/reports/plugin-architecture-boundary-baseline.md` gelten als review-pflichtige Architekturereignisse
 - Medienmanagement:
   - `openspec validate add-media-management --strict` muss grün sein
   - `@sva/media` bleibt typstabil über `test:types`

@@ -8,6 +8,7 @@ import {
   collectPluginArchitectureViolations,
   diffViolationsAgainstBaseline,
   parsePluginArchitectureBaseline,
+  runPluginArchitectureBoundaryCheck,
   type PluginArchitectureViolation,
 } from './check-plugin-architecture-boundary.ts';
 import { parsePluginArchitectureAllowlist } from './plugin-architecture-boundary-baseline.ts';
@@ -298,6 +299,29 @@ export { adminResources };
         }),
       ])
     );
+  });
+
+  it('keeps the check non-blocking while still reporting non-allowlisted violations', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createWorkspacePackage(workspaceRoot, 'core', {
+      packageName: '@sva/core',
+      sourceFiles: {
+        'src/public-api.ts': 'export const runtimeValue = true;\n',
+      },
+    });
+    createPluginPackage(workspaceRoot, 'plugin-warning', {
+      packageName: '@sva/plugin-warning',
+      sourceFiles: {
+        'src/index.ts': `import { runtimeValue } from '@sva/core';
+export const pluginValue = runtimeValue;
+`,
+      },
+    });
+
+    const result = await runPluginArchitectureBoundaryCheck(workspaceRoot, [], { mode: 'warn' });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.violations).toHaveLength(1);
   });
 
   it('detects forbidden workspace dependencies, imports and path signals', async () => {

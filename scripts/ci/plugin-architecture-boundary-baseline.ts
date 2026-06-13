@@ -117,10 +117,35 @@ export const parsePluginArchitectureBaseline = (markdown: string): readonly Plug
 const getViolationKey = (violation: Pick<PluginArchitectureViolation, 'packageName' | 'relativePath' | 'rule' | 'subject'>): string =>
   `${violation.packageName}::${violation.relativePath}::${violation.rule}::${violation.subject}`;
 
+const getPluginNameFromPackageName = (packageName: string): string => packageName.replace(/^@sva\/plugin-/, '');
+
+const getAllowlistKey = (
+  violation: Pick<PluginArchitectureViolation, 'packageName' | 'relativePath' | 'importSpecifier' | 'resolvedTarget' | 'kind'>
+): string => {
+  return [
+    getPluginNameFromPackageName(violation.packageName),
+    violation.relativePath,
+    violation.importSpecifier ?? '',
+    violation.resolvedTarget ?? '',
+    violation.kind ?? '',
+  ].join('::');
+};
+
+const getAllowlistEntryKey = (entry: PluginArchitectureAllowlistEntry): string =>
+  [entry.plugin, entry.sourceFile, entry.importSpecifier, entry.resolvedTarget, entry.kind].join('::');
+
 export const diffViolationsAgainstBaseline = (
   violations: readonly PluginArchitectureViolation[],
   baseline: readonly PluginArchitectureBaselineEntry[]
 ): readonly PluginArchitectureViolation[] => {
   const baselineKeys = new Set(baseline.map(getViolationKey));
   return violations.filter((violation) => !baselineKeys.has(getViolationKey(violation)));
+};
+
+export const diffViolationsAgainstAllowlist = (
+  violations: readonly PluginArchitectureViolation[],
+  allowlist: readonly PluginArchitectureAllowlistEntry[]
+): readonly PluginArchitectureViolation[] => {
+  const allowlistKeys = new Set(allowlist.map(getAllowlistEntryKey));
+  return violations.filter((violation) => !allowlistKeys.has(getAllowlistKey(violation)));
 };

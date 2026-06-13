@@ -38,10 +38,6 @@ type PersistedReminderSlot = {
   readonly defaultLeadDays?: unknown;
 };
 
-type PersistedReminderChannelConfig = {
-  readonly slots?: unknown;
-};
-
 type PersistedReminderConfig = {
   readonly reminder_count?: unknown;
   readonly reminderCount?: unknown;
@@ -204,7 +200,7 @@ const serializeReminderConfig = (reminderConfig: WasteFractionRecord['reminderCo
     ...(reminderConfig.channels.push && reminderConfig.push
       ? {
           push: {
-            slots: reminderConfig.push.slots.map((slot) => ({
+            slots: reminderConfig.push.slots.map((slot: WasteFractionReminderSlot) => ({
               id: slot.id,
               max_lead_days: slot.maxLeadDays,
               default_lead_days: slot.defaultLeadDays,
@@ -215,7 +211,7 @@ const serializeReminderConfig = (reminderConfig: WasteFractionRecord['reminderCo
     ...(reminderConfig.channels.email && reminderConfig.email
       ? {
           email: {
-            slots: reminderConfig.email.slots.map((slot) => ({
+            slots: reminderConfig.email.slots.map((slot: WasteFractionReminderSlot) => ({
               id: slot.id,
               max_lead_days: slot.maxLeadDays,
               default_lead_days: slot.defaultLeadDays,
@@ -226,7 +222,7 @@ const serializeReminderConfig = (reminderConfig: WasteFractionRecord['reminderCo
     ...(reminderConfig.channels.calendar && reminderConfig.calendar
       ? {
           calendar: {
-            slots: reminderConfig.calendar.slots.map((slot) => ({
+            slots: reminderConfig.calendar.slots.map((slot: WasteFractionReminderSlot) => ({
               id: slot.id,
               max_lead_days: slot.maxLeadDays,
               default_lead_days: slot.defaultLeadDays,

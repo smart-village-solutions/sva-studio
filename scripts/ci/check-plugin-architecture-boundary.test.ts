@@ -161,6 +161,65 @@ export { appShell } from '../../../apps/sva-studio-react/src/app-shell.js';
     );
   });
 
+  it('classifies runtime, type, and reexport workspace edges separately', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createWorkspacePackage(workspaceRoot, 'core', {
+      packageName: '@sva/core',
+      sourceFiles: {
+        'src/public-api.ts': 'export type CoreType = { value: string }; export const runtimeValue = true;\n',
+      },
+    });
+    createPluginPackage(workspaceRoot, 'plugin-edge-kinds', {
+      packageName: '@sva/plugin-edge-kinds',
+      sourceFiles: {
+        'src/index.ts': `
+import type { CoreType } from '@sva/core';
+import { runtimeValue } from '@sva/core';
+export { runtimeValue as forwardedRuntime } from '@sva/core';
+export type { CoreType as ForwardedCoreType } from '@sva/core';
+export const pluginValue: CoreType | boolean = runtimeValue;
+`,
+      },
+    });
+
+    const violations = await collectPluginArchitectureViolations(workspaceRoot);
+
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'type', resolvedTarget: '@sva/core' }),
+        expect.objectContaining({ kind: 'runtime', resolvedTarget: '@sva/core' }),
+        expect.objectContaining({ kind: 'reexport', resolvedTarget: '@sva/core' }),
+      ])
+    );
+  });
+
+  it('normalizes relative imports to package or subpath targets instead of source file paths', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createWorkspacePackage(workspaceRoot, 'core', {
+      packageName: '@sva/core',
+      sourceFiles: {
+        'src/waste-management/static-content.ts': 'export const staticContent = true;\n',
+      },
+    });
+    createPluginPackage(workspaceRoot, 'plugin-relative-subpath', {
+      packageName: '@sva/plugin-relative-subpath',
+      sourceFiles: {
+        'src/index.ts': `export { staticContent } from '../../core/src/waste-management/static-content.js';\n`,
+      },
+    });
+
+    const violations = await collectPluginArchitectureViolations(workspaceRoot);
+
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'reexport',
+          resolvedTarget: '@sva/core/waste-management',
+        }),
+      ])
+    );
+  });
+
   it('detects forbidden workspace dependencies, imports and path signals', async () => {
     const workspaceRoot = createTempWorkspace();
     createPluginPackage(workspaceRoot, 'plugin-drift', {

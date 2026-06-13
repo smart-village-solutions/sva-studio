@@ -33,10 +33,24 @@ const FORBIDDEN_PATH_SIGNALS = ['route-binding', 'plugin-catalog', 'catalog-load
 const REVIEW_REQUIRED_PATH_SIGNALS = ['server.ts', 'plugin-operations.ts', '.controller.', '.loaders.', '.state.', '.submissions.'];
 
 export type PluginArchitectureViolationRule = 'workspace-dependency' | 'workspace-import' | 'forbidden-path-signal' | 'review-required-path-signal';
-export type PluginArchitectureViolation = { packageName: string; relativePath: string; rule: PluginArchitectureViolationRule; subject: string; message: string };
+export type PluginArchitectureImportKind = 'runtime' | 'type' | 'reexport';
+export type PluginArchitectureViolation = {
+  packageName: string;
+  relativePath: string;
+  rule: PluginArchitectureViolationRule;
+  subject: string;
+  message: string;
+  importSpecifier?: string;
+  resolvedTarget?: string;
+  kind?: PluginArchitectureImportKind;
+};
 export type PluginArchitectureBaselineEntry = { packageName: string; relativePath: string; rule: PluginArchitectureViolationRule; subject: string; owner: string; justification: string; removalChange: string };
 type PackageJson = { name?: string; dependencies?: Record<string, string>; devDependencies?: Record<string, string>; optionalDependencies?: Record<string, string> };
 type PluginPackage = { packageName: string; packageDir: string; packageJson: PackageJson };
+type WorkspaceImportEdge = {
+  importSpecifier: string;
+  kind: PluginArchitectureImportKind;
+};
 
 const toPosixRelativePath = (projectRoot: string, targetPath: string): string =>
   path.relative(projectRoot, targetPath).split(path.sep).join(path.posix.sep);
@@ -100,6 +114,21 @@ const readPluginPackages = async (projectRoot: string): Promise<readonly PluginP
 const isWorkspaceDependency = (packageName: string, version: string): boolean =>
   packageName.startsWith('@sva/') && version.startsWith('workspace:');
 
+const normalizeWorkspaceResolvedTarget = (packageName: string, resolvedRelativePath: string): string => {
+  if (!resolvedRelativePath.startsWith('packages/')) return resolvedRelativePath;
+
+  const sourceMatch = resolvedRelativePath.match(/^packages\/([^/]+)\/src\/(.+)$/);
+  if (!sourceMatch) return packageName;
+
+  const [, , sourceSubpath] = sourceMatch;
+  const cleaned = sourceSubpath
+    .replace(/\/index\.[^.]+$/, '')
+    .replace(/\.[^.]+$/, '');
+  const segments = cleaned.split('/');
+  segments.pop();
+  return segments.length > 0 ? `${packageName}/${segments.join('/')}` : packageName;
+};
+
 const normalizeWorkspaceModuleSpecifier = async (
   moduleSpecifier: string,
   importerPath: string,
@@ -124,7 +153,7 @@ const normalizeWorkspaceModuleSpecifier = async (
     const packageJsonPath = path.join(currentDirectory, 'package.json');
     if (await pathExists(packageJsonPath)) {
       const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as PackageJson;
-      return packageJson.name ?? resolvedRelativePath;
+      return packageJson.name ? normalizeWorkspaceResolvedTarget(packageJson.name, resolvedRelativePath) : resolvedRelativePath;
     }
     if (currentDirectory === projectRoot) break;
     currentDirectory = path.dirname(currentDirectory);
@@ -157,26 +186,27 @@ const matchesReviewRequiredPathSignal = (relativePath: string, signal: string): 
   return normalizedPath.includes(signal);
 };
 
-const getModuleSpecifiers = (sourceFile: ts.SourceFile): readonly string[] => {
-  const moduleSpecifiers = new Set<string>();
-  const visit = (node: ts.Node): void => {
+const getWorkspaceImportEdges = (sourceFile: ts.SourceFile): readonly WorkspaceImportEdge[] => {
+  const edges: WorkspaceImportEdge[] = [];
+
+  sourceFile.forEachChild((node) => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
-      moduleSpecifiers.add(node.moduleSpecifier.text);
-    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
-      moduleSpecifiers.add(node.moduleSpecifier.text);
-    } else if (
-      ts.isCallExpression(node) &&
-      ((node.expression.kind === ts.SyntaxKind.ImportKeyword) ||
-        (ts.isIdentifier(node.expression) && node.expression.text === 'require')) &&
-      node.arguments.length > 0 &&
-      ts.isStringLiteral(node.arguments[0])
-    ) {
-      moduleSpecifiers.add(node.arguments[0].text);
+      edges.push({
+        importSpecifier: node.moduleSpecifier.text,
+        kind: node.importClause?.isTypeOnly ? 'type' : 'runtime',
+      });
+      return;
     }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-  return [...moduleSpecifiers];
+
+    if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      edges.push({
+        importSpecifier: node.moduleSpecifier.text,
+        kind: 'reexport',
+      });
+    }
+  });
+
+  return edges;
 };
 
 const createViolation = (
@@ -184,8 +214,9 @@ const createViolation = (
   relativePath: string,
   rule: PluginArchitectureViolationRule,
   subject: string,
-  message: string
-): PluginArchitectureViolation => ({ packageName, relativePath, rule, subject, message });
+  message: string,
+  details: Partial<Pick<PluginArchitectureViolation, 'importSpecifier' | 'resolvedTarget' | 'kind'>> = {}
+): PluginArchitectureViolation => ({ packageName, relativePath, rule, subject, message, ...details });
 
 const collectPackageViolations = async (
   pluginPackage: PluginPackage,
@@ -220,23 +251,29 @@ const collectPackageViolations = async (
     const relativePath = toPosixRelativePath(projectRoot, filePath);
     const sourceFile = ts.createSourceFile(filePath, await readFile(filePath, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 
-    for (const rawModuleSpecifier of getModuleSpecifiers(sourceFile)) {
-      const moduleSpecifier = await normalizeWorkspaceModuleSpecifier(
-        rawModuleSpecifier,
+    for (const edge of getWorkspaceImportEdges(sourceFile)) {
+      const resolvedTarget = await normalizeWorkspaceModuleSpecifier(
+        edge.importSpecifier,
         filePath,
         pluginPackage.packageDir,
         projectRoot
       );
-      if (!moduleSpecifier || isAllowedWorkspaceModuleSpecifier(moduleSpecifier)) {
+      if (!resolvedTarget || isAllowedWorkspaceModuleSpecifier(resolvedTarget)) {
         continue;
       }
-      const subject = getWorkspaceImportSubject(moduleSpecifier);
-      const message = moduleSpecifier.startsWith('apps/')
+      const subject = getWorkspaceImportSubject(resolvedTarget);
+      const message = resolvedTarget.startsWith('apps/')
         ? `${pluginPackage.packageName} importiert App-Code statt eines oeffentlichen Plugin-Vertrags`
-        : isForbiddenHostWorkspaceModuleSpecifier(moduleSpecifier)
+        : isForbiddenHostWorkspaceModuleSpecifier(resolvedTarget)
           ? `${pluginPackage.packageName} importiert das interne Host-Package ${subject}`
           : `${pluginPackage.packageName} importiert mit ${subject} einen nicht freigegebenen Workspace-Vertrag`;
-      violations.push(createViolation(pluginPackage.packageName, relativePath, 'workspace-import', subject, message));
+      violations.push(
+        createViolation(pluginPackage.packageName, relativePath, 'workspace-import', subject, message, {
+          importSpecifier: edge.importSpecifier,
+          resolvedTarget,
+          kind: edge.kind,
+        })
+      );
     }
 
     const normalizedPath = relativePath.toLowerCase();

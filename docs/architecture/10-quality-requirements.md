@@ -180,7 +180,9 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm check:plugin-architecture-boundary` laeuft im ersten Rollout warn-only fuer `packages/plugin-*`
   - der Check bewertet direkte, relative, Runtime-, Type- und Re-Export-Kanten sowie Workspace-Dependencies ausserhalb des dokumentierten Plugin-Vertrags
   - `@sva/plugin-sdk` und `@sva/studio-ui-react` sind die einzigen erlaubten internen Plugin-Einstiegspunkte
-  - Brownfield-Abweichungen sind nur mit maschinenlesbarer Allowlist unter `config/plugin-architecture-allowlist.json` tolerierbar
+  - importkantenbezogene Brownfield-Abweichungen sind nur mit maschinenlesbarer Allowlist unter `config/plugin-architecture-allowlist.json` tolerierbar
+  - der aktuelle JSON-Vertrag der Allowlist umfasst `plugin`, `sourceFile`, `importSpecifier`, `resolvedTarget`, `kind`, `reason` und optional `ticket`
+  - die Allowlist ersetzt historische Baseline-Klassen wie Workspace-Dependencies oder Path-Signal-Historie nicht vollstaendig eins zu eins
   - Allowlist-Aenderungen, neue Advanced-Path-Faehigkeiten und verbleibende Brownfield-Historie in `docs/reports/plugin-architecture-boundary-baseline.md` gelten als review-pflichtige Architekturereignisse
 - Medienmanagement:
   - `openspec validate add-media-management --strict` muss grün sein

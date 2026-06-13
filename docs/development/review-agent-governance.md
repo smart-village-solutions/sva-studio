@@ -122,9 +122,11 @@ Die maschinelle Auswertung laeuft ueber `pnpm check:bot-comment-handling` im Wor
 
 - "Vorerst im Plugin" oder "nur intern" ist keine ausreichende Begruendung fuer Core- oder Host-Kopplung.
 - Jede temporaere Advanced-Path-Ausnahme braucht einen benannten Folgechange oder ein Sunset-Ziel.
-- Allowlist-Eintraege ohne Owner, Begruendung und Abbauziel sind review-seitig nicht merge-faehig.
+- Allowlist-Eintraege muessen dem aktuellen JSON-Vertrag entsprechen: `plugin`, `sourceFile`, `importSpecifier`, `resolvedTarget`, `kind`, `reason` und optional `ticket`.
+- Review-Metadaten wie Owner, Folgechange oder Abbauplanung koennen zusaetzlich in PR-, Ticket- oder Architekturkontext verlangt werden, sind aber kein Feld des aktuellen JSON-Vertrags.
 - `pnpm check:plugin-architecture-boundary` laeuft im ersten Rollout warn-only fuer `packages/plugin-*`; Review behandelt neue Guard-Warnungen trotzdem als Architektur-Signal.
 - Der Guard bewertet direkte, relative, Runtime-, Type- und Re-Export-Kanten; `@sva/plugin-sdk` und `@sva/studio-ui-react` bleiben die einzigen erlaubten internen Plugin-Einstiegspunkte.
+- Die heutige Allowlist ist importkantenorientiert und ersetzt historische Baseline-Klassen wie Workspace-Dependencies oder Path-Signals nicht eins zu eins.
 
 ## Templates
 

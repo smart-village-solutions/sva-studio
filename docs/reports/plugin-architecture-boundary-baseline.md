@@ -2,20 +2,13 @@
 
 ## Zweck
 
-Dieser Report dokumentiert nur noch die Brownfield-Historie des ersten Boundary-Guard-Rollouts. Die fuehrende maschinenlesbare Quelle fuer bewusst tolerierte Altfaelle ist `config/plugin-architecture-allowlist.json`.
-
-## Guard-Status im Rollout
-
-- `pnpm check:plugin-architecture-boundary` laeuft im ersten Rollout warn-only.
-- Der Scope bleibt auf `packages/plugin-*` begrenzt.
-- Geprueft werden direkte, relative, Runtime-, Type- und Re-Export-Kanten.
-- `@sva/plugin-sdk` und `@sva/studio-ui-react` sind die einzigen erlaubten internen Plugin-Einstiegspunkte.
+Dieser Report dokumentiert nur noch die Brownfield-Historie des ersten Boundary-Guard-Rollouts. Die fuehrende maschinenlesbare Quelle fuer importkantenbezogene Guard-Ausnahmen ist `config/plugin-architecture-allowlist.json`; die primaeren Governance-Regeln stehen in `docs/guides/plugin-development.md`, `docs/architecture/package-zielarchitektur.md` und `docs/development/review-agent-governance.md`.
 
 ## Historischer Altbestand
 
 - `@sva/plugin-waste-management` ist derzeit der bekannte Brownfield-Fall.
-- Die tolerierten Eintraege liegen jetzt fuehrend in `config/plugin-architecture-allowlist.json` und decken nur die bereits vorhandene Kopplung an `@sva/core`, `@sva/studio-module-iam` und die review-pflichtigen Runtime-Signale des bestehenden Dateibaums ab.
-- Jeder Eintrag ist dateischarf ueber `relativePath`; dieselbe Regel mit demselben `subject` in einer neuen Datei bleibt deshalb eine neue Drift.
+- Die heutige Allowlist deckt nur importkantenbezogene Ausnahmen ab; fruehere Baseline-Klassen wie Workspace-Dependencies oder Dateipfad-Signale werden hier nicht vollstaendig eins zu eins nachmodelliert.
+- Fuer den aktuellen Brownfield-Bestand ist die tolerierte Importkante nach `@sva/studio-module-iam` in `config/plugin-architecture-allowlist.json` gepflegt.
 - Folgechange fuer den Ownership-Schlupfloch-Abbau: `refactor-studio-module-iam-public-contract`
 
 ## Review-Regeln

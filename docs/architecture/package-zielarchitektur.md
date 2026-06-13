@@ -133,7 +133,7 @@ Die Zielrollen sind als Workspace-Packages vorhanden und werden über Nx-, ESLin
 | `@sva/studio-ui-react` | React-basierte Studio-UI-Bausteine für Host-Seiten und Plugin-Custom-Views | `packages/studio-ui-react` | UI-only Package; keine Plugin-Registry-, Routing-, IAM-, DB- oder Server-Runtime-Verantwortung. Wiederverwendbare Host-Tabellen und Seiten-Templates gehören hierher. |
 | `@sva/*-integration` | Downstream-Integrationen mit getrennten client-sicheren Typen und serverseitigen Adaptern | `packages/sva-mainserver` | Integrationspakete kapseln OAuth2, GraphQL, Secret-Lookups, Fehlerabbildung und kanonische serverseitige Host-Verträge. |
 | `@sva/plugin-*` | Fachliche Erweiterungen ueber Plugin-SDK-Vertraege und gemeinsame Studio-UI | `packages/plugin-news` | Standard Path: nur `@sva/plugin-sdk` und optional `@sva/studio-ui-react`; das sind die einzigen erlaubten internen Plugin-Einstiegspunkte. Keine Direktimporte aus `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data*`, `@sva/studio-module-iam` oder App-Modulen. Advanced Path nur ueber explizite oeffentliche Host-Vertraege. |
-| `@sva/plugin-waste-management` | Brownfield-Plugin mit dokumentierter Altlast fuer Waste-Management | `packages/plugin-waste-management` | Aktuelle Abweichungen duerfen nur ueber `config/plugin-architecture-allowlist.json` toleriert werden; der Baseline-Report bleibt nur als Historie und Migrationsverweis bestehen. Das Package ist kein Freifahrtschein fuer weitere Plugin-Host-Kopplung. |
+| `@sva/plugin-waste-management` | Brownfield-Plugin mit dokumentierter Altlast fuer Waste-Management | `packages/plugin-waste-management` | Aktuelle importkantenbezogene Abweichungen duerfen nur ueber `config/plugin-architecture-allowlist.json` toleriert werden; nicht-importbezogene Brownfield-Historie bleibt im Baseline-Report als Referenz erhalten. Das Package ist kein Freifahrtschein fuer weitere Plugin-Host-Kopplung. |
 | `apps/sva-studio-react` | UI, TanStack Start, Router-Wiring, App-Shell, Server-Funktionen als Adapter | `apps/sva-studio-react` | Keine dauerhafte Domänenlogik, keine rohen DB-/Keycloak-/GraphQL-Zugriffe im Browser-Bundle. |
 
 ## Erlaubte Abhängigkeitsrichtung
@@ -253,7 +253,8 @@ Die Zielarchitektur ist durch den harten OpenSpec-Schnitt umgesetzt. Für laufen
 - Pro neuem oder geändertem serverseitigem Package bleiben `build`, `lint`, `test:unit`, `test:types` und `check:runtime` Teil des lokalen Gates.
 - Nx-`depConstraints`, `no-restricted-imports` und `check:server-runtime` sind die durchsetzenden Grenzen.
 - `check:plugin-ui-boundary` bleibt fuer `packages/plugin-*` ein Detail-Gate; `check:plugin-architecture-boundary` laeuft im ersten Rollout warn-only auf demselben Scope.
-- `check:plugin-architecture-boundary` bewertet direkte, relative, Runtime-, Type- und Re-Export-Kanten; bekannte Brownfield-Ausnahmen liegen in `config/plugin-architecture-allowlist.json`.
+- `check:plugin-architecture-boundary` bewertet direkte, relative, Runtime-, Type- und Re-Export-Kanten; bekannte importkantenbezogene Brownfield-Ausnahmen liegen in `config/plugin-architecture-allowlist.json`.
+- Die heutige Allowlist ersetzt fruehere Baseline-Klassen wie Workspace-Dependencies oder Dateipfad-Signale nicht vollstaendig eins zu eins.
 - Architektur- und OpenSpec-Dokumentation werden im selben Change aktualisiert, wenn sich Package-Grenzen ändern.
 
 ## Entscheidungsregeln für neue Funktionalität

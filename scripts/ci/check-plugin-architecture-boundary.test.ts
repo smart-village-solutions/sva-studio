@@ -183,6 +183,9 @@ export const pluginValue: CoreType | boolean = runtimeValue;
     });
 
     const violations = await collectPluginArchitectureViolations(workspaceRoot);
+    const typeViolations = violations.filter((violation) => violation.kind === 'type' && violation.resolvedTarget === '@sva/core');
+    const runtimeViolations = violations.filter((violation) => violation.kind === 'runtime' && violation.resolvedTarget === '@sva/core');
+    const reexportViolations = violations.filter((violation) => violation.kind === 'reexport' && violation.resolvedTarget === '@sva/core');
 
     expect(violations).toEqual(
       expect.arrayContaining([
@@ -191,6 +194,9 @@ export const pluginValue: CoreType | boolean = runtimeValue;
         expect.objectContaining({ kind: 'reexport', resolvedTarget: '@sva/core' }),
       ])
     );
+    expect(typeViolations).toHaveLength(2);
+    expect(runtimeViolations).toHaveLength(1);
+    expect(reexportViolations).toHaveLength(1);
   });
 
   it('normalizes relative imports to package or subpath targets instead of source file paths', async () => {
@@ -198,13 +204,15 @@ export const pluginValue: CoreType | boolean = runtimeValue;
     createWorkspacePackage(workspaceRoot, 'core', {
       packageName: '@sva/core',
       sourceFiles: {
+        'src/waste-management/index.ts': 'export const wasteManagement = true;\n',
         'src/waste-management/static-content.ts': 'export const staticContent = true;\n',
       },
     });
     createPluginPackage(workspaceRoot, 'plugin-relative-subpath', {
       packageName: '@sva/plugin-relative-subpath',
       sourceFiles: {
-        'src/index.ts': `export { staticContent } from '../../core/src/waste-management/static-content.js';\n`,
+        'src/index.ts': `export { wasteManagement } from '../../core/src/waste-management/index.js';
+export { staticContent } from '../../core/src/waste-management/static-content.js';\n`,
       },
     });
 
@@ -213,6 +221,12 @@ export const pluginValue: CoreType | boolean = runtimeValue;
     expect(violations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          importSpecifier: '../../core/src/waste-management/index.js',
+          kind: 'reexport',
+          resolvedTarget: '@sva/core/waste-management',
+        }),
+        expect.objectContaining({
+          importSpecifier: '../../core/src/waste-management/static-content.js',
           kind: 'reexport',
           resolvedTarget: '@sva/core/waste-management',
         }),

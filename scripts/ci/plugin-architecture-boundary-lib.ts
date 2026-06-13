@@ -121,11 +121,12 @@ const normalizeWorkspaceResolvedTarget = (packageName: string, resolvedRelativeP
   if (!sourceMatch) return packageName;
 
   const [, , sourceSubpath] = sourceMatch;
-  const cleaned = sourceSubpath
-    .replace(/\/index\.[^.]+$/, '')
-    .replace(/\.[^.]+$/, '');
+  const withoutExtension = sourceSubpath.replace(/\.[^.]+$/, '');
+  const cleaned = withoutExtension.replace(/\/index$/, '');
   const segments = cleaned.split('/');
-  segments.pop();
+  if (!withoutExtension.endsWith('/index')) {
+    segments.pop();
+  }
   return segments.length > 0 ? `${packageName}/${segments.join('/')}` : packageName;
 };
 
@@ -201,7 +202,7 @@ const getWorkspaceImportEdges = (sourceFile: ts.SourceFile): readonly WorkspaceI
     if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
       edges.push({
         importSpecifier: node.moduleSpecifier.text,
-        kind: 'reexport',
+        kind: node.isTypeOnly ? 'type' : 'reexport',
       });
     }
   });

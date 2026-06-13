@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -328,18 +328,34 @@ export const pluginDrift = authorize;
     ]);
   });
 
-  it('rejects JSON allowlist entries without a required ticket', () => {
-    expect(() =>
-      parsePluginArchitectureAllowlist([
-        {
-          plugin: 'waste-management',
-          sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
-          importSpecifier: '@sva/core/waste-management',
-          resolvedTarget: '@sva/core/waste-management',
-          kind: 'type',
-          reason: 'Brownfield bridge until SDK contract exists',
-        },
-      ])
-    ).toThrowError('Allowlist entry 0 is incomplete or invalid.');
+  it('accepts JSON allowlist entries without a ticket', () => {
+    const allowlist = parsePluginArchitectureAllowlist([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/core/waste-management',
+        resolvedTarget: '@sva/core/waste-management',
+        kind: 'type',
+        reason: 'Brownfield bridge until SDK contract exists',
+      },
+    ]);
+
+    expect(allowlist).toEqual([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/core/waste-management',
+        resolvedTarget: '@sva/core/waste-management',
+        kind: 'type',
+        reason: 'Brownfield bridge until SDK contract exists',
+      },
+    ]);
+  });
+
+  it('parses the file-based JSON allowlist smoke test', () => {
+    const allowlistFile = readFileSync(path.join(process.cwd(), 'config', 'plugin-architecture-allowlist.json'), 'utf8');
+    const parsed = JSON.parse(allowlistFile) as unknown;
+
+    expect(() => parsePluginArchitectureAllowlist(parsed)).not.toThrow();
   });
 });

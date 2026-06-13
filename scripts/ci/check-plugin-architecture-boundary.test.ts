@@ -322,6 +322,17 @@ export const pluginValue = runtimeValue;
 
     expect(result.exitCode).toBe(0);
     expect(result.violations).toHaveLength(1);
+    expect(result.unallowlistedViolations).toHaveLength(1);
+    expect(result.unallowlistedViolations).toEqual([
+      expect.objectContaining({
+        packageName: '@sva/plugin-warning',
+        relativePath: path.posix.join('packages', 'plugin-warning', 'src', 'index.ts'),
+        rule: 'workspace-import',
+        subject: '@sva/core',
+        kind: 'runtime',
+        resolvedTarget: '@sva/core',
+      }),
+    ]);
   });
 
   it('detects forbidden workspace dependencies, imports and path signals', async () => {

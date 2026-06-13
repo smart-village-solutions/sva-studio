@@ -77,7 +77,7 @@ export const runPluginArchitectureBoundaryCheck = async (
 
 const run = async (): Promise<void> => {
   const result = await runPluginArchitectureBoundaryCheck(PROJECT_ROOT, DEFAULT_ALLOWLIST_PATH, { mode: 'warn' });
-  if (result.violations.length === 0) {
+  if (result.unallowlistedViolations.length === 0) {
     return;
   }
 

@@ -47,6 +47,19 @@ test.beforeEach(async ({ page }) => {
       body: createEmptyPaginatedDataResponse(),
     });
   });
+
+  await page.route('**/api/v1/iam/me/context', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          activeOrganizationId: null,
+          organizations: [],
+        },
+      }),
+    });
+  });
 });
 
 test('role create page opens and submits successfully', async ({ page }) => {
@@ -123,7 +136,7 @@ test('role create page opens and submits successfully', async ({ page }) => {
     });
   });
 
-  await gotoHomeAsAuthenticatedUser(page);
+  await gotoHomeAsAuthenticatedUser(page, 'Admin One');
   await navigateClientSide(page, '/admin/roles');
 
   await expect(page.getByRole('heading', { name: 'Rollenverwaltung' })).toBeVisible({ timeout: 10000 });
@@ -191,7 +204,7 @@ test('tenant role list hides the root-only instance_registry_admin role', async 
     });
   });
 
-  await gotoHomeAsAuthenticatedUser(page);
+  await gotoHomeAsAuthenticatedUser(page, 'Admin One');
   await navigateClientSide(page, '/admin/roles');
 
   await expect(page.getByRole('heading', { name: 'Rollenverwaltung' })).toBeVisible({ timeout: 10000 });

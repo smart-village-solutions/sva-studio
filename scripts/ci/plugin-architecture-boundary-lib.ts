@@ -4,36 +4,30 @@ import { fileURLToPath } from 'node:url';
 import * as ts from 'typescript';
 
 import { diffViolationsAgainstBaseline, parsePluginArchitectureBaseline } from './plugin-architecture-boundary-baseline.ts';
+import {
+  ALLOWED_WORKSPACE_DEPENDENCIES,
+  FORBIDDEN_HOST_WORKSPACE_PACKAGES,
+  FORBIDDEN_PATH_SIGNALS,
+  getWorkspaceImportSubject,
+  isAllowedWorkspaceModuleSpecifier,
+  isForbiddenHostWorkspaceModuleSpecifier,
+  matchesReviewRequiredPathSignal,
+  type PackageJson,
+  type PluginArchitectureImportKind,
+  type PluginPackage,
+  REVIEW_REQUIRED_PATH_SIGNALS,
+  type WorkspaceImportEdge,
+  WORKSPACE_DEPENDENCY_FIELDS,
+} from './plugin-architecture-boundary-workspace.ts';
+export type { PluginArchitectureImportKind } from './plugin-architecture-boundary-workspace.ts';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '../..');
 export const DEFAULT_BASELINE_PATH = path.join(PROJECT_ROOT, 'docs/reports/plugin-architecture-boundary-baseline.md');
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
-const WORKSPACE_DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies'] as const;
-const ALLOWED_WORKSPACE_DEPENDENCIES = new Set(['@sva/plugin-sdk', '@sva/studio-ui-react']);
-const FORBIDDEN_HOST_WORKSPACE_PACKAGES = new Set([
-  '@sva/core',
-  '@sva/auth-runtime',
-  '@sva/server-runtime',
-  '@sva/routing',
-  '@sva/iam-core',
-  '@sva/iam-admin',
-  '@sva/iam-governance',
-  '@sva/instance-registry',
-  '@sva/data',
-  '@sva/data-client',
-  '@sva/data-repositories',
-  '@sva/sva-mainserver',
-  '@sva/studio-module-iam',
-  '@sva/monitoring-client',
-  '@sva/media',
-]);
-const FORBIDDEN_PATH_SIGNALS = ['route-binding', 'plugin-catalog', 'catalog-loader', 'plugin-build-registry', 'mainserver-', 'admin-resource-'];
-const REVIEW_REQUIRED_PATH_SIGNALS = ['server.ts', 'plugin-operations.ts', '.controller.', '.loaders.', '.state.', '.submissions.'];
 
 export type PluginArchitectureViolationRule = 'workspace-dependency' | 'workspace-import' | 'forbidden-path-signal' | 'review-required-path-signal';
-export type PluginArchitectureImportKind = 'runtime' | 'type' | 'reexport';
 export type PluginArchitectureViolation = {
   packageName: string;
   relativePath: string;
@@ -45,13 +39,6 @@ export type PluginArchitectureViolation = {
   kind?: PluginArchitectureImportKind;
 };
 export type PluginArchitectureBaselineEntry = { packageName: string; relativePath: string; rule: PluginArchitectureViolationRule; subject: string; owner: string; justification: string; removalChange: string };
-type PackageJson = { name?: string; dependencies?: Record<string, string>; devDependencies?: Record<string, string>; optionalDependencies?: Record<string, string> };
-type PluginPackage = { packageName: string; packageDir: string; packageJson: PackageJson };
-type WorkspaceImportEdge = {
-  importSpecifier: string;
-  kind: PluginArchitectureImportKind;
-};
-
 const toPosixRelativePath = (projectRoot: string, targetPath: string): string =>
   path.relative(projectRoot, targetPath).split(path.sep).join(path.posix.sep);
 
@@ -160,31 +147,6 @@ const normalizeWorkspaceModuleSpecifier = async (
     currentDirectory = path.dirname(currentDirectory);
   }
   return resolvedRelativePath;
-};
-
-const getWorkspacePackageName = (moduleSpecifier: string): string | null => {
-  if (!moduleSpecifier.startsWith('@sva/')) return null;
-  const [scope, packageName] = moduleSpecifier.split('/');
-  return scope && packageName ? `${scope}/${packageName}` : null;
-};
-
-const isAllowedWorkspaceModuleSpecifier = (moduleSpecifier: string): boolean => {
-  const workspacePackageName = getWorkspacePackageName(moduleSpecifier);
-  return workspacePackageName ? ALLOWED_WORKSPACE_DEPENDENCIES.has(workspacePackageName) : false;
-};
-
-const isForbiddenHostWorkspaceModuleSpecifier = (moduleSpecifier: string): boolean => {
-  const workspacePackageName = getWorkspacePackageName(moduleSpecifier);
-  return workspacePackageName ? FORBIDDEN_HOST_WORKSPACE_PACKAGES.has(workspacePackageName) : false;
-};
-
-const getWorkspaceImportSubject = (moduleSpecifier: string): string =>
-  getWorkspacePackageName(moduleSpecifier) ?? moduleSpecifier;
-
-const matchesReviewRequiredPathSignal = (relativePath: string, signal: string): boolean => {
-  const normalizedPath = relativePath.toLowerCase();
-  if (signal === 'server.ts' || signal === 'plugin-operations.ts') return path.posix.basename(normalizedPath) === signal;
-  return normalizedPath.includes(signal);
 };
 
 const getWorkspaceImportEdges = (sourceFile: ts.SourceFile): readonly WorkspaceImportEdge[] => {
@@ -332,8 +294,6 @@ const collectPackageViolations = async (
   return violations;
 };
 
-export { diffViolationsAgainstBaseline, parsePluginArchitectureBaseline };
-
 export const collectPluginArchitectureViolations = async (
   projectRoot = PROJECT_ROOT
 ): Promise<readonly PluginArchitectureViolation[]> => {
@@ -345,7 +305,7 @@ export const collectPluginArchitectureViolations = async (
     )
   );
 };
-
+export { diffViolationsAgainstBaseline, parsePluginArchitectureBaseline };
 export const runPluginArchitectureBoundaryCheck = async (
   projectRoot = PROJECT_ROOT,
   baselinePath = DEFAULT_BASELINE_PATH

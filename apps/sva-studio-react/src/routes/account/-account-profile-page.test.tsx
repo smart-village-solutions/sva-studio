@@ -8,6 +8,55 @@ const getMyProfileMock = vi.fn();
 const updateMyProfileMock = vi.fn();
 const asIamErrorMock = vi.fn();
 const fetchMock = vi.fn();
+type ProfileRoleFixture = {
+  roleId: string;
+  roleName: string;
+};
+
+type ProfileFixture = {
+  id: string;
+  keycloakSubject: string;
+  username: string;
+  displayName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  position?: string;
+  department?: string;
+  preferredLanguage?: string;
+  timezone?: string;
+  status: string;
+  mappingStatus?: string;
+  editability?: string;
+  diagnostics?: Array<{ code: string }>;
+  fieldEditability?: {
+    profile?: string;
+    status?: string;
+    roles?: string;
+  };
+  roles: ProfileRoleFixture[];
+  mainserverUserApplicationSecretSet: boolean;
+};
+
+const createProfileFixture = (overrides: Partial<ProfileFixture> = {}): ProfileFixture => ({
+  id: 'account-1',
+  keycloakSubject: 'subject-1',
+  username: 'jane.doe',
+  displayName: 'Jane Doe',
+  firstName: 'Jane',
+  lastName: 'Doe',
+  email: 'jane@example.com',
+  status: 'active',
+  roles: [],
+  mainserverUserApplicationSecretSet: false,
+  ...overrides,
+});
+
+const resolvedProfile = (overrides: Partial<ProfileFixture> = {}) => ({
+  data: createProfileFixture(overrides),
+});
+
 const authMockValue = {
   user: {
     id: 'user-1',
@@ -83,43 +132,25 @@ describe('AccountProfilePage', () => {
   });
 
   it('loads profile and submits updates', async () => {
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
+    getMyProfileMock.mockResolvedValue(
+      resolvedProfile({
         phone: '+49 111111',
         position: 'Editor',
         department: 'News',
         preferredLanguage: 'de',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+      })
+    );
 
-    updateMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
+    updateMyProfileMock.mockResolvedValue(
+      resolvedProfile({
         displayName: 'Janet Doe',
         firstName: 'Janet',
-        lastName: 'Doe',
-        email: 'jane@example.com',
         phone: '+49 222222',
         position: 'Lead Editor',
         department: 'Product',
         preferredLanguage: 'en',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+      })
+    );
 
     render(<AccountProfilePage />);
 
@@ -168,20 +199,7 @@ describe('AccountProfilePage', () => {
 
   it('shows a success status after returning from password update', async () => {
     window.history.replaceState({}, '', '/account?accountAction=password-updated');
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+    getMyProfileMock.mockResolvedValue(resolvedProfile());
 
     render(<AccountProfilePage />);
 
@@ -192,20 +210,7 @@ describe('AccountProfilePage', () => {
 
   it('shows a completion status after returning from email update', async () => {
     window.history.replaceState({}, '', '/account?accountAction=email-update-finished');
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+    getMyProfileMock.mockResolvedValue(resolvedProfile());
 
     render(<AccountProfilePage />);
 
@@ -216,20 +221,7 @@ describe('AccountProfilePage', () => {
 
   it('re-reads the account action status when the same page is rendered with updated query params', async () => {
     window.history.replaceState({}, '', '/account?accountAction=password-updated');
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+    getMyProfileMock.mockResolvedValue(resolvedProfile());
 
     const { rerender } = render(<AccountProfilePage />);
 
@@ -247,20 +239,7 @@ describe('AccountProfilePage', () => {
 
   it('shows an unavailable status after returning from an unsupported email update flow', async () => {
     window.history.replaceState({}, '', '/account?accountAction=email-update-unavailable');
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+    getMyProfileMock.mockResolvedValue(resolvedProfile());
 
     render(<AccountProfilePage />);
 
@@ -271,20 +250,7 @@ describe('AccountProfilePage', () => {
 
   it('shows a cancellation status after returning from a cancelled account action', async () => {
     window.history.replaceState({}, '', '/account?accountAction=cancelled&accountActionType=update-email');
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+    getMyProfileMock.mockResolvedValue(resolvedProfile());
 
     render(<AccountProfilePage />);
 
@@ -294,20 +260,7 @@ describe('AccountProfilePage', () => {
   });
 
   it('does not render a separate privacy cockpit entry point on the profile page', async () => {
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+    getMyProfileMock.mockResolvedValue(resolvedProfile());
 
     render(<AccountProfilePage />);
 
@@ -371,16 +324,8 @@ describe('AccountProfilePage', () => {
   });
 
   it('shows projection diagnostics when the loaded profile is in manual review', async () => {
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
-        status: 'active',
+    getMyProfileMock.mockResolvedValue(
+      resolvedProfile({
         mappingStatus: 'manual_review',
         editability: 'blocked',
         diagnostics: [{ code: 'keycloak_projection_degraded' }],
@@ -389,10 +334,8 @@ describe('AccountProfilePage', () => {
           status: 'read_only',
           roles: 'blocked',
         },
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+      })
+    );
 
     render(<AccountProfilePage />);
 
@@ -409,20 +352,16 @@ describe('AccountProfilePage', () => {
       id: 'platform-user-1',
       roles: ['instance_registry_admin'],
     };
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
+    getMyProfileMock.mockResolvedValue(
+      resolvedProfile({
         username: 'platform.admin',
         displayName: 'Platform Admin',
         firstName: 'Platform',
         lastName: 'Admin',
         email: 'platform@example.com',
-        status: 'active',
         roles: [{ roleId: 'role-1', roleName: 'instance_registry_admin' }],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+      })
+    );
 
     render(<AccountProfilePage />);
 
@@ -438,34 +377,13 @@ describe('AccountProfilePage', () => {
   });
 
   it('derives the display name from first and last name when no custom display name exists', async () => {
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
-    updateMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
+    getMyProfileMock.mockResolvedValue(resolvedProfile());
+    updateMyProfileMock.mockResolvedValue(
+      resolvedProfile({
         displayName: 'Janet Doe',
         firstName: 'Janet',
-        lastName: 'Doe',
-        email: 'jane@example.com',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+      })
+    );
 
     render(<AccountProfilePage />);
 
@@ -491,22 +409,12 @@ describe('AccountProfilePage', () => {
   });
 
   it('hides timezone and non-editable account identity fields', async () => {
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
+    getMyProfileMock.mockResolvedValue(
+      resolvedProfile({
         preferredLanguage: 'de',
         timezone: 'Europe/Berlin',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+      })
+    );
 
     render(<AccountProfilePage />);
 
@@ -521,23 +429,14 @@ describe('AccountProfilePage', () => {
   });
 
   it('shows roles and status as readonly fields', async () => {
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
-        status: 'active',
+    getMyProfileMock.mockResolvedValue(
+      resolvedProfile({
         roles: [
           { roleId: 'role-1', roleName: 'Editor' },
           { roleId: 'role-2', roleName: 'Reviewer' },
         ],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+      })
+    );
 
     render(<AccountProfilePage />);
 
@@ -558,20 +457,7 @@ describe('AccountProfilePage', () => {
     const loadError = { status: 500, code: 'failed', message: 'failed' };
     asIamErrorMock.mockReturnValue(loadError);
     getMyProfileMock.mockRejectedValueOnce(new Error('failed-load'));
-    getMyProfileMock.mockResolvedValueOnce({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+    getMyProfileMock.mockResolvedValueOnce(resolvedProfile());
 
     render(<AccountProfilePage />);
 
@@ -590,21 +476,11 @@ describe('AccountProfilePage', () => {
   it('shows validation summary and save error branch', async () => {
     const saveError = { status: 500, code: 'save_failed', message: 'save failed' };
     asIamErrorMock.mockReturnValue(saveError);
-    getMyProfileMock.mockResolvedValue({
-      data: {
-        id: 'account-1',
-        keycloakSubject: 'subject-1',
-        username: 'jane.doe',
-        displayName: 'Jane Doe',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        email: 'jane@example.com',
+    getMyProfileMock.mockResolvedValue(
+      resolvedProfile({
         phone: '',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
+      })
+    );
     updateMyProfileMock.mockRejectedValueOnce(new Error('save_failed'));
 
     render(<AccountProfilePage />);

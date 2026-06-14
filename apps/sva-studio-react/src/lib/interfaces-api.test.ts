@@ -72,12 +72,27 @@ vi.mock('./instance-interface-healthcheck.server.js', () => ({
 }));
 
 describe('interfaces app adapter', () => {
-  const setAuthenticatedUserContext = (user: { id: string; instanceId?: string; roles: string[] }) => {
+  type TestUser = {
+    id: string;
+    instanceId?: string;
+    roles: string[];
+  };
+
+  const defaultUser: TestUser = {
+    id: 'subject-1',
+    instanceId: 'de-musterhausen',
+    roles: ['system_admin'],
+  };
+
+  const setAuthenticatedUserContext = (user: TestUser = defaultUser) => {
     state.withAuthenticatedUser.mockImplementation(
       async (
         _request: Request,
-        handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>
-      ) => handler({ user })
+        handler: (ctx: { user: TestUser }) => Promise<unknown>
+      ) =>
+        handler({
+          user,
+        })
     );
   };
 
@@ -450,6 +465,7 @@ describe('interfaces app adapter', () => {
   it('rejects save requests when the instance context is missing', async () => {
     setAuthenticatedUserContext({
       id: 'subject-1',
+      instanceId: undefined,
       roles: ['system_admin'],
     });
 
@@ -527,16 +543,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('delegates custom interface upserts to the registry-backed adapter', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
     state.upsertStoredInterface.mockResolvedValue({
       id: 's3-1',
       instanceId: 'de-musterhausen',
@@ -598,16 +609,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('rejects supabase interface upserts when the waste-management module is not assigned', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
     state.loadInstanceById.mockResolvedValue({
       instanceId: 'de-musterhausen',
       assignedModules: ['news'],
@@ -638,16 +644,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('preserves specific S3 upsert errors for the client', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
     state.upsertStoredInterface.mockRejectedValue(new Error('secret_unreadable'));
 
     const { upsertInstanceInterfaceServerFn } = await import('./interfaces-api');
@@ -675,16 +676,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('rejects interface deletions for users without interfaces permissions', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['editor'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['editor'],
+    });
     state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
       ok: false,
       status: 403,
@@ -707,16 +703,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('delegates custom interface deletions to the registry-backed adapter', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
     state.deleteStoredInterface.mockResolvedValue(true);
 
     const { deleteInstanceInterfaceServerFn } = await import('./interfaces-api');
@@ -734,16 +725,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('routes mainserver interface deletions through the dedicated settings adapter', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
     state.deleteSvaMainserverSettings.mockResolvedValue(true);
 
     const { deleteInstanceInterfaceServerFn } = await import('./interfaces-api');
@@ -762,16 +748,11 @@ describe('interfaces app adapter', () => {
   });
 
   it('rejects interface deletions when the store reports no deleted entry', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
-          },
-        })
-    );
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
     state.deleteStoredInterface.mockResolvedValue(false);
 
     const { deleteInstanceInterfaceServerFn } = await import('./interfaces-api');

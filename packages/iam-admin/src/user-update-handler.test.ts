@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createJsonResponse, createTestDepsBuilder } from './handler-test-helpers.js';
 import {
   createUpdateUserHandlerInternal,
   type UpdateUserHandlerDeps,
@@ -75,12 +76,7 @@ const identityProvider = {
   },
 };
 
-const createJsonResponse = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-
-const createDeps = (
-  overrides: Partial<UpdateUserHandlerDeps<TestPayload, TestPlan, TestIdentityState>> = {}
-): UpdateUserHandlerDeps<TestPayload, TestPlan, TestIdentityState> => ({
+const createDeps = createTestDepsBuilder<UpdateUserHandlerDeps<TestPayload, TestPlan, TestIdentityState>>(() => ({
   asApiItem: vi.fn((data, requestId) => ({ data, ...(requestId ? { requestId } : {}) })),
   compensateUserIdentityUpdate: vi.fn(async () => undefined),
   createUnexpectedMutationErrorResponse: vi.fn(({ requestId, message }) =>
@@ -116,8 +112,7 @@ const createDeps = (
       query: vi.fn(async () => ({ rows: [], rowCount: 1 })),
     })
   ),
-  ...overrides,
-});
+}));
 
 describe('createUpdateUserHandlerInternal', () => {
   beforeEach(() => {

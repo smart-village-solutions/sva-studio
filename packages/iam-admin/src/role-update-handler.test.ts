@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createJsonResponse, createTestDepsBuilder } from './handler-test-helpers.js';
 import { createUpdateRoleHandlerInternal, type UpdateRoleHandlerDeps } from './role-update-handler.js';
 
 const actor = {
@@ -48,15 +49,15 @@ const identityProvider = {
   },
 };
 
-const createJsonResponse = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-
-const createDeps = (
-  overrides: Partial<
-    UpdateRoleHandlerDeps<typeof payload, ReturnType<typeof buildAttributes>, typeof identityProvider, typeof existingRole, typeof roleItem>
-  > = {}
-) =>
-  ({
+const createDeps = createTestDepsBuilder<
+  UpdateRoleHandlerDeps<
+    typeof payload,
+    ReturnType<typeof buildAttributes>,
+    typeof identityProvider,
+    typeof existingRole,
+    typeof roleItem
+  >
+>(() => ({
     asApiItem: vi.fn((data, requestId) => ({ data, ...(requestId ? { requestId } : {}) })),
     buildRoleAttributes: vi.fn(buildAttributes),
     buildRoleSyncFailure: vi.fn(({ requestId, fallbackMessage, roleId }) =>
@@ -83,8 +84,7 @@ const createDeps = (
     sanitizeRoleErrorMessage: vi.fn((error) => (error instanceof Error ? error.message : String(error))),
     trackKeycloakCall: vi.fn(async (_operation, work) => work()),
     validateRequestedPermissions: vi.fn(async () => null),
-    ...overrides,
-  }) satisfies UpdateRoleHandlerDeps<
+  })) satisfies UpdateRoleHandlerDeps<
     typeof payload,
     ReturnType<typeof buildAttributes>,
     typeof identityProvider,

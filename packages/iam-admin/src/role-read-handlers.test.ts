@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createJsonResponse, createTestDepsBuilder } from './handler-test-helpers.js';
 import { createRoleReadHandlers, type RoleReadHandlerDeps } from './role-read-handlers.js';
 
 const ctx = {
@@ -27,11 +28,9 @@ const actor = {
 const roles = [{ id: 'role-1', roleKey: 'editor' }];
 const permissions = [{ id: 'perm-1', permissionKey: 'contents.read' }];
 
-const createJsonResponse = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-
-const createDeps = (overrides: Partial<RoleReadHandlerDeps<(typeof roles)[number], (typeof permissions)[number]>> = {}) =>
-  ({
+const createDeps = createTestDepsBuilder<
+  RoleReadHandlerDeps<(typeof roles)[number], (typeof permissions)[number]>
+>(() => ({
     asApiList: vi.fn((data, pagination, requestId) => ({ data, pagination, ...(requestId ? { requestId } : {}) })),
     classifyIamDiagnosticError: vi.fn(() => ({
       status: 503,
@@ -56,8 +55,7 @@ const createDeps = (overrides: Partial<RoleReadHandlerDeps<(typeof roles)[number
         : createJsonResponse(403, { error: { code: 'forbidden', message: 'forbidden' }, requestId })
     ),
     resolveActorInfo: vi.fn(async () => ({ actor })),
-    ...overrides,
-  }) satisfies RoleReadHandlerDeps<(typeof roles)[number], (typeof permissions)[number]>;
+  })) satisfies RoleReadHandlerDeps<(typeof roles)[number], (typeof permissions)[number]>;
 
 describe('createRoleReadHandlers', () => {
   beforeEach(() => {

@@ -8,6 +8,7 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
+      '@sva/core': resolve(currentDir, '../core/src/index.ts'),
       '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
       '@sva/plugin-waste-management/waste-management.job-definitions': resolve(
         currentDir,

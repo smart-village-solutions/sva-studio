@@ -2,17 +2,17 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioPageHeader } from '@sva/studio-ui-react';
 import { useNavigate } from '@tanstack/react-router';
 
-import { useWasteSchedulingController } from './waste-management.scheduling.controller.js';
+import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import { WasteHolidayRuleForm } from './waste-management.holiday-rules-form.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
-type WasteSchedulingController = ReturnType<typeof useWasteSchedulingController>;
+type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 
 export const WasteSchedulingHolidayFormView = ({
   controller,
   search,
 }: {
-  readonly controller: WasteSchedulingController;
+  readonly controller: WasteViewModel;
   readonly search: WasteManagementSearchParams;
 }) => {
   const navigate = useNavigate();

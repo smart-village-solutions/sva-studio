@@ -242,7 +242,7 @@ Schulden auf IST-Basis.
 42. Plugin-Architekturdrift durch Brownfield-Ausnahmen und gemischte Package-Rollen
    - Impact: hoch (weitere Plugin-Ausbauten koennen implizite Host-Kopplungen normalisieren und spaet teure Rueckbauten erzwingen)
    - Wahrscheinlichkeit: hoch
-   - Maßnahme: `check:plugin-architecture-boundary` im ersten Rollout warn-only auf `packages/plugin-*` betreiben, exakte importkantenbezogene Altfaelle in `config/plugin-architecture-allowlist.json` pflegen, direkte/relative/Runtime-/Type-/Re-Export-Kanten konsequent sichtbar machen, die verbleibende Brownfield-Historie separat dokumentieren und Mischrollen wie `@sva/studio-module-iam` in einem separaten Folgechange oeffentlich neu schneiden oder pluginseitig verbieten
+   - Maßnahme: `check:plugin-architecture-boundary` im ersten Rollout warn-only auf `packages/plugin-*` betreiben, exakte importkantenbezogene Altfaelle in `config/plugin-architecture-allowlist.json` pflegen, direkte/relative/Runtime-/Type-/Re-Export-Kanten konsequent sichtbar machen und die verbleibende Brownfield-Historie separat dokumentieren; fuer Waste Management ist der Browser-/Runtime-Schnitt jetzt in `@sva/plugin-waste-management` plus `@sva/waste-management-runtime` umgesetzt, das Restrisiko liegt dort daher primär in Guard-Regressionen statt in einer aktiven Ausnahme. Die Nachschärfung auf blockierend oder no-new-violations ist bewusst vertagt, bis der warn-only Rollout separat bewertet wird.
 
 43. Zentrale Job-Persistenz trägt fachneutrale JSON-Payloads mit begrenzter Schemastrenge
    - Impact: mittel (fachliche Payload-Drift oder unklare Ergebnis-/Fehlerdeutung wird erst in Plugin- oder Runtime-Pfaden sichtbar)

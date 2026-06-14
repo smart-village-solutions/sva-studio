@@ -1,8 +1,8 @@
 import type { CityFormState, FractionFormState, HouseNumberFormState, RegionFormState, StreetFormState } from './waste-management.master-data.forms.js';
-import type { useWasteMasterDataController } from './waste-management.master-data.controller.js';
+import type { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
 import { CityDialog, FractionDialog, HouseNumberDialog, RegionDialog, StreetDialog } from './waste-management.master-data-entity-dialogs.js';
 
-type Controller = ReturnType<typeof useWasteMasterDataController>;
+type Controller = ReturnType<typeof useWasteMasterDataViewModel>;
 
 export const WasteMasterDataEntityDialogs = ({ controller }: { readonly controller: Controller }) => (
   <>

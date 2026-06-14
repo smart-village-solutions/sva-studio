@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import { WasteToolsPanelBody } from './waste-management.tools-panel.body.js';
-import { useWasteToolsController } from './waste-management.tools.controller.js';
+import { useWasteToolsViewModel } from './use-waste-tools-view-model.js';
 import {
   createImportSelectionHandlers,
   WasteToolsResetDialog,
@@ -49,7 +49,7 @@ export const WasteToolsPanel = (props: {
     runMigrations,
     runSeed,
     runReset,
-  } = useWasteToolsController(pt);
+  } = useWasteToolsViewModel(pt);
   const importSelectionHandlers = createImportSelectionHandlers({
     importCatalog,
     selectedImportProfile,

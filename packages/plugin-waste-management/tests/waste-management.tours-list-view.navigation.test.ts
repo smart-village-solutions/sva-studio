@@ -12,7 +12,7 @@ import {
   toToursStatusSearch,
   useWasteToursListNavigation,
 } from '../src/waste-management.tours-list-view.navigation.js';
-import type { useWasteToursController } from '../src/waste-management.tours.controller.js';
+import type { useWasteToursViewModel } from '../src/use-waste-tours-view-model.js';
 
 const navigateMock = vi.fn();
 
@@ -47,18 +47,18 @@ const createSearch = (): WasteManagementSearchParams => ({
   globalDateShiftId: undefined,
 });
 
-type WasteToursController = ReturnType<typeof useWasteToursController>;
+type WasteViewModel = ReturnType<typeof useWasteToursViewModel>;
 
 const createController = (
-  overrides: Partial<WasteToursController> = {}
-): WasteToursController =>
+  overrides: Partial<WasteViewModel> = {}
+): WasteViewModel =>
   ({
     setDialogMode: vi.fn(),
     setTourForm: vi.fn(),
     setMessage: vi.fn(),
     setLastOutcome: vi.fn(),
     ...overrides,
-  }) as WasteToursController;
+  }) as WasteViewModel;
 
 describe('waste-management.tours-list-view.navigation', () => {
   beforeEach(() => {

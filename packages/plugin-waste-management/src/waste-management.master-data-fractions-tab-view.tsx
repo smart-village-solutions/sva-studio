@@ -1,14 +1,14 @@
 import { useNavigate } from '@tanstack/react-router';
 
 import { WasteMasterDataFractionCreateContent } from './waste-management.master-data-fraction-create-content.js';
-import { useWasteMasterDataController } from './waste-management.master-data.controller.js';
+import { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
 import { wasteMasterDataFormMappers } from './waste-management.master-data.forms.js';
 import { WasteMasterDataFractionsContent } from './waste-management.master-data-fractions-content.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
-type WasteMasterDataController = ReturnType<typeof useWasteMasterDataController>;
+type WasteViewModel = ReturnType<typeof useWasteMasterDataViewModel>;
 
-const resetFractionsViewState = (controller: WasteMasterDataController) => {
+const resetFractionsViewState = (controller: WasteViewModel) => {
   controller.setDialogOpen(false);
   controller.resetFractionForm();
   controller.setMessage(null);
@@ -33,7 +33,7 @@ const WasteMasterDataFractionsFormView = ({
   navigate,
   search,
 }: {
-  readonly controller: WasteMasterDataController;
+  readonly controller: WasteViewModel;
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => (
@@ -55,7 +55,7 @@ const WasteMasterDataFractionsListView = ({
   navigate,
   search,
 }: {
-  readonly controller: WasteMasterDataController;
+  readonly controller: WasteViewModel;
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => (
@@ -107,7 +107,7 @@ export const WasteMasterDataFractionsTabView = ({
   controller,
   search,
 }: {
-  readonly controller: WasteMasterDataController;
+  readonly controller: WasteViewModel;
   readonly search: WasteManagementSearchParams;
 }) => {
   const navigate = useNavigate();

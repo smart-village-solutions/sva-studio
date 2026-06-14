@@ -76,6 +76,7 @@ coverage:
         - packages/plugin-poi/
         - packages/plugin-sdk/
         - packages/plugin-waste-management/
+        - packages/waste-management-runtime/
         - packages/routing/
         - packages/server-runtime/
         - packages/studio-module-iam/

@@ -1,13 +1,13 @@
-import { useWasteSchedulingController } from './waste-management.scheduling.controller.js';
+import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import { GlobalDateShiftDialog, TourDateShiftDialog } from './waste-management.scheduling.dialogs.js';
 import {
   createDefaultGlobalDateShiftForm,
   createDefaultTourDateShiftForm,
 } from './waste-management.scheduling.shared.js';
 
-type WasteSchedulingController = ReturnType<typeof useWasteSchedulingController>;
+type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 
-export const WasteSchedulingDialogs = ({ controller }: { readonly controller: WasteSchedulingController }) => (
+export const WasteSchedulingDialogs = ({ controller }: { readonly controller: WasteViewModel }) => (
   <>
     <TourDateShiftDialog
       open={controller.dialogOpen}

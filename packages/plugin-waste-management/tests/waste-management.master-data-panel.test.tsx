@@ -93,8 +93,8 @@ vi.mock('@sva/studio-ui-react', () => ({
   TabsContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('../src/waste-management.master-data.controller.js', () => ({
-  useWasteMasterDataController: () => controllerState,
+vi.mock('../src/use-waste-master-data-view-model.js', () => ({
+  useWasteMasterDataViewModel: () => controllerState,
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({

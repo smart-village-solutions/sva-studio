@@ -1,10 +1,9 @@
 import type {
   PluginArchitectureBaselineEntry,
+  PluginArchitectureImportKind,
   PluginArchitectureViolation,
   PluginArchitectureViolationRule,
 } from './plugin-architecture-boundary-lib.ts';
-
-export type PluginArchitectureImportKind = 'runtime' | 'type' | 'reexport';
 
 export type PluginArchitectureAllowlistEntry = {
   plugin: string;

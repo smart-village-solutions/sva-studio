@@ -6,7 +6,7 @@ import {
   mapLocationTourLinkToForm,
   mapTourToForm,
 } from './waste-management.tours.shared.js';
-import type { WasteToursState } from './waste-management.tours.state.js';
+import type { WasteToursState } from './use-waste-tours-state.js';
 
 export const createWasteToursActions = (state: WasteToursState) => ({
   openCreateDialog: () => {

@@ -21,7 +21,7 @@ const createPluginJobExecutionHandlersMock = vi.fn(() => ({
   'waste-management.sync-waste-types': vi.fn(),
 }));
 
-vi.mock('../../../../packages/plugin-waste-management/src/server.ts', () => ({
+vi.mock('@sva/waste-management-runtime/server', () => ({
   createPluginJobExecutionHandlers: createPluginJobExecutionHandlersMock,
 }));
 
@@ -280,6 +280,26 @@ describe('plugin operation runtime registration', () => {
     ).rejects.toThrowError('plugin_job_runtime_provider_missing:custom-waste-plugin:custom.runtime');
   });
 
+  it('does not apply the host-owned waste runtime factory to unrelated plugins with the same runtime requirement', async () => {
+    const mod = await import('./plugin-operation-runtime.server');
+
+    await expect(
+      mod.createPluginOperationExecutionHandlersFromSnapshot({
+        pluginSources: [
+          createJobPluginSource({
+            pluginId: 'custom-waste-plugin',
+            runtimeRequirement: 'waste-management.operations',
+            sourceType: 'installed-distribution',
+            sourceRef: '@acme/plugin-waste-management',
+          }),
+        ],
+        runtimeFactories: {
+          'waste-management.operations': () => ({}),
+        },
+      })
+    ).rejects.toThrowError('missing_plugin_job_module_factory:custom-waste-plugin');
+  });
+
   it('rejects package job sources without a loadable module factory', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 
@@ -288,18 +308,18 @@ describe('plugin operation runtime registration', () => {
         pluginSources: [
           {
             ...createJobPluginSource({
-            pluginId: 'installed-waste-plugin',
-            runtimeRequirement: 'waste-management.operations',
+            pluginId: 'installed-custom-plugin',
+            runtimeRequirement: 'custom.runtime',
             sourceType: 'installed-distribution',
           }),
-            sourceRef: '@acme/plugin-waste-management',
+            sourceRef: '@acme/plugin-custom',
           },
         ],
         runtimeFactories: {
-          'waste-management.operations': () => ({}),
+          'custom.runtime': () => ({}),
         },
       })
-    ).rejects.toThrowError('missing_plugin_job_module_factory:installed-waste-plugin');
+    ).rejects.toThrowError('missing_plugin_job_module_factory:installed-custom-plugin');
   });
 
   it('rejects duplicate job handler ids across plugin job modules', async () => {
@@ -326,18 +346,18 @@ describe('plugin operation runtime registration', () => {
     );
   });
 
-  it('prefers manifest-declared workspace job entries before falling back to src/server.ts', async () => {
+  it('registers the host-owned waste runtime even when the waste plugin no longer declares a jobs entry point', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 
     const handlers = await mod.createPluginOperationExecutionHandlersFromSnapshot({
       pluginSources: [
         {
           ...createJobPluginSource({
-            pluginId: 'workspace-waste-plugin',
+            pluginId: 'waste-management',
             runtimeRequirement: 'waste-management.operations',
           }),
           manifest: definePluginManifest({
-            pluginId: 'workspace-waste-plugin',
+            pluginId: 'waste-management',
             version: '0.0.1',
             sdkVersion: '0.0.1',
             hostCompatibility: {
@@ -345,10 +365,7 @@ describe('plugin operation runtime registration', () => {
               requiredCapabilities: ['jobs'],
             },
             entryPoints: {
-              jobs: './dist/server.js',
-            },
-            runtimeRequirements: {
-              jobs: 'waste-management.operations',
+              browser: './dist/index.js',
             },
           }),
         },

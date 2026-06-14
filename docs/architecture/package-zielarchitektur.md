@@ -42,7 +42,8 @@ Die aktuelle Struktur trennt die vorherigen Sammelrollen in eigenständige Paket
 - `@sva/studio-ui-react` ist Owner der wiederverwendbaren Listen-/Template-UI; App-spezifische i18n-Labels bleiben Consumer-Verantwortung.
 - `@sva/sva-mainserver` kapselt die externe Mainserver-Integration und exportiert die kanonischen serverseitigen Host-Verträge für News, Events, POI und Mainserver-Schnittstellen.
 - `@sva/plugin-news` zeigt das Zielmuster für fachliche Plugins.
-- `@sva/plugin-waste-management` ist aktuell ein Brownfield-Fall mit hostnahen Altkanten und kein sauberer Referenzbaustein fuer den Standard Path.
+- `@sva/plugin-waste-management` ist jetzt auf den browserseitigen Plugin-Schnitt reduziert und enthaelt keine host-owned Runtime-Entry-Points mehr.
+- `@sva/waste-management-runtime` kapselt die host-owned Waste-Management-Job-Runtime ausserhalb des Plugin-Packages.
 - `apps/sva-studio-react` enthält UI, TanStack-Start-Runtime, Router-Wiring und nur noch dünne App-Adapter für Package-Verträge.
 
 Die größte frühere strukturelle Last aus `@sva/auth` ist fachlich aufgelöst. Das Package ist kein aktiver Workspace-Baustein mehr.
@@ -120,6 +121,7 @@ Die Zielrollen sind als Workspace-Packages vorhanden und werden über Nx-, ESLin
 | `plugin-catalog` (Zielrolle) | Führender Aktivierungs-, Deaktivierungs- und Kompatibilitätskatalog für lokale und installierte Plugins | noch nicht als eigenes Package umgesetzt | Der Katalog steuert, welche Plugins in den kanonischen Host-Snapshot eingehen; deaktivierte oder inkompatible Plugins werden fail-closed ausgeschlossen. |
 | `plugin-loader` (Zielrolle) | Materialisiert lokale und installierte Plugins über denselben Descriptor in einen validierten kanonischen Host-Snapshot | noch nicht als eigenes Package umgesetzt | Routing, IAM, Audit, Jobs und weitere Host-Consumer lesen denselben Snapshot statt roher Plugin-Arrays oder paralleler Teilregistries. |
 | `plugin-runtime` (Zielrolle) | Host-owned Execution-Contexts und Entry-Point-Boundaries für pluginseitige Request-, Job- und Integrationsbeiträge | verteilt über `packages/auth-runtime`, `packages/server-runtime`, `packages/routing` und Folgebausteine | Plugins liefern fachliche Handler, übernehmen aber keine Host-Ownership für Auth, Instanzauflösung, Audit, Secrets, Fehlervertrag oder Orchestrierung. |
+| `@sva/waste-management-runtime` | Host-owned Waste-Management-Runtime für pluginbezogene Job-Ausführung und Runtime-Adapter | `packages/waste-management-runtime` | Kein Plugin-Package: hostseitige Runtime-Auflösung, Handler-Mapping und Job-Ausführung bleiben ausserhalb von `@sva/plugin-waste-management`; Importkanten laufen vom Host zur Runtime, nicht vom Plugin in Host-Interna. |
 | `@sva/server-runtime` | Request-Kontext, JSON-Fehlerantworten, Logger-Fassade, OTEL-Bootstrap, Workspace-Kontext | `packages/server-runtime` | Server-Hilfen bleiben fachfrei und dürfen keine IAM-Fachlogik enthalten. |
 | `@sva/data-client` | HTTP-Client, Cache, Runtime-Schema-Validierung für Browser-/Universal-Zugriff | `packages/data-client` | Keine DB-Treiber, keine serverseitigen Repositories, keine IAM-Fachlogik. |
 | `@sva/data-repositories` | Postgres-Repositories, Migration-nahe Typen, DB-Operationen | `packages/data-repositories` | Keine UI- oder Routing-Abhängigkeiten; nur serverseitige Konsumenten. Der generische Plugin-Jobdatensatz bleibt hier die führende Persistenz. |
@@ -133,7 +135,7 @@ Die Zielrollen sind als Workspace-Packages vorhanden und werden über Nx-, ESLin
 | `@sva/studio-ui-react` | React-basierte Studio-UI-Bausteine für Host-Seiten und Plugin-Custom-Views | `packages/studio-ui-react` | UI-only Package; keine Plugin-Registry-, Routing-, IAM-, DB- oder Server-Runtime-Verantwortung. Wiederverwendbare Host-Tabellen und Seiten-Templates gehören hierher. |
 | `@sva/*-integration` | Downstream-Integrationen mit getrennten client-sicheren Typen und serverseitigen Adaptern | `packages/sva-mainserver` | Integrationspakete kapseln OAuth2, GraphQL, Secret-Lookups, Fehlerabbildung und kanonische serverseitige Host-Verträge. |
 | `@sva/plugin-*` | Fachliche Erweiterungen ueber Plugin-SDK-Vertraege und gemeinsame Studio-UI | `packages/plugin-news` | Standard Path: nur `@sva/plugin-sdk` und optional `@sva/studio-ui-react`; das sind die einzigen erlaubten internen Plugin-Einstiegspunkte. Keine Direktimporte aus `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data*`, `@sva/studio-module-iam` oder App-Modulen. Advanced Path nur ueber explizite oeffentliche Host-Vertraege. |
-| `@sva/plugin-waste-management` | Brownfield-Plugin mit dokumentierter Altlast fuer Waste-Management | `packages/plugin-waste-management` | Aktuelle importkantenbezogene Abweichungen duerfen nur ueber `config/plugin-architecture-allowlist.json` toleriert werden; nicht-importbezogene Brownfield-Historie bleibt im Baseline-Report als Referenz erhalten. Das Package ist kein Freifahrtschein fuer weitere Plugin-Host-Kopplung. |
+| `@sva/plugin-waste-management` | Browserseitiges Waste-Management-Plugin mit UI, deklarativen Plugin-Beitraegen und Browser-Manifest | `packages/plugin-waste-management` | Das Package folgt dem Plugin-Schnitt fuer Browser-Code. Host-owned Job-Runtime liegt in `@sva/waste-management-runtime`; fuer das Plugin besteht aktuell keine aktive Import-Allowlist-Ausnahme. |
 | `apps/sva-studio-react` | UI, TanStack Start, Router-Wiring, App-Shell, Server-Funktionen als Adapter | `apps/sva-studio-react` | Keine dauerhafte Domänenlogik, keine rohen DB-/Keycloak-/GraphQL-Zugriffe im Browser-Bundle. |
 
 ## Erlaubte Abhängigkeitsrichtung
@@ -157,6 +159,7 @@ Nicht zulässig im Zielbild:
 - `@sva/routing` importiert historische Auth-Sammelpackages für Pfade oder Runtime-Handler.
 - Plugins importieren `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Code direkt.
 - Plugins importieren keine hostnahen Mischrollen wie `@sva/studio-module-iam`; guenstige Tags ersetzen keinen oeffentlichen Plugin-Vertrag.
+- Plugins tragen keine host-owned Runtime-Entry-Points im selben Package; Waste Management ist dafuer der aktuelle Referenzschnitt mit Browser-Plugin plus `@sva/waste-management-runtime`.
 - Plugins koppeln ihren öffentlichen Vertrag an keine konkrete Worker-Technologie oder zentrale Hosttabelle.
 - App-lokale statische Plugin-Importlisten sind kein Zielbild für extern publizierbare Plugins; sie bleiben nur Übergangspfad bis Katalog und Loader eingeführt sind.
 - Plugins importieren wiederverwendbare UI aus `apps/sva-studio-react/src/**` oder definieren eigene Basis-Control-Systeme für Buttons, Inputs, Dialoge, Tabs oder Tabellen.
@@ -254,6 +257,7 @@ Die Zielarchitektur ist durch den harten OpenSpec-Schnitt umgesetzt. Für laufen
 - Nx-`depConstraints`, `no-restricted-imports` und `check:server-runtime` sind die durchsetzenden Grenzen.
 - `check:plugin-ui-boundary` bleibt fuer `packages/plugin-*` ein Detail-Gate; `check:plugin-architecture-boundary` laeuft im ersten Rollout warn-only auf demselben Scope.
 - `check:plugin-architecture-boundary` bewertet direkte, relative, Runtime-, Type- und Re-Export-Kanten; bekannte importkantenbezogene Brownfield-Ausnahmen liegen in `config/plugin-architecture-allowlist.json`.
+- `@sva/plugin-waste-management` ist nach der Runtime-Extraktion auf den browserseitigen Schnitt zurueckgefuehrt und benoetigt aktuell keinen aktiven Allowlist-Eintrag.
 - Die heutige Allowlist ersetzt fruehere Baseline-Klassen wie Workspace-Dependencies oder Dateipfad-Signale nicht vollstaendig eins zu eins.
 - Architektur- und OpenSpec-Dokumentation werden im selben Change aktualisiert, wenn sich Package-Grenzen ändern.
 

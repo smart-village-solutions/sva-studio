@@ -75,8 +75,8 @@ vi.mock('@sva/studio-ui-react', () => ({
   StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('../src/waste-management.scheduling.controller.js', () => ({
-  useWasteSchedulingController: () => controllerMock,
+vi.mock('../src/use-waste-scheduling-view-model.js', () => ({
+  useWasteSchedulingViewModel: () => controllerMock,
 }));
 
 vi.mock('../src/waste-management.scheduling-panel.views.js', () => ({

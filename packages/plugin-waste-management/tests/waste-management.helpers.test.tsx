@@ -35,7 +35,7 @@ import {
   formatTourRecurrence,
 } from '../src/waste-management.tours.presentation.js';
 import { createWasteToursActions } from '../src/waste-management.tours.actions.js';
-import { createWasteToursAssignmentSubmitHandlers } from '../src/waste-management.tours.assignments-submissions.js';
+import { createWasteToursAssignmentMutationHandlers } from '../src/waste-management.tours.assignments-mutations.js';
 
 const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -755,16 +755,16 @@ describe('waste management helper modules', () => {
       };
     });
 
-    vi.doMock('../src/waste-management.master-data.state.js', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('../src/waste-management.master-data.state.js')>();
+    vi.doMock('../src/use-waste-master-data-state.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('../src/use-waste-master-data-state.js')>();
       return {
         ...actual,
         applySuccess: applySuccessSpy,
       };
     });
 
-    const { createWasteMasterDataFractionRegionSubmissions: createSubmissions } = await import(
-      '../src/waste-management.master-data.fraction-region-submissions.js'
+    const { createWasteMasterDataFractionRegionMutations: createSubmissions } = await import(
+      '../src/waste-management.master-data.fraction-region-mutations.js'
     );
 
     const setSaving = vi.fn();
@@ -840,7 +840,7 @@ describe('waste management helper modules', () => {
     expect(setRegionDialogOpen).toHaveBeenCalledWith(false);
 
     vi.doUnmock('../src/waste-management.api.js');
-    vi.doUnmock('../src/waste-management.master-data.state.js');
+    vi.doUnmock('../src/use-waste-master-data-state.js');
   });
 
   it('covers waste tours assignment submission handlers for success and forbidden failures', async () => {
@@ -861,7 +861,7 @@ describe('waste management helper modules', () => {
     };
 
     createWasteManagementLocationTourLinkMock.mockResolvedValueOnce(undefined);
-    const createHandlers = createWasteToursAssignmentSubmitHandlers({
+    const createHandlers = createWasteToursAssignmentMutationHandlers({
       state: state as never,
       pt: translate,
       loadOverview,
@@ -888,7 +888,7 @@ describe('waste management helper modules', () => {
       new WasteManagementApiError('forbidden', 'Nicht erlaubt')
     );
 
-    const updateHandlers = createWasteToursAssignmentSubmitHandlers({
+    const updateHandlers = createWasteToursAssignmentMutationHandlers({
       state: updateState as never,
       pt: translate,
       loadOverview,
@@ -934,7 +934,7 @@ describe('waste management helper modules', () => {
     createWasteManagementLocationTourLinksBulkMock.mockResolvedValueOnce(undefined);
     deleteWasteManagementLocationTourLinkMock.mockResolvedValueOnce(undefined);
 
-    const bulkHandlers = createWasteToursAssignmentSubmitHandlers({
+    const bulkHandlers = createWasteToursAssignmentMutationHandlers({
       state: bulkState as never,
       pt: translate,
       loadOverview,
@@ -962,7 +962,7 @@ describe('waste management helper modules', () => {
     };
     updateWasteManagementLocationTourLinkMock.mockResolvedValueOnce(undefined);
 
-    const editHandlers = createWasteToursAssignmentSubmitHandlers({
+    const editHandlers = createWasteToursAssignmentMutationHandlers({
       state: editState as never,
       pt: translate,
       loadOverview,
@@ -1007,7 +1007,7 @@ describe('waste management helper modules', () => {
 
     createWasteManagementLocationTourLinksBulkMock.mockResolvedValue(undefined);
 
-    const handlers = createWasteToursAssignmentSubmitHandlers({
+    const handlers = createWasteToursAssignmentMutationHandlers({
       state: chunkingState as never,
       pt: translate,
       loadOverview,

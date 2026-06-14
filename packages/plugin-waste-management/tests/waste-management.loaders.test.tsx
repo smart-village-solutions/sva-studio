@@ -4,12 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementApiError } from '../src/waste-management.api.js';
 import { WasteSettingsPanel } from '../src/waste-management.settings-panel.js';
-import { useWasteMasterDataDataLoading } from '../src/waste-management.master-data.loaders.js';
-import { useWasteMasterDataState } from '../src/waste-management.master-data.state.js';
-import { useWasteSchedulingDataLoading } from '../src/waste-management.scheduling.loaders.js';
-import { useWasteSchedulingState } from '../src/waste-management.scheduling.state.js';
-import { useWasteToursDataLoading } from '../src/waste-management.tours.loaders.js';
-import { useWasteToursState } from '../src/waste-management.tours.state.js';
+import { useWasteMasterDataOverview } from '../src/use-waste-master-data-overview.js';
+import { useWasteMasterDataState } from '../src/use-waste-master-data-state.js';
+import { useWasteSchedulingOverview } from '../src/use-waste-scheduling-overview.js';
+import { useWasteSchedulingState } from '../src/use-waste-scheduling-state.js';
+import { useWasteToursOverview } from '../src/use-waste-tours-overview.js';
+import { useWasteToursState } from '../src/use-waste-tours-state.js';
 
 const apiMocks = vi.hoisted(() => ({
   getWasteManagementMasterDataOverview: vi.fn(),
@@ -63,35 +63,35 @@ const createForbiddenError = () => new WasteManagementApiError('forbidden');
 
 const MasterDataLoaderHarness = () => {
   const state = useWasteMasterDataState();
-  useWasteMasterDataDataLoading(state, (key) => key, 'fractions');
+  useWasteMasterDataOverview(state, (key) => key, 'fractions');
 
   return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
 };
 
 const LocationsMasterDataLoaderHarness = () => {
   const state = useWasteMasterDataState();
-  useWasteMasterDataDataLoading(state, (key) => key, 'locations');
+  useWasteMasterDataOverview(state, (key) => key, 'locations');
 
   return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
 };
 
 const DynamicMasterDataLoaderHarness = ({ tab }: { readonly tab: 'fractions' | 'locations' }) => {
   const state = useWasteMasterDataState();
-  useWasteMasterDataDataLoading(state, (key) => key, tab);
+  useWasteMasterDataOverview(state, (key) => key, tab);
 
   return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
 };
 
 const ToursLoaderHarness = () => {
   const state = useWasteToursState();
-  useWasteToursDataLoading(state, (key) => key);
+  useWasteToursOverview(state, (key) => key);
 
   return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
 };
 
 const SchedulingLoaderHarness = () => {
   const state = useWasteSchedulingState();
-  useWasteSchedulingDataLoading(state, (key) => key);
+  useWasteSchedulingOverview(state, (key) => key);
 
   return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
 };

@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -5,8 +9,28 @@ import {
   wasteManagementAuditEventDefinitions,
   wasteManagementPermissionDefinitions,
 } from '../src/plugin.js';
+import { wasteManagementModuleIam } from '../src/waste-management.module-iam.js';
 
 describe('pluginWasteManagement contract', () => {
+  it('keeps the plugin manifest aligned with the browser-only plugin package contents', () => {
+    const currentDir = dirname(fileURLToPath(import.meta.url));
+    const manifest = JSON.parse(
+      readFileSync(resolve(currentDir, '../plugin.manifest.json'), 'utf8')
+    ) as {
+      readonly entryPoints?: {
+        readonly browser?: string;
+        readonly jobs?: string;
+      };
+      readonly runtimeRequirements?: {
+        readonly jobs?: string;
+      };
+    };
+
+    expect(manifest.entryPoints?.browser).toBe('./dist/index.js');
+    expect(manifest.entryPoints?.jobs).toBeUndefined();
+    expect(manifest.runtimeRequirements?.jobs).toBeUndefined();
+  });
+
   it('declares the canonical free plugin route, module iam and job registrations', () => {
     expect(pluginWasteManagement.navigation).toEqual([
       {
@@ -18,10 +42,54 @@ describe('pluginWasteManagement contract', () => {
       },
     ]);
     expect(pluginWasteManagement.permissions).toEqual(wasteManagementPermissionDefinitions);
-    expect(pluginWasteManagement.moduleIam).toMatchObject({
+    expect(pluginWasteManagement.permissions).toEqual([
+      { id: 'waste-management.read', titleKey: 'wasteManagement.permissions.read.title' },
+      {
+        id: 'waste-management.master-data.manage',
+        titleKey: 'wasteManagement.permissions.masterDataManage.title',
+      },
+      { id: 'waste-management.tours.manage', titleKey: 'wasteManagement.permissions.toursManage.title' },
+      {
+        id: 'waste-management.scheduling.manage',
+        titleKey: 'wasteManagement.permissions.schedulingManage.title',
+      },
+      { id: 'waste-management.import.execute', titleKey: 'wasteManagement.permissions.importExecute.title' },
+      { id: 'waste-management.seed.execute', titleKey: 'wasteManagement.permissions.seedExecute.title' },
+      { id: 'waste-management.reset.execute', titleKey: 'wasteManagement.permissions.resetExecute.title' },
+      {
+        id: 'waste-management.settings.manage',
+        titleKey: 'wasteManagement.permissions.settingsManage.title',
+      },
+    ]);
+    expect(pluginWasteManagement.moduleIam).toEqual({
       moduleId: 'waste-management',
-      permissionIds: expect.arrayContaining(['waste-management.read', 'waste-management.settings.manage']),
+      permissionIds: [
+        'waste-management.read',
+        'waste-management.master-data.manage',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+        'waste-management.import.execute',
+        'waste-management.seed.execute',
+        'waste-management.reset.execute',
+        'waste-management.settings.manage',
+      ],
+      systemRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: [
+            'waste-management.read',
+            'waste-management.master-data.manage',
+            'waste-management.tours.manage',
+            'waste-management.scheduling.manage',
+            'waste-management.import.execute',
+            'waste-management.seed.execute',
+            'waste-management.reset.execute',
+            'waste-management.settings.manage',
+          ],
+        },
+      ],
     });
+    expect(pluginWasteManagement.moduleIam).toEqual(wasteManagementModuleIam);
     expect(pluginWasteManagement.routes).toHaveLength(1);
     expect(pluginWasteManagement.routes[0]).toMatchObject({
       id: 'waste-management.home',
@@ -84,6 +152,48 @@ describe('pluginWasteManagement contract', () => {
       'waste-management.reset-data',
       'waste-management.sync-mainserver',
       'waste-management.sync-waste-types',
+    ]);
+    expect(pluginWasteManagement.importProfiles).toEqual([
+      {
+        profileId: 'waste-management.geografie-abholorte',
+        jobTypeId: 'waste-management.import-data',
+        displayName: 'Geografie und Abholorte',
+        sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        schemaVersion: '1.0.0',
+        schemaStrategy: 'waste-management.geografie-abholorte.schema',
+        mappingStrategy: 'waste-management.geografie-abholorte.mapping',
+        validation: { mode: 'preflight-and-commit' },
+      },
+      {
+        profileId: 'waste-management.touren',
+        jobTypeId: 'waste-management.import-data',
+        displayName: 'Touren',
+        sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        schemaVersion: '1.0.0',
+        schemaStrategy: 'waste-management.touren.schema',
+        mappingStrategy: 'waste-management.touren.mapping',
+        validation: { mode: 'preflight-and-commit' },
+      },
+      {
+        profileId: 'waste-management.ausweichtermine',
+        jobTypeId: 'waste-management.import-data',
+        displayName: 'Ausweichtermine',
+        sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        schemaVersion: '1.0.0',
+        schemaStrategy: 'waste-management.ausweichtermine.schema',
+        mappingStrategy: 'waste-management.ausweichtermine.mapping',
+        validation: { mode: 'preflight-and-commit' },
+      },
+      {
+        profileId: 'waste-management.ortsbezogene-tourtermine',
+        jobTypeId: 'waste-management.import-data',
+        displayName: 'Tourzuordnungen nach Fraktionen',
+        sourceFormats: ['text/csv'],
+        schemaVersion: '1.0.0',
+        schemaStrategy: 'waste-management.ortsbezogene-tourtermine.schema',
+        mappingStrategy: 'waste-management.ortsbezogene-tourtermine.mapping',
+        validation: { mode: 'preflight-and-commit' },
+      },
     ]);
   });
 

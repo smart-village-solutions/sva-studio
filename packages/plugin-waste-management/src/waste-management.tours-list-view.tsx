@@ -1,16 +1,16 @@
-import { useWasteToursController } from './waste-management.tours.controller.js';
+import { useWasteToursViewModel } from './use-waste-tours-view-model.js';
 import { WasteToursContent, WasteToursEmptyState } from './waste-management.tours.content.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteToursListNavigation } from './waste-management.tours-list-view.navigation.js';
 
-type WasteToursController = ReturnType<typeof useWasteToursController>;
+type WasteViewModel = ReturnType<typeof useWasteToursViewModel>;
 
 export const WasteToursListView = ({
   controller,
   search,
   canDuplicateTour = false,
 }: {
-  readonly controller: WasteToursController;
+  readonly controller: WasteViewModel;
   readonly search: WasteManagementSearchParams;
   readonly canDuplicateTour?: boolean;
 }) => {

@@ -2,7 +2,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
 import { useNavigate } from '@tanstack/react-router';
 
-import { useWasteToursController } from './waste-management.tours.controller.js';
+import { useWasteToursViewModel } from './use-waste-tours-view-model.js';
 import { WasteToursDialogs } from './waste-management.tours-dialogs-panel.js';
 import {
   useWasteToursEditRouteHydration,
@@ -20,7 +20,7 @@ export const WasteToursPanel = ({
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
-  const controller = useWasteToursController(pt, search);
+  const controller = useWasteToursViewModel(pt, search);
 
   useWasteToursSuccessRedirect({ controller, navigate, search });
   useWasteToursEditRouteHydration({ controller, navigate, search });

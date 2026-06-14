@@ -9,7 +9,7 @@ import type {
   WasteManagementSchedulingEntryType,
   WasteManagementSearchParams,
 } from './search-params.js';
-import { useWasteSchedulingController } from './waste-management.scheduling.controller.js';
+import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import {
   createDefaultGlobalDateShiftForm,
   createDefaultTourDateShiftForm,
@@ -18,7 +18,7 @@ import {
   resolveSchedulingEntryTypeFromShiftContext,
 } from './waste-management.scheduling.shared.js';
 
-type WasteSchedulingController = ReturnType<typeof useWasteSchedulingController>;
+type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 
 export const resolveSingleTourId = (tours: readonly { readonly id: string }[]) =>
   tours.length === 1 ? tours[0]?.id ?? '' : '';
@@ -68,13 +68,13 @@ export const toSchedulingPageSizeSearch = (
   pageSize,
 });
 
-const resetSchedulingViewState = (controller: WasteSchedulingController) => {
+const resetSchedulingViewState = (controller: WasteViewModel) => {
   controller.setMessage(null);
   controller.setLastOutcome(null);
 };
 
 const resetSchedulingCreateForms = (
-  controller: WasteSchedulingController,
+  controller: WasteViewModel,
   availableTours: readonly { readonly id: string }[],
 ) => {
   controller.setDialogOpen(false);
@@ -99,7 +99,7 @@ const navigateToSchedulingSearch = (
   });
 
 export const useWasteSchedulingListNavigation = (
-  controller: WasteSchedulingController,
+  controller: WasteViewModel,
   search: WasteManagementSearchParams,
 ) => {
   const navigate = useNavigate();

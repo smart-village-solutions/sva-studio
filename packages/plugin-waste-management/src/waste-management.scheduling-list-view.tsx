@@ -1,15 +1,15 @@
-import { useWasteSchedulingController } from './waste-management.scheduling.controller.js';
+import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import { WasteSchedulingContent, WasteSchedulingEmptyState } from './waste-management.scheduling-content.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteSchedulingListNavigation } from './waste-management.scheduling-list-view.navigation.js';
 
-type WasteSchedulingController = ReturnType<typeof useWasteSchedulingController>;
+type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 
 export const WasteSchedulingListView = ({
   controller,
   search,
 }: {
-  readonly controller: WasteSchedulingController;
+  readonly controller: WasteViewModel;
   readonly search: WasteManagementSearchParams;
 }) => {
   const navigation = useWasteSchedulingListNavigation(controller, search);

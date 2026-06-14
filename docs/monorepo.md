@@ -28,6 +28,7 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 | `server-runtime` | Library | `packages/server-runtime/` | Kanonische Server-Runtime-Boundary für Logging, Kontext und Fehlerantworten |
 | `studio-ui-react` | Library | `packages/studio-ui-react/` | Öffentliche React/UI-Basis für Host-Seiten und Plugin-Custom-Views |
 | `sva-mainserver` | Library | `packages/sva-mainserver/` | Serverseitige Integration des externen SVA-Mainservers |
+| `waste-management-runtime` | Library | `packages/waste-management-runtime/` | Host-owned Runtime-Adapter für Waste-Management-Plugin-Jobs |
 | `tooling-testing` | Library | `tooling/testing/` | Interne Test-Huelle fuer CI-, Coverage- und Ops-nahe Skriptpruefungen |
 
 ## Ordner
@@ -40,7 +41,7 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 Wir unterscheiden Packages nach Rolle und Wiederverwendbarkeit.
 
 ### 1) Platform Packages (strategisch)
-Beispiele: `@sva/core`, `@sva/plugin-sdk`, `@sva/server-runtime`
+Beispiele: `@sva/core`, `@sva/plugin-sdk`, `@sva/server-runtime`, `@sva/waste-management-runtime`
 
 Kriterien:
 - werden von mehreren Projekten genutzt
@@ -49,7 +50,7 @@ Kriterien:
 - haben klare Ownership und verbindliche Tests
 
 Konvention:
-- `tags`: `scope:core`, `scope:plugin-sdk` oder `scope:server-runtime`, plus `type:lib`
+- `tags`: `scope:core`, `scope:plugin-sdk`, `scope:server-runtime` oder `scope:plugin-runtime`, plus `type:lib`
 - keine app-spezifische UI-/Route-Logik
 - Breaking Changes nur mit Doku- und Migrationshinweis
 
@@ -249,8 +250,9 @@ Zur langfristigen Architektur-Governance erzwingen wir Import-Grenzen mit
 - `scope:data` darf von `scope:core`, `scope:data` abhängen
 - `scope:plugin-sdk` darf nur von `scope:core`, `scope:plugin-sdk` abhängen
 - `scope:server-runtime` darf nur von `scope:core`, `scope:monitoring`, `scope:server-runtime` abhängen
+- `scope:plugin-runtime` darf von `scope:core`, `scope:plugin-sdk`, `scope:plugin`, `scope:plugin-runtime` abhängen
 - `scope:plugin` darf von `scope:plugin-sdk`, `scope:studio-ui-react`, `scope:plugin` abhängen
-- `scope:app` darf von Zielpackages wie `scope:core`, `scope:data`, `scope:plugin-sdk`, `scope:server-runtime`, `scope:plugin` abhängen
+- `scope:app` darf von Zielpackages wie `scope:core`, `scope:data`, `scope:plugin-sdk`, `scope:server-runtime`, `scope:plugin-runtime`, `scope:plugin` abhängen
 
 ### Wo sind die Regeln hinterlegt?
 - Lint-Regel: `eslint.config.mjs`

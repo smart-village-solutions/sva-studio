@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteToursListView } from '../src/waste-management.tours-list-view.js';
 import type { WasteManagementSearchParams } from '../src/search-params.js';
-import type { useWasteToursController } from '../src/waste-management.tours.controller.js';
+import type { useWasteToursViewModel } from '../src/use-waste-tours-view-model.js';
 
 const navigateMock = vi.fn();
-type WasteToursController = ReturnType<typeof useWasteToursController>;
+type WasteViewModel = ReturnType<typeof useWasteToursViewModel>;
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
@@ -65,8 +65,8 @@ const createSearch = (): WasteManagementSearchParams => ({
 });
 
 const createController = (
-  overrides: Partial<WasteToursController> = {}
-): WasteToursController =>
+  overrides: Partial<WasteViewModel> = {}
+): WasteViewModel =>
   ({
     tours: [],
     overview: null,
@@ -88,7 +88,7 @@ const createController = (
     setMessage: vi.fn(),
     setLastOutcome: vi.fn(),
     ...overrides,
-  }) as WasteToursController;
+  }) as WasteViewModel;
 
 describe('WasteToursListView', () => {
   beforeEach(() => {

@@ -1,17 +1,17 @@
 import { useNavigate } from '@tanstack/react-router';
 
-import { useWasteMasterDataController } from './waste-management.master-data.controller.js';
+import { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
 import { wasteMasterDataFormDefaults } from './waste-management.master-data.forms.js';
 import { WasteMasterDataEmptyState } from './waste-management.master-data-empty-state.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
-type WasteMasterDataController = ReturnType<typeof useWasteMasterDataController>;
+type WasteViewModel = ReturnType<typeof useWasteMasterDataViewModel>;
 
 export const WasteMasterDataPanelEmptyState = ({
   controller,
   search,
 }: {
-  readonly controller: WasteMasterDataController;
+  readonly controller: WasteViewModel;
   readonly search: WasteManagementSearchParams;
 }) => {
   const navigate = useNavigate();

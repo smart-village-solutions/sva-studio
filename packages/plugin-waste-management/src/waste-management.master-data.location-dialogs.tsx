@@ -1,8 +1,8 @@
 import type { CollectionLocationFormState, LocationTourLinkBulkFormState } from './waste-management.master-data.forms.js';
-import type { useWasteMasterDataController } from './waste-management.master-data.controller.js';
+import type { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
 import { BulkLocationAssignmentsDialog, CollectionLocationDialog } from './waste-management.master-data-location-dialogs.js';
 
-type Controller = ReturnType<typeof useWasteMasterDataController>;
+type Controller = ReturnType<typeof useWasteMasterDataViewModel>;
 
 export const WasteMasterDataLocationDialogs = ({ controller }: { readonly controller: Controller }) => (
   <>

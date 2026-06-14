@@ -3,16 +3,16 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { wasteMasterDataFormMappers } from './waste-management.master-data.forms.js';
 import type { WasteManagementSearchParams } from './search-params.js';
-import { useWasteMasterDataController } from './waste-management.master-data.controller.js';
+import { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
 
-type WasteMasterDataController = ReturnType<typeof useWasteMasterDataController>;
+type WasteViewModel = ReturnType<typeof useWasteMasterDataViewModel>;
 
 export const useWasteMasterDataFractionSuccessRedirect = ({
   controller,
   navigate,
   search,
 }: {
-  readonly controller: WasteMasterDataController;
+  readonly controller: WasteViewModel;
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {
@@ -45,7 +45,7 @@ export const useWasteMasterDataFractionEditRouteHydration = ({
   navigate,
   search,
 }: {
-  readonly controller: WasteMasterDataController;
+  readonly controller: WasteViewModel;
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {
@@ -111,7 +111,7 @@ export const useWasteMasterDataLocationSuccessRedirect = ({
   navigate,
   search,
 }: {
-  readonly controller: WasteMasterDataController;
+  readonly controller: WasteViewModel;
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {
@@ -151,7 +151,7 @@ export const useWasteMasterDataLocationEditRouteHydration = ({
   navigate,
   search,
 }: {
-  readonly controller: WasteMasterDataController;
+  readonly controller: WasteViewModel;
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {

@@ -4,7 +4,8 @@ import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 
 import prettier from 'prettier';
 
-const workspaceRoot = process.cwd();
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = resolve(currentDir, '../..');
 const resourcesRoot = resolve(workspaceRoot, 'apps/sva-studio-react/src/i18n/resources');
 const localePattern = /^[a-z]{2}$/;
 
@@ -72,7 +73,7 @@ const renderAggregatorSource = (definition: AggregatorDefinition): string => {
 
 const resolvePrettierOptions = async (filePath: string) => {
   const resolvedOptions = await prettier.resolveConfig(filePath);
-  return { ...resolvedOptions, filepath: filePath };
+  return { ...(resolvedOptions ?? {}), filepath: filePath };
 };
 
 const formatTypeScript = async (filePath: string, sourceText: string): Promise<string> =>
@@ -83,7 +84,18 @@ const writeIfChanged = async (
   sourceText: string,
   checkOnly: boolean
 ): Promise<boolean> => {
-  const existingText = await readFile(filePath, 'utf8');
+  const existingText = await readFile(filePath, 'utf8').catch((error: unknown) => {
+    if (
+      error instanceof Error &&
+      'code' in error &&
+      typeof error.code === 'string' &&
+      error.code === 'ENOENT'
+    ) {
+      return null;
+    }
+
+    throw error;
+  });
 
   if (existingText === sourceText) {
     return false;
@@ -116,7 +128,8 @@ const listChildDirectories = async (directoryPath: string): Promise<readonly str
 
 const buildDirectoryAggregator = async (
   locale: string,
-  directoryPath: string
+  directoryPath: string,
+  rootDirectoryPath: string
 ): Promise<AggregatorDefinition | null> => {
   const childFileNames = await listChildFiles(directoryPath);
   const resourceFileNames = childFileNames.filter((fileName) => fileName.endsWith('.resources.ts'));
@@ -125,20 +138,20 @@ const buildDirectoryAggregator = async (
     return null;
   }
 
-  const relativeDirectoryPath = relative(resourcesRoot, directoryPath);
+  const relativeDirectoryPath = relative(rootDirectoryPath, directoryPath);
   const normalizedDirectoryPath = toPosixPath(relativeDirectoryPath);
   const directorySegments = normalizedDirectoryPath.split('/').filter(Boolean);
   const directoryName = basename(directoryPath);
 
   const filePath =
     directorySegments.length === 1 && directorySegments[0] === locale
-      ? join(resourcesRoot, `${locale}.ts`)
+      ? join(rootDirectoryPath, `${locale}.ts`)
       : join(dirname(directoryPath), `${directoryName}.resources.ts`);
 
-  const relativeAggregatorPath = toPosixPath(relative(resourcesRoot, filePath));
+  const relativeAggregatorPath = toPosixPath(relative(rootDirectoryPath, filePath));
   const entries = resourceFileNames.map((fileName) => {
     const targetFilePath = join(directoryPath, fileName);
-    const relativeTargetPath = toPosixPath(relative(resourcesRoot, targetFilePath));
+    const relativeTargetPath = toPosixPath(relative(rootDirectoryPath, targetFilePath));
 
     return {
       key: stripResourceSuffix(fileName),
@@ -156,17 +169,18 @@ const buildDirectoryAggregator = async (
 
 const buildLocaleAggregators = async (
   locale: string,
-  directoryPath: string
+  directoryPath: string,
+  rootDirectoryPath: string
 ): Promise<readonly AggregatorDefinition[]> => {
   const childDirectoryNames = await listChildDirectories(directoryPath);
   const nestedDefinitions = await Promise.all(
     childDirectoryNames.map((childDirectoryName) =>
-      buildLocaleAggregators(locale, join(directoryPath, childDirectoryName))
+      buildLocaleAggregators(locale, join(directoryPath, childDirectoryName), rootDirectoryPath)
     )
   );
 
   const flattenedDefinitions = nestedDefinitions.flat();
-  const currentDefinition = await buildDirectoryAggregator(locale, directoryPath);
+  const currentDefinition = await buildDirectoryAggregator(locale, directoryPath, rootDirectoryPath);
 
   return currentDefinition ? [...flattenedDefinitions, currentDefinition] : flattenedDefinitions;
 };
@@ -181,7 +195,9 @@ export const collectResourceAggregators = async (
     .sort((left, right) => left.localeCompare(right));
 
   const localeDefinitions = await Promise.all(
-    localeDirectoryNames.map((locale) => buildLocaleAggregators(locale, join(rootDirectoryPath, locale)))
+    localeDirectoryNames.map((locale) =>
+      buildLocaleAggregators(locale, join(rootDirectoryPath, locale), rootDirectoryPath)
+    )
   );
 
   return localeDefinitions.flat();
@@ -204,11 +220,13 @@ const collectTypeScriptFiles = async (directoryPath: string): Promise<readonly s
 
 export const runI18nResourceFormatter = async ({
   checkOnly = false,
+  rootDirectoryPath = resourcesRoot,
 }: {
   readonly checkOnly?: boolean;
+  readonly rootDirectoryPath?: string;
 } = {}): Promise<readonly string[]> => {
   const changedFilePaths: string[] = [];
-  const aggregatorDefinitions = await collectResourceAggregators();
+  const aggregatorDefinitions = await collectResourceAggregators(rootDirectoryPath);
 
   for (const definition of aggregatorDefinitions) {
     const formattedSource = await formatTypeScript(definition.filePath, renderAggregatorSource(definition));
@@ -219,7 +237,7 @@ export const runI18nResourceFormatter = async ({
     }
   }
 
-  const resourceFilePaths = await collectTypeScriptFiles(resourcesRoot);
+  const resourceFilePaths = await collectTypeScriptFiles(rootDirectoryPath);
 
   for (const resourceFilePath of resourceFilePaths) {
     const sourceText = await readFile(resourceFilePath, 'utf8');

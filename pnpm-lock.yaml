@@ -26,10 +26,6 @@ overrides:
 importers:
 
   .:
-    dependencies:
-      prettier:
-        specifier: ^3.8.4
-        version: 3.8.4
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -82,6 +78,9 @@ importers:
       postcss:
         specifier: 8.5.11
         version: 8.5.11
+      prettier:
+        specifier: ^3.8.4
+        version: 3.8.4
       tailwindcss:
         specifier: 4.2.4
         version: 4.2.4

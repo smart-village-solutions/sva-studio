@@ -51,8 +51,7 @@ const runDeleteMessage = (pt: Translate, code: string | null | undefined, bulk: 
 
 const runLocationSave = async (
   submittedForm: CollectionLocationFormState,
-  mode: 'create' | 'edit',
-  context: LocationMutationContext
+  mode: 'create' | 'edit'
 ) => {
   if (mode === 'create') {
     await createWasteManagementCollectionLocation(
@@ -75,7 +74,7 @@ export const createLocationSubmitHandler = (context: LocationMutationContext) =>
   context.state.setMessage(null);
   context.state.setLastOutcome(null);
   try {
-    await runLocationSave(submittedForm, mode, context);
+    await runLocationSave(submittedForm, mode);
     await context.loadOverview(true);
     applySuccess(
       () => context.state.setLocationDialogOpen(false),

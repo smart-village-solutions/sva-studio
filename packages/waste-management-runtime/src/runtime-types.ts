@@ -1,3 +1,13 @@
+import type {
+  WasteManagementApplyMigrationsJobInput,
+  WasteManagementImportJobInput,
+  WasteManagementInitializeJobInput,
+  WasteManagementResetJobInput,
+  WasteManagementSeedJobInput,
+  WasteManagementSyncMainserverJobInput,
+  WasteManagementSyncWasteTypesJobInput,
+} from '@sva/plugin-sdk';
+
 export const createProgress = (input: {
   readonly completedSteps: number;
   readonly totalSteps: number;
@@ -18,21 +28,21 @@ export type WasteManagementJobProgress = ReturnType<typeof createProgress>;
 export type WasteManagementOperationRuntime = {
   readonly initializeDataSource: (
     instanceId: string,
-    payload: import('@sva/plugin-sdk').WasteManagementInitializeJobInput
+    payload: WasteManagementInitializeJobInput
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
   }>;
   readonly applyMigrations: (
     instanceId: string,
-    payload: import('@sva/plugin-sdk').WasteManagementApplyMigrationsJobInput
+    payload: WasteManagementApplyMigrationsJobInput
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
   }>;
   readonly importData: (
     instanceId: string,
-    payload: import('@sva/plugin-sdk').WasteManagementImportJobInput,
+    payload: WasteManagementImportJobInput,
     progressReporter?: {
       readonly reportProgress: (progress: WasteManagementJobProgress) => Promise<void> | void;
     }
@@ -42,28 +52,28 @@ export type WasteManagementOperationRuntime = {
   }>;
   readonly seedData: (
     instanceId: string,
-    payload: import('@sva/plugin-sdk').WasteManagementSeedJobInput
+    payload: WasteManagementSeedJobInput
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
   }>;
   readonly resetData: (
     instanceId: string,
-    payload: import('@sva/plugin-sdk').WasteManagementResetJobInput
+    payload: WasteManagementResetJobInput
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
   }>;
   readonly syncMainserver: (
     instanceId: string,
-    payload: import('@sva/plugin-sdk').WasteManagementSyncMainserverJobInput
+    payload: WasteManagementSyncMainserverJobInput
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
   }>;
   readonly syncWasteTypes: (
     instanceId: string,
-    payload: import('@sva/plugin-sdk').WasteManagementSyncWasteTypesJobInput
+    payload: WasteManagementSyncWasteTypesJobInput
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;

@@ -1,4 +1,3 @@
-import type { PluginJobExecutionHandler } from '@sva/plugin-sdk';
 import {
   wasteManagementOperationsContract,
   type WasteManagementApplyMigrationsJobInput,

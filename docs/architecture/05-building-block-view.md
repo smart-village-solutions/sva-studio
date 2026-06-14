@@ -250,7 +250,7 @@ Abhängigkeiten des aktuellen Systems.
    - eigenständige Vite/React-App für den öffentlichen Waste-Kalender außerhalb der Studio-Admin-Shell
    - hält Resolver, Kalenderprojektion, Demo-Runtime, Cookie-Restore, PDF-/iCal-Links und Modal-Interaktion bewusst app-lokal
    - nutzt eine reduzierte UI aus `PublicWasteApp`, `PublicWasteSelectionForm`, `PublicWasteCalendarPanels` und `PublicWasteEventDialog`
-   - kapselt servernahe Verträge in `src/lib/public-waste-*.ts`, ohne neue Workspace-Kopplung zu `@sva/core` oder `@sva/data-repositories` einzuführen
+   - kapselt servernahe Verträge in `src/lib/public-waste-*.ts` und nutzt dafür bewusst gemeinsame Workspace-Verträge aus `@sva/core` und `@sva/data-repositories`, ohne an die Studio-Admin-UI oder das Plugin-Routing zu koppeln
    - besitzt zusätzlich eine eigene produktive Node-Runtime unter `src/server/**`, die das gebaute Frontend statisch ausliefert und die öffentlichen Read-Endpunkte `/api/public-waste/*` lokal bedient
    - wird betrieblich über ein dediziertes Image, einen dedizierten Portainer-Stack `web-waste-calendar` und einen separaten Git-Tag-Releasepfad `waste-web-vX.Y.Z` ausgerollt, ohne den normalen Studio-Releasevertrag mitzubenutzen
 
@@ -277,7 +277,7 @@ Abhängigkeiten des aktuellen Systems.
 
 ### Abhängigkeiten (vereinfacht)
 
-- App -> `@sva/core`, `@sva/routing`, `@sva/auth-runtime`, `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/sva-mainserver`, `@sva/plugin-news`, `@sva/plugin-events`, `@sva/plugin-poi`
+- App -> `@sva/core`, `@sva/routing`, `@sva/auth-runtime`, `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/sva-mainserver`, `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events`, `@sva/plugin-poi`
 - `@sva/routing` -> `@sva/auth-runtime`, `@sva/core`, `@sva/plugin-sdk`, `@sva/server-runtime`
 - `@sva/auth-runtime` -> `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-repositories`, `@sva/server-runtime`
 - `@sva/auth-runtime` -> `@sva/studio-module-iam` für den kanonischen Modul-IAM-Katalog
@@ -287,11 +287,11 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`
 - `@sva/plugin-*` -> `@sva/plugin-sdk`, optional `@sva/studio-ui-react` für Custom-Views (kein Direktimport aus `@sva/core` oder App-internen Komponenten)
 - `@sva/plugin-waste-management` -> `@sva/plugin-sdk`, `@sva/studio-ui-react`; Host-Datenzugriffe ausschließlich über `/api/v1/waste-management/*`
-- `@sva/plugin-news`, `@sva/plugin-events` und `@sva/plugin-poi` bleiben absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über öffentliche Host-Fassaden statt über App-Module
+- `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events` und `@sva/plugin-poi` bleiben absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über öffentliche Host-Fassaden statt über App-Module
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/server-runtime` Context API
 - `@sva/iam-core` -> `@sva/core`
 - `apps/sva-studio-react` -> Zielpackages über Server-Funktionen für Inhaltsliste, Detail, Historie und Statuswechsel
-- `apps/public-waste-calendar-web` -> keine zusätzliche Workspace-Domain-Abhängigkeit; die App hält ihren öffentlichen Domain- und Laufzeitpfad lokal
+- `apps/public-waste-calendar-web` -> `@sva/core`, `@sva/data-repositories`; die App hält ihren öffentlichen UI- und Node-Laufzeitpfad trotzdem lokal und getrennt von der Studio-Admin-Shell
 
 ### Schichtregel für Plugins
 
@@ -307,17 +307,18 @@ flowchart LR
 Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
 
-### Erweiterung 2026-04: Plugin-SDK-Vertrag v1 und News-, Events- sowie POI-Plugins
+### Erweiterung 2026-04 bis 2026-06: Plugin-SDK-Vertrag v1 und Workspace-Plugins
 
 1. `packages/plugin-sdk/src/plugins.ts`
    - definiert `PluginDefinition` und Merge-Helfer für Plugin-Routen, Navigation, Content-Typen, Admin-Ressourcen und Übersetzungen
-2. `apps/sva-studio-react/src/lib/plugins.ts`
-   - registriert `pluginNews` statisch im Host und materialisiert daraus Route-, Navigations-, Admin-Ressourcen-, Audit- und i18n-Metadaten
+2. `apps/sva-studio-react/plugin-catalog.json` und `apps/sva-studio-react/src/lib/plugins.ts`
+   - registrieren `pluginCategories`, `pluginNews`, `pluginEvents`, `pluginPoi` und `pluginWasteManagement` statisch im Host und materialisieren daraus Route-, Navigations-, Admin-Ressourcen-, Audit- und i18n-Metadaten
 3. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`
    - erweitert den generischen Content-Write-Pfad um contentType-spezifische Payload-Validierung und Sanitisierung
-4. `packages/plugin-news/src/*`, `packages/plugin-events/src/*`, `packages/plugin-poi/src/*`
-   - kapseln Listen-, tabbasierte Detail-/Editorseiten und Delete-Flows als fachliche Spezialisierungen unter der SDK-Boundary
-   - registrieren `adminResources` mit `resourceId` `news.content`, `events.content` und `poi.content`, jeweils auf Basis der Host-Views `content`, `contentCreate` und `contentDetail`
+4. `packages/plugin-categories/src/*`, `packages/plugin-news/src/*`, `packages/plugin-events/src/*`, `packages/plugin-poi/src/*`
+   - kapseln fachliche Listen- und Editorflächen unter der SDK-Boundary
+   - `plugin-categories` stellt eine freie Fachroute unter `/categories` als redaktionelles Begleitmodul für Mainserver-Kategorien bereit
+   - `plugin-news`, `plugin-events` und `plugin-poi` registrieren `adminResources` mit `resourceId` `news.content`, `events.content` und `poi.content`, jeweils auf Basis der Host-Views `content`, `contentCreate` und `contentDetail`
    - liefern über `contentUi` optionale Bindings für `list`, `detail` und `editor`; Events und POI nutzen dabei dieselbe feste Tab-Struktur `Basis` / `Inhalt` / `Einstellungen` / `Historie` wie News, während Route, Guard, Shell und Persistenz host-owned bleiben
    - beziehen gemeinsame Standard-Metadaten, Mainserver-CRUD-Basis und kleine Hilfsfunktionen aus `@sva/plugin-sdk`, ohne einander zu importieren
    - schreiben ihre Fachdaten über hostgeführte Fassaden; Legacy-`payload` bleibt nur dort Lesefallback, wo die jeweilige Fassade ihn noch toleriert

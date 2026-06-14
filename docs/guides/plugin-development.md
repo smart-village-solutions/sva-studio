@@ -61,10 +61,11 @@ Der Advanced Path ist ein ausdruecklicher Escape Hatch fuer Sonderfaelle, aber k
 Verbindliche Regeln:
 
 - Plugins duerfen erweiterte Faehigkeiten nur ueber explizite oeffentliche Host-Vertraege konsumieren, nie ueber zufaellige interne Packages
+- `@sva/plugin-sdk` und `@sva/studio-ui-react` bleiben die einzigen erlaubten internen Plugin-Einstiegspunkte
 - Browser-UI darf fachlich frei implementiert werden, solange die gemeinsame wiederverwendbare UI-Basis weiter `@sva/studio-ui-react` bleibt
 - pluginseitige Server-, Job- und Integrationsbeitraege laufen nur in host-owned Execution-Contexts
 - jede neue Advanced-Path-Faehigkeit braucht einen eigenen OpenSpec-Change oder eine explizite Erweiterung des fuehrenden Governance-Changes
-- jede aktive Advanced-Path-Ausnahme wird im Boundary-Baseline-Report mit Owner, Begruendung und Abbauziel dokumentiert
+- jede aktive Advanced-Path-Ausnahme wird als importkantenorientierter Eintrag in `config/plugin-architecture-allowlist.json` dokumentiert
 
 Ein Advanced Path liegt nur dann vor, wenn der Host den dafuer benoetigten Vertrag bewusst als oeffentlichen Plugin-Eintrittspunkt beschreibt. Ein guenstiges Nx-Tag, ein historisches Package oder ein bereits vorhandener Importpfad zaehlt nicht als Freigabe.
 
@@ -89,14 +90,21 @@ Nicht erlaubt:
 Die Architekturgrenze fuer Plugins wird nicht nur review-seitig, sondern auch maschinell erzwungen.
 
 - `pnpm check:plugin-ui-boundary` prueft die gemeinsame UI-Basis gegen App-Importe und lokale Basis-Control-Duplikate
-- `pnpm check:plugin-architecture-boundary` prueft Workspace-Dependencies, Source-Imports, Host-Package-Nutzung und verdaechtige Dateistruktur-Signale in `packages/plugin-*`
-- neue Verstosse blockieren lokale Quality Gates und PR-Laeufe
+- `pnpm check:plugin-architecture-boundary` laeuft im ersten Rollout warn-only fuer `packages/plugin-*`
+- der Check bewertet direkte, relative, Runtime-, Type- und Re-Export-Kanten sowie Host-Package-Nutzung in `packages/plugin-*`
+- bekannte importbezogene Altlasten stehen in `config/plugin-architecture-allowlist.json`
 
-Bestandsfaelle werden nicht stillschweigend akzeptiert. Wenn ein bestehendes Plugin noch nicht auf dem Zielvertrag liegt, muss die Abweichung im Baseline-Report unter `docs/reports/plugin-architecture-boundary-baseline.md` stehen. Jede Ausnahme braucht:
+Bestandsfaelle werden nicht stillschweigend akzeptiert. Wenn ein bestehendes Plugin noch nicht auf dem Zielvertrag liegt, muss die konkrete Importkante in `config/plugin-architecture-allowlist.json` stehen. Die Allowlist bildet heute nur importorientierte Guard-Ausnahmen ab und ersetzt historische Baseline-Klassen wie Workspace-Dependencies oder Path-Signals nicht eins zu eins. `docs/reports/plugin-architecture-boundary-baseline.md` bleibt nur als Brownfield-Historie und Verweis auf die primaeren Governance-Dokumente erhalten. Der JSON-Vertrag unterstuetzt aktuell:
 
-- einen verantwortlichen Owner
-- eine technische Begruendung
-- einen benannten Folgechange fuer den Abbau
+- `plugin`
+- `sourceFile`
+- `importSpecifier`
+- `resolvedTarget`
+- `kind`
+- `reason`
+- optional `ticket`
+
+Review- oder Prozessmetadaten wie Owner, Folgechange oder Abbauplanung gehoeren bei Bedarf in PR-, Ticket- oder Architekturkontext, nicht in den aktuellen JSON-Vertrag.
 
 ## Pflicht-Export
 

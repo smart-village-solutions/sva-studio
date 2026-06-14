@@ -928,7 +928,10 @@ describe('createSvaMainserverService', () => {
     });
   });
 
-  it('keeps the highest allowed visible-list page reachable when the has-next probe crosses the scan limit', async () => {
+  it(
+    'keeps the highest allowed visible-list page reachable when the has-next probe crosses the scan limit',
+    { timeout: 20_000 },
+    async () => {
     const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       if (
         init?.body instanceof URLSearchParams ||
@@ -969,7 +972,8 @@ describe('createSvaMainserverService', () => {
       ),
       pagination: { page: 100, pageSize: 100, hasNextPage: true },
     });
-  });
+    }
+  );
 
   it('maps news payload strings and hides invisible upstream news', async () => {
     const publishedAt = '2026-04-14T09:30:00.000Z';

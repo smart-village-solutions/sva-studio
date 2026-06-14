@@ -58,7 +58,7 @@ Die maschinelle Auswertung laeuft ueber `pnpm check:bot-comment-handling` im Wor
 
 - Immer: `Documentation`
 - Neue Architektur / Packages / strukturelle Entscheidungen: `Architecture`
-- Neue Plugin-Standard-/Advanced-Path-Faehigkeit, neue plugin-oeffentliche Host-Vertraege oder Baseline-Ausnahmen: `Architecture` + `Documentation` + `Code Quality`
+- Neue Plugin-Standard-/Advanced-Path-Faehigkeit, neue plugin-oeffentliche Host-Vertraege oder Allowlist-Ausnahmen: `Architecture` + `Documentation` + `Code Quality`
 - IAM, Rollen-Sync, ABAC/RBAC, Data-Subject-Rights oder andere sicherheitskritische Domänenlogik: `Architecture` + `Documentation` + `Security & Privacy`
 - Auth, Sessions, Tokens, PII: `Security & Privacy`
 - UI, Formulare, Navigation: `UX & Accessibility`
@@ -75,7 +75,7 @@ Die maschinelle Auswertung laeuft ueber `pnpm check:bot-comment-handling` im Wor
 - Immer: `Documentation`
 - Jede Codeänderung: `Code Quality`
 - Verhaltensänderungen oder Coverage-/Test-Themen: `Test Quality`
-- Aenderungen an `docs/reports/plugin-architecture-boundary-baseline.md`, `scripts/ci/check-plugin-architecture-boundary.ts` oder plugin-oeffentlichen Host-Vertraegen: zusaetzlich `Architecture`
+- Aenderungen an `config/plugin-architecture-allowlist.json`, `docs/reports/plugin-architecture-boundary-baseline.md`, `scripts/ci/check-plugin-architecture-boundary.ts` oder plugin-oeffentlichen Host-Vertraegen: zusaetzlich `Architecture`
 - Wiederholte rote Test-/Coverage-Checks im PR-Verlauf: `Test Quality` mit expliziter Shift-left-Prozessbewertung
 - Relevante Bot-Kommentare von `Copilot` oder `chatgpt-codex-connector[bot]` muessen vor Merge einen gueltigen Bearbeitungsnachweis tragen
 - IAM, Rollen-Sync, ABAC/RBAC, Data-Subject-Rights oder andere architekturrelevante Security-/Domain-Änderungen: zusätzlich `Architecture` und `Security & Privacy`
@@ -122,7 +122,11 @@ Die maschinelle Auswertung laeuft ueber `pnpm check:bot-comment-handling` im Wor
 
 - "Vorerst im Plugin" oder "nur intern" ist keine ausreichende Begruendung fuer Core- oder Host-Kopplung.
 - Jede temporaere Advanced-Path-Ausnahme braucht einen benannten Folgechange oder ein Sunset-Ziel.
-- Baseline-Eintraege ohne Owner, Begruendung und Abbauziel sind review-seitig nicht merge-faehig.
+- Allowlist-Eintraege muessen dem aktuellen JSON-Vertrag entsprechen: `plugin`, `sourceFile`, `importSpecifier`, `resolvedTarget`, `kind`, `reason` und optional `ticket`.
+- Review-Metadaten wie Owner, Folgechange oder Abbauplanung koennen zusaetzlich in PR-, Ticket- oder Architekturkontext verlangt werden, sind aber kein Feld des aktuellen JSON-Vertrags.
+- `pnpm check:plugin-architecture-boundary` laeuft im ersten Rollout warn-only fuer `packages/plugin-*`; Review behandelt neue Guard-Warnungen trotzdem als Architektur-Signal.
+- Der Guard bewertet direkte, relative, Runtime-, Type- und Re-Export-Kanten; `@sva/plugin-sdk` und `@sva/studio-ui-react` bleiben die einzigen erlaubten internen Plugin-Einstiegspunkte.
+- Die heutige Allowlist ist importkantenorientiert und ersetzt historische Baseline-Klassen wie Workspace-Dependencies oder Path-Signals nicht eins zu eins.
 
 ## Templates
 

@@ -43,3 +43,13 @@ export const gotoHomeAsAuthenticatedUser = async (page: Page, expectedUserName =
   await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
   await expect(page.getByRole('button', { name: expectedTriggerPattern })).toBeVisible();
 };
+
+export const createEmptyPaginatedDataResponse = () =>
+  JSON.stringify({
+    data: [],
+    pagination: {
+      page: 1,
+      pageSize: 0,
+      total: 0,
+    },
+  });

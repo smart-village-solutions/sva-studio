@@ -1,3 +1,5 @@
+import { serializeAndRedactLogValue } from '@sva/monitoring-client/logging';
+
 export type DevelopmentLogLevel = 'debug' | 'info' | 'warn' | 'error' | 'verbose';
 export type DevelopmentLogSource = 'server';
 export type DevelopmentLogJsonValue =
@@ -27,79 +29,15 @@ const MAX_DEVELOPMENT_LOG_ENTRIES = 400;
 let nextDevelopmentLogId = 1;
 let developmentLogEntries: DevelopmentLogEntry[] = [];
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return false;
-  }
-
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
-};
-
-const serializeError = (value: Error): Record<string, DevelopmentLogJsonValue> => {
-  const serialized: Record<string, DevelopmentLogJsonValue> = {
-    name: value.name,
-    message: value.message,
-  };
-
-  if (typeof value.stack === 'string') {
-    serialized.stack = value.stack;
-  }
-
-  for (const [key, entry] of Object.entries(value)) {
-    serialized[key] = toSerializableValue(entry);
-  }
-
-  return serialized;
-};
-
-const stringifyNonPlainValue = (value: object): string => {
-  const stringifier = value.toString;
-  if (typeof stringifier === 'function' && stringifier !== Object.prototype.toString) {
-    try {
-      return String(value);
-    } catch {
-      return Object.prototype.toString.call(value);
-    }
-  }
-
-  return Object.prototype.toString.call(value);
-};
-
-const toSerializableValue = (value: unknown): DevelopmentLogJsonValue => {
-  if (value === null || value === undefined) {
-    return value ?? null;
-  }
-
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((item) => toSerializableValue(item));
-  }
-
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? String(value) : value.toISOString();
-  }
-
-  if (value instanceof Error) {
-    return serializeError(value);
-  }
-
-  if (isPlainObject(value)) {
-    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, toSerializableValue(entry)]));
-  }
-
-  return stringifyNonPlainValue(value);
-};
+const isDevelopmentLogContext = (
+  value: unknown
+): value is Record<string, DevelopmentLogJsonValue> => Boolean(value && typeof value === 'object' && !Array.isArray(value));
 
 export const appendDevelopmentLogEntry = (entry: Omit<DevelopmentLogEntry, 'id'>): DevelopmentLogEntry => {
+  const serializedContext = serializeAndRedactLogValue(entry.context);
   const nextEntry: DevelopmentLogEntry = {
     ...entry,
-    context: isPlainObject(entry.context)
-      ? (toSerializableValue(entry.context) as Record<string, DevelopmentLogJsonValue>)
-      : undefined,
+    context: isDevelopmentLogContext(serializedContext) ? serializedContext : undefined,
     id: nextDevelopmentLogId++,
   };
 

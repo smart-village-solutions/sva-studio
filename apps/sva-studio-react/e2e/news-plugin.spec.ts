@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 
-import { gotoHomeAsAuthenticatedUser, gotoShellRoot } from './studio-shell.helpers';
+import { createEmptyPaginatedDataResponse, gotoHomeAsAuthenticatedUser, gotoShellRoot } from './studio-shell.helpers';
 
 type NewsRecord = {
   id: string;
@@ -162,10 +162,7 @@ const mockSharedShellRequests = async (page: Page) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        data: [],
-        pagination: { page: 1, pageSize: 0, total: 0 },
-      }),
+      body: createEmptyPaginatedDataResponse(),
     });
   });
 

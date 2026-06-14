@@ -6,36 +6,11 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { ProjectStatusReportContract } from './project-status';
 import { createLocalProjectStatusApi } from './local-dev-api';
+import { createProjectStatusReportFixture } from './project-report-test-fixtures';
+import type { ProjectStatusReportContract } from './project-status';
 
-const reportFixture: ProjectStatusReportContract = {
-  meta: {
-    version: '1.0.0',
-    updatedAt: '2026-06-02',
-    source: 'test',
-  },
-  statusModel: {
-    idea: 0,
-    commissioned: 0,
-    planned: 10,
-    prototype: 20,
-    implementation: 45,
-    optimization: 70,
-    testing: 80,
-    acceptance: 90,
-    done: 100,
-  },
-  healthModel: ['on_track', 'needs_attention', 'at_risk', 'blocked'],
-  priorityModel: {
-    must: '1: Muss sein',
-    replacement_required: '2: Notwendig für die Ablösung des Alt-Systems',
-    valuable: '3: Neu, aber sehr sinnvoll',
-    requested: '4: Neu und gewünscht',
-    funded_optional: '5: Nicht so wichtig, aber finanziert',
-    unfunded_nice_to_have: '6: Nice to have, noch ohne Finanzierung',
-    irrelevant: '7: Irrelevant',
-  },
+const reportFixture = createProjectStatusReportFixture({
   milestones: [
     {
       id: 'M1',
@@ -74,7 +49,7 @@ const reportFixture: ProjectStatusReportContract = {
       ],
     },
   ],
-};
+});
 
 const tempDirs: string[] = [];
 
@@ -127,7 +102,9 @@ describe('local project status api', () => {
     };
 
     expect(response.status).toBe(200);
-    expect(patchResponse.report.milestones[1]?.workPackages.map((entry) => entry.id)).toEqual(['WP-003', 'WP-010']);
+    expect(
+      patchResponse.report.milestones[1]?.workPackages.map((entry: ProjectStatusReportContract['milestones'][number]['workPackages'][number]) => entry.id)
+    ).toEqual(['WP-003', 'WP-010']);
 
     const fileContent = readFileSync(filePath, 'utf8');
 

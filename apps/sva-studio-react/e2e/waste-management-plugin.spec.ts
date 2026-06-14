@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 
+import { createEmptyPaginatedDataResponse } from './studio-shell.helpers';
+
 type WasteSettingsState = {
   provider: 'supabase';
   projectUrl: string;
@@ -161,7 +163,7 @@ const mockSharedShellRequests = async (page: Page, input: {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } }),
+      body: createEmptyPaginatedDataResponse(),
     });
   });
 

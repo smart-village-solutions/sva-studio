@@ -2,6 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PublicWasteCalendarPanels } from './public-waste-calendar-panels.js';
+import {
+  createFilteredPublicWasteCalendarModelFixture,
+  createPublicWasteCalendarEntryFixture,
+} from './public-waste-test-fixtures.js';
 
 describe('PublicWasteCalendarPanels', () => {
   beforeEach(() => {
@@ -16,15 +20,10 @@ describe('PublicWasteCalendarPanels', () => {
   it('does not render export actions inside the calendar panel', () => {
     render(
       <PublicWasteCalendarPanels
-        model={{
-          locationKey: 'r-1:c-1:s-1:h-1',
-          nextPickupDate: '2026-05-19',
+        model={createFilteredPublicWasteCalendarModelFixture({
           listEntries: [],
-          monthBuckets: [],
-          yearBuckets: [],
-          activeFractionIds: ['bio'],
           fractionOptions: [{ id: 'bio', label: 'Bioabfall', color: '#00AA00' }],
-        }}
+        })}
         onToggleFraction={vi.fn()}
         onActivateEntry={vi.fn()}
       />
@@ -38,18 +37,14 @@ describe('PublicWasteCalendarPanels', () => {
   it('renders fraction badges with the configured fraction background colors', () => {
     render(
       <PublicWasteCalendarPanels
-        model={{
-          locationKey: 'r-1:c-1:s-1:h-1',
-          nextPickupDate: '2026-05-19',
+        model={createFilteredPublicWasteCalendarModelFixture({
           listEntries: [],
-          monthBuckets: [],
-          yearBuckets: [],
           activeFractionIds: ['bio', 'paper'],
           fractionOptions: [
             { id: 'bio', label: 'Bioabfall', color: '#00AA00' },
             { id: 'paper', label: 'Papier', color: '#0000FF' },
           ],
-        }}
+        })}
         onToggleFraction={vi.fn()}
         onActivateEntry={vi.fn()}
       />
@@ -68,35 +63,23 @@ describe('PublicWasteCalendarPanels', () => {
 
     render(
       <PublicWasteCalendarPanels
-        model={{
-          locationKey: 'r-1:c-1:s-1:h-1',
-          nextPickupDate: '2026-05-19',
+        model={createFilteredPublicWasteCalendarModelFixture({
           listEntries: [
-            {
-              id: 'pickup-1',
-              date: '2026-05-19',
-              fractionId: 'bio',
-              fractionLabel: 'Bioabfall',
-              fractionColor: '#00AA00',
-              note: null,
-            },
-            {
+            createPublicWasteCalendarEntryFixture(),
+            createPublicWasteCalendarEntryFixture({
               id: 'pickup-2',
               date: '2026-06-02',
               fractionId: 'paper',
               fractionLabel: 'Papier',
               fractionColor: '#0000FF',
-              note: null,
-            },
+            }),
           ],
-          monthBuckets: [],
-          yearBuckets: [],
           activeFractionIds: ['bio', 'paper'],
           fractionOptions: [
             { id: 'bio', label: 'Bioabfall', color: '#00AA00' },
             { id: 'paper', label: 'Papier', color: '#0000FF' },
           ],
-        }}
+        })}
         onToggleFraction={vi.fn()}
         onActivateEntry={onActivateEntry}
       />
@@ -128,15 +111,10 @@ describe('PublicWasteCalendarPanels', () => {
   it('supports keyboard navigation between tabs', () => {
     render(
       <PublicWasteCalendarPanels
-        model={{
-          locationKey: 'r-1:c-1:s-1:h-1',
-          nextPickupDate: '2026-05-19',
+        model={createFilteredPublicWasteCalendarModelFixture({
           listEntries: [],
-          monthBuckets: [],
-          yearBuckets: [],
-          activeFractionIds: ['bio'],
           fractionOptions: [{ id: 'bio', label: 'Bioabfall', color: '#00AA00' }],
-        }}
+        })}
         onToggleFraction={vi.fn()}
         onActivateEntry={vi.fn()}
       />

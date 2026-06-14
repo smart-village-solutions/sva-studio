@@ -3,17 +3,17 @@
   "version": "0.0.1",
   "type": "module",
   "files": ["dist", "plugin.manifest.json"],
-  "main": "src/index.ts",
-  "types": "src/index.ts",
-  "module": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./events.pages": {
-      "types": "./src/events.pages.tsx",
-      "default": "./src/events.pages.tsx"
+      "types": "./dist/events.pages.d.ts",
+      "default": "./dist/events.pages.js"
     },
     "./plugin.manifest.json": {
       "default": "./plugin.manifest.json"

@@ -80,6 +80,33 @@ const groupEntriesByDay = (entries: readonly PublicWasteCalendarEntry[]) =>
     }, new Map()).entries()
   );
 
+const renderPickupDot = (entry: PublicWasteCalendarEntry) => (
+  <span
+    className="pickup-dot"
+    aria-hidden="true"
+    style={entry.fractionColor ? { backgroundColor: entry.fractionColor } : undefined}
+  />
+);
+
+const renderPickupEntryButton = (
+  entry: PublicWasteCalendarEntry,
+  props: Readonly<{
+    className: string;
+    onActivateEntry: (entry: PublicWasteCalendarEntry) => void;
+    children: React.ReactNode;
+  }>
+) => (
+  <button
+    key={entry.id}
+    type="button"
+    className={props.className}
+    aria-label={`Termin ${entry.fractionLabel} am ${entry.date}`}
+    onClick={() => props.onActivateEntry(entry)}
+  >
+    {props.children}
+  </button>
+);
+
 const buildMonthCells = (
   visibleMonth: Date,
   entriesByDate: ReadonlyMap<string, readonly PublicWasteCalendarEntry[]>
@@ -292,23 +319,21 @@ export function PublicWasteCalendarPanels(props: Readonly<{
                         </div>
                         <div className="pickup-entry-group">
                           {dayEntries.map((entry) => (
-                            <button
-                              key={entry.id}
-                              type="button"
-                              className="pickup-button"
-                              aria-label={`Termin ${entry.fractionLabel} am ${entry.date}`}
-                              onClick={() => props.onActivateEntry(entry)}
-                            >
-                              <span
-                                className="pickup-dot"
-                                aria-hidden="true"
-                                style={entry.fractionColor ? { backgroundColor: entry.fractionColor } : undefined}
-                              />
-                              <span className="pickup-copy">
-                                <strong className="pickup-label">{entry.fractionLabel}</strong>
-                                {entry.tourDescription ? <span className="pickup-description">{entry.tourDescription}</span> : null}
-                              </span>
-                            </button>
+                            renderPickupEntryButton(entry, {
+                              className: 'pickup-button',
+                              onActivateEntry: props.onActivateEntry,
+                              children: (
+                                <>
+                                  {renderPickupDot(entry)}
+                                  <span className="pickup-copy">
+                                    <strong className="pickup-label">{entry.fractionLabel}</strong>
+                                    {entry.tourDescription ? (
+                                      <span className="pickup-description">{entry.tourDescription}</span>
+                                    ) : null}
+                                  </span>
+                                </>
+                              ),
+                            })
                           ))}
                         </div>
                       </div>
@@ -358,21 +383,13 @@ export function PublicWasteCalendarPanels(props: Readonly<{
               >
                 <span className="month-calendar-day">{dayFormatter.format(cell.date)}</span>
                 <div className="month-calendar-entry-list">
-                  {cell.entries.map((entry) => (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      className="month-calendar-entry"
-                      aria-label={`Termin ${entry.fractionLabel} am ${entry.date}`}
-                      onClick={() => props.onActivateEntry(entry)}
-                    >
-                      <span
-                        className="pickup-dot"
-                        aria-hidden="true"
-                        style={entry.fractionColor ? { backgroundColor: entry.fractionColor } : undefined}
-                      />
-                    </button>
-                  ))}
+                  {cell.entries.map((entry) =>
+                    renderPickupEntryButton(entry, {
+                      className: 'month-calendar-entry',
+                      onActivateEntry: props.onActivateEntry,
+                      children: renderPickupDot(entry),
+                    })
+                  )}
                 </div>
               </div>
             ))}
@@ -427,21 +444,13 @@ export function PublicWasteCalendarPanels(props: Readonly<{
                         >
                           <span className="year-calendar-day">{cell.date.getDate()}</span>
                           <div className="year-calendar-entry-list">
-                            {cell.entries.map((entry) => (
-                              <button
-                                key={entry.id}
-                                type="button"
-                                className="year-calendar-entry"
-                                aria-label={`Termin ${entry.fractionLabel} am ${entry.date}`}
-                                onClick={() => props.onActivateEntry(entry)}
-                              >
-                                <span
-                                  className="pickup-dot"
-                                  aria-hidden="true"
-                                  style={entry.fractionColor ? { backgroundColor: entry.fractionColor } : undefined}
-                                />
-                              </button>
-                            ))}
+                            {cell.entries.map((entry) =>
+                              renderPickupEntryButton(entry, {
+                                className: 'year-calendar-entry',
+                                onActivateEntry: props.onActivateEntry,
+                                children: renderPickupDot(entry),
+                              })
+                            )}
                           </div>
                         </div>
                       )

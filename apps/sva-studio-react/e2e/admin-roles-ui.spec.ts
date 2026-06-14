@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
+import { createEmptyPaginatedDataResponse, gotoHomeAsAuthenticatedUser } from './studio-shell.helpers';
+
 const adminAuthPayload = {
   user: {
     id: 'kc-admin-1',
@@ -29,16 +31,6 @@ const navigateClientSide = async (page: Page, targetPath: string) => {
   }, targetPath);
 };
 
-const gotoHomeAsAuthenticatedUser = async (page: Page) => {
-  const authMeResponse = page.waitForResponse(
-    (response) => response.request().method() === 'GET' && response.url().includes('/auth/me') && response.status() === 200
-  );
-
-  await page.goto('/');
-  await authMeResponse;
-  await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
-};
-
 test.beforeEach(async ({ page }) => {
   await page.route('**/iam/authorize', async (route) => {
     await route.fulfill({
@@ -52,9 +44,19 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
+      body: createEmptyPaginatedDataResponse(),
+    });
+  });
+
+  await page.route('**/api/v1/iam/me/context', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
       body: JSON.stringify({
-        data: [],
-        pagination: { page: 1, pageSize: 0, total: 0 },
+        data: {
+          activeOrganizationId: null,
+          organizations: [],
+        },
       }),
     });
   });
@@ -134,7 +136,7 @@ test('role create page opens and submits successfully', async ({ page }) => {
     });
   });
 
-  await gotoHomeAsAuthenticatedUser(page);
+  await gotoHomeAsAuthenticatedUser(page, 'Admin One');
   await navigateClientSide(page, '/admin/roles');
 
   await expect(page.getByRole('heading', { name: 'Rollenverwaltung' })).toBeVisible({ timeout: 10000 });
@@ -202,7 +204,7 @@ test('tenant role list hides the root-only instance_registry_admin role', async 
     });
   });
 
-  await gotoHomeAsAuthenticatedUser(page);
+  await gotoHomeAsAuthenticatedUser(page, 'Admin One');
   await navigateClientSide(page, '/admin/roles');
 
   await expect(page.getByRole('heading', { name: 'Rollenverwaltung' })).toBeVisible({ timeout: 10000 });

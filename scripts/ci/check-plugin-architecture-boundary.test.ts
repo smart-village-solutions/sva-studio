@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -8,8 +8,12 @@ import {
   collectPluginArchitectureViolations,
   diffViolationsAgainstBaseline,
   parsePluginArchitectureBaseline,
+  reportPluginArchitectureBoundaryGuardResult,
+  runPluginArchitectureBoundaryGuard,
+  type PluginArchitectureBoundaryCheckResult,
   type PluginArchitectureViolation,
 } from './check-plugin-architecture-boundary.ts';
+import { parsePluginArchitectureAllowlist } from './plugin-architecture-boundary-baseline.ts';
 
 const tempDirs: string[] = [];
 
@@ -160,6 +164,209 @@ export { appShell } from '../../../apps/sva-studio-react/src/app-shell.js';
     );
   });
 
+  it('classifies runtime, type, and reexport workspace edges separately', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createWorkspacePackage(workspaceRoot, 'core', {
+      packageName: '@sva/core',
+      sourceFiles: {
+        'src/public-api.ts': 'export type CoreType = { value: string }; export const runtimeValue = true;\n',
+      },
+    });
+    createPluginPackage(workspaceRoot, 'plugin-edge-kinds', {
+      packageName: '@sva/plugin-edge-kinds',
+      sourceFiles: {
+        'src/index.ts': `
+import type { CoreType } from '@sva/core';
+import { runtimeValue } from '@sva/core';
+export { runtimeValue as forwardedRuntime } from '@sva/core';
+export type { CoreType as ForwardedCoreType } from '@sva/core';
+export const pluginValue: CoreType | boolean = runtimeValue;
+`,
+      },
+    });
+
+    const violations = await collectPluginArchitectureViolations(workspaceRoot);
+    const typeViolations = violations.filter((violation) => violation.kind === 'type' && violation.resolvedTarget === '@sva/core');
+    const runtimeViolations = violations.filter((violation) => violation.kind === 'runtime' && violation.resolvedTarget === '@sva/core');
+    const reexportViolations = violations.filter((violation) => violation.kind === 'reexport' && violation.resolvedTarget === '@sva/core');
+
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'type', resolvedTarget: '@sva/core' }),
+        expect.objectContaining({ kind: 'runtime', resolvedTarget: '@sva/core' }),
+        expect.objectContaining({ kind: 'reexport', resolvedTarget: '@sva/core' }),
+      ])
+    );
+    expect(typeViolations).toHaveLength(2);
+    expect(runtimeViolations).toHaveLength(1);
+    expect(reexportViolations).toHaveLength(1);
+  });
+
+  it('normalizes relative imports to package or subpath targets instead of source file paths', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createWorkspacePackage(workspaceRoot, 'core', {
+      packageName: '@sva/core',
+      sourceFiles: {
+        'src/waste-management/index.ts': 'export const wasteManagement = true;\n',
+        'src/waste-management/static-content.ts': 'export const staticContent = true;\n',
+      },
+    });
+    createPluginPackage(workspaceRoot, 'plugin-relative-subpath', {
+      packageName: '@sva/plugin-relative-subpath',
+      sourceFiles: {
+        'src/index.ts': `export { wasteManagement } from '../../core/src/waste-management/index.js';
+export { staticContent } from '../../core/src/waste-management/static-content.js';\n`,
+      },
+    });
+
+    const violations = await collectPluginArchitectureViolations(workspaceRoot);
+
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          importSpecifier: '../../core/src/waste-management/index.js',
+          kind: 'reexport',
+          resolvedTarget: '@sva/core/waste-management',
+        }),
+        expect.objectContaining({
+          importSpecifier: '../../core/src/waste-management/static-content.js',
+          kind: 'reexport',
+          resolvedTarget: '@sva/core/waste-management',
+        }),
+      ])
+    );
+  });
+
+  it('detects workspace edges from require calls and dynamic imports', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createWorkspacePackage(workspaceRoot, 'core', {
+      packageName: '@sva/core',
+      sourceFiles: {
+        'src/admin-resources.ts': 'export const adminResources = true;\n',
+        'src/public-api.ts': 'export const runtimeValue = true;\n',
+      },
+    });
+    createPluginPackage(workspaceRoot, 'plugin-dynamic-edges', {
+      packageName: '@sva/plugin-dynamic-edges',
+      sourceFiles: {
+        'src/index.ts': `
+const adminResources = require('../../core/src/admin-resources.js');
+export const loadRuntimeValue = async () => import('../../core/src/public-api.js');
+export { adminResources };
+`,
+      },
+    });
+
+    const violations = await collectPluginArchitectureViolations(workspaceRoot);
+
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          importSpecifier: '../../core/src/admin-resources.js',
+          kind: 'runtime',
+          resolvedTarget: '@sva/core/admin-resources',
+        }),
+        expect.objectContaining({
+          importSpecifier: '../../core/src/public-api.js',
+          kind: 'runtime',
+          resolvedTarget: '@sva/core/public-api',
+        }),
+      ])
+    );
+  });
+
+  it('normalizes top-level src files to package subpaths instead of the package root', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createWorkspacePackage(workspaceRoot, 'core', {
+      packageName: '@sva/core',
+      sourceFiles: {
+        'src/admin-resources.ts': 'export const adminResources = true;\n',
+      },
+    });
+    createPluginPackage(workspaceRoot, 'plugin-top-level-subpath', {
+      packageName: '@sva/plugin-top-level-subpath',
+      sourceFiles: {
+        'src/index.ts': `export { adminResources } from '../../core/src/admin-resources.js';\n`,
+      },
+    });
+
+    const violations = await collectPluginArchitectureViolations(workspaceRoot);
+
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          importSpecifier: '../../core/src/admin-resources.js',
+          kind: 'reexport',
+          resolvedTarget: '@sva/core/admin-resources',
+        }),
+      ])
+    );
+  });
+
+  it('defaults the guard to warn-only while still reporting non-allowlisted violations', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createWorkspacePackage(workspaceRoot, 'core', {
+      packageName: '@sva/core',
+      sourceFiles: {
+        'src/public-api.ts': 'export const runtimeValue = true;\n',
+      },
+    });
+    createPluginPackage(workspaceRoot, 'plugin-warning', {
+      packageName: '@sva/plugin-warning',
+      sourceFiles: {
+        'src/index.ts': `import { runtimeValue } from '@sva/core';
+export const pluginValue = runtimeValue;
+`,
+      },
+    });
+
+    const result = await runPluginArchitectureBoundaryGuard(workspaceRoot, []);
+
+    expect(result.mode).toBe('warn');
+    expect(result.exitCode).toBe(0);
+    expect(result.violations).toHaveLength(1);
+    expect(result.unallowlistedViolations).toHaveLength(1);
+    expect(result.unallowlistedViolations).toEqual([
+      expect.objectContaining({
+        packageName: '@sva/plugin-warning',
+        relativePath: path.posix.join('packages', 'plugin-warning', 'src', 'index.ts'),
+        rule: 'workspace-import',
+        subject: '@sva/core',
+        kind: 'runtime',
+        resolvedTarget: '@sva/core',
+      }),
+    ]);
+  });
+
+  it('suppresses warn-only CLI output when every violation is allowlisted', () => {
+    const warnings: string[] = [];
+    const logger = {
+      warn: (message: string) => {
+        warnings.push(message);
+      },
+    };
+    const allowlistedResult: PluginArchitectureBoundaryCheckResult = {
+      mode: 'warn',
+      violations: [
+        {
+          packageName: '@sva/plugin-warning',
+          relativePath: path.posix.join('packages', 'plugin-warning', 'src', 'index.ts'),
+          rule: 'workspace-import',
+          subject: '@sva/core',
+          message: 'allowlisted import',
+          kind: 'runtime',
+          importSpecifier: '@sva/core',
+          resolvedTarget: '@sva/core',
+        },
+      ],
+      unallowlistedViolations: [],
+      exitCode: 0,
+    };
+
+    expect(reportPluginArchitectureBoundaryGuardResult(allowlistedResult, logger)).toBe(false);
+    expect(warnings).toEqual([]);
+  });
+
   it('detects forbidden workspace dependencies, imports and path signals', async () => {
     const workspaceRoot = createTempWorkspace();
     createPluginPackage(workspaceRoot, 'plugin-drift', {
@@ -299,5 +506,101 @@ export const pluginDrift = authorize;
         message: 'legacy dependency',
       },
     ]);
+  });
+
+  it('parses the JSON allowlist with exact import-edge entries', () => {
+    const allowlist = parsePluginArchitectureAllowlist([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/core/waste-management',
+        resolvedTarget: '@sva/core/waste-management',
+        kind: 'type',
+        reason: 'Brownfield bridge until SDK contract exists',
+        ticket: 'QUAL-123',
+      },
+    ]);
+
+    expect(allowlist).toEqual([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/core/waste-management',
+        resolvedTarget: '@sva/core/waste-management',
+        kind: 'type',
+        reason: 'Brownfield bridge until SDK contract exists',
+        ticket: 'QUAL-123',
+      },
+    ]);
+  });
+
+  it('accepts JSON allowlist entries without a ticket', () => {
+    const allowlist = parsePluginArchitectureAllowlist([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/core/waste-management',
+        resolvedTarget: '@sva/core/waste-management',
+        kind: 'type',
+        reason: 'Brownfield bridge until SDK contract exists',
+      },
+    ]);
+
+    expect(allowlist).toEqual([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/core/waste-management',
+        resolvedTarget: '@sva/core/waste-management',
+        kind: 'type',
+        reason: 'Brownfield bridge until SDK contract exists',
+      },
+    ]);
+  });
+
+  it('preserves ticket strings exactly when present', () => {
+    const allowlist = parsePluginArchitectureAllowlist([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/core/waste-management',
+        resolvedTarget: '@sva/core/waste-management',
+        kind: 'type',
+        reason: 'Brownfield bridge until SDK contract exists',
+        ticket: '',
+      },
+    ]);
+
+    expect(allowlist).toEqual([
+      {
+        plugin: 'waste-management',
+        sourceFile: 'packages/plugin-waste-management/src/plugin.tsx',
+        importSpecifier: '@sva/core/waste-management',
+        resolvedTarget: '@sva/core/waste-management',
+        kind: 'type',
+        reason: 'Brownfield bridge until SDK contract exists',
+        ticket: '',
+      },
+    ]);
+  });
+
+  it('parses the file-based JSON allowlist smoke test', () => {
+    const allowlistFile = readFileSync(path.join(process.cwd(), 'config', 'plugin-architecture-allowlist.json'), 'utf8');
+    const parsed = JSON.parse(allowlistFile) as unknown;
+    const allowlist = parsePluginArchitectureAllowlist(parsed);
+
+    expect(allowlist.length).toBeGreaterThan(0);
+    expect(allowlist).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          plugin: expect.any(String),
+          sourceFile: expect.any(String),
+          importSpecifier: expect.any(String),
+          resolvedTarget: expect.any(String),
+          kind: expect.stringMatching(/^(runtime|type|reexport)$/),
+          reason: expect.any(String),
+        }),
+      ])
+    );
   });
 });

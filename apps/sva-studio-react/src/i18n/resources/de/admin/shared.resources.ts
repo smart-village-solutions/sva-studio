@@ -1,0 +1,40 @@
+export const sharedAdminDEResources = {
+  diagnostics: {
+    classification: 'Diagnose: {{value}}',
+    status: 'Status: {{value}}',
+    recommendedAction: 'Empfohlene Aktion: {{value}}',
+    syncErrorCode: 'Sync-Fehlercode: {{code}}',
+    requestId: 'Request-ID: {{requestId}}',
+    classifications: {
+      authResolution: 'Auth-Auflösung',
+      oidcDiscoveryOrExchange: 'OIDC-Discovery oder Token-Austausch',
+      tenantHostValidation: 'Tenant-Host-Validierung',
+      sessionStoreOrSessionHydration: 'Session-Store oder Session-Hydration',
+      actorResolutionOrMembership: 'Akteur-Auflösung oder Mitgliedschaft',
+      keycloakDependency: 'Keycloak-Abhängigkeit',
+      databaseOrSchemaDrift: 'Datenbank- oder Schema-Drift',
+      databaseMappingOrMembershipInconsistency:
+        'Datenbank-Mapping oder Mitgliedschaft inkonsistent',
+      registryOrProvisioningDrift: 'Registry- oder Provisioning-Drift',
+      keycloakReconcile: 'Keycloak-Reconcile',
+      frontendStateOrPermissionStaleness: 'Frontend-State oder Berechtigungsstand veraltet',
+      legacyWorkaroundOrRegression: 'Legacy-Workaround oder Regression',
+      unknown: 'Unbekannte Laufzeitdiagnose',
+    },
+    actions: {
+      erneutAnmelden: 'Erneut anmelden',
+      erneutVersuchen: 'Erneut versuchen',
+      keycloakPruefen: 'Keycloak prüfen',
+      migrationPruefen: 'Migration prüfen',
+      provisioningPruefen: 'Provisioning prüfen',
+      rollenabgleichPruefen: 'Rollenabgleich prüfen',
+      manuellPruefen: 'Manuell prüfen',
+      supportKontaktieren: 'Support kontaktieren',
+    },
+    statuses: {
+      recoveryLaeuft: 'Recovery läuft',
+      degradiert: 'Degradiert',
+      manuellePruefungErforderlich: 'Manuelle Prüfung erforderlich',
+    },
+  },
+} as const;

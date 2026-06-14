@@ -1,0 +1,97 @@
+export const groupsAdminDEResources = {
+  page: {
+    title: 'Gruppenverwaltung',
+    subtitle: 'Instanzgebundene Gruppen verwalten, Rollen bündeln und Mitgliedschaften zuordnen',
+  },
+  table: {
+    caption: 'Tabelle aller Gruppen in der aktiven Instanz',
+    ariaLabel: 'Gruppen-Tabelle',
+    headerName: 'Gruppe',
+    headerType: 'Typ',
+    headerRoles: 'Rollenbündel',
+    headerMemberCount: 'Mitglieder',
+    headerStatus: 'Status',
+    headerActions: 'Aktionen',
+  },
+  actions: {
+    create: 'Gruppe anlegen',
+    edit: 'Gruppe bearbeiten',
+    delete: 'Gruppe löschen',
+    save: 'Änderungen speichern',
+    sort: 'Sortierung wechseln',
+    retry: 'Erneut versuchen',
+  },
+  filters: {
+    searchLabel: 'Suche',
+    searchPlaceholder: 'Nach Gruppe oder Rolle suchen',
+  },
+  labels: {
+    active: 'Aktiv',
+    inactive: 'Inaktiv',
+    noDescription: 'Keine Beschreibung',
+    noValidity: 'Unbegrenzt',
+    roleCountOne: '1 Rolle',
+    roleCountOther: '{{count}} Rollen',
+    memberCountOne: '1 Mitglied',
+    memberCountOther: '{{count}} Mitglieder',
+  },
+  dialogs: {
+    createTitle: 'Neue Gruppe erstellen',
+    createDescription: 'Gruppen bündeln Rollen für wiederverwendbare Mitgliedschaften.',
+    editTitle: 'Gruppe bearbeiten',
+    editDescription: 'Aktualisiert Rollenbündel, Status und Mitgliedschaften für {{groupKey}}.',
+    keyLabel: 'Technischer Gruppenschlüssel',
+    displayNameLabel: 'Anzeigename',
+    descriptionLabel: 'Beschreibung',
+    rolesLabel: 'Gebündelte Rollen',
+  },
+  detail: {
+    backToList: 'Zur Gruppenliste',
+    notFound: 'Die angeforderte Gruppe wurde nicht gefunden.',
+  },
+  memberships: {
+    title: 'Mitgliedschaften',
+    subtitle: 'Benutzerkonten direkt in der Gruppenansicht zuweisen oder entziehen.',
+    subjectLabel: 'Keycloak-Subject',
+    validFromLabel: 'Gültig ab',
+    validUntilLabel: 'Gültig bis',
+    assign: 'Mitgliedschaft zuweisen',
+    remove: 'Entfernen',
+    caption: 'Tabelle der Gruppenmitgliedschaften',
+    tableAriaLabel: 'Gruppenmitgliedschaften',
+    tableSubject: 'Benutzerkonto',
+    tableValidity: 'Gültigkeit',
+    tableOrigin: 'Herkunft',
+    tableActions: 'Aktionen',
+    empty: 'Keine Gruppenmitgliedschaften vorhanden.',
+    validityRange: 'Von {{from}} bis {{to}}',
+    originManual: 'Manuell durch {{accountId}}',
+    originUnknown: 'Unbekannt',
+  },
+  confirm: {
+    deleteTitle: 'Gruppe löschen',
+    deleteDescription: 'Die Gruppe und ihre Mitgliedschaften werden dauerhaft entfernt.',
+  },
+  messages: {
+    emptyState: 'Keine Gruppen gefunden.',
+    loading: 'Gruppendetails werden geladen ...',
+    error: 'Gruppen konnten nicht geladen werden.',
+    instanceContextRequired: 'Die Gruppenverwaltung ist nur mit aktivem Instanzkontext verfügbar.',
+  },
+  errors: {
+    forbidden: 'Unzureichende Berechtigungen für diese Gruppenaktion.',
+    csrfValidationFailed:
+      'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
+    rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
+    conflict: 'Die Gruppenänderung steht in Konflikt mit dem aktuellen Zustand.',
+    invalidRequest: 'Die Gruppenänderung enthält ungültige Daten.',
+    databaseUnavailable:
+      'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
+    databaseSchemaDrift:
+      'Gruppendetails konnten wegen einer Server- oder Migrationsinkonsistenz nicht vollständig geladen werden. Bitte Deployment und Migrationen prüfen.',
+  },
+  validation: {
+    membershipDateInvalid:
+      'Bitte geben Sie gültige Gültigkeitsdaten in der Fachzeitzone Europe/Berlin ein.',
+  },
+} as const;

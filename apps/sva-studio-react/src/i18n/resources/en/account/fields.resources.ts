@@ -1,0 +1,15 @@
+export const fieldsAccountENResources = {
+  username: 'Username',
+  firstName: 'First name',
+  lastName: 'Last name',
+  displayName: 'Display name',
+  email: 'Email',
+  phone: 'Phone',
+  position: 'Position',
+  department: 'Department',
+  language: 'Language',
+  timezone: 'Timezone',
+  role: 'Role',
+  status: 'Status',
+  lastLogin: 'Last login',
+} as const;

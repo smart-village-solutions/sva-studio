@@ -1,0 +1,33 @@
+export const sharedDEResources = {
+  errorFallback: {
+    title: 'Fehler',
+    heading: 'Ein unerwarteter Fehler ist aufgetreten',
+    body: 'Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurück.',
+    retry: 'Erneut versuchen',
+    home: 'Zur Startseite',
+    diagnosticsLabel: 'Lokale Diagnose',
+  },
+  notFound: {
+    heading: 'Seite nicht gefunden',
+    body: 'Die angeforderte Seite existiert nicht oder wurde verschoben.',
+    home: 'Zur Startseite',
+  },
+  devLogConsole: {
+    title: 'Lokale Log-Konsole',
+    body: 'Browser- und Server-Logs aus der aktuellen Entwicklungsumgebung.',
+    open: 'Öffnen',
+    close: 'Schließen',
+    refresh: 'Aktualisieren',
+    levelFilter: 'Level',
+    sourceFilter: 'Quelle',
+    levelAll: 'Alle Level',
+    levelDebug: 'Debug',
+    levelInfo: 'Info',
+    levelWarn: 'Warn',
+    levelError: 'Error',
+    sourceAll: 'Alle Quellen',
+    sourceBrowser: 'Browser',
+    sourceServer: 'Server',
+    empty: 'Noch keine Log-Einträge vorhanden.',
+  },
+} as const;

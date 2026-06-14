@@ -1,0 +1,132 @@
+export const operationsInstancesAdminENResources = {
+  overview: {
+    eyebrow: 'Next step',
+  },
+  labels: {
+    currentState: 'Overall state',
+    evidence: 'Evidence: {{value}}',
+    evidenceSources: {
+      registryContract: 'Registry contract',
+      workerPreflight: 'Worker preflight',
+      workerPlan: 'Worker plan',
+      keycloakRun: 'Keycloak run',
+      finalValidation: 'Final validation',
+      history: 'History',
+    },
+  },
+  followUpSummary:
+    'Tenant IAM baseline, module assignment, and other follow-up work remain intentionally separate from core realm bootstrap.',
+  status: {
+    offen: 'Open',
+    bereit: 'Ready',
+    laeuft: 'Running',
+    erfolgreich: 'Successful',
+    fehlgeschlagen: 'Failed',
+  },
+  new: {
+    title: 'Build new realm',
+    stepsTitle: 'Realm bootstrap step chain',
+    stepsSubtitle:
+      'These steps follow the real worker chain from registry contract to preflight, provisioning, and final validation.',
+    summary: {
+      contractIncomplete:
+        'The registry contract is still incomplete. Correct the required fields first.',
+      modeConflict:
+        'The target realm conflicts with the "new realm" mode. Clarify the live state first.',
+      preflightBlocked:
+        'The worker reports blocking preconditions. Resolve them before the next run.',
+      runFailed: 'The latest technical run failed. Inspect the affected step and retry afterwards.',
+      bootstrapComplete:
+        'Core realm bootstrap completed successfully. Follow-up work remains separate.',
+      inProgress: 'Core realm bootstrap is prepared or in progress. Execute the next visible step.',
+    },
+    steps: {
+      registryContract: 'Registry contract stored',
+      workerPreflight: 'Technical preconditions checked',
+      workerPlan: 'Worker plan generated',
+      realm: 'Realm created',
+      loginClient: 'Login client created or reconciled',
+      tenantAdminClient: 'Tenant admin client created or reconciled',
+      realmRoles: 'Realm roles ensured',
+      tenantAdmin: 'Tenant admin created or corrected',
+      secretSync: 'Client secrets synchronized back to registry',
+      finalValidation: 'Final state validated',
+      realmBootstrapComplete: 'Core realm bootstrap complete',
+    },
+    stepSummaries: {
+      registryContractReady: 'The required registry contract data is stored completely.',
+      registryContractFailed:
+        'Required registry contract data is missing or technically incomplete.',
+      workerPreflightPending:
+        'Preconditions can only be checked reliably after the registry contract is complete.',
+      workerPreflightReady: 'Preconditions were checked successfully.',
+      workerPreflightReadyToRun: 'Preconditions should be checked now.',
+      workerPreflightFailed: 'Preconditions currently block the technical bootstrap.',
+      workerPlanPending: 'The worker plan follows after a successful preflight.',
+      workerPlanReady: 'The worker plan is available and describes the technical execution.',
+      workerPlanReadyToRun: 'The desired-vs-actual plan should be loaded now.',
+      pendingWorkerExecution: 'This step will be created or checked in the next technical run.',
+      awaitingCurrentRun: 'This step is being processed by the current or queued run.',
+      realmReady: 'The target realm exists.',
+      realmFailed: 'The target realm is still not in the desired state after the run.',
+      loginClientReady: 'The login client matches the desired state.',
+      loginClientFailed: 'The login client is not yet fully created or reconciled.',
+      tenantAdminClientReady: 'The tenant admin client matches the desired state.',
+      tenantAdminClientFailed: 'The tenant admin client is not yet fully created or reconciled.',
+      realmRolesReady: 'The minimal realm roles exist.',
+      realmRolesFailed: 'The minimal realm roles do not yet match the desired state.',
+      tenantAdminReady: 'The tenant admin matches the minimal profile.',
+      tenantAdminFailed: 'The tenant admin is not yet fully present or correctly assigned.',
+      secretSyncReady: 'The generated client secrets are synchronized to the registry.',
+      secretSyncFailed: 'At least one client secret is not yet aligned with the registry.',
+      finalValidationReady: 'Final validation confirms the desired state.',
+      finalValidationFailed: 'Final validation still shows technical deviations.',
+      finalValidationPending: 'Final validation follows after successful technical execution.',
+      bootstrapCompleteReady: 'Core realm bootstrap completed successfully.',
+      bootstrapCompletePending: 'Core realm bootstrap is not yet fully complete.',
+    },
+  },
+  existing: {
+    title: 'Reconcile existing realm',
+    stepsTitle: 'Diagnosis and reconcile steps',
+    stepsSubtitle:
+      'This view prioritizes drift, contract gaps, and reconcile actions for already existing realms.',
+    summary: {
+      driftDetected:
+        'Drift or a technical defect still exists between the registry contract and the live realm.',
+      reconcileReady:
+        'The existing realm is checked. Use this view for further reconcile or follow-up actions.',
+    },
+    steps: {
+      registryContract: 'Registry contract checked',
+      workerPreflight: 'Technical preconditions checked',
+      liveStatus: 'Live status loaded',
+      driftAnalysis: 'Drift analyzed',
+      contractRepair: 'Contract data completed',
+      reconcile: 'Reconcile executed',
+      resultValidation: 'Result validated',
+    },
+    stepSummaries: {
+      registryContractReady: 'The relevant contract data is fully maintained.',
+      registryContractFailed: 'Contract data or secrets are still missing for a clean reconcile.',
+      workerPreflightPending: 'Preconditions follow after the contract is complete.',
+      workerPreflightReady: 'Preconditions allow technical inspection.',
+      workerPreflightReadyToRun: 'Preconditions should be checked now.',
+      workerPreflightFailed: 'Preconditions currently block the reconcile.',
+      liveStatusReady: 'The live realm state has been loaded.',
+      liveStatusPending: 'The live realm state should now be loaded from Keycloak.',
+      driftAnalysisPending: 'Reliable drift analysis follows after the live status.',
+      driftAnalysisReady: 'The live state currently matches the stored contract.',
+      driftAnalysisFailed: 'The live state currently deviates from the stored contract.',
+      contractRepairReady: 'Contract data is complete for the reconcile run.',
+      contractRepairFailed: 'Complete missing secrets or contract data first.',
+      reconcilePending: 'A reconcile run only makes sense after drift analysis.',
+      reconcileReadyToRun: 'Drift is visible. A reconcile run is now the next meaningful action.',
+      reconcileReady: 'The latest reconcile run successfully aligned the state.',
+      reconcileFailed: 'The latest reconcile run failed or remained incomplete.',
+      resultValidationPending: 'Result validation follows after the reconcile run.',
+      resultValidationReady: 'Result validation confirms the reconciled state.',
+      resultValidationFailed: 'Result validation still shows drift or defects.',
+    },
+  },
+} as const;

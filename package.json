@@ -89,6 +89,7 @@
     "iam:account-deletion-rules:run": "node --import tsx scripts/ops/run-iam-account-deletion-rules.mjs",
     "iam:retention:run": "node scripts/ops/run-iam-retention.mjs",
     "fallow:sync-skills": "tsx scripts/ops/sync-fallow-skills.ts",
+    "i18n:format:resources": "tsx scripts/ops/format-i18n-resources.ts",
     "knip:scan": "knip -c knip.json --no-progress --no-exit-code --reporter compact",
     "hooks:install": "git config core.hooksPath .githooks"
   },
@@ -127,5 +128,8 @@
     "typescript-eslint": "8.60.0",
     "vite": "^8.0.5",
     "vitest": "^4.1.5"
+  },
+  "dependencies": {
+    "prettier": "^3.8.4"
   }
 }

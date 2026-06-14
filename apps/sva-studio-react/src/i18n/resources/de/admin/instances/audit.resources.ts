@@ -1,0 +1,37 @@
+export const auditInstancesAdminDEResources = {
+  title: 'Instanz-Audit',
+  subtitle:
+    'Read-only Einzelchecks zu Registry, Erreichbarkeit, Keycloak und lokalem IAM ohne Secret-Offenlegung.',
+  overviewTitle: 'Audit',
+  overviewSubtitle:
+    'Startet einen Read-only Audit-Lauf über alle aktiven Instanzen und zeigt die Einzelchecks zentral an.',
+  overviewEmpty: 'Es liegt noch kein Gesamt-Audit-Ergebnis vor.',
+  refresh: 'Audit aktualisieren',
+  loading: 'Audit lädt …',
+  runAll: 'Gesamt-Audit starten',
+  loadingAll: 'Gesamt-Audit läuft …',
+  empty: 'Für diese Instanz liegt noch kein Audit-Ergebnis vor.',
+  generatedAt: 'Letzter Lauf',
+  overallStatus: 'Gesamtstatus',
+  targetCount: 'Zielinstanzen',
+  expected: 'Erwartet',
+  actual: 'Ist',
+  details: 'Details',
+  evidenceSource: 'Quelle',
+  remediationHint: 'Hinweis:',
+  instanceHost: 'Hostname: {{host}}',
+  instanceStatus: 'Registry-Status: {{status}}, Audit: {{overallStatus}}',
+  scopes: {
+    run: 'Lauf',
+    instance: 'Instanz',
+    registry: 'Registry',
+    keycloak: 'Keycloak',
+    localIam: 'Lokales IAM',
+  },
+  status: {
+    pass: 'Pass',
+    fail: 'Fail',
+    warn: 'Warn',
+    skip: 'Skip',
+  },
+} as const;

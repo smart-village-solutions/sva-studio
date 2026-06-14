@@ -176,7 +176,7 @@ export const createWasteToolsActions = ({
     }),
 });
 
-export const useWasteToolsControllerHelpers = ({
+export const useWasteToolsViewModelHelpers = ({
   pt,
   importCatalog,
   importProfileId,
@@ -262,7 +262,7 @@ export const useWasteToolsControllerHelpers = ({
   };
 };
 
-export const createWasteToolsControllerViewModel = <TActions extends Record<string, unknown>>(input: {
+export const createWasteToolsViewModel = <TActions extends Record<string, unknown>>(input: {
   readonly importCatalog: ReturnType<typeof getWasteManagementImportCatalog>;
   readonly importProfileId: StartWasteManagementImportInput['importProfileId'] | '';
   readonly importSourceFormat: StartWasteManagementImportInput['sourceFormat'];

@@ -127,6 +127,12 @@
       "functions": 68,
       "branches": 52
     },
+    "waste-management-runtime": {
+      "lines": 63,
+      "statements": 64,
+      "functions": 69,
+      "branches": 39
+    },
     "public-waste-calendar-web": {
       "lines": 80,
       "statements": 80,

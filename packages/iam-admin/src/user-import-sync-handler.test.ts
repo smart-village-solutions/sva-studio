@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createJsonResponse, createTestDepsBuilder } from './handler-test-helpers.js';
 import {
   createSyncUsersFromKeycloakHandlerInternal,
   type SyncUsersHandlerDeps,
@@ -35,10 +36,7 @@ const report = {
   correctedCount: 1,
 };
 
-const createJsonResponse = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-
-const createDeps = (overrides: Partial<SyncUsersHandlerDeps<typeof report>> = {}): SyncUsersHandlerDeps<typeof report> => ({
+const createDeps = createTestDepsBuilder<SyncUsersHandlerDeps<typeof report>>(() => ({
   asApiItem: vi.fn((data, requestId) => ({ data, ...(requestId ? { requestId } : {}) })),
   buildLogContext: vi.fn(() => ({ instance_id: 'de-musterhausen', trace_id: 'trace-sync' })),
   consumeRateLimit: vi.fn(() => null),
@@ -80,8 +78,7 @@ const createDeps = (overrides: Partial<SyncUsersHandlerDeps<typeof report>> = {}
   })),
   runPlatformKeycloakUserSync: vi.fn(async () => report),
   validateCsrf: vi.fn(() => null),
-  ...overrides,
-});
+}));
 
 describe('createSyncUsersFromKeycloakHandlerInternal', () => {
   beforeEach(() => {

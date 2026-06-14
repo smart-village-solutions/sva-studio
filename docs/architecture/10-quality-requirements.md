@@ -178,10 +178,13 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - fachliche Wrapper bleiben zulässig, wenn sie Studio-Primitives komponieren und Accessibility-/Design-Token-Semantik erhalten
 - Plugin-Architecture-Boundary:
   - `pnpm check:plugin-architecture-boundary` laeuft im ersten Rollout warn-only fuer `packages/plugin-*`
+  - Stand 2026-06-14: Trotz bereinigtem `@sva/plugin-waste-management` bleibt der Guard bewusst global warn-only; ein blockierender oder no-new-violations-Schnitt braucht einen separaten Governance-Change
   - der Check bewertet direkte, relative, Runtime-, Type- und Re-Export-Kanten sowie Workspace-Dependencies ausserhalb des dokumentierten Plugin-Vertrags
   - `@sva/plugin-sdk` und `@sva/studio-ui-react` sind die einzigen erlaubten internen Plugin-Einstiegspunkte
   - importkantenbezogene Brownfield-Abweichungen sind nur mit maschinenlesbarer Allowlist unter `config/plugin-architecture-allowlist.json` tolerierbar
   - der aktuelle JSON-Vertrag der Allowlist umfasst `plugin`, `sourceFile`, `importSpecifier`, `resolvedTarget`, `kind`, `reason` und optional `ticket`
+  - `@sva/plugin-waste-management` gilt nach der Runtime-Extraktion als browserseitiges Plugin-Package; host-owned Waste-Job-Runtime liegt in `@sva/waste-management-runtime`
+  - fuer `packages/plugin-waste-management` wird aktuell kein aktiver Allowlist-Eintrag mehr erwartet; neue Guard-Warnungen dort sind als Regression zu behandeln oder bewusst zu dokumentieren
   - die Allowlist ersetzt historische Baseline-Klassen wie Workspace-Dependencies oder Path-Signal-Historie nicht vollstaendig eins zu eins
   - Allowlist-Aenderungen, neue Advanced-Path-Faehigkeiten und verbleibende Brownfield-Historie in `docs/reports/plugin-architecture-boundary-baseline.md` gelten als review-pflichtige Architekturereignisse
 - Medienmanagement:

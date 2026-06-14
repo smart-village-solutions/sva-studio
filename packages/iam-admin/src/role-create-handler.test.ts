@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createJsonResponse, createTestDepsBuilder } from './handler-test-helpers.js';
 import { createCreateRoleHandlerInternal, type CreateRoleHandlerDeps } from './role-create-handler.js';
 
 const actor = {
@@ -38,11 +39,9 @@ const identityProvider = {
   },
 };
 
-const createJsonResponse = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-
-const createDeps = (overrides: Partial<CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>> = {}) =>
-  ({
+const createDeps = createTestDepsBuilder<
+  CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>
+>(() => ({
     asApiItem: vi.fn((data, requestId) => ({ data, ...(requestId ? { requestId } : {}) })),
     buildRoleAttributes: vi.fn((input) => ({ managedBy: 'studio', ...input })),
     buildRoleSyncFailure: vi.fn(({ requestId, fallbackMessage }) =>
@@ -73,8 +72,7 @@ const createDeps = (overrides: Partial<CreateRoleHandlerDeps<typeof payload, typ
     toPayloadHash: vi.fn(() => 'payload-hash-1'),
     trackKeycloakCall: vi.fn(async (_operation, work) => work()),
     validateRequestedPermissions: vi.fn(async () => null),
-    ...overrides,
-  }) satisfies CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>;
+  })) satisfies CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>;
 
 describe('createCreateRoleHandlerInternal', () => {
   beforeEach(() => {

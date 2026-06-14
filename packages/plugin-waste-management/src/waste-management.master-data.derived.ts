@@ -2,7 +2,7 @@ import type { WasteCollectionLocationRecord, WasteManagementMasterDataOverview }
 
 import { wasteMasterDataPresentation } from './waste-management.master-data.presentation.js';
 import { wasteMasterDataFormDefaults } from './waste-management.master-data.forms.js';
-import type { WasteMasterDataState } from './waste-management.master-data.state.js';
+import type { WasteMasterDataState } from './use-waste-master-data-state.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;

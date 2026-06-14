@@ -106,6 +106,28 @@ Bestandsfaelle werden nicht stillschweigend akzeptiert. Wenn ein bestehendes Plu
 
 Review- oder Prozessmetadaten wie Owner, Folgechange oder Abbauplanung gehoeren bei Bedarf in PR-, Ticket- oder Architekturkontext, nicht in den aktuellen JSON-Vertrag.
 
+### Aktueller Waste-Management-Zuschnitt
+
+Der aktuelle Waste-Management-Schnitt ist bewusst zweigeteilt:
+
+- `@sva/plugin-waste-management` ist das browserseitige Plugin-Package
+- `@sva/waste-management-runtime` ist das host-owned Runtime-Package fuer Waste-spezifische Job-Ausfuehrung
+
+Konkret bedeutet das:
+
+- `@sva/plugin-waste-management` enthaelt `PluginDefinition`, Browser-UI, Search-Params, deklarative `jobTypes` und `importProfiles`
+- das Plugin-Manifest exportiert nur noch `entryPoints.browser`
+- `@sva/waste-management-runtime/server` enthaelt den host-owned Runtime-Adapter fuer `createPluginJobExecutionHandlers`
+- der Host verdrahtet diese Runtime-Seite bewusst selbst und behandelt sie nicht als pluginoeffentlichen Direktimport
+
+Guard-Status auf aktuellem Stand:
+
+- `pnpm check:plugin-architecture-boundary` bleibt global fuer `packages/plugin-*` vorerst warn-only
+- Stand 2026-06-14: Der Wechsel auf blockierend oder no-new-violations ist bewusst nicht Teil des Waste-Management-Refactors, sondern ein separater Governance-Schritt
+- `@sva/plugin-waste-management` benoetigt nach der Runtime-Extraktion keine aktive Import-Allowlist-Ausnahme mehr
+- neue oder wieder auftauchende Importkanten aus dem Plugin in Host-Interna muessen erneut explizit dokumentiert oder direkt rueckgebaut werden
+- verbleibende Brownfield-Historie fuer den Rollout bleibt in `docs/reports/plugin-architecture-boundary-baseline.md` nachvollziehbar, auch wenn fuer Waste Management derzeit kein aktiver Allowlist-Eintrag mehr besteht
+
 ## Pflicht-Export
 
 Jedes Plugin exportiert genau ein `PluginDefinition`-Objekt.

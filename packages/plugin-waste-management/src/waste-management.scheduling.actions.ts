@@ -6,7 +6,7 @@ import {
   mapGlobalDateShiftToForm,
   mapTourDateShiftToForm,
 } from './waste-management.scheduling.shared.js';
-import type { WasteSchedulingState } from './waste-management.scheduling.state.js';
+import type { WasteSchedulingState } from './use-waste-scheduling-state.js';
 
 export const createWasteSchedulingActions = (state: WasteSchedulingState) => ({
   openCreateTourShiftDialog: () => {

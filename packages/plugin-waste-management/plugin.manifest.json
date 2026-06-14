@@ -7,10 +7,6 @@
     "requiredCapabilities": ["routing", "navigation", "iam", "jobs", "imports"]
   },
   "entryPoints": {
-    "browser": "./dist/index.js",
-    "jobs": "./dist/server.js"
-  },
-  "runtimeRequirements": {
-    "jobs": "waste-management.operations"
+    "browser": "./dist/index.js"
   }
 }

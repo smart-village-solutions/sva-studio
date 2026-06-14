@@ -1,0 +1,253 @@
+export const privacyAccountDEResources = {
+  title: 'Datenschutz & Transparenz',
+  navLabel: 'Datenschutz',
+  subtitle:
+    'Exports, Betroffenenrechte und Einschränkungen der Verarbeitung für Ihr eigenes Konto verwalten.',
+  detail: {
+    title: 'Datenschutzfall-Detail',
+    subtitle: 'Prüfen Sie Status, Typ und Metadaten eines einzelnen Verlaufs-Eintrags.',
+    back: 'Zurück zur Datenschutzübersicht',
+    caseId: 'Fall-ID',
+    loading: 'Datenschutzfall-Detail wird geladen ...',
+    notFound: 'Der Datenschutzfall wurde nicht gefunden.',
+  },
+  cards: {
+    permissionChange: {
+      title: 'Rechteänderung',
+      body: 'Beantragen Sie eine Änderung Ihrer Berechtigungen mit kurzer fachlicher Begründung.',
+      cta: 'Rechteänderung beantragen',
+    },
+    access: {
+      title: 'Auskunft',
+      body: 'Starten Sie eine neue Auskunftsanfrage für die zu Ihrem Konto verarbeiteten Daten.',
+      cta: 'Auskunft anfordern',
+    },
+    export: {
+      title: 'Datenexport',
+      body: 'Fordern Sie einen strukturierten Export Ihrer Kontodaten im gewünschten Format an.',
+      cta: 'Datenexport anfordern',
+    },
+    objection: {
+      title: 'Widerspruch',
+      body: 'Reichen Sie einen Widerspruch gegen optionale oder nicht erforderliche Verarbeitung ein.',
+      cta: 'Widerspruch einreichen',
+    },
+    deletion: {
+      title: 'Löschanfrage',
+      body: 'Stoßen Sie eine Löschanfrage für Ihr Konto und die zugehörigen Daten an.',
+      cta: 'Löschanfrage anfordern',
+    },
+    restriction: {
+      title: 'Einschränkung',
+      body: 'Fordern Sie eine vorübergehende Einschränkung der Verarbeitung Ihres Kontos an.',
+      cta: 'Einschränkung der Verarbeitung anfordern',
+    },
+  },
+  actions: {
+    requestExport: 'Datenexport anfordern',
+    requestAccess: 'Auskunft anfordern',
+    requestPermissionChange: 'Rechteänderung beantragen',
+    optOut: 'Widerspruch einreichen',
+    checkProcessing: 'Verarbeitungsstatus prüfen',
+    exportQueued: 'Der Export wurde in die Warteschlange gestellt.',
+    accessRequested: 'Die Auskunftsanfrage wurde eingereicht.',
+    optOutRequested: 'Der Widerspruch wurde eingereicht.',
+  },
+  messages: {
+    loading: 'Datenschutzdaten werden geladen ...',
+    accessRequested: 'Die Auskunftsanfrage wurde eingereicht.',
+    exportRequested: 'Der Export wurde in die Warteschlange gestellt.',
+    permissionChangeRequested: 'Die Rechteänderung wurde eingereicht.',
+    objectionRequested: 'Der Widerspruch wurde eingereicht.',
+    deletionRequested: 'Die Löschanfrage wurde eingereicht.',
+    restrictionRequested: 'Die Einschränkungsanfrage wurde eingereicht.',
+  },
+  table: {
+    title: 'Datenschutzvorgänge',
+    subtitle: 'Alle Self-Service-Vorgänge in einer gemeinsamen Aktivitätsliste.',
+    ariaLabel: 'Datenschutzvorgänge',
+    empty: 'Keine Datenschutzvorgänge vorhanden.',
+    columns: {
+      type: 'Typ',
+      createdAt: 'Erstellungsdatum',
+      status: 'Status',
+      updatedAt: 'Letzte Änderung',
+      details: 'Details',
+      id: 'ID',
+      actions: 'Aktionen',
+    },
+    actions: {
+      details: 'Details',
+      download: 'Download',
+    },
+    filters: {
+      search: 'Suche',
+      status: 'Status',
+      type: 'Typ',
+      allStatuses: 'Alle Status',
+      allTypes: 'Alle Typen',
+    },
+  },
+  deletionRules: {
+    title: 'Konten-Löschregeln',
+    subtitle:
+      'Sehen Sie die tenantweit geltenden Fristen und steuern Sie die Behandlung Ihrer eigenen Inhalte.',
+    actions: {
+      save: 'Inhaltsregel speichern',
+      saving: 'Inhaltsregel wird gespeichert ...',
+    },
+    messages: {
+      loading: 'Löschregeln werden geladen ...',
+      saveSuccess: 'Die Inhaltsregel wurde gespeichert.',
+      overrideActive: 'Für Ihre Inhalte ist derzeit eine persönliche Überschreibung aktiv.',
+      overrideInactive: 'Für Ihre Inhalte gilt derzeit der Tenant-Standard.',
+    },
+    summary: {
+      lastLoginAt: 'Zuletzt eingeloggt',
+      lifecycleState: 'Kontostatus',
+      deactivateAfterDays: 'Deaktivierung nach Tagen',
+      pseudonymizeAfterDays: 'Pseudonymisierung nach Tagen',
+      deleteAfterDays: 'Löschung nach Tagen',
+      tenantDefaultStrategy: 'Tenant-Standard für Inhalte',
+      effectiveStrategy: 'Wirksame Inhaltsregel',
+    },
+    fields: {
+      contentPreference: 'Regel für eigene Inhalte',
+      useTenantDefault: 'Tenant-Standard verwenden',
+    },
+    lifecycle: {
+      active: 'Aktiv',
+      deactivated: 'Deaktiviert',
+      pseudonymized: 'Pseudonymisiert',
+      deleted: 'Gelöscht',
+    },
+    strategies: {
+      retain: 'Inhalte beibehalten',
+      with_owner_lifecycle: 'Inhalte mitbehandeln',
+    },
+  },
+  empty: {
+    title: 'Noch keine Datenschutzvorgänge vorhanden',
+    body: 'Für dieses Konto liegen derzeit keine Exporte, Anfragen oder rechtlichen Sperren vor.',
+    cta: 'Erste Auskunftsanfrage starten',
+  },
+  permissionChange: {
+    actions: {
+      cancel: 'Abbrechen',
+      submit: 'Antrag senden',
+    },
+    dialog: {
+      title: 'Rechteänderung beantragen',
+      description:
+        'Beschreiben Sie den benötigten zusätzlichen Zugriff. Die konkrete Rechtezuordnung erfolgt später im Governance-Prozess.',
+    },
+    fields: {
+      requestNote: 'Gewünschte zusätzliche Rechte',
+      requestNotePlaceholder:
+        'Beschreiben Sie kurz, welchen zusätzlichen Zugriff Sie benötigen und wofür.',
+      requestNoteHint:
+        'Nennen Sie bitte den fachlichen Zweck und den benötigten Zugriff in Freitext.',
+    },
+    messages: {
+      requested: 'Die Anfrage zur Rechteänderung wurde eingereicht.',
+    },
+    validation: {
+      required: 'Bitte beschreiben Sie den gewünschten zusätzlichen Zugriff.',
+    },
+  },
+  dialogs: {
+    shared: {
+      noteLabel: 'Zusätzliche Hinweise',
+      notePlaceholder: 'Optionalen Kontext oder Begründung ergänzen',
+      cancel: 'Abbrechen',
+    },
+    export: {
+      title: 'Datenexport anfordern',
+      description: 'Wählen Sie das gewünschte Exportformat für den neuen Exportjob.',
+      formatLabel: 'Exportformat',
+      submit: 'Export anfordern',
+    },
+    access: {
+      title: 'Auskunft anfordern',
+      description: 'Ergänzen Sie bei Bedarf Hinweise für die Auskunftsanfrage.',
+      submit: 'Auskunft senden',
+    },
+    accessFax: {
+      title: 'Als Fax versenden',
+      description: 'Spielerischer Faxversand ohne Auswirkungen auf Ihre Anfrage.',
+      windowTitle: '{{progress}}% von faxversand.exe abgeschlossen',
+      progressAriaLabel: 'Faxversand-Fortschritt',
+      closeWindow: 'Fenster schließen',
+      close: 'Schließen',
+      statusHeading: 'Speichern:',
+      fileLine: 'auskunftsanfrage.txt von studio.bad-belzig.lan',
+      estimatedTimeLabel: 'Geschätzte Restzeit:',
+      destinationLabel: 'Ablage:',
+      destinationPath: 'C:\\Postausgang\\Fax\\auskunftsanfrage.txt',
+      transferRateLabel: 'Übertragungsrate:',
+      transferRateValue: '3,63 KB/Sek.',
+      autoCloseLabel: 'Fenster nach Abschluss schließen',
+      open: 'Öffnen',
+      openFolder: 'Ordner öffnen',
+      status: {
+        paper: 'Papier wird eingelegt ...',
+        toner: 'Toner wird geschüttelt ...',
+        handshake: 'Empfangsgerät piept beleidigt ...',
+        failed: 'Fehlgeschlagen: Gegenstelle hat Feierabend.',
+      },
+    },
+    objection: {
+      title: 'Widerspruch einreichen',
+      description: 'Ergänzen Sie bei Bedarf eine kurze Begründung für den Widerspruch.',
+      submit: 'Widerspruch senden',
+    },
+    deletion: {
+      title: 'Löschanfrage anfordern',
+      description: 'Ergänzen Sie bei Bedarf Hinweise für die Löschanfrage.',
+      submit: 'Löschanfrage senden',
+    },
+    restriction: {
+      title: 'Einschränkung anfordern',
+      description: 'Ergänzen Sie bei Bedarf Hinweise für die Einschränkung der Verarbeitung.',
+      submit: 'Einschränkung senden',
+    },
+  },
+  sections: {
+    exportJobs: 'Export-Jobs',
+    requests: 'Betroffenenanfragen',
+    processing: 'Verarbeitung',
+    legalHolds: 'Rechtliche Sperren',
+  },
+  processing: {
+    optional: 'Optionale Verarbeitung',
+    allowed: 'Erlaubt',
+    restricted: 'Eingeschränkt',
+    restrictionSince: 'Einschränkung seit',
+    reason: 'Begründung',
+    optOutSince: 'Widerspruch seit',
+    blocked: 'Die angefragte Verarbeitung ist derzeit blockiert.',
+    allowedCheck: 'Die optionale Verarbeitung ist aktuell zulässig.',
+  },
+  status: {
+    queued: 'Eingeplant',
+    inProgress: 'In Bearbeitung',
+    completed: 'Abgeschlossen',
+    blocked: 'Blockiert',
+    failed: 'Fehlgeschlagen',
+  },
+  types: {
+    request: 'Betroffenenanfrage',
+    export_job: 'Export-Job',
+    legal_hold: 'Rechtliche Sperre',
+    profile_correction: 'Profilkorrektur',
+    recipient_notification: 'Empfängerbenachrichtigung',
+    legal_acceptance: 'Rechtstext-Akzeptanz',
+  },
+  shared: {
+    createdAt: 'Erstellt: {{value}}',
+    completedAt: 'Abgeschlossen: {{value}}',
+    format: 'Format: {{value}}',
+    blockedBy: 'Blockiert durch: {{value}}',
+    rawStatus: 'Rohstatus: {{value}}',
+  },
+} as const;

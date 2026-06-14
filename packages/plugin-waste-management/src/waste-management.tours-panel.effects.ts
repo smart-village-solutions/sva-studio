@@ -5,7 +5,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { mapTourToForm } from './waste-management.tours.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
-type WasteToursPanelController = {
+type WasteViewModel = {
   readonly lastOutcome: 'create-success' | 'update-success' | null;
   readonly overview: { readonly tours: readonly WasteTourRecord[] } | null;
   readonly tourForm: { readonly id: string };
@@ -31,7 +31,7 @@ export const useWasteToursSuccessRedirect = ({
   navigate,
   search,
 }: {
-  readonly controller: WasteToursPanelController;
+  readonly controller: WasteViewModel;
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {
@@ -74,7 +74,7 @@ export const useWasteToursEditRouteHydration = ({
   navigate,
   search,
 }: {
-  readonly controller: WasteToursPanelController;
+  readonly controller: WasteViewModel;
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {

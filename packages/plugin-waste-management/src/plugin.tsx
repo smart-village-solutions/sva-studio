@@ -3,21 +3,15 @@ import {
   definePluginPermissions,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
-import { studioModuleIamRegistry } from '@sva/studio-module-iam';
 
 import {
   createWasteManagementPluginImportProfiles,
   createWasteManagementPluginJobTypes,
-} from './plugin-operations.js';
+} from './waste-management.job-definitions.js';
 import { wasteManagementPluginTranslations } from './plugin.translations.js';
 import { normalizeWasteManagementSearchParams } from './search-params.js';
+import { wasteManagementModuleIam } from './waste-management.module-iam.js';
 import { WasteManagementPage } from './waste-management.page.js';
-
-const wasteManagementModuleIam = studioModuleIamRegistry.get('waste-management');
-
-if (!wasteManagementModuleIam) {
-  throw new Error('missing_studio_module_iam_contract:waste-management');
-}
 
 export const wasteManagementPermissionDefinitions = definePluginPermissions('waste-management', [
   { id: 'waste-management.read', titleKey: 'wasteManagement.permissions.read.title' },
@@ -183,11 +177,7 @@ export const pluginWasteManagement: PluginDefinition = {
     },
   ],
   permissions: wasteManagementPermissionDefinitions,
-  moduleIam: {
-    moduleId: wasteManagementModuleIam.moduleId,
-    permissionIds: wasteManagementModuleIam.permissionIds,
-    systemRoles: wasteManagementModuleIam.systemRoles ?? wasteManagementModuleIam.tenantBootstrapRoles,
-  },
+  moduleIam: wasteManagementModuleIam,
   auditEvents: wasteManagementAuditEventDefinitions,
   jobTypes: createWasteManagementPluginJobTypes(),
   importProfiles: createWasteManagementPluginImportProfiles(),

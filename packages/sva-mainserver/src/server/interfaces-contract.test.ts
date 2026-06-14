@@ -22,6 +22,48 @@ vi.mock('./settings.js', () => ({
   saveSvaMainserverSettings: state.saveSvaMainserverSettings,
 }));
 
+type TestUser = {
+  id: string;
+  instanceId?: string;
+  roles: string[];
+};
+
+type AuthenticatedContext = {
+  activeOrganizationId?: string;
+  user: TestUser;
+};
+
+const defaultUser: TestUser = {
+  id: 'subject-1',
+  instanceId: 'de-musterhausen',
+  roles: ['system_admin'],
+};
+
+const createRequest = () => new Request('http://localhost');
+
+const createTestUser = (overrides: Partial<TestUser> = {}): TestUser => ({
+  ...defaultUser,
+  ...overrides,
+});
+
+const mockAuthenticatedUser = (
+  overrides: Partial<AuthenticatedContext> & { user?: TestUser } = {},
+  captureResponse?: (response: Response) => void
+) => {
+  const context: AuthenticatedContext = {
+    user: overrides.user ?? defaultUser,
+    ...('activeOrganizationId' in overrides
+      ? { activeOrganizationId: overrides.activeOrganizationId }
+      : {}),
+  };
+
+  state.withAuthenticatedUser.mockImplementation(async (_request: Request, handler: (ctx: AuthenticatedContext) => Promise<Response>) => {
+    const response = await handler(context);
+    captureResponse?.(response);
+    return response;
+  });
+};
+
 describe('interfaces.server', () => {
   beforeEach(() => {
     state.withAuthenticatedUser.mockReset();
@@ -41,25 +83,14 @@ describe('interfaces.server', () => {
 
   it('loads interfaces overview for users with integration.manage even without a legacy role name', async () => {
     let capturedResponse: Response | null = null;
-    state.withAuthenticatedUser.mockImplementation(
-      async (
-        _request: Request,
-        handler: (ctx: {
-          activeOrganizationId?: string;
-          user: { id: string; instanceId?: string; roles: string[] };
-        }) => Promise<Response>
-      ) =>
-        handler({
-          activeOrganizationId: '11111111-1111-1111-8111-111111111111',
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['custom_operator'],
-          },
-        }).then((response) => {
-          capturedResponse = response;
-          return response;
-        })
+    mockAuthenticatedUser(
+      {
+        activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+        user: createTestUser({ roles: ['custom_operator'] }),
+      },
+      (response) => {
+        capturedResponse = response;
+      }
     );
     state.loadSvaMainserverSettings.mockResolvedValue({
       instanceId: 'de-musterhausen',
@@ -75,7 +106,7 @@ describe('interfaces.server', () => {
 
     const { loadSvaMainserverInterfacesOverview } = await import('./interfaces-contract');
 
-    await expect(loadSvaMainserverInterfacesOverview(new Request('http://localhost'))).resolves.toMatchObject({
+    await expect(loadSvaMainserverInterfacesOverview(createRequest())).resolves.toMatchObject({
       instanceId: 'de-musterhausen',
       config: expect.objectContaining({ enabled: true }),
       status: expect.objectContaining({ status: 'connected' }),
@@ -94,16 +125,7 @@ describe('interfaces.server', () => {
   });
 
   it('returns forbidden status when integration.manage is denied even for a legacy role name', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['app_manager'],
-          },
-        })
-    );
+    mockAuthenticatedUser({ user: createTestUser({ roles: ['app_manager'] }) });
     state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
       ok: false,
       status: 403,
@@ -113,7 +135,7 @@ describe('interfaces.server', () => {
 
     const { loadSvaMainserverInterfacesOverview } = await import('./interfaces-contract');
 
-    await expect(loadSvaMainserverInterfacesOverview(new Request('http://localhost'))).resolves.toMatchObject({
+    await expect(loadSvaMainserverInterfacesOverview(createRequest())).resolves.toMatchObject({
       instanceId: 'de-musterhausen',
       status: expect.objectContaining({
         status: 'error',
@@ -123,19 +145,11 @@ describe('interfaces.server', () => {
   });
 
   it('returns a validation error when the session misses an instance context', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    mockAuthenticatedUser({ user: createTestUser({ instanceId: undefined }) });
 
     const { loadSvaMainserverInterfacesOverview } = await import('./interfaces-contract');
 
-    await expect(loadSvaMainserverInterfacesOverview(new Request('http://localhost'))).resolves.toMatchObject({
+    await expect(loadSvaMainserverInterfacesOverview(createRequest())).resolves.toMatchObject({
       instanceId: '',
       status: expect.objectContaining({
         status: 'error',
@@ -202,16 +216,7 @@ describe('interfaces.server', () => {
   });
 
   it('maps load failures from the data layer to invalid_config', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    mockAuthenticatedUser();
     state.loadSvaMainserverSettings.mockRejectedValue(new Error('db down'));
 
     const { loadSvaMainserverInterfacesOverview } = await import('./interfaces-contract');
@@ -226,16 +231,7 @@ describe('interfaces.server', () => {
   });
 
   it('returns a sanitized network error when the connection check fails unexpectedly', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    mockAuthenticatedUser();
     state.loadSvaMainserverSettings.mockResolvedValue(null);
     state.getSvaMainserverConnectionStatus.mockRejectedValue({
       response: {
@@ -291,19 +287,9 @@ describe('interfaces.server', () => {
 
   it('saves mainserver settings for authorized users', async () => {
     let capturedResponse: Response | null = null;
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        }).then((response) => {
-          capturedResponse = response;
-          return response;
-        })
-    );
+    mockAuthenticatedUser({}, (response) => {
+      capturedResponse = response;
+    });
     state.saveSvaMainserverSettings.mockResolvedValue({
       instanceId: 'de-musterhausen',
       providerKey: 'sva_mainserver',
@@ -314,7 +300,7 @@ describe('interfaces.server', () => {
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-contract');
 
-    await saveSvaMainserverInterfaceSettings(new Request('http://localhost'), {
+    await saveSvaMainserverInterfaceSettings(createRequest(), {
       data: {
         graphqlBaseUrl: 'https://mainserver.example/graphql',
         oauthTokenUrl: 'https://mainserver.example/oauth/token',
@@ -332,16 +318,7 @@ describe('interfaces.server', () => {
   });
 
   it('allows custom-role users with integration.manage to save mainserver settings', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['custom_operator'],
-          },
-        })
-    );
+    mockAuthenticatedUser({ user: createTestUser({ roles: ['custom_operator'] }) });
     state.saveSvaMainserverSettings.mockResolvedValue({
       instanceId: 'de-musterhausen',
       providerKey: 'sva_mainserver',
@@ -353,7 +330,7 @@ describe('interfaces.server', () => {
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-contract');
 
     await expect(
-      saveSvaMainserverInterfaceSettings(new Request('http://localhost'), {
+      saveSvaMainserverInterfaceSettings(createRequest(), {
         data: {
           graphqlBaseUrl: 'https://mainserver.example/graphql',
           oauthTokenUrl: 'https://mainserver.example/oauth/token',
@@ -374,22 +351,13 @@ describe('interfaces.server', () => {
   });
 
   it('sanitizes internal save errors before surfacing them to clients', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    mockAuthenticatedUser();
     state.saveSvaMainserverSettings.mockRejectedValue(new Error('Error: boom\n    at save (/srv/app.ts:1:1)'));
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-contract');
 
     await expect(
-      saveSvaMainserverInterfaceSettings(new Request('http://localhost'), {
+      saveSvaMainserverInterfaceSettings(createRequest(), {
         data: {
           graphqlBaseUrl: 'https://mainserver.example/graphql',
           oauthTokenUrl: 'https://mainserver.example/oauth/token',
@@ -400,16 +368,7 @@ describe('interfaces.server', () => {
   });
 
   it('rejects save requests from users without interfaces permissions', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['editor'],
-          },
-        })
-    );
+    mockAuthenticatedUser({ user: createTestUser({ roles: ['editor'] }) });
     state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
       ok: false,
       status: 403,
@@ -420,7 +379,7 @@ describe('interfaces.server', () => {
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-contract');
 
     await expect(
-      saveSvaMainserverInterfaceSettings(new Request('http://localhost'), {
+      saveSvaMainserverInterfaceSettings(createRequest(), {
         data: {
           graphqlBaseUrl: 'https://mainserver.example/graphql',
           oauthTokenUrl: 'https://mainserver.example/oauth/token',
@@ -431,20 +390,12 @@ describe('interfaces.server', () => {
   });
 
   it('rejects save requests when the session misses an instance context', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    mockAuthenticatedUser({ user: createTestUser({ instanceId: undefined }) });
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-contract');
 
     await expect(
-      saveSvaMainserverInterfaceSettings(new Request('http://localhost'), {
+      saveSvaMainserverInterfaceSettings(createRequest(), {
         data: {
           graphqlBaseUrl: 'https://mainserver.example/graphql',
           oauthTokenUrl: 'https://mainserver.example/oauth/token',
@@ -457,21 +408,12 @@ describe('interfaces.server', () => {
   });
 
   it('rejects save requests when the enabled flag is missing', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    mockAuthenticatedUser();
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-contract');
 
     await expect(
-      saveSvaMainserverInterfaceSettings(new Request('http://localhost'), {
+      saveSvaMainserverInterfaceSettings(createRequest(), {
         data: {
           graphqlBaseUrl: 'https://mainserver.example/graphql',
           oauthTokenUrl: 'https://mainserver.example/oauth/token',
@@ -483,16 +425,7 @@ describe('interfaces.server', () => {
   });
 
   it('preserves invalid_config errors from settings validation with their affected field', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    mockAuthenticatedUser();
     state.saveSvaMainserverSettings.mockRejectedValue({
       code: 'invalid_config',
       message: 'Die konfigurierte Upstream-URL graphql_base_url ist ungültig.',
@@ -502,7 +435,7 @@ describe('interfaces.server', () => {
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-contract');
 
     await expect(
-      saveSvaMainserverInterfaceSettings(new Request('http://localhost'), {
+      saveSvaMainserverInterfaceSettings(createRequest(), {
         data: {
           graphqlBaseUrl: 'https://mainserver.example/graphql',
           oauthTokenUrl: 'https://mainserver.example/oauth/token',
@@ -513,16 +446,7 @@ describe('interfaces.server', () => {
   });
 
   it('preserves oauth_token_url validation errors from error instances', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
+    mockAuthenticatedUser();
     const validationError = Object.assign(
       new Error('Die konfigurierte Upstream-URL oauth_token_url ist ungültig.'),
       {
@@ -535,7 +459,7 @@ describe('interfaces.server', () => {
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-contract');
 
     await expect(
-      saveSvaMainserverInterfaceSettings(new Request('http://localhost'), {
+      saveSvaMainserverInterfaceSettings(createRequest(), {
         data: {
           graphqlBaseUrl: 'https://mainserver.example/graphql',
           oauthTokenUrl: 'https://mainserver.example/oauth/token',

@@ -1,12 +1,12 @@
-import { useWasteMasterDataController } from './waste-management.master-data.controller.js';
+import { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
 import { WasteMasterDataLocationFormContent } from './waste-management.master-data-location-form-content.js';
 import { useWasteLocationsTabNavigation } from './waste-management.master-data-locations-tab-view.helpers.js';
 import { WasteMasterDataLocationsWorkspace } from './waste-management.master-data-locations-workspace.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
-type WasteMasterDataController = ReturnType<typeof useWasteMasterDataController>;
+type WasteViewModel = ReturnType<typeof useWasteMasterDataViewModel>;
 type WasteMasterDataLocationsTabViewProps = {
-  readonly controller: WasteMasterDataController;
+  readonly controller: WasteViewModel;
   readonly search: WasteManagementSearchParams;
 };
 

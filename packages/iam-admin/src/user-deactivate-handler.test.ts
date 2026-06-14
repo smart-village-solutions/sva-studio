@@ -1,6 +1,7 @@
 import type { IamUserDetail } from '@sva/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createJsonResponse, createTestDepsBuilder } from './handler-test-helpers.js';
 import {
   createDeactivateUserHandlerInternal,
   type DeactivateUserHandlerDeps,
@@ -37,10 +38,7 @@ const deactivatedDetail = {
   status: 'inactive',
 } satisfies IamUserDetail;
 
-const createJsonResponse = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-
-const createDeps = (overrides: Partial<DeactivateUserHandlerDeps> = {}): DeactivateUserHandlerDeps => {
+const createDeps = createTestDepsBuilder<DeactivateUserHandlerDeps>(() => {
   const identityProvider = {
     provider: {
       deactivateUser: vi.fn(async () => undefined),
@@ -95,9 +93,8 @@ const createDeps = (overrides: Partial<DeactivateUserHandlerDeps> = {}): Deactiv
         query: vi.fn(async () => ({ rows: [], rowCount: 1 })),
       })
     ),
-    ...overrides,
   };
-};
+});
 
 describe('createDeactivateUserHandlerInternal', () => {
   beforeEach(() => {

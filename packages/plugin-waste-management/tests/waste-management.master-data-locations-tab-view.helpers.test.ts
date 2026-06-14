@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WasteManagementSearchParams } from '../src/search-params.js';
 import { useWasteLocationsTabNavigation } from '../src/waste-management.master-data-locations-tab-view.helpers.js';
-import type { useWasteMasterDataController } from '../src/waste-management.master-data.controller.js';
+import type { useWasteMasterDataViewModel } from '../src/use-waste-master-data-view-model.js';
 
 const navigateMock = vi.fn();
 
@@ -11,7 +11,7 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
 }));
 
-type WasteMasterDataController = ReturnType<typeof useWasteMasterDataController>;
+type WasteViewModel = ReturnType<typeof useWasteMasterDataViewModel>;
 
 const createSearch = (): WasteManagementSearchParams => ({
   tab: 'locations',
@@ -36,7 +36,7 @@ const createSearch = (): WasteManagementSearchParams => ({
   globalDateShiftId: undefined,
 });
 
-const createController = (overrides: Partial<WasteMasterDataController> = {}): WasteMasterDataController =>
+const createController = (overrides: Partial<WasteViewModel> = {}): WasteViewModel =>
   ({
     setLocationDialogMode: vi.fn(),
     setLocationDialogOpen: vi.fn(),
@@ -45,7 +45,7 @@ const createController = (overrides: Partial<WasteMasterDataController> = {}): W
     setMessage: vi.fn(),
     setLastOutcome: vi.fn(),
     ...overrides,
-  }) as WasteMasterDataController;
+  }) as WasteViewModel;
 
 describe('useWasteLocationsTabNavigation', () => {
   beforeEach(() => {

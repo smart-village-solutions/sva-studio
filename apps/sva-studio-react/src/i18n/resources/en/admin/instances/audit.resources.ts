@@ -1,0 +1,37 @@
+export const auditInstancesAdminENResources = {
+  title: 'Instance audit',
+  subtitle:
+    'Read-only granular checks for registry, reachability, Keycloak, and local IAM without exposing secrets.',
+  overviewTitle: 'Audit',
+  overviewSubtitle:
+    'Starts a read-only audit run across all active instances and shows the detailed checks in one place.',
+  overviewEmpty: 'No full audit result is available yet.',
+  refresh: 'Refresh audit',
+  loading: 'Loading audit…',
+  runAll: 'Run full audit',
+  loadingAll: 'Full audit running…',
+  empty: 'No audit result is available for this instance yet.',
+  generatedAt: 'Latest run',
+  overallStatus: 'Overall status',
+  targetCount: 'Target instances',
+  expected: 'Expected',
+  actual: 'Actual',
+  details: 'Details',
+  evidenceSource: 'Source',
+  remediationHint: 'Hint:',
+  instanceHost: 'Hostname: {{host}}',
+  instanceStatus: 'Registry status: {{status}}, audit: {{overallStatus}}',
+  scopes: {
+    run: 'Run',
+    instance: 'Instance',
+    registry: 'Registry',
+    keycloak: 'Keycloak',
+    localIam: 'Local IAM',
+  },
+  status: {
+    pass: 'Pass',
+    fail: 'Fail',
+    warn: 'Warn',
+    skip: 'Skip',
+  },
+} as const;

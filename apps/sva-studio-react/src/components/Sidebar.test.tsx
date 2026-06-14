@@ -137,16 +137,28 @@ const defaultBlockedAccessState: IamContentAccessSummary = {
   sourceKinds: [],
 };
 
+const defaultBlockedDirectRoleAccessState: IamContentAccessSummary = {
+  ...defaultBlockedAccessState,
+  sourceKinds: ['direct_role'],
+};
+
 const createAuthenticatedAuthState = (user: Record<string, unknown>) => ({
   ...unauthenticatedAuthState,
   user,
   isAuthenticated: true,
 });
 
+const createSidebarUser = (overrides: Record<string, unknown> = {}) => ({
+  id: 'user-1',
+  name: 'Test User',
+  roles: ['editor'],
+  ...overrides,
+});
+
 const createContentAccessState = (
   overrides: Partial<SidebarContentAccessState> = {}
 ): SidebarContentAccessState => ({
-  access: defaultEditableAccessState,
+  access: null,
   permissionActions: ['news.read'],
   isLoading: false,
   error: null,
@@ -161,6 +173,22 @@ const setupSidebarSession = (input: Readonly<{
     input.user ? createAuthenticatedAuthState(input.user) : unauthenticatedAuthState
   );
   useContentAccessMock.mockReturnValue(input.contentAccess ?? createContentAccessState());
+};
+
+const renderSidebar = (
+  input: Readonly<{
+    route?: string;
+    user?: Record<string, unknown> | null;
+    contentAccess?: ReturnType<typeof createContentAccessState>;
+    props?: React.ComponentProps<typeof Sidebar>;
+  }> = {}
+) => {
+  useRouterStateMock.mockReturnValue(input.route ?? '/');
+  setupSidebarSession({
+    user: input.user,
+    contentAccess: input.contentAccess,
+  });
+  return render(<Sidebar {...input.props} />);
 };
 
 beforeEach(() => {
@@ -216,10 +244,8 @@ describe('Sidebar', () => {
   });
 
   it('rendert die neuen Abschnittsüberschriften und das Benutzer-Untermenü über explizite Admin-Permissions', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
-        id: 'user-1',
+    renderSidebar({
+      user: createSidebarUser({
         name: 'Admin',
         roles: ['system_admin'],
         instanceId: 'de-musterhausen',
@@ -236,24 +262,12 @@ describe('Sidebar', () => {
           'iam.monitoring.read',
           'integration.manage',
         ],
-      },
-      isAuthenticated: true,
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultEditableAccessState,
+        permissionActions: ['news.read', 'app.read', 'cockpit.read'],
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'editable',
-        canRead: true,
-        canCreate: true,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['news.read', 'app.read', 'cockpit.read'],
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     expect(screen.getByText('Datenverwaltung')).toBeTruthy();
     expect(screen.getByText('Anwendungen')).toBeTruthy();
@@ -308,31 +322,13 @@ describe('Sidebar', () => {
   });
 
   it('blendet Gruppen ohne Instanzkontext aus', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
-        id: 'user-1',
+    renderSidebar({
+      user: createSidebarUser({
         name: 'Admin',
         roles: ['system_admin'],
         permissionActions: ['iam.user.read', 'iam.role.read', 'iam.org.read'],
-      },
-      isAuthenticated: true,
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'editable',
-        canRead: true,
-        canCreate: true,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['news.read'],
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     const usersToggle = screen.getByRole('button', { name: 'Benutzer' });
     fireEvent.click(usersToggle);
@@ -342,20 +338,17 @@ describe('Sidebar', () => {
   });
 
   it('zeigt Benutzerliste und Rollen auch fuer Plattform-Admins ohne Tenant-Role-Permissions an', () => {
-    setupSidebarSession({
-      user: {
-        id: 'user-1',
+    renderSidebar({
+      user: createSidebarUser({
         name: 'Platform Admin',
         roles: ['instance_registry_admin'],
         permissionActions: [],
-      },
+      }),
       contentAccess: createContentAccessState({
         access: null,
         permissionActions: [],
       }),
     });
-
-    render(<Sidebar />);
 
     const usersToggle = screen.getByRole('button', { name: 'Benutzer' });
     fireEvent.click(usersToggle);
@@ -366,13 +359,12 @@ describe('Sidebar', () => {
   });
 
   it('rendert Schnittstellen mit integration.manage auch ohne Legacy-Rollenname', () => {
-    setupSidebarSession({
-      user: {
-        id: 'user-1',
+    renderSidebar({
+      user: createSidebarUser({
         name: 'Interface Manager',
         roles: ['custom_operator'],
         permissionActions: ['integration.manage', 'experimental.read'],
-      },
+      }),
       contentAccess: createContentAccessState({
         access: {
           ...defaultReadOnlyAccessState,
@@ -380,8 +372,6 @@ describe('Sidebar', () => {
         },
       }),
     });
-
-    render(<Sidebar />);
 
     expect(screen.getByRole('link', { name: 'Schnittstellen' }).getAttribute('href')).toBe(
       '/interfaces'
@@ -400,37 +390,29 @@ describe('Sidebar', () => {
   });
 
   it('zeigt den Modullink fuer Tenant-Nutzer ohne Root-Systemrechte', () => {
-    setupSidebarSession({
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'tenant-user',
         name: 'Tenant User',
         instanceId: 'de-musterhausen',
-        roles: ['editor'],
-      },
+      }),
       contentAccess: createContentAccessState({
         access: defaultReadOnlyAccessState,
       }),
     });
-
-    render(<Sidebar />);
 
     expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
     expect(screen.queryByRole('link', { name: 'Monitoring' })).toBeNull();
   });
 
   it('rendert Hilfe, Support und Lizenz innerhalb der Bereichsnavigation', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'experimental-user',
         name: 'Experimental User',
-        roles: ['editor'],
         permissionActions: ['experimental.read'],
-      },
-      isAuthenticated: true,
+      }),
     });
-
-    render(<Sidebar />);
 
     const navigation = screen.getByRole('navigation', { name: 'Bereichsnavigation' });
 
@@ -447,10 +429,8 @@ describe('Sidebar', () => {
 
   it('zeigt Unterpunkte als Flyout, wenn die Desktop-Sidebar eingeklappt ist', () => {
     window.localStorage.setItem('sva-studio-sidebar-collapsed', '1');
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
-        id: 'user-1',
+    renderSidebar({
+      user: createSidebarUser({
         name: 'Admin',
         roles: ['system_admin'],
         instanceId: 'de-musterhausen',
@@ -463,24 +443,8 @@ describe('Sidebar', () => {
           'iam.org.write',
           'iam.governance.read',
         ],
-      },
-      isAuthenticated: true,
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'editable',
-        canRead: true,
-        canCreate: true,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['news.read'],
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     expect(screen.getByRole('button', { name: 'Seitenleiste ausklappen' })).toBeTruthy();
 
@@ -500,31 +464,13 @@ describe('Sidebar', () => {
   });
 
   it('schaltet die Sidebar um und verwaltet Flyout-Fokus und Hover im eingeklappten Zustand', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
-        id: 'user-1',
+    renderSidebar({
+      user: createSidebarUser({
         name: 'Admin',
         roles: ['system_admin'],
         permissionActions: ['iam.user.read'],
-      },
-      isAuthenticated: true,
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'editable',
-        canRead: true,
-        canCreate: true,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['news.read'],
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Seitenleiste einklappen' }));
     expect(screen.getByRole('button', { name: 'Seitenleiste ausklappen' })).toBeTruthy();
@@ -568,165 +514,125 @@ describe('Sidebar', () => {
   });
 
   it('versteckt den Inhalte-Link ohne effektive Content-Leseberechtigung', () => {
-    setupSidebarSession({
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'user-2',
         name: 'Viewer',
         roles: ['viewer'],
-      },
+      }),
       contentAccess: createContentAccessState({
         access: defaultBlockedAccessState,
       }),
     });
 
-    render(<Sidebar />);
-
     expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
   });
 
   it('versteckt den Medien-Link ohne media.read-Berechtigung oder ohne Modulzuweisung', () => {
-    setupSidebarSession({
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'user-2',
         name: 'Editor',
-        roles: ['editor'],
         assignedModules: ['news'],
-      },
+      }),
     });
-
-    render(<Sidebar />);
 
     expect(screen.queryByRole('link', { name: 'Medien' })).toBeNull();
   });
 
   it('zeigt den Medien-Link nur bei zugewiesenem Modul und media.read-Berechtigung', () => {
-    setupSidebarSession({
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'user-2',
         name: 'Editor',
-        roles: ['editor'],
         assignedModules: ['media'],
-      },
+      }),
       contentAccess: createContentAccessState({
         permissionActions: ['media.read'],
       }),
     });
-
-    render(<Sidebar />);
 
     expect(screen.getByRole('link', { name: 'Medien' }).getAttribute('href')).toBe('/admin/media');
   });
 
   it('zeigt den Medien-Link auch ohne content.read, solange media-Modul und media.read vorhanden sind', () => {
-    setupSidebarSession({
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'user-2',
         name: 'Editor',
-        roles: ['editor'],
         assignedModules: ['media'],
-      },
+      }),
       contentAccess: createContentAccessState({
-        access: {
-          ...defaultBlockedAccessState,
-          sourceKinds: ['direct_role'],
-        },
+        access: defaultBlockedDirectRoleAccessState,
         permissionActions: ['media.read'],
       }),
     });
-
-    render(<Sidebar />);
 
     expect(screen.getByRole('link', { name: 'Medien' }).getAttribute('href')).toBe('/admin/media');
     expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
   });
 
   it('zeigt den Kategorien-Link auch ohne content.read, solange categories.read vorhanden ist', () => {
-    setupSidebarSession({
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'user-2',
         name: 'Editor',
-        roles: ['editor'],
         assignedModules: ['categories'],
-      },
+      }),
       contentAccess: createContentAccessState({
-        access: {
-          ...defaultBlockedAccessState,
-          sourceKinds: ['direct_role'],
-        },
+        access: defaultBlockedDirectRoleAccessState,
         permissionActions: ['categories.read'],
       }),
     });
-
-    render(<Sidebar />);
 
     expect(screen.getByRole('link', { name: 'Kategorien' }).getAttribute('href')).toBe('/categories');
     expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
   });
 
   it('versteckt den Kategorien-Link ohne zugewiesenes Kategorien-Modul trotz categories.read', () => {
-    setupSidebarSession({
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'user-2',
         name: 'Editor',
-        roles: ['editor'],
         assignedModules: ['news'],
-      },
+      }),
       contentAccess: createContentAccessState({
-        access: {
-          ...defaultBlockedAccessState,
-          sourceKinds: ['direct_role'],
-        },
+        access: defaultBlockedDirectRoleAccessState,
         permissionActions: ['categories.read'],
       }),
     });
-
-    render(<Sidebar />);
 
     expect(screen.queryByRole('link', { name: 'Kategorien' })).toBeNull();
   });
 
   it('versteckt den Kategorien-Link ohne categories.read trotz content.read', () => {
-    setupSidebarSession({
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'user-2',
         name: 'Editor',
-        roles: ['editor'],
         assignedModules: ['categories'],
-      },
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultEditableAccessState,
+      }),
     });
-
-    render(<Sidebar />);
 
     expect(screen.getByRole('link', { name: 'Inhalte' }).getAttribute('href')).toBe('/admin/content');
     expect(screen.queryByRole('link', { name: 'Kategorien' })).toBeNull();
   });
 
   it('zeigt im Bereich Anwendungen nur den App-Link mit app.read-Berechtigung', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'user-3',
         name: 'App Reader',
-        roles: ['editor'],
         permissionActions: ['experimental.read'],
-      },
-      isAuthenticated: true,
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+        permissionActions: ['app.read'],
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'read_only',
-        canRead: true,
-        canCreate: false,
-        canUpdate: false,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['app.read'],
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     expect(screen.getByText('Anwendungen')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'App' }).getAttribute('href')).toBe('/app');
@@ -734,31 +640,17 @@ describe('Sidebar', () => {
   });
 
   it('zeigt im Bereich Anwendungen nur den Cockpit-Link mit cockpit.read-Berechtigung', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'user-4',
         name: 'Cockpit Reader',
-        roles: ['editor'],
         permissionActions: ['experimental.read'],
-      },
-      isAuthenticated: true,
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+        permissionActions: ['cockpit.read'],
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'read_only',
-        canRead: true,
-        canCreate: false,
-        canUpdate: false,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['cockpit.read'],
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     expect(screen.getByText('Anwendungen')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
@@ -766,31 +658,16 @@ describe('Sidebar', () => {
   });
 
   it('blendet den Bereich Anwendungen komplett aus, wenn weder app.read noch cockpit.read vorhanden ist', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'user-5',
         name: 'Restricted User',
-        roles: ['editor'],
         permissionActions: ['experimental.read'],
-      },
-      isAuthenticated: true,
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'read_only',
-        canRead: true,
-        canCreate: false,
-        canUpdate: false,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['news.read'],
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     expect(screen.queryByText('Anwendungen')).toBeNull();
     expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
@@ -798,31 +675,16 @@ describe('Sidebar', () => {
   });
 
   it('zeigt experimentelle Footer-Links auch ohne Fachrechte, aber keine fachlichen Experimental-Menues', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'user-6',
         name: 'Experimental Only',
-        roles: ['editor'],
         permissionActions: ['experimental.read'],
-      },
-      isAuthenticated: true,
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'read_only',
-        canRead: true,
-        canCreate: false,
-        canUpdate: false,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['news.read'],
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(HELP_DISCUSSIONS_URL);
     expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(SUPPORT_ISSUES_URL);
@@ -833,31 +695,17 @@ describe('Sidebar', () => {
   });
 
   it('versteckt experimentelle Navigation ohne experimental.read trotz vorhandener Fachrechte', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
+    renderSidebar({
+      user: createSidebarUser({
         id: 'user-7',
         name: 'No Experimental',
-        roles: ['editor'],
         permissionActions: ['iam.monitoring.read'],
-      },
-      isAuthenticated: true,
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+        permissionActions: ['app.read', 'cockpit.read'],
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'read_only',
-        canRead: true,
-        canCreate: false,
-        canUpdate: false,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['app.read', 'cockpit.read'],
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
@@ -868,32 +716,16 @@ describe('Sidebar', () => {
   });
 
   it('rendert benutzerdefinierte Plugin-Navigation innerhalb der Datenverwaltung und markiert sie als aktiv', () => {
-    useRouterStateMock.mockReturnValue('/plugins/news/review');
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
-        id: 'user-1',
+    renderSidebar({
+      route: '/plugins/news/review',
+      user: createSidebarUser({
         name: 'Editor',
-        roles: ['editor'],
         assignedModules: ['news'],
-      },
-      isAuthenticated: true,
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultEditableAccessState,
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'editable',
-        canRead: true,
-        canCreate: true,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['news.read'],
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     const navigation = screen.getByRole('navigation', { name: 'Bereichsnavigation' });
     const newsLink = within(navigation).getByRole('link', { name: 'News' });
@@ -903,31 +735,12 @@ describe('Sidebar', () => {
   });
 
   it('blendet Plugin-Navigation fail-closed aus, wenn das Modul der aktiven Instanz nicht zugewiesen ist', () => {
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
-        id: 'user-1',
+    renderSidebar({
+      user: createSidebarUser({
         name: 'Editor',
-        roles: ['editor'],
         assignedModules: [],
-      },
-      isAuthenticated: true,
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'editable',
-        canRead: true,
-        canCreate: true,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['news.read'],
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
   });
@@ -942,29 +755,17 @@ describe('Sidebar', () => {
         requiredAction: 'content.updatePayload',
       },
     ];
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
-        id: 'user-1',
+    renderSidebar({
+      user: createSidebarUser({
         name: 'Reader',
-        roles: ['editor'],
-      },
-      isAuthenticated: true,
+      }),
+      contentAccess: createContentAccessState({
+        access: {
+          ...defaultReadOnlyAccessState,
+          canCreate: true,
+        },
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'read_only',
-        canRead: true,
-        canCreate: true,
-        canUpdate: false,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
   });
@@ -987,31 +788,15 @@ describe('Sidebar', () => {
       titleKey: 'news.actions.publish',
       requiredAction: 'news.read',
     });
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
-        id: 'user-1',
+    renderSidebar({
+      user: createSidebarUser({
         name: 'Editor',
-        roles: ['editor'],
         assignedModules: ['news'],
-      },
-      isAuthenticated: true,
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultEditableAccessState,
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'editable',
-        canRead: true,
-        canCreate: true,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      permissionActions: ['news.read'],
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     expect(screen.getByRole('link', { name: 'news.actions.publish' }).getAttribute('href')).toBe(
       '/plugins/news/publish'
@@ -1029,29 +814,14 @@ describe('Sidebar', () => {
         requiredAction: 'content.updatePayload',
       },
     ];
-    useAuthMock.mockReturnValue({
-      ...unauthenticatedAuthState,
-      user: {
-        id: 'user-1',
+    renderSidebar({
+      user: createSidebarUser({
         name: 'Editor',
-        roles: ['editor'],
-      },
-      isAuthenticated: true,
+      }),
+      contentAccess: createContentAccessState({
+        permissionActions: [],
+      }),
     });
-    useContentAccessMock.mockReturnValue({
-      access: {
-        state: 'editable',
-        canRead: true,
-        canCreate: true,
-        canUpdate: true,
-        organizationIds: [],
-        sourceKinds: ['direct_role'],
-      },
-      isLoading: false,
-      error: null,
-    });
-
-    render(<Sidebar />);
 
     expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
   });

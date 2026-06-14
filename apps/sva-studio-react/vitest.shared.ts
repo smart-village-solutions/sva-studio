@@ -6,7 +6,6 @@ export const studioMswSetupFile = fileURLToPath(new URL(import.meta.resolve('too
 export const prGateExcludedTestFiles = [
   'src/lib/development-logs.test.ts',
   'src/lib/plugins.test.ts',
-  'src/lib/plugin-operation-runtime.server.test.ts',
 ] as const;
 
 export const sharedVitestConfig = defineConfig({
@@ -47,6 +46,9 @@ export const sharedVitestConfig = defineConfig({
       '@sva/media': fileURLToPath(new URL('../../packages/media/src/index.ts', import.meta.url)),
       '@sva/plugin-events/events.pages': fileURLToPath(new URL('../../packages/plugin-events/src/events.pages.tsx', import.meta.url)),
       '@sva/plugin-poi/poi.pages': fileURLToPath(new URL('../../packages/plugin-poi/src/poi.pages.tsx', import.meta.url)),
+      '@sva/plugin-waste-management/waste-management.job-definitions': fileURLToPath(
+        new URL('../../packages/plugin-waste-management/src/waste-management.job-definitions.ts', import.meta.url)
+      ),
       '@sva/plugin-waste-management': fileURLToPath(
         new URL('../../packages/plugin-waste-management/src/index.ts', import.meta.url)
       ),
@@ -60,8 +62,14 @@ export const sharedVitestConfig = defineConfig({
       ),
       '@sva/monitoring-client/logging': fileURLToPath(new URL('../../packages/monitoring-client/src/logging.ts', import.meta.url)),
       '@sva/monitoring-client': fileURLToPath(new URL('../../packages/monitoring-client/src/index.ts', import.meta.url)),
+      '@sva/waste-management-runtime/server': fileURLToPath(
+        new URL('../../packages/waste-management-runtime/src/server.ts', import.meta.url)
+      ),
       '@sva/core/security': fileURLToPath(new URL('../../packages/core/src/security/index.ts', import.meta.url)),
       '@sva/core': fileURLToPath(new URL('../../packages/core/src/index.ts', import.meta.url)),
+      '@sva/waste-management-runtime': fileURLToPath(
+        new URL('../../packages/waste-management-runtime/src/index.ts', import.meta.url)
+      ),
     },
   },
   test: {

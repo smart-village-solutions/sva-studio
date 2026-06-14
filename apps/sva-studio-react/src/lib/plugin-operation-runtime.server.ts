@@ -15,6 +15,10 @@ import {
   type StudioPluginCatalogConfigEntry,
 } from './plugin-catalog-loader.js';
 import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
+import {
+  createPluginJobExecutionHandlers as createWasteManagementPluginJobExecutionHandlers,
+  type WasteManagementOperationRuntime,
+} from '@sva/waste-management-runtime/server';
 
 type PluginOperationExecutionHandler = import('@sva/auth-runtime/server').PluginOperationExecutionHandler;
 type PluginJobModuleFactory = (runtime: unknown) => Readonly<Record<string, PluginOperationExecutionHandler>>;
@@ -24,6 +28,11 @@ type PluginJobModuleExports = {
 type PluginJobModuleLoader = () => Promise<PluginJobModuleExports>;
 type PluginJobRuntimeFactory = () => unknown;
 type PluginJobRuntimeFactoryRegistry = Readonly<Record<string, PluginJobRuntimeFactory>>;
+type HostOwnedPluginJobModuleDescriptor = Readonly<{
+  pluginId: string;
+  runtimeRequirement: string;
+  createPluginJobExecutionHandlers: PluginJobModuleFactory;
+}>;
 type StudioPluginJobSource = {
   readonly pluginId: string;
   readonly sourceType: PluginCatalogEntry['sourceType'];
@@ -112,8 +121,19 @@ const studioPluginCatalogReport = await createStudioPluginCatalogReport({
 const studioDeclaredPluginOperationJobTypeIds = studioPluginCatalogReport.snapshot.registry.jobTypes.map(
   (jobType) => jobType.jobTypeId
 ) as readonly string[];
+const createWasteManagementHostOwnedJobModuleFactory: PluginJobModuleFactory = (runtime) =>
+  createWasteManagementPluginJobExecutionHandlers(runtime as WasteManagementOperationRuntime);
+const hostOwnedPluginJobModuleDescriptors = [
+  {
+    pluginId: 'waste-management',
+    runtimeRequirement: 'waste-management.operations',
+    createPluginJobExecutionHandlers: createWasteManagementHostOwnedJobModuleFactory,
+  },
+] as const satisfies readonly HostOwnedPluginJobModuleDescriptor[];
+const getHostOwnedPluginJobModuleDescriptor = (pluginId: string): HostOwnedPluginJobModuleDescriptor | undefined =>
+  hostOwnedPluginJobModuleDescriptors.find((entry) => entry.pluginId === pluginId);
 const studioPluginJobSources = studioPluginCatalogReport.snapshot.pluginSources.filter(
-  (entry): entry is StudioPluginJobSource => Boolean(entry.manifest.entryPoints.jobs)
+  (entry): entry is StudioPluginJobSource => Boolean(entry.manifest.entryPoints.jobs || getHostOwnedPluginJobModuleDescriptor(entry.pluginId))
 );
 
 const normalizeEntryPath = (value: string): string => value.replace(/^[.][/]/, '').trim();
@@ -201,25 +221,31 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
 
     for (const source of input.pluginSources) {
       const jobsEntry = source.manifest.entryPoints.jobs;
-      if (!jobsEntry) {
+      const hostOwnedJobModuleDescriptor = getHostOwnedPluginJobModuleDescriptor(source.pluginId);
+      if (!jobsEntry && !hostOwnedJobModuleDescriptor) {
         continue;
       }
 
-      const runtimeRequirement = resolvePluginJobRuntimeRequirement({
-        pluginId: source.pluginId,
-        manifest: source.manifest,
-      });
+      const runtimeRequirement =
+        hostOwnedJobModuleDescriptor?.runtimeRequirement ??
+        resolvePluginJobRuntimeRequirement({
+          pluginId: source.pluginId,
+          manifest: source.manifest,
+        });
       const runtimeFactory = input.runtimeFactories[runtimeRequirement];
       if (!runtimeFactory) {
         throw new Error(`plugin_job_runtime_provider_missing:${source.pluginId}:${runtimeRequirement}`);
       }
 
-      const jobModule = await resolvePluginJobModule({
-        sourceRef: source.sourceRef,
-        jobsEntry,
-        sourceType: source.sourceType,
-      });
-      const createPluginJobExecutionHandlers = jobModule?.createPluginJobExecutionHandlers;
+      const createPluginJobExecutionHandlers =
+        hostOwnedJobModuleDescriptor?.createPluginJobExecutionHandlers ??
+        (
+          await resolvePluginJobModule({
+            sourceRef: source.sourceRef,
+            jobsEntry: jobsEntry ?? '',
+            sourceType: source.sourceType,
+          })
+        )?.createPluginJobExecutionHandlers;
       if (!createPluginJobExecutionHandlers) {
         throw new Error(`missing_plugin_job_module_factory:${source.pluginId}`);
       }

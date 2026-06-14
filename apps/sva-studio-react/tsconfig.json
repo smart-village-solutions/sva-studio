@@ -42,6 +42,9 @@
       "@sva/plugin-categories": ["../../packages/plugin-categories/src/index.ts"],
       "@sva/plugin-events": ["../../packages/plugin-events/src/index.ts"],
       "@sva/plugin-waste-management": ["../../packages/plugin-waste-management/src/index.ts"],
+      "@sva/plugin-waste-management/waste-management.job-definitions": [
+        "../../packages/plugin-waste-management/src/waste-management.job-definitions.ts"
+      ],
       "@sva/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
       "@sva/routing": ["../../packages/routing/src/index.ts"],
       "@sva/routing/server": ["../../packages/routing/src/index.server.ts"],
@@ -56,7 +59,9 @@
       "@sva/sva-mainserver/server": ["../../packages/sva-mainserver/src/index.server.ts"],
       "@sva/plugin-news": ["../../packages/plugin-news/src/index.ts"],
       "@sva/plugin-poi": ["../../packages/plugin-poi/src/index.ts"],
-      "@sva/media": ["../../packages/media/src/index.ts"]
+      "@sva/media": ["../../packages/media/src/index.ts"],
+      "@sva/waste-management-runtime": ["../../packages/waste-management-runtime/src/index.ts"],
+      "@sva/waste-management-runtime/server": ["../../packages/waste-management-runtime/src/server.ts"]
     }
   }
 }

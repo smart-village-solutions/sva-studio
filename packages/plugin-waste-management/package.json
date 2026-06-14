@@ -14,18 +14,16 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./server": {
-      "types": "./dist/server.d.ts",
-      "default": "./dist/server.js"
+    "./waste-management.job-definitions": {
+      "types": "./dist/waste-management.job-definitions.d.ts",
+      "default": "./dist/waste-management.job-definitions.js"
     },
     "./plugin.manifest.json": {
       "default": "./plugin.manifest.json"
     }
   },
   "dependencies": {
-    "@sva/core": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
-    "@sva/studio-module-iam": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
     "@tabler/icons-react": "^3.41.1",
     "react-hook-form": "^7.76.0",

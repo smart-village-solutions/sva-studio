@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createJsonResponse, createTestDepsBuilder } from './handler-test-helpers.js';
 import {
   createBulkDeactivateHandlerInternal,
   type BulkDeactivateHandlerDeps,
@@ -21,10 +22,7 @@ const ctx = {
   },
 };
 
-const createJsonResponse = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-
-const createDeps = (overrides: Partial<BulkDeactivateHandlerDeps> = {}): BulkDeactivateHandlerDeps => {
+const createDeps = createTestDepsBuilder<BulkDeactivateHandlerDeps>(() => {
   const identityProvider = {
     provider: {
       deactivateUser: vi.fn(async () => undefined),
@@ -82,9 +80,8 @@ const createDeps = (overrides: Partial<BulkDeactivateHandlerDeps> = {}): BulkDea
         query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
       })
     ),
-    ...overrides,
   };
-};
+});
 
 describe('createBulkDeactivateHandlerInternal', () => {
   beforeEach(() => {

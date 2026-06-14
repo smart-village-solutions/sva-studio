@@ -3,9 +3,9 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { mapGlobalDateShiftToForm, mapTourDateShiftToForm } from './waste-management.scheduling.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
-import { useWasteSchedulingController } from './waste-management.scheduling.controller.js';
+import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 
-type WasteSchedulingController = ReturnType<typeof useWasteSchedulingController>;
+type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 
 const clearSchedulingEntryRoute = (search: WasteManagementSearchParams): WasteManagementSearchParams => ({
   ...search,
@@ -24,13 +24,13 @@ const navigateToSchedulingList = (
     replace: true,
   });
 
-const resetSchedulingEditState = (controller: WasteSchedulingController) => {
+const resetSchedulingEditState = (controller: WasteViewModel) => {
   controller.setMessage(null);
   controller.setLastOutcome(null);
 };
 
 const syncTourShiftRoute = (
-  controller: WasteSchedulingController,
+  controller: WasteViewModel,
   navigate: ReturnType<typeof useNavigate>,
   search: WasteManagementSearchParams,
 ) => {
@@ -49,7 +49,7 @@ const syncTourShiftRoute = (
 };
 
 const syncGlobalShiftRoute = (
-  controller: WasteSchedulingController,
+  controller: WasteViewModel,
   navigate: ReturnType<typeof useNavigate>,
   search: WasteManagementSearchParams,
 ) => {
@@ -72,7 +72,7 @@ export const useWasteSchedulingSuccessRedirect = ({
   navigate,
   search,
 }: {
-  readonly controller: WasteSchedulingController;
+  readonly controller: WasteViewModel;
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {
@@ -106,7 +106,7 @@ export const useWasteSchedulingEditRouteHydration = ({
   navigate,
   search,
 }: {
-  readonly controller: WasteSchedulingController;
+  readonly controller: WasteViewModel;
   readonly navigate: ReturnType<typeof useNavigate>;
   readonly search: WasteManagementSearchParams;
 }) => {

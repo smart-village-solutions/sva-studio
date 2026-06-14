@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 
-import { useWasteMasterDataController } from './waste-management.master-data.controller.js';
+import { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
 import {
   useWasteMasterDataFractionEditRouteHydration,
   useWasteMasterDataFractionSuccessRedirect,
@@ -18,7 +18,7 @@ export const WasteMasterDataTabContent = ({
   search,
   tab,
 }: {
-  readonly controller: ReturnType<typeof useWasteMasterDataController>;
+  readonly controller: ReturnType<typeof useWasteMasterDataViewModel>;
   readonly search: WasteManagementSearchParams;
   readonly tab: WasteManagementSearchParams['masterDataTab'];
 }) => {

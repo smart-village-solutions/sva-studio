@@ -18,7 +18,7 @@ export const publicWasteSelectionFixture: PublicWasteResolvedSelection = {
 };
 
 export const publicWasteSelectionSummaryFixture = 'Musterstadt, Hauptstraße 12';
-export const publicWasteLocationKeyFixture = 'r-1:c-1:s-1:h-1';
+const publicWasteLocationKeyFixture = 'r-1:c-1:s-1:h-1';
 
 export const createPublicWasteCalendarEntryFixture = (
   overrides: Partial<PublicWasteCalendarEntry> = {}

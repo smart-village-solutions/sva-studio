@@ -19,14 +19,16 @@ const readPropertyValues = (propertyName: string): string[] => {
 };
 
 describe('sonar-project.properties', () => {
-  it('includes media and plugin-waste-management in sonar source and test scopes', () => {
+  it('includes media, plugin-waste-management, and waste-management-runtime in sonar source and test scopes', () => {
     const sources = readPropertyValues('sonar.sources');
     const tests = readPropertyValues('sonar.tests');
 
     expect(sources).toContain('packages/media/src');
     expect(sources).toContain('packages/plugin-waste-management/src');
+    expect(sources).toContain('packages/waste-management-runtime/src');
     expect(tests).toContain('packages/media/src');
     expect(tests).toContain('packages/plugin-waste-management/src');
+    expect(tests).toContain('packages/waste-management-runtime/src');
   });
 
   it('keeps plugin translation resources out of copy-paste detection only', () => {

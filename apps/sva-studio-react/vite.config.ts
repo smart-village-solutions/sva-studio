@@ -209,6 +209,9 @@ const config = defineConfig({
       '@sva/instance-registry': resolveAppPath('../../packages/instance-registry/src/index.ts'),
       '@sva/sva-mainserver/server': resolveAppPath('../../packages/sva-mainserver/src/index.server.ts'),
       '@sva/sva-mainserver': resolveAppPath('../../packages/sva-mainserver/src/index.ts'),
+      '@sva/plugin-waste-management/waste-management.job-definitions': resolveAppPath(
+        '../../packages/plugin-waste-management/src/waste-management.job-definitions.ts'
+      ),
       '@sva/media': resolveAppPath('../../packages/media/src/index.ts'),
       '@sva/plugin-waste-management': resolveAppPath('../../packages/plugin-waste-management/src/index.ts'),
       '@sva/plugin-sdk': resolveAppPath('../../packages/plugin-sdk/src/index.ts'),
@@ -223,8 +226,10 @@ const config = defineConfig({
       ),
       '@sva/monitoring-client/logging': resolveAppPath('../../packages/monitoring-client/src/logging.ts'),
       '@sva/monitoring-client': resolveAppPath('../../packages/monitoring-client/src/index.ts'),
+      '@sva/waste-management-runtime/server': resolveAppPath('../../packages/waste-management-runtime/src/server.ts'),
       '@sva/core/security': resolveAppPath('../../packages/core/src/security/index.ts'),
       '@sva/core': resolveAppPath('../../packages/core/src/index.ts'),
+      '@sva/waste-management-runtime': resolveAppPath('../../packages/waste-management-runtime/src/index.ts'),
     },
   },
   ssr: {
@@ -238,6 +243,7 @@ const config = defineConfig({
       '@sva/instance-registry',
       '@sva/media',
       '@sva/plugin-waste-management',
+      '@sva/waste-management-runtime',
       '@sva/studio-module-iam',
       '@sva/routing',
       '@sva/studio-ui-react',

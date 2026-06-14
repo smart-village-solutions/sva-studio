@@ -1,7 +1,7 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
 
-import { useWasteMasterDataController } from './waste-management.master-data.controller.js';
+import { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
 import { WasteMasterDataDialogs } from './waste-management.master-data-dialogs.js';
 import { WasteMasterDataPanelEmptyState } from './waste-management.master-data-panel.empty-state.js';
 import { WasteMasterDataTabContent } from './waste-management.master-data-tab-content.js';
@@ -9,7 +9,7 @@ import { StatusNotice, type StatusMessage } from './waste-management.page.suppor
 import type { WasteManagementSearchParams } from './search-params.js';
 
 const hasAnyMasterData = (
-  overview: ReturnType<typeof useWasteMasterDataController>['overview']
+  overview: ReturnType<typeof useWasteMasterDataViewModel>['overview']
 ): boolean =>
   Boolean(
     overview &&
@@ -24,7 +24,7 @@ const hasAnyMasterData = (
   );
 
 const retrySyncWasteTypes = async (
-  controller: ReturnType<typeof useWasteMasterDataController>,
+  controller: ReturnType<typeof useWasteMasterDataViewModel>,
   action: NonNullable<StatusMessage['retryAction']>
 ) => {
   if (action === 'sync-waste-types') {
@@ -40,7 +40,7 @@ export const WasteMasterDataPanel = ({
   readonly tab: WasteManagementSearchParams['masterDataTab'];
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-  const controller = useWasteMasterDataController(pt, search);
+  const controller = useWasteMasterDataViewModel(pt, search);
 
   if (controller.loading) {
     return <StudioLoadingState>{pt('masterData.messages.loading')}</StudioLoadingState>;

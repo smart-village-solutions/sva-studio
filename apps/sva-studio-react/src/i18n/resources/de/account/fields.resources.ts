@@ -1,0 +1,15 @@
+export const fieldsAccountDEResources = {
+  username: 'Benutzername',
+  firstName: 'Vorname',
+  lastName: 'Nachname',
+  displayName: 'Anzeigename',
+  email: 'E-Mail',
+  phone: 'Telefon',
+  position: 'Position',
+  department: 'Abteilung',
+  language: 'Sprache',
+  timezone: 'Zeitzone',
+  role: 'Rolle',
+  status: 'Status',
+  lastLogin: 'Letzter Login',
+} as const;

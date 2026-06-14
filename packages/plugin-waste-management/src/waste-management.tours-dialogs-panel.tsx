@@ -1,8 +1,8 @@
 import { TourAssignmentsDialog, TourDialog, TourYearCalendarDialog } from './waste-management.tours.dialogs.js';
 import { createDefaultLocationTourLinkForm, createDefaultTourForm } from './waste-management.tours.shared.js';
-import type { useWasteToursController } from './waste-management.tours.controller.js';
+import type { useWasteToursViewModel } from './use-waste-tours-view-model.js';
 
-type Controller = ReturnType<typeof useWasteToursController>;
+type Controller = ReturnType<typeof useWasteToursViewModel>;
 
 export const WasteToursDialogs = ({ controller }: { readonly controller: Controller }) => (
   <>

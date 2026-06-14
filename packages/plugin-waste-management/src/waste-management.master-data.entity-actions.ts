@@ -1,7 +1,7 @@
 import type { WasteCityRecord, WasteFractionRecord, WasteHouseNumberRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/plugin-sdk';
 
 import { wasteMasterDataFormDefaults, wasteMasterDataFormMappers } from './waste-management.master-data.forms.js';
-import type { WasteMasterDataState } from './waste-management.master-data.state.js';
+import type { WasteMasterDataState } from './use-waste-master-data-state.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
 export const createWasteMasterDataEntityActions = (

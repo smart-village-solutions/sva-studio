@@ -1,16 +1,16 @@
 import { useNavigate } from '@tanstack/react-router';
 
-import { useWasteToursController } from './waste-management.tours.controller.js';
+import { useWasteToursViewModel } from './use-waste-tours-view-model.js';
 import { WasteToursFormContent } from './waste-management.tours-form-content.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
-type WasteToursController = ReturnType<typeof useWasteToursController>;
+type WasteViewModel = ReturnType<typeof useWasteToursViewModel>;
 
 export const WasteToursFormView = ({
   controller,
   search,
 }: {
-  readonly controller: WasteToursController;
+  readonly controller: WasteViewModel;
   readonly search: WasteManagementSearchParams;
 }) => {
   const navigate = useNavigate();

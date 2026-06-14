@@ -854,6 +854,10 @@ logger.error('Auth failed', {
 2. Ergänze neue Schlüssel dort in `de` und `en`.
 3. Prüfe die Verwendung mit den betroffenen Unit- oder UI-Tests statt mit einem separaten Legacy-Skript.
 
+**Struktur- und Pflegekonventionen für Host-i18n-Ressourcen:**
+- Für die Host-Übersetzungen von `apps/sva-studio-react` gelten die konkrete Datei- und Formatter-Konventionen unter `apps/sva-studio-react/src/i18n/README.md`.
+- Dazu gehören insbesondere die Aufteilung pro Sprache und pro Feature/Namespace sowie die Nutzung von `pnpm i18n:format:resources` und `pnpm i18n:format:resources --check`.
+
 ### Best Practices
 
 ✅ **DO:**

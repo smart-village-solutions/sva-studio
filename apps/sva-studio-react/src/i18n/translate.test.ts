@@ -20,6 +20,13 @@ describe('translate', () => {
     expect(t('admin.instances.actions.create')).toBe('Create instance');
   });
 
+  it('keeps host resources aggregated across feature namespaces', () => {
+    expect(i18nResources.de.shell.appName).toBe('SVA Studio');
+    expect(i18nResources.de.monitoring.jobs.page.title).toBe('Monitoring Jobs');
+    expect(i18nResources.en.account.profile.title).toBe('My Account');
+    expect(i18nResources.en.admin.roles.table.headerName).toBe('Role');
+  });
+
   it('interpolates variables', () => {
     const t = createTranslator('de');
 

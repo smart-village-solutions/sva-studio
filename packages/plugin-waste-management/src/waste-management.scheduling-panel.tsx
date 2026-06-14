@@ -2,7 +2,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
 import { useNavigate } from '@tanstack/react-router';
 
-import { useWasteSchedulingController } from './waste-management.scheduling.controller.js';
+import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import {
   useWasteSchedulingEditRouteHydration,
   useWasteSchedulingSuccessRedirect,
@@ -20,7 +20,7 @@ import type { WasteManagementSearchParams } from './search-params.js';
 export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagementSearchParams }) => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
-  const controller = useWasteSchedulingController(pt, search);
+  const controller = useWasteSchedulingViewModel(pt, search);
   useWasteSchedulingSuccessRedirect({ controller, navigate, search });
   useWasteSchedulingEditRouteHydration({ controller, navigate, search });
 

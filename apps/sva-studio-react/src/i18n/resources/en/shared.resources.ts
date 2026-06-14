@@ -1,0 +1,33 @@
+export const sharedENResources = {
+  errorFallback: {
+    title: 'Error',
+    heading: 'An unexpected error occurred',
+    body: 'Please try again or return to the home page.',
+    retry: 'Try again',
+    home: 'Go to home',
+    diagnosticsLabel: 'Local diagnostics',
+  },
+  notFound: {
+    heading: 'Page not found',
+    body: 'The requested page does not exist or has been moved.',
+    home: 'Go to home',
+  },
+  devLogConsole: {
+    title: 'Local log console',
+    body: 'Browser and server logs from the current development environment.',
+    open: 'Open',
+    close: 'Close',
+    refresh: 'Refresh',
+    levelFilter: 'Level',
+    sourceFilter: 'Source',
+    levelAll: 'All levels',
+    levelDebug: 'Debug',
+    levelInfo: 'Info',
+    levelWarn: 'Warn',
+    levelError: 'Error',
+    sourceAll: 'All sources',
+    sourceBrowser: 'Browser',
+    sourceServer: 'Server',
+    empty: 'No log entries available yet.',
+  },
+} as const;

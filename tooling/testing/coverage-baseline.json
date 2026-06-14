@@ -108,6 +108,12 @@
       "functions": 68.51,
       "branches": 52.28
     },
+    "waste-management-runtime": {
+      "lines": 63.63,
+      "statements": 64.7,
+      "functions": 69.56,
+      "branches": 39.39
+    },
     "project-report": {
       "lines": 87.87,
       "statements": 88.62,

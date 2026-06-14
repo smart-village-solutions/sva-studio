@@ -142,6 +142,10 @@ export default [
               onlyDependOnLibsWithTags: ['scope:plugin-sdk', 'scope:studio-ui-react', 'scope:plugin'],
             },
             {
+              sourceTag: 'scope:plugin-runtime',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:plugin-sdk', 'scope:plugin', 'scope:plugin-runtime'],
+            },
+            {
               sourceTag: 'scope:studio-ui-react',
               onlyDependOnLibsWithTags: ['scope:studio-ui-react'],
             },
@@ -162,6 +166,7 @@ export default [
                 'scope:core',
                 'scope:plugin-sdk',
                 'scope:server-runtime',
+                'scope:plugin-runtime',
                 'scope:plugin',
                 'scope:studio-ui-react',
                 'scope:routing',

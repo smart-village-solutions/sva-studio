@@ -1,0 +1,268 @@
+export const mediaENResources = {
+  page: {
+    title: 'Media library',
+    subtitle:
+      'Manage uploads, metadata, visibility, and the current usage footprint of your media assets.',
+  },
+  create: {
+    title: 'Prepare file',
+    subtitle:
+      'Reserve the asset ID and upload target first. The actual file transfer and metadata work follow immediately after in the workspace.',
+    intakeBadge: 'Intake',
+    intakeTitle: 'Compact intake',
+    intakeDescription:
+      'Choose file type, target size, and visibility so the upload initialization is prepared with the right technical context.',
+    byteSizeHint:
+      'Plan the expected file size in bytes so limits and validation can fail early and cleanly.',
+    submitHint:
+      'This step does not upload the file yet. It only reserves the asset and returns the signed upload target.',
+    submitting: 'Initializing…',
+    planningTitle: 'What gets configured now',
+    planningDescription:
+      'The guided intake defines the technical envelope of the asset before metadata and concrete usage follow.',
+    planning: {
+      items: {
+        mimeType: {
+          title: 'File format and processing path',
+          body: 'The MIME type determines which validation, preview, and downstream processing are prepared for the asset.',
+        },
+        byteSize: {
+          title: 'Target size and boundary checks',
+          body: 'The expected byte size helps treat upload limits and failure paths cleanly from the start.',
+        },
+        visibility: {
+          title: 'Visibility and delivery model',
+          body: 'Visibility decides whether the asset should be handled as immediately public or explicitly protected.',
+        },
+      },
+    },
+    mimeTypeOptions: {
+      'image/jpeg': 'Image (JPEG)',
+      'image/png': 'Image (PNG)',
+      'image/webp': 'Image (WEBP)',
+      'application/pdf': 'Document (PDF)',
+      'video/mp4': 'Video (MP4)',
+    },
+    nextStepsTitle: 'Next steps',
+    nextStepsDescription:
+      'Initialization is complete. Use the technical response for the actual transfer and the follow-up quality checks.',
+    result: {
+      assetId: 'Asset ID: {{value}}',
+      uploadSessionId: 'Upload session: {{value}}',
+      method: 'Method: {{value}}',
+      expiresAt: 'Expires at: {{value}}',
+    },
+    followUpTitle: 'Continue directly after this',
+    followUpSteps: {
+      transfer: '1. Write the file to the reserved upload target with the signed URL.',
+      describe: '2. Then review title, alt text, and visibility in the detail workspace.',
+      review: '3. Finally reference the asset in the library or in feature modules.',
+    },
+    errors: {
+      default: 'The upload initialization could not be completed.',
+    },
+  },
+  detail: {
+    subtitle:
+      'Review preview context, delivery, metadata, and usage impact inside one shared asset workspace.',
+    previewEyebrow: 'Asset workspace',
+    previewTitle: 'Working view',
+    previewBody:
+      'The detail page keeps delivery, quality status, and reference context together even before a real preview is requested.',
+    metadataDescription: 'Business description and editorial quality fields for the asset.',
+    imageControlsTitle: 'Image controls',
+    imageControlsDescription:
+      'Focus point and crop settings for image-based placements at a glance.',
+    usageDescription: 'Active references and roles that currently use this asset.',
+    technicalDescription: 'Technical identity, status values, and delivery data for the asset.',
+  },
+  filters: {
+    searchLabel: 'Search',
+    searchPlaceholder: 'Search by title, alt text, or MIME type',
+    visibilityLabel: 'Visibility',
+    visibilityAll: 'All visibilities',
+  },
+  actions: {
+    create: 'Prepare media',
+    register: 'Register as media asset',
+    open: 'Open',
+    save: 'Save metadata',
+    delete: 'Delete media',
+    deleteConfirm: 'Delete this media asset?',
+    back: 'Back to media library',
+    backToDetail: 'Back to media detail',
+    initializeUpload: 'Initialize upload',
+    resolveDelivery: 'Generate delivery link',
+    openUsage: 'Open usage impact',
+  },
+  fields: {
+    title: 'Title',
+    altText: 'Alt text',
+    description: 'Description',
+    copyright: 'Copyright',
+    license: 'License',
+    focusPointX: 'Focus point X',
+    focusPointY: 'Focus point Y',
+    cropX: 'Crop X',
+    cropY: 'Crop Y',
+    cropWidth: 'Crop width',
+    cropHeight: 'Crop height',
+    mimeType: 'MIME type',
+    byteSize: 'File size in bytes',
+    visibility: 'Visibility',
+  },
+  visibility: {
+    public: 'Public',
+    protected: 'Protected',
+  },
+  roles: {
+    thumbnail: 'Thumbnail',
+    teaser_image: 'Teaser image',
+    header_image: 'Header image',
+    gallery_item: 'Gallery image',
+    download: 'Download',
+    hero_image: 'Hero image',
+  },
+  uploadStatus: {
+    pending: 'Pending',
+    validated: 'Validated',
+    processed: 'Processed',
+    failed: 'Failed',
+    blocked: 'Blocked',
+  },
+  processingStatus: {
+    pending: 'Pending',
+    ready: 'Ready',
+    failed: 'Failed',
+  },
+  table: {
+    caption: 'Table of managed media assets',
+    ariaLabel: 'Media library',
+    headerTitle: 'Title',
+    headerMimeType: 'MIME type',
+    headerSize: 'Size',
+    headerVisibility: 'Visibility',
+    headerUploadStatus: 'Upload',
+    headerUpdatedAt: 'Updated',
+    headerActions: 'Actions',
+  },
+  editor: {
+    createTitle: 'Prepare media upload',
+    createSubtitle: 'Initialize an upload and receive the signed target URL for the media asset.',
+    detailTitle: 'Edit media',
+    detailSubtitle: 'Maintain metadata, visibility, and inspect current usage.',
+    uploadCardTitle: 'Create upload',
+    uploadCardDescription:
+      'The MVP initializes uploads server-side and returns the signed upload URL.',
+    uploadReadyTitle: 'Upload ready',
+    uploadReadyDescription: 'These values can now be used for the actual file upload.',
+    metadataTitle: 'Metadata',
+    metadataDescription: 'Edit business metadata and the asset visibility.',
+  },
+  meta: {
+    title: 'Technical details',
+    id: 'Asset ID',
+    storageKey: 'Storage key',
+    folder: 'Folder',
+    mimeType: 'MIME type',
+    byteSize: 'Size',
+    createdAt: 'Created at',
+    updatedAt: 'Updated at',
+    uploadStatus: 'Upload status',
+    processingStatus: 'Processing status',
+    uploadSessionId: 'Upload session',
+    expiresAt: 'Expires at',
+    uploadUrl: 'Upload URL',
+    deliveryUrl: 'Delivery URL',
+  },
+  usage: {
+    title: 'Usage transparency',
+    subtitle: 'Active references for this asset in host or domain modules.',
+    pageTitle: 'Usage impact',
+    pageSubtitle: 'Inspect which references currently block or influence this asset.',
+    assetTitle: 'Current media asset',
+    summary: 'Active references: {{count}}',
+    empty: 'This asset is not currently referenced.',
+    sortOrder: 'Sort order: {{value}}',
+  },
+  delivery: {
+    title: 'Controlled delivery',
+    expiresAt: 'Expires at: {{value}}',
+  },
+  empty: {
+    body: 'No media assets yet. Initialize the first upload to populate the library.',
+  },
+  messages: {
+    loading: 'Loading media ...',
+    loadError: 'The media library could not be loaded.',
+  },
+  library: {
+    quickIntake: {
+      title: 'Quick Intake',
+      description:
+        'Start new uploads quickly, capture the minimum metadata, and move assets into the library with less friction.',
+      steps: {
+        prepare: 'Prepare an upload and generate the signed target URL.',
+        describe: 'Add title, alt text, and visibility directly after intake.',
+        publish: 'Prioritize ready assets and move them into feature modules.',
+      },
+    },
+    priority: {
+      blocked: 'Blocked',
+      blockedHint: 'Uploads or processing require technical follow-up.',
+      new: 'New',
+      newHint: 'Metadata is still incomplete.',
+      unused: 'Unused',
+      unusedHint: 'Assets without references can be reviewed or archived.',
+    },
+    cardStates: {
+      ready: 'ready',
+      new: 'new',
+      blocked: 'blocked',
+      unused: 'unused',
+    },
+    usageCountOne: '1 use',
+    usageCountOther: '{{count}} uses',
+    usageCountLoading: 'Usage loading',
+    usageCountUnknown: 'Usage unavailable',
+    assetCard: {
+      preview: 'Image preview',
+      document: 'Document',
+      fallback: 'Document preview without image thumbnail',
+      unknownType: 'Unknown',
+      unregistered: 'Unregistered',
+      folderValue: 'Folder: {{folder}}',
+    },
+    toolbar: {
+      title: 'Library focus',
+      summary: '{{count}} assets in the current view',
+      page: 'Page {{page}} of {{total}} · {{pageSize}} per section',
+      pageSizeLabel: 'Entries per page',
+      paginationAriaLabel: 'Media library pagination',
+      previous: 'Previous page',
+      next: 'Next page',
+    },
+  },
+  unregistered: {
+    subtitle:
+      'This object already exists in the bucket but has not been registered in Studio as a managed media asset yet.',
+    metadataTitle: 'Suggested registration',
+    metadataDescription:
+      'These values will be used as initial metadata when the media asset is registered.',
+    technicalDescription: 'Technical bucket details for this unregistered object.',
+    altTextHint: 'Will be completed later during editorial review.',
+  },
+  errors: {
+    forbidden: 'Insufficient permissions for this media action.',
+    databaseUnavailable: 'Media data could not be processed because of a database problem.',
+    notFound: 'The requested media asset could not be found.',
+    conflict: 'The media action could not be completed because of a conflict.',
+    invalidMediaContent: 'The uploaded media could not be validated.',
+    uploadSizeExceeded: 'The uploaded media exceeds the permitted size.',
+    activeReferences:
+      'The media asset cannot be changed or deleted because it still has active references.',
+  },
+  values: {
+    notAvailable: 'Not available',
+  },
+} as const;

@@ -2,10 +2,10 @@ import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { useNavigate } from '@tanstack/react-router';
 
 import type { WasteManagementSearchParams } from './search-params.js';
-import { useWasteToursController } from './waste-management.tours.controller.js';
+import { useWasteToursViewModel } from './use-waste-tours-view-model.js';
 import { createDefaultTourForm, mapTourToForm } from './waste-management.tours.shared.js';
 
-type WasteToursController = ReturnType<typeof useWasteToursController>;
+type WasteViewModel = ReturnType<typeof useWasteToursViewModel>;
 
 export const toCreateTourSearch = (search: WasteManagementSearchParams): WasteManagementSearchParams => ({
   ...search,
@@ -90,13 +90,13 @@ export const toToursFiltersSearch = (
   page: 1,
 });
 
-const resetToursFormState = (controller: WasteToursController) => {
+const resetToursFormState = (controller: WasteViewModel) => {
   controller.setMessage(null);
   controller.setLastOutcome(null);
 };
 
 export const useWasteToursListNavigation = (
-  controller: WasteToursController,
+  controller: WasteViewModel,
   search: WasteManagementSearchParams,
 ) => {
   const navigate = useNavigate();

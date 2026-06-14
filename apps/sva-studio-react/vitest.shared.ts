@@ -6,7 +6,6 @@ export const studioMswSetupFile = fileURLToPath(new URL(import.meta.resolve('too
 export const prGateExcludedTestFiles = [
   'src/lib/development-logs.test.ts',
   'src/lib/plugins.test.ts',
-  'src/lib/plugin-operation-runtime.server.test.ts',
 ] as const;
 
 export const sharedVitestConfig = defineConfig({

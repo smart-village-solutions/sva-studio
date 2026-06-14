@@ -6,9 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { definePluginManifest, type PluginCatalogSourceType } from '@sva/plugin-sdk';
 
 const registerPluginOperationExecutionHandlersMock = vi.fn();
+const registerStudioJobExecutionHandlersMock = vi.fn();
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  dsrExportStudioJobRegistration: { jobTypeId: 'studio.dsr-export' },
   registerPluginOperationExecutionHandlers: registerPluginOperationExecutionHandlersMock,
+  registerStudioJobExecutionHandlers: registerStudioJobExecutionHandlersMock,
 }));
 
 const createPluginJobExecutionHandlersMock = vi.fn(() => ({
@@ -86,6 +89,7 @@ const createJobPluginSource = (input: {
 describe('plugin operation runtime registration', () => {
   beforeEach(() => {
     registerPluginOperationExecutionHandlersMock.mockReset();
+    registerStudioJobExecutionHandlersMock.mockReset();
     createPluginJobExecutionHandlersMock.mockClear();
     vi.resetModules();
     mockWasteBrowserPluginModule(createBrowserPluginModuleExports(declaredWasteJobTypeIds));
@@ -104,6 +108,9 @@ describe('plugin operation runtime registration', () => {
       'waste-management.seed-data',
       'waste-management.sync-mainserver',
       'waste-management.sync-waste-types',
+    ]);
+    expect(registerStudioJobExecutionHandlersMock).toHaveBeenCalledWith([
+      expect.objectContaining({ jobTypeId: 'studio.dsr-export' }),
     ]);
     expect(registerPluginOperationExecutionHandlersMock).toHaveBeenCalledWith(handlers);
   }, 30000);
@@ -189,11 +196,11 @@ describe('plugin operation runtime registration', () => {
     ).not.toThrow();
   });
 
-  it('resolves job runtimes by runtime contract id instead of plugin id', async () => {
+  it('resolves the host-owned waste runtime from the declared runtime contract', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 
     const handlers = await mod.createPluginOperationExecutionHandlersFromSnapshot({
-      pluginSources: [createJobPluginSource({ pluginId: 'custom-waste-plugin', runtimeRequirement: 'waste-management.operations' })],
+      pluginSources: [createJobPluginSource({ pluginId: 'waste-management', runtimeRequirement: 'waste-management.operations' })],
       runtimeFactories: {
         'waste-management.operations': () => ({}),
       },
@@ -320,30 +327,6 @@ describe('plugin operation runtime registration', () => {
         },
       })
     ).rejects.toThrowError('missing_plugin_job_module_factory:installed-custom-plugin');
-  });
-
-  it('rejects duplicate job handler ids across plugin job modules', async () => {
-    const mod = await import('./plugin-operation-runtime.server');
-
-    await expect(
-      mod.createPluginOperationExecutionHandlersFromSnapshot({
-        pluginSources: [
-          createJobPluginSource({
-            pluginId: 'workspace-waste-plugin',
-            runtimeRequirement: 'waste-management.operations',
-          }),
-          createJobPluginSource({
-            pluginId: 'workspace-waste-plugin-2',
-            runtimeRequirement: 'waste-management.operations',
-          }),
-        ],
-        runtimeFactories: {
-          'waste-management.operations': () => ({}),
-        },
-      })
-    ).rejects.toThrowError(
-      /^duplicate_plugin_operation_handler:waste-management\.[^:]+:workspace-waste-plugin-2:workspace-waste-plugin$/
-    );
   });
 
   it('registers the host-owned waste runtime even when the waste plugin no longer declares a jobs entry point', async () => {

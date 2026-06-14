@@ -1,10 +1,11 @@
 import type { WasteTourRecord } from '@sva/plugin-sdk';
+import { getWasteManagementSchedulingOverview } from './waste-management.api.js';
 
 import {
   createDefaultLocationTourLinkForm,
   createDefaultTourForm,
   mapLocationTourLinkToForm,
-  mapTourToForm,
+  mapTourWithPickupDatesToForm,
 } from './waste-management.tours.shared.js';
 import type { WasteToursState } from './use-waste-tours-state.js';
 
@@ -12,12 +13,14 @@ export const createWasteToursActions = (state: WasteToursState) => ({
   openCreateDialog: () => {
     state.setDialogMode('create');
     state.setTourForm(createDefaultTourForm());
+    state.setSelectedTour(null);
     state.setMessage(null);
     state.setDialogOpen(true);
   },
   openEditDialog: (tour: WasteTourRecord) => {
     state.setDialogMode('edit');
-    state.setTourForm(mapTourToForm(tour));
+    state.setSelectedTour(tour);
+    state.setTourForm(mapTourWithPickupDatesToForm(tour, state.schedulingOverview?.locationTourPickupDates ?? []));
     state.setMessage(null);
     state.setDialogOpen(true);
   },
@@ -40,8 +43,13 @@ export const createWasteToursActions = (state: WasteToursState) => ({
     state.setMessage(null);
     state.setAssignmentsDialogOpen(true);
   },
-  openCalendar: (tour: WasteTourRecord) => {
+  openCalendar: async (tour: WasteTourRecord) => {
     state.setSelectedTour(tour);
+    try {
+      state.setSchedulingOverview(await getWasteManagementSchedulingOverview());
+    } catch {
+      state.setSchedulingOverview(null);
+    }
     state.setCalendarOpen(true);
   },
   resetTourForm: () => state.setTourForm(createDefaultTourForm()),

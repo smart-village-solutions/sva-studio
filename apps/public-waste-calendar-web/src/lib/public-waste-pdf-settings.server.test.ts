@@ -90,4 +90,23 @@ describe('public waste pdf settings', () => {
       contactBlock: 'Default Contact',
     });
   });
+
+  it('falls back to PUBLIC_WASTE_PDF_* env values when no interface record can be loaded', async () => {
+    vi.stubEnv(
+      'PUBLIC_WASTE_PDF_BRANDING_ASSET_URL',
+      'https://www.landkreis-prignitz.de/global/wGlobal/layout/images/logos/wappen-logo.png'
+    );
+    vi.stubEnv('PUBLIC_WASTE_PDF_CONTACT_BLOCK', 'Abfallberatung Prignitz');
+    listExternalInterfaceRecordsMock.mockResolvedValue([]);
+    loadDefaultExternalInterfaceRecordMock.mockResolvedValue(null);
+
+    const result = await loadPublicWastePdfStaticConfig('bb-prignitz', {
+      getDatabaseUrl: () => 'postgres://custom',
+    });
+
+    expect(result).toEqual({
+      brandingAssetUrl: 'https://www.landkreis-prignitz.de/global/wGlobal/layout/images/logos/wappen-logo.png',
+      contactBlock: 'Abfallberatung Prignitz',
+    });
+  });
 });

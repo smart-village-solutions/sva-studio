@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import {
+  getWasteManagementMasterDataOverview,
   getWasteManagementSchedulingOverview,
   getWasteManagementToursOverview,
 } from './waste-management.api.js';
@@ -13,7 +14,7 @@ export const useWasteSchedulingOverview = (state: WasteSchedulingState, pt: Tran
   const ptRef = useRef(pt);
   const isMountedRef = useRef(false);
   ptRef.current = pt;
-  const { setAvailableTours, setError, setLoading, setOverview } = state;
+  const { setAvailableTours, setError, setLoading, setLocationOverview, setOverview } = state;
 
   const loadOverview = useCallback(
     async () => {
@@ -24,13 +25,22 @@ export const useWasteSchedulingOverview = (state: WasteSchedulingState, pt: Tran
         setError(null);
         void (async () => {
           try {
-            const toursResponse = await getWasteManagementToursOverview();
+            const [toursResponse, locationsResponse] = await Promise.allSettled([
+              getWasteManagementToursOverview(),
+              getWasteManagementMasterDataOverview({ scope: 'locations' }),
+            ]);
             if (isMountedRef.current) {
-              setAvailableTours(toursResponse.tours);
+              setAvailableTours(
+                toursResponse.status === 'fulfilled' ? toursResponse.value.tours : []
+              );
+              setLocationOverview(
+                locationsResponse.status === 'fulfilled' ? locationsResponse.value : null
+              );
             }
           } catch {
             if (isMountedRef.current) {
               setAvailableTours([]);
+              setLocationOverview(null);
             }
           }
         })();
@@ -38,6 +48,7 @@ export const useWasteSchedulingOverview = (state: WasteSchedulingState, pt: Tran
         if (!isMountedRef.current) return;
         const code = resolveApiErrorCode(loadError);
         setAvailableTours([]);
+        setLocationOverview(null);
         setError(
           code === 'forbidden'
             ? ptRef.current('scheduling.messages.loadForbidden')
@@ -47,7 +58,7 @@ export const useWasteSchedulingOverview = (state: WasteSchedulingState, pt: Tran
         if (isMountedRef.current) setLoading(false);
       }
     },
-    [setAvailableTours, setError, setLoading, setOverview]
+    [setAvailableTours, setError, setLoading, setLocationOverview, setOverview]
   );
 
   useEffect(() => {

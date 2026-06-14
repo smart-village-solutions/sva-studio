@@ -2023,7 +2023,7 @@ describe('WasteManagementPage', () => {
     });
 
     expect(screen.getByText('Restmüll Nord')).toBeTruthy();
-    expect(screen.getByText('Wöchentliche Innenstadt-Tour')).toBeTruthy();
+    expect(screen.queryByText('Wöchentliche Innenstadt-Tour')).toBeNull();
     expect(screen.queryByText('Biomüll Süd')).toBeNull();
   });
 

@@ -3,11 +3,16 @@ import type {
   WasteManagementApplyMigrationsJobInput,
   WasteManagementImportJobInput,
   WasteManagementInitializeJobInput,
+  WasteManagementMaterializeEmailRemindersJobInput,
+  MailDispatchPayload,
+  MailTransportConfig,
+  WasteManagementProcessEmailReminderOutboxJobInput,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
   WasteManagementSyncMainserverJobInput,
   WasteManagementSyncWasteTypesJobInput,
 } from '@sva/core';
+import type { MailDispatchMessage } from '@sva/mail-runtime';
 import type { loadDefaultExternalInterfaceRecord, listExternalInterfaceRecords } from '@sva/data-repositories/server';
 
 export type SqlClient = {
@@ -30,6 +35,14 @@ export type WasteOperationRuntimeDeps = {
   readonly revealSecret?: (ciphertext: string | null | undefined, aad: string) => string | undefined;
   readonly createPool?: (connectionString: string) => WasteOperationSqlPool;
   readonly readBinarySource?: (blobRef: string) => Promise<Uint8Array>;
+  readonly dispatchMail?: (input: {
+    readonly instanceId: string;
+    readonly transport: MailTransportConfig;
+    readonly payload: MailDispatchPayload;
+    readonly message: MailDispatchMessage;
+  }) => Promise<{
+    readonly providerMessageId?: string;
+  }>;
 };
 
 export type OperationSummary = {
@@ -52,5 +65,13 @@ export type WasteManagementOperationRuntime = {
   seedData: (instanceId: string, input: WasteManagementSeedJobInput) => Promise<OperationSummary>;
   syncMainserver: (instanceId: string, input: WasteManagementSyncMainserverJobInput) => Promise<OperationSummary>;
   syncWasteTypes: (instanceId: string, input: WasteManagementSyncWasteTypesJobInput) => Promise<OperationSummary>;
+  materializeEmailReminders: (
+    instanceId: string,
+    input: WasteManagementMaterializeEmailRemindersJobInput
+  ) => Promise<OperationSummary>;
+  processEmailReminderOutbox: (
+    instanceId: string,
+    input: WasteManagementProcessEmailReminderOutboxJobInput
+  ) => Promise<OperationSummary>;
   resetData: (instanceId: string, input: WasteManagementResetJobInput) => Promise<OperationSummary>;
 };

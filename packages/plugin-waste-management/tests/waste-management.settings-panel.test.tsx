@@ -37,7 +37,7 @@ vi.mock('../src/waste-management.page.support.js', () => ({
 
 vi.mock('../src/waste-management.settings-status-panel.js', () => ({
   WasteSettingsStatusPanel: ({ settings }: { readonly settings: { holidayStateCode?: string | undefined } | null }) => (
-    <div>{settings?.holidayStateCode ?? 'no-state'}</div>
+    <div>settings-status-panel:{settings?.holidayStateCode ?? 'no-state'}</div>
   ),
 }));
 
@@ -78,6 +78,31 @@ afterEach(() => {
 });
 
 describe('WasteSettingsPanel', () => {
+  it('does not render the technical status panel in settings view', async () => {
+    getWasteManagementSettingsMock.mockResolvedValueOnce({
+      instanceId: 'tenant-a',
+      provider: 'supabase',
+      projectUrl: 'https://tenant-a.supabase.co',
+      schemaName: 'wm',
+      enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+      databaseUrlConfigured: true,
+      serviceRoleKeyConfigured: true,
+      visibleStatus: 'ok',
+      holidayStateCode: 'NW',
+      customRecurrencePresets: [],
+    });
+
+    render(<WasteSettingsPanel />);
+
+    await waitFor(() => {
+      expect(capturedForms.at(-1)).toEqual(expect.objectContaining({ holidayStateCode: 'NW' }));
+    });
+
+    expect(screen.queryByText('settings-status-panel:NW')).toBeNull();
+  });
+
   it('loads the calendar web url and persists it through the global save action', async () => {
     getWasteManagementSettingsMock.mockResolvedValueOnce({
       instanceId: 'tenant-a',

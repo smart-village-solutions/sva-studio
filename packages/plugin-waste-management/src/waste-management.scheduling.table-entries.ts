@@ -18,6 +18,23 @@ const matchesShiftContext = (
   kind: 'holiday' | 'global' | 'tour',
 ): boolean => search === 'all' || search === kind;
 
+const editorDateOnlyFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Berlin',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const normalizeDateOnly = (value: string): string => {
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? value : editorDateOnlyFormatter.format(parsed);
+};
+
 export type WasteSchedulingTableEntry =
   | Readonly<{
       id: string;
@@ -27,7 +44,7 @@ export type WasteSchedulingTableEntry =
       actualDate?: undefined;
       contextLabel: string;
       sortLabel: string;
-      canDelete: false;
+      canDelete: true;
       rule: WasteHolidayRuleRecord;
     }>
   | Readonly<{
@@ -62,10 +79,10 @@ const createHolidayEntry = (rule: WasteHolidayRuleRecord): WasteSchedulingTableE
   id: rule.id,
   entryType: 'holiday-rule',
   kind: 'holiday',
-  originalDate: rule.holidayDate,
+  originalDate: normalizeDateOnly(rule.holidayDate),
   contextLabel: rule.holidayName,
   sortLabel: rule.holidayName,
-  canDelete: false,
+  canDelete: true,
   rule,
 });
 

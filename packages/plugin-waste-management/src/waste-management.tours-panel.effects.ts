@@ -2,18 +2,21 @@ import { useEffect, useRef } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { useNavigate } from '@tanstack/react-router';
 
-import { mapTourToForm } from './waste-management.tours.shared.js';
+import { mapTourWithPickupDatesToForm } from './waste-management.tours.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+import type { WasteManagementSchedulingOverview } from './waste-management.api.js';
 
 type WasteViewModel = {
   readonly lastOutcome: 'create-success' | 'update-success' | null;
   readonly overview: { readonly tours: readonly WasteTourRecord[] } | null;
+  readonly schedulingOverview: WasteManagementSchedulingOverview | null;
   readonly tourForm: { readonly id: string };
   readonly setDialogOpen: (open: boolean) => void;
   readonly setDialogMode: (mode: 'create' | 'edit') => void;
   readonly resetTourForm: () => void;
-  readonly setTourForm: (form: ReturnType<typeof mapTourToForm>) => void;
+  readonly setTourForm: (form: ReturnType<typeof mapTourWithPickupDatesToForm>) => void;
   readonly setLastOutcome: (outcome: 'create-success' | 'update-success' | null) => void;
+  readonly setSelectedTour: (tour: WasteTourRecord | null) => void;
 };
 
 const useLatestRef = <T,>(value: T) => {
@@ -40,6 +43,7 @@ export const useWasteToursSuccessRedirect = ({
     resetTourForm: controller.resetTourForm,
     setDialogOpen: controller.setDialogOpen,
     setLastOutcome: controller.setLastOutcome,
+    setSelectedTour: controller.setSelectedTour,
   });
   const toursViewSuccess =
     search.toursView !== 'list' &&
@@ -55,6 +59,7 @@ export const useWasteToursSuccessRedirect = ({
 
     latestController.setDialogOpen(false);
     latestController.resetTourForm();
+    latestController.setSelectedTour(null);
     latestController.setLastOutcome(null);
     void navigate({
       to: '/plugins/waste-management',
@@ -82,6 +87,7 @@ export const useWasteToursEditRouteHydration = ({
   const latestControllerRef = useLatestRef({
     setDialogMode: controller.setDialogMode,
     setTourForm: controller.setTourForm,
+    setSelectedTour: controller.setSelectedTour,
   });
 
   useEffect(() => {
@@ -125,15 +131,19 @@ export const useWasteToursEditRouteHydration = ({
 
     const latestController = latestControllerRef.current;
     latestController.setDialogMode('edit');
+    latestController.setSelectedTour(routeTour);
 
     if (controller.tourForm.id === routeTour.id) {
       return;
     }
 
-    latestController.setTourForm(mapTourToForm(routeTour));
+    latestController.setTourForm(
+      mapTourWithPickupDatesToForm(routeTour, controller.schedulingOverview?.locationTourPickupDates ?? [])
+    );
     controller.setLastOutcome(null);
   }, [
     controller.overview,
+    controller.schedulingOverview,
     controller.setLastOutcome,
     controller.tourForm.id,
     latestControllerRef,

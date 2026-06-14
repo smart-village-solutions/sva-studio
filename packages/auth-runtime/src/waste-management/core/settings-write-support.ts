@@ -2,6 +2,7 @@ import {
   type ExternalInterfaceRecord,
   type WasteHolidayStateCode,
   type WasteHolidaySyncStatus,
+  type WasteManagementEmailReminderConfig,
   type WasteManagementSettingsRecord,
 } from '@sva/core';
 
@@ -128,6 +129,7 @@ type UpdateWasteManagementSettingsAfterValidationInput = {
     readonly calendarWebUrl?: string;
     readonly pdfBrandingAssetUrl?: string;
     readonly pdfContactBlock?: string;
+    readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
     readonly holidayStateCode?: WasteHolidayStateCode;
     readonly customRecurrencePresets: readonly Omit<NonNullable<Parameters<NonNullable<WasteManagementHandlerDeps['saveWasteCustomRecurrencePresets']>>[1]>['nextItems'][number], never>[];
     readonly deletedPresetFallbacks: NonNullable<Parameters<NonNullable<WasteManagementHandlerDeps['saveWasteCustomRecurrencePresets']>>[1]>['deletedPresetFallbacks'];
@@ -186,6 +188,7 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     calendarWebUrl: input.calendarWebUrl?.trim(),
     pdfBrandingAssetUrl: input.pdfBrandingAssetUrl?.trim(),
     pdfContactBlock: input.pdfContactBlock?.trim(),
+    emailReminderConfig: input.emailReminderConfig,
     holidayStateCode: input.holidayStateCode,
     lastHolidaySyncStatus,
     lastSuccessfulHolidaySyncAt,

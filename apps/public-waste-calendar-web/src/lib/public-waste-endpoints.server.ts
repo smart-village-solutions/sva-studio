@@ -1,11 +1,17 @@
 import {
   buildWasteCalendarPdfDocument,
   renderWasteCalendarPdf,
+  type WasteManagementEmailReminderConfig,
   type WasteCalendarPdfBrandingImage,
   type WasteOutputPickupEntry,
 } from '@sva/core';
+import { PublicWasteReminderSignupError } from '../server/public-waste-email-reminders.server.js';
 
 import { loadNextPublicWasteSelection, loadResolvedPublicWasteCalendar } from './public-waste-api.js';
+import type {
+  PublicWasteReminderSignupRequest,
+  PublicWasteReminderSignupResponse,
+} from './public-waste-contract.js';
 import { renderPublicWasteIcal } from './public-waste-ical.server.js';
 import type { PublicWastePdfStaticConfig } from './public-waste-pdf-settings.server.js';
 import {
@@ -19,6 +25,8 @@ import type { PublicWasteRepository } from './public-waste-repository.server.js'
 
 const INVALID_REQUEST_MESSAGE = 'Ungültige Anfrage.';
 const NO_PDF_ENTRIES_MESSAGE = 'Für diese Auswahl konnten keine PDF-Termine ermittelt werden.';
+const REMINDER_SIGNUP_NOT_READY_MESSAGE = 'Der E-Mail-Erinnerungsdienst ist derzeit nicht verfügbar.';
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const jsonResponse = (payload: unknown, status = 200): Response =>
   new Response(JSON.stringify(payload), {
@@ -107,25 +115,40 @@ export const handlePublicWasteSelectionRequest = async (input: {
 };
 
 export const handlePublicWasteCalendarRequest = async (input: {
-  readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries' | 'loadSelectionSummary'>;
+  readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderSignupOptions'>;
   readonly request: Request;
+  readonly reminderConfig?: WasteManagementEmailReminderConfig;
 }): Promise<Response> => {
   try {
     const url = new URL(input.request.url);
     const selection = readPublicWasteResolvedSelection(url);
-    const payload = await loadResolvedPublicWasteCalendar({
-      repository: input.repository,
-      input: {
-        selection,
-        referenceDate: readPublicWasteReferenceDate(url),
-      },
-    });
-
-    const selectionSummary = await input.repository.loadSelectionSummary({ selection });
+    const [payload, selectionSummary, reminderFractions] = await Promise.all([
+      loadResolvedPublicWasteCalendar({
+        repository: input.repository,
+        input: {
+          selection,
+          referenceDate: readPublicWasteReferenceDate(url),
+        },
+      }),
+      input.repository.loadSelectionSummary({ selection }),
+      input.reminderConfig?.enabled && input.reminderConfig.publicSignupEnabled
+        ? input.repository.loadReminderSignupOptions({ selection })
+        : Promise.resolve([]),
+    ]);
 
     return jsonResponse({
       ...payload,
       selectionSummary,
+      ...(input.reminderConfig?.enabled && input.reminderConfig.publicSignupEnabled && reminderFractions.length > 0
+        ? {
+            reminderSignup: {
+              enabled: true,
+              consentLabel: input.reminderConfig.consentLabel,
+              privacyPolicyUrl: input.reminderConfig.privacyPolicyUrl,
+              fractions: reminderFractions,
+            },
+          }
+        : {}),
       icalUrl: `/api/public-waste/ical?${new URLSearchParams({
         ...(selection.regionId ? { regionId: selection.regionId } : {}),
         cityId: selection.cityId,
@@ -139,11 +162,101 @@ export const handlePublicWasteCalendarRequest = async (input: {
   }
 };
 
+const isPublicWasteReminderSignupRequest = (value: unknown): value is PublicWasteReminderSignupRequest => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.email !== 'string' || !EMAIL_PATTERN.test(record.email.trim())) {
+    return false;
+  }
+  if (record.consentAccepted !== true || !Array.isArray(record.items) || record.items.length === 0) {
+    return false;
+  }
+  if (!record.selection || typeof record.selection !== 'object' || Array.isArray(record.selection)) {
+    return false;
+  }
+
+  return record.items.every((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return false;
+    }
+
+    const next = item as Record<string, unknown>;
+    return typeof next.fractionId === 'string' && next.fractionId.length > 0 && typeof next.slotId === 'string' && next.slotId.length > 0;
+  });
+};
+
+export const handlePublicWasteReminderSignupRequest = async (input: {
+  readonly repository: Pick<PublicWasteRepository, 'loadReminderSignupOptions' | 'loadSelectionSummary'>;
+  readonly request: Request;
+  readonly reminderConfig?: WasteManagementEmailReminderConfig;
+  readonly submitReminderSignup?: (input: {
+    readonly request: Request;
+    readonly payload: PublicWasteReminderSignupRequest;
+    readonly reminderConfig: WasteManagementEmailReminderConfig;
+    readonly repository: Pick<PublicWasteRepository, 'loadSelectionSummary'>;
+  }) => Promise<PublicWasteReminderSignupResponse>;
+}): Promise<Response> => {
+  try {
+    if (!input.reminderConfig?.enabled || !input.reminderConfig.publicSignupEnabled) {
+      return new Response(REMINDER_SIGNUP_NOT_READY_MESSAGE, { status: 404 });
+    }
+
+    const payload = (await input.request.json()) as unknown;
+    if (!isPublicWasteReminderSignupRequest(payload)) {
+      return new Response(INVALID_REQUEST_MESSAGE, { status: 400 });
+    }
+
+    const allowedFractions = await input.repository.loadReminderSignupOptions({
+      selection: payload.selection,
+    });
+    const allowedFractionMap = new Map(allowedFractions.map((fraction) => [fraction.id, fraction]));
+    const hasInvalidItem = payload.items.some((item) => {
+      const fraction = allowedFractionMap.get(item.fractionId);
+      return !fraction || !fraction.slots.some((slot) => slot.id === item.slotId);
+    });
+
+    if (hasInvalidItem) {
+      return new Response(INVALID_REQUEST_MESSAGE, { status: 400 });
+    }
+
+    if (!input.submitReminderSignup) {
+      return new Response(REMINDER_SIGNUP_NOT_READY_MESSAGE, { status: 501 });
+    }
+
+    return jsonResponse(
+      await input.submitReminderSignup({
+        request: input.request,
+        payload,
+        reminderConfig: input.reminderConfig,
+        repository: input.repository,
+      })
+    );
+  } catch (error) {
+    if (error instanceof PublicWasteReminderSignupError) {
+      return new Response(error.message, {
+        status: error.status,
+        headers: error.retryAfterSeconds
+          ? {
+              'retry-after': String(error.retryAfterSeconds),
+            }
+          : undefined,
+      });
+    }
+    return new Response(INVALID_REQUEST_MESSAGE, { status: 400 });
+  }
+};
+
 export const handlePublicWastePdfRequest = async (input: {
   readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries' | 'loadSelectionSummary'>;
   readonly request: Request;
   readonly loadPdfStaticConfig: () => Promise<PublicWastePdfStaticConfig>;
-  readonly loadBrandingImage?: (assetUrl: string) => Promise<WasteCalendarPdfBrandingImage | undefined>;
+  readonly loadBrandingImage?: (input: {
+    readonly assetUrl: string;
+    readonly requestUrl: string;
+  }) => Promise<WasteCalendarPdfBrandingImage | undefined>;
 }): Promise<Response> => {
   try {
     const url = new URL(input.request.url);
@@ -172,14 +285,17 @@ export const handlePublicWastePdfRequest = async (input: {
 
     const locationLabel = normalizePdfLocationLabel(selectionSummary);
     const brandingImage = staticConfig.brandingAssetUrl
-      ? await input.loadBrandingImage?.(staticConfig.brandingAssetUrl)
+      ? await input.loadBrandingImage?.({
+          assetUrl: staticConfig.brandingAssetUrl,
+          requestUrl: input.request.url,
+        })
       : undefined;
     const pdf = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
         year,
         locationLabel,
         pickups: buildPdfPickups(filteredEntries),
-        notes: collectPdfNotes(filteredEntries.map((entry) => entry.note)),
+        notes: [],
         footerLine: staticConfig.contactBlock?.replace(/\s*\n\s*/g, ' · '),
         ...(brandingImage ? { brandingImage } : {}),
         brandingPlaceholderLabel: staticConfig.brandingAssetUrl ? 'Branding-Grafik' : 'Kommunales Waste-Management',

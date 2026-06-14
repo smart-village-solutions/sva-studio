@@ -14,6 +14,10 @@ import {
   getWorkspacePluginModuleCandidates,
   type StudioPluginCatalogConfigEntry,
 } from './plugin-catalog-loader.js';
+import {
+  createNodemailerMailDispatcher,
+} from '@sva/mail-runtime';
+import { revealField } from '@sva/auth-runtime/server';
 import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
 import {
   createPluginJobExecutionHandlers as createWasteManagementPluginJobExecutionHandlers,
@@ -194,7 +198,11 @@ const resolvePluginJobModule = (input: {
 };
 
 const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
-  'waste-management.operations': () => createWasteManagementOperationRuntime(),
+  'waste-management.operations': () =>
+    createWasteManagementOperationRuntime({
+      dispatchMail: createNodemailerMailDispatcher({}),
+      revealSecret: (ciphertext, aad) => revealField(ciphertext, aad) ?? undefined,
+    }),
 };
 
 const resolvePluginJobRuntimeRequirement = (input: {

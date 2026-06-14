@@ -14,6 +14,7 @@ import {
   type WasteHolidayStateCode,
   type WasteHolidaySyncStatus,
   WasteHouseNumberRecord,
+  WasteLocationTourPickupDateRecord,
   WasteLocationTourLinkBulkCreateInput,
   WasteLocationTourLinkRecord,
   WasteManagementHistoryOverview,
@@ -1032,6 +1033,19 @@ const deleteWasteLocationTourLink = createLoader(
   'delete_waste_location_tour_link',
   (repository, linkId: string) => repository.deleteWasteLocationTourLink(linkId)
 );
+const loadWasteLocationTourPickupDateById = createLoader(
+  'load_waste_location_tour_pickup_date_by_id',
+  (repository, pickupDateId: string) => repository.getWasteLocationTourPickupDateById(pickupDateId)
+);
+const saveWasteLocationTourPickupDate = createLoader(
+  'save_waste_location_tour_pickup_date',
+  (repository, input: Omit<WasteLocationTourPickupDateRecord, 'createdAt' | 'updatedAt'>) =>
+    repository.upsertWasteLocationTourPickupDate(input)
+);
+const deleteWasteLocationTourPickupDate = createLoader(
+  'delete_waste_location_tour_pickup_date',
+  (repository, pickupDateId: string) => repository.deleteWasteLocationTourPickupDate(pickupDateId)
+);
 const loadWasteCustomRecurrencePresets = createLoader(
   'load_waste_custom_recurrence_presets',
   (repository) => repository.listWasteCustomRecurrencePresets()
@@ -1074,6 +1088,10 @@ const saveWasteGlobalDateShift = createLoader(
 const saveWasteHolidayRule = createLoader(
   'save_waste_holiday_rule',
   (repository, input: Omit<WasteHolidayRuleRecord, 'createdAt' | 'updatedAt'>) => repository.upsertWasteHolidayRule(input)
+);
+const deleteWasteHolidayRule = createLoader(
+  'delete_waste_holiday_rule',
+  (repository, ruleId: string) => repository.deleteWasteHolidayRule(ruleId)
 );
 
 const saveWasteLocationTourLinksBulk = async (
@@ -1130,6 +1148,7 @@ export const wasteManagementEntityLoaders = {
   loadWasteHouseNumberById,
   loadWasteCollectionLocationById,
   loadWasteLocationTourLinkById,
+  loadWasteLocationTourPickupDateById,
   listWasteLocationTourLinksByTourId,
   loadWasteTourById,
   loadWasteTourDateShiftById,
@@ -1141,6 +1160,7 @@ export const wasteManagementEntitySavers = {
   saveWasteCustomRecurrencePresets,
   syncWasteHolidayRules,
   saveWasteHolidayRule,
+  deleteWasteHolidayRule,
   saveWasteFraction,
   deleteWasteFraction,
   saveWasteRegion,
@@ -1151,6 +1171,8 @@ export const wasteManagementEntitySavers = {
   deleteWasteCollectionLocation,
   saveWasteLocationTourLink,
   deleteWasteLocationTourLink,
+  saveWasteLocationTourPickupDate,
+  deleteWasteLocationTourPickupDate,
   saveWasteLocationTourLinksBulk,
   saveWasteTour,
   deleteWasteTour,

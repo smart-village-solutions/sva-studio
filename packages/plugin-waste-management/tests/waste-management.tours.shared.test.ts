@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  createTourDateLocationAssignmentKey,
   createDefaultLocationTourLinkForm,
   createDefaultTourForm,
   filterTours,
   mapLocationTourLinkToForm,
+  mapPickupDatesToTourDateLocationAssignments,
   mapTourToForm,
+  normalizeTourDateLocationAssignments,
+  removeAssignmentsForDeletedDates,
   resolveActiveTourFractions,
   toCreateLocationTourLinkInput,
   toCreateTourInput,
@@ -41,6 +45,7 @@ describe('waste-management.tours.shared', () => {
       firstDate: '',
       endDate: '',
       customDates: [],
+      dateLocationAssignments: [],
       active: true,
     });
   });
@@ -90,6 +95,7 @@ describe('waste-management.tours.shared', () => {
         { date: '2026-05-01', description: 'Feiertag' },
         { date: '2026-06-01', description: '' },
       ],
+      dateLocationAssignments: [],
       active: false,
     });
 
@@ -116,6 +122,7 @@ describe('waste-management.tours.shared', () => {
       firstDate: '2026-01-01',
       endDate: '2026-02-01',
       customDates: [],
+      dateLocationAssignments: [],
       active: true,
     });
   });
@@ -165,6 +172,7 @@ describe('waste-management.tours.shared', () => {
         { date: '2026-05-01', description: 'Tag der Arbeit' },
         { date: '2026-06-01', description: 'mit | pipe' },
       ],
+      dateLocationAssignments: [],
       active: true,
     } as const;
 
@@ -223,6 +231,126 @@ describe('waste-management.tours.shared', () => {
       customDates: undefined,
       active: true,
     });
+  });
+
+  it('maps and normalizes date-location assignments for a tour', () => {
+    expect(
+      mapPickupDatesToTourDateLocationAssignments(
+        [
+          {
+            id: 'pickup-2',
+            tourId: 'tour-1',
+            locationId: 'location-2',
+            pickupDate: '2026-06-02',
+            note: null,
+          },
+          {
+            id: 'pickup-1',
+            tourId: 'tour-1',
+            locationId: 'location-1',
+            pickupDate: '2026-06-01',
+            note: ' Rathaus ',
+          },
+          {
+            id: 'pickup-3',
+            tourId: 'tour-2',
+            locationId: 'location-1',
+            pickupDate: '2026-06-01',
+            note: 'anderer Tour',
+          },
+        ] as never,
+        'tour-1'
+      )
+    ).toEqual([
+      {
+        id: 'pickup-1',
+        pickupDate: '2026-06-01',
+        locationId: 'location-1',
+        note: ' Rathaus ',
+      },
+      {
+        id: 'pickup-2',
+        pickupDate: '2026-06-02',
+        locationId: 'location-2',
+        note: '',
+      },
+    ]);
+
+    expect(
+      normalizeTourDateLocationAssignments([
+        {
+          id: 'pickup-2',
+          pickupDate: ' 2026-06-02 ',
+          locationId: ' location-2 ',
+          note: '  Hinweis  ',
+        },
+        {
+          id: 'pickup-1',
+          pickupDate: '2026-06-01',
+          locationId: 'location-1',
+          note: '  ',
+        },
+        {
+          id: 'pickup-overwrite',
+          pickupDate: '2026-06-02',
+          locationId: 'location-2',
+          note: 'neu',
+        },
+        {
+          id: 'ignored',
+          pickupDate: '',
+          locationId: 'location-3',
+          note: 'leer',
+        },
+      ])
+    ).toEqual([
+      {
+        id: 'pickup-1',
+        pickupDate: '2026-06-01',
+        locationId: 'location-1',
+        note: '',
+      },
+      {
+        id: 'pickup-overwrite',
+        pickupDate: '2026-06-02',
+        locationId: 'location-2',
+        note: 'neu',
+      },
+    ]);
+
+    expect(
+      removeAssignmentsForDeletedDates(
+        [
+          {
+            id: 'pickup-1',
+            pickupDate: '2026-06-01',
+            locationId: 'location-1',
+            note: '',
+          },
+          {
+            id: 'pickup-2',
+            pickupDate: '2026-06-02',
+            locationId: 'location-2',
+            note: 'Hinweis',
+          },
+        ],
+        [{ date: '2026-06-02' }]
+      )
+    ).toEqual([
+      {
+        id: 'pickup-2',
+        pickupDate: '2026-06-02',
+        locationId: 'location-2',
+        note: 'Hinweis',
+      },
+    ]);
+
+    expect(
+      createTourDateLocationAssignmentKey({
+        pickupDate: '2026-06-02',
+        locationId: 'location-2',
+      })
+    ).toBe('2026-06-02::location-2');
   });
 
   it('filters tours by id, status, fraction, and case-insensitive search', () => {

@@ -1,5 +1,6 @@
 import type { WasteHolidayStateCode } from './waste-management/master-data-contract.js';
 import type { WasteCustomRecurrencePresetRecord } from './waste-management/master-data-tours.js';
+import type { WasteManagementEmailReminderConfig } from './waste-management-settings-public-config.js';
 
 const wasteManagementDataSourceProviders = ['supabase'] as const;
 const wasteManagementDataSourceStatuses = ['not_configured', 'unknown', 'ok', 'error'] as const;
@@ -72,6 +73,7 @@ export type WasteManagementSettingsRecord = {
   readonly calendarWebUrl?: string;
   readonly pdfBrandingAssetUrl?: string;
   readonly pdfContactBlock?: string;
+  readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
   readonly databaseUrlConfigured: boolean;
   readonly serviceRoleKeyConfigured: boolean;
   readonly visibleStatus: WasteManagementDataSourceStatus;

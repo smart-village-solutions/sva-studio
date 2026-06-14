@@ -2,7 +2,7 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const calculateTourOccurrencesForYearMock = vi.hoisted(() => vi.fn());
+const calculateTourOccurrenceEntriesForYearMock = vi.hoisted(() => vi.fn());
 
 import { TourYearCalendarDialog } from '../src/waste-management.tours-year-calendar.js';
 
@@ -12,7 +12,7 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('../src/waste-management.tours.presentation.js', () => ({
-  calculateTourOccurrencesForYear: calculateTourOccurrencesForYearMock,
+  calculateTourOccurrenceEntriesForYear: calculateTourOccurrenceEntriesForYearMock,
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
@@ -35,7 +35,7 @@ describe('TourYearCalendarDialog', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-10T09:00:00.000Z'));
-    calculateTourOccurrencesForYearMock.mockReset();
+    calculateTourOccurrenceEntriesForYearMock.mockReset();
   });
 
   afterEach(() => {
@@ -44,8 +44,13 @@ describe('TourYearCalendarDialog', () => {
   });
 
   it('renders highlighted dates and lets the user navigate between years', () => {
-    calculateTourOccurrencesForYearMock.mockImplementation((_tour, year: number) =>
-      year === 2026 ? ['2026-01-15', '2026-03-02'] : ['2025-12-30']
+    calculateTourOccurrenceEntriesForYearMock.mockImplementation((_tour, year: number) =>
+      year === 2026
+        ? [
+            { date: '2026-01-15', shifted: false, originalDate: null },
+            { date: '2026-03-02', shifted: true, originalDate: '2026-03-01' },
+          ]
+        : [{ date: '2025-12-30', shifted: false, originalDate: null }]
     );
 
     const { container } = render(
@@ -62,7 +67,7 @@ describe('TourYearCalendarDialog', () => {
     expect(screen.getByText('tours.yearCalendar.meta.year:2026')).toBeTruthy();
     expect(screen.getByText('2026-01-15')).toBeTruthy();
     expect(screen.getByText('2026-03-02')).toBeTruthy();
-    expect(calculateTourOccurrencesForYearMock).toHaveBeenCalledWith(
+    expect(calculateTourOccurrenceEntriesForYearMock).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'tour-1' }),
       2026,
       expect.anything()
@@ -70,7 +75,12 @@ describe('TourYearCalendarDialog', () => {
 
     const highlightedDays = Array.from(container.querySelectorAll('.bg-primary')).map((element) => element.textContent?.trim());
     expect(highlightedDays).toContain('15');
-    expect(highlightedDays).toContain('2');
+    expect(container.querySelector('[data-shifted="false"]')?.textContent).toContain('15');
+    expect(container.querySelector('[data-shifted="true"]')?.textContent).toContain('2');
+    const shiftedDay = container.querySelector('[data-shifted="true"]');
+    expect(shiftedDay?.getAttribute('style')).toContain('border-color: #009e8f');
+    expect(shiftedDay?.getAttribute('style')).toContain('background-color: rgba(0, 158, 143, 0.16)');
+    expect(shiftedDay?.getAttribute('title')).toBe('tours.yearCalendar.meta.shiftedReplacementFor:01.03.2026');
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.yearCalendar.actions.previousYear' }));
     expect(screen.getByText('tours.yearCalendar.meta.year:2025')).toBeTruthy();
@@ -81,7 +91,7 @@ describe('TourYearCalendarDialog', () => {
   });
 
   it('resets the year on reopen and shows fallbacks when no tour dates are available', () => {
-    calculateTourOccurrencesForYearMock.mockReturnValue([]);
+    calculateTourOccurrenceEntriesForYearMock.mockReturnValue([]);
     const onOpenChange = vi.fn();
 
     const { rerender } = render(
@@ -118,6 +128,27 @@ describe('TourYearCalendarDialog', () => {
       />
     );
     expect(screen.getByText('tours.yearCalendar.meta.year:2026')).toBeTruthy();
-    expect(calculateTourOccurrencesForYearMock).not.toHaveBeenCalled();
+    expect(calculateTourOccurrenceEntriesForYearMock).not.toHaveBeenCalled();
+  });
+
+  it('shows the shifted replacement label only for shifted dates', () => {
+    calculateTourOccurrenceEntriesForYearMock.mockReturnValue([
+      { date: '2026-01-02', shifted: true, originalDate: '2026-01-01' },
+      { date: '2026-01-08', shifted: false, originalDate: null },
+    ]);
+
+    const { container } = render(
+      <TourYearCalendarDialog
+        open
+        tour={{ id: 'tour-1', name: 'Restmüll Nord' } as never}
+        scheduling={{ globalDateShifts: [], tourDateShifts: [] } as never}
+        onOpenChange={() => undefined}
+      />
+    );
+
+    expect(container.querySelector('[data-shifted="true"]')?.getAttribute('title')).toBe(
+      'tours.yearCalendar.meta.shiftedReplacementFor:01.01.2026'
+    );
+    expect(container.querySelector('[data-shifted="false"]')?.getAttribute('title')).toBeNull();
   });
 });

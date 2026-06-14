@@ -14,6 +14,8 @@ describe('waste-management-operations-contract', () => {
       resetData: 'waste-management.reset-data',
       syncMainserver: 'waste-management.sync-mainserver',
       syncWasteTypes: 'waste-management.sync-waste-types',
+      materializeEmailReminders: 'waste-management.materialize-email-reminders',
+      processEmailReminderOutbox: 'waste-management.process-email-reminder-outbox',
     });
     expect(wasteManagementOperationsContract.isJobTypeId('waste-management.import-data')).toBe(true);
     expect(wasteManagementOperationsContract.isJobTypeId('waste-management.sync-mainserver')).toBe(true);

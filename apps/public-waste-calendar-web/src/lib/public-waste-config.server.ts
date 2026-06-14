@@ -1,9 +1,12 @@
+import { readWasteManagementEmailReminderConfig, type WasteManagementEmailReminderConfig } from '@sva/core';
+
 export type PublicWasteConfig = {
   readonly instanceId: string;
   readonly supabase: {
     readonly databaseUrl: string;
     readonly schemaName: string;
   };
+  readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
 };
 
 const CONFIG_ERROR = 'public_waste_config_invalid';
@@ -41,6 +44,7 @@ export const parsePublicWasteConfig = (input: unknown): PublicWasteConfig => {
       databaseUrl,
       schemaName,
     },
+    ...(readWasteManagementEmailReminderConfig(input) ? { emailReminderConfig: readWasteManagementEmailReminderConfig(input) } : {}),
   };
 };
 

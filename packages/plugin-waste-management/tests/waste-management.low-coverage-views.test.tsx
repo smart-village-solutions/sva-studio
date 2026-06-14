@@ -7,6 +7,7 @@ import { WasteMasterDataLocationsHierarchy } from '../src/waste-management.maste
 import { WasteMasterDataLocationsOverview } from '../src/waste-management.master-data-locations-overview.js';
 import { WasteSchedulingCreateFormView } from '../src/waste-management.scheduling-create-form-view.js';
 import { WasteSettingsForm } from '../src/waste-management.settings-form.js';
+import { TourAssignmentsDialog } from '../src/waste-management.tours-assignments-dialog.js';
 
 const navigateMock = vi.fn();
 const schedulingFormContentSpy = vi.fn();
@@ -47,6 +48,10 @@ vi.mock('@sva/studio-ui-react', () => ({
       {children}
     </button>
   ),
+  Checkbox: ({ indeterminate, ...props }: React.ComponentProps<'input'> & { readonly indeterminate?: boolean }) => {
+    void indeterminate;
+    return <input type="checkbox" {...props} />;
+  },
   Input: ({
     id,
     value,
@@ -673,5 +678,47 @@ describe('waste-management low coverage views', () => {
     const firstTourProps = schedulingFormContentSpy.mock.calls[0]?.[0] as Record<string, unknown>;
     (firstTourProps.onChange as (patch: Record<string, unknown>) => void)({ actualDate: '2026-12-23' });
     expect(controller.setTourShiftForm).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the tour-assignment dialog without tour or date fields', () => {
+    const onSubmit = vi.fn();
+
+    render(
+      <TourAssignmentsDialog
+        open
+        mode="edit"
+        form={{ tourId: 'tour-1', startDate: '2026-01-01', endDate: '2026-12-31' }}
+        tour={{ id: 'tour-1', name: 'Restmüll Nord' } as never}
+        locations={[
+          {
+            id: 'location-1',
+            label: 'Musterstraße 1',
+            regionId: 'region-1',
+            regionName: 'Region A',
+            cityId: 'city-1',
+            cityName: 'Musterstadt',
+            streetId: 'street-1',
+            streetName: 'Musterstraße',
+            active: true,
+            assignedLinkId: 'link-1',
+          },
+        ] as never}
+        tours={[{ id: 'tour-1', name: 'Restmüll Nord' }] as never}
+        saving={false}
+        loading={false}
+        message={null}
+        onOpenChange={vi.fn()}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    expect(screen.queryByLabelText('tours.assignments.fields.tourId')).toBeNull();
+    expect(screen.queryByLabelText('tours.assignments.fields.startDate')).toBeNull();
+    expect(screen.queryByLabelText('tours.assignments.fields.endDate')).toBeNull();
+    expect(screen.getByLabelText('filters.searchLabel')).toBeTruthy();
+
+    fireEvent.submit(screen.getByRole('button', { name: 'tours.assignments.actions.save' }).closest('form')!);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });

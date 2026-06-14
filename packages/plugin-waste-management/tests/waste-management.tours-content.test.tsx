@@ -12,6 +12,8 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('../src/waste-management.tours.presentation.js', () => ({
+  countHolidayShiftedTourOccurrences: (_tour: unknown, schedulingOverview: { holidayRules?: unknown[] } | null) =>
+    schedulingOverview?.holidayRules?.length ? 2 : 0,
   formatTourDateRange: (tour: { id: string }) => `range:${tour.id}`,
   formatTourRecurrence: (_pt: unknown, recurrence: string | undefined) => `recurrence:${recurrence ?? 'none'}`,
 }));
@@ -177,7 +179,7 @@ describe('WasteToursContent', () => {
     expect(screen.getByRole('columnheader', { name: 'tours.table.locations none' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.actions' })).toBeTruthy();
     expect(screen.getByText('Restmüll Nord')).toBeTruthy();
-    expect(screen.getByText('Wöchentliche Abholung')).toBeTruthy();
+    expect(screen.queryByText('Wöchentliche Abholung')).toBeNull();
     expect(screen.getByText('recurrence:weekly')).toBeTruthy();
     expect(screen.getByText('Restmüll')).toBeTruthy();
     expect(screen.getByText('Biomüll')).toBeTruthy();
@@ -252,6 +254,57 @@ describe('WasteToursContent', () => {
     );
 
     expect(screen.getByText('tours.table.loadingAssignments')).toBeTruthy();
+  });
+
+  it('includes holiday-rule based shifts in the shifts column label', () => {
+    resolveTourAssignmentItemsMock.mockReturnValue([]);
+
+    render(
+      <WasteToursContent
+        assignmentContextLoading={false}
+        message={null}
+        tours={[
+          {
+            id: 'tour-1',
+            name: 'Restmüll Nord',
+            recurrence: 'weekly',
+            wasteFractionIds: [],
+            locationCount: 0,
+            customDates: [],
+            active: true,
+          },
+        ] as never}
+        fractions={[{ id: 'fraction-1', name: 'Papier' }] as never}
+        masterDataOverview={null}
+        schedulingOverview={{ holidayRules: [{ id: 'holiday-1' }], globalDateShifts: [], tourDateShifts: [] } as never}
+        onOpenCreateDialog={vi.fn()}
+        onOpenEditDialog={vi.fn()}
+        onOpenDuplicateDialog={vi.fn()}
+        onOpenCreateAssignmentsDialog={vi.fn()}
+        onOpenEditAssignmentsDialog={vi.fn()}
+        onOpenCalendar={vi.fn()}
+        onToggleTourStatus={vi.fn(async () => undefined)}
+        onDeleteTour={vi.fn(async () => undefined)}
+        onDeleteTours={vi.fn(async () => undefined)}
+        canDuplicateTour={false}
+        saving={false}
+        page={1}
+        pageSize={25}
+        query=""
+        status="all"
+        tourWasteFractionId={undefined}
+        firstDateFrom={undefined}
+        firstDateTo={undefined}
+        endDateFrom={undefined}
+        endDateTo={undefined}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+        onQueryChange={vi.fn()}
+        onStatusChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('tours.meta.shiftCount:2')).toBeTruthy();
   });
 
   it('keeps tour filter edits local until the modal applies them', () => {

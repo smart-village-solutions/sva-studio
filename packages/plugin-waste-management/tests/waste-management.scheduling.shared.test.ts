@@ -423,6 +423,36 @@ describe('waste-management scheduling shared helpers', () => {
     ).toEqual(rules);
   });
 
+  it('normalizes holiday rule timestamps to date-only values for the scheduling table', () => {
+    const entries = createSchedulingTableEntries({
+      holidayRules: [
+        {
+          id: 'holiday-1',
+          holidayDate: '2025-12-31T23:00:00.000Z',
+          holidayName: 'Neujahrstag',
+          stateCode: 'BB',
+          year: 2026,
+          shiftStrategy: 'next-working-day',
+          scope: 'global',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      ],
+      globalDateShifts: [],
+      tourDateShifts: [],
+      availableTours: [],
+      t: (key: string) => key,
+    });
+
+    expect(entries).toEqual([
+      expect.objectContaining({
+        kind: 'holiday',
+        id: 'holiday-1',
+        originalDate: '2026-01-01',
+      }),
+    ]);
+  });
+
   it('filters scheduling table entries across holiday, global, and tour branches and finds matching entries', () => {
     const entries = createSchedulingTableEntries({
       holidayRules: [

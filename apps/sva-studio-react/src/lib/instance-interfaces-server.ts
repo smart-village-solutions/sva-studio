@@ -3,7 +3,11 @@ import { randomUUID } from 'node:crypto';
 import type {
   ExternalInterfaceRecord,
   ExternalInterfaceVisibleStatus,
+  MailTransportAuthMode,
+  MailTransportSecurityMode,
+  MailTransportType,
 } from '@sva/core';
+import { mailTransportContract } from '@sva/core';
 import {
   deleteExternalInterfaceRecord,
   listExternalInterfaceRecords,
@@ -16,14 +20,19 @@ import { buildExternalInterfaceSecretConfigAad, createSdkLogger } from '@sva/ser
 
 import type {
   InstanceInterfaceDraft,
+  InstanceInterfaceMailTransport,
   InstanceInterfaceS3,
   InstanceInterfaceSupabase,
 } from './instance-interfaces';
 
 type StoredS3 = Omit<InstanceInterfaceS3, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>;
 type StoredSupabase = Omit<InstanceInterfaceSupabase, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>;
+type StoredMailTransport = Omit<
+  InstanceInterfaceMailTransport,
+  'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'
+>;
 
-type StoredEntry = StoredS3 | StoredSupabase;
+type StoredEntry = StoredS3 | StoredSupabase | StoredMailTransport;
 type StoredInterfaceType = StoredEntry['type'];
 
 const logger = createSdkLogger({ component: 'instance-interfaces-server' });
@@ -65,7 +74,24 @@ const parseSecretConfig = (ciphertext: string | undefined, interfaceId: string):
   }
 };
 
-const mapStoredTypeToKey = (type: StoredInterfaceType): 's3' | 'supabase' => type;
+const mapStoredTypeToKey = (
+  type: StoredInterfaceType
+): 's3' | 'supabase' | 'mail_transport' => (type === 'mailTransport' ? 'mail_transport' : type);
+
+const coerceOptionalText = (value: unknown): string =>
+  typeof value === 'string' ? value : '';
+
+const coerceOptionalNumberString = (value: unknown): string =>
+  typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
+
+const coerceMailTransportType = (value: unknown): MailTransportType =>
+  typeof value === 'string' && mailTransportContract.isTransportType(value) ? value : 'smtp';
+
+const coerceMailSecurityMode = (value: unknown): MailTransportSecurityMode =>
+  typeof value === 'string' && mailTransportContract.isSecurityMode(value) ? value : 'starttls';
+
+const coerceMailAuthMode = (value: unknown): MailTransportAuthMode =>
+  typeof value === 'string' && mailTransportContract.isAuthMode(value) ? value : 'basic';
 
 const mapVisibleStatusToHealth = (
   visibleStatus: ExternalInterfaceVisibleStatus | undefined
@@ -121,6 +147,41 @@ const mapRecordToStoredEntry = (record: ExternalInterfaceRecord): PersistedStore
         projectUrl: coerceText(record.publicConfig.projectUrl),
         schemaName: coerceText(record.publicConfig.schemaName) || 'public',
         databaseUrl: '',
+      },
+      createdAt,
+      updatedAt,
+      visibleStatus: record.visibleStatus,
+      lastCheckedAt: record.lastCheckedAt,
+      lastCheckErrorCode: record.lastCheckErrorCode,
+      lastCheckErrorMessage: record.lastCheckErrorMessage,
+    };
+  }
+
+  if (record.typeKey === 'mail_transport') {
+    return {
+      id: record.id,
+      instanceId: record.instanceId,
+      type: 'mailTransport',
+      name: record.displayName,
+      enabled: record.enabled,
+      config: {
+        transportId: coerceText(record.publicConfig.transportId),
+        transportType: coerceMailTransportType(record.publicConfig.transportType),
+        host: coerceText(record.publicConfig.host),
+        port:
+          typeof record.publicConfig.port === 'string'
+            ? record.publicConfig.port
+            : coerceOptionalNumberString(record.publicConfig.port),
+        securityMode: coerceMailSecurityMode(record.publicConfig.securityMode),
+        authMode: coerceMailAuthMode(record.publicConfig.authMode),
+        username: coerceOptionalText(record.publicConfig.username),
+        defaultFromEmail: coerceOptionalText(record.publicConfig.defaultFromEmail),
+        defaultFromName: coerceOptionalText(record.publicConfig.defaultFromName),
+        defaultReplyToEmail: coerceOptionalText(record.publicConfig.defaultReplyToEmail),
+        maxBatchSize: coerceOptionalNumberString(record.publicConfig.maxBatchSize),
+        rateLimitPerMinute: coerceOptionalNumberString(record.publicConfig.rateLimitPerMinute),
+        providerMode: coerceOptionalText(record.publicConfig.mode),
+        endpoint: coerceOptionalText(record.publicConfig.endpoint),
       },
       createdAt,
       updatedAt,
@@ -260,9 +321,137 @@ const buildSupabaseRecord = (input: {
   };
 };
 
+const parseOptionalPositiveInteger = (value: string): number | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error('invalid_config');
+  }
+  return parsed;
+};
+
+const parseRequiredPort = (value: string): number => {
+  const parsed = parseOptionalPositiveInteger(value);
+  if (parsed === undefined) {
+    throw new Error('invalid_config');
+  }
+  return parsed;
+};
+
+const buildMailTransportRecord = (input: {
+  readonly instanceId: string;
+  readonly draft: Extract<InstanceInterfaceDraft, { type: 'mailTransport' }>;
+  readonly interfaceId: string;
+  readonly existing: ExternalInterfaceRecord | null;
+  readonly hasDefaultRecord: boolean;
+  readonly previousSecrets: Record<string, string>;
+}): ExternalInterfaceRecord => {
+  const transportId = input.draft.config.transportId.trim();
+  const displayName = input.draft.name.trim();
+  const nextPassword = input.draft.config.password || input.previousSecrets.password || '';
+  if (!transportId || !displayName) {
+    throw new Error('invalid_config');
+  }
+  if (!mailTransportContract.isTransportType(input.draft.config.transportType)) {
+    throw new Error('invalid_config');
+  }
+  if (!mailTransportContract.isSecurityMode(input.draft.config.securityMode)) {
+    throw new Error('invalid_config');
+  }
+  if (!mailTransportContract.isAuthMode(input.draft.config.authMode)) {
+    throw new Error('invalid_config');
+  }
+  if (input.draft.config.authMode === 'basic' && !nextPassword.trim()) {
+    throw new Error('invalid_config');
+  }
+  if (input.draft.config.authMode === 'basic' && !input.draft.config.username.trim()) {
+    throw new Error('invalid_config');
+  }
+  if (input.draft.config.transportType === 'smtp' && !input.draft.config.host.trim()) {
+    throw new Error('invalid_config');
+  }
+  if (input.draft.config.transportType === 'provider_api' && !input.draft.config.endpoint.trim()) {
+    throw new Error('invalid_config');
+  }
+  if (input.draft.config.transportType === 'provider_api' && !input.draft.config.providerMode.trim()) {
+    throw new Error('invalid_config');
+  }
+
+  const port =
+    input.draft.config.transportType === 'smtp'
+      ? parseRequiredPort(input.draft.config.port)
+      : undefined;
+  const maxBatchSize = parseOptionalPositiveInteger(input.draft.config.maxBatchSize);
+  const rateLimitPerMinute = parseOptionalPositiveInteger(input.draft.config.rateLimitPerMinute);
+  const existingPublicConfig = input.existing?.publicConfig ?? {};
+
+  return {
+    id: input.interfaceId,
+    instanceId: input.instanceId,
+    typeKey: 'mail_transport',
+    ownerKind: 'host',
+    ownerId: 'host',
+    displayName,
+    alias: transportId,
+    enabled: input.draft.enabled,
+    isDefault: input.existing?.isDefault ?? !input.hasDefaultRecord,
+    category: 'api',
+    baseUrl:
+      input.draft.config.transportType === 'smtp'
+        ? input.draft.config.host.trim()
+        : input.draft.config.endpoint.trim(),
+    authMode: input.draft.config.authMode,
+    publicConfig: {
+      ...existingPublicConfig,
+      transportId,
+      transportType: input.draft.config.transportType,
+      securityMode: input.draft.config.securityMode,
+      authMode: input.draft.config.authMode,
+      ...(input.draft.config.username.trim()
+        ? { username: input.draft.config.username.trim() }
+        : {}),
+      ...(input.draft.config.defaultFromEmail.trim()
+        ? { defaultFromEmail: input.draft.config.defaultFromEmail.trim() }
+        : {}),
+      ...(input.draft.config.defaultFromName.trim()
+        ? { defaultFromName: input.draft.config.defaultFromName.trim() }
+        : {}),
+      ...(input.draft.config.defaultReplyToEmail.trim()
+        ? { defaultReplyToEmail: input.draft.config.defaultReplyToEmail.trim() }
+        : {}),
+      ...(maxBatchSize !== undefined ? { maxBatchSize } : {}),
+      ...(rateLimitPerMinute !== undefined ? { rateLimitPerMinute } : {}),
+      ...(input.draft.config.transportType === 'smtp'
+        ? {
+            host: input.draft.config.host.trim(),
+            port,
+          }
+        : {
+            endpoint: input.draft.config.endpoint.trim(),
+            mode: input.draft.config.providerMode.trim(),
+          }),
+    },
+    secretConfigCiphertext: buildSecretCiphertext({
+      interfaceId: input.interfaceId,
+      secretConfig: nextPassword.trim() ? { password: nextPassword.trim() } : {},
+    }),
+    statusCheckKind: 'mail_transport',
+    visibleStatus: resolveVisibleStatus(input.draft.enabled, input.existing?.visibleStatus),
+    lastCheckedAt: input.existing?.lastCheckedAt,
+    lastCheckStatus: input.existing?.lastCheckStatus,
+    lastCheckErrorCode: input.existing?.lastCheckErrorCode,
+    lastCheckErrorMessage: input.existing?.lastCheckErrorMessage,
+    createdAt: input.existing?.createdAt,
+    updatedAt: input.existing?.updatedAt,
+  };
+};
+
 const buildRecordFromDraft = async (input: {
   readonly instanceId: string;
-  readonly draft: Extract<InstanceInterfaceDraft, { type: 's3' | 'supabase' }>;
+  readonly draft: Extract<InstanceInterfaceDraft, { type: 's3' | 'supabase' | 'mailTransport' }>;
   readonly existingId?: string;
 }): Promise<ExternalInterfaceRecord> => {
   logger.info('Building external interface record from draft', {
@@ -273,7 +462,9 @@ const buildRecordFromDraft = async (input: {
     has_secret_input:
       input.draft.type === 's3'
         ? input.draft.config.secretAccessKey.length > 0
-        : input.draft.config.databaseUrl.length > 0 || input.draft.config.serviceRoleKey.length > 0,
+        : input.draft.type === 'supabase'
+          ? input.draft.config.databaseUrl.length > 0 || input.draft.config.serviceRoleKey.length > 0
+          : input.draft.config.password.length > 0,
   });
   const existing = input.existingId
     ? await loadExternalInterfaceRecordById(input.instanceId, input.existingId)
@@ -304,7 +495,7 @@ const buildRecordFromDraft = async (input: {
     throw error;
   }
 
-  if (existing && existing.typeKey !== input.draft.type) {
+  if (existing && existing.typeKey !== mapStoredTypeToKey(input.draft.type)) {
     logger.warn('Rejected external interface type change', {
       operation: 'build_interface_record',
       workspace_id: input.instanceId,
@@ -329,7 +520,9 @@ const buildRecordFromDraft = async (input: {
 
   return input.draft.type === 's3'
     ? buildS3Record({ ...sharedInput, draft: input.draft })
-    : buildSupabaseRecord({ ...sharedInput, draft: input.draft });
+    : input.draft.type === 'supabase'
+      ? buildSupabaseRecord({ ...sharedInput, draft: input.draft })
+      : buildMailTransportRecord({ ...sharedInput, draft: input.draft });
 };
 
 export const isCustomInterfaceStorageAvailable = (): boolean => true;
@@ -453,6 +646,36 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
     return {
       status: 'unknown',
       statusMessage: 'S3-Verbindungsprüfung ausstehend.',
+      checkedAt,
+    };
+  }
+
+  if (entry.type === 'mailTransport') {
+    if (!entry.config.transportId) {
+      return {
+        status: 'error',
+        statusMessage: 'Mail-Transport unvollständig (Transport-ID erforderlich).',
+        checkedAt,
+      };
+    }
+    if (entry.config.transportType === 'smtp') {
+      if (!entry.config.host || !entry.config.port) {
+        return {
+          status: 'error',
+          statusMessage: 'Mail-Transport unvollständig (SMTP-Host und Port erforderlich).',
+          checkedAt,
+        };
+      }
+    } else if (!entry.config.endpoint) {
+      return {
+        status: 'error',
+        statusMessage: 'Mail-Transport unvollständig (Provider-Endpoint erforderlich).',
+        checkedAt,
+      };
+    }
+    return {
+      status: 'unknown',
+      statusMessage: 'Statusprüfung für Mail-Transporte ist noch nicht verfügbar.',
       checkedAt,
     };
   }

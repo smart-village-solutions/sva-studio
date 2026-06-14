@@ -111,6 +111,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
           locationId: 'location-1',
           tourId: 'tour-1',
           pickupDate: '2026-01-05',
+          note: null,
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -191,6 +192,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
           locationId: 'location-inactive',
           tourId: 'tour-1',
           pickupDate: '2026-01-05',
+          note: null,
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -199,6 +201,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
           locationId: 'location-without-street',
           tourId: 'tour-1',
           pickupDate: '2026-01-06',
+          note: null,
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -405,5 +408,54 @@ describe('waste-management-mainserver-sync.materialization', () => {
     });
 
     expect(pickupDates.map((entry) => entry.pickupDate)).toEqual(['2026-01-02']);
+  });
+
+  it('preserves imported pickup-date notes through materialization and shifting', () => {
+    const pickupDates = buildMaterializedLocationTourPickupDates({
+      tours: [buildTour()],
+      links: [
+        {
+          id: 'link-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locationTourPickupDates: [
+        {
+          id: 'pickup-imported-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          pickupDate: '2026-01-06',
+          note: 'Schnee-Ersatztermin',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      tourDateShifts: [
+        {
+          id: 'shift-1',
+          tourId: 'tour-1',
+          originalDate: '2026-01-06',
+          actualDate: '2026-01-05',
+          hasYear: true,
+          followUpMode: 'none' as WasteTourDateShiftFollowUpMode,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      globalDateShifts: [],
+      holidayRules: [],
+      currentYear: 2026,
+      nextYear: 2027,
+    });
+
+    expect(pickupDates).toEqual([
+      expect.objectContaining({
+        pickupDate: '2026-01-05',
+        note: 'Schnee-Ersatztermin',
+      }),
+    ]);
   });
 });

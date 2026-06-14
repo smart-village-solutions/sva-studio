@@ -211,6 +211,7 @@ const repositoryMocks = vi.hoisted(() => ({
   upsertWasteCustomRecurrencePreset: vi.fn(async () => undefined),
   deleteWasteCustomRecurrencePreset: vi.fn(async () => undefined),
   upsertWasteHolidayRule: vi.fn(async () => undefined),
+  deleteWasteHolidayRule: vi.fn(async () => undefined),
   getWasteTourById: vi.fn(async (_id: string) => ({ id: 'tour-1' })),
   upsertWasteTour: vi.fn(async () => undefined),
   getWasteTourDateShiftById: vi.fn(async (_id: string) => ({ id: 'shift-1' })),

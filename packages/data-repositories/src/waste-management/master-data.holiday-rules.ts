@@ -146,9 +146,17 @@ SET holiday_date = EXCLUDED.holiday_date,
   ],
 });
 
+const buildHolidayRuleDeleteStatement = (id: string): SqlStatement => ({
+  text: `
+DELETE FROM waste_holiday_rules
+WHERE id = $1::uuid;
+`,
+  values: [id],
+});
+
 export const createWasteHolidayRuleRepositoryPart = (
   executor: SqlExecutor
-): Pick<WasteMasterDataRepository, 'listWasteHolidayRules' | 'upsertWasteHolidayRule'> => ({
+): Pick<WasteMasterDataRepository, 'listWasteHolidayRules' | 'upsertWasteHolidayRule' | 'deleteWasteHolidayRule'> => ({
   async listWasteHolidayRules(filter) {
     const result = await executor.execute<WasteHolidayRuleRow>(buildHolidayRuleListStatement(filter));
     return result.rows.map(mapWasteHolidayRuleRow);
@@ -156,9 +164,13 @@ export const createWasteHolidayRuleRepositoryPart = (
   async upsertWasteHolidayRule(input) {
     await executor.execute(buildHolidayRuleUpsertStatement(input));
   },
+  async deleteWasteHolidayRule(id) {
+    await executor.execute(buildHolidayRuleDeleteStatement(id));
+  },
 });
 
 export const wasteHolidayRuleStatements = {
   listWasteHolidayRules: buildHolidayRuleListStatement,
   upsertWasteHolidayRule: buildHolidayRuleUpsertStatement,
+  deleteWasteHolidayRule: buildHolidayRuleDeleteStatement,
 } as const;

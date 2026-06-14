@@ -39,19 +39,29 @@ const isPrivateIpAddress = (address: string): boolean => {
   return isIP(normalized) === 4 ? isPrivateIpv4Address(normalized) : isPrivateIpv6Address(normalized);
 };
 
-const resolveSafeBrandingAssetUrl = async (assetUrl: string): Promise<URL | null> => {
-  const url = new URL(assetUrl);
-  if (url.protocol !== 'https:') {
+const resolveSafeBrandingAssetUrl = async (input: {
+  readonly assetUrl: string;
+  readonly requestUrl?: string;
+}): Promise<URL | null> => {
+  const requestUrl = input.requestUrl ? new URL(input.requestUrl) : null;
+  const url = requestUrl ? new URL(input.assetUrl, requestUrl) : new URL(input.assetUrl);
+  const isSameOrigin = requestUrl ? url.origin === requestUrl.origin : false;
+
+  if (!isSameOrigin && url.protocol !== 'https:') {
     return null;
   }
 
   const hostname = url.hostname.trim().toLowerCase();
-  if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
+  if (!isSameOrigin && (hostname === 'localhost' || hostname.endsWith('.localhost'))) {
     return null;
   }
 
   if (isIP(hostname) !== 0) {
-    return isPrivateIpAddress(hostname) ? null : url;
+    return !isSameOrigin && isPrivateIpAddress(hostname) ? null : url;
+  }
+
+  if (isSameOrigin) {
+    return url;
   }
 
   const resolvedAddresses = await lookup(hostname, { all: true, verbatim: true }).catch(() => []);
@@ -92,9 +102,12 @@ const readBrandingAssetBuffer = async (response: Response): Promise<Buffer | nul
 };
 
 export const loadPublicWastePdfBrandingImage = async (
-  assetUrl: string
+  input: {
+    readonly assetUrl: string;
+    readonly requestUrl?: string;
+  }
 ): Promise<WasteCalendarPdfBrandingImage | undefined> => {
-  const safeAssetUrl = await resolveSafeBrandingAssetUrl(assetUrl).catch(() => null);
+  const safeAssetUrl = await resolveSafeBrandingAssetUrl(input).catch(() => null);
   if (!safeAssetUrl) {
     return undefined;
   }

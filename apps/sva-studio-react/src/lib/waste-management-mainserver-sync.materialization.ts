@@ -173,21 +173,37 @@ const buildMaterializationRules = (input: WasteMaterializationContext): readonly
 };
 
 const applySingleRule = (
-  dates: readonly string[],
+  dates: readonly Pick<WasteLocationTourPickupDateRecord, 'pickupDate' | 'note'>[],
   rule: MaterializationRule,
-): readonly string[] => {
-  const next = dates.map((date) => {
-    if (!isDateAffectedByRule(date, rule)) {
-      return date;
+): readonly Pick<WasteLocationTourPickupDateRecord, 'pickupDate' | 'note'>[] => {
+  const next = dates.map((entry) => {
+    if (!isDateAffectedByRule(entry.pickupDate, rule)) {
+      return entry;
     }
 
     const shifted = rule.direction === 'advance'
-      ? addDaysWithWeekendClampForAdvance(date, -rule.shiftDays)
-      : addDays(date, rule.shiftDays);
+      ? addDaysWithWeekendClampForAdvance(entry.pickupDate, -rule.shiftDays)
+      : addDays(entry.pickupDate, rule.shiftDays);
 
-    return shifted;
+    return shifted
+      ? {
+          ...entry,
+          pickupDate: shifted,
+        }
+      : entry;
   });
-  return [...new Set(next.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0))].sort();
+
+  const deduplicated = new Map<string, Pick<WasteLocationTourPickupDateRecord, 'pickupDate' | 'note'>>();
+  for (const entry of next) {
+    if (typeof entry.pickupDate !== 'string' || entry.pickupDate.length === 0) {
+      continue;
+    }
+    const current = deduplicated.get(entry.pickupDate);
+    if (!current || (current.note == null && entry.note != null)) {
+      deduplicated.set(entry.pickupDate, entry);
+    }
+  }
+  return [...deduplicated.values()].sort((left, right) => left.pickupDate.localeCompare(right.pickupDate));
 };
 
 export type MaterializedLocationTourPickupDateRecord = Omit<WasteLocationTourPickupDateRecord, 'id' | 'createdAt' | 'updatedAt'> &
@@ -203,7 +219,10 @@ export const buildMaterializedLocationTourPickupDates = (input: WasteMaterializa
   const syncYearSet = new Set(yearWindow);
   const rules = buildMaterializationRules({ ...input, currentYear: yearWindow[0], nextYear: yearWindow[1] });
   const tourById = new Map(input.tours.map((tour) => [tour.id, tour] as const));
-  const importedPickupDatesByLocationTourKey = new Map<string, string[]>();
+  const importedPickupDatesByLocationTourKey = new Map<
+    string,
+    Array<Pick<WasteLocationTourPickupDateRecord, 'pickupDate' | 'note'>>
+  >();
   for (const pickupDate of input.locationTourPickupDates ?? []) {
     const parsedPickupDate = parseIsoDateUtc(pickupDate.pickupDate);
     if (!parsedPickupDate || !collectionYearWindow.includes(parsedPickupDate.getUTCFullYear())) {
@@ -212,7 +231,10 @@ export const buildMaterializedLocationTourPickupDates = (input: WasteMaterializa
 
     const key = `${pickupDate.locationId}::${pickupDate.tourId}`;
     const entries = importedPickupDatesByLocationTourKey.get(key) ?? [];
-    entries.push(pickupDate.pickupDate);
+    entries.push({
+      pickupDate: pickupDate.pickupDate,
+      note: pickupDate.note,
+    });
     importedPickupDatesByLocationTourKey.set(key, entries);
   }
   const pickupDates: MaterializedLocationTourPickupDateRecord[] = [];
@@ -224,13 +246,23 @@ export const buildMaterializedLocationTourPickupDates = (input: WasteMaterializa
     }
 
     const locationTourKey = `${link.locationId}::${link.tourId}`;
-    let dates: readonly string[] = [
-      ...collectRecurrenceDates(tour, collectionYearWindow),
+    let dates: readonly Pick<WasteLocationTourPickupDateRecord, 'pickupDate' | 'note'>[] = [
+      ...collectRecurrenceDates(tour, collectionYearWindow).map((pickupDate) => ({
+        pickupDate,
+        note: null,
+      })),
       ...(importedPickupDatesByLocationTourKey.get(locationTourKey) ?? []),
-    ]
-      .filter((date) => isDateInRange(date, link.startDate, link.endDate))
-      .filter((date, index, entries) => entries.indexOf(date) === index)
-      .sort();
+    ].filter((entry) => isDateInRange(entry.pickupDate, link.startDate, link.endDate));
+    dates = [...dates
+      .reduce((deduplicated, entry) => {
+        const current = deduplicated.get(entry.pickupDate);
+        if (!current || (current.note == null && entry.note != null)) {
+          deduplicated.set(entry.pickupDate, entry);
+        }
+        return deduplicated;
+      }, new Map<string, Pick<WasteLocationTourPickupDateRecord, 'pickupDate' | 'note'>>())
+      .values()]
+      .sort((left, right) => left.pickupDate.localeCompare(right.pickupDate));
     if (dates.length === 0) {
       continue;
     }
@@ -240,14 +272,14 @@ export const buildMaterializedLocationTourPickupDates = (input: WasteMaterializa
         continue;
       }
       dates = applySingleRule(dates, rule);
-      dates = dates.filter((date) => isDateInRange(date, link.startDate, link.endDate));
+      dates = dates.filter((entry) => isDateInRange(entry.pickupDate, link.startDate, link.endDate));
       if (dates.length === 0) {
         break;
       }
     }
 
-    dates = dates.filter((date) => {
-      const parsedDate = parseIsoDateUtc(date);
+    dates = dates.filter((entry) => {
+      const parsedDate = parseIsoDateUtc(entry.pickupDate);
       return parsedDate ? syncYearSet.has(parsedDate.getUTCFullYear()) : false;
     });
     if (dates.length === 0) {
@@ -256,10 +288,11 @@ export const buildMaterializedLocationTourPickupDates = (input: WasteMaterializa
 
     for (const pickupDate of dates) {
       pickupDates.push({
-        id: `materialized-${link.locationId}-${link.tourId}-${pickupDate}`,
+        id: `materialized-${link.locationId}-${link.tourId}-${pickupDate.pickupDate}`,
         locationId: link.locationId,
         tourId: link.tourId,
-        pickupDate,
+        pickupDate: pickupDate.pickupDate,
+        note: pickupDate.note,
         createdAt: '1970-01-01T00:00:00.000Z',
         updatedAt: '1970-01-01T00:00:00.000Z',
       });
@@ -295,6 +328,7 @@ export const buildStudioRowsFromMaterialization = (input: {
   readonly street: string;
   readonly zip?: string;
   readonly city: string;
+  readonly note?: string;
   readonly key: string;
 }[] => {
   const tourById = new Map(input.tours.map((tour) => [tour.id, tour] as const));
@@ -342,6 +376,7 @@ export const buildStudioRowsFromMaterialization = (input: {
           wasteType,
           street,
           city,
+          note: pickupDate.note ?? undefined,
           key: keyParts.join('::'),
         },
       ];

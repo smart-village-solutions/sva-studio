@@ -41,6 +41,8 @@ const buildSecretConfigMarkers = (typeKey: string, configured: boolean): Record<
       return { secretAccessKey: true };
     case 'supabase':
       return { databaseUrl: true, serviceRoleKey: true };
+    case 'mail_transport':
+      return { password: true };
     case 'sva_mainserver':
       return {};
     default:

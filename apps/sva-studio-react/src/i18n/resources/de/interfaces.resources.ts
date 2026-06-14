@@ -84,6 +84,11 @@ export const interfacesDEResources = {
       description:
         'Waste-Datenquelle mit Projekt-URL, Schema, Datenbankzugang und Service-Role-Key.',
     },
+    mailTransport: {
+      label: 'Mail-Transport',
+      description:
+        'Zentrale technische Mail-Anbindung mit SMTP- oder Provider-Parametern für transaktionale Zustellung.',
+    },
   },
   create: {
     action: 'Neue Schnittstelle',
@@ -121,6 +126,36 @@ export const interfacesDEResources = {
       serviceRoleKey: 'Service-Role-Key',
       notImplemented:
         'Hinweis: Diese Schnittstelle wird bereits serverseitig gespeichert. Automatische Statusprüfungen und Verbindungschecks folgen noch.',
+    },
+    mailTransport: {
+      transportId: 'Transport-ID',
+      transportType: 'Transporttyp',
+      transportTypeOptions: {
+        smtp: 'SMTP',
+        providerApi: 'Provider-API',
+      },
+      host: 'SMTP-Host',
+      port: 'Port',
+      endpoint: 'Provider-Endpoint',
+      providerMode: 'Provider-Modus',
+      securityMode: 'Sicherheitsmodus',
+      securityModeOptions: {
+        none: 'Keine',
+        starttls: 'STARTTLS',
+        tls: 'TLS',
+      },
+      authMode: 'Authentifizierungsmodus',
+      authModeOptions: {
+        none: 'Keine',
+        basic: 'Basic Auth',
+      },
+      username: 'Benutzername',
+      password: 'Passwort',
+      defaultFromEmail: 'Standard-Absenderadresse',
+      defaultFromName: 'Standard-Absendername',
+      defaultReplyToEmail: 'Standard-Reply-To',
+      maxBatchSize: 'Maximale Batch-Größe',
+      rateLimitPerMinute: 'Rate-Limit pro Minute',
     },
   },
 } as const;

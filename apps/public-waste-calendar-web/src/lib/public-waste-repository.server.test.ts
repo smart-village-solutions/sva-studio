@@ -89,6 +89,8 @@ describe('public waste repository', () => {
         ],
       })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] });
 
     const repository = createPublicWasteRepository({
@@ -138,6 +140,8 @@ describe('public waste repository', () => {
           },
         ],
       })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] });
 
@@ -192,6 +196,8 @@ describe('public waste repository', () => {
           },
         ],
       })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] });
 
@@ -257,9 +263,11 @@ describe('public waste repository', () => {
             fraction_label: 'Restmuell',
             fraction_pdf_short_label: 'RM',
             fraction_color: '#111111',
+            note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
           },
         ],
-      });
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
 
     const repository = createPublicWasteRepository({
       schemaName: 'waste',
@@ -282,6 +290,156 @@ describe('public waste repository', () => {
         fractionLabel: 'Restmuell',
         fractionShortLabel: 'RM',
         tourDescription: 'Importierte Sammeltermine.',
+        note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
+      })
+    );
+  });
+
+  it('prefers imported pickup-date notes over shift descriptions for matching entries', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            link_id: 'link-1',
+            location_id: 'location-1',
+            link_start_date: '2026-01-01',
+            link_end_date: null,
+            tour_id: 'tour-1',
+            tour_name: 'Restmuell',
+            tour_description: 'Importierte Sammeltermine.',
+            tour_recurrence: 'custom',
+            tour_custom_recurrence_interval_days: null,
+            tour_first_date: null,
+            tour_end_date: null,
+            tour_custom_dates: [{ date: '2026-05-19' }],
+            fraction_id: 'fraction-1',
+            fraction_label: 'Restmuell',
+            fraction_pdf_short_label: 'RM',
+            fraction_color: '#111111',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            id: 'shift-1',
+            tour_id: 'tour-1',
+            original_date: '2026-05-19',
+            actual_date: '2026-05-19',
+            description: 'Verschoben wegen Feiertag',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            location_id: 'location-1',
+            pickup_date: '2026-05-19',
+            tour_id: 'tour-1',
+            tour_name: 'Restmuell',
+            tour_description: 'Importierte Sammeltermine.',
+            fraction_id: 'fraction-1',
+            fraction_label: 'Restmuell',
+            fraction_pdf_short_label: 'RM',
+            fraction_color: '#111111',
+            note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const repository = createPublicWasteRepository({
+      schemaName: 'waste',
+      execute,
+    });
+
+    await expect(
+      repository.loadCalendarEntries({
+        selection: {
+          cityId: 'city-1',
+          streetId: 'street-1',
+        },
+        referenceDate: '2026-01-01',
+      })
+    ).resolves.toContainEqual(
+      expect.objectContaining({
+        id: 'tour-1:2026-05-19:fraction-1',
+        note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
+      })
+    );
+  });
+
+  it('applies configured holiday rules to public calendar entries', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            link_id: 'link-1',
+            location_id: 'location-1',
+            link_start_date: '2026-01-01',
+            link_end_date: '2026-12-31',
+            tour_id: 'tour-1',
+            tour_name: 'Restmuell',
+            tour_description: 'Leerung fuer den Innenstadtbereich.',
+            tour_recurrence: 'weekly',
+            tour_custom_recurrence_interval_days: null,
+            tour_first_date: '2026-01-01',
+            tour_end_date: '2026-01-08',
+            tour_custom_dates: null,
+            fraction_id: 'fraction-1',
+            fraction_label: 'Restmuell',
+            fraction_pdf_short_label: 'RM',
+            fraction_color: '#111111',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            id: 'holiday-1',
+            holiday_date: '2026-01-01',
+            holiday_name: 'Neujahr',
+            holiday_year: 2026,
+            state_code: 'BB',
+            source_status: 'confirmed',
+            configuration_status: 'configured',
+            conflict_status: 'none',
+            scope: 'holiday-only',
+            strategy: 'postpone',
+            created_at: '2025-01-01T00:00:00.000Z',
+            updated_at: '2025-01-01T00:00:00.000Z',
+          },
+        ],
+      });
+
+    const repository = createPublicWasteRepository({
+      schemaName: 'waste',
+      execute,
+    });
+
+    await expect(
+      repository.loadCalendarEntries({
+        selection: {
+          cityId: 'city-1',
+          streetId: 'street-1',
+        },
+        referenceDate: '2026-01-01',
+      })
+    ).resolves.toContainEqual(
+      expect.objectContaining({
+        id: 'tour-1:2026-01-02:fraction-1',
+        date: '2026-01-02',
       })
     );
   });
@@ -327,6 +485,7 @@ describe('public waste repository', () => {
             fraction_label: 'Restmuell',
             fraction_pdf_short_label: 'RM',
             fraction_color: '#111111',
+            note: null,
           },
           {
             location_id: 'location-1',
@@ -338,9 +497,11 @@ describe('public waste repository', () => {
             fraction_label: 'Restmuell',
             fraction_pdf_short_label: 'RM',
             fraction_color: '#111111',
+            note: null,
           },
         ],
-      });
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
 
     const repository = createPublicWasteRepository({
       schemaName: 'waste',
@@ -388,5 +549,89 @@ describe('public waste repository', () => {
         text: expect.stringContaining('CASE WHEN cl.street_id = $3::uuid THEN 0 ELSE 1 END ASC'),
       })
     );
+  });
+
+  it('loads only email-capable reminder fractions with valid email slots for the current location', async () => {
+    const execute = vi.fn().mockResolvedValueOnce({
+      rowCount: 3,
+      rows: [
+        {
+          fraction_id: 'bio',
+          fraction_label: 'Bioabfall',
+          fraction_color: '#008800',
+          reminder_config: {
+            reminderCount: 'twice',
+            channels: {
+              push: false,
+              email: true,
+              calendar: false,
+            },
+            email: {
+              slots: [
+                { id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 },
+                { id: 'bio:second', maxLeadDays: 5, defaultLeadDays: 3 },
+              ],
+            },
+          },
+        },
+        {
+          fraction_id: 'paper',
+          fraction_label: 'Papier',
+          fraction_color: '#0000ff',
+          reminder_config: {
+            reminderCount: 'once',
+            channels: {
+              push: false,
+              email: false,
+              calendar: true,
+            },
+            calendar: {
+              slots: [{ id: 'paper:calendar', maxLeadDays: 2, defaultLeadDays: 1 }],
+            },
+          },
+        },
+        {
+          fraction_id: 'glass',
+          fraction_label: 'Altglas',
+          fraction_color: '#666666',
+          reminder_config: {
+            reminderCount: 'once',
+            channels: {
+              push: false,
+              email: true,
+              calendar: false,
+            },
+            email: {
+              slots: [],
+            },
+          },
+        },
+      ],
+    });
+
+    const repository = createPublicWasteRepository({
+      schemaName: 'waste',
+      execute,
+    });
+
+    await expect(
+      repository.loadReminderSignupOptions({
+        selection: {
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: 'house-1',
+        },
+      })
+    ).resolves.toEqual([
+      {
+        id: 'bio',
+        label: 'Bioabfall',
+        color: '#008800',
+        slots: [
+          { id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 },
+          { id: 'bio:second', maxLeadDays: 5, defaultLeadDays: 3 },
+        ],
+      },
+    ]);
   });
 });

@@ -29,14 +29,14 @@ const createEntry = (overrides: Partial<InstanceInterface>): InstanceInterface =
 
 describe('interfaces page controller helpers', () => {
   it('exposes the stable default type fallback for empty API responses', () => {
-    expect(DEFAULT_AVAILABLE_TYPES).toEqual(['mainserver', 's3']);
+    expect(DEFAULT_AVAILABLE_TYPES).toEqual(['mainserver', 's3', 'mailTransport']);
   });
 
   it('validates the instance interfaces payload shape', () => {
     expect(
       isInstanceInterfacesResponse({
         instanceId: 'de-musterhausen',
-        availableTypes: ['mainserver', 's3'],
+        availableTypes: ['mainserver', 's3', 'mailTransport'],
         entries: [],
       })
     ).toBe(true);
@@ -102,6 +102,51 @@ describe('interfaces page controller helpers', () => {
         serviceRoleKey: '',
       },
     });
+
+    expect(
+      draftFromEntry(
+        createEntry({
+          type: 'mailTransport',
+          config: {
+            transportId: 'mail-1',
+            transportType: 'smtp',
+            host: 'smtp.example.org',
+            port: '587',
+            securityMode: 'starttls',
+            authMode: 'basic',
+            username: 'mailer',
+            defaultFromEmail: 'noreply@example.org',
+            defaultFromName: 'Abfallservice',
+            defaultReplyToEmail: 'service@example.org',
+            maxBatchSize: '50',
+            rateLimitPerMinute: '120',
+            providerMode: '',
+            endpoint: '',
+          },
+        })
+      )
+    ).toEqual({
+      type: 'mailTransport',
+      name: 'Entry',
+      enabled: true,
+      config: {
+        transportId: 'mail-1',
+        transportType: 'smtp',
+        host: 'smtp.example.org',
+        port: '587',
+        securityMode: 'starttls',
+        authMode: 'basic',
+        username: 'mailer',
+        password: '',
+        defaultFromEmail: 'noreply@example.org',
+        defaultFromName: 'Abfallservice',
+        defaultReplyToEmail: 'service@example.org',
+        maxBatchSize: '50',
+        rateLimitPerMinute: '120',
+        providerMode: '',
+        endpoint: '',
+      },
+    });
   });
 
   it('translates known interface errors and keeps unknown errors readable', () => {
@@ -118,24 +163,33 @@ describe('interfaces page controller helpers', () => {
     expect(
       buildUpsertPayload('de-musterhausen', {
         mode: 'create',
-        type: 's3',
+        type: 'mailTransport',
         draft: {
-          type: 's3',
-          name: 'Uploads',
+          type: 'mailTransport',
+          name: 'Mailversand',
           enabled: true,
           config: {
-            endpoint: 'https://s3.example',
-            region: 'eu-central-1',
-            bucket: 'uploads',
-            accessKeyId: 'key-1',
-            secretAccessKey: 'secret-1',
-            forcePathStyle: false,
+            transportId: 'mail-1',
+            transportType: 'smtp',
+            host: 'smtp.example.org',
+            port: '587',
+            securityMode: 'starttls',
+            authMode: 'basic',
+            username: 'mailer',
+            password: 'smtp-password',
+            defaultFromEmail: 'noreply@example.org',
+            defaultFromName: 'Abfallservice',
+            defaultReplyToEmail: 'service@example.org',
+            maxBatchSize: '50',
+            rateLimitPerMinute: '120',
+            providerMode: '',
+            endpoint: '',
           },
         },
       })
     ).toEqual({
       instanceId: 'de-musterhausen',
-      draft: expect.objectContaining({ type: 's3', name: 'Uploads' }),
+      draft: expect.objectContaining({ type: 'mailTransport', name: 'Mailversand' }),
     });
 
     expect(

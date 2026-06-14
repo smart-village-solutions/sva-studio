@@ -171,5 +171,13 @@ const createRuntime = (
     durationMs: 1,
     details: { staticContentName: 'waste-types', version: '1', fractionCount: 0 },
   }),
+  materializeEmailReminders: async () => ({
+    durationMs: 1,
+    details: { activeSubscriptionCount: 0, createdOutboxCount: 0, duplicateOutboxCount: 0, skippedPickupCount: 0 },
+  }),
+  processEmailReminderOutbox: async () => ({
+    durationMs: 1,
+    details: { leasedCount: 0, sentCount: 0, retryScheduledCount: 0, failedCount: 0, batchSize: 0 },
+  }),
   ...overrides,
 });

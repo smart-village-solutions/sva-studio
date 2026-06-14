@@ -3,17 +3,33 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { useEffect, useState } from 'react';
 
 import type { WasteManagementSchedulingOverview } from './waste-management.api.js';
-import { calculateTourOccurrencesForYear } from './waste-management.tours.presentation.js';
+import { calculateTourOccurrenceEntriesForYear } from './waste-management.tours.presentation.js';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
+
+const SHIFTED_DATE_COLOR = '#009e8f';
+
+const calendarDateFormatter = new Intl.DateTimeFormat('de-DE', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  timeZone: 'Europe/Berlin',
+});
+
+const formatCalendarDate = (value: string): string => {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) ? value : calendarDateFormatter.format(parsed);
+};
 
 const TourYearCalendarMonth = ({
   monthIndex,
   year,
-  highlighted,
+  highlightedDays,
+  pt,
 }: {
   readonly monthIndex: number;
   readonly year: number;
-  readonly highlighted: ReadonlySet<number>;
+  readonly highlightedDays: ReadonlyMap<number, { readonly shifted: boolean; readonly originalDate: string | null }>;
+  readonly pt: ReturnType<typeof usePluginTranslation>;
 }) => {
   const first = new Date(year, monthIndex, 1);
   const startWeekday = (first.getDay() + 6) % 7;
@@ -33,17 +49,40 @@ const TourYearCalendarMonth = ({
           <div key={`empty-${monthIndex}-${index}`} />
         ))}
         {Array.from({ length: daysInMonth }, (_, index) => index + 1).map((day) => {
-          const active = highlighted.has(day);
+          const occurrence = highlightedDays.get(day);
+          const shifted = occurrence?.shifted ?? false;
+          const active = highlightedDays.has(day);
+          const shiftedLabel = shifted && occurrence?.originalDate
+            ? pt('tours.yearCalendar.meta.shiftedReplacementFor', { value: formatCalendarDate(occurrence.originalDate) })
+            : null;
           return (
             <div
               key={`${monthIndex}-${day}`}
-              className={`rounded-lg border px-1 py-2 transition-colors ${
+              data-shifted={active ? String(shifted) : undefined}
+              title={shiftedLabel ?? undefined}
+              className={`group relative rounded-lg border px-1 py-2 transition-colors ${
                 active
-                  ? 'border-primary bg-primary font-semibold text-primary-foreground shadow-sm'
+                  ? shifted
+                    ? 'font-semibold shadow-sm'
+                    : 'border-primary bg-primary font-semibold text-primary-foreground shadow-sm'
                   : 'border-border/50 bg-background/80 text-foreground'
               }`}
+              style={
+                shifted
+                  ? {
+                      borderColor: SHIFTED_DATE_COLOR,
+                      backgroundColor: 'rgba(0, 158, 143, 0.16)',
+                      color: SHIFTED_DATE_COLOR,
+                    }
+                  : undefined
+              }
             >
               {day}
+              {shiftedLabel ? (
+                <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-border/60 bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md group-hover:block group-focus-within:block">
+                  {shiftedLabel}
+                </span>
+              ) : null}
             </div>
           );
         })}
@@ -73,11 +112,14 @@ export const TourYearCalendarDialog = ({
     }
   }, [open, currentYear]);
 
-  const dates = tour && scheduling ? calculateTourOccurrencesForYear(tour, year, scheduling) : [];
+  const occurrenceEntries = tour && scheduling ? calculateTourOccurrenceEntriesForYear(tour, year, scheduling) : [];
+  const dates = occurrenceEntries.map((entry) => entry.date);
   const months = Array.from({ length: 12 }, (_, monthIndex) => ({
     monthIndex,
-    highlighted: new Set(
-      dates.filter((value) => Number(value.slice(5, 7)) === monthIndex + 1).map((value) => Number(value.slice(8, 10)))
+    highlightedDays: new Map(
+      occurrenceEntries
+        .filter((entry) => Number(entry.date.slice(5, 7)) === monthIndex + 1)
+        .map((entry) => [Number(entry.date.slice(8, 10)), { shifted: entry.shifted, originalDate: entry.originalDate }] as const)
     ),
   }));
 
@@ -111,7 +153,8 @@ export const TourYearCalendarDialog = ({
                   key={month.monthIndex}
                   monthIndex={month.monthIndex}
                   year={year}
-                  highlighted={month.highlighted}
+                  highlightedDays={month.highlightedDays}
+                  pt={pt}
                 />
               ))}
             </div>

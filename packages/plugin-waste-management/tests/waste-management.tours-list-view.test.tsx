@@ -39,7 +39,7 @@ vi.mock('../src/waste-management.tours.content.js', () => ({
 
 vi.mock('../src/waste-management.tours.shared.js', () => ({
   createDefaultTourForm: () => ({ id: 'new-tour', name: '' }),
-  mapTourToForm: (tour: { id: string; name: string }) => ({ id: tour.id, name: tour.name }),
+  mapTourWithPickupDatesToForm: (tour: { id: string; name: string }) => ({ id: tour.id, name: tour.name }),
 }));
 
 const createSearch = (): WasteManagementSearchParams => ({
@@ -85,6 +85,7 @@ const createController = (
     setDialogMode: vi.fn(),
     setDialogOpen: vi.fn(),
     setTourForm: vi.fn(),
+    setSelectedTour: vi.fn(),
     setMessage: vi.fn(),
     setLastOutcome: vi.fn(),
     ...overrides,
@@ -106,7 +107,9 @@ describe('WasteToursListView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'empty-create' }));
 
-    expect(controller.setLastOutcome).toHaveBeenCalledWith(null);
+    expect(controller.setDialogMode).toHaveBeenCalledWith('create');
+    expect(controller.setSelectedTour).toHaveBeenCalledWith(null);
+    expect(controller.setTourForm).toHaveBeenCalledWith({ id: 'new-tour', name: '' });
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
       search: expect.objectContaining({ toursView: 'create', tourId: undefined }),
@@ -122,7 +125,9 @@ describe('WasteToursListView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'open-edit' }));
 
-    expect(controller.setLastOutcome).toHaveBeenCalledWith(null);
+    expect(controller.setDialogMode).toHaveBeenCalledWith('edit');
+    expect(controller.setSelectedTour).toHaveBeenCalledWith({ id: 'tour-1', name: 'Tour 1' });
+    expect(controller.setTourForm).toHaveBeenCalledWith({ id: 'tour-1', name: 'Tour 1' });
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
       search: expect.objectContaining({ toursView: 'edit', tourId: 'tour-1' }),

@@ -204,4 +204,78 @@ describe('PublicWasteApp', () => {
     expect(within(dialog).getByText('Bitte Tonne ab 6 Uhr bereitstellen.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'In Kalender übernehmen' })).toBeTruthy();
   });
+
+  it('offers a reminder setup action and submits the selected fractions, slots, email, and consent', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'pending',
+          headline: 'Bestätigungslink versendet',
+          message: 'Bitte prüfen Sie Ihr E-Mail-Postfach.',
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        }
+      )
+    );
+
+    renderCompletePublicWasteApp({
+      reminderSignup: {
+        enabled: true,
+        consentLabel: 'Ich stimme der Verarbeitung meiner Daten zu.',
+        privacyPolicyUrl: 'https://example.invalid/datenschutz',
+        fractions: [
+          {
+            id: 'bio',
+            label: 'Bioabfall',
+            color: '#008800',
+            slots: [
+              { id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 },
+              { id: 'bio:second', maxLeadDays: 5, defaultLeadDays: 3 },
+            ],
+          },
+        ],
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'E-Mail-Erinnerung einrichten' }));
+    const reminderRegion = screen.getByRole('region', { name: 'E-Mail-Erinnerung' });
+    fireEvent.click(within(reminderRegion).getByRole('checkbox', { name: 'Bioabfall' }));
+    fireEvent.change(within(reminderRegion).getByLabelText('E-Mail-Adresse'), {
+      target: { value: 'person@example.invalid' },
+    });
+    fireEvent.change(within(reminderRegion).getByLabelText('Zeitfenster für Bioabfall'), {
+      target: { value: 'bio:second' },
+    });
+    fireEvent.click(
+      within(reminderRegion).getByRole('checkbox', {
+        name: 'Ich stimme der Verarbeitung meiner Daten zu. Datenschutzerklärung',
+      })
+    );
+    fireEvent.click(within(reminderRegion).getByRole('button', { name: 'Erinnerung anfordern' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/public-waste/reminder-signups',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            selection: publicWasteSelectionFixture,
+            email: 'person@example.invalid',
+            items: [{ fractionId: 'bio', slotId: 'bio:second' }],
+            consentAccepted: true,
+          }),
+        })
+      );
+    });
+
+    expect(screen.getByText('Bestätigungslink versendet')).toBeTruthy();
+    expect(screen.getByText('Bitte prüfen Sie Ihr E-Mail-Postfach.')).toBeTruthy();
+  });
 });

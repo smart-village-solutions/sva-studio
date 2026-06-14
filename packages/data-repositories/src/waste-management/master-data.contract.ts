@@ -73,6 +73,7 @@ export const wasteMasterDataRepositoryContract = {
   upsertWasteHolidayRule: defineRepositoryMethod<
     (input: Omit<WasteHolidayRuleRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
   >(),
+  deleteWasteHolidayRule: defineRepositoryMethod<(id: string) => Promise<void>>(),
   listWasteCustomRecurrencePresets: defineRepositoryMethod<
     () => Promise<readonly WasteCustomRecurrencePresetRecord[]>
   >(),
@@ -107,6 +108,7 @@ export const wasteMasterDataRepositoryContract = {
   upsertWasteLocationTourPickupDate: defineRepositoryMethod<
     (input: Omit<WasteLocationTourPickupDateRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
   >(),
+  deleteWasteLocationTourPickupDate: defineRepositoryMethod<(id: string) => Promise<void>>(),
   listWasteTourDateShifts: defineRepositoryMethod<
     (filter?: WasteTourDateShiftListFilter) => Promise<readonly WasteTourDateShiftRecord[]>
   >(),

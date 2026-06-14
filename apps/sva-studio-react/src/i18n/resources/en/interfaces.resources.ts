@@ -38,6 +38,11 @@ export const interfacesENResources = {
       description:
         'Waste datasource with project URL, schema, database access, and service role key.',
     },
+    mailTransport: {
+      label: 'Mail transport',
+      description:
+        'Central technical mail integration with SMTP or provider parameters for transactional delivery.',
+    },
   },
   form: {
     sectionTitle: 'Mainserver settings',
@@ -63,6 +68,36 @@ export const interfacesENResources = {
       serviceRoleKey: 'Service role key',
       notImplemented:
         'This interface is already persisted on the server. Automated status checks and connection probes are still pending.',
+    },
+    mailTransport: {
+      transportId: 'Transport ID',
+      transportType: 'Transport type',
+      transportTypeOptions: {
+        smtp: 'SMTP',
+        providerApi: 'Provider API',
+      },
+      host: 'SMTP host',
+      port: 'Port',
+      endpoint: 'Provider endpoint',
+      providerMode: 'Provider mode',
+      securityMode: 'Security mode',
+      securityModeOptions: {
+        none: 'None',
+        starttls: 'STARTTLS',
+        tls: 'TLS',
+      },
+      authMode: 'Authentication mode',
+      authModeOptions: {
+        none: 'None',
+        basic: 'Basic auth',
+      },
+      username: 'Username',
+      password: 'Password',
+      defaultFromEmail: 'Default sender address',
+      defaultFromName: 'Default sender name',
+      defaultReplyToEmail: 'Default reply-to',
+      maxBatchSize: 'Maximum batch size',
+      rateLimitPerMinute: 'Rate limit per minute',
     },
   },
   actions: {

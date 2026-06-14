@@ -71,6 +71,66 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('HM');
   });
 
+  it('vertically centers day content inside calendar table cells', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Rathenow, Berliner Str. 12',
+        pickups: [
+          {
+            date: '2026-01-14',
+            fractions: [{ id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666' }],
+          },
+        ],
+      })
+    ).toString('latin1');
+
+    expect(pdfText).toContain('1 0 0 1 38.00 465.23 Tm (01) Tj ET');
+    expect(pdfText).toContain('1 0 0 1 58.00 465.23 Tm (Do) Tj ET');
+  });
+
+  it('uses a more compact header and leaves the footer content below the table', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Rathenow, Berliner Str. 12',
+        pickups: [
+          {
+            date: '2026-01-14',
+            fractions: [{ id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666' }],
+          },
+        ],
+        notes: ['Stand 2026-06-14'],
+        footerLine: 'Abfallberatung · Beispielkontakt',
+      })
+    ).toString('latin1');
+
+    expect(pdfText).toContain('/F2 24.00 Tf');
+    expect(pdfText).toContain('/F1 12.00 Tf');
+    expect(pdfText).toMatch(/1 0 0 1 38\.00 543\.28 Tm \(Abfallkalender 2026\) Tj ET/);
+    expect(pdfText).toMatch(/1 0 0 1 38\.00 73\.08 Tm \(Stand 2026-06-14\) Tj ET/);
+    expect(pdfText).toMatch(/1 0 0 1 38\.00 17\.68 Tm \(Abfallberatung · Beispielkontakt\) Tj ET/);
+  });
+
+  it('does not render default notes when an explicit empty notes array is provided', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Rathenow, Berliner Str. 12',
+        pickups: [
+          {
+            date: '2026-01-14',
+            fractions: [{ id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666' }],
+          },
+        ],
+        notes: [],
+      })
+    ).toString('latin1');
+
+    expect(pdfText).not.toContain('Stand ');
+    expect(pdfText).not.toContain('Alle wirksamen Fraktionen und Verschiebungen sind enthalten.');
+  });
+
   it('embeds a branding image when one is provided', () => {
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
@@ -98,9 +158,11 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('/Subtype /Image');
     expect(pdfText).toContain('/XObject << /Im1');
     expect(pdfText).toContain('/Im1 Do');
+    expect(pdfText).not.toContain('640.00 525.28 163.00 48.00 re f');
+    expect(pdfText).not.toContain('640.00 525.28 163.00 48.00 re S');
   });
 
-  it('renders legend labels at distinct positions once more than six fractions are present', () => {
+  it('renders legend labels in one horizontal row beneath the calendar', () => {
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
         year: 2026,
@@ -128,9 +190,10 @@ describe('waste-management output pdf', () => {
     };
 
     const positions = Array.from({ length: 7 }, (_, index) => extractLegendPosition(`Fraktion ${index + 1}`));
-
     expect(positions.every((value) => value !== null)).toBe(true);
     expect(new Set(positions).size).toBe(7);
-    expect(extractLegendPosition('Fraktion 4')).not.toBe(extractLegendPosition('Fraktion 7'));
+    const yPositions = positions.map((value) => value?.split(':')[1]);
+    expect(new Set(yPositions).size).toBe(1);
+    expect(pdfText).toContain('1 0 0 1 42.00 85.28 Tm (F1) Tj ET');
   });
 });

@@ -10,6 +10,7 @@ import { extractErrorDiagnostics, isRecord, readErrorMessage } from './error-mes
 import type {
   InstanceInterface,
   InstanceInterfaceDraft,
+  InstanceInterfaceMailTransport,
   InstanceInterfaceS3,
   InstanceInterfaceSupabase,
   InstanceInterfaceType,
@@ -55,7 +56,7 @@ const isSvaMainserverInstanceConfig = (value: unknown): value is SvaMainserverIn
 };
 
 const isInstanceInterfaceType = (value: unknown): value is InstanceInterfaceType =>
-  value === 'mainserver' || value === 's3' || value === 'supabase';
+  value === 'mainserver' || value === 's3' || value === 'supabase' || value === 'mailTransport';
 
 const isListInstanceInterfacesResponse = (
   value: unknown
@@ -256,7 +257,11 @@ type InterfacesOperation =
   | 'delete_interface';
 
 const WASTE_MANAGEMENT_MODULE_ID = 'waste-management';
-const DEFAULT_AVAILABLE_INTERFACE_TYPES: readonly InstanceInterfaceType[] = ['mainserver', 's3'];
+const DEFAULT_AVAILABLE_INTERFACE_TYPES: readonly InstanceInterfaceType[] = [
+  'mainserver',
+  's3',
+  'mailTransport',
+];
 
 const resolveAvailableInterfaceTypes = async (instanceId: string): Promise<readonly InstanceInterfaceType[]> => {
   const { loadInstanceById } = await import('@sva/data-repositories/server');
@@ -544,6 +549,7 @@ const projectStoredEntry = async (
   entry:
     | Omit<InstanceInterfaceS3, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
     | Omit<InstanceInterfaceSupabase, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
+    | Omit<InstanceInterfaceMailTransport, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
 ): Promise<InstanceInterface> => {
   const { checkStoredInterfaceHealth } = await import('./instance-interfaces-server.js');
   const health = checkStoredInterfaceHealth(entry);
@@ -677,7 +683,9 @@ export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
               ? data.draft.config.secretAccessKey.length > 0
               : data.draft.type === 'supabase'
                 ? data.draft.config.databaseUrl.length > 0 || data.draft.config.serviceRoleKey.length > 0
-                : false,
+                : data.draft.type === 'mailTransport'
+                  ? data.draft.config.password.length > 0
+                  : false,
           request_host: new URL(dependencies.request.url).host,
           has_iam_database_url: Boolean(process.env.IAM_DATABASE_URL),
         });

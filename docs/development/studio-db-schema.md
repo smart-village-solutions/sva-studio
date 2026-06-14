@@ -26,8 +26,7 @@ Es kombiniert:
 - Der Live-Dump enthält aktuell **47 Tabellen**.
 - Davon liegen **46 Tabellen im Schema `iam`**.
 - Zusätzlich existiert `public.goose_db_version` als Migrationshistorie.
-- Der aktuelle Repo-Soll-Snapshot enthält **54 Tabellen**.
-- Davon liegen **53 Tabellen im Schema `iam`**.
+- Der aktuelle Repo-Soll-Snapshot enthält weiterhin die komplette IAM-Struktur und zusätzlich runtime-nahe `waste_*`-Tabellen für Pickup-Date-Notizen sowie öffentliche E-Mail-Erinnerungen.
 - Im Live-Schema sind aktuell mindestens diese DB-Funktionen vorhanden:
   - `iam.check_geo_hierarchy_depth()`
   - `iam.current_instance_id()`
@@ -39,7 +38,7 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0053_iam_legacy_standard_role_grant_cleanup.sql`
+- Repo-Migrationen vorhanden bis: `0058_waste_email_reminders.sql`
 
 Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0053`:
 
@@ -65,8 +64,8 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0053_iam_legacy_standard_role_grant_cleanup.sql`; `0050` bis `0053` sind daten- beziehungsweise permissionseitig und führen keine zusätzlichen Tabellen-, Spalten- oder Constraint-Änderungen ein
-- Aktueller Soll-Stand: **54 Tabellen**, davon **53 im Schema `iam`**
+- Enthält strukturell den Repo-Sollstand bis `0058_waste_email_reminders.sql`; `0050` bis `0053` sind daten- beziehungsweise permissionseitig, `0058` ergänzt drei runtime-nahe Waste-Tabellen für DOI- und Reminder-Persistenz
+- Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
 
@@ -223,18 +222,20 @@ Kernidee:
 
 ### 9. Externe Waste-Fachdatenbank
 
-Die instanzbezogene Waste-Fachdatenbank ist technisch von der zentralen IAM-/Governance-Persistenz getrennt. Im kanonischen migrationsbasierten Studio-Snapshot unter `docs/development/studio-db-schema-final.sql` sind derzeit keine `waste_*`-Tabellen enthalten.
+Die instanzbezogene Waste-Fachdatenbank ist technisch von der zentralen IAM-/Governance-Persistenz getrennt. Der kanonische migrationsbasierte Studio-Snapshot unter `docs/development/studio-db-schema-final.sql` dokumentiert inzwischen den runtime-nahen Sollzustand fuer die bereits angebundenen `waste_*`-Tabellen.
 
 Kernidee:
 
 - Waste-Fachtabellen gelten nur dann als Teil des kanonischen Studio-Snapshots, wenn sie auch ueber `packages/data/migrations/*.sql` reproduzierbar erzeugt werden.
 - Fachliche oder externe Waste-Schemata ausserhalb dieses Migrationspfads duerfen nicht stillschweigend im Soll-Snapshot oder in CI-Gates auftauchen.
-- Sobald Waste-Tabellen wieder in den migrationsbasierten Studio-Stand aufgenommen werden, muessen Snapshot und diese Einordnung gemeinsam aktualisiert werden.
+- Fuer den aktuellen Stand sind `waste_location_tour_pickup_dates` sowie die neuen Tabellen `waste_email_reminder_subscriptions`, `waste_email_reminder_subscription_items` und `waste_email_reminder_outbox` explizit in diesen migrationsbasierten Sollstand aufgenommen.
 
 Für den aktuellen Waste-PDF-Export-Shift ist wichtig:
 
 - Das verpflichtende Fraktionskürzel `waste_fractions.pdf_short_label` gehört zur externen Waste-Fachdatenbank, nicht zur zentralen Studio-DB; Legacy-Daten werden im runtime-nahen Waste-Migrationspfad deterministisch aus Fraktionsname oder ID backfilled.
 - Die Reminder-Konfiguration der externen Tabelle `waste_fractions` verwendet dort `reminder_config JSONB` als Source of Truth; die früheren Flachspalten (`reminder_count`, `first_reminder_max_lead_days`, `second_reminder_max_lead_days`, `reminder_channel_*_enabled`) bleiben im runtime-nahen Schema nur als Migrationsquelle und Kompatibilitätsoberfläche erhalten.
+- Die externe Tabelle `waste_location_tour_pickup_dates` enthält zusätzlich das optionale Feld `note TEXT` für terminbezogene Hinweise; dieser Task führt dafür zunächst die Schema- und Typoberfläche ein, die Anbindung in Repository, Import und UI folgt in späteren Tasks desselben Plans.
+- Die öffentlichen E-Mail-Erinnerungen persistieren Pending- und aktive Abonnements in `waste_email_reminder_subscriptions`, die Fraktions-/Zeitfenster-Zuordnung in `waste_email_reminder_subscription_items` und DOI-/Reminder-Versandaufträge ressourcenschonend in `waste_email_reminder_outbox`.
 - Der runtime-nahe Backfill in `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts` schreibt `reminder_config` deterministisch aus den Legacy-Spalten und überschreibt vorhandene JSON-Konfigurationen nicht.
 - Die zugehörige Schemaquelle liegt aktuell im runtime-nahen Waste-Migrationspfad unter `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`.
 - PDF-bezogene Stamminhalte wie `calendarWebUrl`, `pdfBrandingAssetUrl` und `pdfContactBlock` liegen dagegen weiterhin in der zentralen Studio-DB als Teil von `iam.instance_external_interfaces.public_config`.

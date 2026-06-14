@@ -13,14 +13,17 @@ const {
   deleteWasteManagementCollectionLocationInternal,
   deleteWasteManagementFractionInternal,
   deleteWasteManagementGlobalDateShiftInternal,
+  deleteWasteManagementHolidayRuleInternal,
   createWasteManagementGlobalDateShiftInternal,
   updateWasteManagementHolidayRuleInternal,
   createWasteManagementHouseNumberInternal,
   createWasteManagementLocationTourLinkInternal,
+  createWasteManagementLocationTourPickupDateInternal,
   createWasteManagementLocationTourLinksBulkInternal,
   createWasteManagementRegionInternal,
   createWasteManagementStreetInternal,
   deleteWasteManagementLocationTourLinkInternal,
+  deleteWasteManagementLocationTourPickupDateInternal,
   deleteWasteManagementTourDateShiftInternal,
   createWasteManagementTourDateShiftInternal,
   createWasteManagementTourInternal,
@@ -45,6 +48,7 @@ const {
   updateWasteManagementGlobalDateShiftInternal,
   updateWasteManagementHouseNumberInternal,
   updateWasteManagementLocationTourLinkInternal,
+  updateWasteManagementLocationTourPickupDateInternal,
   updateWasteManagementRegionInternal,
   updateWasteManagementSettingsInternal,
   updateWasteManagementStreetInternal,
@@ -70,6 +74,7 @@ const {
   loadWasteHolidayRuleById,
   loadWasteHouseNumberById,
   loadWasteLocationTourLinkById,
+  loadWasteLocationTourPickupDateById,
   listWasteLocationTourLinksByTourId,
   loadWasteRegionById,
   loadWasteStreetById,
@@ -86,11 +91,14 @@ const {
   saveWasteFraction,
   deleteWasteFraction,
   deleteWasteGlobalDateShift,
+  deleteWasteHolidayRule,
   saveWasteGlobalDateShift,
   saveWasteHolidayRule,
   saveWasteHouseNumber,
   deleteWasteLocationTourLink,
+  deleteWasteLocationTourPickupDate,
   saveWasteLocationTourLink,
+  saveWasteLocationTourPickupDate,
   saveWasteLocationTourLinksBulk,
   saveWasteRegion,
   saveWasteStreet,
@@ -300,6 +308,30 @@ export const wasteManagementHandlers = {
         saveWasteLocationTourLinksBulk,
       })
     ),
+  createLocationTourPickupDate: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      createWasteManagementLocationTourPickupDateInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        saveWasteLocationTourPickupDate,
+        loadWasteLocationTourPickupDateById,
+      })
+    ),
+  updateLocationTourPickupDate: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      updateWasteManagementLocationTourPickupDateInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        saveWasteLocationTourPickupDate,
+        loadWasteLocationTourPickupDateById,
+      })
+    ),
+  deleteLocationTourPickupDate: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      deleteWasteManagementLocationTourPickupDateInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        deleteWasteLocationTourPickupDate,
+        loadWasteLocationTourPickupDateById,
+      })
+    ),
   createTour: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementTourInternal(nextRequest, ctx, {
@@ -375,6 +407,14 @@ export const wasteManagementHandlers = {
         ...sharedWasteManagementDeps,
         saveWasteGlobalDateShift,
         loadWasteGlobalDateShiftById,
+      })
+    ),
+  deleteHolidayRule: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      deleteWasteManagementHolidayRuleInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        deleteWasteHolidayRule,
+        loadWasteHolidayRuleById,
       })
     ),
   updateHolidayRule: (request: Request): Promise<Response> =>

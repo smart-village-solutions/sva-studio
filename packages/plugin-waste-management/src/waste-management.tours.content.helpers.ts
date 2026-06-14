@@ -37,6 +37,8 @@ const resolveTourSortValue = ({
       );
       return recurrenceValue === '—' ? '' : recurrenceValue;
     }
+    case 'dateRange':
+      return tour.firstDate ?? '';
     case 'locations':
       return String(locationCountByTourId.get(tour.id) ?? 0).padStart(6, '0');
     case 'status':

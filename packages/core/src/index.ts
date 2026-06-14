@@ -54,12 +54,16 @@ export {
   studioJobRuntimeContract,
   studioPluginOperationErrorContract,
 } from './plugin-operations-contract.js';
-export { externalInterfaceContract } from './external-interfaces-contract.js';
+export { externalInterfaceContract, mailDispatchContract, mailTransportContract } from './external-interfaces-contract.js';
 export { isUuid, readBoolean, readNumber, readNumberLike, readObject, readString } from './input-readers.js';
 export type {
-  ExternalInterfaceCategory, ExternalInterfaceConnectionCheckRecord, ExternalInterfaceOwnerKind, ExternalInterfaceRecord,
-  ExternalInterfaceRuntimeErrorCode, ExternalInterfaceSettingsRecord, ExternalInterfaceStatusCheckKind,
-  ExternalInterfaceTypeDefinition, ExternalInterfaceTypeKey, ExternalInterfaceVisibleStatus, ResolvedExternalInterface,
+  ExternalInterfaceCategory, ExternalInterfaceCheckStatus, ExternalInterfaceConnectionCheckRecord,
+  ExternalInterfaceOwnerKind, ExternalInterfaceRecord, ExternalInterfaceRuntimeErrorCode,
+  ExternalInterfaceSettingsRecord, ExternalInterfaceStatusCheckKind, ExternalInterfaceTypeDefinition,
+  ExternalInterfaceTypeKey, ExternalInterfaceVisibleStatus, MailDispatchAddress, MailDispatchAddressKind,
+  MailDispatchMessageKind, MailDispatchPayload, MailTransportAuthMode, MailTransportConfig, MailTransportHealth,
+  MailTransportProviderApiConfig, MailTransportSecurityMode, MailTransportSmtpConfig, MailTransportType,
+  ResolvedExternalInterface,
 } from './external-interfaces-contract.js';
 export type {
   StudioJobCancellationRequestInput, StudioJobCreateInput, StudioJobDetail, StudioJobDetailResponse, StudioJobError,
@@ -76,12 +80,14 @@ export {
   findSelectedWasteManagementInterfaceRecord,
   isWasteManagementInterfaceSelected,
   readWasteManagementCalendarWebUrl,
+  readWasteManagementEmailReminderConfig,
   readWasteManagementHolidayStateCode,
   readWasteManagementHolidaySyncStatus,
   readWasteManagementLastSuccessfulHolidaySyncAt,
   readWasteManagementPdfBrandingAssetUrl,
   readWasteManagementPdfContactBlock,
 } from './waste-management-settings-public-config.js';
+export type { WasteManagementEmailReminderConfig } from './waste-management-settings-public-config.js';
 export type {
   WasteManagementAuditOverview,
   WasteManagementAuditOutcome,
@@ -137,6 +143,8 @@ export type {
   WasteManagementInitializeJobInput,
   WasteManagementJobInput,
   WasteManagementJobTypeId,
+  WasteManagementMaterializeEmailRemindersJobInput,
+  WasteManagementProcessEmailReminderOutboxJobInput,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
   WasteManagementSyncWasteTypesJobInput,

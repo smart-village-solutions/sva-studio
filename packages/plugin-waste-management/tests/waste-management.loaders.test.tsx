@@ -124,7 +124,11 @@ describe('waste management data loaders', () => {
   it('keeps the tours loader on a single failed fetch cycle', async () => {
     apiMocks.getWasteManagementToursOverview.mockRejectedValue(createForbiddenError());
     apiMocks.getWasteManagementMasterDataOverview.mockResolvedValue({ fractions: [] });
-    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValue({ globalDateShifts: [], tourDateShifts: [] });
+    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValue({
+      globalDateShifts: [],
+      locationTourPickupDates: [],
+      tourDateShifts: [],
+    });
 
     render(<ToursLoaderHarness />);
 
@@ -210,6 +214,40 @@ describe('waste management data loaders', () => {
 
     expect(apiMocks.getWasteManagementSchedulingOverview).toHaveBeenCalledTimes(1);
     expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(0);
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(0);
+  });
+
+  it('loads the scheduling overview first and fetches tours plus locations in the background', async () => {
+    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValue({
+      holidayRules: [],
+      globalDateShifts: [],
+      locationTourPickupDates: [],
+      tourDateShifts: [],
+    });
+    apiMocks.getWasteManagementToursOverview.mockResolvedValue({ tours: [] });
+    apiMocks.getWasteManagementMasterDataOverview.mockResolvedValue({
+      fractions: [],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    });
+
+    render(<SchedulingLoaderHarness />);
+
+    await waitFor(() => {
+      expect(screen.getByText('loaded')).toBeTruthy();
+    });
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(1);
+      expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
+    });
+
+    expect(apiMocks.getWasteManagementSchedulingOverview).toHaveBeenCalledTimes(1);
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({ scope: 'locations' });
   });
 
   it('loads tour fractions first and the location assignment context in the background', async () => {
@@ -233,7 +271,11 @@ describe('waste management data loaders', () => {
         collectionLocations: [{ id: 'location-1' }],
         locationTourLinks: [{ id: 'link-1' }],
       });
-    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValue({ globalDateShifts: [], tourDateShifts: [] });
+    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValue({
+      globalDateShifts: [],
+      locationTourPickupDates: [],
+      tourDateShifts: [],
+    });
 
     render(<ToursLoaderHarness />);
 

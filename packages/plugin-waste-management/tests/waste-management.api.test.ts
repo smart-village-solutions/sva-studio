@@ -5,15 +5,18 @@ import {
   createWasteManagementCollectionLocation,
   createWasteManagementHouseNumber,
   createWasteManagementLocationTourLinksBulk,
+  deleteWasteManagementHolidayRule,
   deleteWasteManagementFraction,
   createWasteManagementFraction,
   createWasteManagementGlobalDateShift,
+  createWasteManagementLocationTourPickupDate,
   createWasteManagementLocationTourLink,
   createWasteManagementRegion,
   createWasteManagementStreet,
   createWasteManagementTour,
   createWasteManagementTourDateShift,
   deleteWasteManagementLocationTourLink,
+  deleteWasteManagementLocationTourPickupDate,
   getWasteManagementHistoryOverview,
   getWasteManagementImportCatalog,
   getWasteManagementJobDetail,
@@ -35,6 +38,7 @@ import {
   updateWasteManagementGlobalDateShift,
   updateWasteManagementHouseNumber,
   updateWasteManagementLocationTourLink,
+  updateWasteManagementLocationTourPickupDate,
   updateWasteManagementRegion,
   updateWasteManagementStreet,
   updateWasteManagementTour,
@@ -1108,6 +1112,8 @@ describe('waste-management api client', () => {
                 updatedAt: '2026-05-09T10:00:00.000Z',
               },
             ],
+            locationTourPickupDates: [],
+            holidayRules: [],
             globalDateShifts: [],
           },
         }),
@@ -1123,6 +1129,98 @@ describe('waste-management api client', () => {
       '/api/v1/waste-management/scheduling',
       expect.objectContaining({
         credentials: 'include',
+      })
+    );
+  });
+
+  it('creates, updates and deletes location-tour pickup dates through the host facade', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              id: 'pickup-3',
+              locationId: 'location-1',
+              tourId: 'tour-1',
+              pickupDate: '2026-05-19',
+              note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
+              createdAt: '2026-05-09T10:00:00.000Z',
+              updatedAt: '2026-05-09T10:00:00.000Z',
+            },
+          }),
+          { status: 201, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              id: 'pickup-3',
+              locationId: 'location-1',
+              tourId: 'tour-1',
+              pickupDate: '2026-05-20',
+              note: 'Mittwoch 10:00-12:00 Uhr, Markt',
+              createdAt: '2026-05-09T10:00:00.000Z',
+              updatedAt: '2026-05-09T12:00:00.000Z',
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { id: 'pickup-3' } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+    await createWasteManagementLocationTourPickupDate({
+      id: 'pickup-3',
+      locationId: 'location-1',
+      tourId: 'tour-1',
+      pickupDate: '2026-05-19',
+      note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
+    });
+    await updateWasteManagementLocationTourPickupDate('pickup-3', {
+      locationId: 'location-1',
+      tourId: 'tour-1',
+      pickupDate: '2026-05-20',
+      note: 'Mittwoch 10:00-12:00 Uhr, Markt',
+    });
+    await deleteWasteManagementLocationTourPickupDate('pickup-3');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/waste-management/location-tour-pickup-dates',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'pickup-3',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          pickupDate: '2026-05-19',
+          note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/waste-management/location-tour-pickup-dates/pickup-3',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          pickupDate: '2026-05-20',
+          note: 'Mittwoch 10:00-12:00 Uhr, Markt',
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/waste-management/location-tour-pickup-dates/pickup-3',
+      expect.objectContaining({
+        method: 'DELETE',
       })
     );
   });
@@ -1432,6 +1530,26 @@ describe('waste-management api client', () => {
       '/api/v1/waste-management/holiday-rules/holiday-rule-1',
       expect.objectContaining({
         method: 'PUT',
+        credentials: 'include',
+      })
+    );
+  });
+
+  it('deletes a waste holiday rule through the host facade', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: { id: 'holiday-rule-1' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    await expect(deleteWasteManagementHolidayRule('holiday-rule-1')).resolves.toMatchObject({
+      id: 'holiday-rule-1',
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/holiday-rules/holiday-rule-1',
+      expect.objectContaining({
+        method: 'DELETE',
         credentials: 'include',
       })
     );

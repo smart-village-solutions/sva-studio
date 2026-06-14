@@ -273,6 +273,52 @@ describe('waste location tour assignment import parser', () => {
     ]);
   });
 
+  it('parses optional pickup-date and note columns ahead of fraction assignments', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: [
+        'Ort;Straße;Hausnummern;Abholdatum;Hinweis;Papier;Bioabfall',
+        'Perleberg;Ackerstraße;12;2026-02-03;  Schnee-Ersatztermin  ;PPK.7.2;BIO.3.1',
+      ].join('\n'),
+    });
+
+    expect(result.issues).toEqual([]);
+    expect(result.rows).toEqual([
+      {
+        rowNumber: 2,
+        region: undefined,
+        city: 'Perleberg',
+        street: 'Ackerstraße',
+        houseNumbers: '12',
+        pickupDate: '2026-02-03',
+        note: 'Schnee-Ersatztermin',
+        tourNamesByFractionName: {
+          Papier: 'PPK.7.2',
+          Bioabfall: 'BIO.3.1',
+        },
+      },
+    ]);
+  });
+
+  it('rejects invalid pickup-date values instead of dropping them silently', () => {
+    const result = parseWasteLocationTourPickupDateCsv({
+      text: [
+        'Ort;Abholdatum;Papier',
+        'Perleberg;2026-02-30;PPK.7.2',
+      ].join('\n'),
+    });
+
+    expect(result.validRowCount).toBe(0);
+    expect(result.invalidRowCount).toBe(1);
+    expect(result.issues).toEqual([
+      {
+        rowNumber: 2,
+        column: 'Abholdatum',
+        message: 'Abholdatum muss als ISO-Datum im Format YYYY-MM-DD angegeben werden.',
+        value: '2026-02-30',
+      },
+    ]);
+  });
+
   it('detects delimiters correctly when escaped quotes appear inside quoted header cells', () => {
     expect(detectWasteImportCsvDelimiter('"Papier ""Blau""";Ort;Tour')).toBe(';');
   });

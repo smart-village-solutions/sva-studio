@@ -3632,10 +3632,100 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 --
 -- Die externe Waste-Fachdatenbank führt `waste_fractions.reminder_config`
 -- als JSONB-Source-of-Truth für Erinnerungen.
+-- Der folgende SQL-Ausschnitt hält den für Studio relevanten
+-- Tabellenzustand von `waste_location_tour_pickup_dates` inklusive
+-- `note` als nullable Spalte sowie der DOI-/Reminder-Persistenz
+-- für öffentliche Waste-E-Mail-Erinnerungen fest.
 -- Legacy-Flachspalten bleiben dort nur als Migrationsquelle und
 -- Kompatibilitätsoberfläche erhalten und sind bewusst nicht Teil dieses
 -- migrationsbasierten Studio-Snapshots.
 --
+
+CREATE TABLE IF NOT EXISTS waste_location_tour_pickup_dates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    location_id uuid NOT NULL,
+    tour_id uuid NOT NULL,
+    pickup_date date NOT NULL,
+    note text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT waste_location_tour_pickup_dates_pkey PRIMARY KEY (id),
+    CONSTRAINT waste_location_tour_pickup_dates_location_tour_date_unique UNIQUE (location_id, tour_id, pickup_date)
+);
+
+CREATE TABLE IF NOT EXISTS waste_email_reminder_subscriptions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    email text NOT NULL,
+    email_hash text NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    region_id uuid,
+    city_id uuid NOT NULL,
+    street_id text NOT NULL,
+    house_number_id uuid,
+    location_label text NOT NULL,
+    consent_version text NOT NULL,
+    consent_accepted_at timestamp with time zone NOT NULL,
+    doi_token_hash text NOT NULL,
+    unsubscribe_token_hash text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    activated_at timestamp with time zone,
+    unsubscribed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT waste_email_reminder_subscriptions_pkey PRIMARY KEY (id),
+    CONSTRAINT waste_email_reminder_subscriptions_doi_token_hash_unique UNIQUE (doi_token_hash),
+    CONSTRAINT waste_email_reminder_subscriptions_unsubscribe_token_hash_unique UNIQUE (unsubscribe_token_hash),
+    CONSTRAINT waste_email_reminder_subscriptions_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'unsubscribed'::text, 'expired'::text])))
+);
+
+CREATE INDEX idx_waste_email_reminder_subscriptions_email_location_status
+    ON waste_email_reminder_subscriptions USING btree (email_hash, city_id, street_id, house_number_id, status);
+
+CREATE INDEX idx_waste_email_reminder_subscriptions_status_expires_at
+    ON waste_email_reminder_subscriptions USING btree (status, expires_at);
+
+CREATE TABLE IF NOT EXISTS waste_email_reminder_subscription_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    subscription_id uuid NOT NULL,
+    fraction_id uuid NOT NULL,
+    slot_id text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT waste_email_reminder_subscription_items_pkey PRIMARY KEY (id),
+    CONSTRAINT waste_email_reminder_subscription_items_unique UNIQUE (subscription_id, fraction_id, slot_id),
+    CONSTRAINT waste_email_reminder_subscription_items_subscription_id_fkey FOREIGN KEY (subscription_id) REFERENCES waste_email_reminder_subscriptions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_waste_email_reminder_subscription_items_subscription_id
+    ON waste_email_reminder_subscription_items USING btree (subscription_id);
+
+CREATE TABLE IF NOT EXISTS waste_email_reminder_outbox (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    subscription_id uuid NOT NULL,
+    message_kind text NOT NULL,
+    transport_id text NOT NULL,
+    template_key text NOT NULL,
+    send_at timestamp with time zone NOT NULL,
+    dedupe_key text NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    payload jsonb NOT NULL,
+    leased_at timestamp with time zone,
+    sent_at timestamp with time zone,
+    attempt_count integer DEFAULT 0 NOT NULL,
+    last_error text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT waste_email_reminder_outbox_pkey PRIMARY KEY (id),
+    CONSTRAINT waste_email_reminder_outbox_dedupe_key_unique UNIQUE (dedupe_key),
+    CONSTRAINT waste_email_reminder_outbox_message_kind_check CHECK ((message_kind = ANY (ARRAY['doi'::text, 'reminder'::text]))),
+    CONSTRAINT waste_email_reminder_outbox_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'sent'::text, 'failed'::text, 'cancelled'::text]))),
+    CONSTRAINT waste_email_reminder_outbox_subscription_id_fkey FOREIGN KEY (subscription_id) REFERENCES waste_email_reminder_subscriptions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_waste_email_reminder_outbox_status_send_at
+    ON waste_email_reminder_outbox USING btree (status, send_at);
+
+CREATE INDEX idx_waste_email_reminder_outbox_subscription_id
+    ON waste_email_reminder_outbox USING btree (subscription_id);
 
 
 --

@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteToursViewModel } from './use-waste-tours-view-model.js';
-import { createDefaultTourForm, mapTourToForm } from './waste-management.tours.shared.js';
+import { createDefaultTourForm, mapTourWithPickupDatesToForm } from './waste-management.tours.shared.js';
 
 type WasteViewModel = ReturnType<typeof useWasteToursViewModel>;
 
@@ -106,19 +106,24 @@ export const useWasteToursListNavigation = (
       controller.setDialogMode('create');
       resetToursFormState(controller);
       controller.setTourForm(createDefaultTourForm());
+      controller.setSelectedTour(null);
       void navigate({ to: '/plugins/waste-management', search: toCreateTourSearch(search) });
     },
     openEdit: (tour: WasteTourRecord) => {
       controller.setDialogMode('edit');
       resetToursFormState(controller);
-      controller.setTourForm(mapTourToForm(tour));
+      controller.setSelectedTour(tour);
+      controller.setTourForm(
+        mapTourWithPickupDatesToForm(tour, controller.schedulingOverview?.locationTourPickupDates ?? [])
+      );
       void navigate({ to: '/plugins/waste-management', search: toEditTourSearch(search, tour.id) });
     },
     toDuplicate: (tour: WasteTourRecord) => {
       controller.setDialogMode('create');
       resetToursFormState(controller);
+      controller.setSelectedTour(null);
       controller.setTourForm({
-        ...mapTourToForm(tour),
+        ...mapTourWithPickupDatesToForm(tour, []),
         id: createDefaultTourForm().id,
         name: `${tour.name} (Kopie)`,
       });

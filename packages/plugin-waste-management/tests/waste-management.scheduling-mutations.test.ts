@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 const deleteWasteManagementGlobalDateShiftMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteWasteManagementTourDateShiftMock = vi.hoisted(() => vi.fn(async () => undefined));
+const deleteWasteManagementHolidayRuleMock = vi.hoisted(() => vi.fn(async () => undefined));
 const updateWasteManagementHolidayRuleMock = vi.hoisted(() => vi.fn(async () => undefined));
 const WasteManagementApiErrorMock = vi.hoisted(
   () =>
@@ -15,6 +16,7 @@ const WasteManagementApiErrorMock = vi.hoisted(
 import { createWasteSchedulingMutationHandlers } from '../src/waste-management.scheduling-mutations.js';
 
 vi.mock('../src/waste-management.api.js', () => ({
+  deleteWasteManagementHolidayRule: deleteWasteManagementHolidayRuleMock,
   deleteWasteManagementGlobalDateShift: deleteWasteManagementGlobalDateShiftMock,
   deleteWasteManagementTourDateShift: deleteWasteManagementTourDateShiftMock,
   updateWasteManagementHolidayRule: updateWasteManagementHolidayRuleMock,
@@ -22,7 +24,7 @@ vi.mock('../src/waste-management.api.js', () => ({
 }));
 
 describe('createWasteSchedulingMutationHandlers', () => {
-  it('deletes mixed scheduling rows and reports a success message', async () => {
+  it('deletes mixed scheduling rows including holiday rules and reports a success message', async () => {
     const state = {
       setSaving: vi.fn(),
       setMessage: vi.fn(),
@@ -34,6 +36,16 @@ describe('createWasteSchedulingMutationHandlers', () => {
     const handlers = createWasteSchedulingMutationHandlers({ state, pt, loadOverview });
 
     await handlers.onDeleteSchedulingRows([
+      {
+        id: 'holiday-rule-1',
+        entryType: 'holiday-rule',
+        kind: 'holiday',
+        originalDate: '2026-01-01',
+        contextLabel: 'Neujahr',
+        sortLabel: 'Neujahr',
+        canDelete: true,
+        rule: {} as never,
+      },
       {
         id: 'global-1',
         entryType: 'global-shift',
@@ -58,12 +70,13 @@ describe('createWasteSchedulingMutationHandlers', () => {
       },
     ]);
 
+    expect(deleteWasteManagementHolidayRuleMock).toHaveBeenCalledWith('holiday-rule-1');
     expect(deleteWasteManagementGlobalDateShiftMock).toHaveBeenCalledWith('global-1');
     expect(deleteWasteManagementTourDateShiftMock).toHaveBeenCalledWith('tour-shift-1');
     expect(loadOverview).toHaveBeenCalledWith(true);
     expect(state.setMessage).toHaveBeenCalledWith({
       kind: 'success',
-      text: 'scheduling.messages.deleteSuccess:2',
+      text: 'scheduling.messages.deleteSuccess:3',
     });
     expect(state.setSaving).toHaveBeenNthCalledWith(1, true);
     expect(state.setSaving).toHaveBeenLastCalledWith(false);

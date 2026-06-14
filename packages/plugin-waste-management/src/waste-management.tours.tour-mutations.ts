@@ -3,11 +3,20 @@ import type { WasteTourRecord } from '@sva/plugin-sdk';
 
 import {
   createWasteManagementTour,
+  createWasteManagementLocationTourPickupDate,
+  deleteWasteManagementLocationTourPickupDate,
   deleteWasteManagementTour,
+  updateWasteManagementLocationTourPickupDate,
   updateWasteManagementTour,
 } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
-import { mapTourToForm, toCreateTourInput, toUpdateTourInput } from './waste-management.tours.shared.js';
+import {
+  createTourDateLocationAssignmentKey,
+  mapTourToForm,
+  normalizeTourDateLocationAssignments,
+  toCreateTourInput,
+  toUpdateTourInput,
+} from './waste-management.tours.shared.js';
 import type { WasteToursState } from './use-waste-tours-state.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
@@ -31,6 +40,77 @@ const setDeleteErrorMessage = (state: WasteToursState, pt: Translate, error: unk
   });
 };
 
+const validateTourAssignments = (state: WasteToursState, pt: Translate) => {
+  const activeDates = new Set(state.tourForm.customDates.map((entry) => entry.date));
+
+  for (const assignment of state.tourForm.dateLocationAssignments) {
+    if (!activeDates.has(assignment.pickupDate)) {
+      continue;
+    }
+    if (assignment.locationId.trim().length === 0 || assignment.note.trim().length === 0) {
+      state.setMessage({
+        kind: 'error',
+        text: pt('tours.messages.assignmentIncomplete'),
+      });
+      return false;
+    }
+  }
+
+  return true;
+};
+
+const reconcileTourDateLocationAssignments = async ({
+  state,
+  tourId,
+}: {
+  readonly state: WasteToursState;
+  readonly tourId: string;
+}) => {
+  const existingAssignments = (state.schedulingOverview?.locationTourPickupDates ?? []).filter((entry) => entry.tourId === tourId);
+  const normalizedAssignments = normalizeTourDateLocationAssignments(
+    state.tourForm.dateLocationAssignments.filter((entry) => entry.pickupDate.length > 0)
+  );
+
+  const existingByKey = new Map(existingAssignments.map((entry) => [createTourDateLocationAssignmentKey(entry), entry]));
+  const nextByKey = new Map(normalizedAssignments.map((entry) => [createTourDateLocationAssignmentKey(entry), entry]));
+
+  const createOperations = normalizedAssignments
+    .filter((entry) => !existingByKey.has(createTourDateLocationAssignmentKey(entry)))
+    .map((entry) =>
+      createWasteManagementLocationTourPickupDate({
+        id: entry.id,
+        locationId: entry.locationId,
+        tourId,
+        pickupDate: entry.pickupDate,
+        note: entry.note,
+      })
+    );
+
+  const updateOperations = normalizedAssignments.flatMap((entry) => {
+    const existing = existingByKey.get(createTourDateLocationAssignmentKey(entry));
+    if (!existing || (existing.note ?? '') === entry.note) {
+      return [];
+    }
+
+    return [
+      updateWasteManagementLocationTourPickupDate(existing.id, {
+        locationId: entry.locationId,
+        tourId,
+        pickupDate: entry.pickupDate,
+        note: entry.note,
+      }),
+    ];
+  });
+
+  const deleteOperations = existingAssignments.flatMap((entry) =>
+    nextByKey.has(createTourDateLocationAssignmentKey(entry))
+      ? []
+      : [deleteWasteManagementLocationTourPickupDate(entry.id)]
+  );
+
+  await Promise.all([...createOperations, ...updateOperations, ...deleteOperations]);
+};
+
 const createSubmitTourHandler = ({ state, pt, loadOverview }: WasteToursSubmissionContext) => async (
   event: FormEvent<HTMLFormElement>,
   mode = state.dialogMode,
@@ -41,11 +121,15 @@ const createSubmitTourHandler = ({ state, pt, loadOverview }: WasteToursSubmissi
   state.setMessage(null);
   state.setLastOutcome(null);
   try {
+    if (!validateTourAssignments(state, pt)) {
+      return;
+    }
     if (mode === 'create') {
       await createWasteManagementTour(toCreateTourInput(state.tourForm, duplicateFromTourId));
     } else {
       await updateWasteManagementTour(state.tourForm.id, toUpdateTourInput(state.tourForm));
     }
+    await reconcileTourDateLocationAssignments({ state, tourId: state.tourForm.id });
     await loadOverview(true);
     startTransition(() => {
       state.setDialogOpen(false);

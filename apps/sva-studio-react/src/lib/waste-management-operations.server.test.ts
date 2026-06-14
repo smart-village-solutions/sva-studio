@@ -363,6 +363,150 @@ describe('waste management operations runtime', () => {
     });
   });
 
+  it('renders reminder outbox entries into dispatchable mails', async () => {
+    const dispatchMail = vi.fn(async () => ({
+      providerMessageId: 'provider-1',
+    }));
+    const leaseDueOutboxEntries = vi.fn(async () => [
+      {
+        id: 'outbox-1',
+        subscriptionId: 'subscription-1',
+        messageKind: 'reminder',
+        transportId: 'transport-smtp',
+        templateKey: 'waste.email-reminder.reminder',
+        sendAt: '2026-06-15T06:00:00.000Z',
+        dedupeKey: 'dedupe-1',
+        attemptCount: 0,
+        payload: {
+          orderId: 'subscription-1',
+          transportId: 'transport-smtp',
+          messageKind: 'transactional',
+          templateKey: 'waste.email-reminder.reminder',
+          locale: 'de-DE',
+          addresses: [
+            {
+              kind: 'to',
+              email: 'max@example.org',
+            },
+            {
+              kind: 'reply_to',
+              email: 'abfall@example.org',
+            },
+          ],
+          templatePayload: {
+            subject: 'Abfalltermine für Perleberg (Ackerstraße)',
+            introText: 'Nicht vergessen: Di. 16.06.',
+            listIntroText: 'Folgende Fraktion wird abgeholt:',
+            outroText: 'Mit freundlichen Grüßen\nIhr Mülli',
+            reasonText: 'Sie erhalten diese Nachricht, weil Sie eine Erinnerung eingerichtet haben.',
+            unsubscribeLabel: 'E-Mail-Erinnerung abbestellen',
+            unsubscribeUrl: 'https://demo.abfallkalender.example/erinnerungen/abmelden?token=sha256:abc',
+            locationLabel: 'Perleberg (Ackerstraße)',
+            pickupDate: 'Di., 16.06.',
+            fractionName: 'Papier, Pappe, Kartonagen',
+            privacyPolicyUrl: 'https://demo.abfallkalender.example/datenschutz',
+            imprintUrl: 'https://demo.abfallkalender.example/impressum',
+            serviceLabel: 'Landkreis Prignitz',
+          },
+          tags: ['waste-management', 'email-reminder', 'reminder'],
+          metadata: {
+            module: 'waste-management',
+            flow: 'public-email-reminder-delivery',
+          },
+        },
+        providerMessageId: null,
+        lastErrorMessage: null,
+        sentAt: null,
+        retryAt: null,
+        lockedAt: '2026-06-15T06:00:00.000Z',
+        createdAt: '2026-06-14T06:00:00.000Z',
+        updatedAt: '2026-06-14T06:00:00.000Z',
+      },
+    ]);
+    const markOutboxEntrySent = vi.fn(async () => undefined);
+    const reminderRepository = {
+      leaseDueOutboxEntries,
+      markOutboxEntrySent,
+      markOutboxEntryFailed: vi.fn(async () => undefined),
+    };
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [
+        createInterfaceRecordWithEmailReminderConfig(),
+        createMailTransportInterfaceRecord(),
+      ]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      dispatchMail,
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.processEmailReminderOutbox('instance-1', {
+      operation: 'process-email-reminder-outbox',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(dispatchMail).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      transport: expect.objectContaining({
+        transportId: 'transport-smtp',
+        transportType: 'smtp',
+      }),
+      payload: expect.objectContaining({
+        templateKey: 'waste.email-reminder.reminder',
+      }),
+      message: {
+        from: {
+          email: 'noreply@abfallkalender.example',
+          displayName: 'Ihr Mülli',
+        },
+        to: [{ email: 'max@example.org' }],
+        replyTo: [{ email: 'abfall@example.org' }],
+        subject: 'Abfalltermine für Perleberg (Ackerstraße)',
+        text: [
+          'Nicht vergessen: Di. 16.06.',
+          'Folgende Fraktion wird abgeholt:',
+          '- Papier, Pappe, Kartonagen (Di., 16.06.)',
+          'Mit freundlichen Grüßen\nIhr Mülli',
+          'Sie erhalten diese Nachricht, weil Sie eine Erinnerung eingerichtet haben.',
+          'E-Mail-Erinnerung abbestellen: https://demo.abfallkalender.example/erinnerungen/abmelden?token=sha256:abc',
+          'Datenschutz: https://demo.abfallkalender.example/datenschutz',
+          'Impressum: https://demo.abfallkalender.example/impressum',
+          'Service: Landkreis Prignitz',
+        ].join('\n\n'),
+      },
+    });
+    expect(markOutboxEntrySent).toHaveBeenCalledWith({
+      outboxId: 'outbox-1',
+      now: '2026-06-15T06:00:00.000Z',
+      providerMessageId: 'provider-1',
+    });
+    expect(result.details).toMatchObject({
+      operation: 'process-email-reminder-outbox',
+      mode: 'executed',
+      leasedCount: 1,
+      sentCount: 1,
+      retryScheduledCount: 0,
+      failedCount: 0,
+    });
+  });
+
   it('resolves interface-based waste secrets with the shared default revealSecret path', async () => {
     const secretConfigCiphertext = protectField(
       JSON.stringify({
@@ -605,6 +749,42 @@ describe('waste management operations runtime', () => {
       skippedRows: 0,
       errorCount: 0,
     });
+  });
+
+  it('carries pickup-date notes through the ortsbezogene-tourtermine runtime import path', async () => {
+    const repository = createRepositoryMock();
+    const runtime = await createRuntimeWithRepositoryMock(
+      repository,
+      new TextEncoder().encode([
+        'Ort;Straße;Hausnummern;Abholdatum;Hinweis;Hausmüll;Papier;Gelbe Säcke;;;;',
+        'Perleberg;Ackerstraße;Alle Hausnummern;2026-02-03;  Schnee-Ersatztermin  ;HM.3.3;PPK.7.2;LVP.9.4;;;;',
+        'Bad Wilsnack;Alle Straßen;Alle Hausnummern;2026-02-10;   ;;PPK.7.2;;;;;',
+      ].join('\n'))
+    );
+
+    await runtime.importData('instance-1', {
+      operation: 'import-data',
+      importProfileId: 'waste-management.ortsbezogene-tourtermine',
+      sourceFormat: 'text/csv',
+      dryRun: false,
+      blobRef: 'fixture.csv',
+    });
+
+    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenCalledTimes(4);
+    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        pickupDate: '2026-02-03',
+        note: 'Schnee-Ersatztermin',
+      })
+    );
+    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenNthCalledWith(
+      4,
+      expect.objectContaining({
+        pickupDate: '2026-02-10',
+        note: null,
+      })
+    );
   });
 
   it('reports live block progress for location-based tour assignment imports', async () => {
@@ -976,6 +1156,101 @@ const createWorkbookBytes = (rows: readonly (readonly string[])[]): Uint8Array =
   return XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
 };
 
+const createWasteEmailReminderConfig = () => ({
+  enabled: true,
+  publicSignupEnabled: true,
+  transportId: 'transport-smtp',
+  publicBaseUrl: 'https://demo.abfallkalender.example',
+  doiConfirmPath: '/erinnerungen/bestaetigen',
+  unsubscribePath: '/erinnerungen/abmelden',
+  signupSuccessPath: '/erinnerungen/pending',
+  activationSuccessPath: '/erinnerungen/aktiviert',
+  unsubscribeSuccessPath: '/erinnerungen/abgemeldet',
+  invalidTokenPath: '/erinnerungen/ungueltig',
+  fromName: 'Ihr Mülli',
+  fromEmail: 'noreply@abfallkalender.example',
+  replyToEmail: 'abfall@example.org',
+  serviceLabel: 'Landkreis Prignitz',
+  privacyPolicyUrl: 'https://demo.abfallkalender.example/datenschutz',
+  imprintUrl: 'https://demo.abfallkalender.example/impressum',
+  consentLabel: 'Ich stimme der Verarbeitung zu.',
+  consentVersion: '2026-06',
+  dataControllerLabel: 'Landkreis Prignitz',
+  dataProtectionContactEmail: 'datenschutz@example.org',
+  doiSubjectTemplate: 'Bitte E-Mail-Erinnerung bestätigen',
+  doiPreheader: 'Bestätigen Sie Ihre Anmeldung.',
+  doiIntroText: 'Bitte bestätigen Sie Ihre Anmeldung zur E-Mail-Erinnerung.',
+  doiButtonLabel: 'Jetzt bestätigen',
+  doiFallbackText: 'Falls der Button nicht funktioniert, nutzen Sie den Link.',
+  doiExpiryNoticeText: 'Der Link ist zeitlich begrenzt gültig.',
+  reminderSubjectTemplate: 'Abfalltermine für {{locationLabel}}',
+  reminderIntroTemplate: 'Nicht vergessen: {{pickupDate}}',
+  reminderListIntroTemplate: 'Folgende Fraktionen stehen an:',
+  reminderOutroText: 'Mit freundlichen Grüßen\nIhr Mülli',
+  unsubscribeLinkLabel: 'E-Mail-Erinnerung abbestellen',
+  reminderReasonText: 'Sie erhalten diese Nachricht, weil Sie eine Erinnerung eingerichtet haben.',
+  unsubscribeSuccessHeadline: 'E-Mail-Erinnerung deaktiviert',
+  unsubscribeSuccessBody: 'Der Dienst wurde deaktiviert.',
+  unsubscribeAlreadyDoneHeadline: 'Bereits deaktiviert',
+  unsubscribeAlreadyDoneBody: 'Die Erinnerung war bereits deaktiviert.',
+  unsubscribeErrorHeadline: 'Abmeldung fehlgeschlagen',
+  unsubscribeErrorBody: 'Der Link ist ungültig.',
+  maxSubscriptionsPerEmailAndLocation: 5,
+  signupRateLimitPerIpPerHour: 10,
+  signupRateLimitPerEmailPerHour: 5,
+  doiTokenTtlHours: 48,
+  pendingSubscriptionTtlHours: 72,
+  materializationLookaheadDays: 7,
+  unsubscribeTokenTtlDays: 365,
+} as const);
+
+const createInterfaceRecordWithEmailReminderConfig = (): ExternalInterfaceRecord => ({
+  ...createInterfaceRecord(),
+  publicConfig: {
+    projectUrl: 'https://tenant.supabase.co',
+    schemaName: 'wm',
+    wasteManagementSelected: true,
+    emailReminderConfig: createWasteEmailReminderConfig(),
+  },
+});
+
+const createMailTransportInterfaceRecord = (): ExternalInterfaceRecord => ({
+  id: 'mail-transport-1',
+  instanceId: 'instance-1',
+  typeKey: 'mail_transport',
+  ownerKind: 'host',
+  ownerId: 'host',
+  displayName: 'SMTP Transport',
+  alias: 'smtp-default',
+  enabled: true,
+  isDefault: true,
+  category: 'api',
+  baseUrl: 'smtp://mail.example.org',
+  authMode: 'basic',
+  publicConfig: {
+    transportId: 'transport-smtp',
+    transportType: 'smtp',
+    securityMode: 'starttls',
+    authMode: 'basic',
+    host: 'mail.example.org',
+    port: 587,
+    username: 'mailer',
+    defaultFromEmail: 'transport@example.org',
+    defaultFromName: 'Transport Default',
+    defaultReplyToEmail: 'transport-reply@example.org',
+    maxBatchSize: 25,
+  },
+  secretConfigCiphertext: protectField(
+    JSON.stringify({ password: 'smtp-password' }),
+    buildExternalInterfaceSecretConfigAad('mail-transport-1')
+  ) ?? undefined,
+  statusCheckKind: 'mail_transport',
+  visibleStatus: 'ok',
+  lastCheckStatus: 'succeeded',
+  lastCheckedAt: '2026-06-14T08:00:00.000Z',
+  updatedAt: '2026-06-14T08:00:00.000Z',
+});
+
 const createSqlClientMock = (query: SqlClient['query']): SqlClient => ({
   query,
   release: vi.fn(),
@@ -1010,6 +1285,7 @@ const createRepositoryMockBase = () => ({
   upsertWasteFraction: vi.fn(async () => undefined),
   upsertWasteTour: vi.fn(async () => undefined),
   upsertWasteLocationTourLink: vi.fn(async () => undefined),
+  upsertWasteLocationTourPickupDate: vi.fn(async () => undefined),
   upsertWasteTourDateShift: vi.fn(async () => undefined),
   upsertWasteGlobalDateShift: vi.fn(async () => undefined),
 });

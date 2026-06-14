@@ -137,6 +137,13 @@ export const governanceAuthHandlerMap = {
   '/api/v1/waste-management/scheduling': {
     GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getSchedulingOverview),
   },
+  '/api/v1/waste-management/location-tour-pickup-dates': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createLocationTourPickupDate),
+  },
+  '/api/v1/waste-management/location-tour-pickup-dates/$pickupDateId': {
+    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteLocationTourPickupDate),
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateLocationTourPickupDate),
+  },
   '/api/v1/waste-management/global-date-shifts': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createGlobalDateShift),
   },
@@ -145,6 +152,7 @@ export const governanceAuthHandlerMap = {
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateGlobalDateShift),
   },
   '/api/v1/waste-management/holiday-rules/$holidayRuleId': {
+    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteHolidayRule),
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateHolidayRule),
   },
   '/api/v1/waste-management/tour-date-shifts': {

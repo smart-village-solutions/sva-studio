@@ -1,3 +1,5 @@
+import type { WasteHolidayRuleRecord } from '@sva/core';
+
 import type { PublicWasteCalendarEntry, PublicWasteResolvedSelection } from './public-waste-contract.js';
 import {
   addYearsUtc,
@@ -58,12 +60,16 @@ export type CalculatePublicWasteCalendarEntriesInput = {
   readonly linkedTours: readonly PublicWasteLinkedTour[];
   readonly tourDateShifts: readonly PublicWasteTourDateShift[];
   readonly globalDateShifts: readonly PublicWasteGlobalDateShift[];
+  readonly holidayRules?: readonly WasteHolidayRuleRecord[];
 };
 
 type Occurrence = {
   readonly date: string;
   readonly note: string | null;
 };
+
+type HolidayRuleDirection = 'advance' | 'postpone';
+type HolidayRuleCoverage = 'single_pickup' | 'rest_of_week';
 
 const compareEntries = (left: PublicWasteCalendarEntry, right: PublicWasteCalendarEntry): number =>
   left.date.localeCompare(right.date) || left.fractionLabel.localeCompare(right.fractionLabel, 'de');
@@ -83,6 +89,89 @@ const buildShiftMap = <TShift extends { readonly originalDate: string; readonly 
       })
       .filter((entry): entry is readonly [string, { readonly actualDate: string; readonly description: string | null }] => entry !== null)
   );
+
+const addDays = (value: string, days: number): string | undefined => {
+  const parsed = parseDateOnlyUtc(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+
+  parsed.setUTCDate(parsed.getUTCDate() + days);
+  return formatDateOnlyUtc(parsed);
+};
+
+const addDaysWithWeekendClampForAdvance = (value: string, days: number): string | undefined => {
+  const shifted = addDays(value, days);
+  if (!shifted || days >= 0) {
+    return shifted;
+  }
+
+  const parsed = parseDateOnlyUtc(shifted);
+  if (Number.isNaN(parsed.getTime())) {
+    return shifted;
+  }
+
+  return parsed.getUTCDay() === 0 ? addDays(shifted, -1) : shifted;
+};
+
+const getWeekStartIso = (value: string): string | undefined => {
+  const parsed = parseDateOnlyUtc(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+
+  const weekday = parsed.getUTCDay();
+  const mondayShift = weekday === 0 ? -6 : 1 - weekday;
+  parsed.setUTCDate(parsed.getUTCDate() + mondayShift);
+  return formatDateOnlyUtc(parsed);
+};
+
+const isDateAffectedByHolidayRule = (
+  date: string,
+  rule: Readonly<{
+    readonly triggerDate: string;
+    readonly direction: HolidayRuleDirection;
+    readonly coverage: HolidayRuleCoverage;
+  }>
+): boolean => {
+  if (rule.coverage === 'single_pickup') {
+    return date === rule.triggerDate;
+  }
+
+  if (getWeekStartIso(date) !== getWeekStartIso(rule.triggerDate)) {
+    return false;
+  }
+
+  const parsedDate = parseDateOnlyUtc(date);
+  const parsedTrigger = parseDateOnlyUtc(rule.triggerDate);
+  if (Number.isNaN(parsedDate.getTime()) || Number.isNaN(parsedTrigger.getTime())) {
+    return false;
+  }
+
+  const dateWeekday = parsedDate.getUTCDay();
+  const triggerWeekday = parsedTrigger.getUTCDay();
+
+  return rule.direction === 'postpone'
+    ? dateWeekday >= triggerWeekday
+    : dateWeekday <= triggerWeekday;
+};
+
+const applyHolidayRule = (
+  date: string,
+  rule: Readonly<{
+    readonly triggerDate: string;
+    readonly direction: HolidayRuleDirection;
+    readonly coverage: HolidayRuleCoverage;
+  }>
+): string => {
+  if (!isDateAffectedByHolidayRule(date, rule)) {
+    return date;
+  }
+
+  return rule.direction === 'advance'
+    ? (addDaysWithWeekendClampForAdvance(date, -1) ?? date)
+    : (addDays(date, 1) ?? date);
+};
 
 const resolveOccurrenceWindowBound = ({
   baseBound,
@@ -155,6 +244,19 @@ export const calculatePublicWasteCalendarEntries = (
   }
   const windowEnd = addYearsUtc(windowStart, 1);
   const entries = new Map<string, PublicWasteCalendarEntry>();
+  const holidayRules = (input.holidayRules ?? [])
+    .map((rule) => ({
+      triggerDate: normalizeDateOnly(rule.holidayDate),
+      direction: rule.strategy === 'advance' ? 'advance' : rule.strategy === 'postpone' ? 'postpone' : null,
+      coverage: rule.scope === 'full-week' ? 'rest_of_week' : rule.scope === 'holiday-only' ? 'single_pickup' : null,
+    }))
+    .filter(
+      (rule): rule is {
+        readonly triggerDate: string;
+        readonly direction: HolidayRuleDirection;
+        readonly coverage: HolidayRuleCoverage;
+      } => Boolean(rule.triggerDate) && rule.direction !== null && rule.coverage !== null
+    );
 
   for (const linkedTour of input.linkedTours) {
     const linkStartDate = normalizeDateOnly(linkedTour.startDate) ?? windowStart;
@@ -193,7 +295,8 @@ export const calculatePublicWasteCalendarEntries = (
     for (const occurrence of occurrences) {
       const tourShift = tourShiftMap.get(occurrence.date);
       const globalShift = globalShiftMap.get(occurrence.date);
-      const shiftedDate = tourShift?.actualDate ?? globalShift?.actualDate ?? occurrence.date;
+      const manuallyShiftedDate = tourShift?.actualDate ?? globalShift?.actualDate ?? occurrence.date;
+      const shiftedDate = holidayRules.reduce((currentDate, rule) => applyHolidayRule(currentDate, rule), manuallyShiftedDate);
       const note = tourShift?.description ?? globalShift?.description ?? occurrence.note;
 
       if (!isDateWithinRange(shiftedDate, windowStart, windowEnd)) {

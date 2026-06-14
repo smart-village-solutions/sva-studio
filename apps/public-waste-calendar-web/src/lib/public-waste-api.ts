@@ -1,5 +1,8 @@
 import {
   buildPublicWasteLocationKey,
+  type PublicWasteReminderSignupRequest,
+  type PublicWasteReminderSignupResponse,
+  type PublicWasteReminderSignupView,
   type PublicWasteResolvedSelection,
   type PublicWasteSelectionState,
 } from './public-waste-contract.js';
@@ -55,6 +58,7 @@ export type PublicWasteSelectionResponse = {
 export type PublicWasteCalendarResponse = Awaited<ReturnType<typeof loadResolvedPublicWasteCalendar>> & {
   readonly selectionSummary: string;
   readonly icalUrl: string;
+  readonly reminderSignup?: PublicWasteReminderSignupView;
 };
 
 const toSearchParams = (selection: PublicWasteSelectionState): URLSearchParams => {
@@ -122,4 +126,22 @@ export const requestPublicWastePdf = async (input: {
     blob: await response.blob(),
     filename: filenameMatch?.[1] ?? `abfallkalender-${input.year}.pdf`,
   };
+};
+
+export const requestPublicWasteReminderSignup = async (
+  input: PublicWasteReminderSignupRequest
+): Promise<PublicWasteReminderSignupResponse> => {
+  const response = await fetch('/api/public-waste/reminder-signups', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `public_waste_reminder_signup_failed:${response.status}`);
+  }
+
+  return (await response.json()) as PublicWasteReminderSignupResponse;
 };

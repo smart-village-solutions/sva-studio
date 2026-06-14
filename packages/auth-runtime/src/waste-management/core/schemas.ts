@@ -1,7 +1,4 @@
-import {
-  wasteManagementMasterDataContract,
-  type WasteTourRecurrence,
-} from '@sva/core';
+import { wasteManagementMasterDataContract, type WasteTourRecurrence } from '@sva/core';
 import { z } from 'zod';
 
 const wasteFractionReminderCountSchema = z.enum(wasteManagementMasterDataContract.fractionReminderCounts);
@@ -165,6 +162,96 @@ const optionalWasteUrlSchema = z
   .string()
   .trim()
   .refine((value) => value.length === 0 || z.string().url().safeParse(value).success, 'Ungültige URL.');
+const optionalEmailSchema = z
+  .string()
+  .trim()
+  .refine((value) => value.length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), 'Ungültige E-Mail-Adresse.');
+const optionalRelativePathSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => value.length === 0 || (/^\/(?!\/)/.test(value) && !/^[a-z]+:/i.test(value)),
+    'Ungültiger relativer Pfad.'
+  );
+const requiredRelativePathSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine((value) => /^\/(?!\/)/.test(value) && !/^[a-z]+:/i.test(value), 'Ungültiger relativer Pfad.');
+const wastePublicBaseUrlSchema = z
+  .string()
+  .trim()
+  .refine((value) => {
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol === 'https:') {
+        return true;
+      }
+
+      return (
+        parsed.protocol === 'http:' &&
+        (parsed.hostname === 'localhost' ||
+          parsed.hostname.endsWith('.localhost') ||
+          parsed.hostname === '127.0.0.1' ||
+          parsed.hostname === '[::1]' ||
+          parsed.hostname === '::1')
+      );
+    } catch {
+      return false;
+    }
+  }, 'Ungültige Public-Base-URL.');
+const wastePositiveIntegerSchema = z.number().int().positive();
+const wasteEmailReminderConfigSchema = z.object({
+  enabled: z.boolean(),
+  publicSignupEnabled: z.boolean(),
+  transportId: z.string().trim().min(1),
+  publicBaseUrl: wastePublicBaseUrlSchema,
+  doiConfirmPath: requiredRelativePathSchema,
+  unsubscribePath: requiredRelativePathSchema,
+  signupSuccessPath: optionalRelativePathSchema.optional(),
+  activationSuccessPath: optionalRelativePathSchema.optional(),
+  unsubscribeSuccessPath: optionalRelativePathSchema.optional(),
+  invalidTokenPath: optionalRelativePathSchema.optional(),
+  fromName: z.string().trim().min(1),
+  fromEmail: optionalEmailSchema.refine((value) => value.length > 0, 'Ungültige E-Mail-Adresse.'),
+  replyToEmail: optionalEmailSchema.optional(),
+  serviceLabel: z.string().trim().optional(),
+  privacyPolicyUrl: z.string().trim().url('Ungültige URL.'),
+  imprintUrl: z.string().trim().url('Ungültige URL.'),
+  consentLabel: z.string().trim().min(1),
+  consentVersion: z.string().trim().min(1),
+  dataControllerLabel: z.string().trim().optional(),
+  dataProtectionContactEmail: optionalEmailSchema.optional(),
+  doiSubjectTemplate: z.string().trim().min(1),
+  doiPreheader: z.string().trim().optional(),
+  doiIntroText: z.string().trim().min(1),
+  doiButtonLabel: z.string().trim().min(1),
+  doiFallbackText: z.string().trim().optional(),
+  doiExpiryNoticeText: z.string().trim().optional(),
+  doiSuccessHeadline: z.string().trim().optional(),
+  doiSuccessBody: z.string().trim().optional(),
+  doiErrorHeadline: z.string().trim().optional(),
+  doiErrorBody: z.string().trim().optional(),
+  reminderSubjectTemplate: z.string().trim().min(1),
+  reminderIntroTemplate: z.string().trim().min(1),
+  reminderListIntroTemplate: z.string().trim().optional(),
+  reminderOutroText: z.string().trim().optional(),
+  unsubscribeLinkLabel: z.string().trim().min(1),
+  reminderReasonText: z.string().trim().optional(),
+  unsubscribeSuccessHeadline: z.string().trim().min(1),
+  unsubscribeSuccessBody: z.string().trim().min(1),
+  unsubscribeAlreadyDoneHeadline: z.string().trim().optional(),
+  unsubscribeAlreadyDoneBody: z.string().trim().optional(),
+  unsubscribeErrorHeadline: z.string().trim().optional(),
+  unsubscribeErrorBody: z.string().trim().optional(),
+  maxSubscriptionsPerEmailAndLocation: wastePositiveIntegerSchema,
+  signupRateLimitPerIpPerHour: wastePositiveIntegerSchema,
+  signupRateLimitPerEmailPerHour: wastePositiveIntegerSchema,
+  doiTokenTtlHours: wastePositiveIntegerSchema,
+  pendingSubscriptionTtlHours: wastePositiveIntegerSchema,
+  materializationLookaheadDays: wastePositiveIntegerSchema.min(1).max(14),
+  unsubscribeTokenTtlDays: wastePositiveIntegerSchema.optional(),
+});
 
 const updateWasteSettingsSchema = z.object({
   provider: z.literal('supabase'),
@@ -175,6 +262,7 @@ const updateWasteSettingsSchema = z.object({
   calendarWebUrl: optionalWasteUrlSchema.optional(),
   pdfBrandingAssetUrl: optionalWasteUrlSchema.optional(),
   pdfContactBlock: z.string().trim().max(2_000).optional(),
+  emailReminderConfig: wasteEmailReminderConfigSchema.optional(),
   holidayStateCode: wasteHolidayStateCodeSchema.optional(),
   customRecurrencePresets: z.array(wasteCustomRecurrencePresetSchema).default([]),
   deletedPresetFallbacks: z
@@ -197,6 +285,16 @@ const createWasteLocationTourLinkSchema = z.object({
 });
 
 const updateWasteLocationTourLinkSchema = createWasteLocationTourLinkSchema.omit({ id: true });
+
+const createWasteLocationTourPickupDateSchema = z.object({
+  id: z.string().trim().min(1),
+  locationId: z.string().trim().min(1),
+  tourId: z.string().trim().min(1),
+  pickupDate: wasteTourDateSchema,
+  note: z.string().trim().min(1).optional(),
+});
+
+const updateWasteLocationTourPickupDateSchema = createWasteLocationTourPickupDateSchema.omit({ id: true });
 
 const createWasteLocationTourLinksBulkSchema = z.object({
   locationIds: z.array(z.string().trim().min(1)).min(1).max(100),
@@ -283,6 +381,8 @@ export const wasteManagementTourSchemas = {
   wasteTourDateSchema,
   createWasteLocationTourLinkSchema,
   updateWasteLocationTourLinkSchema,
+  createWasteLocationTourPickupDateSchema,
+  updateWasteLocationTourPickupDateSchema,
   createWasteLocationTourLinksBulkSchema,
   createWasteTourSchema,
   updateWasteTourSchema,

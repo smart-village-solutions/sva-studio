@@ -13,6 +13,7 @@ import type {
   WasteHolidayStateCode,
   WasteHouseNumberRecord,
   WasteLocationTourLinkBulkCreateInput,
+  WasteLocationTourPickupDateRecord,
   WasteLocationTourLinkRecord,
   WasteManagementAuditOverview,
   WasteManagementAuditQuery,
@@ -166,6 +167,15 @@ export type WasteManagementHandlerDeps = {
     tourId: string
   ) => Promise<readonly WasteLocationTourLinkRecord[]>;
   readonly deleteWasteLocationTourLink?: (instanceId: string, linkId: string) => Promise<void>;
+  readonly saveWasteLocationTourPickupDate?: (
+    instanceId: string,
+    input: Omit<WasteLocationTourPickupDateRecord, 'createdAt' | 'updatedAt'>
+  ) => Promise<void>;
+  readonly loadWasteLocationTourPickupDateById?: (
+    instanceId: string,
+    pickupDateId: string
+  ) => Promise<WasteLocationTourPickupDateRecord | null>;
+  readonly deleteWasteLocationTourPickupDate?: (instanceId: string, pickupDateId: string) => Promise<void>;
   readonly saveWasteTour?: (instanceId: string, input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
   readonly loadWasteTourById?: (instanceId: string, tourId: string) => Promise<WasteTourRecord | null>;
   readonly deleteWasteTour?: (instanceId: string, tourId: string) => Promise<void>;
@@ -194,6 +204,7 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     input: Omit<WasteHolidayRuleRecord, 'createdAt' | 'updatedAt'>
   ) => Promise<void>;
+  readonly deleteWasteHolidayRule?: (instanceId: string, ruleId: string) => Promise<void>;
   readonly loadWasteGlobalDateShiftById?: (
     instanceId: string,
     shiftId: string

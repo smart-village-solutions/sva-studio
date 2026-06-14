@@ -37,6 +37,7 @@ const TourSection = ({
 export const WasteToursTourFields = ({
   form,
   fractions,
+  locations,
   customRecurrencePresets,
   saving = false,
   pt,
@@ -44,6 +45,7 @@ export const WasteToursTourFields = ({
 }: {
   readonly form: TourFormState;
   readonly fractions: readonly WasteFractionRecord[];
+  readonly locations: readonly { id: string; label: string }[];
   readonly customRecurrencePresets: readonly WasteCustomRecurrencePresetRecord[];
   readonly saving?: boolean;
   readonly pt: Translate;
@@ -119,10 +121,13 @@ export const WasteToursTourFields = ({
             <StudioField id="waste-tour-custom-dates" label={pt('tours.fields.customDates')} description={pt('tours.fieldHints.customDates')}>
               <WasteToursCustomDatesField
                 customDates={form.customDates}
+                dateLocationAssignments={form.dateLocationAssignments}
+                locations={locations}
                 firstDate={form.firstDate}
                 endDate={form.endDate}
                 disabled={saving}
                 onChange={(customDates) => onChange({ customDates })}
+                onAssignmentsChange={(dateLocationAssignments) => onChange({ dateLocationAssignments })}
               />
             </StudioField>
           ) : null}

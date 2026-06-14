@@ -8,6 +8,8 @@ const wasteManagementJobTypeIds = {
   resetData: 'waste-management.reset-data',
   syncMainserver: 'waste-management.sync-mainserver',
   syncWasteTypes: 'waste-management.sync-waste-types',
+  materializeEmailReminders: 'waste-management.materialize-email-reminders',
+  processEmailReminderOutbox: 'waste-management.process-email-reminder-outbox',
 } as const;
 
 const wasteManagementResetConfirmationToken = 'RESET' as const;
@@ -69,6 +71,19 @@ export type WasteManagementSyncWasteTypesJobInput = {
   readonly activeOrganizationId?: string;
 };
 
+export type WasteManagementMaterializeEmailRemindersJobInput = {
+  readonly operation: 'materialize-email-reminders';
+  readonly referenceTime?: string;
+};
+
+export type WasteManagementProcessEmailReminderOutboxJobInput = {
+  readonly operation: 'process-email-reminder-outbox';
+  readonly referenceTime?: string;
+  readonly maxBatchSize?: number;
+  readonly maxAttempts?: number;
+  readonly retryDelayMinutes?: number;
+};
+
 export type WasteManagementJobInput =
   | WasteManagementInitializeJobInput
   | WasteManagementApplyMigrationsJobInput
@@ -76,7 +91,9 @@ export type WasteManagementJobInput =
   | WasteManagementSeedJobInput
   | WasteManagementResetJobInput
   | WasteManagementSyncMainserverJobInput
-  | WasteManagementSyncWasteTypesJobInput;
+  | WasteManagementSyncWasteTypesJobInput
+  | WasteManagementMaterializeEmailRemindersJobInput
+  | WasteManagementProcessEmailReminderOutboxJobInput;
 
 export const wasteManagementOperationsContract = {
   pluginId: 'waste-management',

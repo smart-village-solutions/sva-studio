@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createPublicWasteRuntime } from './public-waste-runtime.js';
 
@@ -59,6 +59,97 @@ describe('public waste runtime', () => {
     await expect(response.json()).resolves.toMatchObject({
       error: 'missing_config',
     });
+
+    await runtime.dispose();
+  });
+
+  it('renders the DOI activation page for configured reminder paths', async () => {
+    const assetsDir = await createAssetsDir();
+    cleanupPaths.add(assetsDir);
+
+    const poolConnect = vi.fn().mockResolvedValue({
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [
+            {
+              id: 'subscription-1',
+              status: 'pending',
+              location_label: 'Perleberg, Ackerstr. 12',
+              expires_at: '2026-06-16T19:00:00.000Z',
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({}),
+      release: vi.fn(),
+    });
+
+    const runtime = await createPublicWasteRuntime({
+      assetsDir,
+      env: {
+        PUBLIC_WASTE_CONFIG_JSON: JSON.stringify({
+          instanceId: 'bb-prignitz',
+          supabase: {
+            databaseUrl: 'postgres://example',
+            schemaName: 'public',
+          },
+          emailReminderConfig: {
+            enabled: true,
+            publicSignupEnabled: true,
+            transportId: 'mail-1',
+            publicBaseUrl: 'https://example.invalid',
+            doiConfirmPath: '/erinnerungen/bestaetigen',
+            unsubscribePath: '/erinnerungen/abmelden',
+            fromName: 'Abfallwirtschaft',
+            fromEmail: 'abfall@example.invalid',
+            privacyPolicyUrl: 'https://example.invalid/datenschutz',
+            imprintUrl: 'https://example.invalid/impressum',
+            consentLabel: 'Ich stimme zu.',
+            consentVersion: 'v1',
+            doiSubjectTemplate: 'Bitte bestaetigen',
+            doiIntroText: 'Bitte bestaetigen.',
+            doiButtonLabel: 'Bestaetigen',
+            doiSuccessHeadline: 'Aktiviert',
+            doiSuccessBody: 'Ihre Erinnerung ist aktiv.',
+            reminderSubjectTemplate: 'Erinnerung',
+            reminderIntroTemplate: 'Nicht vergessen.',
+            unsubscribeLinkLabel: 'Abmelden',
+            unsubscribeSuccessHeadline: 'Abgemeldet',
+            unsubscribeSuccessBody: 'Sie erhalten keine weiteren E-Mails.',
+            maxSubscriptionsPerEmailAndLocation: 3,
+            signupRateLimitPerIpPerHour: 10,
+            signupRateLimitPerEmailPerHour: 3,
+            doiTokenTtlHours: 24,
+            pendingSubscriptionTtlHours: 48,
+            materializationLookaheadDays: 7,
+          },
+        }),
+      },
+      createRepository: async () => ({
+        repository: {
+          listSelectionOptions: vi.fn(),
+          loadCalendarEntries: vi.fn(),
+          loadSelectionSummary: vi.fn(),
+          loadReminderSignupOptions: vi.fn(),
+        },
+        pool: {
+          connect: poolConnect,
+        } as never,
+        schemaName: 'public',
+        dispose: async () => {},
+      }),
+    });
+
+    const response = await runtime.handle(
+      new Request('http://localhost/erinnerungen/bestaetigen?token=confirm-token')
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.text()).resolves.toContain('Aktiviert');
 
     await runtime.dispose();
   });

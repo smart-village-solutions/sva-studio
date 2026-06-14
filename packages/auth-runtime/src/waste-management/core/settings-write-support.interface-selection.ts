@@ -2,6 +2,7 @@ import {
   buildWasteManagementPublicConfig,
   isWasteManagementInterfaceSelected,
   readWasteManagementCalendarWebUrl,
+  readWasteManagementEmailReminderConfig,
   readWasteManagementHolidayStateCode,
   readWasteManagementHolidaySyncStatus,
   readWasteManagementLastSuccessfulHolidaySyncAt,
@@ -10,6 +11,7 @@ import {
   type ExternalInterfaceRecord,
   type WasteHolidayStateCode,
   type WasteHolidaySyncStatus,
+  type WasteManagementEmailReminderConfig,
   type WasteManagementSettingsRecord,
 } from '@sva/core';
 
@@ -45,6 +47,7 @@ const createInterfaceSettingsRecord = (
     readonly calendarWebUrl?: string;
     readonly pdfBrandingAssetUrl?: string;
     readonly pdfContactBlock?: string;
+    readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
     readonly holidayStateCode?: WasteHolidayStateCode;
     readonly lastHolidaySyncStatus?: WasteHolidaySyncStatus;
     readonly lastSuccessfulHolidaySyncAt?: string;
@@ -61,6 +64,7 @@ export const persistWasteSettingsInterfaceSelection = async ({
   calendarWebUrl,
   pdfBrandingAssetUrl,
   pdfContactBlock,
+  emailReminderConfig,
   holidayStateCode,
   lastHolidaySyncStatus,
   lastSuccessfulHolidaySyncAt,
@@ -71,6 +75,7 @@ export const persistWasteSettingsInterfaceSelection = async ({
   readonly calendarWebUrl?: string;
   readonly pdfBrandingAssetUrl?: string;
   readonly pdfContactBlock?: string;
+  readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
   readonly holidayStateCode?: WasteHolidayStateCode;
   readonly lastHolidaySyncStatus?: WasteHolidaySyncStatus;
   readonly lastSuccessfulHolidaySyncAt?: string;
@@ -90,6 +95,9 @@ export const persistWasteSettingsInterfaceSelection = async ({
           ? pdfBrandingAssetUrl
           : readWasteManagementPdfBrandingAssetUrl(record.publicConfig),
         pdfContactBlock: isTarget ? pdfContactBlock : readWasteManagementPdfContactBlock(record.publicConfig),
+        emailReminderConfig: isTarget
+          ? emailReminderConfig
+          : readWasteManagementEmailReminderConfig(record.publicConfig),
         holidayStateCode: isTarget ? holidayStateCode : readWasteManagementHolidayStateCode(record.publicConfig),
         lastHolidaySyncStatus: isTarget ? lastHolidaySyncStatus : readWasteManagementHolidaySyncStatus(record.publicConfig),
         lastSuccessfulHolidaySyncAt: isTarget

@@ -100,10 +100,15 @@ describe('runI18nResourceFormatter', () => {
       rootDirectoryPath: testResourcesRoot,
     });
     const aggregatorPath = resolve(testResourcesRoot, 'de/foo.resources.ts');
+    const localeAggregatorPath = resolve(testResourcesRoot, 'de.ts');
 
     expect(changedFilePaths).toContain(aggregatorPath);
+    expect(changedFilePaths).toContain(localeAggregatorPath);
     await expect(readFile(aggregatorPath, 'utf8')).resolves.toContain(
       "import { barFooDEResources } from './foo/bar.resources.js';"
+    );
+    await expect(readFile(localeAggregatorPath, 'utf8')).resolves.toContain(
+      "import { fooDEResources } from './de/foo.resources.js';"
     );
   });
 });

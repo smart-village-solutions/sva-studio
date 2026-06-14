@@ -129,27 +129,29 @@ const listChildDirectories = async (directoryPath: string): Promise<readonly str
 const buildDirectoryAggregator = async (
   locale: string,
   directoryPath: string,
-  rootDirectoryPath: string
+  rootDirectoryPath: string,
+  childAggregatorDefinitions: readonly AggregatorDefinition[]
 ): Promise<AggregatorDefinition | null> => {
   const childFileNames = await listChildFiles(directoryPath);
   const resourceFileNames = childFileNames.filter((fileName) => fileName.endsWith('.resources.ts'));
+  const directResourceKeys = new Set(resourceFileNames.map((fileName) => stripResourceSuffix(fileName)));
+  const childAggregatorEntries = childAggregatorDefinitions.map((definition) => ({
+    key: stripResourceSuffix(basename(definition.filePath)),
+    importPath: buildImportPath(filePathForDirectory(locale, directoryPath, rootDirectoryPath), definition.filePath),
+    importName: definition.exportName,
+  }))
+    .filter((entry) => !directResourceKeys.has(entry.key));
 
-  if (resourceFileNames.length === 0) {
+  if (resourceFileNames.length === 0 && childAggregatorEntries.length === 0) {
     return null;
   }
 
   const relativeDirectoryPath = relative(rootDirectoryPath, directoryPath);
   const normalizedDirectoryPath = toPosixPath(relativeDirectoryPath);
-  const directorySegments = normalizedDirectoryPath.split('/').filter(Boolean);
-  const directoryName = basename(directoryPath);
-
-  const filePath =
-    directorySegments.length === 1 && directorySegments[0] === locale
-      ? join(rootDirectoryPath, `${locale}.ts`)
-      : join(dirname(directoryPath), `${directoryName}.resources.ts`);
+  const filePath = filePathForDirectory(locale, directoryPath, rootDirectoryPath);
 
   const relativeAggregatorPath = toPosixPath(relative(rootDirectoryPath, filePath));
-  const entries = resourceFileNames.map((fileName) => {
+  const resourceEntries = resourceFileNames.map((fileName) => {
     const targetFilePath = join(directoryPath, fileName);
     const relativeTargetPath = toPosixPath(relative(rootDirectoryPath, targetFilePath));
 
@@ -159,12 +161,29 @@ const buildDirectoryAggregator = async (
       importName: deriveResourceExportName(locale, relativeTargetPath),
     } satisfies AggregatorEntry;
   });
+  const entries = [...resourceEntries, ...childAggregatorEntries].sort((left, right) =>
+    left.key.localeCompare(right.key)
+  );
 
   return {
     filePath,
     exportName: deriveResourceExportName(locale, relativeAggregatorPath),
     entries,
   } satisfies AggregatorDefinition;
+};
+
+const filePathForDirectory = (
+  locale: string,
+  directoryPath: string,
+  rootDirectoryPath: string
+): string => {
+  const relativeDirectoryPath = relative(rootDirectoryPath, directoryPath);
+  const normalizedDirectoryPath = toPosixPath(relativeDirectoryPath);
+  const directorySegments = normalizedDirectoryPath.split('/').filter(Boolean);
+
+  return directorySegments.length === 1 && directorySegments[0] === locale
+    ? join(rootDirectoryPath, `${locale}.ts`)
+    : join(dirname(directoryPath), `${basename(directoryPath)}.resources.ts`);
 };
 
 const buildLocaleAggregators = async (
@@ -180,7 +199,18 @@ const buildLocaleAggregators = async (
   );
 
   const flattenedDefinitions = nestedDefinitions.flat();
-  const currentDefinition = await buildDirectoryAggregator(locale, directoryPath, rootDirectoryPath);
+  const childAggregatorDefinitions = childDirectoryNames
+    .map((childDirectoryName, index) => {
+      const childAggregatorPath = join(directoryPath, `${childDirectoryName}.resources.ts`);
+      return nestedDefinitions[index]?.find((definition) => definition.filePath === childAggregatorPath) ?? null;
+    })
+    .filter((definition): definition is AggregatorDefinition => definition !== null);
+  const currentDefinition = await buildDirectoryAggregator(
+    locale,
+    directoryPath,
+    rootDirectoryPath,
+    childAggregatorDefinitions
+  );
 
   return currentDefinition ? [...flattenedDefinitions, currentDefinition] : flattenedDefinitions;
 };

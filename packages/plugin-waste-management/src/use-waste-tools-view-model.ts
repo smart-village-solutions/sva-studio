@@ -9,8 +9,29 @@ import { useWasteImportState, useWasteMaintenanceState } from './use-waste-tools
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
-export const useWasteToolsViewModel = (pt: Translate) => {
+const useWasteToolStateBundles = () => {
   const importCatalog = getWasteManagementImportCatalog();
+  const importState = useWasteImportState(importCatalog);
+  const maintenanceState = useWasteMaintenanceState();
+  const technicalHistoryState = useWasteTechnicalHistory();
+
+  return {
+    importCatalog,
+    importState,
+    maintenanceState,
+    technicalHistoryState,
+  };
+};
+
+const createWasteToolsViewModelFromState = (input: {
+  readonly importCatalog: ReturnType<typeof getWasteManagementImportCatalog>;
+  readonly importState: ReturnType<typeof useWasteImportState>;
+  readonly maintenanceState: ReturnType<typeof useWasteMaintenanceState>;
+  readonly technicalHistory: ReturnType<typeof useWasteTechnicalHistory>['technicalHistory'];
+  readonly selectedImportProfile: ReturnType<typeof useWasteToolsViewModelHelpers>['selectedImportProfile'];
+  readonly actions: ReturnType<typeof useWasteToolsViewModelHelpers>['actions'];
+  readonly runDeleteHistoryEntry: ReturnType<typeof useWasteToolsViewModelHelpers>['runDeleteHistoryEntry'];
+}) => {
   const {
     importProfileId,
     importSourceFormat,
@@ -26,7 +47,7 @@ export const useWasteToolsViewModel = (pt: Translate) => {
     setDelimiterOverride,
     setPreviewResult,
     setPreviewReady,
-  } = useWasteImportState(importCatalog);
+  } = input.importState;
   const {
     migrationSchema,
     migrationVersion,
@@ -41,17 +62,63 @@ export const useWasteToolsViewModel = (pt: Translate) => {
     setResetConfirmOpen,
     setRunningAction,
     setMessage,
-    setLastJob,
-  } = useWasteMaintenanceState();
-  const { technicalHistory, refreshTechnicalHistory } = useWasteTechnicalHistory();
-  const { selectedImportProfile, actions, runDeleteHistoryEntry } = useWasteToolsViewModelHelpers({
-    pt,
-    importCatalog,
+  } = input.maintenanceState;
+
+  return createWasteToolsViewModel({
+    importCatalog: input.importCatalog,
     importProfileId,
     importSourceFormat,
     importBlobRef,
     importDryRun,
     delimiterOverride,
+    previewResult,
+    previewReady,
+    migrationSchema,
+    migrationVersion,
+    resetToken,
+    resetConfirmOpen,
+    runningAction,
+    message,
+    lastJob,
+    technicalHistory: input.technicalHistory,
+    runDeleteHistoryEntry: input.runDeleteHistoryEntry,
+    selectedImportProfile: input.selectedImportProfile,
+    setImportProfileId,
+    setImportSourceFormat,
+    setImportBlobRef,
+    setImportDryRun,
+    setDelimiterOverride,
+    setMigrationSchema,
+    setMigrationVersion,
+    setResetToken,
+    setResetConfirmOpen,
+    actions: input.actions,
+  });
+};
+
+export const useWasteToolsViewModel = (pt: Translate) => {
+  const { importCatalog, importState, maintenanceState, technicalHistoryState } = useWasteToolStateBundles();
+  const { setImportSourceFormat, setPreviewResult, setPreviewReady } = importState;
+  const {
+    migrationSchema,
+    migrationVersion,
+    resetToken,
+    setResetToken,
+    setResetConfirmOpen,
+    setRunningAction,
+    setMessage,
+    lastJob,
+    setLastJob,
+  } = maintenanceState;
+  const { technicalHistory, refreshTechnicalHistory } = technicalHistoryState;
+  const { selectedImportProfile, actions, runDeleteHistoryEntry } = useWasteToolsViewModelHelpers({
+    pt,
+    importCatalog,
+    importProfileId: importState.importProfileId,
+    importSourceFormat: importState.importSourceFormat,
+    importBlobRef: importState.importBlobRef,
+    importDryRun: importState.importDryRun,
+    delimiterOverride: importState.delimiterOverride,
     migrationSchema,
     migrationVersion,
     resetToken,
@@ -72,34 +139,13 @@ export const useWasteToolsViewModel = (pt: Translate) => {
     setLastJob,
   });
 
-  return createWasteToolsViewModel({
+  return createWasteToolsViewModelFromState({
     importCatalog,
-    importProfileId,
-    importSourceFormat,
-    importBlobRef,
-    importDryRun,
-    delimiterOverride,
-    previewResult,
-    previewReady,
-    migrationSchema,
-    migrationVersion,
-    resetToken,
-    resetConfirmOpen,
-    runningAction,
-    message,
-    lastJob,
+    importState,
+    maintenanceState,
     technicalHistory,
-    runDeleteHistoryEntry,
     selectedImportProfile,
-    setImportProfileId,
-    setImportSourceFormat,
-    setImportBlobRef,
-    setImportDryRun,
-    setDelimiterOverride,
-    setMigrationSchema,
-    setMigrationVersion,
-    setResetToken,
-    setResetConfirmOpen,
     actions,
+    runDeleteHistoryEntry,
   });
 };

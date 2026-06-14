@@ -57,7 +57,7 @@ export type ExternalInterfaceTypeDefinition = Readonly<{
 type ExternalInterfaceBase = Readonly<{
   id: string;
   instanceId: string;
-  typeKey: ExternalInterfaceTypeKey;
+  typeKey: ExternalInterfaceTypeKey | string;
   ownerKind: ExternalInterfaceOwnerKind;
   ownerId: string;
   displayName: string;
@@ -67,7 +67,7 @@ type ExternalInterfaceBase = Readonly<{
   category: ExternalInterfaceCategory;
   baseUrl?: string;
   authMode?: string;
-  statusCheckKind: ExternalInterfaceStatusCheckKind;
+  statusCheckKind: ExternalInterfaceStatusCheckKind | string;
   visibleStatus: ExternalInterfaceVisibleStatus;
   lastCheckedAt?: string;
   lastCheckStatus?: ExternalInterfaceCheckStatus;

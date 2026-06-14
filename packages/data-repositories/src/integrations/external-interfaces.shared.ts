@@ -2,8 +2,6 @@ import type {
   ExternalInterfaceRecord,
   ExternalInterfaceTypeDefinition,
 } from '@sva/core';
-import { externalInterfaceContract } from '@sva/core';
-
 export type ExternalInterfaceTypeRow = {
   readonly type_key: string;
   readonly owner_kind: 'host' | 'plugin';
@@ -42,14 +40,14 @@ export type ExternalInterfaceRow = {
 };
 
 const coerceTypeKey = (value: string): ExternalInterfaceRecord['typeKey'] => {
-  if (!externalInterfaceContract.isTypeKey(value)) {
+  if (value.trim().length === 0) {
     throw new Error(`invalid_external_interface_type_key:${value}`);
   }
   return value;
 };
 
 const coerceStatusCheckKind = (value: string): ExternalInterfaceRecord['statusCheckKind'] => {
-  if (!externalInterfaceContract.isStatusCheckKind(value)) {
+  if (value.trim().length === 0) {
     throw new Error(`invalid_external_interface_status_check_kind:${value}`);
   }
   return value;

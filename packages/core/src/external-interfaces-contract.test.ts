@@ -40,6 +40,32 @@ describe('external-interfaces-contract', () => {
     expect(externalInterfaceContract.isTypeKey('mail_transport')).toBe(true);
   });
 
+  it('allows plugin-owned identifiers on persisted external interface records', () => {
+    const record: ResolvedExternalInterface = {
+      id: 'interface-plugin-1',
+      instanceId: 'tenant-a',
+      typeKey: 'news-rss',
+      ownerKind: 'plugin',
+      ownerId: 'news',
+      displayName: 'RSS Feed',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'feed',
+      statusCheckKind: 'news.rss',
+      visibleStatus: 'ok',
+      publicConfig: {
+        feedUrl: 'https://example.com/feed.xml',
+      },
+      secretConfig: {},
+    };
+
+    expect(record.typeKey).toBe('news-rss');
+    expect(record.statusCheckKind).toBe('news.rss');
+    expect(externalInterfaceContract.isTypeKey(record.typeKey)).toBe(false);
+    expect(externalInterfaceContract.isStatusCheckKind(record.statusCheckKind)).toBe(false);
+  });
+
   it('exposes a shared mail transport contract surface', () => {
     expect(mailTransportContract.transportTypes).toEqual(['smtp', 'provider_api']);
     expect(mailTransportContract.securityModes).toEqual(['none', 'starttls', 'tls']);

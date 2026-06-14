@@ -68,6 +68,7 @@ coverage:
         - packages/iam-core/
         - packages/iam-governance/
         - packages/instance-registry/
+        - packages/mail-runtime/
         - packages/media/
         - packages/monitoring-client/
         - packages/plugin-categories/

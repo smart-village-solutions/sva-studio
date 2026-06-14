@@ -152,6 +152,8 @@ describe('pluginWasteManagement contract', () => {
       'waste-management.reset-data',
       'waste-management.sync-mainserver',
       'waste-management.sync-waste-types',
+      'waste-management.materialize-email-reminders',
+      'waste-management.process-email-reminder-outbox',
     ]);
     expect(pluginWasteManagement.importProfiles).toEqual([
       {

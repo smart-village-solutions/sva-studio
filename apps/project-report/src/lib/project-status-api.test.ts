@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { ProjectStatusReport } from './report-model';
 import {
   loadLocalProjectStatusReport,
   parseProjectStatusReport,
@@ -9,7 +8,7 @@ import {
 } from './project-status-api';
 import { createProjectStatusReportFixture } from './project-report-test-fixtures';
 
-const validReportFixture: ProjectStatusReport = createProjectStatusReportFixture() as ProjectStatusReport;
+const validReportFixture = createProjectStatusReportFixture();
 
 const patchPayload: LocalProjectStatusPatchRequest = {
   workPackageId: 'WP-1',
@@ -43,7 +42,7 @@ describe('project status api', () => {
   });
 
   it('patches the local work package endpoint and returns the validated report', async () => {
-    const nextReport: ProjectStatusReport = {
+    const nextReport = {
       ...validReportFixture,
       milestones: [
         {

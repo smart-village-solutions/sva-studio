@@ -212,6 +212,8 @@ const config = defineConfig({
       '@sva/media': resolveAppPath('../../packages/media/src/index.ts'),
       '@sva/plugin-waste-management': resolveAppPath('../../packages/plugin-waste-management/src/index.ts'),
       '@sva/plugin-sdk': resolveAppPath('../../packages/plugin-sdk/src/index.ts'),
+      '@sva/plugin-events/events.pages': resolveAppPath('../../packages/plugin-events/src/events.pages.tsx'),
+      '@sva/plugin-poi/poi.pages': resolveAppPath('../../packages/plugin-poi/src/poi.pages.tsx'),
       '@sva/studio-module-iam': resolveAppPath('../../packages/studio-module-iam/src/index.ts'),
       '@sva/studio-ui-react': resolveAppPath('../../packages/studio-ui-react/src/index.ts'),
       '@sva/server-runtime': resolveAppPath('../../packages/server-runtime/src/index.ts'),

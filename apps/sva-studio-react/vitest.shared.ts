@@ -45,6 +45,8 @@ export const sharedVitestConfig = defineConfig({
       '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
       '@sva/instance-registry': fileURLToPath(new URL('../../packages/instance-registry/src/index.ts', import.meta.url)),
       '@sva/media': fileURLToPath(new URL('../../packages/media/src/index.ts', import.meta.url)),
+      '@sva/plugin-events/events.pages': fileURLToPath(new URL('../../packages/plugin-events/src/events.pages.tsx', import.meta.url)),
+      '@sva/plugin-poi/poi.pages': fileURLToPath(new URL('../../packages/plugin-poi/src/poi.pages.tsx', import.meta.url)),
       '@sva/plugin-waste-management': fileURLToPath(
         new URL('../../packages/plugin-waste-management/src/index.ts', import.meta.url)
       ),

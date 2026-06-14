@@ -38,6 +38,7 @@
     "@sva/studio-module-iam": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
     "@sva/sva-mainserver": "workspace:*",
+    "@sva/waste-management-runtime": "workspace:*",
     "@tabler/icons-react": "^3.41.1",
     "@tanstack/react-devtools": "^0.10.5",
     "@tanstack/react-router": "^1.170.8",

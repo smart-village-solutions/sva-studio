@@ -1,7 +1,35 @@
 {
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "**/*.test.ts",
+    "**/*.type-test.ts",
+    "scripts/**/*.ts",
+    "scripts/**/*.mjs",
+    "packages/*/scripts/**/*.ts",
+    "packages/*/scripts/**/*.mjs",
+    "dev/**/*.ts",
+    "dev/**/*.mjs",
+    "deploy/**/*.mjs",
+    "apps/*/vitest*.config.ts",
+    "packages/*/bench/**/*.ts",
+    "apps/public-waste-calendar-web/src/server.ts",
+    "apps/public-waste-calendar-web/src/server/**/*.ts",
+    "packages/auth-runtime/src/iam-instance-registry/worker.ts",
+    "scripts/ci/keycloak-verify-mock.cjs"
+  ],
+  "dynamicallyLoaded": [
+    "tooling/testing/src/msw/browser.ts",
+    "apps/public-waste-calendar-web/src/lib/public-waste-demo-runtime.ts",
+    "apps/sva-studio-react/src/routes/__debug/phase1-test/-index.ts"
+  ],
+  "ignoreUnresolvedImports": [
+    "./.output/server/chunks/_/server.mjs",
+    "../../apps/sva-studio-react/.output/server/chunks/_/server.mjs",
+    "/app/node_modules/@sva/auth-runtime/dist/iam-account-management/shared.js"
+  ],
   "ignorePatterns": [
     "concepts/konzeption-cms-v2/**",
+    "deploy/keycloak/themes/**",
     "packages/plugin-example/**",
     "tooling/quality/**"
   ]

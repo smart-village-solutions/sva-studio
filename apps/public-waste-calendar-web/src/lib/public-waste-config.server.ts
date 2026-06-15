@@ -54,9 +54,21 @@ export const readPublicWasteConfigFromEnvironment = (
   const instanceId = readString(env.PUBLIC_WASTE_INSTANCE_ID);
   const databaseUrl = readString(env.PUBLIC_WASTE_DATABASE_URL);
   const schemaName = readString(env.PUBLIC_WASTE_SCHEMA_NAME);
+  const rawConfigJson = readString(env.PUBLIC_WASTE_CONFIG_JSON);
 
   if (instanceId === null || databaseUrl === null || schemaName === null) {
     return null;
+  }
+
+  let emailReminderConfig: WasteManagementEmailReminderConfig | undefined;
+  if (rawConfigJson) {
+    const parsed = JSON.parse(rawConfigJson) as unknown;
+    if (isRecord(parsed)) {
+      const parsedReminderConfig = readWasteManagementEmailReminderConfig(parsed);
+      if (parsedReminderConfig) {
+        emailReminderConfig = parsedReminderConfig;
+      }
+    }
   }
 
   return {
@@ -65,5 +77,6 @@ export const readPublicWasteConfigFromEnvironment = (
       databaseUrl,
       schemaName,
     },
+    ...(emailReminderConfig ? { emailReminderConfig } : {}),
   };
 };

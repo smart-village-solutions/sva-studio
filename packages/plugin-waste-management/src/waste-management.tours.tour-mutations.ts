@@ -22,11 +22,7 @@ import type { WasteToursState } from './use-waste-tours-state.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
-type WasteToursSubmissionContext = {
-  readonly state: WasteToursState;
-  readonly pt: Translate;
-  readonly loadOverview: (active?: boolean) => Promise<void>;
-};
+type WasteToursSubmissionContext = { readonly state: WasteToursState; readonly pt: Translate; readonly loadOverview: (active?: boolean) => Promise<void> };
 
 const setDeleteErrorMessage = (state: WasteToursState, pt: Translate, error: unknown) => {
   const code = resolveApiErrorCode(error);
@@ -250,11 +246,7 @@ const createDeleteToursHandler = ({ state, pt, loadOverview }: WasteToursSubmiss
   }
 };
 
-export const createWasteToursTourMutationHandlers = ({
-  state,
-  pt,
-  loadOverview,
-}: WasteToursSubmissionContext) => ({
+export const createWasteToursTourMutationHandlers = ({ state, pt, loadOverview }: WasteToursSubmissionContext) => ({
   onSubmitTour: createSubmitTourHandler({ state, pt, loadOverview }),
   onToggleTourStatus: createToggleTourStatusHandler({ state, pt, loadOverview }),
   onDeleteTour: createDeleteTourHandler({ state, pt, loadOverview }),

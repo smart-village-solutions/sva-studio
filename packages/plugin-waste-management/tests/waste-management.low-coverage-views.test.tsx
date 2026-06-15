@@ -680,8 +680,9 @@ describe('waste-management low coverage views', () => {
     expect(controller.setTourShiftForm).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the tour-assignment dialog without tour or date fields', () => {
+  it('renders the tour-assignment dialog with editable validity dates and no explicit tour selector', () => {
     const onSubmit = vi.fn();
+    const onChange = vi.fn();
 
     render(
       <TourAssignmentsDialog
@@ -708,17 +709,21 @@ describe('waste-management low coverage views', () => {
         loading={false}
         message={null}
         onOpenChange={vi.fn()}
-        onChange={vi.fn()}
+        onChange={onChange}
         onSubmit={onSubmit}
       />
     );
 
     expect(screen.queryByLabelText('tours.assignments.fields.tourId')).toBeNull();
-    expect(screen.queryByLabelText('tours.assignments.fields.startDate')).toBeNull();
-    expect(screen.queryByLabelText('tours.assignments.fields.endDate')).toBeNull();
+    expect(screen.getByLabelText('tours.assignments.fields.startDate')).toBeTruthy();
+    expect(screen.getByLabelText('tours.assignments.fields.endDate')).toBeTruthy();
     expect(screen.getByLabelText('filters.searchLabel')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('tours.assignments.fields.startDate'), { target: { value: '2026-02-01' } });
+    fireEvent.change(screen.getByLabelText('tours.assignments.fields.endDate'), { target: { value: '2026-11-30' } });
 
     fireEvent.submit(screen.getByRole('button', { name: 'tours.assignments.actions.save' }).closest('form')!);
+    expect(onChange).toHaveBeenCalledWith({ startDate: '2026-02-01' });
+    expect(onChange).toHaveBeenCalledWith({ endDate: '2026-11-30' });
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });

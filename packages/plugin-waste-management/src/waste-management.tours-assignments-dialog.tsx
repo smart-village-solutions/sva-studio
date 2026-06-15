@@ -224,6 +224,25 @@ export const TourAssignmentsDialog = ({
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5 rounded-2xl border border-border/70 bg-card/60">
             <StatusNotice message={message} />
 
+            <div className="grid gap-4 md:grid-cols-2">
+              <StudioField id="waste-tour-assignment-start-date" label={pt('tours.assignments.fields.startDate')}>
+                <Input
+                  id="waste-tour-assignment-start-date"
+                  type="date"
+                  value={form.startDate ?? ''}
+                  onChange={(event) => onChange({ startDate: event.target.value })}
+                />
+              </StudioField>
+              <StudioField id="waste-tour-assignment-end-date" label={pt('tours.assignments.fields.endDate')}>
+                <Input
+                  id="waste-tour-assignment-end-date"
+                  type="date"
+                  value={form.endDate ?? ''}
+                  onChange={(event) => onChange({ endDate: event.target.value })}
+                />
+              </StudioField>
+            </div>
+
             <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
               <div className="min-w-0 flex-1">
                 <StudioField id="waste-tour-assignment-search" label={pt('filters.searchLabel')}>

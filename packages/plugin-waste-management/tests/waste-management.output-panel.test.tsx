@@ -175,6 +175,89 @@ describe('WasteOutputPanel', () => {
   });
 
   it('loads and persists static pdf configuration instead of generating a pdf', async () => {
+    apiMocks.getWasteManagementSettings.mockResolvedValueOnce({
+      instanceId: 'de-musterhausen',
+      provider: 'supabase',
+      projectUrl: 'https://tenant.supabase.co',
+      schemaName: 'wm',
+      enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      availableInterfaces: [
+        {
+          id: 'supabase-1',
+          name: 'Waste Supabase',
+          typeKey: 'supabase',
+          enabled: true,
+          visibleStatus: 'ok',
+          isSelected: true,
+        },
+        {
+          id: 'mail-transport-1',
+          name: 'Zentraler Mailtransport',
+          typeKey: 'mail_transport',
+          enabled: true,
+          visibleStatus: 'ok',
+          isSelected: false,
+        },
+      ],
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung 03395 / 1234',
+      emailReminderConfig: {
+        enabled: true,
+        publicSignupEnabled: true,
+        transportId: 'mail-transport-1',
+        publicBaseUrl: 'https://bb-prignitz.abfallkalender.smart-village.app',
+        doiConfirmPath: '/email-reminders/confirm',
+        unsubscribePath: '/email-reminders/unsubscribe',
+        signupSuccessPath: '/email-reminders/pending',
+        activationSuccessPath: '/email-reminders/active',
+        unsubscribeSuccessPath: '/email-reminders/unsubscribed',
+        invalidTokenPath: '/email-reminders/invalid-token',
+        fromName: 'Landkreis Prignitz',
+        fromEmail: 'abfall@example.org',
+        replyToEmail: 'reply@example.org',
+        serviceLabel: 'Mülli',
+        privacyPolicyUrl: 'https://example.org/privacy',
+        imprintUrl: 'https://example.org/imprint',
+        consentLabel: 'Ich stimme zu.',
+        consentVersion: '2026-06-14',
+        dataControllerLabel: 'Landkreis Prignitz',
+        dataProtectionContactEmail: 'datenschutz@example.org',
+        doiSubjectTemplate: 'Bitte bestätigen',
+        doiPreheader: 'DOI',
+        doiIntroText: 'Bitte bestätigen Sie die Einrichtung.',
+        doiButtonLabel: 'Jetzt aktivieren',
+        doiFallbackText: 'Fallback',
+        doiExpiryNoticeText: '48 Stunden gültig',
+        doiSuccessHeadline: 'Aktiviert',
+        doiSuccessBody: 'Erfolgreich aktiviert',
+        doiErrorHeadline: 'Fehler',
+        doiErrorBody: 'Link ungültig',
+        reminderSubjectTemplate: 'Nicht vergessen',
+        reminderIntroTemplate: 'Morgen wird geleert.',
+        reminderListIntroTemplate: 'Es betrifft:',
+        reminderOutroText: 'Viele Grüße',
+        unsubscribeLinkLabel: 'Abmelden',
+        reminderReasonText: 'Sie haben den Dienst eingerichtet.',
+        unsubscribeSuccessHeadline: 'Abgemeldet',
+        unsubscribeSuccessBody: 'Sie wurden abgemeldet.',
+        unsubscribeAlreadyDoneHeadline: 'Bereits erledigt',
+        unsubscribeAlreadyDoneBody: 'War bereits deaktiviert.',
+        unsubscribeErrorHeadline: 'Fehler',
+        unsubscribeErrorBody: 'Abmeldung nicht möglich',
+        maxSubscriptionsPerEmailAndLocation: 5,
+        signupRateLimitPerIpPerHour: 20,
+        signupRateLimitPerEmailPerHour: 10,
+        doiTokenTtlHours: 48,
+        pendingSubscriptionTtlHours: 72,
+        materializationLookaheadDays: 7,
+        unsubscribeTokenTtlDays: 30,
+      },
+      databaseUrlConfigured: true,
+      serviceRoleKeyConfigured: true,
+      visibleStatus: 'ok',
+      customRecurrencePresets: [],
+    });
     render(<WasteOutputPanel />);
 
     expect(await screen.findByText('output.pdf.title')).toBeTruthy();
@@ -192,13 +275,18 @@ describe('WasteOutputPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'output.pdf.actions.save' }));
 
     await waitFor(() => {
-      expect(apiMocks.updateWasteManagementSettings).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pdfBrandingAssetUrl: 'https://cdn.example/logo-next.svg',
-          pdfContactBlock: 'Abfallberatung 03395 / 9999',
-        })
-      );
+      expect(apiMocks.updateWasteManagementSettings).toHaveBeenCalledTimes(1);
     });
+    expect(apiMocks.updateWasteManagementSettings.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        pdfBrandingAssetUrl: 'https://cdn.example/logo-next.svg',
+        pdfContactBlock: 'Abfallberatung 03395 / 9999',
+        emailReminderConfig: expect.objectContaining({
+          transportId: 'mail-transport-1',
+          publicBaseUrl: 'https://bb-prignitz.abfallkalender.smart-village.app',
+        }),
+      })
+    );
 
     expect(await screen.findByText('output.pdf.messages.saveSuccess')).toBeTruthy();
   });
@@ -258,21 +346,22 @@ describe('WasteOutputPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'output.emailReminder.actions.save' }));
 
     await waitFor(() => {
-      expect(apiMocks.updateWasteManagementSettings).toHaveBeenCalledWith(
-        expect.objectContaining({
-          emailReminderConfig: expect.objectContaining({
-            enabled: true,
-            publicSignupEnabled: true,
-            transportId: 'mail-transport-1',
-            publicBaseUrl: 'https://bb-prignitz.abfallkalender.smart-village.app',
-            fromName: 'Landkreis Prignitz',
-            fromEmail: 'abfall@example.org',
-            consentVersion: '2026-06-14',
-            reminderSubjectTemplate: 'Nicht vergessen',
-          }),
-        })
-      );
+      expect(apiMocks.updateWasteManagementSettings).toHaveBeenCalledTimes(1);
     });
+    expect(apiMocks.updateWasteManagementSettings.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        emailReminderConfig: expect.objectContaining({
+          enabled: true,
+          publicSignupEnabled: true,
+          transportId: 'mail-transport-1',
+          publicBaseUrl: 'https://bb-prignitz.abfallkalender.smart-village.app',
+          fromName: 'Landkreis Prignitz',
+          fromEmail: 'abfall@example.org',
+          consentVersion: '2026-06-14',
+          reminderSubjectTemplate: 'Nicht vergessen',
+        }),
+      })
+    );
 
     expect(await screen.findByText('output.emailReminder.messages.saveSuccess')).toBeTruthy();
   });

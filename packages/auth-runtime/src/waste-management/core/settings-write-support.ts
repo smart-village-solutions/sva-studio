@@ -267,6 +267,7 @@ export const runWasteManagementHolidaySyncAfterValidation = async ({
     calendarWebUrl: writeContext.current.calendarWebUrl,
     pdfBrandingAssetUrl: writeContext.current.pdfBrandingAssetUrl,
     pdfContactBlock: writeContext.current.pdfContactBlock,
+    emailReminderConfig: writeContext.current.emailReminderConfig,
     holidayStateCode: writeContext.current.holidayStateCode,
     lastHolidaySyncStatus,
     lastSuccessfulHolidaySyncAt:

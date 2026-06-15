@@ -159,6 +159,7 @@ export const WasteOutputPanel = () => {
         calendarWebUrl: settings.calendarWebUrl,
         pdfBrandingAssetUrl: compactOptionalString(brandingAssetUrl),
         pdfContactBlock: compactOptionalString(contactBlock),
+        emailReminderConfig: settings.emailReminderConfig ?? undefined,
         holidayStateCode: settings.holidayStateCode,
         customRecurrencePresets: settings.customRecurrencePresets ?? [],
         deletedPresetFallbacks: {},

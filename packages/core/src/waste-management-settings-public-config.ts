@@ -460,8 +460,6 @@ export const buildWasteManagementPublicConfig = (
   const normalizedEmailReminderConfig = normalizeWasteManagementEmailReminderConfig(input.emailReminderConfig);
   if (normalizedEmailReminderConfig) {
     nextPublicConfig[WASTE_EMAIL_REMINDER_CONFIG_KEY] = normalizedEmailReminderConfig;
-  } else if (input.emailReminderConfig === undefined) {
-    delete nextPublicConfig[WASTE_EMAIL_REMINDER_CONFIG_KEY];
   }
 
   if (input.holidayStateCode) {

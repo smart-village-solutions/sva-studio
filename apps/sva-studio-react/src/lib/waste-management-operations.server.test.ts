@@ -711,6 +711,65 @@ describe('waste management operations runtime', () => {
     });
   });
 
+  it('caps outbox leasing by the transport rate limit per minute', async () => {
+    const leaseDueOutboxEntries = vi.fn(async () => []);
+    const reminderRepository = {
+      leaseDueOutboxEntries,
+      markOutboxEntrySent: vi.fn(async () => undefined),
+      markOutboxEntryFailed: vi.fn(async () => undefined),
+    };
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [
+        createInterfaceRecordWithEmailReminderConfig(),
+        {
+          ...createMailTransportInterfaceRecord(),
+          publicConfig: {
+            ...createMailTransportInterfaceRecord().publicConfig,
+            maxBatchSize: 25,
+            rateLimitPerMinute: 3,
+          },
+        },
+      ]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      dispatchMail: vi.fn(),
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.processEmailReminderOutbox('instance-1', {
+      operation: 'process-email-reminder-outbox',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+      maxBatchSize: 10,
+    });
+
+    expect(leaseDueOutboxEntries).toHaveBeenCalledWith({
+      now: '2026-06-15T06:00:00.000Z',
+      limit: 3,
+    });
+    expect(result.details).toMatchObject({
+      operation: 'process-email-reminder-outbox',
+      batchSize: 3,
+      leasedCount: 0,
+    });
+  });
+
   it('materializes reminders for existing subscribers even when public signup is disabled', async () => {
     const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
     const reminderRepository = {
@@ -821,6 +880,115 @@ describe('waste management operations runtime', () => {
       operation: 'materialize-email-reminders',
       mode: 'executed',
       createdOutboxCount: 1,
+    });
+  });
+
+  it('matches region-scoped subscriptions against legacy locations without a region id', async () => {
+    const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
+    const reminderRepository = {
+      listActiveSubscriptions: vi.fn(async () => [
+        {
+          id: 'subscription-region-1',
+          email: 'max@example.org',
+          locationLabel: 'Perleberg, Ackerstraße 1',
+          regionId: 'region-1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          unsubscribeTokenHash: 'sha256:unsubscribe',
+          items: [{ fractionId: 'fraction-bio', slotId: 'bio:first' }],
+        },
+      ]),
+      enqueueOutboxEntry,
+    };
+    const repository = createRepositoryMock({
+      listWasteFractions: vi.fn(async () => [
+        {
+          id: 'fraction-bio',
+          name: 'Biotonne',
+          pdfShortLabel: 'BIO',
+          translations: { de: 'Biotonne' },
+          containerSize: undefined,
+          color: '#008000',
+          description: undefined,
+          active: true,
+          reminderConfig: {
+            reminderCount: 'once',
+            channels: { push: false, email: true, calendar: false },
+            email: { slots: [{ id: 'bio:first', defaultLeadDays: 1 }] },
+          },
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]),
+      listWasteTours: vi.fn(async () => [
+        {
+          id: 'tour-1',
+          name: 'Biotour',
+          wasteFractionIds: ['fraction-bio'],
+          recurrence: null,
+          firstDate: undefined,
+          endDate: undefined,
+          customDates: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourLinks: vi.fn(async () => [
+        { id: 'link-1', locationId: 'location-legacy', tourId: 'tour-1', active: true },
+      ]),
+      listWasteCollectionLocations: vi.fn(async () => [
+        {
+          id: 'location-legacy',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourPickupDates: vi.fn(async () => [
+        { id: 'pickup-1', locationId: 'location-legacy', tourId: 'tour-1', pickupDate: '2026-06-16' },
+      ]),
+      listWasteTourDateShifts: vi.fn(async () => []),
+      listWasteGlobalDateShifts: vi.fn(async () => []),
+      listWasteHolidayRules: vi.fn(async () => []),
+    });
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteMasterDataRepository: vi.fn(() => repository),
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.materializeEmailReminders('instance-1', {
+      operation: 'materialize-email-reminders',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(enqueueOutboxEntry).toHaveBeenCalledTimes(1);
+    expect(result.details).toMatchObject({
+      operation: 'materialize-email-reminders',
+      mode: 'executed',
+      createdOutboxCount: 1,
+      skippedPickupCount: 0,
     });
   });
 

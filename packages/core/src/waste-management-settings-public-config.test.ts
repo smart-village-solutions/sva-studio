@@ -331,6 +331,23 @@ describe('waste-management-settings-public-config', () => {
     expect(readWasteManagementEmailReminderConfig(next)).toEqual(createEmailReminderConfigInput());
   });
 
+  it('preserves the previous email reminder config when partial writes omit the field', () => {
+    const current = buildWasteManagementPublicConfig(
+      {},
+      {
+        selected: true,
+        emailReminderConfig: createEmailReminderConfigInput(),
+      }
+    );
+
+    const next = buildWasteManagementPublicConfig(current, {
+      selected: true,
+      holidayStateCode: 'NW',
+    });
+
+    expect(readWasteManagementEmailReminderConfig(next)).toEqual(createEmailReminderConfigInput());
+  });
+
   it('preserves valid absolute urls with trailing slash, query string, and hash fragments', () => {
     const next = buildWasteManagementPublicConfig(
       {},

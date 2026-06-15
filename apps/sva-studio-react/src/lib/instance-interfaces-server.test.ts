@@ -910,7 +910,7 @@ describe('instance-interfaces-server', () => {
           port: '',
           securityMode: 'starttls',
           authMode: 'basic',
-          username: '',
+          username: 'mailer',
           defaultFromEmail: '',
           defaultFromName: '',
           defaultReplyToEmail: '',
@@ -943,7 +943,7 @@ describe('instance-interfaces-server', () => {
           port: '',
           securityMode: 'starttls',
           authMode: 'basic',
-          username: '',
+          username: 'mailer',
           defaultFromEmail: '',
           defaultFromName: '',
           defaultReplyToEmail: '',
@@ -994,5 +994,98 @@ describe('instance-interfaces-server', () => {
         statusMessage: 'Statusprüfung für Mail-Transporte ist noch nicht verfügbar.',
       })
     );
+  });
+
+  it('clears stale optional mail transport fields and incompatible transport-specific fields on update', async () => {
+    let savedRecord: Record<string, unknown> | null = null;
+    state.saveExternalInterfaceRecord.mockImplementation(async (record: Record<string, unknown>) => {
+      savedRecord = record;
+    });
+    state.loadExternalInterfaceRecordById.mockImplementation(async () => {
+      if (savedRecord) {
+        return {
+          ...savedRecord,
+          createdAt: '2026-05-12T08:00:00.000Z',
+          updatedAt: '2026-05-12T08:00:00.000Z',
+        };
+      }
+
+      return {
+      id: 'existing-mail-id',
+      instanceId: 'de-test',
+      typeKey: 'mail_transport',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Bestehender Mail-Transport',
+      alias: 'mail-1',
+      enabled: true,
+      isDefault: true,
+      category: 'api',
+      baseUrl: 'https://api.mail.example',
+      authMode: 'basic',
+      publicConfig: {
+        transportId: 'mail-1',
+        transportType: 'provider_api',
+        securityMode: 'starttls',
+        authMode: 'basic',
+        endpoint: 'https://api.mail.example',
+        mode: 'transactional',
+        username: 'mailer',
+        defaultFromEmail: 'noreply@example.org',
+        defaultFromName: 'Abfallservice',
+        defaultReplyToEmail: 'service@example.org',
+        maxBatchSize: 25,
+        rateLimitPerMinute: 60,
+      },
+      secretConfigCiphertext: undefined,
+      statusCheckKind: 'mail_transport',
+      visibleStatus: 'ok',
+      createdAt: '2026-05-12T08:00:00.000Z',
+      updatedAt: '2026-05-12T08:00:00.000Z',
+    };
+    });
+
+    const { upsertStoredInterface } = await import('./instance-interfaces-server');
+
+    await upsertStoredInterface(
+      'de-test',
+      {
+        type: 'mailTransport',
+        name: 'Mail-Transport',
+        enabled: true,
+        config: {
+          transportId: 'mail-1',
+          transportType: 'smtp',
+          host: 'smtp.example.org',
+          port: '587',
+          securityMode: 'starttls',
+          authMode: 'basic',
+          username: 'mailer',
+          password: 'secret-new',
+          defaultFromEmail: '',
+          defaultFromName: '',
+          defaultReplyToEmail: '',
+          maxBatchSize: '',
+          rateLimitPerMinute: '',
+          providerMode: '',
+          endpoint: '',
+        },
+      },
+      'existing-mail-id'
+    );
+
+    const persisted = state.saveExternalInterfaceRecord.mock.calls[0]?.[0] as { publicConfig: Record<string, unknown> } | undefined;
+    expect(persisted?.publicConfig).toMatchObject({
+      transportType: 'smtp',
+      host: 'smtp.example.org',
+      port: 587,
+    });
+    expect(persisted?.publicConfig.defaultFromEmail).toBeUndefined();
+    expect(persisted?.publicConfig.defaultFromName).toBeUndefined();
+    expect(persisted?.publicConfig.defaultReplyToEmail).toBeUndefined();
+    expect(persisted?.publicConfig.maxBatchSize).toBeUndefined();
+    expect(persisted?.publicConfig.rateLimitPerMinute).toBeUndefined();
+    expect(persisted?.publicConfig.endpoint).toBeUndefined();
+    expect(persisted?.publicConfig.mode).toBeUndefined();
   });
 });

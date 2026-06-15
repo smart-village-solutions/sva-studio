@@ -259,4 +259,88 @@ describe('waste-management settings handlers', () => {
 
     expect(response.status).toBe(403);
   });
+
+  it('preserves the stored email reminder config when the holiday sync writes status metadata', async () => {
+    const deps = createDeps();
+    const saveExternalInterfaceRecord = vi.fn(async () => undefined);
+
+    const response = await wasteManagementSettingsHandlers.runWasteManagementHolidaySyncInternal(
+      new Request('https://studio.test/api/v1/waste-management/settings/holiday-sync', {
+        method: 'POST',
+        headers: {
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      }),
+      actor,
+      {
+        ...deps,
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
+          visibleStatus: 'ok',
+          publicConfig: {
+            projectUrl: 'https://tenant.example',
+            schemaName: 'wm',
+            calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+            holidayStateCode: 'NW',
+            emailReminderConfig: {
+              enabled: true,
+              publicSignupEnabled: true,
+              transportId: 'mail-transport-1',
+              publicBaseUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+              doiConfirmPath: '/email-reminders/confirm',
+              unsubscribePath: '/email-reminders/unsubscribe',
+              fromName: 'Landkreis Prignitz',
+              fromEmail: 'abfall@example.org',
+              privacyPolicyUrl: 'https://example.org/privacy',
+              imprintUrl: 'https://example.org/imprint',
+              consentLabel: 'Ich stimme zu.',
+              consentVersion: '2026-06-14',
+              doiSubjectTemplate: 'Bitte bestätigen',
+              doiIntroText: 'Bitte bestätigen Sie die Einrichtung.',
+              doiButtonLabel: 'Jetzt aktivieren',
+              reminderSubjectTemplate: 'Nicht vergessen',
+              reminderIntroTemplate: 'Morgen wird geleert.',
+              unsubscribeLinkLabel: 'Abmelden',
+              unsubscribeSuccessHeadline: 'Abgemeldet',
+              unsubscribeSuccessBody: 'Sie wurden abgemeldet.',
+              maxSubscriptionsPerEmailAndLocation: 5,
+              signupRateLimitPerIpPerHour: 20,
+              signupRateLimitPerEmailPerHour: 10,
+              doiTokenTtlHours: 48,
+              pendingSubscriptionTtlHours: 72,
+              materializationLookaheadDays: 7,
+            },
+          },
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        saveExternalInterfaceRecord,
+        loadWasteCustomRecurrencePresets: vi.fn(async () => []),
+        syncWasteHolidayRules: vi.fn(async () => 'success' as const),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(saveExternalInterfaceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publicConfig: expect.objectContaining({
+          emailReminderConfig: expect.objectContaining({
+            transportId: 'mail-transport-1',
+            publicSignupEnabled: true,
+          }),
+          lastHolidaySyncStatus: 'success',
+        }),
+      })
+    );
+  });
 });

@@ -216,7 +216,11 @@ const matchSelectionLocations = (
     if (!location.active || location.cityId !== subscription.cityId) {
       return false;
     }
-    if ((location.regionId ?? undefined) !== (subscription.regionId ?? undefined)) {
+    if (subscription.regionId) {
+      if (location.regionId !== undefined && location.regionId !== subscription.regionId) {
+        return false;
+      }
+    } else if (location.regionId !== undefined) {
       return false;
     }
     if (subscription.streetId === 'all') {
@@ -817,7 +821,14 @@ const createProcessEmailReminderOutboxOperation = (
   }
 
   const requestedBatchSize = input.maxBatchSize ?? DEFAULT_OUTBOX_BATCH_SIZE;
-  const batchSize = Math.max(1, Math.min(requestedBatchSize, transport.maxBatchSize ?? requestedBatchSize));
+  const batchSize = Math.max(
+    1,
+    Math.min(
+      requestedBatchSize,
+      transport.maxBatchSize ?? requestedBatchSize,
+      transport.rateLimitPerMinute ?? requestedBatchSize
+    )
+  );
   const retryDelayMinutes = Math.max(1, input.retryDelayMinutes ?? DEFAULT_OUTBOX_RETRY_DELAY_MINUTES);
   const maxAttempts = Math.max(1, input.maxAttempts ?? DEFAULT_OUTBOX_MAX_ATTEMPTS);
 

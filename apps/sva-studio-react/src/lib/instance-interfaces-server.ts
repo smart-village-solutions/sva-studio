@@ -375,6 +375,22 @@ const buildMailTransportPublicConfig = (input: {
   readonly maxBatchSize: number | undefined;
   readonly rateLimitPerMinute: number | undefined;
 }): ExternalInterfaceRecord['publicConfig'] => {
+  const nextPublicConfig = { ...input.existingPublicConfig };
+  for (const key of [
+    'username',
+    'defaultFromEmail',
+    'defaultFromName',
+    'defaultReplyToEmail',
+    'maxBatchSize',
+    'rateLimitPerMinute',
+    'host',
+    'port',
+    'endpoint',
+    'mode',
+  ] as const) {
+    delete nextPublicConfig[key];
+  }
+
   const optionalFields = {
     username: trimToUndefined(input.draft.config.username),
     defaultFromEmail: trimToUndefined(input.draft.config.defaultFromEmail),
@@ -396,7 +412,7 @@ const buildMailTransportPublicConfig = (input: {
         };
 
   return {
-    ...input.existingPublicConfig,
+    ...nextPublicConfig,
     transportId: input.transportId,
     transportType: input.draft.config.transportType,
     securityMode: input.draft.config.securityMode,

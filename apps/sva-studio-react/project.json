@@ -228,7 +228,7 @@
       ],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "rm -rf coverage && mkdir -p coverage/.tmp && pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.config.ts"
+        "command": "rm -rf coverage && pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts"
       }
     },
     "test:explore:admin": {

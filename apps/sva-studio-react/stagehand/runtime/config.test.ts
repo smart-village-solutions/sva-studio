@@ -209,4 +209,19 @@ describe('parseStagehandAdminConfig', () => {
     expect(config.mission).toBe('admin-role-management-navigation');
     expect(config.runMode).toBe('story-loop');
   });
+
+  it('rejects malformed story id filters fail-closed', () => {
+    expect(() =>
+      parseStagehandAdminConfig({
+        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+        STAGEHAND_ADMIN_USERNAME: 'admin-user',
+        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+        STAGEHAND_RUN_MODE: 'story-loop',
+        STAGEHAND_STORY_IDS: '18x, 19',
+        OPENAI_API_KEY: 'test-openai-key',
+      })
+    ).toThrowError(
+      'Invalid Stagehand story id filter: 18x, 19. Expected a comma-separated list of numeric story ids.'
+    );
+  });
 });

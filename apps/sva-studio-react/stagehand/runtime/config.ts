@@ -60,6 +60,24 @@ function normalizeNumericCsvValues(value: string | undefined): number[] {
     .filter((entry) => Number.isNaN(entry) === false);
 }
 
+function parseStoryIds(value: string | undefined): number[] {
+  const normalizedEntries = normalizeCsvValues(value);
+
+  if (normalizedEntries.length === 0) {
+    return [];
+  }
+
+  const invalidEntry = normalizedEntries.find((entry) => /^\d+$/u.test(entry) === false);
+
+  if (invalidEntry !== undefined) {
+    throw new Error(
+      `Invalid Stagehand story id filter: ${value}. Expected a comma-separated list of numeric story ids.`
+    );
+  }
+
+  return normalizeNumericCsvValues(value);
+}
+
 function parseBaseUrl(baseUrl: string): string {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
@@ -106,7 +124,7 @@ function parseStoryFilters(env: StagehandAdminEnv): StagehandStoryFilters {
     clusters: normalizeCsvValues(env.STAGEHAND_STORY_CLUSTERS),
     packageIds: normalizeCsvValues(env.STAGEHAND_STORY_PACKAGE_IDS),
     resume: parseResumeFlag(env.STAGEHAND_STORY_RESUME),
-    storyIds: normalizeNumericCsvValues(env.STAGEHAND_STORY_IDS),
+    storyIds: parseStoryIds(env.STAGEHAND_STORY_IDS),
   };
 }
 

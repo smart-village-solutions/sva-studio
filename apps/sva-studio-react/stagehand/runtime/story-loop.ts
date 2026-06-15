@@ -525,7 +525,7 @@ async function createUserViaUi(
     throw new Error('Der UI-Button für die Nutzeranlage wurde nicht gefunden.');
   }
 
-  await page.waitForURL(/\/admin\/users\/[^/]+/u, { timeout: 45_000 });
+  await page.waitForURL(/\/admin\/users\/(?!new(?:[/?#]|$))[^/?#]+(?:[?#].*)?$/u, { timeout: 45_000 });
   await page.waitForLoadState('networkidle');
 
   const createdUserUrl = page.url();

@@ -4,11 +4,13 @@ import { appendWasteManagementDebugLog } from '../src/waste-management.api.share
 
 type WasteManagementDebugGlobal = typeof globalThis & {
   __wasteManagementDebug?: unknown[];
+  __wasteManagementDebugEnabled?: boolean;
   window?: unknown;
 };
 
 const debugGlobal = globalThis as WasteManagementDebugGlobal;
 const originalWindow = debugGlobal.window;
+const originalDebugEnabled = debugGlobal.__wasteManagementDebugEnabled;
 
 describe('waste-management.api.shared debug logging', () => {
   afterEach(() => {
@@ -16,6 +18,11 @@ describe('waste-management.api.shared debug logging', () => {
       delete debugGlobal.window;
     } else {
       debugGlobal.window = originalWindow;
+    }
+    if (originalDebugEnabled === undefined) {
+      delete debugGlobal.__wasteManagementDebugEnabled;
+    } else {
+      debugGlobal.__wasteManagementDebugEnabled = originalDebugEnabled;
     }
     delete debugGlobal.__wasteManagementDebug;
   });
@@ -32,8 +39,21 @@ describe('waste-management.api.shared debug logging', () => {
     expect(debugGlobal.__wasteManagementDebug).toBeUndefined();
   });
 
-  it('stores debug entries in browser-like runtimes only', () => {
+  it('skips debug buffer writes when browser logging is not explicitly enabled', () => {
     debugGlobal.window = {};
+
+    appendWasteManagementDebugLog({
+      scope: 'tour-delete',
+      phase: 'success',
+      tourId: 'tour-1',
+    });
+
+    expect(debugGlobal.__wasteManagementDebug).toBeUndefined();
+  });
+
+  it('stores debug entries in browser-like runtimes only when explicitly enabled', () => {
+    debugGlobal.window = {};
+    debugGlobal.__wasteManagementDebugEnabled = true;
 
     appendWasteManagementDebugLog({
       scope: 'tour-delete',

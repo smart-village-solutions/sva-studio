@@ -30,9 +30,12 @@ type WasteManagementDebugEntry = Readonly<{
 
 type WasteManagementDebugGlobal = typeof globalThis & {
   __wasteManagementDebug?: WasteManagementDebugEntry[];
+  __wasteManagementDebugEnabled?: boolean;
 };
 
 const isBrowserDebugRuntime = () => typeof window !== 'undefined';
+const isWasteManagementDebugEnabled = (debugGlobal: WasteManagementDebugGlobal) =>
+  debugGlobal.__wasteManagementDebugEnabled === true;
 
 const appendWasteManagementDebugEntry = (entry: WasteManagementDebugEntry): void => {
   if (!isBrowserDebugRuntime()) {
@@ -40,6 +43,10 @@ const appendWasteManagementDebugEntry = (entry: WasteManagementDebugEntry): void
   }
 
   const debugGlobal = globalThis as WasteManagementDebugGlobal;
+  if (!isWasteManagementDebugEnabled(debugGlobal)) {
+    return;
+  }
+
   const currentEntries = debugGlobal.__wasteManagementDebug ?? [];
   debugGlobal.__wasteManagementDebug = [...currentEntries, entry].slice(-50);
 };

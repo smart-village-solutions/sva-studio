@@ -15,15 +15,87 @@ const createWasteManagementApiError = (code: string, message: string) => new Was
 
 const createIdempotencyKey = () => crypto.randomUUID();
 
+type WasteManagementDebugEntry = Readonly<{
+  readonly timestamp: string;
+  readonly scope: 'api' | 'tour-delete';
+  readonly phase: 'start' | 'success' | 'error';
+  readonly url?: string;
+  readonly method?: string;
+  readonly hasBody?: boolean;
+  readonly tourId?: string;
+  readonly tourName?: string;
+  readonly errorCode?: string;
+  readonly errorMessage?: string;
+}>;
+
+type WasteManagementDebugGlobal = typeof globalThis & {
+  __wasteManagementDebug?: WasteManagementDebugEntry[];
+};
+
+const appendWasteManagementDebugEntry = (entry: WasteManagementDebugEntry): void => {
+  const debugGlobal = globalThis as WasteManagementDebugGlobal;
+  const currentEntries = debugGlobal.__wasteManagementDebug ?? [];
+  debugGlobal.__wasteManagementDebug = [...currentEntries, entry].slice(-50);
+};
+
+export const appendWasteManagementDebugLog = (
+  entry: Omit<WasteManagementDebugEntry, 'timestamp'>
+): void => {
+  appendWasteManagementDebugEntry({
+    timestamp: new Date().toISOString(),
+    ...entry,
+  });
+};
+
+const logWasteManagementRequest = (
+  phase: 'start' | 'success' | 'error',
+  input: {
+    readonly url: string;
+    readonly init?: RequestInit;
+    readonly error?: unknown;
+  }
+) => {
+  appendWasteManagementDebugLog({
+    scope: 'api',
+    phase,
+    url: input.url,
+    method: input.init?.method ?? 'GET',
+    hasBody: input.init?.body !== undefined,
+    errorCode:
+      input.error instanceof WasteManagementApiError
+        ? input.error.code
+        : undefined,
+    errorMessage:
+      input.error instanceof Error
+        ? input.error.message
+        : input.error !== undefined
+          ? String(input.error)
+          : undefined,
+  });
+};
+
 export const requestWasteManagementResponse = async <T>(input: {
   readonly url: string;
   readonly init?: RequestInit;
-}): Promise<T> =>
-  await requestMainserverJson<T, WasteManagementApiError>({
-    url: input.url,
-    init: input.init,
-    errorFactory: createWasteManagementApiError,
-  });
+}): Promise<T> => {
+  logWasteManagementRequest('start', input);
+
+  try {
+    const response = await requestMainserverJson<T, WasteManagementApiError>({
+      url: input.url,
+      init: input.init,
+      errorFactory: createWasteManagementApiError,
+    });
+    logWasteManagementRequest('success', input);
+    return response;
+  } catch (error) {
+    logWasteManagementRequest('error', {
+      ...input,
+      error,
+    });
+    throw error;
+  }
+};
 
 export const requestWasteManagementItem = async <T>(input: {
   readonly url: string;

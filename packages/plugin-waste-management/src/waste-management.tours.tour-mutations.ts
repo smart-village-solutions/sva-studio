@@ -2,6 +2,7 @@ import { startTransition, type FormEvent } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 
 import {
+  appendWasteManagementDebugLog,
   createWasteManagementTour,
   createWasteManagementLocationTourPickupDate,
   deleteWasteManagementLocationTourPickupDate,
@@ -185,7 +186,19 @@ const createDeleteTourHandler = ({ state, pt, loadOverview }: WasteToursSubmissi
   state.setMessage(null);
   state.setLastOutcome(null);
   try {
+    appendWasteManagementDebugLog({
+      scope: 'tour-delete',
+      phase: 'start',
+      tourId: tour.id,
+      tourName: tour.name,
+    });
     await deleteWasteManagementTour(tour.id);
+    appendWasteManagementDebugLog({
+      scope: 'tour-delete',
+      phase: 'success',
+      tourId: tour.id,
+      tourName: tour.name,
+    });
     await loadOverview(true);
     startTransition(() => {
       state.setMessage({
@@ -194,6 +207,14 @@ const createDeleteTourHandler = ({ state, pt, loadOverview }: WasteToursSubmissi
       });
     });
   } catch (saveError) {
+    appendWasteManagementDebugLog({
+      scope: 'tour-delete',
+      phase: 'error',
+      tourId: tour.id,
+      tourName: tour.name,
+      errorCode: resolveApiErrorCode(saveError) ?? undefined,
+      errorMessage: saveError instanceof Error ? saveError.message : String(saveError),
+    });
     setDeleteErrorMessage(state, pt, saveError);
   } finally {
     state.setSaving(false);

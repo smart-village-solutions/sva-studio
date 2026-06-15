@@ -279,6 +279,89 @@ describe('waste master data repository (data package coverage)', () => {
     });
   });
 
+  it('serializes calendar-only and none reminder configs into persistence columns', async () => {
+    const write = createExecutor();
+    const repository = createWasteMasterDataRepository(write.executor);
+
+    await repository.upsertWasteFraction({
+      id: 'fraction-calendar',
+      name: 'Kalender',
+      pdfShortLabel: undefined,
+      translations: undefined,
+      containerSize: undefined,
+      color: '#008800',
+      description: undefined,
+      active: true,
+      reminderConfig: {
+        reminderCount: 'once',
+        channels: {
+          push: false,
+          email: false,
+          calendar: true,
+        },
+        calendar: {
+          slots: [{ id: 'calendar:first', maxLeadDays: 4, defaultLeadDays: 1 }],
+        },
+      },
+    });
+
+    await repository.upsertWasteFraction({
+      id: 'fraction-none',
+      name: 'Ohne',
+      pdfShortLabel: undefined,
+      translations: undefined,
+      containerSize: undefined,
+      color: '#333333',
+      description: undefined,
+      active: false,
+      reminderConfig: {
+        reminderCount: 'none',
+        channels: {
+          push: false,
+          email: false,
+          calendar: false,
+        },
+      },
+    });
+
+    expect(write.statements[0]?.values.slice(8, 15)).toEqual([
+      JSON.stringify({
+        reminder_count: 'once',
+        channels: {
+          push: false,
+          email: false,
+          calendar: true,
+        },
+        calendar: {
+          slots: [{ id: 'calendar:first', max_lead_days: 4, default_lead_days: 1 }],
+        },
+      }),
+      'once',
+      4,
+      null,
+      false,
+      false,
+      true,
+    ]);
+
+    expect(write.statements[1]?.values.slice(8, 15)).toEqual([
+      JSON.stringify({
+        reminder_count: 'none',
+        channels: {
+          push: false,
+          email: false,
+          calendar: false,
+        },
+      }),
+      'none',
+      null,
+      null,
+      false,
+      false,
+      false,
+    ]);
+  });
+
   it('lists regions and cities with search and region filters', async () => {
     const region = createExecutor([
       {

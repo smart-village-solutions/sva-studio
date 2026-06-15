@@ -1,7 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { createGuardrailCheckResult, walkFiles, type GuardrailCheckContext, type GuardrailCheckDefinition } from './guardrail-report.shared.ts';
+import {
+  createGuardrailCheckResult,
+  normalizeRelativePath,
+  walkFiles,
+  type GuardrailCheckContext,
+  type GuardrailCheckDefinition,
+} from './guardrail-report.shared.ts';
 
 const resolveLoggerMode = (env: NodeJS.ProcessEnv): 'console_to_loki' | 'degraded' | 'otel_to_loki' => {
   const otelEnabled = !['false', '0'].includes((env.ENABLE_OTEL?.trim() || '').toLowerCase());
@@ -19,7 +25,7 @@ const resolveLoggerMode = (env: NodeJS.ProcessEnv): 'console_to_loki' | 'degrade
 export const buildRuntimeBootCheck = async (context: GuardrailCheckContext) => {
   const migrationFiles = walkFiles(resolve(context.rootDir, 'packages/data/migrations'))
     .filter((filePath) => filePath.endsWith('.sql'))
-    .map((filePath) => filePath.replace(`${context.rootDir}/`, '').split('\\').join('/'))
+    .map((filePath) => normalizeRelativePath(context.rootDir, filePath))
     .sort();
   const latestMigration = migrationFiles.at(-1) ?? null;
   const loggerMode = resolveLoggerMode(context.env);
@@ -110,7 +116,7 @@ export const buildCacheContractCheck = async (context: GuardrailCheckContext) =>
       const source = readFileSync(filePath, 'utf8');
       return !source.includes('invalidate') && !source.includes('tag');
     })
-    .map((filePath) => filePath.replace(`${context.rootDir}/`, '').split('\\').join('/'))
+    .map((filePath) => normalizeRelativePath(context.rootDir, filePath))
     .slice(0, 10);
 
   return createGuardrailCheckResult({
@@ -127,7 +133,7 @@ export const buildCacheContractCheck = async (context: GuardrailCheckContext) =>
         : ['Es wurden keine offensichtlichen Mutationspfade ohne Invalidierungshinweis gefunden.'],
     evidence: {
       sampledMutationFiles: mutationInventoryFiles.slice(0, 10).map((filePath) =>
-        filePath.replace(`${context.rootDir}/`, '').split('\\').join('/')
+        normalizeRelativePath(context.rootDir, filePath)
       ),
       filesWithoutCentralTags,
     },

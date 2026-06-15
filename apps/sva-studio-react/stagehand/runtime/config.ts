@@ -11,6 +11,7 @@ type StagehandAdminEnv = Record<string, string | undefined>;
 
 const DEFAULT_MISSION: StagehandMissionName = 'admin-users-overview';
 const DEFAULT_RUN_MODE: StagehandRunMode = 'mission';
+const STAGEHAND_PILOT_MISSION_NAMES = ['admin-users-overview'] as const satisfies readonly StagehandMissionName[];
 
 const REQUIRED_ENV_SPECS = [
   {
@@ -175,6 +176,20 @@ function parseMission(mission: string | undefined): StagehandMissionName {
   );
 }
 
+function assertSupportedPilotMission(mission: StagehandMissionName, runMode: StagehandRunMode): void {
+  if (runMode !== 'mission') {
+    return;
+  }
+
+  if (STAGEHAND_PILOT_MISSION_NAMES.includes(mission)) {
+    return;
+  }
+
+  throw new Error(
+    `Invalid Stagehand admin mission for mission mode: ${mission}. Expected one of: ${STAGEHAND_PILOT_MISSION_NAMES.join(', ')}`
+  );
+}
+
 export function parseStagehandAdminConfig(env: StagehandAdminEnv): StagehandAdminConfig {
   const missingKeys = REQUIRED_ENV_SPECS.flatMap(({ sources }) =>
     readFirstDefined(env, sources) === undefined ? [sources.join('|')] : []
@@ -192,6 +207,7 @@ export function parseStagehandAdminConfig(env: StagehandAdminEnv): StagehandAdmi
   const runMode = parseRunMode(env.STAGEHAND_RUN_MODE);
   const storyFilters = parseStoryFilters(env);
   const tenant = parseTenantConfig(env);
+  assertSupportedPilotMission(mission, runMode);
 
   if (baseUrl === undefined || username === undefined || password === undefined || openAiApiKey === undefined) {
     throw new Error('Missing Stagehand admin config env vars: invariant violation');

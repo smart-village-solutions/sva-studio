@@ -237,7 +237,7 @@ function createFakeChromiumForUserRoleAssignment() {
     loginClicked: false,
   };
 
-  function createLocator(query: { selector?: string; roleName?: string | RegExp }) {
+  function createLocator(query: { role?: string; selector?: string; roleName?: string | RegExp }) {
     const isVisible = () => {
       if (query.selector === '#role-assignment-search') {
         return state.currentUrl.includes('/admin/roles/') && state.activeRoleTab === 'assignments';
@@ -245,6 +245,9 @@ function createFakeChromiumForUserRoleAssignment() {
 
       if (query.roleName instanceof RegExp) {
         const label = query.roleName.source.toLowerCase();
+        if (label.includes('zuweisungen')) {
+          return query.role === 'tab';
+        }
         if (label.includes('zuweisen')) {
           return state.activeRoleTab === 'assignments' && state.formValues['#role-assignment-search'] === state.createdUserEmail;
         }
@@ -282,6 +285,9 @@ function createFakeChromiumForUserRoleAssignment() {
           }
 
           if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('zuweisungen')) {
+            if (query.role !== 'tab') {
+              throw new Error('Assignments control must be selected as a tab');
+            }
             state.activeRoleTab = 'assignments';
             return;
           }
@@ -309,7 +315,7 @@ function createFakeChromiumForUserRoleAssignment() {
 
   function createPage() {
     return {
-      getByRole: (_role: string, options: { name: string | RegExp }) => createLocator({ roleName: options.name }),
+      getByRole: (role: string, options: { name: string | RegExp }) => createLocator({ role, roleName: options.name }),
       locator: (selector: string) => createLocator({ selector }),
       goto: async (url: string) => {
         state.currentUrl = url;
@@ -755,8 +761,8 @@ describe('runStagehandStoryLoop', () => {
     expect(result.summary).toEqual({
       clusters: 1,
       storiesClassified: 1,
-      storiesFailedEvidence: 0,
-      storiesPassed: 1,
+      storiesFailedEvidence: 1,
+      storiesPassed: 0,
       storiesSkipped: 0,
     });
 
@@ -765,7 +771,7 @@ describe('runStagehandStoryLoop', () => {
         {
           storyId: 23,
           studioCheck: {
-            status: 'erfuellt',
+            status: 'unklar',
             coverage: 'vorhanden',
           },
           findings: expect.arrayContaining([
@@ -792,7 +798,7 @@ describe('runStagehandStoryLoop', () => {
             let activeRoleTab = 'general';
             const formValues: Record<string, string> = {};
 
-            const createLocator = (query: { selector?: string; roleName?: string | RegExp }) => ({
+            const createLocator = (query: { role?: string; selector?: string; roleName?: string | RegExp }) => ({
               count: async () => {
                 if (query.selector === '#role-assignment-search') {
                   return currentUrl.includes('/admin/roles/') && activeRoleTab === 'assignments' ? 1 : 0;
@@ -800,6 +806,9 @@ describe('runStagehandStoryLoop', () => {
 
                 if (query.roleName instanceof RegExp) {
                   const label = query.roleName.source.toLowerCase();
+                  if (label.includes('zuweisungen')) {
+                    return query.role === 'tab' ? 1 : 0;
+                  }
                   if (label.includes('zuweisen')) {
                     return activeRoleTab === 'assignments' ? 1 : 0;
                   }
@@ -821,6 +830,9 @@ describe('runStagehandStoryLoop', () => {
                   }
 
                   if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('zuweisungen')) {
+                    if (query.role !== 'tab') {
+                      throw new Error('Assignments control must be selected as a tab');
+                    }
                     activeRoleTab = 'assignments';
                   }
                 },
@@ -844,7 +856,7 @@ describe('runStagehandStoryLoop', () => {
             });
 
             return {
-              getByRole: (_role: string, options: { name: string | RegExp }) => createLocator({ roleName: options.name }),
+              getByRole: (role: string, options: { name: string | RegExp }) => createLocator({ role, roleName: options.name }),
               locator: (selector: string) => createLocator({ selector }),
               goto: async (url: string) => {
                 currentUrl = url;
@@ -964,6 +976,6 @@ describe('runStagehandStoryLoop', () => {
       }
     );
 
-    expect(result.summary.storiesPassed).toBe(1);
+    expect(result.summary.storiesPassed).toBe(0);
   });
 });

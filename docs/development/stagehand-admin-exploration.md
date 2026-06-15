@@ -5,7 +5,7 @@ Dieses Dokument beschreibt die lokale, nicht blockierende Stagehand-Schicht für
 ## Zweck und Einordnung
 
 - `pnpm nx run sva-studio-react:test:explore:admin` ist ein lokaler Explorationslauf für reale IAM-Admin-Pfade.
-- Die Schicht ergaenzt `test:e2e` und `test:acceptance`, ersetzt sie aber nicht.
+- Die Schicht ergänzt `test:e2e` und `test:acceptance`, ersetzt sie aber nicht.
 - Die Schicht ist bewusst local-first und nicht Teil eines verpflichtenden PR- oder CI-Gates.
 
 ## Voraussetzungen
@@ -24,7 +24,7 @@ Dieses Dokument beschreibt die lokale, nicht blockierende Stagehand-Schicht für
 - `STAGEHAND_ADMIN_PASSWORD` oder `IAM_ACCEPTANCE_ADMIN_PASSWORD`
   - Passwort für diese Testidentität
 - `STAGEHAND_ADMIN_MISSION`
-  - optional; nur für den Legacy-Einzelmissionsmodus relevant
+  - optional; nur für den Legacy-Einzelmissionsmodus relevant, aktuell unterstützt nur `admin-users-overview`
 - `STAGEHAND_RUN_MODE`
   - optional; `story-loop` für den Voll-Lauf oder `mission` für den Legacy-Einzelmissionsmodus
 - `STAGEHAND_STORY_IDS`
@@ -50,7 +50,7 @@ Dieses Dokument beschreibt die lokale, nicht blockierende Stagehand-Schicht für
 - `OPENAI_API_KEY`
   - bestehender LLM-Zugang für den Stagehand-Kontext
 
-## Ausfuehrung
+## Ausführung
 
 ```bash
 pnpm nx run sva-studio-react:test:explore:admin
@@ -145,7 +145,7 @@ Für den Standardmodus `story-loop` entsteht zusätzlich:
 - kein Automatismus, der `user-stories.json` ungeprüft fortschreibt
 - kein Messinstrument für Produktfortschritt ohne menschliche Review- und Priorisierungsarbeit
 
-## Hinweise fuer die Teamnutzung
+## Hinweise für die Teamnutzung
 
 - Tenant-Mutationen sind für dedizierte Testdaten erlaubt; Root-/Platform-Host bleibt nach Möglichkeit read-mostly.
 - Fehlende lokale Stack-Readiness, Login-Loops, fehlende Berechtigungen oder nicht lokal beobachtbare Betriebsnachweise sind erwartete Befunde und müssen sichtbar dokumentiert bleiben.

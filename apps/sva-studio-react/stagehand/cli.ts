@@ -83,7 +83,16 @@ const HTML_REQUEST_INIT = {
   method: 'GET',
   redirect: 'manual',
 } as const satisfies RequestInit;
-const USERS_PAGE_MARKERS = ['Users table', 'Platform users table', 'User Management', 'Platform Users'] as const;
+const USERS_PAGE_MARKERS = [
+  'Users table',
+  'Platform users table',
+  'User Management',
+  'Platform Users',
+  'Benutzertabelle',
+  'Plattform-Benutzertabelle',
+  'Benutzerverwaltung',
+  'Plattform-Benutzer',
+] as const;
 const USERS_EMPTY_STATE_MARKERS = ['Keine Nutzer gefunden.', 'No users found.'] as const;
 
 function createArtifacts(reportsRoot: string, missionName: string): StagehandMissionArtifacts {
@@ -269,6 +278,7 @@ export async function runStagehandAdminCli(
     const reportsRoot = options.reportsRoot ?? DEFAULT_REPORTS_ROOT;
 
     if (config.runMode === 'story-loop') {
+      await assertStagehandReadiness(config.baseUrl, options.fetchImpl);
       const loopRun = await runStagehandStoryLoop(config, {
         executeCluster: options.executeCluster,
         generatedAt,
@@ -346,7 +356,7 @@ function writeCliResult(result: StagehandCliResult): number {
 }
 
 function isDirectExecution(): boolean {
-  return process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1];
+  return process.argv[1] !== undefined && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 }
 
 if (isDirectExecution()) {

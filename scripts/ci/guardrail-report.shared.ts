@@ -66,7 +66,16 @@ export const walkFiles = (directory: string): string[] => {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === 'coverage' || entry.name === 'dist' || entry.name === 'node_modules') {
+      if (
+        entry.name === '.cache' ||
+        entry.name === '.nx' ||
+        entry.name === '.output' ||
+        entry.name === '.turbo' ||
+        entry.name === '.vite' ||
+        entry.name === 'coverage' ||
+        entry.name === 'dist' ||
+        entry.name === 'node_modules'
+      ) {
         continue;
       }
       files.push(...walkFiles(entryPath));

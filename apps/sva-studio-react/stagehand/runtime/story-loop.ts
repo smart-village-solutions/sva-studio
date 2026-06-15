@@ -213,13 +213,13 @@ async function openTenantContext(
   };
 }
 
-function createTenantUserPayload(timestamp: string) {
-  const uniqueSuffix = timestamp.slice(-6);
-  const email = `stagehand.story18.${timestamp}@example.invalid`;
+function createTenantUserPayload(runToken: string) {
+  const uniqueSuffix = runToken.slice(-12).replace(/[^a-z0-9]/giu, '').slice(-8);
+  const email = `stagehand.story18.${runToken}@example.invalid`;
   const firstName = 'Stagehand';
   const lastName = `Loop${uniqueSuffix}`;
   const displayName = `${firstName} ${lastName}`;
-  const idempotencyKey = `stagehand-story18-${timestamp}`;
+  const idempotencyKey = `stagehand-story18-${runToken}`;
 
   return {
     displayName,
@@ -325,12 +325,12 @@ async function verifyTenantUserHiddenFromNeighbor(
   }
 }
 
-function createRolePayload(timestamp: string) {
-  const uniqueSuffix = timestamp.slice(-6);
+function createRolePayload(runToken: string) {
+  const uniqueSuffix = runToken.slice(-12).replace(/[^a-z0-9]/giu, '').slice(-8);
   const roleName = `stagehand_role_${uniqueSuffix}`.toLowerCase();
   const displayName = `Stagehand Role ${uniqueSuffix}`;
   const description = `Stagehand-Testrolle ${uniqueSuffix}`;
-  const idempotencyKey = `stagehand-role-${timestamp}`;
+  const idempotencyKey = `stagehand-role-${runToken}`;
 
   return {
     description,
@@ -431,11 +431,16 @@ async function fillIfVisible(page: import('@playwright/test').Page, selectors: r
 
 async function clickIfVisible(
   page: import('@playwright/test').Page,
-  selectors: readonly ({ kind: 'css'; value: string } | { kind: 'role'; value: string | RegExp })[]
+  selectors: readonly (
+    | { kind: 'css'; value: string }
+    | { kind: 'role'; role?: 'button' | 'tab'; value: string | RegExp }
+  )[]
 ): Promise<boolean> {
   for (const selector of selectors) {
     const locator =
-      selector.kind === 'css' ? page.locator(selector.value) : page.getByRole('button', { name: selector.value });
+      selector.kind === 'css'
+        ? page.locator(selector.value)
+        : page.getByRole(selector.role ?? 'button', { name: selector.value });
     const count = await locator.count().catch(() => 0);
 
     if (count === 0) {
@@ -545,7 +550,7 @@ async function assignRoleToUserViaUi(
   });
   await page.waitForLoadState('networkidle');
 
-  const assignmentsTabClicked = await clickIfVisible(page, [{ kind: 'role', value: /zuweisungen/i }]);
+  const assignmentsTabClicked = await clickIfVisible(page, [{ kind: 'role', role: 'tab', value: /zuweisungen/i }]);
 
   if (assignmentsTabClicked === false) {
     throw new Error('Der Zuweisungen-Tab der Rollen-Detailseite wurde nicht gefunden.');
@@ -619,7 +624,7 @@ async function executeTenantUserCreateCluster(
   const chromium = await chromiumFactory();
   const browser = await chromium.launch({ headless: true });
   const timestamp = new Date().toISOString().replace(/[-:.TZ]/gu, '').slice(0, 14);
-  const user = createTenantUserPayload(timestamp);
+  const user = createTenantUserPayload(`tenant-user-create-${timestamp}`);
 
   try {
     const { context, page } = await openTenantContext(browser, tenant);
@@ -700,7 +705,7 @@ async function executeTenantIsolationCluster(
   const chromium = await chromiumFactory();
   const browser = await chromium.launch({ headless: true });
   const timestamp = new Date().toISOString().replace(/[-:.TZ]/gu, '').slice(0, 14);
-  const user = createTenantUserPayload(timestamp);
+  const user = createTenantUserPayload(`tenant-isolation-${timestamp}`);
 
   try {
     const { context, page } = await openTenantContext(browser, tenant);
@@ -780,8 +785,8 @@ async function executeRoleAndPermissionManagementCluster(
   const chromium = await chromiumFactory();
   const browser = await chromium.launch({ headless: true });
   const timestamp = new Date().toISOString().replace(/[-:.TZ]/gu, '').slice(0, 14);
-  const user = createTenantUserPayload(timestamp);
-  const role = createRolePayload(timestamp);
+  const user = createTenantUserPayload(`role-assignment-${timestamp}`);
+  const role = createRolePayload(`role-assignment-${timestamp}`);
 
   try {
     const { context, page } = await openTenantContext(browser, tenant);
@@ -824,7 +829,7 @@ async function executeRoleAndPermissionManagementCluster(
       ],
       verification: {
         environment: 'adequate',
-        negative: userRoleVerified ? 'verified' : 'missing',
+        negative: 'missing',
         positive: userRoleVerified && roleVisibleInCatalog ? 'verified' : 'missing',
       },
     }));

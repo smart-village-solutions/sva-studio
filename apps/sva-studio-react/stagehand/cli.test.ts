@@ -124,6 +124,48 @@ describe('runStagehandAdminCli', () => {
     expect(readFileSync(result.payload.transcriptPath, 'utf8')).toContain('stagehand mission bootstrap pending');
   });
 
+  it('accepts German users-page markers for the default locale', async () => {
+    const reportsRoot = createTempReportsRoot();
+    const result = await runStagehandAdminCli(
+      {
+        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+        STAGEHAND_ADMIN_USERNAME: 'admin-user',
+        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+        STAGEHAND_ADMIN_MISSION: 'admin-users-overview',
+        OPENAI_API_KEY: 'test-openai-key',
+      },
+      {
+        fetchImpl: async (input: string | URL | Request) => {
+          const url = String(input);
+
+          if (url === 'https://studio.example.test') {
+            return new Response('<html><body>ready</body></html>', { status: 200 });
+          }
+
+          if (url === 'https://studio.example.test/admin/users') {
+            return new Response('<main><h1>Benutzerverwaltung</h1><table aria-label="Benutzertabelle"></table></main>', {
+              status: 200,
+              headers: { 'content-type': 'text/html; charset=utf-8' },
+            });
+          }
+
+          throw new Error(`Unexpected URL: ${url}`);
+        },
+        generatedAt: '2026-05-16T12:00:00.000Z',
+        reportsRoot,
+      }
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.payload.status).toBe('READY');
+    if (result.payload.status !== 'READY' || result.payload.runMode !== 'mission') {
+      throw new Error('Expected READY mission payload');
+    }
+    expect(JSON.parse(readFileSync(result.payload.statusPath, 'utf8')).findings).toContain(
+      'Benutzerverwaltung erkannt: Benutzertabelle.'
+    );
+  });
+
   it('returns READY with blocked mission status when the app redirects back to Login', async () => {
     const reportsRoot = createTempReportsRoot();
     const result = await runStagehandAdminCli(
@@ -253,9 +295,7 @@ describe('runStagehandAdminCli', () => {
         STAGEHAND_ADMIN_MISSION: 'admin-role-management-navigation',
         OPENAI_API_KEY: 'test-openai-key',
       },
-      {
-        fetchImpl: async () => new Response('<html><body>ready</body></html>', { status: 200 }),
-      }
+      {}
     );
 
     expect(result).toEqual({
@@ -264,7 +304,7 @@ describe('runStagehandAdminCli', () => {
       payload: {
         status: 'BLOCKED',
         message:
-          'Stagehand admin mission is not implemented in the pilot runner: admin-role-management-navigation',
+          'Invalid Stagehand admin mission for mission mode: admin-role-management-navigation. Expected one of: admin-users-overview',
       },
     });
   });
@@ -427,7 +467,7 @@ describe('runStagehandAdminCli', () => {
       ],
     });
     expect(JSON.parse(readFileSync(join(reportsRoot, 'story-loop', 'overlay.json'), 'utf8'))).toMatchObject({
-      sourcePath: storySourcePath,
+      sourcePath: toPortableArtifactPath(storySourcePath),
       stories: [
         {
           storyId: 18,
@@ -439,6 +479,32 @@ describe('runStagehandAdminCli', () => {
           },
         },
       ],
+    });
+  });
+
+  it('returns BLOCKED in story-loop mode when the readiness endpoint is unreachable', async () => {
+    const result = await runStagehandAdminCli(
+      {
+        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+        STAGEHAND_ADMIN_USERNAME: 'admin-user',
+        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+        STAGEHAND_RUN_MODE: 'story-loop',
+        OPENAI_API_KEY: 'test-openai-key',
+      },
+      {
+        fetchImpl: async () => {
+          throw new TypeError('fetch failed');
+        },
+      }
+    );
+
+    expect(result).toEqual({
+      exitCode: 1,
+      stream: 'stderr',
+      payload: {
+        status: 'BLOCKED',
+        message: 'Stagehand admin target is not reachable: https://studio.example.test. fetch failed',
+      },
     });
   });
 });

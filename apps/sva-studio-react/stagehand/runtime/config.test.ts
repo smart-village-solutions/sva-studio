@@ -8,7 +8,7 @@ describe('parseStagehandAdminConfig', () => {
       STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test/admin/',
       STAGEHAND_ADMIN_USERNAME: 'admin-user',
       STAGEHAND_ADMIN_PASSWORD: 'super-secret',
-      STAGEHAND_ADMIN_MISSION: 'admin-role-management-navigation',
+      STAGEHAND_ADMIN_MISSION: 'admin-users-overview',
       OPENAI_API_KEY: 'test-openai-key',
     });
 
@@ -18,7 +18,7 @@ describe('parseStagehandAdminConfig', () => {
         password: 'super-secret',
       },
       baseUrl: 'https://studio.example.test/admin',
-      mission: 'admin-role-management-navigation',
+      mission: 'admin-users-overview',
       openAiApiKey: 'test-openai-key',
       runMode: 'mission',
       storyFilters: {
@@ -180,5 +180,33 @@ describe('parseStagehandAdminConfig', () => {
     ).toThrowError(
       'Invalid Stagehand admin mission: admin-does-not-exist. Expected one of: admin-users-overview, admin-user-permissions-inspection, admin-role-management-navigation'
     );
+  });
+
+  it('rejects unsupported pilot missions in mission mode', () => {
+    expect(() =>
+      parseStagehandAdminConfig({
+        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+        STAGEHAND_ADMIN_USERNAME: 'admin-user',
+        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+        STAGEHAND_ADMIN_MISSION: 'admin-role-management-navigation',
+        OPENAI_API_KEY: 'test-openai-key',
+      })
+    ).toThrowError(
+      'Invalid Stagehand admin mission for mission mode: admin-role-management-navigation. Expected one of: admin-users-overview'
+    );
+  });
+
+  it('allows extended story mission mappings in story-loop mode', () => {
+    const config = parseStagehandAdminConfig({
+      STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+      STAGEHAND_ADMIN_USERNAME: 'admin-user',
+      STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+      STAGEHAND_ADMIN_MISSION: 'admin-role-management-navigation',
+      STAGEHAND_RUN_MODE: 'story-loop',
+      OPENAI_API_KEY: 'test-openai-key',
+    });
+
+    expect(config.mission).toBe('admin-role-management-navigation');
+    expect(config.runMode).toBe('story-loop');
   });
 });

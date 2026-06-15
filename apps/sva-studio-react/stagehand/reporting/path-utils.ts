@@ -1,6 +1,9 @@
-import { isAbsolute, relative, sep } from 'node:path';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-export function toPortableArtifactPath(filePath: string, cwd: string = process.cwd()): string {
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../');
+
+export function toPortableArtifactPath(filePath: string, cwd: string = repoRoot): string {
   if (isAbsolute(filePath) === false) {
     return filePath;
   }

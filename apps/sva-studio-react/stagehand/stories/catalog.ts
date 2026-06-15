@@ -1,8 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { StagehandMissionName } from '../runtime/types.js';
+import { stagehandStoryCatalogSnapshot } from './catalog.snapshot.js';
 
 export interface StagehandStoryReference {
   readonly id: number;
@@ -50,8 +51,16 @@ const USER_STORIES_FILE_PATH = resolve(
 
 let cachedCatalog: StagehandStoryCatalog | null = null;
 
-function parseUserStoriesFile(): UserStoriesFile {
-  return JSON.parse(readFileSync(USER_STORIES_FILE_PATH, 'utf8')) as UserStoriesFile;
+function parseUserStoriesFile(filePath: string): UserStoriesFile {
+  return JSON.parse(readFileSync(filePath, 'utf8')) as UserStoriesFile;
+}
+
+function resolveUserStoriesFile(filePath: string): UserStoriesFile {
+  if (existsSync(filePath)) {
+    return parseUserStoriesFile(filePath);
+  }
+
+  return stagehandStoryCatalogSnapshot satisfies UserStoriesFile;
 }
 
 function normalizeStoryReference(story: UserStoryEntry): StagehandStoryReference {
@@ -101,9 +110,13 @@ function buildCatalog(file: UserStoriesFile): StagehandStoryCatalog {
 }
 
 export function loadStagehandStoryCatalog(): StagehandStoryCatalog {
-  cachedCatalog ??= buildCatalog(parseUserStoriesFile());
+  cachedCatalog ??= buildCatalog(resolveUserStoriesFile(USER_STORIES_FILE_PATH));
 
   return cachedCatalog;
+}
+
+export function loadStagehandStoryCatalogFromPath(filePath: string): StagehandStoryCatalog {
+  return buildCatalog(resolveUserStoriesFile(filePath));
 }
 
 export function getStagehandMissionStories(missionName: StagehandMissionName): readonly StagehandStoryReference[] {

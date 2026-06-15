@@ -414,6 +414,13 @@ describe('runStagehandAdminCli', () => {
       {
         reportsRoot,
         storySourcePath,
+        fetchImpl: async () =>
+          new Response('<html><body>Stagehand ready.</body></html>', {
+            status: 200,
+            headers: {
+              'content-type': 'text/html; charset=utf-8',
+            },
+          }),
         executeCluster: async ({ stories }) =>
           stories.map((story) => ({
             storyId: story.id,

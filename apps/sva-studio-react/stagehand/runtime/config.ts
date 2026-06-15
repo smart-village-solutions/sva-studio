@@ -11,7 +11,7 @@ type StagehandAdminEnv = Record<string, string | undefined>;
 
 const DEFAULT_MISSION: StagehandMissionName = 'admin-users-overview';
 const DEFAULT_RUN_MODE: StagehandRunMode = 'mission';
-const STAGEHAND_PILOT_MISSION_NAMES = ['admin-users-overview'] as const satisfies readonly StagehandMissionName[];
+const STAGEHAND_PILOT_MISSION_NAMES: readonly StagehandMissionName[] = ['admin-users-overview'];
 
 const REQUIRED_ENV_SPECS = [
   {

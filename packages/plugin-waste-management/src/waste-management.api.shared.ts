@@ -32,7 +32,13 @@ type WasteManagementDebugGlobal = typeof globalThis & {
   __wasteManagementDebug?: WasteManagementDebugEntry[];
 };
 
+const isBrowserDebugRuntime = () => typeof window !== 'undefined';
+
 const appendWasteManagementDebugEntry = (entry: WasteManagementDebugEntry): void => {
+  if (!isBrowserDebugRuntime()) {
+    return;
+  }
+
   const debugGlobal = globalThis as WasteManagementDebugGlobal;
   const currentEntries = debugGlobal.__wasteManagementDebug ?? [];
   debugGlobal.__wasteManagementDebug = [...currentEntries, entry].slice(-50);

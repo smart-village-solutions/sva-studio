@@ -9,6 +9,7 @@ import {
   type StagehandStoryCheck,
   type StagehandStoryRecord,
 } from '../stories/state.js';
+import { toPortableArtifactPath } from '../reporting/path-utils.js';
 import { buildStagehandStoryClusters } from './clusters.js';
 import type { StagehandAdminConfig, StagehandStoryCheckStatus, StagehandStoryCoverage } from './types.js';
 
@@ -952,7 +953,7 @@ export async function runStagehandStoryLoop(
 
   writeStagehandStoryCheckOverlay(artifacts.overlayPath, {
     generatedAt,
-    sourcePath: options.storySourcePath,
+    sourcePath: toPortableArtifactPath(options.storySourcePath),
     stories: evidence.map((entry) => ({
       clusterId: clusterByStoryId.get(entry.storyId) ?? 'unknown',
       storyId: entry.storyId,
@@ -971,7 +972,7 @@ export async function runStagehandStoryLoop(
 
   const aggregateStatus: StoryLoopAggregateStatus = {
     generatedAt,
-    overlayPath: artifacts.overlayPath,
+    overlayPath: toPortableArtifactPath(artifacts.overlayPath),
     stories: evidence.map((entry) => ({
       coverage: entry.coverage,
       findings: entry.findings,
@@ -980,13 +981,19 @@ export async function runStagehandStoryLoop(
       storyId: entry.storyId,
     })),
     summary,
-    transcriptPath: artifacts.transcriptPath,
+    transcriptPath: toPortableArtifactPath(artifacts.transcriptPath),
   };
 
   writeFileSync(artifacts.statusPath, `${JSON.stringify(aggregateStatus, null, 2)}\n`, 'utf8');
   writeFileSync(
     artifacts.reportPath,
-    `${createAggregateMarkdown(generatedAt, summary, evidence, catalog.storyIndex, artifacts.transcriptPath)}\n`,
+    `${createAggregateMarkdown(
+      generatedAt,
+      summary,
+      evidence,
+      catalog.storyIndex,
+      toPortableArtifactPath(artifacts.transcriptPath)
+    )}\n`,
     'utf8'
   );
   writeFileSync(

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { toPortableArtifactPath } from './reporting/path-utils.ts';
 import { runStagehandAdminCli } from './cli.ts';
 
 const temporaryDirectories: string[] = [];
@@ -116,7 +117,7 @@ describe('runStagehandAdminCli', () => {
         'Benutzerverwaltung erkannt: Users table.',
       ],
       screenshots: [],
-      transcriptPath: join(reportsRoot, 'admin-users-overview', 'transcript.jsonl'),
+      transcriptPath: toPortableArtifactPath(join(reportsRoot, 'admin-users-overview', 'transcript.jsonl')),
     });
     expect(readFileSync(result.payload.reportPath, 'utf8')).toContain('# Stagehand-Missionsbericht');
     expect(readFileSync(result.payload.reportPath, 'utf8')).toContain('## Story-Basis');
@@ -213,7 +214,7 @@ describe('runStagehandAdminCli', () => {
         'Login-Redirect erkannt; der Pilotlauf bricht ab, statt eine Login-Schleife zu tolerieren.',
       ],
       screenshots: [],
-      transcriptPath: join(reportsRoot, 'admin-users-overview', 'transcript.jsonl'),
+      transcriptPath: toPortableArtifactPath(join(reportsRoot, 'admin-users-overview', 'transcript.jsonl')),
     });
   });
 

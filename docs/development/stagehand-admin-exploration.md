@@ -79,6 +79,9 @@ pnpm nx run sva-studio-react:test:explore:admin
 
 Artefakte werden missionsbezogen unter `docs/reports/stagehand-admin-exploration/<mission>/` geschrieben:
 
+- Die Artefakte sind lokale Lauf-Outputs und sollen nicht als maschinenspezifische Snapshots versioniert werden.
+- Pfadangaben innerhalb der Artefakte werden repo-relativ geschrieben, damit Reviews portabel bleiben.
+
 - `status.json`
   - strukturierter Missionsstatus mit Story-Basis, Findings und Transkriptpfad
 - `report.md`

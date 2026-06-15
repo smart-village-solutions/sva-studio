@@ -1,5 +1,6 @@
 import type { StagehandMissionName } from '../runtime/types.js';
 import type { StagehandStoryReference } from '../stories/catalog.js';
+import { toPortableArtifactPath } from './path-utils.js';
 
 export type StagehandMissionStatus = 'passed' | 'failed' | 'blocked';
 
@@ -85,7 +86,7 @@ export function renderStagehandMarkdownReport(report: StagehandMissionReport): s
     `Mission: \`${report.mission}\``,
     `Status: \`${report.status}\``,
     'Transkript:',
-    renderTextCodeBlock(report.transcriptPath),
+    renderTextCodeBlock(toPortableArtifactPath(report.transcriptPath)),
     '',
     '## Story-Basis',
     stories,

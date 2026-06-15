@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { toPortableArtifactPath } from '../reporting/path-utils.ts';
 import type { StagehandAdminConfig } from './types.ts';
 import { classifyStoryEvidence, runStagehandStoryLoop } from './story-loop.ts';
 
@@ -488,12 +489,12 @@ describe('runStagehandStoryLoop', () => {
       coverage: 'nicht_geprueft',
       notes: '',
     });
-    expect(overlay.sourcePath).toBe(storySourcePath);
+    expect(overlay.sourcePath).toBe(toPortableArtifactPath(storySourcePath));
     expect(overlay.stories.map((entry) => entry.storyId)).toEqual([18, 37]);
     expect(overlay.stories[1]?.studioCheck.status).toBe('umgebung_unzureichend');
 
     expect(JSON.parse(readFileSync(result.artifacts.statusPath, 'utf8'))).toMatchObject({
-      overlayPath: result.artifacts.overlayPath,
+      overlayPath: toPortableArtifactPath(result.artifacts.overlayPath),
       summary: {
         storiesPassed: 1,
         storiesFailedEvidence: 0,

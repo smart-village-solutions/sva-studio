@@ -641,7 +641,7 @@ const createSyncWasteTypesOperation = (
   deps: WasteOperationRuntimeDeps
 ): WasteManagementOperationRuntime['syncWasteTypes'] => async (instanceId, input) => {
   const startedAt = Date.now();
-  const details = await withWasteClient(deps, instanceId, async ({ client, repository, dataSource }) => {
+  const details = await withWasteClient(deps, instanceId, async ({ client, repository }) => {
     await client.query(buildWasteFractionShortLabelBackfillStatement('waste_fractions'));
     const fractions = await repository.listWasteFractions();
     const artifact = await buildWasteTypesStaticContent(fractions);

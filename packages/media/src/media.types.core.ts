@@ -1,27 +1,18 @@
-export const mediaTypes = ['image'] as const;
-export type MediaType = (typeof mediaTypes)[number];
+export const mediaLiterals = {
+  types: ['image'],
+  visibilities: ['public', 'protected'],
+  uploadStatuses: ['pending', 'validated', 'processed', 'failed', 'blocked'],
+  processingStatuses: ['pending', 'ready', 'failed'],
+  roles: ['thumbnail', 'teaser_image', 'header_image', 'gallery_item', 'download', 'hero_image'],
+  formats: ['jpeg', 'png', 'webp'],
+} as const;
 
-export const mediaVisibilities = ['public', 'protected'] as const;
-export type MediaVisibility = (typeof mediaVisibilities)[number];
-
-export const mediaUploadStatuses = ['pending', 'validated', 'processed', 'failed', 'blocked'] as const;
-export type MediaUploadStatus = (typeof mediaUploadStatuses)[number];
-
-export const mediaProcessingStatuses = ['pending', 'ready', 'failed'] as const;
-export type MediaProcessingStatus = (typeof mediaProcessingStatuses)[number];
-
-export const mediaRoles = [
-  'thumbnail',
-  'teaser_image',
-  'header_image',
-  'gallery_item',
-  'download',
-  'hero_image',
-] as const;
-export type MediaRole = (typeof mediaRoles)[number];
-
-export const mediaFormats = ['jpeg', 'png', 'webp'] as const;
-export type MediaFormat = (typeof mediaFormats)[number];
+export type MediaType = (typeof mediaLiterals.types)[number];
+export type MediaVisibility = (typeof mediaLiterals.visibilities)[number];
+export type MediaUploadStatus = (typeof mediaLiterals.uploadStatuses)[number];
+export type MediaProcessingStatus = (typeof mediaLiterals.processingStatuses)[number];
+export type MediaRole = (typeof mediaLiterals.roles)[number];
+export type MediaFormat = (typeof mediaLiterals.formats)[number];
 
 export interface MediaFocusPoint {
   x: number;

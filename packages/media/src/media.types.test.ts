@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  mediaFormats,
-  mediaProcessingStatuses,
-  mediaRoles,
-  mediaTypes,
-  mediaUploadStatuses,
-  mediaVisibilities,
+  mediaLiterals,
   type MediaAsset,
   type MediaDeletionDecision,
   type MediaMetadata,
@@ -16,11 +11,11 @@ import {
 
 describe('media type contracts', () => {
   it('publishes the canonical literal value sets for runtime consumers', () => {
-    expect(mediaTypes).toEqual(['image']);
-    expect(mediaVisibilities).toEqual(['public', 'protected']);
-    expect(mediaUploadStatuses).toEqual(['pending', 'validated', 'processed', 'failed', 'blocked']);
-    expect(mediaProcessingStatuses).toEqual(['pending', 'ready', 'failed']);
-    expect(mediaRoles).toEqual([
+    expect(mediaLiterals.types).toEqual(['image']);
+    expect(mediaLiterals.visibilities).toEqual(['public', 'protected']);
+    expect(mediaLiterals.uploadStatuses).toEqual(['pending', 'validated', 'processed', 'failed', 'blocked']);
+    expect(mediaLiterals.processingStatuses).toEqual(['pending', 'ready', 'failed']);
+    expect(mediaLiterals.roles).toEqual([
       'thumbnail',
       'teaser_image',
       'header_image',
@@ -28,7 +23,7 @@ describe('media type contracts', () => {
       'download',
       'hero_image',
     ]);
-    expect(mediaFormats).toEqual(['jpeg', 'png', 'webp']);
+    expect(mediaLiterals.formats).toEqual(['jpeg', 'png', 'webp']);
   });
 
   it('keeps the entity interfaces assignable with nested metadata and optional fields', () => {

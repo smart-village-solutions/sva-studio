@@ -8,7 +8,6 @@ import { logger, trackKeycloakCall } from './shared-observability.js';
 import type { UserStatus } from './types.js';
 
 export { listPlatformRoles, runPlatformRoleReconcile } from './platform-iam-roles.js';
-export { runPlatformKeycloakUserSync } from './platform-iam-sync.js';
 
 const PLATFORM_KEYCLOAK_PAGE_SIZE = 100;
 const PLATFORM_USER_ROLE_PROJECTION_CONCURRENCY = 5;

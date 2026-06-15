@@ -3,7 +3,7 @@ import type { PluginDefinition } from '@sva/plugin-sdk';
 import { createAccountUiRouteGuard } from './account-ui.routes.js';
 import { createProtectedRoute } from './protected.routes.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
-import { mapPluginGuardToAccountGuard } from './app.routes.shared.js';
+import { mapPluginGuardToAccountGuard } from './plugin-guard-mapping.js';
 
 const isPluginPermissionGuard = (guard: string): boolean =>
   /^[a-z][a-z0-9-]{1,30}\.[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)*$/.test(guard) &&

@@ -111,6 +111,7 @@ const config = defineConfig({
       '@sva/data-client': resolveAppPath('../../packages/data-client/src/index.ts'),
       '@sva/data-repositories/server': resolveAppPath('../../packages/data-repositories/src/server.ts'),
       '@sva/data-repositories': resolveAppPath('../../packages/data-repositories/src/index.ts'),
+      '@sva/mail-runtime': resolveAppPath('../../packages/mail-runtime/src/index.ts'),
       '@sva/iam-admin/encryption': resolveAppPath('../../packages/iam-admin/src/encryption.ts'),
       '@sva/iam-admin': resolveAppPath('../../packages/iam-admin/src/index.ts'),
       '@sva/iam-core': resolveAppPath('../../packages/iam-core/src/index.ts'),
@@ -237,6 +238,7 @@ const config = defineConfig({
     noExternal: [
       '@sva/auth-runtime',
       '@sva/data-repositories',
+      '@sva/mail-runtime',
       '@sva/iam-admin',
       '@sva/iam-core',
       '@sva/iam-governance',

@@ -144,6 +144,24 @@ wait_for_postgres() {
   return 1
 }
 
+run_postgres_sql_with_retry() {
+  local database="$1"
+  local sql="$2"
+
+  for _ in $(seq 1 10); do
+    if docker exec -i "${POSTGRES_NAME}" psql -v ON_ERROR_STOP=1 -U sva -d "${database}" >/dev/null <<EOF
+${sql}
+EOF
+    then
+      return 0
+    fi
+
+    sleep 1
+  done
+
+  return 1
+}
+
 wait_for_redis() {
   for _ in $(seq 1 20); do
     if docker exec "${REDIS_NAME}" redis-cli --no-auth-warning -a "${REDIS_PASSWORD}" ping | grep -q PONG; then
@@ -331,7 +349,7 @@ else
 fi
 
 if [ "${VERIFY_STATUS}" = "ok" ]; then
-  if docker exec -i "${POSTGRES_NAME}" psql -v ON_ERROR_STOP=1 -U sva -d sva_studio <<EOF >/dev/null
+  if run_postgres_sql_with_retry "sva_studio" "
 DO \$\$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sva_app') THEN
@@ -346,8 +364,7 @@ GRANT CREATE ON DATABASE sva_studio TO sva_app;
 GRANT USAGE, CREATE ON SCHEMA public TO sva_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO sva_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO sva_app;
-EOF
-  then
+"; then
     set_phase_var POSTGRES_APP_ROLE_STATUS ok
     mark_phase postgres-app-role ok
   else

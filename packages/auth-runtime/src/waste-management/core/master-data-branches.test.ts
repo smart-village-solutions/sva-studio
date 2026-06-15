@@ -1902,9 +1902,10 @@ describe('waste-management master-data branch handlers', () => {
       deps
     );
     expect(deleteSucceeded.status).toBe(200);
-    expect(deps.deleteWasteLocationTourLink).toHaveBeenCalledWith('tenant-a', 'link-1');
-    expect(deps.deleteWasteLocationTourPickupDate).toHaveBeenCalledWith('tenant-a', 'pickup-1');
-    expect(deps.deleteWasteTourDateShift).toHaveBeenCalledWith('tenant-a', 'shift-1');
+    expect(deps.deleteWasteTour).toHaveBeenNthCalledWith(1, 'tenant-a', 'tour-1');
+    expect(deps.deleteWasteLocationTourLink).not.toHaveBeenCalled();
+    expect(deps.deleteWasteLocationTourPickupDate).not.toHaveBeenCalled();
+    expect(deps.deleteWasteTourDateShift).not.toHaveBeenCalled();
 
     const deleteNotFound = await wasteManagementTourHandlers.deleteWasteManagementTourInternal(
       new Request('https://studio.test/api/v1/waste-management/tours/tour-404', {

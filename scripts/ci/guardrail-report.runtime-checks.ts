@@ -11,9 +11,10 @@ import {
 
 const resolveLoggerMode = (env: NodeJS.ProcessEnv): 'console_to_loki' | 'degraded' | 'otel_to_loki' => {
   const otelEnabled = !['false', '0'].includes((env.ENABLE_OTEL?.trim() || '').toLowerCase());
+  const otelEndpointConfigured = (env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim() || '').length > 0;
   const consoleEnabled = ['true', '1'].includes((env.SVA_ENABLE_SERVER_CONSOLE_LOGS?.trim() || '').toLowerCase());
 
-  if (otelEnabled) {
+  if (otelEnabled && otelEndpointConfigured) {
     return 'otel_to_loki';
   }
   if (consoleEnabled) {
@@ -31,7 +32,7 @@ export const buildRuntimeBootCheck = async (context: GuardrailCheckContext) => {
   const loggerMode = resolveLoggerMode(context.env);
   const details = [
     ...(loggerMode === 'degraded'
-      ? ['Observability waere ohne OTEL und ohne produktives Console-Logging degradiert.']
+      ? ['Observability wäre ohne OTEL und ohne produktives Console-Logging degradiert.']
       : []),
     ...(latestMigration ? [`Letzte bekannte Migration: ${latestMigration}`] : ['Es wurden keine Goose-Migrationen gefunden.']),
   ];

@@ -69,7 +69,7 @@ export const runGuardrailReport = async (options: RunGuardrailReportOptions): Pr
 };
 
 const printHumanReadableReport = (report: GuardrailReport): void => {
-  console.log(`Guardrail-Report fuer ${report.runtimeProfile}`);
+  console.log(`Guardrail-Report für ${report.runtimeProfile}`);
   for (const check of report.checks) {
     console.log(`[${check.status.toUpperCase()}] ${check.id}: ${check.summary}`);
     for (const detail of check.details) {

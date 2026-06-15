@@ -14,7 +14,7 @@ export function createMissionPrompt({ startUrl, stories }: CreateMissionPromptIn
     `Open ${startUrl} and stay on the admin users overview rooted at /admin/users.`,
     'If authentication is required, log in with the provided admin credentials.',
     'Fail immediately when a Login page, a Login redirect loop, or any Forbidden state appears.',
-    'Confirm a visible Benutzerliste or a fachlich valid Leerzustand for the users overview before stopping.',
+    'Confirm a visible Benutzerliste or a fachlich validierten Leerzustand for the users overview before stopping.',
     'Use the following user-story basis as acceptance context:',
     ...stories.map(renderStoryLine),
   ].join('\n');

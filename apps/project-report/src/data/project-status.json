@@ -583,7 +583,7 @@
           "area": "5. Module",
           "priority": "must",
           "effortPt": 1.5,
-          "status": "optimization",
+          "status": "testing",
           "health": "on_track",
           "dependsOn": [],
           "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Nachrichten (Finalisierung) im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."

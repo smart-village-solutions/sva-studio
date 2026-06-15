@@ -1,7 +1,7 @@
 {
   "meta": {
-    "version": "1.0.5",
-    "updatedAt": "2026-06-02",
+    "version": "1.0.6",
+    "updatedAt": "2026-06-15",
     "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; commissioned-Status am 2026-05-06 fachlich auf idea zurückgesetzt; am 2026-05-25 manuell gegen den Repository-Stand abgeglichen, um schlanke Abnahmenachweise sowie IAM-bezogene Akzeptanzkriterien und ToDos erweitert; Health weiterhin aus der Kostenschätzung als on_track abgeleitet; am 2026-05-25 um ein feld featureSummary je Arbeitspaket fuer Mehrwerte, Funktionen und Features erweitert; am 2026-05-25 die featureSummary-Texte fuer M1 gegen die Konzeption unter concepts/konzeption-cms-v2 fachlich nachgeschaerft"
   },
   "statusModel": {
@@ -352,7 +352,7 @@
           "area": "1. Rechte & Rollen",
           "priority": "valuable",
           "effortPt": 3,
-          "status": "planned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": [],
           "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Workflows für Freigaben im Bereich 1. Rechte & Rollen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
@@ -385,7 +385,7 @@
           "area": "2. Datentypen",
           "priority": "must",
           "effortPt": 2,
-          "status": "optimization",
+          "status": "testing",
           "health": "on_track",
           "dependsOn": [],
           "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Events im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
@@ -396,7 +396,7 @@
           "area": "2. Datentypen",
           "priority": "must",
           "effortPt": 1.5,
-          "status": "optimization",
+          "status": "testing",
           "health": "on_track",
           "dependsOn": [],
           "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Nachrichten im Bereich 2. Datentypen und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."
@@ -638,7 +638,7 @@
           "area": "5. Module",
           "priority": "replacement_required",
           "effortPt": 4,
-          "status": "prototype",
+          "status": "testing",
           "health": "on_track",
           "dependsOn": [],
           "featureSummary": "Dieses Arbeitspaket liefert die zentralen Mehrwerte und Funktionen für Abfallkalender im Bereich 5. Module und bündelt die dafür nötigen Fach-, Integrations- und Betriebsfeatures."

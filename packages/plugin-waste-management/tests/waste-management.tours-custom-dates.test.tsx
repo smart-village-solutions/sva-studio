@@ -287,4 +287,53 @@ describe('WasteToursCustomDatesField', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Musterhausen / Markt' }));
     expect(screen.getByText('tours.customDates.messages.duplicateLocation')).toBeTruthy();
   });
+
+  it('supports empty search feedback, clearing locations, removing assignments, and canceling date deletion', () => {
+    const onAssignmentsChange = vi.fn();
+    const onChange = vi.fn();
+
+    render(
+      <WasteToursCustomDatesField
+        customDates={[{ date: '2027-01-01' }]}
+        dateLocationAssignments={[
+          {
+            id: 'assignment-1',
+            pickupDate: '2027-01-01',
+            locationId: 'location-1',
+            note: '08:00 bis 10:00 Uhr',
+          },
+        ]}
+        locations={[
+          { id: 'location-1', label: 'Musterhausen / Markt' },
+          { id: 'location-2', label: 'Musterhausen / Rathaus' },
+        ]}
+        firstDate="2027-01-01"
+        endDate=""
+        onChange={onChange}
+        onAssignmentsChange={onAssignmentsChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.editAssignments' }));
+    fireEvent.focus(screen.getByLabelText('tours.customDates.fields.location'));
+    fireEvent.change(screen.getByLabelText('tours.customDates.fields.location'), { target: { value: 'Unbekannt' } });
+    expect(screen.getByText('tours.customDates.fields.locationSearchEmpty')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('option', { name: 'tours.customDates.fields.locationPlaceholder' }));
+    expect(onAssignmentsChange).toHaveBeenCalledWith([
+      {
+        id: 'assignment-1',
+        pickupDate: '2027-01-01',
+        locationId: '',
+        note: '08:00 bis 10:00 Uhr',
+      },
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.removeAssignment' }));
+    expect(onAssignmentsChange).toHaveBeenCalledWith([]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.removeDate' }));
+    fireEvent.click(screen.getByRole('button', { name: 'cancel' }));
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

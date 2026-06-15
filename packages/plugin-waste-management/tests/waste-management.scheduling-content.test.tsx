@@ -326,4 +326,61 @@ describe('WasteSchedulingContent', () => {
 
     expect(onDeleteLocationTourPickupDate).toHaveBeenCalledWith('pickup-1');
   });
+
+  it('creates schadstoffmobil assignments with trimmed notes and resets the dialog form after closing', async () => {
+    const onSaveLocationTourPickupDate = vi.fn(async () => undefined);
+
+    render(
+      <WasteSchedulingContent
+        message={null}
+        schedulingEntries={[]}
+        schadstoffmobilTour={{ id: 'tour-sm', name: 'Schadstoffmobil' } as never}
+        schadstoffmobilAssignments={[]}
+        schadstoffmobilLocationOptions={[{ id: 'location-1', label: 'Musterhausen / Mitte / Rathausplatz' }]}
+        onOpenCreateShiftDialog={vi.fn()}
+        onEditHolidayRule={vi.fn()}
+        onEditGlobalShiftDialog={vi.fn()}
+        onEditTourShiftDialog={vi.fn()}
+        onDeleteSchedulingRows={vi.fn(async () => undefined)}
+        onSaveLocationTourPickupDate={onSaveLocationTourPickupDate}
+        onDeleteLocationTourPickupDate={vi.fn(async () => undefined)}
+        saving={false}
+        page={1}
+        pageSize={25}
+        onPageChange={vi.fn()}
+        onSyncPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.openCreate' }));
+    fireEvent.change(screen.getByLabelText('scheduling.schadstoffmobil.fields.pickupDate'), {
+      target: { value: '2026-07-03' },
+    });
+    fireEvent.change(screen.getByLabelText('scheduling.schadstoffmobil.fields.location'), {
+      target: { value: 'location-1' },
+    });
+    fireEvent.change(screen.getByLabelText('scheduling.schadstoffmobil.fields.note'), {
+      target: { value: '  Freitag 09:00-11:00 Uhr  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.create' }));
+
+    expect(onSaveLocationTourPickupDate).toHaveBeenCalledWith(
+      {
+        id: expect.any(String),
+        locationId: 'location-1',
+        tourId: 'tour-sm',
+        pickupDate: '2026-07-03',
+        note: 'Freitag 09:00-11:00 Uhr',
+      },
+      'create'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.openCreate' }));
+    expect((screen.getByLabelText('scheduling.schadstoffmobil.fields.pickupDate') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('scheduling.schadstoffmobil.fields.location') as HTMLSelectElement).value).toBe('');
+    expect((screen.getByLabelText('scheduling.schadstoffmobil.fields.note') as HTMLTextAreaElement).value).toBe('');
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.schadstoffmobil.actions.cancel' }));
+    expect(screen.queryByRole('button', { name: 'scheduling.schadstoffmobil.actions.create' })).toBeNull();
+  });
 });

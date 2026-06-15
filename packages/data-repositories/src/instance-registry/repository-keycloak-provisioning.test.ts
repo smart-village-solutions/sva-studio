@@ -160,4 +160,55 @@ describe('instance registry repository keycloak provisioning', () => {
     expect(statements[0]?.text).toContain('AND created_at >= $1::timestamptz');
     expect(statements[0]?.values).toEqual(['2026-05-27T12:00:00.000Z']);
   });
+
+  it('claims the next planned run without a timestamp filter and preserves explicit step timestamps', async () => {
+    const timedStepRow = {
+      ...stepRow,
+      started_at: '2026-01-01T00:00:01.000Z',
+      finished_at: null,
+      request_id: null,
+    };
+    const { executor, statements } = createQueuedExecutor([[keycloakRunRow], [timedStepRow], [timedStepRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.claimNextKeycloakProvisioningRun()).resolves.toMatchObject({
+      id: 'kc-run-1',
+      steps: [
+        {
+          startedAt: '2026-01-01T00:00:01.000Z',
+          finishedAt: undefined,
+          requestId: undefined,
+        },
+      ],
+    });
+    await expect(
+      repository.appendKeycloakProvisioningStep({
+        runId: 'kc-run-1',
+        stepKey: 'realm',
+        title: 'Realm',
+        status: 'running',
+        startedAt: '2026-01-01T00:00:01.000Z',
+        finishedAt: '2026-01-01T00:00:03.000Z',
+        summary: 'Still running',
+        details: { phase: 'realm' },
+        requestId: 'req-append-1',
+      })
+    ).resolves.toMatchObject({
+      startedAt: '2026-01-01T00:00:01.000Z',
+      summary: 'Done',
+    });
+
+    expect(statements[0]?.text).not.toContain('created_at >=');
+    expect(statements[2]?.values).toEqual([
+      'kc-run-1',
+      'realm',
+      'Realm',
+      'running',
+      '2026-01-01T00:00:01.000Z',
+      '2026-01-01T00:00:03.000Z',
+      'Still running',
+      JSON.stringify({ phase: 'realm' }),
+      'req-append-1',
+    ]);
+  });
 });

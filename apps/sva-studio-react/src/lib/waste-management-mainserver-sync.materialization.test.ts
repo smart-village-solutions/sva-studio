@@ -458,4 +458,387 @@ describe('waste-management-mainserver-sync.materialization', () => {
       }),
     ]);
   });
+
+  it('skips links when no dates survive the initial range filter and deduplicates duplicate output rows', () => {
+    const pickupDates = buildMaterializedLocationTourPickupDates({
+      tours: [
+        buildTour({
+          customDates: [{ date: '2026-02-10' }],
+        }),
+        buildTour({
+          id: 'tour-2',
+          customDates: [{ date: '2026-03-01' }],
+        }),
+      ],
+      links: [
+        {
+          id: 'link-out-of-range',
+          locationId: 'location-9',
+          tourId: 'tour-1',
+          startDate: '2026-01-01',
+          endDate: '2026-01-31',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'link-duplicate-a',
+          locationId: 'location-2',
+          tourId: 'tour-2',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'link-duplicate-b',
+          locationId: 'location-2',
+          tourId: 'tour-2',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locationTourPickupDates: [],
+      tourDateShifts: [],
+      globalDateShifts: [],
+      holidayRules: [],
+      currentYear: 2026,
+      nextYear: 2027,
+    });
+
+    expect(pickupDates).toEqual([
+      expect.objectContaining({
+        locationId: 'location-2',
+        tourId: 'tour-2',
+        pickupDate: '2026-03-01',
+      }),
+    ]);
+  });
+
+  it('stops processing a link when a shift moves the remaining date out of the link range', () => {
+    const pickupDates = buildMaterializedLocationTourPickupDates({
+      tours: [
+        buildTour({
+          customDates: [{ date: '2026-04-15' }],
+        }),
+      ],
+      links: [
+        {
+          id: 'link-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          startDate: '2026-04-15',
+          endDate: '2026-04-15',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locationTourPickupDates: [],
+      tourDateShifts: [
+        {
+          id: 'shift-1',
+          tourId: 'tour-1',
+          originalDate: '2026-04-15',
+          actualDate: '2026-04-16',
+          hasYear: true,
+          followUpMode: 'none' as WasteTourDateShiftFollowUpMode,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      globalDateShifts: [],
+      holidayRules: [],
+      currentYear: 2026,
+      nextYear: 2027,
+    });
+
+    expect(pickupDates).toEqual([]);
+  });
+
+  it('applies global shifts only to matching tours and prefers imported notes when dates are deduplicated', () => {
+    const pickupDates = buildMaterializedLocationTourPickupDates({
+      tours: [
+        buildTour({
+          id: 'tour-1',
+          customDates: [{ date: '2026-05-05' }],
+        }),
+        buildTour({
+          id: 'tour-2',
+          customDates: [{ date: '2026-05-05' }],
+        }),
+      ],
+      links: [
+        {
+          id: 'link-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'link-2',
+          locationId: 'location-1',
+          tourId: 'tour-2',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locationTourPickupDates: [
+        {
+          id: 'pickup-imported-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          pickupDate: '2026-05-05',
+          note: 'Importierter Hinweis',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      tourDateShifts: [],
+      globalDateShifts: [
+        {
+          id: 'global-shift-1',
+          originalDate: '2026-05-05',
+          actualDate: '2026-05-06',
+          hasYear: true,
+          tourIds: ['tour-1'],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      holidayRules: [],
+      currentYear: 2026,
+      nextYear: 2027,
+    });
+
+    expect(pickupDates).toEqual([
+      expect.objectContaining({
+        locationId: 'location-1',
+        tourId: 'tour-1',
+        pickupDate: '2026-05-06',
+        note: 'Importierter Hinweis',
+      }),
+      expect.objectContaining({
+        locationId: 'location-1',
+        tourId: 'tour-2',
+        pickupDate: '2026-05-05',
+        note: null,
+      }),
+    ]);
+  });
+
+  it('applies configured holiday rules and skips invalid scheduling records outside the sync window', () => {
+    const pickupDates = buildMaterializedLocationTourPickupDates({
+      tours: [
+        buildTour({
+          customDates: [{ date: '2026-12-25' }],
+        }),
+        buildTour({
+          id: 'tour-inactive',
+          active: false,
+          customDates: [{ date: '2026-06-01' }],
+        }),
+      ],
+      links: [
+        {
+          id: 'link-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          startDate: '2026-01-01',
+          endDate: '2026-12-31',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'link-2',
+          locationId: 'location-1',
+          tourId: 'tour-inactive',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locationTourPickupDates: [
+        {
+          id: 'pickup-imported-old',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          pickupDate: '2024-12-31',
+          note: 'Zu alt',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'pickup-imported-invalid',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          pickupDate: 'invalid-date',
+          note: 'Ungültig',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      tourDateShifts: [],
+      globalDateShifts: [],
+      holidayRules: [
+        {
+          id: 'holiday-1',
+          holidayDate: '2026-12-25',
+          holidayName: 'Weihnachten',
+          year: 2026,
+          stateCode: 'BB',
+          sourceStatus: 'confirmed',
+          configurationStatus: 'configured',
+          conflictStatus: 'none',
+          scope: 'single-day',
+          strategy: 'advance',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'holiday-2',
+          holidayDate: '',
+          holidayName: 'Ignorieren',
+          year: 2026,
+          stateCode: 'BB',
+          sourceStatus: 'confirmed',
+          configurationStatus: 'configured',
+          conflictStatus: 'none',
+          scope: 'full-week',
+          strategy: 'advance',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      currentYear: 2026,
+      nextYear: 2027,
+    });
+
+    expect(pickupDates).toEqual([
+      expect.objectContaining({
+        tourId: 'tour-1',
+        pickupDate: '2026-12-24',
+      }),
+    ]);
+  });
+
+  it('preserves notes but skips rows without resolved city, street, or waste type during row projection', () => {
+    const rows = buildStudioRowsFromMaterialization({
+      pickupDates: [
+        {
+          id: 'materialized-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          pickupDate: '2026-01-05',
+          note: 'Schnee-Ersatztermin',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'materialized-2',
+          locationId: 'location-missing-city',
+          tourId: 'tour-1',
+          pickupDate: '2026-01-06',
+          note: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      tours: [
+        buildTour({
+          wasteFractionIds: ['fraction-1', 'fraction-blank'],
+        }),
+      ],
+      fractions: [
+        {
+          id: 'fraction-1',
+          name: 'Restmüll',
+          color: '#111',
+          active: true,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: {
+              push: false,
+              email: false,
+              calendar: false,
+            },
+          },
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'fraction-blank',
+          name: '   ',
+          color: '#222',
+          active: true,
+          reminderConfig: {
+            reminderCount: 'none',
+            channels: {
+              push: false,
+              email: false,
+              calendar: false,
+            },
+          },
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      links: [
+        {
+          id: 'link-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'link-2',
+          locationId: 'location-missing-city',
+          tourId: 'tour-1',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locations: [
+        {
+          id: 'location-1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'location-missing-city',
+          cityId: 'city-missing',
+          streetId: 'street-1',
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      cities: [
+        {
+          id: 'city-1',
+          name: 'Musterhausen',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      streets: [
+        {
+          id: 'street-1',
+          cityId: 'city-1',
+          name: 'Hauptstraße',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        pickupDate: '2026-01-05',
+        wasteType: 'Restmüll',
+        note: 'Schnee-Ersatztermin',
+        key: '2026-01-05::restmüll::hauptstraße::musterhausen',
+      }),
+    ]);
+  });
 });

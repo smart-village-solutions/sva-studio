@@ -55,6 +55,8 @@ describe('waste management operations runtime', () => {
     vi.doUnmock('@sva/server-runtime');
     vi.doUnmock('@sva/data-repositories');
     vi.doUnmock('@sva/sva-mainserver/server');
+    vi.doUnmock('./waste-management-operations.import.js');
+    vi.doUnmock('./waste-management-mainserver-sync.materialization.js');
     vi.doMock('./waste-management-mainserver-sync.server.js', () => ({
       runWasteManagementMainserverSyncForInstance: runWasteManagementMainserverSyncForInstanceMock,
     }));
@@ -168,6 +170,28 @@ describe('waste management operations runtime', () => {
       dryRun: true,
       importProfileId: 'waste-management.geografie-abholorte',
     });
+  });
+
+  it('fails closed for unknown import profile ids after row parsing succeeds', async () => {
+    vi.doMock('./waste-management-operations.import.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('./waste-management-operations.import.js')>();
+      return {
+        ...actual,
+        parseImportRows: vi.fn(async () => []),
+      };
+    });
+
+    const runtime = await createRuntimeWithRepositoryMock(createRepositoryMock());
+
+    await expect(
+      runtime.importData('instance-1', {
+        operation: 'import-data',
+        importProfileId: 'waste-management.unknown-profile' as never,
+        sourceFormat: 'text/csv',
+        dryRun: false,
+        blobRef: 'fixture.csv',
+      })
+    ).rejects.toThrowError('unknown_import_profile:waste-management.unknown-profile');
   });
 
   it('initializes the data source with connection check and schema inspection', async () => {
@@ -507,6 +531,184 @@ describe('waste management operations runtime', () => {
     });
   });
 
+  it('skips outbox processing when email reminders are disabled for the selected interface', async () => {
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [
+        {
+          ...createInterfaceRecordWithEmailReminderConfig(),
+          publicConfig: {
+            ...createInterfaceRecordWithEmailReminderConfig().publicConfig,
+            emailReminderConfig: {
+              ...createWasteEmailReminderConfig(),
+              enabled: false,
+            },
+          },
+        },
+      ]),
+      dispatchMail: vi.fn(),
+    });
+
+    await expect(
+      runtime.processEmailReminderOutbox('instance-1', {
+        operation: 'process-email-reminder-outbox',
+      })
+    ).resolves.toMatchObject({
+      details: {
+        operation: 'process-email-reminder-outbox',
+        mode: 'skipped',
+        reason: 'email_reminders_disabled',
+        batchSize: 0,
+      },
+    });
+  });
+
+  it('rejects invalid outbox reference times and unavailable transports before leasing entries', async () => {
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
+      dispatchMail: vi.fn(),
+    });
+
+    await expect(
+      runtime.processEmailReminderOutbox('instance-1', {
+        operation: 'process-email-reminder-outbox',
+        referenceTime: 'not-a-date',
+      })
+    ).rejects.toThrowError('invalid_reference_time:not-a-date');
+
+    await expect(
+      runtime.processEmailReminderOutbox('instance-1', {
+        operation: 'process-email-reminder-outbox',
+        referenceTime: '2026-06-15T06:00:00.000Z',
+      })
+    ).rejects.toThrowError('mail_transport_not_available:transport-smtp');
+  });
+
+  it('marks failed outbox entries with retry or terminal failure depending on attempt count', async () => {
+    const markOutboxEntryFailed = vi.fn(async () => undefined);
+    const reminderRepository = {
+      leaseDueOutboxEntries: vi.fn(async () => [
+        {
+          id: 'outbox-retry',
+          attemptCount: 0,
+          payload: {
+            transportId: 'transport-smtp',
+            templateKey: 'waste.email-reminder.reminder',
+            locale: 'de-DE',
+            addresses: [{ kind: 'to', email: 'max@example.org' }],
+            templatePayload: {
+              subject: 'Abfalltermine',
+              introText: 'Nicht vergessen',
+              listIntroText: 'Liste',
+              outroText: 'Gruß',
+              reasonText: 'Grund',
+              unsubscribeLabel: 'Abmelden',
+              unsubscribeUrl: 'https://example.org/unsubscribe',
+              locationLabel: 'Perleberg',
+              pickupDate: 'Di., 16.06.',
+              fractionName: 'Papier',
+              privacyPolicyUrl: 'https://example.org/privacy',
+              imprintUrl: 'https://example.org/imprint',
+              serviceLabel: 'Landkreis Prignitz',
+            },
+            tags: [],
+            metadata: {},
+          },
+        },
+        {
+          id: 'outbox-failed',
+          attemptCount: 1,
+          payload: {
+            transportId: 'transport-smtp',
+            templateKey: 'waste.email-reminder.reminder',
+            locale: 'de-DE',
+            addresses: [{ kind: 'to', email: 'max@example.org' }],
+            templatePayload: {
+              subject: 'Abfalltermine',
+              introText: 'Nicht vergessen',
+              listIntroText: 'Liste',
+              outroText: 'Gruß',
+              reasonText: 'Grund',
+              unsubscribeLabel: 'Abmelden',
+              unsubscribeUrl: 'https://example.org/unsubscribe',
+              locationLabel: 'Perleberg',
+              pickupDate: 'Di., 16.06.',
+              fractionName: 'Papier',
+              privacyPolicyUrl: 'https://example.org/privacy',
+              imprintUrl: 'https://example.org/imprint',
+              serviceLabel: 'Landkreis Prignitz',
+            },
+            tags: [],
+            metadata: {},
+          },
+        },
+      ]),
+      markOutboxEntrySent: vi.fn(async () => undefined),
+      markOutboxEntryFailed,
+    };
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [
+        createInterfaceRecordWithEmailReminderConfig(),
+        createMailTransportInterfaceRecord(),
+      ]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      dispatchMail: vi.fn(async () => {
+        throw new Error('smtp_unavailable');
+      }),
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.processEmailReminderOutbox('instance-1', {
+      operation: 'process-email-reminder-outbox',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+      maxAttempts: 1,
+      retryDelayMinutes: 10,
+    });
+
+    expect(markOutboxEntryFailed).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        outboxId: 'outbox-retry',
+        errorMessage: 'smtp_unavailable',
+        retryAt: '2026-06-15T06:10:00.000Z',
+      })
+    );
+    expect(markOutboxEntryFailed).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        outboxId: 'outbox-failed',
+        errorMessage: 'smtp_unavailable',
+      })
+    );
+    expect(markOutboxEntryFailed.mock.calls[1]?.[0]).not.toHaveProperty('retryAt');
+    expect(result.details).toMatchObject({
+      operation: 'process-email-reminder-outbox',
+      leasedCount: 2,
+      sentCount: 0,
+      retryScheduledCount: 1,
+      failedCount: 1,
+    });
+  });
+
   it('materializes reminders for existing subscribers even when public signup is disabled', async () => {
     const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
     const reminderRepository = {
@@ -721,6 +923,638 @@ describe('waste management operations runtime', () => {
       createdOutboxCount: 0,
       duplicateOutboxCount: 0,
     });
+  });
+
+  it('skips reminder materialization entirely when email reminders are disabled', async () => {
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [
+        {
+          ...createInterfaceRecordWithEmailReminderConfig(),
+          publicConfig: {
+            ...createInterfaceRecordWithEmailReminderConfig().publicConfig,
+            emailReminderConfig: {
+              ...createWasteEmailReminderConfig(),
+              enabled: false,
+            },
+          },
+        },
+      ]),
+    });
+
+    await expect(
+      runtime.materializeEmailReminders('instance-1', {
+        operation: 'materialize-email-reminders',
+      })
+    ).resolves.toMatchObject({
+      details: {
+        operation: 'materialize-email-reminders',
+        mode: 'skipped',
+        reason: 'email_reminders_disabled',
+        activeSubscriptionCount: 0,
+      },
+    });
+  });
+
+  it('rejects invalid reference times before materializing reminder outbox entries', async () => {
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
+    });
+
+    await expect(
+      runtime.materializeEmailReminders('instance-1', {
+        operation: 'materialize-email-reminders',
+        referenceTime: 'not-a-date',
+      })
+    ).rejects.toThrowError('invalid_reference_time:not-a-date');
+  });
+
+  it('counts every subscription item as skipped when no matching collection location is active', async () => {
+    const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
+    const reminderRepository = {
+      listActiveSubscriptions: vi.fn(async () => [
+        {
+          id: 'subscription-no-location',
+          email: 'max@example.org',
+          locationLabel: 'Perleberg',
+          unsubscribeTokenHash: 'token-1',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          items: [
+            { fractionId: 'fraction-bio', slotId: 'bio:first' },
+            { fractionId: 'fraction-paper', slotId: 'paper:first' },
+          ],
+        },
+      ]),
+      enqueueOutboxEntry,
+    };
+    const repository = createRepositoryMock({
+      listWasteFractions: vi.fn(async () => [
+        {
+          id: 'fraction-bio',
+          name: 'Biotonne',
+          pdfShortLabel: 'BIO',
+          translations: { de: 'Biotonne' },
+          containerSize: undefined,
+          color: '#008000',
+          description: undefined,
+          active: true,
+          reminderConfig: {
+            reminderCount: 'once',
+            channels: { push: false, email: true, calendar: false },
+            email: { slots: [{ id: 'bio:first', defaultLeadDays: 1 }] },
+          },
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]),
+      listWasteTours: vi.fn(async () => []),
+      listWasteLocationTourLinks: vi.fn(async () => []),
+      listWasteCollectionLocations: vi.fn(async () => []),
+      listWasteLocationTourPickupDates: vi.fn(async () => []),
+      listWasteTourDateShifts: vi.fn(async () => []),
+      listWasteGlobalDateShifts: vi.fn(async () => []),
+      listWasteHolidayRules: vi.fn(async () => []),
+    });
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteMasterDataRepository: vi.fn(() => repository),
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.materializeEmailReminders('instance-1', {
+      operation: 'materialize-email-reminders',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(enqueueOutboxEntry).not.toHaveBeenCalled();
+    expect(result.details).toMatchObject({
+      operation: 'materialize-email-reminders',
+      mode: 'executed',
+      skippedPickupCount: 2,
+    });
+  });
+
+  it('ignores materialized pickup dates whose tour cannot be resolved back to an active fraction mapping', async () => {
+    vi.doMock('./waste-management-mainserver-sync.materialization.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('./waste-management-mainserver-sync.materialization.js')>();
+      return {
+        ...actual,
+        buildMaterializedLocationTourPickupDates: vi.fn(() => [
+          {
+            id: 'materialized-ghost',
+            locationId: 'location-1',
+            tourId: 'tour-missing',
+            pickupDate: '2026-06-17',
+            note: null,
+            createdAt: '1970-01-01T00:00:00.000Z',
+            updatedAt: '1970-01-01T00:00:00.000Z',
+          },
+        ]),
+      };
+    });
+
+    const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
+    const reminderRepository = {
+      listActiveSubscriptions: vi.fn(async () => [
+        {
+          id: 'subscription-1',
+          email: 'max@example.org',
+          locationLabel: 'Perleberg',
+          unsubscribeTokenHash: 'token-1',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          items: [{ fractionId: 'fraction-bio', slotId: 'bio:first' }],
+        },
+      ]),
+      enqueueOutboxEntry,
+    };
+    const repository = createRepositoryMock({
+      listWasteFractions: vi.fn(async () => [
+        {
+          id: 'fraction-bio',
+          name: 'Biotonne',
+          pdfShortLabel: 'BIO',
+          translations: { de: 'Biotonne' },
+          containerSize: undefined,
+          color: '#008000',
+          description: undefined,
+          active: true,
+          reminderConfig: {
+            reminderCount: 'once',
+            channels: { push: false, email: true, calendar: false },
+            email: { slots: [{ id: 'bio:first', defaultLeadDays: 1 }] },
+          },
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]),
+      listWasteTours: vi.fn(async () => [
+        {
+          id: 'tour-1',
+          name: 'Biotour',
+          wasteFractionIds: ['fraction-bio'],
+          recurrence: null,
+          firstDate: undefined,
+          endDate: undefined,
+          customDates: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true }]),
+      listWasteCollectionLocations: vi.fn(async () => [
+        {
+          id: 'location-1',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourPickupDates: vi.fn(async () => []),
+      listWasteTourDateShifts: vi.fn(async () => []),
+      listWasteGlobalDateShifts: vi.fn(async () => []),
+      listWasteHolidayRules: vi.fn(async () => []),
+    });
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteMasterDataRepository: vi.fn(() => repository),
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.materializeEmailReminders('instance-1', {
+      operation: 'materialize-email-reminders',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(enqueueOutboxEntry).not.toHaveBeenCalled();
+    expect(result.details).toMatchObject({
+      operation: 'materialize-email-reminders',
+      mode: 'executed',
+      createdOutboxCount: 0,
+      duplicateOutboxCount: 0,
+    });
+  });
+
+  it('skips invalid reminder slots and ignores pickup dates beyond the lookahead window', async () => {
+    const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
+    const reminderRepository = {
+      listActiveSubscriptions: vi.fn(async () => [
+        {
+          id: 'subscription-invalid-slot',
+          email: 'max@example.org',
+          locationLabel: 'Perleberg',
+          unsubscribeTokenHash: 'token-1',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          items: [{ fractionId: 'fraction-bio', slotId: 'unknown-slot' }],
+        },
+        {
+          id: 'subscription-lookahead',
+          email: 'erika@example.org',
+          locationLabel: 'Perleberg',
+          unsubscribeTokenHash: 'token-2',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          items: [{ fractionId: 'fraction-bio', slotId: 'bio:first' }],
+        },
+      ]),
+      enqueueOutboxEntry,
+    };
+    const repository = createRepositoryMock({
+      listWasteFractions: vi.fn(async () => [
+        {
+          id: 'fraction-bio',
+          name: 'Biotonne',
+          pdfShortLabel: 'BIO',
+          translations: { de: 'Biotonne' },
+          containerSize: undefined,
+          color: '#008000',
+          description: undefined,
+          active: true,
+          reminderConfig: {
+            reminderCount: 'once',
+            channels: { push: false, email: true, calendar: false },
+            email: { slots: [{ id: 'bio:first', defaultLeadDays: 1 }] },
+          },
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]),
+      listWasteTours: vi.fn(async () => [
+        {
+          id: 'tour-1',
+          name: 'Biotour',
+          wasteFractionIds: ['fraction-bio'],
+          recurrence: null,
+          firstDate: undefined,
+          endDate: undefined,
+          customDates: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true }]),
+      listWasteCollectionLocations: vi.fn(async () => [
+        {
+          id: 'location-1',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourPickupDates: vi.fn(async () => [{ id: 'pickup-1', locationId: 'location-1', tourId: 'tour-1', pickupDate: '2026-06-25' }]),
+      listWasteTourDateShifts: vi.fn(async () => []),
+      listWasteGlobalDateShifts: vi.fn(async () => []),
+      listWasteHolidayRules: vi.fn(async () => []),
+    });
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteMasterDataRepository: vi.fn(() => repository),
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.materializeEmailReminders('instance-1', {
+      operation: 'materialize-email-reminders',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(enqueueOutboxEntry).not.toHaveBeenCalled();
+    expect(result.details).toMatchObject({
+      operation: 'materialize-email-reminders',
+      mode: 'executed',
+      createdOutboxCount: 0,
+      duplicateOutboxCount: 0,
+      skippedPickupCount: 1,
+    });
+  });
+
+  it('leaves future reminder dates outside the lookahead window untouched without enqueuing them', async () => {
+    vi.doMock('./waste-management-mainserver-sync.materialization.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('./waste-management-mainserver-sync.materialization.js')>();
+      return {
+        ...actual,
+        buildMaterializedLocationTourPickupDates: vi.fn(() => [
+          {
+            id: 'materialized-future',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            pickupDate: '2026-07-10',
+            note: null,
+            createdAt: '1970-01-01T00:00:00.000Z',
+            updatedAt: '1970-01-01T00:00:00.000Z',
+          },
+        ]),
+      };
+    });
+
+    const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
+    const reminderRepository = {
+      listActiveSubscriptions: vi.fn(async () => [
+        {
+          id: 'subscription-lookahead',
+          email: 'erika@example.org',
+          locationLabel: 'Perleberg',
+          unsubscribeTokenHash: 'token-2',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          items: [{ fractionId: 'fraction-bio', slotId: 'bio:first' }],
+        },
+      ]),
+      enqueueOutboxEntry,
+    };
+    const repository = createRepositoryMock({
+      listWasteFractions: vi.fn(async () => [
+        {
+          id: 'fraction-bio',
+          name: 'Biotonne',
+          pdfShortLabel: 'BIO',
+          translations: { de: 'Biotonne' },
+          containerSize: undefined,
+          color: '#008000',
+          description: undefined,
+          active: true,
+          reminderConfig: {
+            reminderCount: 'once',
+            channels: { push: false, email: true, calendar: false },
+            email: { slots: [{ id: 'bio:first', defaultLeadDays: 1 }] },
+          },
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]),
+      listWasteTours: vi.fn(async () => [
+        {
+          id: 'tour-1',
+          name: 'Biotour',
+          wasteFractionIds: ['fraction-bio'],
+          recurrence: null,
+          firstDate: undefined,
+          endDate: undefined,
+          customDates: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true }]),
+      listWasteCollectionLocations: vi.fn(async () => [
+        {
+          id: 'location-1',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourPickupDates: vi.fn(async () => []),
+      listWasteTourDateShifts: vi.fn(async () => []),
+      listWasteGlobalDateShifts: vi.fn(async () => []),
+      listWasteHolidayRules: vi.fn(async () => []),
+    });
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteMasterDataRepository: vi.fn(() => repository),
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.materializeEmailReminders('instance-1', {
+      operation: 'materialize-email-reminders',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(enqueueOutboxEntry).not.toHaveBeenCalled();
+    expect(result.details).toMatchObject({
+      operation: 'materialize-email-reminders',
+      mode: 'executed',
+      createdOutboxCount: 0,
+      duplicateOutboxCount: 0,
+      skippedPickupCount: 0,
+    });
+  });
+
+  it('counts duplicate reminder outbox entries separately from inserted ones', async () => {
+    vi.doMock('./waste-management-mainserver-sync.materialization.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('./waste-management-mainserver-sync.materialization.js')>();
+      return {
+        ...actual,
+        buildMaterializedLocationTourPickupDates: vi.fn(() => [
+          {
+            id: 'materialized-1',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            pickupDate: '2026-06-17',
+            note: null,
+            createdAt: '1970-01-01T00:00:00.000Z',
+            updatedAt: '1970-01-01T00:00:00.000Z',
+          },
+        ]),
+      };
+    });
+
+    const enqueueOutboxEntry = vi.fn(async () => 'duplicate' as const);
+    const reminderRepository = {
+      listActiveSubscriptions: vi.fn(async () => [
+        {
+          id: 'subscription-1',
+          email: 'max@example.org',
+          locationLabel: 'Perleberg',
+          unsubscribeTokenHash: 'token-1',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          items: [{ fractionId: 'fraction-bio', slotId: 'bio:first' }],
+        },
+      ]),
+      enqueueOutboxEntry,
+    };
+    const repository = createRepositoryMock({
+      listWasteFractions: vi.fn(async () => [
+        {
+          id: 'fraction-bio',
+          name: 'Biotonne',
+          pdfShortLabel: 'BIO',
+          translations: { de: 'Biotonne' },
+          containerSize: undefined,
+          color: '#008000',
+          description: undefined,
+          active: true,
+          reminderConfig: {
+            reminderCount: 'once',
+            channels: { push: false, email: true, calendar: false },
+            email: { slots: [{ id: 'bio:first', defaultLeadDays: 1 }] },
+          },
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]),
+      listWasteTours: vi.fn(async () => [
+        {
+          id: 'tour-1',
+          name: 'Biotour',
+          wasteFractionIds: ['fraction-bio'],
+          recurrence: null,
+          firstDate: undefined,
+          endDate: undefined,
+          customDates: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true }]),
+      listWasteCollectionLocations: vi.fn(async () => [
+        {
+          id: 'location-1',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourPickupDates: vi.fn(async () => []),
+      listWasteTourDateShifts: vi.fn(async () => []),
+      listWasteGlobalDateShifts: vi.fn(async () => []),
+      listWasteHolidayRules: vi.fn(async () => []),
+    });
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteMasterDataRepository: vi.fn(() => repository),
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.materializeEmailReminders('instance-1', {
+      operation: 'materialize-email-reminders',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(enqueueOutboxEntry).toHaveBeenCalledTimes(1);
+    expect(result.details).toMatchObject({
+      operation: 'materialize-email-reminders',
+      mode: 'executed',
+      createdOutboxCount: 0,
+      duplicateOutboxCount: 1,
+    });
+  });
+
+  it('fails closed when email outbox processing is requested without a mail dispatcher', async () => {
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
+    });
+
+    await expect(
+      runtime.processEmailReminderOutbox('instance-1', {
+        operation: 'process-email-reminder-outbox',
+      })
+    ).rejects.toThrowError('mail_dispatch_not_configured');
   });
 
   it('resolves interface-based waste secrets with the shared default revealSecret path', async () => {
@@ -1001,6 +1835,33 @@ describe('waste management operations runtime', () => {
         note: null,
       })
     );
+  });
+
+  it('returns a preview summary for ortsbezogene-tourtermine dry runs', async () => {
+    const repository = createRepositoryMock();
+    const runtime = await createRuntimeWithRepositoryMock(
+      repository,
+      new TextEncoder().encode([
+        'Ort;Straße;Hausnummern;Abholdatum;Hinweis;Hausmüll;;;;;;',
+        'Perleberg;Ackerstraße;Alle Hausnummern;2026-02-03;Schnee-Ersatztermin;HM.3.3;;;;;;',
+      ].join('\n'))
+    );
+
+    const result = await runtime.importData('instance-1', {
+      operation: 'import-data',
+      importProfileId: 'waste-management.ortsbezogene-tourtermine',
+      sourceFormat: 'text/csv',
+      dryRun: true,
+      blobRef: 'fixture.csv',
+    });
+
+    expect(result.details).toMatchObject({
+      operation: 'import-data',
+      dryRun: true,
+      importProfileId: 'waste-management.ortsbezogene-tourtermine',
+      rowCount: 1,
+    });
+    expect(result.details).toHaveProperty('preview');
   });
 
   it('reports live block progress for location-based tour assignment imports', async () => {

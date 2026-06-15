@@ -361,4 +361,134 @@ describe('plugin operation runtime registration', () => {
     expect(Object.keys(handlers)).toContain('waste-management.initialize-data-source');
     expect(createPluginJobExecutionHandlersMock).toHaveBeenCalled();
   });
+
+  it('loads workspace job modules through normalized fallback candidates when the declared jobs entry points to dist output', async () => {
+    vi.resetModules();
+    vi.doMock('./plugin-catalog-loader.js', () => ({
+      createStudioPluginCatalogReport: vi.fn(async () => ({
+        snapshot: {
+          registry: { jobTypes: [] },
+          pluginSources: [],
+        },
+      })),
+      getPackagePluginModuleCandidates: vi.fn(() => []),
+      getWorkspacePluginModuleCandidates: vi.fn(() => []),
+    }));
+    vi.doMock('./plugin-build-registry.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('./plugin-build-registry.js')>();
+      return {
+        ...actual,
+        createPluginBuildRegistries: vi.fn(() => ({
+          workspaceManifestRegistry: new Map(),
+          nodeManifestRegistry: new Map(),
+          workspacePluginRegistry: new Map([
+            [
+              'packages/plugin-custom::src/server.ts',
+              async () => ({
+                createPluginJobExecutionHandlers: () => ({
+                  'custom.job': vi.fn(),
+                }),
+              }),
+            ],
+          ]),
+          nodePluginRegistry: new Map(),
+        })),
+      };
+    });
+
+    const mod = await import('./plugin-operation-runtime.server');
+
+    const handlers = await mod.createPluginOperationExecutionHandlersFromSnapshot({
+      pluginSources: [
+        createJobPluginSource({
+          pluginId: 'custom-waste-plugin',
+          runtimeRequirement: 'custom.runtime',
+          sourceRef: 'packages/plugin-custom',
+          jobsEntry: './dist/jobs/custom-entry.js',
+        }),
+      ],
+      runtimeFactories: {
+        'custom.runtime': () => ({}),
+      },
+    });
+
+    expect(Object.keys(handlers)).toEqual(['custom.job']);
+  });
+
+  it('accepts normalized-empty workspace jobs entries by falling back to src/server.ts', async () => {
+    vi.resetModules();
+    vi.doMock('./plugin-catalog-loader.js', () => ({
+      createStudioPluginCatalogReport: vi.fn(async () => ({
+        snapshot: {
+          registry: { jobTypes: [] },
+          pluginSources: [],
+        },
+      })),
+      getPackagePluginModuleCandidates: vi.fn(() => []),
+      getWorkspacePluginModuleCandidates: vi.fn(() => []),
+    }));
+    vi.doMock('./plugin-build-registry.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('./plugin-build-registry.js')>();
+      return {
+        ...actual,
+        createPluginBuildRegistries: vi.fn(() => ({
+          workspaceManifestRegistry: new Map(),
+          nodeManifestRegistry: new Map(),
+          workspacePluginRegistry: new Map([
+            [
+              'packages/plugin-empty::src/server.ts',
+              async () => ({
+                createPluginJobExecutionHandlers: () => ({
+                  'custom.empty-job': vi.fn(),
+                }),
+              }),
+            ],
+          ]),
+          nodePluginRegistry: new Map(),
+        })),
+      };
+    });
+
+    const mod = await import('./plugin-operation-runtime.server');
+
+    const handlers = await mod.createPluginOperationExecutionHandlersFromSnapshot({
+      pluginSources: [
+        createJobPluginSource({
+          pluginId: 'custom-empty-plugin',
+          runtimeRequirement: 'custom.runtime',
+          sourceRef: 'packages/plugin-empty',
+          jobsEntry: './',
+        }),
+      ],
+      runtimeFactories: {
+        'custom.runtime': () => ({}),
+      },
+    });
+
+    expect(Object.keys(handlers)).toEqual(['custom.empty-job']);
+  });
+
+  it('rejects duplicate job handlers when two plugin sources register the same job type', async () => {
+    const mod = await import('./plugin-operation-runtime.server');
+
+    await expect(
+      mod.createPluginOperationExecutionHandlersFromSnapshot({
+        pluginSources: [
+          createJobPluginSource({
+            pluginId: 'waste-management',
+            runtimeRequirement: 'waste-management.operations',
+          }),
+          createJobPluginSource({
+            pluginId: 'waste-management',
+            runtimeRequirement: 'waste-management.operations',
+          }),
+        ],
+        runtimeFactories: {
+          'waste-management.operations': () => ({}),
+        },
+      })
+    ).rejects.toThrowError(
+      'duplicate_plugin_operation_handler:waste-management.apply-migrations:waste-management:waste-management'
+    );
+  });
 });

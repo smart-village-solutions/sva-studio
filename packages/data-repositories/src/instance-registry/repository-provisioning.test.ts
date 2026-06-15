@@ -170,6 +170,31 @@ describe('instance registry repository provisioning', () => {
     });
   });
 
+  it('combines failed or pending reconcile state with legacy admin artifact drift evidence', async () => {
+    const { executor } = createQueuedExecutor([
+      [
+        {
+          sync_state: 'failed',
+          role_count: 4,
+          failed_count: 1,
+          pending_count: 2,
+          last_synced_at: '2026-04-29T10:04:00.000Z',
+          last_error_code: null,
+        },
+      ],
+      [{ request_id: null, created_at: '2026-04-29T10:04:00.000Z' }],
+      [{ legacy_artifact_count: 3 }],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.getRoleReconcileSummary('tenant-a')).resolves.toEqual({
+      status: 'degraded',
+      summary: '1 Rollen mit Fehler, 2 Rollen im Backlog. 3 Legacy-Admin-Artefakte erfordern manuelle Bereinigung.',
+      checkedAt: '2026-04-29T10:04:00.000Z',
+      errorCode: 'LEGACY_ADMIN_ARTIFACT_DRIFT',
+    });
+  });
+
   it('marks synced role catalogs as degraded when legacy admin artifacts still exist', async () => {
     const { executor } = createQueuedExecutor([
       [
@@ -311,5 +336,21 @@ describe('instance registry repository provisioning', () => {
       details: {},
       requestId: 'request-1',
     });
+  });
+
+  it('writes audit events with a normalized empty details object', async () => {
+    const { executor, statements } = createQueuedExecutor([]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.appendAuditEvent({
+        instanceId: 'tenant-a',
+        eventType: 'instance.created',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(statements).toHaveLength(1);
+    expect(statements[0]?.text).toContain('INSERT INTO iam.instance_audit_events');
+    expect(statements[0]?.values).toEqual(['tenant-a', 'instance.created', null, null, '{}']);
   });
 });

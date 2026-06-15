@@ -39,50 +39,58 @@ export type ProtectedSystemRolePermissionBundleRecord = {
 };
 
 export type InstanceRegistryRepository = {
-  listInstances(input?: { search?: string; status?: InstanceStatus }): Promise<readonly InstanceRegistryRecord[]>;
-  getInstanceById(instanceId: string): Promise<InstanceRegistryRecord | null>;
-  listAssignedModules(instanceId: string): Promise<readonly string[]>;
-  assignModule(instanceId: string, moduleId: string): Promise<boolean>;
-  revokeModule(instanceId: string, moduleId: string): Promise<boolean>;
-  syncAssignedModuleIam(input: {
+  readonly listInstances: (input?: {
+    search?: string;
+    status?: InstanceStatus;
+  }) => Promise<readonly InstanceRegistryRecord[]>;
+  readonly getInstanceById: (instanceId: string) => Promise<InstanceRegistryRecord | null>;
+  readonly listAssignedModules: (instanceId: string) => Promise<readonly string[]>;
+  readonly assignModule: (instanceId: string, moduleId: string) => Promise<boolean>;
+  readonly revokeModule: (instanceId: string, moduleId: string) => Promise<boolean>;
+  readonly syncAssignedModuleIam: (input: {
     instanceId: string;
     managedModuleIds: readonly string[];
     contracts: readonly InstanceModuleIamContractRecord[];
-  }): Promise<void>;
-  syncProtectedSystemRolePermissions(input: {
+  }) => Promise<void>;
+  readonly syncProtectedSystemRolePermissions: (input: {
     instanceId: string;
     role: ProtectedSystemRolePermissionBundleRecord;
-  }): Promise<void>;
-  countLocalSystemAdminAssignments(instanceId: string): Promise<number>;
-  getAuthClientSecretCiphertext(instanceId: string): Promise<string | null>;
-  getTenantAdminClientSecretCiphertext(instanceId: string): Promise<string | null>;
-  resolveHostname(hostname: string): Promise<InstanceRegistryRecord | null>;
-  resolvePrimaryHostname(hostname: string): Promise<InstanceRegistryRecord | null>;
-  listProvisioningRuns(instanceId: string): Promise<readonly InstanceProvisioningRun[]>;
-  listLatestProvisioningRuns(
+  }) => Promise<void>;
+  readonly countLocalSystemAdminAssignments: (instanceId: string) => Promise<number>;
+  readonly getAuthClientSecretCiphertext: (instanceId: string) => Promise<string | null>;
+  readonly getTenantAdminClientSecretCiphertext: (instanceId: string) => Promise<string | null>;
+  readonly resolveHostname: (hostname: string) => Promise<InstanceRegistryRecord | null>;
+  readonly resolvePrimaryHostname: (hostname: string) => Promise<InstanceRegistryRecord | null>;
+  readonly listProvisioningRuns: (instanceId: string) => Promise<readonly InstanceProvisioningRun[]>;
+  readonly listLatestProvisioningRuns: (
     instanceIds: readonly string[]
-  ): Promise<Readonly<Record<string, InstanceProvisioningRun | undefined>>>;
-  listAuditEvents(instanceId: string): Promise<readonly InstanceAuditEvent[]>;
-  getLatestTenantIamAccessProbe(instanceId: string): Promise<{
+  ) => Promise<Readonly<Record<string, InstanceProvisioningRun | undefined>>>;
+  readonly listAuditEvents: (instanceId: string) => Promise<readonly InstanceAuditEvent[]>;
+  readonly getLatestTenantIamAccessProbe: (instanceId: string) => Promise<{
     checkedAt: string;
     status: 'ready' | 'degraded' | 'blocked' | 'unknown';
     summary: string;
     errorCode?: string;
     requestId?: string;
   } | null>;
-  getRoleReconcileSummary(instanceId: string): Promise<{
+  readonly getRoleReconcileSummary: (instanceId: string) => Promise<{
     status: 'ready' | 'degraded' | 'blocked' | 'unknown';
     summary: string;
     checkedAt?: string;
     errorCode?: string;
     requestId?: string;
   } | null>;
-  listKeycloakProvisioningRuns(instanceId: string): Promise<readonly InstanceKeycloakProvisioningRun[]>;
-  getKeycloakProvisioningRun(instanceId: string, runId: string): Promise<InstanceKeycloakProvisioningRun | null>;
-  claimNextKeycloakProvisioningRun(input?: {
+  readonly listKeycloakProvisioningRuns: (
+    instanceId: string
+  ) => Promise<readonly InstanceKeycloakProvisioningRun[]>;
+  readonly getKeycloakProvisioningRun: (
+    instanceId: string,
+    runId: string
+  ) => Promise<InstanceKeycloakProvisioningRun | null>;
+  readonly claimNextKeycloakProvisioningRun: (input?: {
     createdAtOrAfter?: string;
-  }): Promise<InstanceKeycloakProvisioningRun | null>;
-  createInstance(input: {
+  }) => Promise<InstanceKeycloakProvisioningRun | null>;
+  readonly createInstance: (input: {
     instanceId: string;
     displayName: string;
     status: InstanceStatus;
@@ -108,8 +116,8 @@ export type InstanceRegistryRepository = {
     themeKey?: string;
     featureFlags?: Readonly<Record<string, boolean>>;
     mainserverConfigRef?: string;
-  }): Promise<InstanceRegistryRecord | null>;
-  updateInstance(input: {
+  }) => Promise<InstanceRegistryRecord | null>;
+  readonly updateInstance: (input: {
     instanceId: string;
     displayName: string;
     parentDomain: string;
@@ -136,14 +144,14 @@ export type InstanceRegistryRepository = {
     themeKey?: string;
     featureFlags?: Readonly<Record<string, boolean>>;
     mainserverConfigRef?: string;
-  }): Promise<InstanceRegistryRecord | null>;
-  setInstanceStatus(input: {
+  }) => Promise<InstanceRegistryRecord | null>;
+  readonly setInstanceStatus: (input: {
     instanceId: string;
     status: InstanceStatus;
     actorId?: string;
     requestId?: string;
-  }): Promise<InstanceRegistryRecord | null>;
-  createProvisioningRun(input: {
+  }) => Promise<InstanceRegistryRecord | null>;
+  readonly createProvisioningRun: (input: {
     instanceId: string;
     operation: InstanceProvisioningOperation;
     status: InstanceStatus;
@@ -153,15 +161,15 @@ export type InstanceRegistryRepository = {
     requestId?: string;
     errorCode?: string;
     errorMessage?: string;
-  }): Promise<InstanceProvisioningRun>;
-  appendAuditEvent(input: {
+  }) => Promise<InstanceProvisioningRun>;
+  readonly appendAuditEvent: (input: {
     instanceId: string;
     eventType: InstanceAuditEvent['eventType'];
     actorId?: string;
     requestId?: string;
     details?: Readonly<Record<string, unknown>>;
-  }): Promise<void>;
-  createKeycloakProvisioningRun(input: {
+  }) => Promise<void>;
+  readonly createKeycloakProvisioningRun: (input: {
     instanceId: string;
     mutation: NonNullable<InstanceKeycloakProvisioningRun['mutation']>;
     idempotencyKey: string;
@@ -172,13 +180,13 @@ export type InstanceRegistryRepository = {
     driftSummary: string;
     actorId?: string;
     requestId?: string;
-  }): Promise<CreateKeycloakProvisioningRunResult>;
-  updateKeycloakProvisioningRun(input: {
+  }) => Promise<CreateKeycloakProvisioningRunResult>;
+  readonly updateKeycloakProvisioningRun: (input: {
     runId: string;
     overallStatus: InstanceKeycloakProvisioningRun['overallStatus'];
     driftSummary?: string;
-  }): Promise<InstanceKeycloakProvisioningRun | null>;
-  appendKeycloakProvisioningStep(input: {
+  }) => Promise<InstanceKeycloakProvisioningRun | null>;
+  readonly appendKeycloakProvisioningStep: (input: {
     runId: string;
     stepKey: string;
     title: string;
@@ -188,5 +196,5 @@ export type InstanceRegistryRepository = {
     summary: string;
     details?: Readonly<Record<string, unknown>>;
     requestId?: string;
-  }): Promise<InstanceKeycloakProvisioningRunStep>;
+  }) => Promise<InstanceKeycloakProvisioningRunStep>;
 };

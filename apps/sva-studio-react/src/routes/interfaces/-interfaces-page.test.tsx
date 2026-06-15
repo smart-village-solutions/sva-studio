@@ -459,6 +459,67 @@ describe('InterfacesPage', () => {
     });
   });
 
+  it('renders endpoint and status fallbacks for disabled or provider-api interfaces', async () => {
+    state.listInterfaces.mockResolvedValue(
+      createListResponse([
+        {
+          ...mainserverEntry,
+          id: 'mainserver-disabled',
+          enabled: false,
+          status: 'disabled',
+          lastCheckedAt: undefined,
+          config: {
+            graphqlBaseUrl: '',
+            oauthTokenUrl: mainserverEntry.config.oauthTokenUrl,
+          },
+        },
+        {
+          ...mailTransportEntry,
+          id: 'mail-provider',
+          status: 'error',
+          config: {
+            ...mailTransportEntry.config,
+            transportType: 'provider_api',
+            endpoint: 'https://mail.example/api',
+          },
+        },
+      ])
+    );
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    expect(screen.getAllByText('https://mail.example/api').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('-').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Deaktiviert').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Fehler').length).toBeGreaterThan(0);
+  });
+
+  it('closes picker and edit dialogs through their cancel actions', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Bearbeiten' })[0]!);
+    expect(screen.getByRole('button', { name: 'Einstellungen speichern' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Einstellungen speichern' })).toBeNull();
+    });
+  });
+
   it('does not offer supabase in the picker when the waste-management module is unavailable', async () => {
     state.listInterfaces.mockResolvedValue(
       createListResponse([mainserverEntry], ['mainserver', 's3', 'mailTransport'])

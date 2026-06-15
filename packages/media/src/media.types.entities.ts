@@ -9,7 +9,7 @@ import type {
   MediaVisibility,
 } from './media.types.core.js';
 
-export type MediaAsset = Readonly<{
+export interface MediaAsset {
   id: string;
   instanceId: string;
   storageKey: string;
@@ -21,9 +21,9 @@ export type MediaAsset = Readonly<{
   processingStatus: MediaProcessingStatus;
   metadata: MediaMetadata;
   technical: MediaTechnicalMetadata;
-}>;
+}
 
-export type MediaVariant = Readonly<{
+export interface MediaVariant {
   id: string;
   assetId: string;
   variantKey: string;
@@ -33,25 +33,25 @@ export type MediaVariant = Readonly<{
   height?: number;
   storageKey: string;
   generationStatus: 'pending' | 'ready' | 'failed';
-}>;
+}
 
-export type MediaReference = Readonly<{
+export interface MediaReference {
   id: string;
   assetId: string;
   targetType: string;
   targetId: string;
   role: MediaRole;
   sortOrder?: number;
-}>;
+}
 
-export type MediaPreset = Readonly<{
+export interface MediaPreset {
   key: 'thumbnail' | 'teaser' | 'hero';
   width: number;
   height?: number;
   format: MediaFormat;
-}>;
+}
 
-export type MediaDeletionDecision = Readonly<{
+export interface MediaDeletionDecision {
   allowed: boolean;
   reason: 'active_references' | 'legal_hold' | 'upload_incomplete' | null;
-}>;
+}

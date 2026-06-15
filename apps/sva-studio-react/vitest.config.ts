@@ -6,7 +6,7 @@ export default mergeConfig(
   sharedVitestConfig,
   defineConfig({
     test: {
-      include: ['src/**/*.{test,spec}.{ts,tsx}'],
+      include: ['src/**/*.{test,spec}.{ts,tsx}', 'stagehand/**/*.{test,spec}.{ts,tsx}'],
       exclude: [...prGateExcludedTestFiles],
     },
   })

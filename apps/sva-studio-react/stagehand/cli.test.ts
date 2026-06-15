@@ -33,7 +33,7 @@ describe('runStagehandAdminCli', () => {
         OPENAI_API_KEY: 'test-openai-key',
       },
       {
-        fetchImpl: async (input) => {
+        fetchImpl: async (input: string | URL | Request) => {
           const url = String(input);
 
           if (url === 'https://studio.example.test') {
@@ -134,7 +134,7 @@ describe('runStagehandAdminCli', () => {
         OPENAI_API_KEY: 'test-openai-key',
       },
       {
-        fetchImpl: async (input) => {
+        fetchImpl: async (input: string | URL | Request) => {
           const url = String(input);
 
           if (url === 'https://studio.example.test') {

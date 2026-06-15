@@ -788,15 +788,39 @@ describe('runStagehandStoryLoop', () => {
           close: async () => undefined,
           newPage: async () => {
             let currentUrl = 'https://de-musterhausen.example.test/dashboard';
+            let activeRoleTab = 'general';
             const formValues: Record<string, string> = {};
 
             const createLocator = (query: { selector?: string; roleName?: string | RegExp }) => ({
-              count: async () => 1,
+              count: async () => {
+                if (query.selector === '#role-assignment-search') {
+                  return currentUrl.includes('/admin/roles/') && activeRoleTab === 'assignments' ? 1 : 0;
+                }
+
+                if (query.roleName instanceof RegExp) {
+                  const label = query.roleName.source.toLowerCase();
+                  if (label.includes('zuweisen')) {
+                    return activeRoleTab === 'assignments' ? 1 : 0;
+                  }
+                }
+
+                return 1;
+              },
               first: () => ({
                 click: async () => {
                   if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('rolle anlegen')) {
                     currentUrl =
                       'https://de-musterhausen.example.test/admin/roles/64099c2a-a598-409f-9229-4d421d4f459d?tab=general';
+                    return;
+                  }
+
+                  if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('nutzer anlegen')) {
+                    currentUrl = 'https://de-musterhausen.example.test/admin/users/user-role-123';
+                    return;
+                  }
+
+                  if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('zuweisungen')) {
+                    activeRoleTab = 'assignments';
                   }
                 },
                 fill: async (value: string) => {
@@ -804,7 +828,17 @@ describe('runStagehandStoryLoop', () => {
                     formValues[query.selector] = value;
                   }
                 },
-                isVisible: async () => true,
+                isVisible: async () => {
+                  if (query.selector === '#role-assignment-search') {
+                    return currentUrl.includes('/admin/roles/') && activeRoleTab === 'assignments';
+                  }
+
+                  if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('zuweisen')) {
+                    return activeRoleTab === 'assignments';
+                  }
+
+                  return true;
+                },
               }),
             });
 
@@ -813,6 +847,9 @@ describe('runStagehandStoryLoop', () => {
               locator: (selector: string) => createLocator({ selector }),
               goto: async (url: string) => {
                 currentUrl = url;
+                if (url.includes('/admin/roles/')) {
+                  activeRoleTab = 'general';
+                }
               },
               textContent: async () => '',
               url: () => currentUrl,

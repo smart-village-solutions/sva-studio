@@ -2,16 +2,16 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { WasteEmailReminderPendingSignupInput } from '@sva/data-repositories';
 import {
-  createPublicWasteReminderPageHandler,
-  createPublicWasteReminderSignupRateLimitConsumer,
-  createPublicWasteReminderSignupSubmitter,
-  PublicWasteReminderSignupError,
+  createPublicWasteReminderPageHandler as createReminderPageHandler,
+  createPublicWasteReminderSignupRateLimitConsumer as createReminderSignupRateLimitConsumer,
+  createPublicWasteReminderSignupSubmitter as createReminderSignupSubmitter,
 } from './public-waste-email-reminders.server.js';
+import { createPublicWasteUnsubscribeToken } from './public-waste-unsubscribe-token.server.js';
 
 describe('public waste email reminders server helper', () => {
   it('builds and persists a pending DOI signup with normalized payload data and DOI expiry', async () => {
     const persisted: WasteEmailReminderPendingSignupInput[] = [];
-    const submitter = createPublicWasteReminderSignupSubmitter({
+    const submitter = createReminderSignupSubmitter({
       countExistingSubscriptions: vi.fn().mockResolvedValue(0),
       persistPendingSignup: async (input) => {
         persisted.push(input);
@@ -138,9 +138,9 @@ describe('public waste email reminders server helper', () => {
   });
 
   it('rejects signup attempts after the configured email rate limit is exceeded', async () => {
-    const submitter = createPublicWasteReminderSignupSubmitter({
+    const submitter = createReminderSignupSubmitter({
       countExistingSubscriptions: vi.fn().mockResolvedValue(0),
-      consumeRateLimit: createPublicWasteReminderSignupRateLimitConsumer(),
+      consumeRateLimit: createReminderSignupRateLimitConsumer(),
       persistPendingSignup: vi.fn(),
       now: () => new Date('2026-06-14T20:00:00.000Z'),
       hashValue: (value) => `sha256:${value}`,
@@ -203,7 +203,7 @@ describe('public waste email reminders server helper', () => {
   });
 
   it('rejects signup attempts when the location subscription limit is already reached', async () => {
-    const submitter = createPublicWasteReminderSignupSubmitter({
+    const submitter = createReminderSignupSubmitter({
       countExistingSubscriptions: vi.fn().mockResolvedValue(3),
       persistPendingSignup: vi.fn(),
       now: () => new Date('2026-06-14T20:00:00.000Z'),
@@ -261,12 +261,13 @@ describe('public waste email reminders server helper', () => {
   });
 
   it('renders a DOI success page for a valid confirmation token', async () => {
-    const handler = createPublicWasteReminderPageHandler({
+    const handler = createReminderPageHandler({
       activateByDoiTokenHash: vi.fn().mockResolvedValue({
         status: 'activated',
         subscriptionId: 'subscription-1',
         locationLabel: 'Perleberg, Ackerstr. 12',
       }),
+      loadUnsubscribeSubscriptionById: vi.fn(),
       unsubscribeByTokenHash: vi.fn(),
       now: () => new Date('2026-06-14T20:00:00.000Z'),
       hashValue: (value) => `sha256:${value}`,
@@ -305,6 +306,7 @@ describe('public waste email reminders server helper', () => {
         pendingSubscriptionTtlHours: 48,
         materializationLookaheadDays: 7,
       },
+      unsubscribeTokenSecret: 'postgres://waste:test@localhost:5432/waste',
     });
 
     expect(response?.status).toBe(200);
@@ -312,11 +314,12 @@ describe('public waste email reminders server helper', () => {
   });
 
   it('redirects invalid unsubscribe tokens to the configured invalid-token page', async () => {
-    const handler = createPublicWasteReminderPageHandler({
+    const handler = createReminderPageHandler({
       activateByDoiTokenHash: vi.fn(),
       unsubscribeByTokenHash: vi.fn().mockResolvedValue({
         status: 'invalid',
       }),
+      loadUnsubscribeSubscriptionById: vi.fn(),
       now: () => new Date('2026-06-14T20:00:00.000Z'),
       hashValue: (value) => `sha256:${value}`,
     });
@@ -353,6 +356,7 @@ describe('public waste email reminders server helper', () => {
         pendingSubscriptionTtlHours: 48,
         materializationLookaheadDays: 7,
       },
+      unsubscribeTokenSecret: 'postgres://waste:test@localhost:5432/waste',
     });
 
     expect(response?.status).toBe(302);
@@ -361,21 +365,31 @@ describe('public waste email reminders server helper', () => {
     );
   });
 
-  it('accepts stored unsubscribe token hashes as opaque bearer tokens for reminder links', async () => {
+  it('accepts signed unsubscribe tokens for reminder links and resolves them back to the stored hash', async () => {
     const unsubscribeByTokenHash = vi.fn().mockResolvedValue({
       status: 'already_unsubscribed',
       subscriptionId: 'subscription-1',
       locationLabel: 'Perleberg, Ackerstr. 12',
     });
-    const handler = createPublicWasteReminderPageHandler({
+    const loadUnsubscribeSubscriptionById = vi.fn().mockResolvedValue({
+      subscriptionId: 'subscription-1',
+      unsubscribeTokenHash: 'sha256:unsubscribe-token',
+    });
+    const handler = createReminderPageHandler({
       activateByDoiTokenHash: vi.fn(),
+      loadUnsubscribeSubscriptionById,
       unsubscribeByTokenHash,
       now: () => new Date('2026-06-14T20:00:00.000Z'),
       hashValue: (value) => `sha256:${value}`,
     });
+    const token = createPublicWasteUnsubscribeToken({
+      subscriptionId: 'subscription-1',
+      unsubscribeTokenHash: 'sha256:unsubscribe-token',
+      secret: 'postgres://waste:test@localhost:5432/waste',
+    });
 
     const response = await handler({
-      request: new Request('https://example.invalid/erinnerungen/abmelden?token=sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd'),
+      request: new Request(`https://example.invalid/erinnerungen/abmelden?token=${token}`),
       pathname: '/erinnerungen/abmelden',
       reminderConfig: {
         enabled: true,
@@ -405,10 +419,14 @@ describe('public waste email reminders server helper', () => {
         pendingSubscriptionTtlHours: 48,
         materializationLookaheadDays: 7,
       },
+      unsubscribeTokenSecret: 'postgres://waste:test@localhost:5432/waste',
     });
 
+    expect(loadUnsubscribeSubscriptionById).toHaveBeenCalledWith({
+      subscriptionId: 'subscription-1',
+    });
     expect(unsubscribeByTokenHash).toHaveBeenCalledWith({
-      tokenHash: 'sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd',
+      tokenHash: 'sha256:unsubscribe-token',
       now: '2026-06-14T20:00:00.000Z',
     });
     expect(response?.status).toBe(200);

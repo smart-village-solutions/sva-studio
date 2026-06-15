@@ -84,6 +84,12 @@ describe('useWasteSchedulingViewModel', () => {
         collectionLocations: [
           { id: 'location-2', name: 'Ziegelhof' },
           { id: 'location-1', name: 'Albertplatz' },
+          { id: 'location-3', name: 'Ohne Link' },
+        ],
+        locationTourLinks: [
+          { id: 'link-1', locationId: 'location-2', tourId: 'tour-1' },
+          { id: 'link-2', locationId: 'location-1', tourId: 'tour-1' },
+          { id: 'link-3', locationId: 'location-3', tourId: 'tour-2' },
         ],
       },
     };

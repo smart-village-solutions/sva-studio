@@ -40,6 +40,7 @@ import {
   resolveRuntimeDataSource,
   withWasteClient,
 } from './waste-management-operations.shared.js';
+import { createWasteManagementUnsubscribeToken } from './waste-management-unsubscribe-token.server.js';
 import type {
   WasteManagementOperationRuntime,
   WasteOperationRuntimeDeps,
@@ -197,9 +198,23 @@ const loadMailTransportConfigs = async (
   return new Map(config ? [[config.transportId, config] as const] : []);
 };
 
-const buildUnsubscribeUrl = (config: WasteManagementEmailReminderConfig, unsubscribeTokenHash: string): string => {
+const buildUnsubscribeUrl = (
+  config: WasteManagementEmailReminderConfig,
+  input: {
+    readonly subscriptionId: string;
+    readonly unsubscribeTokenHash: string;
+    readonly secret: string;
+  }
+): string => {
   const url = new URL(config.unsubscribePath, config.publicBaseUrl);
-  url.searchParams.set('token', unsubscribeTokenHash);
+  url.searchParams.set(
+    'token',
+    createWasteManagementUnsubscribeToken({
+      subscriptionId: input.subscriptionId,
+      unsubscribeTokenHash: input.unsubscribeTokenHash,
+      secret: input.secret,
+    })
+  );
   return url.toString();
 };
 
@@ -246,8 +261,13 @@ const buildReminderDispatchPayload = (input: {
   readonly fraction: WasteFractionRecord;
   readonly pickupDate: string;
   readonly unsubscribeTokenHash: string;
+  readonly unsubscribeTokenSecret: string;
 }): MailDispatchPayload => {
-  const unsubscribeUrl = buildUnsubscribeUrl(input.config, input.unsubscribeTokenHash);
+  const unsubscribeUrl = buildUnsubscribeUrl(input.config, {
+    subscriptionId: input.subscriptionId,
+    unsubscribeTokenHash: input.unsubscribeTokenHash,
+    secret: input.unsubscribeTokenSecret,
+  });
   const pickupDateLabel = formatPickupDateLabel(input.pickupDate);
   const values = {
     fractionName: input.fraction.name,
@@ -621,7 +641,7 @@ const createSyncWasteTypesOperation = (
   deps: WasteOperationRuntimeDeps
 ): WasteManagementOperationRuntime['syncWasteTypes'] => async (instanceId, input) => {
   const startedAt = Date.now();
-  const details = await withWasteClient(deps, instanceId, async ({ client, repository }) => {
+  const details = await withWasteClient(deps, instanceId, async ({ client, repository, dataSource }) => {
     await client.query(buildWasteFractionShortLabelBackfillStatement('waste_fractions'));
     const fractions = await repository.listWasteFractions();
     const artifact = await buildWasteTypesStaticContent(fractions);
@@ -670,7 +690,7 @@ const createMaterializeEmailRemindersOperation = (
     throw new Error(`invalid_reference_time:${input.referenceTime}`);
   }
 
-  const details = await withWasteClient(deps, instanceId, async ({ client, repository }) => {
+  const details = await withWasteClient(deps, instanceId, async ({ client, repository, dataSource }) => {
     const reminderRepository = createWasteEmailReminderRepository(createSqlExecutor(client));
     const [subscriptions, fractions, tours, links, locations, pickupDates, tourDateShifts, globalDateShifts, holidayRules] =
       await Promise.all([
@@ -766,6 +786,7 @@ const createMaterializeEmailRemindersOperation = (
               fraction,
               pickupDate,
               unsubscribeTokenHash: subscription.unsubscribeTokenHash,
+              unsubscribeTokenSecret: dataSource.databaseUrl,
             }),
           });
           if (result === 'inserted') {

@@ -3,8 +3,13 @@ import type { MailDispatchPayload, WasteManagementEmailReminderConfig } from '@s
 import type {
   WasteEmailReminderActivationResult,
   WasteEmailReminderPendingSignupInput,
+  WasteEmailReminderUnsubscribeSubscription,
   WasteEmailReminderUnsubscribeResult,
 } from '@sva/data-repositories';
+import {
+  readPublicWasteUnsubscribeTokenSubscriptionId,
+  verifyPublicWasteUnsubscribeToken,
+} from './public-waste-unsubscribe-token.server.js';
 import type { PublicWasteRepository } from '../lib/public-waste-repository.server.js';
 import type {
   PublicWasteReminderSignupRequest,
@@ -41,6 +46,9 @@ type ReminderSignupDependencies = Readonly<{
 
 type ReminderTokenActionDependencies = Readonly<{
   activateByDoiTokenHash: (input: { readonly tokenHash: string; readonly now: string }) => Promise<WasteEmailReminderActivationResult>;
+  loadUnsubscribeSubscriptionById: (input: {
+    readonly subscriptionId: string;
+  }) => Promise<WasteEmailReminderUnsubscribeSubscription | null>;
   unsubscribeByTokenHash: (input: {
     readonly tokenHash: string;
     readonly now: string;
@@ -406,6 +414,7 @@ export const createPublicWasteReminderPageHandler =
     readonly request: Request;
     readonly pathname: string;
     readonly reminderConfig: WasteManagementEmailReminderConfig;
+    readonly unsubscribeTokenSecret: string;
   }): Promise<Response | null> => {
     const configuredStatusPage = renderConfiguredReminderStatusPage(input);
     if (configuredStatusPage) {
@@ -446,8 +455,34 @@ export const createPublicWasteReminderPageHandler =
             })
           : renderUnsubscribeErrorPage(input.reminderConfig);
       }
+      const subscriptionId = readPublicWasteUnsubscribeTokenSubscriptionId(token);
+      if (!subscriptionId) {
+        return input.reminderConfig.invalidTokenPath
+          ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
+              source: 'unsubscribe',
+              reason: 'invalid',
+            })
+          : renderUnsubscribeErrorPage(input.reminderConfig);
+      }
+      const subscription = await deps.loadUnsubscribeSubscriptionById({ subscriptionId });
+      if (
+        !subscription ||
+        !verifyPublicWasteUnsubscribeToken({
+          token,
+          subscriptionId,
+          unsubscribeTokenHash: subscription.unsubscribeTokenHash,
+          secret: input.unsubscribeTokenSecret,
+        })
+      ) {
+        return input.reminderConfig.invalidTokenPath
+          ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
+              source: 'unsubscribe',
+              reason: 'invalid',
+            })
+          : renderUnsubscribeErrorPage(input.reminderConfig);
+      }
       const result = await deps.unsubscribeByTokenHash({
-        tokenHash: normalizeBearerTokenToHash(token, hashValue),
+        tokenHash: subscription.unsubscribeTokenHash,
         now,
       });
       if (result.status === 'unsubscribed' || result.status === 'already_unsubscribed') {

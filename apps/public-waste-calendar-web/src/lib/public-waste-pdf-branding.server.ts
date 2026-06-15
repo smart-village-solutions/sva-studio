@@ -55,7 +55,10 @@ const parseBrandingUrls = (input: {
     assetUrl,
     requestUrl,
     sameOriginDevRequest: Boolean(
-      requestUrl && assetUrl.origin === requestUrl.origin && isExplicitDevOriginHost(requestUrl.hostname)
+      requestUrl &&
+      process.env.NODE_ENV !== 'production' &&
+      assetUrl.origin === requestUrl.origin &&
+      isExplicitDevOriginHost(requestUrl.hostname)
     ),
   };
 };

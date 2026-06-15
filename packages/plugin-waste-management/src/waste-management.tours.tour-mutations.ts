@@ -12,6 +12,7 @@ import {
 import { resolveApiErrorCode } from './waste-management.page.support.js';
 import {
   createTourDateLocationAssignmentKey,
+  isCustomDatesRecurrence,
   mapTourToForm,
   normalizeTourDateLocationAssignments,
   toCreateTourInput,
@@ -67,9 +68,11 @@ const reconcileTourDateLocationAssignments = async ({
   readonly tourId: string;
 }) => {
   const existingAssignments = (state.schedulingOverview?.locationTourPickupDates ?? []).filter((entry) => entry.tourId === tourId);
-  const normalizedAssignments = normalizeTourDateLocationAssignments(
-    state.tourForm.dateLocationAssignments.filter((entry) => entry.pickupDate.length > 0)
-  );
+  const normalizedAssignments = isCustomDatesRecurrence(state.tourForm.recurrence)
+    ? normalizeTourDateLocationAssignments(
+        state.tourForm.dateLocationAssignments.filter((entry) => entry.pickupDate.length > 0)
+      )
+    : [];
 
   const existingByKey = new Map(existingAssignments.map((entry) => [createTourDateLocationAssignmentKey(entry), entry]));
   const nextByKey = new Map(normalizedAssignments.map((entry) => [createTourDateLocationAssignmentKey(entry), entry]));

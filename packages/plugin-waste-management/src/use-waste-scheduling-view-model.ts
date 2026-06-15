@@ -32,8 +32,16 @@ export const useWasteSchedulingViewModel = (pt: Translate, search: WasteManageme
         (assignment) => assignment.tourId === schadstoffmobilTour.id
       )
     : [];
+  const schadstoffmobilLinkedLocationIds = new Set(
+    schadstoffmobilTour
+      ? (state.locationOverview?.locationTourLinks ?? [])
+          .filter((link) => link.tourId === schadstoffmobilTour.id)
+          .map((link) => link.locationId)
+      : []
+  );
   const schadstoffmobilLocationOptions = state.locationOverview
     ? state.locationOverview.collectionLocations
+        .filter((location) => !schadstoffmobilTour || schadstoffmobilLinkedLocationIds.has(location.id))
         .map((location) => ({
           id: location.id,
           label: formatCollectionLocationLabel(pt, state.locationOverview!, location),

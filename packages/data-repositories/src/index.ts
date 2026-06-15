@@ -64,6 +64,7 @@ export type {
   WasteEmailReminderPendingSignupInput,
   WasteEmailReminderPendingSignupItem,
   WasteEmailReminderRepository,
+  WasteEmailReminderUnsubscribeSubscription,
   WasteEmailReminderUnsubscribeResult,
   WasteDataSourceRepository,
   WasteMasterDataRepository,

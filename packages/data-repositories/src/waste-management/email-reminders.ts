@@ -70,6 +70,11 @@ export type WasteEmailReminderActiveSubscription = Readonly<{
   }>[];
 }>;
 
+export type WasteEmailReminderUnsubscribeSubscription = Readonly<{
+  subscriptionId: string;
+  unsubscribeTokenHash: string;
+}>;
+
 export type WasteEmailReminderOutboxEntryInput = Readonly<{
   id: string;
   subscriptionId: string;
@@ -115,6 +120,7 @@ export type WasteEmailReminderRepository = Readonly<{
     readonly errorMessage: string;
     readonly retryAt?: string;
   }) => Promise<void>;
+  loadUnsubscribeSubscriptionById: (input: { readonly subscriptionId: string }) => Promise<WasteEmailReminderUnsubscribeSubscription | null>;
   activateByDoiTokenHash: (input: { readonly tokenHash: string; readonly now: string }) => Promise<WasteEmailReminderActivationResult>;
   unsubscribeByTokenHash: (input: { readonly tokenHash: string; readonly now: string }) => Promise<WasteEmailReminderUnsubscribeResult>;
 }>;
@@ -152,6 +158,11 @@ type LeasedOutboxRow = Readonly<{
   dedupe_key: string;
   attempt_count: number;
   payload: MailDispatchPayload | string;
+}>;
+
+type UnsubscribeSubscriptionRow = Readonly<{
+  subscription_id: string;
+  unsubscribe_token_hash: string;
 }>;
 
 const STALE_OUTBOX_LEASE_INTERVAL = "INTERVAL '15 minutes'";
@@ -424,6 +435,17 @@ LIMIT 1;
   values: [tokenHash],
 });
 
+const buildSelectSubscriptionByIdStatement = (subscriptionId: string): SqlStatement => ({
+  text: `
+SELECT
+  id::text AS subscription_id,
+  unsubscribe_token_hash
+FROM waste_email_reminder_subscriptions
+WHERE id = $1::uuid;
+`,
+  values: [subscriptionId],
+});
+
 const buildActivateSubscriptionStatement = (input: { readonly subscriptionId: string; readonly now: string }): SqlStatement => ({
   text: `
 UPDATE waste_email_reminder_subscriptions
@@ -517,6 +539,17 @@ export const createWasteEmailReminderRepository = (executor: SqlExecutor): Waste
   async markOutboxEntryFailed(input) {
     await executor.execute(buildMarkOutboxEntryFailedStatement(input));
   },
+  async loadUnsubscribeSubscriptionById(input) {
+    const result = await executor.execute<UnsubscribeSubscriptionRow>(buildSelectSubscriptionByIdStatement(input.subscriptionId));
+    const subscription = result.rows[0];
+    if (!subscription) {
+      return null;
+    }
+    return {
+      subscriptionId: subscription.subscription_id,
+      unsubscribeTokenHash: subscription.unsubscribe_token_hash,
+    };
+  },
   async activateByDoiTokenHash(input) {
     const result = await executor.execute<SubscriptionStatusRow>(buildSelectSubscriptionByDoiTokenHashStatement(input.tokenHash));
     const subscription = result.rows[0];
@@ -586,6 +619,7 @@ export const wasteEmailReminderStatements = {
   cancelPendingReminderOutboxEntries: buildCancelPendingReminderOutboxEntriesStatement,
   selectSubscriptionByDoiTokenHash: buildSelectSubscriptionByDoiTokenHashStatement,
   selectSubscriptionByUnsubscribeTokenHash: buildSelectSubscriptionByUnsubscribeTokenHashStatement,
+  selectSubscriptionById: buildSelectSubscriptionByIdStatement,
   activateSubscription: buildActivateSubscriptionStatement,
   unsubscribeSubscription: buildUnsubscribeSubscriptionStatement,
 } as const;

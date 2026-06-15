@@ -120,6 +120,37 @@ describe('createWasteToursTourMutationHandlers', () => {
     expect(loadOverview).toHaveBeenCalledWith(true);
   });
 
+  it('drops stale custom-date assignments when a tour is switched to a recurring schedule', async () => {
+    const state = createState();
+    state.tourForm = {
+      ...state.tourForm,
+      recurrence: 'weekly',
+      customDates: [],
+    };
+    const loadOverview = vi.fn().mockResolvedValue(undefined);
+    apiMocks.updateWasteManagementTour.mockResolvedValue({});
+    apiMocks.createWasteManagementLocationTourPickupDate.mockResolvedValue({});
+    apiMocks.updateWasteManagementLocationTourPickupDate.mockResolvedValue({});
+    apiMocks.deleteWasteManagementLocationTourPickupDate.mockResolvedValue({});
+
+    const mutations = createWasteToursTourMutationHandlers({ state, pt, loadOverview });
+
+    await mutations.onSubmitTour({ preventDefault: vi.fn() } as never, 'edit');
+
+    expect(apiMocks.updateWasteManagementTour).toHaveBeenCalledWith(
+      'tour-1',
+      expect.objectContaining({
+        recurrence: 'weekly',
+        customDates: undefined,
+      })
+    );
+    expect(apiMocks.createWasteManagementLocationTourPickupDate).not.toHaveBeenCalled();
+    expect(apiMocks.updateWasteManagementLocationTourPickupDate).not.toHaveBeenCalled();
+    expect(apiMocks.deleteWasteManagementLocationTourPickupDate).toHaveBeenCalledTimes(2);
+    expect(apiMocks.deleteWasteManagementLocationTourPickupDate).toHaveBeenCalledWith('pickup-existing');
+    expect(apiMocks.deleteWasteManagementLocationTourPickupDate).toHaveBeenCalledWith('pickup-deleted');
+  });
+
   it('blocks saving when an assignment misses location or note', async () => {
     const state = createState();
     state.tourForm = {

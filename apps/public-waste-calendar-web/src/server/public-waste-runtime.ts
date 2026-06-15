@@ -55,6 +55,7 @@ type PublicWasteReminderPageHandler = (input: {
   readonly request: Request;
   readonly pathname: string;
   readonly reminderConfig: WasteManagementEmailReminderConfig;
+  readonly unsubscribeTokenSecret: string;
 }) => Promise<Response | null>;
 export type PublicWasteRuntime = {
   readonly bootstrapState: PublicWasteBootstrapState;
@@ -255,6 +256,8 @@ const createDefaultReminderPageHandler = (input: {
   return createPublicWasteReminderPageHandler({
     activateByDoiTokenHash: async (payload) =>
       await executor.executeWithinTransaction(async (repository) => await repository.activateByDoiTokenHash(payload)),
+    loadUnsubscribeSubscriptionById: async (payload) =>
+      await executor.executeWithinTransaction(async (repository) => await repository.loadUnsubscribeSubscriptionById(payload)),
     unsubscribeByTokenHash: async (payload) =>
       await executor.executeWithinTransaction(async (repository) => await repository.unsubscribeByTokenHash(payload)),
   });
@@ -443,6 +446,7 @@ export const createPublicWasteRuntime = async (input: {
           request,
           pathname: url.pathname,
           reminderConfig: bootstrapState.config.emailReminderConfig,
+          unsubscribeTokenSecret: bootstrapState.config.supabase.databaseUrl,
         });
         if (response) {
           return method === 'HEAD' ? toHeadResponse(response) : response;

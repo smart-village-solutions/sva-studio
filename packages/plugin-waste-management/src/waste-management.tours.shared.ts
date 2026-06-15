@@ -174,7 +174,7 @@ const customDatesRecurrences = new Set<NonNullable<WasteTourRecord['recurrence']
 const isRecurringTourRecurrence = (
   recurrence: TourFormState['recurrence']
 ): recurrence is NonNullable<WasteTourRecord['recurrence']> => recurringTourRecurrences.has(recurrence as NonNullable<WasteTourRecord['recurrence']>);
-const isCustomDatesRecurrence = (
+export const isCustomDatesRecurrence = (
   recurrence: TourFormState['recurrence']
 ): recurrence is NonNullable<WasteTourRecord['recurrence']> => customDatesRecurrences.has(recurrence as NonNullable<WasteTourRecord['recurrence']>);
 

@@ -130,8 +130,7 @@ BEGIN
       AND table_name = '${tableName}'
   ) THEN
     ALTER TABLE ${schema}.${tableName}
-      DROP CONSTRAINT IF EXISTS ${tableName}_tour_id_fkey;
-    ALTER TABLE ${schema}.${tableName}
+      DROP CONSTRAINT IF EXISTS ${tableName}_tour_id_fkey,
       ADD CONSTRAINT ${tableName}_tour_id_fkey
       FOREIGN KEY (tour_id)
       REFERENCES ${schema}.waste_tours(id)

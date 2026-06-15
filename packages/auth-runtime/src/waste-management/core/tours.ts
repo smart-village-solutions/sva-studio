@@ -4,7 +4,11 @@ import { asApiItem, createApiError, parseRequestBody, readPathSegment } from '..
 import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
-import { createWasteManagementTourAfterValidation, createWasteTourWriteInput } from './tours-write-support.js';
+import {
+  createWasteManagementTourAfterValidation,
+  createWasteTourWriteInput,
+  deleteWasteTourDependencies,
+} from './tours-write-support.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 
@@ -203,6 +207,7 @@ export const wasteManagementTourHandlers = {
         return createApiError(404, 'not_found', 'Die Waste-Tour wurde nicht gefunden.', requestId);
       }
 
+      await deleteWasteTourDependencies({ deps, instanceId, tourId });
       await requireDeps(deps.deleteWasteTour, 'deleteWasteTour')(instanceId, tourId);
 
       await emitWasteAuditEvent({

@@ -417,6 +417,12 @@ describe('wasteManagementHandlers', () => {
         deps: {
           ...sharedWasteManagementDepsMock,
           deleteWasteTour: saverMocks.deleteWasteTour,
+          listWasteLocationTourLinksByTourId: loaderMocks.listWasteLocationTourLinksByTourId,
+          deleteWasteLocationTourLink: saverMocks.deleteWasteLocationTourLink,
+          listWasteLocationTourPickupDates: loaderMocks.listWasteLocationTourPickupDates,
+          deleteWasteLocationTourPickupDate: saverMocks.deleteWasteLocationTourPickupDate,
+          listWasteTourDateShiftsByTourId: loaderMocks.listWasteTourDateShiftsByTourId,
+          deleteWasteTourDateShift: saverMocks.deleteWasteTourDateShift,
           loadWasteTourById: loaderMocks.loadWasteTourById,
         },
       },

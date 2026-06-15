@@ -718,6 +718,64 @@ describe('waste-management-mainserver-sync.materialization', () => {
     ]);
   });
 
+  it('ignores holiday rules with non-string holiday dates instead of throwing', () => {
+    expect(() =>
+      buildMaterializedLocationTourPickupDates({
+        tours: [
+          buildTour({
+            customDates: [{ date: '2026-12-25' }],
+          }),
+        ],
+        links: [
+          {
+            id: 'link-1',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            startDate: '2026-01-01',
+            endDate: '2026-12-31',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        locationTourPickupDates: [],
+        tourDateShifts: [],
+        globalDateShifts: [],
+        holidayRules: [
+          {
+            id: 'holiday-invalid-date',
+            holidayDate: new Date('2026-12-24T00:00:00.000Z') as unknown as string,
+            holidayName: 'Fehlerhafte Altlast',
+            year: 2026,
+            stateCode: 'BB',
+            sourceStatus: 'confirmed',
+            configurationStatus: 'configured',
+            conflictStatus: 'none',
+            scope: 'holiday-only',
+            strategy: 'advance',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'holiday-valid',
+            holidayDate: '2026-12-25',
+            holidayName: 'Weihnachten',
+            year: 2026,
+            stateCode: 'BB',
+            sourceStatus: 'confirmed',
+            configurationStatus: 'configured',
+            conflictStatus: 'none',
+            scope: 'holiday-only',
+            strategy: 'advance',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        currentYear: 2026,
+        nextYear: 2027,
+      })
+    ).not.toThrow();
+  });
+
   it('preserves notes but skips rows without resolved city, street, or waste type during row projection', () => {
     const rows = buildStudioRowsFromMaterialization({
       pickupDates: [

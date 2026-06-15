@@ -99,6 +99,35 @@ export const duplicateWasteTourDependencies = async ({
   }
 };
 
+export const deleteWasteTourDependencies = async ({
+  deps,
+  instanceId,
+  tourId,
+}: {
+  readonly deps: WasteManagementHandlerDeps;
+  readonly instanceId: string;
+  readonly tourId: string;
+}): Promise<void> => {
+  const listLinks = requireDeps(deps.listWasteLocationTourLinksByTourId, 'listWasteLocationTourLinksByTourId');
+  const listPickupDates = requireDeps(deps.listWasteLocationTourPickupDates, 'listWasteLocationTourPickupDates');
+  const listShifts = requireDeps(deps.listWasteTourDateShiftsByTourId, 'listWasteTourDateShiftsByTourId');
+  const deleteLink = requireDeps(deps.deleteWasteLocationTourLink, 'deleteWasteLocationTourLink');
+  const deletePickupDate = requireDeps(deps.deleteWasteLocationTourPickupDate, 'deleteWasteLocationTourPickupDate');
+  const deleteShift = requireDeps(deps.deleteWasteTourDateShift, 'deleteWasteTourDateShift');
+
+  const [links, pickupDates, shifts] = await Promise.all([
+    listLinks(instanceId, tourId),
+    listPickupDates(instanceId, { tourId }),
+    listShifts(instanceId, tourId),
+  ]);
+
+  await Promise.all([
+    ...links.map(async (link) => await deleteLink(instanceId, link.id)),
+    ...pickupDates.map(async (pickupDate) => await deletePickupDate(instanceId, pickupDate.id)),
+    ...shifts.map(async (shift) => await deleteShift(instanceId, shift.id)),
+  ]);
+};
+
 export const createWasteManagementTourAfterValidation = async ({
   deps,
   ctx,

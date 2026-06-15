@@ -507,6 +507,222 @@ describe('waste management operations runtime', () => {
     });
   });
 
+  it('materializes reminders for existing subscribers even when public signup is disabled', async () => {
+    const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
+    const reminderRepository = {
+      listActiveSubscriptions: vi.fn(async () => [
+        {
+          id: 'subscription-1',
+          email: 'max@example.org',
+          locationLabel: 'Perleberg, Ackerstraße 1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          unsubscribeTokenHash: 'sha256:unsubscribe',
+          items: [{ fractionId: 'fraction-bio', slotId: 'bio:first' }],
+        },
+      ]),
+      enqueueOutboxEntry,
+    };
+    const repository = createRepositoryMock({
+      listWasteFractions: vi.fn(async () => [
+        {
+          id: 'fraction-bio',
+          name: 'Biotonne',
+          pdfShortLabel: 'BIO',
+          translations: { de: 'Biotonne' },
+          containerSize: undefined,
+          color: '#008000',
+          description: undefined,
+          active: true,
+          reminderConfig: {
+            reminderCount: 'once',
+            channels: { push: false, email: true, calendar: false },
+            email: { slots: [{ id: 'bio:first', defaultLeadDays: 1 }] },
+          },
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]),
+      listWasteTours: vi.fn(async () => [
+        {
+          id: 'tour-1',
+          name: 'Biotour',
+          wasteFractionIds: ['fraction-bio'],
+          recurrence: null,
+          firstDate: undefined,
+          endDate: undefined,
+          customDates: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true }]),
+      listWasteCollectionLocations: vi.fn(async () => [
+        {
+          id: 'location-1',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourPickupDates: vi.fn(async () => [{ id: 'pickup-1', locationId: 'location-1', tourId: 'tour-1', pickupDate: '2026-06-16' }]),
+      listWasteTourDateShifts: vi.fn(async () => []),
+      listWasteGlobalDateShifts: vi.fn(async () => []),
+      listWasteHolidayRules: vi.fn(async () => []),
+    });
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteMasterDataRepository: vi.fn(() => repository),
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [
+        {
+          ...createInterfaceRecordWithEmailReminderConfig(),
+          publicConfig: {
+            ...createInterfaceRecordWithEmailReminderConfig().publicConfig,
+            emailReminderConfig: {
+              ...createWasteEmailReminderConfig(),
+              publicSignupEnabled: false,
+            },
+          },
+        },
+      ]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.materializeEmailReminders('instance-1', {
+      operation: 'materialize-email-reminders',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(enqueueOutboxEntry).toHaveBeenCalledTimes(1);
+    expect(result.details).toMatchObject({
+      operation: 'materialize-email-reminders',
+      mode: 'executed',
+      createdOutboxCount: 1,
+    });
+  });
+
+  it('does not enqueue reminder outbox entries whose send time is already in the past', async () => {
+    const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
+    const reminderRepository = {
+      listActiveSubscriptions: vi.fn(async () => [
+        {
+          id: 'subscription-1',
+          email: 'max@example.org',
+          locationLabel: 'Perleberg, Ackerstraße 1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          unsubscribeTokenHash: 'sha256:unsubscribe',
+          items: [{ fractionId: 'fraction-bio', slotId: 'bio:first' }],
+        },
+      ]),
+      enqueueOutboxEntry,
+    };
+    const repository = createRepositoryMock({
+      listWasteFractions: vi.fn(async () => [
+        {
+          id: 'fraction-bio',
+          name: 'Biotonne',
+          pdfShortLabel: 'BIO',
+          translations: { de: 'Biotonne' },
+          containerSize: undefined,
+          color: '#008000',
+          description: undefined,
+          active: true,
+          reminderConfig: {
+            reminderCount: 'once',
+            channels: { push: false, email: true, calendar: false },
+            email: { slots: [{ id: 'bio:first', defaultLeadDays: 1 }] },
+          },
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]),
+      listWasteTours: vi.fn(async () => [
+        {
+          id: 'tour-1',
+          name: 'Biotour',
+          wasteFractionIds: ['fraction-bio'],
+          recurrence: null,
+          firstDate: undefined,
+          endDate: undefined,
+          customDates: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true }]),
+      listWasteCollectionLocations: vi.fn(async () => [
+        {
+          id: 'location-1',
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          active: true,
+        },
+      ]),
+      listWasteLocationTourPickupDates: vi.fn(async () => [{ id: 'pickup-1', locationId: 'location-1', tourId: 'tour-1', pickupDate: '2026-06-10' }]),
+      listWasteTourDateShifts: vi.fn(async () => []),
+      listWasteGlobalDateShifts: vi.fn(async () => []),
+      listWasteHolidayRules: vi.fn(async () => []),
+    });
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteMasterDataRepository: vi.fn(() => repository),
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.materializeEmailReminders('instance-1', {
+      operation: 'materialize-email-reminders',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(enqueueOutboxEntry).not.toHaveBeenCalled();
+    expect(result.details).toMatchObject({
+      operation: 'materialize-email-reminders',
+      mode: 'executed',
+      createdOutboxCount: 0,
+      duplicateOutboxCount: 0,
+    });
+  });
+
   it('resolves interface-based waste secrets with the shared default revealSecret path', async () => {
     const secretConfigCiphertext = protectField(
       JSON.stringify({
@@ -1277,6 +1493,10 @@ const createRepositoryMockBase = () => ({
   listWasteCollectionLocations: vi.fn(async (): Promise<unknown[]> => []),
   listWasteTours: vi.fn(async (): Promise<unknown[]> => []),
   listWasteLocationTourLinks: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteLocationTourPickupDates: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteTourDateShifts: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteGlobalDateShifts: vi.fn(async (): Promise<unknown[]> => []),
+  listWasteHolidayRules: vi.fn(async (): Promise<unknown[]> => []),
   upsertWasteRegion: vi.fn(async () => undefined),
   upsertWasteCity: vi.fn(async () => undefined),
   upsertWasteStreet: vi.fn(async () => undefined),

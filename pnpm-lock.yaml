@@ -635,13 +635,13 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
-      '@types/nodemailer':
-        specifier: ^8.0.1
-        version: 8.0.1
       nodemailer:
         specifier: ^8.0.11
         version: 8.0.11
     devDependencies:
+      '@types/nodemailer':
+        specifier: ^8.0.1
+        version: 8.0.1
       '@vitest/coverage-v8':
         specifier: ^4.1.5
         version: 4.1.7(vitest@4.1.7)

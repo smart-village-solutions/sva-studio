@@ -354,54 +354,29 @@ const MailTransportFields = ({
             }
           >
             <option value="smtp">{t('interfaces.forms.mailTransport.transportTypeOptions.smtp')}</option>
-            <option value="provider_api">
-              {t('interfaces.forms.mailTransport.transportTypeOptions.providerApi')}
-            </option>
           </select>
         </div>
       </div>
 
-      {draft.config.transportType === 'smtp' ? (
-        <div className="grid gap-2 md:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="mail-host">{t('interfaces.forms.mailTransport.host')}</Label>
-            <Input
-              id="mail-host"
-              value={draft.config.host}
-              onChange={(event) => updateConfig({ host: event.currentTarget.value })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="mail-port">{t('interfaces.forms.mailTransport.port')}</Label>
-            <Input
-              id="mail-port"
-              inputMode="numeric"
-              value={draft.config.port}
-              onChange={(event) => updateConfig({ port: event.currentTarget.value })}
-            />
-          </div>
+      <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="mail-host">{t('interfaces.forms.mailTransport.host')}</Label>
+          <Input
+            id="mail-host"
+            value={draft.config.host}
+            onChange={(event) => updateConfig({ host: event.currentTarget.value })}
+          />
         </div>
-      ) : (
-        <div className="grid gap-2 md:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="mail-endpoint">{t('interfaces.forms.mailTransport.endpoint')}</Label>
-            <Input
-              id="mail-endpoint"
-              type="url"
-              value={draft.config.endpoint}
-              onChange={(event) => updateConfig({ endpoint: event.currentTarget.value })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="mail-provider-mode">{t('interfaces.forms.mailTransport.providerMode')}</Label>
-            <Input
-              id="mail-provider-mode"
-              value={draft.config.providerMode}
-              onChange={(event) => updateConfig({ providerMode: event.currentTarget.value })}
-            />
-          </div>
+        <div className="grid gap-2">
+          <Label htmlFor="mail-port">{t('interfaces.forms.mailTransport.port')}</Label>
+          <Input
+            id="mail-port"
+            inputMode="numeric"
+            value={draft.config.port}
+            onChange={(event) => updateConfig({ port: event.currentTarget.value })}
+          />
         </div>
-      )}
+      </div>
 
       <div className="grid gap-2 md:grid-cols-2">
         <div className="grid gap-2">

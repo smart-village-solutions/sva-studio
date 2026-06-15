@@ -14,6 +14,10 @@ import type {
 type SelectionSummaryRepository = Pick<PublicWasteRepository, 'loadSelectionSummary'>;
 
 type ReminderSignupPersistence = (input: WasteEmailReminderPendingSignupInput) => Promise<void>;
+type ReminderSignupWithLimitCheckPersistence = (input: {
+  readonly signup: WasteEmailReminderPendingSignupInput;
+  readonly maxSubscriptionsPerEmailAndLocation: number;
+}) => Promise<'created' | 'subscription_limit_reached'>;
 type ReminderSubscriptionCounter = (input: {
   readonly emailHash: string;
   readonly selection: WasteEmailReminderPendingSignupInput['selection'];
@@ -21,6 +25,7 @@ type ReminderSubscriptionCounter = (input: {
 
 type ReminderSignupDependencies = Readonly<{
   persistPendingSignup: ReminderSignupPersistence;
+  persistPendingSignupWithLimitCheck?: ReminderSignupWithLimitCheckPersistence;
   countExistingSubscriptions?: ReminderSubscriptionCounter;
   now?: () => Date;
   createId?: () => string;
@@ -261,21 +266,7 @@ export const createPublicWasteReminderSignupSubmitter =
       }
     }
 
-    if (deps.countExistingSubscriptions) {
-      const existingCount = await deps.countExistingSubscriptions({
-        emailHash,
-        selection: input.payload.selection,
-      });
-      if (existingCount >= input.reminderConfig.maxSubscriptionsPerEmailAndLocation) {
-        throw new PublicWasteReminderSignupError({
-          code: 'subscription_limit_reached',
-          message: SUBSCRIPTION_LIMIT_REACHED_MESSAGE,
-          status: 409,
-        });
-      }
-    }
-
-    await deps.persistPendingSignup({
+    const pendingSignup: WasteEmailReminderPendingSignupInput = {
       subscriptionId,
       email,
       emailHash,
@@ -285,7 +276,7 @@ export const createPublicWasteReminderSignupSubmitter =
       consentAcceptedAt: toIsoString(now),
       doiTokenHash: hashValue(confirmToken),
       unsubscribeTokenHash: hashValue(unsubscribeToken),
-      expiresAt: toIsoString(addHours(now, input.reminderConfig.pendingSubscriptionTtlHours)),
+      expiresAt: toIsoString(addHours(now, input.reminderConfig.doiTokenTtlHours)),
       items: input.payload.items.map((item) => ({
         id: createId(),
         fractionId: item.fractionId,
@@ -305,7 +296,36 @@ export const createPublicWasteReminderSignupSubmitter =
           confirmToken,
         }),
       },
-    });
+    };
+
+    if (deps.persistPendingSignupWithLimitCheck) {
+      const result = await deps.persistPendingSignupWithLimitCheck({
+        signup: pendingSignup,
+        maxSubscriptionsPerEmailAndLocation: input.reminderConfig.maxSubscriptionsPerEmailAndLocation,
+      });
+      if (result === 'subscription_limit_reached') {
+        throw new PublicWasteReminderSignupError({
+          code: 'subscription_limit_reached',
+          message: SUBSCRIPTION_LIMIT_REACHED_MESSAGE,
+          status: 409,
+        });
+      }
+    } else if (deps.countExistingSubscriptions) {
+      const existingCount = await deps.countExistingSubscriptions({
+        emailHash,
+        selection: input.payload.selection,
+      });
+      if (existingCount >= input.reminderConfig.maxSubscriptionsPerEmailAndLocation) {
+        throw new PublicWasteReminderSignupError({
+          code: 'subscription_limit_reached',
+          message: SUBSCRIPTION_LIMIT_REACHED_MESSAGE,
+          status: 409,
+        });
+      }
+    }
+    if (!deps.persistPendingSignupWithLimitCheck) {
+      await deps.persistPendingSignup(pendingSignup);
+    }
 
     return {
       status: 'pending',

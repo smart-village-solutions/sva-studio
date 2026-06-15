@@ -222,13 +222,13 @@ Kernidee:
 
 ### 9. Externe Waste-Fachdatenbank
 
-Die instanzbezogene Waste-Fachdatenbank ist technisch von der zentralen IAM-/Governance-Persistenz getrennt. Der kanonische migrationsbasierte Studio-Snapshot unter `docs/development/studio-db-schema-final.sql` dokumentiert inzwischen den runtime-nahen Sollzustand fuer die bereits angebundenen `waste_*`-Tabellen.
+Die instanzbezogene Waste-Fachdatenbank ist technisch von der zentralen IAM-/Governance-Persistenz getrennt. Der kanonische migrationsbasierte Studio-Snapshot unter `docs/development/studio-db-schema-final.sql` dokumentiert inzwischen den runtime-nahen Sollzustand für die bereits angebundenen `waste_*`-Tabellen.
 
 Kernidee:
 
-- Waste-Fachtabellen gelten nur dann als Teil des kanonischen Studio-Snapshots, wenn sie auch ueber `packages/data/migrations/*.sql` reproduzierbar erzeugt werden.
-- Fachliche oder externe Waste-Schemata ausserhalb dieses Migrationspfads duerfen nicht stillschweigend im Soll-Snapshot oder in CI-Gates auftauchen.
-- Fuer den aktuellen Stand sind `waste_location_tour_pickup_dates` sowie die neuen Tabellen `waste_email_reminder_subscriptions`, `waste_email_reminder_subscription_items` und `waste_email_reminder_outbox` explizit in diesen migrationsbasierten Sollstand aufgenommen.
+- Waste-Fachtabellen gelten nur dann als Teil des kanonischen Studio-Snapshots, wenn sie auch über `packages/data/migrations/*.sql` reproduzierbar erzeugt werden.
+- Fachliche oder externe Waste-Schemata außerhalb dieses Migrationspfads dürfen nicht stillschweigend im Soll-Snapshot oder in CI-Gates auftauchen.
+- Für den aktuellen Stand sind `waste_location_tour_pickup_dates` sowie die neuen Tabellen `waste_email_reminder_subscriptions`, `waste_email_reminder_subscription_items` und `waste_email_reminder_outbox` explizit in diesen migrationsbasierten Sollstand aufgenommen.
 
 Für den aktuellen Waste-PDF-Export-Shift ist wichtig:
 

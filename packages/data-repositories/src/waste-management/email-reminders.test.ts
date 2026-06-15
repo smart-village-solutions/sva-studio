@@ -114,7 +114,7 @@ describe('waste email reminder repository', () => {
     expect(statements[2]?.values).toContain(JSON.stringify(mailDispatch));
   });
 
-  it('counts active and pending subscriptions for the same email and location', async () => {
+  it('counts active and only non-expired pending subscriptions for the same email and location', async () => {
     const { executor, statements, queuedResults } = createExecutor();
     queuedResults.push({
       rowCount: 1,
@@ -136,6 +136,8 @@ describe('waste email reminder repository', () => {
     expect(statements).toHaveLength(1);
     expect(statements[0]?.text).toContain('COUNT(*)::int AS total');
     expect(statements[0]?.values).toContain('sha256:email');
+    expect(statements[0]?.text).toContain("status = 'active'");
+    expect(statements[0]?.text).toContain("status = 'pending' AND expires_at > NOW()");
   });
 
   it('lists active subscriptions with grouped items', async () => {
@@ -244,6 +246,8 @@ describe('waste email reminder repository', () => {
     });
 
     expect(statements[0]?.text).toContain('FOR UPDATE SKIP LOCKED');
+    expect(statements[0]?.text).toContain("status = 'processing'");
+    expect(statements[0]?.text).toContain('leased_at');
     expect(statements[1]?.text).toContain("SET status = 'sent'");
     expect(statements[2]?.text).toContain("CASE WHEN $4::timestamptz IS NULL THEN 'failed' ELSE 'pending' END");
   });
@@ -306,6 +310,74 @@ describe('waste email reminder repository', () => {
     expect(statements).toHaveLength(1);
   });
 
+  it('returns invalid or already_active for non-activatable DOI token hashes', async () => {
+    const invalidExecutor = createExecutor();
+    const invalidRepository = createWasteEmailReminderRepository(invalidExecutor.executor);
+
+    await expect(
+      invalidRepository.activateByDoiTokenHash({
+        tokenHash: 'sha256:missing',
+        now: '2026-06-14T19:00:00.000Z',
+      })
+    ).resolves.toEqual({
+      status: 'invalid',
+    });
+
+    const { executor, statements, queuedResults } = createExecutor();
+    queuedResults.push({
+      rowCount: 1,
+      rows: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          status: 'active',
+          location_label: 'Perleberg, Ackerstr. 12',
+          expires_at: '2026-06-16T19:00:00.000Z',
+        },
+      ],
+    });
+    const repository = createWasteEmailReminderRepository(executor);
+
+    await expect(
+      repository.activateByDoiTokenHash({
+        tokenHash: 'sha256:doi',
+        now: '2026-06-14T19:00:00.000Z',
+      })
+    ).resolves.toEqual({
+      status: 'already_active',
+      subscriptionId: '11111111-1111-4111-8111-111111111111',
+      locationLabel: 'Perleberg, Ackerstr. 12',
+    });
+
+    expect(statements).toHaveLength(1);
+  });
+
+  it('returns invalid for DOI token hashes with unsupported subscription states', async () => {
+    const { executor, statements, queuedResults } = createExecutor();
+    queuedResults.push({
+      rowCount: 1,
+      rows: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          status: 'unsubscribed',
+          location_label: 'Perleberg, Ackerstr. 12',
+          expires_at: '2026-06-16T19:00:00.000Z',
+        },
+      ],
+    });
+    const repository = createWasteEmailReminderRepository(executor);
+
+    await expect(
+      repository.activateByDoiTokenHash({
+        tokenHash: 'sha256:doi',
+        now: '2026-06-14T19:00:00.000Z',
+      })
+    ).resolves.toEqual({
+      status: 'invalid',
+    });
+
+    expect(statements).toHaveLength(1);
+  });
+
   it('unsubscribes an active subscription for a valid token hash', async () => {
     const { executor, statements, queuedResults } = createExecutor();
     queuedResults.push({
@@ -332,8 +404,78 @@ describe('waste email reminder repository', () => {
       locationLabel: 'Perleberg, Ackerstr. 12',
     });
 
-    expect(statements).toHaveLength(2);
+    expect(statements).toHaveLength(3);
     expect(statements[0]?.text).toContain('WHERE unsubscribe_token_hash = $1');
     expect(statements[1]?.text).toContain("SET status = 'unsubscribed'");
+    expect(statements[2]?.text).toContain("message_kind = 'reminder'");
+    expect(statements[2]?.text).toContain("SET status = 'cancelled'");
+  });
+
+  it('returns invalid or already_unsubscribed for non-unsubscribable token hashes', async () => {
+    const invalidExecutor = createExecutor();
+    const invalidRepository = createWasteEmailReminderRepository(invalidExecutor.executor);
+
+    await expect(
+      invalidRepository.unsubscribeByTokenHash({
+        tokenHash: 'sha256:missing',
+        now: '2026-06-14T19:00:00.000Z',
+      })
+    ).resolves.toEqual({
+      status: 'invalid',
+    });
+
+    const { executor, statements, queuedResults } = createExecutor();
+    queuedResults.push({
+      rowCount: 1,
+      rows: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          status: 'unsubscribed',
+          location_label: 'Perleberg, Ackerstr. 12',
+          expires_at: '2026-06-16T19:00:00.000Z',
+        },
+      ],
+    });
+    const repository = createWasteEmailReminderRepository(executor);
+
+    await expect(
+      repository.unsubscribeByTokenHash({
+        tokenHash: 'sha256:unsubscribe',
+        now: '2026-06-14T19:00:00.000Z',
+      })
+    ).resolves.toEqual({
+      status: 'already_unsubscribed',
+      subscriptionId: '11111111-1111-4111-8111-111111111111',
+      locationLabel: 'Perleberg, Ackerstr. 12',
+    });
+
+    expect(statements).toHaveLength(1);
+  });
+
+  it('returns invalid for unsubscribe token hashes with unsupported subscription states', async () => {
+    const { executor, statements, queuedResults } = createExecutor();
+    queuedResults.push({
+      rowCount: 1,
+      rows: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          status: 'failed',
+          location_label: 'Perleberg, Ackerstr. 12',
+          expires_at: '2026-06-16T19:00:00.000Z',
+        },
+      ],
+    });
+    const repository = createWasteEmailReminderRepository(executor);
+
+    await expect(
+      repository.unsubscribeByTokenHash({
+        tokenHash: 'sha256:unsubscribe',
+        now: '2026-06-14T19:00:00.000Z',
+      })
+    ).resolves.toEqual({
+      status: 'invalid',
+    });
+
+    expect(statements).toHaveLength(1);
   });
 });

@@ -80,6 +80,9 @@ const resolveTransportPassword = async (input: {
   readonly resolveSecretRef?: MailSecretRefResolver;
 }): Promise<string | undefined> => {
   if (typeof input.transport.password === 'string' && input.transport.password.length > 0) {
+    if (input.resolveSecretRef && input.transport.password.includes('://')) {
+      return await input.resolveSecretRef(input.transport.password);
+    }
     return input.transport.password;
   }
   return undefined;

@@ -75,4 +75,51 @@ describe('mail runtime', () => {
       })
     );
   });
+
+  it('resolves SMTP passwords via secret refs before creating the transport', async () => {
+    const sendMail = vi.fn(async () => ({ messageId: 'message-2' }));
+    const createTransport = vi.fn(() => ({ sendMail }));
+    const dispatch = createNodemailerMailDispatcher({
+      createTransport,
+      resolveSecretRef: vi.fn(async (secretRef) => {
+        expect(secretRef).toBe('env://MAIL_PASSWORD');
+        return 'resolved-password';
+      }),
+    });
+    const transport: MailTransportConfig = {
+      transportId: 'mail-1',
+      displayName: 'SMTP',
+      transportType: 'smtp',
+      host: 'smtp.example.org',
+      port: 587,
+      securityMode: 'starttls',
+      authMode: 'basic',
+      username: 'mailer',
+      password: 'env://MAIL_PASSWORD',
+      enabled: true,
+    };
+    const message: MailDispatchMessage = {
+      from: {
+        email: 'abfall@example.org',
+      },
+      to: [{ email: 'person@example.org' }],
+      subject: 'Nicht vergessen',
+      text: 'Die Abholung ist morgen.',
+    };
+
+    await dispatch({
+      instanceId: 'instance-1',
+      transport,
+      message,
+    });
+
+    expect(createTransport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth: {
+          user: 'mailer',
+          pass: 'resolved-password',
+        },
+      })
+    );
+  });
 });

@@ -154,6 +154,8 @@ type LeasedOutboxRow = Readonly<{
   payload: MailDispatchPayload | string;
 }>;
 
+const STALE_OUTBOX_LEASE_INTERVAL = "INTERVAL '15 minutes'";
+
 const buildInsertSubscriptionStatement = (input: WasteEmailReminderPendingSignupInput): SqlStatement => ({
   text: `
 INSERT INTO waste_email_reminder_subscriptions (
@@ -274,7 +276,10 @@ WHERE email_hash = $1
   AND city_id = $3::uuid
   AND street_id = $4
   AND house_number_id IS NOT DISTINCT FROM $5::uuid
-  AND status IN ('pending', 'active');
+  AND (
+    status = 'active'
+    OR (status = 'pending' AND expires_at > NOW())
+  );
 `,
   values: [
     input.emailHash,
@@ -312,8 +317,14 @@ const buildLeaseDueOutboxEntriesStatement = (input: { readonly now: string; read
 WITH due AS (
   SELECT id
   FROM waste_email_reminder_outbox
-  WHERE status = 'pending'
+  WHERE (
+    status = 'pending'
     AND send_at <= $1::timestamptz
+  ) OR (
+    status = 'processing'
+    AND leased_at IS NOT NULL
+    AND leased_at <= $1::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
+  )
   ORDER BY send_at ASC, created_at ASC
   LIMIT $2
   FOR UPDATE SKIP LOCKED
@@ -336,6 +347,23 @@ RETURNING
   outbox.payload;
 `,
   values: [input.now, input.limit],
+});
+
+const buildCancelPendingReminderOutboxEntriesStatement = (input: {
+  readonly subscriptionId: string;
+  readonly now: string;
+}): SqlStatement => ({
+  text: `
+UPDATE waste_email_reminder_outbox
+SET status = 'cancelled',
+    leased_at = NULL,
+    updated_at = $2::timestamptz,
+    last_error = 'subscription_unsubscribed'
+WHERE subscription_id = $1::uuid
+  AND message_kind = 'reminder'
+  AND status IN ('pending', 'processing');
+`,
+  values: [input.subscriptionId, input.now],
 });
 
 const buildMarkOutboxEntrySentStatement = (input: {
@@ -534,6 +562,9 @@ export const createWasteEmailReminderRepository = (executor: SqlExecutor): Waste
       return { status: 'invalid' };
     }
     await executor.execute(buildUnsubscribeSubscriptionStatement({ subscriptionId: subscription.id, now: input.now }));
+    await executor.execute(
+      buildCancelPendingReminderOutboxEntriesStatement({ subscriptionId: subscription.id, now: input.now })
+    );
     return {
       status: 'unsubscribed',
       subscriptionId: subscription.id,
@@ -552,6 +583,7 @@ export const wasteEmailReminderStatements = {
   leaseDueOutboxEntries: buildLeaseDueOutboxEntriesStatement,
   markOutboxEntrySent: buildMarkOutboxEntrySentStatement,
   markOutboxEntryFailed: buildMarkOutboxEntryFailedStatement,
+  cancelPendingReminderOutboxEntries: buildCancelPendingReminderOutboxEntriesStatement,
   selectSubscriptionByDoiTokenHash: buildSelectSubscriptionByDoiTokenHashStatement,
   selectSubscriptionByUnsubscribeTokenHash: buildSelectSubscriptionByUnsubscribeTokenHashStatement,
   activateSubscription: buildActivateSubscriptionStatement,

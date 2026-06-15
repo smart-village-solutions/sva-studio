@@ -649,7 +649,7 @@ const createMaterializeEmailRemindersOperation = (
 ): WasteManagementOperationRuntime['materializeEmailReminders'] => async (instanceId, input) => {
   const startedAt = Date.now();
   const reminderConfig = await loadWasteEmailReminderConfig(deps, instanceId);
-  if (!reminderConfig?.enabled || !reminderConfig.publicSignupEnabled) {
+  if (!reminderConfig?.enabled) {
     return buildOperationSummary(startedAt, {
       operation: 'materialize-email-reminders',
       mode: 'skipped',
@@ -738,6 +738,10 @@ const createMaterializeEmailRemindersOperation = (
           const pickupDateValue = parseIsoDateUtc(pickupDate);
           const sendAtDate = addDaysUtc(pickupDateValue, -slot.defaultLeadDays);
           const sendAt = createUtcIsoAtHour(sendAtDate, DEFAULT_REMINDER_SEND_HOUR_UTC);
+          if (new Date(sendAt).getTime() < referenceTime.getTime()) {
+            skippedPickupCount += 1;
+            continue;
+          }
           const lookaheadBoundary = addDaysUtc(referenceTime, reminderConfig.materializationLookaheadDays);
           if (new Date(sendAt).getTime() > lookaheadBoundary.getTime()) {
             continue;

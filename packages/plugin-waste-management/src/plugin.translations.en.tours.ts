@@ -114,12 +114,7 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     noAssignments: 'No assignments',
     noCustomDates: 'No custom dates',
   },
-  deleteDialog: {
-    title: 'Delete tour',
-    description: 'The tour {{value}} will be deleted permanently.',
-    confirm: 'Delete',
-    cancel: 'Cancel',
-  },
+  deleteDialog: { title: 'Delete tour', description: 'The tour {{value}} will be deleted permanently.', confirm: 'Delete', cancel: 'Cancel' },
   statusDialog: {
     activateTitle: 'Activate tour',
     activateDescription: 'The tour {{value}} will be activated.',
@@ -128,20 +123,8 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     confirm: 'Confirm',
     cancel: 'Cancel',
   },
-  bulkDeleteDialog: {
-    title: 'Delete tours',
-    description: '{{value}} selected tours will be deleted permanently.',
-    confirm: 'Delete',
-    cancel: 'Cancel',
-  },
-  recurrence: {
-    weekly: 'Weekly',
-    biweekly: 'Biweekly',
-    fourweekly: 'Every four weeks',
-    yearly: 'Yearly',
-    onDemand: 'On demand',
-    custom: 'Custom',
-  },
+  bulkDeleteDialog: { title: 'Delete tours', description: '{{value}} selected tours will be deleted permanently.', confirm: 'Delete', cancel: 'Cancel' },
+  recurrence: { weekly: 'Weekly', biweekly: 'Biweekly', fourweekly: 'Every four weeks', yearly: 'Yearly', onDemand: 'On demand', custom: 'Custom' },
   customDates: {
     title: 'Custom dates',
     description: 'Select dates in the annual calendar. Comments, collection locations, and notes are maintained directly per date in the list below.',
@@ -242,11 +225,7 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     title: 'Annual calendar',
     description: 'Shows the planned dates for {{value}} including known shifts.',
     descriptionFallback: 'Shows the planned dates including known shifts.',
-    actions: {
-      open: 'Annual calendar',
-      previousYear: 'Previous year',
-      nextYear: 'Next year',
-    },
+    actions: { open: 'Annual calendar', previousYear: 'Previous year', nextYear: 'Next year' },
     meta: {
       year: 'Year {{value}}',
       dateListTitle: 'Planned dates',

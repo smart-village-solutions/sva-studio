@@ -134,15 +134,6 @@ const createDefaultReminderSignupSubmitter = (input: {
 }): PublicWasteReminderSignupSubmitter => {
   const consumeRateLimit = createPublicWasteReminderSignupRateLimitConsumer();
   return createPublicWasteReminderSignupSubmitter({
-    countExistingSubscriptions: async (payload) => {
-      const executor = createReminderRepositoryExecutor({
-        pool: input.repositoryHandle.pool,
-        schemaName: input.repositoryHandle.schemaName,
-      });
-      return await executor.executeWithinTransaction(
-        async (repository) => await repository.countSubscriptionsForEmailLocation(payload)
-      );
-    },
     consumeRateLimit,
     persistPendingSignup: async (signup) => {
       const client = await input.repositoryHandle.pool.connect();
@@ -165,6 +156,55 @@ const createDefaultReminderSignupSubmitter = (input: {
         await client.query('COMMIT');
       } catch (error) {
         await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
+    persistPendingSignupWithLimitCheck: async ({ signup, maxSubscriptionsPerEmailAndLocation }) => {
+      const client = await input.repositoryHandle.pool.connect();
+      let transactionFinished = false;
+      try {
+        await client.query('BEGIN');
+        await client.query(`SET LOCAL search_path TO ${quoteIdentifier(input.repositoryHandle.schemaName)}, public`);
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
+          signup.emailHash,
+          JSON.stringify([
+            signup.selection.regionId ?? null,
+            signup.selection.cityId,
+            signup.selection.streetId,
+            signup.selection.houseNumberId ?? null,
+          ]),
+        ]);
+        const repository = createWasteEmailReminderRepository({
+          execute: async <TRow = Record<string, unknown>>(statement: {
+            readonly text: string;
+            readonly values?: readonly unknown[];
+          }) => {
+            const result = await client.query(statement.text, statement.values ? [...statement.values] : undefined);
+            return {
+              rowCount: result.rowCount ?? 0,
+              rows: result.rows as readonly TRow[],
+            };
+          },
+        });
+        const existingCount = await repository.countSubscriptionsForEmailLocation({
+          emailHash: signup.emailHash,
+          selection: signup.selection,
+        });
+        if (existingCount >= maxSubscriptionsPerEmailAndLocation) {
+          await client.query('ROLLBACK');
+          transactionFinished = true;
+          return 'subscription_limit_reached';
+        }
+        await repository.createPendingSignup(signup);
+        await client.query('COMMIT');
+        transactionFinished = true;
+        return 'created';
+      } catch (error) {
+        if (!transactionFinished) {
+          await client.query('ROLLBACK');
+        }
         throw error;
       } finally {
         client.release();

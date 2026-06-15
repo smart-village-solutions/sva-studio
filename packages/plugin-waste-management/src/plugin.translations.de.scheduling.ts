@@ -219,22 +219,10 @@ export const wasteManagementPluginTranslationsDEScheduling = createWasteManageme
     scopeUnset: 'Noch nicht gesetzt',
     strategyLabel: 'Strategie',
     strategyUnset: 'Noch nicht gesetzt',
-    scopeOptions: {
-      holidayOnly: 'Nur Feiertag',
-      fullWeek: 'Ganze Woche',
-    },
-    strategyOptions: {
-      advance: 'Vorziehen',
-      postpone: 'Nachholen',
-    },
-    sourceStatus: {
-      confirmed: 'Quelle bestätigt',
-      'not-confirmed': 'Nicht mehr bestätigt',
-    },
-    conflictStatus: {
-      none: 'Kein Konflikt',
-      'manual-global-rule': 'Konflikt mit globaler Regel',
-    },
+    scopeOptions: { holidayOnly: 'Nur Feiertag', fullWeek: 'Ganze Woche' },
+    strategyOptions: { advance: 'Vorziehen', postpone: 'Nachholen' },
+    sourceStatus: { confirmed: 'Quelle bestätigt', 'not-confirmed': 'Nicht mehr bestätigt' },
+    conflictStatus: { none: 'Kein Konflikt', 'manual-global-rule': 'Konflikt mit globaler Regel' },
   },
   table: {
     title: 'Ausweichtermine',

@@ -419,6 +419,24 @@ describe('InterfacesPage', () => {
     });
   });
 
+  it('does not offer provider API mail transports in the dialog before runtime support exists', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Mail-Transport/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    const transportTypeSelect = screen.getByLabelText('Transporttyp');
+    expect(within(transportTypeSelect).getByRole('option', { name: /SMTP/i })).toBeTruthy();
+    expect(within(transportTypeSelect).queryByRole('option', { name: /Provider-API/i })).toBeNull();
+  });
+
   it('shows the persisted healthcheck message below the interface status', async () => {
     state.listInterfaces.mockResolvedValue(
       createListResponse([

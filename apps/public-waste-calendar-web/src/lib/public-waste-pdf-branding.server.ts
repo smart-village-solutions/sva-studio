@@ -39,13 +39,18 @@ const isPrivateIpAddress = (address: string): boolean => {
   return isIP(normalized) === 4 ? isPrivateIpv4Address(normalized) : isPrivateIpv6Address(normalized);
 };
 
+const isExplicitDevOriginHost = (hostname: string): boolean => {
+  const normalized = hostname.trim().toLowerCase();
+  return normalized === 'localhost' || normalized.endsWith('.localhost') || normalized === '127.0.0.1' || normalized === '::1';
+};
+
 const resolveSafeBrandingAssetUrl = async (input: {
   readonly assetUrl: string;
   readonly requestUrl?: string;
 }): Promise<URL | null> => {
   const requestUrl = input.requestUrl ? new URL(input.requestUrl) : null;
   const url = requestUrl ? new URL(input.assetUrl, requestUrl) : new URL(input.assetUrl);
-  const isSameOrigin = requestUrl ? url.origin === requestUrl.origin : false;
+  const isSameOrigin = requestUrl ? url.origin === requestUrl.origin && isExplicitDevOriginHost(requestUrl.hostname) : false;
 
   if (!isSameOrigin && url.protocol !== 'https:') {
     return null;

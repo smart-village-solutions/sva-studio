@@ -219,22 +219,10 @@ export const wasteManagementPluginTranslationsENScheduling = createWasteManageme
     scopeUnset: 'Not set yet',
     strategyLabel: 'Strategy',
     strategyUnset: 'Not set yet',
-    scopeOptions: {
-      holidayOnly: 'Holiday only',
-      fullWeek: 'Full week',
-    },
-    strategyOptions: {
-      advance: 'Advance',
-      postpone: 'Postpone',
-    },
-    sourceStatus: {
-      confirmed: 'Source confirmed',
-      'not-confirmed': 'No longer confirmed',
-    },
-    conflictStatus: {
-      none: 'No conflict',
-      'manual-global-rule': 'Conflicts with global rule',
-    },
+    scopeOptions: { holidayOnly: 'Holiday only', fullWeek: 'Full week' },
+    strategyOptions: { advance: 'Advance', postpone: 'Postpone' },
+    sourceStatus: { confirmed: 'Source confirmed', 'not-confirmed': 'No longer confirmed' },
+    conflictStatus: { none: 'No conflict', 'manual-global-rule': 'Conflicts with global rule' },
   },
   table: {
     title: 'Scheduling shifts',

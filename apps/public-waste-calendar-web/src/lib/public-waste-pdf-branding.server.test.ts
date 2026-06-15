@@ -112,4 +112,19 @@ describe('public waste pdf branding image loader', () => {
       height: expect.any(Number),
     });
   });
+
+  it('rejects same-origin relative branding assets for non-local origins that resolve privately', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    lookupMock.mockResolvedValue([{ address: '10.0.0.42', family: 4 }]);
+
+    await expect(
+      loadPublicWastePdfBrandingImage({
+        assetUrl: '/media/logo.svg',
+        requestUrl: 'https://assets.internal.example/public-waste/pdf?year=2026&fractionId=bio',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

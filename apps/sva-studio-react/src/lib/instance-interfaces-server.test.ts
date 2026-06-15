@@ -763,4 +763,236 @@ describe('instance-interfaces-server', () => {
       })
     );
   });
+
+  it('rejects invalid mail transport drafts before persistence', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
+
+    const { upsertStoredInterface } = await import('./instance-interfaces-server');
+
+    await expect(
+      upsertStoredInterface('de-test', {
+        type: 'mailTransport',
+        name: 'Mail-Transport',
+        enabled: true,
+        config: {
+          transportId: 'mail-1',
+          transportType: 'smtp',
+          host: '',
+          port: '587',
+          securityMode: 'starttls',
+          authMode: 'basic',
+          username: 'mailer',
+          password: 'secret',
+          defaultFromEmail: '',
+          defaultFromName: '',
+          defaultReplyToEmail: '',
+          maxBatchSize: '',
+          rateLimitPerMinute: '',
+          providerMode: '',
+          endpoint: '',
+        },
+      })
+    ).rejects.toThrow('invalid_config');
+
+    await expect(
+      upsertStoredInterface('de-test', {
+        type: 'mailTransport',
+        name: 'Mail-Transport',
+        enabled: true,
+        config: {
+          transportId: 'mail-1',
+          transportType: 'provider_api',
+          host: '',
+          port: '587',
+          securityMode: 'starttls',
+          authMode: 'basic',
+          username: 'mailer',
+          password: 'secret',
+          defaultFromEmail: '',
+          defaultFromName: '',
+          defaultReplyToEmail: '',
+          maxBatchSize: '',
+          rateLimitPerMinute: '',
+          providerMode: '',
+          endpoint: '',
+        },
+      })
+    ).rejects.toThrow('invalid_config');
+
+    await expect(
+      upsertStoredInterface('de-test', {
+        type: 'mailTransport',
+        name: 'Mail-Transport',
+        enabled: true,
+        config: {
+          transportId: 'mail-1',
+          transportType: 'smtp',
+          host: 'smtp.example.org',
+          port: '0',
+          securityMode: 'starttls',
+          authMode: 'basic',
+          username: 'mailer',
+          password: 'secret',
+          defaultFromEmail: '',
+          defaultFromName: '',
+          defaultReplyToEmail: '',
+          maxBatchSize: '',
+          rateLimitPerMinute: '',
+          providerMode: '',
+          endpoint: '',
+        },
+      })
+    ).rejects.toThrow('invalid_config');
+
+    expect(state.saveExternalInterfaceRecord).not.toHaveBeenCalled();
+  });
+
+  it('maps stored mail transport rows and derives health for SMTP and provider transports', async () => {
+    state.listExternalInterfaceRecords.mockResolvedValue([
+      {
+        id: 'mail-provider-1',
+        instanceId: 'de-test',
+        typeKey: 'mail_transport',
+        ownerKind: 'host',
+        ownerId: 'host',
+        displayName: 'Provider Mail',
+        alias: 'provider-mail',
+        enabled: true,
+        isDefault: true,
+        category: 'api',
+        baseUrl: 'https://api.mail.example',
+        authMode: 'oauth2',
+        publicConfig: {
+          transportId: 'provider-mail',
+          transportType: 'provider_api',
+          securityMode: 'invalid',
+          authMode: 'invalid',
+          endpoint: 'https://api.mail.example',
+          mode: 'transactional',
+          maxBatchSize: 50,
+          rateLimitPerMinute: 120,
+        },
+        secretConfigCiphertext: 'cipher',
+        statusCheckKind: 'mail_transport',
+        createdAt: '2026-05-12T08:00:00.000Z',
+        updatedAt: '2026-05-12T08:00:00.000Z',
+      },
+    ]);
+
+    const { checkStoredInterfaceHealth, listStoredInterfaces } = await import('./instance-interfaces-server');
+
+    await expect(listStoredInterfaces('de-test')).resolves.toEqual([
+      expect.objectContaining({
+        type: 'mailTransport',
+        config: expect.objectContaining({
+          transportType: 'provider_api',
+          securityMode: 'starttls',
+          authMode: 'basic',
+          endpoint: 'https://api.mail.example',
+          providerMode: 'transactional',
+          maxBatchSize: '50',
+          rateLimitPerMinute: '120',
+        }),
+      }),
+    ]);
+
+    expect(
+      checkStoredInterfaceHealth({
+        id: 'mail-smtp-1',
+        instanceId: 'de-test',
+        type: 'mailTransport',
+        name: 'SMTP',
+        enabled: true,
+        config: {
+          transportId: '',
+          transportType: 'smtp',
+          host: '',
+          port: '',
+          securityMode: 'starttls',
+          authMode: 'basic',
+          username: '',
+          defaultFromEmail: '',
+          defaultFromName: '',
+          defaultReplyToEmail: '',
+          maxBatchSize: '',
+          rateLimitPerMinute: '',
+          providerMode: '',
+          endpoint: '',
+        },
+        createdAt: '2026-05-12T08:00:00.000Z',
+        updatedAt: '2026-05-12T08:00:00.000Z',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        status: 'error',
+        statusMessage: 'Mail-Transport unvollständig (Transport-ID erforderlich).',
+      })
+    );
+
+    expect(
+      checkStoredInterfaceHealth({
+        id: 'mail-provider-2',
+        instanceId: 'de-test',
+        type: 'mailTransport',
+        name: 'Provider',
+        enabled: true,
+        config: {
+          transportId: 'provider-mail',
+          transportType: 'provider_api',
+          host: '',
+          port: '',
+          securityMode: 'starttls',
+          authMode: 'basic',
+          username: '',
+          defaultFromEmail: '',
+          defaultFromName: '',
+          defaultReplyToEmail: '',
+          maxBatchSize: '',
+          rateLimitPerMinute: '',
+          providerMode: 'transactional',
+          endpoint: '',
+        },
+        createdAt: '2026-05-12T08:00:00.000Z',
+        updatedAt: '2026-05-12T08:00:00.000Z',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        status: 'error',
+        statusMessage: 'Mail-Transport unvollständig (Provider-Endpoint erforderlich).',
+      })
+    );
+
+    expect(
+      checkStoredInterfaceHealth({
+        id: 'mail-provider-3',
+        instanceId: 'de-test',
+        type: 'mailTransport',
+        name: 'Provider',
+        enabled: true,
+        config: {
+          transportId: 'provider-mail',
+          transportType: 'provider_api',
+          host: '',
+          port: '',
+          securityMode: 'starttls',
+          authMode: 'basic',
+          username: '',
+          defaultFromEmail: '',
+          defaultFromName: '',
+          defaultReplyToEmail: '',
+          maxBatchSize: '',
+          rateLimitPerMinute: '',
+          providerMode: 'transactional',
+          endpoint: 'https://api.mail.example',
+        },
+        createdAt: '2026-05-12T08:00:00.000Z',
+        updatedAt: '2026-05-12T08:00:00.000Z',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        status: 'unknown',
+        statusMessage: 'Statusprüfung für Mail-Transporte ist noch nicht verfügbar.',
+      })
+    );
+  });
 });

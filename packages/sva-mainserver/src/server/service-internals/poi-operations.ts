@@ -21,33 +21,39 @@ import { mapOptionalPoiItem, mapPoiItem } from './poi-mappers.js';
 import { toSvaMainserverError, type GraphqlExecutor, type SvaMainserverListInput } from './shared.js';
 import { listVisibleRecordsWithConfig } from './visible-list.js';
 
+const includeTruthyField = <Key extends string, Value>(key: Key, value: Value) =>
+  value ? ({ [key]: value } as Record<Key, Value>) : {};
+
+const includeDefinedField = <Key extends string, Value>(key: Key, value: Value | undefined) =>
+  value === undefined ? {} : ({ [key]: value } as Record<Key, Value>);
+
 const buildPoiMutationVariables = (input: {
   readonly poi: SvaMainserverPoiInput;
   readonly poiId?: string;
   readonly forceCreate?: boolean;
 }) => ({
-  ...(input.poiId ? { id: input.poiId } : {}),
-  ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
+  ...includeTruthyField('id', input.poiId),
+  ...includeDefinedField('forceCreate', input.forceCreate),
   name: input.poi.name,
-  ...(input.poi.externalId ? { externalId: input.poi.externalId } : {}),
-  ...(input.poi.description ? { description: input.poi.description } : {}),
-  ...(input.poi.keywords ? { keywords: input.poi.keywords } : {}),
-  ...(input.poi.mobileDescription ? { mobileDescription: input.poi.mobileDescription } : {}),
-  ...(input.poi.active === undefined ? {} : { active: input.poi.active }),
-  ...(input.poi.categoryName ? { categoryName: input.poi.categoryName } : {}),
-  ...(input.poi.payload === undefined ? {} : { payload: input.poi.payload }),
-  ...(input.poi.categories ? { categories: input.poi.categories } : {}),
-  ...(input.poi.addresses ? { addresses: input.poi.addresses } : {}),
-  ...(input.poi.contact ? { contact: input.poi.contact } : {}),
-  ...(input.poi.priceInformations ? { priceInformations: input.poi.priceInformations } : {}),
-  ...(input.poi.openingHours ? { openingHours: input.poi.openingHours } : {}),
-  ...(input.poi.operatingCompany ? { operatingCompany: input.poi.operatingCompany } : {}),
-  ...(input.poi.webUrls ? { webUrls: input.poi.webUrls } : {}),
-  ...(input.poi.mediaContents ? { mediaContents: input.poi.mediaContents } : {}),
-  ...(input.poi.location ? { location: input.poi.location } : {}),
-  ...(input.poi.certificates ? { certificates: input.poi.certificates } : {}),
-  ...(input.poi.accessibilityInformation ? { accessibilityInformation: input.poi.accessibilityInformation } : {}),
-  ...(input.poi.tags ? { tags: input.poi.tags } : {}),
+  ...includeTruthyField('externalId', input.poi.externalId),
+  ...includeTruthyField('description', input.poi.description),
+  ...includeTruthyField('keywords', input.poi.keywords),
+  ...includeTruthyField('mobileDescription', input.poi.mobileDescription),
+  ...includeDefinedField('active', input.poi.active),
+  ...includeTruthyField('categoryName', input.poi.categoryName),
+  ...includeDefinedField('payload', input.poi.payload),
+  ...includeTruthyField('categories', input.poi.categories),
+  ...includeTruthyField('addresses', input.poi.addresses),
+  ...includeTruthyField('contact', input.poi.contact),
+  ...includeTruthyField('priceInformations', input.poi.priceInformations),
+  ...includeTruthyField('openingHours', input.poi.openingHours),
+  ...includeTruthyField('operatingCompany', input.poi.operatingCompany),
+  ...includeTruthyField('webUrls', input.poi.webUrls),
+  ...includeTruthyField('mediaContents', input.poi.mediaContents),
+  ...includeTruthyField('location', input.poi.location),
+  ...includeTruthyField('certificates', input.poi.certificates),
+  ...includeTruthyField('accessibilityInformation', input.poi.accessibilityInformation),
+  ...includeTruthyField('tags', input.poi.tags),
 });
 
 export const createPoiOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({

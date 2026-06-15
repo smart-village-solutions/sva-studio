@@ -9,7 +9,7 @@ import {
 } from './public-waste-email-reminders.server.js';
 
 describe('public waste email reminders server helper', () => {
-  it('builds and persists a pending DOI signup with normalized payload data', async () => {
+  it('builds and persists a pending DOI signup with normalized payload data and DOI expiry', async () => {
     const persisted: WasteEmailReminderPendingSignupInput[] = [];
     const submitter = createPublicWasteReminderSignupSubmitter({
       countExistingSubscriptions: vi.fn().mockResolvedValue(0),
@@ -96,7 +96,7 @@ describe('public waste email reminders server helper', () => {
         consentAcceptedAt: '2026-06-14T20:00:00.000Z',
         doiTokenHash: 'sha256:confirm-token',
         unsubscribeTokenHash: 'sha256:unsubscribe-token',
-        expiresAt: '2026-06-16T20:00:00.000Z',
+        expiresAt: '2026-06-15T20:00:00.000Z',
         items: [
           { id: 'item-1', fractionId: 'bio', slotId: 'bio:first' },
           { id: 'item-2', fractionId: 'paper', slotId: 'paper:second' },

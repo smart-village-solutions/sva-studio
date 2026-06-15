@@ -114,12 +114,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     noAssignments: 'Keine Zuordnungen',
     noCustomDates: 'Keine individuellen Termine',
   },
-  deleteDialog: {
-    title: 'Tour löschen',
-    description: 'Die Tour {{value}} wird dauerhaft gelöscht.',
-    confirm: 'Löschen',
-    cancel: 'Abbrechen',
-  },
+  deleteDialog: { title: 'Tour löschen', description: 'Die Tour {{value}} wird dauerhaft gelöscht.', confirm: 'Löschen', cancel: 'Abbrechen' },
   statusDialog: {
     activateTitle: 'Tour aktivieren',
     activateDescription: 'Die Tour {{value}} wird aktiviert.',
@@ -128,20 +123,8 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     confirm: 'Bestätigen',
     cancel: 'Abbrechen',
   },
-  bulkDeleteDialog: {
-    title: 'Touren löschen',
-    description: '{{value}} markierte Touren werden dauerhaft gelöscht.',
-    confirm: 'Löschen',
-    cancel: 'Abbrechen',
-  },
-  recurrence: {
-    weekly: 'Wöchentlich',
-    biweekly: 'Zweiwöchentlich',
-    fourweekly: 'Vierwöchentlich',
-    yearly: 'Jährlich',
-    onDemand: 'Bedarfsabhängig',
-    custom: 'Individuell',
-  },
+  bulkDeleteDialog: { title: 'Touren löschen', description: '{{value}} markierte Touren werden dauerhaft gelöscht.', confirm: 'Löschen', cancel: 'Abbrechen' },
+  recurrence: { weekly: 'Wöchentlich', biweekly: 'Zweiwöchentlich', fourweekly: 'Vierwöchentlich', yearly: 'Jährlich', onDemand: 'Bedarfsabhängig', custom: 'Individuell' },
   customDates: {
     title: 'Individuelle Termine',
     description: 'Wählen Sie Termine im Jahreskalender aus. Kommentare, Abholorte und Hinweise pflegen Sie anschließend direkt je Termin in der Liste.',
@@ -242,11 +225,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     title: 'Jahreskalender',
     description: 'Zeigt die geplanten Termine für {{value}} inklusive bekannter Verschiebungen.',
     descriptionFallback: 'Zeigt die geplanten Termine inklusive bekannter Verschiebungen.',
-    actions: {
-      open: 'Jahreskalender',
-      previousYear: 'Vorjahr',
-      nextYear: 'Folgejahr',
-    },
+    actions: { open: 'Jahreskalender', previousYear: 'Vorjahr', nextYear: 'Folgejahr' },
     meta: {
       year: 'Jahr {{value}}',
       dateListTitle: 'Geplante Termine',

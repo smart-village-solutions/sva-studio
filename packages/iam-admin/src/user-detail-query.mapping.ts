@@ -51,6 +51,44 @@ const mapGroupRows = (groupRows: UserDetailGroupRow[] | null) =>
     validTo: entry.valid_to ?? undefined,
   })) ?? [];
 
+const mapRuntimeScope = (entry: UserDetailPermissionTraceRow) =>
+  getManagedPermissionMetadata(entry.permission_key)?.runtimeScope ??
+  (entry.access_scope ? 'record' : 'instance');
+
+const mapPermissionTraceScopeFields = (entry: UserDetailPermissionTraceRow) => ({
+  resourceId: entry.resource_id ?? undefined,
+  runtimeScope: mapRuntimeScope(entry),
+  organizationId: entry.organization_id ?? undefined,
+  scope: entry.scope ?? undefined,
+  accessScope: entry.access_scope ?? undefined,
+});
+
+const mapPermissionTraceRoleFields = (entry: UserDetailPermissionTraceRow) => ({
+  roleId: entry.role_id ?? undefined,
+  roleKey: entry.role_key ?? undefined,
+  roleName: entry.role_name ?? undefined,
+});
+
+const mapPermissionTraceGroupFields = (entry: UserDetailPermissionTraceRow) => ({
+  groupId: entry.group_id ?? undefined,
+  groupKey: entry.group_key ?? undefined,
+  groupDisplayName: entry.group_display_name ?? undefined,
+  groupActive: entry.group_active ?? undefined,
+});
+
+const mapPermissionTraceAssignmentFields = (entry: UserDetailPermissionTraceRow) => ({
+  assignmentOrigin: entry.assignment_origin ?? undefined,
+  inheritedFromOrganizationId: entry.inherited_from_organization_id ?? undefined,
+  inheritedFromGeoUnitId: entry.inherited_from_geo_unit_id ?? undefined,
+  restrictedByGeoUnitId: entry.restricted_by_geo_unit_id ?? undefined,
+  inactiveReason: entry.inactive_reason ?? undefined,
+});
+
+const mapPermissionTraceValidityFields = (entry: UserDetailPermissionTraceRow) => ({
+  validFrom: entry.valid_from ?? undefined,
+  validTo: entry.valid_to ?? undefined,
+});
+
 const mapPermissionTraceRows = (
   permissionTraceRows: UserDetailPermissionTraceRow[] | null
 ): IamUserPermissionTraceItem[] =>
@@ -58,31 +96,15 @@ const mapPermissionTraceRows = (
     permissionKey: entry.permission_key,
     action: entry.action,
     resourceType: entry.resource_type,
-    resourceId: entry.resource_id ?? undefined,
-    runtimeScope:
-      getManagedPermissionMetadata(entry.permission_key)?.runtimeScope ??
-      (entry.access_scope ? 'record' : 'instance'),
-    organizationId: entry.organization_id ?? undefined,
+    ...mapPermissionTraceScopeFields(entry),
     effect: entry.effect,
-    scope: entry.scope ?? undefined,
-    accessScope: entry.access_scope ?? undefined,
     isEffective: entry.is_effective,
     status: entry.status,
     sourceKind: entry.source_kind,
-    roleId: entry.role_id ?? undefined,
-    roleKey: entry.role_key ?? undefined,
-    roleName: entry.role_name ?? undefined,
-    groupId: entry.group_id ?? undefined,
-    groupKey: entry.group_key ?? undefined,
-    groupDisplayName: entry.group_display_name ?? undefined,
-    groupActive: entry.group_active ?? undefined,
-    assignmentOrigin: entry.assignment_origin ?? undefined,
-    inheritedFromOrganizationId: entry.inherited_from_organization_id ?? undefined,
-    inheritedFromGeoUnitId: entry.inherited_from_geo_unit_id ?? undefined,
-    restrictedByGeoUnitId: entry.restricted_by_geo_unit_id ?? undefined,
-    inactiveReason: entry.inactive_reason ?? undefined,
-    validFrom: entry.valid_from ?? undefined,
-    validTo: entry.valid_to ?? undefined,
+    ...mapPermissionTraceRoleFields(entry),
+    ...mapPermissionTraceGroupFields(entry),
+    ...mapPermissionTraceAssignmentFields(entry),
+    ...mapPermissionTraceValidityFields(entry),
   })) ?? [];
 
 export const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {

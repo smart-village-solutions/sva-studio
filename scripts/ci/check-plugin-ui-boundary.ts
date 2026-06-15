@@ -122,6 +122,35 @@ const isAppInternalModuleSpecifier = (moduleSpecifier: string): boolean => {
   return normalizedWithoutRelativePrefix.startsWith(APP_INTERNAL_IMPORT_PREFIX);
 };
 
+const getDuplicateVariableExportName = (statement: ts.VariableStatement): string | null => {
+  for (const declaration of statement.declarationList.declarations) {
+    if (ts.isIdentifier(declaration.name) && DUPLICATE_BASIS_CONTROL_EXPORT_NAMES.has(declaration.name.text)) {
+      return declaration.name.text;
+    }
+  }
+
+  return null;
+};
+
+const getDuplicateNamedExportName = (statement: ts.ExportDeclaration): string | null => {
+  if (!statement.exportClause || !ts.isNamedExports(statement.exportClause)) {
+    return null;
+  }
+
+  for (const exportSpecifier of statement.exportClause.elements) {
+    const exportedName = exportSpecifier.name.text;
+    const localName = exportSpecifier.propertyName?.text;
+    const duplicateName = [exportedName, localName].find(
+      (name): name is string => name !== undefined && DUPLICATE_BASIS_CONTROL_EXPORT_NAMES.has(name)
+    );
+    if (duplicateName) {
+      return duplicateName;
+    }
+  }
+
+  return null;
+};
+
 const getDuplicateExportName = (sourceFile: ts.SourceFile): string | null => {
   for (const statement of sourceFile.statements) {
     if (
@@ -134,11 +163,7 @@ const getDuplicateExportName = (sourceFile: ts.SourceFile): string | null => {
     }
 
     if (ts.isVariableStatement(statement) && hasExportModifier(statement)) {
-      for (const declaration of statement.declarationList.declarations) {
-        if (ts.isIdentifier(declaration.name) && DUPLICATE_BASIS_CONTROL_EXPORT_NAMES.has(declaration.name.text)) {
-          return declaration.name.text;
-        }
-      }
+      return getDuplicateVariableExportName(statement);
     }
 
     if (ts.isExportAssignment(statement) && ts.isIdentifier(statement.expression)) {
@@ -148,16 +173,10 @@ const getDuplicateExportName = (sourceFile: ts.SourceFile): string | null => {
       }
     }
 
-    if (ts.isExportDeclaration(statement) && statement.exportClause && ts.isNamedExports(statement.exportClause)) {
-      for (const exportSpecifier of statement.exportClause.elements) {
-        const exportedName = exportSpecifier.name.text;
-        const localName = exportSpecifier.propertyName?.text;
-        const duplicateName = [exportedName, localName].find(
-          (name): name is string => name !== undefined && DUPLICATE_BASIS_CONTROL_EXPORT_NAMES.has(name)
-        );
-        if (duplicateName) {
-          return duplicateName;
-        }
+    if (ts.isExportDeclaration(statement)) {
+      const duplicateName = getDuplicateNamedExportName(statement);
+      if (duplicateName) {
+        return duplicateName;
       }
     }
   }
@@ -208,6 +227,28 @@ export const checkPluginUiBoundarySource = (filePath: string, sourceCode: string
   };
 };
 
+const collectBoundaryViolations = (
+  relativePath: string,
+  fileBaseName: string,
+  boundaryResult: SourceFileBoundaryResult
+): string[] => {
+  const violations: string[] = [];
+
+  if (boundaryResult.hasAppInternalImport) {
+    violations.push(`${relativePath}: importiert App-interne UI statt @sva/studio-ui-react`);
+  }
+
+  if (DUPLICATE_BASIS_CONTROL_FILE_NAMES.has(fileBaseName)) {
+    violations.push(`${relativePath}: dupliziert einen Studio-Basiscontrol-Dateinamen`);
+  }
+
+  if (boundaryResult.duplicateBasisControlExportName) {
+    violations.push(`${relativePath}: exportiert ${boundaryResult.duplicateBasisControlExportName} als lokalen Basiscontrol`);
+  }
+
+  return violations;
+};
+
 export const checkPluginUiBoundary = async (projectRoot = PROJECT_ROOT): Promise<readonly string[]> => {
   const pluginPackages = await readPluginPackages(projectRoot);
   const violations: string[] = [];
@@ -224,20 +265,7 @@ export const checkPluginUiBoundary = async (projectRoot = PROJECT_ROOT): Promise
       const sourceCode = await readFile(filePath, 'utf8');
       const fileBaseName = path.basename(filePath, path.extname(filePath)).toLowerCase();
       const boundaryResult = checkPluginUiBoundarySource(filePath, sourceCode);
-
-      if (boundaryResult.hasAppInternalImport) {
-        violations.push(`${relativePath}: importiert App-interne UI statt @sva/studio-ui-react`);
-      }
-
-      if (DUPLICATE_BASIS_CONTROL_FILE_NAMES.has(fileBaseName)) {
-        violations.push(`${relativePath}: dupliziert einen Studio-Basiscontrol-Dateinamen`);
-      }
-
-      if (boundaryResult.duplicateBasisControlExportName) {
-        violations.push(
-          `${relativePath}: exportiert ${boundaryResult.duplicateBasisControlExportName} als lokalen Basiscontrol`
-        );
-      }
+      violations.push(...collectBoundaryViolations(relativePath, fileBaseName, boundaryResult));
     }
   }
 

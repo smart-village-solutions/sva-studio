@@ -341,6 +341,71 @@ const parseRequiredPort = (value: string): number => {
   return parsed;
 };
 
+const trimToUndefined = (value: string): string | undefined => {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+};
+
+const assertValidMailTransportDraft = (
+  draft: Extract<InstanceInterfaceDraft, { type: 'mailTransport' }>,
+  input: { readonly displayName: string; readonly transportId: string; readonly nextPassword: string }
+): void => {
+  const validationRules = [
+    !input.transportId || !input.displayName,
+    !mailTransportContract.isTransportType(draft.config.transportType),
+    !mailTransportContract.isSecurityMode(draft.config.securityMode),
+    !mailTransportContract.isAuthMode(draft.config.authMode),
+    draft.config.authMode === 'basic' && !input.nextPassword.trim(),
+    draft.config.authMode === 'basic' && !draft.config.username.trim(),
+    draft.config.transportType === 'smtp' && !draft.config.host.trim(),
+    draft.config.transportType === 'provider_api' && !draft.config.endpoint.trim(),
+    draft.config.transportType === 'provider_api' && !draft.config.providerMode.trim(),
+  ];
+
+  if (validationRules.some(Boolean)) {
+    throw new Error('invalid_config');
+  }
+};
+
+const buildMailTransportPublicConfig = (input: {
+  readonly draft: Extract<InstanceInterfaceDraft, { type: 'mailTransport' }>;
+  readonly existingPublicConfig: ExternalInterfaceRecord['publicConfig'];
+  readonly transportId: string;
+  readonly port: number | undefined;
+  readonly maxBatchSize: number | undefined;
+  readonly rateLimitPerMinute: number | undefined;
+}): ExternalInterfaceRecord['publicConfig'] => {
+  const optionalFields = {
+    username: trimToUndefined(input.draft.config.username),
+    defaultFromEmail: trimToUndefined(input.draft.config.defaultFromEmail),
+    defaultFromName: trimToUndefined(input.draft.config.defaultFromName),
+    defaultReplyToEmail: trimToUndefined(input.draft.config.defaultReplyToEmail),
+    maxBatchSize: input.maxBatchSize,
+    rateLimitPerMinute: input.rateLimitPerMinute,
+  };
+
+  const transportConfig =
+    input.draft.config.transportType === 'smtp'
+      ? {
+          host: input.draft.config.host.trim(),
+          port: input.port,
+        }
+      : {
+          endpoint: input.draft.config.endpoint.trim(),
+          mode: input.draft.config.providerMode.trim(),
+        };
+
+  return {
+    ...input.existingPublicConfig,
+    transportId: input.transportId,
+    transportType: input.draft.config.transportType,
+    securityMode: input.draft.config.securityMode,
+    authMode: input.draft.config.authMode,
+    ...Object.fromEntries(Object.entries(optionalFields).flatMap(([key, value]) => (value !== undefined ? [[key, value]] : []))),
+    ...transportConfig,
+  };
+};
+
 const buildMailTransportRecord = (input: {
   readonly instanceId: string;
   readonly draft: Extract<InstanceInterfaceDraft, { type: 'mailTransport' }>;
@@ -352,33 +417,7 @@ const buildMailTransportRecord = (input: {
   const transportId = input.draft.config.transportId.trim();
   const displayName = input.draft.name.trim();
   const nextPassword = input.draft.config.password || input.previousSecrets.password || '';
-  if (!transportId || !displayName) {
-    throw new Error('invalid_config');
-  }
-  if (!mailTransportContract.isTransportType(input.draft.config.transportType)) {
-    throw new Error('invalid_config');
-  }
-  if (!mailTransportContract.isSecurityMode(input.draft.config.securityMode)) {
-    throw new Error('invalid_config');
-  }
-  if (!mailTransportContract.isAuthMode(input.draft.config.authMode)) {
-    throw new Error('invalid_config');
-  }
-  if (input.draft.config.authMode === 'basic' && !nextPassword.trim()) {
-    throw new Error('invalid_config');
-  }
-  if (input.draft.config.authMode === 'basic' && !input.draft.config.username.trim()) {
-    throw new Error('invalid_config');
-  }
-  if (input.draft.config.transportType === 'smtp' && !input.draft.config.host.trim()) {
-    throw new Error('invalid_config');
-  }
-  if (input.draft.config.transportType === 'provider_api' && !input.draft.config.endpoint.trim()) {
-    throw new Error('invalid_config');
-  }
-  if (input.draft.config.transportType === 'provider_api' && !input.draft.config.providerMode.trim()) {
-    throw new Error('invalid_config');
-  }
+  assertValidMailTransportDraft(input.draft, { displayName, transportId, nextPassword });
 
   const port =
     input.draft.config.transportType === 'smtp'
@@ -404,36 +443,14 @@ const buildMailTransportRecord = (input: {
         ? input.draft.config.host.trim()
         : input.draft.config.endpoint.trim(),
     authMode: input.draft.config.authMode,
-    publicConfig: {
-      ...existingPublicConfig,
+    publicConfig: buildMailTransportPublicConfig({
+      draft: input.draft,
+      existingPublicConfig,
       transportId,
-      transportType: input.draft.config.transportType,
-      securityMode: input.draft.config.securityMode,
-      authMode: input.draft.config.authMode,
-      ...(input.draft.config.username.trim()
-        ? { username: input.draft.config.username.trim() }
-        : {}),
-      ...(input.draft.config.defaultFromEmail.trim()
-        ? { defaultFromEmail: input.draft.config.defaultFromEmail.trim() }
-        : {}),
-      ...(input.draft.config.defaultFromName.trim()
-        ? { defaultFromName: input.draft.config.defaultFromName.trim() }
-        : {}),
-      ...(input.draft.config.defaultReplyToEmail.trim()
-        ? { defaultReplyToEmail: input.draft.config.defaultReplyToEmail.trim() }
-        : {}),
-      ...(maxBatchSize !== undefined ? { maxBatchSize } : {}),
-      ...(rateLimitPerMinute !== undefined ? { rateLimitPerMinute } : {}),
-      ...(input.draft.config.transportType === 'smtp'
-        ? {
-            host: input.draft.config.host.trim(),
-            port,
-          }
-        : {
-            endpoint: input.draft.config.endpoint.trim(),
-            mode: input.draft.config.providerMode.trim(),
-          }),
-    },
+      port,
+      maxBatchSize,
+      rateLimitPerMinute,
+    }),
     secretConfigCiphertext: buildSecretCiphertext({
       interfaceId: input.interfaceId,
       secretConfig: nextPassword.trim() ? { password: nextPassword.trim() } : {},

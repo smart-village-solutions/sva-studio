@@ -13,6 +13,7 @@ import type {
   WasteHolidayStateCode,
   WasteHouseNumberRecord,
   WasteLocationTourLinkBulkCreateInput,
+  WasteLocationTourPickupDateListFilter,
   WasteLocationTourPickupDateRecord,
   WasteLocationTourLinkRecord,
   WasteManagementAuditOverview,
@@ -175,6 +176,10 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     pickupDateId: string
   ) => Promise<WasteLocationTourPickupDateRecord | null>;
+  readonly listWasteLocationTourPickupDates?: (
+    instanceId: string,
+    filter?: WasteLocationTourPickupDateListFilter
+  ) => Promise<readonly WasteLocationTourPickupDateRecord[]>;
   readonly deleteWasteLocationTourPickupDate?: (instanceId: string, pickupDateId: string) => Promise<void>;
   readonly saveWasteTour?: (instanceId: string, input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
   readonly loadWasteTourById?: (instanceId: string, tourId: string) => Promise<WasteTourRecord | null>;

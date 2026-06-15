@@ -11,6 +11,7 @@ const WASTE_HOLIDAY_STATE_CODE_KEY = 'holidayStateCode';
 const WASTE_LAST_HOLIDAY_SYNC_STATUS_KEY = 'lastHolidaySyncStatus';
 const WASTE_LAST_SUCCESSFUL_HOLIDAY_SYNC_AT_KEY = 'lastSuccessfulHolidaySyncAt';
 const WASTE_EMAIL_REMINDER_CONFIG_KEY = 'emailReminderConfig';
+const WASTE_EMAIL_REMINDER_SIGNING_SECRET_KEY = 'emailReminderSigningSecret';
 
 const readTrimmedString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -415,6 +416,13 @@ export const readWasteManagementEmailReminderConfig = (
 ): WasteManagementEmailReminderConfig | undefined =>
   normalizeWasteManagementEmailReminderConfig(publicConfig[WASTE_EMAIL_REMINDER_CONFIG_KEY]);
 
+export const readWasteManagementEmailReminderSigningSecret = (
+  publicConfig: Readonly<Record<string, unknown>>
+): string | undefined =>
+  readWasteManagementEmailReminderConfig(publicConfig)
+    ? readTrimmedString(publicConfig[WASTE_EMAIL_REMINDER_SIGNING_SECRET_KEY])
+    : undefined;
+
 export const buildWasteManagementPublicConfig = (
   currentPublicConfig: Readonly<Record<string, unknown>>,
   input: {
@@ -423,6 +431,7 @@ export const buildWasteManagementPublicConfig = (
     readonly pdfBrandingAssetUrl?: string;
     readonly pdfContactBlock?: string;
     readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
+    readonly emailReminderSigningSecret?: string;
     readonly holidayStateCode?: WasteHolidayStateCode;
     readonly lastHolidaySyncStatus?: WasteHolidaySyncStatus;
     readonly lastSuccessfulHolidaySyncAt?: string;
@@ -460,6 +469,11 @@ export const buildWasteManagementPublicConfig = (
   const normalizedEmailReminderConfig = normalizeWasteManagementEmailReminderConfig(input.emailReminderConfig);
   if (normalizedEmailReminderConfig) {
     nextPublicConfig[WASTE_EMAIL_REMINDER_CONFIG_KEY] = normalizedEmailReminderConfig;
+  }
+
+  const emailReminderSigningSecret = readTrimmedString(input.emailReminderSigningSecret);
+  if (emailReminderSigningSecret) {
+    nextPublicConfig[WASTE_EMAIL_REMINDER_SIGNING_SECRET_KEY] = emailReminderSigningSecret;
   }
 
   if (input.holidayStateCode) {

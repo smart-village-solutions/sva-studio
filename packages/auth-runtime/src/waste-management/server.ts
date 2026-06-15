@@ -75,6 +75,7 @@ const {
   loadWasteHouseNumberById,
   loadWasteLocationTourLinkById,
   loadWasteLocationTourPickupDateById,
+  listWasteLocationTourPickupDates,
   listWasteLocationTourLinksByTourId,
   loadWasteRegionById,
   loadWasteStreetById,
@@ -314,6 +315,7 @@ export const wasteManagementHandlers = {
         ...sharedWasteManagementDeps,
         saveWasteLocationTourPickupDate,
         loadWasteLocationTourPickupDateById,
+        listWasteLocationTourPickupDates,
       })
     ),
   updateLocationTourPickupDate: (request: Request): Promise<Response> =>
@@ -322,6 +324,7 @@ export const wasteManagementHandlers = {
         ...sharedWasteManagementDeps,
         saveWasteLocationTourPickupDate,
         loadWasteLocationTourPickupDateById,
+        listWasteLocationTourPickupDates,
       })
     ),
   deleteLocationTourPickupDate: (request: Request): Promise<Response> =>

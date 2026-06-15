@@ -1,8 +1,10 @@
+import { randomBytes } from 'node:crypto';
 import {
   buildWasteManagementPublicConfig,
   isWasteManagementInterfaceSelected,
   readWasteManagementCalendarWebUrl,
   readWasteManagementEmailReminderConfig,
+  readWasteManagementEmailReminderSigningSecret,
   readWasteManagementHolidayStateCode,
   readWasteManagementHolidaySyncStatus,
   readWasteManagementLastSuccessfulHolidaySyncAt,
@@ -48,6 +50,7 @@ const createInterfaceSettingsRecord = (
     readonly pdfBrandingAssetUrl?: string;
     readonly pdfContactBlock?: string;
     readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
+    readonly emailReminderSigningSecret?: string;
     readonly holidayStateCode?: WasteHolidayStateCode;
     readonly lastHolidaySyncStatus?: WasteHolidaySyncStatus;
     readonly lastSuccessfulHolidaySyncAt?: string;
@@ -57,6 +60,8 @@ const createInterfaceSettingsRecord = (
   publicConfig: buildWasteManagementPublicConfig(interfaceRecord.publicConfig, input),
 });
 
+const createEmailReminderSigningSecret = (): string => randomBytes(32).toString('base64url');
+
 export const persistWasteSettingsInterfaceSelection = async ({
   deps,
   interfaceRecords,
@@ -65,6 +70,7 @@ export const persistWasteSettingsInterfaceSelection = async ({
   pdfBrandingAssetUrl,
   pdfContactBlock,
   emailReminderConfig,
+  emailReminderSigningSecret,
   holidayStateCode,
   lastHolidaySyncStatus,
   lastSuccessfulHolidaySyncAt,
@@ -76,6 +82,7 @@ export const persistWasteSettingsInterfaceSelection = async ({
   readonly pdfBrandingAssetUrl?: string;
   readonly pdfContactBlock?: string;
   readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
+  readonly emailReminderSigningSecret?: string;
   readonly holidayStateCode?: WasteHolidayStateCode;
   readonly lastHolidaySyncStatus?: WasteHolidaySyncStatus;
   readonly lastSuccessfulHolidaySyncAt?: string;
@@ -98,6 +105,13 @@ export const persistWasteSettingsInterfaceSelection = async ({
         emailReminderConfig: isTarget
           ? emailReminderConfig
           : readWasteManagementEmailReminderConfig(record.publicConfig),
+        emailReminderSigningSecret: isTarget
+          ? (emailReminderConfig
+              ? (emailReminderSigningSecret ??
+                readWasteManagementEmailReminderSigningSecret(record.publicConfig) ??
+                createEmailReminderSigningSecret())
+              : readWasteManagementEmailReminderSigningSecret(record.publicConfig))
+          : readWasteManagementEmailReminderSigningSecret(record.publicConfig),
         holidayStateCode: isTarget ? holidayStateCode : readWasteManagementHolidayStateCode(record.publicConfig),
         lastHolidaySyncStatus: isTarget ? lastHolidaySyncStatus : readWasteManagementHolidaySyncStatus(record.publicConfig),
         lastSuccessfulHolidaySyncAt: isTarget

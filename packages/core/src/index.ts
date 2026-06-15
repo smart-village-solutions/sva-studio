@@ -65,6 +65,7 @@ export {
   isWasteManagementInterfaceSelected,
   readWasteManagementCalendarWebUrl,
   readWasteManagementEmailReminderConfig,
+  readWasteManagementEmailReminderSigningSecret,
   readWasteManagementHolidayStateCode,
   readWasteManagementHolidaySyncStatus,
   readWasteManagementLastSuccessfulHolidaySyncAt,

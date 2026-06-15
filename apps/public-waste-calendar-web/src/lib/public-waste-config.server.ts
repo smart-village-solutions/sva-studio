@@ -1,4 +1,8 @@
-import { readWasteManagementEmailReminderConfig, type WasteManagementEmailReminderConfig } from '@sva/core';
+import {
+  readWasteManagementEmailReminderConfig,
+  readWasteManagementEmailReminderSigningSecret,
+  type WasteManagementEmailReminderConfig,
+} from '@sva/core';
 
 export type PublicWasteConfig = {
   readonly instanceId: string;
@@ -7,6 +11,7 @@ export type PublicWasteConfig = {
     readonly schemaName: string;
   };
   readonly emailReminderConfig?: WasteManagementEmailReminderConfig;
+  readonly emailReminderSigningSecret?: string;
 };
 
 const CONFIG_ERROR = 'public_waste_config_invalid';
@@ -38,13 +43,17 @@ export const parsePublicWasteConfig = (input: unknown): PublicWasteConfig => {
     throw new Error(CONFIG_ERROR);
   }
 
+  const emailReminderConfig = readWasteManagementEmailReminderConfig(input);
+  const emailReminderSigningSecret = readWasteManagementEmailReminderSigningSecret(input);
+
   return {
     instanceId,
     supabase: {
       databaseUrl,
       schemaName,
     },
-    ...(readWasteManagementEmailReminderConfig(input) ? { emailReminderConfig: readWasteManagementEmailReminderConfig(input) } : {}),
+    ...(emailReminderConfig ? { emailReminderConfig } : {}),
+    ...(emailReminderSigningSecret ? { emailReminderSigningSecret } : {}),
   };
 };
 
@@ -61,12 +70,17 @@ export const readPublicWasteConfigFromEnvironment = (
   }
 
   let emailReminderConfig: WasteManagementEmailReminderConfig | undefined;
+  let emailReminderSigningSecret: string | undefined;
   if (rawConfigJson) {
     const parsed = JSON.parse(rawConfigJson) as unknown;
     if (isRecord(parsed)) {
       const parsedReminderConfig = readWasteManagementEmailReminderConfig(parsed);
       if (parsedReminderConfig) {
         emailReminderConfig = parsedReminderConfig;
+      }
+      const parsedSigningSecret = readWasteManagementEmailReminderSigningSecret(parsed);
+      if (parsedSigningSecret) {
+        emailReminderSigningSecret = parsedSigningSecret;
       }
     }
   }
@@ -78,5 +92,6 @@ export const readPublicWasteConfigFromEnvironment = (
       schemaName,
     },
     ...(emailReminderConfig ? { emailReminderConfig } : {}),
+    ...(emailReminderSigningSecret ? { emailReminderSigningSecret } : {}),
   };
 };

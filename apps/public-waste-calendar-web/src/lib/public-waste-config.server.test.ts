@@ -59,6 +59,7 @@ describe('public waste config', () => {
             schemaName: 'ignored',
           },
           emailReminderConfig: reminderConfigFixture,
+          emailReminderSigningSecret: 'secret-1',
         }),
       })
     ).toEqual({
@@ -68,6 +69,7 @@ describe('public waste config', () => {
         schemaName: 'public',
       },
       emailReminderConfig: reminderConfigFixture,
+      emailReminderSigningSecret: 'secret-1',
     });
   });
 });

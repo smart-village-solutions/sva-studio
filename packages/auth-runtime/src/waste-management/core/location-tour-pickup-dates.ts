@@ -55,6 +55,24 @@ export const wasteManagementLocationTourPickupDateHandlers = {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
 
+    const duplicatePickupDates = await requireDeps(
+      deps.listWasteLocationTourPickupDates,
+      'listWasteLocationTourPickupDates'
+    )(instanceId, {
+      locationId: parsed.data.locationId,
+      tourId: parsed.data.tourId,
+      pickupDate: parsed.data.pickupDate,
+    });
+    const conflictingPickupDate = duplicatePickupDates.find((entry) => entry.id !== parsed.data.id);
+    if (conflictingPickupDate) {
+      return createApiError(
+        409,
+        'conflict',
+        'Für diesen Standort, diese Tour und dieses Datum existiert bereits ein ortsbezogener Waste-Termin.',
+        requestId
+      );
+    }
+
     return runWasteCreateMutation({
       deps,
       ctx,

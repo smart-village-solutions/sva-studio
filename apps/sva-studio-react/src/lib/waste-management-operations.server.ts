@@ -3,6 +3,7 @@ import {
   buildWasteTypesStaticContent,
   getWasteManagementImportCatalogEntry,
   readWasteManagementEmailReminderConfig,
+  readWasteManagementEmailReminderSigningSecret,
   wasteManagementOperationsContract,
   type ExternalInterfaceRecord,
   type MailDispatchPayload,
@@ -164,19 +165,38 @@ const readMailTransportConfigFromRecord = (record: ExternalInterfaceRecord): Mai
   return endpoint && mode ? { ...shared, transportType: 'provider_api', endpoint, mode } : null;
 };
 
-const loadWasteEmailReminderConfig = async (
+const loadSelectedWasteSupabaseRecord = async (
   deps: WasteOperationRuntimeDeps,
   instanceId: string
-): Promise<WasteManagementEmailReminderConfig | null> => {
+): Promise<ExternalInterfaceRecord | null> => {
   if (deps.listInterfaceRecords) {
     const records = await deps.listInterfaceRecords(instanceId);
-    const selectedSupabase = records.find((record) => record.typeKey === 'supabase' && record.publicConfig.wasteManagementSelected === true)
+    return (
+      records.find((record) => record.typeKey === 'supabase' && record.publicConfig.wasteManagementSelected === true)
       ?? records.find((record) => record.typeKey === 'supabase' && record.isDefault)
-      ?? records.find((record) => record.typeKey === 'supabase');
-    return selectedSupabase ? readWasteManagementEmailReminderConfig(selectedSupabase.publicConfig) ?? null : null;
+      ?? records.find((record) => record.typeKey === 'supabase')
+      ?? null
+    );
   }
-  const fallback = await deps.loadDefaultInterfaceRecord?.(instanceId, 'supabase');
-  return fallback ? readWasteManagementEmailReminderConfig(fallback.publicConfig) ?? null : null;
+  return (await deps.loadDefaultInterfaceRecord?.(instanceId, 'supabase')) ?? null;
+};
+
+const loadWasteEmailReminderSettings = async (
+  deps: WasteOperationRuntimeDeps,
+  instanceId: string
+): Promise<{
+  readonly config: WasteManagementEmailReminderConfig;
+  readonly unsubscribeSigningSecret?: string;
+} | null> => {
+  const selectedSupabase = await loadSelectedWasteSupabaseRecord(deps, instanceId);
+  const config = selectedSupabase ? readWasteManagementEmailReminderConfig(selectedSupabase.publicConfig) ?? null : null;
+  if (!selectedSupabase || !config) {
+    return null;
+  }
+  return {
+    config,
+    unsubscribeSigningSecret: readWasteManagementEmailReminderSigningSecret(selectedSupabase.publicConfig),
+  };
 };
 
 const loadMailTransportConfigs = async (
@@ -672,8 +692,8 @@ const createMaterializeEmailRemindersOperation = (
   deps: WasteOperationRuntimeDeps
 ): WasteManagementOperationRuntime['materializeEmailReminders'] => async (instanceId, input) => {
   const startedAt = Date.now();
-  const reminderConfig = await loadWasteEmailReminderConfig(deps, instanceId);
-  if (!reminderConfig?.enabled) {
+  const reminderSettings = await loadWasteEmailReminderSettings(deps, instanceId);
+  if (!reminderSettings?.config.enabled) {
     return buildOperationSummary(startedAt, {
       operation: 'materialize-email-reminders',
       mode: 'skipped',
@@ -689,8 +709,10 @@ const createMaterializeEmailRemindersOperation = (
   if (Number.isNaN(referenceTime.getTime())) {
     throw new Error(`invalid_reference_time:${input.referenceTime}`);
   }
+  const reminderConfig = reminderSettings.config;
 
   const details = await withWasteClient(deps, instanceId, async ({ client, repository, dataSource }) => {
+    const unsubscribeSigningSecret = reminderSettings.unsubscribeSigningSecret ?? dataSource.databaseUrl;
     const reminderRepository = createWasteEmailReminderRepository(createSqlExecutor(client));
     const [subscriptions, fractions, tours, links, locations, pickupDates, tourDateShifts, globalDateShifts, holidayRules] =
       await Promise.all([
@@ -786,7 +808,7 @@ const createMaterializeEmailRemindersOperation = (
               fraction,
               pickupDate,
               unsubscribeTokenHash: subscription.unsubscribeTokenHash,
-              unsubscribeTokenSecret: dataSource.databaseUrl,
+              unsubscribeTokenSecret: unsubscribeSigningSecret,
             }),
           });
           if (result === 'inserted') {
@@ -818,8 +840,8 @@ const createProcessEmailReminderOutboxOperation = (
   if (!deps.dispatchMail) {
     throw new Error('mail_dispatch_not_configured');
   }
-  const reminderConfig = await loadWasteEmailReminderConfig(deps, instanceId);
-  if (!reminderConfig?.enabled) {
+  const reminderSettings = await loadWasteEmailReminderSettings(deps, instanceId);
+  if (!reminderSettings?.config.enabled) {
     return buildOperationSummary(startedAt, {
       operation: 'process-email-reminder-outbox',
       mode: 'skipped',
@@ -836,6 +858,7 @@ const createProcessEmailReminderOutboxOperation = (
   if (Number.isNaN(referenceTime.getTime())) {
     throw new Error(`invalid_reference_time:${input.referenceTime}`);
   }
+  const reminderConfig = reminderSettings.config;
   const transportConfigs = await loadMailTransportConfigs(deps, instanceId);
   if (transportConfigs.size === 0) {
     throw new Error(`mail_transport_not_available:${reminderConfig.transportId}`);

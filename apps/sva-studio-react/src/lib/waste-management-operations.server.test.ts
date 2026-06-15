@@ -12,6 +12,10 @@ import {
   buildWasteFractionShortLabelBackfillStatement,
 } from './waste-management-operations.schema.js';
 import { resolveRuntimeDataSource } from './waste-management-operations.shared.js';
+import {
+  readPublicWasteUnsubscribeTokenSubscriptionId,
+  verifyPublicWasteUnsubscribeToken,
+} from '../../../public-waste-calendar-web/src/server/public-waste-unsubscribe-token.server.js';
 
 const createOrUpdateSvaMainserverStaticContentMock = vi.hoisted(() => vi.fn());
 const runWasteManagementMainserverSyncForInstanceMock = vi.hoisted(() => vi.fn());
@@ -114,6 +118,8 @@ describe('waste management operations runtime', () => {
     expect(statements).toContain('ALTER TABLE "wm".waste_fractions ALTER COLUMN pdf_short_label SET NOT NULL');
     expect(statements).toContain('waste_custom_recurrence_presets');
     expect(statements).toContain('waste_holiday_rules');
+    expect(statements).toContain('waste_email_reminder_subscriptions');
+    expect(statements).toContain('waste_email_reminder_outbox');
     expect(statements).toContain('holiday_date DATE NOT NULL');
     expect(statements).toContain('idx_waste_holiday_rules_state_year');
     expect(statements).toContain('custom_recurrence_id UUID');
@@ -1722,6 +1728,161 @@ describe('waste management operations runtime', () => {
     });
   });
 
+  it('signs unsubscribe links with the persisted reminder signing secret instead of the database url', async () => {
+    vi.doMock('./waste-management-mainserver-sync.materialization.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('./waste-management-mainserver-sync.materialization.js')>();
+      return {
+        ...actual,
+        buildMaterializedLocationTourPickupDates: vi.fn(() => [
+          {
+            id: 'materialized-secret',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            pickupDate: '2026-06-17',
+            note: null,
+            createdAt: '1970-01-01T00:00:00.000Z',
+            updatedAt: '1970-01-01T00:00:00.000Z',
+          },
+        ]),
+      };
+    });
+
+    const unsubscribeTokenHash =
+      'sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+    const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
+    const reminderRepository = {
+      listActiveSubscriptions: vi.fn(async () => [
+        {
+          id: 'subscription-secret',
+          email: 'erika@example.org',
+          locationLabel: 'Perleberg',
+          unsubscribeTokenHash,
+          regionId: undefined,
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          items: [{ fractionId: 'fraction-bio', slotId: 'bio:first' }],
+        },
+      ]),
+      enqueueOutboxEntry,
+    };
+    const repository = createRepositoryMock({
+      listWasteFractions: vi.fn(async () => [
+        {
+          id: 'fraction-bio',
+          name: 'Biotonne',
+          pdfShortLabel: 'BIO',
+          translations: { de: 'Biotonne' },
+          containerSize: undefined,
+          color: '#008000',
+          description: undefined,
+          active: true,
+          reminderConfig: {
+            reminderCount: 'once',
+            channels: { push: false, email: true, calendar: false },
+            email: { slots: [{ id: 'bio:first', maxLeadDays: 3, defaultLeadDays: 1 }] },
+          },
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      ]),
+      listWasteCollectionLocations: vi.fn(async () => [
+        {
+          id: 'location-1',
+          cityId: 'city-1',
+          regionId: undefined,
+          streetId: 'street-1',
+          houseNumberId: undefined,
+          active: true,
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      ]),
+      listWasteTours: vi.fn(async () => [
+        {
+          id: 'tour-1',
+          name: 'Biotour',
+          wasteFractionIds: ['fraction-bio'],
+          recurrence: 'weekly',
+          active: true,
+        },
+      ]),
+      listWasteLocationTourLinks: vi.fn(async () => [
+        { id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true },
+      ]),
+      listWasteLocationTourPickupDates: vi.fn(async () => []),
+      listWasteTourDateShifts: vi.fn(async () => []),
+      listWasteGlobalDateShifts: vi.fn(async () => []),
+      listWasteHolidayRules: vi.fn(async () => []),
+    });
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteMasterDataRepository: vi.fn(() => repository),
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const secret = 'persisted-reminder-signing-secret';
+    const runtime = (await import('./waste-management-operations.server.js')).createWasteManagementOperationRuntime({
+      listInterfaceRecords: vi.fn(async () => [
+        {
+          ...createInterfaceRecordWithEmailReminderConfig(),
+          publicConfig: {
+            ...createInterfaceRecordWithEmailReminderConfig().publicConfig,
+            emailReminderSigningSecret: secret,
+          },
+        },
+      ]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    await runtime.materializeEmailReminders('instance-1', {
+      operation: 'materialize-email-reminders',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    const firstEnqueueCall = (
+      enqueueOutboxEntry.mock.calls as unknown as Array<
+        [ { readonly payload: { readonly templatePayload: { readonly unsubscribeUrl: string } } } ]
+      >
+    ).at(0);
+    const enqueuedEntry = firstEnqueueCall?.[0];
+    expect(enqueuedEntry).toBeTruthy();
+    const templatePayload = enqueuedEntry!.payload.templatePayload;
+    const unsubscribeUrl = new URL(templatePayload.unsubscribeUrl);
+    const token = unsubscribeUrl.searchParams.get('token');
+    expect(token).toBeTruthy();
+    expect(readPublicWasteUnsubscribeTokenSubscriptionId(token!)).toBe('subscription-secret');
+    expect(
+      verifyPublicWasteUnsubscribeToken({
+        token: token!,
+        subscriptionId: 'subscription-secret',
+        unsubscribeTokenHash,
+        secret,
+      })
+    ).toBe(true);
+    expect(
+      verifyPublicWasteUnsubscribeToken({
+        token: token!,
+        subscriptionId: 'subscription-secret',
+        unsubscribeTokenHash,
+        secret: 'postgres://waste:test@localhost:5432/waste',
+      })
+    ).toBe(false);
+  });
+
   it('counts duplicate reminder outbox entries separately from inserted ones', async () => {
     vi.doMock('./waste-management-mainserver-sync.materialization.js', async (importOriginal) => {
       const actual = await importOriginal<typeof import('./waste-management-mainserver-sync.materialization.js')>();
@@ -2464,6 +2625,9 @@ const requiredTableRows = [
   { table_name: 'waste_collection_locations' },
   { table_name: 'waste_custom_recurrence_presets' },
   { table_name: 'waste_fractions' },
+  { table_name: 'waste_email_reminder_outbox' },
+  { table_name: 'waste_email_reminder_subscription_items' },
+  { table_name: 'waste_email_reminder_subscriptions' },
   { table_name: 'waste_global_date_shifts' },
   { table_name: 'waste_holiday_rules' },
   { table_name: 'waste_house_numbers' },

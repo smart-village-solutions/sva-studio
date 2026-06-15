@@ -37,6 +37,7 @@ const createDeps = () => ({
 describe('waste-management location tour pickup date handlers', () => {
   it('creates, updates, and deletes pickup dates with normalized optional notes', async () => {
     const saveWasteLocationTourPickupDate = vi.fn(async () => undefined);
+    const listWasteLocationTourPickupDates = vi.fn(async () => []);
     const loadWasteLocationTourPickupDateById = vi.fn(async (_instanceId, id) => ({
       id,
       locationId: 'location-1',
@@ -62,6 +63,7 @@ describe('waste-management location tour pickup date handlers', () => {
         {
           ...createDeps(),
           saveWasteLocationTourPickupDate,
+          listWasteLocationTourPickupDates,
           loadWasteLocationTourPickupDateById,
         }
       );
@@ -73,6 +75,11 @@ describe('waste-management location tour pickup date handlers', () => {
       tourId: 'tour-1',
       pickupDate: '2026-05-12',
       note: null,
+    });
+    expect(listWasteLocationTourPickupDates).toHaveBeenCalledWith('tenant-a', {
+      locationId: 'location-1',
+      tourId: 'tour-1',
+      pickupDate: '2026-05-12',
     });
 
     const updateResponse =
@@ -137,6 +144,7 @@ describe('waste-management location tour pickup date handlers', () => {
         actor,
         {
           ...createDeps(),
+          listWasteLocationTourPickupDates: vi.fn(async () => []),
           loadWasteLocationTourPickupDateById: vi.fn(async () => null),
         }
       );
@@ -267,5 +275,43 @@ describe('waste-management location tour pickup date handlers', () => {
         }
       );
     expect(deleteMissingId.status).toBe(400);
+  });
+
+  it('rejects duplicate pickup-date creates before mutating an existing tuple', async () => {
+    const saveWasteLocationTourPickupDate = vi.fn(async () => undefined);
+
+    const response =
+      await wasteManagementLocationTourPickupDateHandlers.createWasteManagementLocationTourPickupDateInternal(
+        new Request('https://studio.test/api/v1/waste-management/location-tour-pickup-dates', {
+          method: 'POST',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            id: 'pickup-date-new',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            pickupDate: '2026-05-12',
+          }),
+        }),
+        actor,
+        {
+          ...createDeps(),
+          saveWasteLocationTourPickupDate,
+          listWasteLocationTourPickupDates: vi.fn(async () => [
+            {
+              id: 'pickup-date-existing',
+              locationId: 'location-1',
+              tourId: 'tour-1',
+              pickupDate: '2026-05-12',
+              note: 'Bestehend',
+              createdAt: '2026-05-01T00:00:00.000Z',
+              updatedAt: '2026-05-01T00:00:00.000Z',
+            },
+          ]),
+          loadWasteLocationTourPickupDateById: vi.fn(async () => null),
+        }
+      );
+
+    expect(response.status).toBe(409);
+    expect(saveWasteLocationTourPickupDate).not.toHaveBeenCalled();
   });
 });

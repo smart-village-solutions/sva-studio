@@ -1037,6 +1037,13 @@ const loadWasteLocationTourPickupDateById = createLoader(
   'load_waste_location_tour_pickup_date_by_id',
   (repository, pickupDateId: string) => repository.getWasteLocationTourPickupDateById(pickupDateId)
 );
+const listWasteLocationTourPickupDates = createLoader(
+  'list_waste_location_tour_pickup_dates',
+  (
+    repository,
+    filter?: { readonly locationId?: string; readonly tourId?: string; readonly pickupDate?: string }
+  ) => repository.listWasteLocationTourPickupDates(filter)
+);
 const saveWasteLocationTourPickupDate = createLoader(
   'save_waste_location_tour_pickup_date',
   (repository, input: Omit<WasteLocationTourPickupDateRecord, 'createdAt' | 'updatedAt'>) =>
@@ -1149,6 +1156,7 @@ export const wasteManagementEntityLoaders = {
   loadWasteCollectionLocationById,
   loadWasteLocationTourLinkById,
   loadWasteLocationTourPickupDateById,
+  listWasteLocationTourPickupDates,
   listWasteLocationTourLinksByTourId,
   loadWasteTourById,
   loadWasteTourDateShiftById,

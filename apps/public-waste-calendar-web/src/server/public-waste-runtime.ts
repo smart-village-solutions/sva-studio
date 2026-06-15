@@ -446,7 +446,8 @@ export const createPublicWasteRuntime = async (input: {
           request,
           pathname: url.pathname,
           reminderConfig: bootstrapState.config.emailReminderConfig,
-          unsubscribeTokenSecret: bootstrapState.config.supabase.databaseUrl,
+          unsubscribeTokenSecret:
+            bootstrapState.config.emailReminderSigningSecret ?? bootstrapState.config.supabase.databaseUrl,
         });
         if (response) {
           return method === 'HEAD' ? toHeadResponse(response) : response;

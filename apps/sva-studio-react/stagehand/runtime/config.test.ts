@@ -224,4 +224,19 @@ describe('parseStagehandAdminConfig', () => {
       'Invalid Stagehand story id filter: 18x, 19. Expected a comma-separated list of numeric story ids.'
     );
   });
+
+  it('rejects unknown cluster filters fail-closed', () => {
+    expect(() =>
+      parseStagehandAdminConfig({
+        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+        STAGEHAND_ADMIN_USERNAME: 'admin-user',
+        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+        STAGEHAND_RUN_MODE: 'story-loop',
+        STAGEHAND_STORY_CLUSTERS: 'tenant-user-creat',
+        OPENAI_API_KEY: 'test-openai-key',
+      })
+    ).toThrowError(
+      'Invalid Stagehand story cluster filter: tenant-user-creat. Expected one of: tenant-user-create, tenant-isolation, tenant-login-context, tenant-user-lifecycle, tenant-user-assignments, role-and-permission-management, legal-text-governance, audit-and-monitoring'
+    );
+  });
 });

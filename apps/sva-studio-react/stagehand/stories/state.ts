@@ -1,6 +1,7 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
+import { stagehandStoryCatalogSnapshot } from './catalog.snapshot.js';
 import type { StagehandStoryCheckStatus, StagehandStoryCoverage } from '../runtime/types.js';
 
 export interface StagehandStoryCheck {
@@ -79,6 +80,40 @@ export interface StagehandStoryCheckOverlayDocument {
   readonly stories: readonly StagehandStoryCheckOverlayEntry[];
 }
 
+function createSnapshotDocument(): StagehandStoryCatalogDocument {
+  return {
+    version: '2.7',
+    scope: stagehandStoryCatalogSnapshot.scope,
+    updatedAt: stagehandStoryCatalogSnapshot.updatedAt,
+    description: 'Bundled Stagehand story snapshot',
+    packageCount: stagehandStoryCatalogSnapshot.packages.length,
+    totalStoryCount: stagehandStoryCatalogSnapshot.packages.reduce((count, pkg) => count + pkg.stories.length, 0),
+    packages: stagehandStoryCatalogSnapshot.packages.map((pkg) => ({
+      id: pkg.id,
+      title: pkg.id,
+      stories: pkg.stories.map((story) => ({
+        acceptanceCriteria: [...story.acceptanceCriteria],
+        evidence: [],
+        id: story.id,
+        legacy: true,
+        legacyId: story.id,
+        packageId: story.packageId,
+        preconditions: [],
+        priority: 0,
+        relatedPackageIds: [],
+        role: story.role,
+        story: story.story,
+        studioCheck: {
+          status: 'offen',
+          coverage: 'nicht_geprueft',
+          notes: '',
+        },
+        trigger: 'snapshot',
+      })),
+    })),
+  };
+}
+
 function normalizeStoryRecord(
   packageTitle: string,
   story: StagehandStoryPackageStory
@@ -104,7 +139,9 @@ function normalizeStoryRecord(
 }
 
 export function loadStagehandStoryCatalogFromFile(filePath: string): LoadedStagehandStoryCatalog {
-  const document = JSON.parse(readFileSync(filePath, 'utf8')) as StagehandStoryCatalogDocument;
+  const document = existsSync(filePath)
+    ? (JSON.parse(readFileSync(filePath, 'utf8')) as StagehandStoryCatalogDocument)
+    : createSnapshotDocument();
   const storyIndex = new Map<number, StagehandStoryRecord>();
 
   for (const pkg of document.packages) {

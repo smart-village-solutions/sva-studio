@@ -99,6 +99,15 @@ describe('stagehand story state', () => {
     expect(catalog.storyIndex.get(37)?.packageId).toBe('IAM-P5');
   });
 
+  it('falls back to the bundled snapshot when the source file is missing', () => {
+    const filePath = join(tmpdir(), `stagehand-story-missing-${Date.now()}.json`);
+
+    const catalog = loadStagehandStoryCatalogFromFile(filePath);
+
+    expect(catalog.document.description).toBe('Bundled Stagehand story snapshot');
+    expect(catalog.storyIndex.get(18)?.packageId).toBe('IAM-P2');
+  });
+
   it('writes an overlay without mutating the source catalog', () => {
     const filePath = createTempCatalogFile();
     const overlayPath = join(tmpdir(), `stagehand-story-overlay-${Date.now()}.json`);

@@ -586,6 +586,81 @@ describe('runStagehandStoryLoop', () => {
     });
   });
 
+  it('rejects story id filters without catalog matches fail-closed', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-invalid-story-id-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    await expect(() =>
+      runStagehandStoryLoop(
+        {
+          ...createConfig(),
+          storyFilters: {
+            clusters: [],
+            packageIds: [],
+            resume: false,
+            storyIds: [81],
+          },
+        },
+        {
+          generatedAt: '2026-05-16T18:00:00.000Z',
+          reportsRoot: join(reportsDirectory, 'reports'),
+          storySourcePath,
+        }
+      )
+    ).rejects.toThrowError('Stagehand story id filter matched no catalog entries: 81');
+  });
+
+  it('rejects package filters without catalog matches fail-closed', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-invalid-package-id-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    await expect(() =>
+      runStagehandStoryLoop(
+        {
+          ...createConfig(),
+          storyFilters: {
+            clusters: [],
+            packageIds: ['IAM-P9'],
+            resume: false,
+            storyIds: [],
+          },
+        },
+        {
+          generatedAt: '2026-05-16T18:00:00.000Z',
+          reportsRoot: join(reportsDirectory, 'reports'),
+          storySourcePath,
+        }
+      )
+    ).rejects.toThrowError('Stagehand package filter matched no catalog entries: IAM-P9');
+  });
+
+  it('rejects cluster filters without eligible stories fail-closed', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-invalid-cluster-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    await expect(() =>
+      runStagehandStoryLoop(
+        {
+          ...createConfig(),
+          storyFilters: {
+            clusters: ['role-and-permission-management'],
+            packageIds: [],
+            resume: false,
+            storyIds: [],
+          },
+        },
+        {
+          generatedAt: '2026-05-16T18:00:00.000Z',
+          reportsRoot: join(reportsDirectory, 'reports'),
+          storySourcePath,
+        }
+      )
+    ).rejects.toThrowError('Stagehand cluster filter matched no eligible stories: role-and-permission-management');
+  });
+
   it('marks unimplemented default clusters as environment insufficient instead of unclear', async () => {
     const storySourcePath = createTempCatalogFile();
     const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-insufficient-'));

@@ -141,6 +141,31 @@ function buildClusters(config: StagehandAdminConfig, stories: readonly Stagehand
     }));
 }
 
+function validateRequestedStoryFilters(
+  config: StagehandAdminConfig,
+  stories: readonly StagehandStoryRecord[]
+): void {
+  if (config.storyFilters.storyIds.length > 0) {
+    const availableStoryIds = new Set(stories.map((story) => story.id));
+    const missingStoryIds = config.storyFilters.storyIds.filter((storyId) => availableStoryIds.has(storyId) === false);
+
+    if (missingStoryIds.length > 0) {
+      throw new Error(`Stagehand story id filter matched no catalog entries: ${missingStoryIds.join(', ')}`);
+    }
+  }
+
+  if (config.storyFilters.packageIds.length > 0) {
+    const availablePackageIds = new Set(stories.map((story) => story.packageId));
+    const missingPackageIds = config.storyFilters.packageIds.filter(
+      (packageId) => availablePackageIds.has(packageId) === false
+    );
+
+    if (missingPackageIds.length > 0) {
+      throw new Error(`Stagehand package filter matched no catalog entries: ${missingPackageIds.join(', ')}`);
+    }
+  }
+}
+
 function defaultEvidenceForCluster(cluster: StagehandStoryCluster): readonly StagehandStoryEvidenceInput[] {
   return cluster.stories.map((story) => ({
     storyId: story.id,
@@ -935,8 +960,16 @@ export async function runStagehandStoryLoop(
 ): Promise<StagehandStoryLoopResult> {
   const catalog = loadStagehandStoryCatalogFromFile(options.storySourcePath);
   const stories = [...catalog.storyIndex.values()].sort((left, right) => left.id - right.id);
+  validateRequestedStoryFilters(config, stories);
   const eligibleStories = stories.filter((story) => shouldSkipStory(config, story) === false);
   const clusters = buildClusters(config, stories);
+
+  if (config.storyFilters.clusters.length > 0 && clusters.length === 0) {
+    throw new Error(
+      `Stagehand cluster filter matched no eligible stories: ${config.storyFilters.clusters.join(', ')}`
+    );
+  }
+
   const storiesCoveredByClusters = new Set(clusters.flatMap((cluster) => cluster.stories.map((story) => story.id)));
   const resumeSkippedStories = stories.filter((story) => shouldSkipStory(config, story)).length;
   const filteredOutStories = eligibleStories.length - storiesCoveredByClusters.size;

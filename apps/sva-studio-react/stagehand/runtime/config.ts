@@ -6,12 +6,14 @@ import {
   type StagehandStoryFilters,
   type StagehandTenantConfig,
 } from './types.js';
+import { STAGEHAND_CLUSTER_IDS } from './clusters.js';
 
 type StagehandAdminEnv = Record<string, string | undefined>;
 
 const DEFAULT_MISSION: StagehandMissionName = 'admin-users-overview';
 const DEFAULT_RUN_MODE: StagehandRunMode = 'mission';
 const STAGEHAND_PILOT_MISSION_NAMES: readonly StagehandMissionName[] = ['admin-users-overview'];
+const STAGEHAND_CLUSTER_ID_SET = new Set<string>(STAGEHAND_CLUSTER_IDS);
 
 const REQUIRED_ENV_SPECS = [
   {
@@ -120,8 +122,17 @@ function parseResumeFlag(value: string | undefined): boolean {
 }
 
 function parseStoryFilters(env: StagehandAdminEnv): StagehandStoryFilters {
+  const clusters = normalizeCsvValues(env.STAGEHAND_STORY_CLUSTERS);
+  const invalidCluster = clusters.find((clusterId) => STAGEHAND_CLUSTER_ID_SET.has(clusterId) === false);
+
+  if (invalidCluster !== undefined) {
+    throw new Error(
+      `Invalid Stagehand story cluster filter: ${invalidCluster}. Expected one of: ${STAGEHAND_CLUSTER_IDS.join(', ')}`
+    );
+  }
+
   return {
-    clusters: normalizeCsvValues(env.STAGEHAND_STORY_CLUSTERS),
+    clusters,
     packageIds: normalizeCsvValues(env.STAGEHAND_STORY_PACKAGE_IDS),
     resume: parseResumeFlag(env.STAGEHAND_STORY_RESUME),
     storyIds: parseStoryIds(env.STAGEHAND_STORY_IDS),

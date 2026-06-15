@@ -96,6 +96,8 @@ const STAGEHAND_CLUSTER_DEFINITIONS = [
   },
 ] as const satisfies readonly StagehandClusterDefinition[];
 
+export const STAGEHAND_CLUSTER_IDS = STAGEHAND_CLUSTER_DEFINITIONS.map((definition) => definition.id);
+
 function matchesDefinition(definition: StagehandClusterDefinition, story: StagehandStoryRecord): boolean {
   if (definition.storyIds?.includes(story.id) === true) {
     return true;

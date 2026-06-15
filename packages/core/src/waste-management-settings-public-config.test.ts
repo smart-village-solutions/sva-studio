@@ -4,7 +4,9 @@ import {
   buildWasteManagementPublicConfig,
   findSelectedWasteManagementInterfaceRecord,
   isWasteManagementInterfaceSelected,
+  readWasteManagementCalendarWebUrl,
   readWasteManagementEmailReminderConfig,
+  readWasteManagementEmailReminderSigningSecret,
   readWasteManagementHolidayStateCode,
   readWasteManagementHolidaySyncStatus,
   readWasteManagementLastSuccessfulHolidaySyncAt,
@@ -200,6 +202,22 @@ describe('waste-management-settings-public-config', () => {
     });
 
     expect(readWasteManagementEmailReminderConfig(next)).toEqual(createEmailReminderConfigInput());
+  });
+
+  it('reads the calendar web url and signing secret only for valid email reminder config', () => {
+    const next = buildWasteManagementPublicConfig(
+      {},
+      {
+        selected: true,
+        calendarWebUrl: '  https://demo.abfallkalender.example  ',
+        emailReminderConfig: createEmailReminderConfigInput(),
+        emailReminderSigningSecret: '  signing-secret  ',
+      }
+    );
+
+    expect(readWasteManagementCalendarWebUrl(next)).toBe('https://demo.abfallkalender.example');
+    expect(readWasteManagementEmailReminderSigningSecret(next)).toBe('signing-secret');
+    expect(readWasteManagementEmailReminderSigningSecret({ emailReminderSigningSecret: 'secret-only' })).toBeUndefined();
   });
 
   it('rejects malformed nested email reminder config payloads', () => {

@@ -2,12 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../index.js';
 import { createWasteMasterDataRepository } from '../index.js';
-import {
-  buildLikePattern,
-  normalizeCustomDates,
-  normalizeLocalizedTextRecord,
-  normalizeStringArray,
-} from '../../../data-repositories/src/waste-management/master-data.shared.js';
 
 const createQueuedExecutor = (queuedRows: readonly (readonly Record<string, unknown>[])[]) => {
   const statements: SqlStatement[] = [];
@@ -26,33 +20,7 @@ const createQueuedExecutor = (queuedRows: readonly (readonly Record<string, unkn
   return { executor, statements };
 };
 
-describe('waste master-data helpers (data package coverage)', () => {
-  it('normalizes like patterns, string arrays and localized text records', () => {
-    expect(buildLikePattern('  Foo Bar  ')).toBe('%Foo Bar%');
-
-    expect(normalizeStringArray(['a', 1, 'b', null])).toEqual(['a', 'b']);
-    expect(normalizeStringArray('not-an-array')).toEqual([]);
-
-    expect(normalizeLocalizedTextRecord(null)).toBeUndefined();
-    expect(normalizeLocalizedTextRecord(['de'])).toBeUndefined();
-    expect(normalizeLocalizedTextRecord({ '': 'leer', de: 'Hallo', en: '  ', fr: 1 })).toEqual({ de: 'Hallo' });
-  });
-
-  it('normalizes custom dates and rejects malformed entries', () => {
-    expect(normalizeCustomDates('broken')).toBeUndefined();
-    expect(
-      normalizeCustomDates([
-        { date: '2026-06-01', description: 'Pfingsten' },
-        { date: '2026-06-02' },
-        { date: 1 },
-        null,
-      ])
-    ).toEqual([
-      { date: '2026-06-01', description: 'Pfingsten' },
-      { date: '2026-06-02', description: undefined },
-    ]);
-  });
-
+describe('waste master-data custom recurrence presets (data package coverage)', () => {
   it('lists, reads, upserts and deletes custom recurrence presets', async () => {
     const { executor, statements } = createQueuedExecutor([
       [

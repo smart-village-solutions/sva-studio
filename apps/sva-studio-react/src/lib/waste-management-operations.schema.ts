@@ -112,6 +112,34 @@ WHERE reminder_config IS NULL;
 const defaultWasteFractionReminderConfigJson =
   `'{"reminder_count":"none","channels":{"push":false,"email":false,"calendar":false}}'::jsonb`;
 
+const buildWasteTourCascadeConstraintStatement = ({
+  schema,
+  schemaName,
+  tableName,
+}: {
+  readonly schema: string;
+  readonly schemaName: string;
+  readonly tableName: 'waste_location_tour_links' | 'waste_location_tour_pickup_dates' | 'waste_tour_date_shifts';
+}): string => `
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = '${schemaName}'
+      AND table_name = '${tableName}'
+  ) THEN
+    ALTER TABLE ${schema}.${tableName}
+      DROP CONSTRAINT IF EXISTS ${tableName}_tour_id_fkey;
+    ALTER TABLE ${schema}.${tableName}
+      ADD CONSTRAINT ${tableName}_tour_id_fkey
+      FOREIGN KEY (tour_id)
+      REFERENCES ${schema}.waste_tours(id)
+      ON DELETE CASCADE;
+  END IF;
+END $$;
+`.trim();
+
 export const applySchemaStatements = (schemaName: string): readonly string[] => {
   const schema = quoteIdentifier(schemaName);
   return [
@@ -145,7 +173,9 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `ALTER TABLE ${schema}.waste_tours ADD COLUMN IF NOT EXISTS custom_recurrence_id UUID;`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_tours_custom_recurrence_id_fkey' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_tours') THEN ALTER TABLE ${schema}.waste_tours ADD CONSTRAINT waste_tours_custom_recurrence_id_fkey FOREIGN KEY (custom_recurrence_id) REFERENCES ${schema}.waste_custom_recurrence_presets(id) ON DELETE SET NULL; END IF; END $$;`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_location_tour_links (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), location_id UUID NOT NULL REFERENCES ${schema}.waste_collection_locations(id) ON DELETE CASCADE, tour_id UUID NOT NULL REFERENCES ${schema}.waste_tours(id) ON DELETE CASCADE, start_date DATE, end_date DATE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
+    buildWasteTourCascadeConstraintStatement({ schema, schemaName, tableName: 'waste_location_tour_links' }),
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_location_tour_pickup_dates (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), location_id UUID NOT NULL REFERENCES ${schema}.waste_collection_locations(id) ON DELETE CASCADE, tour_id UUID NOT NULL REFERENCES ${schema}.waste_tours(id) ON DELETE CASCADE, pickup_date DATE NOT NULL, note TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT waste_location_tour_pickup_dates_location_tour_date_unique UNIQUE (location_id, tour_id, pickup_date));`,
+    buildWasteTourCascadeConstraintStatement({ schema, schemaName, tableName: 'waste_location_tour_pickup_dates' }),
     `ALTER TABLE ${schema}.waste_location_tour_pickup_dates ADD COLUMN IF NOT EXISTS note TEXT;`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_email_reminder_subscriptions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email TEXT NOT NULL, email_hash TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', region_id UUID REFERENCES ${schema}.waste_regions(id) ON DELETE SET NULL, city_id UUID NOT NULL REFERENCES ${schema}.waste_cities(id) ON DELETE RESTRICT, street_id TEXT NOT NULL, house_number_id UUID REFERENCES ${schema}.waste_house_numbers(id) ON DELETE SET NULL, location_label TEXT NOT NULL, consent_version TEXT NOT NULL, consent_accepted_at TIMESTAMPTZ NOT NULL, doi_token_hash TEXT NOT NULL, unsubscribe_token_hash TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL, activated_at TIMESTAMPTZ, unsubscribed_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT waste_email_reminder_subscriptions_status_check CHECK (status IN ('pending', 'active', 'unsubscribed', 'expired')), CONSTRAINT waste_email_reminder_subscriptions_doi_token_hash_unique UNIQUE (doi_token_hash), CONSTRAINT waste_email_reminder_subscriptions_unsubscribe_token_hash_unique UNIQUE (unsubscribe_token_hash));`,
     `CREATE INDEX IF NOT EXISTS idx_waste_email_reminder_subscriptions_email_location_status ON ${schema}.waste_email_reminder_subscriptions (email_hash, city_id, street_id, house_number_id, status);`,
@@ -156,6 +186,7 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `CREATE INDEX IF NOT EXISTS idx_waste_email_reminder_outbox_status_send_at ON ${schema}.waste_email_reminder_outbox (status, send_at);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_email_reminder_outbox_subscription_id ON ${schema}.waste_email_reminder_outbox (subscription_id);`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_tour_date_shifts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), tour_id UUID NOT NULL REFERENCES ${schema}.waste_tours(id) ON DELETE CASCADE, original_date TEXT NOT NULL, actual_date TEXT NOT NULL, has_year BOOLEAN NOT NULL DEFAULT TRUE, reason_type TEXT, reason_key TEXT, follow_up_mode TEXT, description TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
+    buildWasteTourCascadeConstraintStatement({ schema, schemaName, tableName: 'waste_tour_date_shifts' }),
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_global_date_shifts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), original_date TEXT NOT NULL, actual_date TEXT NOT NULL, has_year BOOLEAN NOT NULL DEFAULT TRUE, reason_type TEXT, reason_key TEXT, description TEXT, tour_ids TEXT[], created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_holiday_rules (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), holiday_date DATE NOT NULL, holiday_name TEXT NOT NULL, year INTEGER NOT NULL, state_code TEXT NOT NULL, source_status TEXT NOT NULL CHECK (source_status IN ('confirmed', 'not-confirmed')), configuration_status TEXT NOT NULL CHECK (configuration_status IN ('draft', 'configured')), conflict_status TEXT NOT NULL CHECK (conflict_status IN ('none', 'manual-global-rule')), scope TEXT CHECK (scope IN ('holiday-only', 'full-week')), strategy TEXT CHECK (strategy IN ('advance', 'postpone')), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT waste_holiday_rules_state_date_name_unique UNIQUE (state_code, holiday_date, holiday_name));`,
     `CREATE INDEX IF NOT EXISTS idx_waste_regions_name ON ${schema}.waste_regions(name);`,

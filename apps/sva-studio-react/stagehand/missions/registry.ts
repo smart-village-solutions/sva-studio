@@ -4,15 +4,15 @@ import type { StagehandMissionDefinition } from './definitions.js';
 const STAGEHAND_MISSION_DETAILS = {
   'admin-users-overview': {
     startPath: '/admin/users',
-    goal: 'Open the admin users overview and confirm the list is reachable.',
+    goal: 'Die Admin-Nutzeruebersicht oeffnen und bestaetigen, dass die Liste erreichbar ist.',
   },
   'admin-user-permissions-inspection': {
     startPath: '/admin/users',
-    goal: 'Inspect a user entry and verify permission details can be reached.',
+    goal: 'Einen Nutzereintrag pruefen und bestaetigen, dass die Berechtigungsdetails erreichbar sind.',
   },
   'admin-role-management-navigation': {
     startPath: '/admin/roles',
-    goal: 'Navigate to role management and confirm the roles area loads.',
+    goal: 'Zur Rollenverwaltung navigieren und bestaetigen, dass der Rollenbereich laedt.',
   },
 } as const satisfies Record<StagehandMissionName, Omit<StagehandMissionDefinition, 'name'>>;
 

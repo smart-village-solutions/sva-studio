@@ -177,6 +177,20 @@ const collectServerOnlyLeakFindings = (repoRoot: string): readonly string[] => {
   return findings;
 };
 
+const MAX_VISIBLE_DETAIL_FINDINGS = 10;
+
+const limitVisibleFindings = (findings: readonly string[]): readonly string[] => {
+  if (findings.length <= MAX_VISIBLE_DETAIL_FINDINGS) {
+    return findings;
+  }
+
+  const remainingCount = findings.length - MAX_VISIBLE_DETAIL_FINDINGS;
+  return [
+    ...findings.slice(0, MAX_VISIBLE_DETAIL_FINDINGS),
+    `... ${remainingCount} weitere Befunde gekuerzt. Siehe Evidence fuer die Gesamtanzahl.`,
+  ];
+};
+
 export const buildPluginContractCheck = async (context: GuardrailCheckContext) => {
   const [{ createStudioPluginCatalogReport, getWorkspacePluginModuleCandidates }, studioModuleIamRegistry] = await Promise.all([
     loadPluginCatalogLoaderModule(),
@@ -221,11 +235,11 @@ export const buildArchitectureDriftCheck = async (context: GuardrailCheckContext
   const i18nCheck = runI18nKeyCheck(context.rootDir);
   const shortActionIds = collectShortActionIdFindings(context.rootDir);
   const serverOnlyLeaks = collectServerOnlyLeakFindings(context.rootDir);
-  const details = [
+  const details = limitVisibleFindings([
     ...(!i18nCheck.ok ? i18nCheck.details : []),
     ...shortActionIds.map((entry) => `Kurzform-Action-ID: ${entry}`),
     ...serverOnlyLeaks.map((entry) => `Server-only Leak: ${entry}`),
-  ];
+  ]);
 
   return createGuardrailCheckResult({
     id: 'guardrail-architecture-drift',

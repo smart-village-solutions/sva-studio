@@ -278,7 +278,7 @@ export async function runStagehandAdminCli(
     const reportsRoot = options.reportsRoot ?? DEFAULT_REPORTS_ROOT;
 
     if (config.runMode === 'story-loop') {
-      await assertStagehandReadiness(config.baseUrl, options.fetchImpl);
+      await assertStagehandReadiness(config.baseUrl, options.fetchImpl ?? fetch);
       const loopRun = await runStagehandStoryLoop(config, {
         executeCluster: options.executeCluster,
         generatedAt,

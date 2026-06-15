@@ -10,12 +10,14 @@ const controllerMock = vi.hoisted(() => ({
   error: null,
   lastOutcome: 'create-success' as const,
   overview: null as null | { tours: readonly { id: string; name: string; wasteFractionIds: readonly string[]; active: boolean; createdAt: string; updatedAt: string; description?: string | null; recurrence?: string | null; firstDate?: string | null; endDate?: string | null; customDates?: readonly { date: string; description?: string | null }[] | null }[] },
+  schedulingOverview: null,
   tourForm: { id: 'tour-form-1' },
   setDialogOpen: vi.fn(),
   setDialogMode: vi.fn(),
   resetTourForm: vi.fn(),
   setTourForm: vi.fn(),
   setLastOutcome: vi.fn(),
+  setSelectedTour: vi.fn(),
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
@@ -52,10 +54,12 @@ describe('WasteToursPanel', () => {
     controllerMock.resetTourForm.mockReset();
     controllerMock.setTourForm.mockReset();
     controllerMock.setLastOutcome.mockReset();
+    controllerMock.setSelectedTour.mockReset();
     controllerMock.loading = false;
     controllerMock.error = null;
     controllerMock.lastOutcome = 'create-success';
     controllerMock.overview = null;
+    controllerMock.schedulingOverview = null;
     controllerMock.tourForm = { id: 'tour-form-1' };
   });
 
@@ -82,6 +86,7 @@ describe('WasteToursPanel', () => {
 
     expect(controllerMock.setDialogOpen).toHaveBeenCalledWith(false);
     expect(controllerMock.resetTourForm).toHaveBeenCalled();
+    expect(controllerMock.setSelectedTour).toHaveBeenCalledWith(null);
     expect(controllerMock.setLastOutcome).toHaveBeenCalledWith(null);
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
@@ -128,6 +133,11 @@ describe('WasteToursPanel', () => {
     );
 
     expect(controllerMock.setDialogMode).toHaveBeenCalledWith('edit');
+    expect(controllerMock.setSelectedTour).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'tour-99',
+      })
+    );
     expect(controllerMock.setTourForm).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'tour-99',

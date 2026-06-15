@@ -13,6 +13,7 @@ import {
   type WasteManagementSettingsRecord,
   findSelectedWasteManagementInterfaceRecord,
   readWasteManagementCalendarWebUrl,
+  readWasteManagementEmailReminderConfig,
   readWasteManagementHolidayStateCode,
   readWasteManagementHolidaySyncStatus,
   readWasteManagementLastSuccessfulHolidaySyncAt,
@@ -47,6 +48,7 @@ const mapExternalInterfaceToWasteSettings = (
   }
 
   const isSupabase = record.typeKey === 'supabase';
+  const emailReminderConfig = readWasteManagementEmailReminderConfig(record.publicConfig);
   return {
     instanceId: record.instanceId,
     provider: 'supabase',
@@ -77,6 +79,7 @@ const mapExternalInterfaceToWasteSettings = (
     lastSuccessfulHolidaySyncAt: readWasteManagementLastSuccessfulHolidaySyncAt(record.publicConfig),
     updatedAt: record.updatedAt,
     customRecurrencePresets: [],
+    ...(emailReminderConfig ? { emailReminderConfig } : {}),
   };
 };
 
@@ -163,6 +166,7 @@ export const sanitizeWasteSettings = (
     lastSuccessfulHolidaySyncAt: record.lastSuccessfulHolidaySyncAt,
     updatedAt: record.updatedAt,
     customRecurrencePresets: record.customRecurrencePresets ?? [],
+    ...(record.emailReminderConfig ? { emailReminderConfig: record.emailReminderConfig } : {}),
   };
 };
 

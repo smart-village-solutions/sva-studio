@@ -58,7 +58,7 @@ vi.mock('@sva/studio-ui-react', () => ({
         <button onClick={onConfirm}>{confirmLabel}</button>
       </div>
     ) : null,
-  StudioField: ({ children }: { readonly children: React.ReactNode }) => <label>{children}</label>,
+  Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...props} />,
 }));
 
 describe('WasteToursCustomDatesField', () => {
@@ -70,7 +70,18 @@ describe('WasteToursCustomDatesField', () => {
     const onChange = vi.fn();
 
     const { rerender } = render(
-      <WasteToursCustomDatesField customDates={[]} firstDate="2025-03-01" endDate="" onChange={onChange} />
+      <WasteToursCustomDatesField
+        customDates={[]}
+        dateLocationAssignments={[]}
+        locations={[
+          { id: 'location-1', label: 'Musterhausen / Markt' },
+          { id: 'location-2', label: 'Musterhausen / Rathaus' },
+        ]}
+        firstDate="2025-03-01"
+        endDate=""
+        onChange={onChange}
+        onAssignmentsChange={vi.fn()}
+      />
     );
 
     expect(screen.getByText('tours.customDates.empty')).toBeTruthy();
@@ -91,9 +102,15 @@ describe('WasteToursCustomDatesField', () => {
           { date: '2027-01-01', description: 'Neujahr' },
           { date: '2027-01-05' },
         ]}
+        dateLocationAssignments={[]}
+        locations={[
+          { id: 'location-1', label: 'Musterhausen / Markt' },
+          { id: 'location-2', label: 'Musterhausen / Rathaus' },
+        ]}
         firstDate="2025-03-01"
         endDate="2028-12-31"
         onChange={onChange}
+        onAssignmentsChange={vi.fn()}
       />
     );
 
@@ -105,6 +122,8 @@ describe('WasteToursCustomDatesField', () => {
       { date: '2027-01-01', description: 'Feiertag' },
       { date: '2027-01-05' },
     ]);
+
+    expect(screen.getAllByText('tours.customDates.assignmentSection.summaryEmpty')).toHaveLength(2);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'tours.customDates.actions.removeDate' })[0]!);
     expect(screen.getByText('2027-01-01')).toBeTruthy();
@@ -118,10 +137,13 @@ describe('WasteToursCustomDatesField', () => {
     render(
       <WasteToursCustomDatesField
         customDates={[{ date: '2030-06-10' }]}
+        dateLocationAssignments={[]}
+        locations={[{ id: 'location-1', label: 'Musterhausen / Markt' }]}
         firstDate="2028-01-01"
         endDate="2031-12-31"
         disabled
         onChange={onChange}
+        onAssignmentsChange={vi.fn()}
       />
     );
 
@@ -132,5 +154,186 @@ describe('WasteToursCustomDatesField', () => {
       screen.getByText('tours.customDates.meta.selectedSummary:{"value":1}')
     ).toBeTruthy();
     expect(screen.getByDisplayValue('').hasAttribute('disabled')).toBe(true);
+  });
+
+  it('manages location assignments per date and blocks duplicates for the same date', () => {
+    const onAssignmentsChange = vi.fn();
+
+    const { rerender } = render(
+      <WasteToursCustomDatesField
+        customDates={[{ date: '2027-01-01' }]}
+        dateLocationAssignments={[]}
+        locations={[
+          { id: 'location-1', label: 'Musterhausen / Markt' },
+          { id: 'location-2', label: 'Musterhausen / Rathaus' },
+        ]}
+        firstDate="2027-01-01"
+        endDate=""
+        onChange={vi.fn()}
+        onAssignmentsChange={onAssignmentsChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.editAssignments' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.addAssignment' }));
+    expect(onAssignmentsChange).toHaveBeenCalledWith([
+      {
+        id: expect.any(String),
+        pickupDate: '2027-01-01',
+        locationId: '',
+        note: '',
+      },
+    ]);
+
+    rerender(
+      <WasteToursCustomDatesField
+        customDates={[{ date: '2027-01-01' }]}
+        dateLocationAssignments={[
+          {
+            id: 'assignment-1',
+            pickupDate: '2027-01-01',
+            locationId: '',
+            note: '',
+          },
+        ]}
+        locations={[
+          { id: 'location-1', label: 'Musterhausen / Markt' },
+          { id: 'location-2', label: 'Musterhausen / Rathaus' },
+        ]}
+        firstDate="2027-01-01"
+        endDate=""
+        onChange={vi.fn()}
+        onAssignmentsChange={onAssignmentsChange}
+      />
+    );
+
+    expect(screen.getByText('tours.customDates.assignmentSection.summaryCount:{"value":1}')).toBeTruthy();
+    fireEvent.focus(screen.getByLabelText('tours.customDates.fields.location'));
+    fireEvent.change(screen.getByLabelText('tours.customDates.fields.location'), { target: { value: 'Markt' } });
+    fireEvent.click(screen.getByRole('option', { name: 'Musterhausen / Markt' }));
+    expect(onAssignmentsChange).toHaveBeenCalledWith([
+      {
+        id: 'assignment-1',
+        pickupDate: '2027-01-01',
+        locationId: 'location-1',
+        note: '',
+      },
+    ]);
+
+    rerender(
+      <WasteToursCustomDatesField
+        customDates={[{ date: '2027-01-01' }]}
+        dateLocationAssignments={[
+          {
+            id: 'assignment-1',
+            pickupDate: '2027-01-01',
+            locationId: 'location-1',
+            note: '',
+          },
+        ]}
+        locations={[
+          { id: 'location-1', label: 'Musterhausen / Markt' },
+          { id: 'location-2', label: 'Musterhausen / Rathaus' },
+        ]}
+        firstDate="2027-01-01"
+        endDate=""
+        onChange={vi.fn()}
+        onAssignmentsChange={onAssignmentsChange}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText('tours.customDates.fields.note'), { target: { value: '14:00 bis 15:00 Uhr' } });
+    expect(onAssignmentsChange).toHaveBeenCalledWith([
+      {
+        id: 'assignment-1',
+        pickupDate: '2027-01-01',
+        locationId: 'location-1',
+        note: '14:00 bis 15:00 Uhr',
+      },
+    ]);
+
+    rerender(
+      <WasteToursCustomDatesField
+        customDates={[{ date: '2027-01-01' }]}
+        dateLocationAssignments={[
+          {
+            id: 'assignment-1',
+            pickupDate: '2027-01-01',
+            locationId: 'location-1',
+            note: '14:00 bis 15:00 Uhr',
+          },
+          {
+            id: 'assignment-2',
+            pickupDate: '2027-01-01',
+            locationId: '',
+            note: '',
+          },
+        ]}
+        locations={[
+          { id: 'location-1', label: 'Musterhausen / Markt' },
+          { id: 'location-2', label: 'Musterhausen / Rathaus' },
+        ]}
+        firstDate="2027-01-01"
+        endDate=""
+        onChange={vi.fn()}
+        onAssignmentsChange={onAssignmentsChange}
+      />
+    );
+
+    fireEvent.focus(screen.getAllByLabelText('tours.customDates.fields.location')[0]!);
+    fireEvent.change(screen.getAllByLabelText('tours.customDates.fields.location')[0]!, {
+      target: { value: 'Markt' },
+    });
+    fireEvent.click(screen.getByRole('option', { name: 'Musterhausen / Markt' }));
+    expect(screen.getByText('tours.customDates.messages.duplicateLocation')).toBeTruthy();
+  });
+
+  it('supports empty search feedback, clearing locations, removing assignments, and canceling date deletion', () => {
+    const onAssignmentsChange = vi.fn();
+    const onChange = vi.fn();
+
+    render(
+      <WasteToursCustomDatesField
+        customDates={[{ date: '2027-01-01' }]}
+        dateLocationAssignments={[
+          {
+            id: 'assignment-1',
+            pickupDate: '2027-01-01',
+            locationId: 'location-1',
+            note: '08:00 bis 10:00 Uhr',
+          },
+        ]}
+        locations={[
+          { id: 'location-1', label: 'Musterhausen / Markt' },
+          { id: 'location-2', label: 'Musterhausen / Rathaus' },
+        ]}
+        firstDate="2027-01-01"
+        endDate=""
+        onChange={onChange}
+        onAssignmentsChange={onAssignmentsChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.editAssignments' }));
+    fireEvent.focus(screen.getByLabelText('tours.customDates.fields.location'));
+    fireEvent.change(screen.getByLabelText('tours.customDates.fields.location'), { target: { value: 'Unbekannt' } });
+    expect(screen.getByText('tours.customDates.fields.locationSearchEmpty')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('option', { name: 'tours.customDates.fields.locationPlaceholder' }));
+    expect(onAssignmentsChange).toHaveBeenCalledWith([
+      {
+        id: 'assignment-1',
+        pickupDate: '2027-01-01',
+        locationId: '',
+        note: '08:00 bis 10:00 Uhr',
+      },
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.removeAssignment' }));
+    expect(onAssignmentsChange).toHaveBeenCalledWith([]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.removeDate' }));
+    fireEvent.click(screen.getByRole('button', { name: 'cancel' }));
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

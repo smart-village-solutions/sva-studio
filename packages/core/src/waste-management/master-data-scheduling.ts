@@ -30,6 +30,7 @@ export type WasteLocationTourPickupDateRecord = {
   readonly locationId: string;
   readonly tourId: string;
   readonly pickupDate: string;
+  readonly note: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 };

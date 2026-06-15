@@ -11,6 +11,8 @@ type ParsedHeaderLayout = {
   readonly cityIndex: number;
   readonly streetIndex?: number;
   readonly houseNumbersIndex?: number;
+  readonly pickupDateIndex?: number;
+  readonly noteIndex?: number;
   readonly fractionStartIndex: number;
 };
 
@@ -81,6 +83,24 @@ export const detectWasteImportCsvDelimiter = (headerLine: string): WasteManageme
 };
 
 const isEmptyRow = (cells: readonly string[]): boolean => cells.every((cell) => cell.trim().length === 0);
+const isValidPickupDateValue = (value: string): boolean => {
+  const normalized = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return false;
+  }
+
+  const parsed = new Date(`${normalized}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return false;
+  }
+
+  const [year, month, day] = normalized.split('-').map((entry) => Number(entry));
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() + 1 === month &&
+    parsed.getUTCDate() === day
+  );
+};
 
 const parseHeaderLayout = (
   header: readonly string[],
@@ -122,11 +142,23 @@ const parseHeaderLayout = (
     cursor += 1;
   }
 
+  const pickupDateIndex = (header[cursor] ?? '').trim() === 'Abholdatum' ? cursor : undefined;
+  if (pickupDateIndex !== undefined) {
+    cursor += 1;
+  }
+
+  const noteIndex = (header[cursor] ?? '').trim() === 'Hinweis' ? cursor : undefined;
+  if (noteIndex !== undefined) {
+    cursor += 1;
+  }
+
   return {
     hasRegionColumn,
     cityIndex,
     streetIndex,
     houseNumbersIndex,
+    pickupDateIndex,
+    noteIndex,
     fractionStartIndex: cursor,
   };
 };
@@ -208,6 +240,8 @@ const parseDataRow = (input: {
   const city = cells[headerLayout.cityIndex]?.trim() ?? '';
   const rawStreet = headerLayout.streetIndex === undefined ? '' : (cells[headerLayout.streetIndex]?.trim() ?? '');
   const rawHouseNumbers = headerLayout.houseNumbersIndex === undefined ? '' : (cells[headerLayout.houseNumbersIndex]?.trim() ?? '');
+  const pickupDate = headerLayout.pickupDateIndex === undefined ? '' : (cells[headerLayout.pickupDateIndex]?.trim() ?? '');
+  const note = headerLayout.noteIndex === undefined ? '' : (cells[headerLayout.noteIndex]?.trim() ?? '');
   const rowIssuesBefore = issues.length;
 
   if (!city) {
@@ -215,6 +249,15 @@ const parseDataRow = (input: {
       rowNumber,
       column: 'Ort',
       message: 'Ort ist ein Pflichtfeld.',
+    });
+  }
+
+  if (pickupDate && !isValidPickupDateValue(pickupDate)) {
+    issues.push({
+      rowNumber,
+      column: 'Abholdatum',
+      message: 'Abholdatum muss als ISO-Datum im Format YYYY-MM-DD angegeben werden.',
+      value: pickupDate,
     });
   }
 
@@ -245,6 +288,8 @@ const parseDataRow = (input: {
     city,
     street: rawStreet || wasteLocationTourPickupDateImportDefaults.allStreetsName,
     houseNumbers: rawHouseNumbers || wasteLocationTourPickupDateImportDefaults.allHouseNumbersName,
+    pickupDate: pickupDate || undefined,
+    note: note || undefined,
     tourNamesByFractionName,
   };
 };

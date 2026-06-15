@@ -1,6 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { Pool } from 'pg';
+import type { WasteManagementEmailReminderConfig } from '@sva/core';
+import { createWasteEmailReminderRepository } from '@sva/data-repositories';
+import type { PublicWasteReminderSignupRequest, PublicWasteReminderSignupResponse } from '../lib/public-waste-contract.js';
 
 import {
   readPublicWasteBootstrapStateFromEnvironment,
@@ -11,33 +14,62 @@ import {
   handlePublicWasteCalendarRequest,
   handlePublicWasteIcalRequest,
   handlePublicWastePdfRequest,
+  handlePublicWasteReminderSignupRequest,
   handlePublicWasteSelectionRequest,
 } from '../lib/public-waste-endpoints.server.js';
 import type { WasteCalendarPdfBrandingImage } from '@sva/core/waste-output';
 import { createPublicWasteRepository, type PublicWasteRepository } from '../lib/public-waste-repository.server.js';
+import {
+  createPublicWasteReminderPageHandler,
+  createPublicWasteReminderSignupRateLimitConsumer,
+  createPublicWasteReminderSignupSubmitter,
+} from './public-waste-email-reminders.server.js';
 
 export const PUBLIC_WASTE_RUNTIME_APP_NAME = 'public-waste-calendar-web';
 
 type PublicWasteRuntimeRepository = Pick<
   PublicWasteRepository,
-  'listSelectionOptions' | 'loadCalendarEntries' | 'loadSelectionSummary'
+  'listSelectionOptions' | 'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderSignupOptions'
 >;
 
 type RepositoryHandle = {
   readonly repository: PublicWasteRuntimeRepository;
+  readonly pool: Pool;
+  readonly schemaName: string;
   readonly dispose: () => Promise<void>;
 };
 
 type RepositoryFactory = (config: PublicWasteConfig) => Promise<RepositoryHandle> | RepositoryHandle;
 type PublicWastePdfStaticConfig = { readonly brandingAssetUrl?: string; readonly contactBlock?: string };
-type PublicWasteBrandingImageLoader = (assetUrl: string) => Promise<WasteCalendarPdfBrandingImage | undefined>;
+type PublicWasteBrandingImageLoader = (input: {
+  readonly assetUrl: string;
+  readonly requestUrl: string;
+}) => Promise<WasteCalendarPdfBrandingImage | undefined>;
+type PublicWasteReminderSignupSubmitter = (input: {
+  readonly request: Request;
+  readonly payload: PublicWasteReminderSignupRequest;
+  readonly reminderConfig: WasteManagementEmailReminderConfig;
+  readonly repository: Pick<PublicWasteRepository, 'loadSelectionSummary'>;
+}) => Promise<PublicWasteReminderSignupResponse>;
+type PublicWasteReminderPageHandler = (input: {
+  readonly request: Request;
+  readonly pathname: string;
+  readonly reminderConfig: WasteManagementEmailReminderConfig;
+  readonly unsubscribeTokenSecret: string;
+}) => Promise<Response | null>;
 export type PublicWasteRuntime = {
   readonly bootstrapState: PublicWasteBootstrapState;
   handle: (request: Request) => Promise<Response>;
   dispose: () => Promise<void>;
 };
 
-const publicWasteApiPrefixes = ['/api/public-waste/selection', '/api/public-waste/calendar', '/api/public-waste/pdf', '/api/public-waste/ical'] as const;
+const publicWasteApiPrefixes = [
+  '/api/public-waste/selection',
+  '/api/public-waste/calendar',
+  '/api/public-waste/pdf',
+  '/api/public-waste/ical',
+  '/api/public-waste/reminder-signups',
+] as const;
 
 const staticMimeTypes: Readonly<Record<string, string>> = {
   '.css': 'text/css; charset=utf-8',
@@ -59,6 +91,15 @@ const jsonResponse = (payload: unknown, status = 200): Response =>
     },
   });
 
+const schemaIdentifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+const quoteIdentifier = (value: string): string => {
+  if (!schemaIdentifierPattern.test(value)) {
+    throw new Error(`invalid_waste_schema:${value}`);
+  }
+  return `"${value}"`;
+};
+
 const createRepositoryHandle = async (config: PublicWasteConfig): Promise<RepositoryHandle> => {
   const pool = new Pool({
     connectionString: config.supabase.databaseUrl,
@@ -68,6 +109,8 @@ const createRepositoryHandle = async (config: PublicWasteConfig): Promise<Reposi
   });
 
   return {
+    pool,
+    schemaName: config.supabase.schemaName,
     repository: createPublicWasteRepository({
       schemaName: config.supabase.schemaName,
       execute: async <TRow = Record<string, unknown>>(input: {
@@ -87,6 +130,139 @@ const createRepositoryHandle = async (config: PublicWasteConfig): Promise<Reposi
   };
 };
 
+const createDefaultReminderSignupSubmitter = (input: {
+  readonly repositoryHandle: RepositoryHandle;
+}): PublicWasteReminderSignupSubmitter => {
+  const consumeRateLimit = createPublicWasteReminderSignupRateLimitConsumer();
+  return createPublicWasteReminderSignupSubmitter({
+    consumeRateLimit,
+    persistPendingSignup: async (signup) => {
+      const client = await input.repositoryHandle.pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(`SET LOCAL search_path TO ${quoteIdentifier(input.repositoryHandle.schemaName)}, public`);
+        const repository = createWasteEmailReminderRepository({
+          execute: async <TRow = Record<string, unknown>>(statement: {
+            readonly text: string;
+            readonly values?: readonly unknown[];
+          }) => {
+            const result = await client.query(statement.text, statement.values ? [...statement.values] : undefined);
+            return {
+              rowCount: result.rowCount ?? 0,
+              rows: result.rows as readonly TRow[],
+            };
+          },
+        });
+        await repository.createPendingSignup(signup);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
+    persistPendingSignupWithLimitCheck: async ({ signup, maxSubscriptionsPerEmailAndLocation }) => {
+      const client = await input.repositoryHandle.pool.connect();
+      let transactionFinished = false;
+      try {
+        await client.query('BEGIN');
+        await client.query(`SET LOCAL search_path TO ${quoteIdentifier(input.repositoryHandle.schemaName)}, public`);
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
+          signup.emailHash,
+          JSON.stringify([
+            signup.selection.regionId ?? null,
+            signup.selection.cityId,
+            signup.selection.streetId,
+            signup.selection.houseNumberId ?? null,
+          ]),
+        ]);
+        const repository = createWasteEmailReminderRepository({
+          execute: async <TRow = Record<string, unknown>>(statement: {
+            readonly text: string;
+            readonly values?: readonly unknown[];
+          }) => {
+            const result = await client.query(statement.text, statement.values ? [...statement.values] : undefined);
+            return {
+              rowCount: result.rowCount ?? 0,
+              rows: result.rows as readonly TRow[],
+            };
+          },
+        });
+        const existingCount = await repository.countSubscriptionsForEmailLocation({
+          emailHash: signup.emailHash,
+          selection: signup.selection,
+        });
+        if (existingCount >= maxSubscriptionsPerEmailAndLocation) {
+          await client.query('ROLLBACK');
+          transactionFinished = true;
+          return 'subscription_limit_reached';
+        }
+        await repository.createPendingSignup(signup);
+        await client.query('COMMIT');
+        transactionFinished = true;
+        return 'created';
+      } catch (error) {
+        if (!transactionFinished) {
+          await client.query('ROLLBACK');
+        }
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
+  });
+};
+
+const createReminderRepositoryExecutor = (input: { readonly pool: Pool; readonly schemaName: string }) => ({
+  async executeWithinTransaction<TResult>(
+    callback: (repository: ReturnType<typeof createWasteEmailReminderRepository>) => Promise<TResult>
+  ): Promise<TResult> {
+    const client = await input.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`SET LOCAL search_path TO ${quoteIdentifier(input.schemaName)}, public`);
+      const repository = createWasteEmailReminderRepository({
+        execute: async <TRow = Record<string, unknown>>(statement: {
+          readonly text: string;
+          readonly values?: readonly unknown[];
+        }) => {
+          const result = await client.query(statement.text, statement.values ? [...statement.values] : undefined);
+          return {
+            rowCount: result.rowCount ?? 0,
+            rows: result.rows as readonly TRow[],
+          };
+        },
+      });
+      const result = await callback(repository);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+});
+
+const createDefaultReminderPageHandler = (input: {
+  readonly repositoryHandle: RepositoryHandle;
+}): PublicWasteReminderPageHandler => {
+  const executor = createReminderRepositoryExecutor({
+    pool: input.repositoryHandle.pool,
+    schemaName: input.repositoryHandle.schemaName,
+  });
+  return createPublicWasteReminderPageHandler({
+    activateByDoiTokenHash: async (payload) =>
+      await executor.executeWithinTransaction(async (repository) => await repository.activateByDoiTokenHash(payload)),
+    loadUnsubscribeSubscriptionById: async (payload) =>
+      await executor.executeWithinTransaction(async (repository) => await repository.loadUnsubscribeSubscriptionById(payload)),
+    unsubscribeByTokenHash: async (payload) =>
+      await executor.executeWithinTransaction(async (repository) => await repository.unsubscribeByTokenHash(payload)),
+  });
+};
+
 const isPublicWasteApiPath = (pathname: string): boolean =>
   publicWasteApiPrefixes.some((prefix) => pathname.startsWith(prefix));
 
@@ -102,7 +278,7 @@ const createInvalidConfigResponse = (bootstrapState: PublicWasteBootstrapState):
 const createMethodNotAllowedResponse = (): Response => new Response('Method Not Allowed', {
   status: 405,
   headers: {
-    allow: 'GET, HEAD',
+    allow: 'GET, HEAD, POST',
     'content-type': 'text/plain; charset=utf-8',
   },
 });
@@ -162,6 +338,7 @@ const dispatchPublicWasteApiRequest = async (input: {
   readonly bootstrapState: Extract<PublicWasteBootstrapState, { status: 'ready' }>;
   readonly loadPdfStaticConfig?: (instanceId: string) => Promise<PublicWastePdfStaticConfig>;
   readonly loadBrandingImage?: PublicWasteBrandingImageLoader;
+  readonly submitReminderSignup?: PublicWasteReminderSignupSubmitter;
 }): Promise<Response> => {
   if (input.pathname.startsWith('/api/public-waste/selection')) {
     return handlePublicWasteSelectionRequest({
@@ -174,6 +351,7 @@ const dispatchPublicWasteApiRequest = async (input: {
     return handlePublicWasteCalendarRequest({
       repository: input.repository,
       request: input.request,
+      reminderConfig: input.bootstrapState.config.emailReminderConfig,
     });
   }
 
@@ -184,6 +362,15 @@ const dispatchPublicWasteApiRequest = async (input: {
       loadPdfStaticConfig: async () =>
         await (input.loadPdfStaticConfig?.(input.bootstrapState.config.instanceId) ?? {}),
       loadBrandingImage: input.loadBrandingImage,
+    });
+  }
+
+  if (input.pathname.startsWith('/api/public-waste/reminder-signups')) {
+    return handlePublicWasteReminderSignupRequest({
+      repository: input.repository,
+      request: input.request,
+      reminderConfig: input.bootstrapState.config.emailReminderConfig,
+      submitReminderSignup: input.submitReminderSignup,
     });
   }
 
@@ -199,6 +386,7 @@ export const createPublicWasteRuntime = async (input: {
   readonly createRepository?: RepositoryFactory;
   readonly loadPdfStaticConfig?: (instanceId: string) => Promise<PublicWastePdfStaticConfig>;
   readonly loadBrandingImage?: PublicWasteBrandingImageLoader;
+  readonly submitReminderSignup?: PublicWasteReminderSignupSubmitter;
 }): Promise<PublicWasteRuntime> => {
   const bootstrapState = readPublicWasteBootstrapStateFromEnvironment({
     env: input.env,
@@ -207,6 +395,12 @@ export const createPublicWasteRuntime = async (input: {
     bootstrapState.status === 'ready'
       ? await (input.createRepository ?? createRepositoryHandle)(bootstrapState.config)
       : null;
+  const submitReminderSignup =
+    input.submitReminderSignup ?? (repositoryHandle ? createDefaultReminderSignupSubmitter({ repositoryHandle }) : undefined);
+  const reminderPageHandler =
+    bootstrapState.status === 'ready' && bootstrapState.config.emailReminderConfig && repositoryHandle
+      ? createDefaultReminderPageHandler({ repositoryHandle })
+      : null;
 
   return {
     bootstrapState,
@@ -214,7 +408,8 @@ export const createPublicWasteRuntime = async (input: {
       const url = new URL(request.url);
       const method = request.method.toUpperCase();
 
-      if (method !== 'GET' && method !== 'HEAD') {
+      const allowsPost = url.pathname.startsWith('/api/public-waste/reminder-signups');
+      if (method !== 'GET' && method !== 'HEAD' && !(allowsPost && method === 'POST')) {
         return createMethodNotAllowedResponse();
       }
 
@@ -240,9 +435,23 @@ export const createPublicWasteRuntime = async (input: {
           bootstrapState,
           loadPdfStaticConfig: input.loadPdfStaticConfig,
           loadBrandingImage: input.loadBrandingImage,
+          submitReminderSignup,
         });
 
         return method === 'HEAD' ? toHeadResponse(response) : response;
+      }
+
+      if (bootstrapState.status === 'ready' && bootstrapState.config.emailReminderConfig && reminderPageHandler) {
+        const response = await reminderPageHandler({
+          request,
+          pathname: url.pathname,
+          reminderConfig: bootstrapState.config.emailReminderConfig,
+          unsubscribeTokenSecret:
+            bootstrapState.config.emailReminderSigningSecret ?? bootstrapState.config.supabase.databaseUrl,
+        });
+        if (response) {
+          return method === 'HEAD' ? toHeadResponse(response) : response;
+        }
       }
 
       return serveStaticAsset({

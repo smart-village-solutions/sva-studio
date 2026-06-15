@@ -1,0 +1,221 @@
+import { describe, expect, it, vi } from 'vitest';
+import type { MailTransportConfig } from '@sva/core';
+
+import {
+  createEnvironmentSecretRefResolver,
+  createNodemailerMailDispatcher,
+  type MailDispatchMessage,
+} from './index.js';
+
+describe('mail runtime', () => {
+  it('resolves env-backed secret refs and rejects unsupported schemes', async () => {
+    const resolver = createEnvironmentSecretRefResolver({
+      getEnv: (key) => (key === 'MAIL_PASSWORD' ? 'super-secret' : undefined),
+    });
+
+    await expect(resolver('env://MAIL_PASSWORD')).resolves.toBe('super-secret');
+    await expect(resolver('MAIL_PASSWORD')).rejects.toThrowError('unsupported_secret_ref_scheme:raw');
+    await expect(resolver('vault://mail/password')).rejects.toThrowError('unsupported_secret_ref_scheme:vault');
+    await expect(resolver('env://MISSING')).rejects.toThrowError('secret_ref_unresolved:MISSING');
+  });
+
+  it('dispatches SMTP mail through nodemailer with inline transport password', async () => {
+    const sendMail = vi.fn(async () => ({ messageId: 'message-1' }));
+    const createTransport = vi.fn(() => ({ sendMail }));
+    const dispatch = createNodemailerMailDispatcher({ createTransport });
+    const transport: MailTransportConfig = {
+      transportId: 'mail-1',
+      displayName: 'SMTP',
+      transportType: 'smtp',
+      host: 'smtp.example.org',
+      port: 587,
+      securityMode: 'starttls',
+      authMode: 'basic',
+      username: 'mailer',
+      password: 'smtp-password',
+      enabled: true,
+    };
+    const message: MailDispatchMessage = {
+      from: {
+        email: 'abfall@example.org',
+        displayName: 'Abfallwirtschaft',
+      },
+      to: [{ email: 'person@example.org' }],
+      replyTo: [{ email: 'reply@example.org' }],
+      subject: 'Nicht vergessen',
+      text: 'Die Abholung ist morgen.',
+      html: '<p>Die Abholung ist morgen.</p>',
+    };
+
+    await expect(
+      dispatch({
+        instanceId: 'instance-1',
+        transport,
+        message,
+      })
+    ).resolves.toEqual({ providerMessageId: 'message-1' });
+
+    expect(createTransport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: 'smtp.example.org',
+        port: 587,
+        secure: false,
+        requireTLS: true,
+        auth: {
+          user: 'mailer',
+          pass: 'smtp-password',
+        },
+      })
+    );
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: '"Abfallwirtschaft" <abfall@example.org>',
+        to: 'person@example.org',
+        replyTo: 'reply@example.org',
+        subject: 'Nicht vergessen',
+      })
+    );
+  });
+
+  it('resolves SMTP passwords via secret refs before creating the transport', async () => {
+    const sendMail = vi.fn(async () => ({ messageId: 'message-2' }));
+    const createTransport = vi.fn(() => ({ sendMail }));
+    const dispatch = createNodemailerMailDispatcher({
+      createTransport,
+      resolveSecretRef: vi.fn(async (secretRef) => {
+        expect(secretRef).toBe('env://MAIL_PASSWORD');
+        return 'resolved-password';
+      }),
+    });
+    const transport: MailTransportConfig = {
+      transportId: 'mail-1',
+      displayName: 'SMTP',
+      transportType: 'smtp',
+      host: 'smtp.example.org',
+      port: 587,
+      securityMode: 'starttls',
+      authMode: 'basic',
+      username: 'mailer',
+      password: 'env://MAIL_PASSWORD',
+      enabled: true,
+    };
+    const message: MailDispatchMessage = {
+      from: {
+        email: 'abfall@example.org',
+      },
+      to: [{ email: 'person@example.org' }],
+      subject: 'Nicht vergessen',
+      text: 'Die Abholung ist morgen.',
+    };
+
+    await dispatch({
+      instanceId: 'instance-1',
+      transport,
+      message,
+    });
+
+    expect(createTransport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth: {
+          user: 'mailer',
+          pass: 'resolved-password',
+        },
+      })
+    );
+  });
+
+  it('dispatches SMTP mail without auth credentials and omits empty address lists', async () => {
+    const sendMail = vi.fn(async () => ({}));
+    const createTransport = vi.fn(() => ({ sendMail }));
+    const dispatch = createNodemailerMailDispatcher({ createTransport });
+    const transport: MailTransportConfig = {
+      transportId: 'mail-2',
+      displayName: 'SMTP ohne Auth',
+      transportType: 'smtp',
+      host: 'smtp.example.org',
+      port: 465,
+      securityMode: 'tls',
+      authMode: 'none',
+      enabled: true,
+    };
+
+    await expect(
+      dispatch({
+        instanceId: 'instance-1',
+        transport,
+        message: {
+          from: { email: 'abfall@example.org' },
+          to: [{ email: 'person@example.org', displayName: 'Max Mustermann' }],
+          cc: [],
+          bcc: [],
+          subject: 'Test',
+          text: 'Text',
+        },
+      })
+    ).resolves.toEqual({});
+
+    expect(createTransport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        secure: true,
+        requireTLS: false,
+        ignoreTLS: false,
+      })
+    );
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '"Max Mustermann" <person@example.org>',
+        cc: undefined,
+        bcc: undefined,
+      })
+    );
+  });
+
+  it('fails closed for missing SMTP passwords and unsupported transport types', async () => {
+    const dispatch = createNodemailerMailDispatcher({
+      createTransport: vi.fn(() => ({
+        sendMail: vi.fn(async () => ({ messageId: 'ignored' })),
+      })),
+    });
+    const message: MailDispatchMessage = {
+      from: { email: 'abfall@example.org' },
+      to: [{ email: 'person@example.org' }],
+      subject: 'Nicht vergessen',
+      text: 'Die Abholung ist morgen.',
+    };
+
+    await expect(
+      dispatch({
+        instanceId: 'instance-1',
+        transport: {
+          transportId: 'mail-3',
+          displayName: 'SMTP ohne Passwort',
+          transportType: 'smtp',
+          host: 'smtp.example.org',
+          port: 587,
+          securityMode: 'starttls',
+          authMode: 'basic',
+          username: 'mailer',
+          enabled: true,
+        },
+        message,
+      })
+    ).rejects.toThrowError('mail_transport_password_missing');
+
+    await expect(
+      dispatch({
+        instanceId: 'instance-1',
+        transport: {
+          transportId: 'mail-4',
+          displayName: 'Provider API',
+          transportType: 'provider_api',
+          endpoint: 'https://mail.example/api',
+          mode: 'transactional',
+          securityMode: 'tls',
+          authMode: 'none',
+          enabled: true,
+        },
+        message,
+      })
+    ).rejects.toThrowError('unsupported_mail_transport_type:provider_api');
+  });
+});

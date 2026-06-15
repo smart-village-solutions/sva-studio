@@ -55,8 +55,10 @@ const createController = (
   ({
     setDialogMode: vi.fn(),
     setTourForm: vi.fn(),
+    setSelectedTour: vi.fn(),
     setMessage: vi.fn(),
     setLastOutcome: vi.fn(),
+    schedulingOverview: null,
     ...overrides,
   }) as WasteViewModel;
 

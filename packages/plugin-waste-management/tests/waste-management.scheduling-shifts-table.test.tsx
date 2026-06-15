@@ -141,7 +141,7 @@ describe('WasteSchedulingShiftsTable', () => {
             actualDate: undefined,
             contextLabel: 'Weihnachten',
             sortLabel: 'Weihnachten',
-            canDelete: false,
+            canDelete: true,
             rule: holidayRule,
           },
           {
@@ -202,6 +202,13 @@ describe('WasteSchedulingShiftsTable', () => {
     render(<div>{rowActions(data[0]!)}</div>);
     fireEvent.click(screen.getByRole('button', { name: 'scheduling.holidayRules.editAction' }));
     expect(onEditHolidayRule).toHaveBeenCalledWith(holidayRule);
+    fireEvent.click(screen.getByRole('button', { name: 'scheduling.actions.delete' }));
+    expect(confirmDialogMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        open: true,
+        description: 'scheduling.bulkDeleteDialog.description:1',
+      })
+    );
 
     cleanup();
 
@@ -216,7 +223,7 @@ describe('WasteSchedulingShiftsTable', () => {
     expect(onEditTourShiftDialog).toHaveBeenCalledWith(tourShift);
   });
 
-  it('renders the original date column in explicit German date format', () => {
+  it('renders both date columns in explicit German short date format', () => {
     render(
       <WasteSchedulingShiftsTable
         entries={[
@@ -258,12 +265,16 @@ describe('WasteSchedulingShiftsTable', () => {
     const tableProps = dataTableMock.mock.calls[0]?.[0] as Record<string, unknown>;
     const columns = tableProps.columns as Array<{ id: string; cell: (row: Record<string, unknown>) => React.ReactNode }>;
     const originalDateColumn = columns.find((column) => column.id === 'originalDate');
+    const actualDateColumn = columns.find((column) => column.id === 'actualDate');
     const row = (tableProps.data as Array<Record<string, unknown>>)[0];
 
     expect(originalDateColumn).toBeTruthy();
+    expect(actualDateColumn).toBeTruthy();
     render(<div>{originalDateColumn?.cell(row!)}</div>);
+    render(<div>{actualDateColumn?.cell(row!)}</div>);
 
-    expect(screen.getByText('01.01.2026')).toBeTruthy();
+    expect(screen.getByText('01.01.26')).toBeTruthy();
+    expect(screen.getByText('02.01.26')).toBeTruthy();
   });
 
   it('opens the delete confirmation and forwards the selected row', async () => {
@@ -340,7 +351,7 @@ describe('WasteSchedulingShiftsTable', () => {
             actualDate: undefined,
             contextLabel: 'Weihnachten',
             sortLabel: 'Weihnachten',
-            canDelete: false,
+            canDelete: true,
             rule: {
               id: 'holiday-rule-1',
               holidayDate: '2025-12-25',
@@ -420,7 +431,7 @@ describe('WasteSchedulingShiftsTable', () => {
 
     expect(tableProps.selectionMode).toBe('multiple');
     expect(canSelectRow).toBeTruthy();
-    expect(canSelectRow?.(data[0]!)).toBe(false);
+    expect(canSelectRow?.(data[0]!)).toBe(true);
     expect(canSelectRow?.(data[1]!)).toBe(true);
     expect(canSelectRow?.(data[2]!)).toBe(true);
     expect(bulkActions).toHaveLength(1);
@@ -428,19 +439,20 @@ describe('WasteSchedulingShiftsTable', () => {
 
     await act(async () => {
       await bulkActions?.[0]?.onClick({
-        selectedRows: [data[1]!, data[2]!],
+        selectedRows: [data[0]!, data[1]!, data[2]!],
         clearSelection,
       });
     });
 
     expect(screen.getByText('scheduling.bulkDeleteDialog.title')).toBeTruthy();
-    expect(screen.getByText('scheduling.bulkDeleteDialog.description:2')).toBeTruthy();
+    expect(screen.getByText('scheduling.bulkDeleteDialog.description:3')).toBeTruthy();
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'scheduling.bulkDeleteDialog.confirm' }));
     });
 
     expect(onDeleteSchedulingRows).toHaveBeenCalledWith([
+      expect.objectContaining({ kind: 'holiday', id: 'holiday-rule-1' }),
       expect.objectContaining({ kind: 'global', id: 'global-1' }),
       expect.objectContaining({ kind: 'tour', id: 'tour-shift-1' }),
     ]);

@@ -5,7 +5,7 @@ import { createApiError, parseRequestBody, readPathSegment } from '../../shared/
 import { validateCsrf } from '../../shared/request-security.js';
 import { authorizeWasteManagementAction } from './auth.js';
 import { deriveHolidayRuleConfigurationStatus } from './holiday-sync.js';
-import { runWasteUpdateMutation } from './mutation-helpers.js';
+import { runWasteDeleteMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
@@ -96,6 +96,50 @@ export const wasteManagementHolidayRuleHandlers = {
         await saveWasteHolidayRule(instanceId, mergeHolidayRule(loadedRule, parsed.data));
       },
       loadSaved: () => loadWasteHolidayRuleById(instanceId, ruleId),
+    });
+  },
+  deleteWasteManagementHolidayRuleInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> => {
+    const requestId = getRequestId(deps);
+    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.scheduling.manage', deps, requestId);
+    if (authError) {
+      return authError;
+    }
+
+    const instanceId = requireActorInstanceId(ctx, requestId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+
+    const ruleId = readPathSegment(request, 4)?.trim();
+    if (!ruleId) {
+      return createApiError(400, 'invalid_request', 'holidayRuleId fehlt im Pfad.', requestId);
+    }
+
+    const csrfError = validateCsrf(request, requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    return runWasteDeleteMutation({
+      deps,
+      ctx,
+      instanceId,
+      requestId,
+      resourceId: ruleId,
+      audit: {
+        actionId: 'waste-management.holiday-rule.deleted',
+        resourceType: 'waste_holiday_rule',
+      },
+      messages: {
+        notFound: 'Der Feiertags-Regelentwurf wurde nicht gefunden.',
+        deleteFailed: 'Der Feiertags-Regelentwurf konnte nicht gelöscht werden.',
+      },
+      loadExisting: () => requireDeps(deps.loadWasteHolidayRuleById, 'loadWasteHolidayRuleById')(instanceId, ruleId),
+      remove: () => requireDeps(deps.deleteWasteHolidayRule, 'deleteWasteHolidayRule')(instanceId, ruleId),
     });
   },
 };

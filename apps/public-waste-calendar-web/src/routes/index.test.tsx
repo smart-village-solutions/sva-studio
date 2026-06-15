@@ -57,6 +57,23 @@ const calendarPayload = {
     '/api/public-waste/ical?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&houseNumberId=44444444-4444-4444-8444-444444444444&calendarName=Rathenow%2C+Am+alten+Hafen+12',
 } as const;
 
+const calendarPayloadWithReminderSignup = {
+  ...calendarPayload,
+  reminderSignup: {
+    enabled: true,
+    consentLabel: 'Ich stimme der Verarbeitung meiner Daten zu.',
+    privacyPolicyUrl: 'https://example.invalid/datenschutz',
+    fractions: [
+      {
+        id: 'bio',
+        label: 'Bioabfall',
+        color: '#00AA00',
+        slots: [{ id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+      },
+    ],
+  },
+} as const;
+
 describe('PublicWasteIndexPage', () => {
   const fetchMock = vi.fn<typeof fetch>();
 
@@ -214,5 +231,79 @@ describe('PublicWasteIndexPage', () => {
         return url.includes('/api/public-waste/calendar');
       })
     ).toBe(false);
+  });
+
+  it('renders the public reminder signup when the calendar response provides it', async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+
+      if (
+        url.includes('/api/public-waste/selection') &&
+        url.includes('houseNumberId=44444444-4444-4444-8444-444444444444')
+      ) {
+        return new Response(JSON.stringify(selectionPayloads.complete), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (
+        url.includes('/api/public-waste/selection') &&
+        url.includes('streetId=33333333-3333-4333-8333-333333333333')
+      ) {
+        return new Response(JSON.stringify(selectionPayloads.street), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (
+        url.includes('/api/public-waste/selection') &&
+        url.includes('cityId=22222222-2222-4222-8222-222222222222')
+      ) {
+        return new Response(JSON.stringify(selectionPayloads.city), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (url.includes('/api/public-waste/selection')) {
+        return new Response(JSON.stringify(selectionPayloads.root), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (url.includes('/api/public-waste/calendar')) {
+        return new Response(JSON.stringify(calendarPayloadWithReminderSignup), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+
+    render(<PublicWasteIndexPage />);
+    await act(async () => {});
+
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Ort suchen' }), {
+      target: { value: 'Rat' },
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Rathenow' })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Rathenow' }));
+
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Straße suchen' }), {
+      target: { value: 'Hafen' },
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Am alten Hafen' })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Am alten Hafen' }));
+
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Hausnummer suchen' }), {
+      target: { value: '12' },
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '12' })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: '12' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'E-Mail-Erinnerung einrichten' })).toBeTruthy();
+    });
   });
 });

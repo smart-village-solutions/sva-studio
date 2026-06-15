@@ -193,6 +193,7 @@ const repositoryMocks = vi.hoisted(() => ({
   listWasteGlobalDateShifts: vi.fn(async () => [{ id: 'global-shift-1' }]),
   getWasteFractionById: vi.fn(async (_id: string) => ({ id: 'fraction-1' })),
   upsertWasteFraction: vi.fn(async () => undefined),
+  deleteWasteFraction: vi.fn(async () => undefined),
   getWasteRegionById: vi.fn(async (_id: string) => ({ id: 'region-1' })),
   upsertWasteRegion: vi.fn(async () => undefined),
   getWasteCityById: vi.fn(async (_id: string) => ({ id: 'city-1' })),
@@ -207,10 +208,14 @@ const repositoryMocks = vi.hoisted(() => ({
   getWasteLocationTourLinkById: vi.fn(async (id: string) => ({ id, locationId: 'location-1', tourId: 'tour-1' })),
   upsertWasteLocationTourLink: vi.fn(async () => undefined),
   deleteWasteLocationTourLink: vi.fn(async () => undefined),
+  getWasteLocationTourPickupDateById: vi.fn(async (id: string) => ({ id })),
+  upsertWasteLocationTourPickupDate: vi.fn(async () => undefined),
+  deleteWasteLocationTourPickupDate: vi.fn(async () => undefined),
   getWasteCustomRecurrencePresetById: vi.fn(async (_id: string) => ({ id: 'preset-1' })),
   upsertWasteCustomRecurrencePreset: vi.fn(async () => undefined),
   deleteWasteCustomRecurrencePreset: vi.fn(async () => undefined),
   upsertWasteHolidayRule: vi.fn(async () => undefined),
+  deleteWasteHolidayRule: vi.fn(async () => undefined),
   getWasteTourById: vi.fn(async (_id: string) => ({ id: 'tour-1' })),
   upsertWasteTour: vi.fn(async () => undefined),
   getWasteTourDateShiftById: vi.fn(async (_id: string) => ({ id: 'shift-1' })),
@@ -805,6 +810,131 @@ describe('waste-management server loaders', () => {
         sourceStatus: 'not-confirmed',
       })
     );
+  });
+
+  it('returns partial_success and failed from holiday sync depending on yearly fetch outcomes', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-02-01T12:00:00.000Z'));
+    const originalFetch = globalThis.fetch;
+    repositoryMocks.listWasteHolidayRules.mockResolvedValue([]);
+    repositoryMocks.listWasteGlobalDateShifts.mockResolvedValue([]);
+
+    try {
+      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        const year = Number(new URL(url).searchParams.get('jahr'));
+        if (year === 2027) {
+          return new Response('down', { status: 503 });
+        }
+        return new Response(JSON.stringify({}), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }) as typeof globalThis.fetch;
+
+      await expect(wasteManagementEntitySavers.syncWasteHolidayRules('tenant-a', 'NW')).resolves.toBe(
+        'partial_success'
+      );
+
+      globalThis.fetch = vi.fn(async () => {
+        throw new Error('network_down');
+      }) as typeof globalThis.fetch;
+
+      await expect(wasteManagementEntitySavers.syncWasteHolidayRules('tenant-a', 'NW')).resolves.toBe('failed');
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.useRealTimers();
+    }
+  });
+
+  it('delegates preview and pickup-date or holiday-rule entity helpers through the scoped repository', async () => {
+    repositoryMocks.listWasteHolidayRules.mockResolvedValueOnce([{ id: 'holiday-rule-1' }]);
+
+    const preview = await wasteManagementOverviewLoaders.previewWasteLocationTourPickupDateImport({
+      instanceId: 'tenant-a',
+      sourceFormat: 'text/csv',
+      blobRef: 'data:text/csv;base64,Zm9v',
+      delimiterOverride: ';',
+    });
+    expect(preview).toBeDefined();
+
+    await expect(
+      wasteManagementEntityLoaders.loadWasteLocationTourPickupDateById('tenant-a', 'pickup-date-1')
+    ).resolves.toEqual({ id: 'pickup-date-1' });
+    await expect(wasteManagementEntityLoaders.loadWasteHolidayRuleById('tenant-a', 'holiday-rule-1')).resolves.toEqual({
+      id: 'holiday-rule-1',
+    });
+
+    await wasteManagementEntitySavers.saveWasteLocationTourPickupDate('tenant-a', {
+      id: 'pickup-date-1',
+      locationId: 'location-1',
+      tourId: 'tour-1',
+      pickupDate: '2026-05-12',
+      note: null,
+    });
+    await wasteManagementEntitySavers.deleteWasteLocationTourPickupDate('tenant-a', 'pickup-date-1');
+
+    expect(repositoryMocks.getWasteLocationTourPickupDateById).toHaveBeenCalledWith('pickup-date-1');
+    expect(repositoryMocks.upsertWasteLocationTourPickupDate).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'pickup-date-1' })
+    );
+    expect(repositoryMocks.deleteWasteLocationTourPickupDate).toHaveBeenCalledWith('pickup-date-1');
+  });
+
+  it('delegates remaining waste saver helpers and falls back to a count query on later technical-history pages', async () => {
+    instanceDbQueryMock.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        {
+          id: 'job-unknown',
+          job_type_id: 'waste-management.unknown-job',
+          status: 'failed',
+          finished_at: '2026-05-09T05:00:00.000Z',
+          updated_at: '2026-05-09T05:00:00.000Z',
+          request_id: 'req-unknown',
+          latest_event_message: 'unknown',
+          error_code: 'unknown',
+          error_message: 'Unknown job type',
+        },
+      ],
+    });
+    instanceDbQueryMock.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ total_count: 7 }],
+    });
+
+    await expect(
+      wasteManagementOverviewLoaders.loadWasteHistoryOverview({
+        instanceId: 'tenant-a',
+        page: 2,
+        pageSize: 5,
+      })
+    ).resolves.toMatchObject({
+      technical: {
+        total: 8,
+      },
+    });
+
+    await wasteManagementEntitySavers.deleteWasteFraction('tenant-a', 'fraction-1');
+    await wasteManagementEntitySavers.saveWasteHolidayRule('tenant-a', {
+      id: 'holiday-rule-2',
+      holidayDate: '2026-05-01',
+      holidayName: 'Tag der Arbeit',
+      year: 2026,
+      stateCode: 'NW',
+      sourceStatus: 'confirmed',
+      configurationStatus: 'configured',
+      conflictStatus: 'none',
+      scope: 'holiday-only',
+      strategy: 'advance',
+    });
+    await wasteManagementEntitySavers.deleteWasteHolidayRule('tenant-a', 'holiday-rule-2');
+
+    expect(repositoryMocks.deleteWasteFraction).toHaveBeenCalledWith('fraction-1');
+    expect(repositoryMocks.upsertWasteHolidayRule).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'holiday-rule-2' })
+    );
+    expect(repositoryMocks.deleteWasteHolidayRule).toHaveBeenCalledWith('holiday-rule-2');
   });
 
   it('keeps technical history stable when jobs are unfinished or have unknown mappings', async () => {

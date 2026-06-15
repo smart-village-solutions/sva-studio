@@ -1,10 +1,12 @@
 import * as wasteOutput from '@sva/core';
 import { describe, expect, it, vi } from 'vitest';
 
+import { PublicWasteReminderSignupError } from '../server/public-waste-email-reminders.server.js';
 import {
   handlePublicWasteCalendarRequest,
   handlePublicWasteIcalRequest,
   handlePublicWastePdfRequest,
+  handlePublicWasteReminderSignupRequest,
   handlePublicWasteSelectionRequest,
 } from './public-waste-endpoints.server.js';
 
@@ -43,16 +45,64 @@ describe('public waste endpoints', () => {
           },
         ]),
         loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+        loadReminderSignupOptions: vi.fn().mockResolvedValue([
+          {
+            id: 'bio',
+            label: 'Bioabfall',
+            color: '#008800',
+            slots: [{ id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+          },
+        ]),
       },
       request: new Request(
         'https://example.invalid/public-waste/calendar?regionId=11111111-1111-4111-8111-111111111111&cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&houseNumberId=44444444-4444-4444-8444-444444444444&referenceDate=2026-05-18'
       ),
+      reminderConfig: {
+        enabled: true,
+        publicSignupEnabled: true,
+        transportId: 'mail-1',
+        publicBaseUrl: 'https://example.invalid',
+        doiConfirmPath: '/erinnerungen/bestaetigen',
+        unsubscribePath: '/erinnerungen/abmelden',
+        fromName: 'Abfallwirtschaft',
+        fromEmail: 'abfall@example.invalid',
+        privacyPolicyUrl: 'https://example.invalid/datenschutz',
+        imprintUrl: 'https://example.invalid/impressum',
+        consentLabel: 'Ich stimme der Verarbeitung meiner Daten zu.',
+        consentVersion: 'v1',
+        doiSubjectTemplate: 'Bitte E-Mail-Adresse bestätigen',
+        doiIntroText: 'Bestätigen Sie Ihre Adresse.',
+        doiButtonLabel: 'Jetzt bestätigen',
+        reminderSubjectTemplate: 'Erinnerung',
+        reminderIntroTemplate: 'Nicht vergessen.',
+        unsubscribeLinkLabel: 'Abmelden',
+        unsubscribeSuccessHeadline: 'Abgemeldet',
+        unsubscribeSuccessBody: 'Sie erhalten keine weiteren E-Mails.',
+        maxSubscriptionsPerEmailAndLocation: 3,
+        signupRateLimitPerIpPerHour: 10,
+        signupRateLimitPerEmailPerHour: 3,
+        doiTokenTtlHours: 24,
+        pendingSubscriptionTtlHours: 48,
+        materializationLookaheadDays: 7,
+      },
     });
 
     expect(response.headers.get('content-type')).toContain('application/json');
     await expect(response.json()).resolves.toMatchObject({
       nextPickupDate: '2026-05-19',
       selectionSummary: 'Musterstadt, Hauptstraße 1',
+      reminderSignup: {
+        enabled: true,
+        consentLabel: 'Ich stimme der Verarbeitung meiner Daten zu.',
+        privacyPolicyUrl: 'https://example.invalid/datenschutz',
+        fractions: [
+          {
+            id: 'bio',
+            label: 'Bioabfall',
+            slots: [{ id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+          },
+        ],
+      },
     });
   });
 
@@ -92,7 +142,13 @@ describe('public waste endpoints', () => {
     const pdfText = Buffer.from(await response.arrayBuffer()).toString('latin1');
     expect(pdfText).toContain('Abfallkalender 2026');
     expect(pdfText).toContain('/Subtype /Image');
-    expect(loadBrandingImage).toHaveBeenCalledWith('https://cdn.example/logo.svg');
+    expect(loadBrandingImage).toHaveBeenCalledWith({
+      assetUrl: 'https://cdn.example/logo.svg',
+      requestUrl:
+        'https://example.invalid/public-waste/pdf?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&houseNumberId=44444444-4444-4444-8444-444444444444&year=2026&fractionId=bio',
+    });
+    expect(pdfText).not.toContain('Stand ');
+    expect(pdfText).not.toContain('Alle wirksamen Fraktionen und Verschiebungen sind enthalten.');
   });
 
   it('deduplicates fractions per pickup date before rendering the pdf payload', async () => {
@@ -136,6 +192,7 @@ describe('public waste endpoints', () => {
 
     expect(buildDocumentSpy).toHaveBeenCalledWith(
       expect.objectContaining({
+        notes: [],
         pickups: [
           {
             date: '2026-05-19',
@@ -183,6 +240,7 @@ describe('public waste endpoints', () => {
       repository: {
         loadCalendarEntries,
         loadSelectionSummary,
+        loadReminderSignupOptions: vi.fn().mockResolvedValue([]),
       },
       request: new Request(
         'https://example.invalid/public-waste/calendar?cityId=22222222-2222-4222-8222-222222222222&streetId=all&referenceDate=2026-05-18'
@@ -212,5 +270,156 @@ describe('public waste endpoints', () => {
       error: 'invalid_request',
       message: 'Ungültige Anfrage.',
     });
+  });
+
+  it('persists a pending reminder signup and returns a pending confirmation response', async () => {
+    const submitReminderSignup = vi.fn().mockResolvedValue({
+      status: 'pending',
+      headline: 'Bestätigungslink versendet',
+      message: 'Bitte prüfen Sie Ihr E-Mail-Postfach.',
+    });
+
+    const response = await handlePublicWasteReminderSignupRequest({
+      repository: {
+        loadReminderSignupOptions: vi.fn().mockResolvedValue([
+          {
+            id: 'bio',
+            label: 'Bioabfall',
+            slots: [{ id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+          },
+        ]),
+        loadSelectionSummary: vi.fn().mockResolvedValue('Perleberg, Ackerstr. 12'),
+      },
+      request: new Request('https://example.invalid/api/public-waste/reminder-signups', {
+        method: 'POST',
+        body: JSON.stringify({
+          selection: {
+            cityId: '22222222-2222-4222-8222-222222222222',
+            streetId: '33333333-3333-4333-8333-333333333333',
+          },
+          email: 'person@example.invalid',
+          items: [{ fractionId: 'bio', slotId: 'bio:first' }],
+          consentAccepted: true,
+        }),
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+      reminderConfig: {
+        enabled: true,
+        publicSignupEnabled: true,
+        transportId: 'mail-1',
+        publicBaseUrl: 'https://example.invalid',
+        doiConfirmPath: '/erinnerungen/bestaetigen',
+        unsubscribePath: '/erinnerungen/abmelden',
+        fromName: 'Abfallwirtschaft',
+        fromEmail: 'abfall@example.invalid',
+        privacyPolicyUrl: 'https://example.invalid/datenschutz',
+        imprintUrl: 'https://example.invalid/impressum',
+        consentLabel: 'Ich stimme der Verarbeitung meiner Daten zu.',
+        consentVersion: 'v1',
+        doiSubjectTemplate: 'Bitte E-Mail-Adresse bestätigen',
+        doiIntroText: 'Bestätigen Sie Ihre Adresse.',
+        doiButtonLabel: 'Jetzt bestätigen',
+        reminderSubjectTemplate: 'Erinnerung',
+        reminderIntroTemplate: 'Nicht vergessen.',
+        unsubscribeLinkLabel: 'Abmelden',
+        unsubscribeSuccessHeadline: 'Abgemeldet',
+        unsubscribeSuccessBody: 'Sie erhalten keine weiteren E-Mails.',
+        maxSubscriptionsPerEmailAndLocation: 3,
+        signupRateLimitPerIpPerHour: 10,
+        signupRateLimitPerEmailPerHour: 3,
+        doiTokenTtlHours: 24,
+        pendingSubscriptionTtlHours: 48,
+        materializationLookaheadDays: 7,
+      },
+      submitReminderSignup,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      status: 'pending',
+      headline: 'Bestätigungslink versendet',
+      message: 'Bitte prüfen Sie Ihr E-Mail-Postfach.',
+    });
+    expect(submitReminderSignup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          email: 'person@example.invalid',
+          items: [{ fractionId: 'bio', slotId: 'bio:first' }],
+        }),
+      })
+    );
+  });
+
+  it('returns 429 when the reminder signup is rate limited', async () => {
+    const submitReminderSignup = vi.fn().mockRejectedValue(
+      new PublicWasteReminderSignupError({
+        code: 'rate_limited',
+        message: 'Zu viele Anfragen in kurzer Zeit. Bitte versuchen Sie es später erneut.',
+        status: 429,
+        retryAfterSeconds: 3600,
+      })
+    );
+
+    const response = await handlePublicWasteReminderSignupRequest({
+      repository: {
+        loadReminderSignupOptions: vi.fn().mockResolvedValue([
+          {
+            id: 'bio',
+            label: 'Bioabfall',
+            slots: [{ id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+          },
+        ]),
+        loadSelectionSummary: vi.fn().mockResolvedValue('Perleberg, Ackerstr. 12'),
+      },
+      request: new Request('https://example.invalid/api/public-waste/reminder-signups', {
+        method: 'POST',
+        body: JSON.stringify({
+          selection: {
+            cityId: '22222222-2222-4222-8222-222222222222',
+            streetId: '33333333-3333-4333-8333-333333333333',
+          },
+          email: 'person@example.invalid',
+          items: [{ fractionId: 'bio', slotId: 'bio:first' }],
+          consentAccepted: true,
+        }),
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+      reminderConfig: {
+        enabled: true,
+        publicSignupEnabled: true,
+        transportId: 'mail-1',
+        publicBaseUrl: 'https://example.invalid',
+        doiConfirmPath: '/erinnerungen/bestaetigen',
+        unsubscribePath: '/erinnerungen/abmelden',
+        fromName: 'Abfallwirtschaft',
+        fromEmail: 'abfall@example.invalid',
+        privacyPolicyUrl: 'https://example.invalid/datenschutz',
+        imprintUrl: 'https://example.invalid/impressum',
+        consentLabel: 'Ich stimme der Verarbeitung meiner Daten zu.',
+        consentVersion: 'v1',
+        doiSubjectTemplate: 'Bitte E-Mail-Adresse bestätigen',
+        doiIntroText: 'Bestätigen Sie Ihre Adresse.',
+        doiButtonLabel: 'Jetzt bestätigen',
+        reminderSubjectTemplate: 'Erinnerung',
+        reminderIntroTemplate: 'Nicht vergessen.',
+        unsubscribeLinkLabel: 'Abmelden',
+        unsubscribeSuccessHeadline: 'Abgemeldet',
+        unsubscribeSuccessBody: 'Sie erhalten keine weiteren E-Mails.',
+        maxSubscriptionsPerEmailAndLocation: 3,
+        signupRateLimitPerIpPerHour: 10,
+        signupRateLimitPerEmailPerHour: 3,
+        doiTokenTtlHours: 24,
+        pendingSubscriptionTtlHours: 48,
+        materializationLookaheadDays: 7,
+      },
+      submitReminderSignup,
+    });
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('3600');
   });
 });

@@ -222,9 +222,10 @@ export const buildWasteCalendarPdfDocument = (input: {
   const { entriesByDate, legendFractions } = buildEntriesByDate(input.pickups);
   const holidayMap = buildHolidayMap(input.year);
   const legend = Array.from(legendFractions.values()).sort((left, right) => left.label.localeCompare(right.label, 'de'));
-  const notes = input.notes?.length
-    ? [...input.notes]
-    : [`Stand ${new Date().toISOString().slice(0, 10)}`, 'Alle wirksamen Fraktionen und Verschiebungen sind enthalten.'];
+  const notes =
+    input.notes !== undefined
+      ? [...input.notes]
+      : [`Stand ${new Date().toISOString().slice(0, 10)}`, 'Alle wirksamen Fraktionen und Verschiebungen sind enthalten.'];
   const footerLine =
     input.footerLine ??
     `Abfallkalender ${input.year} · ${input.locationLabel}`;

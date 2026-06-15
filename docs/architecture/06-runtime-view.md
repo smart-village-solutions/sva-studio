@@ -85,6 +85,16 @@ Fehlerpfad:
 5. Ein Klick auf einen Termin öffnet ein Modal mit Datum, Fraktion und Hinweistext; die globalen Export-Aktionen bleiben außerhalb des Modals sichtbar.
 6. Ein Reload mit gültigem Cookie stellt denselben Standort wieder her und zeigt einen expliziten Hinweis auf die automatisch geladene Adresse.
 
+Erweiterter Reminder-Pfad:
+
+1. Im vollständig aufgelösten Standortkontext zeigt die App zusätzlich die Aktion `E-Mail-Erinnerung einrichten`.
+2. Der Browser öffnet ein Formular in derselben App, das nur Fraktionen mit aktivem Kanal `E-Mail` sowie nur deren freigegebene Reminder-Slots anbietet.
+3. Nach Zustimmung zur Datenverarbeitung sendet die Public-Waste-Runtime ein Pending-Abo an die Waste-Persistenz und erzeugt sofort einen DOI-Outbox-Eintrag.
+4. Der Benutzer bestätigt den Link auf einer Unterseite derselben Public-Waste-App; erst danach wird das Abo aktiv.
+5. Die Waste-Operations-Runtime materialisiert anschließend ressourcenschonend Reminder-Einzelaufträge pro Abo, Fraktion, Slot und Abholdatum in die Waste-Outbox.
+6. Ein separater Mail-Dispatch-Adapter oder eine eigenständige Mail-App leased fällige Outbox-Einträge in kleinen Batches und verschickt daraus die eigentlichen E-Mails über die zentrale Schnittstelle `mail_transport`.
+7. Jede Reminder-E-Mail enthält einen Abmeldelink zurück in dieselbe Public-Waste-App; der Link deaktiviert das Abo idempotent.
+
 Erweiterter Exportpfad:
 
 1. Für einen vollständig aufgelösten Standort kann der Browser einen PDF-Export für ein gewähltes Jahr und gewählte Fraktionen anfordern.
@@ -97,6 +107,9 @@ Fehlerpfad:
 - Fehlt die öffentliche Konfiguration, liefert die Bootstrap-Schicht einen deterministischen Fehlerzustand `missing_config`.
 - Ungültige oder unvollständige Konfiguration endet deterministisch in `invalid_config` statt in einer teilweise geladenen Auswahloberfläche.
 - Ungültige oder veraltete Standort-Cookies werden ignoriert; die App fällt ohne Halbzustand auf die erste gültige Auswahlstufe zurück.
+- Fehlt die Reminder-Konfiguration, bleibt der Kalender funktionsfähig; nur CTA, Formular und Reminder-Seiten werden nicht aktiviert.
+- Überschreiten Formularanfragen die konfigurierten IP-/E-Mail-Limits oder das Standortlimit pro Adresse, antwortet die Runtime deterministisch mit fachlichen 4xx-Fehlern ohne technische Leaks.
+- Fehlt der technische Mail-Dispatcher, bleiben die Reminder-Aufträge in der Waste-Outbox; Waste-Konfiguration, DOI und Abmeldung funktionieren davon unabhängig weiter.
 
 ### Account-Self-Service: Datenschutzcockpit, Detail und Kontoregeln
 

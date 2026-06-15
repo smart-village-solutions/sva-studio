@@ -223,4 +223,69 @@ describe('public waste calendar occurrences', () => {
       },
     ]);
   });
+
+  it('applies configured holiday postponements to public calendar entries', () => {
+    const entries = calculatePublicWasteCalendarEntries({
+      referenceDate: '2026-01-01',
+      selection: {
+        cityId: 'c-1',
+        streetId: 's-1',
+      },
+      linkedTours: [
+        {
+          linkId: 'link-1',
+          locationId: 'loc-1',
+          startDate: '2026-01-01',
+          endDate: '2026-12-31',
+          tour: {
+            id: 'tour-rest',
+            name: 'Restmüll',
+            recurrence: 'weekly',
+            firstDate: '2026-01-01',
+            endDate: '2026-01-08',
+            fractions: [{ id: 'rest', label: 'Restmüll', color: '#444444' }],
+          },
+        },
+      ],
+      tourDateShifts: [],
+      globalDateShifts: [],
+      holidayRules: [
+        {
+          id: 'holiday-1',
+          holidayDate: '2026-01-01',
+          holidayName: 'Neujahr',
+          year: 2026,
+          stateCode: 'BB',
+          sourceStatus: 'confirmed',
+          configurationStatus: 'configured',
+          conflictStatus: 'none',
+          scope: 'holiday-only',
+          strategy: 'postpone',
+          createdAt: '2025-01-01T00:00:00.000Z',
+          updatedAt: '2025-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(entries).toEqual([
+      {
+        id: 'tour-rest:2026-01-02:rest',
+        date: '2026-01-02',
+        fractionId: 'rest',
+        fractionLabel: 'Restmüll',
+        fractionColor: '#444444',
+        tourName: 'Restmüll',
+        note: null,
+      },
+      {
+        id: 'tour-rest:2026-01-08:rest',
+        date: '2026-01-08',
+        fractionId: 'rest',
+        fractionLabel: 'Restmüll',
+        fractionColor: '#444444',
+        tourName: 'Restmüll',
+        note: null,
+      },
+    ]);
+  });
 });

@@ -34,6 +34,8 @@ export type WasteLocationTourPickupDateImportRow = {
   readonly city: string;
   readonly street: string;
   readonly houseNumbers: string;
+  readonly pickupDate?: string;
+  readonly note?: string;
   readonly tourNamesByFractionName: Readonly<Record<string, string>>;
 };
 

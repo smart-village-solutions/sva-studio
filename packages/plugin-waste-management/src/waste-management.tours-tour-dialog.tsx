@@ -12,6 +12,7 @@ export const TourDialog = ({
   mode,
   form,
   fractions,
+  locations,
   customRecurrencePresets,
   saving,
   message,
@@ -23,6 +24,7 @@ export const TourDialog = ({
   readonly mode: 'create' | 'edit';
   readonly form: TourFormState;
   readonly fractions: readonly WasteFractionRecord[];
+  readonly locations: readonly { id: string; label: string }[];
   readonly customRecurrencePresets: readonly WasteCustomRecurrencePresetRecord[];
   readonly saving: boolean;
   readonly message: StatusMessage | null;
@@ -44,6 +46,7 @@ export const TourDialog = ({
           <WasteToursTourFields
             form={form}
             fractions={fractions}
+            locations={locations}
             customRecurrencePresets={customRecurrencePresets}
             saving={saving}
             pt={pt}

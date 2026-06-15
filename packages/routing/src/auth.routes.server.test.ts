@@ -147,6 +147,7 @@ const authServerMocks = vi.hoisted(() => {
       deleteFraction: vi.fn(async () => response('deleteWasteManagementFractionHandler')),
       createHouseNumber: vi.fn(async () => response('createWasteManagementHouseNumberHandler')),
       createGlobalDateShift: vi.fn(async () => response('createWasteManagementGlobalDateShiftHandler')),
+      createLocationTourPickupDate: vi.fn(async () => response('createWasteManagementLocationTourPickupDateHandler')),
       createLocationTourLinksBulk: vi.fn(async () => response('createWasteManagementLocationTourLinksBulkHandler')),
       createLocationTourLink: vi.fn(async () => response('createWasteManagementLocationTourLinkHandler')),
       createRegion: vi.fn(async () => response('createWasteManagementRegionHandler')),
@@ -154,7 +155,9 @@ const authServerMocks = vi.hoisted(() => {
       createTour: vi.fn(async () => response('createWasteManagementTourHandler')),
       createTourDateShift: vi.fn(async () => response('createWasteManagementTourDateShiftHandler')),
       deleteGlobalDateShift: vi.fn(async () => response('deleteWasteManagementGlobalDateShiftHandler')),
+      deleteHolidayRule: vi.fn(async () => response('deleteWasteManagementHolidayRuleHandler')),
       deleteLocationTourLink: vi.fn(async () => response('deleteWasteManagementLocationTourLinkHandler')),
+      deleteLocationTourPickupDate: vi.fn(async () => response('deleteWasteManagementLocationTourPickupDateHandler')),
       deleteTourDateShift: vi.fn(async () => response('deleteWasteManagementTourDateShiftHandler')),
       getMasterDataOverview: vi.fn(async () => response('getWasteManagementMasterDataOverviewHandler')),
       getSchedulingOverview: vi.fn(async () => response('getWasteManagementSchedulingOverviewHandler')),
@@ -171,6 +174,7 @@ const authServerMocks = vi.hoisted(() => {
       updateGlobalDateShift: vi.fn(async () => response('updateWasteManagementGlobalDateShiftHandler')),
       updateHouseNumber: vi.fn(async () => response('updateWasteManagementHouseNumberHandler')),
       updateLocationTourLink: vi.fn(async () => response('updateWasteManagementLocationTourLinkHandler')),
+      updateLocationTourPickupDate: vi.fn(async () => response('updateWasteManagementLocationTourPickupDateHandler')),
       updateRegion: vi.fn(async () => response('updateWasteManagementRegionHandler')),
       updateStreet: vi.fn(async () => response('updateWasteManagementStreetHandler')),
       updateTour: vi.fn(async () => response('updateWasteManagementTourHandler')),
@@ -469,6 +473,10 @@ describe('auth.routes.server', () => {
       '/api/v1/waste-management/location-tour-links/$linkId'
     );
     const schedulingHandlers = resolveAuthHandlers('/api/v1/waste-management/scheduling');
+    const locationTourPickupDateHandlers = resolveAuthHandlers('/api/v1/waste-management/location-tour-pickup-dates');
+    const locationTourPickupDateDetailHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/location-tour-pickup-dates/$pickupDateId'
+    );
     const globalDateShiftHandlers = resolveAuthHandlers('/api/v1/waste-management/global-date-shifts');
     const globalDateShiftDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/global-date-shifts/$shiftId');
     const tourDateShiftHandlers = resolveAuthHandlers('/api/v1/waste-management/tour-date-shifts');
@@ -501,10 +509,14 @@ describe('auth.routes.server', () => {
     expect(locationTourLinkDetailHandlers?.DELETE).toBeDefined();
     expect(locationTourLinkDetailHandlers?.PUT).toBeDefined();
     expect(schedulingHandlers?.GET).toBeDefined();
+    expect(locationTourPickupDateHandlers?.POST).toBeDefined();
+    expect(locationTourPickupDateDetailHandlers?.PUT).toBeDefined();
+    expect(locationTourPickupDateDetailHandlers?.DELETE).toBeDefined();
     expect(globalDateShiftHandlers?.POST).toBeDefined();
     expect(globalDateShiftDetailHandlers?.PUT).toBeDefined();
     expect(tourDateShiftHandlers?.POST).toBeDefined();
     expect(tourDateShiftDetailHandlers?.PUT).toBeDefined();
+    expect(holidayRuleDetailHandlers?.DELETE).toBeDefined();
     expect(holidayRuleDetailHandlers?.PUT).toBeDefined();
     expect(toursHandlers?.GET).toBeDefined();
     expect(toursHandlers?.POST).toBeDefined();
@@ -558,6 +570,11 @@ describe('auth.routes.server', () => {
     await locationTourLinkBulkHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/location-tour-links/bulk', { method: 'POST' }),
     });
+    await holidayRuleDetailHandlers.DELETE?.({
+      request: new Request('http://localhost/api/v1/waste-management/holiday-rules/holiday-rule-1', {
+        method: 'DELETE',
+      }),
+    });
     await locationTourLinkDetailHandlers.PUT?.({
       request: new Request('http://localhost/api/v1/waste-management/location-tour-links/link-1', {
         method: 'PUT',
@@ -570,6 +587,19 @@ describe('auth.routes.server', () => {
     });
     await schedulingHandlers.GET?.({
       request: new Request('http://localhost/api/v1/waste-management/scheduling', { method: 'GET' }),
+    });
+    await locationTourPickupDateHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/location-tour-pickup-dates', { method: 'POST' }),
+    });
+    await locationTourPickupDateDetailHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1', {
+        method: 'PUT',
+      }),
+    });
+    await locationTourPickupDateDetailHandlers.DELETE?.({
+      request: new Request('http://localhost/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1', {
+        method: 'DELETE',
+      }),
     });
     await globalDateShiftHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/global-date-shifts', { method: 'POST' }),
@@ -659,8 +689,12 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.deleteLocationTourLink).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateLocationTourLink).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.getSchedulingOverview).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createLocationTourPickupDate).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateLocationTourPickupDate).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.deleteLocationTourPickupDate).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createGlobalDateShift).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateGlobalDateShift).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.deleteHolidayRule).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateHolidayRule).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createTourDateShift).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateTourDateShift).toHaveBeenCalled();

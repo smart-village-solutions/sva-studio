@@ -51,9 +51,11 @@ describe('WasteToursFormContent', () => {
         firstDate: '',
         endDate: '',
         customDates: [],
+        dateLocationAssignments: [],
         active: true,
       },
       fractions: [] as const,
+      locations: [] as const,
       customRecurrencePresets: [] as const,
       saving: false,
       onChange: vi.fn(),
@@ -98,9 +100,11 @@ describe('WasteToursFormContent', () => {
           firstDate: '',
           endDate: '',
           customDates: [],
+          dateLocationAssignments: [],
           active: true,
         }}
         fractions={[]}
+        locations={[]}
         customRecurrencePresets={[]}
         saving={false}
         onChange={vi.fn()}

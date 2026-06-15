@@ -138,6 +138,38 @@ describe('waste management job definitions', () => {
           detailKeys: ['failed-step'],
         },
       },
+      {
+        jobTypeId: 'waste-management.materialize-email-reminders',
+        queue: 'plugin-operations',
+        displayName: 'Waste-E-Mail-Erinnerungen materialisieren',
+        progress: {
+          phaseKeys: ['waste-management.materialize-email-reminders', 'waste-management.completed'],
+          stepKeys: ['load-reminder-state', 'complete-operation'],
+        },
+        result: {
+          summaryKeys: ['durationMs'],
+          detailKeys: ['activeSubscriptionCount', 'createdOutboxCount', 'duplicateOutboxCount', 'skippedPickupCount'],
+        },
+        errors: {
+          detailKeys: ['failed-step'],
+        },
+      },
+      {
+        jobTypeId: 'waste-management.process-email-reminder-outbox',
+        queue: 'plugin-operations',
+        displayName: 'Waste-E-Mail-Erinnerungs-Outbox verarbeiten',
+        progress: {
+          phaseKeys: ['waste-management.process-email-reminder-outbox', 'waste-management.completed'],
+          stepKeys: ['lease-outbox', 'complete-operation'],
+        },
+        result: {
+          summaryKeys: ['durationMs'],
+          detailKeys: ['leasedCount', 'sentCount', 'retryScheduledCount', 'failedCount', 'batchSize'],
+        },
+        errors: {
+          detailKeys: ['failed-step', 'outboxId'],
+        },
+      },
     ]);
   });
 

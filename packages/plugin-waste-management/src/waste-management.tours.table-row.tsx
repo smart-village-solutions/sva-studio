@@ -3,7 +3,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
 import { resolveTourAssignmentItems } from './waste-management.tours.locations.js';
-import { formatTourRecurrence } from './waste-management.tours.presentation.js';
+import { countHolidayShiftedTourOccurrences, formatTourRecurrence } from './waste-management.tours.presentation.js';
 import {
   WasteToursRowActionsCell,
   WasteToursRowDatesCell,
@@ -16,20 +16,16 @@ const resolveTourShiftCount = (tour: WasteTourRecord, schedulingOverview: WasteM
   (schedulingOverview?.tourDateShifts ?? []).filter((shift) => shift.tourId === tour.id).length +
   (schedulingOverview?.globalDateShifts ?? []).filter(
     (shift) => shift.tourIds == null || shift.tourIds.length === 0 || shift.tourIds.includes(tour.id)
-  ).length;
+  ).length +
+  (schedulingOverview ? countHolidayShiftedTourOccurrences(tour, schedulingOverview) : 0);
 
 const WasteToursRowSummaryCell = ({
   name,
-  description,
 }: {
   readonly name: string;
-  readonly description?: string | null;
 }) => (
   <td className="w-[150px] px-3 py-3">
-    <div className="space-y-1">
-      <p className="font-semibold">{name}</p>
-      {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
-    </div>
+    <p className="font-semibold">{name}</p>
   </td>
 );
 
@@ -115,7 +111,7 @@ export const WasteToursTableRow = ({
   return (
     <tr className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20 last:border-b-0">
       <WasteToursRowSelectionCell tour={tour} selected={selected} onToggleSelectedTour={onToggleSelectedTour} />
-      <WasteToursRowSummaryCell name={tour.name} description={tour.description} />
+      <WasteToursRowSummaryCell name={tour.name} />
       <WasteToursRowFractionCell tourId={tour.id} fractionNames={fractionNames} />
       <td className="w-[132px] px-3 py-3 text-sm">{recurrenceLabel}</td>
       <WasteToursRowDatesCell firstDate={tour.firstDate} endDate={tour.endDate} />

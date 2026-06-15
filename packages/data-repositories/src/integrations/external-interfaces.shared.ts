@@ -2,7 +2,6 @@ import type {
   ExternalInterfaceRecord,
   ExternalInterfaceTypeDefinition,
 } from '@sva/core';
-
 export type ExternalInterfaceTypeRow = {
   readonly type_key: string;
   readonly owner_kind: 'host' | 'plugin';
@@ -40,22 +39,36 @@ export type ExternalInterfaceRow = {
   readonly updated_at: string | null;
 };
 
+const coerceTypeKey = (value: string): ExternalInterfaceRecord['typeKey'] => {
+  if (value.trim().length === 0) {
+    throw new Error(`invalid_external_interface_type_key:${value}`);
+  }
+  return value;
+};
+
+const coerceStatusCheckKind = (value: string): ExternalInterfaceRecord['statusCheckKind'] => {
+  if (value.trim().length === 0) {
+    throw new Error(`invalid_external_interface_status_check_kind:${value}`);
+  }
+  return value;
+};
+
 export const mapTypeRow = (row: ExternalInterfaceTypeRow): ExternalInterfaceTypeDefinition => ({
-  typeKey: row.type_key,
+  typeKey: coerceTypeKey(row.type_key),
   ownerKind: row.owner_kind,
   ownerId: row.owner_id,
   displayName: row.display_name,
   category: row.category,
   publicSchema: row.public_schema_json,
   secretSchema: row.secret_schema_json,
-  statusCheckKind: row.status_check_kind,
+  statusCheckKind: coerceStatusCheckKind(row.status_check_kind),
   enabled: row.enabled,
 });
 
 export const mapInterfaceRow = (row: ExternalInterfaceRow): ExternalInterfaceRecord => ({
   id: row.id,
   instanceId: row.instance_id,
-  typeKey: row.type_key,
+  typeKey: coerceTypeKey(row.type_key),
   ownerKind: row.owner_kind,
   ownerId: row.owner_id,
   displayName: row.display_name,
@@ -67,7 +80,7 @@ export const mapInterfaceRow = (row: ExternalInterfaceRow): ExternalInterfaceRec
   authMode: row.auth_mode ?? undefined,
   publicConfig: row.public_config_json,
   secretConfigCiphertext: row.secret_config_ciphertext ?? undefined,
-  statusCheckKind: row.status_check_kind,
+  statusCheckKind: coerceStatusCheckKind(row.status_check_kind),
   visibleStatus: row.visible_status,
   lastCheckedAt: row.last_checked_at ?? undefined,
   lastCheckStatus: row.last_check_status ?? undefined,

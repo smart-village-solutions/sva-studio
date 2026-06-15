@@ -16,7 +16,11 @@ import {
   type InstanceInterfaceType,
 } from '../../lib/instance-interfaces';
 
-export const DEFAULT_AVAILABLE_TYPES: readonly InstanceInterfaceType[] = ['mainserver', 's3'];
+export const DEFAULT_AVAILABLE_TYPES: readonly InstanceInterfaceType[] = [
+  'mainserver',
+  's3',
+  'mailTransport',
+];
 
 export const isInstanceInterfacesResponse = (
   value: unknown,
@@ -58,6 +62,14 @@ export const draftFromEntry = (entry: InstanceInterface): InstanceInterfaceDraft
       name: entry.name,
       enabled: entry.enabled,
       config: { ...entry.config, secretAccessKey: '' },
+    };
+  }
+  if (entry.type === 'mailTransport') {
+    return {
+      type: 'mailTransport',
+      name: entry.name,
+      enabled: entry.enabled,
+      config: { ...entry.config, password: '' },
     };
   }
   return {

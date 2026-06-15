@@ -43,11 +43,11 @@ describe('waste-management tours content helpers', () => {
     );
   });
 
-  it('sorts tours by recurrence and location count in both directions', () => {
+  it('sorts tours by recurrence, first date, and location count in both directions', () => {
     const tours = [
-      createTour({ id: 'tour-1', name: 'Alpha', recurrence: null }),
-      createTour({ id: 'tour-2', name: 'Beta', customRecurrenceName: 'Flex', customRecurrenceIntervalDays: 10 }),
-      createTour({ id: 'tour-3', name: 'Gamma', recurrence: 'weekly' }),
+      createTour({ id: 'tour-1', name: 'Alpha', recurrence: null, firstDate: '2026-02-10' }),
+      createTour({ id: 'tour-2', name: 'Beta', customRecurrenceName: 'Flex', customRecurrenceIntervalDays: 10, firstDate: '2026-01-05' }),
+      createTour({ id: 'tour-3', name: 'Gamma', recurrence: 'weekly', firstDate: '2026-03-01' }),
     ];
     const locationCountByTourId = new Map<string, number>([
       ['tour-1', 4],
@@ -64,6 +64,26 @@ describe('waste-management tours content helpers', () => {
         pt,
       }).map((tour) => tour.id)
     ).toEqual(['tour-1', 'tour-2', 'tour-3']);
+
+    expect(
+      sortWasteTours({
+        tours,
+        sortField: 'dateRange',
+        sortDirection: 'asc',
+        locationCountByTourId,
+        pt,
+      }).map((tour) => tour.id)
+    ).toEqual(['tour-2', 'tour-1', 'tour-3']);
+
+    expect(
+      sortWasteTours({
+        tours,
+        sortField: 'dateRange',
+        sortDirection: 'desc',
+        locationCountByTourId,
+        pt,
+      }).map((tour) => tour.id)
+    ).toEqual(['tour-3', 'tour-1', 'tour-2']);
 
     expect(
       sortWasteTours({

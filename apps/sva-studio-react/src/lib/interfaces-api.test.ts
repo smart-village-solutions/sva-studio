@@ -214,7 +214,7 @@ describe('interfaces app adapter', () => {
 
     await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
       instanceId: 'de-musterhausen',
-      availableTypes: ['mainserver', 's3', 'supabase'],
+      availableTypes: ['mainserver', 's3', 'mailTransport', 'supabase'],
       entries: [
         expect.objectContaining({
           id: 's3-1',
@@ -255,7 +255,7 @@ describe('interfaces app adapter', () => {
 
     await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
       instanceId: 'de-musterhausen',
-      availableTypes: ['mainserver', 's3'],
+      availableTypes: ['mainserver', 's3', 'mailTransport'],
       entries: [],
     });
   });
@@ -283,7 +283,7 @@ describe('interfaces app adapter', () => {
 
     await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
       instanceId: 'de-musterhausen',
-      availableTypes: ['mainserver', 's3'],
+      availableTypes: ['mainserver', 's3', 'mailTransport'],
       entries: [],
     });
   });

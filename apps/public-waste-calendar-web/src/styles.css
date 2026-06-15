@@ -319,6 +319,78 @@ body {
   outline: none;
 }
 
+.reminder-panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgb(220 220 220);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgb(255 255 255) 0%, rgb(249 249 249) 100%);
+}
+
+.reminder-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.reminder-trigger,
+.reminder-submit {
+  justify-content: center;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+}
+
+.reminder-form-shell,
+.reminder-fraction-list,
+.reminder-fraction-card,
+.reminder-field {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.reminder-field input,
+.reminder-field select {
+  min-height: 2.9rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgb(188 188 188);
+  border-radius: 0.85rem;
+  font: inherit;
+}
+
+.reminder-fraction-card {
+  padding: 0.85rem;
+  border: 1px solid rgb(226 226 226);
+  border-radius: 0.9rem;
+  background: rgb(255 255 255);
+}
+
+.reminder-fraction-checkbox,
+.reminder-consent {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.reminder-feedback {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.9rem;
+}
+
+.reminder-feedback-success {
+  border: 1px solid rgb(178 220 190);
+  background: rgb(243 252 246);
+}
+
+.reminder-error {
+  margin: 0;
+  color: rgb(150 26 26);
+}
+
 .filter-list {
   display: flex;
   flex-wrap: wrap;

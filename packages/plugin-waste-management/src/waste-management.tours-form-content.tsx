@@ -11,6 +11,7 @@ type WasteToursFormContentProps = {
   readonly mode: 'create' | 'edit';
   readonly form: TourFormState;
   readonly fractions: readonly WasteFractionRecord[];
+  readonly locations: readonly { id: string; label: string }[];
   readonly customRecurrencePresets: readonly WasteCustomRecurrencePresetRecord[];
   readonly showDuplicationHint?: boolean;
   readonly duplicateFromTourName?: string;
@@ -24,6 +25,7 @@ export const WasteToursFormContent = ({
   mode,
   form,
   fractions,
+  locations,
   customRecurrencePresets,
   showDuplicationHint = false,
   duplicateFromTourName,
@@ -58,6 +60,7 @@ export const WasteToursFormContent = ({
         <WasteToursTourFields
           form={form}
           fractions={fractions}
+          locations={locations}
           customRecurrencePresets={customRecurrencePresets}
           pt={pt}
           onChange={onChange}

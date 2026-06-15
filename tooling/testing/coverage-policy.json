@@ -73,6 +73,12 @@
       "functions": 79,
       "branches": 70
     },
+    "mail-runtime": {
+      "lines": 87,
+      "statements": 82,
+      "functions": 81,
+      "branches": 66
+    },
     "media": {
       "lines": 88,
       "statements": 88,

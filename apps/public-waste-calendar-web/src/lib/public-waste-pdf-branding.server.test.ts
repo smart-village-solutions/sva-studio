@@ -38,7 +38,7 @@ describe('public waste pdf branding image loader', () => {
       )
     );
 
-    const result = await loadPublicWastePdfBrandingImage('https://cdn.example/logo.svg');
+    const result = await loadPublicWastePdfBrandingImage({ assetUrl: 'https://cdn.example/logo.svg' });
 
     expect(result).toMatchObject({
       width: expect.any(Number),
@@ -50,14 +50,14 @@ describe('public waste pdf branding image loader', () => {
   it('returns undefined when the asset cannot be loaded', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })));
 
-    await expect(loadPublicWastePdfBrandingImage('https://cdn.example/missing.svg')).resolves.toBeUndefined();
+    await expect(loadPublicWastePdfBrandingImage({ assetUrl: 'https://cdn.example/missing.svg' })).resolves.toBeUndefined();
   });
 
   it('rejects non-https branding assets before fetching them', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(loadPublicWastePdfBrandingImage('http://cdn.example/logo.svg')).resolves.toBeUndefined();
+    await expect(loadPublicWastePdfBrandingImage({ assetUrl: 'http://cdn.example/logo.svg' })).resolves.toBeUndefined();
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -67,7 +67,7 @@ describe('public waste pdf branding image loader', () => {
     vi.stubGlobal('fetch', fetchMock);
     lookupMock.mockResolvedValue([{ address: '10.0.0.42', family: 4 }]);
 
-    await expect(loadPublicWastePdfBrandingImage('https://assets.internal.example/logo.svg')).resolves.toBeUndefined();
+    await expect(loadPublicWastePdfBrandingImage({ assetUrl: 'https://assets.internal.example/logo.svg' })).resolves.toBeUndefined();
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -83,6 +83,63 @@ describe('public waste pdf branding image loader', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(loadPublicWastePdfBrandingImage('https://cdn.example/logo.svg')).resolves.toBeUndefined();
+    await expect(loadPublicWastePdfBrandingImage({ assetUrl: 'https://cdn.example/logo.svg' })).resolves.toBeUndefined();
+  });
+
+  it('allows same-origin relative branding assets from the public waste instance', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40"><rect width="120" height="40" fill="#0f62fe"/></svg>',
+          {
+            status: 200,
+            headers: {
+              'content-type': 'image/svg+xml',
+            },
+          }
+        )
+      )
+    );
+
+    const result = await loadPublicWastePdfBrandingImage({
+      assetUrl: '/media/logo.svg',
+      requestUrl: 'http://localhost:3002/public-waste/pdf?year=2026&fractionId=bio',
+    });
+
+    expect(result).toMatchObject({
+      width: expect.any(Number),
+      height: expect.any(Number),
+    });
+  });
+
+  it('rejects same-origin relative branding assets for localhost requests in production mode', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubEnv('NODE_ENV', 'production');
+
+    await expect(
+      loadPublicWastePdfBrandingImage({
+        assetUrl: '/media/logo.svg',
+        requestUrl: 'http://localhost:3002/public-waste/pdf?year=2026&fractionId=bio',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects same-origin relative branding assets for non-local origins that resolve privately', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    lookupMock.mockResolvedValue([{ address: '10.0.0.42', family: 4 }]);
+
+    await expect(
+      loadPublicWastePdfBrandingImage({
+        assetUrl: '/media/logo.svg',
+        requestUrl: 'https://assets.internal.example/public-waste/pdf?year=2026&fractionId=bio',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

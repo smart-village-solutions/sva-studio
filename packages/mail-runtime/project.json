@@ -1,0 +1,54 @@
+{
+  "name": "mail-runtime",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/mail-runtime/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "outputs": ["{projectRoot}/dist"],
+      "options": {
+        "command": "rm -rf packages/mail-runtime/dist packages/mail-runtime/tsconfig.lib.tsbuildinfo && tsc -p packages/mail-runtime/tsconfig.lib.json"
+      }
+    },
+    "check:runtime": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "pnpm exec node --import tsx scripts/ci/check-server-package-runtime.ts --package mail-runtime"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": [
+          "packages/mail-runtime/src/**/*.{ts,tsx,js,jsx}",
+          "packages/mail-runtime/tests/**/*.{ts,tsx,js,jsx}"
+        ]
+      }
+    },
+    "test:unit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/mail-runtime",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
+    },
+    "test:types": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "options": {
+        "command": "tsc -p packages/mail-runtime/tsconfig.lib.json --noEmit"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/mail-runtime",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
+    }
+  },
+  "tags": ["scope:server-runtime", "type:lib", "credentials:yes"]
+}

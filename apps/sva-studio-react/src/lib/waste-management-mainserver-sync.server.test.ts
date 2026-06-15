@@ -43,6 +43,7 @@ type WasteSyncClientState = {
     locationId: string;
     tourId: string;
     pickupDate: string;
+    note: string | null;
     createdAt: string;
     updatedAt: string;
   }[];
@@ -365,6 +366,7 @@ describe('waste-management-mainserver-sync.server', () => {
           locationId: 'location-1',
           tourId: 'tour-1',
           pickupDate: '2026-02-03',
+          note: 'Schnee-Ersatztermin',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -405,6 +407,7 @@ describe('waste-management-mainserver-sync.server', () => {
       expect.arrayContaining([
         expect.objectContaining({
           pickupDate: '2026-02-03',
+          note: 'Schnee-Ersatztermin',
           wasteType: 'Restmüll',
           street: 'Hauptstraße',
           city: 'Musterhausen',

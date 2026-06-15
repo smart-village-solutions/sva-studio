@@ -23,8 +23,11 @@ vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
 }));
 
-vi.mock('./service-keycloak.js', () => ({
+vi.mock('./service-keycloak-readers.js', () => ({
   createGetKeycloakStatusHandler: vi.fn(),
+}));
+
+vi.mock('./service-keycloak-secrets.js', () => ({
   loadInstanceWithSecret: state.loadInstanceWithSecret,
 }));
 

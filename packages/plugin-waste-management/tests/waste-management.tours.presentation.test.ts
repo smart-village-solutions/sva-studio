@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  calculateTourOccurrenceEntriesForYear,
   calculateTourOccurrencesForYear,
+  countHolidayShiftedTourOccurrences,
   formatTourDateRange,
   formatTourRecurrence,
 } from '../src/waste-management.tours.presentation.js';
@@ -206,5 +208,85 @@ describe('waste-management.tours.presentation', () => {
         } as never
       )
     ).toEqual(['2026-01-07']);
+  });
+
+  it('applies full-week holiday postponements to affected tour dates in the same week', () => {
+    expect(
+      calculateTourOccurrencesForYear(
+        {
+          id: 'tour-holiday-rule',
+          recurrence: undefined,
+          firstDate: undefined,
+          customDates: [{ date: '2026-01-01' }, { date: '2026-01-02' }],
+        } as never,
+        2026,
+        {
+          tourDateShifts: [],
+          globalDateShifts: [],
+          holidayRules: [
+            {
+              holidayDate: '2025-12-31T23:00:00.000Z',
+              holidayName: 'Neujahrstag',
+              scope: 'full-week',
+              strategy: 'postpone',
+            },
+          ],
+        } as never
+      )
+    ).toEqual(['2026-01-02', '2026-01-03']);
+  });
+
+  it('marks shifted tour occurrences explicitly for calendar rendering', () => {
+    expect(
+      calculateTourOccurrenceEntriesForYear(
+        {
+          id: 'tour-shifted-entries',
+          recurrence: undefined,
+          firstDate: undefined,
+          customDates: [{ date: '2026-01-01' }, { date: '2026-01-08' }],
+        } as never,
+        2026,
+        {
+          tourDateShifts: [],
+          globalDateShifts: [],
+          holidayRules: [
+            {
+              holidayDate: '2025-12-31T23:00:00.000Z',
+              holidayName: 'Neujahrstag',
+              scope: 'full-week',
+              strategy: 'postpone',
+            },
+          ],
+        } as never
+      )
+    ).toEqual([
+      { date: '2026-01-02', shifted: true, originalDate: '2026-01-01' },
+      { date: '2026-01-08', shifted: false, originalDate: null },
+    ]);
+  });
+
+  it('counts holiday-driven shifts for a tour across the affected holiday years', () => {
+    expect(
+      countHolidayShiftedTourOccurrences(
+        {
+          id: 'tour-holiday-count',
+          recurrence: undefined,
+          firstDate: undefined,
+          customDates: [{ date: '2026-01-01' }, { date: '2026-01-02' }, { date: '2027-01-01' }],
+        } as never,
+        {
+          tourDateShifts: [],
+          globalDateShifts: [],
+          holidayRules: [
+            {
+              holidayDate: '2025-12-31T23:00:00.000Z',
+              holidayName: 'Neujahrstag',
+              scope: 'full-week',
+              strategy: 'postpone',
+            },
+          ],
+        } as never
+      )
+    ).toBe(2);
   });
 });

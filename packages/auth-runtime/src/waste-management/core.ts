@@ -5,6 +5,7 @@ import { wasteManagementGlobalDateShiftHandlers } from './core/global-date-shift
 import { wasteManagementHolidayRuleHandlers } from './core/holiday-rules.js';
 import { wasteManagementHouseNumberHandlers } from './core/house-numbers.js';
 import { wasteManagementLocationTourLinkBulkHandlers } from './core/location-tour-links-bulk.js';
+import { wasteManagementLocationTourPickupDateHandlers } from './core/location-tour-pickup-dates.js';
 import { wasteManagementLocationTourLinkHandlers } from './core/location-tour-links.js';
 import { wasteManagementOperationHandlers } from './core/operations.js';
 import { wasteManagementReadHandlers } from './core/read-handlers.js';
@@ -25,6 +26,7 @@ export const wasteManagementCoreHandlers = {
   ...wasteManagementCollectionLocationHandlers,
   ...wasteManagementLocationTourLinkHandlers,
   ...wasteManagementLocationTourLinkBulkHandlers,
+  ...wasteManagementLocationTourPickupDateHandlers,
   ...wasteManagementTourHandlers,
   ...wasteManagementTourDateShiftHandlers,
   ...wasteManagementGlobalDateShiftHandlers,

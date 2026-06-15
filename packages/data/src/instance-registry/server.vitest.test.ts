@@ -29,4 +29,24 @@ describe('instance-registry server boundary', () => {
     expect(loadInstanceAuthClientSecretCiphertext).toBe(loadLeadingInstanceAuthClientSecretCiphertext);
     expect(loadTenantAdminClientSecretCiphertext).toBe(loadLeadingTenantAdminClientSecretCiphertext);
   });
+
+  it('surfaces missing and invalid IAM database urls through the re-exported server helpers', async () => {
+    await expect(
+      loadInstanceByHostname('Tenant-A.Example.Test', {
+        getDatabaseUrl: () => '',
+      })
+    ).rejects.toThrow('IAM database not configured');
+
+    await expect(
+      loadInstanceById('tenant-a', {
+        getDatabaseUrl: () => '',
+      })
+    ).rejects.toThrow('IAM database not configured');
+
+    await expect(
+      loadInstanceByHostname('tenant-a.example.test', {
+        getDatabaseUrl: () => 'not-a-valid-url',
+      })
+    ).rejects.toThrow('iam_database_url_invalid');
+  });
 });

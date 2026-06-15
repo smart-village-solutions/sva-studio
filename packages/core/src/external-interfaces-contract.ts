@@ -1,9 +1,14 @@
-const externalInterfaceTypeKeys = ['sva_mainserver', 's3', 'supabase'] as const;
+const externalInterfaceTypeKeys = ['sva_mainserver', 's3', 'supabase', 'mail_transport'] as const;
 const externalInterfaceOwnerKinds = ['host', 'plugin'] as const;
 const externalInterfaceCategories = ['api', 'object_storage', 'database', 'feed'] as const;
-const externalInterfaceStatusCheckKinds = ['none', 'sva_mainserver', 's3', 'supabase'] as const;
+const externalInterfaceStatusCheckKinds = ['none', 'sva_mainserver', 's3', 'supabase', 'mail_transport'] as const;
 const externalInterfaceVisibleStatuses = ['not_configured', 'unknown', 'ok', 'error', 'disabled'] as const;
 const externalInterfaceCheckStatuses = ['succeeded', 'failed'] as const;
+const mailTransportTypes = ['smtp', 'provider_api'] as const;
+const mailTransportSecurityModes = ['none', 'starttls', 'tls'] as const;
+const mailTransportAuthModes = ['none', 'basic'] as const;
+const mailDispatchAddressKinds = ['to', 'cc', 'bcc', 'reply_to'] as const;
+const mailDispatchMessageKinds = ['transactional'] as const;
 const externalInterfaceRuntimeErrorCodes = [
   'not_configured',
   'default_missing',
@@ -29,8 +34,13 @@ export type ExternalInterfaceOwnerKind = (typeof externalInterfaceOwnerKinds)[nu
 export type ExternalInterfaceCategory = (typeof externalInterfaceCategories)[number];
 export type ExternalInterfaceStatusCheckKind = (typeof externalInterfaceStatusCheckKinds)[number];
 export type ExternalInterfaceVisibleStatus = (typeof externalInterfaceVisibleStatuses)[number];
-type ExternalInterfaceCheckStatus = (typeof externalInterfaceCheckStatuses)[number];
+export type ExternalInterfaceCheckStatus = (typeof externalInterfaceCheckStatuses)[number];
 export type ExternalInterfaceRuntimeErrorCode = (typeof externalInterfaceRuntimeErrorCodes)[number];
+export type MailTransportType = (typeof mailTransportTypes)[number];
+export type MailTransportSecurityMode = (typeof mailTransportSecurityModes)[number];
+export type MailTransportAuthMode = (typeof mailTransportAuthModes)[number];
+export type MailDispatchAddressKind = (typeof mailDispatchAddressKinds)[number];
+export type MailDispatchMessageKind = (typeof mailDispatchMessageKinds)[number];
 
 export type ExternalInterfaceTypeDefinition = Readonly<{
   typeKey: ExternalInterfaceTypeKey | string;
@@ -95,6 +105,64 @@ export type ExternalInterfaceConnectionCheckRecord = Readonly<{
   errorMessage?: string;
 }>;
 
+export type MailTransportHealth = Readonly<{
+  visibleStatus: ExternalInterfaceVisibleStatus;
+  lastCheckedAt?: string;
+  lastCheckStatus?: ExternalInterfaceCheckStatus;
+  lastCheckErrorCode?: ExternalInterfaceRuntimeErrorCode | string;
+  lastCheckErrorMessage?: string;
+}>;
+
+type MailTransportBaseConfig = Readonly<{
+  transportId: string;
+  displayName: string;
+  securityMode: MailTransportSecurityMode;
+  authMode: MailTransportAuthMode;
+  username?: string;
+  password?: string;
+  defaultFromEmail?: string;
+  defaultFromName?: string;
+  defaultReplyToEmail?: string;
+  maxBatchSize?: number;
+  rateLimitPerMinute?: number;
+  enabled: boolean;
+  health?: MailTransportHealth;
+}>;
+
+export type MailTransportSmtpConfig = MailTransportBaseConfig &
+  Readonly<{
+    transportType: 'smtp';
+    host: string;
+    port: number;
+  }>;
+
+export type MailTransportProviderApiConfig = MailTransportBaseConfig &
+  Readonly<{
+    transportType: 'provider_api';
+    endpoint: string;
+    mode: string;
+  }>;
+
+export type MailTransportConfig = MailTransportSmtpConfig | MailTransportProviderApiConfig;
+
+export type MailDispatchAddress = Readonly<{
+  kind: MailDispatchAddressKind;
+  email: string;
+  displayName?: string;
+}>;
+
+export type MailDispatchPayload = Readonly<{
+  orderId: string;
+  transportId: string;
+  messageKind: MailDispatchMessageKind;
+  templateKey: string;
+  locale?: string;
+  addresses: readonly MailDispatchAddress[];
+  templatePayload: Readonly<Record<string, string>>;
+  tags?: readonly string[];
+  metadata?: Readonly<Record<string, string>>;
+}>;
+
 export const externalInterfaceContract = {
   typeKeys: externalInterfaceTypeKeys,
   ownerKinds: externalInterfaceOwnerKinds,
@@ -117,4 +185,23 @@ export const externalInterfaceContract = {
     (externalInterfaceCheckStatuses as readonly string[]).includes(value),
   isRuntimeErrorCode: (value: string): value is ExternalInterfaceRuntimeErrorCode =>
     (externalInterfaceRuntimeErrorCodes as readonly string[]).includes(value),
+} as const;
+
+export const mailTransportContract = {
+  transportTypes: mailTransportTypes,
+  securityModes: mailTransportSecurityModes,
+  authModes: mailTransportAuthModes,
+  isTransportType: (value: string): value is MailTransportType => (mailTransportTypes as readonly string[]).includes(value),
+  isSecurityMode: (value: string): value is MailTransportSecurityMode =>
+    (mailTransportSecurityModes as readonly string[]).includes(value),
+  isAuthMode: (value: string): value is MailTransportAuthMode => (mailTransportAuthModes as readonly string[]).includes(value),
+} as const;
+
+export const mailDispatchContract = {
+  addressKinds: mailDispatchAddressKinds,
+  messageKinds: mailDispatchMessageKinds,
+  isAddressKind: (value: string): value is MailDispatchAddressKind =>
+    (mailDispatchAddressKinds as readonly string[]).includes(value),
+  isMessageKind: (value: string): value is MailDispatchMessageKind =>
+    (mailDispatchMessageKinds as readonly string[]).includes(value),
 } as const;

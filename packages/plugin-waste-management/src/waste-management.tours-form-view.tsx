@@ -24,6 +24,7 @@ export const WasteToursFormView = ({
       mode={search.toursView === 'edit' ? 'edit' : 'create'}
       form={controller.tourForm}
       fractions={controller.availableFractions}
+      locations={controller.locationOptions}
       customRecurrencePresets={controller.customRecurrencePresets}
       showDuplicationHint={search.toursView !== 'edit' && Boolean(search.duplicateFromTourId)}
       duplicateFromTourName={duplicateSourceTour?.name}
@@ -32,6 +33,7 @@ export const WasteToursFormView = ({
       onCancel={() => {
         controller.setDialogOpen(false);
         controller.resetTourForm();
+        controller.setSelectedTour(null);
         controller.setMessage(null);
         void navigate({
           to: '/plugins/waste-management',

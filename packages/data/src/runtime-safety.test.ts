@@ -250,6 +250,9 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(imageVerifyScript, /docker pull "\$\{IMAGE_REF\}"/);
   assert.doesNotMatch(imageVerifyScript, /skipped-local/);
   assert.doesNotMatch(imageVerifyScript, /docker image inspect "\$\{IMAGE_REF\}"/);
+  assert.match(imageVerifyScript, /run_postgres_sql_with_retry\(\)/);
+  assert.match(imageVerifyScript, /for _ in \$\(seq 1 10\); do/);
+  assert.match(imageVerifyScript, /run_postgres_sql_with_retry "sva_studio"/);
 
   assert.match(runtimeVerifyScript, /grep -E -q 'jsxDEV\|jsx-dev-runtime'/);
   assert.match(runtimeVerifyScript, /"\$\{SERVER_INDEX_PATH\}"/);
@@ -259,6 +262,9 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(runtimeVerifyScript, /grep -Fq '\.\/_chunks\/ssr-renderer\.mjs' "\$\{SERVER_INDEX_PATH\}"/);
   assert.match(runtimeVerifyScript, /grep -Fq '\.\/_libs\/_\.mjs' "\$\{SERVER_INDEX_PATH\}"/);
   assert.match(runtimeVerifyScript, /grep -Fq '\.\.\/_ssr\/ssr\.mjs' "\$\{NITRO_SERVICE_ENTRY_PATH\}"/);
+  assert.match(runtimeVerifyScript, /run_postgres_sql_with_retry\(\)/);
+  assert.match(runtimeVerifyScript, /for _ in \$\(seq 1 10\); do/);
+  assert.match(runtimeVerifyScript, /run_postgres_sql_with_retry "sva_studio"/);
   assert.doesNotMatch(runtimeVerifyScript, /grep -R -E 'jsxDEV\|jsx-dev-runtime' "\$\{APP_DIR\}\/\.output\/server"/);
 
   assert.match(
@@ -390,5 +396,21 @@ test('public waste build syncs injected workspace packages before vite resolves 
   assert.match(
     publicWasteProjectJson,
     /"dependsOn": \["\^build"\][\s\S]*"inputs": \[[\s\S]*sync-injected-workspace-packages\.ts[\s\S]*\]/
+  );
+});
+
+test('sva-studio-react vite SSR config resolves mail-runtime from workspace source', () => {
+  const viteConfig = readRepoFile('../apps/sva-studio-react/vite.config.ts');
+
+  assert.match(viteConfig, /'@sva\/mail-runtime': resolveAppPath\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts'\)/);
+  assert.match(viteConfig, /'@sva\/mail-runtime',/);
+});
+
+test('sva-studio-react vitest shared config resolves mail-runtime from workspace source', () => {
+  const vitestSharedConfig = readRepoFile('../apps/sva-studio-react/vitest.shared.ts');
+
+  assert.match(
+    vitestSharedConfig,
+    /'@sva\/mail-runtime': fileURLToPath\(new URL\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts', import\.meta\.url\)\)/
   );
 });

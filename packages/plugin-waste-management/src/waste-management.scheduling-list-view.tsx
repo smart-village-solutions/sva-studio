@@ -13,8 +13,9 @@ export const WasteSchedulingListView = ({
   readonly search: WasteManagementSearchParams;
 }) => {
   const navigation = useWasteSchedulingListNavigation(controller, search);
+  const hasSchadstoffmobilSection = controller.schadstoffmobilTour !== null;
 
-  if (!controller.allSchedulingEntries.length) {
+  if (!controller.allSchedulingEntries.length && !hasSchadstoffmobilSection) {
     return (
       <WasteSchedulingEmptyState
         onOpenCreateShiftDialog={navigation.openCreate}
@@ -26,11 +27,16 @@ export const WasteSchedulingListView = ({
     <WasteSchedulingContent
       message={controller.message}
       schedulingEntries={controller.schedulingEntries}
+      schadstoffmobilTour={controller.schadstoffmobilTour}
+      schadstoffmobilAssignments={controller.schadstoffmobilAssignments}
+      schadstoffmobilLocationOptions={controller.schadstoffmobilLocationOptions}
       onOpenCreateShiftDialog={navigation.openCreate}
       onEditHolidayRule={navigation.openEditHoliday}
       onEditGlobalShiftDialog={navigation.openEditGlobal}
       onEditTourShiftDialog={navigation.openEditTour}
       onDeleteSchedulingRows={controller.onDeleteSchedulingRows}
+      onSaveLocationTourPickupDate={controller.onSaveLocationTourPickupDate}
+      onDeleteLocationTourPickupDate={controller.onDeleteLocationTourPickupDate}
       saving={controller.saving}
       page={search.page}
       pageSize={search.pageSize}

@@ -21,7 +21,7 @@ import { ADMIN_ROLES, PLATFORM_RATE_LIMIT_INSTANCE_ID } from './constants.js';
 import { asApiItem, createApiError } from './api-helpers.js';
 import { validateCsrf } from './csrf.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
-import { runPlatformKeycloakUserSync } from './platform-iam.js';
+import { runPlatformKeycloakUserSync } from './platform-iam-sync.js';
 import { consumeRateLimit } from './rate-limit.js';
 import type { ActorInfo } from './types.js';
 import {

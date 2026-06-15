@@ -4,6 +4,7 @@ import type {
   WasteDateShiftReasonType,
   WasteHolidayRuleScope,
   WasteHolidayRuleStrategy,
+  WasteManagementEmailReminderConfig,
   WasteHolidayStateCode,
   WasteLocationTourPickupDateImportPreview,
   WasteManagementCsvDelimiter,
@@ -21,6 +22,7 @@ export type WasteManagementSettingsInput = Readonly<{
   calendarWebUrl?: string;
   pdfBrandingAssetUrl?: string;
   pdfContactBlock?: string;
+  emailReminderConfig?: WasteManagementEmailReminderConfig;
   holidayStateCode?: WasteHolidayStateCode;
   databaseUrl?: string;
   serviceRoleKey?: string;
@@ -94,6 +96,21 @@ export type CreateWasteManagementGlobalDateShiftInput = Readonly<{
   reasonKey?: string;
   description?: string;
   tourIds?: readonly string[];
+}>;
+
+export type CreateWasteManagementLocationTourPickupDateInput = Readonly<{
+  id: string;
+  locationId: string;
+  tourId: string;
+  pickupDate: string;
+  note?: string;
+}>;
+
+export type UpdateWasteManagementLocationTourPickupDateInput = Readonly<{
+  locationId: string;
+  tourId: string;
+  pickupDate: string;
+  note?: string;
 }>;
 
 export type UpdateWasteManagementGlobalDateShiftInput = Readonly<{

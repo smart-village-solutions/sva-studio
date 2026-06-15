@@ -1,6 +1,8 @@
 import type {
+  WasteCustomTourDate,
   WasteCustomRecurrencePresetRecord,
   WasteFractionRecord,
+  WasteLocationTourPickupDateRecord,
   WasteLocationTourLinkRecord,
   WasteTourRecord,
 } from '@sva/plugin-sdk';
@@ -13,7 +15,11 @@ import type {
 } from './waste-management.api.js';
 import { compactOptionalString } from './waste-management.page.support.js';
 import type { WasteManagementSearchParams } from './search-params.js';
-import type { LocationTourLinkFormState, TourFormState } from './waste-management.tours.types.js';
+import type {
+  LocationTourLinkFormState,
+  TourDateLocationAssignmentFormState,
+  TourFormState,
+} from './waste-management.tours.types.js';
 
 const createId = () => crypto.randomUUID();
 
@@ -35,6 +41,7 @@ export const createDefaultTourForm = (): TourFormState => ({
   firstDate: '',
   endDate: '',
   customDates: [],
+  dateLocationAssignments: [],
   active: true,
 });
 
@@ -56,8 +63,84 @@ export const mapTourToForm = (tour: WasteTourRecord): TourFormState => ({
   firstDate: tour.firstDate ?? '',
   endDate: tour.endDate ?? '',
   customDates: [...(tour.customDates ?? [])].sort((left, right) => left.date.localeCompare(right.date)),
+  dateLocationAssignments: [],
   active: tour.active,
 });
+
+export const mapTourWithPickupDatesToForm = (
+  tour: WasteTourRecord,
+  pickupDates: readonly WasteLocationTourPickupDateRecord[]
+): TourFormState => ({
+  ...mapTourToForm(tour),
+  dateLocationAssignments: mapPickupDatesToTourDateLocationAssignments(pickupDates, tour.id),
+});
+
+const normalizeAssignmentNote = (value: string): string => compactOptionalString(value) ?? '';
+
+export const createTourDateLocationAssignmentKey = ({
+  pickupDate,
+  locationId,
+}: Pick<TourDateLocationAssignmentFormState, 'pickupDate' | 'locationId'>) => `${pickupDate.trim()}::${locationId.trim()}`;
+
+export const sortTourDateLocationAssignments = (
+  assignments: readonly TourDateLocationAssignmentFormState[]
+): readonly TourDateLocationAssignmentFormState[] =>
+  [...assignments].sort((left, right) => {
+    const dateComparison = left.pickupDate.localeCompare(right.pickupDate);
+    if (dateComparison !== 0) {
+      return dateComparison;
+    }
+    return left.locationId.localeCompare(right.locationId);
+  });
+
+export const removeAssignmentsForDeletedDates = (
+  assignments: readonly TourDateLocationAssignmentFormState[],
+  customDates: readonly WasteCustomTourDate[]
+): readonly TourDateLocationAssignmentFormState[] => {
+  const validDates = new Set(customDates.map((entry) => entry.date));
+  return assignments.filter((assignment) => validDates.has(assignment.pickupDate));
+};
+
+export const mapPickupDatesToTourDateLocationAssignments = (
+  pickupDates: readonly WasteLocationTourPickupDateRecord[],
+  tourId: string
+): readonly TourDateLocationAssignmentFormState[] =>
+  sortTourDateLocationAssignments(
+    pickupDates
+      .filter((entry) => entry.tourId === tourId)
+      .map((entry) => ({
+        id: entry.id,
+        pickupDate: entry.pickupDate,
+        locationId: entry.locationId,
+        note: entry.note ?? '',
+      }))
+  );
+
+export const normalizeTourDateLocationAssignments = (
+  assignments: readonly TourDateLocationAssignmentFormState[]
+): readonly TourDateLocationAssignmentFormState[] => {
+  const byKey = new Map<string, TourDateLocationAssignmentFormState>();
+
+  for (const assignment of assignments) {
+    const pickupDate = assignment.pickupDate.trim();
+    const locationId = assignment.locationId.trim();
+
+    if (pickupDate.length === 0 || locationId.length === 0) {
+      continue;
+    }
+
+    const nextAssignment = {
+      ...assignment,
+      pickupDate,
+      locationId,
+      note: normalizeAssignmentNote(assignment.note),
+    };
+
+    byKey.set(createTourDateLocationAssignmentKey(nextAssignment), nextAssignment);
+  }
+
+  return sortTourDateLocationAssignments([...byKey.values()]);
+};
 
 export const toCreateLocationTourLinkInput = (form: LocationTourLinkFormState): CreateWasteManagementLocationTourLinkInput => ({
   id: form.id,
@@ -91,7 +174,7 @@ const customDatesRecurrences = new Set<NonNullable<WasteTourRecord['recurrence']
 const isRecurringTourRecurrence = (
   recurrence: TourFormState['recurrence']
 ): recurrence is NonNullable<WasteTourRecord['recurrence']> => recurringTourRecurrences.has(recurrence as NonNullable<WasteTourRecord['recurrence']>);
-const isCustomDatesRecurrence = (
+export const isCustomDatesRecurrence = (
   recurrence: TourFormState['recurrence']
 ): recurrence is NonNullable<WasteTourRecord['recurrence']> => customDatesRecurrences.has(recurrence as NonNullable<WasteTourRecord['recurrence']>);
 

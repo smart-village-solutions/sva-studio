@@ -39,27 +39,69 @@ const isPrivateIpAddress = (address: string): boolean => {
   return isIP(normalized) === 4 ? isPrivateIpv4Address(normalized) : isPrivateIpv6Address(normalized);
 };
 
-const resolveSafeBrandingAssetUrl = async (assetUrl: string): Promise<URL | null> => {
-  const url = new URL(assetUrl);
-  if (url.protocol !== 'https:') {
-    return null;
-  }
+const isExplicitDevOriginHost = (hostname: string): boolean => {
+  const normalized = hostname.trim().toLowerCase();
+  return normalized === 'localhost' || normalized.endsWith('.localhost') || normalized === '127.0.0.1' || normalized === '::1';
+};
 
-  const hostname = url.hostname.trim().toLowerCase();
-  if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
-    return null;
-  }
+const parseBrandingUrls = (input: {
+  readonly assetUrl: string;
+  readonly requestUrl?: string;
+}) => {
+  const requestUrl = input.requestUrl ? new URL(input.requestUrl) : null;
+  const assetUrl = requestUrl ? new URL(input.assetUrl, requestUrl) : new URL(input.assetUrl);
+
+  return {
+    assetUrl,
+    requestUrl,
+    sameOriginDevRequest: Boolean(
+      requestUrl &&
+      process.env.NODE_ENV !== 'production' &&
+      assetUrl.origin === requestUrl.origin &&
+      isExplicitDevOriginHost(requestUrl.hostname)
+    ),
+  };
+};
+
+const allowsBrandingProtocol = (assetUrl: URL, sameOriginDevRequest: boolean): boolean =>
+  sameOriginDevRequest || assetUrl.protocol === 'https:';
+
+const allowsBrandingHostname = (assetUrl: URL, sameOriginDevRequest: boolean): boolean => {
+  const hostname = assetUrl.hostname.trim().toLowerCase();
+  return sameOriginDevRequest || (hostname !== 'localhost' && !hostname.endsWith('.localhost'));
+};
+
+const resolvePublicBrandingHostname = async (assetUrl: URL): Promise<boolean> => {
+  const hostname = assetUrl.hostname.trim().toLowerCase();
 
   if (isIP(hostname) !== 0) {
-    return isPrivateIpAddress(hostname) ? null : url;
+    return !isPrivateIpAddress(hostname);
   }
 
   const resolvedAddresses = await lookup(hostname, { all: true, verbatim: true }).catch(() => []);
-  if (resolvedAddresses.length === 0 || resolvedAddresses.some((entry) => isPrivateIpAddress(entry.address))) {
+  return resolvedAddresses.length > 0 && resolvedAddresses.every((entry) => !isPrivateIpAddress(entry.address));
+};
+
+const resolveSafeBrandingAssetUrl = async (input: {
+  readonly assetUrl: string;
+  readonly requestUrl?: string;
+}): Promise<URL | null> => {
+  const { assetUrl, sameOriginDevRequest } = parseBrandingUrls(input);
+
+  if (!allowsBrandingProtocol(assetUrl, sameOriginDevRequest)) {
+    return null;
+  }
+  if (!allowsBrandingHostname(assetUrl, sameOriginDevRequest)) {
+    return null;
+  }
+  if (sameOriginDevRequest) {
+    return assetUrl;
+  }
+  if (!(await resolvePublicBrandingHostname(assetUrl))) {
     return null;
   }
 
-  return url;
+  return assetUrl;
 };
 
 const readBrandingAssetBuffer = async (response: Response): Promise<Buffer | null> => {
@@ -92,9 +134,12 @@ const readBrandingAssetBuffer = async (response: Response): Promise<Buffer | nul
 };
 
 export const loadPublicWastePdfBrandingImage = async (
-  assetUrl: string
+  input: {
+    readonly assetUrl: string;
+    readonly requestUrl?: string;
+  }
 ): Promise<WasteCalendarPdfBrandingImage | undefined> => {
-  const safeAssetUrl = await resolveSafeBrandingAssetUrl(assetUrl).catch(() => null);
+  const safeAssetUrl = await resolveSafeBrandingAssetUrl(input).catch(() => null);
   if (!safeAssetUrl) {
     return undefined;
   }

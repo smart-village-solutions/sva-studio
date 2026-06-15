@@ -1,5 +1,9 @@
+import type { WasteHolidayRuleRecord } from '@sva/core';
+
 import type {
   PublicWasteCalendarEntry,
+  PublicWasteReminderFractionOption,
+  PublicWasteReminderFractionSlotOption,
   PublicWasteResolvedSelection,
   PublicWasteSelectableEntry,
   PublicWasteSelectionState,
@@ -71,6 +75,42 @@ type ImportedPickupDateRow = {
   readonly fraction_label: string | null;
   readonly fraction_pdf_short_label: string | null;
   readonly fraction_color: string | null;
+  readonly note: string | null;
+};
+
+type HolidayRuleRow = {
+  readonly id: string;
+  readonly holiday_date: string;
+  readonly holiday_name: string;
+  readonly holiday_year: number;
+  readonly state_code: WasteHolidayRuleRecord['stateCode'];
+  readonly source_status: WasteHolidayRuleRecord['sourceStatus'];
+  readonly configuration_status: WasteHolidayRuleRecord['configurationStatus'];
+  readonly conflict_status: WasteHolidayRuleRecord['conflictStatus'];
+  readonly scope: WasteHolidayRuleRecord['scope'] | null;
+  readonly strategy: WasteHolidayRuleRecord['strategy'] | null;
+  readonly created_at: string;
+  readonly updated_at: string;
+};
+
+type ReminderFractionRow = {
+  readonly fraction_id: string;
+  readonly fraction_label: string;
+  readonly fraction_color: string | null;
+  readonly reminder_config: unknown;
+};
+
+type PersistedReminderSlot = {
+  readonly id?: unknown;
+  readonly maxLeadDays?: unknown;
+  readonly defaultLeadDays?: unknown;
+  readonly max_lead_days?: unknown;
+  readonly default_lead_days?: unknown;
+};
+
+type PersistedReminderConfig = {
+  readonly channels?: unknown;
+  readonly email?: unknown;
 };
 
 export type PublicWasteRepository = ReturnType<typeof createPublicWasteRepository>;
@@ -132,6 +172,78 @@ const compareCalendarEntries = (left: PublicWasteCalendarEntry, right: PublicWas
 const normalizeShiftDescription = (value: string | null): string | null => {
   const normalized = value?.trim();
   return normalized ? normalized : null;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const normalizeReminderSlot = (value: unknown): PublicWasteReminderFractionSlotOption | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const candidate = value as PersistedReminderSlot;
+  const maxLeadDays =
+    typeof candidate.maxLeadDays === 'number'
+      ? candidate.maxLeadDays
+      : typeof candidate.max_lead_days === 'number'
+        ? candidate.max_lead_days
+        : null;
+  const defaultLeadDays =
+    typeof candidate.defaultLeadDays === 'number'
+      ? candidate.defaultLeadDays
+      : typeof candidate.default_lead_days === 'number'
+        ? candidate.default_lead_days
+        : null;
+
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof maxLeadDays !== 'number' ||
+    typeof defaultLeadDays !== 'number' ||
+    !Number.isInteger(maxLeadDays) ||
+    !Number.isInteger(defaultLeadDays) ||
+    maxLeadDays < 1 ||
+    defaultLeadDays < 1
+  ) {
+    return null;
+  }
+
+  return {
+    id: candidate.id,
+    maxLeadDays,
+    defaultLeadDays,
+  };
+};
+
+const normalizeReminderSignupFraction = (row: ReminderFractionRow): PublicWasteReminderFractionOption | null => {
+  if (!isRecord(row.reminder_config)) {
+    return null;
+  }
+
+  const config = row.reminder_config as PersistedReminderConfig;
+  const channels = isRecord(config.channels) ? config.channels : null;
+  if (!channels || channels.email !== true) {
+    return null;
+  }
+
+  const emailConfig = isRecord(config.email) ? config.email : null;
+  if (!emailConfig || !Array.isArray(emailConfig.slots)) {
+    return null;
+  }
+
+  const slots = emailConfig.slots
+    .map(normalizeReminderSlot)
+    .filter((slot): slot is PublicWasteReminderFractionSlotOption => slot !== null);
+  if (slots.length === 0) {
+    return null;
+  }
+
+  return {
+    id: row.fraction_id,
+    label: row.fraction_label,
+    ...(row.fraction_color ? { color: row.fraction_color } : {}),
+    slots,
+  };
 };
 
 export const createPublicWasteRepository = (input: {
@@ -299,7 +411,10 @@ export const createPublicWasteRepository = (input: {
       });
       const tourIds = Array.from(new Set(linkedToursResult.rows.map((row) => row.tour_id)));
 
-      const [tourDateShiftsResult, globalDateShiftsResult, importedPickupDatesResult] = await Promise.all([
+      const windowStart = normalizeDateOnly(query.referenceDate);
+      const windowEnd = windowStart ? addYearsUtc(windowStart, 1) : null;
+
+      const [tourDateShiftsResult, globalDateShiftsResult, importedPickupDatesResult, holidayRulesResult] = await Promise.all([
         tourIds.length === 0
           ? Promise.resolve({ rowCount: 0, rows: [] as readonly TourDateShiftRow[] })
           : input.execute<TourDateShiftRow>({
@@ -339,7 +454,8 @@ export const createPublicWasteRepository = (input: {
               f.id AS fraction_id,
               f.name AS fraction_label,
               f.pdf_short_label AS fraction_pdf_short_label,
-              f.color AS fraction_color
+              f.color AS fraction_color,
+              p.note AS note
             FROM ${schemaName}.waste_collection_locations cl
             INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
             INNER JOIN ${schemaName}.waste_location_tour_pickup_dates p
@@ -364,6 +480,32 @@ export const createPublicWasteRepository = (input: {
             query.selection.houseNumberId ?? null,
           ],
         }),
+        !windowStart || !windowEnd
+          ? Promise.resolve({ rowCount: 0, rows: [] as readonly HolidayRuleRow[] })
+          : input.execute<HolidayRuleRow>({
+              text: `
+                SELECT
+                  id::text,
+                  holiday_date::text,
+                  holiday_name,
+                  year AS holiday_year,
+                  state_code,
+                  source_status,
+                  configuration_status,
+                  conflict_status,
+                  scope,
+                  strategy,
+                  created_at::text,
+                  updated_at::text
+                FROM ${schemaName}.waste_holiday_rules
+                WHERE holiday_date >= $1::date - INTERVAL '7 day'
+                  AND holiday_date <= $2::date
+                  AND scope IS NOT NULL
+                  AND strategy IS NOT NULL
+                ORDER BY holiday_date ASC, holiday_name ASC, id ASC;
+              `,
+              values: [windowStart, windowEnd],
+            }),
       ]);
 
       const linkedTours = Array.from(
@@ -452,14 +594,31 @@ export const createPublicWasteRepository = (input: {
           ...(row.description ? { description: row.description } : {}),
           ...(row.tour_ids ? { tourIds: row.tour_ids } : {}),
         })),
+        holidayRules: holidayRulesResult.rows.map((row) => ({
+          id: row.id,
+          holidayDate: row.holiday_date,
+          holidayName: row.holiday_name,
+          year: row.holiday_year,
+          stateCode: row.state_code,
+          sourceStatus: row.source_status,
+          configurationStatus: row.configuration_status,
+          conflictStatus: row.conflict_status,
+          ...(row.scope ? { scope: row.scope } : {}),
+          ...(row.strategy ? { strategy: row.strategy } : {}),
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        })),
       });
 
-      const windowStart = normalizeDateOnly(query.referenceDate);
       if (!windowStart) {
         return calculatedEntries;
       }
 
-      const windowEnd = addYearsUtc(windowStart, 1);
+      const effectiveWindowEnd = windowEnd;
+      if (!effectiveWindowEnd) {
+        return calculatedEntries;
+      }
+
       const mergedEntries = new Map(calculatedEntries.map((entry) => [entry.id, entry] as const));
       const tourShiftEntries: Array<
         readonly [
@@ -543,12 +702,25 @@ export const createPublicWasteRepository = (input: {
         const tourShift = tourShiftMap.get(`${row.tour_id}:${pickupDate}`);
         const globalShift = scopedGlobalShiftMap.get(row.tour_id)?.get(pickupDate) ?? sharedGlobalShiftMap.get(pickupDate);
         const shiftedDate = tourShift?.actualDate ?? globalShift?.actualDate ?? pickupDate;
-        if (!isDateWithinRange(shiftedDate, windowStart, windowEnd)) {
+        if (!isDateWithinRange(shiftedDate, windowStart, effectiveWindowEnd)) {
           continue;
         }
 
         const entryId = `${row.tour_id}:${shiftedDate}:${row.fraction_id}`;
-        if (mergedEntries.has(entryId)) {
+        const importedPickupDateNote = row.note?.trim() || null;
+        const note =
+          importedPickupDateNote ??
+          tourShift?.description ??
+          globalShift?.description ??
+          null;
+        const existingEntry = mergedEntries.get(entryId);
+        if (existingEntry) {
+          if (note && note !== existingEntry.note) {
+            mergedEntries.set(entryId, {
+              ...existingEntry,
+              note,
+            });
+          }
           continue;
         }
 
@@ -561,7 +733,7 @@ export const createPublicWasteRepository = (input: {
           ...(row.fraction_color ? { fractionColor: row.fraction_color } : {}),
           ...(row.tour_name.trim() ? { tourName: row.tour_name.trim() } : {}),
           ...(row.tour_description?.trim() ? { tourDescription: row.tour_description.trim() } : {}),
-          note: tourShift?.description ?? globalShift?.description ?? null,
+          note,
         });
       }
 
@@ -620,6 +792,43 @@ export const createPublicWasteRepository = (input: {
       }
 
       return [row.city_label, [row.street_label, row.house_number_label].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    },
+
+    async loadReminderSignupOptions(query: {
+      readonly selection: PublicWasteResolvedSelection;
+    }): Promise<readonly PublicWasteReminderFractionOption[]> {
+      const streetSelectionFilter = createStreetSelectionFilter(query.selection.streetId);
+      const result = await input.execute<ReminderFractionRow>({
+        text: `
+          SELECT DISTINCT
+            f.id AS fraction_id,
+            f.name AS fraction_label,
+            f.color AS fraction_color,
+            f.reminder_config
+          FROM ${schemaName}.waste_collection_locations cl
+          INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
+          INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
+          INNER JOIN ${schemaName}.waste_fractions f ON f.id::text = ANY(t.waste_fraction_ids)
+          WHERE cl.active = true
+            AND t.active = true
+            AND f.active = true
+            AND cl.city_id = $1::uuid
+            ${streetSelectionFilter.text}
+            AND ($4::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $4::uuid)
+            AND ($5::uuid IS NULL OR cl.house_number_id IS NULL OR cl.house_number_id = $5::uuid)
+          ORDER BY f.name ASC;
+        `,
+        values: [
+          query.selection.cityId,
+          ...streetSelectionFilter.values,
+          query.selection.regionId ?? null,
+          query.selection.houseNumberId ?? null,
+        ],
+      });
+
+      return result.rows
+        .map(normalizeReminderSignupFraction)
+        .filter((fraction): fraction is PublicWasteReminderFractionOption => fraction !== null);
     },
   };
 };

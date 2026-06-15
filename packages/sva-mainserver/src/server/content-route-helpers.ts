@@ -167,6 +167,39 @@ type ParseAddressOptions = {
   readonly requireGeoLocationObjectMessage?: string;
 };
 
+const readGeoLocation = (
+  value: Record<string, unknown>,
+  options?: ParseAddressOptions
+): { readonly latitude?: number; readonly longitude?: number } | Response => {
+  const { geoLocation } = value;
+
+  if (geoLocation === undefined || geoLocation === null) {
+    return {};
+  }
+
+  if (isRecord(geoLocation) === false) {
+    return options?.requireGeoLocationObjectMessage
+      ? errorJson(400, 'invalid_request', options.requireGeoLocationObjectMessage)
+      : {};
+  }
+
+  const latitude = readNumber(geoLocation.latitude);
+  const longitude = readNumber(geoLocation.longitude);
+  const hasInvalidRange =
+    latitude === undefined ||
+    longitude === undefined ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180;
+
+  if (hasInvalidRange) {
+    return errorJson(400, 'invalid_request', 'Geo-Koordinaten sind ungültig.');
+  }
+
+  return { latitude, longitude };
+};
+
 export const parseAddress = (
   value: unknown,
   options?: ParseAddressOptions
@@ -177,22 +210,11 @@ export const parseAddress = (
   if (!isRecord(value)) {
     return errorJson(400, 'invalid_request', 'Adressdaten müssen als Objekt gesendet werden.');
   }
-  if (
-    value.geoLocation !== undefined &&
-    value.geoLocation !== null &&
-    isRecord(value.geoLocation) === false &&
-    options?.requireGeoLocationObjectMessage
-  ) {
-    return errorJson(400, 'invalid_request', options.requireGeoLocationObjectMessage);
+  const geoLocation = readGeoLocation(value, options);
+  if (geoLocation instanceof Response) {
+    return geoLocation;
   }
-  const latitude = isRecord(value.geoLocation) ? readNumber(value.geoLocation.latitude) : undefined;
-  const longitude = isRecord(value.geoLocation) ? readNumber(value.geoLocation.longitude) : undefined;
-  if (
-    value.geoLocation !== undefined &&
-    (latitude === undefined || longitude === undefined || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
-  ) {
-    return errorJson(400, 'invalid_request', 'Geo-Koordinaten sind ungültig.');
-  }
+
   return {
     ...(readNumber(value.id) !== undefined ? { id: readNumber(value.id) } : {}),
     ...(readString(value.addition) ? { addition: readString(value.addition) } : {}),
@@ -200,7 +222,9 @@ export const parseAddress = (
     ...(readString(value.zip) ? { zip: readString(value.zip) } : {}),
     ...(readString(value.city) ? { city: readString(value.city) } : {}),
     ...(readString(value.kind) ? { kind: readString(value.kind) } : {}),
-    ...(latitude !== undefined && longitude !== undefined ? { geoLocation: { latitude, longitude } } : {}),
+    ...(geoLocation.latitude !== undefined && geoLocation.longitude !== undefined
+      ? { geoLocation: { latitude: geoLocation.latitude, longitude: geoLocation.longitude } }
+      : {}),
   };
 };
 

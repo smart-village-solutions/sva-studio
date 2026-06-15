@@ -70,7 +70,8 @@
       "@sva/monitoring-client/logging": ["packages/monitoring-client/src/logging.ts"],
       "@sva/monitoring-client/server": ["packages/monitoring-client/src/server.ts"],
       "@sva/monitoring-client/logger-provider.server": ["packages/monitoring-client/src/logger-provider.server.ts"],
-      "@sva/media": ["packages/media/src/index.ts"]
+      "@sva/media": ["packages/media/src/index.ts"],
+      "@sva/mail-runtime": ["packages/mail-runtime/src/index.ts"]
     }
   }
 }

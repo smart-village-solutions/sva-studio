@@ -52,6 +52,42 @@ export type PublicWasteFractionOption = {
   readonly color?: string;
 };
 
+export type PublicWasteReminderFractionSlotOption = Readonly<{
+  readonly id: string;
+  readonly maxLeadDays: number;
+  readonly defaultLeadDays: number;
+}>;
+
+export type PublicWasteReminderFractionOption = Readonly<{
+  readonly id: string;
+  readonly label: string;
+  readonly color?: string;
+  readonly slots: readonly PublicWasteReminderFractionSlotOption[];
+}>;
+
+export type PublicWasteReminderSignupView = Readonly<{
+  readonly enabled: boolean;
+  readonly consentLabel: string;
+  readonly privacyPolicyUrl: string;
+  readonly fractions: readonly PublicWasteReminderFractionOption[];
+}>;
+
+export type PublicWasteReminderSignupRequest = Readonly<{
+  readonly selection: PublicWasteResolvedSelection;
+  readonly email: string;
+  readonly items: readonly {
+    readonly fractionId: string;
+    readonly slotId: string;
+  }[];
+  readonly consentAccepted: boolean;
+}>;
+
+export type PublicWasteReminderSignupResponse = Readonly<{
+  readonly status: 'pending';
+  readonly headline: string;
+  readonly message: string;
+}>;
+
 const PUBLIC_WASTE_LOCATION_KEY_EMPTY_SEGMENT = '~';
 export const PUBLIC_WASTE_CATCH_ALL_STREET_ID = 'all';
 const UUID_PATTERN =

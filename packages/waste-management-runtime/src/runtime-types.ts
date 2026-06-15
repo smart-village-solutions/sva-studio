@@ -2,6 +2,8 @@ import type {
   WasteManagementApplyMigrationsJobInput,
   WasteManagementImportJobInput,
   WasteManagementInitializeJobInput,
+  WasteManagementMaterializeEmailRemindersJobInput,
+  WasteManagementProcessEmailReminderOutboxJobInput,
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
   WasteManagementSyncMainserverJobInput,
@@ -74,6 +76,20 @@ export type WasteManagementOperationRuntime = {
   readonly syncWasteTypes: (
     instanceId: string,
     payload: WasteManagementSyncWasteTypesJobInput
+  ) => Promise<{
+    readonly durationMs: number;
+    readonly details: Record<string, unknown>;
+  }>;
+  readonly materializeEmailReminders: (
+    instanceId: string,
+    payload: WasteManagementMaterializeEmailRemindersJobInput
+  ) => Promise<{
+    readonly durationMs: number;
+    readonly details: Record<string, unknown>;
+  }>;
+  readonly processEmailReminderOutbox: (
+    instanceId: string,
+    payload: WasteManagementProcessEmailReminderOutboxJobInput
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;

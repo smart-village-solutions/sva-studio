@@ -85,6 +85,7 @@ const createRepositoryMock = () => ({
   upsertWasteFraction: vi.fn(async () => undefined),
   upsertWasteTour: vi.fn(async () => undefined),
   upsertWasteLocationTourLink: vi.fn(async () => undefined),
+  upsertWasteLocationTourPickupDate: vi.fn(async () => undefined),
   upsertWasteTourDateShift: vi.fn(async () => undefined),
   upsertWasteGlobalDateShift: vi.fn(async () => undefined),
 });
@@ -141,6 +142,29 @@ describe('waste-management-operations.import', () => {
       invalidRowCount: 0,
       fractionNames: ['Papier'],
     });
+  });
+
+  it('reports invalid pickup-date values as parser issues', async () => {
+    const parsed = await parseLocationTourPickupDateImport(
+      {
+        readBinarySource: vi.fn(async () => new TextEncoder().encode('Ort;Abholdatum;Papier\nPerleberg;2026-02-30;PPK.7.2\n')),
+      },
+      {
+        sourceFormat: 'text/csv',
+        blobRef: 'fixture.csv',
+      }
+    );
+
+    expect(parsed.validRowCount).toBe(0);
+    expect(parsed.invalidRowCount).toBe(1);
+    expect(parsed.issues).toEqual([
+      {
+        rowNumber: 2,
+        column: 'Abholdatum',
+        message: 'Abholdatum muss als ISO-Datum im Format YYYY-MM-DD angegeben werden.',
+        value: '2026-02-30',
+      },
+    ]);
   });
 
   it('rejects location-based pickup date imports without a blob ref', async () => {
@@ -260,12 +284,102 @@ describe('waste-management-operations.import', () => {
       })
     );
     expect(reportProgress).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        completedSteps: 2,
+        totalSteps: 2,
+        currentPhase: 'waste-management.import-running',
+        currentStepKey: 'process-rows',
+        details: { processedRows: 2, totalRows: 2 },
+      })
+    );
+    expect(reportProgress).toHaveBeenNthCalledWith(
       4,
       expect.objectContaining({
         completedSteps: 2,
         totalSteps: 2,
         currentPhase: 'waste-management.completed',
         currentStepKey: 'complete-operation',
+      })
+    );
+  });
+
+  it('persists imported pickup dates with normalized optional notes fail-closed', async () => {
+    const repository = createRepositoryMock();
+
+    await executeImport(repository, {
+      profileId: 'waste-management.ortsbezogene-tourtermine',
+      parsedLocationTourPickupDates: {
+        ...parsedLocationTourPickupDates,
+        rows: [
+          {
+            ...parsedLocationTourPickupDates.rows[0],
+            pickupDate: '2026-02-03',
+            note: '  Schnee-Ersatztermin  ',
+          },
+          {
+            ...parsedLocationTourPickupDates.rows[1],
+            pickupDate: '2026-02-10',
+            note: '   ',
+          },
+        ],
+      },
+    });
+
+    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenCalledTimes(3);
+    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        locationId: 'location-perleberg',
+        tourId: 'tour-paper',
+        pickupDate: '2026-02-03',
+        note: 'Schnee-Ersatztermin',
+      })
+    );
+    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        pickupDate: '2026-02-10',
+        note: null,
+      })
+    );
+  });
+
+  it('normalizes name resolution and deduplicates identical explicit pickup-date writes', async () => {
+    const repository = createRepositoryMock();
+
+    await executeImport(repository, {
+      profileId: 'waste-management.ortsbezogene-tourtermine',
+      parsedLocationTourPickupDates: {
+        ...parsedLocationTourPickupDates,
+        rows: [
+          {
+            rowNumber: 2,
+            region: 'prignitz',
+            city: 'perleberg',
+            street: 'ackerstraße',
+            houseNumbers: 'alle hausnummern',
+            pickupDate: '2026-02-03',
+            note: 'Hinweis',
+            tourNamesByFractionName: {
+              Papier: 'ppk.7.2',
+              Bioabfall: 'PPK.7.2',
+            },
+          },
+        ],
+        validRowCount: 1,
+        invalidRowCount: 0,
+        issues: [],
+      },
+    });
+
+    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteLocationTourPickupDate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locationId: 'location-perleberg',
+        tourId: 'tour-paper',
+        pickupDate: '2026-02-03',
+        note: 'Hinweis',
       })
     );
   });

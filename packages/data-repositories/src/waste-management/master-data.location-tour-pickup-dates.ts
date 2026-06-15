@@ -11,6 +11,7 @@ type WasteLocationTourPickupDateRow = {
   readonly location_id: string;
   readonly tour_id: string;
   readonly pickup_date: string;
+  readonly note: string | null;
   readonly created_at: string;
   readonly updated_at: string;
 };
@@ -22,6 +23,7 @@ const mapWasteLocationTourPickupDateRow = (
   locationId: row.location_id,
   tourId: row.tour_id,
   pickupDate: row.pickup_date,
+  note: row.note,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -54,6 +56,7 @@ SELECT
   location_id::text,
   tour_id::text,
   pickup_date::text,
+  to_jsonb(waste_location_tour_pickup_dates)->>'note' AS note,
   created_at::text,
   updated_at::text
 FROM waste_location_tour_pickup_dates
@@ -71,6 +74,7 @@ SELECT
   location_id::text,
   tour_id::text,
   pickup_date::text,
+  to_jsonb(waste_location_tour_pickup_dates)->>'note' AS note,
   created_at::text,
   updated_at::text
 FROM waste_location_tour_pickup_dates
@@ -88,13 +92,20 @@ INSERT INTO waste_location_tour_pickup_dates (
   id,
   location_id,
   tour_id,
-  pickup_date
+  pickup_date,
+  note
 )
-VALUES ($1::uuid, $2::uuid, $3::uuid, $4::date)
+VALUES ($1::uuid, $2::uuid, $3::uuid, $4::date, $5::text)
 ON CONFLICT (location_id, tour_id, pickup_date) DO UPDATE
-SET updated_at = NOW();
+SET note = EXCLUDED.note,
+    updated_at = NOW();
 `,
-  values: [input.id, input.locationId, input.tourId, input.pickupDate],
+  values: [input.id, input.locationId, input.tourId, input.pickupDate, input.note],
+});
+
+const buildLocationTourPickupDateDeleteStatement = (id: string): SqlStatement => ({
+  text: 'DELETE FROM waste_location_tour_pickup_dates WHERE id = $1::uuid;',
+  values: [id],
 });
 
 export const createWasteLocationTourPickupDateRepositoryPart = (
@@ -104,6 +115,7 @@ export const createWasteLocationTourPickupDateRepositoryPart = (
   | 'listWasteLocationTourPickupDates'
   | 'getWasteLocationTourPickupDateById'
   | 'upsertWasteLocationTourPickupDate'
+  | 'deleteWasteLocationTourPickupDate'
 > => ({
   async listWasteLocationTourPickupDates(filter) {
     const result = await executor.execute<WasteLocationTourPickupDateRow>(
@@ -120,10 +132,14 @@ export const createWasteLocationTourPickupDateRepositoryPart = (
   async upsertWasteLocationTourPickupDate(input) {
     await executor.execute(buildLocationTourPickupDateUpsertStatement(input));
   },
+  async deleteWasteLocationTourPickupDate(id) {
+    await executor.execute(buildLocationTourPickupDateDeleteStatement(id));
+  },
 });
 
 export const wasteLocationTourPickupDateStatements = {
   listWasteLocationTourPickupDates: buildLocationTourPickupDateListStatement,
   getWasteLocationTourPickupDateById: buildLocationTourPickupDateSelectStatement,
   upsertWasteLocationTourPickupDate: buildLocationTourPickupDateUpsertStatement,
+  deleteWasteLocationTourPickupDate: buildLocationTourPickupDateDeleteStatement,
 } as const;

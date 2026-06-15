@@ -275,6 +275,55 @@ describe('external interface repository', () => {
     await expect(repository.deleteById('tenant-a', 'missing')).resolves.toBe(false);
   });
 
+  it('fails closed for blank type keys and status check kinds', async () => {
+    const blankTypeExecutor = createExecutor([
+      {
+        type_key: '   ',
+        owner_kind: 'host',
+        owner_id: 'host',
+        display_name: 'Broken',
+        category: 'api',
+        public_schema_json: {},
+        secret_schema_json: {},
+        status_check_kind: 'http',
+        enabled: true,
+      },
+    ]);
+    const blankStatusExecutor = createExecutor([
+      {
+        id: 'interface-3',
+        instance_id: 'tenant-a',
+        type_key: 'api',
+        owner_kind: 'host',
+        owner_id: 'host',
+        display_name: 'Broken API',
+        alias: 'broken',
+        enabled: true,
+        is_default: false,
+        category: 'api',
+        base_url: null,
+        auth_mode: null,
+        public_config_json: {},
+        secret_config_ciphertext: null,
+        status_check_kind: '   ',
+        visible_status: 'unknown',
+        last_checked_at: null,
+        last_check_status: null,
+        last_check_error_code: null,
+        last_check_error_message: null,
+        created_at: null,
+        updated_at: null,
+      },
+    ]);
+
+    await expect(createExternalInterfaceRepository(blankTypeExecutor.executor).listTypeDefinitions()).rejects.toThrow(
+      'invalid_external_interface_type_key'
+    );
+    await expect(
+      createExternalInterfaceRepository(blankStatusExecutor.executor).listByInstanceId('tenant-a')
+    ).rejects.toThrow('invalid_external_interface_status_check_kind');
+  });
+
   it('builds type upserts, interface upserts and connection-check updates', async () => {
     const { executor, statements } = createExecutor();
     const repository = createExternalInterfaceRepository(executor);

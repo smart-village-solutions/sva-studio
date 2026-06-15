@@ -94,9 +94,43 @@ const supabaseEntry = {
   },
 } as const;
 
+const mailTransportEntry = {
+  id: 'mail-transport-1',
+  instanceId: 'de-musterhausen',
+  type: 'mailTransport',
+  name: 'Zentraler Mailversand',
+  enabled: true,
+  status: 'unknown',
+  statusMessage: 'Pending health check',
+  lastCheckedAt: '2026-03-15T20:03:00.000Z',
+  createdAt: '2026-03-15T20:03:00.000Z',
+  updatedAt: '2026-03-15T20:03:00.000Z',
+  config: {
+    transportId: 'mail-transport-1',
+    transportType: 'smtp',
+    host: 'smtp.example.org',
+    port: '587',
+    securityMode: 'starttls',
+    authMode: 'basic',
+    username: 'mailer',
+    defaultFromEmail: 'noreply@example.org',
+    defaultFromName: 'Abfallservice',
+    defaultReplyToEmail: 'service@example.org',
+    maxBatchSize: '50',
+    rateLimitPerMinute: '120',
+    providerMode: '',
+    endpoint: '',
+  },
+} as const;
+
 const createListResponse = (
   entries: readonly unknown[],
-  availableTypes: readonly ('mainserver' | 's3' | 'supabase')[] = ['mainserver', 's3', 'supabase']
+  availableTypes: readonly ('mainserver' | 's3' | 'supabase' | 'mailTransport')[] = [
+    'mainserver',
+    's3',
+    'supabase',
+    'mailTransport',
+  ]
 ) => ({
   instanceId: 'de-musterhausen',
   availableTypes,
@@ -305,6 +339,104 @@ describe('InterfacesPage', () => {
     });
   });
 
+  it('creates a mail transport interface through the picker dialog and upsert endpoint', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
+    state.upsertInterface.mockResolvedValue({
+      ...mailTransportEntry,
+      config: { ...mailTransportEntry.config },
+    });
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Mail-Transport/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    fireEvent.change(screen.getByLabelText('Anzeigename'), {
+      target: { value: 'Zentraler Mailversand' },
+    });
+    fireEvent.change(screen.getByLabelText('Transport-ID'), {
+      target: { value: 'mail-transport-1' },
+    });
+    fireEvent.change(screen.getByLabelText('SMTP-Host'), {
+      target: { value: 'smtp.example.org' },
+    });
+    fireEvent.change(screen.getByLabelText('Port'), {
+      target: { value: '587' },
+    });
+    fireEvent.change(screen.getByLabelText('Benutzername'), {
+      target: { value: 'mailer' },
+    });
+    fireEvent.change(screen.getByLabelText('Passwort'), {
+      target: { value: 'smtp-password' },
+    });
+    fireEvent.change(screen.getByLabelText('Standard-Absenderadresse'), {
+      target: { value: 'noreply@example.org' },
+    });
+    fireEvent.change(screen.getByLabelText('Standard-Absendername'), {
+      target: { value: 'Abfallservice' },
+    });
+    fireEvent.change(screen.getByLabelText('Standard-Reply-To'), {
+      target: { value: 'service@example.org' },
+    });
+    fireEvent.change(screen.getByLabelText('Maximale Batch-Größe'), {
+      target: { value: '50' },
+    });
+    fireEvent.change(screen.getByLabelText('Rate-Limit pro Minute'), {
+      target: { value: '120' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
+
+    await waitFor(() => {
+      expect(state.upsertInterface).toHaveBeenCalledWith({
+        data: {
+          instanceId: 'de-musterhausen',
+          draft: expect.objectContaining({
+            type: 'mailTransport',
+            name: 'Zentraler Mailversand',
+            config: expect.objectContaining({
+              transportId: 'mail-transport-1',
+              transportType: 'smtp',
+              host: 'smtp.example.org',
+              port: '587',
+              securityMode: 'starttls',
+              authMode: 'basic',
+              username: 'mailer',
+              password: 'smtp-password',
+              defaultFromEmail: 'noreply@example.org',
+              defaultFromName: 'Abfallservice',
+              defaultReplyToEmail: 'service@example.org',
+              maxBatchSize: '50',
+              rateLimitPerMinute: '120',
+            }),
+          }),
+        },
+      });
+    });
+  });
+
+  it('does not offer provider API mail transports in the dialog before runtime support exists', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Mail-Transport/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    const transportTypeSelect = screen.getByLabelText('Transporttyp');
+    expect(within(transportTypeSelect).getByRole('option', { name: /SMTP/i })).toBeTruthy();
+    expect(within(transportTypeSelect).queryByRole('option', { name: /Provider-API/i })).toBeNull();
+  });
+
   it('shows the persisted healthcheck message below the interface status', async () => {
     state.listInterfaces.mockResolvedValue(
       createListResponse([
@@ -327,8 +459,71 @@ describe('InterfacesPage', () => {
     });
   });
 
+  it('renders endpoint and status fallbacks for disabled or provider-api interfaces', async () => {
+    state.listInterfaces.mockResolvedValue(
+      createListResponse([
+        {
+          ...mainserverEntry,
+          id: 'mainserver-disabled',
+          enabled: false,
+          status: 'disabled',
+          lastCheckedAt: undefined,
+          config: {
+            graphqlBaseUrl: '',
+            oauthTokenUrl: mainserverEntry.config.oauthTokenUrl,
+          },
+        },
+        {
+          ...mailTransportEntry,
+          id: 'mail-provider',
+          status: 'error',
+          config: {
+            ...mailTransportEntry.config,
+            transportType: 'provider_api',
+            endpoint: 'https://mail.example/api',
+          },
+        },
+      ])
+    );
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    expect(screen.getAllByText('https://mail.example/api').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('-').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Deaktiviert').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Fehler').length).toBeGreaterThan(0);
+  });
+
+  it('closes picker and edit dialogs through their cancel actions', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Bearbeiten' })[0]!);
+    expect(screen.getByRole('button', { name: 'Einstellungen speichern' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Einstellungen speichern' })).toBeNull();
+    });
+  });
+
   it('does not offer supabase in the picker when the waste-management module is unavailable', async () => {
-    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry], ['mainserver', 's3']));
+    state.listInterfaces.mockResolvedValue(
+      createListResponse([mainserverEntry], ['mainserver', 's3', 'mailTransport'])
+    );
 
     render(<InterfacesPage />);
 
@@ -345,6 +540,7 @@ describe('InterfacesPage', () => {
       'interface-type-mainserver-title'
     );
     expect(screen.getByRole('radio', { name: /S3-kompatibler Object Storage/i })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Mail-Transport/i })).toBeTruthy();
   });
 
   it('keeps the whole picker card clickable through the description text', async () => {

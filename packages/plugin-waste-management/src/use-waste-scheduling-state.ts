@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import type { WasteTourRecord } from '@sva/plugin-sdk';
-import type { WasteManagementSchedulingOverview } from './waste-management.api.js';
+import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
 import type { StatusMessage } from './waste-management.page.support.js';
 import {
   createDefaultGlobalDateShiftForm,
@@ -14,6 +14,7 @@ export const useWasteSchedulingState = () => {
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<WasteManagementSchedulingOverview | null>(null);
   const [availableTours, setAvailableTours] = useState<readonly WasteTourRecord[]>([]);
+  const [locationOverview, setLocationOverview] = useState<WasteManagementMasterDataOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
@@ -29,6 +30,7 @@ export const useWasteSchedulingState = () => {
     loading,
     overview,
     availableTours,
+    locationOverview,
     error,
     dialogOpen,
     dialogMode,
@@ -42,6 +44,7 @@ export const useWasteSchedulingState = () => {
     setLoading,
     setOverview,
     setAvailableTours,
+    setLocationOverview,
     setError,
     setDialogOpen,
     setDialogMode,

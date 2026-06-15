@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const createWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
 const createWasteManagementLocationTourLinksBulkMock = vi.hoisted(() => vi.fn());
 const deleteWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
+const getWasteManagementSchedulingOverviewMock = vi.hoisted(() => vi.fn(async () => ({ holidayRules: [], globalDateShifts: [], tourDateShifts: [] })));
 const updateWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
 
 import { WasteManagementApiError } from '../src/waste-management.api.js';
@@ -46,6 +47,7 @@ vi.mock('../src/waste-management.api.js', async (importOriginal) => {
     createWasteManagementLocationTourLink: createWasteManagementLocationTourLinkMock,
     createWasteManagementLocationTourLinksBulk: createWasteManagementLocationTourLinksBulkMock,
     deleteWasteManagementLocationTourLink: deleteWasteManagementLocationTourLinkMock,
+    getWasteManagementSchedulingOverview: getWasteManagementSchedulingOverviewMock,
     updateWasteManagementLocationTourLink: updateWasteManagementLocationTourLinkMock,
   };
 });
@@ -652,7 +654,7 @@ describe('waste management helper modules', () => {
     expect(state.setSelectedLocationIds).toHaveBeenCalledTimes(4);
   });
 
-  it('covers waste tours dialog and selection actions', () => {
+  it('covers waste tours dialog and selection actions', async () => {
     const state = {
       masterDataOverview: {
         fractions: [],
@@ -681,6 +683,7 @@ describe('waste management helper modules', () => {
       setAssignmentsDialogMode: vi.fn(),
       setLinkForm: vi.fn(),
       setAssignmentsDialogOpen: vi.fn(),
+      setSchedulingOverview: vi.fn(),
       setCalendarOpen: vi.fn(),
     };
 
@@ -701,7 +704,7 @@ describe('waste management helper modules', () => {
     actions.openCreateAssignmentsDialog(tour);
     actions.openEditAssignmentsDialog(tour, 'missing-link');
     actions.openEditAssignmentsDialog(tour, 'link-1');
-    actions.openCalendar(tour);
+    await actions.openCalendar(tour);
     actions.resetTourForm();
     actions.resetLinkForm();
 
@@ -1038,7 +1041,7 @@ describe('waste management helper modules', () => {
     expect(chunkingState.setAssignmentsDialogOpen).toHaveBeenCalledWith(false);
   });
 
-  it('covers tours presentation helpers including recurrence, ranges, custom dates, and shifts', () => {
+  it('covers tours presentation helpers including recurrence, ranges, custom dates, and shifts', async () => {
     const pt = (key: string) => key;
 
     expect(formatTourRecurrence(pt, undefined)).toBe('—');

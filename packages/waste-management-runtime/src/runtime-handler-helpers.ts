@@ -2,6 +2,8 @@ import {
   wasteManagementOperationsContract,
   type WasteManagementApplyMigrationsJobInput,
   type WasteManagementInitializeJobInput,
+  type WasteManagementMaterializeEmailRemindersJobInput,
+  type WasteManagementProcessEmailReminderOutboxJobInput,
   type WasteManagementResetJobInput,
   type WasteManagementSeedJobInput,
   type WasteManagementSyncMainserverJobInput,
@@ -55,5 +57,19 @@ export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOper
       expectedOperation: 'sync-waste-types',
       phaseKey: 'waste-management.sync-waste-types',
       execute: (runtimeArg, instanceId, payload) => runtimeArg.syncWasteTypes(instanceId, payload),
+    })(runtime),
+  [wasteManagementOperationsContract.jobTypeIds.materializeEmailReminders]:
+    createOperationHandler<WasteManagementMaterializeEmailRemindersJobInput>({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.materializeEmailReminders,
+      expectedOperation: 'materialize-email-reminders',
+      phaseKey: 'waste-management.materialize-email-reminders',
+      execute: (runtimeArg, instanceId, payload) => runtimeArg.materializeEmailReminders(instanceId, payload),
+    })(runtime),
+  [wasteManagementOperationsContract.jobTypeIds.processEmailReminderOutbox]:
+    createOperationHandler<WasteManagementProcessEmailReminderOutboxJobInput>({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.processEmailReminderOutbox,
+      expectedOperation: 'process-email-reminder-outbox',
+      phaseKey: 'waste-management.process-email-reminder-outbox',
+      execute: (runtimeArg, instanceId, payload) => runtimeArg.processEmailReminderOutbox(instanceId, payload),
     })(runtime),
 });

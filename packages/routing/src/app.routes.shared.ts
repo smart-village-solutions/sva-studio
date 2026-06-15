@@ -1,4 +1,4 @@
-import type { AdminResourceDefinition, PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/plugin-sdk';
+import type { AdminResourceDefinition, PluginDefinition, RouteFactory } from '@sva/plugin-sdk';
 import { assertPluginRoutePathAllowed, createPluginGuardrailError, mergeAdminResourceDefinitions } from '@sva/plugin-sdk';
 import { createRoute, redirect, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
@@ -6,6 +6,7 @@ import { assertNoStaticAdminRouteShadowing, collectAdminResourceRoutePaths } fro
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import { createAdminResourceRouteFactories, createLegacyContentAliasFactories } from './admin-resource-routes.js';
 import { type RoutingDiagnosticsHook } from './diagnostics.js';
+export { mapPluginGuardToAccountGuard } from './plugin-guard-mapping.js';
 import { resolvePluginRouteGuard } from './plugin-route-guards.js';
 import type { RouteGuardContext } from './protected.routes.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
@@ -185,27 +186,6 @@ export const createUiRouteFactories = (
     ...createAdminResourceRouteFactories(bindings, adminResources, diagnostics),
     ...createLegacyContentAliasFactories(adminResources),
   ];
-};
-
-export const mapPluginGuardToAccountGuard = (guard?: PluginRouteGuard): 'content' | 'contentCreate' | 'contentDetail' | null => {
-  switch (guard) {
-    case 'content.read':
-      return 'content';
-    case 'content.create':
-      return 'contentCreate';
-    case 'content.updateMetadata':
-    case 'content.updatePayload':
-    case 'content.changeStatus':
-    case 'content.publish':
-    case 'content.archive':
-    case 'content.restore':
-    case 'content.readHistory':
-    case 'content.manageRevisions':
-    case 'content.delete':
-      return 'contentDetail';
-    default:
-      return null;
-  }
 };
 
 export const getPluginRouteFactories = (

@@ -2,7 +2,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { IconArrowsSort, IconSortAZ, IconSortZA } from '@tabler/icons-react';
 import { Button, Checkbox } from '@sva/studio-ui-react';
 
-export type WasteToursSortField = 'name' | 'recurrence' | 'locations' | 'status';
+export type WasteToursSortField = 'name' | 'recurrence' | 'dateRange' | 'locations' | 'status';
 export type WasteToursSortDirection = 'asc' | 'desc';
 
 const SortIcon = ({ direction }: { readonly direction: false | WasteToursSortDirection }) => {
@@ -85,7 +85,14 @@ export const WasteToursTableHeader = ({
             onClick={() => onSortChange('recurrence')}
           />
         </th>
-        <th scope="col" className="w-[156px] px-3 py-3">{pt('tours.table.dateRange')}</th>
+        <th scope="col" className="w-[156px] px-3 py-3 font-semibold">
+          <SortLabel
+            label={pt('tours.table.dateRange')}
+            active={sortField === 'dateRange'}
+            direction={sortDirection}
+            onClick={() => onSortChange('dateRange')}
+          />
+        </th>
         <th scope="col" className="w-[168px] px-3 py-3">{pt('tours.table.shifts')}</th>
         <th scope="col" className="w-[94px] px-3 py-3 font-semibold">
           <SortLabel

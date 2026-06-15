@@ -35,6 +35,7 @@ Der aktuelle Repo-Ist-Stand ist kein reines Fundament mehr: Neben Routing, Auth,
 - Hostgeführte Waste-Fassade `/api/v1/waste-management/*`, generische Plugin-Jobpfade und Mainserver-Sync für `wasteTypes`
 - Instanzgebundene Mainserver-Endpunktkonfiguration in der Studio-Datenbank
 - Öffentliche Read-, PDF- und iCal-Pfade der Waste-Web-App mit eigener Node-Runtime
+- Öffentliche Write-Pfade der Waste-Web-App ausschließlich für E-Mail-Erinnerungen mit Double-Opt-In, Abmeldung und Waste-eigener Reminder-Outbox
 - `@sva/server-runtime` und `@sva/monitoring-client` für Logging, OTEL und lokale Monitoring-Stacks
 
 ### Out of Scope (in diesem Repo)
@@ -43,7 +44,7 @@ Der aktuelle Repo-Ist-Stand ist kein reines Fundament mehr: Neben Routing, Auth,
 - Mobile App / externe Konsumenten
 - Vollständige Fachverfahren-Integrationen außerhalb der aktuell angebundenen Mainserver-, Waste- und IAM-Domänen
 - Allgemeines Runtime-Loading installierter Plugin-Distributionen; der produktive Host nutzt weiterhin einen statischen Workspace-Katalog
-- Öffentliche Schreibpfade für Bürgerflows; die Waste-Web-App bleibt read-only gegenüber den fachlichen Datenquellen
+- Allgemeine öffentliche Schreibpfade für Bürgerflows außerhalb des E-Mail-Erinnerungsdienstes; die Waste-Web-App bleibt gegenüber den fachlichen Waste-Stammdaten weiterhin schreibgeschützt
 
 ### Externe Nachbarsysteme
 
@@ -60,6 +61,8 @@ Konzept-Referenz (Kontext): `concepts/konzeption-cms-v2/01_Einleitung/Einleitung
 - Repo verantwortet App-, Routing-, Auth-, IAM-, Instanz-, Plugin-, Mainserver-, Waste- und Doku-Logik
 - Die öffentliche Abfallkalender-App bleibt fachlich im selben Repo, aber technisch von der Studio-Admin-Oberfläche getrennt und nutzt dafür nur app-lokale Auswahl-, Kalender- und Präferenzlogik.
 - Die öffentliche Abfallkalender-App nutzt für ihren Serverpfad bewusst gemeinsame Workspace-Verträge aus `@sva/core` und `@sva/data-repositories`, bleibt aber deploy- und UI-seitig von `sva-studio-react` getrennt.
+- Der öffentliche E-Mail-Erinnerungsdienst bleibt fachlich Teil von Waste: CTA, Formular, Double-Opt-In, Tokenseiten, Reminder-Materialisierung und Outbox liegen im Waste-Kontext; technische SMTP- oder Provider-Credentials liegen dagegen ausschließlich in der zentralen Schnittstelle `mail_transport`.
+- Der eigentliche Mailversand ist bewusst an eine separate Dispatch-App oder einen äquivalenten Runtime-Adapter anschließbar; Studio und Public-Waste-App materialisieren dafür nur transportagnostische Versandaufträge.
 - Repo verantwortet die serverseitige Delegation an den externen SVA-Mainserver, aber nicht dessen Betrieb, Schema oder Berechtigungsmodell
 - Browser, React-Hooks und UI-Komponenten sprechen nie direkt mit dem externen Mainserver; alle Aufrufe laufen über serverseitige Studio-Bausteine
 - Browser, Plugins und Fachmodule sprechen nie direkt mit MinIO oder S3-kompatiblen Clients; Medienzugriffe laufen über hostseitige Media-Endpunkte und interne Storage-Ports

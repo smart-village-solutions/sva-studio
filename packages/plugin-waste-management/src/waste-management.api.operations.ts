@@ -2,6 +2,7 @@ import type {
   StudioJobDetail,
   WasteGlobalDateShiftRecord,
   WasteHolidayRuleRecord,
+  WasteLocationTourPickupDateRecord,
   WasteManagementSettingsRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
@@ -9,6 +10,7 @@ import type {
 
 import type {
   CreateWasteManagementGlobalDateShiftInput,
+  CreateWasteManagementLocationTourPickupDateInput,
   CreateWasteManagementTourDateShiftInput,
   CreateWasteManagementTourInput,
   PreviewWasteLocationTourPickupDateImportInput,
@@ -20,6 +22,7 @@ import type {
   StartWasteManagementSeedInput,
   UpdateWasteManagementGlobalDateShiftInput,
   UpdateWasteManagementHolidayRuleInput,
+  UpdateWasteManagementLocationTourPickupDateInput,
   UpdateWasteManagementTourDateShiftInput,
   UpdateWasteManagementTourInput,
   WasteManagementSettingsInput,
@@ -65,6 +68,11 @@ export const createWasteManagementGlobalDateShift = async (
 ): Promise<WasteGlobalDateShiftRecord> =>
   requestWasteManagementMutation('/api/v1/waste-management/global-date-shifts', input);
 
+export const createWasteManagementLocationTourPickupDate = async (
+  input: CreateWasteManagementLocationTourPickupDateInput
+): Promise<WasteLocationTourPickupDateRecord> =>
+  requestWasteManagementMutation('/api/v1/waste-management/location-tour-pickup-dates', input);
+
 export const updateWasteManagementGlobalDateShift = async (
   shiftId: string,
   input: UpdateWasteManagementGlobalDateShiftInput
@@ -77,6 +85,25 @@ export const updateWasteManagementGlobalDateShift = async (
 
 export const deleteWasteManagementGlobalDateShift = async (shiftId: string): Promise<Readonly<{ id: string }>> =>
   requestWasteManagementMutation(`/api/v1/waste-management/global-date-shifts/${encodeURIComponent(shiftId)}`, undefined, 'DELETE');
+
+export const updateWasteManagementLocationTourPickupDate = async (
+  pickupDateId: string,
+  input: UpdateWasteManagementLocationTourPickupDateInput
+): Promise<WasteLocationTourPickupDateRecord> =>
+  requestWasteManagementMutation(
+    `/api/v1/waste-management/location-tour-pickup-dates/${encodeURIComponent(pickupDateId)}`,
+    input,
+    'PUT'
+  );
+
+export const deleteWasteManagementLocationTourPickupDate = async (
+  pickupDateId: string
+): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(
+    `/api/v1/waste-management/location-tour-pickup-dates/${encodeURIComponent(pickupDateId)}`,
+    undefined,
+    'DELETE'
+  );
 
 export const updateWasteManagementSettings = async (
   input: WasteManagementSettingsInput
@@ -91,6 +118,9 @@ export const updateWasteManagementHolidayRule = async (
   input: UpdateWasteManagementHolidayRuleInput
 ): Promise<WasteHolidayRuleRecord> =>
   requestWasteManagementMutation(`/api/v1/waste-management/holiday-rules/${encodeURIComponent(ruleId)}`, input, 'PUT');
+
+export const deleteWasteManagementHolidayRule = async (ruleId: string): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(`/api/v1/waste-management/holiday-rules/${encodeURIComponent(ruleId)}`, undefined, 'DELETE');
 
 export const startWasteManagementInitialize = async (input: Readonly<{ targetSchema?: string }> = {}) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/initialize', input);

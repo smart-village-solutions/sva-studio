@@ -158,6 +158,11 @@ export const runQuantumExec = (
   const maxAttempts = options?.marker ? 6 : 1;
   let lastCombined = '';
   let lastMarkerError: Error | null = null;
+  const buildFailure = (combined: string) =>
+    summarizeProcessOutput(combined) ||
+    lastMarkerError?.message ||
+    options?.failureMessage ||
+    (options?.marker ? 'quantum-cli exec lieferte keine markierte Ausgabe.' : 'quantum-cli exec fehlgeschlagen.');
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const result = runCaptureDetailed(rootDir, 'quantum-cli', args, withoutDebugEnv(env));
@@ -173,14 +178,11 @@ export const runQuantumExec = (
           pauseRetryLoop(attempt);
           continue;
         }
-        throw new Error(
-          summarizeProcessOutput(combined) ||
-            lastMarkerError.message ||
-            options.failureMessage ||
-            'quantum-cli exec lieferte keine markierte Ausgabe.'
-        );
+        throw new Error(buildFailure(combined), { cause: error });
       }
-    } else if (result.status === 0) {
+    }
+
+    if (result.status === 0) {
       return summarizeProcessOutput(combined);
     }
 
@@ -190,16 +192,11 @@ export const runQuantumExec = (
     }
 
     if (result.status !== 0) {
-      throw new Error(summarizeProcessOutput(combined) || options?.failureMessage || 'quantum-cli exec fehlgeschlagen.');
+      throw new Error(buildFailure(combined));
     }
 
     return summarizeProcessOutput(combined);
   }
 
-  throw new Error(
-    summarizeProcessOutput(lastCombined) ||
-      lastMarkerError?.message ||
-      options?.failureMessage ||
-      'quantum-cli exec fehlgeschlagen.'
-  );
+  throw new Error(buildFailure(lastCombined));
 };

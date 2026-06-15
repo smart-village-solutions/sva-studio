@@ -6,9 +6,11 @@ import { wasteManagementOperationsContract } from '@sva/plugin-sdk';
 import { createWasteManagementPluginJobTypes } from '@sva/plugin-waste-management/waste-management.job-definitions';
 
 import {
+  createPluginJobExecutionHandlers,
   createWasteManagementPluginOperationExecutionHandlers,
   type WasteManagementOperationRuntime,
 } from '../src/server.js';
+import { createWasteRuntimeOperationHandlers } from '../src/runtime-handler-helpers.js';
 
 const createContext = (input: {
   readonly jobTypeId: string;
@@ -124,6 +126,15 @@ describe('waste management runtime handlers', () => {
       },
     });
   });
+
+  it('re-exports the canonical runtime handler map and alias from the helper module', () => {
+    const runtime = createRuntime();
+    const directHandlers = createWasteRuntimeOperationHandlers(runtime);
+    const exportedHandlers = createWasteManagementPluginOperationExecutionHandlers(runtime);
+
+    expect(Object.keys(directHandlers).sort()).toEqual(Object.keys(exportedHandlers).sort());
+    expect(createPluginJobExecutionHandlers).toBe(createWasteManagementPluginOperationExecutionHandlers);
+  });
 });
 
 const createRuntime = (
@@ -170,6 +181,14 @@ const createRuntime = (
   syncWasteTypes: async () => ({
     durationMs: 1,
     details: { staticContentName: 'waste-types', version: '1', fractionCount: 0 },
+  }),
+  materializeEmailReminders: async () => ({
+    durationMs: 1,
+    details: { activeSubscriptionCount: 0, createdOutboxCount: 0, duplicateOutboxCount: 0, skippedPickupCount: 0 },
+  }),
+  processEmailReminderOutbox: async () => ({
+    durationMs: 1,
+    details: { leasedCount: 0, sentCount: 0, retryScheduledCount: 0, failedCount: 0, batchSize: 0 },
   }),
   ...overrides,
 });

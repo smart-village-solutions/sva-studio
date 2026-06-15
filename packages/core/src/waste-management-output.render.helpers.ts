@@ -6,9 +6,9 @@ export type { RgbColor };
 
 export const BRANDING_BOX = {
   x: 640,
-  top: 28,
+  top: 22,
   width: 163,
-  height: 62,
+  height: 48,
   padding: 6,
 } as const;
 

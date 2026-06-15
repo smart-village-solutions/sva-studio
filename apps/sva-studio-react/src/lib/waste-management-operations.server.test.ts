@@ -593,6 +593,7 @@ describe('waste management operations runtime', () => {
       leaseDueOutboxEntries: vi.fn(async () => [
         {
           id: 'outbox-retry',
+          transportId: 'transport-smtp',
           attemptCount: 0,
           payload: {
             transportId: 'transport-smtp',
@@ -620,6 +621,7 @@ describe('waste management operations runtime', () => {
         },
         {
           id: 'outbox-failed',
+          transportId: 'transport-smtp',
           attemptCount: 1,
           payload: {
             transportId: 'transport-smtp',

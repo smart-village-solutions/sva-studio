@@ -178,25 +178,6 @@ const loadWasteEmailReminderConfig = async (
   return fallback ? readWasteManagementEmailReminderConfig(fallback.publicConfig) ?? null : null;
 };
 
-const loadMailTransportConfig = async (
-  deps: WasteOperationRuntimeDeps,
-  instanceId: string,
-  transportId: string
-): Promise<MailTransportConfig | null> => {
-  if (deps.listInterfaceRecords) {
-    const records = await deps.listInterfaceRecords(instanceId);
-    return (
-      records
-        .filter((record) => record.typeKey === 'mail_transport')
-        .map(readMailTransportConfigFromRecord)
-        .find((record): record is MailTransportConfig => record !== null && record.transportId === transportId) ?? null
-    );
-  }
-  const fallback = await deps.loadDefaultInterfaceRecord?.(instanceId, 'mail_transport');
-  const config = fallback ? readMailTransportConfigFromRecord(fallback) : null;
-  return config?.transportId === transportId ? config : null;
-};
-
 const loadMailTransportConfigs = async (
   deps: WasteOperationRuntimeDeps,
   instanceId: string

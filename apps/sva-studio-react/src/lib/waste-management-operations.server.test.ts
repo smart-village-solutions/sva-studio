@@ -770,6 +770,135 @@ describe('waste management operations runtime', () => {
     });
   });
 
+  it('dispatches each leased outbox entry through its recorded transport id', async () => {
+    const dispatchMail = vi.fn(async () => ({
+      providerMessageId: 'provider-2',
+    }));
+    const leaseDueOutboxEntries = vi.fn(async () => [
+      {
+        id: 'outbox-legacy-transport',
+        subscriptionId: 'subscription-1',
+        messageKind: 'reminder',
+        transportId: 'transport-smtp-legacy',
+        templateKey: 'waste.email-reminder.reminder',
+        sendAt: '2026-06-15T06:00:00.000Z',
+        dedupeKey: 'dedupe-legacy',
+        attemptCount: 0,
+        payload: {
+          orderId: 'subscription-1',
+          transportId: 'transport-smtp-legacy',
+          messageKind: 'transactional',
+          templateKey: 'waste.email-reminder.reminder',
+          locale: 'de-DE',
+          addresses: [{ kind: 'to', email: 'max@example.org' }],
+          templatePayload: {
+            subject: 'Abfalltermine',
+            introText: 'Nicht vergessen',
+            listIntroText: 'Liste',
+            outroText: 'Gruß',
+            reasonText: 'Grund',
+            unsubscribeLabel: 'Abmelden',
+            unsubscribeUrl: 'https://example.org/unsubscribe',
+            locationLabel: 'Perleberg',
+            pickupDate: 'Di., 16.06.',
+            fractionName: 'Papier',
+            privacyPolicyUrl: 'https://example.org/privacy',
+            imprintUrl: 'https://example.org/imprint',
+            serviceLabel: 'Landkreis Prignitz',
+          },
+          tags: [],
+          metadata: {},
+        },
+        providerMessageId: null,
+        lastErrorMessage: null,
+        sentAt: null,
+        retryAt: null,
+        lockedAt: '2026-06-15T06:00:00.000Z',
+        createdAt: '2026-06-14T06:00:00.000Z',
+        updatedAt: '2026-06-14T06:00:00.000Z',
+      },
+    ]);
+    const markOutboxEntrySent = vi.fn(async () => undefined);
+    const reminderRepository = {
+      leaseDueOutboxEntries,
+      markOutboxEntrySent,
+      markOutboxEntryFailed: vi.fn(async () => undefined),
+    };
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [
+        {
+          ...createInterfaceRecordWithEmailReminderConfig(),
+          publicConfig: {
+            ...createInterfaceRecordWithEmailReminderConfig().publicConfig,
+            emailReminderConfig: {
+              ...createWasteEmailReminderConfig(),
+              transportId: 'transport-smtp-current',
+            },
+          },
+        },
+        createMailTransportInterfaceRecord({
+          transportId: 'transport-smtp-current',
+          alias: 'smtp-current',
+          host: 'mail-current.example.org',
+        }),
+        createMailTransportInterfaceRecord({
+          id: 'mail-transport-legacy',
+          transportId: 'transport-smtp-legacy',
+          alias: 'smtp-legacy',
+          host: 'mail-legacy.example.org',
+        }),
+      ]),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      dispatchMail,
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.processEmailReminderOutbox('instance-1', {
+      operation: 'process-email-reminder-outbox',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(dispatchMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transport: expect.objectContaining({
+          transportId: 'transport-smtp-legacy',
+          host: 'mail-legacy.example.org',
+        }),
+        payload: expect.objectContaining({
+          transportId: 'transport-smtp-legacy',
+        }),
+      })
+    );
+    expect(markOutboxEntrySent).toHaveBeenCalledWith({
+      outboxId: 'outbox-legacy-transport',
+      now: '2026-06-15T06:00:00.000Z',
+      providerMessageId: 'provider-2',
+    });
+    expect(result.details).toMatchObject({
+      operation: 'process-email-reminder-outbox',
+      leasedCount: 1,
+      sentCount: 1,
+    });
+  });
+
   it('materializes reminders for existing subscribers even when public signup is disabled', async () => {
     const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
     const reminderRepository = {
@@ -2461,35 +2590,43 @@ const createInterfaceRecordWithEmailReminderConfig = (): ExternalInterfaceRecord
   },
 });
 
-const createMailTransportInterfaceRecord = (): ExternalInterfaceRecord => ({
-  id: 'mail-transport-1',
+const createMailTransportInterfaceRecord = (overrides: {
+  readonly id?: string;
+  readonly transportId?: string;
+  readonly alias?: string;
+  readonly host?: string;
+  readonly maxBatchSize?: number;
+  readonly rateLimitPerMinute?: number;
+} = {}): ExternalInterfaceRecord => ({
+  id: overrides.id ?? 'mail-transport-1',
   instanceId: 'instance-1',
   typeKey: 'mail_transport',
   ownerKind: 'host',
   ownerId: 'host',
   displayName: 'SMTP Transport',
-  alias: 'smtp-default',
+  alias: overrides.alias ?? 'smtp-default',
   enabled: true,
   isDefault: true,
   category: 'api',
-  baseUrl: 'smtp://mail.example.org',
+  baseUrl: `smtp://${overrides.host ?? 'mail.example.org'}`,
   authMode: 'basic',
   publicConfig: {
-    transportId: 'transport-smtp',
+    transportId: overrides.transportId ?? 'transport-smtp',
     transportType: 'smtp',
     securityMode: 'starttls',
     authMode: 'basic',
-    host: 'mail.example.org',
+    host: overrides.host ?? 'mail.example.org',
     port: 587,
     username: 'mailer',
     defaultFromEmail: 'transport@example.org',
     defaultFromName: 'Transport Default',
     defaultReplyToEmail: 'transport-reply@example.org',
-    maxBatchSize: 25,
+    maxBatchSize: overrides.maxBatchSize ?? 25,
+    ...(overrides.rateLimitPerMinute ? { rateLimitPerMinute: overrides.rateLimitPerMinute } : {}),
   },
   secretConfigCiphertext: protectField(
     JSON.stringify({ password: 'smtp-password' }),
-    buildExternalInterfaceSecretConfigAad('mail-transport-1')
+    buildExternalInterfaceSecretConfigAad(overrides.id ?? 'mail-transport-1')
   ) ?? undefined,
   statusCheckKind: 'mail_transport',
   visibleStatus: 'ok',

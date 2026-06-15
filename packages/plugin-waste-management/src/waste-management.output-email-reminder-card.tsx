@@ -514,7 +514,10 @@ export const WasteEmailReminderConfigurationSection = ({
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">{translate('output.emailReminder.meta.runtimeHint')}</p>
-          <Button type="submit" disabled={running || !hasMailTransportOptions}>
+          <Button
+            type="submit"
+            disabled={running || ((value.enabled || value.publicSignupEnabled) && !hasMailTransportOptions)}
+          >
             {running ? translate('output.emailReminder.actions.saving') : translate('output.emailReminder.actions.save')}
           </Button>
         </div>

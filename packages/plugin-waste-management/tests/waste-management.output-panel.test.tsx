@@ -696,4 +696,80 @@ describe('WasteOutputPanel', () => {
 
     expect(screen.getByText('output.emailReminder.messages.noMailTransport')).toBeTruthy();
   });
+
+  it('still allows saving a disabled reminder configuration when no mail transport remains', () => {
+    const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault());
+    const StatefulSection = () => {
+      const [value, setValue] = React.useState({
+        enabled: true,
+        publicSignupEnabled: false,
+        transportId: '',
+        publicBaseUrl: 'https://example.org',
+        doiConfirmPath: '/confirm',
+        unsubscribePath: '/unsubscribe',
+        signupSuccessPath: '/pending',
+        activationSuccessPath: '/active',
+        unsubscribeSuccessPath: '/done',
+        invalidTokenPath: '/invalid',
+        fromName: 'Abfallwirtschaft',
+        fromEmail: 'abfall@example.org',
+        replyToEmail: 'reply@example.org',
+        serviceLabel: 'Muelli',
+        privacyPolicyUrl: 'https://example.org/privacy',
+        imprintUrl: 'https://example.org/imprint',
+        consentVersion: 'v1',
+        dataControllerLabel: 'Abfallwirtschaft',
+        dataProtectionContactEmail: 'dsb@example.org',
+        consentLabel: 'Ich stimme zu.',
+        doiSubjectTemplate: 'Bitte bestaetigen',
+        doiButtonLabel: 'Aktivieren',
+        doiPreheader: 'Preheader',
+        doiFallbackText: 'Fallback',
+        doiIntroText: 'Intro',
+        doiExpiryNoticeText: '48h',
+        reminderSubjectTemplate: 'Erinnerung',
+        unsubscribeLinkLabel: 'Abmelden',
+        reminderIntroTemplate: 'Intro Erinnerung',
+        reminderListIntroTemplate: 'Liste',
+        reminderOutroText: 'Outro',
+        reminderReasonText: 'Grund',
+        unsubscribeSuccessHeadline: 'Erfolg',
+        unsubscribeAlreadyDoneHeadline: 'Schon erledigt',
+        unsubscribeErrorHeadline: 'Fehler',
+        unsubscribeSuccessBody: 'Body Erfolg',
+        unsubscribeAlreadyDoneBody: 'Body Schon erledigt',
+        unsubscribeErrorBody: 'Body Fehler',
+        doiTokenTtlHours: 48,
+        pendingSubscriptionTtlHours: 72,
+        materializationLookaheadDays: 7,
+        maxSubscriptionsPerEmailAndLocation: 5,
+        signupRateLimitPerIpPerHour: 20,
+        signupRateLimitPerEmailPerHour: 10,
+        unsubscribeTokenTtlDays: 30,
+      });
+
+      return (
+        <WasteEmailReminderConfigurationSection
+          hasMailTransportOptions={false}
+          onChange={setValue}
+          onSubmit={onSubmit}
+          running={false}
+          transportOptions={[]}
+          translate={(key) => key}
+          value={value}
+        />
+      );
+    };
+
+    render(<StatefulSection />);
+
+    const saveButton = screen.getByRole('button', { name: 'output.emailReminder.actions.save' }) as HTMLButtonElement;
+    expect(saveButton.disabled).toBe(true);
+
+    fireEvent.click(screen.getByLabelText('output.emailReminder.fields.enabled'));
+
+    expect(saveButton.disabled).toBe(false);
+    fireEvent.submit(saveButton.closest('form')!);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
 });

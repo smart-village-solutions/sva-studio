@@ -197,6 +197,25 @@ const loadMailTransportConfig = async (
   return config?.transportId === transportId ? config : null;
 };
 
+const loadMailTransportConfigs = async (
+  deps: WasteOperationRuntimeDeps,
+  instanceId: string
+): Promise<ReadonlyMap<string, MailTransportConfig>> => {
+  if (deps.listInterfaceRecords) {
+    const records = await deps.listInterfaceRecords(instanceId);
+    return new Map(
+      records
+        .filter((record) => record.typeKey === 'mail_transport')
+        .map(readMailTransportConfigFromRecord)
+        .flatMap((record) => (record ? [[record.transportId, record] as const] : []))
+    );
+  }
+
+  const fallback = await deps.loadDefaultInterfaceRecord?.(instanceId, 'mail_transport');
+  const config = fallback ? readMailTransportConfigFromRecord(fallback) : null;
+  return new Map(config ? [[config.transportId, config] as const] : []);
+};
+
 const buildUnsubscribeUrl = (config: WasteManagementEmailReminderConfig, unsubscribeTokenHash: string): string => {
   const url = new URL(config.unsubscribePath, config.publicBaseUrl);
   url.searchParams.set('token', unsubscribeTokenHash);
@@ -815,18 +834,23 @@ const createProcessEmailReminderOutboxOperation = (
   if (Number.isNaN(referenceTime.getTime())) {
     throw new Error(`invalid_reference_time:${input.referenceTime}`);
   }
-  const transport = await loadMailTransportConfig(deps, instanceId, reminderConfig.transportId);
-  if (!transport?.enabled) {
+  const transportConfigs = await loadMailTransportConfigs(deps, instanceId);
+  if (transportConfigs.size === 0) {
     throw new Error(`mail_transport_not_available:${reminderConfig.transportId}`);
   }
 
   const requestedBatchSize = input.maxBatchSize ?? DEFAULT_OUTBOX_BATCH_SIZE;
+  const transportBatchLimits = Array.from(transportConfigs.values()).map((transport) =>
+    Math.min(
+      transport.maxBatchSize ?? requestedBatchSize,
+      transport.rateLimitPerMinute ?? requestedBatchSize
+    )
+  );
   const batchSize = Math.max(
     1,
     Math.min(
       requestedBatchSize,
-      transport.maxBatchSize ?? requestedBatchSize,
-      transport.rateLimitPerMinute ?? requestedBatchSize
+      ...(transportBatchLimits.length > 0 ? transportBatchLimits : [requestedBatchSize])
     )
   );
   const retryDelayMinutes = Math.max(1, input.retryDelayMinutes ?? DEFAULT_OUTBOX_RETRY_DELAY_MINUTES);
@@ -844,6 +868,10 @@ const createProcessEmailReminderOutboxOperation = (
     let failedCount = 0;
     for (const entry of leased) {
       try {
+        const transport = transportConfigs.get(entry.transportId);
+        if (!transport?.enabled) {
+          throw new Error(`mail_transport_not_available:${entry.transportId}`);
+        }
         const message = buildDispatchMessage({
           config: reminderConfig,
           transport,

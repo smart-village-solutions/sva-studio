@@ -686,7 +686,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
           sourceStatus: 'confirmed',
           configurationStatus: 'configured',
           conflictStatus: 'none',
-          scope: 'single-day',
+          scope: 'holiday-only',
           strategy: 'advance',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',

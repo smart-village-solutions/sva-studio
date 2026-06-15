@@ -586,7 +586,9 @@ describe('waste management operations runtime', () => {
   });
 
   it('marks failed outbox entries with retry or terminal failure depending on attempt count', async () => {
-    const markOutboxEntryFailed = vi.fn(async () => undefined);
+    const markOutboxEntryFailed = vi.fn(
+      async (_input: { readonly outboxId: string; readonly errorMessage: string; readonly retryAt?: string }) => undefined
+    );
     const reminderRepository = {
       leaseDueOutboxEntries: vi.fn(async () => [
         {

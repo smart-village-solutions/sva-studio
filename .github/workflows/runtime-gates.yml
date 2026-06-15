@@ -145,9 +145,19 @@ jobs:
           fi
           git rev-parse --is-shallow-repository
 
+      - name: Setup Java for SonarCloud
+        if: always() && github.event_name != 'pull_request' && env.SONAR_TOKEN != ''
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: SonarCloud Scan
         if: always() && github.event_name != 'pull_request' && env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v7
+        with:
+          args: >
+            -Dsonar.scanner.skipJreProvisioning=true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 

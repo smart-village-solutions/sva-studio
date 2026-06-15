@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildGuardrailDoctorChecks } from '../../../scripts/ops/runtime-env.ts';
-import type { GuardrailReport } from '../../../scripts/ci/guardrail-report.ts';
+import { buildGuardrailDoctorChecks } from './runtime-env.ts';
+import type { GuardrailReport } from '../ci/guardrail-report.ts';
 
 describe('runtime-env guardrails', () => {
   it('maps report-only guardrail findings to warn/ok/skipped doctor checks', async () => {

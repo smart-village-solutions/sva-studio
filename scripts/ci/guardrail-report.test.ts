@@ -4,7 +4,7 @@ import {
   createGuardrailCheckResult,
   runGuardrailReport,
   type GuardrailCheckDefinition,
-} from '../../../scripts/ci/guardrail-report.ts';
+} from './guardrail-report.ts';
 
 describe('guardrail-report', () => {
   it('returns a stable JSON-friendly report shape', async () => {

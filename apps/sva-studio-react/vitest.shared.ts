@@ -29,6 +29,7 @@ export const sharedVitestConfig = defineConfig({
       '@sva/auth-runtime': fileURLToPath(new URL('../../packages/auth-runtime/src/index.ts', import.meta.url)),
       '@sva/data-repositories/server': fileURLToPath(new URL('../../packages/data-repositories/src/server.ts', import.meta.url)),
       '@sva/data-repositories': fileURLToPath(new URL('../../packages/data-repositories/src/index.ts', import.meta.url)),
+      '@sva/mail-runtime': fileURLToPath(new URL('../../packages/mail-runtime/src/index.ts', import.meta.url)),
       '@sva/iam-admin/encryption': fileURLToPath(new URL('../../packages/iam-admin/src/encryption.ts', import.meta.url)),
       '@sva/iam-admin': fileURLToPath(new URL('../../packages/iam-admin/src/index.ts', import.meta.url)),
       '@sva/iam-governance/legal-text-html': fileURLToPath(

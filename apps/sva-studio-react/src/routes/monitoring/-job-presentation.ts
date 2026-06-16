@@ -53,8 +53,12 @@ export const formatMonitoringJobProgressSummary = (progress?: StudioJobProgress)
   });
 };
 
-export const getMonitoringJobCurrentStep = (progress?: StudioJobProgress): string =>
-  progress?.currentStepLabel ?? progress?.currentStepKey ?? t('monitoring.jobs.values.notAvailable');
+const monitoringWasteStepLabelKeyByValue = {
+  'load-studio-state': 'monitoring.jobs.progress.stepLabels.loadStudioState',
+  'load-mainserver-snapshot': 'monitoring.jobs.progress.stepLabels.loadMainserverSnapshot',
+  'diff-sync-state': 'monitoring.jobs.progress.stepLabels.diffSyncState',
+  'complete-operation': 'monitoring.jobs.progress.stepLabels.completeOperation',
+} as const;
 
 type MonitoringJobWriteSummary = {
   readonly writtenCount: number;
@@ -81,6 +85,8 @@ type MonitoringWasteLiveProgress = Readonly<{
   averageBatchDurationMs?: number;
 }>;
 
+type MonitoringWasteStepKey = keyof typeof monitoringWasteStepLabelKeyByValue;
+
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
 const readNumber = (record: Record<string, unknown>, key: string): number | null => {
@@ -93,14 +99,8 @@ const toMonitoringNumberLocale = (): string => (getActiveLocale() === 'en' ? 'en
 export const formatMonitoringInteger = (value: number): string =>
   new Intl.NumberFormat(toMonitoringNumberLocale()).format(value);
 
-export const extractMonitoringWasteLiveProgress = (
-  job: Pick<StudioJobDetail, 'jobTypeId' | 'progress' | 'runtime'> | Pick<StudioJobListItem, 'jobTypeId' | 'progress' | 'runtime'>
-): MonitoringWasteLiveProgress | null => {
-  if (job.jobTypeId !== 'waste-management.sync-mainserver') {
-    return null;
-  }
-
-  const details = job.progress?.details;
+const resolveMonitoringWasteLiveProgressFromProgress = (progress?: StudioJobProgress): MonitoringWasteLiveProgress | null => {
+  const details = progress?.details;
   if (!isRecord(details)) {
     return null;
   }
@@ -143,6 +143,36 @@ export const extractMonitoringWasteLiveProgress = (
     lastBatchDurationMs: readNumber(details, 'lastBatchDurationMs') ?? undefined,
     averageBatchDurationMs: readNumber(details, 'averageBatchDurationMs') ?? undefined,
   };
+};
+
+const isMonitoringWasteStepKey = (value: string): value is MonitoringWasteStepKey => value in monitoringWasteStepLabelKeyByValue;
+
+export const resolveMonitoringJobStepLabel = (progress?: StudioJobProgress): string | null => {
+  if (!progress) {
+    return null;
+  }
+
+  if (progress.currentStepKey === 'create-batches' || progress.currentStepKey === 'delete-batches') {
+    return formatMonitoringWasteLiveProgressSummary(resolveMonitoringWasteLiveProgressFromProgress(progress));
+  }
+
+  if (progress.currentStepKey && isMonitoringWasteStepKey(progress.currentStepKey)) {
+    return t(monitoringWasteStepLabelKeyByValue[progress.currentStepKey]);
+  }
+
+  return progress.currentStepLabel ?? progress.currentStepKey ?? null;
+};
+
+export const getMonitoringJobCurrentStep = (progress?: StudioJobProgress): string =>
+  resolveMonitoringJobStepLabel(progress) ?? t('monitoring.jobs.values.notAvailable');
+
+export const extractMonitoringWasteLiveProgress = (
+  job: Pick<StudioJobDetail, 'jobTypeId' | 'progress' | 'runtime'> | Pick<StudioJobListItem, 'jobTypeId' | 'progress' | 'runtime'>
+): MonitoringWasteLiveProgress | null => {
+  if (job.jobTypeId !== 'waste-management.sync-mainserver') {
+    return null;
+  }
+  return resolveMonitoringWasteLiveProgressFromProgress(job.progress);
 };
 
 export const formatMonitoringWasteLiveProgressSummary = (progress: MonitoringWasteLiveProgress | null): string | null => {

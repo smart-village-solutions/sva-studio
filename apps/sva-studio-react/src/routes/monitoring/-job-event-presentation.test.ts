@@ -78,6 +78,19 @@ describe('monitoring job event presentation', () => {
         },
       })
     ).toBe('Fortschritt aktualisiert: normalize.');
+
+    expect(
+      formatMonitoringJobEventMessage({
+        ...baseEvent,
+        message: 'load-studio-state',
+        progress: {
+          completedSteps: 1,
+          totalSteps: 6,
+          currentStepKey: 'load-studio-state',
+          currentStepLabel: 'load-studio-state',
+        },
+      })
+    ).toBe('Fortschritt aktualisiert: Studio-Status laden.');
   });
 
   it('falls back to tone and terminal metadata from the event type when the backend omits presentation details', () => {
@@ -120,6 +133,14 @@ describe('monitoring job event presentation', () => {
         currentStepLabel: 'Normalisieren',
       })
     ).toBe('Normalisieren');
+    expect(
+      getMonitoringJobCurrentStep({
+        completedSteps: 1,
+        totalSteps: 6,
+        currentStepKey: 'load-studio-state',
+        currentStepLabel: 'load-studio-state',
+      })
+    ).toBe('Studio-Status laden');
     expect(getMonitoringJobCurrentStep(undefined)).toBe('Nicht verfügbar');
   });
 

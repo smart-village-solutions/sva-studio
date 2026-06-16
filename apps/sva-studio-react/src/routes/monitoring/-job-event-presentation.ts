@@ -1,6 +1,7 @@
 import type { StudioJobEventRecord } from '@sva/core';
 
 import { t } from '../../i18n';
+import { resolveMonitoringJobStepLabel } from './-job-presentation';
 
 const eventTitleKeyByType = {
   'job.queued': 'monitoring.jobs.events.titles.job.queued',
@@ -46,6 +47,15 @@ export const formatMonitoringJobEventTitle = (event: StudioJobEventRecord): stri
   t(eventTitleKeyByType[event.eventType]);
 
 export const formatMonitoringJobEventMessage = (event: StudioJobEventRecord): string | undefined => {
+  if (event.eventType === 'job.progressed') {
+    const localizedStepLabel = resolveMonitoringJobStepLabel(event.progress);
+    if (localizedStepLabel) {
+      return t('monitoring.jobs.events.messages.job.progressedStepLabel', {
+        value: localizedStepLabel,
+      });
+    }
+  }
+
   if (event.message) {
     return event.message;
   }

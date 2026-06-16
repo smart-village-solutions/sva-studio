@@ -7,7 +7,6 @@ import type {
   WasteTourRecord,
 } from '@sva/core';
 import {
-  CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE,
   createSvaMainserverWastePickupTimes,
   deleteSvaMainserverWastePickupTimes,
   listSvaMainserverWasteSyncSnapshot,
@@ -25,7 +24,6 @@ import {
 import {
   averageBatchDuration,
   buildSyncProgress,
-  createBatchStepLabel,
   reportSyncProgress,
   type WasteSyncBatchProgressDetails,
   type WasteSyncProgressReporter,
@@ -190,7 +188,7 @@ export const runWasteManagementMainserverSync = async (input: {
     if (params.items.length === 0) {
       await input.onBatchProgress?.({
         operationMode: params.operationMode,
-        totalItemCount: 0,
+        totalItemCount: totalPlannedItemCount,
         totalBatchCount: 0,
         currentBatchIndex: 0,
         currentBatchSize: 0,
@@ -248,7 +246,7 @@ export const runWasteManagementMainserverSync = async (input: {
     studioItemCount: input.studioRows.length,
     mainserverItemCount: input.mainserverRows.length,
     createCount: createItems.length,
-    createBatchCount: Math.ceil(createItems.length / CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE),
+    createBatchCount: Math.ceil(createItems.length / batchSize),
     deleteCount: deleteItems.length,
     deleteByIdCount,
     deleteByValueCount,
@@ -275,6 +273,14 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
   progressReporter?: WasteSyncProgressReporter;
   batchSize?: number;
 }): Promise<WasteManagementMainserverSyncResult> => {
+  await reportSyncProgress(
+    input.progressReporter,
+    buildSyncProgress({
+      completedSteps: 1,
+      currentStepKey: 'load-studio-state',
+      currentStepLabel: 'load-studio-state',
+    })
+  );
   const studioState = await withWasteClient(input.runtimeDeps ?? {}, input.instanceId, async ({ repository }) => ({
     tours: await repository.listWasteTours(),
     fractions: await repository.listWasteFractions(),
@@ -287,14 +293,6 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     globalDateShifts: await repository.listWasteGlobalDateShifts(),
     holidayRules: await repository.listWasteHolidayRules(),
   }));
-  await reportSyncProgress(
-    input.progressReporter,
-    buildSyncProgress({
-      completedSteps: 1,
-      currentStepKey: 'load-studio-state',
-      currentStepLabel: 'Studio-Status laden',
-    })
-  );
 
   const now = input.runtimeDeps?.now?.() ?? new Date();
   const currentYear = now.getUTCFullYear();
@@ -312,7 +310,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     buildSyncProgress({
       completedSteps: 2,
       currentStepKey: 'load-mainserver-snapshot',
-      currentStepLabel: 'Mainserver-Snapshot laden',
+      currentStepLabel: 'load-mainserver-snapshot',
       details: {
         studioSnapshotCount: studioRows.length,
       },
@@ -328,7 +326,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     buildSyncProgress({
       completedSteps: 3,
       currentStepKey: 'diff-sync-state',
-      currentStepLabel: 'Abweichungen berechnen',
+      currentStepLabel: 'diff-sync-state',
       details: {
         studioSnapshotCount: studioRows.length,
         mainserverSnapshotCount: mainserverRows.length,
@@ -367,7 +365,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
         buildSyncProgress({
           completedSteps: isCreate ? 4 : 5,
           currentStepKey,
-          currentStepLabel: createBatchStepLabel(details),
+          currentStepLabel: currentStepKey,
           details,
         })
       );
@@ -379,7 +377,7 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     buildSyncProgress({
       completedSteps: 6,
       currentStepKey: 'complete-operation',
-      currentStepLabel: 'Synchronisierung abgeschlossen',
+      currentStepLabel: 'complete-operation',
       details: {
         totalBatchCount: result.totalBatchCount,
         processedItemCount: result.processedItemCount,

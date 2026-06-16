@@ -191,6 +191,12 @@ export const monitoringDEResources = {
       summary: '{{current}} / {{total}} Schritte ({{percent}} %)',
       current: 'Fortschritt: {{value}}',
       step: 'Aktueller Schritt: {{value}}',
+      stepLabels: {
+        loadStudioState: 'Studio-Status laden',
+        loadMainserverSnapshot: 'Mainserver-Snapshot laden',
+        diffSyncState: 'Abweichungen berechnen',
+        completeOperation: 'Synchronisierung abgeschlossen',
+      },
       liveBatchSummaryCreate: 'Anlegen: Batch {{current}} / {{total}}',
       liveBatchSummaryDelete: 'Löschen: Batch {{current}} / {{total}}',
       liveProcessedSummary: '{{current}} / {{total}} Datensätze verarbeitet',

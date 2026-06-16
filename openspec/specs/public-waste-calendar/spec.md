@@ -91,17 +91,20 @@ Das System SHALL genau einen zuletzt gewählten Standort pro Browser für die ö
 
 Das System SHALL für einen vollständig aufgelösten Standort drei komplementäre Kalenderdarstellungen bereitstellen.
 
-#### Scenario: Terminliste beginnt mit dem nächsten Termin
+#### Scenario: Terminliste zeigt verfügbare Vergangenheits- und Zukunftstermine chronologisch
 
 - **WHEN** der Kalender für einen Standort geladen ist
-- **THEN** beginnt die Terminliste mit dem nächsten verfügbaren Termin
-- **AND** listet nachfolgende Termine in zeitlich aufsteigender Reihenfolge
+- **THEN** zeigt die Terminliste verfügbare Termine in zeitlich aufsteigender Reihenfolge
+- **AND** sie kann je nach Datenlage auch vergangene Termine bis zum Anfang des Vorjahres enthalten
+- **AND** künftige Termine bleiben ohne Lücken im selben Kalenderdatensatz sichtbar
 
 #### Scenario: Monats- und Jahresansicht haben ein begrenztes Navigationsfenster
 
 - **WHEN** Benutzerinnen oder Benutzer den Monats- oder Jahreskalender verwenden
 - **THEN** startet die Ansicht beim aktuellen Zeitpunkt
-- **AND** erlaubt Navigation höchstens ein Jahr in die Vergangenheit und ein Jahr in die Zukunft
+- **AND** erlaubt Navigation rückwärts höchstens bis zum frühesten verfügbaren Monat des Standorts
+- **AND** die Rückwärtsnavigation reicht dabei nie vor den Jahresanfang des Vorjahres
+- **AND** die Vorwärtsnavigation bleibt höchstens ein Jahr in die Zukunft begrenzt
 
 #### Scenario: Klick auf einen Termin öffnet ein Detail-Modal
 
@@ -131,11 +134,12 @@ Das System SHALL globale PDF- und iCal-Aktionen aus demselben finalen Standortko
 - **AND** die öffentliche Runtime erzeugt das PDF serverseitig ad hoc
 - **AND** es wird kein persistentes PDF-Artefakt gespeichert
 
-#### Scenario: iCal-Feed liefert alle verfügbaren künftigen Termine
+#### Scenario: iCal-Feed liefert dieselbe Terminspanne wie die öffentliche Kalenderansicht
 
 - **WHEN** ein Benutzer oder ein Kalender-Client den iCal-Link eines vollständig aufgelösten Standorts aufruft
 - **THEN** liefert die App einen serverseitig erzeugten iCal-Feed
 - **AND** der Feed enthält alle verfügbaren künftigen Termine dieses Standorts
+- **AND** der Feed kann je nach Datenlage zusätzlich vergangene Termine bis zum Anfang des Vorjahres enthalten
 - **AND** der Feed ist konsistent zu den in der App sichtbaren Kalenderdaten
 
 ### Requirement: Öffentliche App ist für eingebettete Nutzung barrierearm und schlicht

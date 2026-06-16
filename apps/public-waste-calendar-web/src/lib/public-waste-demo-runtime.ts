@@ -213,7 +213,7 @@ export const resolveDemoPublicWastePageState = (input: {
     locationKey,
     ...projectPublicWasteCalendar({
       referenceDate: DEMO_REFERENCE_DATE,
-      upcomingEntries: calendarEntries,
+      entries: calendarEntries,
     }),
   };
 

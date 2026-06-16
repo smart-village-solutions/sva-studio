@@ -140,6 +140,7 @@ describe('PublicWasteIndexPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Rathenow' }));
+    await act(async () => {});
     fireEvent.change(await screen.findByRole('textbox', { name: 'Straße suchen' }), {
       target: { value: 'Hafen' },
     });
@@ -148,6 +149,7 @@ describe('PublicWasteIndexPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Am alten Hafen' }));
+    await act(async () => {});
     fireEvent.change(await screen.findByRole('textbox', { name: 'Hausnummer suchen' }), {
       target: { value: '12' },
     });
@@ -285,6 +287,7 @@ describe('PublicWasteIndexPage', () => {
       expect(screen.getByRole('button', { name: 'Rathenow' })).toBeTruthy();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Rathenow' }));
+    await act(async () => {});
 
     fireEvent.change(await screen.findByRole('textbox', { name: 'Straße suchen' }), {
       target: { value: 'Hafen' },
@@ -293,6 +296,7 @@ describe('PublicWasteIndexPage', () => {
       expect(screen.getByRole('button', { name: 'Am alten Hafen' })).toBeTruthy();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Am alten Hafen' }));
+    await act(async () => {});
 
     fireEvent.change(await screen.findByRole('textbox', { name: 'Hausnummer suchen' }), {
       target: { value: '12' },

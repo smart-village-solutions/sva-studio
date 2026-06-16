@@ -127,4 +127,32 @@ describe('PublicWasteCalendarPanels', () => {
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Monat' }), { key: 'ArrowLeft' });
     expect(screen.getByRole('tab', { name: 'Liste' }).getAttribute('aria-selected')).toBe('true');
   });
+
+  it('allows month navigation back to the earliest available month in the previous year', () => {
+    render(
+      <PublicWasteCalendarPanels
+        model={createFilteredPublicWasteCalendarModelFixture({
+          listEntries: [
+            createPublicWasteCalendarEntryFixture({
+              id: 'pickup-oldest',
+              date: '2025-01-15',
+            }),
+            createPublicWasteCalendarEntryFixture(),
+          ],
+        })}
+        onToggleFraction={vi.fn()}
+        onActivateEntry={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Monat' }));
+
+    const previousMonthButton = screen.getByRole('button', { name: 'Vorheriger Monat' });
+    for (let index = 0; index < 16; index += 1) {
+      fireEvent.click(previousMonthButton);
+    }
+
+    expect(screen.getByRole('heading', { name: 'Januar 2025' })).toBeTruthy();
+    expect(previousMonthButton.getAttribute('disabled')).not.toBeNull();
+  });
 });

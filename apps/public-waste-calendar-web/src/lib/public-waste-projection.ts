@@ -1,8 +1,10 @@
 import type { PublicWasteCalendarEntry, PublicWasteFractionOption } from './public-waste-contract.js';
 
+import { normalizeDateOnly } from './public-waste-date-utils.js';
+
 export type ProjectPublicWasteCalendarInput = {
   readonly referenceDate: string;
-  readonly upcomingEntries: readonly PublicWasteCalendarEntry[];
+  readonly entries: readonly PublicWasteCalendarEntry[];
 };
 
 export type PublicWasteCalendarProjection = {
@@ -70,10 +72,14 @@ const deriveFractionOptions = (entries: readonly PublicWasteCalendarEntry[]): re
 export const projectPublicWasteCalendar = (
   input: ProjectPublicWasteCalendarInput
 ): PublicWasteCalendarProjection => {
-  const listEntries = [...input.upcomingEntries].sort(compareEntries);
+  const listEntries = [...input.entries].sort(compareEntries);
+  const normalizedReferenceDate = normalizeDateOnly(input.referenceDate);
+  const nextPickupDate = normalizedReferenceDate
+    ? (listEntries.find((entry) => entry.date >= normalizedReferenceDate)?.date ?? null)
+    : null;
 
   return {
-    nextPickupDate: listEntries[0]?.date ?? null,
+    nextPickupDate,
     listEntries,
     monthBuckets: groupEntriesByMonth(listEntries),
     yearBuckets: groupEntriesByYear(listEntries),

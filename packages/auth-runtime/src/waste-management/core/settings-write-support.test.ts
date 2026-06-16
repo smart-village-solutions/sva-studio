@@ -570,4 +570,56 @@ describe('waste-management settings write support', () => {
       }),
     });
   });
+
+  it('overrides internal email reminder paths with fixed system defaults before persisting', async () => {
+    const targetRecord = createInterfaceRecord();
+    const saved = createSettings();
+    const saveExternalInterfaceRecord = vi.fn(async () => undefined);
+
+    loadConfiguredWasteSettingsMock.mockResolvedValueOnce(createSettings()).mockResolvedValueOnce(saved);
+
+    const response = await updateWasteManagementSettingsAfterValidation({
+      deps: {
+        listInterfaceRecords: vi.fn(async () => [targetRecord]),
+        saveExternalInterfaceRecord,
+        loadWasteCustomRecurrencePresets: vi.fn(async () => []),
+        saveWasteCustomRecurrencePresets: vi.fn(async () => undefined),
+      },
+      ctx: actor,
+      instanceId: 'tenant-a',
+      requestId: 'req-1',
+      input: {
+        projectUrl: 'https://tenant.example',
+        schemaName: 'wm',
+        enabled: true,
+        emailReminderConfig: {
+          ...createEmailReminderConfig(),
+          doiConfirmPath: '/custom-confirm',
+          unsubscribePath: '/custom-unsubscribe',
+          signupSuccessPath: '/custom-pending',
+          activationSuccessPath: '/custom-active',
+          unsubscribeSuccessPath: '/custom-unsubscribed',
+          invalidTokenPath: '/custom-invalid',
+        },
+        customRecurrencePresets: [],
+        deletedPresetFallbacks: {},
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(saveExternalInterfaceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publicConfig: expect.objectContaining({
+          emailReminderConfig: expect.objectContaining({
+            doiConfirmPath: '/email-reminders/confirm',
+            unsubscribePath: '/email-reminders/unsubscribe',
+            signupSuccessPath: '/email-reminders/pending',
+            activationSuccessPath: '/email-reminders/active',
+            unsubscribeSuccessPath: '/email-reminders/unsubscribed',
+            invalidTokenPath: '/email-reminders/token-invalid',
+          }),
+        }),
+      })
+    );
+  });
 });

@@ -18,6 +18,7 @@ import {
 } from './waste-management.page.support.js';
 import { useWasteOutputPanelData } from './waste-management.output-panel.data.js';
 import { WasteEmailReminderConfigurationSection } from './waste-management.output-email-reminder-card.js';
+import { fixedWasteEmailReminderPaths, withFixedWasteEmailReminderPaths } from './waste-management.email-reminder-paths.js';
 import { WasteOutputConfigurationSection } from './waste-management.output-panel.parts.js';
 
 const buildDefaultEmailReminderConfig = ({
@@ -31,12 +32,7 @@ const buildDefaultEmailReminderConfig = ({
   publicSignupEnabled: false,
   transportId: transportOptions[0]?.id ?? '',
   publicBaseUrl: calendarWebUrl ?? 'https://demo.abfallkalender.example',
-  doiConfirmPath: '/email-reminders/confirm',
-  unsubscribePath: '/email-reminders/unsubscribe',
-  signupSuccessPath: '/email-reminders/pending',
-  activationSuccessPath: '/email-reminders/active',
-  unsubscribeSuccessPath: '/email-reminders/unsubscribed',
-  invalidTokenPath: '/email-reminders/token-invalid',
+  ...fixedWasteEmailReminderPaths,
   fromName: 'Abfallwirtschaft',
   fromEmail: 'abfall@example.org',
   replyToEmail: 'abfall@example.org',
@@ -120,7 +116,7 @@ export const WasteOutputPanel = () => {
         calendarWebUrl: settings?.calendarWebUrl,
         transportOptions: nextMailTransportOptions,
       });
-    setEmailReminderConfig(ensureTransportSelection(baseConfig, nextMailTransportOptions));
+    setEmailReminderConfig(withFixedWasteEmailReminderPaths(ensureTransportSelection(baseConfig, nextMailTransportOptions)));
   }, [
     settings?.availableInterfaces,
     settings?.calendarWebUrl,
@@ -202,7 +198,9 @@ export const WasteOutputPanel = () => {
         calendarWebUrl: settings.calendarWebUrl,
         pdfBrandingAssetUrl: compactOptionalString(brandingAssetUrl),
         pdfContactBlock: compactOptionalString(contactBlock),
-        emailReminderConfig: ensureTransportSelection(emailReminderConfig, nextMailTransportOptions),
+        emailReminderConfig: withFixedWasteEmailReminderPaths(
+          ensureTransportSelection(emailReminderConfig, nextMailTransportOptions)
+        ),
         holidayStateCode: settings.holidayStateCode,
         customRecurrencePresets: settings.customRecurrencePresets ?? [],
         deletedPresetFallbacks: {},
@@ -210,16 +208,18 @@ export const WasteOutputPanel = () => {
       const nextSettings = result ?? (await getWasteManagementSettings());
       setSettings(nextSettings);
       setEmailReminderConfig(
-        ensureTransportSelection(
-          nextSettings?.emailReminderConfig ??
-            buildDefaultEmailReminderConfig({
-              calendarWebUrl: nextSettings?.calendarWebUrl,
-              transportOptions: (nextSettings?.availableInterfaces ?? []).filter(
-                (option) => option.typeKey === 'mail_transport'
-              ),
-            }),
-          (nextSettings?.availableInterfaces ?? []).filter(
-            (option) => option.typeKey === 'mail_transport'
+        withFixedWasteEmailReminderPaths(
+          ensureTransportSelection(
+            nextSettings?.emailReminderConfig ??
+              buildDefaultEmailReminderConfig({
+                calendarWebUrl: nextSettings?.calendarWebUrl,
+                transportOptions: (nextSettings?.availableInterfaces ?? []).filter(
+                  (option) => option.typeKey === 'mail_transport'
+                ),
+              }),
+            (nextSettings?.availableInterfaces ?? []).filter(
+              (option) => option.typeKey === 'mail_transport'
+            )
           )
         )
       );

@@ -14,6 +14,7 @@ import {
   persistWasteSettingsInterfaceSelection,
   resolveTargetInterfaceRecord,
 } from './settings-write-support.interface-selection.js';
+import { withFixedWasteEmailReminderPaths } from './email-reminder-paths.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { requireDeps } from './utils.js';
@@ -180,6 +181,9 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     shouldRunHolidaySync && lastHolidaySyncStatus && lastHolidaySyncStatus !== 'failed'
       ? new Date().toISOString()
       : writeContext.current.lastSuccessfulHolidaySyncAt;
+  const normalizedEmailReminderConfig = input.emailReminderConfig
+    ? withFixedWasteEmailReminderPaths(input.emailReminderConfig)
+    : undefined;
 
   await persistWasteSettingsInterfaceSelection({
     deps,
@@ -188,7 +192,7 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     calendarWebUrl: input.calendarWebUrl?.trim(),
     pdfBrandingAssetUrl: input.pdfBrandingAssetUrl?.trim(),
     pdfContactBlock: input.pdfContactBlock?.trim(),
-    emailReminderConfig: input.emailReminderConfig,
+    emailReminderConfig: normalizedEmailReminderConfig,
     holidayStateCode: input.holidayStateCode,
     lastHolidaySyncStatus,
     lastSuccessfulHolidaySyncAt,

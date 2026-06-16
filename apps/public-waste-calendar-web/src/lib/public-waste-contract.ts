@@ -39,6 +39,7 @@ export type PublicWasteCalendarEntry = {
   readonly date: string;
   readonly fractionId: string;
   readonly fractionLabel: string;
+  readonly fractionDescription?: string;
   readonly fractionShortLabel?: string;
   readonly fractionColor?: string;
   readonly tourName?: string;

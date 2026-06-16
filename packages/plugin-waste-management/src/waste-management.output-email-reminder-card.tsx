@@ -218,42 +218,6 @@ export const WasteEmailReminderConfigurationSection = ({
             value: value.publicBaseUrl,
             onChange: (next) => setValue('publicBaseUrl', next),
           })}
-          {textField({
-            id: 'waste-email-reminder-doi-confirm-path',
-            label: translate('output.emailReminder.fields.doiConfirmPath'),
-            value: value.doiConfirmPath,
-            onChange: (next) => setValue('doiConfirmPath', next),
-          })}
-          {textField({
-            id: 'waste-email-reminder-unsubscribe-path',
-            label: translate('output.emailReminder.fields.unsubscribePath'),
-            value: value.unsubscribePath,
-            onChange: (next) => setValue('unsubscribePath', next),
-          })}
-          {textField({
-            id: 'waste-email-reminder-signup-success-path',
-            label: translate('output.emailReminder.fields.signupSuccessPath'),
-            value: value.signupSuccessPath ?? '',
-            onChange: (next) => setValue('signupSuccessPath', next || undefined),
-          })}
-          {textField({
-            id: 'waste-email-reminder-activation-success-path',
-            label: translate('output.emailReminder.fields.activationSuccessPath'),
-            value: value.activationSuccessPath ?? '',
-            onChange: (next) => setValue('activationSuccessPath', next || undefined),
-          })}
-          {textField({
-            id: 'waste-email-reminder-unsubscribe-success-path',
-            label: translate('output.emailReminder.fields.unsubscribeSuccessPath'),
-            value: value.unsubscribeSuccessPath ?? '',
-            onChange: (next) => setValue('unsubscribeSuccessPath', next || undefined),
-          })}
-          {textField({
-            id: 'waste-email-reminder-invalid-token-path',
-            label: translate('output.emailReminder.fields.invalidTokenPath'),
-            value: value.invalidTokenPath ?? '',
-            onChange: (next) => setValue('invalidTokenPath', next || undefined),
-          })}
         </div>
 
         {sectionHeading({

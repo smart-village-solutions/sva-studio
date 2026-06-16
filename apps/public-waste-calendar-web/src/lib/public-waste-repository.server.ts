@@ -45,6 +45,7 @@ type CalendarEntryRow = {
   readonly tour_custom_dates: readonly { readonly date?: unknown; readonly description?: unknown }[] | null;
   readonly fraction_id: string;
   readonly fraction_label: string;
+  readonly fraction_description: string | null;
   readonly fraction_pdf_short_label: string | null;
   readonly fraction_color: string | null;
 };
@@ -73,6 +74,7 @@ type ImportedPickupDateRow = {
   readonly tour_description: string | null;
   readonly fraction_id: string | null;
   readonly fraction_label: string | null;
+  readonly fraction_description: string | null;
   readonly fraction_pdf_short_label: string | null;
   readonly fraction_color: string | null;
   readonly note: string | null;
@@ -387,6 +389,7 @@ export const createPublicWasteRepository = (input: {
             t.custom_dates AS tour_custom_dates,
             f.id AS fraction_id,
             f.name AS fraction_label,
+            f.description AS fraction_description,
             f.pdf_short_label AS fraction_pdf_short_label,
             f.color AS fraction_color
           FROM ${schemaName}.waste_collection_locations cl
@@ -453,6 +456,7 @@ export const createPublicWasteRepository = (input: {
               t.description AS tour_description,
               f.id AS fraction_id,
               f.name AS fraction_label,
+              f.description AS fraction_description,
               f.pdf_short_label AS fraction_pdf_short_label,
               f.color AS fraction_color,
               p.note AS note
@@ -529,6 +533,7 @@ export const createPublicWasteRepository = (input: {
                 readonly fractions: {
                   id: string;
                   label: string;
+                  description?: string;
                   shortLabel?: string;
                   color?: string;
                 }[];
@@ -541,6 +546,7 @@ export const createPublicWasteRepository = (input: {
             ? {
                 id: row.fraction_id,
                 label: row.fraction_label,
+                ...(row.fraction_description?.trim() ? { description: row.fraction_description.trim() } : {}),
                 ...(row.fraction_pdf_short_label ? { shortLabel: row.fraction_pdf_short_label } : {}),
                 ...(row.fraction_color ? { color: row.fraction_color } : {}),
               }
@@ -729,6 +735,7 @@ export const createPublicWasteRepository = (input: {
           date: shiftedDate,
           fractionId: row.fraction_id,
           fractionLabel: row.fraction_label,
+          ...(row.fraction_description?.trim() ? { fractionDescription: row.fraction_description.trim() } : {}),
           ...(row.fraction_pdf_short_label ? { fractionShortLabel: row.fraction_pdf_short_label } : {}),
           ...(row.fraction_color ? { fractionColor: row.fraction_color } : {}),
           ...(row.tour_name.trim() ? { tourName: row.tour_name.trim() } : {}),

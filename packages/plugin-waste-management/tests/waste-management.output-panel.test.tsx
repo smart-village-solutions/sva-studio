@@ -588,12 +588,6 @@ describe('WasteOutputPanel', () => {
     fireEvent.click(screen.getByLabelText('output.emailReminder.fields.publicSignupEnabled'));
     fireEvent.change(screen.getByLabelText('output.emailReminder.fields.transportId'), { target: { value: 'mail-transport-2' } });
     fireEvent.change(screen.getByLabelText('output.emailReminder.fields.publicBaseUrl'), { target: { value: 'https://public.example.org' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.doiConfirmPath'), { target: { value: '/confirm-new' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribePath'), { target: { value: '/unsubscribe-new' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.signupSuccessPath'), { target: { value: '/signup-ok' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.activationSuccessPath'), { target: { value: '/activation-ok' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.unsubscribeSuccessPath'), { target: { value: '/unsubscribe-ok' } });
-    fireEvent.change(screen.getByLabelText('output.emailReminder.fields.invalidTokenPath'), { target: { value: '/token-invalid' } });
     fireEvent.change(screen.getByLabelText('output.emailReminder.fields.fromName'), { target: { value: 'Landkreis' } });
     fireEvent.change(screen.getByLabelText('output.emailReminder.fields.fromEmail'), { target: { value: 'noreply@example.org' } });
     fireEvent.change(screen.getByLabelText('output.emailReminder.fields.replyToEmail'), { target: { value: 'service@example.org' } });
@@ -695,6 +689,82 @@ describe('WasteOutputPanel', () => {
     );
 
     expect(screen.getByText('output.emailReminder.messages.noMailTransport')).toBeTruthy();
+  });
+
+  it('does not render internal email reminder path fields on the direct configuration card', () => {
+    render(
+      <WasteEmailReminderConfigurationSection
+        hasMailTransportOptions
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        running={false}
+        transportOptions={[
+          {
+            id: 'mail-transport-1',
+            name: 'Zentraler Mailtransport',
+            typeKey: 'mail_transport',
+            enabled: true,
+            visibleStatus: 'ok',
+            isSelected: true,
+          },
+        ]}
+        translate={(key) => key}
+        value={{
+          enabled: true,
+          publicSignupEnabled: true,
+          transportId: 'mail-transport-1',
+          publicBaseUrl: 'https://example.org',
+          doiConfirmPath: '/email-reminders/confirm',
+          unsubscribePath: '/email-reminders/unsubscribe',
+          signupSuccessPath: '/email-reminders/pending',
+          activationSuccessPath: '/email-reminders/active',
+          unsubscribeSuccessPath: '/email-reminders/unsubscribed',
+          invalidTokenPath: '/email-reminders/token-invalid',
+          fromName: 'Abfallwirtschaft',
+          fromEmail: 'abfall@example.org',
+          replyToEmail: 'reply@example.org',
+          serviceLabel: 'Muelli',
+          privacyPolicyUrl: 'https://example.org/privacy',
+          imprintUrl: 'https://example.org/imprint',
+          consentVersion: 'v1',
+          dataControllerLabel: 'Abfallwirtschaft',
+          dataProtectionContactEmail: 'dsb@example.org',
+          consentLabel: 'Ich stimme zu.',
+          doiSubjectTemplate: 'Bitte bestaetigen',
+          doiButtonLabel: 'Aktivieren',
+          doiPreheader: 'Preheader',
+          doiFallbackText: 'Fallback',
+          doiIntroText: 'Intro',
+          doiExpiryNoticeText: '48h',
+          reminderSubjectTemplate: 'Erinnerung',
+          unsubscribeLinkLabel: 'Abmelden',
+          reminderIntroTemplate: 'Intro Erinnerung',
+          reminderListIntroTemplate: 'Liste',
+          reminderOutroText: 'Outro',
+          reminderReasonText: 'Grund',
+          unsubscribeSuccessHeadline: 'Erfolg',
+          unsubscribeAlreadyDoneHeadline: 'Schon erledigt',
+          unsubscribeErrorHeadline: 'Fehler',
+          unsubscribeSuccessBody: 'Body Erfolg',
+          unsubscribeAlreadyDoneBody: 'Body Schon erledigt',
+          unsubscribeErrorBody: 'Body Fehler',
+          doiTokenTtlHours: 48,
+          pendingSubscriptionTtlHours: 72,
+          materializationLookaheadDays: 7,
+          maxSubscriptionsPerEmailAndLocation: 5,
+          signupRateLimitPerIpPerHour: 20,
+          signupRateLimitPerEmailPerHour: 10,
+          unsubscribeTokenTtlDays: 30,
+        }}
+      />
+    );
+
+    expect(screen.queryByLabelText('output.emailReminder.fields.doiConfirmPath')).toBeNull();
+    expect(screen.queryByLabelText('output.emailReminder.fields.unsubscribePath')).toBeNull();
+    expect(screen.queryByLabelText('output.emailReminder.fields.signupSuccessPath')).toBeNull();
+    expect(screen.queryByLabelText('output.emailReminder.fields.activationSuccessPath')).toBeNull();
+    expect(screen.queryByLabelText('output.emailReminder.fields.unsubscribeSuccessPath')).toBeNull();
+    expect(screen.queryByLabelText('output.emailReminder.fields.invalidTokenPath')).toBeNull();
   });
 
   it('still allows saving a disabled reminder configuration when no mail transport remains', () => {

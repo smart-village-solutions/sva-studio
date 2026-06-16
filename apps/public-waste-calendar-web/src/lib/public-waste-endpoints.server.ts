@@ -46,6 +46,36 @@ const readRequiredYear = (url: URL): number => {
 
 const normalizeDateForIcal = (value: string): string => value.replaceAll('-', '');
 
+const normalizeEventDescriptionPart = (value: string | undefined | null): string | null => {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+};
+
+const buildPublicWasteIcalEventDescription = (entry: {
+  readonly fractionDescription?: string;
+  readonly tourDescription?: string;
+  readonly note: string | null;
+}): string | undefined => {
+  const uniqueValues = new Set<string>();
+  const parts: string[] = [];
+  const candidates = [
+    ['Fraktion', normalizeEventDescriptionPart(entry.fractionDescription)] as const,
+    ['Tour', normalizeEventDescriptionPart(entry.tourDescription)] as const,
+    ['Hinweis', normalizeEventDescriptionPart(entry.note)] as const,
+  ];
+
+  for (const [label, value] of candidates) {
+    if (!value || uniqueValues.has(value)) {
+      continue;
+    }
+
+    uniqueValues.add(value);
+    parts.push(`${label}: ${value}`);
+  }
+
+  return parts.length > 0 ? parts.join('\n') : undefined;
+};
+
 const normalizePdfLocationLabel = (selectionSummary: string): string => {
   const parts = selectionSummary.split(',').map((part) => part.trim()).filter(Boolean);
   const city = parts[0] ?? '';
@@ -316,27 +346,35 @@ export const handlePublicWastePdfRequest = async (input: {
 };
 
 export const handlePublicWasteIcalRequest = async (input: {
-  readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries'>;
+  readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries' | 'loadSelectionSummary'>;
   readonly request: Request;
 }): Promise<Response> => {
   try {
     const url = new URL(input.request.url);
-    const calendar = await loadResolvedPublicWasteCalendar({
-      repository: input.repository,
-      input: {
-        selection: readPublicWasteResolvedSelection(url),
-        referenceDate: readPublicWasteReferenceDate(url),
-      },
-    });
+    const selection = readPublicWasteResolvedSelection(url);
+    const [calendar, selectionSummary] = await Promise.all([
+      loadResolvedPublicWasteCalendar({
+        repository: input.repository,
+        input: {
+          selection,
+          referenceDate: readPublicWasteReferenceDate(url),
+        },
+      }),
+      input.repository.loadSelectionSummary({ selection }),
+    ]);
 
     const body = renderPublicWasteIcal({
       calendarName: readPublicWasteCalendarName(url),
-      events: calendar.listEntries.map((entry) => ({
-        uid: `${entry.id}@public-waste-calendar`,
-        startDate: normalizeDateForIcal(entry.date),
-        summary: entry.fractionLabel,
-        ...(entry.note ? { description: entry.note } : {}),
-      })),
+      calendarDescription: `Abholort: ${selectionSummary}`,
+      events: calendar.listEntries.map((entry) => {
+        const description = buildPublicWasteIcalEventDescription(entry);
+        return {
+          uid: `${entry.id}@public-waste-calendar`,
+          startDate: normalizeDateForIcal(entry.date),
+          summary: entry.fractionLabel,
+          ...(description ? { description } : {}),
+        };
+      }),
     });
 
     return new Response(body, {

@@ -192,6 +192,7 @@ describe('public waste repository', () => {
             tour_custom_dates: null,
             fraction_id: 'fraction-1',
             fraction_label: 'Restmuell',
+            fraction_description: 'Restabfall aus privaten Haushalten.',
             fraction_color: '#111111',
           },
         ],
@@ -216,6 +217,7 @@ describe('public waste repository', () => {
       })
     ).resolves.toContainEqual(
       expect.objectContaining({
+        fractionDescription: 'Restabfall aus privaten Haushalten.',
         tourName: 'Restmuell',
         tourDescription: 'Leerung fuer den Innenstadtbereich.',
       })

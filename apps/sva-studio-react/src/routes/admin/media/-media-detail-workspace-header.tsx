@@ -52,30 +52,11 @@ const copyTextToClipboard = async (value: string) => {
   document.body.removeChild(textarea);
 };
 
-const PublicDeliveryTools = ({
-  asset,
-  deliveryUrl,
-}: Readonly<{ asset: IamRegisteredMediaAsset; deliveryUrl: string }>) => {
-  const [copied, setCopied] = React.useState(false);
-  const [copyError, setCopyError] = React.useState(false);
-  const [qrDialogOpen, setQrDialogOpen] = React.useState(false);
+const useQrCodeAssets = (deliveryUrl: string, qrDialogOpen: boolean) => {
   const [qrSvgMarkup, setQrSvgMarkup] = React.useState<string | null>(null);
   const [qrSvgDownloadUrl, setQrSvgDownloadUrl] = React.useState<string | null>(null);
   const [qrPngDownloadUrl, setQrPngDownloadUrl] = React.useState<string | null>(null);
   const [qrGenerationError, setQrGenerationError] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!copied) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setCopied(false);
-      setCopyError(false);
-    }, 1800);
-
-    return () => window.clearTimeout(timeout);
-  }, [copied]);
 
   React.useEffect(() => {
     if (!qrDialogOpen) {
@@ -122,115 +103,201 @@ const PublicDeliveryTools = ({
     };
   }, [deliveryUrl, qrDialogOpen]);
 
+  return {
+    qrSvgMarkup,
+    qrSvgDownloadUrl,
+    qrPngDownloadUrl,
+    qrGenerationError,
+  };
+};
+
+const PublicDeliveryQrDialog = ({
+  asset,
+  open,
+  qrSvgMarkup,
+  qrSvgDownloadUrl,
+  qrPngDownloadUrl,
+  qrGenerationError,
+  onClose,
+}: Readonly<{
+  asset: IamRegisteredMediaAsset;
+  open: boolean;
+  qrSvgMarkup: string | null;
+  qrSvgDownloadUrl: string | null;
+  qrPngDownloadUrl: string | null;
+  qrGenerationError: boolean;
+  onClose: () => void;
+}>) => {
   const downloadName = createQrDownloadName(asset);
 
   return (
-    <>
-      <div className="space-y-3 rounded-2xl border border-border/60 bg-muted/30 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-          {t('media.detail.publicUrlLabel')}
-        </p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <ModalDialog
+      contentClassName="max-w-xl"
+      description={t('media.detail.qrDialogDescription')}
+      open={open}
+      title={t('media.detail.qrDialogTitle')}
+      onClose={onClose}
+    >
+      <div className="space-y-5">
+        {qrGenerationError ? (
+          <p className="text-sm text-destructive">{t('media.detail.qrDialogError')}</p>
+        ) : qrSvgMarkup ? (
+          <div className="mx-auto w-full max-w-[20rem] rounded-3xl border border-border/70 bg-white p-4 shadow-shell">
+            <div
+              aria-label={t('media.detail.qrPreviewLabel')}
+              dangerouslySetInnerHTML={{ __html: qrSvgMarkup }}
+              role="img"
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">{t('media.messages.loading')}</p>
+        )}
+
+        <div className="flex flex-wrap gap-3">
+          {qrPngDownloadUrl ? (
+            <Button asChild type="button" variant="outline">
+              <a download={`${downloadName}.png`} href={qrPngDownloadUrl}>
+                <Download aria-hidden="true" className="mr-2 h-4 w-4" />
+                {t('media.actions.downloadQrPng')}
+              </a>
+            </Button>
+          ) : null}
+          {qrSvgDownloadUrl ? (
+            <Button asChild type="button" variant="outline">
+              <a download={`${downloadName}.svg`} href={qrSvgDownloadUrl}>
+                <Download aria-hidden="true" className="mr-2 h-4 w-4" />
+                {t('media.actions.downloadQrSvg')}
+              </a>
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </ModalDialog>
+  );
+};
+
+const PublicDeliveryLinkTools = ({
+  deliveryUrl,
+  copyError,
+  copied,
+  onCopy,
+  onOpenQrDialog,
+}: Readonly<{
+  deliveryUrl: string;
+  copyError: boolean;
+  copied: boolean;
+  onCopy: () => void;
+  onOpenQrDialog: () => void;
+}>) => (
+  <div className="space-y-3 rounded-2xl border border-border/60 bg-muted/30 p-4">
+    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+      {t('media.detail.publicUrlLabel')}
+    </p>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <a
+        className="break-all text-sm font-medium text-foreground underline decoration-border underline-offset-4"
+        href={deliveryUrl}
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        {deliveryUrl}
+      </a>
+      <div className="flex items-center gap-2">
+        <Button asChild size="icon" type="button" variant="outline">
           <a
-            className="break-all text-sm font-medium text-foreground underline decoration-border underline-offset-4"
+            aria-label={t('media.actions.open')}
             href={deliveryUrl}
             rel="noopener noreferrer"
             target="_blank"
           >
-            {deliveryUrl}
+            <ExternalLink aria-hidden="true" className="h-4 w-4" />
           </a>
-          <div className="flex items-center gap-2">
-            <Button asChild size="icon" type="button" variant="outline">
-              <a
-                aria-label={t('media.actions.open')}
-                href={deliveryUrl}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                <ExternalLink aria-hidden="true" className="h-4 w-4" />
-              </a>
-            </Button>
-            <Button
-              aria-label={t('media.actions.copyPublicUrl')}
-              size="icon"
-              type="button"
-              variant="outline"
-              onClick={() => {
-                void copyTextToClipboard(deliveryUrl)
-                  .then(() => {
-                    setCopyError(false);
-                    setCopied(true);
-                  })
-                  .catch(() => {
-                    setCopied(false);
-                    setCopyError(true);
-                  });
-              }}
-            >
-              <Copy aria-hidden="true" className="h-4 w-4" />
-            </Button>
-            <Button
-              aria-label={t('media.actions.showQrCode')}
-              size="icon"
-              type="button"
-              variant="outline"
-              onClick={() => setQrDialogOpen(true)}
-            >
-              <QrCode aria-hidden="true" className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {copyError
-            ? t('media.detail.publicUrlCopyError')
-            : copied
-              ? t('media.detail.publicUrlCopied')
-              : t('media.detail.publicUrlHint')}
-        </p>
+        </Button>
+        <Button
+          aria-label={t('media.actions.copyPublicUrl')}
+          size="icon"
+          type="button"
+          variant="outline"
+          onClick={onCopy}
+        >
+          <Copy aria-hidden="true" className="h-4 w-4" />
+        </Button>
+        <Button
+          aria-label={t('media.actions.showQrCode')}
+          size="icon"
+          type="button"
+          variant="outline"
+          onClick={onOpenQrDialog}
+        >
+          <QrCode aria-hidden="true" className="h-4 w-4" />
+        </Button>
       </div>
+    </div>
+    <p className="text-xs text-muted-foreground">
+      {copyError
+        ? t('media.detail.publicUrlCopyError')
+        : copied
+          ? t('media.detail.publicUrlCopied')
+          : t('media.detail.publicUrlHint')}
+    </p>
+  </div>
+);
 
-      <ModalDialog
-        contentClassName="max-w-xl"
-        description={t('media.detail.qrDialogDescription')}
+const PublicDeliveryTools = ({
+  asset,
+  deliveryUrl,
+}: Readonly<{ asset: IamRegisteredMediaAsset; deliveryUrl: string }>) => {
+  const [copied, setCopied] = React.useState(false);
+  const [copyError, setCopyError] = React.useState(false);
+  const [qrDialogOpen, setQrDialogOpen] = React.useState(false);
+  const { qrSvgMarkup, qrSvgDownloadUrl, qrPngDownloadUrl, qrGenerationError } = useQrCodeAssets(
+    deliveryUrl,
+    qrDialogOpen
+  );
+
+  React.useEffect(() => {
+    if (!copied) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setCopied(false);
+      setCopyError(false);
+    }, 1800);
+
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
+
+  const handleCopy = () => {
+    void copyTextToClipboard(deliveryUrl)
+      .then(() => {
+        setCopyError(false);
+        setCopied(true);
+      })
+      .catch(() => {
+        setCopied(false);
+        setCopyError(true);
+      });
+  };
+
+  return (
+    <>
+      <PublicDeliveryLinkTools
+        copied={copied}
+        copyError={copyError}
+        deliveryUrl={deliveryUrl}
+        onCopy={handleCopy}
+        onOpenQrDialog={() => setQrDialogOpen(true)}
+      />
+      <PublicDeliveryQrDialog
+        asset={asset}
         open={qrDialogOpen}
-        title={t('media.detail.qrDialogTitle')}
+        qrGenerationError={qrGenerationError}
+        qrPngDownloadUrl={qrPngDownloadUrl}
+        qrSvgDownloadUrl={qrSvgDownloadUrl}
+        qrSvgMarkup={qrSvgMarkup}
         onClose={() => setQrDialogOpen(false)}
-      >
-        <div className="space-y-5">
-          {qrGenerationError ? (
-            <p className="text-sm text-destructive">{t('media.detail.qrDialogError')}</p>
-          ) : qrSvgMarkup ? (
-            <div className="mx-auto w-full max-w-[20rem] rounded-3xl border border-border/70 bg-white p-4 shadow-shell">
-              <div
-                aria-label={t('media.detail.qrPreviewLabel')}
-                dangerouslySetInnerHTML={{ __html: qrSvgMarkup }}
-                role="img"
-              />
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">{t('media.messages.loading')}</p>
-          )}
-
-          <div className="flex flex-wrap gap-3">
-            {qrPngDownloadUrl ? (
-              <Button asChild type="button" variant="outline">
-                <a download={`${downloadName}.png`} href={qrPngDownloadUrl}>
-                  <Download aria-hidden="true" className="mr-2 h-4 w-4" />
-                  {t('media.actions.downloadQrPng')}
-                </a>
-              </Button>
-            ) : null}
-            {qrSvgDownloadUrl ? (
-              <Button asChild type="button" variant="outline">
-                <a download={`${downloadName}.svg`} href={qrSvgDownloadUrl}>
-                  <Download aria-hidden="true" className="mr-2 h-4 w-4" />
-                  {t('media.actions.downloadQrSvg')}
-                </a>
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      </ModalDialog>
+      />
     </>
   );
 };

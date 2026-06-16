@@ -574,6 +574,12 @@ export type InitializeMediaUploadResponse = Readonly<{
   initializedAt: string;
 }>;
 
+export type CompleteMediaUploadResponse = Readonly<{
+  assetId: string;
+  uploadSessionId: string;
+  status: string;
+}>;
+
 export type UpdateMediaMetadataPayload = Readonly<{
   title?: string | null;
   description?: string | null;
@@ -1197,6 +1203,17 @@ export const initializeMediaUpload = async (
     '/api/v1/iam/media/upload-sessions',
     payload,
     true
+  );
+
+export const completeMediaUpload = async (
+  uploadSessionId: string
+): Promise<ApiItemResponse<CompleteMediaUploadResponse>> =>
+  requestJson<ApiItemResponse<CompleteMediaUploadResponse>>(
+    `/api/v1/iam/media/upload-sessions/${uploadSessionId}/complete`,
+    {
+      method: 'POST',
+      headers: IAM_HEADERS,
+    }
   );
 
 export const registerBucketMedia = async (

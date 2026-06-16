@@ -792,6 +792,28 @@ describe('instance-interfaces-server', () => {
         enabled: true,
         config: {
           transportId: 'mail-1',
+          host: 'https://api.mail.example',
+          port: '587',
+          securityMode: 'starttls',
+          authMode: 'basic',
+          username: 'mailer',
+          password: 'secret',
+          defaultFromEmail: '',
+          defaultFromName: '',
+          defaultReplyToEmail: '',
+          maxBatchSize: '',
+          rateLimitPerMinute: '',
+        },
+      })
+    ).rejects.toThrow('invalid_config');
+
+    await expect(
+      upsertStoredInterface('de-test', {
+        type: 'mailTransport',
+        name: 'Mail-Transport',
+        enabled: true,
+        config: {
+          transportId: 'mail-1',
           host: '',
           port: '587',
           securityMode: 'starttls',

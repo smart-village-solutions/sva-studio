@@ -339,6 +339,11 @@ const trimToUndefined = (value: string): string | undefined => {
   return trimmed ? trimmed : undefined;
 };
 
+const isObviouslyUrlLikeMailHost = (value: string): boolean => {
+  const trimmed = value.trim();
+  return trimmed.includes('://') || trimmed.includes('/') || trimmed.includes('?') || trimmed.includes('#');
+};
+
 const assertValidMailTransportDraft = (
   draft: Extract<InstanceInterfaceDraft, { type: 'mailTransport' }>,
   input: { readonly displayName: string; readonly transportId: string; readonly nextPassword: string }
@@ -350,6 +355,7 @@ const assertValidMailTransportDraft = (
     draft.config.authMode === 'basic' && !input.nextPassword.trim(),
     draft.config.authMode === 'basic' && !draft.config.username.trim(),
     !draft.config.host.trim(),
+    isObviouslyUrlLikeMailHost(draft.config.host),
   ];
 
   if (validationRules.some(Boolean)) {

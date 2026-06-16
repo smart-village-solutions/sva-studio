@@ -9,8 +9,10 @@ export type PublicWasteIcalModel = {
   }[];
 };
 
+const normalizeIcalText = (value: string): string => value.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+
 const escapeIcalText = (value: string): string =>
-  value.replaceAll('\\', '\\\\').replaceAll('\n', '\\n').replaceAll(',', '\\,').replaceAll(';', '\\;');
+  normalizeIcalText(value).replaceAll('\\', '\\\\').replaceAll('\n', '\\n').replaceAll(',', '\\,').replaceAll(';', '\\;');
 
 export const renderPublicWasteIcal = (input: PublicWasteIcalModel): string =>
   [

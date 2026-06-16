@@ -27,4 +27,25 @@ describe('public waste iCal', () => {
     expect(ical).toContain('SUMMARY:Bioabfall');
     expect(ical).toContain('DTSTART;VALUE=DATE:20260519');
   });
+
+  it('normalizes carriage returns in calendar and event descriptions before escaping', () => {
+    const ical = renderPublicWasteIcal({
+      calendarName: 'Abfallkalender Musterstadt',
+      calendarDescription: 'Abholort:\r\nMusterstadt\rHauptstraße 1',
+      events: [
+        {
+          uid: 'pickup-1@example.invalid',
+          startDate: '20260519',
+          summary: 'Bioabfall',
+          description: 'Fraktion: Bioabfall\r\nTour: Innenstadt\rHinweis: Bereitstellen',
+        },
+      ],
+    });
+
+    expect(ical).toContain('DESCRIPTION:Abholort:\\nMusterstadt\\nHauptstraße 1');
+    expect(ical).toContain('X-WR-CALDESC:Abholort:\\nMusterstadt\\nHauptstraße 1');
+    expect(ical).toContain('DESCRIPTION:Fraktion: Bioabfall\\nTour: Innenstadt\\nHinweis: Bereitstellen');
+    expect(ical).not.toContain('\rHauptstraße 1');
+    expect(ical).not.toContain('\rTour: Innenstadt');
+  });
 });

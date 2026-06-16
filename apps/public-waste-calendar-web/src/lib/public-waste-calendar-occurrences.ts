@@ -13,6 +13,7 @@ import {
 type PublicWasteLinkedFraction = {
   readonly id: string;
   readonly label: string;
+  readonly description?: string;
   readonly shortLabel?: string;
   readonly color?: string;
 };
@@ -310,6 +311,7 @@ export const calculatePublicWasteCalendarEntries = (
           date: shiftedDate,
           fractionId: fraction.id,
           fractionLabel: fraction.label,
+          ...(fraction.description ? { fractionDescription: fraction.description } : {}),
           ...(fraction.shortLabel ? { fractionShortLabel: fraction.shortLabel } : {}),
           ...(fraction.color ? { fractionColor: fraction.color } : {}),
           ...(linkedTour.tour.name.trim() ? { tourName: linkedTour.tour.name.trim() } : {}),

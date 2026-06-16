@@ -1,5 +1,6 @@
 export type PublicWasteIcalModel = {
   readonly calendarName: string;
+  readonly calendarDescription?: string;
   readonly events: readonly {
     readonly uid: string;
     readonly startDate: string;
@@ -17,6 +18,12 @@ export const renderPublicWasteIcal = (input: PublicWasteIcalModel): string =>
     'VERSION:2.0',
     'PRODID:-//SVA Studio//Public Waste Calendar//DE',
     `X-WR-CALNAME:${escapeIcalText(input.calendarName)}`,
+    ...(input.calendarDescription
+      ? [
+          `DESCRIPTION:${escapeIcalText(input.calendarDescription)}`,
+          `X-WR-CALDESC:${escapeIcalText(input.calendarDescription)}`,
+        ]
+      : []),
     ...input.events.flatMap((event) => [
       'BEGIN:VEVENT',
       `UID:${escapeIcalText(event.uid)}`,

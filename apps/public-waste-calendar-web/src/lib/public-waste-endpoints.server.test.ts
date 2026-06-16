@@ -219,9 +219,12 @@ describe('public waste endpoints', () => {
             date: '2026-05-19',
             fractionId: 'bio',
             fractionLabel: 'Bioabfall',
+            fractionDescription: 'Bioabfall aus Küche und Garten.',
+            tourDescription: 'Regelabfuhr für die Innenstadt.',
             note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
           },
         ]),
+        loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
       },
       request: new Request(
         'https://example.invalid/public-waste/calendar.ics?regionId=11111111-1111-4111-8111-111111111111&cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&houseNumberId=44444444-4444-4444-8444-444444444444&calendarName=Musterstadt'
@@ -229,7 +232,70 @@ describe('public waste endpoints', () => {
     });
 
     expect(response.headers.get('content-type')).toContain('text/calendar');
-    await expect(response.text()).resolves.toContain('SUMMARY:Bioabfall');
+    const body = await response.text();
+    expect(body).toContain('DESCRIPTION:Abholort: Musterstadt\\, Hauptstraße 1');
+    expect(body).toContain(
+      'DESCRIPTION:Fraktion: Bioabfall aus Küche und Garten.\\nTour: Regelabfuhr für die Innenstadt.\\nHinweis: Bitte Tonne ab 6 Uhr bereitstellen.'
+    );
+  });
+
+  it('keeps the public default iCal as an all-fractions feed without calendar alarms', async () => {
+    const response = await handlePublicWasteIcalRequest({
+      repository: {
+        loadCalendarEntries: vi.fn().mockResolvedValue([
+          {
+            id: 'pickup-1',
+            date: '2026-05-19',
+            fractionId: 'bio',
+            fractionLabel: 'Bioabfall',
+            note: null,
+          },
+          {
+            id: 'pickup-2',
+            date: '2026-05-20',
+            fractionId: 'paper',
+            fractionLabel: 'Papier',
+            note: null,
+          },
+        ]),
+        loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+      },
+      request: new Request(
+        'https://example.invalid/public-waste/calendar.ics?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&calendarName=Musterstadt'
+      ),
+    });
+
+    const body = await response.text();
+    expect(body).toContain('SUMMARY:Bioabfall');
+    expect(body).toContain('SUMMARY:Papier');
+    expect(body).not.toContain('BEGIN:VALARM');
+  });
+
+  it('suppresses duplicate event description texts across fraction, tour and note parts', async () => {
+    const response = await handlePublicWasteIcalRequest({
+      repository: {
+        loadCalendarEntries: vi.fn().mockResolvedValue([
+          {
+            id: 'pickup-1',
+            date: '2026-05-19',
+            fractionId: 'bio',
+            fractionLabel: 'Bioabfall',
+            fractionDescription: 'Bereitstellung am Vorabend.',
+            tourDescription: 'Bereitstellung am Vorabend.',
+            note: 'Bereitstellung am Vorabend.',
+          },
+        ]),
+        loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+      },
+      request: new Request(
+        'https://example.invalid/public-waste/calendar.ics?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&calendarName=Musterstadt'
+      ),
+    });
+
+    const body = await response.text();
+    expect(body).toContain('DESCRIPTION:Fraktion: Bereitstellung am Vorabend.');
+    expect(body).not.toContain('\\nTour: Bereitstellung am Vorabend.');
+    expect(body).not.toContain('\\nHinweis: Bereitstellung am Vorabend.');
   });
 
   it('accepts the catch-all street sentinel for resolved calendar requests', async () => {

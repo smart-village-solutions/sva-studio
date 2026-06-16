@@ -1,5 +1,6 @@
 import type { ExternalInterfaceRecord } from './external-interfaces-contract.js';
 import type { WasteHolidayStateCode } from './waste-management/master-data-contract.js';
+import { isPlausibleEmailAddress } from './email-address.js';
 import { wasteManagementMasterDataContract } from './waste-management-master-data.js';
 import { wasteManagementDataSourceContract, type WasteHolidaySyncStatus } from './waste-management-contract.js';
 
@@ -26,11 +27,9 @@ const readBoundedPositiveInteger = (value: unknown, maximum: number): number | u
 
 const readBoolean = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined);
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 const readEmail = (value: unknown): string | undefined => {
   const email = readTrimmedString(value);
-  return email && EMAIL_PATTERN.test(email) ? email : undefined;
+  return email && isPlausibleEmailAddress(email) ? email : undefined;
 };
 
 const normalizeUrlString = (url: URL): string => url.toString();

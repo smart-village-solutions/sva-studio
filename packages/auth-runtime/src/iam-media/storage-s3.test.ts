@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { GetObjectCommand, ListObjectsV2Command, type S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -487,5 +488,12 @@ describe('media storage s3 adapter', () => {
     vi.stubEnv('MEDIA_STORAGE_SECRET_ACCESS_KEY', '');
 
     expect(() => createConfiguredMediaStoragePort()).toThrow(MediaStorageUnavailableError);
+  });
+
+  it('avoids the slash-trimming regex patterns flagged by Sonar in the public base url builder', () => {
+    const source = fs.readFileSync(new URL('./storage-s3.ts', import.meta.url), 'utf8');
+
+    expect(source).not.toContain('replace(/\\/+$/, \'\')');
+    expect(source).not.toContain('replace(/^\\/+|\\/+$/g, \'\')');
   });
 });

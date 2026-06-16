@@ -53,6 +53,28 @@ const mimeTypeExtensions: Readonly<Record<string, string>> = {
 
 const resolveObjectExtension = (mimeType: string): string => mimeTypeExtensions[mimeType] ?? 'bin';
 
+const trimTrailingSlashes = (value: string): string => {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) {
+    end -= 1;
+  }
+  return value.slice(0, end);
+};
+
+const trimSurroundingSlashes = (value: string): string => {
+  let start = 0;
+  let end = value.length;
+
+  while (start < end && value.charCodeAt(start) === 47) {
+    start += 1;
+  }
+  while (end > start && value.charCodeAt(end - 1) === 47) {
+    end -= 1;
+  }
+
+  return value.slice(start, end);
+};
+
 const resolveStoragePrefix = (instanceId: string, bucket: string): string =>
   bucket.trim() === instanceId.trim() ? '' : createMediaStorageInstancePrefix(instanceId);
 
@@ -67,7 +89,7 @@ const createPublicDeliveryUrl = (publicBaseUrl: string | undefined, storageKey: 
 };
 
 const createBucketPublicBaseUrl = (endpoint: string, bucket: string): string =>
-  `${endpoint.replace(/\/+$/, '')}/${bucket.replace(/^\/+|\/+$/g, '')}`;
+  `${trimTrailingSlashes(endpoint)}/${trimSurroundingSlashes(bucket)}`;
 
 const encodeStorageKeyForUrl = (storageKey: string): string =>
   storageKey

@@ -349,6 +349,39 @@ describe('waste-management-settings-public-config', () => {
     expect(readWasteManagementEmailReminderConfig(next)).toEqual(createEmailReminderConfigInput());
   });
 
+  it('rejects malformed email reminder addresses with doubled dots while preserving valid plus addressing', () => {
+    expect(
+      readWasteManagementEmailReminderConfig({
+        emailReminderConfig: {
+          ...createEmailReminderConfigInput(),
+          fromEmail: 'abfall+service@example.org',
+          replyToEmail: 'reply+service@example.org',
+        },
+      })
+    ).toMatchObject({
+      fromEmail: 'abfall+service@example.org',
+      replyToEmail: 'reply+service@example.org',
+    });
+
+    expect(
+      readWasteManagementEmailReminderConfig({
+        emailReminderConfig: {
+          ...createEmailReminderConfigInput(),
+          fromEmail: 'abfall..service@example.org',
+        },
+      })
+    ).toBeUndefined();
+
+    expect(
+      readWasteManagementEmailReminderConfig({
+        emailReminderConfig: {
+          ...createEmailReminderConfigInput(),
+          replyToEmail: 'reply@example..org',
+        },
+      })
+    ).toBeUndefined();
+  });
+
   it('preserves the previous email reminder config when partial writes omit the field', () => {
     const current = buildWasteManagementPublicConfig(
       {},

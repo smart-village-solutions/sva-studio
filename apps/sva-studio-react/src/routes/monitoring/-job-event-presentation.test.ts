@@ -11,7 +11,10 @@ import {
 } from './-job-event-presentation';
 import {
   extractMonitoringJobWriteSummary,
+  extractMonitoringWasteLiveProgress,
   formatMonitoringJobDateTime,
+  formatMonitoringWasteLiveProgressSecondary,
+  formatMonitoringWasteLiveProgressSummary,
   formatMonitoringJobProgressSummary,
   getMonitoringJobCurrentStep,
   monitoringJobStaleStateLabelKeyByValue,
@@ -162,5 +165,47 @@ describe('monitoring job event presentation', () => {
         jobTypeId: 'waste-management.sync-waste-types',
       })
     ).toBeNull();
+  });
+
+  it('extracts waste live progress summaries from structured progress details', () => {
+    const job = {
+      jobTypeId: 'waste-management.sync-mainserver',
+      progress: {
+        completedSteps: 4,
+        totalSteps: 6,
+        currentStepKey: 'create-batches',
+        currentStepLabel: 'Create-Batches 362/1373',
+        details: {
+          operationMode: 'create',
+          totalItemCount: 137249,
+          totalBatchCount: 1373,
+          currentBatchIndex: 362,
+          currentBatchSize: 100,
+          processedItemCount: 36200,
+          createCount: 36200,
+          deleteCount: 0,
+          lastSuccessfulBatchAt: '2026-06-16T10:17:17.125Z',
+        },
+      },
+      runtime: {
+        cancellationRequested: false,
+        staleAfterSeconds: 120,
+        staleState: 'fresh',
+        evaluatedAt: '2026-06-16T10:17:17.200Z',
+        lastObservedAt: '2026-06-16T10:17:17.125Z',
+      },
+    } satisfies Pick<StudioJobDetail, 'jobTypeId' | 'progress' | 'runtime'>;
+
+    const liveProgress = extractMonitoringWasteLiveProgress(job);
+
+    expect(liveProgress).toMatchObject({
+      operationMode: 'create',
+      totalItemCount: 137249,
+      totalBatchCount: 1373,
+      currentBatchIndex: 362,
+      processedItemCount: 36200,
+    });
+    expect(formatMonitoringWasteLiveProgressSummary(liveProgress)).toBe('Create-Batches 362/1373');
+    expect(formatMonitoringWasteLiveProgressSecondary(liveProgress)).toBe('36.200 / 137.249 Datensätze verarbeitet');
   });
 });

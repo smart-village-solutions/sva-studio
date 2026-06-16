@@ -83,10 +83,14 @@ export const createOperationHandler = <TJobInput extends WasteManagementJobInput
   readonly jobTypeId: string;
   readonly expectedOperation: TJobInput['operation'];
   readonly phaseKey: string;
+  readonly useRuntimeManagedProgress?: (payload: TJobInput) => boolean;
   readonly execute: (
     runtime: WasteManagementOperationRuntime,
     instanceId: string,
-    payload: TJobInput
+    payload: TJobInput,
+    progressReporter?: {
+      readonly reportProgress: (progress: WasteManagementJobProgress) => Promise<void> | void;
+    }
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
@@ -101,34 +105,61 @@ export const createOperationHandler = <TJobInput extends WasteManagementJobInput
     );
     const payload = assertWasteJobInput<TJobInput>(input.jobTypeId, context.job.inputPayload, input.expectedOperation);
     const startedAt = Date.now();
+    const useRuntimeManagedProgress = input.useRuntimeManagedProgress?.(payload) ?? false;
+    let latestRuntimeProgress: WasteManagementJobProgress | undefined;
+
+    const createRuntimeProgressReporter = () => ({
+      reportProgress: async (progress: WasteManagementJobProgress) => {
+        latestRuntimeProgress = progress;
+        await context.progressReporter.reportProgress({
+          jobId: context.job.id,
+          instanceId: context.job.instanceId,
+          progress,
+        });
+      },
+    });
+
+    const reportProgress = async (progress: WasteManagementJobProgress): Promise<void> => {
+      if (useRuntimeManagedProgress) {
+        return;
+      }
+
+      await context.progressReporter.reportProgress({
+        jobId: context.job.id,
+        instanceId: context.job.instanceId,
+        progress,
+      });
+    };
 
     await context.throwIfCancellationRequested();
-    await context.progressReporter.reportProgress({
-      jobId: context.job.id,
-      instanceId: context.job.instanceId,
-      progress: createProgress({
+    const stepCount = jobTypeDefinition.progress?.stepKeys?.length ?? 2;
+    await reportProgress(
+      createProgress({
         completedSteps: 1,
-        totalSteps: 2,
+        totalSteps: stepCount,
         currentPhase: initialPhaseKey,
         currentStepKey: initialStepKey,
-      }),
-    });
+      })
+    );
 
     await context.throwIfCancellationRequested();
-    const operationResult = await input.execute(runtime, context.job.instanceId, payload);
+    const operationResult = await input.execute(
+      runtime,
+      context.job.instanceId,
+      payload,
+      useRuntimeManagedProgress ? createRuntimeProgressReporter() : undefined
+    );
     await context.throwIfCancellationRequested();
-    const progress = createProgress({
-      completedSteps: 2,
-      totalSteps: 2,
-      currentPhase: completedPhaseKey,
-      currentStepKey: completedStepKey,
-    });
+    const progress =
+      latestRuntimeProgress ??
+      createProgress({
+        completedSteps: stepCount,
+        totalSteps: stepCount,
+        currentPhase: completedPhaseKey,
+        currentStepKey: completedStepKey,
+      });
 
-    await context.progressReporter.reportProgress({
-      jobId: context.job.id,
-      instanceId: context.job.instanceId,
-      progress,
-    });
+    await reportProgress(progress);
 
     return createOperationResult({
       jobTypeDefinition,

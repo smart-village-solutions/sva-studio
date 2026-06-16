@@ -13,9 +13,12 @@ import {
   resolveMonitoringJobEventTone,
 } from './-job-event-presentation';
 import {
+  extractMonitoringWasteLiveProgress,
   formatMonitoringJobDateTime,
   formatMonitoringJobProgressSummary,
   extractMonitoringJobWriteSummary,
+  formatMonitoringWasteLiveProgressSummary,
+  getMonitoringWasteLikelyStuckHint,
   getMonitoringJobCurrentStep,
   monitoringJobStaleStateLabelKeyByValue,
   monitoringJobStatusLabelKeyByValue,
@@ -105,6 +108,49 @@ const MonitoringJobSummaryCards = ({ job }: Readonly<{ job: MonitoringJob }>) =>
     </Card>
   </div>
 );
+
+const MonitoringWasteLiveProgressCard = ({ job }: Readonly<{ job: MonitoringJob }>) => {
+  const liveProgress = extractMonitoringWasteLiveProgress(job);
+  if (!liveProgress) {
+    return null;
+  }
+
+  const likelyStuckHint = getMonitoringWasteLikelyStuckHint(job);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('monitoring.jobs.detail.liveProgressTitle')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <p>{formatMonitoringWasteLiveProgressSummary(liveProgress)}</p>
+        <p>
+          {t('monitoring.jobs.detail.liveProgressBatch', {
+            current: liveProgress.totalBatchCount > 0 ? liveProgress.currentBatchIndex : 1,
+            total: liveProgress.totalBatchCount > 0 ? liveProgress.totalBatchCount : 1,
+          })}
+        </p>
+        <p>
+          {t('monitoring.jobs.detail.liveProgressProcessed', {
+            current: new Intl.NumberFormat('de-DE').format(liveProgress.processedItemCount),
+            total: new Intl.NumberFormat('de-DE').format(liveProgress.totalItemCount),
+          })}
+        </p>
+        <p>
+          {t('monitoring.jobs.detail.liveProgressLastActivity', {
+            value: formatMonitoringJobDateTime(job.runtime?.lastObservedAt),
+          })}
+        </p>
+        <p>
+          {t('monitoring.jobs.detail.liveProgressLastSuccessfulBatch', {
+            value: formatMonitoringJobDateTime(liveProgress.lastSuccessfulBatchAt),
+          })}
+        </p>
+        {likelyStuckHint ? <p className="text-destructive">{likelyStuckHint}</p> : null}
+      </CardContent>
+    </Card>
+  );
+};
 
 const MonitoringJobWriteSummary = ({
   writeSummary,
@@ -290,6 +336,7 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
       {job ? (
         <div className="space-y-6">
           <MonitoringJobSummaryCards job={job} />
+          <MonitoringWasteLiveProgressCard job={job} />
           <MonitoringJobResultCard job={job} writeSummary={writeSummary} />
           <MonitoringJobErrorCard job={job} />
           <MonitoringJobHistoryCard job={job} />

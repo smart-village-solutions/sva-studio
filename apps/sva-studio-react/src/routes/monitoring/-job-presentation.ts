@@ -67,11 +67,111 @@ type MonitoringJobWriteSummary = {
   readonly errorCount: number;
 };
 
+type MonitoringWasteLiveProgress = Readonly<{
+  operationMode: 'create' | 'delete';
+  totalItemCount: number;
+  totalBatchCount: number;
+  currentBatchIndex: number;
+  currentBatchSize: number;
+  processedItemCount: number;
+  createCount: number;
+  deleteCount: number;
+  lastSuccessfulBatchAt?: string;
+  lastBatchDurationMs?: number;
+  averageBatchDurationMs?: number;
+}>;
+
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
 const readNumber = (record: Record<string, unknown>, key: string): number | null => {
   const value = record[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+};
+
+const formatInteger = (value: number): string => new Intl.NumberFormat('de-DE').format(value);
+
+export const extractMonitoringWasteLiveProgress = (
+  job: Pick<StudioJobDetail, 'jobTypeId' | 'progress' | 'runtime'> | Pick<StudioJobListItem, 'jobTypeId' | 'progress' | 'runtime'>
+): MonitoringWasteLiveProgress | null => {
+  if (job.jobTypeId !== 'waste-management.sync-mainserver') {
+    return null;
+  }
+
+  const details = job.progress?.details;
+  if (!isRecord(details)) {
+    return null;
+  }
+
+  const operationMode = details.operationMode;
+  if (operationMode !== 'create' && operationMode !== 'delete') {
+    return null;
+  }
+
+  const totalItemCount = readNumber(details, 'totalItemCount');
+  const totalBatchCount = readNumber(details, 'totalBatchCount');
+  const currentBatchIndex = readNumber(details, 'currentBatchIndex');
+  const currentBatchSize = readNumber(details, 'currentBatchSize');
+  const processedItemCount = readNumber(details, 'processedItemCount');
+  const createCount = readNumber(details, 'createCount');
+  const deleteCount = readNumber(details, 'deleteCount');
+
+  if (
+    totalItemCount === null ||
+    totalBatchCount === null ||
+    currentBatchIndex === null ||
+    currentBatchSize === null ||
+    processedItemCount === null ||
+    createCount === null ||
+    deleteCount === null
+  ) {
+    return null;
+  }
+
+  return {
+    operationMode,
+    totalItemCount,
+    totalBatchCount,
+    currentBatchIndex,
+    currentBatchSize,
+    processedItemCount,
+    createCount,
+    deleteCount,
+    lastSuccessfulBatchAt: typeof details.lastSuccessfulBatchAt === 'string' ? details.lastSuccessfulBatchAt : undefined,
+    lastBatchDurationMs: readNumber(details, 'lastBatchDurationMs') ?? undefined,
+    averageBatchDurationMs: readNumber(details, 'averageBatchDurationMs') ?? undefined,
+  };
+};
+
+export const formatMonitoringWasteLiveProgressSummary = (progress: MonitoringWasteLiveProgress | null): string | null => {
+  if (!progress) {
+    return null;
+  }
+
+  return `${
+    progress.operationMode === 'create' ? 'Create' : 'Delete'
+  }-Batches ${progress.totalBatchCount > 0 ? progress.currentBatchIndex : 1}/${progress.totalBatchCount > 0 ? progress.totalBatchCount : 1}`;
+};
+
+export const formatMonitoringWasteLiveProgressSecondary = (progress: MonitoringWasteLiveProgress | null): string | null => {
+  if (!progress) {
+    return null;
+  }
+
+  return t('monitoring.jobs.progress.liveProcessedSummary', {
+    current: formatInteger(progress.processedItemCount),
+    total: formatInteger(progress.totalItemCount),
+  });
+};
+
+export const getMonitoringWasteLikelyStuckHint = (
+  job: Pick<StudioJobDetail, 'jobTypeId' | 'progress' | 'runtime'>
+): string | null => {
+  const liveProgress = extractMonitoringWasteLiveProgress(job);
+  if (!liveProgress || job.runtime?.staleState !== 'stale') {
+    return null;
+  }
+
+  return t('monitoring.jobs.detail.liveProgressLikelyStuck');
 };
 
 export const extractMonitoringJobWriteSummary = (job: Pick<StudioJobDetail, 'jobTypeId' | 'resultPayload'>): MonitoringJobWriteSummary | null => {

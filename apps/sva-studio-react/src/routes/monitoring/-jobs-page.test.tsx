@@ -207,6 +207,44 @@ describe('MonitoringJobsPage', () => {
     expect(screen.getByText('Seite 1 von 2')).toBeTruthy();
   });
 
+  it('shows waste-specific live batch progress in the job list when structured details are present', async () => {
+    const wasteItem: StudioJobListItem = {
+      ...baseItem,
+      pluginId: 'waste-management',
+      jobTypeId: 'waste-management.sync-mainserver',
+      progress: {
+        completedSteps: 4,
+        totalSteps: 6,
+        currentStepKey: 'create-batches',
+        currentStepLabel: 'Create-Batches 362/1373',
+        details: {
+          operationMode: 'create',
+          totalItemCount: 137249,
+          totalBatchCount: 1373,
+          currentBatchIndex: 362,
+          currentBatchSize: 100,
+          processedItemCount: 36200,
+          createCount: 36200,
+          deleteCount: 0,
+          lastSuccessfulBatchAt: '2026-06-16T10:17:17.125Z',
+        },
+      },
+    };
+
+    usePluginOperationJobsMock.mockReturnValue({
+      error: null,
+      isLoading: false,
+      items: [wasteItem],
+      refetch: vi.fn(),
+      total: 1,
+    });
+
+    render(<MonitoringJobsPage />);
+
+    expect(await screen.findByText('Create-Batches 362/1373')).toBeTruthy();
+    expect(screen.getByText('36.200 / 137.249 Datensätze verarbeitet')).toBeTruthy();
+  });
+
   it('updates filters, pagination, and tab state through the list query', async () => {
     const queries: StudioJobListQuery[] = [];
 

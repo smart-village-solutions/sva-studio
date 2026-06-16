@@ -16,8 +16,11 @@ import { t } from '../../i18n';
 import type { IamHttpError } from '../../lib/iam-api';
 import { formatMonitoringJobEventMessage, formatMonitoringJobEventTitle } from './-job-event-presentation';
 import {
+  extractMonitoringWasteLiveProgress,
   formatMonitoringJobDateTime,
   formatMonitoringJobProgressSummary,
+  formatMonitoringWasteLiveProgressSecondary,
+  formatMonitoringWasteLiveProgressSummary,
   getMonitoringJobCurrentStep,
   monitoringJobStaleStateLabelKeyByValue,
   monitoringJobStatusLabelKeyByValue,
@@ -136,10 +139,18 @@ export const MonitoringJobsPage = () => {
         id: 'progress',
         header: t('monitoring.jobs.table.progress'),
         cell: (job) => (
-          <div className="space-y-1">
-            <p>{formatMonitoringJobProgressSummary(job.progress)}</p>
-            <p className="text-xs text-muted-foreground">{getMonitoringJobCurrentStep(job.progress)}</p>
-          </div>
+          (() => {
+            const liveProgress = extractMonitoringWasteLiveProgress(job);
+            const primaryProgress = formatMonitoringWasteLiveProgressSummary(liveProgress) ?? formatMonitoringJobProgressSummary(job.progress);
+            const secondaryProgress = formatMonitoringWasteLiveProgressSecondary(liveProgress) ?? getMonitoringJobCurrentStep(job.progress);
+
+            return (
+              <div className="space-y-1">
+                <p>{primaryProgress}</p>
+                <p className="text-xs text-muted-foreground">{secondaryProgress}</p>
+              </div>
+            );
+          })()
         ),
       },
       {

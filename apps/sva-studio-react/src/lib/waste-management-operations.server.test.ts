@@ -381,6 +381,14 @@ describe('waste management operations runtime', () => {
       deleteByIdCount: 1,
       deleteByValueCount: 0,
       errorCount: 0,
+      totalBatchCount: 3,
+      processedItemCount: 3,
+      finalCreateCount: 2,
+      finalDeleteCount: 1,
+      averageBatchDurationMs: 87,
+      longestBatchDurationMs: 120,
+      studioSnapshotCount: 4,
+      mainserverSnapshotCount: 3,
       createItems: [],
       deleteItems: [],
     });
@@ -396,12 +404,15 @@ describe('waste management operations runtime', () => {
         createBatchCount: 1,
         deleteByIdCount: 1,
         deleteByValueCount: 0,
+        totalBatchCount: 3,
+        processedItemCount: 3,
       }),
     });
     expect(runWasteManagementMainserverSyncForInstanceMock).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       runtimeDeps: {},
       syncInput: { operation: 'sync-mainserver' },
+      progressReporter: undefined,
     });
   });
 

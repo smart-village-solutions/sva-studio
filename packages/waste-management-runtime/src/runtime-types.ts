@@ -15,12 +15,14 @@ export const createProgress = (input: {
   readonly totalSteps: number;
   readonly currentPhase: string;
   readonly currentStepKey: string;
+  readonly currentStepLabel?: string;
   readonly details?: Readonly<Record<string, unknown>>;
 }) => ({
   completedSteps: input.completedSteps,
   totalSteps: input.totalSteps,
   currentPhase: input.currentPhase,
   currentStepKey: input.currentStepKey,
+  currentStepLabel: input.currentStepLabel,
   details: input.details,
   lastUpdatedAt: new Date().toISOString(),
 });
@@ -68,7 +70,10 @@ export type WasteManagementOperationRuntime = {
   }>;
   readonly syncMainserver: (
     instanceId: string,
-    payload: WasteManagementSyncMainserverJobInput
+    payload: WasteManagementSyncMainserverJobInput,
+    progressReporter?: {
+      readonly reportProgress: (progress: WasteManagementJobProgress) => Promise<void> | void;
+    }
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;

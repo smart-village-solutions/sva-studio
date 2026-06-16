@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { StudioJobProgress } from '@sva/core';
+
 type WasteSyncClientState = {
   readonly tours: readonly {
     id: string;
@@ -276,6 +278,90 @@ describe('waste-management-mainserver-sync.server', () => {
     expect(result.deleteCount).toBe(2);
     expect(result.deleteByIdCount).toBe(1);
     expect(result.deleteByValueCount).toBe(1);
+  });
+
+  it('reports phased and batch-level progress during create and delete execution', async () => {
+    const progressEvents: StudioJobProgress[] = [];
+
+    const result = await runWasteManagementMainserverSyncForInstance({
+      instanceId: 'instance-1',
+      runtimeDeps: {
+        now: vi
+          .fn<() => Date>()
+          .mockReturnValueOnce(new Date('2026-06-16T10:17:17.102Z'))
+          .mockReturnValueOnce(new Date('2026-06-16T10:17:17.125Z'))
+          .mockReturnValueOnce(new Date('2026-06-16T10:17:18.000Z'))
+          .mockReturnValueOnce(new Date('2026-06-16T10:17:18.250Z'))
+          .mockReturnValueOnce(new Date('2026-06-16T10:17:18.500Z'))
+          .mockReturnValueOnce(new Date('2026-06-16T10:17:18.750Z')),
+      },
+      syncInput: {
+        operation: 'sync-mainserver',
+      },
+      progressReporter: {
+        reportProgress: async (progress) => {
+          progressEvents.push(progress);
+        },
+      },
+      batchSize: 2,
+    });
+
+    expect(progressEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          currentStepKey: 'load-studio-state',
+          currentStepLabel: 'Studio-Status laden',
+          completedSteps: 1,
+          totalSteps: 6,
+        }),
+        expect.objectContaining({
+          currentStepKey: 'load-mainserver-snapshot',
+          currentStepLabel: 'Mainserver-Snapshot laden',
+          completedSteps: 2,
+          totalSteps: 6,
+        }),
+        expect.objectContaining({
+          currentStepKey: 'diff-sync-state',
+          currentStepLabel: 'Abweichungen berechnen',
+          completedSteps: 3,
+          totalSteps: 6,
+        }),
+        expect.objectContaining({
+          currentStepKey: 'create-batches',
+          currentStepLabel: 'Create-Batches 1/1',
+          details: expect.objectContaining({
+            operationMode: 'create',
+            totalItemCount: 0,
+            totalBatchCount: 0,
+            processedItemCount: 0,
+          }),
+        }),
+        expect.objectContaining({
+          currentStepKey: 'delete-batches',
+          currentStepLabel: 'Delete-Batches 1/1',
+          details: expect.objectContaining({
+            operationMode: 'delete',
+            totalItemCount: 0,
+            totalBatchCount: 0,
+            processedItemCount: 0,
+          }),
+        }),
+        expect.objectContaining({
+          currentStepKey: 'complete-operation',
+          currentStepLabel: 'Synchronisierung abgeschlossen',
+          completedSteps: 6,
+          totalSteps: 6,
+        }),
+      ])
+    );
+    expect(result).toMatchObject({
+      totalBatchCount: 0,
+      processedItemCount: 0,
+      finalCreateCount: 0,
+      finalDeleteCount: 0,
+      studioSnapshotCount: 0,
+      mainserverSnapshotCount: 0,
+    });
   });
 
   it('forwards the job credential context to mainserver reads and writes', async () => {
@@ -571,5 +657,178 @@ describe('waste-management-mainserver-sync.server', () => {
       })
     );
     expect(deleteSvaMainserverWastePickupTimesMock).not.toHaveBeenCalled();
+  });
+
+  it('splits larger sync writes into batches and returns aggregated runtime statistics', async () => {
+    const nowMock = vi
+      .fn<() => Date>()
+      .mockReturnValueOnce(new Date('2026-01-15T00:00:00.000Z'))
+      .mockReturnValueOnce(new Date('2026-01-15T00:00:00.100Z'))
+      .mockReturnValueOnce(new Date('2026-01-15T00:00:00.200Z'))
+      .mockReturnValueOnce(new Date('2026-01-15T00:00:00.300Z'))
+      .mockReturnValueOnce(new Date('2026-01-15T00:00:00.400Z'))
+      .mockReturnValueOnce(new Date('2026-01-15T00:00:00.500Z'))
+      .mockReturnValueOnce(new Date('2026-01-15T00:00:00.600Z'))
+      .mockReturnValueOnce(new Date('2026-01-15T00:00:00.700Z'))
+      .mockReturnValueOnce(new Date('2026-01-15T00:00:00.800Z'))
+      .mockReturnValueOnce(new Date('2026-01-15T00:00:00.900Z'));
+
+    const progressEvents: StudioJobProgress[] = [];
+
+    withWasteClientMock.mockResolvedValueOnce({
+      tours: [
+        {
+          id: 'tour-1',
+          name: 'Rundtour',
+          wasteFractionIds: ['fraction-1'],
+          recurrence: 'on-demand',
+          customDates: [{ date: '2026-01-06' }, { date: '2026-01-13' }, { date: '2026-01-20' }],
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      fractions: [
+        {
+          id: 'fraction-1',
+          name: 'Restmüll',
+          color: '#f00',
+          active: true,
+          reminderCount: 'none',
+          reminderChannelPushEnabled: false,
+          reminderChannelEmailEnabled: false,
+          reminderChannelCalendarEnabled: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      links: [
+        {
+          id: 'link-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locations: [
+        {
+          id: 'location-1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locationTourPickupDates: [],
+      cities: [
+        {
+          id: 'city-1',
+          name: 'Musterhausen',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      streets: [
+        {
+          id: 'street-1',
+          cityId: 'city-1',
+          name: 'Hauptstraße',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      tourDateShifts: [],
+      globalDateShifts: [],
+      holidayRules: [],
+    } as unknown as WasteSyncClientState);
+    listSvaMainserverWasteSyncSnapshotMock.mockResolvedValueOnce({
+      pickupTimes: [
+        {
+          id: 'pickup-delete-1',
+          pickupDate: '2026-02-03',
+          wasteType: 'Papier',
+          street: 'Hauptstraße',
+          city: 'Musterhausen',
+        },
+      ],
+    });
+
+    const result = await runWasteManagementMainserverSyncForInstance({
+      instanceId: 'instance-1',
+      runtimeDeps: { now: nowMock },
+      syncInput: {
+        operation: 'sync-mainserver',
+      },
+      progressReporter: {
+        reportProgress: async (progress) => {
+          progressEvents.push(progress);
+        },
+      },
+      batchSize: 2,
+    });
+
+    expect(createSvaMainserverWastePickupTimesMock).toHaveBeenCalledTimes(2);
+    expect(deleteSvaMainserverWastePickupTimesMock).toHaveBeenCalledTimes(1);
+    expect(progressEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          currentStepKey: 'create-batches',
+          currentStepLabel: 'Create-Batches 1/2',
+          details: expect.objectContaining({
+            operationMode: 'create',
+            totalItemCount: 3,
+            totalBatchCount: 2,
+            currentBatchIndex: 1,
+            currentBatchSize: 2,
+            processedItemCount: 2,
+            createCount: 2,
+            deleteCount: 0,
+            lastSuccessfulBatchAt: '2026-01-15T00:00:00.200Z',
+          }),
+        }),
+        expect.objectContaining({
+          currentStepKey: 'create-batches',
+          currentStepLabel: 'Create-Batches 2/2',
+          details: expect.objectContaining({
+            operationMode: 'create',
+            totalItemCount: 3,
+            totalBatchCount: 2,
+            currentBatchIndex: 2,
+            currentBatchSize: 1,
+            processedItemCount: 3,
+            createCount: 3,
+            deleteCount: 0,
+          }),
+        }),
+        expect.objectContaining({
+          currentStepKey: 'delete-batches',
+          currentStepLabel: 'Delete-Batches 1/1',
+          details: expect.objectContaining({
+            operationMode: 'delete',
+            totalItemCount: 1,
+            totalBatchCount: 1,
+            currentBatchIndex: 1,
+            currentBatchSize: 1,
+            processedItemCount: 4,
+            createCount: 3,
+            deleteCount: 1,
+          }),
+        }),
+      ])
+    );
+    expect(result).toMatchObject({
+      createCount: 3,
+      deleteCount: 1,
+      totalBatchCount: 3,
+      processedItemCount: 4,
+      finalCreateCount: 3,
+      finalDeleteCount: 1,
+      studioSnapshotCount: 3,
+      mainserverSnapshotCount: 1,
+      averageBatchDurationMs: 100,
+      longestBatchDurationMs: 100,
+    });
   });
 });

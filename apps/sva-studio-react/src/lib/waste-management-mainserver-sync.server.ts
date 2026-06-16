@@ -1,5 +1,4 @@
 import type {
-  StudioJobProgress,
   WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteFractionRecord,
@@ -23,6 +22,14 @@ import {
   parseIsoDateUtc,
   type WasteMaterializationContext,
 } from './waste-management-mainserver-sync.materialization.shared.js';
+import {
+  averageBatchDuration,
+  buildSyncProgress,
+  createBatchStepLabel,
+  reportSyncProgress,
+  type WasteSyncBatchProgressDetails,
+  type WasteSyncProgressReporter,
+} from './waste-management-mainserver-sync.progress.js';
 
 import type { WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 import { withWasteClient } from './waste-management-operations.shared.js';
@@ -43,26 +50,8 @@ type WasteMaterializationSyncState = Omit<WasteMaterializationContext, 'currentY
   readonly links: readonly WasteLocationTourLinkRecord[];
 };
 
-type WasteSyncProgressReporter = {
-  readonly reportProgress: (progress: StudioJobProgress) => Promise<void> | void;
-};
-
 export type WasteSyncRow = SvaMainserverWasteSyncItem & Readonly<{
   key: string;
-}>;
-
-type WasteSyncBatchProgressDetails = Readonly<{
-  operationMode: 'create' | 'delete';
-  totalItemCount: number;
-  totalBatchCount: number;
-  currentBatchIndex: number;
-  currentBatchSize: number;
-  processedItemCount: number;
-  createCount: number;
-  deleteCount: number;
-  lastSuccessfulBatchAt?: string;
-  lastBatchDurationMs?: number;
-  averageBatchDurationMs?: number;
 }>;
 
 export type WasteManagementMainserverSyncResult = Readonly<{
@@ -86,7 +75,6 @@ export type WasteManagementMainserverSyncResult = Readonly<{
   deleteItems: readonly SvaMainserverWasteSyncItem[];
 }>;
 
-const MAINSERVER_SYNC_TOTAL_STEPS = 6;
 const DEFAULT_MAINSERVER_SYNC_BATCH_SIZE = 100;
 
 const normalizeKeyPart = (value: string | undefined): string => (value ?? '').trim().toLocaleLowerCase('de-DE');
@@ -121,35 +109,6 @@ const chunkItems = <TItem>(items: readonly TItem[], batchSize: number): readonly
   }
   return batches;
 };
-
-const buildSyncProgress = (input: {
-  readonly completedSteps: number;
-  readonly currentStepKey:
-    | 'load-studio-state'
-    | 'load-mainserver-snapshot'
-    | 'diff-sync-state'
-    | 'create-batches'
-    | 'delete-batches'
-    | 'complete-operation';
-  readonly currentStepLabel: string;
-  readonly details?: Readonly<Record<string, unknown>>;
-}): StudioJobProgress => ({
-  completedSteps: input.completedSteps,
-  totalSteps: MAINSERVER_SYNC_TOTAL_STEPS,
-  currentStepKey: input.currentStepKey,
-  currentStepLabel: input.currentStepLabel,
-  details: input.details,
-});
-
-const reportSyncProgress = async (
-  progressReporter: WasteSyncProgressReporter | undefined,
-  progress: StudioJobProgress
-): Promise<void> => {
-  await progressReporter?.reportProgress(progress);
-};
-
-const average = (values: readonly number[]): number =>
-  values.length > 0 ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
 
 const filterSyncRowsToYearWindow = (
   rows: readonly WasteSyncRow[],
@@ -259,7 +218,7 @@ export const runWasteManagementMainserverSync = async (input: {
         deleteCount,
         lastSuccessfulBatchAt: batchFinishedAtDate.toISOString(),
         lastBatchDurationMs: batchDurationMs,
-        averageBatchDurationMs: average(batchDurationsMs),
+        averageBatchDurationMs: averageBatchDuration(batchDurationsMs),
       });
     }
   };
@@ -292,7 +251,7 @@ export const runWasteManagementMainserverSync = async (input: {
     processedItemCount,
     finalCreateCount: input.dryRun ? createItems.length : createCount,
     finalDeleteCount: input.dryRun ? deleteItems.length : deleteCount,
-    averageBatchDurationMs: average(batchDurationsMs),
+    averageBatchDurationMs: averageBatchDuration(batchDurationsMs),
     longestBatchDurationMs: batchDurationsMs.length > 0 ? Math.max(...batchDurationsMs) : 0,
     mainserverSnapshotCount: input.mainserverRows.length,
     studioSnapshotCount: input.studioRows.length,
@@ -394,16 +353,13 @@ export const runWasteManagementMainserverSyncForInstance = async (input: {
     onBatchProgress: async (details) => {
       const isCreate = details.operationMode === 'create';
       const currentStepKey = isCreate ? 'create-batches' : 'delete-batches';
-      const currentStepLabel = `${isCreate ? 'Create' : 'Delete'}-Batches ${
-        details.totalBatchCount > 0 ? details.currentBatchIndex : 1
-      }/${details.totalBatchCount > 0 ? details.totalBatchCount : 1}`;
 
       await reportSyncProgress(
         input.progressReporter,
         buildSyncProgress({
           completedSteps: isCreate ? 4 : 5,
           currentStepKey,
-          currentStepLabel,
+          currentStepLabel: createBatchStepLabel(details),
           details,
         })
       );

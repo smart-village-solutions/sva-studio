@@ -109,7 +109,6 @@ describe('interfaces page controller helpers', () => {
           type: 'mailTransport',
           config: {
             transportId: 'mail-1',
-            transportType: 'smtp',
             host: 'smtp.example.org',
             port: '587',
             securityMode: 'starttls',
@@ -120,8 +119,6 @@ describe('interfaces page controller helpers', () => {
             defaultReplyToEmail: 'service@example.org',
             maxBatchSize: '50',
             rateLimitPerMinute: '120',
-            providerMode: '',
-            endpoint: '',
           },
         })
       )
@@ -131,7 +128,6 @@ describe('interfaces page controller helpers', () => {
       enabled: true,
       config: {
         transportId: 'mail-1',
-        transportType: 'smtp',
         host: 'smtp.example.org',
         port: '587',
         securityMode: 'starttls',
@@ -143,8 +139,6 @@ describe('interfaces page controller helpers', () => {
         defaultReplyToEmail: 'service@example.org',
         maxBatchSize: '50',
         rateLimitPerMinute: '120',
-        providerMode: '',
-        endpoint: '',
       },
     });
   });
@@ -170,7 +164,6 @@ describe('interfaces page controller helpers', () => {
           enabled: true,
           config: {
             transportId: 'mail-1',
-            transportType: 'smtp',
             host: 'smtp.example.org',
             port: '587',
             securityMode: 'starttls',
@@ -182,8 +175,6 @@ describe('interfaces page controller helpers', () => {
             defaultReplyToEmail: 'service@example.org',
             maxBatchSize: '50',
             rateLimitPerMinute: '120',
-            providerMode: '',
-            endpoint: '',
           },
         },
       })

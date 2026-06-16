@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { expectNoA11yViolations } from '@/test/a11y';
 
@@ -20,6 +20,6 @@ describe('ui/dialog accessibility', () => {
       </Dialog>
     );
 
-    await expectNoA11yViolations(screen.getByRole('dialog'));
+    await expect(expectNoA11yViolations(screen.getByRole('dialog'))).resolves.toBeUndefined();
   });
 });

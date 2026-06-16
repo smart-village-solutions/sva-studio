@@ -44,7 +44,7 @@ const getInterfaceEndpoint = (entry: InstanceInterface): string => {
   if (entry.type === 'supabase') {
     return entry.config.projectUrl || '-';
   }
-  return entry.config.transportType === 'smtp' ? entry.config.host || '-' : entry.config.endpoint || '-';
+  return entry.config.host || '-';
 };
 
 const renderInterfaceRowActions = (

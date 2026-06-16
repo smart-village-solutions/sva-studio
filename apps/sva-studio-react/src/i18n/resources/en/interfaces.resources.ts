@@ -41,7 +41,7 @@ export const interfacesENResources = {
     mailTransport: {
       label: 'Mail transport',
       description:
-        'Central technical mail integration with SMTP or provider parameters for transactional delivery.',
+        'Central technical SMTP integration for transactional delivery.',
     },
   },
   form: {
@@ -71,15 +71,8 @@ export const interfacesENResources = {
     },
     mailTransport: {
       transportId: 'Transport ID',
-      transportType: 'Transport type',
-      transportTypeOptions: {
-        smtp: 'SMTP',
-        providerApi: 'Provider API',
-      },
       host: 'SMTP host',
       port: 'Port',
-      endpoint: 'Provider endpoint',
-      providerMode: 'Provider mode',
       securityMode: 'Security mode',
       securityModeOptions: {
         none: 'None',

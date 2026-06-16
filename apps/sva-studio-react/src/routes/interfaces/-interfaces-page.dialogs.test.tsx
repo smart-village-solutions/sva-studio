@@ -20,7 +20,6 @@ const createMailTransportDraft = (): Extract<InstanceInterfaceDraft, { type: 'ma
   enabled: true,
   config: {
     transportId: 'mail-1',
-    transportType: 'smtp',
     host: 'smtp.example.org',
     port: '587',
     securityMode: 'starttls',
@@ -32,8 +31,6 @@ const createMailTransportDraft = (): Extract<InstanceInterfaceDraft, { type: 'ma
     defaultReplyToEmail: 'service@example.org',
     maxBatchSize: '50',
     rateLimitPerMinute: '120',
-    providerMode: '',
-    endpoint: '',
   },
 });
 
@@ -125,7 +122,7 @@ describe('interfaces-page dialogs', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
-  it('updates mail transport select and numeric fields through the shared patch helper', () => {
+  it('updates mail transport fields through the shared patch helper without exposing transport type selection', () => {
     const onChange = vi.fn();
 
     render(
@@ -138,9 +135,7 @@ describe('interfaces-page dialogs', () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText('Transporttyp'), {
-      target: { value: 'smtp' },
-    });
+    expect(screen.queryByLabelText('Transporttyp')).toBeNull();
     fireEvent.change(screen.getByLabelText('Port'), {
       target: { value: '2525' },
     });
@@ -154,24 +149,17 @@ describe('interfaces-page dialogs', () => {
     expect(onChange).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        type: 'mailTransport',
-        config: expect.objectContaining({ transportType: 'smtp' }),
+        config: expect.objectContaining({ port: '2525' }),
       })
     );
     expect(onChange).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        config: expect.objectContaining({ port: '2525' }),
-      })
-    );
-    expect(onChange).toHaveBeenNthCalledWith(
-      3,
-      expect.objectContaining({
         config: expect.objectContaining({ securityMode: 'tls' }),
       })
     );
     expect(onChange).toHaveBeenNthCalledWith(
-      4,
+      3,
       expect.objectContaining({
         config: expect.objectContaining({ authMode: 'none' }),
       })

@@ -1,7 +1,6 @@
 import type {
   MailTransportAuthMode,
   MailTransportSecurityMode,
-  MailTransportType,
 } from '@sva/core';
 import type { SvaMainserverConnectionStatus } from '@sva/sva-mainserver';
 
@@ -30,7 +29,6 @@ export type InstanceInterfaceSupabaseConfig = Readonly<{
 
 export type InstanceInterfaceMailTransportConfig = Readonly<{
   transportId: string;
-  transportType: MailTransportType;
   host: string;
   port: string;
   securityMode: MailTransportSecurityMode;
@@ -41,8 +39,6 @@ export type InstanceInterfaceMailTransportConfig = Readonly<{
   defaultReplyToEmail: string;
   maxBatchSize: string;
   rateLimitPerMinute: string;
-  providerMode: string;
-  endpoint: string;
 }>;
 
 type InstanceInterfaceBase = Readonly<{
@@ -142,7 +138,6 @@ export const createEmptyInstanceInterfaceDraft = (
       enabled: true,
       config: {
         transportId: '',
-        transportType: 'smtp',
         host: '',
         port: '587',
         securityMode: 'starttls',
@@ -154,8 +149,6 @@ export const createEmptyInstanceInterfaceDraft = (
         defaultReplyToEmail: '',
         maxBatchSize: '',
         rateLimitPerMinute: '',
-        providerMode: '',
-        endpoint: '',
       },
     };
   }

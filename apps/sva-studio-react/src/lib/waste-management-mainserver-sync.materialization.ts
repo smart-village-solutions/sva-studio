@@ -224,7 +224,9 @@ export type MaterializedLocationTourPickupDateRecord = Omit<WasteLocationTourPic
 
 export const buildMaterializedLocationTourPickupDates = (input: WasteMaterializationContext): readonly MaterializedLocationTourPickupDateRecord[] => {
   const yearWindow = getEffectiveYearWindow(input.currentYear, input.nextYear);
-  const collectionYearWindow = Array.from(new Set([yearWindow[0] - 1, ...yearWindow])).sort();
+  const collectionYearWindow = Array.from(new Set([yearWindow[0] - 1, ...yearWindow])).sort(
+    (left, right) => left - right
+  );
   const syncYearSet = new Set(yearWindow);
   const rules = buildMaterializationRules({ ...input, currentYear: yearWindow[0], nextYear: yearWindow[1] });
   const tourById = new Map(input.tours.map((tour) => [tour.id, tour] as const));

@@ -57,6 +57,7 @@ const PublicDeliveryTools = ({
   deliveryUrl,
 }: Readonly<{ asset: IamRegisteredMediaAsset; deliveryUrl: string }>) => {
   const [copied, setCopied] = React.useState(false);
+  const [copyError, setCopyError] = React.useState(false);
   const [qrDialogOpen, setQrDialogOpen] = React.useState(false);
   const [qrSvgMarkup, setQrSvgMarkup] = React.useState<string | null>(null);
   const [qrSvgDownloadUrl, setQrSvgDownloadUrl] = React.useState<string | null>(null);
@@ -70,6 +71,7 @@ const PublicDeliveryTools = ({
 
     const timeout = window.setTimeout(() => {
       setCopied(false);
+      setCopyError(false);
     }, 1800);
 
     return () => window.clearTimeout(timeout);
@@ -132,7 +134,7 @@ const PublicDeliveryTools = ({
           <a
             className="break-all text-sm font-medium text-foreground underline decoration-border underline-offset-4"
             href={deliveryUrl}
-            rel="noreferrer"
+            rel="noopener noreferrer"
             target="_blank"
           >
             {deliveryUrl}
@@ -142,7 +144,7 @@ const PublicDeliveryTools = ({
               <a
                 aria-label={t('media.actions.open')}
                 href={deliveryUrl}
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 target="_blank"
               >
                 <ExternalLink aria-hidden="true" className="h-4 w-4" />
@@ -154,7 +156,15 @@ const PublicDeliveryTools = ({
               type="button"
               variant="outline"
               onClick={() => {
-                void copyTextToClipboard(deliveryUrl).then(() => setCopied(true));
+                void copyTextToClipboard(deliveryUrl)
+                  .then(() => {
+                    setCopyError(false);
+                    setCopied(true);
+                  })
+                  .catch(() => {
+                    setCopied(false);
+                    setCopyError(true);
+                  });
               }}
             >
               <Copy aria-hidden="true" className="h-4 w-4" />
@@ -171,7 +181,11 @@ const PublicDeliveryTools = ({
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          {copied ? t('media.detail.publicUrlCopied') : t('media.detail.publicUrlHint')}
+          {copyError
+            ? t('media.detail.publicUrlCopyError')
+            : copied
+              ? t('media.detail.publicUrlCopied')
+              : t('media.detail.publicUrlHint')}
         </p>
       </div>
 

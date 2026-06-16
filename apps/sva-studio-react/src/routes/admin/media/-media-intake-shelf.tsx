@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileImage, FileText, Upload, Video } from 'lucide-react';
+import { FileImage, Upload } from 'lucide-react';
 
 import { Button } from '../../../components/ui/button';
 import { t } from '../../../i18n';
@@ -122,8 +122,6 @@ export const MediaIntakeShelf = ({ phase, error, onFileSelected }: MediaIntakeSh
             <span>{t('media.library.quickIntake.supportLabel')}</span>
             <div className="flex items-center gap-2 text-foreground/70">
               <FileImage aria-hidden="true" className="h-4 w-4" />
-              <Video aria-hidden="true" className="h-4 w-4" />
-              <FileText aria-hidden="true" className="h-4 w-4" />
             </div>
           </div>
         </div>

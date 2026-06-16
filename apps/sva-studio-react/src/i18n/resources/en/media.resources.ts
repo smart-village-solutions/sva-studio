@@ -69,6 +69,7 @@ export const mediaENResources = {
     publicUrlLabel: 'Public URL',
     publicUrlHint: 'Direct delivery link for editorial sharing, embedding, and review.',
     publicUrlCopied: 'Link copied to the clipboard.',
+    publicUrlCopyError: 'The link could not be copied right now.',
     qrDialogTitle: 'QR code for the public URL',
     qrDialogDescription: 'Scan or download the QR code for the direct media link.',
     qrDialogError: 'The QR code could not be generated right now.',

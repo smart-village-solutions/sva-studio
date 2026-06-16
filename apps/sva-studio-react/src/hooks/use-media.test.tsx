@@ -960,7 +960,11 @@ describe('useRegisterBucketMedia', () => {
 describe('deriveMimeTypeFromUnregisteredMedia', () => {
   it.each([
     ['banner.jpg', 'image/jpeg'],
+    ['hero.AVIF', 'image/avif'],
+    ['animation.gif', 'image/gif'],
     ['manual.pdf', 'application/pdf'],
+    ['graphic.SVG', 'image/svg+xml'],
+    ['poster.webp', 'image/webp'],
     ['archive.bin', 'application/octet-stream'],
   ])('derives %s as %s', (fileName, expectedMimeType) => {
     expect(

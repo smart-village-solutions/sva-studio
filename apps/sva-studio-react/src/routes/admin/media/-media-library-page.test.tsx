@@ -197,6 +197,7 @@ describe('MediaLibraryPage', () => {
     expect(screen.getByRole('heading', { name: 'Dateien hochladen' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Dateien auswählen' })).toBeTruthy();
     expect(screen.getByText('Unterstützt:')).toBeTruthy();
+    expect(screen.getByTestId('media-intake-shelf').querySelectorAll('svg')).toHaveLength(2);
     expect(screen.queryByText('Blockiert')).toBeNull();
     expect(screen.queryByText('Neu')).toBeNull();
     expect(screen.queryByText('Ungenutzt')).toBeNull();
@@ -255,6 +256,64 @@ describe('MediaLibraryPage', () => {
     expect(uploadFileMock).not.toHaveBeenCalled();
   });
 
+  it('keeps the drag state while moving inside the shelf and clears it only after leaving the region', () => {
+    render(<MediaLibraryPage />);
+
+    const shelf = screen.getByTestId('media-intake-shelf');
+    const containsSpy = vi.spyOn(shelf, 'contains');
+
+    fireEvent.dragEnter(shelf, {
+      dataTransfer: {
+        files: [],
+        dropEffect: 'none',
+      },
+    });
+    expect(shelf.className).toContain('bg-muted/30');
+
+    containsSpy.mockReturnValueOnce(true);
+    fireEvent.dragLeave(shelf, {
+      relatedTarget: document.createElement('div'),
+    });
+    expect(shelf.className).toContain('bg-muted/30');
+
+    containsSpy.mockReturnValueOnce(false);
+    fireEvent.dragLeave(shelf, {
+      relatedTarget: null,
+    });
+    expect(shelf.className).not.toContain('bg-muted/30');
+  });
+
+  it('ignores drag-and-drop uploads while the intake shelf is busy', () => {
+    useSingleFileMediaUploadMock.mockReturnValue({
+      phase: 'uploading',
+      error: null,
+      assetId: 'asset-1',
+      uploadSessionId: 'upload-1',
+      uploadFile: uploadFileMock,
+      reset: vi.fn(),
+    });
+
+    render(<MediaLibraryPage />);
+
+    const file = new File(['binary'], 'hero.jpg', { type: 'image/jpeg' });
+    const shelf = screen.getByTestId('media-intake-shelf');
+
+    fireEvent.dragEnter(shelf, {
+      dataTransfer: {
+        files: [file],
+      },
+    });
+    expect(shelf.className).not.toContain('border-primary/50');
+
+    fireEvent.drop(shelf, {
+      dataTransfer: {
+        files: [file],
+      },
+    });
+
+    expect(uploadFileMock).not.toHaveBeenCalled();
+  });
+
   it('renders upload progress and error states inside the intake shelf', () => {
     useSingleFileMediaUploadMock.mockReturnValue({
       phase: 'uploading',
@@ -291,6 +350,26 @@ describe('MediaLibraryPage', () => {
     expect(
       screen.getByText('Die Mediendaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.')
     ).toBeTruthy();
+  });
+
+  it.each([
+    ['forbidden', 'Unzureichende Berechtigungen für diese Medienaktion.'],
+    ['invalid_media_content', 'Das hochgeladene Medium konnte nicht validiert werden.'],
+    ['upload_size_exceeded', 'Das hochgeladene Medium überschreitet die erlaubte Größe.'],
+    ['unknown_code', 'Der Upload konnte nicht abgeschlossen werden.'],
+  ])('renders the mapped intake error message for %s', (code, expectedMessage) => {
+    useSingleFileMediaUploadMock.mockReturnValue({
+      phase: 'error',
+      error: { code },
+      assetId: 'asset-1',
+      uploadSessionId: 'upload-1',
+      uploadFile: uploadFileMock,
+      reset: vi.fn(),
+    });
+
+    render(<MediaLibraryPage />);
+
+    expect(screen.getByText(expectedMessage)).toBeTruthy();
   });
 
   it('navigates to the media detail page after a successful upload', async () => {

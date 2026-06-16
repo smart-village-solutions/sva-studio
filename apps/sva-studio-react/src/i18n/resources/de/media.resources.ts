@@ -69,6 +69,7 @@ export const mediaDEResources = {
     publicUrlLabel: 'Öffentliche URL',
     publicUrlHint: 'Direkter Auslieferungslink für Redaktion, Freigabe und Einbindung.',
     publicUrlCopied: 'Link in die Zwischenablage kopiert.',
+    publicUrlCopyError: 'Der Link konnte derzeit nicht kopiert werden.',
     qrDialogTitle: 'QR-Code zur öffentlichen URL',
     qrDialogDescription: 'Scannen oder laden Sie den QR-Code für den direkten Medienlink herunter.',
     qrDialogError: 'Der QR-Code konnte derzeit nicht erzeugt werden.',

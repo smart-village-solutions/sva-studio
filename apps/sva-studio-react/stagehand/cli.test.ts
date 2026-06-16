@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { toPortableArtifactPath } from './reporting/path-utils.ts';
 import { runStagehandAdminCli } from './cli.ts';
@@ -487,6 +487,114 @@ describe('runStagehandAdminCli', () => {
         },
       ],
     });
+  });
+
+  it('falls back to the global fetch implementation for story-loop readiness when no fetchImpl is passed', async () => {
+    const reportsRoot = createTempReportsRoot();
+    const storyDirectory = mkdtempSync(join(tmpdir(), 'stagehand-cli-story-loop-global-fetch-'));
+    temporaryDirectories.push(storyDirectory);
+    const storySourcePath = join(storyDirectory, 'user-stories.json');
+
+    writeFileSync(
+      storySourcePath,
+      JSON.stringify(
+        {
+          version: '2.7',
+          scope: 'IAM',
+          updatedAt: '2026-03-19',
+          description: 'fixture',
+          packages: [
+            {
+              id: 'IAM-P2',
+              title: 'Onboarding und Einladung',
+              stories: [
+                {
+                  id: 18,
+                  role: 'Organisations-Admin',
+                  story: 'Als Organisations-Admin möchte ich neue Nutzer anlegen können, damit ich mein Team verwalten kann.',
+                  packageId: 'IAM-P2',
+                  relatedPackageIds: [],
+                  legacy: true,
+                  trigger: 'fixture',
+                  preconditions: [],
+                  acceptanceCriteria: ['Ein neuer Nutzerzugang kann im Studio angelegt werden.'],
+                  evidence: ['Admin-UI'],
+                  studioCheck: {
+                    status: 'offen',
+                    coverage: 'nicht_geprueft',
+                    notes: '',
+                  },
+                  legacyId: 11,
+                  priority: 1,
+                },
+              ],
+            },
+          ],
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
+
+    const fetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'fetch');
+    const fetchMock = vi.fn(async () =>
+      new Response('<html><body>Stagehand ready.</body></html>', {
+        headers: {
+          'content-type': 'text/html; charset=utf-8',
+        },
+        status: 200,
+      })
+    );
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: fetchMock,
+      writable: true,
+    });
+
+    try {
+      const result = await runStagehandAdminCli(
+        {
+          STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+          STAGEHAND_ADMIN_USERNAME: 'admin-user',
+          STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+          STAGEHAND_RUN_MODE: 'story-loop',
+          OPENAI_API_KEY: 'test-openai-key',
+        },
+        {
+          executeCluster: async ({ stories }) =>
+            stories.map((story) => ({
+              storyId: story.id,
+              coverage: 'vorhanden',
+              findings: ['Loop proof created.'],
+              notes: 'Artefakte unter story-loop.',
+              verification: {
+                environment: 'adequate',
+                negative: 'verified',
+                positive: 'verified',
+              },
+            })),
+          reportsRoot,
+          storySourcePath,
+        }
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.payload.status).toBe('READY');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://studio.example.test',
+        expect.objectContaining({
+          method: 'GET',
+          redirect: 'manual',
+        })
+      );
+    } finally {
+      if (fetchDescriptor) {
+        Object.defineProperty(globalThis, 'fetch', fetchDescriptor);
+      } else {
+        Reflect.deleteProperty(globalThis, 'fetch');
+      }
+    }
   });
 
   it('returns BLOCKED in story-loop mode when the readiness endpoint is unreachable', async () => {

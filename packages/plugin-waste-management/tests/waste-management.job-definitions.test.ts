@@ -116,7 +116,16 @@ describe('waste management job definitions', () => {
         },
         result: {
           summaryKeys: ['durationMs'],
-          detailKeys: ['studioItemCount', 'mainserverItemCount', 'createCount', 'deleteCount', 'errorCount'],
+          detailKeys: [
+            'studioItemCount',
+            'mainserverItemCount',
+            'createCount',
+            'createBatchCount',
+            'deleteCount',
+            'deleteByIdCount',
+            'deleteByValueCount',
+            'errorCount',
+          ],
         },
         errors: {
           detailKeys: ['failed-step', 'failed-item-key'],

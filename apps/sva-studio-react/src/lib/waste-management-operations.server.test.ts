@@ -376,7 +376,10 @@ describe('waste management operations runtime', () => {
       studioItemCount: 4,
       mainserverItemCount: 3,
       createCount: 2,
+      createBatchCount: 1,
       deleteCount: 1,
+      deleteByIdCount: 1,
+      deleteByValueCount: 0,
       errorCount: 0,
       createItems: [],
       deleteItems: [],
@@ -390,6 +393,9 @@ describe('waste management operations runtime', () => {
         operation: 'sync-mainserver',
         createCount: 2,
         deleteCount: 1,
+        createBatchCount: 1,
+        deleteByIdCount: 1,
+        deleteByValueCount: 0,
       }),
     });
     expect(runWasteManagementMainserverSyncForInstanceMock).toHaveBeenCalledWith({

@@ -652,7 +652,10 @@ const createSyncMainserverOperation = (
     studioItemCount: details.studioItemCount,
     mainserverItemCount: details.mainserverItemCount,
     createCount: details.createCount,
+    createBatchCount: details.createBatchCount,
     deleteCount: details.deleteCount,
+    deleteByIdCount: details.deleteByIdCount,
+    deleteByValueCount: details.deleteByValueCount,
     errorCount: details.errorCount,
   });
 };

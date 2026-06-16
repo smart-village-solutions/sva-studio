@@ -118,6 +118,63 @@ describe('waste-operations', () => {
     );
   });
 
+  it('chunks waste pickup time creates into multiple upstream requests when more than 100 items are written', async () => {
+    const executeGraphqlWithConfig = vi.fn().mockResolvedValue({
+      createWastePickUpTimes: {
+        success: true,
+        errors: [],
+      },
+    });
+    const operations = createWasteOperations(executeGraphqlWithConfig);
+    const items = Array.from({ length: 205 }, (_, index) => ({
+      pickupDate: `2026-02-${String((index % 28) + 1).padStart(2, '0')}`,
+      wasteType: 'Restmüll',
+      street: `Hauptstraße ${index + 1}`,
+      zip: '16928',
+      city: 'Musterhausen',
+    }));
+
+    await operations.createWastePickupTimesWithConfig(
+      {
+        ...connection,
+        items,
+      },
+      config
+    );
+
+    expect(executeGraphqlWithConfig).toHaveBeenCalledTimes(3);
+    expect(executeGraphqlWithConfig).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        operationName: 'SvaMainserverCreateWastePickUpTimes',
+        variables: {
+          inputs: items.slice(0, 100),
+        },
+      }),
+      config
+    );
+    expect(executeGraphqlWithConfig).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        operationName: 'SvaMainserverCreateWastePickUpTimes',
+        variables: {
+          inputs: items.slice(100, 200),
+        },
+      }),
+      config
+    );
+    expect(executeGraphqlWithConfig).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        operationName: 'SvaMainserverCreateWastePickUpTimes',
+        variables: {
+          inputs: items.slice(200),
+        },
+      }),
+      config
+    );
+  });
+
   it('prefers deleting pickup times by ids and falls back to pickupDate plus wasteLocationType', async () => {
     const executeGraphqlWithConfig = vi.fn().mockResolvedValue({
       destroyWastePickUpTime: {

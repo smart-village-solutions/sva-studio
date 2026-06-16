@@ -58,7 +58,10 @@ export const getMonitoringJobCurrentStep = (progress?: StudioJobProgress): strin
 
 type MonitoringJobWriteSummary = {
   readonly writtenCount: number;
+  readonly createBatchCount?: number;
   readonly deletedCount: number;
+  readonly deletedByIdCount?: number;
+  readonly deletedByValueCount?: number;
   readonly studioCount: number;
   readonly mainserverCount: number;
   readonly errorCount: number;
@@ -87,7 +90,10 @@ export const extractMonitoringJobWriteSummary = (job: Pick<StudioJobDetail, 'job
   }
 
   const createCount = readNumber(plugin, 'createCount');
+  const createBatchCount = readNumber(plugin, 'createBatchCount');
   const deleteCount = readNumber(plugin, 'deleteCount');
+  const deleteByIdCount = readNumber(plugin, 'deleteByIdCount');
+  const deleteByValueCount = readNumber(plugin, 'deleteByValueCount');
   const studioItemCount = readNumber(plugin, 'studioItemCount');
   const mainserverItemCount = readNumber(plugin, 'mainserverItemCount');
   const errorCount = readNumber(plugin, 'errorCount');
@@ -104,7 +110,10 @@ export const extractMonitoringJobWriteSummary = (job: Pick<StudioJobDetail, 'job
 
   return {
     writtenCount: createCount,
+    ...(createBatchCount === null ? {} : { createBatchCount }),
     deletedCount: deleteCount,
+    ...(deleteByIdCount === null ? {} : { deletedByIdCount: deleteByIdCount }),
+    ...(deleteByValueCount === null ? {} : { deletedByValueCount: deleteByValueCount }),
     studioCount: studioItemCount,
     mainserverCount: mainserverItemCount,
     errorCount,

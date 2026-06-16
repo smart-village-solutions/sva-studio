@@ -6,4 +6,8 @@ export * from './server/news-route.js';
 export * from './server/poi-route.js';
 export * from './server/settings.js';
 export * from './server/service.js';
-export type { SvaMainserverWasteSyncItem, SvaMainserverWasteSyncSnapshot } from './server/service-internals/waste-operations.js';
+export {
+  CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE,
+  type SvaMainserverWasteSyncItem,
+  type SvaMainserverWasteSyncSnapshot,
+} from './server/service-internals/waste-operations.js';

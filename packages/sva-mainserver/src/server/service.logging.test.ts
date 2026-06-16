@@ -106,4 +106,79 @@ describe('SVA Mainserver logging', () => {
       })
     );
   });
+
+  it('emits batch-aware waste sync logs for batched pickup-time writes', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'token-1', expires_in: 120 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockImplementation(async () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              createWastePickUpTimes: {
+                success: true,
+                errors: [],
+              },
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => ({
+        instanceId: 'de-musterhausen',
+        providerKey: 'sva_mainserver',
+        graphqlBaseUrl: 'https://mainserver.example.invalid/graphql',
+        oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+        enabled: true,
+      }),
+      readCredentials: async () => ({
+        apiKey: 'key-1',
+        apiSecret: 'secret-1',
+      }),
+      fetchImpl,
+    });
+
+    await service.createWastePickupTimes({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      items: Array.from({ length: 205 }, (_, index) => ({
+        pickupDate: `2026-02-${String((index % 28) + 1).padStart(2, '0')}`,
+        wasteType: 'Restmüll',
+        street: `Hauptstraße ${index + 1}`,
+      })),
+    });
+
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'SVA Mainserver waste create batch started',
+      expect.objectContaining({
+        workspace_id: 'de-musterhausen',
+        operation: 'SvaMainserverCreateWastePickUpTimes',
+        batch_index: 1,
+        batch_count: 3,
+        batch_size: 100,
+        total_item_count: 205,
+      })
+    );
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'SVA Mainserver waste create batch succeeded',
+      expect.objectContaining({
+        workspace_id: 'de-musterhausen',
+        operation: 'SvaMainserverCreateWastePickUpTimes',
+        batch_index: 3,
+        batch_count: 3,
+        batch_size: 5,
+        total_item_count: 205,
+      })
+    );
+  });
 });

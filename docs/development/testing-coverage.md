@@ -82,8 +82,14 @@ zuordnen.
 
 Die CPD-Ausnahmen in `sonar-project.properties` sind auf generierte Artefakte, Übersetzungsressourcen und
 dokumentierte Migrationsspiegel beschränkt. Aktuell betrifft das die Data-Repository-Extraktion
-(`packages/data-repositories/src/**`) und die verbleibenden App-Spiegel der Studio-UI-Extraktion.
-Neue fachliche Duplikate sollen weiterhin refaktoriert werden.
+(`packages/data-repositories/src/**`), die verbleibenden App-Spiegel der Studio-UI-Extraktion und die
+i18n-Ressourcen unter `apps/sva-studio-react/src/i18n/resources/**`.
+
+Für diese i18n-Ressourcen gilt bewusst folgende Entscheidung: Sie bleiben in SonarCloud sichtbar, werden aber
+von der Copy-Paste-Detection ausgenommen, weil parallele DE/EN-Objektstrukturen dort überwiegend
+Übersetzungs-Spiegel statt fachlich refaktorierbarer Duplikate darstellen. Neue fachliche Duplikate sollen
+weiterhin refaktoriert werden; die Ausnahme gilt nicht für Runtime-Logik außerhalb der reinen
+Ressourcenmodule.
 
 ### Baseline aktualisieren
 

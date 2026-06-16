@@ -25,11 +25,26 @@ const isVisualPreview = (mimeType: string | undefined): boolean => typeof mimeTy
 const previewAltText = (asset: IamRegisteredMediaAsset): string =>
   asset.metadata.altText?.trim() || asset.metadata.title?.trim() || asset.id;
 
+const trimEdgeCharacters = (value: string, character: string): string => {
+  let start = 0;
+  let end = value.length;
+
+  while (start < end && value[start] === character) {
+    start += 1;
+  }
+
+  while (end > start && value[end - 1] === character) {
+    end -= 1;
+  }
+
+  return value.slice(start, end);
+};
+
 const createQrDownloadName = (asset: IamRegisteredMediaAsset) =>
-  `${(asset.metadata.title?.trim() || asset.id)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || asset.id}-qr`;
+  `${trimEdgeCharacters(
+    (asset.metadata.title?.trim() || asset.id).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    '-'
+  ) || asset.id}-qr`;
 
 const copyTextToClipboard = async (value: string) => {
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {

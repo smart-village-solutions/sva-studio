@@ -1,4 +1,5 @@
 export const coreVersion = '0.0.1';
+export { isPlausibleEmailAddress } from './email-address.js';
 export {
   iamContentAccessReasonCodes,
   iamContentListSortDirections,

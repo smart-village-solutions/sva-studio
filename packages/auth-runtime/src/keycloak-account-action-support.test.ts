@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const importModule = async () => import('./keycloak-account-action-support.js');
@@ -96,5 +98,11 @@ describe('keycloak account action support', () => {
     await expect(isUpdateEmailActionSupported('tenant-c')).resolves.toBe(true);
 
     expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it('avoids the trailing-slash regex pattern flagged by Sonar in base-url normalization', async () => {
+    const source = fs.readFileSync(new URL('./keycloak-account-action-support.ts', import.meta.url), 'utf8');
+
+    expect(source).not.toContain('replace(/\\/+$/u, \'\')');
   });
 });

@@ -1,4 +1,4 @@
-import { wasteManagementMasterDataContract, type WasteTourRecurrence } from '@sva/core';
+import { isPlausibleEmailAddress, wasteManagementMasterDataContract, type WasteTourRecurrence } from '@sva/core';
 import { z } from 'zod';
 
 const wasteFractionReminderCountSchema = z.enum(wasteManagementMasterDataContract.fractionReminderCounts);
@@ -165,7 +165,7 @@ const optionalWasteUrlSchema = z
 const optionalEmailSchema = z
   .string()
   .trim()
-  .refine((value) => value.length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), 'Ungültige E-Mail-Adresse.');
+  .refine((value) => value.length === 0 || isPlausibleEmailAddress(value), 'Ungültige E-Mail-Adresse.');
 const optionalRelativePathSchema = z
   .string()
   .trim()

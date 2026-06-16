@@ -5,7 +5,6 @@ import type {
   ExternalInterfaceVisibleStatus,
   MailTransportAuthMode,
   MailTransportSecurityMode,
-  MailTransportType,
 } from '@sva/core';
 import { mailTransportContract } from '@sva/core';
 import {
@@ -83,9 +82,6 @@ const coerceOptionalText = (value: unknown): string =>
 
 const coerceOptionalNumberString = (value: unknown): string =>
   typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
-
-const coerceMailTransportType = (value: unknown): MailTransportType =>
-  typeof value === 'string' && mailTransportContract.isTransportType(value) ? value : 'smtp';
 
 const coerceMailSecurityMode = (value: unknown): MailTransportSecurityMode =>
   typeof value === 'string' && mailTransportContract.isSecurityMode(value) ? value : 'starttls';
@@ -166,8 +162,7 @@ const mapRecordToStoredEntry = (record: ExternalInterfaceRecord): PersistedStore
       enabled: record.enabled,
       config: {
         transportId: coerceText(record.publicConfig.transportId),
-        transportType: coerceMailTransportType(record.publicConfig.transportType),
-        host: coerceText(record.publicConfig.host),
+        host: coerceText(record.publicConfig.host) || coerceOptionalText(record.publicConfig.endpoint),
         port:
           typeof record.publicConfig.port === 'string'
             ? record.publicConfig.port
@@ -180,8 +175,6 @@ const mapRecordToStoredEntry = (record: ExternalInterfaceRecord): PersistedStore
         defaultReplyToEmail: coerceOptionalText(record.publicConfig.defaultReplyToEmail),
         maxBatchSize: coerceOptionalNumberString(record.publicConfig.maxBatchSize),
         rateLimitPerMinute: coerceOptionalNumberString(record.publicConfig.rateLimitPerMinute),
-        providerMode: coerceOptionalText(record.publicConfig.mode),
-        endpoint: coerceOptionalText(record.publicConfig.endpoint),
       },
       createdAt,
       updatedAt,
@@ -352,14 +345,11 @@ const assertValidMailTransportDraft = (
 ): void => {
   const validationRules = [
     !input.transportId || !input.displayName,
-    !mailTransportContract.isTransportType(draft.config.transportType),
     !mailTransportContract.isSecurityMode(draft.config.securityMode),
     !mailTransportContract.isAuthMode(draft.config.authMode),
     draft.config.authMode === 'basic' && !input.nextPassword.trim(),
     draft.config.authMode === 'basic' && !draft.config.username.trim(),
-    draft.config.transportType === 'smtp' && !draft.config.host.trim(),
-    draft.config.transportType === 'provider_api' && !draft.config.endpoint.trim(),
-    draft.config.transportType === 'provider_api' && !draft.config.providerMode.trim(),
+    !draft.config.host.trim(),
   ];
 
   if (validationRules.some(Boolean)) {
@@ -387,6 +377,7 @@ const buildMailTransportPublicConfig = (input: {
     'port',
     'endpoint',
     'mode',
+    'transportType',
   ] as const) {
     delete nextPublicConfig[key];
   }
@@ -400,25 +391,15 @@ const buildMailTransportPublicConfig = (input: {
     rateLimitPerMinute: input.rateLimitPerMinute,
   };
 
-  const transportConfig =
-    input.draft.config.transportType === 'smtp'
-      ? {
-          host: input.draft.config.host.trim(),
-          port: input.port,
-        }
-      : {
-          endpoint: input.draft.config.endpoint.trim(),
-          mode: input.draft.config.providerMode.trim(),
-        };
-
   return {
     ...nextPublicConfig,
     transportId: input.transportId,
-    transportType: input.draft.config.transportType,
+    transportType: 'smtp',
     securityMode: input.draft.config.securityMode,
     authMode: input.draft.config.authMode,
     ...Object.fromEntries(Object.entries(optionalFields).flatMap(([key, value]) => (value !== undefined ? [[key, value]] : []))),
-    ...transportConfig,
+    host: input.draft.config.host.trim(),
+    port: input.port,
   };
 };
 
@@ -435,10 +416,7 @@ const buildMailTransportRecord = (input: {
   const nextPassword = input.draft.config.password || input.previousSecrets.password || '';
   assertValidMailTransportDraft(input.draft, { displayName, transportId, nextPassword });
 
-  const port =
-    input.draft.config.transportType === 'smtp'
-      ? parseRequiredPort(input.draft.config.port)
-      : undefined;
+  const port = parseRequiredPort(input.draft.config.port);
   const maxBatchSize = parseOptionalPositiveInteger(input.draft.config.maxBatchSize);
   const rateLimitPerMinute = parseOptionalPositiveInteger(input.draft.config.rateLimitPerMinute);
   const existingPublicConfig = input.existing?.publicConfig ?? {};
@@ -454,10 +432,7 @@ const buildMailTransportRecord = (input: {
     enabled: input.draft.enabled,
     isDefault: input.existing?.isDefault ?? !input.hasDefaultRecord,
     category: 'api',
-    baseUrl:
-      input.draft.config.transportType === 'smtp'
-        ? input.draft.config.host.trim()
-        : input.draft.config.endpoint.trim(),
+    baseUrl: input.draft.config.host.trim(),
     authMode: input.draft.config.authMode,
     publicConfig: buildMailTransportPublicConfig({
       draft: input.draft,
@@ -691,18 +666,10 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
         checkedAt,
       };
     }
-    if (entry.config.transportType === 'smtp') {
-      if (!entry.config.host || !entry.config.port) {
-        return {
-          status: 'error',
-          statusMessage: 'Mail-Transport unvollständig (SMTP-Host und Port erforderlich).',
-          checkedAt,
-        };
-      }
-    } else if (!entry.config.endpoint) {
+    if (!entry.config.host || !entry.config.port) {
       return {
         status: 'error',
-        statusMessage: 'Mail-Transport unvollständig (Provider-Endpoint erforderlich).',
+        statusMessage: 'Mail-Transport unvollständig (SMTP-Host und Port erforderlich).',
         checkedAt,
       };
     }

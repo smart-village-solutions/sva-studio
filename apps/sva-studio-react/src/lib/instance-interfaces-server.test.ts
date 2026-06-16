@@ -294,7 +294,6 @@ describe('instance-interfaces-server', () => {
       enabled: true,
       config: {
         transportId: 'mail-1',
-        transportType: 'smtp',
         host: 'smtp.example.org',
         port: '587',
         securityMode: 'starttls',
@@ -306,8 +305,6 @@ describe('instance-interfaces-server', () => {
         defaultReplyToEmail: 'service@example.org',
         maxBatchSize: '25',
         rateLimitPerMinute: '60',
-        providerMode: '',
-        endpoint: '',
       },
     });
 
@@ -334,7 +331,6 @@ describe('instance-interfaces-server', () => {
         enabled: true,
         config: {
           transportId: 'mail-1',
-          transportType: 'smtp',
           host: 'smtp.example.org',
           port: '587',
           securityMode: 'starttls',
@@ -346,8 +342,6 @@ describe('instance-interfaces-server', () => {
           defaultReplyToEmail: 'service@example.org',
           maxBatchSize: '25',
           rateLimitPerMinute: '60',
-          providerMode: '',
-          endpoint: '',
         },
       },
       'existing-mail-id'
@@ -776,7 +770,6 @@ describe('instance-interfaces-server', () => {
         enabled: true,
         config: {
           transportId: 'mail-1',
-          transportType: 'smtp',
           host: '',
           port: '587',
           securityMode: 'starttls',
@@ -788,8 +781,6 @@ describe('instance-interfaces-server', () => {
           defaultReplyToEmail: '',
           maxBatchSize: '',
           rateLimitPerMinute: '',
-          providerMode: '',
-          endpoint: '',
         },
       })
     ).rejects.toThrow('invalid_config');
@@ -801,7 +792,6 @@ describe('instance-interfaces-server', () => {
         enabled: true,
         config: {
           transportId: 'mail-1',
-          transportType: 'provider_api',
           host: '',
           port: '587',
           securityMode: 'starttls',
@@ -813,8 +803,6 @@ describe('instance-interfaces-server', () => {
           defaultReplyToEmail: '',
           maxBatchSize: '',
           rateLimitPerMinute: '',
-          providerMode: '',
-          endpoint: '',
         },
       })
     ).rejects.toThrow('invalid_config');
@@ -826,7 +814,6 @@ describe('instance-interfaces-server', () => {
         enabled: true,
         config: {
           transportId: 'mail-1',
-          transportType: 'smtp',
           host: 'smtp.example.org',
           port: '0',
           securityMode: 'starttls',
@@ -838,8 +825,6 @@ describe('instance-interfaces-server', () => {
           defaultReplyToEmail: '',
           maxBatchSize: '',
           rateLimitPerMinute: '',
-          providerMode: '',
-          endpoint: '',
         },
       })
     ).rejects.toThrow('invalid_config');
@@ -847,7 +832,7 @@ describe('instance-interfaces-server', () => {
     expect(state.saveExternalInterfaceRecord).not.toHaveBeenCalled();
   });
 
-  it('maps stored mail transport rows and derives health for SMTP and provider transports', async () => {
+  it('maps stored mail transport rows and derives health for SMTP and legacy provider transports', async () => {
     state.listExternalInterfaceRecords.mockResolvedValue([
       {
         id: 'mail-provider-1',
@@ -885,11 +870,9 @@ describe('instance-interfaces-server', () => {
       expect.objectContaining({
         type: 'mailTransport',
         config: expect.objectContaining({
-          transportType: 'provider_api',
+          host: 'https://api.mail.example',
           securityMode: 'starttls',
           authMode: 'basic',
-          endpoint: 'https://api.mail.example',
-          providerMode: 'transactional',
           maxBatchSize: '50',
           rateLimitPerMinute: '120',
         }),
@@ -905,7 +888,6 @@ describe('instance-interfaces-server', () => {
         enabled: true,
         config: {
           transportId: '',
-          transportType: 'smtp',
           host: '',
           port: '',
           securityMode: 'starttls',
@@ -916,8 +898,6 @@ describe('instance-interfaces-server', () => {
           defaultReplyToEmail: '',
           maxBatchSize: '',
           rateLimitPerMinute: '',
-          providerMode: '',
-          endpoint: '',
         },
         createdAt: '2026-05-12T08:00:00.000Z',
         updatedAt: '2026-05-12T08:00:00.000Z',
@@ -934,11 +914,10 @@ describe('instance-interfaces-server', () => {
         id: 'mail-provider-2',
         instanceId: 'de-test',
         type: 'mailTransport',
-        name: 'Provider',
+        name: 'Legacy',
         enabled: true,
         config: {
           transportId: 'provider-mail',
-          transportType: 'provider_api',
           host: '',
           port: '',
           securityMode: 'starttls',
@@ -949,8 +928,6 @@ describe('instance-interfaces-server', () => {
           defaultReplyToEmail: '',
           maxBatchSize: '',
           rateLimitPerMinute: '',
-          providerMode: 'transactional',
-          endpoint: '',
         },
         createdAt: '2026-05-12T08:00:00.000Z',
         updatedAt: '2026-05-12T08:00:00.000Z',
@@ -958,7 +935,7 @@ describe('instance-interfaces-server', () => {
     ).toEqual(
       expect.objectContaining({
         status: 'error',
-        statusMessage: 'Mail-Transport unvollständig (Provider-Endpoint erforderlich).',
+        statusMessage: 'Mail-Transport unvollständig (SMTP-Host und Port erforderlich).',
       })
     );
 
@@ -967,13 +944,12 @@ describe('instance-interfaces-server', () => {
         id: 'mail-provider-3',
         instanceId: 'de-test',
         type: 'mailTransport',
-        name: 'Provider',
+        name: 'Legacy',
         enabled: true,
         config: {
           transportId: 'provider-mail',
-          transportType: 'provider_api',
-          host: '',
-          port: '',
+          host: 'https://api.mail.example',
+          port: '443',
           securityMode: 'starttls',
           authMode: 'basic',
           username: '',
@@ -982,8 +958,6 @@ describe('instance-interfaces-server', () => {
           defaultReplyToEmail: '',
           maxBatchSize: '',
           rateLimitPerMinute: '',
-          providerMode: 'transactional',
-          endpoint: 'https://api.mail.example',
         },
         createdAt: '2026-05-12T08:00:00.000Z',
         updatedAt: '2026-05-12T08:00:00.000Z',
@@ -1055,7 +1029,6 @@ describe('instance-interfaces-server', () => {
         enabled: true,
         config: {
           transportId: 'mail-1',
-          transportType: 'smtp',
           host: 'smtp.example.org',
           port: '587',
           securityMode: 'starttls',
@@ -1067,8 +1040,6 @@ describe('instance-interfaces-server', () => {
           defaultReplyToEmail: '',
           maxBatchSize: '',
           rateLimitPerMinute: '',
-          providerMode: '',
-          endpoint: '',
         },
       },
       'existing-mail-id'

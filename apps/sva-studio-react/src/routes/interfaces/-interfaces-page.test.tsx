@@ -107,7 +107,6 @@ const mailTransportEntry = {
   updatedAt: '2026-03-15T20:03:00.000Z',
   config: {
     transportId: 'mail-transport-1',
-    transportType: 'smtp',
     host: 'smtp.example.org',
     port: '587',
     securityMode: 'starttls',
@@ -118,8 +117,6 @@ const mailTransportEntry = {
     defaultReplyToEmail: 'service@example.org',
     maxBatchSize: '50',
     rateLimitPerMinute: '120',
-    providerMode: '',
-    endpoint: '',
   },
 } as const;
 
@@ -400,7 +397,6 @@ describe('InterfacesPage', () => {
             name: 'Zentraler Mailversand',
             config: expect.objectContaining({
               transportId: 'mail-transport-1',
-              transportType: 'smtp',
               host: 'smtp.example.org',
               port: '587',
               securityMode: 'starttls',
@@ -432,9 +428,7 @@ describe('InterfacesPage', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Mail-Transport/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
 
-    const transportTypeSelect = screen.getByLabelText('Transporttyp');
-    expect(within(transportTypeSelect).getByRole('option', { name: /SMTP/i })).toBeTruthy();
-    expect(within(transportTypeSelect).queryByRole('option', { name: /Provider-API/i })).toBeNull();
+    expect(screen.queryByLabelText('Transporttyp')).toBeNull();
   });
 
   it('shows the persisted healthcheck message below the interface status', async () => {
@@ -459,7 +453,7 @@ describe('InterfacesPage', () => {
     });
   });
 
-  it('renders endpoint and status fallbacks for disabled or provider-api interfaces', async () => {
+  it('renders endpoint and status fallbacks for disabled interfaces and SMTP transports', async () => {
     state.listInterfaces.mockResolvedValue(
       createListResponse([
         {
@@ -475,12 +469,11 @@ describe('InterfacesPage', () => {
         },
         {
           ...mailTransportEntry,
-          id: 'mail-provider',
+          id: 'mail-smtp',
           status: 'error',
           config: {
             ...mailTransportEntry.config,
-            transportType: 'provider_api',
-            endpoint: 'https://mail.example/api',
+            host: 'smtp.mail.example',
           },
         },
       ])
@@ -492,7 +485,7 @@ describe('InterfacesPage', () => {
       expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
     });
 
-    expect(screen.getAllByText('https://mail.example/api').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('smtp.mail.example').length).toBeGreaterThan(0);
     expect(screen.getAllByText('-').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Deaktiviert').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Fehler').length).toBeGreaterThan(0);

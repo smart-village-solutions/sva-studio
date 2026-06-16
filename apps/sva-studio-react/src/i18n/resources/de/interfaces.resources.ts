@@ -87,7 +87,7 @@ export const interfacesDEResources = {
     mailTransport: {
       label: 'Mail-Transport',
       description:
-        'Zentrale technische Mail-Anbindung mit SMTP- oder Provider-Parametern für transaktionale Zustellung.',
+        'Zentrale technische SMTP-Anbindung für transaktionale Zustellung.',
     },
   },
   create: {
@@ -129,15 +129,8 @@ export const interfacesDEResources = {
     },
     mailTransport: {
       transportId: 'Transport-ID',
-      transportType: 'Transporttyp',
-      transportTypeOptions: {
-        smtp: 'SMTP',
-        providerApi: 'Provider-API',
-      },
       host: 'SMTP-Host',
       port: 'Port',
-      endpoint: 'Provider-Endpoint',
-      providerMode: 'Provider-Modus',
       securityMode: 'Sicherheitsmodus',
       securityModeOptions: {
         none: 'Keine',

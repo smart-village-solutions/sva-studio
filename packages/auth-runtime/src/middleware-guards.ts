@@ -58,9 +58,7 @@ export const ensureAccountLifecycleAllowsAccess = async (
 ): Promise<Response | null> => {
   void request;
   void user;
-  if (options?.isLocalDevelopmentAuth || !user.instanceId) {
-    return null;
-  }
+  void options;
   return null;
 };
 

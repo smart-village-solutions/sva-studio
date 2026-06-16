@@ -341,21 +341,6 @@ const MailTransportFields = ({
             onChange={(event) => updateConfig({ transportId: event.currentTarget.value })}
           />
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="mail-transport-type">{t('interfaces.forms.mailTransport.transportType')}</Label>
-          <select
-            id="mail-transport-type"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={draft.config.transportType}
-            onChange={(event) =>
-              updateConfig({
-                transportType: event.currentTarget.value as typeof draft.config.transportType,
-              })
-            }
-          >
-            <option value="smtp">{t('interfaces.forms.mailTransport.transportTypeOptions.smtp')}</option>
-          </select>
-        </div>
       </div>
 
       <div className="grid gap-2 md:grid-cols-2">

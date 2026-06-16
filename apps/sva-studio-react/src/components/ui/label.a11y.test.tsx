@@ -1,5 +1,5 @@
 import { cleanup, render } from '@testing-library/react';
-import { afterEach, describe, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { expectNoA11yViolations } from '@/test/a11y';
 
@@ -18,6 +18,6 @@ describe('ui/label accessibility', () => {
       </div>
     );
 
-    await expectNoA11yViolations(container);
+    await expect(expectNoA11yViolations(container)).resolves.toBeUndefined();
   });
 });

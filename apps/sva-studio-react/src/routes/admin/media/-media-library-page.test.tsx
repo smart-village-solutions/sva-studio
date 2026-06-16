@@ -407,6 +407,14 @@ describe('MediaLibraryPage', () => {
     );
   });
 
+  it('keeps image labels visible when no preview URL is available', () => {
+    render(<MediaLibraryPage />);
+
+    expect(screen.getByText('Blockierte Medienprobe')).toBeTruthy();
+    expect(screen.getByText('Verarbeitung fehlgeschlagen')).toBeTruthy();
+    expect(screen.getByText('Titel fehlt noch')).toBeTruthy();
+  });
+
   it('renders non-image assets with a dedicated fallback card pattern', () => {
     render(<MediaLibraryPage />);
 
@@ -420,6 +428,7 @@ describe('MediaLibraryPage', () => {
     const manualLink = screen.getByRole('link', { name: /manual\.pdf/i });
     expect(manualLink).toBeTruthy();
     expect(screen.getByText('uploads/2026/06')).toBeTruthy();
+    expect(screen.queryByText(/^Ordner$/)).toBeNull();
     expect(screen.queryByText('Nicht registriert')).toBeNull();
     expect(manualLink.getAttribute('href')).toContain('/admin/media/bucket:');
   });

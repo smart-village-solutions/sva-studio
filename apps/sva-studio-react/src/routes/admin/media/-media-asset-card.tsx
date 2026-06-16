@@ -127,6 +127,7 @@ export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAsse
   const previewMimeType = isRegisteredMediaAsset(asset) ? asset.mimeType : inferMimeTypeFromFileName(asset.fileName);
   const isImageCard = isVisualPreview(previewMimeType);
   const previewUrl = asset.previewUrl ?? undefined;
+  const hidesTextDetails = isImageCard && typeof previewUrl === 'string' && previewUrl.length > 0;
   const secondaryText = isRegisteredMediaAsset(asset)
     ? asset.metadata.altText?.trim() || asset.storageKey
     : asset.relativePath;
@@ -172,8 +173,10 @@ export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAsse
       <CardContent className="flex flex-1 flex-col justify-between gap-3 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">
-            {isImageCard ? null : <h2 className="truncate text-sm font-semibold text-foreground">{label}</h2>}
-            {isImageCard ? null : <p className="line-clamp-2 text-xs text-muted-foreground">{secondaryText}</p>}
+            {hidesTextDetails ? null : <h2 className="truncate text-sm font-semibold text-foreground">{label}</h2>}
+            {hidesTextDetails ? null : (
+              <p className="line-clamp-2 text-xs text-muted-foreground">{secondaryText}</p>
+            )}
             {folderPath ? (
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Folder aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />

@@ -68,6 +68,8 @@ describe('public waste pdf settings', () => {
   });
 
   it('loads the default interface when no selected record exists', async () => {
+    vi.stubEnv('PUBLIC_WASTE_PDF_BRANDING_ASSET_URL', '');
+    vi.stubEnv('PUBLIC_WASTE_PDF_CONTACT_BLOCK', '');
     listExternalInterfaceRecordsMock.mockResolvedValue([]);
     loadDefaultExternalInterfaceRecordMock.mockResolvedValue(
       createExternalInterfaceRecord({

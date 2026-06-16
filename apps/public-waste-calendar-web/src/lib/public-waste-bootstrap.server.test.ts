@@ -81,6 +81,7 @@ describe('public waste bootstrap', () => {
 
     expect(
       readPublicWasteBootstrapStateFromEnvironment({
+        env: {},
         rawConfigJson: JSON.stringify({
           instanceId: 'bb-prignitz-json',
           supabase: { databaseUrl: 'postgres://json', schemaName: 'public-json' },

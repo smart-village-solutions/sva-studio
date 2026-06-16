@@ -42,4 +42,30 @@ describe('public waste projection', () => {
       { id: 'rest', label: 'Restmüll', color: '#444444' },
     ]);
   });
+
+  it('normalizes ISO timestamps before comparing the next pickup date', () => {
+    const result = projectPublicWasteCalendar({
+      referenceDate: '2026-05-19T12:00:00Z',
+      entries: [
+        {
+          id: 'pickup-1',
+          date: '2026-05-19',
+          fractionId: 'bio',
+          fractionLabel: 'Bioabfall',
+          fractionColor: '#00AA00',
+          note: null,
+        },
+        {
+          id: 'pickup-2',
+          date: '2026-05-21',
+          fractionId: 'paper',
+          fractionLabel: 'Papier',
+          fractionColor: '#0000FF',
+          note: null,
+        },
+      ],
+    });
+
+    expect(result.nextPickupDate).toBe('2026-05-19');
+  });
 });

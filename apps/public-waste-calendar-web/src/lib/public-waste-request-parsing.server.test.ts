@@ -8,11 +8,20 @@ describe('public waste request parsing', () => {
     vi.setSystemTime(new Date('2026-06-07T12:00:00.000Z'));
   });
 
-  it('falls back to the current date when referenceDate is missing or blank and trims valid values', () => {
+  it('falls back to the current date when referenceDate is missing or blank and normalizes valid values', () => {
     expect(readPublicWasteReferenceDate(new URL('https://example.test/public-waste'))).toBe('2026-06-07');
     expect(readPublicWasteReferenceDate(new URL('https://example.test/public-waste?referenceDate='))).toBe('2026-06-07');
     expect(readPublicWasteReferenceDate(new URL('https://example.test/public-waste?referenceDate=%20%202026-01-01%20'))).toBe(
       '2026-01-01'
+    );
+    expect(readPublicWasteReferenceDate(new URL('https://example.test/public-waste?referenceDate=2026-01-01T15:30:00Z'))).toBe(
+      '2026-01-01'
+    );
+  });
+
+  it('falls back to the current date when referenceDate cannot be normalized to a date-only value', () => {
+    expect(readPublicWasteReferenceDate(new URL('https://example.test/public-waste?referenceDate=not-a-date'))).toBe(
+      '2026-06-07'
     );
   });
 });

@@ -3,6 +3,7 @@ import type {
   PublicWasteSelectionState,
 } from './public-waste-contract.js';
 import { isPublicWasteStreetSelectionId, isPublicWasteUuid } from './public-waste-contract.js';
+import { normalizeDateOnly } from './public-waste-date-utils.js';
 
 const readRequiredParam = (url: URL, key: string): string => {
   const value = url.searchParams.get(key)?.trim();
@@ -57,7 +58,7 @@ export const readPublicWasteResolvedSelection = (url: URL): PublicWasteResolvedS
 });
 
 export const readPublicWasteReferenceDate = (url: URL): string =>
-  url.searchParams.get('referenceDate')?.trim() || new Date().toISOString().slice(0, 10);
+  normalizeDateOnly(url.searchParams.get('referenceDate')) ?? new Date().toISOString().slice(0, 10);
 
 export const readPublicWasteFractionIds = (url: URL): readonly string[] =>
   Array.from(new Set(url.searchParams.getAll('fractionId').map((value) => value.trim()).filter(Boolean)));

@@ -14,7 +14,7 @@ import type { MediaDetailPageProps } from './-media-ui.shared.js';
 
 const mediaErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {
-    return t('media.messages.loadError');
+    return t('media.detail.loadError');
   }
 
   switch (error.code) {
@@ -28,7 +28,7 @@ const mediaErrorMessage = (error: IamHttpError | null): string => {
     case 'not_found':
       return t('media.errors.notFound');
     default:
-      return t('media.messages.loadError');
+      return t('media.detail.loadError');
   }
 };
 

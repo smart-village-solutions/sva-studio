@@ -65,6 +65,15 @@ export const mediaDEResources = {
   detail: {
     subtitle:
       'Prüfen Sie Vorschau, Delivery, Metadaten und Nutzungsimpact in einem gemeinsamen Asset-Workspace.',
+    loadError: 'Die Mediendetailansicht konnte nicht geladen werden.',
+    publicUrlLabel: 'Öffentliche URL',
+    publicUrlHint: 'Direkter Auslieferungslink für Redaktion, Freigabe und Einbindung.',
+    publicUrlCopied: 'Link in die Zwischenablage kopiert.',
+    publicUrlCopyError: 'Der Link konnte derzeit nicht kopiert werden.',
+    qrDialogTitle: 'QR-Code zur öffentlichen URL',
+    qrDialogDescription: 'Scannen oder laden Sie den QR-Code für den direkten Medienlink herunter.',
+    qrDialogError: 'Der QR-Code konnte derzeit nicht erzeugt werden.',
+    qrPreviewLabel: 'QR-Code-Vorschau',
     previewEyebrow: 'Asset-Workspace',
     previewTitle: 'Arbeitsansicht',
     previewBody:
@@ -84,6 +93,11 @@ export const mediaDEResources = {
   },
   actions: {
     create: 'Medium vorbereiten',
+    selectFiles: 'Dateien auswählen',
+    copyPublicUrl: 'Öffentliche URL kopieren',
+    showQrCode: 'QR-Code anzeigen',
+    downloadQrPng: 'QR-Code als PNG laden',
+    downloadQrSvg: 'QR-Code als SVG laden',
     register: 'Als Medium registrieren',
     open: 'Öffnen',
     save: 'Metadaten speichern',
@@ -201,14 +215,18 @@ export const mediaDEResources = {
   },
   library: {
     quickIntake: {
-      title: 'Quick Intake',
+      title: 'Dateien hochladen',
       description:
-        'Starten Sie neue Uploads schnell, erfassen Sie die Mindestmetadaten und bringen Sie Assets zielsicher in die Bibliothek.',
-      steps: {
-        prepare: 'Upload vorbereiten und signierte Ziel-URL erzeugen.',
-        describe: 'Titel, Alternativtext und Sichtbarkeit direkt nach dem Intake ergänzen.',
-        publish: 'Bereite Assets priorisieren und anschließend in Fachmodule übernehmen.',
-      },
+        'Ziehen Sie Dateien hierher oder klicken Sie auf „Dateien auswählen“, um den Upload im Studio vorzubereiten.',
+      regionLabel: 'Upload-Schnellzugriff',
+      supportLabel: 'Unterstützt:',
+    },
+    upload: {
+      initializing: 'Upload wird vorbereitet …',
+      uploading: 'Datei wird hochgeladen …',
+      finalizing: 'Upload wird abgeschlossen …',
+      success: 'Upload abgeschlossen. Die Detailansicht wird geöffnet …',
+      error: 'Der Upload konnte nicht abgeschlossen werden.',
     },
     priority: {
       blocked: 'Blockiert',

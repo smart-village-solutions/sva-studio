@@ -260,6 +260,49 @@ const assertSupportedListAssetVisibility = <T extends { id: string; visibility: 
   return asset;
 };
 
+const isRegisteredListingAsset = (
+  item: Awaited<ReturnType<typeof mergeMediaListingPage>>['items'][number]
+): item is Awaited<ReturnType<typeof mergeMediaListingPage>>['items'][number] & {
+  id: string;
+  instanceId: string;
+  storageKey: string;
+  mimeType: string;
+  visibility: MediaVisibility;
+} => 'id' in item;
+
+const enrichListItemWithPreviewUrl = async (input: {
+  readonly storagePort: MediaStoragePort;
+  readonly item: Awaited<ReturnType<typeof mergeMediaListingPage>>['items'][number];
+}) => {
+  if (
+    !isRegisteredListingAsset(input.item) ||
+    input.item.visibility !== 'public' ||
+    !input.item.mimeType.startsWith('image/')
+  ) {
+    return input.item;
+  }
+
+  try {
+    const delivery = await input.storagePort.resolveDelivery({
+      instanceId: input.item.instanceId,
+      assetId: input.item.id,
+      storageKey: input.item.storageKey,
+      visibility: input.item.visibility,
+    });
+
+    if (!delivery?.deliveryUrl) {
+      return input.item;
+    }
+
+    return {
+      ...input.item,
+      previewUrl: delivery.deliveryUrl,
+    };
+  } catch {
+    return input.item;
+  }
+};
+
 const emitMediaAuditEvent = async (input: {
   readonly deps: Pick<MediaHttpHandlerDeps, 'emitAuditEvent'>;
   readonly ctx: AuthenticatedRequestContext;
@@ -443,6 +486,27 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
             registeredAssets,
             bucketObjects,
           });
+          const requiresPreviewEnrichment = merged.items.some(
+            (item) => isRegisteredListingAsset(item) && item.visibility === 'public' && item.mimeType.startsWith('image/')
+          );
+          let enrichedItems = merged.items;
+
+          if (requiresPreviewEnrichment) {
+            let previewStoragePort: MediaStoragePort | null = null;
+            try {
+              previewStoragePort = await resolveMediaStoragePort(deps, instanceId);
+            } catch (error) {
+              if (!(error instanceof MediaStorageUnavailableError)) {
+                throw error;
+              }
+            }
+
+            if (previewStoragePort) {
+              enrichedItems = await Promise.all(
+                merged.items.map((item) => enrichListItemWithPreviewUrl({ storagePort: previewStoragePort, item }))
+              );
+            }
+          }
 
           await emitMediaAuditEvent({
             deps,
@@ -456,7 +520,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
           return jsonResponse(
             200,
             asApiList(
-              merged.items,
+              enrichedItems,
               {
                 page,
                 pageSize,

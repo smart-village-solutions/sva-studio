@@ -65,6 +65,15 @@ export const mediaENResources = {
   detail: {
     subtitle:
       'Review preview context, delivery, metadata, and usage impact inside one shared asset workspace.',
+    loadError: 'The media detail view could not be loaded.',
+    publicUrlLabel: 'Public URL',
+    publicUrlHint: 'Direct delivery link for editorial sharing, embedding, and review.',
+    publicUrlCopied: 'Link copied to the clipboard.',
+    publicUrlCopyError: 'The link could not be copied right now.',
+    qrDialogTitle: 'QR code for the public URL',
+    qrDialogDescription: 'Scan or download the QR code for the direct media link.',
+    qrDialogError: 'The QR code could not be generated right now.',
+    qrPreviewLabel: 'QR code preview',
     previewEyebrow: 'Asset workspace',
     previewTitle: 'Working view',
     previewBody:
@@ -84,6 +93,11 @@ export const mediaENResources = {
   },
   actions: {
     create: 'Prepare media',
+    selectFiles: 'Select files',
+    copyPublicUrl: 'Copy public URL',
+    showQrCode: 'Show QR code',
+    downloadQrPng: 'Download QR code as PNG',
+    downloadQrSvg: 'Download QR code as SVG',
     register: 'Register as media asset',
     open: 'Open',
     save: 'Save metadata',
@@ -198,14 +212,18 @@ export const mediaENResources = {
   },
   library: {
     quickIntake: {
-      title: 'Quick Intake',
+      title: 'Upload files',
       description:
-        'Start new uploads quickly, capture the minimum metadata, and move assets into the library with less friction.',
-      steps: {
-        prepare: 'Prepare an upload and generate the signed target URL.',
-        describe: 'Add title, alt text, and visibility directly after intake.',
-        publish: 'Prioritize ready assets and move them into feature modules.',
-      },
+        'Drag files here or click “Select files” to prepare the upload flow inside Studio.',
+      regionLabel: 'Upload quick access',
+      supportLabel: 'Supports:',
+    },
+    upload: {
+      initializing: 'Preparing upload …',
+      uploading: 'Uploading file …',
+      finalizing: 'Finalizing upload …',
+      success: 'Upload complete. Opening the detail view …',
+      error: 'The upload could not be completed.',
     },
     priority: {
       blocked: 'Blocked',

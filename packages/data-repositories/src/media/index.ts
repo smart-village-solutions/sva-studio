@@ -411,7 +411,8 @@ SELECT
   updated_at
 FROM iam.media_assets
 WHERE ${clauses.join('\n  AND ')}
-ORDER BY updated_at DESC
+ORDER BY updated_at DESC NULLS LAST,
+         created_at DESC NULLS LAST
 LIMIT ${limitPlaceholder}
 OFFSET ${offsetPlaceholder};
 `,

@@ -523,6 +523,7 @@ export type IamRegisteredMediaAsset = Readonly<{
   technical: Readonly<Record<string, unknown>>;
   createdAt?: string;
   updatedAt?: string;
+  previewUrl?: string | null;
 }>;
 
 export type IamUnregisteredMediaAsset = Readonly<{
@@ -572,6 +573,12 @@ export type InitializeMediaUploadResponse = Readonly<{
   expiresAt: string;
   status: string;
   initializedAt: string;
+}>;
+
+export type CompleteMediaUploadResponse = Readonly<{
+  assetId: string;
+  uploadSessionId: string;
+  status: string;
 }>;
 
 export type UpdateMediaMetadataPayload = Readonly<{
@@ -1197,6 +1204,17 @@ export const initializeMediaUpload = async (
     '/api/v1/iam/media/upload-sessions',
     payload,
     true
+  );
+
+export const completeMediaUpload = async (
+  uploadSessionId: string
+): Promise<ApiItemResponse<CompleteMediaUploadResponse>> =>
+  requestJson<ApiItemResponse<CompleteMediaUploadResponse>>(
+    `/api/v1/iam/media/upload-sessions/${uploadSessionId}/complete`,
+    {
+      method: 'POST',
+      headers: IAM_HEADERS,
+    }
   );
 
 export const registerBucketMedia = async (

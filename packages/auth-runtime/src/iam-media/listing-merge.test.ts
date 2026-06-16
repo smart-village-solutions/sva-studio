@@ -175,6 +175,53 @@ describe('mergeMediaListingPage', () => {
     expect(result.total).toBe(1);
   });
 
+  it('sorts registered assets without updatedAt by createdAt descending before older entries', () => {
+    const result = mergeMediaListingPage({
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 10,
+      registeredAssets: [
+        {
+          id: 'asset-newer',
+          instanceId: 'tenant-a',
+          storageKey: 'tenant-a/originals/z-asset.jpg',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 10,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {},
+          technical: {},
+          createdAt: '2026-06-11T09:00:00.000Z',
+          updatedAt: undefined,
+        },
+        {
+          id: 'asset-older',
+          instanceId: 'tenant-a',
+          storageKey: 'tenant-a/originals/a-asset.jpg',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 10,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {},
+          technical: {},
+          createdAt: '2026-06-11T07:00:00.000Z',
+          updatedAt: undefined,
+        },
+      ],
+      bucketObjects: [],
+    });
+
+    expect(result.items.map((item) => ('id' in item ? item.id : item.storageKey))).toEqual([
+      'asset-newer',
+      'asset-older',
+    ]);
+    expect(result.total).toBe(2);
+  });
+
   it('keeps the freshest duplicate bucket metadata when repeated storage keys disagree across pages', () => {
     const result = mergeMediaListingPage({
       instanceId: 'tenant-a',

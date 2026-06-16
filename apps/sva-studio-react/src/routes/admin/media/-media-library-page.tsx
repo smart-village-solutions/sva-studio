@@ -1,9 +1,9 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
-import { useMediaLibrary } from '../../../hooks/use-media';
+import { useMediaLibrary, useSingleFileMediaUpload } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
 
@@ -27,10 +27,27 @@ const mediaErrorMessage = (error: IamHttpError | null): string => {
 };
 
 export const MediaLibraryPage = () => {
+  const navigate = useNavigate();
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(36);
   const mediaApi = useMediaLibrary({ page, pageSize });
+  const singleFileUpload = useSingleFileMediaUpload();
   const totalPages = Math.max(1, Math.ceil(mediaApi.total / Math.max(1, mediaApi.pageSize)));
+
+  const handleFileSelected = React.useCallback(
+    async (file: File) => {
+      const result = await singleFileUpload.uploadFile(file);
+      if (!result) {
+        return;
+      }
+
+      await navigate({
+        to: '/admin/media/$mediaId',
+        params: { mediaId: result.assetId },
+      });
+    },
+    [navigate, singleFileUpload]
+  );
 
   React.useEffect(() => {
     if (page > totalPages) {
@@ -68,7 +85,13 @@ export const MediaLibraryPage = () => {
         </Button>
       </header>
 
-      <MediaIntakeShelf />
+      <MediaIntakeShelf
+        error={singleFileUpload.error}
+        phase={singleFileUpload.phase}
+        onFileSelected={(file) => {
+          void handleFileSelected(file);
+        }}
+      />
       <MediaLibraryToolbar
         page={mediaApi.page}
         pageCount={totalPages}

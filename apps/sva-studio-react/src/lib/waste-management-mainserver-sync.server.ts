@@ -7,6 +7,7 @@ import type {
   WasteTourRecord,
 } from '@sva/core';
 import {
+  CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE,
   createSvaMainserverWastePickupTimes,
   deleteSvaMainserverWastePickupTimes,
   listSvaMainserverWasteSyncSnapshot,
@@ -49,7 +50,10 @@ export type WasteManagementMainserverSyncResult = Readonly<{
   studioItemCount: number;
   mainserverItemCount: number;
   createCount: number;
+  createBatchCount: number;
   deleteCount: number;
+  deleteByIdCount: number;
+  deleteByValueCount: number;
   errorCount: number;
   createItems: readonly SvaMainserverWasteSyncItem[];
   deleteItems: readonly SvaMainserverWasteSyncItem[];
@@ -125,6 +129,8 @@ export const runWasteManagementMainserverSync = async (input: {
   const deleteItems = input.mainserverRows
     .filter((row) => !studioByKey.has(row.key))
     .map(({ key: _key, ...row }) => row);
+  const deleteByIdCount = deleteItems.filter((row) => Boolean(row.id?.trim())).length;
+  const deleteByValueCount = deleteItems.length - deleteByIdCount;
 
   if (!input.dryRun) {
     if (createItems.length > 0) {
@@ -139,7 +145,10 @@ export const runWasteManagementMainserverSync = async (input: {
     studioItemCount: input.studioRows.length,
     mainserverItemCount: input.mainserverRows.length,
     createCount: createItems.length,
+    createBatchCount: Math.ceil(createItems.length / CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE),
     deleteCount: deleteItems.length,
+    deleteByIdCount,
+    deleteByValueCount,
     errorCount: 0,
     createItems,
     deleteItems,

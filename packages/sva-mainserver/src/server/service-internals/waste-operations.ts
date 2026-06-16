@@ -2,6 +2,7 @@ import type { SvaMainserverConnectionInput, SvaMainserverInstanceConfig } from '
 
 import type { GraphqlExecutor } from './shared.js';
 import {
+  CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE,
   createWastePickupTimesWithConfig,
   deleteWastePickupTimesWithConfig,
   listWasteSyncSnapshotWithConfig,
@@ -10,6 +11,7 @@ import {
 } from './waste-operations.shared.js';
 
 export type { SvaMainserverWasteSyncItem, SvaMainserverWasteSyncSnapshot };
+export { CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE };
 
 export const createWasteOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
   listWasteSyncSnapshotWithConfig: (

@@ -132,6 +132,7 @@ const withWasteClientMock = vi.hoisted(() => vi.fn(async () => ({
 }) as unknown as WasteSyncClientState));
 
 vi.mock('@sva/sva-mainserver/server', () => ({
+  CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE: 100,
   listSvaMainserverWasteSyncSnapshot: listSvaMainserverWasteSyncSnapshotMock,
   createSvaMainserverWastePickupTimes: createSvaMainserverWastePickupTimesMock,
   deleteSvaMainserverWastePickupTimes: deleteSvaMainserverWastePickupTimesMock,
@@ -236,6 +237,45 @@ describe('waste-management-mainserver-sync.server', () => {
     ]);
     expect(deleteItems).not.toHaveBeenCalled();
     expect(result.errorCount).toBe(0);
+    expect(result.createBatchCount).toBe(1);
+    expect(result.deleteByIdCount).toBe(0);
+    expect(result.deleteByValueCount).toBe(0);
+  });
+
+  it('reports batch and delete-strategy counts in the sync result', async () => {
+    const result = await runWasteManagementMainserverSync({
+      studioRows: Array.from({ length: 205 }, (_, index) => ({
+        key: `2026-01-${String((index % 28) + 1).padStart(2, '0')}::restmüll::hauptstraße ${index + 1}::musterhausen`,
+        pickupDate: `2026-01-${String((index % 28) + 1).padStart(2, '0')}`,
+        wasteType: 'Restmüll',
+        street: `Hauptstraße ${index + 1}`,
+        city: 'Musterhausen',
+      })),
+      mainserverRows: [
+        {
+          id: 'pickup-1',
+          key: '2026-03-01::restmüll::altstraße 1::musterhausen',
+          pickupDate: '2026-03-01',
+          wasteType: 'Restmüll',
+          street: 'Altstraße 1',
+          city: 'Musterhausen',
+        },
+        {
+          key: '2026-03-02::restmüll::altstraße 2::musterhausen',
+          pickupDate: '2026-03-02',
+          wasteType: 'Restmüll',
+          street: 'Altstraße 2',
+          city: 'Musterhausen',
+        },
+      ],
+      dryRun: false,
+    });
+
+    expect(result.createCount).toBe(205);
+    expect(result.createBatchCount).toBe(3);
+    expect(result.deleteCount).toBe(2);
+    expect(result.deleteByIdCount).toBe(1);
+    expect(result.deleteByValueCount).toBe(1);
   });
 
   it('forwards the job credential context to mainserver reads and writes', async () => {

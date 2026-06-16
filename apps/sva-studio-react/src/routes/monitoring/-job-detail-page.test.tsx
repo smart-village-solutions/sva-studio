@@ -194,7 +194,10 @@ describe('MonitoringJobDetailPage', () => {
             studioItemCount: 42,
             mainserverItemCount: 39,
             createCount: 7,
+            createBatchCount: 2,
             deleteCount: 3,
+            deleteByIdCount: 2,
+            deleteByValueCount: 1,
             errorCount: 0,
           },
         },
@@ -212,6 +215,9 @@ describe('MonitoringJobDetailPage', () => {
     expect(screen.getByText('Gelöscht')).toBeTruthy();
     expect(screen.getByText('Studio-Datensätze')).toBeTruthy();
     expect(screen.getByText('Mainserver-Datensätze')).toBeTruthy();
+    expect(screen.getByText('Create-Batches')).toBeTruthy();
+    expect(screen.getByText('Löschung per ID')).toBeTruthy();
+    expect(screen.getByText('Löschung per Wert')).toBeTruthy();
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
     expect(screen.getByText('7')).toBeTruthy();
     expect(screen.getByText('3')).toBeTruthy();

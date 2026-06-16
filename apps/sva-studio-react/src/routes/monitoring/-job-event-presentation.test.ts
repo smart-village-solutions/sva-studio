@@ -122,7 +122,10 @@ describe('monitoring job event presentation', () => {
         plugin: {
           operation: 'sync-mainserver',
           createCount: 7,
+          createBatchCount: 2,
           deleteCount: 3,
+          deleteByIdCount: 2,
+          deleteByValueCount: 1,
           studioItemCount: 42,
           mainserverItemCount: 39,
           errorCount: 0,
@@ -132,7 +135,10 @@ describe('monitoring job event presentation', () => {
 
     expect(extractMonitoringJobWriteSummary(job)).toEqual({
       writtenCount: 7,
+      createBatchCount: 2,
       deletedCount: 3,
+      deletedByIdCount: 2,
+      deletedByValueCount: 1,
       studioCount: 42,
       mainserverCount: 39,
       errorCount: 0,

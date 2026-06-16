@@ -1,5 +1,15 @@
 import type { SvaMainserverConnectionInput, SvaMainserverInstanceConfig } from '../../types.js';
-import { toSvaMainserverError, type GraphqlExecutor } from './shared.js';
+import { buildLogContext, logger } from './observability.js';
+import {
+  assertCreateMutationSucceeded,
+  mapCreateVariables,
+  mapPickupTime,
+  requireNonEmpty,
+  toDeleteIds,
+  toDeleteVariables,
+  trimToUndefined,
+} from './waste-operations.payloads.js';
+import { type GraphqlExecutor } from './shared.js';
 
 export type SvaMainserverWasteSyncItem = Readonly<{
   id?: string;
@@ -58,6 +68,7 @@ type DestroyWastePickUpTimeMutation = {
     readonly id?: string | number | null;
   } | null;
 };
+export const CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE = 100;
 const svaMainserverWasteToursDocument = `
 query SvaMainserverWasteTours {
   wasteTours {
@@ -126,71 +137,6 @@ mutation SvaMainserverDestroyWastePickUpTimeByValue(
   }
 }
 `;
-const trimToUndefined = (value: string | null | undefined): string | undefined => {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : undefined;
-};
-const requireNonEmpty = (value: string | null | undefined, fieldName: string): string => {
-  const trimmed = trimToUndefined(value);
-  if (!trimmed) {
-    throw toSvaMainserverError({
-      code: 'invalid_response',
-      message: `SVA-Mainserver lieferte kein gültiges Feld ${fieldName} für den Waste-Sync.`,
-      statusCode: 502,
-    });
-  }
-  return trimmed;
-};
-const mapPickupTime = (
-  locationType: NonNullable<NonNullable<WasteLocationTypesQuery['wasteLocationTypes']>[number]>,
-  pickupTime: NonNullable<NonNullable<typeof locationType.pickUpTimes>[number]>
-): SvaMainserverWasteSyncItem => ({
-  id: trimToUndefined(pickupTime.id === null || pickupTime.id === undefined ? undefined : String(pickupTime.id)),
-  pickupDate: requireNonEmpty(pickupTime.pickupDate, 'pickupDate'),
-  wasteType: requireNonEmpty(locationType.wasteType, 'wasteType'),
-  street: requireNonEmpty(locationType.address?.street, 'street'),
-  zip: trimToUndefined(locationType.address?.zip),
-  city: trimToUndefined(locationType.address?.city),
-  note: trimToUndefined(pickupTime.note),
-});
-const assertCreateMutationSucceeded = (response: CreateWastePickUpTimesMutation): void => {
-  const success = response.createWastePickUpTimes?.success;
-  if (success) {
-    return;
-  }
-
-  const errors =
-    response.createWastePickUpTimes?.errors
-      ?.map((entry) => trimToUndefined(entry))
-      .filter((entry): entry is string => Boolean(entry)) ?? [];
-
-  throw toSvaMainserverError({
-    code: 'graphql_error',
-    message:
-      errors.length > 0
-        ? `SVA-Mainserver konnte Waste-Abholzeiten nicht anlegen: ${errors.join(' | ')}`
-        : 'SVA-Mainserver konnte Waste-Abholzeiten nicht anlegen.',
-    statusCode: 502,
-  });
-};
-const toDeleteVariables = (item: SvaMainserverWasteSyncItem) => ({
-  pickupDate: item.pickupDate,
-  wasteLocationType: {
-    wasteType: item.wasteType,
-    ...(item.rhythmRrule || item.rhythmStartDate || (item.rhythmExcludes?.length ?? 0) > 0
-      ? {
-          ...(item.rhythmRrule ? { rhythmRrule: item.rhythmRrule } : {}),
-          ...(item.rhythmStartDate ? { rhythmStartDate: item.rhythmStartDate } : {}),
-          ...(item.rhythmExcludes && item.rhythmExcludes.length > 0 ? { rhythmExcludes: item.rhythmExcludes } : {}),
-        }
-      : {}),
-    address: {
-      street: item.street,
-      ...(item.zip ? { zip: item.zip } : {}),
-      ...(item.city ? { city: item.city } : {}),
-    },
-  },
-});
 export const listWasteSyncSnapshotWithConfig = async (
   executeGraphqlWithConfig: GraphqlExecutor,
   input: SvaMainserverConnectionInput,
@@ -249,29 +195,39 @@ export const createWastePickupTimesWithConfig = async (
   if (input.items.length === 0) {
     return;
   }
-  const response = await executeGraphqlWithConfig<CreateWastePickUpTimesMutation>(
-    {
-      ...input,
-      document: svaMainserverCreateWastePickUpTimesDocument,
-      operationName: 'SvaMainserverCreateWastePickUpTimes',
-      variables: {
-        inputs: input.items.map((item) => ({
-          pickupDate: item.pickupDate,
-          wasteType: item.wasteType,
-          street: item.street,
-          ...(item.zip ? { zip: item.zip } : {}),
-          ...(item.city ? { city: item.city } : {}),
-          ...(item.note ? { note: item.note } : {}),
-          ...(item.district ? { district: item.district } : {}),
-          ...(item.rhythmRrule ? { rhythmRrule: item.rhythmRrule } : {}),
-          ...(item.rhythmStartDate ? { rhythmStartDate: item.rhythmStartDate } : {}),
-          ...(item.rhythmExcludes && item.rhythmExcludes.length > 0 ? { rhythmExcludes: item.rhythmExcludes } : {}),
-        })),
+  const batchCount = Math.ceil(input.items.length / CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE);
+  for (let offset = 0; offset < input.items.length; offset += CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE) {
+    const batch = input.items.slice(offset, offset + CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE);
+    const batchIndex = Math.floor(offset / CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE) + 1;
+    logger.info('SVA Mainserver waste create batch started', {
+      ...buildLogContext(input, {
+        operation: 'SvaMainserverCreateWastePickUpTimes',
+        batch_index: batchIndex,
+        batch_count: batchCount,
+        batch_size: batch.length,
+        total_item_count: input.items.length,
+      }),
+    });
+    const response = await executeGraphqlWithConfig<CreateWastePickUpTimesMutation>(
+      {
+        ...input,
+        document: svaMainserverCreateWastePickUpTimesDocument,
+        operationName: 'SvaMainserverCreateWastePickUpTimes',
+        variables: mapCreateVariables(batch),
       },
-    },
-    config
-  );
-  assertCreateMutationSucceeded(response);
+      config
+    );
+    assertCreateMutationSucceeded(response);
+    logger.info('SVA Mainserver waste create batch succeeded', {
+      ...buildLogContext(input, {
+        operation: 'SvaMainserverCreateWastePickUpTimes',
+        batch_index: batchIndex,
+        batch_count: batchCount,
+        batch_size: batch.length,
+        total_item_count: input.items.length,
+      }),
+    });
+  }
 };
 export const deleteWastePickupTimesWithConfig = async (
   executeGraphqlWithConfig: GraphqlExecutor,
@@ -281,6 +237,15 @@ export const deleteWastePickupTimesWithConfig = async (
   const itemsWithIds = input.items.filter((item) => Boolean(trimToUndefined(item.id)));
   const itemsWithoutIds = input.items.filter((item) => !trimToUndefined(item.id));
 
+  logger.info('SVA Mainserver waste delete plan prepared', {
+    ...buildLogContext(input, {
+      operation: 'SvaMainserverDeleteWastePickupTimes',
+      total_item_count: input.items.length,
+      delete_by_id_count: itemsWithIds.length,
+      delete_by_value_count: itemsWithoutIds.length,
+    }),
+  });
+
   if (itemsWithIds.length > 0) {
     await executeGraphqlWithConfig<DestroyWastePickUpTimeMutation>(
       {
@@ -288,11 +253,17 @@ export const deleteWastePickupTimesWithConfig = async (
         document: svaMainserverDestroyWastePickUpTimeByIdsDocument,
         operationName: 'SvaMainserverDestroyWastePickUpTimeByIds',
         variables: {
-          ids: itemsWithIds.map((item) => String(item.id)),
+          ids: toDeleteIds(itemsWithIds),
         },
       },
       config
     );
+    logger.info('SVA Mainserver waste delete by ids succeeded', {
+      ...buildLogContext(input, {
+        operation: 'SvaMainserverDestroyWastePickUpTimeByIds',
+        delete_by_id_count: itemsWithIds.length,
+      }),
+    });
   }
   for (const item of itemsWithoutIds) {
     await executeGraphqlWithConfig<DestroyWastePickUpTimeMutation>(
@@ -304,5 +275,13 @@ export const deleteWastePickupTimesWithConfig = async (
       },
       config
     );
+  }
+  if (itemsWithoutIds.length > 0) {
+    logger.info('SVA Mainserver waste delete by value succeeded', {
+      ...buildLogContext(input, {
+        operation: 'SvaMainserverDestroyWastePickUpTimeByValue',
+        delete_by_value_count: itemsWithoutIds.length,
+      }),
+    });
   }
 };

@@ -113,7 +113,7 @@ const MonitoringJobWriteSummary = ({
 }>) => (
   <section className="space-y-3" aria-label={t('monitoring.jobs.detail.writeSummaryTitle')}>
     <h2 className="text-sm font-medium text-foreground">{t('monitoring.jobs.detail.writeSummaryTitle')}</h2>
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <div className="rounded-lg border bg-muted/20 p-3">
         <p className="text-xs text-muted-foreground">{t('monitoring.jobs.detail.writeSummaryWritten')}</p>
         <p className="text-2xl font-semibold text-foreground">{writeSummary.writtenCount}</p>
@@ -130,6 +130,24 @@ const MonitoringJobWriteSummary = ({
         <p className="text-xs text-muted-foreground">{t('monitoring.jobs.detail.writeSummaryMainserver')}</p>
         <p className="text-2xl font-semibold text-foreground">{writeSummary.mainserverCount}</p>
       </div>
+      {typeof writeSummary.createBatchCount === 'number' ? (
+        <div className="rounded-lg border bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">{t('monitoring.jobs.detail.writeSummaryCreateBatches')}</p>
+          <p className="text-2xl font-semibold text-foreground">{writeSummary.createBatchCount}</p>
+        </div>
+      ) : null}
+      {typeof writeSummary.deletedByIdCount === 'number' ? (
+        <div className="rounded-lg border bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">{t('monitoring.jobs.detail.writeSummaryDeleteById')}</p>
+          <p className="text-2xl font-semibold text-foreground">{writeSummary.deletedByIdCount}</p>
+        </div>
+      ) : null}
+      {typeof writeSummary.deletedByValueCount === 'number' ? (
+        <div className="rounded-lg border bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">{t('monitoring.jobs.detail.writeSummaryDeleteByValue')}</p>
+          <p className="text-2xl font-semibold text-foreground">{writeSummary.deletedByValueCount}</p>
+        </div>
+      ) : null}
       <div className="rounded-lg border bg-muted/20 p-3">
         <p className="text-xs text-muted-foreground">{t('monitoring.jobs.detail.writeSummaryErrors')}</p>
         <p className="text-2xl font-semibold text-foreground">{writeSummary.errorCount}</p>

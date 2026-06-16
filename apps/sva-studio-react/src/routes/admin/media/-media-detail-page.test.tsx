@@ -138,9 +138,11 @@ describe('MediaDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: 'QR-Code zur öffentlichen URL' })).toBeTruthy();
       expect(screen.getByRole('link', { name: 'QR-Code als PNG laden' }).getAttribute('href')).toBe('data:image/png;base64,qrpng');
+      expect(screen.getByRole('link', { name: 'QR-Code als PNG laden' }).getAttribute('download')).toBe('detail-asset-qr.png');
       expect(screen.getByRole('link', { name: 'QR-Code als SVG laden' }).getAttribute('href')).toContain(
         'data:image/svg+xml'
       );
+      expect(screen.getByRole('link', { name: 'QR-Code als SVG laden' }).getAttribute('download')).toBe('detail-asset-qr.svg');
     });
   });
 

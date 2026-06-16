@@ -215,7 +215,7 @@ describe('MonitoringJobDetailPage', () => {
     expect(screen.getByText('Gelöscht')).toBeTruthy();
     expect(screen.getByText('Studio-Datensätze')).toBeTruthy();
     expect(screen.getByText('Mainserver-Datensätze')).toBeTruthy();
-    expect(screen.getByText('Create-Batches')).toBeTruthy();
+    expect(screen.getByText('Anlage-Batches')).toBeTruthy();
     expect(screen.getByText('Löschung per ID')).toBeTruthy();
     expect(screen.getByText('Löschung per Wert')).toBeTruthy();
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
@@ -267,7 +267,7 @@ describe('MonitoringJobDetailPage', () => {
     render(<MonitoringJobDetailPage jobId="job-1" />);
 
     expect(await screen.findByText('Live-Fortschritt')).toBeTruthy();
-    expect(screen.getByText('Create-Batches 362/1373')).toBeTruthy();
+    expect(screen.getByText('Anlegen: Batch 362 / 1373')).toBeTruthy();
     expect(screen.getByText('Aktueller Batch: 362 / 1373')).toBeTruthy();
     expect(screen.getByText('Verarbeitete Datensätze: 36.200 / 137.249')).toBeTruthy();
     expect(screen.getByText('Letzter erfolgreicher Batch: 16.06.2026, 12:17:17,125')).toBeTruthy();

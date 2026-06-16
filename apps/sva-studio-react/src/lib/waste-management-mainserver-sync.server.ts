@@ -165,6 +165,14 @@ export const runWasteManagementMainserverSync = async (input: {
     .map(({ key: _key, ...row }) => row);
   const deleteByIdCount = deleteItems.filter((row) => Boolean(row.id?.trim())).length;
   const deleteByValueCount = deleteItems.length - deleteByIdCount;
+  const totalPlannedItemCount = createItems.length + deleteItems.length;
+
+  if (!input.dryRun && createItems.length > 0 && !input.createItems) {
+    throw new Error('waste_mainserver_sync_missing_create_writer');
+  }
+  if (!input.dryRun && deleteItems.length > 0 && !input.deleteItems) {
+    throw new Error('waste_mainserver_sync_missing_delete_writer');
+  }
 
   let processedItemCount = 0;
   let createCount = 0;
@@ -209,7 +217,7 @@ export const runWasteManagementMainserverSync = async (input: {
 
       await input.onBatchProgress?.({
         operationMode: params.operationMode,
-        totalItemCount: params.items.length,
+        totalItemCount: totalPlannedItemCount,
         totalBatchCount: batches.length,
         currentBatchIndex: batchIndex + 1,
         currentBatchSize: batch.length,

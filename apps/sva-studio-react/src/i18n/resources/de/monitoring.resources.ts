@@ -98,7 +98,7 @@ export const monitoringDEResources = {
       writeSummaryDeleted: 'Gelöscht',
       writeSummaryStudio: 'Studio-Datensätze',
       writeSummaryMainserver: 'Mainserver-Datensätze',
-      writeSummaryCreateBatches: 'Create-Batches',
+      writeSummaryCreateBatches: 'Anlage-Batches',
       writeSummaryDeleteById: 'Löschung per ID',
       writeSummaryDeleteByValue: 'Löschung per Wert',
       writeSummaryErrors: 'Fehler',
@@ -191,6 +191,8 @@ export const monitoringDEResources = {
       summary: '{{current}} / {{total}} Schritte ({{percent}} %)',
       current: 'Fortschritt: {{value}}',
       step: 'Aktueller Schritt: {{value}}',
+      liveBatchSummaryCreate: 'Anlegen: Batch {{current}} / {{total}}',
+      liveBatchSummaryDelete: 'Löschen: Batch {{current}} / {{total}}',
       liveProcessedSummary: '{{current}} / {{total}} Datensätze verarbeitet',
     },
     pagination: {

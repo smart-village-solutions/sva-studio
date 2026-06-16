@@ -195,7 +195,7 @@ describe('waste-management-mainserver-sync.server', () => {
           city: 'Musterhausen',
         },
       ],
-      dryRun: false,
+      dryRun: true,
     });
 
     expect(result.createCount).toBe(1);
@@ -270,7 +270,7 @@ describe('waste-management-mainserver-sync.server', () => {
           city: 'Musterhausen',
         },
       ],
-      dryRun: false,
+      dryRun: true,
     });
 
     expect(result.createCount).toBe(205);
@@ -778,7 +778,7 @@ describe('waste-management-mainserver-sync.server', () => {
           currentStepLabel: 'Create-Batches 1/2',
           details: expect.objectContaining({
             operationMode: 'create',
-            totalItemCount: 3,
+            totalItemCount: 4,
             totalBatchCount: 2,
             currentBatchIndex: 1,
             currentBatchSize: 2,
@@ -793,7 +793,7 @@ describe('waste-management-mainserver-sync.server', () => {
           currentStepLabel: 'Create-Batches 2/2',
           details: expect.objectContaining({
             operationMode: 'create',
-            totalItemCount: 3,
+            totalItemCount: 4,
             totalBatchCount: 2,
             currentBatchIndex: 2,
             currentBatchSize: 1,
@@ -807,7 +807,7 @@ describe('waste-management-mainserver-sync.server', () => {
           currentStepLabel: 'Delete-Batches 1/1',
           details: expect.objectContaining({
             operationMode: 'delete',
-            totalItemCount: 1,
+            totalItemCount: 4,
             totalBatchCount: 1,
             currentBatchIndex: 1,
             currentBatchSize: 1,
@@ -830,5 +830,23 @@ describe('waste-management-mainserver-sync.server', () => {
       averageBatchDurationMs: 100,
       longestBatchDurationMs: 100,
     });
+  });
+
+  it('fails fast when a non-dry-run sync is missing the required writer callback', async () => {
+    await expect(
+      runWasteManagementMainserverSync({
+        studioRows: [
+          {
+            key: '2026-01-10::restmüll::hauptstraße::musterhausen',
+            pickupDate: '2026-01-10',
+            wasteType: 'Restmüll',
+            street: 'Hauptstraße',
+            city: 'Musterhausen',
+          },
+        ],
+        mainserverRows: [],
+        dryRun: false,
+      })
+    ).rejects.toThrow('waste_mainserver_sync_missing_create_writer');
   });
 });

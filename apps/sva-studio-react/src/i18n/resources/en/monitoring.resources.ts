@@ -192,6 +192,8 @@ export const monitoringENResources = {
       summary: '{{current}} / {{total}} steps ({{percent}} %)',
       current: 'Progress: {{value}}',
       step: 'Current step: {{value}}',
+      liveBatchSummaryCreate: 'Create: batch {{current}} / {{total}}',
+      liveBatchSummaryDelete: 'Delete: batch {{current}} / {{total}}',
       liveProcessedSummary: '{{current}} / {{total}} records processed',
     },
     pagination: {

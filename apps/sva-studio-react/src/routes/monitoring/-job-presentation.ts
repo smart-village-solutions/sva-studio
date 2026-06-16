@@ -1,6 +1,6 @@
 import type { StudioJobDetail, StudioJobListItem, StudioJobProgress } from '@sva/core';
 
-import { t } from '../../i18n';
+import { getActiveLocale, t } from '../../i18n';
 import { formatTechnicalEditorDateTime } from '../../lib/editor-date-time';
 
 type MonitoringJobStatus = StudioJobListItem['status'];
@@ -88,7 +88,10 @@ const readNumber = (record: Record<string, unknown>, key: string): number | null
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 };
 
-const formatInteger = (value: number): string => new Intl.NumberFormat('de-DE').format(value);
+const toMonitoringNumberLocale = (): string => (getActiveLocale() === 'en' ? 'en-US' : 'de-DE');
+
+export const formatMonitoringInteger = (value: number): string =>
+  new Intl.NumberFormat(toMonitoringNumberLocale()).format(value);
 
 export const extractMonitoringWasteLiveProgress = (
   job: Pick<StudioJobDetail, 'jobTypeId' | 'progress' | 'runtime'> | Pick<StudioJobListItem, 'jobTypeId' | 'progress' | 'runtime'>
@@ -147,9 +150,15 @@ export const formatMonitoringWasteLiveProgressSummary = (progress: MonitoringWas
     return null;
   }
 
-  return `${
-    progress.operationMode === 'create' ? 'Create' : 'Delete'
-  }-Batches ${progress.totalBatchCount > 0 ? progress.currentBatchIndex : 1}/${progress.totalBatchCount > 0 ? progress.totalBatchCount : 1}`;
+  return t(
+    progress.operationMode === 'create'
+      ? 'monitoring.jobs.progress.liveBatchSummaryCreate'
+      : 'monitoring.jobs.progress.liveBatchSummaryDelete',
+    {
+      current: progress.totalBatchCount > 0 ? progress.currentBatchIndex : 1,
+      total: progress.totalBatchCount > 0 ? progress.totalBatchCount : 1,
+    }
+  );
 };
 
 export const formatMonitoringWasteLiveProgressSecondary = (progress: MonitoringWasteLiveProgress | null): string | null => {
@@ -158,8 +167,8 @@ export const formatMonitoringWasteLiveProgressSecondary = (progress: MonitoringW
   }
 
   return t('monitoring.jobs.progress.liveProcessedSummary', {
-    current: formatInteger(progress.processedItemCount),
-    total: formatInteger(progress.totalItemCount),
+    current: formatMonitoringInteger(progress.processedItemCount),
+    total: formatMonitoringInteger(progress.totalItemCount),
   });
 };
 

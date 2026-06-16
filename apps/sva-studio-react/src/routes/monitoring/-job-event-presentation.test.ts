@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import type { StudioJobEventRecord } from '@sva/core';
 import type { StudioJobDetail } from '@sva/core';
 
+import { setActiveLocale } from '../../i18n';
 import {
   formatMonitoringJobEventMessage,
   formatMonitoringJobEventTitle,
@@ -33,6 +34,10 @@ const baseEvent: StudioJobEventRecord = {
 };
 
 describe('monitoring job event presentation', () => {
+  afterEach(() => {
+    setActiveLocale('de');
+  });
+
   it('derives localized titles from stable event types', () => {
     expect(formatMonitoringJobEventTitle(baseEvent)).toBe('Fortschritt aktualisiert');
     expect(
@@ -205,7 +210,37 @@ describe('monitoring job event presentation', () => {
       currentBatchIndex: 362,
       processedItemCount: 36200,
     });
-    expect(formatMonitoringWasteLiveProgressSummary(liveProgress)).toBe('Create-Batches 362/1373');
+    expect(formatMonitoringWasteLiveProgressSummary(liveProgress)).toBe('Anlegen: Batch 362 / 1373');
     expect(formatMonitoringWasteLiveProgressSecondary(liveProgress)).toBe('36.200 / 137.249 Datensätze verarbeitet');
+  });
+
+  it('formats waste live progress with the active locale', () => {
+    setActiveLocale('en');
+
+    const job = {
+      jobTypeId: 'waste-management.sync-mainserver',
+      progress: {
+        completedSteps: 4,
+        totalSteps: 6,
+        currentStepKey: 'create-batches',
+        currentStepLabel: 'Create-Batches 362/1373',
+        details: {
+          operationMode: 'create',
+          totalItemCount: 137249,
+          totalBatchCount: 1373,
+          currentBatchIndex: 362,
+          currentBatchSize: 100,
+          processedItemCount: 36200,
+          createCount: 36200,
+          deleteCount: 0,
+        },
+      },
+      runtime: undefined,
+    } satisfies Pick<StudioJobDetail, 'jobTypeId' | 'progress' | 'runtime'>;
+
+    const liveProgress = extractMonitoringWasteLiveProgress(job);
+
+    expect(formatMonitoringWasteLiveProgressSummary(liveProgress)).toBe('Create: batch 362 / 1373');
+    expect(formatMonitoringWasteLiveProgressSecondary(liveProgress)).toBe('36,200 / 137,249 records processed');
   });
 });

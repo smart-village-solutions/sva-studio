@@ -14,6 +14,7 @@ import {
 } from './-job-event-presentation';
 import {
   extractMonitoringWasteLiveProgress,
+  formatMonitoringInteger,
   formatMonitoringJobDateTime,
   formatMonitoringJobProgressSummary,
   extractMonitoringJobWriteSummary,
@@ -132,8 +133,8 @@ const MonitoringWasteLiveProgressCard = ({ job }: Readonly<{ job: MonitoringJob 
         </p>
         <p>
           {t('monitoring.jobs.detail.liveProgressProcessed', {
-            current: new Intl.NumberFormat('de-DE').format(liveProgress.processedItemCount),
-            total: new Intl.NumberFormat('de-DE').format(liveProgress.totalItemCount),
+            current: formatMonitoringInteger(liveProgress.processedItemCount),
+            total: formatMonitoringInteger(liveProgress.totalItemCount),
           })}
         </p>
         <p>

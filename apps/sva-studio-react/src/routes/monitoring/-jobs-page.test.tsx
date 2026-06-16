@@ -241,7 +241,7 @@ describe('MonitoringJobsPage', () => {
 
     render(<MonitoringJobsPage />);
 
-    expect(await screen.findByText('Create-Batches 362/1373')).toBeTruthy();
+    expect(await screen.findByText('Anlegen: Batch 362 / 1373')).toBeTruthy();
     expect(screen.getByText('36.200 / 137.249 Datensätze verarbeitet')).toBeTruthy();
   });
 

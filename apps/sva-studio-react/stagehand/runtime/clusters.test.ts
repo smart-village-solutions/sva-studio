@@ -100,4 +100,24 @@ describe('stagehand cluster definitions', () => {
       audit: 'supporting',
     } satisfies Partial<StagehandClusterDefinition>);
   });
+
+  it('throws for unknown cluster definitions', () => {
+    expect(() => getStagehandClusterDefinition('unknown-cluster')).toThrow(
+      'Unknown Stagehand cluster definition: unknown-cluster'
+    );
+  });
+
+  it('sorts stories within a cluster by story id', () => {
+    const clusters = buildStagehandStoryClusters([
+      createStory({ id: 24, packageId: 'IAM-P4' }),
+      createStory({ id: 18, packageId: 'IAM-P2' }),
+      createStory({ id: 23, packageId: 'IAM-P4' }),
+    ]);
+
+    expect(
+      clusters.find((cluster) => cluster.definition.id === 'role-and-permission-management')?.stories.map(
+        (story) => story.id
+      )
+    ).toEqual([23, 24]);
+  });
 });

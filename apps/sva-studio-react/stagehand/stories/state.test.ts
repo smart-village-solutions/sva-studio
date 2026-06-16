@@ -155,4 +155,13 @@ describe('stagehand story state', () => {
     expect(overlay.sourcePath).toBe(filePath);
     expect(overlay.stories[1]?.studioCheck.status).toBe('umgebung_unzureichend');
   });
+
+  it('creates snapshot metadata when the source file is missing', () => {
+    const filePath = join(tmpdir(), `stagehand-story-missing-metadata-${Date.now()}.json`);
+
+    const catalog = loadStagehandStoryCatalogFromFile(filePath);
+
+    expect(catalog.document.packageCount).toBeGreaterThan(0);
+    expect(catalog.document.totalStoryCount).toBeGreaterThan(0);
+  });
 });

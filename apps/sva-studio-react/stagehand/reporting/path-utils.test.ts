@@ -17,4 +17,16 @@ describe('toPortableArtifactPath', () => {
   it('keeps relative input paths unchanged', () => {
     expect(toPortableArtifactPath('docs/reports/local/report.md')).toBe('docs/reports/local/report.md');
   });
+
+  it('returns dot when the given absolute path equals the base directory', () => {
+    expect(toPortableArtifactPath(repoRoot)).toBe('.');
+  });
+
+  it('accepts an explicit cwd override for absolute paths', () => {
+    const artifactPath = resolve(repoRoot, 'apps/sva-studio-react/stagehand/reporting/report.ts');
+
+    expect(toPortableArtifactPath(artifactPath, resolve(repoRoot, 'apps/sva-studio-react'))).toBe(
+      'stagehand/reporting/report.ts'
+    );
+  });
 });

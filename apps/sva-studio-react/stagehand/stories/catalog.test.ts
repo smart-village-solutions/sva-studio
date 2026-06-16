@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -54,5 +54,42 @@ describe('stagehand story catalog', () => {
     expect(catalog.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
     expect(catalog.missions['admin-users-overview'].map((story) => story.id)).toEqual([18, 19]);
     expect(catalog.missions['admin-role-management-navigation'].map((story) => story.id)).toEqual([20, 21, 22, 27]);
+  });
+
+  it('throws when a required mission story is missing from a custom file', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'stagehand-story-catalog-invalid-'));
+    temporaryDirectories.push(directory);
+    const filePath = join(directory, 'user-stories.json');
+
+    writeFileSync(
+      filePath,
+      JSON.stringify(
+        {
+          scope: 'IAM',
+          updatedAt: '2026-03-19',
+          packages: [
+            {
+              id: 'IAM-P2',
+              stories: [
+                {
+                  id: 18,
+                  packageId: 'IAM-P2',
+                  role: 'Organisations-Admin',
+                  story: 'Nur eine Story.',
+                  acceptanceCriteria: ['Test'],
+                },
+              ],
+            },
+          ],
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
+
+    expect(() => loadStagehandStoryCatalogFromPath(filePath)).toThrow(
+      'Missing Stagehand story mapping for user story 19.'
+    );
   });
 });

@@ -260,6 +260,178 @@ describe('runStagehandAdminCli', () => {
     });
   });
 
+  it('treats a valid empty users state as a passed mission', async () => {
+    const reportsRoot = createTempReportsRoot();
+    const result = await runStagehandAdminCli(
+      {
+        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+        STAGEHAND_ADMIN_USERNAME: 'admin-user',
+        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+        STAGEHAND_ADMIN_MISSION: 'admin-users-overview',
+        OPENAI_API_KEY: 'test-openai-key',
+      },
+      {
+        fetchImpl: async (input: string | URL | Request) => {
+          const url = String(input);
+
+          if (url === 'https://studio.example.test') {
+            return new Response('<html><body>ready</body></html>', { status: 200 });
+          }
+
+          if (url === 'https://studio.example.test/admin/users') {
+            return new Response('<main><p>Keine Nutzer gefunden.</p></main>', {
+              status: 200,
+              headers: { 'content-type': 'text/html; charset=utf-8' },
+            });
+          }
+
+          throw new Error(`Unexpected URL: ${url}`);
+        },
+        generatedAt: '2026-05-16T12:00:00.000Z',
+        reportsRoot,
+      }
+    );
+
+    expect(result.payload.status).toBe('READY');
+    if (result.payload.status !== 'READY' || result.payload.runMode !== 'mission') {
+      throw new Error('Expected READY mission payload');
+    }
+
+    expect(result.payload.missionStatus).toBe('passed');
+    expect(JSON.parse(readFileSync(result.payload.statusPath, 'utf8')).findings).toContain(
+      'Gültiger Leerzustand erkannt: Keine Nutzer gefunden.'
+    );
+  });
+
+  it('fails the mission on unexpected redirects that are not login redirects', async () => {
+    const reportsRoot = createTempReportsRoot();
+    const result = await runStagehandAdminCli(
+      {
+        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+        STAGEHAND_ADMIN_USERNAME: 'admin-user',
+        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+        STAGEHAND_ADMIN_MISSION: 'admin-users-overview',
+        OPENAI_API_KEY: 'test-openai-key',
+      },
+      {
+        fetchImpl: async (input: string | URL | Request) => {
+          const url = String(input);
+
+          if (url === 'https://studio.example.test') {
+            return new Response('<html><body>ready</body></html>', { status: 200 });
+          }
+
+          if (url === 'https://studio.example.test/admin/users') {
+            return new Response('<html><body>redirect</body></html>', {
+              status: 302,
+              headers: { location: '/somewhere-else' },
+            });
+          }
+
+          throw new Error(`Unexpected URL: ${url}`);
+        },
+        generatedAt: '2026-05-16T12:00:00.000Z',
+        reportsRoot,
+      }
+    );
+
+    expect(result.payload.status).toBe('READY');
+    if (result.payload.status !== 'READY' || result.payload.runMode !== 'mission') {
+      throw new Error('Expected READY mission payload');
+    }
+
+    expect(result.payload.missionStatus).toBe('failed');
+    expect(JSON.parse(readFileSync(result.payload.statusPath, 'utf8')).findings).toContain(
+      'Unerwarteter Redirect erkannt: /somewhere-else'
+    );
+  });
+
+  it('fails the mission when the users page responds with an error without usable markers', async () => {
+    const reportsRoot = createTempReportsRoot();
+    const result = await runStagehandAdminCli(
+      {
+        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+        STAGEHAND_ADMIN_USERNAME: 'admin-user',
+        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+        STAGEHAND_ADMIN_MISSION: 'admin-users-overview',
+        OPENAI_API_KEY: 'test-openai-key',
+      },
+      {
+        fetchImpl: async (input: string | URL | Request) => {
+          const url = String(input);
+
+          if (url === 'https://studio.example.test') {
+            return new Response('<html><body>ready</body></html>', { status: 200 });
+          }
+
+          if (url === 'https://studio.example.test/admin/users') {
+            return new Response('<main><h1>Kaputt</h1></main>', {
+              status: 503,
+              headers: { 'content-type': 'text/html; charset=utf-8' },
+            });
+          }
+
+          throw new Error(`Unexpected URL: ${url}`);
+        },
+        generatedAt: '2026-05-16T12:00:00.000Z',
+        reportsRoot,
+      }
+    );
+
+    expect(result.payload.status).toBe('READY');
+    if (result.payload.status !== 'READY' || result.payload.runMode !== 'mission') {
+      throw new Error('Expected READY mission payload');
+    }
+
+    expect(result.payload.missionStatus).toBe('failed');
+    expect(JSON.parse(readFileSync(result.payload.statusPath, 'utf8')).findings).toContain(
+      'Die Startseite antwortete ohne erkennbaren Nutzerkontext mit HTTP 503.'
+    );
+  });
+
+  it('fails the mission when the page loads but no user signal can be confirmed', async () => {
+    const reportsRoot = createTempReportsRoot();
+    const result = await runStagehandAdminCli(
+      {
+        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+        STAGEHAND_ADMIN_USERNAME: 'admin-user',
+        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+        STAGEHAND_ADMIN_MISSION: 'admin-users-overview',
+        OPENAI_API_KEY: 'test-openai-key',
+      },
+      {
+        fetchImpl: async (input: string | URL | Request) => {
+          const url = String(input);
+
+          if (url === 'https://studio.example.test') {
+            return new Response('<html><body>ready</body></html>', { status: 200 });
+          }
+
+          if (url === 'https://studio.example.test/admin/users') {
+            return new Response('<main><h1>Dashboard</h1><p>Keine erkennbare Nutzerliste.</p></main>', {
+              status: 200,
+              headers: { 'content-type': 'text/html; charset=utf-8' },
+            });
+          }
+
+          throw new Error(`Unexpected URL: ${url}`);
+        },
+        generatedAt: '2026-05-16T12:00:00.000Z',
+        reportsRoot,
+      }
+    );
+
+    expect(result.payload.status).toBe('READY');
+    if (result.payload.status !== 'READY' || result.payload.runMode !== 'mission') {
+      throw new Error('Expected READY mission payload');
+    }
+
+    expect(result.payload.missionStatus).toBe('failed');
+    expect(JSON.parse(readFileSync(result.payload.statusPath, 'utf8')).findings).toContain(
+      'Die Benutzerverwaltung wurde geladen, aber weder Benutzerliste noch fachlich gültiger Leerzustand konnten eindeutig bestätigt werden.'
+    );
+  });
+
   it('returns BLOCKED JSON payload and exit code 1 for a missing or unreachable readiness endpoint', async () => {
     const result = await runStagehandAdminCli(
       {

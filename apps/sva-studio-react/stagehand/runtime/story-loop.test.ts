@@ -385,6 +385,107 @@ function createFakeChromiumForUserRoleAssignment() {
   };
 }
 
+function createFakeChromiumForTenantUserCreateFailure(options: {
+  readonly createStatus?: number;
+  readonly errorMessage?: string;
+  readonly omitUserId?: boolean;
+  readonly userVisible?: boolean;
+}) {
+  const state = {
+    createdDisplayName: null as string | null,
+    createdEmail: null as string | null,
+    createdUserId: options.omitUserId ? null : 'user-failure-123',
+  };
+
+  return {
+    launch: async () => ({
+      close: async () => undefined,
+      newContext: async () => ({
+        close: async () => undefined,
+        newPage: async () => {
+          let currentUrl = '';
+
+          return {
+            getByRole: () => createFakeLocator(),
+            locator: () => createFakeLocator(),
+            goto: async (url: string) => {
+              currentUrl = url;
+            },
+            textContent: async () => {
+              if (options.userVisible === false && currentUrl.endsWith(`/admin/users/${state.createdUserId ?? ''}`)) {
+                return 'Kein Nutzerbeleg sichtbar';
+              }
+
+              if (currentUrl.endsWith(`/admin/users/${state.createdUserId ?? ''}`)) {
+                return `${state.createdEmail ?? ''} ${state.createdDisplayName ?? ''}`;
+              }
+
+              return '';
+            },
+            waitForLoadState: async () => undefined,
+            waitForURL: async () => undefined,
+          };
+        },
+        request: {
+          post: async (url: string, input: { data: { displayName: string; email: string } }) => {
+            if (url.endsWith('/api/v1/iam/users') === false) {
+              throw new Error(`Unexpected POST URL: ${url}`);
+            }
+
+            state.createdDisplayName = input.data.displayName;
+            state.createdEmail = input.data.email;
+
+            return {
+              json: async () => ({
+                data: state.createdUserId === null ? {} : { user: { id: state.createdUserId } },
+                error: options.errorMessage ? { message: options.errorMessage } : undefined,
+              }),
+              status: () => options.createStatus ?? 201,
+            };
+          },
+        },
+      }),
+    }),
+  };
+}
+
+function createFakeChromiumForRoleAssignmentFailure() {
+  return {
+    launch: async () => ({
+      close: async () => undefined,
+      newContext: async () => ({
+        close: async () => undefined,
+        newPage: async () => ({
+          getByRole: () => createFakeLocator(),
+          locator: (selector: string) => {
+            if (selector === '#create-role-key') {
+              return {
+                count: async () => 0,
+                first: () => ({
+                  fill: async () => undefined,
+                  isVisible: async () => false,
+                }),
+              };
+            }
+
+            return createFakeLocator();
+          },
+          goto: async () => undefined,
+          textContent: async () => '',
+          url: () => 'https://de-musterhausen.example.test/admin/roles/new',
+          waitForLoadState: async () => undefined,
+          waitForURL: async () => undefined,
+        }),
+        request: {
+          get: async () => {
+            throw new Error('GET should not be reached when UI setup fails early');
+          },
+        },
+      }),
+    }),
+  };
+}
+
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
     rmSync(directory, { recursive: true, force: true });
@@ -819,6 +920,301 @@ describe('runStagehandStoryLoop', () => {
             expect.stringContaining('Nutzer'),
             expect.stringContaining('Nachbar-Mandanten'),
           ]),
+        },
+      ],
+    });
+  });
+
+  it('downgrades tenant-user-create when tenant configuration is missing on the default executor path', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-tenant-user-create-missing-tenant-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    const result = await runStagehandStoryLoop(
+      {
+        ...createConfig(),
+        storyFilters: {
+          clusters: ['tenant-user-create'],
+          packageIds: [],
+          resume: false,
+          storyIds: [],
+        },
+        tenant: null,
+      },
+      {
+        generatedAt: '2026-05-16T18:00:00.000Z',
+        reportsRoot: join(reportsDirectory, 'reports'),
+        storySourcePath,
+      }
+    );
+
+    expect(result.summary).toEqual({
+      clusters: 1,
+      storiesClassified: 1,
+      storiesFailedEvidence: 0,
+      storiesPassed: 0,
+      storiesSkipped: 1,
+    });
+
+    expect(JSON.parse(readFileSync(result.artifacts.overlayPath, 'utf8'))).toMatchObject({
+      stories: [
+        {
+          storyId: 18,
+          studioCheck: {
+            status: 'umgebung_unzureichend',
+            coverage: 'nachweis_fehlend',
+            notes: 'Tenant-Konfiguration fehlt; Story kann lokal nicht automatisch geprüft werden.',
+          },
+        },
+      ],
+    });
+  });
+
+  it('downgrades tenant-user-create when the create API does not return a usable user id', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-tenant-user-create-api-fail-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    const result = await runStagehandStoryLoop(
+      {
+        ...createConfig(),
+        storyFilters: {
+          clusters: ['tenant-user-create'],
+          packageIds: [],
+          resume: false,
+          storyIds: [],
+        },
+      },
+      {
+        generatedAt: '2026-05-16T18:00:00.000Z',
+        loadChromium: async () =>
+          createFakeChromiumForTenantUserCreateFailure({
+            createStatus: 409,
+            errorMessage: 'Conflict while creating user',
+            omitUserId: true,
+          }) as never,
+        reportsRoot: join(reportsDirectory, 'reports'),
+        storySourcePath,
+      }
+    );
+
+    expect(result.summary).toEqual({
+      clusters: 1,
+      storiesClassified: 1,
+      storiesFailedEvidence: 1,
+      storiesPassed: 0,
+      storiesSkipped: 1,
+    });
+
+    expect(JSON.parse(readFileSync(result.artifacts.overlayPath, 'utf8'))).toMatchObject({
+      stories: [
+        {
+          storyId: 18,
+          studioCheck: {
+            status: 'unklar',
+            coverage: 'nachweis_fehlend',
+            notes: 'Conflict while creating user',
+          },
+          findings: expect.arrayContaining(['Tenant-Create-Call fehlgeschlagen: HTTP 409.']),
+        },
+      ],
+    });
+  });
+
+  it('downgrades tenant-user-create when the created user is not visible afterwards', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-tenant-user-create-not-visible-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    const result = await runStagehandStoryLoop(
+      {
+        ...createConfig(),
+        storyFilters: {
+          clusters: ['tenant-user-create'],
+          packageIds: [],
+          resume: false,
+          storyIds: [],
+        },
+      },
+      {
+        generatedAt: '2026-05-16T18:00:00.000Z',
+        loadChromium: async () =>
+          createFakeChromiumForTenantUserCreateFailure({
+            userVisible: false,
+          }) as never,
+        reportsRoot: join(reportsDirectory, 'reports'),
+        storySourcePath,
+      }
+    );
+
+    expect(JSON.parse(readFileSync(result.artifacts.overlayPath, 'utf8'))).toMatchObject({
+      stories: [
+        {
+          storyId: 18,
+          studioCheck: {
+            status: 'unklar',
+            coverage: 'nachweis_fehlend',
+            notes: 'Nutzer wurde erzeugt, konnte aber in der Detailansicht nicht eindeutig nachgewiesen werden.',
+          },
+        },
+      ],
+    });
+  });
+
+  it('downgrades role-and-permission-management when tenant configuration is missing on the default executor path', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-role-assignment-missing-tenant-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    writeFileSync(
+      storySourcePath,
+      JSON.stringify(
+        {
+          version: '2.7',
+          scope: 'IAM',
+          updatedAt: '2026-03-19',
+          description: 'fixture',
+          packages: [
+            {
+              id: 'IAM-P4',
+              title: 'Rollen und Rechte',
+              stories: [
+                {
+                  id: 23,
+                  role: 'Organisations-Admin',
+                  story: 'Als Organisations-Admin möchte ich Rollen verwalten.',
+                  packageId: 'IAM-P4',
+                  relatedPackageIds: [],
+                  legacy: true,
+                  trigger: 'fixture',
+                  preconditions: [],
+                  acceptanceCriteria: ['Rollen können Nutzern zugeordnet werden.'],
+                  evidence: ['Admin-UI'],
+                  studioCheck: {
+                    status: 'offen',
+                    coverage: 'nicht_geprueft',
+                    notes: '',
+                  },
+                  legacyId: 23,
+                  priority: 1,
+                },
+              ],
+            },
+          ],
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
+
+    const result = await runStagehandStoryLoop(
+      {
+        ...createConfig(),
+        storyFilters: {
+          clusters: ['role-and-permission-management'],
+          packageIds: [],
+          resume: false,
+          storyIds: [],
+        },
+        tenant: null,
+      },
+      {
+        generatedAt: '2026-05-16T18:00:00.000Z',
+        reportsRoot: join(reportsDirectory, 'reports'),
+        storySourcePath,
+      }
+    );
+
+    expect(JSON.parse(readFileSync(result.artifacts.overlayPath, 'utf8'))).toMatchObject({
+      stories: [
+        {
+          storyId: 23,
+          studioCheck: {
+            status: 'umgebung_unzureichend',
+            coverage: 'nachweis_fehlend',
+            notes: 'Tenant-Konfiguration fehlt; Rollen- und Zuweisungslauf kann lokal nicht automatisch geprüft werden.',
+          },
+        },
+      ],
+    });
+  });
+
+  it('downgrades role-and-permission-management when the browser-driven UI flow breaks early', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-role-assignment-failure-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    writeFileSync(
+      storySourcePath,
+      JSON.stringify(
+        {
+          version: '2.7',
+          scope: 'IAM',
+          updatedAt: '2026-03-19',
+          description: 'fixture',
+          packages: [
+            {
+              id: 'IAM-P4',
+              title: 'Rollen und Rechte',
+              stories: [
+                {
+                  id: 23,
+                  role: 'Organisations-Admin',
+                  story: 'Als Organisations-Admin möchte ich Rollen verwalten.',
+                  packageId: 'IAM-P4',
+                  relatedPackageIds: [],
+                  legacy: true,
+                  trigger: 'fixture',
+                  preconditions: [],
+                  acceptanceCriteria: ['Rollen können Nutzern zugeordnet werden.'],
+                  evidence: ['Admin-UI'],
+                  studioCheck: {
+                    status: 'offen',
+                    coverage: 'nicht_geprueft',
+                    notes: '',
+                  },
+                  legacyId: 23,
+                  priority: 1,
+                },
+              ],
+            },
+          ],
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
+
+    const result = await runStagehandStoryLoop(
+      {
+        ...createConfig(),
+        storyFilters: {
+          clusters: ['role-and-permission-management'],
+          packageIds: [],
+          resume: false,
+          storyIds: [],
+        },
+      },
+      {
+        generatedAt: '2026-05-16T18:00:00.000Z',
+        loadChromium: async () => createFakeChromiumForRoleAssignmentFailure() as never,
+        reportsRoot: join(reportsDirectory, 'reports'),
+        storySourcePath,
+      }
+    );
+
+    expect(JSON.parse(readFileSync(result.artifacts.overlayPath, 'utf8'))).toMatchObject({
+      stories: [
+        {
+          storyId: 23,
+          studioCheck: {
+            status: 'unklar',
+            coverage: 'nachweis_fehlend',
+            notes: 'Die Rollenanlage konnte in der UI nicht vollständig befüllt werden.',
+          },
+          findings: ['Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.'],
         },
       ],
     });

@@ -115,4 +115,19 @@ describe('renderStagehandMarkdownReport', () => {
       '- Screenshot\n  ```text\n  artifacts/shot-`01`.png\n  artifacts/shot-02.png\n  ```'
     );
   });
+
+  it('uses a longer code fence when values already contain triple backticks', () => {
+    const markdown = renderStagehandMarkdownReport({
+      generatedAt: '2026-05-16T08:30:00.000Z',
+      mission: 'admin-users-overview',
+      status: 'passed',
+      stories: [],
+      findings: [],
+      screenshots: ['```danger```'],
+      transcriptPath: '```trace```',
+    });
+
+    expect(markdown).toContain('````text\n```trace```\n````');
+    expect(markdown).toContain('- Screenshot\n  ````text\n  ```danger```\n  ````');
+  });
 });

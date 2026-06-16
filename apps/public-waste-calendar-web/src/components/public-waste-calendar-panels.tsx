@@ -68,6 +68,33 @@ const groupEntriesByMonth = (entries: readonly PublicWasteCalendarEntry[]) =>
     }, new Map()).entries()
   );
 
+const partitionListEntries = (
+  entries: readonly PublicWasteCalendarEntry[],
+  nextPickupDate: string | null
+): Readonly<{
+  upcomingEntries: readonly PublicWasteCalendarEntry[];
+  pastEntries: readonly PublicWasteCalendarEntry[];
+}> => {
+  if (!nextPickupDate) {
+    return { upcomingEntries: [], pastEntries: entries };
+  }
+
+  return entries.reduce<{
+    upcomingEntries: PublicWasteCalendarEntry[];
+    pastEntries: PublicWasteCalendarEntry[];
+  }>(
+    (result, entry) => {
+      if (entry.date >= nextPickupDate) {
+        result.upcomingEntries.push(entry);
+      } else {
+        result.pastEntries.push(entry);
+      }
+      return result;
+    },
+    { upcomingEntries: [], pastEntries: [] }
+  );
+};
+
 const groupEntriesByDay = (entries: readonly PublicWasteCalendarEntry[]) =>
   Array.from(
     entries.reduce<Map<string, PublicWasteCalendarEntry[]>>((groups, entry) => {
@@ -120,6 +147,57 @@ const renderPickupEntryButton = (
     {props.children}
   </button>
 );
+
+const renderListMonthGroups = (input: Readonly<{
+  entries: readonly PublicWasteCalendarEntry[];
+  headingIdPrefix: string;
+  onActivateEntry: (entry: PublicWasteCalendarEntry) => void;
+}>) =>
+  groupEntriesByMonth(input.entries).map(([monthKey, monthEntries]) => (
+    <section
+      key={`${input.headingIdPrefix}-${monthKey}`}
+      className="pickup-month-group"
+      aria-labelledby={`${input.headingIdPrefix}-${monthKey}`}
+    >
+      <h3 id={`${input.headingIdPrefix}-${monthKey}`} className="pickup-month-title">
+        {capitalize(monthYearFormatter.format(toDate(`${monthKey}-01`)))}
+      </h3>
+      <ul className="pickup-list">
+        {groupEntriesByDay(monthEntries).map(([date, dayEntries]) => {
+          const dayDate = toDate(date);
+          return (
+            <li key={date} className="pickup-item">
+              <div className="pickup-row">
+                <div className="pickup-date">
+                  <span className="pickup-weekday">{capitalize(weekdayFormatter.format(dayDate))}</span>
+                  <span className="pickup-day">{date.slice(8, 10)}</span>
+                </div>
+                <div className="pickup-entry-group">
+                  {dayEntries.map((entry) =>
+                    renderPickupEntryButton(entry, {
+                      className: 'pickup-button',
+                      onActivateEntry: input.onActivateEntry,
+                      children: (
+                        <>
+                          {renderPickupDot(entry)}
+                          <span className="pickup-copy">
+                            <strong className="pickup-label">{entry.fractionLabel}</strong>
+                            {entry.tourDescription ? (
+                              <span className="pickup-description">{entry.tourDescription}</span>
+                            ) : null}
+                          </span>
+                        </>
+                      ),
+                    })
+                  )}
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  ));
 
 const buildMonthCells = (
   visibleMonth: Date,
@@ -225,7 +303,10 @@ export function PublicWasteCalendarPanels(props: Readonly<{
   const [visibleYear, setVisibleYear] = React.useState<number>(() =>
     Math.min(maxYear, Math.max(minYear, today.getFullYear()))
   );
-  const monthGroups = groupEntriesByMonth(props.model.listEntries);
+  const { upcomingEntries, pastEntries } = React.useMemo(
+    () => partitionListEntries(props.model.listEntries, props.model.nextPickupDate),
+    [props.model.listEntries, props.model.nextPickupDate]
+  );
   const monthCells = React.useMemo(() => buildMonthCells(visibleMonth, entriesByDate), [entriesByDate, visibleMonth]);
   const visibleYearMonths = React.useMemo(
     () => Array.from({ length: 12 }, (_, index) => new Date(visibleYear, index, 1)),
@@ -339,47 +420,23 @@ export function PublicWasteCalendarPanels(props: Readonly<{
           aria-labelledby="public-waste-tab-list"
           className="pickup-months"
         >
-          {monthGroups.map(([monthKey, monthEntries]) => (
-            <section key={monthKey} className="pickup-month-group" aria-labelledby={`month-${monthKey}`}>
-              <h3 id={`month-${monthKey}`} className="pickup-month-title">
-                {capitalize(monthYearFormatter.format(toDate(`${monthKey}-01`)))}
+          {renderListMonthGroups({
+            entries: upcomingEntries,
+            headingIdPrefix: 'upcoming-month',
+            onActivateEntry: props.onActivateEntry,
+          })}
+          {pastEntries.length > 0 ? (
+            <section className="pickup-past-group" aria-labelledby="past-pickups-heading">
+              <h3 id="past-pickups-heading" className="pickup-month-title">
+                Vergangene Termine
               </h3>
-              <ul className="pickup-list">
-                {groupEntriesByDay(monthEntries).map(([date, dayEntries]) => {
-                  const dayDate = toDate(date);
-                  return (
-                    <li key={date} className="pickup-item">
-                      <div className="pickup-row">
-                        <div className="pickup-date">
-                          <span className="pickup-weekday">{capitalize(weekdayFormatter.format(dayDate))}</span>
-                          <span className="pickup-day">{date.slice(8, 10)}</span>
-                        </div>
-                        <div className="pickup-entry-group">
-                          {dayEntries.map((entry) => (
-                            renderPickupEntryButton(entry, {
-                              className: 'pickup-button',
-                              onActivateEntry: props.onActivateEntry,
-                              children: (
-                                <>
-                                  {renderPickupDot(entry)}
-                                  <span className="pickup-copy">
-                                    <strong className="pickup-label">{entry.fractionLabel}</strong>
-                                    {entry.tourDescription ? (
-                                      <span className="pickup-description">{entry.tourDescription}</span>
-                                    ) : null}
-                                  </span>
-                                </>
-                              ),
-                            })
-                          ))}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+              {renderListMonthGroups({
+                entries: pastEntries,
+                headingIdPrefix: 'past-month',
+                onActivateEntry: props.onActivateEntry,
+              })}
             </section>
-          ))}
+          ) : null}
         </div>
       ) : activeTab === 'month' ? (
         <section

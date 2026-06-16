@@ -128,6 +128,53 @@ describe('PublicWasteCalendarPanels', () => {
     expect(screen.getByRole('tab', { name: 'Liste' }).getAttribute('aria-selected')).toBe('true');
   });
 
+  it('renders upcoming entries before a separate past section in the list view', () => {
+    render(
+      <PublicWasteCalendarPanels
+        model={createFilteredPublicWasteCalendarModelFixture({
+          nextPickupDate: '2026-05-19',
+          listEntries: [
+            createPublicWasteCalendarEntryFixture({
+              id: 'pickup-past',
+              date: '2026-05-12',
+              fractionLabel: 'Restmüll',
+              fractionId: 'rest',
+              fractionColor: '#444444',
+            }),
+            createPublicWasteCalendarEntryFixture({
+              id: 'pickup-next',
+              date: '2026-05-19',
+              fractionLabel: 'Bioabfall',
+            }),
+            createPublicWasteCalendarEntryFixture({
+              id: 'pickup-future',
+              date: '2026-05-21',
+              fractionLabel: 'Papier',
+              fractionId: 'paper',
+              fractionColor: '#0000FF',
+            }),
+          ],
+          activeFractionIds: ['rest', 'bio', 'paper'],
+          fractionOptions: [
+            { id: 'rest', label: 'Restmüll', color: '#444444' },
+            { id: 'bio', label: 'Bioabfall', color: '#00AA00' },
+            { id: 'paper', label: 'Papier', color: '#0000FF' },
+          ],
+        })}
+        onToggleFraction={vi.fn()}
+        onActivateEntry={vi.fn()}
+      />
+    );
+
+    const buttons = screen.getAllByRole('button', { name: /Termin .* am 2026-05-/ });
+    expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Termin Bioabfall am 2026-05-19',
+      'Termin Papier am 2026-05-21',
+      'Termin Restmüll am 2026-05-12',
+    ]);
+    expect(screen.getByRole('heading', { name: 'Vergangene Termine' })).toBeTruthy();
+  });
+
   it('allows month navigation back to the earliest available month in the previous year', () => {
     render(
       <PublicWasteCalendarPanels

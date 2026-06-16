@@ -14,6 +14,13 @@ describe('executeStagehandAdminMission', () => {
         mission: 'admin-users-overview',
         openAiApiKey: 'test-openai-key',
         runMode: 'mission',
+        storyFilters: {
+          clusters: [],
+          packageIds: [],
+          resume: false,
+          storyIds: [],
+        },
+        tenant: null,
       },
       {
         generatedAt: '2026-05-16T12:00:00.000Z',

@@ -183,6 +183,37 @@ function defaultEvidenceForCluster(cluster: StagehandStoryCluster): readonly Sta
   }));
 }
 
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim() !== '') {
+    return error.message;
+  }
+
+  return 'Unbekannter Clusterfehler ohne verwertbare Fehlermeldung.';
+}
+
+function createFailedClusterEvidence(
+  cluster: StagehandStoryCluster,
+  error: unknown
+): readonly StagehandStoryEvidenceInput[] {
+  const errorMessage = toErrorMessage(error);
+
+  return cluster.stories.map((story) => ({
+    storyId: story.id,
+    coverage: 'nachweis_fehlend',
+    notes: `Cluster ${cluster.id} konnte nicht stabil ausgefuehrt werden.`,
+    findings: [
+      `Cluster ${cluster.id} ist vorzeitig fehlgeschlagen.`,
+      `Fehler: ${errorMessage}`,
+      `Grundkontext: ${cluster.reason}`,
+    ],
+    verification: {
+      environment: 'insufficient',
+      negative: 'missing',
+      positive: 'missing',
+    },
+  }));
+}
+
 export function classifyStoryEvidence(input: StagehandStoryEvidenceInput): StagehandStoryEvidence {
   if (input.verification.environment === 'insufficient') {
     return {
@@ -978,7 +1009,15 @@ export async function runStagehandStoryLoop(
   const executeCluster =
     options.executeCluster ?? (async ({ cluster }) => executeDefaultCluster(config, cluster, chromiumFactory));
   const evidence = (
-    await Promise.all(clusters.map((cluster) => executeCluster({ cluster, stories: cluster.stories })))
+    await Promise.all(
+      clusters.map(async (cluster) => {
+        try {
+          return await executeCluster({ cluster, stories: cluster.stories });
+        } catch (error) {
+          return createFailedClusterEvidence(cluster, error);
+        }
+      })
+    )
   )
     .flat()
     .map((entry) => classifyStoryEvidence(entry));

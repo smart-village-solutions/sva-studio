@@ -586,6 +586,64 @@ describe('runStagehandStoryLoop', () => {
     });
   });
 
+  it('preserves artifacts when a cluster executor throws and downgrades the affected stories to insufficient evidence', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-cluster-throw-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    const result = await runStagehandStoryLoop(createConfig(), {
+      generatedAt: '2026-05-16T18:00:00.000Z',
+      reportsRoot: join(reportsDirectory, 'reports'),
+      storySourcePath,
+      executeCluster: async ({ cluster, stories }) => {
+        if (cluster.id === 'tenant-user-create') {
+          throw new Error('tenant login timeout');
+        }
+
+        return stories.map((story) => ({
+          storyId: story.id,
+          coverage: 'nachweis_fehlend',
+          findings: ['Kein sicherer lokaler Negativnachweis verfuegbar.'],
+          notes: 'Keine beobachtbare UI/API fuer tenant-uebergreifenden Negativtest.',
+          verification: {
+            environment: 'insufficient',
+            negative: 'missing',
+            positive: 'missing',
+          },
+        }));
+      },
+    });
+
+    expect(result.summary).toEqual({
+      clusters: 2,
+      storiesClassified: 2,
+      storiesFailedEvidence: 0,
+      storiesPassed: 0,
+      storiesSkipped: 0,
+    });
+    expect(readFileSync(result.artifacts.reportPath, 'utf8')).toContain('tenant-user-create');
+    expect(readFileSync(result.artifacts.reportPath, 'utf8')).toContain('tenant login timeout');
+    expect(JSON.parse(readFileSync(result.artifacts.overlayPath, 'utf8'))).toMatchObject({
+      stories: [
+        {
+          storyId: 18,
+          studioCheck: {
+            status: 'umgebung_unzureichend',
+            coverage: 'nachweis_fehlend',
+          },
+          findings: expect.arrayContaining([expect.stringContaining('tenant login timeout')]),
+        },
+        {
+          storyId: 37,
+          studioCheck: {
+            status: 'umgebung_unzureichend',
+            coverage: 'nachweis_fehlend',
+          },
+        },
+      ],
+    });
+  });
+
   it('rejects story id filters without catalog matches fail-closed', async () => {
     const storySourcePath = createTempCatalogFile();
     const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-invalid-story-id-'));

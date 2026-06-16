@@ -1903,9 +1903,9 @@ describe('waste-management master-data branch handlers', () => {
     );
     expect(deleteSucceeded.status).toBe(200);
     expect(deps.deleteWasteTour).toHaveBeenNthCalledWith(1, 'tenant-a', 'tour-1');
-    expect(deps.deleteWasteLocationTourLink).not.toHaveBeenCalled();
-    expect(deps.deleteWasteLocationTourPickupDate).not.toHaveBeenCalled();
-    expect(deps.deleteWasteTourDateShift).not.toHaveBeenCalled();
+    expect(deps.deleteWasteLocationTourLink).toHaveBeenNthCalledWith(1, 'tenant-a', 'link-1');
+    expect(deps.deleteWasteLocationTourPickupDate).toHaveBeenNthCalledWith(1, 'tenant-a', 'pickup-1');
+    expect(deps.deleteWasteTourDateShift).toHaveBeenNthCalledWith(1, 'tenant-a', 'shift-1');
 
     const deleteNotFound = await wasteManagementTourHandlers.deleteWasteManagementTourInternal(
       new Request('https://studio.test/api/v1/waste-management/tours/tour-404', {
@@ -1951,5 +1951,8 @@ describe('waste-management master-data branch handlers', () => {
         code: 'database_unavailable',
       },
     });
+    expect(deps.deleteWasteLocationTourLink).toHaveBeenNthCalledWith(2, 'tenant-a', 'link-2');
+    expect(deps.deleteWasteLocationTourPickupDate).toHaveBeenNthCalledWith(2, 'tenant-a', 'pickup-2');
+    expect(deps.deleteWasteTourDateShift).toHaveBeenNthCalledWith(2, 'tenant-a', 'shift-2');
   });
 });

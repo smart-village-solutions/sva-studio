@@ -13,6 +13,7 @@ import {
 import {
   createWasteManagementTourAfterValidation,
   createWasteTourWriteInput,
+  deleteWasteTourDependencies,
 } from './tours-write-support.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
@@ -215,6 +216,11 @@ export const wasteManagementTourHandlers = {
       }
 
       logWasteTourDeleteLoaded(instanceId, tourId, existing);
+      await deleteWasteTourDependencies({
+        deps,
+        instanceId,
+        tourId,
+      });
       logWasteTourDeleteFinalDelete(instanceId, tourId, 'started');
       await requireDeps(deps.deleteWasteTour, 'deleteWasteTour')(instanceId, tourId);
       logWasteTourDeleteFinalDelete(instanceId, tourId, 'completed');

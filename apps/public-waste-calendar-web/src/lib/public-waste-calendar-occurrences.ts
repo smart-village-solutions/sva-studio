@@ -8,6 +8,7 @@ import {
   isDateWithinRange,
   normalizeDateOnly,
   parseDateOnlyUtc,
+  startOfPreviousYearUtc,
 } from './public-waste-date-utils.js';
 
 type PublicWasteLinkedFraction = {
@@ -239,11 +240,12 @@ const calculateTourOccurrences = (
 export const calculatePublicWasteCalendarEntries = (
   input: CalculatePublicWasteCalendarEntriesInput
 ): readonly PublicWasteCalendarEntry[] => {
-  const windowStart = normalizeDateOnly(input.referenceDate);
-  if (!windowStart) {
+  const normalizedReferenceDate = normalizeDateOnly(input.referenceDate);
+  if (!normalizedReferenceDate) {
     return [];
   }
-  const windowEnd = addYearsUtc(windowStart, 1);
+  const windowStart = startOfPreviousYearUtc(normalizedReferenceDate);
+  const windowEnd = addYearsUtc(normalizedReferenceDate, 1);
   const entries = new Map<string, PublicWasteCalendarEntry>();
   const holidayRules = (input.holidayRules ?? [])
     .map((rule) => ({

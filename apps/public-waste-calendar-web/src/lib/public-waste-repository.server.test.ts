@@ -224,6 +224,58 @@ describe('public waste repository', () => {
     );
   });
 
+  it('returns past entries back to the start of the previous year when available', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [
+          {
+            link_id: 'link-1',
+            location_id: 'location-1',
+            link_start_date: '2025-01-01',
+            link_end_date: '2026-12-31',
+            tour_id: 'tour-1',
+            tour_name: 'Papiertour',
+            tour_description: null,
+            tour_recurrence: null,
+            tour_custom_recurrence_interval_days: null,
+            tour_first_date: null,
+            tour_end_date: null,
+            tour_custom_dates: [{ date: '2025-01-08' }],
+            fraction_id: 'fraction-1',
+            fraction_label: 'Papier',
+            fraction_color: '#0000FF',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const repository = createPublicWasteRepository({
+      schemaName: 'waste',
+      execute,
+    });
+
+    await expect(
+      repository.loadCalendarEntries({
+        selection: {
+          cityId: 'city-1',
+          streetId: 'street-1',
+        },
+        referenceDate: '2026-12-31',
+      })
+    ).resolves.toContainEqual(
+      expect.objectContaining({
+        id: 'tour-1:2025-01-08:fraction-1',
+        date: '2025-01-08',
+        fractionLabel: 'Papier',
+      })
+    );
+  });
+
   it('adds imported pickup dates when a tour has no reconstructable recurrence dates', async () => {
     const execute = vi
       .fn()

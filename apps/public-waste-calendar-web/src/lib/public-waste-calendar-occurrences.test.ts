@@ -224,6 +224,45 @@ describe('public waste calendar occurrences', () => {
     ]);
   });
 
+  it('includes past occurrences back to the start of the previous year', () => {
+    const entries = calculatePublicWasteCalendarEntries({
+      referenceDate: '2026-12-31',
+      selection: {
+        cityId: 'c-1',
+        streetId: 's-1',
+      },
+      linkedTours: [
+        {
+          linkId: 'link-1',
+          locationId: 'loc-1',
+          startDate: '2025-01-01',
+          endDate: '2026-12-31',
+          tour: {
+            id: 'tour-paper',
+            name: 'Papiertour',
+            recurrence: null,
+            customDates: [{ date: '2025-01-08' }],
+            fractions: [{ id: 'paper', label: 'Papier', color: '#0000FF' }],
+          },
+        },
+      ],
+      tourDateShifts: [],
+      globalDateShifts: [],
+    });
+
+    expect(entries).toEqual([
+      {
+        id: 'tour-paper:2025-01-08:paper',
+        date: '2025-01-08',
+        fractionId: 'paper',
+        fractionLabel: 'Papier',
+        fractionColor: '#0000FF',
+        tourName: 'Papiertour',
+        note: null,
+      },
+    ]);
+  });
+
   it('applies configured holiday postponements to public calendar entries', () => {
     const entries = calculatePublicWasteCalendarEntries({
       referenceDate: '2026-01-01',

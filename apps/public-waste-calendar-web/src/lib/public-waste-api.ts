@@ -41,7 +41,7 @@ export const loadResolvedPublicWasteCalendar = async (input: {
     locationKey: buildPublicWasteLocationKey(input.input.selection),
     ...projectPublicWasteCalendar({
       referenceDate: input.input.referenceDate,
-      upcomingEntries: entries,
+      entries,
     }),
   };
 };

@@ -11,7 +11,12 @@ import type {
 } from './public-waste-contract.js';
 import { calculatePublicWasteCalendarEntries } from './public-waste-calendar-occurrences.js';
 import { PUBLIC_WASTE_CATCH_ALL_STREET_ID } from './public-waste-contract.js';
-import { addYearsUtc, isDateWithinRange, normalizeDateOnly } from './public-waste-date-utils.js';
+import {
+  addYearsUtc,
+  isDateWithinRange,
+  normalizeDateOnly,
+  startOfPreviousYearUtc,
+} from './public-waste-date-utils.js';
 
 type SqlExecutionResult<TRow> = {
   readonly rowCount: number;
@@ -414,8 +419,9 @@ export const createPublicWasteRepository = (input: {
       });
       const tourIds = Array.from(new Set(linkedToursResult.rows.map((row) => row.tour_id)));
 
-      const windowStart = normalizeDateOnly(query.referenceDate);
-      const windowEnd = windowStart ? addYearsUtc(windowStart, 1) : null;
+      const normalizedReferenceDate = normalizeDateOnly(query.referenceDate);
+      const windowStart = normalizedReferenceDate ? startOfPreviousYearUtc(normalizedReferenceDate) : null;
+      const windowEnd = normalizedReferenceDate ? addYearsUtc(normalizedReferenceDate, 1) : null;
 
       const [tourDateShiftsResult, globalDateShiftsResult, importedPickupDatesResult, holidayRulesResult] = await Promise.all([
         tourIds.length === 0

@@ -17,6 +17,14 @@ export const addYearsUtc = (value: string, years: number): string => {
   return formatDateOnlyUtc(date);
 };
 
+export const startOfYearUtc = (value: string): string => {
+  const date = parseDateOnlyUtc(value);
+  date.setUTCMonth(0, 1);
+  return formatDateOnlyUtc(date);
+};
+
+export const startOfPreviousYearUtc = (value: string): string => startOfYearUtc(addYearsUtc(value, -1));
+
 export const isDateWithinRange = (date: string, startDate: string, endDate: string): boolean =>
   date >= startDate && date <= endDate;
 

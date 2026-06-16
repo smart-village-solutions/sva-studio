@@ -28,6 +28,7 @@ const toMonthKey = (value: Date): string => {
 };
 
 const startOfMonth = (value: Date): Date => new Date(value.getFullYear(), value.getMonth(), 1);
+const startOfYear = (value: Date): Date => new Date(value.getFullYear(), 0, 1);
 
 const addMonths = (value: Date, amount: number): Date => new Date(value.getFullYear(), value.getMonth() + amount, 1);
 
@@ -79,6 +80,19 @@ const groupEntriesByDay = (entries: readonly PublicWasteCalendarEntry[]) =>
       return groups;
     }, new Map()).entries()
   );
+
+const compareMonths = (left: Date, right: Date): number =>
+  left.getFullYear() - right.getFullYear() || left.getMonth() - right.getMonth();
+
+const clampMonth = (value: Date, minMonth: Date, maxMonth: Date): Date => {
+  if (compareMonths(value, minMonth) < 0) {
+    return minMonth;
+  }
+  if (compareMonths(value, maxMonth) > 0) {
+    return maxMonth;
+  }
+  return value;
+};
 
 const renderPickupDot = (entry: PublicWasteCalendarEntry) => (
   <span
@@ -186,8 +200,18 @@ export function PublicWasteCalendarPanels(props: Readonly<{
 }>) {
   const tabs: ReadonlyArray<'list' | 'month' | 'year'> = ['list', 'month', 'year'];
   const today = React.useRef(new Date()).current;
-  const minMonth = React.useRef(startOfMonth(addYears(today, -1))).current;
+  const lowerBoundMonth = React.useRef(startOfYear(addYears(today, -1))).current;
   const maxMonth = React.useRef(startOfMonth(addYears(today, 1))).current;
+  const earliestEntryMonth = React.useMemo(() => {
+    const earliestEntry = props.model.listEntries[0];
+    if (!earliestEntry) {
+      return startOfMonth(today);
+    }
+
+    const month = startOfMonth(toDate(earliestEntry.date));
+    return compareMonths(month, lowerBoundMonth) < 0 ? lowerBoundMonth : month;
+  }, [lowerBoundMonth, props.model.listEntries, today]);
+  const minMonth = earliestEntryMonth;
   const minYear = minMonth.getFullYear();
   const maxYear = maxMonth.getFullYear();
   const entriesByDate = React.useMemo(
@@ -195,8 +219,12 @@ export function PublicWasteCalendarPanels(props: Readonly<{
     [props.model.listEntries]
   );
   const [activeTab, setActiveTab] = React.useState<'list' | 'month' | 'year'>('list');
-  const [visibleMonth, setVisibleMonth] = React.useState<Date>(() => startOfMonth(today));
-  const [visibleYear, setVisibleYear] = React.useState<number>(today.getFullYear());
+  const [visibleMonth, setVisibleMonth] = React.useState<Date>(() =>
+    clampMonth(startOfMonth(today), minMonth, maxMonth)
+  );
+  const [visibleYear, setVisibleYear] = React.useState<number>(() =>
+    Math.min(maxYear, Math.max(minYear, today.getFullYear()))
+  );
   const monthGroups = groupEntriesByMonth(props.model.listEntries);
   const monthCells = React.useMemo(() => buildMonthCells(visibleMonth, entriesByDate), [entriesByDate, visibleMonth]);
   const visibleYearMonths = React.useMemo(
@@ -208,6 +236,15 @@ export function PublicWasteCalendarPanels(props: Readonly<{
   const canGoToNextMonth = toMonthKey(visibleMonth) < toMonthKey(maxMonth);
   const canGoToPreviousYear = visibleYear > minYear;
   const canGoToNextYear = visibleYear < maxYear;
+
+  React.useEffect(() => {
+    setVisibleMonth((current) => clampMonth(current, minMonth, maxMonth));
+  }, [maxMonth, minMonth]);
+
+  React.useEffect(() => {
+    setVisibleYear((current) => Math.min(maxYear, Math.max(minYear, current)));
+  }, [maxYear, minYear]);
+
   const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tab: 'list' | 'month' | 'year') => {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
       return;

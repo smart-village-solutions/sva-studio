@@ -5,6 +5,7 @@ import {
   mapCreateVariables,
   mapPickupTime,
   requireNonEmpty,
+  toDeleteIds,
   toDeleteVariables,
   trimToUndefined,
 } from './waste-operations.payloads.js';
@@ -252,7 +253,7 @@ export const deleteWastePickupTimesWithConfig = async (
         document: svaMainserverDestroyWastePickUpTimeByIdsDocument,
         operationName: 'SvaMainserverDestroyWastePickUpTimeByIds',
         variables: {
-          ids: itemsWithIds.map((item) => String(item.id)),
+          ids: toDeleteIds(itemsWithIds),
         },
       },
       config

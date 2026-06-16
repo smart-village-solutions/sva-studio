@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SvaMainserverConnectionInput, SvaMainserverInstanceConfig } from '../../types.js';
-import { createWasteOperations } from './waste-operations.js';
+import { CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE, createWasteOperations } from './waste-operations.js';
 
 const connection: SvaMainserverConnectionInput = {
   instanceId: 'de-musterhausen',
@@ -118,7 +118,7 @@ describe('waste-operations', () => {
     );
   });
 
-  it('chunks waste pickup time creates into multiple upstream requests when more than 100 items are written', async () => {
+  it('chunks waste pickup time creates into multiple upstream requests when more than one batch is written', async () => {
     const executeGraphqlWithConfig = vi.fn().mockResolvedValue({
       createWastePickUpTimes: {
         success: true,
@@ -126,6 +126,7 @@ describe('waste-operations', () => {
       },
     });
     const operations = createWasteOperations(executeGraphqlWithConfig);
+    const batchSize = CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE;
     const items = Array.from({ length: 205 }, (_, index) => ({
       pickupDate: `2026-02-${String((index % 28) + 1).padStart(2, '0')}`,
       wasteType: 'Restmüll',
@@ -148,7 +149,7 @@ describe('waste-operations', () => {
       expect.objectContaining({
         operationName: 'SvaMainserverCreateWastePickUpTimes',
         variables: {
-          inputs: items.slice(0, 100),
+          inputs: items.slice(0, batchSize),
         },
       }),
       config
@@ -158,7 +159,7 @@ describe('waste-operations', () => {
       expect.objectContaining({
         operationName: 'SvaMainserverCreateWastePickUpTimes',
         variables: {
-          inputs: items.slice(100, 200),
+          inputs: items.slice(batchSize, batchSize * 2),
         },
       }),
       config
@@ -168,7 +169,7 @@ describe('waste-operations', () => {
       expect.objectContaining({
         operationName: 'SvaMainserverCreateWastePickUpTimes',
         variables: {
-          inputs: items.slice(200),
+          inputs: items.slice(batchSize * 2),
         },
       }),
       config
@@ -188,7 +189,7 @@ describe('waste-operations', () => {
         ...connection,
         items: [
           {
-            id: 'pickup-1',
+            id: ' pickup-1 ',
             pickupDate: '2026-01-10',
             wasteType: 'Restmüll',
             street: 'Hauptstraße',

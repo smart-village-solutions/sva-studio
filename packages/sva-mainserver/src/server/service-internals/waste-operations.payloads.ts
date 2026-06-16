@@ -107,3 +107,8 @@ export const mapCreateVariables = (items: readonly SvaMainserverWasteSyncItem[])
     ...(item.rhythmExcludes && item.rhythmExcludes.length > 0 ? { rhythmExcludes: item.rhythmExcludes } : {}),
   })),
 });
+
+export const toDeleteIds = (items: readonly SvaMainserverWasteSyncItem[]): string[] =>
+  items
+    .map((item) => trimToUndefined(item.id))
+    .filter((itemId): itemId is string => Boolean(itemId));

@@ -112,7 +112,14 @@ describe('waste management job definitions', () => {
         displayName: 'Waste-Mainserver synchronisieren',
         progress: {
           phaseKeys: ['waste-management.mainserver-sync', 'waste-management.completed'],
-          stepKeys: ['load-studio-state', 'sync-mainserver', 'complete-operation'],
+          stepKeys: [
+            'load-studio-state',
+            'load-mainserver-snapshot',
+            'diff-sync-state',
+            'create-batches',
+            'delete-batches',
+            'complete-operation',
+          ],
         },
         result: {
           summaryKeys: ['durationMs'],
@@ -125,6 +132,14 @@ describe('waste management job definitions', () => {
             'deleteByIdCount',
             'deleteByValueCount',
             'errorCount',
+            'totalBatchCount',
+            'processedItemCount',
+            'finalCreateCount',
+            'finalDeleteCount',
+            'averageBatchDurationMs',
+            'longestBatchDurationMs',
+            'studioSnapshotCount',
+            'mainserverSnapshotCount',
           ],
         },
         errors: {

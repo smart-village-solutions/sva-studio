@@ -50,7 +50,7 @@ export type OperationSummary = {
   readonly details: Record<string, unknown>;
 };
 
-export type WasteImportProgressReporter = {
+export type WasteOperationProgressReporter = {
   readonly reportProgress: (progress: StudioJobProgress) => Promise<void> | void;
 };
 
@@ -60,10 +60,14 @@ export type WasteManagementOperationRuntime = {
   importData: (
     instanceId: string,
     input: WasteManagementImportJobInput,
-    progressReporter?: WasteImportProgressReporter
+    progressReporter?: WasteOperationProgressReporter
   ) => Promise<OperationSummary>;
   seedData: (instanceId: string, input: WasteManagementSeedJobInput) => Promise<OperationSummary>;
-  syncMainserver: (instanceId: string, input: WasteManagementSyncMainserverJobInput) => Promise<OperationSummary>;
+  syncMainserver: (
+    instanceId: string,
+    input: WasteManagementSyncMainserverJobInput,
+    progressReporter?: WasteOperationProgressReporter
+  ) => Promise<OperationSummary>;
   syncWasteTypes: (instanceId: string, input: WasteManagementSyncWasteTypesJobInput) => Promise<OperationSummary>;
   materializeEmailReminders: (
     instanceId: string,

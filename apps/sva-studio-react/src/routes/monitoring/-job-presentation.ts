@@ -1,6 +1,6 @@
 import type { StudioJobDetail, StudioJobListItem, StudioJobProgress } from '@sva/core';
 
-import { t } from '../../i18n';
+import { getActiveLocale, t } from '../../i18n';
 import { formatTechnicalEditorDateTime } from '../../lib/editor-date-time';
 
 type MonitoringJobStatus = StudioJobListItem['status'];
@@ -53,8 +53,12 @@ export const formatMonitoringJobProgressSummary = (progress?: StudioJobProgress)
   });
 };
 
-export const getMonitoringJobCurrentStep = (progress?: StudioJobProgress): string =>
-  progress?.currentStepLabel ?? progress?.currentStepKey ?? t('monitoring.jobs.values.notAvailable');
+const monitoringWasteStepLabelKeyByValue = {
+  'load-studio-state': 'monitoring.jobs.progress.stepLabels.loadStudioState',
+  'load-mainserver-snapshot': 'monitoring.jobs.progress.stepLabels.loadMainserverSnapshot',
+  'diff-sync-state': 'monitoring.jobs.progress.stepLabels.diffSyncState',
+  'complete-operation': 'monitoring.jobs.progress.stepLabels.completeOperation',
+} as const;
 
 type MonitoringJobWriteSummary = {
   readonly writtenCount: number;
@@ -67,11 +71,146 @@ type MonitoringJobWriteSummary = {
   readonly errorCount: number;
 };
 
+type MonitoringWasteLiveProgress = Readonly<{
+  operationMode: 'create' | 'delete';
+  totalItemCount: number;
+  totalBatchCount: number;
+  currentBatchIndex: number;
+  currentBatchSize: number;
+  processedItemCount: number;
+  createCount: number;
+  deleteCount: number;
+  lastSuccessfulBatchAt?: string;
+  lastBatchDurationMs?: number;
+  averageBatchDurationMs?: number;
+}>;
+
+type MonitoringWasteStepKey = keyof typeof monitoringWasteStepLabelKeyByValue;
+
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
 const readNumber = (record: Record<string, unknown>, key: string): number | null => {
   const value = record[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+};
+
+const toMonitoringNumberLocale = (): string => (getActiveLocale() === 'en' ? 'en-US' : 'de-DE');
+
+export const formatMonitoringInteger = (value: number): string =>
+  new Intl.NumberFormat(toMonitoringNumberLocale()).format(value);
+
+const resolveMonitoringWasteLiveProgressFromProgress = (progress?: StudioJobProgress): MonitoringWasteLiveProgress | null => {
+  const details = progress?.details;
+  if (!isRecord(details)) {
+    return null;
+  }
+
+  const operationMode = details.operationMode;
+  if (operationMode !== 'create' && operationMode !== 'delete') {
+    return null;
+  }
+
+  const totalItemCount = readNumber(details, 'totalItemCount');
+  const totalBatchCount = readNumber(details, 'totalBatchCount');
+  const currentBatchIndex = readNumber(details, 'currentBatchIndex');
+  const currentBatchSize = readNumber(details, 'currentBatchSize');
+  const processedItemCount = readNumber(details, 'processedItemCount');
+  const createCount = readNumber(details, 'createCount');
+  const deleteCount = readNumber(details, 'deleteCount');
+
+  if (
+    totalItemCount === null ||
+    totalBatchCount === null ||
+    currentBatchIndex === null ||
+    currentBatchSize === null ||
+    processedItemCount === null ||
+    createCount === null ||
+    deleteCount === null
+  ) {
+    return null;
+  }
+
+  return {
+    operationMode,
+    totalItemCount,
+    totalBatchCount,
+    currentBatchIndex,
+    currentBatchSize,
+    processedItemCount,
+    createCount,
+    deleteCount,
+    lastSuccessfulBatchAt: typeof details.lastSuccessfulBatchAt === 'string' ? details.lastSuccessfulBatchAt : undefined,
+    lastBatchDurationMs: readNumber(details, 'lastBatchDurationMs') ?? undefined,
+    averageBatchDurationMs: readNumber(details, 'averageBatchDurationMs') ?? undefined,
+  };
+};
+
+const isMonitoringWasteStepKey = (value: string): value is MonitoringWasteStepKey => value in monitoringWasteStepLabelKeyByValue;
+
+export const resolveMonitoringJobStepLabel = (progress?: StudioJobProgress): string | null => {
+  if (!progress) {
+    return null;
+  }
+
+  if (progress.currentStepKey === 'create-batches' || progress.currentStepKey === 'delete-batches') {
+    return formatMonitoringWasteLiveProgressSummary(resolveMonitoringWasteLiveProgressFromProgress(progress));
+  }
+
+  if (progress.currentStepKey && isMonitoringWasteStepKey(progress.currentStepKey)) {
+    return t(monitoringWasteStepLabelKeyByValue[progress.currentStepKey]);
+  }
+
+  return progress.currentStepLabel ?? progress.currentStepKey ?? null;
+};
+
+export const getMonitoringJobCurrentStep = (progress?: StudioJobProgress): string =>
+  resolveMonitoringJobStepLabel(progress) ?? t('monitoring.jobs.values.notAvailable');
+
+export const extractMonitoringWasteLiveProgress = (
+  job: Pick<StudioJobDetail, 'jobTypeId' | 'progress' | 'runtime'> | Pick<StudioJobListItem, 'jobTypeId' | 'progress' | 'runtime'>
+): MonitoringWasteLiveProgress | null => {
+  if (job.jobTypeId !== 'waste-management.sync-mainserver') {
+    return null;
+  }
+  return resolveMonitoringWasteLiveProgressFromProgress(job.progress);
+};
+
+export const formatMonitoringWasteLiveProgressSummary = (progress: MonitoringWasteLiveProgress | null): string | null => {
+  if (!progress) {
+    return null;
+  }
+
+  return t(
+    progress.operationMode === 'create'
+      ? 'monitoring.jobs.progress.liveBatchSummaryCreate'
+      : 'monitoring.jobs.progress.liveBatchSummaryDelete',
+    {
+      current: progress.totalBatchCount > 0 ? progress.currentBatchIndex : 1,
+      total: progress.totalBatchCount > 0 ? progress.totalBatchCount : 1,
+    }
+  );
+};
+
+export const formatMonitoringWasteLiveProgressSecondary = (progress: MonitoringWasteLiveProgress | null): string | null => {
+  if (!progress) {
+    return null;
+  }
+
+  return t('monitoring.jobs.progress.liveProcessedSummary', {
+    current: formatMonitoringInteger(progress.processedItemCount),
+    total: formatMonitoringInteger(progress.totalItemCount),
+  });
+};
+
+export const getMonitoringWasteLikelyStuckHint = (
+  job: Pick<StudioJobDetail, 'jobTypeId' | 'progress' | 'runtime'>
+): string | null => {
+  const liveProgress = extractMonitoringWasteLiveProgress(job);
+  if (!liveProgress || job.runtime?.staleState !== 'stale') {
+    return null;
+  }
+
+  return t('monitoring.jobs.detail.liveProgressLikelyStuck');
 };
 
 export const extractMonitoringJobWriteSummary = (job: Pick<StudioJobDetail, 'jobTypeId' | 'resultPayload'>): MonitoringJobWriteSummary | null => {

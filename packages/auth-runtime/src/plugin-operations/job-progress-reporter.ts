@@ -17,6 +17,7 @@ type JobProgressReporterDeps = {
     readonly instanceId: string;
     readonly progress: StudioJobProgress;
     readonly attempts: number;
+    readonly message?: string;
     readonly hostDetails?: StudioJobEventHostDetails;
     readonly pluginDetails?: Readonly<Record<string, unknown>>;
   }) => Promise<unknown>;
@@ -52,9 +53,11 @@ export const createJobProgressReporter = (
         instanceId: deps.job.instanceId,
         progress,
         attempts: deps.attempts,
+        message: progress.currentStepLabel,
         hostDetails: {
           workerId: deps.workerId,
         },
+        pluginDetails: progress.details,
       }),
     ]);
   };

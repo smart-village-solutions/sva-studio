@@ -2,7 +2,13 @@ import type { PluginJobExecutionHandler } from '@sva/plugin-sdk';
 import type { PluginJobTypeDefinition, WasteManagementJobInput } from '@sva/plugin-sdk';
 import { createWasteManagementPluginJobTypes } from '@sva/plugin-waste-management/waste-management.job-definitions';
 
-import { createProgress, type WasteManagementJobProgress, type WasteManagementOperationRuntime } from './runtime-types.js';
+import {
+  createCompletedJobProgress,
+  createInitialJobProgress,
+  createRuntimeProgressReporter,
+  reportJobProgress,
+} from './runtime-job-progress.js';
+import type { WasteManagementJobProgress, WasteManagementOperationRuntime } from './runtime-types.js';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -83,10 +89,14 @@ export const createOperationHandler = <TJobInput extends WasteManagementJobInput
   readonly jobTypeId: string;
   readonly expectedOperation: TJobInput['operation'];
   readonly phaseKey: string;
+  readonly useRuntimeManagedProgress?: (payload: TJobInput) => boolean;
   readonly execute: (
     runtime: WasteManagementOperationRuntime,
     instanceId: string,
-    payload: TJobInput
+    payload: TJobInput,
+    progressReporter?: {
+      readonly reportProgress: (progress: WasteManagementJobProgress) => Promise<void> | void;
+    }
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
@@ -101,34 +111,41 @@ export const createOperationHandler = <TJobInput extends WasteManagementJobInput
     );
     const payload = assertWasteJobInput<TJobInput>(input.jobTypeId, context.job.inputPayload, input.expectedOperation);
     const startedAt = Date.now();
+    const useRuntimeManagedProgress = input.useRuntimeManagedProgress?.(payload) ?? false;
+    let latestRuntimeProgress: WasteManagementJobProgress | undefined;
+    const runtimeProgressReporter = createRuntimeProgressReporter(context, (progress) => {
+      latestRuntimeProgress = progress;
+    });
 
     await context.throwIfCancellationRequested();
-    await context.progressReporter.reportProgress({
-      jobId: context.job.id,
-      instanceId: context.job.instanceId,
-      progress: createProgress({
-        completedSteps: 1,
-        totalSteps: 2,
-        currentPhase: initialPhaseKey,
-        currentStepKey: initialStepKey,
+    const stepCount = jobTypeDefinition.progress?.stepKeys?.length ?? 2;
+    await reportJobProgress(
+      context,
+      createInitialJobProgress({
+        stepCount,
+        initialPhaseKey,
+        initialStepKey,
       }),
-    });
+      useRuntimeManagedProgress
+    );
 
     await context.throwIfCancellationRequested();
-    const operationResult = await input.execute(runtime, context.job.instanceId, payload);
+    const operationResult = await input.execute(
+      runtime,
+      context.job.instanceId,
+      payload,
+      useRuntimeManagedProgress ? runtimeProgressReporter : undefined
+    );
     await context.throwIfCancellationRequested();
-    const progress = createProgress({
-      completedSteps: 2,
-      totalSteps: 2,
-      currentPhase: completedPhaseKey,
-      currentStepKey: completedStepKey,
-    });
+    const progress =
+      latestRuntimeProgress ??
+      createCompletedJobProgress({
+        stepCount,
+        completedPhaseKey,
+        completedStepKey,
+      });
 
-    await context.progressReporter.reportProgress({
-      jobId: context.job.id,
-      instanceId: context.job.instanceId,
-      progress,
-    });
+    await reportJobProgress(context, progress, useRuntimeManagedProgress);
 
     return createOperationResult({
       jobTypeDefinition,

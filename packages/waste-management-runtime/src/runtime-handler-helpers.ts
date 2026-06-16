@@ -49,7 +49,9 @@ export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOper
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncMainserver,
       expectedOperation: 'sync-mainserver',
       phaseKey: 'waste-management.mainserver-sync',
-      execute: (runtimeArg, instanceId, payload) => runtimeArg.syncMainserver(instanceId, payload),
+      useRuntimeManagedProgress: () => true,
+      execute: (runtimeArg, instanceId, payload, progressReporter) =>
+        runtimeArg.syncMainserver(instanceId, payload, progressReporter),
     })(runtime),
   [wasteManagementOperationsContract.jobTypeIds.syncWasteTypes]:
     createOperationHandler<WasteManagementSyncWasteTypesJobInput>({

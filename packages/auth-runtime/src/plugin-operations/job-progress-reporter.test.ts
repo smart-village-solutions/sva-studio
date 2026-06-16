@@ -49,9 +49,11 @@ describe('job progress reporter', () => {
         lastUpdatedAt: '2026-05-09T12:01:00.000Z',
       },
       attempts: 2,
+      message: undefined,
       hostDetails: {
         workerId: 'graphile-worker:tenant-a:job-1',
       },
+      pluginDetails: undefined,
     });
   });
 
@@ -88,6 +90,44 @@ describe('job progress reporter', () => {
       expect.objectContaining({
         jobId: 'job-1',
         instanceId: 'tenant-a',
+      })
+    );
+  });
+
+  it('persists progress details and step labels into the technical history event', async () => {
+    const appendProgressedEvent = vi.fn(async () => null);
+
+    const reporter = createJobProgressReporter({
+      job: {
+        id: 'job-1',
+        instanceId: 'tenant-a',
+      },
+      attempts: 2,
+      workerId: 'graphile-worker:tenant-a:job-1',
+      updateJobProgress: vi.fn(async () => null),
+      appendProgressedEvent,
+      now: () => '2026-05-09T12:01:00.000Z',
+    });
+
+    await reporter.reportProgress({
+      progress: {
+        completedSteps: 4,
+        totalSteps: 6,
+        currentStepLabel: 'Create-Batches 362/1373',
+        details: {
+          operationMode: 'create',
+          currentBatchIndex: 362,
+        },
+      },
+    });
+
+    expect(appendProgressedEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Create-Batches 362/1373',
+        pluginDetails: {
+          operationMode: 'create',
+          currentBatchIndex: 362,
+        },
       })
     );
   });

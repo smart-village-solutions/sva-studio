@@ -639,12 +639,13 @@ const createSeedDataOperation = (
 
 const createSyncMainserverOperation = (
   deps: WasteOperationRuntimeDeps
-): WasteManagementOperationRuntime['syncMainserver'] => async (instanceId, input) => {
+): WasteManagementOperationRuntime['syncMainserver'] => async (instanceId, input, progressReporter) => {
   const startedAt = Date.now();
   const details = await runWasteManagementMainserverSyncForInstance({
     instanceId,
     runtimeDeps: deps,
     syncInput: input,
+    progressReporter,
   });
   return buildOperationSummary(startedAt, {
     operation: 'sync-mainserver',
@@ -657,6 +658,14 @@ const createSyncMainserverOperation = (
     deleteByIdCount: details.deleteByIdCount,
     deleteByValueCount: details.deleteByValueCount,
     errorCount: details.errorCount,
+    totalBatchCount: details.totalBatchCount,
+    processedItemCount: details.processedItemCount,
+    finalCreateCount: details.finalCreateCount,
+    finalDeleteCount: details.finalDeleteCount,
+    averageBatchDurationMs: details.averageBatchDurationMs,
+    longestBatchDurationMs: details.longestBatchDurationMs,
+    studioSnapshotCount: details.studioSnapshotCount,
+    mainserverSnapshotCount: details.mainserverSnapshotCount,
   });
 };
 

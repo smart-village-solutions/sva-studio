@@ -215,7 +215,7 @@ describe('MonitoringJobDetailPage', () => {
     expect(screen.getByText('Gelöscht')).toBeTruthy();
     expect(screen.getByText('Studio-Datensätze')).toBeTruthy();
     expect(screen.getByText('Mainserver-Datensätze')).toBeTruthy();
-    expect(screen.getByText('Create-Batches')).toBeTruthy();
+    expect(screen.getByText('Anlage-Batches')).toBeTruthy();
     expect(screen.getByText('Löschung per ID')).toBeTruthy();
     expect(screen.getByText('Löschung per Wert')).toBeTruthy();
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
@@ -223,6 +223,54 @@ describe('MonitoringJobDetailPage', () => {
     expect(screen.getByText('3')).toBeTruthy();
     expect(screen.getByText('42')).toBeTruthy();
     expect(screen.getByText('39')).toBeTruthy();
+  });
+
+  it('renders live progress details for running waste mainserver sync jobs', async () => {
+    usePluginOperationJobDetailMock.mockReturnValue({
+      detail: {
+        ...detailRecord,
+        status: 'running',
+        pluginId: 'waste-management',
+        jobTypeId: 'waste-management.sync-mainserver',
+        progress: {
+          completedSteps: 4,
+          totalSteps: 6,
+          currentStepKey: 'create-batches',
+          currentStepLabel: 'Create-Batches 362/1373',
+          details: {
+            operationMode: 'create',
+            totalItemCount: 137249,
+            totalBatchCount: 1373,
+            currentBatchIndex: 362,
+            currentBatchSize: 100,
+            processedItemCount: 36200,
+            createCount: 36200,
+            deleteCount: 0,
+            lastSuccessfulBatchAt: '2026-06-16T10:17:17.125Z',
+          },
+        },
+        resultPayload: undefined,
+        errorPayload: undefined,
+        runtime: {
+          cancellationRequested: false,
+          staleAfterSeconds: 120,
+          staleState: 'fresh',
+          evaluatedAt: '2026-06-16T10:17:17.200Z',
+          lastObservedAt: '2026-06-16T10:17:17.125Z',
+        },
+      },
+      error: null,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<MonitoringJobDetailPage jobId="job-1" />);
+
+    expect(await screen.findByText('Live-Fortschritt')).toBeTruthy();
+    expect(screen.getByText('Anlegen: Batch 362 / 1373')).toBeTruthy();
+    expect(screen.getByText('Aktueller Batch: 362 / 1373')).toBeTruthy();
+    expect(screen.getByText('Verarbeitete Datensätze: 36.200 / 137.249')).toBeTruthy();
+    expect(screen.getByText('Letzter erfolgreicher Batch: 16.06.2026, 12:17:17,125')).toBeTruthy();
   });
 
   it('renders loading, empty history, and mapped errors', async () => {

@@ -14,7 +14,7 @@ Der kanonische Einstieg liegt unter `/admin/media`.
 Dort stehen im MVP zur Verfügung:
 
 - Medienbibliothek mit Suche und Sichtbarkeitsfilter
-- Upload-Initialisierung für neue Bilder
+- direkter Single-File-Upload für neue Bilder aus der Bibliothek
 - Metadatenpflege für Titel, Alternativtext, Beschreibung, Copyright und Lizenz
 - Nutzungsanzeige (`Usage-Impact`) für aktive Referenzen
 - kontrollierte Auslieferung für öffentliche und geschützte Medien
@@ -25,10 +25,11 @@ Der MVP verarbeitet zunächst Bilder.
 
 Ablauf:
 
-1. Upload in der Medienbibliothek vorbereiten.
-2. Die signierte Upload-URL für das Zielobjekt erhalten.
-3. Datei hochladen.
-4. Upload serverseitig abschließen.
+1. Datei in `/admin/media` auswählen.
+2. Studio initialisiert den Upload serverseitig und reserviert Asset-ID plus Upload-Session.
+3. Der Browser lädt die Datei direkt an die signierte Storage-URL.
+4. Studio schließt den Upload über den Host-Vertrag serverseitig ab.
+5. Nach Erfolg öffnet Studio direkt die Mediendetailansicht.
 
 Beim Abschluss werden synchron ausgeführt:
 
@@ -38,6 +39,12 @@ Beim Abschluss werden synchron ausgeführt:
 - Statuspflege für Upload und Verarbeitung
 
 Fehlschläge bleiben fail-closed. Redigierte Fehlerdetails werden am Asset gespeichert; technische Storage-Details werden nicht in Fachmodulen offengelegt.
+
+Fehlverhalten im Frontend:
+
+- Schlägt die Initialisierung fehl, bleibt der Nutzer in der Bibliothek und erhält eine fachlich redigierte Fehlermeldung.
+- Schlägt der direkte Storage-Upload fehl, wird kein Abschluss-Call ausgeführt; die Bibliothek bleibt offen und zeigt den Uploadfehler an.
+- Schlägt nur der Abschluss fehl, existiert bereits ein reserviertes Asset im Pending-Zustand und kann technisch nachverfolgt werden.
 
 ## Medienrollen
 

@@ -523,6 +523,7 @@ export type IamRegisteredMediaAsset = Readonly<{
   technical: Readonly<Record<string, unknown>>;
   createdAt?: string;
   updatedAt?: string;
+  previewUrl?: string | null;
 }>;
 
 export type IamUnregisteredMediaAsset = Readonly<{

@@ -85,6 +85,81 @@ const createService = () => ({
 });
 
 describe('media http handlers', () => {
+  it('adds preview URLs to registered public image assets in the library response', async () => {
+    const service = createService();
+    service.listAssets = vi.fn(async () => [
+      {
+        id: 'asset-1',
+        instanceId: 'tenant-a',
+        storageKey: 'tenant-a/originals/asset-1.jpg',
+        mediaType: 'image',
+        mimeType: 'image/jpeg',
+        byteSize: 100,
+        visibility: 'public',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {},
+        technical: {},
+        updatedAt: '2026-06-11T08:00:00.000Z',
+      },
+    ]);
+    service.countAssets = vi.fn(async () => 1);
+
+    const storagePort = {
+      listObjects: vi.fn(async () => ({ items: [], nextCursor: null })),
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(async ({ storageKey }) => ({
+        deliveryUrl: `https://cdn.example.test/${storageKey}`,
+        expiresAt: '2099-01-01T00:00:00.000Z',
+      })),
+      readObject: vi.fn(),
+      writeObject: vi.fn(),
+      deleteObject: vi.fn(),
+    };
+
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.listMedia(
+      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&page=1&pageSize=1'),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: [
+        {
+          id: 'asset-1',
+          instanceId: 'tenant-a',
+          storageKey: 'tenant-a/originals/asset-1.jpg',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 100,
+          visibility: 'public',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {},
+          technical: {},
+          updatedAt: '2026-06-11T08:00:00.000Z',
+          previewUrl: 'https://cdn.example.test/tenant-a/originals/asset-1.jpg',
+        },
+      ],
+      pagination: { page: 1, pageSize: 1, total: 1 },
+    });
+    expect(storagePort.resolveDelivery).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      assetId: 'asset-1',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      visibility: 'public',
+    });
+  });
+
   it('lists registered and unregistered media with combined server-side paging', async () => {
     const service = createService();
     service.listAssets = vi.fn(async () => [

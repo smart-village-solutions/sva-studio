@@ -144,7 +144,7 @@ importers:
         version: link:../../packages/core
       '@sva/data-repositories':
         specifier: workspace:*
-        version: file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+        version: link:../../packages/data-repositories
       '@tabler/icons-react':
         specifier: ^3.41.1
         version: 3.44.0(react@19.2.6)
@@ -226,19 +226,19 @@ importers:
         version: 1.1.13(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@sva/auth-runtime':
         specifier: workspace:*
-        version: link:../../packages/auth-runtime
+        version: file:packages/auth-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(typescript@6.0.3)
       '@sva/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@sva/data-repositories':
         specifier: workspace:*
-        version: link:../../packages/data-repositories
+        version: file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       '@sva/iam-admin':
         specifier: workspace:*
-        version: link:../../packages/iam-admin
+        version: file:packages/iam-admin(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       '@sva/iam-governance':
         specifier: workspace:*
-        version: link:../../packages/iam-governance
+        version: file:packages/iam-governance(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       '@sva/mail-runtime':
         specifier: workspace:*
         version: link:../../packages/mail-runtime
@@ -262,7 +262,7 @@ importers:
         version: link:../../packages/plugin-sdk
       '@sva/routing':
         specifier: workspace:*
-        version: link:../../packages/routing
+        version: file:packages/routing(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3)
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../../packages/server-runtime
@@ -274,7 +274,7 @@ importers:
         version: link:../../packages/studio-ui-react
       '@sva/sva-mainserver':
         specifier: workspace:*
-        version: link:../../packages/sva-mainserver
+        version: file:packages/sva-mainserver(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(typescript@6.0.3)
       '@sva/waste-management-runtime':
         specifier: workspace:*
         version: link:../../packages/waste-management-runtime
@@ -311,6 +311,9 @@ importers:
       postcss:
         specifier: 8.5.11
         version: 8.5.11
+      qrcode:
+        specifier: ^1.5.4
+        version: 1.5.4
       react:
         specifier: ^19.2.0
         version: 19.2.6
@@ -422,7 +425,7 @@ importers:
         version: link:../plugin-sdk
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       '@sva/studio-module-iam':
         specifier: workspace:*
         version: link:../studio-module-iam
@@ -489,7 +492,7 @@ importers:
         version: link:../data-repositories
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       pg:
         specifier: ^8.20.0
         version: 8.21.0
@@ -530,7 +533,7 @@ importers:
         version: link:../core
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       pg:
         specifier: ^8.20.0
         version: 8.21.0
@@ -552,7 +555,7 @@ importers:
         version: link:../core
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       '@sva/studio-module-iam':
         specifier: workspace:*
         version: link:../studio-module-iam
@@ -587,7 +590,7 @@ importers:
         version: link:../core
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       postcss:
         specifier: 8.5.11
         version: 8.5.11
@@ -618,7 +621,7 @@ importers:
         version: link:../data-repositories
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -942,7 +945,7 @@ importers:
         version: link:../plugin-sdk
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       '@tanstack/react-router':
         specifier: 1.170.8
         version: 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -1071,7 +1074,7 @@ importers:
         version: link:../data-repositories
       '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../server-runtime
+        version: file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -4047,17 +4050,47 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
+  '@sva/auth-runtime@file:packages/auth-runtime':
+    resolution: {directory: packages/auth-runtime, type: directory}
+
   '@sva/core@file:packages/core':
     resolution: {directory: packages/core, type: directory}
 
   '@sva/data-repositories@file:packages/data-repositories':
     resolution: {directory: packages/data-repositories, type: directory}
 
+  '@sva/iam-admin@file:packages/iam-admin':
+    resolution: {directory: packages/iam-admin, type: directory}
+
+  '@sva/iam-core@file:packages/iam-core':
+    resolution: {directory: packages/iam-core, type: directory}
+
+  '@sva/iam-governance@file:packages/iam-governance':
+    resolution: {directory: packages/iam-governance, type: directory}
+
+  '@sva/instance-registry@file:packages/instance-registry':
+    resolution: {directory: packages/instance-registry, type: directory}
+
+  '@sva/media@file:packages/media':
+    resolution: {directory: packages/media, type: directory}
+
   '@sva/monitoring-client@file:packages/monitoring-client':
     resolution: {directory: packages/monitoring-client, type: directory}
 
+  '@sva/plugin-sdk@file:packages/plugin-sdk':
+    resolution: {directory: packages/plugin-sdk, type: directory}
+
+  '@sva/routing@file:packages/routing':
+    resolution: {directory: packages/routing, type: directory}
+
   '@sva/server-runtime@file:packages/server-runtime':
     resolution: {directory: packages/server-runtime, type: directory}
+
+  '@sva/studio-module-iam@file:packages/studio-module-iam':
+    resolution: {directory: packages/studio-module-iam, type: directory}
+
+  '@sva/sva-mainserver@file:packages/sva-mainserver':
+    resolution: {directory: packages/sva-mainserver, type: directory}
 
   '@tabler/icons-react@3.44.0':
     resolution: {integrity: sha512-8+rvzBbVm/1Z3sG3x7GUNAaxIKxwgz8xaMhRs23nrCnMTKRFAhEC+82zAIFeAA0seXdrAGX5HFCkaLpGK2rVHg==}
@@ -4904,6 +4937,10 @@ packages:
     resolution: {integrity: sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==}
     engines: {node: '>=6'}
 
+  camelcase@5.3.1:
+    resolution: {integrity: sha512-L28STB170nwWS63UjtlEOE3dldQApaJXZkOI1uMFfzf3rRuPegHaHesyee+YxQ+W6SvRDQV6UrdOdRiR153wJg==}
+    engines: {node: '>=6'}
+
   caniuse-lite@1.0.30001793:
     resolution: {integrity: sha512-iwSsYWaCOoh26cV8NwNRViHlrfUvYsHDfRVcbtmw0Kg6PJIZZXwMkj1442FYLBGkeUf1juAsU3DTfxW579mrPA==}
 
@@ -4944,6 +4981,9 @@ packages:
   cli-width@4.1.0:
     resolution: {integrity: sha512-ouuZd4/dm2Sw5Gmqy6bGyNNNe1qt9RpmxveLSO7KcgsTnU7RXfsw+/bukWGo1abgBiMAic068rclZsO4IWmmxQ==}
     engines: {node: '>= 12'}
+
+  cliui@6.0.0:
+    resolution: {integrity: sha512-t6wbgtoCXvAzst7QgXxJYqPt0usEfbgQdftEPbLL/cvv6HPE5VgvqCuAIDR0NgU52ds6rFwqrgakNLrHEjCbrQ==}
 
   cliui@8.0.1:
     resolution: {integrity: sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==}
@@ -5100,6 +5140,10 @@ packages:
       supports-color:
         optional: true
 
+  decamelize@1.2.0:
+    resolution: {integrity: sha512-z2S+W9X73hAUUki+N+9Za2lBlun89zigOyGrsax+KUQ6wKW4ZoWpEYBkGhQjwAjjDCkWxhY0VKEhk8wzY7F5cA==}
+    engines: {node: '>=0.10.0'}
+
   decimal.js@10.6.0:
     resolution: {integrity: sha512-YpgQiITW3JXGntzdUmyUR1V812Hn8T1YVXhCu+wO3OpS4eU9l4YdD3qjyiKdV6mvV29zapkMeD390UVEf2lkUg==}
 
@@ -5144,6 +5188,9 @@ packages:
   diff@8.0.4:
     resolution: {integrity: sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw==}
     engines: {node: '>=0.3.1'}
+
+  dijkstrajs@1.0.3:
+    resolution: {integrity: sha512-qiSlmBq9+BCdCA/L46dw8Uy93mloxsPSbwnm5yrKn2vMPiy8KyAskTF6zuV/j5BMsmOGZDPs7KjU+mjb670kfA==}
 
   dom-accessibility-api@0.5.16:
     resolution: {integrity: sha512-X7BJ2yElsnOJ30pZF4uIIDfBEVgF4XEBxL9Bxhy6dnrm5hkzqmsWHGTiHqRiITNhMyFLyAiWndIJP7Z1NTteDg==}
@@ -5397,6 +5444,10 @@ packages:
   file-type@22.0.1:
     resolution: {integrity: sha512-ww5Mhre0EE+jmBvOXTmXAbEMuZE7uX4a3+oRCQFNj8w++g3ev913N6tXQz0XTXbueQ5TWQfm6BdaViEHHn8bhA==}
     engines: {node: '>=22'}
+
+  find-up@4.1.0:
+    resolution: {integrity: sha512-PpOwAdQ/YlXQ2vj8a3h8IipDuYRi3wceVQQGYWxNINccq40Anw7BlsEXCMbt1Zt+OLA6Fq9suIpIWD0OsnISlw==}
+    engines: {node: '>=8'}
 
   find-up@5.0.0:
     resolution: {integrity: sha512-78/PXT1wlLLDgTzDs7sjq9hzz0vXD+zn+7wypEe4fXQxCmdmqfGsEPQxmiCSQI3ajFV91bVSsvNtrJRiW6nGng==}
@@ -5858,6 +5909,10 @@ packages:
     resolution: {integrity: sha512-cNOjgCnLB+FnvWWtyRTzmB3POJ+cXxTA81LoW7u8JdmhfXzriropYwpjShnz1QLLWsQwY7nIxoDmcPTwphDK9w==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
+  locate-path@5.0.0:
+    resolution: {integrity: sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g==}
+    engines: {node: '>=8'}
+
   locate-path@6.0.0:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
     engines: {node: '>=10'}
@@ -6080,13 +6135,25 @@ packages:
   oxc-resolver@11.19.1:
     resolution: {integrity: sha512-qE/CIg/spwrTBFt5aKmwe3ifeDdLfA2NESN30E42X/lII5ClF8V7Wt6WIJhcGZjp0/Q+nQ+9vgxGk//xZNX2hg==}
 
+  p-limit@2.3.0:
+    resolution: {integrity: sha512-//88mFWSJx8lxCzwdAABTJL2MyWB12+eIY7MDL2SqLmAkeKU9qxRvWuSyTjm3FUmpBEMuFfckAIqEaVGUDxb6w==}
+    engines: {node: '>=6'}
+
   p-limit@3.1.0:
     resolution: {integrity: sha512-TYOanM3wGwNGsZN2cVTYPArw454xnXj5qmWF1bEoAc4+cU/ol7GVh7odevjp1FNHduHc3KZMcFduxU5Xc6uJRQ==}
     engines: {node: '>=10'}
 
+  p-locate@4.1.0:
+    resolution: {integrity: sha512-R79ZZ/0wAxKGu3oYMlz8jy/kbhsNrS7SKZ7PxEHBgJ5+F2mtFW2fK2cOtBh1cHYkQsbzFV7I+EoRKe6Yt0oK7A==}
+    engines: {node: '>=8'}
+
   p-locate@5.0.0:
     resolution: {integrity: sha512-LaNjtRWUBY++zB5nE/NwcaoMylSPk+S+ZHNB1TzdbMJMny6dynpAGt7X/tl/QYq3TIeE6nxHppbo2LGymrG5Pw==}
     engines: {node: '>=10'}
+
+  p-try@2.2.0:
+    resolution: {integrity: sha512-R4nPAVTAU0B9D35/Gk3uJf/7XYbQcyohSKdvAxIRSNghFl4e71hVoGnBNQz9cWaXxO2I10KTC+3jMdvvoKw6dQ==}
+    engines: {node: '>=6'}
 
   parent-module@1.0.1:
     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}
@@ -6178,6 +6245,10 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  pngjs@5.0.0:
+    resolution: {integrity: sha512-40QW5YalBNfQo5yRYmiw7Yz6TKKVr3h6970B2YE+3fQpsWcrbj1PzJgxeJ19DRQjhMbKPIuMY8rFaXc8moolVw==}
+    engines: {node: '>=10.13.0'}
+
   postcss-value-parser@4.2.0:
     resolution: {integrity: sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==}
 
@@ -6233,6 +6304,11 @@ packages:
 
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
+
+  qrcode@1.5.4:
+    resolution: {integrity: sha512-1ca71Zgiu6ORjHqFBDpnSMTR2ReToX4l1Au1VFLyVeBTFavzQnv5JxMFr3ukHVKpSrSA2MCk0lNJSykjUfz7Zg==}
+    engines: {node: '>=10.13.0'}
+    hasBin: true
 
   react-dom@19.2.6:
     resolution: {integrity: sha512-0prMI+hvBbPjsWnxDLxlCGyM8PN6UuWjEUCYmZhO67xIV9Xasa/r/vDnq+Xyq4Lo27g8QSbO5YzARu0D1Sps3g==}
@@ -6332,6 +6408,9 @@ packages:
     resolution: {integrity: sha512-QT7FVMXfWOYFbeRBF6nu+I6tr2Tf3u0q8RIEjNob/heKY/nh7drD/k7eeMFmSQgnTtCzLDcCu/XEnpW2wk4xCQ==}
     engines: {node: '>=9.3.0 || >=8.10.0 <9.0.0'}
 
+  require-main-filename@2.0.0:
+    resolution: {integrity: sha512-NKN5kMDylKuldxYLSUfrbo5Tuzh4hd+2E8NPPX02mZtn1VuREQToYe/ZdlJy+J3uCpfaiGF05e7B8W0iXbQHmg==}
+
   resolve-from@4.0.0:
     resolution: {integrity: sha512-pb/MYmXstAkysRFx8piNI1tGFNQIFA3vkE3Gq4EuA1dF6gHp/+vgZqsCGJapvy8N3Q+4o7FwvquPJcnZ7RYy4g==}
     engines: {node: '>=4'}
@@ -6408,6 +6487,9 @@ packages:
   seroval@1.4.2:
     resolution: {integrity: sha512-N3HEHRCZYn3cQbsC4B5ldj9j+tHdf4JZoYPlcI4rRYu0Xy4qN8MQf1Z08EibzB0WpgRG5BGK08FTrmM66eSzKQ==}
     engines: {node: '>=10'}
+
+  set-blocking@2.0.0:
+    resolution: {integrity: sha512-KiKBS8AnWGEyLzofFfmvKwpdPzqiy16LvQfK3yv/fVH7Bj13/wl3JSR1J+rfgRE9q7xUJK4qvgS8raSOeLUehw==}
 
   set-cookie-parser@3.1.0:
     resolution: {integrity: sha512-kjnC1DXBHcxaOaOXBHBeRtltsDG2nUiUni+jP92M9gYdW12rsmx92UsfpH7o5tDRs7I1ZZPSQJQGv3UaRfCiuw==}
@@ -6941,6 +7023,9 @@ packages:
     resolution: {integrity: sha512-1to4zXBxmXHV3IiSSEInrreIlu02vUOvrhxJJH5vcxYTBDAx51cqZiKdyTxlecdKNSjj8EcxGBxNf6Vg+945gw==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
 
+  which-module@2.0.1:
+    resolution: {integrity: sha512-iBdZ57RDvnOR9AGBhML2vFZf7h8vmBjhoaZqODJBFWHVtKkDmKuHai3cx5PgVMrX5YDNp27AofYbAwctSS+vhQ==}
+
   which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
     engines: {node: '>= 8'}
@@ -6970,6 +7055,10 @@ packages:
   word@0.3.0:
     resolution: {integrity: sha512-OELeY0Q61OXpdUfTp+oweA/vtLVg5VDOXh+3he3PNzLGG/y0oylSOC1xRVj0+l4vQ3tj/bB1HVHv1ocXkQceFA==}
     engines: {node: '>=0.8'}
+
+  wrap-ansi@6.2.0:
+    resolution: {integrity: sha512-r6lPcBGxZXlIcymEu7InxDMhdW0KDxpLgoFLcguasxCaJ/SOIZwINatK9KY/tf+ZrlywOKU0UDj3ATXUBfxJXA==}
+    engines: {node: '>=8'}
 
   wrap-ansi@7.0.0:
     resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}
@@ -7014,6 +7103,9 @@ packages:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
     engines: {node: '>=0.4'}
 
+  y18n@4.0.3:
+    resolution: {integrity: sha512-JKhqTOwSrqNA1NY5lSztJ1GrBiUodLMmIZuLiDaMRJ+itFd+ABVE8XBjOvIWL+rSqNDC74LCSFmlb/U4UZ4hJQ==}
+
   y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
@@ -7030,9 +7122,17 @@ packages:
     engines: {node: '>= 14.6'}
     hasBin: true
 
+  yargs-parser@18.1.3:
+    resolution: {integrity: sha512-o50j0JeToy/4K6OZcaQmW6lyXXKhq7csREXcDwk2omFPJEwUNOVtJKvmDr9EI1fAJZUyZcRF7kxGBWmRXudrCQ==}
+    engines: {node: '>=6'}
+
   yargs-parser@21.1.1:
     resolution: {integrity: sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw==}
     engines: {node: '>=12'}
+
+  yargs@15.4.1:
+    resolution: {integrity: sha512-aePbxDmcYW++PaqBsJ+HYUFwCdv4LVvdnhBy78E57PIor8/OVvhMrADFFEDh8DHDFRv/O9i3lPhsENjO7QX0+A==}
+    engines: {node: '>=8'}
 
   yargs@17.7.2:
     resolution: {integrity: sha512-7dSzzRQ++CKnNI/krKnYRV7JKKPUXMEh61soaHKg9mrWEhzFWhFnxPxGl+69cD1Ou63C13NUPCnmIcrvqCuM6w==}
@@ -10186,6 +10286,37 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
+  '@sva/auth-runtime@file:packages/auth-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(typescript@6.0.3)':
+    dependencies:
+      '@aws-sdk/client-s3': 3.1053.0
+      '@aws-sdk/s3-request-presigner': 3.1053.0
+      '@opentelemetry/api': 1.9.1
+      '@sva/core': file:packages/core
+      '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/iam-admin': file:packages/iam-admin(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/iam-core': file:packages/iam-core
+      '@sva/iam-governance': file:packages/iam-governance(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/instance-registry': file:packages/instance-registry(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/media': file:packages/media
+      '@sva/plugin-sdk': file:packages/plugin-sdk
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/studio-module-iam': file:packages/studio-module-iam
+      cookie-es: 3.1.1
+      file-type: 22.0.1
+      graphile-worker: 0.16.6(typescript@6.0.3)
+      ioredis: 5.11.0
+      openid-client: 6.8.4
+      pg: 8.21.0
+      postcss: 8.5.11
+      sanitize-html: 2.17.4
+      sharp: 0.34.5
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - pg-native
+      - supports-color
+      - typescript
+
   '@sva/core@file:packages/core': {}
 
   '@sva/data-repositories@file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
@@ -10197,6 +10328,44 @@ snapshots:
       - '@opentelemetry/core'
       - pg-native
       - supports-color
+
+  '@sva/iam-admin@file:packages/iam-admin(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
+    dependencies:
+      '@sva/core': file:packages/core
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/studio-module-iam': file:packages/studio-module-iam
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - supports-color
+
+  '@sva/iam-core@file:packages/iam-core':
+    dependencies:
+      '@sva/core': file:packages/core
+
+  '@sva/iam-governance@file:packages/iam-governance(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
+    dependencies:
+      '@sva/core': file:packages/core
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      postcss: 8.5.11
+      sanitize-html: 2.17.4
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - supports-color
+
+  '@sva/instance-registry@file:packages/instance-registry(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
+    dependencies:
+      '@sva/core': file:packages/core
+      '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - pg-native
+      - supports-color
+
+  '@sva/media@file:packages/media': {}
 
   '@sva/monitoring-client@file:packages/monitoring-client(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
     dependencies:
@@ -10215,6 +10384,24 @@ snapshots:
       - '@opentelemetry/core'
       - supports-color
 
+  '@sva/plugin-sdk@file:packages/plugin-sdk':
+    dependencies:
+      '@sva/core': file:packages/core
+
+  '@sva/routing@file:packages/routing(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3)':
+    dependencies:
+      '@sva/auth-runtime': file:packages/auth-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(typescript@6.0.3)
+      '@sva/plugin-sdk': file:packages/plugin-sdk
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@tanstack/react-router': 1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - pg-native
+      - react
+      - react-dom
+      - supports-color
+      - typescript
+
   '@sva/server-runtime@file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))':
     dependencies:
       '@opentelemetry/api': 1.9.1
@@ -10226,6 +10413,22 @@ snapshots:
     transitivePeerDependencies:
       - '@opentelemetry/core'
       - supports-color
+
+  '@sva/studio-module-iam@file:packages/studio-module-iam': {}
+
+  '@sva/sva-mainserver@file:packages/sva-mainserver(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(typescript@6.0.3)':
+    dependencies:
+      '@opentelemetry/api': 1.9.1
+      '@sva/auth-runtime': file:packages/auth-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(typescript@6.0.3)
+      '@sva/core': file:packages/core
+      '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/core'
+      - pg-native
+      - supports-color
+      - typescript
 
   '@tabler/icons-react@3.44.0(react@19.2.6)':
     dependencies:
@@ -11201,6 +11404,8 @@ snapshots:
 
   callsites@3.1.0: {}
 
+  camelcase@5.3.1: {}
+
   caniuse-lite@1.0.30001793: {}
 
   cfb@1.2.2:
@@ -11234,6 +11439,12 @@ snapshots:
   cli-spinners@2.6.1: {}
 
   cli-width@4.1.0: {}
+
+  cliui@6.0.0:
+    dependencies:
+      string-width: 4.2.3
+      strip-ansi: 6.0.1
+      wrap-ansi: 6.2.0
 
   cliui@8.0.1:
     dependencies:
@@ -11348,6 +11559,8 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
+  decamelize@1.2.0: {}
+
   decimal.js@10.6.0: {}
 
   deep-is@0.1.4: {}
@@ -11375,6 +11588,8 @@ snapshots:
       address: 2.0.3
 
   diff@8.0.4: {}
+
+  dijkstrajs@1.0.3: {}
 
   dom-accessibility-api@0.5.16: {}
 
@@ -11665,6 +11880,11 @@ snapshots:
       uint8array-extras: 1.5.0
     transitivePeerDependencies:
       - supports-color
+
+  find-up@4.1.0:
+    dependencies:
+      locate-path: 5.0.0
+      path-exists: 4.0.0
 
   find-up@5.0.0:
     dependencies:
@@ -12119,6 +12339,10 @@ snapshots:
 
   lines-and-columns@2.0.3: {}
 
+  locate-path@5.0.0:
+    dependencies:
+      p-locate: 4.1.0
+
   locate-path@6.0.0:
     dependencies:
       p-locate: 5.0.0
@@ -12554,13 +12778,23 @@ snapshots:
       - '@emnapi/core'
       - '@emnapi/runtime'
 
+  p-limit@2.3.0:
+    dependencies:
+      p-try: 2.2.0
+
   p-limit@3.1.0:
     dependencies:
       yocto-queue: 0.1.0
 
+  p-locate@4.1.0:
+    dependencies:
+      p-limit: 2.3.0
+
   p-locate@5.0.0:
     dependencies:
       p-limit: 3.1.0
+
+  p-try@2.2.0: {}
 
   parent-module@1.0.1:
     dependencies:
@@ -12640,6 +12874,8 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.2
 
+  pngjs@5.0.0: {}
+
   postcss-value-parser@4.2.0: {}
 
   postcss@8.5.11:
@@ -12690,6 +12926,12 @@ snapshots:
   punycode@2.3.1: {}
 
   pure-rand@6.1.0: {}
+
+  qrcode@1.5.4:
+    dependencies:
+      dijkstrajs: 1.0.3
+      pngjs: 5.0.0
+      yargs: 15.4.1
 
   react-dom@19.2.6(react@19.2.6):
     dependencies:
@@ -12778,6 +13020,8 @@ snapshots:
       module-details-from-path: 1.0.4
     transitivePeerDependencies:
       - supports-color
+
+  require-main-filename@2.0.0: {}
 
   resolve-from@4.0.0: {}
 
@@ -12884,6 +13128,8 @@ snapshots:
       seroval: 1.4.2
 
   seroval@1.4.2: {}
+
+  set-blocking@2.0.0: {}
 
   set-cookie-parser@3.1.0: {}
 
@@ -13264,6 +13510,8 @@ snapshots:
     transitivePeerDependencies:
       - '@noble/hashes'
 
+  which-module@2.0.1: {}
+
   which@2.0.2:
     dependencies:
       isexe: 2.0.0
@@ -13298,6 +13546,12 @@ snapshots:
   word-wrap@1.2.5: {}
 
   word@0.3.0: {}
+
+  wrap-ansi@6.2.0:
+    dependencies:
+      ansi-styles: 4.3.0
+      string-width: 4.2.3
+      strip-ansi: 6.0.1
 
   wrap-ansi@7.0.0:
     dependencies:
@@ -13334,6 +13588,8 @@ snapshots:
 
   xtend@4.0.2: {}
 
+  y18n@4.0.3: {}
+
   y18n@5.0.8: {}
 
   yallist@3.1.1: {}
@@ -13342,7 +13598,26 @@ snapshots:
 
   yaml@2.9.0: {}
 
+  yargs-parser@18.1.3:
+    dependencies:
+      camelcase: 5.3.1
+      decamelize: 1.2.0
+
   yargs-parser@21.1.1: {}
+
+  yargs@15.4.1:
+    dependencies:
+      cliui: 6.0.0
+      decamelize: 1.2.0
+      find-up: 4.1.0
+      get-caller-file: 2.0.5
+      require-directory: 2.1.1
+      require-main-filename: 2.0.0
+      set-blocking: 2.0.0
+      string-width: 4.2.3
+      which-module: 2.0.1
+      y18n: 4.0.3
+      yargs-parser: 18.1.3
 
   yargs@17.7.2:
     dependencies:

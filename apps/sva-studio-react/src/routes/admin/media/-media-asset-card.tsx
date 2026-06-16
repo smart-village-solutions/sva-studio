@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { Folder } from 'lucide-react';
 
 import { Badge } from '../../../components/ui/badge';
 import { Card, CardContent } from '../../../components/ui/card';
@@ -63,6 +64,25 @@ const formatFileType = (mimeType: string | undefined): string => {
   return subtype ? subtype.toUpperCase() : mimeType.toUpperCase();
 };
 
+const formatUpdatedAt = (value: string | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const locale = getActiveLocale() === 'de' ? 'de-DE' : 'en-US';
+  return new Intl.DateTimeFormat(locale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
+};
+
 const imageMimeTypeByExtension: Readonly<Record<string, string>> = {
   avif: 'image/avif',
   gif: 'image/gif',
@@ -105,16 +125,18 @@ export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAsse
   const state = resolveMediaCardState(asset, referenceCount, usageStatus);
   const fileType = formatFileType(isRegisteredMediaAsset(asset) ? asset.mimeType : inferMimeTypeFromFileName(asset.fileName));
   const previewMimeType = isRegisteredMediaAsset(asset) ? asset.mimeType : inferMimeTypeFromFileName(asset.fileName);
-  const previewUrl = !isRegisteredMediaAsset(asset) ? asset.previewUrl ?? undefined : undefined;
+  const isImageCard = isVisualPreview(previewMimeType);
+  const previewUrl = asset.previewUrl ?? undefined;
   const secondaryText = isRegisteredMediaAsset(asset)
     ? asset.metadata.altText?.trim() || asset.storageKey
     : asset.relativePath;
+  const updatedAt = formatUpdatedAt(asset.updatedAt ?? undefined);
   const folderText =
     !isRegisteredMediaAsset(asset) && asset.folderPath.length > 0
       ? t('media.library.assetCard.folderValue', { folder: asset.folderPath })
       : null;
   const cardContent = (
-    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-shell transition-colors hover:border-primary/30">
+    <Card className="flex h-full flex-col overflow-hidden border-border/70 bg-card/95 shadow-shell transition-colors hover:border-primary/30">
       <div
         className={cn(
           'flex min-h-28 items-center justify-center border-b border-border/60 text-center',
@@ -147,12 +169,22 @@ export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAsse
           </div>
         )}
       </div>
-      <CardContent className="space-y-3 p-4">
+      <CardContent className="flex flex-1 flex-col justify-between gap-3 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">
-            <h2 className="truncate text-sm font-semibold text-foreground">{label}</h2>
-            <p className="line-clamp-2 text-xs text-muted-foreground">{secondaryText}</p>
-            {folderText ? <p className="text-xs text-muted-foreground">{folderText}</p> : null}
+            {isImageCard ? null : <h2 className="truncate text-sm font-semibold text-foreground">{label}</h2>}
+            {isImageCard ? null : <p className="line-clamp-2 text-xs text-muted-foreground">{secondaryText}</p>}
+            {folderText ? (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Folder aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                <span>{asset.folderPath}</span>
+              </p>
+            ) : null}
+            {updatedAt ? (
+              <p className="text-xs text-muted-foreground">
+                {t('media.meta.updatedAt')} {updatedAt}
+              </p>
+            ) : null}
           </div>
           <Badge className={stateClassNameByValue[state]} variant={stateVariantByValue[state]}>
             {t(`media.library.cardStates.${state}`)}
@@ -171,7 +203,7 @@ export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAsse
   if (!isRegisteredMediaAsset(asset)) {
     return (
       <a
-        className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         href={`/admin/media/${encodeBucketMediaId(asset.storageKey)}?storageKey=${encodeURIComponent(asset.storageKey)}&fileName=${encodeURIComponent(asset.fileName)}&folderPath=${encodeURIComponent(asset.folderPath)}&relativePath=${encodeURIComponent(asset.relativePath)}&byteSize=${asset.byteSize}&updatedAt=${encodeURIComponent(asset.updatedAt ?? '')}&lastModified=${encodeURIComponent(asset.lastModified ?? '')}&previewUrl=${encodeURIComponent(asset.previewUrl ?? '')}`}
       >
         {cardContent}
@@ -180,7 +212,7 @@ export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAsse
   }
 
   return (
-    <Link className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" params={{ mediaId: asset.id }} to="/admin/media/$mediaId">
+    <Link className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" params={{ mediaId: asset.id }} to="/admin/media/$mediaId">
       {cardContent}
     </Link>
   );

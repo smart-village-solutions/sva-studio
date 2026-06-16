@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   deriveMimeTypeFromUnregisteredMedia,
+  useSingleFileMediaUpload,
   useCreateMediaUpload,
   useMediaDetail,
   useMediaLibrary,
@@ -37,6 +38,7 @@ const listMediaMock = vi.fn();
 const getMediaMock = vi.fn();
 const getMediaUsageMock = vi.fn();
 const initializeMediaUploadMock = vi.fn();
+const completeMediaUploadMock = vi.fn();
 const registerBucketMediaMock = vi.fn();
 const updateMediaMock = vi.fn();
 const getMediaDeliveryMock = vi.fn();
@@ -58,6 +60,7 @@ vi.mock('../lib/iam-api', () => ({
   getMediaDelivery: (...args: Parameters<typeof getMediaDeliveryMock>) => getMediaDeliveryMock(...args),
   getMediaUsage: (...args: Parameters<typeof getMediaUsageMock>) => getMediaUsageMock(...args),
   initializeMediaUpload: (...args: Parameters<typeof initializeMediaUploadMock>) => initializeMediaUploadMock(...args),
+  completeMediaUpload: (...args: Parameters<typeof completeMediaUploadMock>) => completeMediaUploadMock(...args),
   isRegisteredMediaAsset: (asset: { id?: string }) => typeof asset.id === 'string',
   listMedia: (...args: Parameters<typeof listMediaMock>) => listMediaMock(...args),
   registerBucketMedia: (...args: Parameters<typeof registerBucketMediaMock>) => registerBucketMediaMock(...args),
@@ -117,6 +120,32 @@ function MediaUploadProbe() {
       </button>
       <button type="button" onClick={() => media.clearMutationError()}>
         clear
+      </button>
+    </div>
+  );
+}
+
+function SingleFileUploadProbe() {
+  const media = useSingleFileMediaUpload();
+
+  return (
+    <div>
+      <span data-testid="upload-phase">{media.phase}</span>
+      <span data-testid="upload-error">{media.error?.message ?? 'none'}</span>
+      <span data-testid="upload-asset-id">{media.assetId ?? 'none'}</span>
+      <span data-testid="upload-session-id">{media.uploadSessionId ?? 'none'}</span>
+      <input
+        data-testid="file-input"
+        type="file"
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          if (file) {
+            void media.uploadFile(file);
+          }
+        }}
+      />
+      <button type="button" onClick={() => media.reset()}>
+        reset-upload
       </button>
     </div>
   );
@@ -198,6 +227,7 @@ describe('useMediaLibrary', () => {
     getMediaMock.mockReset();
     getMediaUsageMock.mockReset();
     initializeMediaUploadMock.mockReset();
+    completeMediaUploadMock.mockReset();
     registerBucketMediaMock.mockReset();
     updateMediaMock.mockReset();
     getMediaDeliveryMock.mockReset();
@@ -696,6 +726,163 @@ describe('useCreateMediaUpload', () => {
   );
 });
 
+describe('useSingleFileMediaUpload', () => {
+  beforeEach(() => {
+    invalidatePermissionsMock.mockReset();
+    initializeMediaUploadMock.mockReset();
+    completeMediaUploadMock.mockReset();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('uploads a single file through initialize put and complete', async () => {
+    initializeMediaUploadMock.mockResolvedValue({
+      data: {
+        assetId: 'asset-1',
+        uploadSessionId: 'upload-1',
+        uploadUrl: 'https://uploads.example.test/asset-1',
+        method: 'PUT',
+        headers: { 'Content-Type': 'image/jpeg' },
+        expiresAt: '2026-06-16T12:00:00.000Z',
+        status: 'pending',
+        initializedAt: '2026-06-16T11:00:00.000Z',
+      },
+    });
+    completeMediaUploadMock.mockResolvedValue({
+      data: {
+        assetId: 'asset-1',
+        uploadSessionId: 'upload-1',
+        status: 'processed',
+      },
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<SingleFileUploadProbe />);
+
+    fireEvent.change(screen.getByTestId('file-input'), {
+      target: {
+        files: [new File(['binary'], 'hero.jpg', { type: 'image/jpeg' })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('upload-phase').textContent).toBe('success');
+      expect(screen.getByTestId('upload-asset-id').textContent).toBe('asset-1');
+      expect(screen.getByTestId('upload-session-id').textContent).toBe('upload-1');
+    });
+
+    expect(initializeMediaUploadMock).toHaveBeenCalledWith({
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 6,
+      visibility: 'public',
+    });
+    expect(fetchMock).toHaveBeenCalledWith('https://uploads.example.test/asset-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'image/jpeg' },
+      body: expect.any(File),
+    });
+    expect(completeMediaUploadMock).toHaveBeenCalledWith('upload-1');
+  });
+
+  it('stores initialize failures and invalidates permissions on protected responses', async () => {
+    initializeMediaUploadMock.mockRejectedValue({
+      status: 403,
+      code: 'forbidden',
+      message: 'Forbidden',
+    });
+    vi.stubGlobal('fetch', vi.fn());
+
+    render(<SingleFileUploadProbe />);
+
+    fireEvent.change(screen.getByTestId('file-input'), {
+      target: {
+        files: [new File(['binary'], 'hero.jpg', { type: 'image/jpeg' })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('upload-phase').textContent).toBe('error');
+      expect(screen.getByTestId('upload-error').textContent).toBe('Forbidden');
+    });
+
+    expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
+    expect(completeMediaUploadMock).not.toHaveBeenCalled();
+  });
+
+  it('stores signed upload transport failures without calling completion', async () => {
+    initializeMediaUploadMock.mockResolvedValue({
+      data: {
+        assetId: 'asset-1',
+        uploadSessionId: 'upload-1',
+        uploadUrl: 'https://uploads.example.test/asset-1',
+        method: 'PUT',
+        headers: { 'Content-Type': 'image/jpeg' },
+        expiresAt: '2026-06-16T12:00:00.000Z',
+        status: 'pending',
+        initializedAt: '2026-06-16T11:00:00.000Z',
+      },
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
+
+    render(<SingleFileUploadProbe />);
+
+    fireEvent.change(screen.getByTestId('file-input'), {
+      target: {
+        files: [new File(['binary'], 'hero.jpg', { type: 'image/jpeg' })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('upload-phase').textContent).toBe('error');
+      expect(screen.getByTestId('upload-error').textContent).toContain('media_upload_put_failed:500');
+    });
+
+    expect(completeMediaUploadMock).not.toHaveBeenCalled();
+  });
+
+  it('stores completion failures after the file transfer finishes', async () => {
+    initializeMediaUploadMock.mockResolvedValue({
+      data: {
+        assetId: 'asset-1',
+        uploadSessionId: 'upload-1',
+        uploadUrl: 'https://uploads.example.test/asset-1',
+        method: 'PUT',
+        headers: { 'Content-Type': 'image/jpeg' },
+        expiresAt: '2026-06-16T12:00:00.000Z',
+        status: 'pending',
+        initializedAt: '2026-06-16T11:00:00.000Z',
+      },
+    });
+    completeMediaUploadMock.mockRejectedValue({
+      status: 500,
+      code: 'database_unavailable',
+      message: 'Database unavailable',
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 200 })));
+
+    render(<SingleFileUploadProbe />);
+
+    fireEvent.change(screen.getByTestId('file-input'), {
+      target: {
+        files: [new File(['binary'], 'hero.jpg', { type: 'image/jpeg' })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('upload-phase').textContent).toBe('error');
+      expect(screen.getByTestId('upload-error').textContent).toBe('Database unavailable');
+      expect(screen.getByTestId('upload-asset-id').textContent).toBe('asset-1');
+      expect(screen.getByTestId('upload-session-id').textContent).toBe('upload-1');
+    });
+  });
+});
+
 describe('useRegisterBucketMedia', () => {
   beforeEach(() => {
     invalidatePermissionsMock.mockReset();
@@ -928,7 +1115,7 @@ describe('useMediaDetail', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
-      expect(screen.getByTestId('mutation-error').textContent).toBe('delivery_unavailable');
+      expect(screen.getByTestId('mutation-error').textContent).toBe('none');
     });
 
     expect(getMediaDeliveryMock).toHaveBeenCalledTimes(1);

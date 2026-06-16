@@ -88,6 +88,19 @@ const isGeneratedVariantObject = (instanceId: string, storageKey: string): boole
   return segments[0] === instanceId && segments[1] === 'variants';
 };
 
+const getListingItemSortTimestamp = (item: MediaListingItem): number => {
+  const primaryTimestamp = toSortTimestamp(item.updatedAt);
+  if (primaryTimestamp > 0) {
+    return primaryTimestamp;
+  }
+
+  if ('createdAt' in item) {
+    return toSortTimestamp(item.createdAt);
+  }
+
+  return 0;
+};
+
 export const mergeMediaListingPage = (input: {
   instanceId: string;
   page: number;
@@ -160,8 +173,8 @@ export const mergeMediaListingPage = (input: {
     : [];
 
   const merged = [...registeredAssets, ...unregisteredItems].sort((left, right) => {
-    const leftTime = toSortTimestamp(left.updatedAt);
-    const rightTime = toSortTimestamp(right.updatedAt);
+    const leftTime = getListingItemSortTimestamp(left);
+    const rightTime = getListingItemSortTimestamp(right);
 
     if (rightTime !== leftTime) {
       return rightTime - leftTime;

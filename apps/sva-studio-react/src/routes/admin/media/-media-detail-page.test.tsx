@@ -6,6 +6,14 @@ import { MediaDetailPage } from './-media-detail-page';
 
 const useMediaDetailMock = vi.fn();
 const navigateMock = vi.fn();
+const qrCodeToDataUrlMock = vi.fn();
+const qrCodeToStringMock = vi.fn();
+const clipboardWriteTextMock = vi.fn();
+
+vi.mock('qrcode', () => ({
+  toDataURL: (...args: unknown[]) => qrCodeToDataUrlMock(...args),
+  toString: (...args: unknown[]) => qrCodeToStringMock(...args),
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -32,6 +40,16 @@ describe('MediaDetailPage', () => {
   beforeEach(() => {
     useMediaDetailMock.mockReset();
     navigateMock.mockReset();
+    qrCodeToDataUrlMock.mockReset();
+    qrCodeToStringMock.mockReset();
+    clipboardWriteTextMock.mockReset();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: clipboardWriteTextMock,
+      },
+    });
+    clipboardWriteTextMock.mockResolvedValue(undefined);
     useMediaDetailMock.mockReturnValue({
       asset: {
         id: 'asset-2',
@@ -40,7 +58,7 @@ describe('MediaDetailPage', () => {
         mediaType: 'image',
         mimeType: 'image/jpeg',
         byteSize: 4096,
-        visibility: 'protected',
+        visibility: 'public',
         uploadStatus: 'processed',
         processingStatus: 'ready',
         metadata: {
@@ -65,7 +83,7 @@ describe('MediaDetailPage', () => {
       },
       delivery: {
         assetId: 'asset-2',
-        visibility: 'protected',
+        visibility: 'public',
         deliveryUrl: 'https://delivery.example.test',
         expiresAt: '2026-06-04T12:00:00.000Z',
       },
@@ -92,9 +110,33 @@ describe('MediaDetailPage', () => {
       'https://delivery.example.test'
     );
     expect(screen.getByText('1 Verwendung')).toBeTruthy();
-    expect(screen.getByText('Geschützt')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Auslieferungslink erzeugen' })).toBeTruthy();
+    expect(screen.getByText('Öffentlich')).toBeTruthy();
     expect(screen.getByText('Auslieferungs-URL')).toBeTruthy();
+  });
+
+  it('shows the public url tools with copy and qr actions for public assets', async () => {
+    qrCodeToStringMock.mockResolvedValue('<svg viewBox="0 0 10 10"><rect width="10" height="10" fill="#fff"/></svg>');
+    qrCodeToDataUrlMock.mockResolvedValue('data:image/png;base64,qrpng');
+
+    render(<MediaDetailPage assetId="asset-2" />);
+
+    expect(screen.getByText('Öffentliche URL')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Auslieferungslink erzeugen' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Öffentliche URL kopieren' }));
+    await waitFor(() => {
+      expect(clipboardWriteTextMock).toHaveBeenCalledWith('https://delivery.example.test');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'QR-Code anzeigen' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'QR-Code zur öffentlichen URL' })).toBeTruthy();
+      expect(screen.getByRole('link', { name: 'QR-Code als PNG laden' }).getAttribute('href')).toBe('data:image/png;base64,qrpng');
+      expect(screen.getByRole('link', { name: 'QR-Code als SVG laden' }).getAttribute('href')).toContain(
+        'data:image/svg+xml'
+      );
+    });
   });
 
   it('renders usage information inside the detail workspace instead of requiring a separate usage screen', () => {
@@ -140,6 +182,27 @@ describe('MediaDetailPage', () => {
     expect(
       screen.getByText('Die Medienaktion konnte wegen eines Konflikts nicht abgeschlossen werden.')
     ).toBeTruthy();
+  });
+
+  it('renders a detail-specific fallback message when the page data cannot be loaded', () => {
+    useMediaDetailMock.mockReturnValue({
+      asset: null,
+      usage: null,
+      delivery: null,
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateMedia: vi.fn(),
+      resolveDelivery: vi.fn(),
+      deleteMedia: vi.fn(),
+    });
+
+    render(<MediaDetailPage assetId="asset-2" />);
+
+    expect(screen.getByText('Die Mediendetailansicht konnte nicht geladen werden.')).toBeTruthy();
+    expect(screen.queryByText('Die Medienbibliothek konnte nicht geladen werden.')).toBeNull();
   });
 
   it('navigates back to the media library after a successful deletion', async () => {

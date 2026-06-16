@@ -198,7 +198,14 @@ const routeMediaRequests = async (
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: state.assets }),
+      body: JSON.stringify({
+        data: state.assets,
+        pagination: {
+          page: 1,
+          pageSize: 36,
+          total: state.assets.length,
+        },
+      }),
     });
     return;
   }
@@ -213,28 +220,14 @@ const routeMediaRequests = async (
       mimeType: body.mimeType,
       byteSize: body.byteSize,
       visibility: body.visibility ?? 'public',
-      uploadStatus: 'processed',
-      processingStatus: 'ready',
+      uploadStatus: 'pending',
+      processingStatus: 'pending',
       metadata: {},
-      technical: { width: 2400, height: 1600 },
+      technical: {},
       createdAt: '2026-04-29T12:10:00.000Z',
       updatedAt: '2026-04-29T12:10:00.000Z',
     };
     state.assets = [asset];
-    state.usageByAssetId['asset-1'] = {
-      assetId: 'asset-1',
-      totalReferences: 1,
-      references: [
-        {
-          id: 'ref-asset-1',
-          assetId: 'asset-1',
-          targetType: 'news',
-          targetId: 'news-1',
-          role: 'teaser_image',
-          sortOrder: 0,
-        },
-      ],
-    };
     await route.fulfill({
       status: 201,
       contentType: 'application/json',
@@ -248,6 +241,43 @@ const routeMediaRequests = async (
           expiresAt: '2026-04-29T13:10:00.000Z',
           status: 'initialized',
           initializedAt: '2026-04-29T12:10:00.000Z',
+        },
+      }),
+    });
+    return;
+  }
+
+  if (path === '/api/v1/iam/media/upload-sessions/upload-1/complete' && method === 'POST') {
+    const asset = state.assets.find((entry) => entry.id === 'asset-1');
+    if (asset) {
+      asset.uploadStatus = 'processed';
+      asset.processingStatus = 'ready';
+      asset.updatedAt = '2026-04-29T12:12:00.000Z';
+      asset.technical = { width: 2400, height: 1600 };
+      state.usageByAssetId['asset-1'] = {
+        assetId: 'asset-1',
+        totalReferences: 1,
+        references: [
+          {
+            id: 'ref-asset-1',
+            assetId: 'asset-1',
+            targetType: 'news',
+            targetId: 'news-1',
+            role: 'teaser_image',
+            sortOrder: 0,
+          },
+        ],
+      };
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          assetId: 'asset-1',
+          uploadSessionId: 'upload-1',
+          status: 'processed',
         },
       }),
     });
@@ -330,7 +360,7 @@ test.describe('media management', () => {
     await mockSharedShellRequests(page);
   });
 
-  test('covers upload initialization, detail workspace inspection, and blocked deletion', async ({ page }) => {
+  test('uploads a file from the media library and opens the detail workspace afterwards', async ({ page }) => {
     const state: {
       assets: MediaAssetRecord[];
       usageByAssetId: Record<string, MediaUsageRecord>;
@@ -342,6 +372,9 @@ test.describe('media management', () => {
     await page.route('**/api/v1/iam/media**', async (route) => {
       await routeMediaRequests(route, state);
     });
+    await page.route('https://uploads.example.test/**', async (route) => {
+      await route.fulfill({ status: 200, body: '' });
+    });
 
     page.on('dialog', async (dialog) => {
       await dialog.accept();
@@ -349,15 +382,14 @@ test.describe('media management', () => {
 
     await page.goto('/interfaces');
     await expectInterfacesShellReady(page);
-    await navigateClientSide(page, '/admin/media/new');
-    await expect(page.getByRole('heading', { name: 'Datei vorbereiten' })).toBeVisible();
-    await page.getByLabel('MIME-Typ').selectOption('image/jpeg');
-    await page.getByLabel('Dateigröße in Byte').fill('640000');
-    await page.getByRole('button', { name: 'Upload initialisieren' }).click();
+    await navigateClientSide(page, '/admin/media');
+    await expect(page.getByRole('heading', { name: 'Medienbibliothek' })).toBeVisible();
+    await page.locator('[data-testid="media-upload-input"]').setInputFiles({
+      name: 'hero.jpg',
+      mimeType: 'image/jpeg',
+      buffer: Buffer.from('binary'),
+    });
 
-    await expect(page.getByText('Nächste Schritte')).toBeVisible();
-    await expect(page.getByText('Asset-ID: asset-1')).toBeVisible();
-    await navigateClientSide(page, '/admin/media/asset-1');
     await expect(page.getByRole('heading', { name: 'asset-1' })).toBeVisible();
     await expect(page.getByText('1 Verwendung')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Auslieferungslink erzeugen' })).toBeVisible();
@@ -369,5 +401,36 @@ test.describe('media management', () => {
 
     await expect(page.getByText('Die Medienaktion konnte wegen eines Konflikts nicht abgeschlossen werden.')).toBeVisible();
     await expect(page.getByText('Aktive Referenzen: 1')).toBeVisible();
+  });
+
+  test('keeps users on the media library when the signed upload PUT fails', async ({ page }) => {
+    const state: {
+      assets: MediaAssetRecord[];
+      usageByAssetId: Record<string, MediaUsageRecord>;
+    } = {
+      assets: [],
+      usageByAssetId: {},
+    };
+
+    await page.route('**/api/v1/iam/media**', async (route) => {
+      await routeMediaRequests(route, state);
+    });
+    await page.route('https://uploads.example.test/**', async (route) => {
+      await route.fulfill({ status: 500, body: '' });
+    });
+
+    await page.goto('/interfaces');
+    await expectInterfacesShellReady(page);
+    await navigateClientSide(page, '/admin/media');
+    await expect(page.getByRole('heading', { name: 'Medienbibliothek' })).toBeVisible();
+
+    await page.locator('[data-testid="media-upload-input"]').setInputFiles({
+      name: 'hero.jpg',
+      mimeType: 'image/jpeg',
+      buffer: Buffer.from('binary'),
+    });
+
+    await expect(page.getByText('Der Upload konnte nicht abgeschlossen werden.')).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/media(?:\?|$)/);
   });
 });

@@ -113,15 +113,20 @@ describe('iam-api media helpers', () => {
 
     await completeMediaUpload('upload-1');
 
+    const [, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/iam/media/upload-sessions/upload-1/complete',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
           Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
         }),
       })
     );
+    expect(requestInit.body).toBeUndefined();
   });
 
   it('uses the canonical delivery, update, and delete endpoints for asset detail actions', async () => {

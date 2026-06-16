@@ -148,6 +148,8 @@ gleichzeitig beeinflussen.
 - Idempotency-Schlüssel für mutierende IAM-Endpoints sind mandantenspezifisch gescoped: (`instance_id`, `actor_account_id`, `endpoint`, `idempotency_key`)
 - Keycloak-Provisioning-Runs nutzen denselben kanonischen Header `Idempotency-Key`, aber einen plattformweiten Run-Scope aus (`instance_id`, `mutation`, `idempotency_key`); der gespeicherte Payload-Fingerprint basiert nur auf stabilen Request-Eingaben, nicht auf aus aktuellem Instanzzustand abgeleiteten Reconcile-Intents.
 - Inhalts-Schreibpfade folgen denselben Guardrails: CSRF-Header, Idempotency-Key bei Create, permission-basierte Freigabe (`content.read|create|update`) und revisionssichere History-Events
+- Medien-Uploads folgen im Browser dem dreistufigen Vertrag `initialize -> signed PUT -> complete`; dabei laufen nur Initialisierung und Abschluss über hostseitige IAM-Endpunkte, der Binärtransfer selbst geht direkt an den signierten Storage-Pfad
+- Upload-Logging bleibt URL- und payload-arm: Frontend und Host protokollieren Phasen, Asset-/Session-IDs und redigierte Fehlercodes, aber keine signierten Upload-URLs oder Binärinhalte
 - Mutierende Inhaltsaktionen deklarieren eine fachliche `domainCapability`; `@sva/auth-runtime` löst sie serverseitig auf bestehende primitive `content.*`-Actions auf und prüft ausschließlich diese primitive Action über die zentrale Permission Engine.
 - Globale Instanzmutationen verwenden die dedizierte Plattformrolle `instance_registry_admin`
 - `instance.registry.manage` ist ebenso Root-only: tenantseitige Rollen-, Gruppen- und Permission-Kataloge dürfen dieses Recht nicht als wirksame Tenant-Berechtigung auswerten.

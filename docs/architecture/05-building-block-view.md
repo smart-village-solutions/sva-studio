@@ -598,3 +598,6 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - hostseitige Media-HTTP-Endpunkte
    - interner Storage-Port und S3-/MinIO-Adapter
    - Audit, Autorisierung und Upload-Processing für Medien
+7. Studio-Frontend (`apps/sva-studio-react/src/routes/admin/media/*`, `src/hooks/use-media.ts`)
+   - startet in `/admin/media` den Browser-Flow `initialize -> signed PUT -> complete`
+   - trennt Bibliotheks-UI, Upload-Orchestrierung und Detailnavigation bewusst in eigene Bausteine

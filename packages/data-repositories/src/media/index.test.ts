@@ -177,6 +177,16 @@ describe('media repository', () => {
     expect(statements[0]?.values).toEqual(['tenant-a', 25, 0]);
   });
 
+  it('orders asset listings with null updated timestamps last and newer created assets first as fallback', async () => {
+    const { executor, statements } = createQueuedExecutor([[assetRow]]);
+    const repository = createMediaRepository(executor);
+
+    await repository.listAssets({ instanceId: 'tenant-a' });
+
+    expect(statements[0]?.text).toContain('ORDER BY updated_at DESC NULLS LAST');
+    expect(statements[0]?.text).toContain('created_at DESC');
+  });
+
   it('counts matching assets without pagination clauses', async () => {
     const { executor, statements } = createQueuedExecutor([[{ total: 31 }]]);
     const repository = createMediaRepository(executor);

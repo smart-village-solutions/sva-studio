@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MediaLibraryPage } from './-media-library-page';
 
 const useMediaLibraryMock = vi.fn();
+const useSingleFileMediaUploadMock = vi.fn();
+const navigateMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -23,15 +25,22 @@ vi.mock('@tanstack/react-router', () => ({
       </a>
     );
   },
+  useNavigate: () => navigateMock,
 }));
 
 vi.mock('../../../hooks/use-media', () => ({
   useMediaLibrary: (...args: unknown[]) => useMediaLibraryMock(...args),
+  useSingleFileMediaUpload: (...args: unknown[]) => useSingleFileMediaUploadMock(...args),
 }));
 
 describe('MediaLibraryPage', () => {
+  const uploadFileMock = vi.fn();
+
   beforeEach(() => {
     useMediaLibraryMock.mockReset();
+    useSingleFileMediaUploadMock.mockReset();
+    uploadFileMock.mockReset();
+    navigateMock.mockReset();
     useMediaLibraryMock.mockReturnValue({
       assets: [
         {
@@ -41,6 +50,8 @@ describe('MediaLibraryPage', () => {
           mediaType: 'image',
           mimeType: 'image/jpeg',
           byteSize: 2_048_000,
+          updatedAt: '2026-06-12T08:30:00.000Z',
+          previewUrl: 'https://cdn.example.test/media/asset-ready.jpg',
           visibility: 'public',
           uploadStatus: 'processed',
           processingStatus: 'ready',
@@ -165,6 +176,14 @@ describe('MediaLibraryPage', () => {
       total: 7,
       refetch: vi.fn(),
     });
+    useSingleFileMediaUploadMock.mockReturnValue({
+      phase: 'idle',
+      error: null,
+      assetId: null,
+      uploadSessionId: null,
+      uploadFile: uploadFileMock,
+      reset: vi.fn(),
+    });
   });
 
   afterEach(() => {
@@ -175,21 +194,137 @@ describe('MediaLibraryPage', () => {
     render(<MediaLibraryPage />);
 
     expect(screen.getByRole('heading', { name: 'Medienbibliothek' })).toBeTruthy();
-    expect(screen.getByText('Quick Intake')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Dateien hochladen' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Dateien auswählen' })).toBeTruthy();
+    expect(screen.getByText('Unterstützt:')).toBeTruthy();
     expect(screen.queryByText('Blockiert')).toBeNull();
     expect(screen.queryByText('Neu')).toBeNull();
     expect(screen.queryByText('Ungenutzt')).toBeNull();
   });
 
+  it('opens the hidden file input from the intake CTA and forwards the selected file into the upload hook', () => {
+    const inputClickSpy = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => undefined);
+    uploadFileMock.mockResolvedValue(null);
+
+    render(<MediaLibraryPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dateien auswählen' }));
+    expect(inputClickSpy).toHaveBeenCalledTimes(1);
+
+    const file = new File(['binary'], 'hero.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByTestId('media-upload-input'), {
+      target: { files: [file] },
+    });
+
+    expect(uploadFileMock).toHaveBeenCalledWith(file);
+  });
+
+  it('accepts a supported image file via drag and drop', () => {
+    render(<MediaLibraryPage />);
+
+    const file = new File(['binary'], 'hero.jpg', { type: 'image/jpeg' });
+    const shelf = screen.getByTestId('media-intake-shelf');
+
+    fireEvent.dragEnter(shelf, {
+      dataTransfer: {
+        files: [file],
+        dropEffect: 'none',
+      },
+    });
+    expect(shelf.className).toContain('border-primary/50');
+
+    fireEvent.drop(shelf, {
+      dataTransfer: {
+        files: [file],
+      },
+    });
+
+    expect(uploadFileMock).toHaveBeenCalledWith(file);
+  });
+
+  it('ignores unsupported files dropped onto the intake shelf', () => {
+    render(<MediaLibraryPage />);
+
+    const file = new File(['%PDF'], 'manual.pdf', { type: 'application/pdf' });
+    fireEvent.drop(screen.getByTestId('media-intake-shelf'), {
+      dataTransfer: {
+        files: [file],
+      },
+    });
+
+    expect(uploadFileMock).not.toHaveBeenCalled();
+  });
+
+  it('renders upload progress and error states inside the intake shelf', () => {
+    useSingleFileMediaUploadMock.mockReturnValue({
+      phase: 'uploading',
+      error: null,
+      assetId: 'asset-1',
+      uploadSessionId: 'upload-1',
+      uploadFile: uploadFileMock,
+      reset: vi.fn(),
+    });
+
+    const { rerender } = render(<MediaLibraryPage />);
+    expect(screen.getByText('Datei wird hochgeladen …')).toBeTruthy();
+
+    useSingleFileMediaUploadMock.mockReturnValue({
+      phase: 'finalizing',
+      error: null,
+      assetId: 'asset-1',
+      uploadSessionId: 'upload-1',
+      uploadFile: uploadFileMock,
+      reset: vi.fn(),
+    });
+    rerender(<MediaLibraryPage />);
+    expect(screen.getByText('Upload wird abgeschlossen …')).toBeTruthy();
+
+    useSingleFileMediaUploadMock.mockReturnValue({
+      phase: 'error',
+      error: { code: 'database_unavailable' },
+      assetId: 'asset-1',
+      uploadSessionId: 'upload-1',
+      uploadFile: uploadFileMock,
+      reset: vi.fn(),
+    });
+    rerender(<MediaLibraryPage />);
+    expect(
+      screen.getByText('Die Mediendaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.')
+    ).toBeTruthy();
+  });
+
+  it('navigates to the media detail page after a successful upload', async () => {
+    uploadFileMock.mockResolvedValue({ assetId: 'asset-uploaded' });
+
+    render(<MediaLibraryPage />);
+
+    fireEvent.change(screen.getByTestId('media-upload-input'), {
+      target: { files: [new File(['binary'], 'hero.jpg', { type: 'image/jpeg' })] },
+    });
+
+    await Promise.resolve();
+
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/admin/media/$mediaId',
+      params: { mediaId: 'asset-uploaded' },
+    });
+  });
+
   it('renders asset cards with usage and status hints instead of the raw table', () => {
     render(<MediaLibraryPage />);
 
-    expect(screen.getByText('Stadtfest 2024 - Hauptbühne')).toBeTruthy();
+    const readyLink = screen.getByRole('link', { name: /Stadtfest 2024 - Hauptbühne/i });
+
     expect(screen.getByText('3 Verwendungen')).toBeTruthy();
     expect(screen.getByText('1 Verwendung')).toBeTruthy();
+    expect(screen.getByText('Geändert am 12.06.2026')).toBeTruthy();
+    expect(screen.getAllByText('Geändert am 11.06.2026').length).toBeGreaterThan(0);
     expect(screen.getAllByText('bereit').length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: /Stadtfest 2024 - Hauptbühne/i }).getAttribute('href')).toBe(
-      '/admin/media/asset-ready'
+    expect(readyLink.getAttribute('href')).toBe('/admin/media/asset-ready');
+    expect(readyLink.className).toContain('h-full');
+    expect(readyLink.firstElementChild?.className).toContain('h-full');
+    expect(screen.getByRole('img', { name: 'Stadtfest 2024 - Hauptbühne' }).getAttribute('src')).toBe(
+      'https://cdn.example.test/media/asset-ready.jpg'
     );
   });
 
@@ -205,7 +340,7 @@ describe('MediaLibraryPage', () => {
 
     const manualLink = screen.getByRole('link', { name: /manual\.pdf/i });
     expect(manualLink).toBeTruthy();
-    expect(screen.getByText('Ordner: uploads/2026/06')).toBeTruthy();
+    expect(screen.getByText('uploads/2026/06')).toBeTruthy();
     expect(screen.queryByText('Nicht registriert')).toBeNull();
     expect(manualLink.getAttribute('href')).toContain('/admin/media/bucket:');
   });

@@ -131,9 +131,9 @@ export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAsse
     ? asset.metadata.altText?.trim() || asset.storageKey
     : asset.relativePath;
   const updatedAt = formatUpdatedAt(asset.updatedAt ?? undefined);
-  const folderText =
+  const folderPath =
     !isRegisteredMediaAsset(asset) && asset.folderPath.length > 0
-      ? t('media.library.assetCard.folderValue', { folder: asset.folderPath })
+      ? asset.folderPath
       : null;
   const cardContent = (
     <Card className="flex h-full flex-col overflow-hidden border-border/70 bg-card/95 shadow-shell transition-colors hover:border-primary/30">
@@ -174,10 +174,10 @@ export const MediaAssetCard = ({ asset, referenceCount, usageStatus }: MediaAsse
           <div className="min-w-0 flex-1 space-y-1">
             {isImageCard ? null : <h2 className="truncate text-sm font-semibold text-foreground">{label}</h2>}
             {isImageCard ? null : <p className="line-clamp-2 text-xs text-muted-foreground">{secondaryText}</p>}
-            {folderText ? (
+            {folderPath ? (
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Folder aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-                <span>{asset.folderPath}</span>
+                <span>{folderPath}</span>
               </p>
             ) : null}
             {updatedAt ? (

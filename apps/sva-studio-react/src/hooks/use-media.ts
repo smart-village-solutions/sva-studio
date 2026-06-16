@@ -594,7 +594,7 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
     }
   }, [assetId, invalidatePermissions]);
 
-  const resolveDeliveryRef = React.useRef<(() => Promise<IamMediaDelivery | null>) | null>(null);
+  const resolveDeliveryRef = React.useRef<typeof resolveDelivery | null>(null);
   resolveDeliveryRef.current = resolveDelivery;
 
   React.useEffect(() => {

@@ -4,7 +4,17 @@ import { asApiItem, createApiError, parseRequestBody, readPathSegment } from '..
 import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
-import { createWasteManagementTourAfterValidation, createWasteTourWriteInput } from './tours-write-support.js';
+import {
+  createWasteTourDeleteErrorResponse,
+  logWasteTourDeleteFinalDelete,
+  logWasteTourDeleteLoaded,
+  logWasteTourDeleteRequested,
+} from './tours-delete-support.js';
+import {
+  createWasteManagementTourAfterValidation,
+  createWasteTourWriteInput,
+  deleteWasteTourDependencies,
+} from './tours-write-support.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 
@@ -198,12 +208,22 @@ export const wasteManagementTourHandlers = {
     }
 
     try {
+      logWasteTourDeleteRequested(request, instanceId, tourId);
+
       const existing = await requireDeps(deps.loadWasteTourById, 'loadWasteTourById')(instanceId, tourId);
       if (!existing) {
         return createApiError(404, 'not_found', 'Die Waste-Tour wurde nicht gefunden.', requestId);
       }
 
+      logWasteTourDeleteLoaded(instanceId, tourId, existing);
+      await deleteWasteTourDependencies({
+        deps,
+        instanceId,
+        tourId,
+      });
+      logWasteTourDeleteFinalDelete(instanceId, tourId, 'started');
       await requireDeps(deps.deleteWasteTour, 'deleteWasteTour')(instanceId, tourId);
+      logWasteTourDeleteFinalDelete(instanceId, tourId, 'completed');
 
       await emitWasteAuditEvent({
         deps,
@@ -224,21 +244,14 @@ export const wasteManagementTourHandlers = {
       if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
         throw error;
       }
-      const isConflict = typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === '23503';
-      await emitWasteAuditEvent({
+      return createWasteTourDeleteErrorResponse({
         deps,
         ctx,
         instanceId,
-        actionId: 'waste-management.tour.deleted',
-        result: 'failure',
-        reasonCode: isConflict ? 'conflict' : 'database_unavailable',
-        resourceType: 'waste_tour',
-        resourceId: tourId,
+        requestId,
+        tourId,
+        error,
       });
-      await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
-      return isConflict
-        ? createApiError(409, 'invalid_request', 'Die Waste-Tour kann wegen bestehender Zuordnungen nicht gelöscht werden.', requestId)
-        : createApiError(503, 'database_unavailable', 'Die Waste-Tour konnte nicht gelöscht werden.', requestId);
     }
   },
 };

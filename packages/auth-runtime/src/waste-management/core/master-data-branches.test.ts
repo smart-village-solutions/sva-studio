@@ -1836,6 +1836,27 @@ describe('waste-management master-data branch handlers', () => {
   it('covers tour delete success, not-found, conflict, and fallback errors', async () => {
     const createTourDeleteDeps = () => ({
       ...createDeps('waste-management.tours.manage'),
+      listWasteLocationTourLinksByTourId: vi
+        .fn()
+        .mockResolvedValueOnce([{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1' }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: 'link-2', locationId: 'location-2', tourId: 'tour-1' }])
+        .mockResolvedValueOnce([{ id: 'link-3', locationId: 'location-3', tourId: 'tour-1' }]),
+      listWasteLocationTourPickupDates: vi
+        .fn()
+        .mockResolvedValueOnce([{ id: 'pickup-1', locationId: 'location-1', tourId: 'tour-1', pickupDate: '2026-05-10', note: 'A' }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: 'pickup-2', locationId: 'location-2', tourId: 'tour-1', pickupDate: '2026-05-11', note: 'B' }])
+        .mockResolvedValueOnce([{ id: 'pickup-3', locationId: 'location-3', tourId: 'tour-1', pickupDate: '2026-05-12', note: 'C' }]),
+      listWasteTourDateShiftsByTourId: vi
+        .fn()
+        .mockResolvedValueOnce([{ id: 'shift-1', tourId: 'tour-1', originalDate: '2026-05-10', actualDate: '2026-05-11', hasYear: true, reasonType: 'holiday', reasonKey: 'holiday', followUpMode: 'skip' }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: 'shift-2', tourId: 'tour-1', originalDate: '2026-05-11', actualDate: '2026-05-12', hasYear: true, reasonType: 'holiday', reasonKey: 'holiday', followUpMode: 'skip' }])
+        .mockResolvedValueOnce([{ id: 'shift-3', tourId: 'tour-1', originalDate: '2026-05-12', actualDate: '2026-05-13', hasYear: true, reasonType: 'holiday', reasonKey: 'holiday', followUpMode: 'skip' }]),
+      deleteWasteLocationTourLink: vi.fn().mockResolvedValue(undefined),
+      deleteWasteLocationTourPickupDate: vi.fn().mockResolvedValue(undefined),
+      deleteWasteTourDateShift: vi.fn().mockResolvedValue(undefined),
       loadWasteTourById: vi
         .fn()
         .mockResolvedValueOnce({
@@ -1881,6 +1902,10 @@ describe('waste-management master-data branch handlers', () => {
       deps
     );
     expect(deleteSucceeded.status).toBe(200);
+    expect(deps.deleteWasteTour).toHaveBeenNthCalledWith(1, 'tenant-a', 'tour-1');
+    expect(deps.deleteWasteLocationTourLink).toHaveBeenNthCalledWith(1, 'tenant-a', 'link-1');
+    expect(deps.deleteWasteLocationTourPickupDate).toHaveBeenNthCalledWith(1, 'tenant-a', 'pickup-1');
+    expect(deps.deleteWasteTourDateShift).toHaveBeenNthCalledWith(1, 'tenant-a', 'shift-1');
 
     const deleteNotFound = await wasteManagementTourHandlers.deleteWasteManagementTourInternal(
       new Request('https://studio.test/api/v1/waste-management/tours/tour-404', {
@@ -1926,5 +1951,8 @@ describe('waste-management master-data branch handlers', () => {
         code: 'database_unavailable',
       },
     });
+    expect(deps.deleteWasteLocationTourLink).toHaveBeenNthCalledWith(2, 'tenant-a', 'link-2');
+    expect(deps.deleteWasteLocationTourPickupDate).toHaveBeenNthCalledWith(2, 'tenant-a', 'pickup-2');
+    expect(deps.deleteWasteTourDateShift).toHaveBeenNthCalledWith(2, 'tenant-a', 'shift-2');
   });
 });

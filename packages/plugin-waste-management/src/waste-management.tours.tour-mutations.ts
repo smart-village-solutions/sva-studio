@@ -11,6 +11,12 @@ import {
 } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
 import {
+  logWasteTourDeleteError,
+  logWasteTourDeleteStart,
+  logWasteTourDeleteSuccess,
+} from './waste-management.tours.delete-debug.js';
+import { setTourDeleteErrorMessage } from './waste-management.tours.messages.js';
+import {
   createTourDateLocationAssignmentKey,
   isCustomDatesRecurrence,
   mapTourToForm,
@@ -23,19 +29,6 @@ import type { WasteToursState } from './use-waste-tours-state.js';
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
 type WasteToursSubmissionContext = { readonly state: WasteToursState; readonly pt: Translate; readonly loadOverview: (active?: boolean) => Promise<void> };
-
-const setDeleteErrorMessage = (state: WasteToursState, pt: Translate, error: unknown) => {
-  const code = resolveApiErrorCode(error);
-  state.setMessage({
-    kind: 'error',
-    text:
-      code === 'forbidden'
-        ? pt('tours.messages.deleteForbidden')
-        : code === 'invalid_request'
-          ? pt('tours.messages.deleteConflict')
-          : pt('tours.messages.deleteError'),
-  });
-};
 
 const validateTourAssignments = (state: WasteToursState, pt: Translate) => {
   const activeDates = new Set(state.tourForm.customDates.map((entry) => entry.date));
@@ -185,7 +178,9 @@ const createDeleteTourHandler = ({ state, pt, loadOverview }: WasteToursSubmissi
   state.setMessage(null);
   state.setLastOutcome(null);
   try {
+    logWasteTourDeleteStart(tour);
     await deleteWasteManagementTour(tour.id);
+    logWasteTourDeleteSuccess(tour);
     await loadOverview(true);
     startTransition(() => {
       state.setMessage({
@@ -194,7 +189,8 @@ const createDeleteTourHandler = ({ state, pt, loadOverview }: WasteToursSubmissi
       });
     });
   } catch (saveError) {
-    setDeleteErrorMessage(state, pt, saveError);
+    logWasteTourDeleteError(tour, saveError);
+    setTourDeleteErrorMessage(state, pt, saveError);
   } finally {
     state.setSaving(false);
   }
@@ -238,9 +234,9 @@ const createDeleteToursHandler = ({ state, pt, loadOverview }: WasteToursSubmiss
       return;
     }
 
-    setDeleteErrorMessage(state, pt, failedResults[0]?.reason);
+    setTourDeleteErrorMessage(state, pt, failedResults[0]?.reason);
   } catch (saveError) {
-    setDeleteErrorMessage(state, pt, saveError);
+    setTourDeleteErrorMessage(state, pt, saveError);
   } finally {
     state.setSaving(false);
   }

@@ -1,11 +1,16 @@
+import { createSdkLogger } from '@sva/server-runtime';
+
 import { asApiItem, createApiError } from '../../shared/request-helpers.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
+import { buildLogContext } from '../../log-context.js';
 import { emitWasteAuditEvent } from './auth.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
 import { normalizeCustomTourDates, normalizeOptionalString, requireDeps } from './utils.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 
 type SaveWasteTourInput = Parameters<NonNullable<WasteManagementHandlerDeps['saveWasteTour']>>[1];
+
+const logger = createSdkLogger({ component: 'waste-management-auth-runtime', level: 'info' });
 
 export const createWasteTourWriteInput = ({
   id,
@@ -97,6 +102,56 @@ export const duplicateWasteTourDependencies = async ({
     await deleteTour(instanceId, targetTourId);
     throw error;
   }
+};
+
+export const deleteWasteTourDependencies = async ({
+  deps,
+  instanceId,
+  tourId,
+}: {
+  readonly deps: WasteManagementHandlerDeps;
+  readonly instanceId: string;
+  readonly tourId: string;
+}): Promise<void> => {
+  const listLinks = requireDeps(deps.listWasteLocationTourLinksByTourId, 'listWasteLocationTourLinksByTourId');
+  const listPickupDates = requireDeps(deps.listWasteLocationTourPickupDates, 'listWasteLocationTourPickupDates');
+  const listShifts = requireDeps(deps.listWasteTourDateShiftsByTourId, 'listWasteTourDateShiftsByTourId');
+  const deleteLink = requireDeps(deps.deleteWasteLocationTourLink, 'deleteWasteLocationTourLink');
+  const deletePickupDate = requireDeps(deps.deleteWasteLocationTourPickupDate, 'deleteWasteLocationTourPickupDate');
+  const deleteShift = requireDeps(deps.deleteWasteTourDateShift, 'deleteWasteTourDateShift');
+
+  const [links, pickupDates, shifts] = await Promise.all([
+    listLinks(instanceId, tourId),
+    listPickupDates(instanceId, { tourId }),
+    listShifts(instanceId, tourId),
+  ]);
+
+  logger.info('waste_tour_delete_dependencies_loaded', {
+    operation: 'delete_waste_tour',
+    tour_id: tourId,
+    links_count: links.length,
+    pickup_dates_count: pickupDates.length,
+    shifts_count: shifts.length,
+    link_ids: links.map((link) => link.id),
+    pickup_date_ids: pickupDates.map((pickupDate) => pickupDate.id),
+    shift_ids: shifts.map((shift) => shift.id),
+    ...buildLogContext({ kind: 'instance', instanceId }, { includeTraceId: true }),
+  });
+
+  await Promise.all([
+    ...links.map(async (link) => await deleteLink(instanceId, link.id)),
+    ...pickupDates.map(async (pickupDate) => await deletePickupDate(instanceId, pickupDate.id)),
+    ...shifts.map(async (shift) => await deleteShift(instanceId, shift.id)),
+  ]);
+
+  logger.info('waste_tour_delete_dependencies_completed', {
+    operation: 'delete_waste_tour',
+    tour_id: tourId,
+    deleted_links_count: links.length,
+    deleted_pickup_dates_count: pickupDates.length,
+    deleted_shifts_count: shifts.length,
+    ...buildLogContext({ kind: 'instance', instanceId }, { includeTraceId: true }),
+  });
 };
 
 export const createWasteManagementTourAfterValidation = async ({

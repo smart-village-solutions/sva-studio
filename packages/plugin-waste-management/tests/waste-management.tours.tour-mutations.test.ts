@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWasteToursTourMutationHandlers } from '../src/waste-management.tours.tour-mutations.js';
 
 const apiMocks = vi.hoisted(() => ({
+  appendWasteManagementDebugLog: vi.fn(),
   createWasteManagementTour: vi.fn(),
   updateWasteManagementTour: vi.fn(),
   deleteWasteManagementTour: vi.fn(),

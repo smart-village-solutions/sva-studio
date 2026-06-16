@@ -132,6 +132,12 @@ describe('waste management operations runtime', () => {
     expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS second_reminder_max_lead_days INTEGER');
     expect(statements).toContain('ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS reminder_channel_push_enabled BOOLEAN NOT NULL DEFAULT FALSE');
     expect(statements).toContain('waste_fractions_reminder_count_check');
+    expect(statements).toContain('waste_location_tour_links_tour_id_fkey');
+    expect(statements).toContain('waste_location_tour_pickup_dates_tour_id_fkey');
+    expect(statements).toContain('waste_tour_date_shifts_tour_id_fkey');
+    expect(statements).toContain('DROP CONSTRAINT IF EXISTS waste_location_tour_links_tour_id_fkey');
+    expect(statements).toContain('DROP CONSTRAINT IF EXISTS waste_location_tour_pickup_dates_tour_id_fkey');
+    expect(statements).toContain('DROP CONSTRAINT IF EXISTS waste_tour_date_shifts_tour_id_fkey');
   });
 
   it('normalizes legacy reminders without active channels to none during reminder_config backfill', () => {

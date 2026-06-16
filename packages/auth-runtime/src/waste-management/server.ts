@@ -361,6 +361,12 @@ export const wasteManagementHandlers = {
       deleteWasteManagementTourInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
         deleteWasteTour,
+        listWasteLocationTourLinksByTourId,
+        deleteWasteLocationTourLink,
+        listWasteLocationTourPickupDates,
+        deleteWasteLocationTourPickupDate,
+        listWasteTourDateShiftsByTourId,
+        deleteWasteTourDateShift,
         loadWasteTourById,
       })
     ),

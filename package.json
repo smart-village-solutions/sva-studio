@@ -50,6 +50,7 @@
     "clean:source-artifacts": "pnpm clean:generated-source-artifacts",
     "check:file-placement": "tsx scripts/ci/check-file-placement.ts",
     "check:file-placement:staged": "tsx scripts/ci/check-file-placement.ts --staged",
+    "check:guardrails:report": "tsx scripts/ci/guardrail-report.ts",
     "check:openapi:iam": "tsx scripts/ci/check-openapi-iam.ts",
     "check:server-runtime": "env -u NO_COLOR NODE_OPTIONS=\"${NODE_OPTIONS:-} --import=./scripts/ci/node-listener-budget.mjs\" nx run-many -t check:runtime --parallel=1",
     "check:server-runtime:affected": "env -u NO_COLOR NODE_OPTIONS=\"${NODE_OPTIONS:-} --import=./scripts/ci/node-listener-budget.mjs\" nx affected --target=check:runtime --base=${NX_BASE:-origin/main} --parallel=1",

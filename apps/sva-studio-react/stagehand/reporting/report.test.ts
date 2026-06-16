@@ -1,0 +1,133 @@
+import { describe, expect, it } from 'vitest';
+
+import { renderStagehandMarkdownReport } from './report.ts';
+
+describe('renderStagehandMarkdownReport', () => {
+  it('renders the markdown report in German', () => {
+    const report = {
+      generatedAt: '2026-05-16T08:30:00.000Z',
+      mission: 'admin-users-overview' as const,
+      status: 'passed' as const,
+      stories: [
+        {
+          id: 18,
+          packageId: 'IAM-P2',
+          role: 'Organisations-Admin',
+          title: 'Als Organisations-Admin möchte ich neue Nutzer anlegen können, damit ich mein Team verwalten kann.',
+          acceptanceCriteria: ['Ein neuer Nutzerzugang kann im Studio angelegt werden.'],
+        },
+      ],
+      findings: ['Users list loaded', 'No permission edit controls visible'],
+      screenshots: ['artifacts/admin-users-overview-01.png'],
+      transcriptPath: 'artifacts/admin-users-overview.jsonl',
+    };
+
+    const markdown = renderStagehandMarkdownReport(report);
+
+    expect(markdown).toContain('# Stagehand-Missionsbericht');
+    expect(markdown).toContain('Mission: `admin-users-overview`');
+    expect(markdown).toContain('Status: `passed`');
+    expect(markdown).toContain('Transkript:');
+    expect(markdown).toContain('```text\nartifacts/admin-users-overview.jsonl\n```');
+    expect(markdown).toContain('## Story-Basis');
+    expect(markdown).toContain('IAM-P2 / Story 18');
+    expect(markdown).toContain('Ein neuer Nutzerzugang kann im Studio angelegt werden.');
+    expect(markdown).toContain('Users list loaded');
+    expect(markdown).toContain('No permission edit controls visible');
+    expect(markdown).toContain('- Screenshot\n  ```text\n  artifacts/admin-users-overview-01.png\n  ```');
+  });
+
+  it('renders German fallback text for empty findings and screenshots', () => {
+    const markdown = renderStagehandMarkdownReport({
+      generatedAt: '2026-05-16T08:30:00.000Z',
+      mission: 'admin-users-overview',
+      status: 'blocked',
+      stories: [],
+      findings: [],
+      screenshots: [],
+      transcriptPath: 'artifacts/admin-users-overview.jsonl',
+    });
+
+    expect(markdown).toContain('## Erkenntnisse');
+    expect(markdown).toContain('## Screenshots');
+    expect(markdown).toContain('- Keine');
+  });
+
+  it('renders multiline findings as stable markdown list items', () => {
+    const markdown = renderStagehandMarkdownReport({
+      generatedAt: '2026-05-16T08:30:00.000Z',
+      mission: 'admin-users-overview',
+      status: 'failed',
+      stories: [],
+      findings: ['Erste Zeile\nZweite `Zeile`'],
+      screenshots: [],
+      transcriptPath: 'artifacts/admin-users-overview.jsonl',
+    });
+
+    expect(markdown).toContain('## Erkenntnisse');
+    expect(markdown).toContain('- Erste Zeile\n  Zweite \\`Zeile\\`');
+  });
+
+  it('preserves backslashes in findings while still escaping backticks', () => {
+    const markdown = renderStagehandMarkdownReport({
+      generatedAt: '2026-05-16T08:30:00.000Z',
+      mission: 'admin-users-overview',
+      status: 'failed',
+      stories: [],
+      findings: ['Pfad C:\\temp\\stagehand und `Hinweis`'],
+      screenshots: [],
+      transcriptPath: 'artifacts/admin-users-overview.jsonl',
+    });
+
+    expect(markdown).toContain('- Pfad C:\\temp\\stagehand und \\`Hinweis\\`');
+  });
+
+  it('preserves content for findings that start with a newline', () => {
+    const markdown = renderStagehandMarkdownReport({
+      generatedAt: '2026-05-16T08:30:00.000Z',
+      mission: 'admin-users-overview',
+      status: 'failed',
+      stories: [],
+      findings: ['\nWichtige zweite Zeile'],
+      screenshots: [],
+      transcriptPath: 'artifacts/admin-users-overview.jsonl',
+    });
+
+    expect(markdown).toContain('## Erkenntnisse');
+    expect(markdown).toContain('-\n  Wichtige zweite Zeile');
+  });
+
+  it('renders transcript and screenshots safely for multiline values and backticks', () => {
+    const markdown = renderStagehandMarkdownReport({
+      generatedAt: '2026-05-16T08:30:00.000Z',
+      mission: 'admin-users-overview',
+      status: 'passed',
+      stories: [],
+      findings: [],
+      screenshots: ['artifacts/shot-`01`.png\nartifacts/shot-02.png'],
+      transcriptPath: 'artifacts/trace-`raw`\ntrace.jsonl',
+    });
+
+    expect(markdown).toContain('Transkript:');
+    expect(markdown).toContain('```text\nartifacts/trace-`raw`\ntrace.jsonl\n```');
+    expect(markdown).toContain('## Screenshots');
+    expect(markdown).toContain(
+      '- Screenshot\n  ```text\n  artifacts/shot-`01`.png\n  artifacts/shot-02.png\n  ```'
+    );
+  });
+
+  it('uses a longer code fence when values already contain triple backticks', () => {
+    const markdown = renderStagehandMarkdownReport({
+      generatedAt: '2026-05-16T08:30:00.000Z',
+      mission: 'admin-users-overview',
+      status: 'passed',
+      stories: [],
+      findings: [],
+      screenshots: ['```danger```'],
+      transcriptPath: '```trace```',
+    });
+
+    expect(markdown).toContain('````text\n```trace```\n````');
+    expect(markdown).toContain('- Screenshot\n  ````text\n  ```danger```\n  ````');
+  });
+});

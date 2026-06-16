@@ -74,6 +74,14 @@ const isShiftRelevantToYearWindow = (
   );
 };
 
+const normalizeHolidayTriggerDate = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
 const expandRuleAcrossYearWindow = (
   rule: MaterializationRule,
   yearWindow: readonly number[]
@@ -146,7 +154,8 @@ const buildMaterializationRules = (input: WasteMaterializationContext): readonly
 
   const holidayRules: MaterializationRule[] = [];
   for (const rule of input.holidayRules) {
-    if (!rule.holidayDate.trim() || !rule.scope || !rule.strategy) {
+    const holidayDate = normalizeHolidayTriggerDate(rule.holidayDate);
+    if (!holidayDate || !rule.scope || !rule.strategy) {
       continue;
     }
     const direction = toDirectionFromHolidayStrategy(rule.strategy);
@@ -156,7 +165,7 @@ const buildMaterializationRules = (input: WasteMaterializationContext): readonly
 
     const candidate: MaterializationRule = {
       source: 'holiday' as const,
-      triggerDate: rule.holidayDate,
+      triggerDate: holidayDate,
       shiftDays: 1,
       direction,
       coverage: rule.scope === 'full-week' ? 'rest_of_week' : 'single_pickup',

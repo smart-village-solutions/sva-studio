@@ -139,7 +139,7 @@ Aktuelle klare PII-/Credential-Hotspots:
 - `packages/auth/src/iam-account-management/user-detail-query.mapping.ts` entschlüsselt Account-Daten.
 - `packages/auth/src/iam-data-subject-rights/**` und `iam-governance/**` benötigen PII für Betroffenenrechte und Governance-Fälle.
 - `packages/auth/src/iam-instance-registry/service-keycloak.ts` entschlüsselt Tenant-/Auth-Client-Secrets aus der Registry.
-- `packages/data/src/instance-registry/index.ts` persistiert Ciphertext-Felder und Tenant-Admin-E-Mail.
+- `packages/data-repositories/src/instance-registry/index.ts` persistiert Ciphertext-Felder und Tenant-Admin-E-Mail.
 - `packages/sva-mainserver/src/server/service.ts` lädt und cached Mainserver-Credentials und Access Tokens.
 - `packages/monitoring-client/src/otel.server.ts` enthält Redaction-Regeln für Token, Secrets, E-Mail und Authorization-Daten.
 

@@ -367,7 +367,7 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
 2. `packages/plugin-news`, `packages/plugin-events`, `packages/plugin-poi`
    - deklarieren eigene Rechtefamilien `news.*`, `events.*` und `poi.*`
    - nutzen diese Rechte für Actions, Routen und Navigation ohne produktiven `content.*`-Fallback
-3. `packages/data/src/iam/seed-plan.ts`
+3. `packages/data-repositories/src/iam/seed-plan.ts`
    - seeded plugin-spezifische Permissions als normale IAM-Permissions mit `resourceType` `news`, `events` oder `poi`
    - weist Personas Rechte namespace-isoliert zu, sodass ein News-Recht keine Events- oder POI-Freigabe impliziert
 4. `apps/sva-studio-react/src/routes/admin/roles`

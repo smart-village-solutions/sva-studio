@@ -10,9 +10,11 @@ export const dataRepositoriesPackageRoles = [
 
 export {
   createIamSeedRepository,
+  createCachedInstanceIntegrationLoader,
   createExternalInterfaceRepository,
   createInstanceIntegrationRepository,
   createInstanceRegistryRepository,
+  DEFAULT_INSTANCE_INTEGRATION_CACHE_TTL_MS,
   createMediaRepository,
   createStudioJobRepository,
   createWasteDataSourceRepository,

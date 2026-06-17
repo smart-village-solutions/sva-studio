@@ -73,8 +73,9 @@ export const requireMutationGuards = <TContext>(
   deps: InstanceRegistryMutationHttpDeps<TContext>,
   request: Request,
   ctx: TContext,
-  options?: { readonly requireFreshReauth?: boolean }
+  _options?: { readonly requireFreshReauth?: boolean }
 ): Response | null => {
+  void _options;
   const accessError = deps.ensurePlatformAccess(request, ctx);
   if (accessError) {
     return accessError;

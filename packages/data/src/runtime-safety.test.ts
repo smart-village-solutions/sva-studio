@@ -9,6 +9,43 @@ import { fileURLToPath } from 'node:url';
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const readRepoFile = (relativePath: string) => readFileSync(resolve(testDirectory, '..', '..', relativePath), 'utf8');
 
+test('@sva/data stays a db-operations and compatibility package', () => {
+  const indexSource = readRepoFile('data/src/index.ts').trim();
+  const serverSource = readRepoFile('data/src/server.ts').trim();
+  const iamCreateRepositorySource = readRepoFile('data/src/iam/repositories/create-repository.ts').trim();
+  const iamStatementsSource = readRepoFile('data/src/iam/repositories/statements.ts').trim();
+  const iamTypesSource = readRepoFile('data/src/iam/repositories/types.ts').trim();
+  const instanceIntegrationsSource = readRepoFile('data/src/integrations/instance-integrations.ts').trim();
+  const instanceIntegrationsServerSource = readRepoFile('data/src/integrations/instance-integrations.server.ts').trim();
+  const readmeSource = readRepoFile('data/README.md');
+  const packageJsonSource = readRepoFile('data/package.json');
+  const projectJsonSource = readRepoFile('data/project.json');
+
+  assert.equal(
+    indexSource,
+    "export { createDataClient } from '@sva/data-client';\nexport type { DataClientOptions } from '@sva/data-client';\nexport * from '@sva/data-repositories';"
+  );
+  assert.equal(serverSource, "export * from '@sva/data-repositories/server';");
+  assert.equal(iamCreateRepositorySource, "export { createIamSeedRepository } from '@sva/data-repositories';");
+  assert.equal(iamStatementsSource, "export { iamSeedStatements } from '@sva/data-repositories';");
+  assert.match(iamTypesSource, /from '@sva\/data-repositories';/);
+  assert.match(instanceIntegrationsSource, /createCachedInstanceIntegrationLoader/);
+  assert.match(instanceIntegrationsSource, /from '@sva\/data-repositories';/);
+  assert.equal(
+    instanceIntegrationsServerSource,
+    "export {\n  loadInstanceIntegrationRecord,\n  resetInstanceIntegrationServerState,\n  saveInstanceIntegrationRecord,\n} from '@sva/data-repositories/server';\n\nexport type { InstanceIntegrationServerLoaderOptions } from '@sva/data-repositories/server';"
+  );
+
+  assert.match(readmeSource, /Dünne Kompatibilitätsshims und Boundary-Tests/);
+  assert.match(readmeSource, /Nicht erlaubt:/);
+  assert.match(readmeSource, /neue führende Persistenzimplementierungen/);
+  assert.match(readmeSource, /neue fachliche Orchestrierung/);
+  assert.match(readmeSource, /neue Sammelimporte als Bequemlichkeits-Fassade/);
+  assert.match(packageJsonSource, /"svaPackageRoles": \[\s*"db-operations",\s*"compat"\s*\]/);
+  assert.match(projectJsonSource, /"role:db-operations"/);
+  assert.match(projectJsonSource, /"role:compat"/);
+});
+
 test('geo hierarchy migration validates only paths affected by the new edge', () => {
   const sql = readRepoFile('data/migrations/0016_iam_geo_hierarchy.sql');
 

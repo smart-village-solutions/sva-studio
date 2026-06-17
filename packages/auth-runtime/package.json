@@ -50,7 +50,7 @@
     "postcss": "^8.5.11",
     "sanitize-html": "^2.17.4",
     "sharp": "^0.34.5",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",

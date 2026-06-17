@@ -110,7 +110,8 @@ export const rolesAdminENResources = {
   },
   confirm: {
     deleteTitle: 'Delete role',
-    deleteDescription: 'The role is deleted permanently if no dependencies exist.',
+    deleteDescription:
+      'Deleting this role removes its existing user and group assignments first and then deletes the role permanently.',
   },
   sync: {
     synced: 'Synced',

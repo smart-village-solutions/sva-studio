@@ -420,7 +420,7 @@ export const WasteToursCustomDatesField = ({
                                 {assignments.map((assignment) => (
                                   <div key={assignment.id} className="rounded-2xl border border-border/70 bg-card p-4">
                                     <div className="grid gap-3 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)_auto] lg:items-start">
-                                      <div
+                                      <fieldset
                                         className="space-y-2"
                                         onBlur={(event) => {
                                           const nextTarget = event.relatedTarget;
@@ -430,6 +430,7 @@ export const WasteToursCustomDatesField = ({
                                           setActiveLocationPickerId((current) => (current === assignment.id ? null : current));
                                         }}
                                       >
+                                        <legend className="sr-only">{pt('tours.customDates.fields.location')}</legend>
                                         <label
                                           className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
                                           htmlFor={`assignment-location-${assignment.id}`}
@@ -468,6 +469,7 @@ export const WasteToursCustomDatesField = ({
                                               <button
                                                 type="button"
                                                 role="option"
+                                                aria-selected={assignment.locationId.length === 0}
                                                 className={[
                                                   'flex w-full items-start rounded-lg px-3 py-2 text-left text-sm transition-colors',
                                                   assignment.locationId.length === 0
@@ -537,7 +539,7 @@ export const WasteToursCustomDatesField = ({
                                         {duplicateAssignmentId === assignment.id ? (
                                           <p className="text-xs text-destructive">{pt('tours.customDates.messages.duplicateLocation')}</p>
                                         ) : null}
-                                      </div>
+                                      </fieldset>
                                       <div className="space-y-2">
                                         <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground" htmlFor={`assignment-note-${assignment.id}`}>
                                           {pt('tours.customDates.fields.note')}

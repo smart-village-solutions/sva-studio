@@ -19,7 +19,13 @@ import type { RoleReconcileReport } from '../../../lib/iam-api';
 import { hasPlatformInstanceAdminAccess } from '../../../lib/iam-admin-access';
 import { isTenantRoleReadOnly, isTenantRoleVisible } from '../../../lib/iam-role-governance';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
-import { roleErrorMessage, roleStatusLabel, roleStatusTone, roleTypeLabel } from './-roles-shared';
+import {
+  getRoleDeleteConfirmationContent,
+  roleErrorMessage,
+  roleStatusLabel,
+  roleStatusTone,
+  roleTypeLabel,
+} from './-roles-shared';
 
 const RECONCILE_OUTCOME_LABEL_KEYS = {
   success: 'admin.roles.messages.reconcileOutcome.success',
@@ -48,6 +54,7 @@ export const RolesPage = () => {
 
   const [search, setSearch] = React.useState('');
   const [deleteRoleId, setDeleteRoleId] = React.useState<string | null>(null);
+  const deleteConfirmation = getRoleDeleteConfirmationContent();
   const visibleRoles = React.useMemo(
     () => (isPlatformScope ? rolesApi.roles : rolesApi.roles.filter((role) => isTenantRoleVisible(role))),
     [isPlatformScope, rolesApi.roles]
@@ -302,9 +309,9 @@ export const RolesPage = () => {
 
       <ConfirmDialog
         open={Boolean(deleteRoleId)}
-        title={t('admin.roles.confirm.deleteTitle')}
-        description={t('admin.roles.confirm.deleteDescription')}
-        confirmLabel={t('admin.roles.actions.delete')}
+        title={deleteConfirmation.title}
+        description={deleteConfirmation.description}
+        confirmLabel={deleteConfirmation.confirmLabel}
         cancelLabel={t('account.actions.cancel')}
         onCancel={() => setDeleteRoleId(null)}
         onConfirm={() => {

@@ -39,11 +39,12 @@ Empfohlene Startwerte:
 
 1. `POST /api/v1/iam/roles` legt zuerst die Realm-Rolle in Keycloak an und schreibt danach das DB-Mapping.
 2. `PATCH /api/v1/iam/roles/:id` aktualisiert zuerst Keycloak und dann das DB-Mapping.
-3. `DELETE /api/v1/iam/roles/:id` entfernt zuerst die Realm-Rolle in Keycloak und danach die DB-Datensätze.
+3. `DELETE /api/v1/iam/roles/:id` entfernt zuerst die Realm-Rolle in Keycloak und danach im Tenant alle direkten Benutzerzuordnungen (`iam.account_roles`), Gruppenzuordnungen (`iam.group_roles`) und die verbleibenden Rollen-Datensätze.
 4. Bei erfolgreichem Abschluss wird `sync_state = 'synced'` gesetzt.
-5. Bei Fehlern setzt der Service `sync_state = 'failed'`, schreibt `last_error_code` und emittiert Audit-Events.
-6. Falls der synchrone Pfad nach erfolgreichem Keycloak-Schritt an der DB scheitert, läuft eine Compensation.
-7. Idempotency für mutierende Endpunkte ist pro Mandant isoliert (`instance_id`, `actor_account_id`, `endpoint`, `idempotency_key`) und verhindert damit Kollisionen über Instanzgrenzen.
+5. Die Bestätigung in der Admin-UI warnt allgemein davor, dass vorhandene Benutzer- und Gruppenzuordnungen mit entfernt werden.
+6. Bei Fehlern setzt der Service `sync_state = 'failed'`, schreibt `last_error_code` und emittiert Audit-Events.
+7. Falls der synchrone Pfad nach erfolgreichem Keycloak-Schritt an der DB scheitert, läuft eine Compensation.
+8. Idempotency für mutierende Endpunkte ist pro Mandant isoliert (`instance_id`, `actor_account_id`, `endpoint`, `idempotency_key`) und verhindert damit Kollisionen über Instanzgrenzen.
 
 ## Sync-Zustände
 
@@ -166,6 +167,11 @@ Pflichtfelder:
 - `request_id`
 - `trace_id` optional
 - `span_id` optional
+
+Zusatzfelder beim Rollenlöschen:
+
+- `removed_account_role_assignments`
+- `removed_group_role_assignments`
 
 Redaktionsregeln:
 

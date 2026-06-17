@@ -564,9 +564,10 @@ Fehlerpfad:
 5. `system_admin` verwaltet Custom-Rollen auf `/admin/roles` mit `POST/PATCH/DELETE /api/v1/iam/roles`.
 6. Auf Tenant-Hosts löst der Backend-Service den Adminpfad strikt aus `iam.instances.authRealm` plus `tenantAdminClient.clientId` und tenantlokalem Admin-Secret auf und führt Rollen- und Nutzer-CRUD Keycloak-First innerhalb desselben Tenant-Realms aus.
 7. Root-/Plattform-Pfade verwenden einen separaten Plattform-Admin-Client nur für Instanz-Provisioning, Reconcile und explizites Break-Glass.
-8. Nach erfolgreichem Tenant-Sync schreibt der Service das lokale IAM-Mapping.
-9. Bei Erfolg werden `role.sync_succeeded` und `role.created|updated|deleted` auditierbar protokolliert.
-10. Bei Fehlern werden `sync_state`, `last_error_code`, Metriken und `role.sync_failed` aktualisiert.
+8. Beim Löschen einer Custom-Rolle entfernt der Service nach erfolgreichem Tenant-Sync zuerst direkte Benutzer- und Gruppenzuordnungen der Rolle und danach das lokale IAM-Mapping.
+9. Die Admin-UI zeigt vor dem Bestätigen nur eine allgemeine Warnung an, dass damit auch bestehende Benutzer- und Gruppenzuordnungen entfernt werden.
+10. Bei Erfolg werden `role.sync_succeeded` und `role.created|updated|deleted` auditierbar protokolliert; der Löschpfad ergänzt dabei Zähler für entfernte Benutzer- und Gruppenzuordnungen.
+11. Bei Fehlern werden `sync_state`, `last_error_code`, Metriken und `role.sync_failed` aktualisiert.
 
 Fehlerpfad:
 

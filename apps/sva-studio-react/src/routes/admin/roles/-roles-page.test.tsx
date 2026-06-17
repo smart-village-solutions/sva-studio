@@ -241,6 +241,11 @@ describe('RolesPage', () => {
     expect(row).toBeTruthy();
     fireEvent.click(within(row!).getByRole('button', { name: 'Rolle löschen' }));
     const dialog = screen.getByRole('alertdialog', { name: 'Rolle löschen' });
+    expect(
+      within(dialog).getByText(
+        'Beim Löschen werden bestehende Benutzer- und Gruppenzuordnungen dieser Rolle entfernt und anschließend die Rolle dauerhaft gelöscht.'
+      )
+    ).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Rolle löschen' }));
 
     expect(deleteRole).toHaveBeenCalledWith('role-custom');

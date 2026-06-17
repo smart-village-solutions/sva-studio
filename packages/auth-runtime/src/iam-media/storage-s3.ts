@@ -51,11 +51,13 @@ const mimeTypeExtensions: Readonly<Record<string, string>> = {
   'image/webp': 'webp',
 };
 
+const SOLIDUS_CODE_POINT = 47;
+
 const resolveObjectExtension = (mimeType: string): string => mimeTypeExtensions[mimeType] ?? 'bin';
 
 const trimTrailingSlashes = (value: string): string => {
   let end = value.length;
-  while (end > 0 && value.charCodeAt(end - 1) === 47) {
+  while (end > 0 && value.codePointAt(end - 1) === SOLIDUS_CODE_POINT) {
     end -= 1;
   }
   return value.slice(0, end);
@@ -65,10 +67,10 @@ const trimSurroundingSlashes = (value: string): string => {
   let start = 0;
   let end = value.length;
 
-  while (start < end && value.charCodeAt(start) === 47) {
+  while (start < end && value.codePointAt(start) === SOLIDUS_CODE_POINT) {
     start += 1;
   }
-  while (end > start && value.charCodeAt(end - 1) === 47) {
+  while (end > start && value.codePointAt(end - 1) === SOLIDUS_CODE_POINT) {
     end -= 1;
   }
 

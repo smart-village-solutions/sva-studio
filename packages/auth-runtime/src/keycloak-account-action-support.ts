@@ -6,6 +6,7 @@ const logger = createSdkLogger({ component: 'keycloak-account-action-support', l
 
 const UPDATE_EMAIL_FEATURE = 'UPDATE_EMAIL';
 const CACHE_TTL_MS = 60_000;
+const SOLIDUS_CODE_POINT = 47;
 
 type CachedSupport = {
   readonly supported: boolean;
@@ -36,7 +37,7 @@ const requireEnv = (key: string): string => {
 
 const normalizeBaseUrl = (value: string): string => {
   let end = value.length;
-  while (end > 0 && value.charCodeAt(end - 1) === 47) {
+  while (end > 0 && value.codePointAt(end - 1) === SOLIDUS_CODE_POINT) {
     end -= 1;
   }
   return value.slice(0, end);

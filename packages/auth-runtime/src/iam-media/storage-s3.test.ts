@@ -495,5 +495,6 @@ describe('media storage s3 adapter', () => {
 
     expect(source).not.toContain('replace(/\\/+$/, \'\')');
     expect(source).not.toContain('replace(/^\\/+|\\/+$/g, \'\')');
+    expect(source).not.toContain('.charCodeAt(');
   });
 });

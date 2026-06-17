@@ -37,6 +37,21 @@ Für neue Integrationen gilt:
 - Repository- und Server-Zugriffe direkt über `@sva/data-repositories` beziehungsweise `@sva/data-repositories/server` anbinden.
 - Datenbank-Migrationen, Seeds und lokale Prüfskripte weiterhin über die Nx-Targets des Projekts `data` ausführen.
 
+## Package role
+
+`@sva/data` ist kein Zielpackage für neue Repository- oder Server-Fachlogik.
+
+Erlaubt:
+- Migrationen
+- Seeds
+- DB-Betriebsskripte
+- dokumentierte Kompatibilitäts-Re-Exports
+
+Nicht erlaubt:
+- neue führende Persistenzimplementierungen
+- neue fachliche Orchestrierung
+- neue Sammelimporte als Bequemlichkeits-Fassade
+
 ## Waste-Management-Boundary
 
 Für den Change `add-waste-management-plugin` wurde bewusst **keine** zusätzliche Waste-Orchestrierungs- oder Kompositionsschicht in `@sva/data` eingeführt.
@@ -57,7 +72,7 @@ Die Struktur des Packages spiegelt sowohl die verbliebene Kompatibilitätsschich
 | --- | --- |
 | `src/index.ts` | Öffentliche Compat-Fassade für Client- und Repository-Exporte |
 | `src/server.ts` | Serverseitige Compat-Fassade |
-| `src/iam/`, `src/instance-registry/`, `src/integrations/` | Historische paketinterne Fach- und Testartefakte rund um IAM, Instanzregister und Integrationen |
+| `src/iam/`, `src/instance-registry/`, `src/integrations/` | Dünne Kompatibilitätsshims und Boundary-Tests für historische Importpfade |
 | `migrations/` | Kanonische SQL-Migrationen |
 | `seeds/` | Idempotente Seed-Daten für lokale und Test-Umgebungen |
 | `scripts/` | Shell- und Node-Skripte für Migrationen, Seeds und Datenbank-Checks |

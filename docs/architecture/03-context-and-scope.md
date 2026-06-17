@@ -75,6 +75,6 @@ Referenzen:
 - `packages/auth-runtime/src/oidc.ts`
 - `packages/auth-runtime/src/redis.ts`
 - `packages/sva-mainserver/src/server/service.ts`
-- `packages/data/src/integrations/instance-integrations.ts`
+- `packages/data-repositories/src/integrations/instance-integrations.ts`
 - `docker-compose.yml`
 - `docker-compose.monitoring.yml`

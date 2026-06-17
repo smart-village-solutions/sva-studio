@@ -142,5 +142,5 @@
       }
     }
   },
-  "tags": ["scope:data", "type:lib"]
+  "tags": ["scope:data", "type:lib", "role:db-operations", "role:compat"]
 }

@@ -16,6 +16,7 @@ import {
 import type { CreateUserPayload } from './user-create-persistence.js';
 import { persistCreatedUser } from './user-create-persistence.js';
 import { maskEmail } from './user-mapping.js';
+import { provisionMainserverUserCredentials } from './mainserver-user-provisioning.js';
 
 type InvitationResult = IamCreateUserResult['invitation'];
 
@@ -63,6 +64,27 @@ const logCreateUserCompensationFailure = (input: {
   });
 };
 
+const logMainserverProvisioningFailure = (input: {
+  actor: CreateUserActorInfo;
+  email: string;
+  keycloakSubject: string;
+  error: unknown;
+}) => {
+  logger.error('IAM user mainserver provisioning failed', {
+    workspace_id: input.actor.instanceId,
+    context: {
+      operation: 'create_user_mainserver_provisioning',
+      instance_id: input.actor.instanceId,
+      request_id: input.actor.requestId,
+      trace_id: input.actor.traceId,
+      actor_account_id: input.actor.actorAccountId,
+      keycloak_subject: input.keycloakSubject,
+      email_masked: maskEmail(input.email),
+      error: input.error instanceof Error ? input.error.message : String(input.error),
+    },
+  });
+};
+
 const syncUserRolesIfNeeded = async (input: {
   actor: CreateUserActorInfo;
   identityProvider: IdentityProviderResolution;
@@ -84,6 +106,25 @@ const syncUserRolesIfNeeded = async (input: {
   await trackKeycloakCall('sync_roles', () =>
     input.identityProvider.provider.syncRoles(input.keycloakSubject, input.roleNames)
   );
+};
+
+const provisionMainserverCredentialsIfPossible = async (input: {
+  actor: CreateUserActorInfo;
+  actorSubject: string;
+  keycloakSubject: string;
+  payload: CreateUserPayload;
+}) => {
+  const credentials = await provisionMainserverUserCredentials({
+    actor: input.actor,
+    actorSubject: input.actorSubject,
+    keycloakSubject: input.keycloakSubject,
+    payload: input.payload,
+  });
+  if (!credentials) {
+    return null;
+  }
+
+  return credentials;
 };
 
 const deactivateCreatedExternalUser = async (input: {
@@ -143,8 +184,32 @@ export const executeCreateUser = async (input: {
       roleNames: result.roleNames,
     });
 
+    let mainserverCredentials: Awaited<ReturnType<typeof provisionMainserverCredentialsIfPossible>> = null;
+    try {
+      mainserverCredentials = await provisionMainserverCredentialsIfPossible({
+        actor,
+        actorSubject,
+        keycloakSubject: result.responseData.keycloakSubject,
+        payload,
+      });
+    } catch (error) {
+      logMainserverProvisioningFailure({
+        actor,
+        email: payload.email,
+        keycloakSubject: result.responseData.keycloakSubject,
+        error,
+      });
+    }
+    const responseData = mainserverCredentials
+      ? {
+          ...result.responseData,
+          mainserverUserApplicationId: mainserverCredentials.mainserverUserApplicationId,
+          mainserverUserApplicationSecretSet: true,
+        }
+      : result.responseData;
+
     if (payload.sendPasswordSetupEmail !== true) {
-      return buildCreateUserResult(result.responseData, { status: 'not_requested' });
+      return buildCreateUserResult(responseData, { status: 'not_requested' });
     }
 
     try {
@@ -152,16 +217,16 @@ export const executeCreateUser = async (input: {
         actor,
         identityProvider,
         email: payload.email,
-        keycloakSubject: result.responseData.keycloakSubject,
+        keycloakSubject: responseData.keycloakSubject,
       });
-      return buildCreateUserResult(result.responseData, invitation);
+      return buildCreateUserResult(responseData, invitation);
     } catch (error) {
       logInvitationFailure({
         actor,
-        keycloakSubject: result.responseData.keycloakSubject,
+        keycloakSubject: responseData.keycloakSubject,
         error,
       });
-      return buildCreateUserResult(result.responseData, buildInvitationFailure(error));
+      return buildCreateUserResult(responseData, buildInvitationFailure(error));
     }
   } catch (error) {
     logCreateUserFailure({

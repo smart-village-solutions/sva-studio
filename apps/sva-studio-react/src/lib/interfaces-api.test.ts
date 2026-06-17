@@ -231,6 +231,48 @@ describe('interfaces app adapter', () => {
     expect(state.listStoredInterfaces).toHaveBeenCalledWith('de-musterhausen');
   });
 
+  it('projects the mainserver interface draft without municipality overrides', async () => {
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
+    state.loadSvaMainserverInterfacesOverview.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      config: {
+        providerKey: 'sva_mainserver',
+        graphqlBaseUrl: 'https://mainserver.example/graphql',
+        oauthTokenUrl: 'https://mainserver.example/oauth/token',
+        enabled: true,
+      },
+      status: {
+        status: 'connected',
+        checkedAt: '2026-05-03T17:00:00.000Z',
+      },
+    });
+    state.listStoredInterfaces.mockResolvedValue([]);
+    state.loadInstanceById.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      assignedModules: [],
+    });
+
+    const { listInstanceInterfacesServerFn } = await import('./interfaces-api');
+
+    await expect(listInstanceInterfacesServerFn()).resolves.toEqual(
+      expect.objectContaining({
+        entries: [
+          expect.objectContaining({
+            type: 'mainserver',
+            config: expect.objectContaining({
+              graphqlBaseUrl: 'https://mainserver.example/graphql',
+              oauthTokenUrl: 'https://mainserver.example/oauth/token',
+            }),
+          }),
+        ],
+      })
+    );
+  });
+
   it('omits supabase from the available types when the waste-management module is not assigned', async () => {
     setAuthenticatedUserContext({
       id: 'subject-1',

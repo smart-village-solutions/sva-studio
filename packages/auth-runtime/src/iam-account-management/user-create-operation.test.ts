@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   ensureManagedRealmRolesExist: vi.fn(),
   resolveIdentityProviderForInstance: vi.fn(),
   resolveAuthConfigForInstance: vi.fn(),
+  provisionMainserverUserCredentials: vi.fn(),
   trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) => execute()),
   withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (client: object) => Promise<unknown>) => work({})),
   logger: {
@@ -31,6 +32,10 @@ vi.mock('../config.js', () => ({
   resolveAuthConfigForInstance: state.resolveAuthConfigForInstance,
 }));
 
+vi.mock('./mainserver-user-provisioning.js', () => ({
+  provisionMainserverUserCredentials: state.provisionMainserverUserCredentials,
+}));
+
 describe('executeCreateUser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,6 +55,7 @@ describe('executeCreateUser', () => {
       redirectUri: 'https://tenant.example.test/auth/callback',
       postLogoutRedirectUri: 'https://tenant.example.test/',
     });
+    state.provisionMainserverUserCredentials.mockResolvedValue(null);
   });
 
   it('creates a user without sending an invite when the payload disables it', async () => {
@@ -85,6 +91,139 @@ describe('executeCreateUser', () => {
     expect(identityProvider.provider.executeActionsEmail).not.toHaveBeenCalled();
     expect(result.invitation.status).toBe('not_requested');
   }, 15_000);
+
+  it('provisions Mainserver credentials for the created Keycloak user after local persistence and role sync', async () => {
+    state.provisionMainserverUserCredentials.mockResolvedValue({
+      mainserverUserApplicationId: 'mainserver-app-1',
+      mainserverUserApplicationSecret: 'mainserver-secret-1',
+    });
+    state.persistCreatedUser.mockResolvedValue({
+      responseData: {
+        id: 'account-1',
+        keycloakSubject: 'kc-user-1',
+        displayName: 'Alice Example',
+        status: 'active',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+      roleNames: ['system_admin'],
+    });
+    const identityProvider = {
+      provider: {
+        createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        updateUser: vi.fn(async () => undefined),
+        syncRoles: vi.fn(async () => undefined),
+      },
+      realm: 'tenant-realm',
+      source: 'instance' as const,
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin' as const,
+    };
+
+    const { executeCreateUser } = await import('./user-create-operation.js');
+    await executeCreateUser({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
+      actorSubject: 'kc-actor-1',
+      identityProvider,
+      payload: {
+        email: 'alice@example.com',
+        firstName: 'Alice',
+        lastName: 'Example',
+        roleIds: [],
+        sendPasswordSetupEmail: false,
+      },
+    });
+
+    expect(state.persistCreatedUser).toHaveBeenCalled();
+    expect(identityProvider.provider.syncRoles).toHaveBeenCalledWith('kc-user-1', ['system_admin']);
+    expect(state.provisionMainserverUserCredentials).toHaveBeenCalledWith({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
+      actorSubject: 'kc-actor-1',
+      keycloakSubject: 'kc-user-1',
+      payload: {
+        email: 'alice@example.com',
+        firstName: 'Alice',
+        lastName: 'Example',
+        roleIds: [],
+        sendPasswordSetupEmail: false,
+      },
+    });
+    expect(identityProvider.provider.updateUser).not.toHaveBeenCalled();
+    expect(state.persistCreatedUser.mock.invocationCallOrder[0]).toBeLessThan(
+      identityProvider.provider.syncRoles.mock.invocationCallOrder[0] ?? 0
+    );
+    expect(identityProvider.provider.syncRoles.mock.invocationCallOrder[0]).toBeLessThan(
+      state.provisionMainserverUserCredentials.mock.invocationCallOrder[0] ?? 0
+    );
+  });
+
+  it('keeps the local user active when Mainserver provisioning fails after persistence', async () => {
+    state.provisionMainserverUserCredentials.mockRejectedValue(new Error('mainserver unavailable'));
+    const deactivateUser = vi.fn(async () => undefined);
+    state.resolveIdentityProviderForInstance.mockResolvedValue({
+      provider: { deactivateUser },
+      realm: 'tenant-realm',
+      source: 'instance',
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin',
+    });
+    const identityProvider = {
+      provider: {
+        createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        syncRoles: vi.fn(async () => undefined),
+      },
+      realm: 'tenant-realm',
+      source: 'instance' as const,
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin' as const,
+    };
+
+    const { executeCreateUser } = await import('./user-create-operation.js');
+    const result = await executeCreateUser({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
+      actorSubject: 'kc-actor-1',
+      identityProvider,
+      payload: {
+        email: 'alice@example.com',
+        firstName: 'Alice',
+        roleIds: [],
+        sendPasswordSetupEmail: false,
+      },
+    });
+
+    expect(result.user).toMatchObject({
+      id: 'account-1',
+      keycloakSubject: 'kc-user-1',
+      mainserverUserApplicationSecretSet: false,
+    });
+    expect(result.invitation.status).toBe('not_requested');
+    expect(state.resolveIdentityProviderForInstance).not.toHaveBeenCalled();
+    expect(deactivateUser).not.toHaveBeenCalled();
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'IAM user mainserver provisioning failed',
+      expect.objectContaining({
+        workspace_id: 'instance-1',
+      })
+    );
+  });
 
   it('sends an UPDATE_PASSWORD invitation after successful creation when requested', async () => {
     const executeActionsEmail = vi.fn(async function (
@@ -397,6 +536,7 @@ describe('executeCreateUser', () => {
       executionMode: 'tenant_admin',
     });
     expect(deactivateUser).toHaveBeenCalledWith('kc-user-1');
+    expect(state.provisionMainserverUserCredentials).not.toHaveBeenCalled();
     expect(state.logger.error).toHaveBeenCalledWith(
       'IAM user creation failed',
       expect.objectContaining({

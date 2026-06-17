@@ -19,7 +19,7 @@
     "@sva/plugin-sdk": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
     "@hookform/resolvers": "^3.10.0",
-    "react-hook-form": "^7.76.0",
+    "react-hook-form": "^7.79.0",
     "zod": "^3.25.76"
   },
   "peerDependencies": {

@@ -1,5 +1,4 @@
 import type {
-  InstanceAuditCheck,
   InstanceAuditInstanceResult,
   InstanceAuditRun,
 } from '@sva/core';

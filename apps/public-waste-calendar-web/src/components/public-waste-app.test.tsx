@@ -80,6 +80,23 @@ describe('PublicWasteApp', () => {
     expect(screen.getByRole('button', { name: 'PDF herunterladen' })).toBeTruthy();
   });
 
+  it('supports keyboard navigation across the action tabs and links the active panel accessibly', () => {
+    renderCompletePublicWasteApp();
+
+    const calendarTab = screen.getByRole('tab', { name: 'Kalenderexport' });
+    fireEvent.keyDown(calendarTab, { key: 'ArrowRight' });
+
+    const pdfTab = screen.getByRole('tab', { name: 'PDF-Download' });
+    expect(pdfTab.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(pdfTab);
+
+    const panel = screen
+      .getAllByRole('tabpanel')
+      .find((element) => element.getAttribute('id') === pdfTab.getAttribute('aria-controls'));
+    expect(panel).toBeTruthy();
+    expect(panel.getAttribute('aria-labelledby')).toBe(pdfTab.getAttribute('id'));
+  });
+
   it('updates the visible calendar entries from the right-side fraction list', () => {
     renderCompletePublicWasteApp();
 
@@ -233,6 +250,98 @@ describe('PublicWasteApp', () => {
     expect(screen.getByText('Bestätigungslink versendet')).toBeTruthy();
     expect(screen.getByText('Bitte prüfen Sie Ihr E-Mail-Postfach.')).toBeTruthy();
     expect(within(emailPanel).queryByLabelText('Zeitfenster für Bioabfall')).toBeNull();
+  });
+
+  it('clears a previous e-mail signup success when the active fractions change', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'pending',
+          headline: 'Bestätigungslink versendet',
+          message: 'Bitte prüfen Sie Ihr E-Mail-Postfach.',
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        }
+      )
+    );
+
+    renderCompletePublicWasteApp({
+      reminderSignup: {
+        enabled: true,
+        consentLabel: 'Ich stimme der Verarbeitung meiner Daten zu.',
+        privacyPolicyUrl: 'https://example.invalid/datenschutz',
+        fractions: [
+          {
+            id: 'bio',
+            label: 'Bioabfall',
+            color: '#008800',
+            slots: [{ id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+          },
+          {
+            id: 'paper',
+            label: 'Papier',
+            color: '#0000FF',
+            slots: [{ id: 'paper:first', maxLeadDays: 4, defaultLeadDays: 2 }],
+          },
+        ],
+      },
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: 'E-Mail-Abo' }));
+    const emailPanel = screen
+      .getAllByRole('tabpanel')
+      .find((element) => element.getAttribute('id') === 'public-waste-action-panel-email') as HTMLElement;
+    fireEvent.change(within(emailPanel).getByLabelText('E-Mail-Adresse'), {
+      target: { value: 'person@example.invalid' },
+    });
+    fireEvent.click(
+      within(emailPanel).getByRole('checkbox', {
+        name: 'Ich stimme der Verarbeitung meiner Daten zu. Datenschutzerklärung',
+      })
+    );
+    fireEvent.click(within(emailPanel).getByRole('button', { name: 'E-Mail-Abo anfordern' }));
+
+    await screen.findByText('Bestätigungslink versendet');
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Papier' }));
+
+    expect(screen.queryByText('Bestätigungslink versendet')).toBeNull();
+    const refreshedEmailPanel = screen
+      .getAllByRole('tabpanel')
+      .find((element) => element.getAttribute('id') === 'public-waste-action-panel-email');
+    expect(refreshedEmailPanel).toBeTruthy();
+    expect(within(refreshedEmailPanel as HTMLElement).getByLabelText('E-Mail-Adresse')).toBeTruthy();
+  });
+
+  it('uses noopener noreferrer for the privacy policy link', () => {
+    renderCompletePublicWasteApp({
+      reminderSignup: {
+        enabled: true,
+        consentLabel: 'Ich stimme der Verarbeitung meiner Daten zu.',
+        privacyPolicyUrl: 'https://example.invalid/datenschutz',
+        fractions: [
+          {
+            id: 'bio',
+            label: 'Bioabfall',
+            color: '#008800',
+            slots: [{ id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+          },
+          {
+            id: 'paper',
+            label: 'Papier',
+            color: '#0000FF',
+            slots: [{ id: 'paper:first', maxLeadDays: 4, defaultLeadDays: 2 }],
+          },
+        ],
+      },
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: 'E-Mail-Abo' }));
+    expect(screen.getByRole('link', { name: 'Datenschutzerklärung' }).getAttribute('rel')).toBe('noopener noreferrer');
   });
 
   it('opens a pickup detail dialog and keeps the global actions outside the dialog', () => {

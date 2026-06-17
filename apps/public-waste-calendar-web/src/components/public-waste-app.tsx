@@ -48,6 +48,7 @@ type PublicWasteAppProps = IncompletePublicWasteAppProps | CompletePublicWasteAp
 type ActionPanel = 'calendar' | 'pdf' | 'email';
 type ReminderSelectionState = Record<string, string>;
 const EMPTY_REMINDER_FRACTIONS: readonly PublicWasteReminderFractionOption[] = [];
+const ACTION_PANELS: readonly ActionPanel[] = ['calendar', 'pdf', 'email'];
 
 const splitSelectionSummary = (
   selectionSummary: string
@@ -150,6 +151,9 @@ const hasCompleteReminderItems = (
   items: readonly PublicWasteReminderSelectionItem[]
 ): boolean => context.isFullySupported && items.length === context.supportedFractions.length;
 
+const getActionTabId = (panel: ActionPanel): string => `public-waste-action-tab-${panel}`;
+const getActionPanelId = (panel: ActionPanel): string => `public-waste-action-panel-${panel}`;
+
 export function PublicWasteApp(props: Readonly<PublicWasteAppProps>) {
   if (props.selectionState === 'incomplete') {
     return (
@@ -194,6 +198,8 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
   const deferredFractions = React.useDeferredValue(selectedFractions);
   const filteredModel = filterPublicWasteCalendarFractions(props.calendarModel, deferredFractions);
   const [cityLine, streetLine, houseNumberLine] = splitSelectionSummary(props.selectionSummary);
+  const selectedFractionKey = selectedFractions.join('|');
+  const previousSelectedFractionKeyRef = React.useRef(selectedFractionKey);
   const emailReminderFractions = props.reminderSignup?.fractions ?? EMPTY_REMINDER_FRACTIONS;
   const calendarReminderFractions = props.calendarReminderOptions?.fractions ?? EMPTY_REMINDER_FRACTIONS;
   const emailReminderContext = React.useMemo(
@@ -231,9 +237,40 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
     setEmail('');
   }, [props.calendarModel.locationKey]);
 
+  React.useEffect(() => {
+    if (previousSelectedFractionKeyRef.current === selectedFractionKey) {
+      return;
+    }
+
+    previousSelectedFractionKeyRef.current = selectedFractionKey;
+    setReminderError(null);
+    setReminderSuccess(null);
+  }, [selectedFractionKey]);
+
   const toggleActionPanel = (panel: ActionPanel) => {
     setActiveActionPanel((current) => (current === panel ? null : panel));
     setReminderError(null);
+  };
+
+  const handleActionTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, panel: ActionPanel) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+      return;
+    }
+
+    event.preventDefault();
+    const currentIndex = ACTION_PANELS.indexOf(panel);
+    const nextIndex =
+      event.key === 'ArrowRight'
+        ? (currentIndex + 1) % ACTION_PANELS.length
+        : (currentIndex - 1 + ACTION_PANELS.length) % ACTION_PANELS.length;
+    const nextPanel = ACTION_PANELS[nextIndex];
+
+    if (!nextPanel) {
+      return;
+    }
+
+    setActiveActionPanel(nextPanel);
+    document.getElementById(getActionTabId(nextPanel))?.focus();
   };
 
   const calendarReminderItems = React.useMemo(
@@ -310,30 +347,42 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
         <div className="action-hub-toolbar" role="tablist" aria-label="Export- und Abo-Aktionen">
           <button
             type="button"
+            id={getActionTabId('calendar')}
             role="tab"
+            aria-controls={getActionPanelId('calendar')}
             aria-selected={activeActionPanel === 'calendar'}
+            tabIndex={activeActionPanel === null || activeActionPanel === 'calendar' ? 0 : -1}
             className={`action-hub-trigger${activeActionPanel === 'calendar' ? ' is-active' : ''}`}
             onClick={() => toggleActionPanel('calendar')}
+            onKeyDown={(event) => handleActionTabKeyDown(event, 'calendar')}
           >
             <IconCalendarPlus size={20} stroke={1.8} aria-hidden="true" />
             <span>Kalenderexport</span>
           </button>
           <button
             type="button"
+            id={getActionTabId('pdf')}
             role="tab"
+            aria-controls={getActionPanelId('pdf')}
             aria-selected={activeActionPanel === 'pdf'}
+            tabIndex={activeActionPanel === 'pdf' ? 0 : -1}
             className={`action-hub-trigger${activeActionPanel === 'pdf' ? ' is-active' : ''}`}
             onClick={() => toggleActionPanel('pdf')}
+            onKeyDown={(event) => handleActionTabKeyDown(event, 'pdf')}
           >
             <IconFileTypePdf size={20} stroke={1.8} aria-hidden="true" />
             <span>PDF-Download</span>
           </button>
           <button
             type="button"
+            id={getActionTabId('email')}
             role="tab"
+            aria-controls={getActionPanelId('email')}
             aria-selected={activeActionPanel === 'email'}
+            tabIndex={activeActionPanel === 'email' ? 0 : -1}
             className={`action-hub-trigger${activeActionPanel === 'email' ? ' is-active' : ''}`}
             onClick={() => toggleActionPanel('email')}
+            onKeyDown={(event) => handleActionTabKeyDown(event, 'email')}
           >
             <IconMail size={20} stroke={1.8} aria-hidden="true" />
             <span>E-Mail-Abo</span>
@@ -341,7 +390,12 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
         </div>
 
         {activeActionPanel ? (
-          <div className="action-panel" role="tabpanel">
+          <div
+            id={getActionPanelId(activeActionPanel)}
+            className="action-panel"
+            role="tabpanel"
+            aria-labelledby={getActionTabId(activeActionPanel)}
+          >
             <p className="action-panel-intro">{actionPanelDescription}</p>
 
             {activeActionPanel === 'calendar' ? (
@@ -432,7 +486,7 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
                           />
                           <span>{props.reminderSignup?.consentLabel ?? 'Ich stimme der Verarbeitung meiner Daten zu.'}</span>
                           {props.reminderSignup?.privacyPolicyUrl ? (
-                            <a href={props.reminderSignup.privacyPolicyUrl} target="_blank" rel="noreferrer">
+                            <a href={props.reminderSignup.privacyPolicyUrl} target="_blank" rel="noopener noreferrer">
                               Datenschutzerklärung
                             </a>
                           ) : null}

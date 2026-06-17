@@ -10,7 +10,7 @@ Das Theme orientiert sich an der bestehenden KERN-2-nahen Studio-Shell:
 - KERN-nahe Blau-Grau-Palette
 - reduzierte Radien
 - helle Glas-/Panel-Flächen mit klarer Fokus- und Hover-Sprache
-- Dark-Mode-Fallback über `prefers-color-scheme`
+- fester Light-Default ohne Dark-Mode-Fallback über Browser- oder Betriebssystem-Präferenzen
 
 Das Theme erweitert bewusst `keycloak.v2`, statt komplette Keycloak-Templates zu forken.
 Dadurch bleibt der Upgrade-Aufwand gegenüber einem vollständigen Login-Template-Override kleiner.

@@ -22,13 +22,13 @@ export const resolveThemeName = (instanceId?: string): AppThemeName => {
 
 export const resolveThemeMode = (
   persistedMode: string | null | undefined,
-  prefersDarkMode: boolean
+  _prefersDarkMode: boolean
 ): ThemeMode => {
   if (isThemeMode(persistedMode)) {
     return persistedMode;
   }
 
-  return prefersDarkMode ? 'dark' : 'light';
+  return 'light';
 };
 
 export const createThemeBootstrapScript = (): string =>
@@ -38,8 +38,7 @@ export const createThemeBootstrapScript = (): string =>
     `var storageKey=${JSON.stringify(THEME_MODE_STORAGE_KEY)};`,
     'var persistedMode=null;',
     'try{persistedMode=window.localStorage.getItem(storageKey);}catch(error){}',
-    "var prefersDarkMode=typeof window.matchMedia==='function'&&window.matchMedia('(prefers-color-scheme: dark)').matches;",
-    "var mode=persistedMode==='light'||persistedMode==='dark'?persistedMode:(prefersDarkMode?'dark':'light');",
+    "var mode=persistedMode==='light'||persistedMode==='dark'?persistedMode:'light';",
     'root.dataset.themeMode=mode;',
     'root.style.colorScheme=mode;',
     "root.classList.toggle('dark',mode==='dark');",

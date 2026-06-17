@@ -48,4 +48,23 @@ describe('public waste iCal', () => {
     expect(ical).not.toContain('\rHauptstraße 1');
     expect(ical).not.toContain('\rTour: Innenstadt');
   });
+
+  it('renders optional display alarms for reminder-enabled events', () => {
+    const ical = renderPublicWasteIcal({
+      calendarName: 'Abfallkalender Musterstadt',
+      events: [
+        {
+          uid: 'pickup-1@example.invalid',
+          startDate: '20260519',
+          summary: 'Bioabfall',
+          alarms: [{ triggerDaysBefore: 2 }],
+        },
+      ],
+    });
+
+    expect(ical).toContain('BEGIN:VALARM');
+    expect(ical).toContain('ACTION:DISPLAY');
+    expect(ical).toContain('TRIGGER:-P2D');
+    expect(ical).toContain('DESCRIPTION:Erinnerung: Bioabfall');
+  });
 });

@@ -45,14 +45,25 @@ describe('public waste endpoints', () => {
           },
         ]),
         loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
-        loadReminderSignupOptions: vi.fn().mockResolvedValue([
-          {
-            id: 'bio',
-            label: 'Bioabfall',
-            color: '#008800',
-            slots: [{ id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 }],
-          },
-        ]),
+        loadReminderOptions: vi.fn().mockImplementation(async ({ channel }) =>
+          channel === 'email'
+            ? [
+                {
+                  id: 'bio',
+                  label: 'Bioabfall',
+                  color: '#008800',
+                  slots: [{ id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+                },
+              ]
+            : [
+                {
+                  id: 'bio',
+                  label: 'Bioabfall',
+                  color: '#008800',
+                  slots: [{ id: 'bio:calendar:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+                },
+              ]
+        ),
       },
       request: new Request(
         'https://example.invalid/public-waste/calendar?regionId=11111111-1111-4111-8111-111111111111&cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&houseNumberId=44444444-4444-4444-8444-444444444444&referenceDate=2026-05-18'
@@ -100,6 +111,15 @@ describe('public waste endpoints', () => {
             id: 'bio',
             label: 'Bioabfall',
             slots: [{ id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+          },
+        ],
+      },
+      calendarReminderOptions: {
+        fractions: [
+          {
+            id: 'bio',
+            label: 'Bioabfall',
+            slots: [{ id: 'bio:calendar:first', maxLeadDays: 2, defaultLeadDays: 1 }],
           },
         ],
       },
@@ -225,6 +245,7 @@ describe('public waste endpoints', () => {
           },
         ]),
         loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+        loadReminderOptions: vi.fn().mockResolvedValue([]),
       },
       request: new Request(
         'https://example.invalid/public-waste/calendar.ics?regionId=11111111-1111-4111-8111-111111111111&cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&houseNumberId=44444444-4444-4444-8444-444444444444&calendarName=Musterstadt'
@@ -259,6 +280,7 @@ describe('public waste endpoints', () => {
           },
         ]),
         loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+        loadReminderOptions: vi.fn().mockResolvedValue([]),
       },
       request: new Request(
         'https://example.invalid/public-waste/calendar.ics?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&calendarName=Musterstadt'
@@ -286,6 +308,7 @@ describe('public waste endpoints', () => {
           },
         ]),
         loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+        loadReminderOptions: vi.fn().mockResolvedValue([]),
       },
       request: new Request(
         'https://example.invalid/public-waste/calendar.ics?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&calendarName=Musterstadt'
@@ -298,6 +321,38 @@ describe('public waste endpoints', () => {
     expect(body).not.toContain('\\nHinweis: Bereitstellung am Vorabend.');
   });
 
+  it('renders calendar alarms for explicitly selected reminder slots', async () => {
+    const response = await handlePublicWasteIcalRequest({
+      repository: {
+        loadCalendarEntries: vi.fn().mockResolvedValue([
+          {
+            id: 'pickup-1',
+            date: '2026-05-19',
+            fractionId: 'bio',
+            fractionLabel: 'Bioabfall',
+            note: null,
+          },
+        ]),
+        loadSelectionSummary: vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1'),
+        loadReminderOptions: vi.fn().mockResolvedValue([
+          {
+            id: 'bio',
+            label: 'Bioabfall',
+            slots: [{ id: 'bio:calendar:first', maxLeadDays: 3, defaultLeadDays: 2 }],
+          },
+        ]),
+      },
+      request: new Request(
+        'https://example.invalid/public-waste/calendar.ics?cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&calendarName=Musterstadt&fractionId=bio&reminderItem=bio|bio:calendar:first'
+      ),
+    });
+
+    const body = await response.text();
+    expect(body).toContain('BEGIN:VALARM');
+    expect(body).toContain('TRIGGER:-P2D');
+    expect(body).toContain('DESCRIPTION:Erinnerung: Bioabfall');
+  });
+
   it('accepts the catch-all street sentinel for resolved calendar requests', async () => {
     const loadCalendarEntries = vi.fn().mockResolvedValue([]);
     const loadSelectionSummary = vi.fn().mockResolvedValue('Musterstadt, Alle Straßen');
@@ -306,7 +361,7 @@ describe('public waste endpoints', () => {
       repository: {
         loadCalendarEntries,
         loadSelectionSummary,
-        loadReminderSignupOptions: vi.fn().mockResolvedValue([]),
+        loadReminderOptions: vi.fn().mockResolvedValue([]),
       },
       request: new Request(
         'https://example.invalid/public-waste/calendar?cityId=22222222-2222-4222-8222-222222222222&streetId=all&referenceDate=2026-05-18'
@@ -347,7 +402,7 @@ describe('public waste endpoints', () => {
 
     const response = await handlePublicWasteReminderSignupRequest({
       repository: {
-        loadReminderSignupOptions: vi.fn().mockResolvedValue([
+        loadReminderOptions: vi.fn().mockResolvedValue([
           {
             id: 'bio',
             label: 'Bioabfall',
@@ -430,7 +485,7 @@ describe('public waste endpoints', () => {
 
     const response = await handlePublicWasteReminderSignupRequest({
       repository: {
-        loadReminderSignupOptions: vi.fn().mockResolvedValue([
+        loadReminderOptions: vi.fn().mockResolvedValue([
           {
             id: 'bio',
             label: 'Bioabfall',

@@ -16,11 +16,11 @@ Das System SHALL die Einrichtung der E-Mail-Erinnerung über ein Formular in der
 - **THEN** bietet das Formular nur Abfallarten an, deren Reminder-Konfiguration den Kanal `email` aktiviert hat
 - **AND** es bietet nur Fraktionen an, die mindestens einen gültigen E-Mail-Slot besitzen
 
-#### Scenario: Slot-Auswahl erfolgt pro gewählter Fraktion
+#### Scenario: Standardslots werden pro gewählter Fraktion automatisch verwendet
 - **WHEN** ein Benutzer mehrere Abfallarten auswählt
-- **THEN** zeigt das Formular für jede gewählte Fraktion deren zulässige E-Mail-Zeitfenster separat an
-- **AND** unterschiedliche Fraktionen dürfen unterschiedliche Zeitfenster erhalten
-- **AND** das Formular erzwingt keinen global gemeinsamen Zeitslot über alle Fraktionen
+- **THEN** verwendet das Formular für jede gewählte Fraktion deren zulässigen Standard-Slot automatisch
+- **AND** unterschiedliche Fraktionen dürfen unterschiedliche Standardslots erhalten
+- **AND** das Formular fragt diese Slot-Auswahl nicht zusätzlich ab
 
 #### Scenario: Datenschutz-Einwilligung ist Pflicht
 - **WHEN** ein Benutzer das Formular ohne bestätigte Datenschutz-Checkbox absenden will

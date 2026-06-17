@@ -330,6 +330,7 @@ export function PublicWasteIndexPage() {
             selectionSummary={pageState.selectionSummary}
             calendarModel={pageState}
             icalUrl={pageState.icalUrl}
+            calendarReminderOptions={pageState.calendarReminderOptions}
             reminderSignup={pageState.reminderSignup}
             onChangeLocation={handleResetLocation}
           />

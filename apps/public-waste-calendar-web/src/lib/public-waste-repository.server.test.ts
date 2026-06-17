@@ -669,12 +669,13 @@ describe('public waste repository', () => {
     });
 
     await expect(
-      repository.loadReminderSignupOptions({
+      repository.loadReminderOptions({
         selection: {
           cityId: 'city-1',
           streetId: 'street-1',
           houseNumberId: 'house-1',
         },
+        channel: 'email',
       })
     ).resolves.toEqual([
       {
@@ -685,6 +686,85 @@ describe('public waste repository', () => {
           { id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 },
           { id: 'bio:second', maxLeadDays: 5, defaultLeadDays: 3 },
         ],
+      },
+    ]);
+  });
+
+  it('loads only calendar-capable reminder fractions with valid calendar slots for the current location', async () => {
+    const execute = vi.fn().mockResolvedValueOnce({
+      rowCount: 3,
+      rows: [
+        {
+          fraction_id: 'bio',
+          fraction_label: 'Bioabfall',
+          fraction_color: '#008800',
+          reminder_config: {
+            reminderCount: 'twice',
+            channels: {
+              push: false,
+              email: true,
+              calendar: false,
+            },
+            email: {
+              slots: [{ id: 'bio:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+            },
+          },
+        },
+        {
+          fraction_id: 'paper',
+          fraction_label: 'Papier',
+          fraction_color: '#0000ff',
+          reminder_config: {
+            reminderCount: 'once',
+            channels: {
+              push: false,
+              email: false,
+              calendar: true,
+            },
+            calendar: {
+              slots: [{ id: 'paper:calendar', maxLeadDays: 2, defaultLeadDays: 1 }],
+            },
+          },
+        },
+        {
+          fraction_id: 'glass',
+          fraction_label: 'Altglas',
+          fraction_color: '#666666',
+          reminder_config: {
+            reminderCount: 'once',
+            channels: {
+              push: false,
+              email: false,
+              calendar: true,
+            },
+            calendar: {
+              slots: [],
+            },
+          },
+        },
+      ],
+    });
+
+    const repository = createPublicWasteRepository({
+      schemaName: 'waste',
+      execute,
+    });
+
+    await expect(
+      repository.loadReminderOptions({
+        selection: {
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: 'house-1',
+        },
+        channel: 'calendar',
+      })
+    ).resolves.toEqual([
+      {
+        id: 'paper',
+        label: 'Papier',
+        color: '#0000ff',
+        slots: [{ id: 'paper:calendar', maxLeadDays: 2, defaultLeadDays: 1 }],
       },
     ]);
   });

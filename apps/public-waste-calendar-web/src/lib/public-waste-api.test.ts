@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  buildPublicWasteIcalUrl,
   buildPublicWastePdfDownloadUrl,
   loadNextPublicWasteSelection,
   loadResolvedPublicWasteCalendar,
@@ -75,5 +76,23 @@ describe('public waste api', () => {
         fractionIds: ['bio', 'paper'],
       })
     ).toBe('/api/public-waste/pdf?regionId=r-1&cityId=c-1&streetId=s-1&houseNumberId=h-1&year=2026&fractionId=bio&fractionId=paper');
+  });
+
+  it('builds the calendar export url from selection, fractions, and optional reminder slots', () => {
+    expect(
+      buildPublicWasteIcalUrl({
+        selection: {
+          regionId: 'r-1',
+          cityId: 'c-1',
+          streetId: 's-1',
+          houseNumberId: 'h-1',
+        },
+        calendarName: 'Musterstadt, Hauptstraße 1',
+        fractionIds: ['bio', 'paper'],
+        reminderItems: [{ fractionId: 'bio', slotId: 'bio:calendar:first' }],
+      })
+    ).toBe(
+      '/api/public-waste/ical?regionId=r-1&cityId=c-1&streetId=s-1&houseNumberId=h-1&calendarName=Musterstadt%2C+Hauptstra%C3%9Fe+1&fractionId=bio&fractionId=paper&reminderItem=bio%7Cbio%3Acalendar%3Afirst'
+    );
   });
 });

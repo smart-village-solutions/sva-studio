@@ -66,6 +66,17 @@ export type PublicWasteReminderFractionOption = Readonly<{
   readonly slots: readonly PublicWasteReminderFractionSlotOption[];
 }>;
 
+export type PublicWasteReminderChannel = 'email' | 'calendar';
+
+export type PublicWasteCalendarReminderView = Readonly<{
+  readonly fractions: readonly PublicWasteReminderFractionOption[];
+}>;
+
+export type PublicWasteReminderSelectionItem = Readonly<{
+  readonly fractionId: string;
+  readonly slotId: string;
+}>;
+
 export type PublicWasteReminderSignupView = Readonly<{
   readonly enabled: boolean;
   readonly consentLabel: string;
@@ -76,10 +87,7 @@ export type PublicWasteReminderSignupView = Readonly<{
 export type PublicWasteReminderSignupRequest = Readonly<{
   readonly selection: PublicWasteResolvedSelection;
   readonly email: string;
-  readonly items: readonly {
-    readonly fractionId: string;
-    readonly slotId: string;
-  }[];
+  readonly items: readonly PublicWasteReminderSelectionItem[];
   readonly consentAccepted: boolean;
 }>;
 

@@ -1,4 +1,5 @@
 import type {
+  PublicWasteReminderSelectionItem,
   PublicWasteResolvedSelection,
   PublicWasteSelectionState,
 } from './public-waste-contract.js';
@@ -62,6 +63,29 @@ export const readPublicWasteReferenceDate = (url: URL): string =>
 
 export const readPublicWasteFractionIds = (url: URL): readonly string[] =>
   Array.from(new Set(url.searchParams.getAll('fractionId').map((value) => value.trim()).filter(Boolean)));
+
+export const readPublicWasteReminderItems = (url: URL): readonly PublicWasteReminderSelectionItem[] =>
+  url.searchParams
+    .getAll('reminderItem')
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => {
+      const separatorIndex = value.indexOf('|');
+      if (separatorIndex <= 0 || separatorIndex >= value.length - 1) {
+        throw new Error('invalid_query_param:reminderItem');
+      }
+
+      const fractionId = value.slice(0, separatorIndex).trim();
+      const slotId = value.slice(separatorIndex + 1).trim();
+      if (!fractionId || !slotId) {
+        throw new Error('invalid_query_param:reminderItem');
+      }
+
+      return {
+        fractionId,
+        slotId,
+      };
+    });
 
 export const readPublicWasteCalendarName = (url: URL): string =>
   url.searchParams.get('calendarName')?.trim() || 'Abfallkalender';

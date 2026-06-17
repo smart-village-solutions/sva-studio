@@ -134,7 +134,7 @@ describe('public waste runtime', () => {
           listSelectionOptions: vi.fn(),
           loadCalendarEntries: vi.fn(),
           loadSelectionSummary: vi.fn(),
-          loadReminderSignupOptions: vi.fn(),
+          loadReminderOptions: vi.fn(),
         },
         pool: {
           connect: poolConnect,
@@ -216,7 +216,7 @@ describe('public waste runtime', () => {
           listSelectionOptions: vi.fn(),
           loadCalendarEntries: vi.fn(),
           loadSelectionSummary: vi.fn().mockResolvedValue('Perleberg, Ackerstr. 12'),
-          loadReminderSignupOptions: vi.fn().mockResolvedValue([
+          loadReminderOptions: vi.fn().mockResolvedValue([
             {
               id: 'bio',
               label: 'Bioabfall',

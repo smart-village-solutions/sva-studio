@@ -1,6 +1,6 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PublicWasteApp } from './public-waste-app.js';
 import {
@@ -19,7 +19,22 @@ const renderCompletePublicWasteApp = (overrides: Partial<CompletePublicWasteAppT
       selection={publicWasteSelectionFixture}
       selectionState="complete"
       selectionSummary={publicWasteSelectionSummaryFixture}
-      calendarModel={createPublicWasteCalendarModelFixture()}
+      calendarModel={createPublicWasteCalendarModelFixture({
+        fractionOptions: [
+          { id: 'bio', label: 'Bioabfall', color: '#00AA00' },
+          { id: 'paper', label: 'Papier', color: '#0000FF' },
+        ],
+        listEntries: [
+          createPublicWasteCalendarEntryFixture(),
+          createPublicWasteCalendarEntryFixture({
+            id: 'pickup-2',
+            date: '2026-05-20',
+            fractionId: 'paper',
+            fractionLabel: 'Papier',
+            fractionColor: '#0000FF',
+          }),
+        ],
+      })}
       icalUrl="https://example.invalid/calendar.ics"
       onChangeLocation={() => undefined}
       {...overrides}
@@ -35,22 +50,77 @@ describe('PublicWasteApp', () => {
     fetchMock.mockReset();
   });
 
-  it('renders header actions for calendar import and the on-demand pdf export', () => {
-    renderCompletePublicWasteApp();
-
-    expect(screen.getByRole('link', { name: 'In Kalender übernehmen' }).getAttribute('href')).toBe(
-      'https://example.invalid/calendar.ics'
-    );
-    expect(screen.getByRole('button', { name: 'Druckversion herunterladen' })).toBeTruthy();
-    expect(screen.getByLabelText('PDF-Jahr')).toBeTruthy();
-    expectPublicWasteSelectionHeader();
-    expect(screen.getByRole('button', { name: 'Adresse ändern' })).toBeTruthy();
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
-  it('revokes the generated object url after the download was triggered', async () => {
+  it('renders address left, fractions right, and a horizontal action block', () => {
+    renderCompletePublicWasteApp();
+
+    expectPublicWasteSelectionHeader();
+    expect(screen.getByRole('button', { name: 'Adresse ändern' })).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Abfallfraktionen' })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'Bioabfall' })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'Papier' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Kalenderexport' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'PDF-Download' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'E-Mail-Abo' })).toBeTruthy();
+  });
+
+  it('uses a single open action panel at a time', () => {
+    renderCompletePublicWasteApp();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Kalenderexport' }));
+    expect(screen.getByText('Kalender exportieren')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'PDF-Download' }));
+    expect(screen.queryByText('Kalender exportieren')).toBeNull();
+    expect(screen.getByRole('button', { name: 'PDF herunterladen' })).toBeTruthy();
+  });
+
+  it('updates the visible calendar entries from the right-side fraction list', () => {
+    renderCompletePublicWasteApp();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Bioabfall' }));
+
+    const pickupLists = screen.getAllByRole('list');
+    expect(pickupLists.at(-1)?.textContent).not.toContain('Bioabfall');
+    expect(pickupLists.at(-1)?.textContent).toContain('Papier');
+  });
+
+  it('builds a reminder-enabled calendar export from the active fractions', () => {
+    renderCompletePublicWasteApp({
+      calendarReminderOptions: {
+        fractions: [
+          {
+            id: 'bio',
+            label: 'Bioabfall',
+            slots: [{ id: 'bio:calendar:first', maxLeadDays: 2, defaultLeadDays: 1 }],
+          },
+          {
+            id: 'paper',
+            label: 'Papier',
+            slots: [{ id: 'paper:calendar:first', maxLeadDays: 4, defaultLeadDays: 2 }],
+          },
+        ],
+      },
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Kalenderexport' }));
+
+    const exportLink = screen.getByRole('link', { name: 'Kalender exportieren' });
+    expect(exportLink.getAttribute('href')).toContain('fractionId=bio');
+    expect(exportLink.getAttribute('href')).toContain('fractionId=paper');
+    expect(exportLink.getAttribute('href')).toContain('reminderItem=bio%7Cbio%3Acalendar%3Afirst');
+    expect(exportLink.getAttribute('href')).toContain('reminderItem=paper%7Cpaper%3Acalendar%3Afirst');
+    expect(screen.queryByRole('checkbox', { name: 'Mit Erinnerungen exportieren' })).toBeNull();
+  });
+
+  it('downloads a pdf for the active fractions and selected year from the action panel', async () => {
     const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:public-waste-pdf');
     const revokeObjectUrlSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
-    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
     fetchMock.mockResolvedValue(
       new Response(new Blob(['pdf'], { type: 'application/pdf' }), {
         status: 200,
@@ -62,150 +132,29 @@ describe('PublicWasteApp', () => {
 
     renderCompletePublicWasteApp();
 
-    const anchorClick = vi.fn();
-    const appendSpy = vi.spyOn(document.body, 'append').mockImplementation(() => undefined);
-    const originalCreateElement = document.createElement.bind(document);
-    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
-      if (tagName === 'a') {
-        const anchor = originalCreateElement(tagName) as HTMLAnchorElement;
-        vi.spyOn(anchor, 'click').mockImplementation(anchorClick);
-        vi.spyOn(anchor, 'remove').mockImplementation(() => undefined);
-        return anchor;
-      }
-
-      return originalCreateElement(tagName);
+    fireEvent.click(screen.getByRole('tab', { name: 'PDF-Download' }));
+    fireEvent.change(screen.getByLabelText('PDF-Jahr'), {
+      target: { value: '2026' },
     });
-    const timeoutCallCountBeforeClick = setTimeoutSpy.mock.calls.length;
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Druckversion herunterladen' }));
+      fireEvent.click(screen.getByRole('button', { name: 'PDF herunterladen' }));
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
     await waitFor(() => {
-      expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     });
-    expect(appendSpy).toHaveBeenCalledTimes(1);
-    expect(anchorClick).toHaveBeenCalledTimes(1);
-    const newTimeoutCalls = setTimeoutSpy.mock.calls.slice(timeoutCallCountBeforeClick);
-    expect(newTimeoutCalls.some((call) => call[1] === 0)).toBe(true);
-
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('fractionId=bio');
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('fractionId=paper');
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('year=2026');
+    expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
     expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:public-waste-pdf');
 
-    createElementSpy.mockRestore();
-    appendSpy.mockRestore();
     createObjectUrlSpy.mockRestore();
     revokeObjectUrlSpy.mockRestore();
-    setTimeoutSpy.mockRestore();
   });
 
-  it('starts with all fractions selected and filters the visible entries without clearing the selection summary', () => {
-    renderCompletePublicWasteApp({
-      calendarModel: createPublicWasteCalendarModelFixture({
-        listEntries: [
-          createPublicWasteCalendarEntryFixture(),
-          createPublicWasteCalendarEntryFixture({
-            id: 'pickup-2',
-            date: '2026-05-20',
-            fractionId: 'paper',
-            fractionLabel: 'Papier',
-            fractionColor: '#0000FF',
-          }),
-        ],
-        fractionOptions: [
-          { id: 'bio', label: 'Bioabfall' },
-          { id: 'paper', label: 'Papier' },
-        ],
-      }),
-    });
-
-    expect((screen.getByRole('checkbox', { name: 'Bioabfall' }) as HTMLInputElement).checked).toBe(true);
-    expect((screen.getByRole('checkbox', { name: 'Papier' }) as HTMLInputElement).checked).toBe(true);
-
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Bioabfall' }));
-
-    expectPublicWasteSelectionHeader();
-    expect(screen.getByRole('heading', { name: 'Mai 2026' })).toBeTruthy();
-    const pickupLists = screen.getAllByRole('list');
-    expect(pickupLists.at(-1)?.textContent).not.toContain('Bioabfall');
-    expect(pickupLists.at(-1)?.textContent).toContain('Papier');
-  });
-
-  it('allows deselecting all fractions so that no pickup entries remain visible', () => {
-    renderCompletePublicWasteApp({
-      calendarModel: createPublicWasteCalendarModelFixture({
-        listEntries: [
-          createPublicWasteCalendarEntryFixture(),
-          createPublicWasteCalendarEntryFixture({
-            id: 'pickup-2',
-            date: '2026-05-20',
-            fractionId: 'paper',
-            fractionLabel: 'Papier',
-            fractionColor: '#0000FF',
-          }),
-        ],
-        fractionOptions: [
-          { id: 'bio', label: 'Bioabfall' },
-          { id: 'paper', label: 'Papier' },
-        ],
-      }),
-    });
-
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Bioabfall' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Papier' }));
-
-    expect((screen.getByRole('checkbox', { name: 'Bioabfall' }) as HTMLInputElement).checked).toBe(false);
-    expect((screen.getByRole('checkbox', { name: 'Papier' }) as HTMLInputElement).checked).toBe(false);
-    expect(screen.queryByRole('button', { name: 'Termin Bioabfall am 2026-05-19' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Termin Papier am 2026-05-20' })).toBeNull();
-  });
-
-  it('renders the reduced selection form while the location is still incomplete', () => {
-    render(
-      <PublicWasteApp
-        selectionState="incomplete"
-        nextStepLabel="Ort"
-        selectionOptions={[
-          { id: 'c-1', label: 'Musterstadt' },
-          { id: 'c-2', label: 'Nebenort' },
-        ]}
-        selectionPath={[]}
-        onEditSelectionStep={() => undefined}
-        onSelectOption={() => undefined}
-      />
-    );
-
-    expect(screen.getByRole('heading', { name: 'Standort wählen' })).toBeTruthy();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Ort suchen' }), { target: { value: 'Mus' } });
-    expect(screen.getByRole('button', { name: 'Musterstadt' })).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'iCal abonnieren' })).toBeNull();
-  });
-
-  it('opens a pickup detail dialog when an entry is activated and keeps global actions outside the dialog', () => {
-    renderCompletePublicWasteApp({
-      calendarModel: createPublicWasteCalendarModelFixture({
-        listEntries: [
-          createPublicWasteCalendarEntryFixture({
-            tourName: 'Biotour Nord',
-            tourDescription: 'Wöchentliche Leerung im Innenstadtbereich.',
-            note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
-          }),
-        ],
-      }),
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Termin Bioabfall am 2026-05-19' }));
-
-    const dialog = screen.getByRole('dialog');
-    expect(screen.getAllByText('Wöchentliche Leerung im Innenstadtbereich.')).toHaveLength(2);
-    expect(dialog).toBeTruthy();
-    expect(within(dialog).getByText('Biotour Nord')).toBeTruthy();
-    expect(within(dialog).getByText('Wöchentliche Leerung im Innenstadtbereich.')).toBeTruthy();
-    expect(within(dialog).getByText('Bitte Tonne ab 6 Uhr bereitstellen.')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'In Kalender übernehmen' })).toBeTruthy();
-  });
-
-  it('offers a reminder setup action and submits the selected fractions, slots, email, and consent', async () => {
+  it('submits the e-mail signup from the active fractions with automatic default reminder slots', async () => {
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -237,25 +186,28 @@ describe('PublicWasteApp', () => {
               { id: 'bio:second', maxLeadDays: 5, defaultLeadDays: 3 },
             ],
           },
+          {
+            id: 'paper',
+            label: 'Papier',
+            color: '#0000FF',
+            slots: [{ id: 'paper:first', maxLeadDays: 4, defaultLeadDays: 2 }],
+          },
         ],
       },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'E-Mail-Erinnerung einrichten' }));
-    const reminderRegion = screen.getByRole('region', { name: 'E-Mail-Erinnerung' });
-    fireEvent.click(within(reminderRegion).getByRole('checkbox', { name: 'Bioabfall' }));
-    fireEvent.change(within(reminderRegion).getByLabelText('E-Mail-Adresse'), {
+    fireEvent.click(screen.getByRole('tab', { name: 'E-Mail-Abo' }));
+    const emailPanel = screen.getAllByRole('tabpanel')[0] as HTMLElement;
+    fireEvent.change(within(emailPanel).getByLabelText('E-Mail-Adresse'), {
       target: { value: 'person@example.invalid' },
     });
-    fireEvent.change(within(reminderRegion).getByLabelText('Zeitfenster für Bioabfall'), {
-      target: { value: 'bio:second' },
-    });
     fireEvent.click(
-      within(reminderRegion).getByRole('checkbox', {
+      within(emailPanel).getByRole('checkbox', {
         name: 'Ich stimme der Verarbeitung meiner Daten zu. Datenschutzerklärung',
       })
     );
-    fireEvent.click(within(reminderRegion).getByRole('button', { name: 'Erinnerung anfordern' }));
+
+    fireEvent.click(within(emailPanel).getByRole('button', { name: 'E-Mail-Abo anfordern' }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -268,7 +220,10 @@ describe('PublicWasteApp', () => {
           body: JSON.stringify({
             selection: publicWasteSelectionFixture,
             email: 'person@example.invalid',
-            items: [{ fractionId: 'bio', slotId: 'bio:second' }],
+            items: [
+              { fractionId: 'bio', slotId: 'bio:first' },
+              { fractionId: 'paper', slotId: 'paper:first' },
+            ],
             consentAccepted: true,
           }),
         })
@@ -277,5 +232,27 @@ describe('PublicWasteApp', () => {
 
     expect(screen.getByText('Bestätigungslink versendet')).toBeTruthy();
     expect(screen.getByText('Bitte prüfen Sie Ihr E-Mail-Postfach.')).toBeTruthy();
+    expect(within(emailPanel).queryByLabelText('Zeitfenster für Bioabfall')).toBeNull();
+  });
+
+  it('opens a pickup detail dialog and keeps the global actions outside the dialog', () => {
+    renderCompletePublicWasteApp({
+      calendarModel: createPublicWasteCalendarModelFixture({
+        listEntries: [
+          createPublicWasteCalendarEntryFixture({
+            tourName: 'Biotour Nord',
+            tourDescription: 'Wöchentliche Leerung im Innenstadtbereich.',
+            note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
+          }),
+        ],
+      }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Termin Bioabfall am 2026-05-19' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeTruthy();
+    expect(within(dialog).getByText('Biotour Nord')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Kalenderexport' })).toBeTruthy();
   });
 });

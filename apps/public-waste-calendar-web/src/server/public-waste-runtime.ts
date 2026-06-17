@@ -29,7 +29,7 @@ export const PUBLIC_WASTE_RUNTIME_APP_NAME = 'public-waste-calendar-web';
 
 type PublicWasteRuntimeRepository = Pick<
   PublicWasteRepository,
-  'listSelectionOptions' | 'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderSignupOptions'
+  'listSelectionOptions' | 'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderOptions'
 >;
 
 type RepositoryHandle = {

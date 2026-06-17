@@ -24,7 +24,6 @@ describe('PublicWasteCalendarPanels', () => {
           listEntries: [],
           fractionOptions: [{ id: 'bio', label: 'Bioabfall', color: '#00AA00' }],
         })}
-        onToggleFraction={vi.fn()}
         onActivateEntry={vi.fn()}
       />
     );
@@ -32,30 +31,6 @@ describe('PublicWasteCalendarPanels', () => {
     expect(screen.queryByRole('link', { name: 'In Kalender übernehmen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Druckversion herunterladen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'PDF 2026' })).toBeNull();
-  });
-
-  it('renders fraction badges with the configured fraction background colors', () => {
-    render(
-      <PublicWasteCalendarPanels
-        model={createFilteredPublicWasteCalendarModelFixture({
-          listEntries: [],
-          activeFractionIds: ['bio', 'paper'],
-          fractionOptions: [
-            { id: 'bio', label: 'Bioabfall', color: '#00AA00' },
-            { id: 'paper', label: 'Papier', color: '#0000FF' },
-          ],
-        })}
-        onToggleFraction={vi.fn()}
-        onActivateEntry={vi.fn()}
-      />
-    );
-
-    expect(screen.getByText('Bioabfall').closest('label')?.getAttribute('style')).toContain(
-      'background-color: #00AA00'
-    );
-    expect(screen.getByText('Papier').closest('label')?.getAttribute('style')).toContain(
-      'background-color: #0000FF'
-    );
   });
 
   it('renders three tabs and allows switching to the month and year calendar views', () => {
@@ -80,7 +55,6 @@ describe('PublicWasteCalendarPanels', () => {
             { id: 'paper', label: 'Papier', color: '#0000FF' },
           ],
         })}
-        onToggleFraction={vi.fn()}
         onActivateEntry={onActivateEntry}
       />
     );
@@ -115,7 +89,6 @@ describe('PublicWasteCalendarPanels', () => {
           listEntries: [],
           fractionOptions: [{ id: 'bio', label: 'Bioabfall', color: '#00AA00' }],
         })}
-        onToggleFraction={vi.fn()}
         onActivateEntry={vi.fn()}
       />
     );
@@ -161,7 +134,6 @@ describe('PublicWasteCalendarPanels', () => {
             { id: 'paper', label: 'Papier', color: '#0000FF' },
           ],
         })}
-        onToggleFraction={vi.fn()}
         onActivateEntry={vi.fn()}
       />
     );
@@ -187,7 +159,6 @@ describe('PublicWasteCalendarPanels', () => {
             createPublicWasteCalendarEntryFixture(),
           ],
         })}
-        onToggleFraction={vi.fn()}
         onActivateEntry={vi.fn()}
       />
     );

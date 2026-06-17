@@ -6,6 +6,10 @@ export type PublicWasteIcalModel = {
     readonly startDate: string;
     readonly summary: string;
     readonly description?: string;
+    readonly alarms?: readonly {
+      readonly triggerDaysBefore: number;
+      readonly description?: string;
+    }[];
   }[];
 };
 
@@ -32,6 +36,13 @@ export const renderPublicWasteIcal = (input: PublicWasteIcalModel): string =>
       `DTSTART;VALUE=DATE:${event.startDate}`,
       `SUMMARY:${escapeIcalText(event.summary)}`,
       ...(event.description ? [`DESCRIPTION:${escapeIcalText(event.description)}`] : []),
+      ...(event.alarms ?? []).flatMap((alarm) => [
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        `TRIGGER:-P${alarm.triggerDaysBefore}D`,
+        `DESCRIPTION:${escapeIcalText(alarm.description ?? `Erinnerung: ${event.summary}`)}`,
+        'END:VALARM',
+      ]),
       'END:VEVENT',
     ]),
     'END:VCALENDAR',

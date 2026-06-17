@@ -17,6 +17,7 @@ import type { PublicWastePdfStaticConfig } from './public-waste-pdf-settings.ser
 import {
   readPublicWasteCalendarName,
   readPublicWasteFractionIds,
+  readPublicWasteReminderItems,
   readPublicWasteReferenceDate,
   readPublicWasteResolvedSelection,
   readPublicWasteSelectionState,
@@ -49,6 +50,22 @@ const normalizeDateForIcal = (value: string): string => value.replaceAll('-', ''
 const normalizeEventDescriptionPart = (value: string | undefined | null): string | null => {
   const normalized = value?.trim();
   return normalized ? normalized : null;
+};
+
+const filterCalendarEntriesByFractionIds = <
+  TEntry extends {
+    readonly fractionId: string;
+  },
+>(
+  entries: readonly TEntry[],
+  fractionIds: readonly string[]
+): readonly TEntry[] => {
+  if (fractionIds.length === 0) {
+    return entries;
+  }
+
+  const allowedFractionIds = new Set(fractionIds);
+  return entries.filter((entry) => allowedFractionIds.has(entry.fractionId));
 };
 
 const buildPublicWasteIcalEventDescription = (entry: {
@@ -145,14 +162,14 @@ export const handlePublicWasteSelectionRequest = async (input: {
 };
 
 export const handlePublicWasteCalendarRequest = async (input: {
-  readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderSignupOptions'>;
+  readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderOptions'>;
   readonly request: Request;
   readonly reminderConfig?: WasteManagementEmailReminderConfig;
 }): Promise<Response> => {
   try {
     const url = new URL(input.request.url);
     const selection = readPublicWasteResolvedSelection(url);
-    const [payload, selectionSummary, reminderFractions] = await Promise.all([
+    const [payload, selectionSummary, emailReminderFractions, calendarReminderFractions] = await Promise.all([
       loadResolvedPublicWasteCalendar({
         repository: input.repository,
         input: {
@@ -162,30 +179,39 @@ export const handlePublicWasteCalendarRequest = async (input: {
       }),
       input.repository.loadSelectionSummary({ selection }),
       input.reminderConfig?.enabled && input.reminderConfig.publicSignupEnabled
-        ? input.repository.loadReminderSignupOptions({ selection })
+        ? input.repository.loadReminderOptions({ selection, channel: 'email' })
         : Promise.resolve([]),
+      input.repository.loadReminderOptions({ selection, channel: 'calendar' }),
     ]);
+    const baseIcalUrl = `/api/public-waste/ical?${new URLSearchParams({
+      ...(selection.regionId ? { regionId: selection.regionId } : {}),
+      cityId: selection.cityId,
+      streetId: selection.streetId,
+      ...(selection.houseNumberId ? { houseNumberId: selection.houseNumberId } : {}),
+      calendarName: selectionSummary,
+    }).toString()}`;
 
     return jsonResponse({
       ...payload,
       selectionSummary,
-      ...(input.reminderConfig?.enabled && input.reminderConfig.publicSignupEnabled && reminderFractions.length > 0
+      ...(calendarReminderFractions.length > 0
+        ? {
+            calendarReminderOptions: {
+              fractions: calendarReminderFractions,
+            },
+          }
+        : {}),
+      ...(input.reminderConfig?.enabled && input.reminderConfig.publicSignupEnabled && emailReminderFractions.length > 0
         ? {
             reminderSignup: {
               enabled: true,
               consentLabel: input.reminderConfig.consentLabel,
               privacyPolicyUrl: input.reminderConfig.privacyPolicyUrl,
-              fractions: reminderFractions,
+              fractions: emailReminderFractions,
             },
           }
         : {}),
-      icalUrl: `/api/public-waste/ical?${new URLSearchParams({
-        ...(selection.regionId ? { regionId: selection.regionId } : {}),
-        cityId: selection.cityId,
-        streetId: selection.streetId,
-        ...(selection.houseNumberId ? { houseNumberId: selection.houseNumberId } : {}),
-        calendarName: selectionSummary,
-      }).toString()}`,
+      icalUrl: baseIcalUrl,
     });
   } catch {
     return jsonResponse({ error: 'invalid_request', message: INVALID_REQUEST_MESSAGE }, 400);
@@ -219,7 +245,7 @@ const isPublicWasteReminderSignupRequest = (value: unknown): value is PublicWast
 };
 
 export const handlePublicWasteReminderSignupRequest = async (input: {
-  readonly repository: Pick<PublicWasteRepository, 'loadReminderSignupOptions' | 'loadSelectionSummary'>;
+  readonly repository: Pick<PublicWasteRepository, 'loadReminderOptions' | 'loadSelectionSummary'>;
   readonly request: Request;
   readonly reminderConfig?: WasteManagementEmailReminderConfig;
   readonly submitReminderSignup?: (input: {
@@ -239,8 +265,9 @@ export const handlePublicWasteReminderSignupRequest = async (input: {
       return new Response(INVALID_REQUEST_MESSAGE, { status: 400 });
     }
 
-    const allowedFractions = await input.repository.loadReminderSignupOptions({
+    const allowedFractions = await input.repository.loadReminderOptions({
       selection: payload.selection,
+      channel: 'email',
     });
     const allowedFractionMap = new Map(allowedFractions.map((fraction) => [fraction.id, fraction]));
     const hasInvalidItem = payload.items.some((item) => {
@@ -346,13 +373,15 @@ export const handlePublicWastePdfRequest = async (input: {
 };
 
 export const handlePublicWasteIcalRequest = async (input: {
-  readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries' | 'loadSelectionSummary'>;
+  readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderOptions'>;
   readonly request: Request;
 }): Promise<Response> => {
   try {
     const url = new URL(input.request.url);
     const selection = readPublicWasteResolvedSelection(url);
-    const [calendar, selectionSummary] = await Promise.all([
+    const fractionIds = readPublicWasteFractionIds(url);
+    const reminderItems = readPublicWasteReminderItems(url);
+    const [calendar, selectionSummary, calendarReminderFractions] = await Promise.all([
       loadResolvedPublicWasteCalendar({
         repository: input.repository,
         input: {
@@ -361,18 +390,47 @@ export const handlePublicWasteIcalRequest = async (input: {
         },
       }),
       input.repository.loadSelectionSummary({ selection }),
+      reminderItems.length > 0
+        ? input.repository.loadReminderOptions({ selection, channel: 'calendar' })
+        : Promise.resolve([]),
     ]);
+    const filteredEntries = filterCalendarEntriesByFractionIds(calendar.listEntries, fractionIds);
+    const allowedReminderSlots = new Map(
+      calendarReminderFractions.map((fraction) => [
+        fraction.id,
+        new Map(fraction.slots.map((slot) => [slot.id, slot])),
+      ])
+    );
+    const reminderSlotSelections = new Map<string, { readonly defaultLeadDays: number }>();
+    for (const item of reminderItems) {
+      const slot = allowedReminderSlots.get(item.fractionId)?.get(item.slotId);
+      if (!slot) {
+        throw new Error('invalid_query_param:reminderItem');
+      }
+
+      reminderSlotSelections.set(item.fractionId, slot);
+    }
 
     const body = renderPublicWasteIcal({
       calendarName: readPublicWasteCalendarName(url),
       calendarDescription: `Abholort: ${selectionSummary}`,
-      events: calendar.listEntries.map((entry) => {
+      events: filteredEntries.map((entry) => {
         const description = buildPublicWasteIcalEventDescription(entry);
+        const reminderSlot = reminderSlotSelections.get(entry.fractionId);
         return {
           uid: `${entry.id}@public-waste-calendar`,
           startDate: normalizeDateForIcal(entry.date),
           summary: entry.fractionLabel,
           ...(description ? { description } : {}),
+          ...(reminderSlot
+            ? {
+                alarms: [
+                  {
+                    triggerDaysBefore: reminderSlot.defaultLeadDays,
+                  },
+                ],
+              }
+            : {}),
         };
       }),
     });

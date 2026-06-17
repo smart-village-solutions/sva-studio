@@ -39,21 +39,6 @@ const isSameMonth = (left: Date, right: Date): boolean =>
 
 const getWeekdayOffset = (value: Date): number => (value.getDay() + 6) % 7;
 
-const parseHexColorChannel = (value: string, startIndex: number): number => Number.parseInt(value.slice(startIndex, startIndex + 2), 16);
-
-const deriveReadableTextColor = (backgroundColor?: string): string | undefined => {
-  if (!backgroundColor || !/^#[0-9a-f]{6}$/i.test(backgroundColor)) {
-    return undefined;
-  }
-
-  const red = parseHexColorChannel(backgroundColor, 1);
-  const green = parseHexColorChannel(backgroundColor, 3);
-  const blue = parseHexColorChannel(backgroundColor, 5);
-  const luminance = (red * 0.299 + green * 0.587 + blue * 0.114) / 255;
-
-  return luminance > 0.62 ? 'rgb(24 24 24)' : 'rgb(255 255 255)';
-};
-
 const groupEntriesByMonth = (entries: readonly PublicWasteCalendarEntry[]) =>
   Array.from(
     entries.reduce<Map<string, PublicWasteCalendarEntry[]>>((groups, entry) => {
@@ -273,7 +258,6 @@ const buildYearMonthCells = (
 
 export function PublicWasteCalendarPanels(props: Readonly<{
   model: FilteredPublicWasteCalendarViewModel;
-  onToggleFraction: (fractionId: string) => void;
   onActivateEntry: (entry: PublicWasteCalendarEntry) => void;
 }>) {
   const tabs: ReadonlyArray<'list' | 'month' | 'year'> = ['list', 'month', 'year'];
@@ -342,36 +326,6 @@ export function PublicWasteCalendarPanels(props: Readonly<{
 
   return (
     <section className="calendar-panel" aria-label="Kalenderansicht">
-      <div className="filter-list" aria-label="Fraktionsfilter">
-        {props.model.fractionOptions.map((fraction) => {
-          const checked = props.model.activeFractionIds.includes(fraction.id);
-          const textColor = deriveReadableTextColor(fraction.color);
-          return (
-            <label
-              key={fraction.id}
-              className={`filter-chip${checked ? ' is-active' : ''}`}
-              style={
-                fraction.color
-                  ? {
-                      backgroundColor: fraction.color,
-                      borderColor: fraction.color,
-                      ...(textColor ? { color: textColor } : {}),
-                    }
-                  : undefined
-              }
-            >
-              <input
-                type="checkbox"
-                className="filter-chip-input"
-                checked={checked}
-                onChange={() => props.onToggleFraction(fraction.id)}
-              />
-              <span className="filter-indicator" aria-hidden="true" />
-              <span className="filter-chip-text">{fraction.label}</span>
-            </label>
-          );
-        })}
-      </div>
       <div className="calendar-tabs" role="tablist" aria-label="Kalenderansichten">
         <button
           type="button"

@@ -20,10 +20,7 @@ export const resolveThemeName = (instanceId?: string): AppThemeName => {
   return INSTANCE_THEME_MAP[instanceId] ?? DEFAULT_THEME_NAME;
 };
 
-export const resolveThemeMode = (
-  persistedMode: string | null | undefined,
-  _prefersDarkMode: boolean
-): ThemeMode => {
+export const resolveThemeMode = (persistedMode: string | null | undefined): ThemeMode => {
   if (isThemeMode(persistedMode)) {
     return persistedMode;
   }

@@ -39,7 +39,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     }
 
     const persistedMode = window.localStorage.getItem(THEME_MODE_STORAGE_KEY);
-    return resolveThemeMode(persistedMode, false);
+    return resolveThemeMode(persistedMode);
   });
 
   useIsomorphicLayoutEffect(() => {

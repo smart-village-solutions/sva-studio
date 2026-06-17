@@ -25,13 +25,13 @@ describe('theme helpers', () => {
   });
 
   it('prefers persisted theme mode over system preference', () => {
-    expect(resolveThemeMode('dark', false)).toBe('dark');
-    expect(resolveThemeMode('light', true)).toBe('light');
+    expect(resolveThemeMode('dark')).toBe('dark');
+    expect(resolveThemeMode('light')).toBe('light');
   });
 
   it('uses the studio default when no persisted theme mode exists', () => {
-    expect(resolveThemeMode(null, true)).toBe('light');
-    expect(resolveThemeMode(undefined, false)).toBe('light');
+    expect(resolveThemeMode(null)).toBe('light');
+    expect(resolveThemeMode(undefined)).toBe('light');
   });
 
   it('creates a bootstrap script that applies the persisted or default mode before hydration', () => {

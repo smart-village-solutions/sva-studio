@@ -24,7 +24,6 @@ describe('PublicWasteCalendarPanels', () => {
           listEntries: [],
           fractionOptions: [{ id: 'bio', label: 'Bioabfall', color: '#00AA00' }],
         })}
-        onToggleFraction={vi.fn()}
         onActivateEntry={vi.fn()}
       />
     );
@@ -32,30 +31,6 @@ describe('PublicWasteCalendarPanels', () => {
     expect(screen.queryByRole('link', { name: 'In Kalender übernehmen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Druckversion herunterladen' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'PDF 2026' })).toBeNull();
-  });
-
-  it('renders fraction badges with the configured fraction background colors', () => {
-    render(
-      <PublicWasteCalendarPanels
-        model={createFilteredPublicWasteCalendarModelFixture({
-          listEntries: [],
-          activeFractionIds: ['bio', 'paper'],
-          fractionOptions: [
-            { id: 'bio', label: 'Bioabfall', color: '#00AA00' },
-            { id: 'paper', label: 'Papier', color: '#0000FF' },
-          ],
-        })}
-        onToggleFraction={vi.fn()}
-        onActivateEntry={vi.fn()}
-      />
-    );
-
-    expect(screen.getByText('Bioabfall').closest('label')?.getAttribute('style')).toContain(
-      'background-color: #00AA00'
-    );
-    expect(screen.getByText('Papier').closest('label')?.getAttribute('style')).toContain(
-      'background-color: #0000FF'
-    );
   });
 
   it('renders three tabs and allows switching to the month and year calendar views', () => {
@@ -80,7 +55,6 @@ describe('PublicWasteCalendarPanels', () => {
             { id: 'paper', label: 'Papier', color: '#0000FF' },
           ],
         })}
-        onToggleFraction={vi.fn()}
         onActivateEntry={onActivateEntry}
       />
     );
@@ -115,7 +89,6 @@ describe('PublicWasteCalendarPanels', () => {
           listEntries: [],
           fractionOptions: [{ id: 'bio', label: 'Bioabfall', color: '#00AA00' }],
         })}
-        onToggleFraction={vi.fn()}
         onActivateEntry={vi.fn()}
       />
     );
@@ -126,6 +99,52 @@ describe('PublicWasteCalendarPanels', () => {
 
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Monat' }), { key: 'ArrowLeft' });
     expect(screen.getByRole('tab', { name: 'Liste' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('renders upcoming entries before a separate past section in the list view', () => {
+    render(
+      <PublicWasteCalendarPanels
+        model={createFilteredPublicWasteCalendarModelFixture({
+          nextPickupDate: '2026-05-19',
+          listEntries: [
+            createPublicWasteCalendarEntryFixture({
+              id: 'pickup-past',
+              date: '2026-05-12',
+              fractionLabel: 'Restmüll',
+              fractionId: 'rest',
+              fractionColor: '#444444',
+            }),
+            createPublicWasteCalendarEntryFixture({
+              id: 'pickup-next',
+              date: '2026-05-19',
+              fractionLabel: 'Bioabfall',
+            }),
+            createPublicWasteCalendarEntryFixture({
+              id: 'pickup-future',
+              date: '2026-05-21',
+              fractionLabel: 'Papier',
+              fractionId: 'paper',
+              fractionColor: '#0000FF',
+            }),
+          ],
+          activeFractionIds: ['rest', 'bio', 'paper'],
+          fractionOptions: [
+            { id: 'rest', label: 'Restmüll', color: '#444444' },
+            { id: 'bio', label: 'Bioabfall', color: '#00AA00' },
+            { id: 'paper', label: 'Papier', color: '#0000FF' },
+          ],
+        })}
+        onActivateEntry={vi.fn()}
+      />
+    );
+
+    const buttons = screen.getAllByRole('button', { name: /Termin .* am 2026-05-/ });
+    expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Termin Bioabfall am 2026-05-19',
+      'Termin Papier am 2026-05-21',
+      'Termin Restmüll am 2026-05-12',
+    ]);
+    expect(screen.getByRole('heading', { name: 'Vergangene Termine' })).toBeTruthy();
   });
 
   it('allows month navigation back to the earliest available month in the previous year', () => {
@@ -140,7 +159,6 @@ describe('PublicWasteCalendarPanels', () => {
             createPublicWasteCalendarEntryFixture(),
           ],
         })}
-        onToggleFraction={vi.fn()}
         onActivateEntry={vi.fn()}
       />
     );

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { readPublicWasteReferenceDate } from './public-waste-request-parsing.server.js';
+import { readPublicWasteReferenceDate, readPublicWasteReminderItems } from './public-waste-request-parsing.server.js';
 
 describe('public waste request parsing', () => {
   beforeEach(() => {
@@ -23,5 +23,16 @@ describe('public waste request parsing', () => {
     expect(readPublicWasteReferenceDate(new URL('https://example.test/public-waste?referenceDate=not-a-date'))).toBe(
       '2026-06-07'
     );
+  });
+
+  it('parses reminder items for calendar exports', () => {
+    expect(
+      readPublicWasteReminderItems(
+        new URL('https://example.test/public-waste?reminderItem=bio|bio:calendar:first&reminderItem=paper|paper:calendar:first')
+      )
+    ).toEqual([
+      { fractionId: 'bio', slotId: 'bio:calendar:first' },
+      { fractionId: 'paper', slotId: 'paper:calendar:first' },
+    ]);
   });
 });

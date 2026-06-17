@@ -85,12 +85,19 @@ test('resolves a location, restores it from cookie, and exposes accessible expor
 
   await page.goto('/');
 
+  await page.getByRole('textbox', { name: 'Ort suchen' }).fill('Rat');
   await page.getByRole('button', { name: 'Rathenow' }).click();
+  await page.getByRole('textbox', { name: 'Straße suchen' }).fill('Hafen');
   await page.getByRole('button', { name: 'Am alten Hafen' }).click();
+  await page.getByRole('textbox', { name: 'Hausnummer suchen' }).fill('12');
   await page.getByRole('button', { name: '12' }).click();
 
-  await expect(page.getByText('Rathenow, Am alten Hafen 12')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'iCal abonnieren' })).toBeVisible();
+  await expect(page.getByText('Rathenow')).toBeVisible();
+  await expect(page.getByText('Am alten Hafen')).toBeVisible();
+  await expect(page.getByText('12')).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Kalenderexport' }).click();
+  await expect(page.getByRole('link', { name: 'Kalender exportieren' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Termin Bioabfall am 2026-05-19' }).click();
 
@@ -99,6 +106,9 @@ test('resolves a location, restores it from cookie, and exposes accessible expor
 
   await page.reload();
 
-  await expect(page.getByText('Gespeicherte Adresse geladen. Sie können die Auswahl ändern.')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'iCal abonnieren' })).toBeVisible();
+  await expect(page.getByText('Rathenow')).toBeVisible();
+  await expect(page.getByText('Am alten Hafen')).toBeVisible();
+  await expect(page.getByText('12')).toBeVisible();
+  await page.getByRole('tab', { name: 'Kalenderexport' }).click();
+  await expect(page.getByRole('link', { name: 'Kalender exportieren' })).toBeVisible();
 });

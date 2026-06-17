@@ -91,12 +91,13 @@ Das System SHALL genau einen zuletzt gewählten Standort pro Browser für die ö
 
 Das System SHALL für einen vollständig aufgelösten Standort drei komplementäre Kalenderdarstellungen bereitstellen.
 
-#### Scenario: Terminliste zeigt verfügbare Vergangenheits- und Zukunftstermine chronologisch
+#### Scenario: Terminliste beginnt mit dem nächsten Termin und trennt Vergangenes separat ab
 
 - **WHEN** der Kalender für einen Standort geladen ist
-- **THEN** zeigt die Terminliste verfügbare Termine in zeitlich aufsteigender Reihenfolge
+- **THEN** beginnt die Terminliste mit dem nächsten verfügbaren Termin
+- **AND** zeigt danach weitere künftige Termine in zeitlich aufsteigender Reihenfolge
 - **AND** sie kann je nach Datenlage auch vergangene Termine bis zum Anfang des Vorjahres enthalten
-- **AND** künftige Termine bleiben ohne Lücken im selben Kalenderdatensatz sichtbar
+- **AND** vergangene Termine erscheinen mit einer eigenen Überschrift erst nach dem Block der künftigen Termine
 
 #### Scenario: Monats- und Jahresansicht haben ein begrenztes Navigationsfenster
 

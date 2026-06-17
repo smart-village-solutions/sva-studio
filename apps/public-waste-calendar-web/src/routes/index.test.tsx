@@ -160,7 +160,7 @@ describe('PublicWasteIndexPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '12' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('link', { name: 'In Kalender übernehmen' })).toBeTruthy();
+      expect(screen.getByRole('tab', { name: 'Kalenderexport' })).toBeTruthy();
     });
 
     expect(document.cookie).toContain(
@@ -180,7 +180,7 @@ describe('PublicWasteIndexPage', () => {
     expect(screen.getByText('Rathenow')).toBeTruthy();
     expect(screen.getByText('Am alten Hafen')).toBeTruthy();
     expect(screen.getByText('12')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'In Kalender übernehmen' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Kalenderexport' })).toBeTruthy();
   });
 
   it('clears stale stored selections and falls back to the next valid selection step', async () => {
@@ -307,7 +307,7 @@ describe('PublicWasteIndexPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '12' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'E-Mail-Erinnerung einrichten' })).toBeTruthy();
+      expect(screen.getByRole('tab', { name: 'E-Mail-Abo' })).toBeTruthy();
     });
   });
 });

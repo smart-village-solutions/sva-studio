@@ -1,5 +1,7 @@
 import {
   buildPublicWasteLocationKey,
+  type PublicWasteReminderSelectionItem,
+  type PublicWasteCalendarReminderView,
   type PublicWasteReminderSignupRequest,
   type PublicWasteReminderSignupResponse,
   type PublicWasteReminderSignupView,
@@ -58,6 +60,7 @@ export type PublicWasteSelectionResponse = {
 export type PublicWasteCalendarResponse = Awaited<ReturnType<typeof loadResolvedPublicWasteCalendar>> & {
   readonly selectionSummary: string;
   readonly icalUrl: string;
+  readonly calendarReminderOptions?: PublicWasteCalendarReminderView;
   readonly reminderSignup?: PublicWasteReminderSignupView;
 };
 
@@ -70,6 +73,31 @@ const toSearchParams = (selection: PublicWasteSelectionState): URLSearchParams =
   return params;
 };
 
+const appendFractionIds = (params: URLSearchParams, fractionIds: readonly string[]) => {
+  for (const fractionId of fractionIds) {
+    params.append('fractionId', fractionId);
+  }
+};
+
+const appendReminderItems = (params: URLSearchParams, items: readonly PublicWasteReminderSelectionItem[]) => {
+  for (const item of items) {
+    params.append('reminderItem', `${item.fractionId}|${item.slotId}`);
+  }
+};
+
+export const buildPublicWasteIcalUrl = (input: {
+  readonly selection: PublicWasteResolvedSelection;
+  readonly calendarName: string;
+  readonly fractionIds: readonly string[];
+  readonly reminderItems?: readonly PublicWasteReminderSelectionItem[];
+}): string => {
+  const params = toSearchParams(input.selection);
+  params.set('calendarName', input.calendarName);
+  appendFractionIds(params, input.fractionIds);
+  appendReminderItems(params, input.reminderItems ?? []);
+  return `/api/public-waste/ical?${params.toString()}`;
+};
+
 export const buildPublicWastePdfDownloadUrl = (input: {
   readonly selection: PublicWasteResolvedSelection;
   readonly year: number;
@@ -77,9 +105,7 @@ export const buildPublicWastePdfDownloadUrl = (input: {
 }): string => {
   const params = toSearchParams(input.selection);
   params.set('year', String(input.year));
-  for (const fractionId of input.fractionIds) {
-    params.append('fractionId', fractionId);
-  }
+  appendFractionIds(params, input.fractionIds);
   return `/api/public-waste/pdf?${params.toString()}`;
 };
 

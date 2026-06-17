@@ -2,6 +2,7 @@ import type { WasteHolidayRuleRecord } from '@sva/core';
 
 import type {
   PublicWasteCalendarEntry,
+  PublicWasteReminderChannel,
   PublicWasteReminderFractionOption,
   PublicWasteReminderFractionSlotOption,
   PublicWasteResolvedSelection,
@@ -118,6 +119,7 @@ type PersistedReminderSlot = {
 type PersistedReminderConfig = {
   readonly channels?: unknown;
   readonly email?: unknown;
+  readonly calendar?: unknown;
 };
 
 export type PublicWasteRepository = ReturnType<typeof createPublicWasteRepository>;
@@ -222,23 +224,26 @@ const normalizeReminderSlot = (value: unknown): PublicWasteReminderFractionSlotO
   };
 };
 
-const normalizeReminderSignupFraction = (row: ReminderFractionRow): PublicWasteReminderFractionOption | null => {
+const normalizeReminderFraction = (
+  row: ReminderFractionRow,
+  channel: PublicWasteReminderChannel
+): PublicWasteReminderFractionOption | null => {
   if (!isRecord(row.reminder_config)) {
     return null;
   }
 
   const config = row.reminder_config as PersistedReminderConfig;
   const channels = isRecord(config.channels) ? config.channels : null;
-  if (!channels || channels.email !== true) {
+  if (!channels || channels[channel] !== true) {
     return null;
   }
 
-  const emailConfig = isRecord(config.email) ? config.email : null;
-  if (!emailConfig || !Array.isArray(emailConfig.slots)) {
+  const channelConfig = isRecord(config[channel]) ? config[channel] : null;
+  if (!channelConfig || !Array.isArray(channelConfig.slots)) {
     return null;
   }
 
-  const slots = emailConfig.slots
+  const slots = channelConfig.slots
     .map(normalizeReminderSlot)
     .filter((slot): slot is PublicWasteReminderFractionSlotOption => slot !== null);
   if (slots.length === 0) {
@@ -807,8 +812,9 @@ export const createPublicWasteRepository = (input: {
       return [row.city_label, [row.street_label, row.house_number_label].filter(Boolean).join(' ')].filter(Boolean).join(', ');
     },
 
-    async loadReminderSignupOptions(query: {
+    async loadReminderOptions(query: {
       readonly selection: PublicWasteResolvedSelection;
+      readonly channel: PublicWasteReminderChannel;
     }): Promise<readonly PublicWasteReminderFractionOption[]> {
       const streetSelectionFilter = createStreetSelectionFilter(query.selection.streetId);
       const result = await input.execute<ReminderFractionRow>({
@@ -840,7 +846,7 @@ export const createPublicWasteRepository = (input: {
       });
 
       return result.rows
-        .map(normalizeReminderSignupFraction)
+        .map((row) => normalizeReminderFraction(row, query.channel))
         .filter((fraction): fraction is PublicWasteReminderFractionOption => fraction !== null);
     },
   };

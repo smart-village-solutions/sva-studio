@@ -1,12 +1,18 @@
+import { IconCalendarPlus, IconFileTypePdf, IconMail } from '@tabler/icons-react';
 import React from 'react';
 
+import {
+  buildPublicWasteIcalUrl,
+  requestPublicWasteReminderSignup,
+  type PublicWasteCalendarResponse,
+} from '../lib/public-waste-api.js';
 import type {
   PublicWasteCalendarEntry,
-  PublicWasteReminderSignupView,
+  PublicWasteReminderFractionOption,
+  PublicWasteReminderSelectionItem,
   PublicWasteResolvedSelection,
   PublicWasteSelectableEntry,
 } from '../lib/public-waste-contract.js';
-import { requestPublicWasteReminderSignup } from '../lib/public-waste-api.js';
 import {
   filterPublicWasteCalendarFractions,
   type PublicWasteCalendarViewModel,
@@ -32,11 +38,17 @@ type CompletePublicWasteAppProps = {
   readonly selectionSummary: string;
   readonly calendarModel: PublicWasteCalendarViewModel;
   readonly icalUrl: string;
-  readonly reminderSignup?: PublicWasteReminderSignupView;
+  readonly calendarReminderOptions?: PublicWasteCalendarResponse['calendarReminderOptions'];
+  readonly reminderSignup?: PublicWasteCalendarResponse['reminderSignup'];
   readonly onChangeLocation: () => void;
 };
 
 type PublicWasteAppProps = IncompletePublicWasteAppProps | CompletePublicWasteAppProps;
+
+type ActionPanel = 'calendar' | 'pdf' | 'email';
+type ReminderSelectionState = Record<string, string>;
+const EMPTY_REMINDER_FRACTIONS: readonly PublicWasteReminderFractionOption[] = [];
+const ACTION_PANELS: readonly ActionPanel[] = ['calendar', 'pdf', 'email'];
 
 const splitSelectionSummary = (
   selectionSummary: string
@@ -63,6 +75,85 @@ const splitSelectionSummary = (
   return [cityPart, streetLine, houseNumberLine];
 };
 
+const buildReminderSlotSelection = (
+  activeFractionIds: readonly string[],
+  fractions: readonly PublicWasteReminderFractionOption[],
+  previous: ReminderSelectionState
+): ReminderSelectionState => {
+  const activeFractionSet = new Set(activeFractionIds);
+  const next: ReminderSelectionState = {};
+
+  for (const fraction of fractions) {
+    if (!activeFractionSet.has(fraction.id) || fraction.slots.length === 0) {
+      continue;
+    }
+
+    const previousSlotId = previous[fraction.id];
+    next[fraction.id] = fraction.slots.some((slot) => slot.id === previousSlotId) ? previousSlotId : fraction.slots[0]!.id;
+  }
+
+  return next;
+};
+
+const areReminderSelectionsEqual = (left: ReminderSelectionState, right: ReminderSelectionState): boolean => {
+  const leftEntries = Object.entries(left);
+  const rightEntries = Object.entries(right);
+
+  if (leftEntries.length !== rightEntries.length) {
+    return false;
+  }
+
+  return leftEntries.every(([fractionId, slotId]) => right[fractionId] === slotId);
+};
+
+const resolveReminderContext = (
+  activeFractionIds: readonly string[],
+  fractionOptions: readonly { readonly id: string; readonly label: string }[],
+  reminderFractions: readonly PublicWasteReminderFractionOption[]
+) => {
+  const reminderFractionMap = new Map(reminderFractions.map((fraction) => [fraction.id, fraction]));
+  const fractionLabelMap = new Map(fractionOptions.map((fraction) => [fraction.id, fraction.label]));
+  const supportedFractions = activeFractionIds
+    .map((fractionId) => reminderFractionMap.get(fractionId))
+    .filter((fraction): fraction is PublicWasteReminderFractionOption => fraction !== undefined);
+  const unsupportedLabels = activeFractionIds
+    .filter((fractionId) => !reminderFractionMap.has(fractionId))
+    .map((fractionId) => fractionLabelMap.get(fractionId) ?? fractionId);
+
+  return {
+    supportedFractions,
+    unsupportedLabels,
+    isFullySupported: activeFractionIds.length > 0 && unsupportedLabels.length === 0 && supportedFractions.length > 0,
+  };
+};
+
+const buildReminderItems = (
+  fractions: readonly PublicWasteReminderFractionOption[],
+  selectedSlots: ReminderSelectionState
+): readonly PublicWasteReminderSelectionItem[] =>
+  fractions
+    .map((fraction) => {
+      const slotId = selectedSlots[fraction.id];
+      return slotId
+        ? {
+            fractionId: fraction.id,
+            slotId,
+          }
+        : null;
+    })
+    .filter((item): item is PublicWasteReminderSelectionItem => item !== null);
+
+const hasCompleteReminderItems = (
+  context: Readonly<{
+    isFullySupported: boolean;
+    supportedFractions: readonly PublicWasteReminderFractionOption[];
+  }>,
+  items: readonly PublicWasteReminderSelectionItem[]
+): boolean => context.isFullySupported && items.length === context.supportedFractions.length;
+
+const getActionTabId = (panel: ActionPanel): string => `public-waste-action-tab-${panel}`;
+const getActionPanelId = (panel: ActionPanel): string => `public-waste-action-panel-${panel}`;
+
 export function PublicWasteApp(props: Readonly<PublicWasteAppProps>) {
   if (props.selectionState === 'incomplete') {
     return (
@@ -81,15 +172,16 @@ export function PublicWasteApp(props: Readonly<PublicWasteAppProps>) {
 
 function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
   const [selectedEntry, setSelectedEntry] = React.useState<PublicWasteCalendarEntry | null>(null);
-  const [reminderOpen, setReminderOpen] = React.useState(false);
+  const [activeActionPanel, setActiveActionPanel] = React.useState<ActionPanel | null>(null);
   const [email, setEmail] = React.useState('');
   const [consentAccepted, setConsentAccepted] = React.useState(false);
-  const [selectedItems, setSelectedItems] = React.useState<Record<string, string>>({});
   const [reminderError, setReminderError] = React.useState<string | null>(null);
   const [reminderSuccess, setReminderSuccess] = React.useState<null | { readonly headline: string; readonly message: string }>(
     null
   );
   const [reminderSubmitting, setReminderSubmitting] = React.useState(false);
+  const [calendarReminderSlots, setCalendarReminderSlots] = React.useState<ReminderSelectionState>({});
+  const [emailReminderSlots, setEmailReminderSlots] = React.useState<ReminderSelectionState>({});
   const {
     selectedFractions,
     pdfYear,
@@ -106,30 +198,110 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
   const deferredFractions = React.useDeferredValue(selectedFractions);
   const filteredModel = filterPublicWasteCalendarFractions(props.calendarModel, deferredFractions);
   const [cityLine, streetLine, houseNumberLine] = splitSelectionSummary(props.selectionSummary);
-  const reminderFractions = props.reminderSignup?.fractions ?? [];
+  const selectedFractionKey = selectedFractions.join('|');
+  const previousSelectedFractionKeyRef = React.useRef(selectedFractionKey);
+  const emailReminderFractions = props.reminderSignup?.fractions ?? EMPTY_REMINDER_FRACTIONS;
+  const calendarReminderFractions = props.calendarReminderOptions?.fractions ?? EMPTY_REMINDER_FRACTIONS;
+  const emailReminderContext = React.useMemo(
+    () => resolveReminderContext(selectedFractions, props.calendarModel.fractionOptions, emailReminderFractions),
+    [emailReminderFractions, props.calendarModel.fractionOptions, selectedFractions]
+  );
+  const calendarReminderContext = React.useMemo(
+    () => resolveReminderContext(selectedFractions, props.calendarModel.fractionOptions, calendarReminderFractions),
+    [calendarReminderFractions, props.calendarModel.fractionOptions, selectedFractions]
+  );
 
-  const toggleReminderFraction = (fractionId: string, checked: boolean) => {
-    setSelectedItems((current) => {
-      if (checked) {
-        const fraction = reminderFractions.find((entry) => entry.id === fractionId);
-        return {
-          ...current,
-          [fractionId]: fraction?.slots[0]?.id ?? '',
-        };
+  React.useEffect(() => {
+    setCalendarReminderSlots((current) =>
+      {
+        const next = buildReminderSlotSelection(selectedFractions, calendarReminderContext.supportedFractions, current);
+        return areReminderSelectionsEqual(current, next) ? current : next;
       }
+    );
+  }, [calendarReminderContext.supportedFractions, selectedFractions]);
 
-      const next = { ...current };
-      delete next[fractionId];
-      return next;
-    });
+  React.useEffect(() => {
+    setEmailReminderSlots((current) =>
+      {
+        const next = buildReminderSlotSelection(selectedFractions, emailReminderContext.supportedFractions, current);
+        return areReminderSelectionsEqual(current, next) ? current : next;
+      }
+    );
+  }, [emailReminderContext.supportedFractions, selectedFractions]);
+
+  React.useEffect(() => {
+    setActiveActionPanel(null);
+    setReminderError(null);
+    setReminderSuccess(null);
+    setConsentAccepted(false);
+    setEmail('');
+  }, [props.calendarModel.locationKey]);
+
+  React.useEffect(() => {
+    if (previousSelectedFractionKeyRef.current === selectedFractionKey) {
+      return;
+    }
+
+    previousSelectedFractionKeyRef.current = selectedFractionKey;
+    setReminderError(null);
+    setReminderSuccess(null);
+  }, [selectedFractionKey]);
+
+  const toggleActionPanel = (panel: ActionPanel) => {
+    setActiveActionPanel((current) => (current === panel ? null : panel));
+    setReminderError(null);
   };
 
+  const handleActionTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, panel: ActionPanel) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+      return;
+    }
+
+    event.preventDefault();
+    const currentIndex = ACTION_PANELS.indexOf(panel);
+    const nextIndex =
+      event.key === 'ArrowRight'
+        ? (currentIndex + 1) % ACTION_PANELS.length
+        : (currentIndex - 1 + ACTION_PANELS.length) % ACTION_PANELS.length;
+    const nextPanel = ACTION_PANELS[nextIndex];
+
+    if (!nextPanel) {
+      return;
+    }
+
+    setActiveActionPanel(nextPanel);
+    document.getElementById(getActionTabId(nextPanel))?.focus();
+  };
+
+  const calendarReminderItems = React.useMemo(
+    () => buildReminderItems(calendarReminderContext.supportedFractions, calendarReminderSlots),
+    [calendarReminderContext.supportedFractions, calendarReminderSlots]
+  );
+  const emailReminderItems = React.useMemo(
+    () => buildReminderItems(emailReminderContext.supportedFractions, emailReminderSlots),
+    [emailReminderContext.supportedFractions, emailReminderSlots]
+  );
+  const canUseCalendarReminderExport = hasCompleteReminderItems(calendarReminderContext, calendarReminderItems);
+  const canSubmitEmailReminderSelection = hasCompleteReminderItems(emailReminderContext, emailReminderItems);
+  const calendarExportUrl = buildPublicWasteIcalUrl({
+    selection: props.selection,
+    calendarName: props.selectionSummary,
+    fractionIds: selectedFractions,
+    reminderItems: canUseCalendarReminderExport ? calendarReminderItems : [],
+  });
+  const canSubmitEmailReminder =
+    canSubmitEmailReminderSelection &&
+    consentAccepted &&
+    email.trim().length > 0 &&
+    !reminderSubmitting;
+
   const submitReminderSignup = async () => {
-    const items = Object.entries(selectedItems)
-      .filter(([, slotId]) => slotId.length > 0)
-      .map(([fractionId, slotId]) => ({ fractionId, slotId }));
-    if (!props.reminderSignup || items.length === 0 || !consentAccepted || email.trim().length === 0) {
-      setReminderError('Bitte wählen Sie mindestens eine Abfallart, eine E-Mail-Adresse und die Datenschutz-Einwilligung aus.');
+    if (!props.reminderSignup?.enabled) {
+      setReminderError('Der E-Mail-Erinnerungsdienst ist derzeit nicht verfügbar.');
+      return;
+    }
+    if (!canSubmitEmailReminderSelection || !consentAccepted || email.trim().length === 0) {
+      setReminderError('Bitte wählen Sie gültige Fraktionen, eine E-Mail-Adresse und die Datenschutz-Einwilligung aus.');
       return;
     }
 
@@ -140,7 +312,7 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
       const response = await requestPublicWasteReminderSignup({
         selection: props.selection,
         email: email.trim(),
-        items,
+        items: emailReminderItems,
         consentAccepted: true,
       });
       setReminderSuccess({
@@ -154,117 +326,198 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
     }
   };
 
+  const actionPanelDescription =
+    selectedFractions.length === 0
+      ? 'Wählen Sie rechts mindestens eine Fraktion aus, um diese Aktion zu nutzen.'
+      : `Aktiv ausgewählt: ${selectedFractions.length} Fraktion${selectedFractions.length === 1 ? '' : 'en'}.`;
+
   return (
     <section className="selection-panel">
       <PublicWasteSelectionHeader
         cityLine={cityLine}
         streetLine={streetLine}
         houseNumberLine={houseNumberLine}
-        icalUrl={props.icalUrl}
-        pdfYear={pdfYear}
-        pdfRunning={pdfRunning}
-        selectedFractionCount={selectedFractions.length}
-        yearOptions={yearOptions}
+        fractionOptions={props.calendarModel.fractionOptions}
+        activeFractionIds={selectedFractions}
         onChangeLocation={props.onChangeLocation}
-        onSelectPdfYear={setPdfYear}
-        onDownloadPdf={() => {
-          void downloadPdf();
-        }}
+        onToggleFraction={toggleFraction}
       />
-      {props.reminderSignup?.enabled ? (
-        <section className="reminder-panel" aria-label="E-Mail-Erinnerung">
-          <div className="reminder-panel-header">
-            <div>
-              <h3 className="section-title">E-Mail-Erinnerung</h3>
-              <p className="selection-step-copy">Lassen Sie sich für diesen Standort per E-Mail an anstehende Entsorgungstermine erinnern.</p>
-            </div>
-            <button type="button" className="selection-trigger reminder-trigger" onClick={() => setReminderOpen((current) => !current)}>
-              {reminderOpen ? 'Formular schließen' : 'E-Mail-Erinnerung einrichten'}
-            </button>
-          </div>
-          {reminderOpen ? (
-            reminderSuccess ? (
-              <div className="reminder-feedback reminder-feedback-success">
-                <strong>{reminderSuccess.headline}</strong>
-                <p className="body-copy">{reminderSuccess.message}</p>
-              </div>
-            ) : (
-              <div className="reminder-form-shell">
-                <div className="reminder-fraction-list">
-                  {reminderFractions.map((fraction) => (
-                    <div key={fraction.id} className="reminder-fraction-card">
-                      <label className="reminder-fraction-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={Object.prototype.hasOwnProperty.call(selectedItems, fraction.id)}
-                          onChange={(event) => toggleReminderFraction(fraction.id, event.target.checked)}
-                        />
-                        <span>{fraction.label}</span>
-                      </label>
-                      {Object.prototype.hasOwnProperty.call(selectedItems, fraction.id) ? (
-                        <label className="reminder-field">
-                          <span>Zeitfenster für {fraction.label}</span>
-                          <select
-                            aria-label={`Zeitfenster für ${fraction.label}`}
-                            value={selectedItems[fraction.id] ?? ''}
-                            onChange={(event) =>
-                              setSelectedItems((current) => ({
-                                ...current,
-                                [fraction.id]: event.target.value,
-                              }))
-                            }
-                          >
-                            {fraction.slots.map((slot) => (
-                              <option key={slot.id} value={slot.id}>
-                                {slot.defaultLeadDays} Tage vorher, spätestens {slot.maxLeadDays} Tage
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-                <label className="reminder-field">
-                  <span>E-Mail-Adresse</span>
-                  <input
-                    aria-label="E-Mail-Adresse"
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                  />
-                </label>
-                <label className="reminder-consent">
-                  <input
-                    type="checkbox"
-                    checked={consentAccepted}
-                    onChange={(event) => setConsentAccepted(event.target.checked)}
-                  />
-                  <span>{props.reminderSignup.consentLabel}</span>
-                  <a href={props.reminderSignup.privacyPolicyUrl} target="_blank" rel="noreferrer">
-                    Datenschutzerklärung
-                  </a>
-                </label>
-                {reminderError ? <p className="reminder-error">{reminderError}</p> : null}
-                <button
-                  type="button"
-                  className="selection-trigger reminder-submit"
-                  disabled={reminderSubmitting}
-                  onClick={() => {
-                    void submitReminderSignup();
+
+      <section className="action-hub" aria-label="Kalenderaktionen">
+        <div className="action-hub-toolbar" role="tablist" aria-label="Export- und Abo-Aktionen">
+          <button
+            type="button"
+            id={getActionTabId('calendar')}
+            role="tab"
+            aria-controls={getActionPanelId('calendar')}
+            aria-selected={activeActionPanel === 'calendar'}
+            tabIndex={activeActionPanel === null || activeActionPanel === 'calendar' ? 0 : -1}
+            className={`action-hub-trigger${activeActionPanel === 'calendar' ? ' is-active' : ''}`}
+            onClick={() => toggleActionPanel('calendar')}
+            onKeyDown={(event) => handleActionTabKeyDown(event, 'calendar')}
+          >
+            <IconCalendarPlus size={20} stroke={1.8} aria-hidden="true" />
+            <span>Kalenderexport</span>
+          </button>
+          <button
+            type="button"
+            id={getActionTabId('pdf')}
+            role="tab"
+            aria-controls={getActionPanelId('pdf')}
+            aria-selected={activeActionPanel === 'pdf'}
+            tabIndex={activeActionPanel === 'pdf' ? 0 : -1}
+            className={`action-hub-trigger${activeActionPanel === 'pdf' ? ' is-active' : ''}`}
+            onClick={() => toggleActionPanel('pdf')}
+            onKeyDown={(event) => handleActionTabKeyDown(event, 'pdf')}
+          >
+            <IconFileTypePdf size={20} stroke={1.8} aria-hidden="true" />
+            <span>PDF-Download</span>
+          </button>
+          <button
+            type="button"
+            id={getActionTabId('email')}
+            role="tab"
+            aria-controls={getActionPanelId('email')}
+            aria-selected={activeActionPanel === 'email'}
+            tabIndex={activeActionPanel === 'email' ? 0 : -1}
+            className={`action-hub-trigger${activeActionPanel === 'email' ? ' is-active' : ''}`}
+            onClick={() => toggleActionPanel('email')}
+            onKeyDown={(event) => handleActionTabKeyDown(event, 'email')}
+          >
+            <IconMail size={20} stroke={1.8} aria-hidden="true" />
+            <span>E-Mail-Abo</span>
+          </button>
+        </div>
+
+        {activeActionPanel ? (
+          <div
+            id={getActionPanelId(activeActionPanel)}
+            className="action-panel"
+            role="tabpanel"
+            aria-labelledby={getActionTabId(activeActionPanel)}
+          >
+            <p className="action-panel-intro">{actionPanelDescription}</p>
+
+            {activeActionPanel === 'calendar' ? (
+              <div className="action-panel-body">
+                {canUseCalendarReminderExport ? (
+                  <p className="action-panel-copy">
+                    Der Export übernimmt automatisch die Standard-Erinnerungen der aktiven Fraktionen.
+                  </p>
+                ) : (
+                  <p className="action-panel-copy">
+                    Der Export enthält die aktiven Abholtermine ohne zusätzliche Erinnerungen.
+                  </p>
+                )}
+                {!calendarReminderContext.isFullySupported && calendarReminderContext.supportedFractions.length > 0 ? (
+                  <p className="action-warning">
+                    Für die aktuelle Fraktionsauswahl sind nicht für alle Fraktionen Kalender-Erinnerungen verfügbar. Der Export wird deshalb ohne Erinnerungen erstellt.
+                  </p>
+                ) : null}
+                <a
+                  href={selectedFractions.length > 0 ? calendarExportUrl : undefined}
+                  className={`action-cta-link${selectedFractions.length === 0 ? ' is-disabled' : ''}`}
+                  aria-disabled={selectedFractions.length === 0}
+                  onClick={(event) => {
+                    if (selectedFractions.length === 0) {
+                      event.preventDefault();
+                    }
                   }}
                 >
-                  {reminderSubmitting ? 'Wird angefordert…' : 'Erinnerung anfordern'}
+                  Kalender exportieren
+                </a>
+              </div>
+            ) : null}
+
+            {activeActionPanel === 'pdf' ? (
+              <div className="action-panel-body">
+                <label className="action-field">
+                  <span>Jahr</span>
+                  <select aria-label="PDF-Jahr" value={pdfYear} onChange={(event) => setPdfYear(Number.parseInt(event.target.value, 10))}>
+                    {yearOptions.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {pdfError ? <p className="action-warning">{pdfError}</p> : null}
+                <button
+                  type="button"
+                  className="action-cta-button"
+                  disabled={selectedFractions.length === 0 || pdfRunning}
+                  onClick={() => {
+                    void downloadPdf();
+                  }}
+                >
+                  {pdfRunning ? 'PDF wird erstellt…' : 'PDF herunterladen'}
                 </button>
               </div>
-            )
-          ) : null}
-        </section>
-      ) : null}
-      {pdfError ? <p className="body-copy">{pdfError}</p> : null}
+            ) : null}
+
+            {activeActionPanel === 'email' ? (
+              <div className="action-panel-body">
+                {reminderSuccess ? (
+                  <div className="reminder-feedback reminder-feedback-success">
+                    <strong>{reminderSuccess.headline}</strong>
+                    <p className="body-copy">{reminderSuccess.message}</p>
+                  </div>
+                ) : (
+                  <>
+                    {emailReminderContext.isFullySupported ? (
+                      <>
+                        <p className="action-panel-copy">
+                          Das Abo verwendet automatisch die Standard-Erinnerungen der aktiven Fraktionen.
+                        </p>
+                        <label className="action-field">
+                          <span>E-Mail-Adresse</span>
+                          <input
+                            aria-label="E-Mail-Adresse"
+                            type="email"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                          />
+                        </label>
+                        <label className="reminder-consent">
+                          <input
+                            type="checkbox"
+                            checked={consentAccepted}
+                            onChange={(event) => setConsentAccepted(event.target.checked)}
+                          />
+                          <span>{props.reminderSignup?.consentLabel ?? 'Ich stimme der Verarbeitung meiner Daten zu.'}</span>
+                          {props.reminderSignup?.privacyPolicyUrl ? (
+                            <a href={props.reminderSignup.privacyPolicyUrl} target="_blank" rel="noopener noreferrer">
+                              Datenschutzerklärung
+                            </a>
+                          ) : null}
+                        </label>
+                      </>
+                    ) : (
+                      <p className="action-warning">
+                        Für die aktuelle Fraktionsauswahl sind nicht für alle Fraktionen E-Mail-Erinnerungen verfügbar. Passen Sie die Fraktionsliste rechts an, um das Abo zu aktivieren.
+                      </p>
+                    )}
+                    {reminderError ? <p className="action-warning">{reminderError}</p> : null}
+                    <button
+                      type="button"
+                      className="action-cta-button"
+                      disabled={!canSubmitEmailReminder}
+                      onClick={() => {
+                        void submitReminderSignup();
+                      }}
+                    >
+                      {reminderSubmitting ? 'Wird angefordert…' : 'E-Mail-Abo anfordern'}
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+
       <PublicWasteCalendarPanels
         model={filteredModel}
-        onToggleFraction={toggleFraction}
         onActivateEntry={setSelectedEntry}
       />
       <PublicWasteEventDialog entry={selectedEntry} onClose={() => setSelectedEntry(null)} />

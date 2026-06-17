@@ -245,36 +245,3 @@ a:hover,
     backdrop-filter: none;
   }
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --sva-kern2-background: #121314;
-    --sva-kern2-background-strong: #1a1c1f;
-    --sva-kern2-surface: rgba(25, 26, 27, 0.92);
-    --sva-kern2-surface-border: rgba(36, 37, 38, 0.95);
-    --sva-kern2-text: #efefef;
-    --sva-kern2-text-muted: #b5bcc6;
-    --sva-kern2-primary: #297aa0;
-    --sva-kern2-primary-hover: #3994bc;
-    --sva-kern2-primary-soft: rgba(57, 148, 188, 0.12);
-    --sva-kern2-danger: #f48771;
-    --sva-kern2-shadow: 0 24px 64px rgba(0, 0, 0, 0.36);
-    --sva-kern2-shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.28);
-    --pf-v5-global--primary-color--100: var(--sva-kern2-primary);
-    --pf-v5-global--primary-color--200: var(--sva-kern2-primary-hover);
-  }
-
-  body.kcBodyClass {
-    background:
-      radial-gradient(circle at top left, rgba(41, 122, 160, 0.22), transparent 34%),
-      radial-gradient(circle at bottom right, rgba(30, 215, 166, 0.08), transparent 26%),
-      linear-gradient(180deg, var(--sva-kern2-background-strong) 0%, var(--sva-kern2-background) 100%);
-  }
-
-  .pf-v5-c-form-control,
-  input.kcInputClass,
-  select.kcSelectClass,
-  textarea.kcInputClass {
-    background: rgba(32, 33, 34, 0.92);
-  }
-}

@@ -25,21 +25,22 @@ describe('theme helpers', () => {
   });
 
   it('prefers persisted theme mode over system preference', () => {
-    expect(resolveThemeMode('dark', false)).toBe('dark');
-    expect(resolveThemeMode('light', true)).toBe('light');
+    expect(resolveThemeMode('dark')).toBe('dark');
+    expect(resolveThemeMode('light')).toBe('light');
   });
 
-  it('uses system preference when no persisted theme mode exists', () => {
-    expect(resolveThemeMode(null, true)).toBe('dark');
-    expect(resolveThemeMode(undefined, false)).toBe('light');
+  it('uses the studio default when no persisted theme mode exists', () => {
+    expect(resolveThemeMode(null)).toBe('light');
+    expect(resolveThemeMode(undefined)).toBe('light');
   });
 
-  it('creates a bootstrap script that applies the persisted or system mode before hydration', () => {
+  it('creates a bootstrap script that applies the persisted or default mode before hydration', () => {
     const bootstrapScript = createThemeBootstrapScript();
 
     expect(bootstrapScript).toContain(THEME_MODE_STORAGE_KEY);
     expect(bootstrapScript).toContain('root.dataset.themeMode=mode;');
     expect(bootstrapScript).toContain("root.classList.toggle('dark',mode==='dark');");
+    expect(bootstrapScript).not.toContain('matchMedia');
   });
 
   it('uses KERN-facing display names for the shell toggle and metadata', () => {

@@ -17,6 +17,7 @@ Die Layout-Shell von `apps/sva-studio-react` verwendet semantische Design-Tokens
 - Theme-Auswahl erfolgt zentral über `ThemeProvider` und `src/lib/theme.ts`.
 - `instanceId` bestimmt optional die Theme-Variante; unbekannte Werte fallen auf `sva-default` zurück.
 - Light-/Dark-Mode bleibt ein separater Modus und darf nicht über Theme-Namen kodiert werden.
+- Ohne gespeicherte Studio-Auswahl fällt der Light-/Dark-Mode auf den Studio-Default `light` zurück, nicht auf Browser- oder Betriebssystem-Präferenzen.
 
 ## KERN-2 Phase 1
 
@@ -37,7 +38,7 @@ Die Layout-Shell von `apps/sva-studio-react` verwendet semantische Design-Tokens
 - Die restriktivere Shell-Geometrie ist umgesetzt: `--radius` 6px, `--radius-card` 8px und `--radius-modal` 12px bilden die Basis für Shell-Flächen, Dialoge und Karten.
 - Die grüne Linie bleibt über `sva-forest` als separate Instanzvariante erhalten; die öffentlichen Runtime-Theme-IDs wurden bewusst nicht umbenannt.
 - `@kern-ux/native` ist aktuell ausschließlich als Font-Quelle eingebunden. Verwendet wird nur `@kern-ux/native/dist/fonts/fira-sans.css`; ein globaler KERN-CSS-Reset oder KERN-Komponenten-CSS wird weiterhin nicht geladen.
-- Das Root-Dokument setzt den Theme-Modus vor dem ersten Paint per Bootstrap-Skript. Der `ThemeProvider` synchronisiert `data-theme`, `data-theme-mode`, `color-scheme` und die `dark`-Klasse anschließend per Layout-Effekt, um den initialen Theme-Flicker zu vermeiden.
+- Das Root-Dokument setzt den Theme-Modus vor dem ersten Paint per Bootstrap-Skript aus der gespeicherten Studio-Auswahl oder dem festen Studio-Default `light`. Der `ThemeProvider` synchronisiert `data-theme`, `data-theme-mode`, `color-scheme` und die `dark`-Klasse anschließend per Layout-Effekt, um den initialen Theme-Flicker zu vermeiden.
 - Die Shell-Bausteine `__root.tsx`, `AppShell`, `Header` und `Sidebar` sowie die Shared-Flächen `StudioFilterSurface`, `StudioSummaryCard` und `StudioTableSurface` verwenden den semantischen Token-Satz bereits produktiv.
 - Die KERN-2-Phase-1-Anpassung ist damit für Foundations, Shell und ausgewählte Admin-/Monitoring-Flächen umgesetzt. Dark-Mode bleibt funktional und regressionssicher, ist aber noch keine vollständige KERN-2-Dunkelvariante.
 - Nicht Teil von Phase 1 bleiben vorerst das vollständige Reskinning aller Shared Form-Primitives sowie tiefe fachliche Detailseiten außerhalb des Shell-nahen Bereichs.

@@ -66,7 +66,7 @@ describe('ThemeProvider', () => {
     document.documentElement.style.colorScheme = '';
   });
 
-  it('resolves the theme variant from instanceId and applies dark mode preference', async () => {
+  it('resolves the theme variant from instanceId and applies the studio default mode without a persisted choice', async () => {
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
@@ -86,12 +86,12 @@ describe('ThemeProvider', () => {
       expect(screen.getByTestId('theme-name').textContent).toBe('sva-forest');
     });
 
-    expect(screen.getByTestId('theme-mode').textContent).toBe('dark');
+    expect(screen.getByTestId('theme-mode').textContent).toBe('light');
     expect(screen.getByTestId('theme-label').textContent).toBe('KERN Studio Wald');
     expect(document.documentElement.dataset.theme).toBe('sva-forest');
-    expect(document.documentElement.dataset.themeMode).toBe('dark');
-    expect(document.documentElement.style.colorScheme).toBe('dark');
-    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(document.documentElement.dataset.themeMode).toBe('light');
+    expect(document.documentElement.style.colorScheme).toBe('light');
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 
   it('uses persisted theme mode and can toggle it', async () => {

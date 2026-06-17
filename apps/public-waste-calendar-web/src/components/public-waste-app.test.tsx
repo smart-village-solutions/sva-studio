@@ -94,6 +94,9 @@ describe('PublicWasteApp', () => {
       .getAllByRole('tabpanel')
       .find((element) => element.getAttribute('id') === pdfTab.getAttribute('aria-controls'));
     expect(panel).toBeTruthy();
+    if (!panel) {
+      throw new Error('Expected the PDF action panel to exist');
+    }
     expect(panel.getAttribute('aria-labelledby')).toBe(pdfTab.getAttribute('id'));
   });
 

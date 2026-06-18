@@ -59,6 +59,7 @@ const fetchWithTimeout = async (input: {
   try {
     return await input.fetchImpl(input.url, {
       ...input.init,
+      redirect: 'manual',
       signal: input.signal,
     });
   } catch (error) {

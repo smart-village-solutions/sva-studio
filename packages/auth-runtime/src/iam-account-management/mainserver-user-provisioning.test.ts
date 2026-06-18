@@ -46,7 +46,7 @@ describe('provisionMainserverUserCredentials', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dnsLookupMock.mockReset();
-    dnsLookupMock.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
+    dnsLookupMock.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
       enabled: true,
       publicConfig: {
@@ -189,6 +189,67 @@ describe('provisionMainserverUserCredentials', () => {
     expect(tokenSignal).toBeInstanceOf(AbortSignal);
     expect(provisioningSignal).toBe(tokenSignal);
   });
+
+  it('disables automatic redirects for token and provisioning requests', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            keycloak: {
+              attributes: {
+                mainserverUserApplicationId: 'user-app',
+                mainserverUserApplicationSecret: 'user-secret',
+              },
+            },
+          }),
+          { status: 200 }
+        )
+      );
+
+    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    await provisionMainserverUserCredentials({
+      actor: createActor(),
+      actorSubject: 'kc-admin-1',
+      keycloakSubject: 'kc-user-1',
+      payload: createPayload(),
+      fetchImpl,
+    });
+
+    expect(fetchImpl.mock.calls[0]?.[1]?.redirect).toBe('manual');
+    expect(fetchImpl.mock.calls[1]?.[1]?.redirect).toBe('manual');
+  });
+
+  it.each(['https://100.64.0.1/oauth/token', 'https://198.18.0.1/oauth/token'])(
+    'rejects non-public IPv4 literal upstream url %s before fetching',
+    async (oauthTokenUrl) => {
+      state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+        enabled: true,
+        publicConfig: {
+          graphqlBaseUrl: 'https://bb-demo.server.smart-village.app/graphql',
+          oauthTokenUrl,
+        },
+      });
+      const fetchImpl = vi.fn();
+
+      const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+      await expect(
+        provisionMainserverUserCredentials({
+          actor: createActor(),
+          actorSubject: 'kc-admin-1',
+          keycloakSubject: 'kc-user-1',
+          payload: createPayload(),
+          fetchImpl,
+        })
+      ).rejects.toMatchObject({
+        name: 'MainserverUserProvisioningError',
+        code: 'invalid_config',
+        statusCode: 409,
+      });
+      expect(fetchImpl).not.toHaveBeenCalled();
+    }
+  );
 
   it('provisions against the Mainserver endpoint even when the municipality id is not configured explicitly', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({

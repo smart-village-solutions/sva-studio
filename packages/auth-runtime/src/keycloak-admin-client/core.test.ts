@@ -524,6 +524,51 @@ describe('Keycloak admin client', () => {
     expect(String(rotateCall?.[0])).toContain('/clients/client-1/client-secret');
   });
 
+  it('preserves existing OIDC client access settings when adding missing redirect and origin entries', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          {
+            id: 'client-1',
+            clientId: 'web-app',
+            rootUrl: 'https://new.example',
+            redirectUris: ['https://legacy.example/callback'],
+            webOrigins: ['https://legacy.example'],
+            attributes: { 'post.logout.redirect.uris': 'https://legacy.example/logout' },
+          },
+        ])
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    const client = await createClient(fetchImpl);
+
+    await client.ensureOidcClient({
+      clientId: 'web-app',
+      redirectUris: ['https://new.example/callback'],
+      postLogoutRedirectUris: ['https://new.example/logout'],
+      webOrigins: ['https://new.example'],
+      rootUrl: 'https://new.example',
+    });
+
+    const updateCall = fetchImpl.mock.calls.find(
+      (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'PUT'
+    );
+    expect(updateCall).toBeDefined();
+    const body = JSON.parse(String(updateCall?.[1]?.body)) as {
+      redirectUris?: string[];
+      webOrigins?: string[];
+      attributes?: { 'post.logout.redirect.uris'?: string };
+    };
+    expect(body.redirectUris).toEqual(['https://legacy.example/callback', 'https://new.example/callback']);
+    expect(body.webOrigins).toEqual(['https://legacy.example', 'https://new.example']);
+    expect(body.attributes?.['post.logout.redirect.uris']?.split('##')).toEqual([
+      'https://legacy.example/logout',
+      'https://new.example/logout',
+    ]);
+  });
+
   it('grants required realm-management client roles to the tenant admin service account', async () => {
     const fetchImpl = vi
       .fn()

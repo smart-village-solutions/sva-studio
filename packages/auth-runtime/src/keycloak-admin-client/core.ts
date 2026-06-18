@@ -230,6 +230,11 @@ const toSortedUniqueStrings = (values: readonly string[] | undefined): string[] 
     left.localeCompare(right)
   );
 
+const mergeSortedUniqueStrings = (
+  left: readonly string[] | undefined,
+  right: readonly string[] | undefined
+): string[] => toSortedUniqueStrings([...(left ?? []), ...(right ?? [])]);
+
 const areStringSetsEqual = (left: readonly string[] | undefined, right: readonly string[] | undefined): boolean => {
   const normalizedLeft = toSortedUniqueStrings(left);
   const normalizedRight = toSortedUniqueStrings(right);
@@ -1133,17 +1138,21 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       standardFlowEnabled: input.standardFlowEnabled ?? true,
       directAccessGrantsEnabled: input.directAccessGrantsEnabled ?? false,
       serviceAccountsEnabled: input.serviceAccountsEnabled ?? false,
-      redirectUris: [...toSortedUniqueStrings(input.redirectUris)],
-      webOrigins: [...toSortedUniqueStrings(input.webOrigins)],
+      redirectUris: mergeSortedUniqueStrings(existing?.redirectUris, input.redirectUris),
+      webOrigins: mergeSortedUniqueStrings(existing?.webOrigins, input.webOrigins),
       attributes: {
-        'post.logout.redirect.uris': toSortedUniqueStrings(input.postLogoutRedirectUris).join('##'),
+        ...existing?.attributes,
+        'post.logout.redirect.uris': mergeSortedUniqueStrings(
+          readPostLogoutRedirectUris(existing?.attributes),
+          input.postLogoutRedirectUris
+        ).join('##'),
       },
       rootUrl: input.rootUrl,
       baseUrl: '/',
       adminUrl: input.rootUrl,
     };
 
-    await this.upsertOidcClient(existing, payload, input.clientId, input.postLogoutRedirectUris);
+    await this.upsertOidcClient(existing, payload, input.clientId);
     await this.syncOidcClientSecret(existing, input);
   }
 
@@ -1165,8 +1174,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       baseUrl: string;
       adminUrl: string;
     },
-    clientId: string,
-    postLogoutRedirectUris: readonly string[]
+    clientId: string
   ): Promise<void> {
     if (!existing) {
       await this.createOidcClient(payload, clientId);
@@ -1179,7 +1187,10 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       existing.serviceAccountsEnabled !== payload.serviceAccountsEnabled ||
       !areStringSetsEqual(existing.redirectUris, payload.redirectUris) ||
       !areStringSetsEqual(existing.webOrigins, payload.webOrigins) ||
-      !areStringSetsEqual(readPostLogoutRedirectUris(existing.attributes), postLogoutRedirectUris);
+      !areStringSetsEqual(
+        readPostLogoutRedirectUris(existing.attributes),
+        readPostLogoutRedirectUris(payload.attributes)
+      );
     if (requiresUpdate) {
       await this.updateOidcClient(existing, payload, clientId);
     }

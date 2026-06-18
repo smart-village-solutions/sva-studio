@@ -1,13 +1,16 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-const REPO_ROOT = resolve(import.meta.dirname, '../..');
+const CURRENT_FILE = fileURLToPath(import.meta.url);
+const CURRENT_DIR = dirname(CURRENT_FILE);
+const REPO_ROOT = resolve(CURRENT_DIR, '../..');
 const SCAN_DIRECTORIES = ['apps', 'packages', 'scripts'] as const;
 const NODE_TEST_PATTERNS = ["from 'node:test'", 'from "node:test"', "require('node:test')", 'require("node:test")'];
 const SKIP_DIRECTORY_NAMES = new Set(['coverage', 'dist', 'node_modules', 'tmp']);
-const THIS_FILE = resolve(import.meta.filename);
+const THIS_FILE = resolve(CURRENT_FILE);
 
 describe('test runner standardization', () => {
   it('keeps app, package, and script tests on vitest', () => {

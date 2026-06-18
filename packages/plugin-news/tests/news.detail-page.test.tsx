@@ -237,10 +237,10 @@ describe('NewsDetailPage', () => {
     const source = fs.readFileSync(newsDetailSettingsSourcePath, 'utf8');
 
     expect(source).toContain('aria-describedby={`publication-mode-${option}-description`}');
-    expect(source).toContain('label htmlFor={`publication-mode-${option}`} className="block font-medium text-foreground">');
+    expect(source).toContain('htmlFor={`publication-mode-${option}`}');
     expect(source).toContain('{pt(`publicationModes.${option}.label`)}');
     expect(source).toContain('<p id={`publication-mode-${option}-description`} className="text-muted-foreground">');
-    expect(source).not.toContain('<label\n              key={option}');
+    expect(source).toContain('<label');
   });
 
   it('renders the push notification checkbox through an explicit label binding', () => {

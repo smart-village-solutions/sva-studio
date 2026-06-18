@@ -12,7 +12,7 @@ import { normalizeSvaMainserverUpstreamUrl } from './upstream-url-validation';
 describe('normalizeSvaMainserverUpstreamUrl', () => {
   beforeEach(() => {
     dnsLookupMock.mockReset();
-    dnsLookupMock.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
+    dnsLookupMock.mockResolvedValue([{ address: '8.8.8.8', family: 4 }]);
   });
 
   it('normalizes valid public https urls', async () => {
@@ -67,6 +67,9 @@ describe('normalizeSvaMainserverUpstreamUrl', () => {
     await expect(
       normalizeSvaMainserverUpstreamUrl('https://[fe80::1]/graphql', 'graphql_base_url', 400)
     ).rejects.toMatchObject({ code: 'invalid_config' });
+    await expect(
+      normalizeSvaMainserverUpstreamUrl('https://[fec0::1]/graphql', 'graphql_base_url', 400)
+    ).rejects.toMatchObject({ code: 'invalid_config' });
   });
 
   it('rejects private and malformed ipv4-mapped ipv6 targets but allows public ones', async () => {
@@ -85,6 +88,11 @@ describe('normalizeSvaMainserverUpstreamUrl', () => {
     dnsLookupMock.mockResolvedValueOnce([{ address: '127.0.0.1', family: 4 }]);
     await expect(
       normalizeSvaMainserverUpstreamUrl('https://public.example.invalid/graphql', 'graphql_base_url', 400)
+    ).rejects.toMatchObject({ code: 'invalid_config' });
+
+    dnsLookupMock.mockResolvedValueOnce([{ address: 'fec0::1', family: 6 }]);
+    await expect(
+      normalizeSvaMainserverUpstreamUrl('https://site-local.example.invalid/graphql', 'graphql_base_url', 400)
     ).rejects.toMatchObject({ code: 'invalid_config' });
 
     dnsLookupMock.mockResolvedValueOnce([]);

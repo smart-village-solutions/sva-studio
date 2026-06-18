@@ -7,6 +7,7 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import { errorJson, json } from './content-route-helpers.js';
 import { SvaMainserverError } from './errors.js';
+import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import { listSvaMainserverCategories } from './service.js';
 
 const CATEGORY_COLLECTION_PATH = '/api/v1/mainserver/categories';
@@ -19,33 +20,6 @@ type CategoriesActor = {
 };
 
 const matchCategoriesRoute = (request: Request): boolean => new URL(request.url).pathname === CATEGORY_COLLECTION_PATH;
-
-const toMainserverErrorResponse = (error: unknown): Response => {
-  if (error instanceof SvaMainserverError) {
-    const status =
-      error.statusCode ??
-      ({
-        missing_credentials: 400,
-        organization_mainserver_credentials_missing: 409,
-        invalid_config: 400,
-        config_not_found: 400,
-        integration_disabled: 400,
-        unauthorized: 401,
-        forbidden: 403,
-        not_found: 404,
-        database_unavailable: 503,
-        identity_provider_unavailable: 503,
-        network_error: 503,
-        token_request_failed: 502,
-        graphql_error: 502,
-        invalid_response: 502,
-      } satisfies Record<string, number>)[error.code] ??
-      502;
-    return errorJson(status, error.code, error.message);
-  }
-
-  return errorJson(500, 'internal_error', 'Mainserver-Kategorien-Anfrage ist fehlgeschlagen.');
-};
 
 const authorizeOrResponse = async (ctx: AuthenticatedRequestContext): Promise<CategoriesActor | Response> => {
   const result = await authorizeContentPrimitiveForUser({
@@ -110,7 +84,7 @@ const dispatchAuthenticated = async (request: Request, ctx: AuthenticatedRequest
       method: 'GET',
       error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
     });
-    return toMainserverErrorResponse(error);
+    return toMainserverErrorResponse(error, 'Mainserver-Kategorien-Anfrage ist fehlgeschlagen.');
   }
 };
 

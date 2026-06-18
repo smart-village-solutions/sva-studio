@@ -4,6 +4,11 @@ import { createSdkLogger } from '@sva/server-runtime';
 
 import { readEffectiveSvaMainserverCredentialsWithStatus } from '../mainserver-effective-credentials.js';
 
+import {
+  createProvisioningErrorFromResponse,
+  fetchMainserverUpstream,
+  parseMainserverJsonBody,
+} from './mainserver-upstream-http.js';
 import { MainserverUserProvisioningError } from './mainserver-user-provisioning-error.js';
 import { normalizeProvisioningUpstreamUrl } from './mainserver-upstream-url-validation.js';
 import type { CreateUserActorInfo } from './user-create-invitation.js';
@@ -37,69 +42,8 @@ type MainserverProvisioningConfig = {
   readonly provisioningUrl: string;
 };
 
-type ErrorPayload = {
-  readonly code?: string;
-  readonly message?: string;
-  readonly retryable?: boolean;
-};
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
-
-const isAbortError = (error: unknown): boolean =>
-  error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
-
-const fetchWithTimeout = async (input: {
-  readonly fetchImpl: typeof fetch;
-  readonly url: string;
-  readonly init: RequestInit;
-  readonly signal: AbortSignal;
-  readonly timeoutMessage: string;
-}): Promise<Response> => {
-  try {
-    return await input.fetchImpl(input.url, {
-      ...input.init,
-      redirect: 'manual',
-      signal: input.signal,
-    });
-  } catch (error) {
-    if (isAbortError(error)) {
-      throw new MainserverUserProvisioningError({
-        code: 'upstream_timeout',
-        message: input.timeoutMessage,
-        statusCode: 504,
-        retryable: true,
-      });
-    }
-
-    throw error;
-  }
-};
-
-const parseJsonBody = async (response: Response): Promise<unknown> => {
-  try {
-    return await response.json();
-  } catch {
-    throw new MainserverUserProvisioningError({
-      code: 'invalid_response',
-      message: 'Ungültige Antwort des SVA-Mainserver-Provisionings.',
-      statusCode: 502,
-    });
-  }
-};
-
-const readErrorPayload = async (response: Response): Promise<ErrorPayload> => {
-  const payload = await parseJsonBody(response).catch(() => null);
-  if (!isRecord(payload)) {
-    return {};
-  }
-
-  return {
-    code: typeof payload.code === 'string' ? payload.code : undefined,
-    message: typeof payload.message === 'string' ? payload.message : undefined,
-    retryable: typeof payload.retryable === 'boolean' ? payload.retryable : undefined,
-  };
-};
 
 const resolveProvisioningUrl = (graphqlBaseUrl: string): string => {
   const graphqlUrl = new URL(graphqlBaseUrl);
@@ -159,7 +103,7 @@ const loadProvisioningBearerToken = async (input: {
     });
   }
 
-  const response = await fetchWithTimeout({
+  const response = await fetchMainserverUpstream({
     fetchImpl: input.fetchImpl,
     url: input.oauthTokenUrl,
     signal: input.signal,
@@ -187,7 +131,9 @@ const loadProvisioningBearerToken = async (input: {
     });
   }
 
-  const parsed = tokenResponseSchema.safeParse(await parseJsonBody(response));
+  const parsed = tokenResponseSchema.safeParse(
+    await parseMainserverJsonBody(response, 'Ungültige Token-Antwort des SVA-Mainservers.')
+  );
   if (!parsed.success) {
     throw new MainserverUserProvisioningError({
       code: 'invalid_response',
@@ -221,7 +167,7 @@ export const provisionMainserverUserCredentials = async (input: {
     signal: provisioningSignal,
   });
 
-  const response = await fetchWithTimeout({
+  const response = await fetchMainserverUpstream({
     fetchImpl,
     url: config.provisioningUrl,
     signal: provisioningSignal,
@@ -243,16 +189,12 @@ export const provisionMainserverUserCredentials = async (input: {
   });
 
   if (!response.ok) {
-    const errorPayload = await readErrorPayload(response);
-    throw new MainserverUserProvisioningError({
-      code: errorPayload.code ?? 'mainserver_user_provisioning_failed',
-      message: errorPayload.message ?? `Mainserver-Benutzer-Provisioning fehlgeschlagen (${response.status}).`,
-      statusCode: response.status,
-      retryable: errorPayload.retryable ?? response.status >= 500,
-    });
+    await createProvisioningErrorFromResponse(response);
   }
 
-  const parsed = provisioningResponseSchema.safeParse(await parseJsonBody(response));
+  const parsed = provisioningResponseSchema.safeParse(
+    await parseMainserverJsonBody(response, 'Ungültige Antwort des SVA-Mainserver-Provisionings.')
+  );
   if (!parsed.success) {
     throw new MainserverUserProvisioningError({
       code: 'invalid_response',

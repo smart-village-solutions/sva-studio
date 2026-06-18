@@ -9,11 +9,18 @@ type MainserverProvisioningLogError = Error & {
 };
 
 const isMainserverProvisioningError = (error: unknown): error is MainserverProvisioningLogError =>
-  error instanceof Error &&
-  error.name === 'MainserverUserProvisioningError' &&
-  'code' in error &&
-  'statusCode' in error &&
-  'retryable' in error;
+  (() => {
+    if (!(error instanceof Error) || error.name !== 'MainserverUserProvisioningError') {
+      return false;
+    }
+
+    const candidate = error as Partial<MainserverProvisioningLogError>;
+    return (
+      typeof candidate.code === 'string' &&
+      typeof candidate.statusCode === 'number' &&
+      typeof candidate.retryable === 'boolean'
+    );
+  })();
 
 export const logMainserverProvisioningFailure = (input: {
   actor: CreateUserActorInfo;

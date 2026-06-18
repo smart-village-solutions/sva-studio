@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   loadDefaultExternalInterfaceRecord: vi.fn(),
-  dnsLookup: vi.fn(async () => [{ address: '203.0.113.10', family: 4 }]),
+  dnsLookup: vi.fn(async () => [{ address: '8.8.8.8', family: 4 }]),
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -31,7 +31,7 @@ describe('loadSvaMainserverInstanceConfig', () => {
   beforeEach(() => {
     state.loadDefaultExternalInterfaceRecord.mockReset();
     state.dnsLookup.mockReset();
-    state.dnsLookup.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
+    state.dnsLookup.mockResolvedValue([{ address: '8.8.8.8', family: 4 }]);
     state.logger.debug.mockReset();
     state.logger.info.mockReset();
     state.logger.warn.mockReset();

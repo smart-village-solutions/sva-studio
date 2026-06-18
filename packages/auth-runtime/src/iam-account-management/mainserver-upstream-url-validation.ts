@@ -24,7 +24,10 @@ const unwrapBracketedHost = (hostname: string): string =>
 const isLocalHostname = (hostname: string): boolean =>
   localhostHosts.has(hostname) || hostname.endsWith('.local');
 
-const parseIpv4Octets = (hostname: string): readonly [number, number, number, number] | null => {
+type Ipv4Octets = readonly [number, number, number, number];
+type Ipv4Range = readonly [number, number];
+
+const parseIpv4Octets = (hostname: string): Ipv4Octets | null => {
   const octets = hostname.split('.').map((segment) => Number.parseInt(segment, 10));
   if (octets.length !== 4 || octets.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
     return null;
@@ -33,28 +36,38 @@ const parseIpv4Octets = (hostname: string): readonly [number, number, number, nu
   return [octets[0]!, octets[1]!, octets[2]!, octets[3]!];
 };
 
+const toIpv4Number = ([a, b, c, d]: Ipv4Octets): number => ((a * 256 + b) * 256 + c) * 256 + d;
+
+const createIpv4Range = (start: Ipv4Octets, end: Ipv4Octets): Ipv4Range => [
+  toIpv4Number(start),
+  toIpv4Number(end),
+];
+
+const nonPublicIpv4Ranges: readonly Ipv4Range[] = [
+  createIpv4Range([0, 0, 0, 0], [0, 255, 255, 255]),
+  createIpv4Range([10, 0, 0, 0], [10, 255, 255, 255]),
+  createIpv4Range([100, 64, 0, 0], [100, 127, 255, 255]),
+  createIpv4Range([127, 0, 0, 0], [127, 255, 255, 255]),
+  createIpv4Range([169, 254, 0, 0], [169, 254, 255, 255]),
+  createIpv4Range([172, 16, 0, 0], [172, 31, 255, 255]),
+  createIpv4Range([192, 0, 0, 0], [192, 0, 0, 255]),
+  createIpv4Range([192, 0, 2, 0], [192, 0, 2, 255]),
+  createIpv4Range([192, 88, 99, 0], [192, 88, 99, 255]),
+  createIpv4Range([192, 168, 0, 0], [192, 168, 255, 255]),
+  createIpv4Range([198, 18, 0, 0], [198, 19, 255, 255]),
+  createIpv4Range([198, 51, 100, 0], [198, 51, 100, 255]),
+  createIpv4Range([203, 0, 113, 0], [203, 0, 113, 255]),
+  createIpv4Range([224, 0, 0, 0], [255, 255, 255, 255]),
+];
+
 const isNonPublicIpv4Host = (hostname: string): boolean => {
   const octets = parseIpv4Octets(hostname);
   if (!octets) {
     return true;
   }
 
-  const [a, b, c] = octets;
-  return (
-    a === 0 ||
-    a === 10 ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    a === 127 ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 0 && (c === 0 || c === 2)) ||
-    (a === 192 && b === 88 && c === 99) ||
-    (a === 192 && b === 168) ||
-    (a === 198 && (b === 18 || b === 19)) ||
-    (a === 198 && b === 51 && c === 100) ||
-    (a === 203 && b === 0 && c === 113) ||
-    a >= 224
-  );
+  const address = toIpv4Number(octets);
+  return nonPublicIpv4Ranges.some(([start, end]) => address >= start && address <= end);
 };
 
 const toMappedIpv4Host = (hostname: string): string | null => {
@@ -96,12 +109,13 @@ const isPrivateIpv6Host = (hostname: string): boolean => {
     return true;
   }
 
+  const firstHextet = Number.parseInt(hostname.split(':', 1)[0] ?? '', 16);
   return (
     hostname === '::1' ||
     hostname === '::' ||
-    hostname.startsWith('fc') ||
-    hostname.startsWith('fd') ||
-    hostname.startsWith('fe80:')
+    (!Number.isNaN(firstHextet) &&
+      ((firstHextet >= 0xfc00 && firstHextet <= 0xfdff) ||
+        (firstHextet >= 0xfe80 && firstHextet <= 0xfebf)))
   );
 };
 

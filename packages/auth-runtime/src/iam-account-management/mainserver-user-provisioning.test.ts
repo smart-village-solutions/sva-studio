@@ -251,6 +251,33 @@ describe('provisionMainserverUserCredentials', () => {
     }
   );
 
+  it('rejects IPv6 link-local literal upstream urls before fetching', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      enabled: true,
+      publicConfig: {
+        graphqlBaseUrl: 'https://bb-demo.server.smart-village.app/graphql',
+        oauthTokenUrl: 'https://[fe90::1]/oauth/token',
+      },
+    });
+    const fetchImpl = vi.fn();
+
+    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl,
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'invalid_config',
+      statusCode: 409,
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it('provisions against the Mainserver endpoint even when the municipality id is not configured explicitly', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
       enabled: true,

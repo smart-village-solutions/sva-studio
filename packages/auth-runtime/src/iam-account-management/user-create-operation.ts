@@ -18,6 +18,7 @@ import type { CreateUserPayload } from './user-create-persistence.js';
 import { persistCreatedUser } from './user-create-persistence.js';
 import { maskEmail } from './user-mapping.js';
 import { provisionMainserverUserCredentials } from './mainserver-user-provisioning.js';
+import { logMainserverProvisioningFailure } from './user-create-mainserver-provisioning-log.js';
 type InvitationResult = IamCreateUserResult['invitation'];
 
 const buildCreateUserResult = (
@@ -60,39 +61,6 @@ const logCreateUserCompensationFailure = (input: {
       request_id: input.actor.requestId,
       trace_id: input.actor.traceId,
       error: input.error instanceof Error ? input.error.message : String(input.error),
-    },
-  });
-};
-
-const logMainserverProvisioningFailure = (input: {
-  actor: CreateUserActorInfo;
-  email: string;
-  keycloakSubject: string;
-  error: unknown;
-}) => {
-  logger.error('IAM user mainserver provisioning failed', {
-    workspace_id: input.actor.instanceId,
-    context: {
-      operation: 'create_user_mainserver_provisioning',
-      instance_id: input.actor.instanceId,
-      request_id: input.actor.requestId,
-      trace_id: input.actor.traceId,
-      actor_account_id: input.actor.actorAccountId,
-      keycloak_subject: input.keycloakSubject,
-      email_masked: maskEmail(input.email),
-      error_type: input.error instanceof Error ? input.error.constructor.name : typeof input.error,
-      error: input.error instanceof Error ? input.error.message : String(input.error),
-      ...(input.error instanceof Error &&
-      input.error.name === 'MainserverUserProvisioningError' &&
-      'code' in input.error &&
-      'statusCode' in input.error &&
-      'retryable' in input.error
-        ? {
-            mainserver_error_code: (input.error as Error & { code: string }).code,
-            mainserver_status_code: (input.error as Error & { statusCode: number }).statusCode,
-            mainserver_retryable: (input.error as Error & { retryable: boolean }).retryable,
-          }
-        : {}),
     },
   });
 };

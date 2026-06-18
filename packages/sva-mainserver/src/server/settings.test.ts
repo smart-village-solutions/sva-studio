@@ -4,7 +4,7 @@ const state = vi.hoisted(() => ({
   loadDefaultExternalInterfaceRecord: vi.fn(),
   saveExternalInterfaceRecord: vi.fn(),
   deleteExternalInterfaceRecord: vi.fn(),
-  dnsLookup: vi.fn(async () => [{ address: '203.0.113.10', family: 4 }]),
+  dnsLookup: vi.fn(async () => [{ address: '8.8.8.8', family: 4 }]),
 }));
 
 vi.mock('@sva/data-repositories/server', () => ({
@@ -23,7 +23,7 @@ describe('settings', () => {
     state.saveExternalInterfaceRecord.mockReset();
     state.deleteExternalInterfaceRecord.mockReset();
     state.dnsLookup.mockReset();
-    state.dnsLookup.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
+    state.dnsLookup.mockResolvedValue([{ address: '8.8.8.8', family: 4 }]);
   });
 
   it('loads settings when integration record exists', async () => {

@@ -76,7 +76,7 @@ describe('interfaces-page dialogs', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it('updates mainserver draft fields and submits without reloading the page', () => {
+  it('updates mainserver draft fields without rendering municipality id controls', () => {
     const onChange = vi.fn();
     const onCancel = vi.fn();
     const onSubmit = vi.fn();
@@ -118,6 +118,7 @@ describe('interfaces-page dialogs', () => {
         }),
       })
     );
+    expect(screen.queryByLabelText('Municipality-ID')).toBeNull();
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });

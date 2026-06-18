@@ -22,6 +22,7 @@ import {
   archiveInstance,
   assignOrganizationMembership,
   bulkDeactivateUsers,
+  createUser,
   createLegalText,
   createInstance,
   getAdminDeletionRules,
@@ -754,6 +755,35 @@ describe('iam-api organization helpers', () => {
         }),
       })
     );
+  });
+
+  it('uses the heavy request timeout budget for createUser', async () => {
+    const deferredResponse = createDeferredResponse();
+    const fetchMock = vi.fn().mockReturnValue(deferredResponse.responsePromise);
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'uuid-create-user-1' });
+
+    const request = createUser({
+      email: 'alice@example.com',
+      firstName: 'Alice',
+      lastName: 'Example',
+      roleIds: [],
+      groupIds: [],
+      sendPasswordSetupEmail: false,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/users',
+      expect.objectContaining({
+        method: 'POST',
+        signal: expect.any(AbortSignal),
+      })
+    );
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 20_000);
+
+    deferredResponse.resolve(createJsonResponse({ data: { userId: 'user-1' } }));
+    await expect(request).resolves.toMatchObject({ data: { userId: 'user-1' } });
   });
 
   it('falls back to http status messages when json error payloads omit message and code', async () => {

@@ -33,6 +33,7 @@ import {
 } from './content-route-helpers.js';
 import { SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
+import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
   createSvaMainserverEvent,
   deleteSvaMainserverEvent,
@@ -167,33 +168,6 @@ const parseEventInput = async (request: Request): Promise<SvaMainserverEventInpu
 
   const relations = parseEventRelations(body);
   return isResponse(relations) ? relations : buildEventInput(body, title, relations);
-};
-
-const toMainserverErrorResponse = (error: unknown): Response => {
-  if (error instanceof SvaMainserverError) {
-    const status =
-      error.statusCode ??
-      ({
-        missing_credentials: 400,
-        organization_mainserver_credentials_missing: 409,
-        invalid_config: 400,
-        config_not_found: 400,
-        integration_disabled: 400,
-        unauthorized: 401,
-        forbidden: 403,
-        not_found: 404,
-        database_unavailable: 503,
-        identity_provider_unavailable: 503,
-        network_error: 503,
-        token_request_failed: 502,
-        graphql_error: 502,
-        invalid_response: 502,
-      } satisfies Record<string, number>)[error.code] ??
-      502;
-    return errorJson(status, error.code, error.message);
-  }
-
-  return errorJson(500, 'internal_error', 'Mainserver-Anfrage ist fehlgeschlagen.');
 };
 
 const validateMutationRequest = (request: Request, requestId?: string): Response | null => {
@@ -423,7 +397,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       method: request.method,
       error_code: error instanceof SvaMainserverError ? error.code : 'internal_error',
     });
-    return toMainserverErrorResponse(error);
+    return toMainserverErrorResponse(error, 'Mainserver-Anfrage ist fehlgeschlagen.');
   }
 };
 

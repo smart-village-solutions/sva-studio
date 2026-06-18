@@ -42,6 +42,7 @@ describe('executeCreateUserWithKnownErrors', () => {
         actor: {
           instanceId: 'inst-1',
           actorAccountId: 'actor-1',
+          activeOrganizationId: 'org-1',
           actorRoles: ['system_admin'],
           requestId: 'req-1',
         },
@@ -56,6 +57,9 @@ describe('executeCreateUserWithKnownErrors', () => {
 
     expect(state.executeCreateUser).toHaveBeenCalledWith(
       expect.objectContaining({
+        actor: expect.objectContaining({
+          activeOrganizationId: 'org-1',
+        }),
         payload: {
           email: 'alice@example.com',
           roleIds: ['role-1'],

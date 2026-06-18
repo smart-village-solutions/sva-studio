@@ -46,6 +46,14 @@ const resolveStoredVisibleStatus = (
   return existingVisibleStatus;
 };
 
+const buildPublicConfig = (input: {
+  graphqlBaseUrl: string;
+  oauthTokenUrl: string;
+}): Record<string, unknown> => ({
+  graphqlBaseUrl: input.graphqlBaseUrl,
+  oauthTokenUrl: input.oauthTokenUrl,
+});
+
 export const loadSvaMainserverSettings = async (instanceId: string): Promise<SvaMainserverInstanceConfig | null> => {
   const record = await loadDefaultExternalInterfaceRecord(instanceId, SVA_MAINSERVER_TYPE_KEY);
   if (!record) {
@@ -89,10 +97,10 @@ export const saveSvaMainserverSettings = async (input: {
     category: 'api',
     baseUrl: graphqlBaseUrl,
     authMode: 'oauth2',
-    publicConfig: {
+    publicConfig: buildPublicConfig({
       graphqlBaseUrl,
       oauthTokenUrl,
-    },
+    }),
     secretConfigCiphertext: undefined,
     statusCheckKind: 'sva_mainserver',
     visibleStatus: resolveStoredVisibleStatus(input.enabled, existing?.visibleStatus),

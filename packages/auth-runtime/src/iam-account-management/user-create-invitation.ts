@@ -7,6 +7,7 @@ import { logger, trackKeycloakCall } from './shared.js';
 export type CreateUserActorInfo = {
   instanceId: string;
   actorAccountId: string;
+  activeOrganizationId?: string;
   actorRoles?: readonly string[];
   requestId?: string;
   traceId?: string;

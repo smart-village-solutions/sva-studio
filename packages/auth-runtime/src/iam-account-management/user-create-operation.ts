@@ -13,10 +13,12 @@ import {
   sendPasswordSetupInvitation,
   type CreateUserActorInfo,
 } from './user-create-invitation.js';
+import { buildMainserverIdentityAttributes } from '../mainserver-credentials.js';
 import type { CreateUserPayload } from './user-create-persistence.js';
 import { persistCreatedUser } from './user-create-persistence.js';
 import { maskEmail } from './user-mapping.js';
-
+import { provisionMainserverUserCredentials } from './mainserver-user-provisioning.js';
+import { logMainserverProvisioningFailure } from './user-create-mainserver-provisioning-log.js';
 type InvitationResult = IamCreateUserResult['invitation'];
 
 const buildCreateUserResult = (
@@ -86,6 +88,118 @@ const syncUserRolesIfNeeded = async (input: {
   );
 };
 
+const persistProvisionedMainserverCredentials = async (input: {
+  identityProvider: IdentityProviderResolution;
+  keycloakSubject: string;
+  credentials: NonNullable<Awaited<ReturnType<typeof provisionMainserverUserCredentials>>>;
+}) => {
+  const existingAttributes = await trackKeycloakCall('get_user_attributes', () =>
+    input.identityProvider.provider.getUserAttributes(input.keycloakSubject)
+  );
+  const nextAttributes = buildMainserverIdentityAttributes({
+    existingAttributes,
+    mainserverUserApplicationId: input.credentials.mainserverUserApplicationId,
+    mainserverUserApplicationSecret: input.credentials.mainserverUserApplicationSecret,
+  });
+
+  await trackKeycloakCall('update_user', () =>
+    input.identityProvider.provider.updateUser(input.keycloakSubject, {
+      attributes: nextAttributes,
+    })
+  );
+};
+const enrichUserWithMainserverCredentials = (
+  user: IamCreateUserResult['user'],
+  credentials: NonNullable<Awaited<ReturnType<typeof provisionMainserverUserCredentials>>>
+): IamCreateUserResult['user'] => ({
+  ...user,
+  mainserverUserApplicationId: credentials.mainserverUserApplicationId,
+  mainserverUserApplicationSecretSet: true,
+});
+
+const tryProvisionMainserverCredentials = async (input: {
+  actor: CreateUserActorInfo;
+  actorSubject: string;
+  identityProvider: IdentityProviderResolution;
+  keycloakSubject: string;
+  payload: CreateUserPayload;
+}) => {
+  const credentials = await provisionMainserverUserCredentials({
+    actor: input.actor,
+    actorSubject: input.actorSubject,
+    keycloakSubject: input.keycloakSubject,
+    payload: input.payload,
+  });
+  if (!credentials) {
+    return null;
+  }
+
+  await persistProvisionedMainserverCredentials({
+    identityProvider: input.identityProvider,
+    keycloakSubject: input.keycloakSubject,
+    credentials,
+  });
+
+  return credentials;
+};
+
+const resolveCreateUserResponseData = async (input: {
+  actor: CreateUserActorInfo;
+  actorSubject: string;
+  identityProvider: IdentityProviderResolution;
+  payload: CreateUserPayload;
+  responseData: IamCreateUserResult['user'];
+}) => {
+  try {
+    const mainserverCredentials = await tryProvisionMainserverCredentials({
+      actor: input.actor,
+      actorSubject: input.actorSubject,
+      identityProvider: input.identityProvider,
+      keycloakSubject: input.responseData.keycloakSubject,
+      payload: input.payload,
+    });
+    return mainserverCredentials
+      ? enrichUserWithMainserverCredentials(input.responseData, mainserverCredentials)
+      : input.responseData;
+  } catch (error) {
+    logMainserverProvisioningFailure({
+      actor: input.actor,
+      email: input.payload.email,
+      keycloakSubject: input.responseData.keycloakSubject,
+      error,
+    });
+    return input.responseData;
+  }
+};
+
+const finalizeCreateUserResult = async (input: {
+  actor: CreateUserActorInfo;
+  identityProvider: IdentityProviderResolution;
+  payload: CreateUserPayload;
+  responseData: IamCreateUserResult['user'];
+}): Promise<IamCreateUserResult> => {
+  if (input.payload.sendPasswordSetupEmail !== true) {
+    return buildCreateUserResult(input.responseData, { status: 'not_requested' });
+  }
+
+  try {
+    const invitation = await sendPasswordSetupInvitation({
+      actor: input.actor,
+      identityProvider: input.identityProvider,
+      email: input.payload.email,
+      keycloakSubject: input.responseData.keycloakSubject,
+    });
+    return buildCreateUserResult(input.responseData, invitation);
+  } catch (error) {
+    logInvitationFailure({
+      actor: input.actor,
+      keycloakSubject: input.responseData.keycloakSubject,
+      error,
+    });
+    return buildCreateUserResult(input.responseData, buildInvitationFailure(error));
+  }
+};
+
 const deactivateCreatedExternalUser = async (input: {
   actor: CreateUserActorInfo;
   createdExternalId: string;
@@ -143,26 +257,20 @@ export const executeCreateUser = async (input: {
       roleNames: result.roleNames,
     });
 
-    if (payload.sendPasswordSetupEmail !== true) {
-      return buildCreateUserResult(result.responseData, { status: 'not_requested' });
-    }
+    const responseData = await resolveCreateUserResponseData({
+      actor,
+      actorSubject,
+      identityProvider,
+      payload,
+      responseData: result.responseData,
+    });
 
-    try {
-      const invitation = await sendPasswordSetupInvitation({
-        actor,
-        identityProvider,
-        email: payload.email,
-        keycloakSubject: result.responseData.keycloakSubject,
-      });
-      return buildCreateUserResult(result.responseData, invitation);
-    } catch (error) {
-      logInvitationFailure({
-        actor,
-        keycloakSubject: result.responseData.keycloakSubject,
-        error,
-      });
-      return buildCreateUserResult(result.responseData, buildInvitationFailure(error));
-    }
+    return finalizeCreateUserResult({
+      actor,
+      identityProvider,
+      payload,
+      responseData,
+    });
   } catch (error) {
     logCreateUserFailure({
       actor,

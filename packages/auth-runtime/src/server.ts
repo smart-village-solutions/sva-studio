@@ -24,6 +24,7 @@ export {
 export { buildLogContext } from './log-context.js';
 export { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
 export { resolveAuthRequestHost, sanitizeAuthReturnTo } from './auth-return-to.js';
+export { normalizePublicUpstreamUrl } from './upstream-url-validation.js';
 export { emitAuthAuditEvent } from './audit-events.js';
 export type { AuthAuditEvent, AuthAuditEventType, PluginActionAuditPayload } from './audit-events.types.js';
 export {

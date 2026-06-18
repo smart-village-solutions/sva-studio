@@ -1035,7 +1035,11 @@ export const getUserTimeline = async (
 export const createUser = async (
   payload: CreateUserPayload
 ): Promise<ApiItemResponse<IamCreateUserResult>> =>
-  postJson<ApiItemResponse<IamCreateUserResult>, CreateUserPayload>('/api/v1/iam/users', payload, true);
+  requestJson<ApiItemResponse<IamCreateUserResult>>(
+    '/api/v1/iam/users',
+    createJsonMutationRequestInit('POST', payload, { idempotent: true }),
+    { timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS }
+  );
 
 export const updateUser = async (
   userId: string,

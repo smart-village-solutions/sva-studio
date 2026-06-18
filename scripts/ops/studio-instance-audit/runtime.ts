@@ -1,5 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { parseVarsFile } from '../runtime/vars-file.ts';
 
 export type StudioAuditRuntime = Readonly<{
   env: NodeJS.ProcessEnv;
@@ -7,34 +8,6 @@ export type StudioAuditRuntime = Readonly<{
   reportsDir: string;
   rootDir: string;
 }>;
-
-const parseVarsFile = (filePath: string): Record<string, string> => {
-  const parsed: Record<string, string> = {};
-  const content = readFileSync(filePath, 'utf8');
-
-  for (const rawLine of content.split(/\r?\n/u)) {
-    const line = rawLine.trim();
-    if (line.length === 0 || line.startsWith('#')) {
-      continue;
-    }
-
-    const separatorIndex = line.indexOf('=');
-    if (separatorIndex < 1) {
-      continue;
-    }
-
-    const key = line.slice(0, separatorIndex).trim();
-    const rawValue = line.slice(separatorIndex + 1).trim();
-    const value =
-      (rawValue.startsWith('"') && rawValue.endsWith('"')) || (rawValue.startsWith("'") && rawValue.endsWith("'"))
-        ? rawValue.slice(1, -1)
-        : rawValue;
-
-    parsed[key] = value;
-  }
-
-  return parsed;
-};
 
 const buildStudioProfileEnv = (rootDir: string, env: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
   const baseEnvPath = resolve(rootDir, 'config/runtime/base.vars');

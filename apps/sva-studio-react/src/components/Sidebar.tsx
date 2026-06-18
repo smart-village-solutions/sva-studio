@@ -36,6 +36,7 @@ import {
   logBrowserOperationStart,
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
+import { isDevelopmentBrowserEnv } from '../lib/browser-env';
 import {
   hasExperimentalAccess,
   hasIamGovernanceAccess,
@@ -128,24 +129,8 @@ const pluginIconBySection = {
   system: IconPlugConnected,
 } as const;
 
-const isSidebarDebugEnabled = () => {
-  if (typeof process !== 'undefined' && typeof process.env?.NODE_ENV === 'string') {
-    return process.env.NODE_ENV !== 'production';
-  }
-
-  const meta = import.meta as ImportMeta & { env?: { DEV?: boolean; PROD?: boolean } };
-  if (typeof meta.env?.DEV === 'boolean') {
-    return meta.env.DEV;
-  }
-  if (typeof meta.env?.PROD === 'boolean') {
-    return !meta.env.PROD;
-  }
-
-  return true;
-};
-
 const logSidebarDebug = (eventName: string, meta: Record<string, unknown>) => {
-  if (!isSidebarDebugEnabled()) {
+  if (!isDevelopmentBrowserEnv()) {
     return;
   }
 
@@ -622,7 +607,7 @@ const SidebarPanel = ({
   };
 
   React.useEffect(() => {
-    if (!isSidebarDebugEnabled()) {
+    if (!isDevelopmentBrowserEnv()) {
       return;
     }
 

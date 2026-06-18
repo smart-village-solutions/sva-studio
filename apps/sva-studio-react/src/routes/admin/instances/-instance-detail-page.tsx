@@ -5,8 +5,19 @@ import { Card } from '../../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
-import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
+import {
+  clearSensitiveDetailFields,
+  formatDateTime,
+  readActionFeedbackClassName,
+  readMissingWorkerEnvName,
+  readOperationsModel,
+  readPreflightTimestamp,
+  readTenantSecretUserInputRequired,
+  readWorkerPendingProjection,
+  readWorkerUnavailableWarning,
+  type ActionFeedback,
+} from './-instance-detail-page-helpers';
 import { InstanceDetailBetriebSection } from './-instance-detail-betrieb-section';
 import { InstanceDetailAuditSection } from './-instance-detail-audit-section';
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
@@ -14,27 +25,17 @@ import { InstanceDetailDoctorSection } from './-instance-detail-doctor-section';
 import { InstanceDetailHeader } from './-instance-detail-header';
 import {
   buildInstanceDoctorModel,
-  buildExistingRealmOperationsModel,
   buildHistoryWorkspaceModel,
-  buildNewRealmOperationsModel,
   buildOperationsPrimaryAction,
   type DetailWorkflowAction,
   evaluateInstanceConfiguration,
   getStatusGuidance,
 } from './-instance-detail-models';
 import { getErrorMessage } from './-instance-error-messages';
-import {
-  createDetailForm,
-  isTenantSecretUserInputRequired,
-} from './-instance-form-models';
+import { createDetailForm } from './-instance-form-models';
 
 type InstanceDetailPageProps = {
   readonly instanceId: string;
-};
-
-type ActionFeedback = {
-  readonly tone: 'success' | 'warning';
-  readonly message: string;
 };
 
 type WorkspaceTab = 'betrieb' | 'doctor' | 'einstellungen';
@@ -44,142 +45,7 @@ const WORKER_UNAVAILABLE_WARNING_THRESHOLD_MS = 15_000;
 const ACTION_FEEDBACK_VISIBLE_MS = 15_000;
 const ACTION_FEEDBACK_FADE_MS = 300;
 
-const formatDateTime = (value?: string) => {
-  if (!value) {
-    return '—';
-  }
-  return formatEditorDateTime(value) ?? value;
-};
-
-const readActualLatestKeycloakRun = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>
-  instance?.keycloakProvisioningRuns[0] ?? instance?.latestKeycloakProvisioningRun;
-
-const readPreflightTimestamp = (instance: ReturnType<typeof useInstances>['selectedInstance']) => {
-  if (!instance?.keycloakPreflight || typeof instance.keycloakPreflight !== 'object') {
-    return undefined;
-  }
-
-  if ('checkedAt' in instance.keycloakPreflight && typeof instance.keycloakPreflight.checkedAt === 'string') {
-    return instance.keycloakPreflight.checkedAt;
-  }
-
-  if (
-    'generatedAt' in instance.keycloakPreflight &&
-    typeof (instance.keycloakPreflight as { generatedAt?: string }).generatedAt === 'string'
-  ) {
-    return (instance.keycloakPreflight as { generatedAt?: string }).generatedAt;
-  }
-
-  return undefined;
-};
-
-const readWorkerPendingProjection = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>
-  Boolean(
-    instance?.keycloakPreflight?.checks.some((check) => {
-      const details = check.details as Record<string, unknown> | undefined;
-      return details?.source === 'worker_pending';
-    })
-  );
-
-const readMissingWorkerEnvName = (instance: ReturnType<typeof useInstances>['selectedInstance']) => {
-  const preflightStep = readActualLatestKeycloakRun(instance)?.steps.find(
-    (step) => step.stepKey === 'worker_preflight_snapshot'
-  );
-  const details = preflightStep?.details as
-    | {
-        preflight?: {
-          checks?: Array<{
-            checkKey?: string;
-            details?: {
-              error?: string;
-            };
-          }>;
-        };
-      }
-    | undefined;
-  const keycloakAccessCheck = details?.preflight?.checks?.find((check) => check.checkKey === 'keycloak_admin_access');
-  const error = keycloakAccessCheck?.details?.error;
-  if (!error?.startsWith('Missing required env: ')) {
-    return undefined;
-  }
-  return error.replace('Missing required env: ', '').trim() || undefined;
-};
-
-const readWorkerUnavailableWarning = (instance: ReturnType<typeof useInstances>['selectedInstance']) => {
-  const latestRun = readActualLatestKeycloakRun(instance);
-  if (!latestRun || latestRun.overallStatus !== 'planned') {
-    return false;
-  }
-
-  const hasWorkerEvidence = latestRun.steps.some((step) =>
-    step.stepKey === 'worker' || step.stepKey === 'execution' || step.stepKey.startsWith('worker_'),
-  );
-  if (hasWorkerEvidence) {
-    return false;
-  }
-
-  const referenceTimestamp = Date.parse(latestRun.updatedAt || latestRun.createdAt);
-  if (Number.isNaN(referenceTimestamp)) {
-    return false;
-  }
-
-  return Date.now() - referenceTimestamp >= WORKER_UNAVAILABLE_WARNING_THRESHOLD_MS;
-};
-
-const readTenantSecretUserInputRequired = (
-  detailFormValues: ReturnType<typeof createDetailForm> | null,
-  selectedInstance: ReturnType<typeof useInstances>['selectedInstance']
-) => {
-  if (detailFormValues) {
-    return isTenantSecretUserInputRequired(detailFormValues.realmMode);
-  }
-
-  if (selectedInstance) {
-    return isTenantSecretUserInputRequired(selectedInstance.realmMode);
-  }
-
-  return true;
-};
-
-const readOperationsModel = (
-  selectedInstance: ReturnType<typeof useInstances>['selectedInstance'],
-  mutationError: ReturnType<typeof useInstances>['mutationError']
-) => {
-  if (!selectedInstance) {
-    return null;
-  }
-
-  if (selectedInstance.realmMode === 'new') {
-    return buildNewRealmOperationsModel(selectedInstance, mutationError);
-  }
-
-  return buildExistingRealmOperationsModel(selectedInstance, mutationError);
-};
-
-export const readActionFeedbackClassName = (actionFeedback: ActionFeedback, actionFeedbackFading: boolean) => {
-  const opacityClassName = actionFeedbackFading ? 'opacity-0' : 'opacity-100';
-
-  if (actionFeedback.tone === 'success') {
-    return `border-emerald-500/40 bg-emerald-500/10 text-emerald-900 transition-opacity duration-300 ${opacityClassName}`;
-  }
-
-  return `border-amber-500/40 bg-amber-500/10 text-amber-950 transition-opacity duration-300 ${opacityClassName}`;
-};
-
-const clearSensitiveDetailFields = (current: ReturnType<typeof createDetailForm> | null) => {
-  if (!current) {
-    return current;
-  }
-
-  return {
-    ...current,
-    authClientSecret: '',
-    tenantAdminClient: {
-      ...current.tenantAdminClient,
-      secret: '',
-    },
-  };
-};
+export { readActionFeedbackClassName };
 
 const InstanceRuntimeEvidence = ({
   classification,
@@ -259,7 +125,10 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       : null;
   const missingWorkerEnvName = readMissingWorkerEnvName(selectedInstance);
   const workerPendingProjection = readWorkerPendingProjection(selectedInstance);
-  const workerUnavailableWarning = readWorkerUnavailableWarning(selectedInstance);
+  const workerUnavailableWarning = readWorkerUnavailableWarning(
+    selectedInstance,
+    WORKER_UNAVAILABLE_WARNING_THRESHOLD_MS
+  );
   const hasRunningOperations = Boolean(operationsModel?.steps.some((step) => step.status === 'läuft'));
 
   React.useEffect(() => {

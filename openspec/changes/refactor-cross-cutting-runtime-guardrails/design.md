@@ -75,6 +75,17 @@ Ein erster report-only Sichtbarkeits-Slice ist inzwischen implementiert. Er verd
 - Cache-Vertrag:
   - Die ersten Inventar-Befunde zeigen Mutations-/Refresh-Pfade ohne zentral sichtbaren Invalidierungsvertrag; das ist eher funktionales Risiko als reine Stilabweichung.
 
+## Standabgleich mit PR #441 vom 18.06.2026
+
+- Der Alt-PR `smart-village-solutions/sva-studio#441` wird nicht weiter als Merge-Kandidat behandelt, weil sein report-only Slice inzwischen auf `main` gelandet ist und der Branch stark hinter `main` liegt.
+- Fachlich relevante Restideen aus `#441` bleiben jedoch Bestandteil dieses Changes und sind nicht als erledigt zu verstehen:
+  - Plugin-SDK-Kompatibilitätsrangen fehlen weiterhin im sichtbaren Vertrag der Workspace-Plugins und bleiben Vorarbeit für Task `2.3`.
+  - Der server-only-Leak-Check liefert weiterhin viele Befunde; die Grundidee bleibt relevant, die aktuelle Heuristik ist aber noch nicht enforcement-tauglich und bleibt Vorarbeit für Task `4.3`.
+  - Ein gemeinsamer Invalidation-Tag-Vertrag für Mutationen bleibt offen; die heutige Wortlisten-Heuristik ist nur Inventurhilfe und ersetzt den fachlichen Vertrag nicht. Das bleibt Vorarbeit für Tasks `3.1` und `3.2`.
+  - Die Robustheit des Plugin-Contract-Checks gegen fehlerhafte Einzel-Plugins bleibt wichtig, damit ein defektes Plugin nicht den gesamten report-only Lauf entwertet. Das ist Teil der weiteren Härtung in Tasks `2.1` bis `2.3`.
+- Nicht mehr als prioritärer Rest aus `#441` betrachtet wird die reine Einführung des report-only Runners; dieser Slice ist bereits umgesetzt.
+- Der Auth-Session-Bereich bleibt im Change offen, aber nicht mehr wegen fehlender Sichtbarkeit. Offener Rest ist die normative Härtung von Refresh-Konkurrenz und Store-Parität gemäß Tasks `1.1` bis `1.4`.
+
 ## Risks / Trade-offs
 
 - Strengere Build- und Boot-Gates können bestehende Drift sofort sichtbar machen und zunächst mehrere rote Checks freilegen.

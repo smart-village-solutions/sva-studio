@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createApiErrorResponse } from './test-api-response.js';
 
 const state = vi.hoisted(() => ({
   createSdkLogger: vi.fn(() => ({
@@ -20,12 +21,6 @@ const state = vi.hoisted(() => ({
     pagination,
     ...(requestId ? { requestId } : {}),
   })),
-  createApiError: vi.fn((status: number, code: string, message: string, requestId?: string, details?: unknown) =>
-    new Response(JSON.stringify({ error: { code, message, ...(details ? { details } : {}) }, requestId }), {
-      status,
-      headers: { 'content-type': 'application/json' },
-    })
-  ),
   readPage: vi.fn(() => ({ page: 1, pageSize: 20 })),
   validateCsrf: vi.fn(() => null),
   ensureFeature: vi.fn(() => null),
@@ -58,7 +53,7 @@ vi.mock('../shared/input-readers.js', () => ({
 vi.mock('./api-helpers.js', () => ({
   asApiItem: state.asApiItem,
   asApiList: state.asApiList,
-  createApiError: state.createApiError,
+  createApiError: vi.fn(createApiErrorResponse),
   readPage: state.readPage,
 }));
 

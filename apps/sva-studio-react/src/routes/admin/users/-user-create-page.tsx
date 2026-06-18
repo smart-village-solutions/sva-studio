@@ -21,8 +21,8 @@ import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUsers } from '../../../hooks/use-users';
 import { t } from '../../../i18n';
-import { isTenantRoleVisible } from '../../../lib/iam-role-governance';
 import { userErrorMessage } from './-user-error-message';
+import { selectAssignableGroups, selectAssignableRoles } from './user-assignment-options';
 
 const appendUnique = (values: readonly string[], nextValue: string): string[] =>
   values.includes(nextValue) ? [...values] : [...values, nextValue];
@@ -141,15 +141,9 @@ export const UserCreatePage = () => {
   const usersApi = useUsers();
   const rolesApi = useRoles();
   const groupsApi = useGroups();
-  const selectableRoles = React.useMemo(
-    () => rolesApi.roles.filter((role) => isTenantRoleVisible(role)),
-    [rolesApi.roles]
-  );
+  const selectableRoles = React.useMemo(() => selectAssignableRoles(rolesApi.roles), [rolesApi.roles]);
   const userCreateSchema = React.useMemo(() => createUserCreateSchema(), []);
-  const selectableGroups = React.useMemo(
-    () => groupsApi.groups.filter((group) => group.isActive !== false),
-    [groupsApi.groups]
-  );
+  const selectableGroups = React.useMemo(() => selectAssignableGroups(groupsApi.groups), [groupsApi.groups]);
   const form = useForm<UserCreateFormValues>({
     resolver: zodResolver(userCreateSchema as never),
     defaultValues: {

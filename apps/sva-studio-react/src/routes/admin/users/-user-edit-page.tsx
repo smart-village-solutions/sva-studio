@@ -1,25 +1,31 @@
-import React from 'react';
-import type { IamUserPermissionTraceItem } from '@sva/core';
-
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
-import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Checkbox } from '../../../components/ui/checkbox';
+import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
-import { useGroups } from '../../../hooks/use-groups';
-import { useRoles } from '../../../hooks/use-roles';
-import { useUser } from '../../../hooks/use-user';
 import { t } from '../../../i18n';
-import { formatEditorDateTime } from '../../../lib/editor-date-time';
-import { isTenantRoleVisible } from '../../../lib/iam-role-governance';
-import { getUserTimeline } from '../../../lib/iam-api';
 import { userErrorMessage } from './-user-error-message';
+import { useUserEditController } from './use-user-edit-controller';
+import {
+  appendUnique,
+  buildPermissionTraceDetails,
+  describePermissionTraceRuntimeScope,
+  describePermissionTraceSource,
+  formatDateTime,
+  formatMetadata,
+  formatRoleValidity,
+  formatScope,
+  formatTraceValidity,
+  pickInitials,
+  USER_EDIT_TABS,
+  userEditTranslationKeys,
+} from './user-edit-model';
 
 type UserEditPageProps = {
   readonly userId: string;
@@ -27,549 +33,35 @@ type UserEditPageProps = {
   readonly invitationErrorMessage?: string;
 };
 
-type UserEditTabKey = 'personal' | 'management' | 'permissions' | 'history';
-
-type UserFormValues = {
-  firstName: string;
-  lastName: string;
-  displayName: string;
-  email: string;
-  phone: string;
-  position: string;
-  department: string;
-  status: 'active' | 'inactive' | 'pending';
-  preferredLanguage: string;
-  timezone: string;
-  notes: string;
-  roleIds: string[];
-  groupIds: string[];
-  mainserverUserApplicationId: string;
-  mainserverUserApplicationSecret: string;
-  mainserverUserApplicationSecretSet: boolean;
-};
-
-const TABS: ReadonlyArray<{ key: UserEditTabKey; labelKey: 'personal' | 'management' | 'permissions' | 'history' }> = [
-  { key: 'personal', labelKey: 'personal' },
-  { key: 'management', labelKey: 'management' },
-  { key: 'permissions', labelKey: 'permissions' },
-  { key: 'history', labelKey: 'history' },
-];
-
-const tabTranslationKeyByValue = {
-  personal: 'admin.users.edit.tab.personal',
-  management: 'admin.users.edit.tab.management',
-  permissions: 'admin.users.edit.tab.permissions',
-  history: 'admin.users.edit.tab.history',
-} as const;
-
-const statusTranslationKeyByValue = {
-  active: 'account.status.active',
-  inactive: 'account.status.inactive',
-  pending: 'account.status.pending',
-} as const;
-
-const historyCategoryTranslationKeyByValue = {
-  iam: 'admin.users.edit.historyCategory.iam',
-  governance: 'admin.users.edit.historyCategory.governance',
-  dsr: 'admin.users.edit.historyCategory.dsr',
-} as const;
-
-const historyPerspectiveTranslationKeyByValue = {
-  actor: 'admin.users.edit.historyPerspective.actor',
-  target: 'admin.users.edit.historyPerspective.target',
-  actor_and_target: 'admin.users.edit.historyPerspective.actor_and_target',
-} as const;
-
-const permissionTraceStatusTranslationKeyByValue = {
-  effective: 'admin.users.edit.permissionTrace.status.effective',
-  inactive: 'admin.users.edit.permissionTrace.status.inactive',
-  expired: 'admin.users.edit.permissionTrace.status.expired',
-  disabled: 'admin.users.edit.permissionTrace.status.disabled',
-} as const;
-
-const permissionTraceInactiveReasonTranslationKeyByValue = {
-  assignment_not_started: 'admin.users.edit.permissionTrace.inactiveReason.assignmentNotStarted',
-  assignment_expired: 'admin.users.edit.permissionTrace.inactiveReason.assignmentExpired',
-  membership_not_started: 'admin.users.edit.permissionTrace.inactiveReason.membershipNotStarted',
-  membership_expired: 'admin.users.edit.permissionTrace.inactiveReason.membershipExpired',
-  group_disabled: 'admin.users.edit.permissionTrace.inactiveReason.groupDisabled',
-  hierarchy_restricted: 'admin.users.edit.permissionTrace.inactiveReason.hierarchyRestricted',
-} as const;
-
-const permissionTraceSourceTranslationKeyByValue = {
-  direct_permission: 'admin.users.edit.permissionTrace.source.directPermission',
-  direct_role: 'admin.users.edit.permissionTrace.source.directRole',
-  group_role: 'admin.users.edit.permissionTrace.source.groupRole',
-} as const;
-
-const permissionTraceRuntimeScopeTranslationKeyByValue = {
-  instance: 'admin.users.edit.permissionTrace.runtimeScope.instance',
-  record: 'admin.users.edit.permissionTrace.runtimeScope.record',
-  organization_context: 'admin.users.edit.permissionTrace.runtimeScope.organizationContext',
-} as const;
-
-const toFormValues = (input: ReturnType<typeof useUser>['user']): UserFormValues => ({
-  firstName: input?.firstName ?? '',
-  lastName: input?.lastName ?? '',
-  displayName: input?.displayName ?? '',
-  email: input?.email ?? '',
-  phone: input?.phone ?? '',
-  position: input?.position ?? '',
-  department: input?.department ?? '',
-  status: input?.status ?? 'pending',
-  preferredLanguage: input?.preferredLanguage ?? 'de',
-  timezone: input?.timezone ?? 'Europe/Berlin',
-  notes: input?.notes ?? '',
-  roleIds: input?.roles.map((entry) => entry.roleId) ?? [],
-  groupIds: input?.groups?.map((entry) => entry.groupId) ?? [],
-  mainserverUserApplicationId: input?.mainserverUserApplicationId ?? '',
-  mainserverUserApplicationSecret: '',
-  mainserverUserApplicationSecretSet: input?.mainserverUserApplicationSecretSet ?? false,
-});
-
-const pickInitials = (displayName: string) => {
-  const parts = displayName
-    .split(' ')
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .slice(0, 2);
-
-  if (parts.length === 0) {
-    return 'NA';
-  }
-
-  return parts.map((entry) => entry.charAt(0).toUpperCase()).join('');
-};
-
-const formatDateTime = (value?: string) => {
-  if (!value) {
-    return '—';
-  }
-  return formatEditorDateTime(value) ?? value;
-};
-
-const formatRoleValidity = (input: { validFrom?: string; validTo?: string }) => {
-  if (input.validFrom && input.validTo) {
-    return t('admin.users.edit.roleValidityRange', {
-      from: formatDateTime(input.validFrom),
-      to: formatDateTime(input.validTo),
-    });
-  }
-  if (input.validFrom) {
-    return t('admin.users.edit.roleValidityFrom', { from: formatDateTime(input.validFrom) });
-  }
-  if (input.validTo) {
-    return t('admin.users.edit.roleValidityTo', { to: formatDateTime(input.validTo) });
-  }
-  return null;
-};
-
-const formatMetadata = (metadata: Readonly<Record<string, unknown>>) => {
-  if (Object.keys(metadata).length === 0) {
-    return null;
-  }
-  return Object.entries(metadata)
-    .map(([key, value]) => `${key}: ${String(value)}`)
-    .join(', ');
-};
-
-const formatScope = (scope?: Readonly<Record<string, unknown>>) => {
-  if (!scope || Object.keys(scope).length === 0) {
-    return null;
-  }
-
-  return Object.entries(scope)
-    .map(([key, value]) => `${key}: ${String(value)}`)
-    .join(', ');
-};
-
-const describePermissionTraceSource = (entry: IamUserPermissionTraceItem) => {
-  const base = t(permissionTraceSourceTranslationKeyByValue[entry.sourceKind]);
-  if (entry.sourceKind === 'direct_permission') {
-    return base;
-  }
-
-  if (entry.sourceKind === 'group_role') {
-    const parts = [base];
-    if (entry.groupDisplayName) {
-      parts.push(entry.groupDisplayName);
-    }
-    if (entry.roleName) {
-      parts.push(entry.roleName);
-    }
-    return parts.join(' · ');
-  }
-
-  return entry.roleName ? `${base} · ${entry.roleName}` : base;
-};
-
-const describePermissionTraceRuntimeScope = (entry: IamUserPermissionTraceItem) =>
-  entry.runtimeScope ? t(permissionTraceRuntimeScopeTranslationKeyByValue[entry.runtimeScope]) : null;
-
-const formatTraceValidity = (entry: Pick<IamUserPermissionTraceItem, 'validFrom' | 'validTo'>) => {
-  if (entry.validFrom && entry.validTo) {
-    return t('admin.users.edit.permissionTrace.validityRange', {
-      from: formatDateTime(entry.validFrom),
-      to: formatDateTime(entry.validTo),
-    });
-  }
-  if (entry.validFrom) {
-    return t('admin.users.edit.permissionTrace.validityFrom', { from: formatDateTime(entry.validFrom) });
-  }
-  if (entry.validTo) {
-    return t('admin.users.edit.permissionTrace.validityTo', { to: formatDateTime(entry.validTo) });
-  }
-  return null;
-};
-
-const buildPermissionTraceDetails = (entry: IamUserPermissionTraceItem): readonly string[] => {
-  const details: string[] = [];
-  if (entry.inheritedFromOrganizationId) {
-    details.push(
-      t('admin.users.edit.permissionTrace.inheritedOrganization', {
-        value: entry.inheritedFromOrganizationId,
-      })
-    );
-  }
-  if (entry.inheritedFromGeoUnitId) {
-    details.push(
-      t('admin.users.edit.permissionTrace.inheritedGeoUnit', {
-        value: entry.inheritedFromGeoUnitId,
-      })
-    );
-  }
-  if (entry.restrictedByGeoUnitId) {
-    details.push(
-      t('admin.users.edit.permissionTrace.restrictedGeoUnit', {
-        value: entry.restrictedByGeoUnitId,
-      })
-    );
-  }
-  if (entry.inactiveReason) {
-    details.push(
-      t('admin.users.edit.permissionTrace.inactiveReasonLabel', {
-        value: t(permissionTraceInactiveReasonTranslationKeyByValue[entry.inactiveReason]),
-      })
-    );
-  }
-  const validityText = formatTraceValidity(entry);
-  if (validityText) {
-    details.push(validityText);
-  }
-  return details;
-};
-
-const appendUnique = (values: readonly string[], nextValue: string): string[] =>
-  values.includes(nextValue) ? [...values] : [...values, nextValue];
-
-const areStringArraysEqual = (left: readonly string[], right: readonly string[]): boolean =>
-  left.length === right.length && left.every((value, index) => value === right[index]);
-
-export const buildGroupMembershipById = (
-  groups: NonNullable<ReturnType<typeof useUser>['user']>['groups'] | undefined
-): ReadonlyMap<string, NonNullable<NonNullable<ReturnType<typeof useUser>['user']>['groups']>[number]> =>
-  new Map((groups ?? []).map((entry) => [entry.groupId, entry] as const));
-
-export const hasUserFormChanges = (baseline: UserFormValues, current: UserFormValues): boolean =>
-  baseline.firstName !== current.firstName ||
-  baseline.lastName !== current.lastName ||
-  baseline.displayName !== current.displayName ||
-  baseline.email !== current.email ||
-  baseline.phone !== current.phone ||
-  baseline.position !== current.position ||
-  baseline.department !== current.department ||
-  baseline.status !== current.status ||
-  baseline.preferredLanguage !== current.preferredLanguage ||
-  baseline.timezone !== current.timezone ||
-  baseline.notes !== current.notes ||
-  !areStringArraysEqual(baseline.roleIds, current.roleIds) ||
-  !areStringArraysEqual(baseline.groupIds, current.groupIds) ||
-  baseline.mainserverUserApplicationId !== current.mainserverUserApplicationId ||
-  baseline.mainserverUserApplicationSecret !== current.mainserverUserApplicationSecret ||
-  baseline.mainserverUserApplicationSecretSet !== current.mainserverUserApplicationSecretSet;
-
-const useUserEditFormState = (user: ReturnType<typeof useUser>['user']) => {
-  const [formValues, setFormValues] = React.useState<UserFormValues>(() => toFormValues(user));
-  const baselineFormValues = React.useMemo(() => toFormValues(user), [user]);
-  const hasUnsavedChanges = React.useMemo(
-    () => hasUserFormChanges(baselineFormValues, formValues),
-    [baselineFormValues, formValues]
-  );
-
-  React.useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    setFormValues(toFormValues(user));
-  }, [user]);
-
-  React.useEffect(() => {
-    if (!hasUnsavedChanges) {
-      return;
-    }
-
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', onBeforeUnload);
-    };
-  }, [hasUnsavedChanges]);
-
-  return {
-    formValues,
-    hasUnsavedChanges,
-    setFormValues,
-  };
-};
-
-const useUserTimelineState = (activeTab: UserEditTabKey, userId: string) => {
-  const [timeline, setTimeline] = React.useState<Awaited<ReturnType<typeof getUserTimeline>>['data']>([]);
-  const [isLoadingTimeline, setIsLoadingTimeline] = React.useState(false);
-  const [timelineError, setTimelineError] = React.useState<string | null>(null);
-  const [hasLoadedTimeline, setHasLoadedTimeline] = React.useState(false);
-
-  React.useEffect(() => {
-    setTimeline([]);
-    setTimelineError(null);
-    setHasLoadedTimeline(false);
-  }, [userId]);
-
-  React.useEffect(() => {
-    if (activeTab !== 'history' || hasLoadedTimeline) {
-      return;
-    }
-
-    let active = true;
-    setIsLoadingTimeline(true);
-    setTimelineError(null);
-
-    void getUserTimeline(userId)
-      .then((response) => {
-        if (!active) {
-          return;
-        }
-        setTimeline(response.data);
-        setHasLoadedTimeline(true);
-      })
-      .catch((error) => {
-        if (!active) {
-          return;
-        }
-        setTimeline([]);
-        setTimelineError(error instanceof Error ? error.message : String(error));
-      })
-      .finally(() => {
-        if (active) {
-          setIsLoadingTimeline(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [activeTab, hasLoadedTimeline, userId]);
-
-  const reloadTimeline = React.useCallback(async () => {
-    setIsLoadingTimeline(true);
-    setTimelineError(null);
-
-    try {
-      const response = await getUserTimeline(userId);
-      setTimeline(response.data);
-      setHasLoadedTimeline(true);
-    } catch (error) {
-      setTimeline([]);
-      setTimelineError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsLoadingTimeline(false);
-    }
-  }, [userId]);
-
-  return {
-    hasLoadedTimeline,
-    isLoadingTimeline,
-    reloadTimeline,
-    timeline,
-    timelineError,
-  };
-};
-
-const useUserEditTabState = (hasUnsavedChanges: boolean) => {
-  const [activeTab, setActiveTab] = React.useState<UserEditTabKey>('personal');
-  const [unsavedDialogOpen, setUnsavedDialogOpen] = React.useState(false);
-  const [pendingTab, setPendingTab] = React.useState<UserEditTabKey | null>(null);
-
-  const onTabIntent = React.useCallback((nextTab: UserEditTabKey) => {
-    if (nextTab === activeTab) {
-      return;
-    }
-
-    if (hasUnsavedChanges && activeTab !== 'personal') {
-      setPendingTab(nextTab);
-      setUnsavedDialogOpen(true);
-      return;
-    }
-
-    setActiveTab(nextTab);
-  }, [activeTab, hasUnsavedChanges]);
-
-  const onTabKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLButtonElement>, tabIndex: number) => {
-    const key = event.key;
-    if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(key)) {
-      return;
-    }
-
-    event.preventDefault();
-    if (key === 'Home') {
-      onTabIntent(TABS[0].key);
-      return;
-    }
-
-    if (key === 'End') {
-      onTabIntent(TABS[TABS.length - 1].key);
-      return;
-    }
-
-    const direction = key === 'ArrowRight' ? 1 : -1;
-    const nextIndex = (tabIndex + direction + TABS.length) % TABS.length;
-    onTabIntent(TABS[nextIndex].key);
-  }, [onTabIntent]);
-
-  return {
-    activeTab,
-    onTabIntent,
-    onTabKeyDown,
-    pendingTab,
-    setActiveTab,
-    setPendingTab,
-    setUnsavedDialogOpen,
-    unsavedDialogOpen,
-  };
-};
-
-const useUserSaveActions = (
-  userApi: ReturnType<typeof useUser>,
-  formValues: UserFormValues,
-  setFormValues: React.Dispatch<React.SetStateAction<UserFormValues>>,
-) => {
-  const [isSaving, setIsSaving] = React.useState(false);
-  const [isSendingPasswordSetupEmail, setIsSendingPasswordSetupEmail] = React.useState(false);
-  const [saveSuccess, setSaveSuccess] = React.useState(false);
-  const [passwordSetupEmailSuccess, setPasswordSetupEmailSuccess] = React.useState(false);
-
-  const onSave = React.useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsSaving(true);
-    setSaveSuccess(false);
-    setPasswordSetupEmailSuccess(false);
-
-    const result = await userApi.save({
-      firstName: formValues.firstName || undefined,
-      lastName: formValues.lastName || undefined,
-      displayName: formValues.displayName || undefined,
-      email: formValues.email || undefined,
-      phone: formValues.phone || undefined,
-      position: formValues.position || undefined,
-      department: formValues.department || undefined,
-      status: formValues.status,
-      preferredLanguage: formValues.preferredLanguage || undefined,
-      timezone: formValues.timezone || undefined,
-      notes: formValues.notes.slice(0, 2000) || undefined,
-      roleIds: formValues.roleIds,
-      groupIds: formValues.groupIds,
-      mainserverUserApplicationId: formValues.mainserverUserApplicationId.trim(),
-      mainserverUserApplicationSecret: formValues.mainserverUserApplicationSecret.trim() || undefined,
-    });
-
-    if (result) {
-      setFormValues(toFormValues(result));
-      setSaveSuccess(true);
-    }
-
-    setIsSaving(false);
-  }, [formValues, setFormValues, userApi]);
-
-  const onSendPasswordSetupEmail = React.useCallback(async () => {
-    if (!userApi.resendPasswordSetupEmail || isSendingPasswordSetupEmail) {
-      return;
-    }
-
-    setIsSendingPasswordSetupEmail(true);
-    setSaveSuccess(false);
-    setPasswordSetupEmailSuccess(false);
-
-    const sent = await userApi.resendPasswordSetupEmail();
-    if (sent) {
-      setPasswordSetupEmailSuccess(true);
-    }
-
-    setIsSendingPasswordSetupEmail(false);
-  }, [isSendingPasswordSetupEmail, userApi]);
-
-  return {
-    isSaving,
-    isSendingPasswordSetupEmail,
-    onSave,
-    onSendPasswordSetupEmail,
-    passwordSetupEmailSuccess,
-    saveSuccess,
-    setPasswordSetupEmailSuccess,
-    setSaveSuccess,
-  };
-};
-
 export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage }: UserEditPageProps) => {
-  const userApi = useUser(userId);
-  const rolesApi = useRoles();
-  const groupsApi = useGroups();
-  const selectableRoles = React.useMemo(
-    () => rolesApi.roles.filter((role) => isTenantRoleVisible(role)),
-    [rolesApi.roles]
-  );
-  const selectableGroups = React.useMemo(
-    () => groupsApi.groups.filter((group) => group.isActive !== false),
-    [groupsApi.groups]
-  );
-
-  const { formValues, hasUnsavedChanges, setFormValues } = useUserEditFormState(userApi.user);
   const {
     activeTab,
-    onTabIntent,
-    onTabKeyDown,
-    pendingTab,
-    setActiveTab,
-    setPendingTab,
-    setUnsavedDialogOpen,
-    unsavedDialogOpen,
-  } = useUserEditTabState(hasUnsavedChanges);
-  const {
+    closeUnsavedDialog,
+    confirmPendingTab,
+    effectivePermissionTrace,
+    formValues,
+    groupMembershipById,
+    inactivePermissionTrace,
     isLoadingTimeline,
-    reloadTimeline,
-    timeline,
-    timelineError,
-  } = useUserTimelineState(activeTab, userId);
-  const {
     isSaving,
     isSendingPasswordSetupEmail,
     onSave,
     onSendPasswordSetupEmail,
+    onTabIntent,
+    onTabKeyDown,
     passwordSetupEmailSuccess,
+    reloadTimeline,
+    resetFormValues,
+    retryUserLoad,
     saveSuccess,
-  } = useUserSaveActions(userApi, formValues, setFormValues);
-  const effectivePermissionTrace = React.useMemo(
-    () => (userApi.user?.permissionTrace ?? []).filter((entry) => entry.isEffective),
-    [userApi.user?.permissionTrace]
-  );
-  const inactivePermissionTrace = React.useMemo(
-    () => (userApi.user?.permissionTrace ?? []).filter((entry) => !entry.isEffective),
-    [userApi.user?.permissionTrace]
-  );
-  const groupMembershipById = React.useMemo(() => buildGroupMembershipById(userApi.user?.groups), [userApi.user?.groups]);
+    selectableGroups,
+    selectableRoles,
+    setFormValues,
+    timeline,
+    timelineError,
+    unsavedDialogOpen,
+    userApi,
+  } = useUserEditController({ userId });
 
   if (userApi.isLoading) {
     return (
@@ -618,17 +110,18 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               {t('account.fields.username')}: {userApi.user.username ?? '-'}
             </p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
-              <Badge variant="outline">
-                {t(statusTranslationKeyByValue[userApi.user.status])}
-              </Badge>
-              {userApi.user.roles.map((role) => (
-                <Badge key={role.roleId} variant="outline" className="h-auto items-start py-1">
-                  <span className="block">{role.roleName}</span>
-                  {formatRoleValidity(role) ? (
-                    <span className="block text-[11px] text-muted-foreground">{formatRoleValidity(role)}</span>
-                  ) : null}
-                </Badge>
-              ))}
+              <Badge variant="outline">{t(userEditTranslationKeys.status[userApi.user.status])}</Badge>
+              {userApi.user.roles.map((role) => {
+                const validityLabel = formatRoleValidity(role);
+                return (
+                  <Badge key={role.roleId} variant="outline" className="h-auto items-start py-1">
+                    <span className="block">{role.roleName}</span>
+                    {validityLabel ? (
+                      <span className="block text-[11px] text-muted-foreground">{validityLabel}</span>
+                    ) : null}
+                  </Badge>
+                );
+              })}
               {userApi.user.groups?.map((group) => (
                 <Badge key={group.groupId} variant="outline" className="h-auto items-start py-1">
                   <span className="block">{group.displayName}</span>
@@ -651,21 +144,14 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               ? t('admin.users.actions.sendingPasswordSetupEmail')
               : t('admin.users.actions.sendPasswordSetupEmail')}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              userApi.clearMutationError();
-              void userApi.refetch();
-            }}
-          >
+          <Button type="button" variant="outline" onClick={retryUserLoad}>
             {t('admin.users.actions.retry')}
           </Button>
         </div>
       </Card>
 
       <Card role="tablist" aria-label={t('admin.users.edit.tabsAriaLabel')} className="flex overflow-x-auto p-1">
-        {TABS.map((tab, index) => {
+        {USER_EDIT_TABS.map((tab, index) => {
           const selected = tab.key === activeTab;
           return (
             <Button
@@ -684,7 +170,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               onKeyDown={(event) => onTabKeyDown(event, index)}
               variant={selected ? 'default' : 'ghost'}
             >
-              {t(tabTranslationKeyByValue[tab.labelKey])}
+              {t(userEditTranslationKeys.tab[tab.labelKey])}
             </Button>
           );
         })}
@@ -775,9 +261,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
             <Input
               id="user-language"
               value={formValues.preferredLanguage}
-              onChange={(event) =>
-                setFormValues((current) => ({ ...current, preferredLanguage: event.target.value }))
-              }
+              onChange={(event) => setFormValues((current) => ({ ...current, preferredLanguage: event.target.value }))}
             />
           </div>
           <div className="grid gap-2 text-sm text-foreground">
@@ -794,7 +278,10 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               {selectableRoles.map((role) => {
                 const selected = formValues.roleIds.includes(role.id);
                 return (
-                  <Label key={role.id} className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground">
+                  <Label
+                    key={role.id}
+                    className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
                     <Checkbox
                       type="checkbox"
                       checked={selected}
@@ -821,7 +308,10 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                 const currentMembership = groupMembershipById.get(group.id);
                 const membershipValidity = currentMembership ? formatTraceValidity(currentMembership) : null;
                 return (
-                  <Label key={group.id} className="flex items-start gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground">
+                  <Label
+                    key={group.id}
+                    className="flex items-start gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  >
                     <Checkbox
                       type="checkbox"
                       checked={selected}
@@ -842,7 +332,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                           {t('admin.users.edit.groupOrigin', { value: currentMembership.origin })}
                         </span>
                       ) : null}
-                      {membershipValidity ? <span className="text-xs text-muted-foreground">{membershipValidity}</span> : null}
+                      {membershipValidity ? (
+                        <span className="text-xs text-muted-foreground">{membershipValidity}</span>
+                      ) : null}
                     </span>
                   </Label>
                 );
@@ -894,7 +386,9 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               maxLength={2000}
               onChange={(event) => setFormValues((current) => ({ ...current, notes: event.target.value }))}
             />
-            <span className="text-xs text-muted-foreground">{t('admin.users.edit.notesCounter', { count: formValues.notes.length })}</span>
+            <span className="text-xs text-muted-foreground">
+              {t('admin.users.edit.notesCounter', { count: formValues.notes.length })}
+            </span>
           </div>
         </section>
 
@@ -930,7 +424,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="outline">{entry.effect}</Badge>
-                          <Badge variant="outline">{t(permissionTraceStatusTranslationKeyByValue[entry.status])}</Badge>
+                          <Badge variant="outline">{t(userEditTranslationKeys.permissionTraceStatus[entry.status])}</Badge>
                           {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
                         </div>
                       </div>
@@ -973,7 +467,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                           <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline">{t(permissionTraceStatusTranslationKeyByValue[entry.status])}</Badge>
+                          <Badge variant="outline">{t(userEditTranslationKeys.permissionTraceStatus[entry.status])}</Badge>
                           {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
                         </div>
                       </div>
@@ -1062,10 +556,10 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                       </div>
                       <div className="flex flex-wrap gap-2 text-xs">
                         <Badge className="rounded-full" variant="outline">
-                          {t(historyCategoryTranslationKeyByValue[entry.category])}
+                          {t(userEditTranslationKeys.historyCategory[entry.category])}
                         </Badge>
                         <Badge className="rounded-full" variant="outline">
-                          {t(historyPerspectiveTranslationKeyByValue[entry.perspective])}
+                          {t(userEditTranslationKeys.historyPerspective[entry.perspective])}
                         </Badge>
                       </div>
                     </div>
@@ -1107,7 +601,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
         ) : null}
 
         <div className="flex flex-wrap justify-end gap-3">
-          <Button type="button" variant="outline" onClick={() => setFormValues(toFormValues(userApi.user))}>
+          <Button type="button" variant="outline" onClick={resetFormValues}>
             {t('account.actions.cancel')}
           </Button>
           <Button type="submit" disabled={isSaving}>
@@ -1122,18 +616,8 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
         description={t('admin.users.edit.unsavedDialog.description')}
         confirmLabel={t('admin.users.edit.unsavedDialog.confirm')}
         cancelLabel={t('admin.users.edit.unsavedDialog.cancel')}
-        onCancel={() => {
-          setUnsavedDialogOpen(false);
-          setPendingTab(null);
-        }}
-        onConfirm={() => {
-          if (pendingTab) {
-            setActiveTab(pendingTab);
-          }
-          setUnsavedDialogOpen(false);
-          setPendingTab(null);
-          setFormValues(toFormValues(userApi.user));
-        }}
+        onCancel={closeUnsavedDialog}
+        onConfirm={confirmPendingTab}
       />
     </section>
   );

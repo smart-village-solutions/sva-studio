@@ -196,7 +196,7 @@ const listAllKeycloakUsers = async (
   }
 };
 
-export const resolveSyncActor = async (
+const resolveSyncActor = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<{ actor: ActorInfo } | { error: Response }> => {
@@ -262,7 +262,7 @@ const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | un
   return undefined;
 };
 
-export const runKeycloakUserImportSync = async (input: {
+const runKeycloakUserImportSync = async (input: {
   instanceId: string;
   actorAccountId?: string;
   requestId?: string;

@@ -33,11 +33,14 @@ const qualityEscalationPatterns = [
   /^vitest\.workspace\.ts$/u,
 ];
 
-const coverageEscalationPatterns = [
+const coverageFullEscalationPatterns = [
   ...qualityEscalationPatterns,
   /^package\.json$/u,
-  /^scripts\/ci\//u,
   /^\.github\/workflows\/(?:runtime-gates|quality-gates)\.yml$/u,
+];
+
+const coverageAffectedPatterns = [
+  /^scripts\/ci\//u,
 ];
 
 const integrationRelevantPatterns = [
@@ -160,10 +163,12 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
 
   const qualityGateMode: GateMode = escalationReasons.length > 0 ? 'full' : 'affected';
   const coverageMode: GateMode = codeRelevantFiles.some((file) =>
-    matchesAnyPattern(file, coverageEscalationPatterns)
+    matchesAnyPattern(file, coverageFullEscalationPatterns)
   )
     ? 'full'
-    : 'skip';
+    : codeRelevantFiles.some((file) => matchesAnyPattern(file, coverageAffectedPatterns))
+      ? 'affected'
+      : 'skip';
   const integrationMode: GateMode = codeRelevantFiles.some((file) =>
     matchesAnyPattern(file, integrationEscalationPatterns)
   )

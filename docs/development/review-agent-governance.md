@@ -4,6 +4,25 @@
 
 Dieses Dokument beschreibt die Review-Governance für Proposal- und PR-Reviews mit spezialisierten Agents.
 
+## Kanonischer PR-Intake
+
+Fuer die lokale Diagnose eines aktiven Pull Requests ist `pnpm exec tsx scripts/ci/pr-review-intake.ts` der kanonische Einstieg.
+
+- `snapshot` kombiniert PR-Metadaten, offene/resolved Review-Threads sowie failing/pending Checks in einem konsolidierten Snapshot.
+- `threads` liefert den thread-aware Review-Stand gezielt fuer Abarbeitung offener Kommentare.
+- `checks` liefert problematische GitHub-Checks inklusive Log-Aufloesung fuer failing Actions-Jobs.
+- Explizites `--repo <owner/repo> --pr <nummer>` hat Vorrang vor lokaler Branch-Erkennung.
+- Ohne explizite Parameter faellt der Intake auf die PR des aktuellen Branches zurueck.
+- `gh auth status` wird genau einmal zu Beginn des CLI-Laufs geprueft.
+- Externe GitHub-Plugin- oder Cache-Skills bleiben zulaessiger Fallback, sind fuer lokale PR-Diagnose aber nicht mehr der Primaerpfad.
+
+Empfohlene Aufrufe:
+
+- `pnpm exec tsx scripts/ci/pr-review-intake.ts snapshot --json`
+- `pnpm exec tsx scripts/ci/pr-review-intake.ts snapshot --repo smart-village-solutions/sva-studio --pr 602 --json`
+- `pnpm exec tsx scripts/ci/pr-review-intake.ts threads --repo smart-village-solutions/sva-studio --pr 602 --json`
+- `pnpm exec tsx scripts/ci/pr-review-intake.ts checks --repo smart-village-solutions/sva-studio --pr 602 --json`
+
 ## Bot-Kommentar-Gate
 
 Fuer Bot-Kommentare von `Copilot` und `chatgpt-codex-connector[bot]` gilt zusaetzlich ein blockierendes PR-Gate.

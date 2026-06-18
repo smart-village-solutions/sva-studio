@@ -1,0 +1,76 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "reviewThreads": {
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": null
+          },
+          "nodes": [
+            {
+              "id": "RT_kwDOAA",
+              "isResolved": false,
+              "isOutdated": false,
+              "path": "packages/data/src/query.ts",
+              "line": 42,
+              "originalLine": 42,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOAA_1",
+                    "body": "Bitte den GraphQL-Fallback vereinheitlichen.",
+                    "createdAt": "2026-06-18T08:00:00Z",
+                    "url": "https://github.com/smart-village-solutions/sva-studio/pull/602#discussion_r1",
+                    "author": {
+                      "login": "Copilot"
+                    }
+                  },
+                  {
+                    "id": "PRRC_kwDOAA_2",
+                    "body": "Verstanden, ich ziehe das in ein gemeinsames Helper-Modul.",
+                    "createdAt": "2026-06-18T08:05:00Z",
+                    "url": "https://github.com/smart-village-solutions/sva-studio/pull/602#discussion_r2",
+                    "author": {
+                      "login": "maintainer"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "RT_kwDOAB",
+              "isResolved": true,
+              "isOutdated": false,
+              "path": "scripts/ci/pr-review-intake.ts",
+              "line": 88,
+              "originalLine": 88,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOAB_1",
+                    "body": "Bitte den Exit-Code dokumentieren.",
+                    "createdAt": "2026-06-18T09:00:00Z",
+                    "url": "https://github.com/smart-village-solutions/sva-studio/pull/602#discussion_r3",
+                    "author": {
+                      "login": "chatgpt-codex-connector[bot]"
+                    }
+                  },
+                  {
+                    "id": "PRRC_kwDOAB_2",
+                    "body": "Erledigt und im CLI-Help ergänzt.",
+                    "createdAt": "2026-06-18T09:03:00Z",
+                    "url": "https://github.com/smart-village-solutions/sva-studio/pull/602#discussion_r4",
+                    "author": {
+                      "login": "maintainer"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

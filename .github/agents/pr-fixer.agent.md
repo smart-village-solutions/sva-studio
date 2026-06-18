@@ -46,29 +46,29 @@ Lies diese Dateien zu Beginn, um alle Non-Negotiable-Regeln zu kennen.
 ### Phase 0: Initialisierung
 
 1. **Repo-Regeln lesen**: `DEVELOPMENT_RULES.md`, `AGENTS.md`, `CLAUDE.md`
-2. **Pflicht-Skills sofort laden**: `address-pr-comments` immer zuerst, `nx-workspace` vor jeder Nx-Task-Auswahl; `monitor-ci` sobald Checks beobachtet werden muessen
-3. **SonarQube automatische Analyse deaktivieren**: `toggle_automatic_analysis` aufrufen, falls das Tool verfuegbar ist
-4. **PR-Kontext laden**: `github-pull-request_activePullRequest` zuerst ohne Refresh aufrufen; bei frischer Aktivitaet anschliessend mit `refresh: true`
-5. **Branch verifizieren**: `git branch --show-current` pruefen, dass du auf dem PR-Branch bist
+2. **PR-Intake lokal konsolidieren**: immer zuerst `pnpm exec tsx scripts/ci/pr-review-intake.ts snapshot --json` verwenden; bei bekanntem Ziel-PR `--repo <owner/repo> --pr <nummer>` explizit setzen
+3. **Pflicht-Skills gezielt laden**: `nx-workspace` vor jeder Nx-Task-Auswahl; `monitor-ci` erst fuer echtes CI-Monitoring nach Pushes; externe GitHub-Skills nur noch als Fallback bei Werkzeugluecken
+4. **SonarQube automatische Analyse deaktivieren**: `toggle_automatic_analysis` aufrufen, falls das Tool verfuegbar ist
+5. **Branch verifizieren**: `git branch --show-current` pruefen, dass du auf dem PR-Branch bist, falls kein explizites `--repo/--pr` gesetzt ist
 6. **Alle geaenderten Dateien erfassen**: PR-Diff analysieren
 7. **Nx-Targets verifizieren**: Mit `nx-workspace` oder Projektkonfiguration die real vorhandenen Targets fuer betroffene Projekte ermitteln, statt `test:types` oder `test:eslint` pauschal anzunehmen
 8. **Todo-Liste erstellen**: Alle offenen Punkte als Todos anlegen
 
 ### Phase 1: Review-Threads bearbeiten
 
-1. **PR-Kommentar-Workflow verwenden**: Den Skill `address-pr-comments` als primären Workflow fuer offene Threads verwenden
-2. **Unresolved Threads identifizieren**: Aus `activePullRequest`-Response alle `comments` mit `commentState: "unresolved"` sammeln
-2. **Threads nach Datei gruppieren** und priorisieren:
+1. **PR-Intake als führende Quelle verwenden**: Offene Threads aus `pr-review-intake.ts snapshot|threads --json` lesen; der Snapshot ist die kanonische lokale Wahrheit fuer PR-Metadaten, Threads und failing Checks
+2. **Unresolved Threads identifizieren**: `reviewThreads.open` aus dem Snapshot auswerten statt ad hoc aus flachen Connector-Kommentaren
+3. **Threads nach Datei gruppieren** und priorisieren:
    - 🔴 Blocker / Security-Findings zuerst
    - 🟡 Funktionale Korrekturen
    - 🟢 Style / Verbesserungen zuletzt
-3. **Pro Thread**:
+4. **Pro Thread**:
    a. Betroffene Datei lesen und Kontext verstehen
    b. Änderung implementieren (minimal, korrekt, im Scope des Kommentars)
    c. Falls der Kommentar unklar oder unbegründet ist: Rückfrage als Reply formulieren statt blind umzusetzen
    d. Betroffene Tests lokal ausfuehren, aber mit real existierendem Nx-Target fuer das Projekt
-4. **Resolve nur mit Nachweis**: Jeder Thread braucht eine inhaltliche Antwort, eine nachweisbare Code-Aenderung oder eine sauber begruendete Nicht-Aenderung
-5. **Tool-Luecken explizit behandeln**: Wenn direkte Reply-/Resolve-APIs nicht verfuegbar sind, fuer jeden offenen Thread eine konkrete Antwortvorlage und den verbleibenden manuellen Schritt im Abschlussbericht festhalten
+5. **Resolve nur mit Nachweis**: Jeder Thread braucht eine inhaltliche Antwort, eine nachweisbare Code-Aenderung oder eine sauber begruendete Nicht-Aenderung
+6. **Tool-Luecken explizit behandeln**: Wenn direkte Reply-/Resolve-APIs nicht verfuegbar sind, fuer jeden offenen Thread eine konkrete Antwortvorlage und den verbleibenden manuellen Schritt im Abschlussbericht festhalten; externe GitHub-Skills oder Connectoren sind dafuer nur Fallback, nicht Primärpfad
 
 ### Phase 2: Tests reparieren
 
@@ -122,10 +122,10 @@ Lies diese Dateien zu Beginn, um alle Non-Negotiable-Regeln zu kennen.
 
 Nach dem Push kehre zu Phase 1 zurück:
 
-1. **PR neu laden**: `github-pull-request_activePullRequest` mit `refresh: true`
+1. **PR neu laden**: `pnpm exec tsx scripts/ci/pr-review-intake.ts snapshot --json` erneut ausfuehren; bei bekanntem Ziel-PR weiter mit explizitem `--repo/--pr`
 2. **Neue Threads prüfen**: Haben Reviewer auf deine Änderungen reagiert?
-3. **CI-Status pruefen**: `github-pull-request_pullRequestStatusChecks` aufrufen
-4. **CI ueber den vorhandenen Workflow beobachten**: Fuer laufende Checks den Skill `monitor-ci` verwenden statt ad hoc Polling oder Provider-Watch-Flags
+3. **CI-Status pruefen**: Failing und pending Checks aus `checks` im Snapshot lesen
+4. **CI ueber den vorhandenen Workflow beobachten**: Fuer laufende Checks den Skill `monitor-ci` verwenden statt ad hoc Polling oder Provider-Watch-Flags; `pr-review-intake.ts` bleibt fuer den punktuellen Snapshot zustaendig, nicht fuer Dauer-Polling
 5. **SonarCloud/CodeCov erneut prüfen**: Nach CI-Durchlauf neue Ergebnisse laden
 6. **Schleife fortsetzen** bis:
    - Alle Review-Threads resolved oder beantwortet sind
@@ -190,7 +190,7 @@ Delegation heißt: Den Agent als Subagent aufrufen mit dem konkreten Problem-Kon
 - Erlaubte Skills: `monitor-ci`, `nx-workspace`, `nx-run-tasks`, `systematic-debugging`, `context7`, `address-pr-comments`
 - Nicht erlaubte Skills nur nach Rückfrage an den Nutzer
 - Bei fehlendem Skill: Eskalieren statt improvisieren
-- Skills werden nicht nur erwaehnt, sondern bei passendem Schritt sofort geladen und als primaerer Workflow verwendet
+- Skills werden nicht nur erwaehnt, sondern bei passendem Schritt sofort geladen; fuer lokalen PR-State ist jedoch `scripts/ci/pr-review-intake.ts` der primaere Workflow vor Skill-/Connector-Fallbacks
 
 ---
 

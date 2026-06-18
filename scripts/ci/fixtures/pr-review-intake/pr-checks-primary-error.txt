@@ -1,0 +1,9 @@
+Unknown JSON field: "conclusion"
+Available fields:
+name
+state
+bucket
+link
+startedAt
+completedAt
+workflow

@@ -7,6 +7,7 @@ Arbeitsmodus:
 - Lies `./.github/agents/pr-fixer.agent.md` vollständig und behandle die Datei als kanonische Quelle.
 - Behandle den YAML-Frontmatter-Block nur als Metadaten; maßgeblich sind die nachfolgenden Anweisungen.
 - Nutze im Codex-Kontext die funktional nächstpassenden Tools, Skills und MCP-Server statt Copilot-spezifischer Toolnamen.
+- Behandle `pnpm exec tsx scripts/ci/pr-review-intake.ts snapshot --json` als kanonischen lokalen Einstieg fuer PR-Metadaten, offene Review-Threads und failing Checks; externe GitHub-Skills sind nur Fallback.
 - Wenn die Quelldatei auf weitere lokale Dateien, Templates oder Doku verweist, lies sie gezielt nach Bedarf.
 - Halte dich zusätzlich an `AGENTS.md`, `DEVELOPMENT_RULES.md` und vorhandene Repo-Regeln.
 - Eskaliere fehlende Tool-Unterstützung explizit, statt Copilot-Workflows zu simulieren.

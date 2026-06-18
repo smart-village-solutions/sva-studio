@@ -237,6 +237,7 @@ describe('NewsDetailPage', () => {
     const source = fs.readFileSync(newsDetailSettingsSourcePath, 'utf8');
 
     expect(source).toContain('htmlFor={`publication-mode-${option}`}');
-    expect(source).not.toContain('<label key={option} className="flex gap-3 rounded-xl border border-border/60 p-4 text-sm">');
+    expect(source).toContain('<span className="space-y-1">');
+    expect(source).not.toContain('<div key={option} className="flex gap-3 rounded-xl border border-border/60 p-4 text-sm">');
   });
 });

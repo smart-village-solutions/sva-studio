@@ -110,7 +110,11 @@ function NewsPublicationModeFieldset({
           <legend className="text-sm font-medium text-foreground">{pt('fields.publicationMode')}</legend>
 
           {(['draft', 'immediate', 'scheduled'] as const).map((option) => (
-            <div key={option} className="flex gap-3 rounded-xl border border-border/60 p-4 text-sm">
+            <label
+              key={option}
+              htmlFor={`publication-mode-${option}`}
+              className="flex gap-3 rounded-xl border border-border/60 p-4 text-sm"
+            >
               <input
                 id={`publication-mode-${option}`}
                 type="radio"
@@ -119,15 +123,15 @@ function NewsPublicationModeFieldset({
                 checked={field.value === option}
                 onChange={(event) => field.onChange(event.target.value)}
               />
-              <label htmlFor={`publication-mode-${option}`} className="space-y-1">
+              <span className="space-y-1">
                 <span className="block font-medium text-foreground">
                   {pt(`publicationModes.${option}.label`)}
                 </span>
                 <span className="block text-muted-foreground">
                   {pt(`publicationModes.${option}.description`)}
                 </span>
-              </label>
-            </div>
+              </span>
+            </label>
           ))}
         </fieldset>
       )}

@@ -7,6 +7,7 @@ export type DeleteRoleActor = UpdateRoleActor;
 
 export type DeleteRoleIdentityProvider<TAttributes = unknown> = {
   readonly provider: {
+    readonly assignRealmRoles?: (externalId: string, roles: readonly string[]) => Promise<void>;
     readonly createRole: (input: {
       readonly externalName: string;
       readonly description?: string;
@@ -45,6 +46,10 @@ export type DeleteRoleHandlerDeps<
   };
   readonly isIdentityRoleNotFoundError: (error: unknown) => boolean;
   readonly jsonResponse: (status: number, payload: unknown) => Response;
+  readonly listDirectRoleAssignmentSubjects: (input: {
+    readonly instanceId: string;
+    readonly roleId: string;
+  }) => Promise<readonly string[]>;
   readonly logger: {
     readonly error: (message: string, meta: Readonly<Record<string, unknown>>) => void;
   };
@@ -108,6 +113,10 @@ export const createDeleteRoleHandlerInternal =
       }
 
       const externalRoleName = getRoleExternalName(existing);
+      const directAssignmentSubjects = await deps.listDirectRoleAssignmentSubjects({
+        instanceId: actor.instanceId,
+        roleId,
+      });
       await deps.markDeleteRoleSyncState({
         actor,
         roleId,
@@ -161,6 +170,16 @@ export const createDeleteRoleHandlerInternal =
               }),
             })
           );
+          if (directAssignmentSubjects.length > 0) {
+            if (!identityProvider.provider.assignRealmRoles) {
+              throw new Error('assignRealmRoles provider capability unavailable');
+            }
+            await Promise.all(
+              directAssignmentSubjects.map((subject) =>
+                identityProvider.provider.assignRealmRoles!(subject, [externalRoleName])
+              )
+            );
+          }
         } catch (compensationError) {
           deps.iamRoleSyncCounter.add(1, {
             operation: 'delete',

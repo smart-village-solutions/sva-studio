@@ -11,6 +11,7 @@ import { withInstanceScopedDb } from './shared-runtime.js';
 
 export const {
   deleteRoleFromDatabase,
+  listDirectRoleAssignmentSubjects,
   markDeleteRoleSyncState,
   markRoleSyncState,
   persistCreatedRole,

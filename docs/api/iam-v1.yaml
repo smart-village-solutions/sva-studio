@@ -1172,8 +1172,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/RoleMutationResponse'
     delete:
-      summary: Custom-Rolle loeschen
-      description: Entfernt vorhandene direkte Benutzer- und Gruppenzuordnungen der Rolle und loescht anschliessend die studioverwaltete Rolle.
+      summary: Custom-Rolle löschen
+      description: Entfernt vorhandene direkte Benutzer- und Gruppenzuordnungen der Rolle und löscht anschließend die studioverwaltete Rolle.
       parameters:
         - name: roleId
           in: path

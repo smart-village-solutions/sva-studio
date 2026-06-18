@@ -227,6 +227,29 @@ export const createRoleMutationPersistence = (deps: RoleMutationPersistenceDeps)
     };
   };
 
+  const listDirectRoleAssignmentSubjects = async (
+    client: QueryClient,
+    input: {
+      readonly instanceId: string;
+      readonly roleId: string;
+    }
+  ): Promise<readonly string[]> => {
+    const result = await client.query<{ keycloak_subject: string }>(
+      `
+SELECT DISTINCT a.keycloak_subject
+FROM iam.account_roles ar
+JOIN iam.accounts a
+  ON a.instance_id = ar.instance_id
+ AND a.id = ar.account_id
+WHERE ar.instance_id = $1
+  AND ar.role_id = $2::uuid
+ORDER BY a.keycloak_subject ASC
+`,
+      [input.instanceId, input.roleId]
+    );
+    return result.rows.map((row) => row.keycloak_subject);
+  };
+
   const deleteRoleRecords = async (
     client: QueryClient,
     input: {
@@ -669,6 +692,8 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
 
   return {
     deleteRoleFromDatabase,
+    listDirectRoleAssignmentSubjects: async (input: { readonly instanceId: string; readonly roleId: string }) =>
+      deps.withInstanceScopedDb(input.instanceId, (client) => listDirectRoleAssignmentSubjects(client, input)),
     markDeleteRoleSyncState,
     markRoleSyncState,
     persistCreatedRole,

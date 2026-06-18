@@ -7,6 +7,7 @@ import { asApiItem, createApiError } from './api-helpers.js';
 import { mapRoleSyncErrorCode, sanitizeRoleErrorMessage } from './role-audit.js';
 import {
   deleteRoleFromDatabase,
+  listDirectRoleAssignmentSubjects,
   markDeleteRoleSyncState,
   resolveDeletableRole,
 } from './role-mutation-persistence.js';
@@ -26,6 +27,7 @@ export const deleteRoleInternal = createDeleteRoleHandlerInternal({
   iamRoleSyncCounter,
   isIdentityRoleNotFoundError: (error) => error instanceof KeycloakAdminRequestError && error.statusCode === 404,
   jsonResponse,
+  listDirectRoleAssignmentSubjects,
   logger,
   mapRoleSyncErrorCode,
   markDeleteRoleSyncState,

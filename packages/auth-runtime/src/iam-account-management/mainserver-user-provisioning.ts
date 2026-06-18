@@ -11,7 +11,7 @@ import type { CreateUserPayload } from './user-create-persistence.js';
 
 const SVA_MAINSERVER_TYPE_KEY = 'sva_mainserver';
 const USER_PROVISIONINGS_PATH = '/api/v2/user_provisionings';
-const MAINSERVER_REQUEST_TIMEOUT_MS = 10_000;
+const MAINSERVER_PROVISIONING_TIMEOUT_MS = 10_000;
 const logger = createSdkLogger({ component: 'iam-mainserver-user-provisioning', level: 'info' });
 
 const tokenResponseSchema = z.object({
@@ -53,14 +53,13 @@ const fetchWithTimeout = async (input: {
   readonly fetchImpl: typeof fetch;
   readonly url: string;
   readonly init: RequestInit;
+  readonly signal: AbortSignal;
   readonly timeoutMessage: string;
 }): Promise<Response> => {
   try {
     return await input.fetchImpl(input.url, {
       ...input.init,
-      signal: input.init.signal
-        ? AbortSignal.any([input.init.signal, AbortSignal.timeout(MAINSERVER_REQUEST_TIMEOUT_MS)])
-        : AbortSignal.timeout(MAINSERVER_REQUEST_TIMEOUT_MS),
+      signal: input.signal,
     });
   } catch (error) {
     if (isAbortError(error)) {
@@ -144,6 +143,7 @@ const loadProvisioningBearerToken = async (input: {
   readonly actorSubject: string;
   readonly oauthTokenUrl: string;
   readonly fetchImpl: typeof fetch;
+  readonly signal: AbortSignal;
 }): Promise<string> => {
   const credentialResult = await readEffectiveSvaMainserverCredentialsWithStatus({
     instanceId: input.actor.instanceId,
@@ -160,6 +160,7 @@ const loadProvisioningBearerToken = async (input: {
   const response = await fetchWithTimeout({
     fetchImpl: input.fetchImpl,
     url: input.oauthTokenUrl,
+    signal: input.signal,
     init: {
       method: 'POST',
       headers: {
@@ -209,16 +210,19 @@ export const provisionMainserverUserCredentials = async (input: {
   }
 
   const fetchImpl = input.fetchImpl ?? fetch;
+  const provisioningSignal = AbortSignal.timeout(MAINSERVER_PROVISIONING_TIMEOUT_MS);
   const accessToken = await loadProvisioningBearerToken({
     actor: input.actor,
     actorSubject: input.actorSubject,
     oauthTokenUrl: config.oauthTokenUrl,
     fetchImpl,
+    signal: provisioningSignal,
   });
 
   const response = await fetchWithTimeout({
     fetchImpl,
     url: config.provisioningUrl,
+    signal: provisioningSignal,
     init: {
       method: 'POST',
       headers: {

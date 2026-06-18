@@ -155,6 +155,41 @@ describe('provisionMainserverUserCredentials', () => {
     );
   });
 
+  it('uses one abort signal for token and provisioning requests so the full provisioning flow is bounded', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'admin-token', expires_in: 3600 }), { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            keycloak: {
+              attributes: {
+                mainserverUserApplicationId: 'user-app',
+                mainserverUserApplicationSecret: 'user-secret',
+              },
+            },
+          }),
+          { status: 200 }
+        )
+      );
+
+    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    await provisionMainserverUserCredentials({
+      actor: createActor(),
+      actorSubject: 'kc-admin-1',
+      keycloakSubject: 'kc-user-1',
+      payload: createPayload(),
+      fetchImpl,
+    });
+
+    const tokenSignal = fetchImpl.mock.calls[0]?.[1]?.signal;
+    const provisioningSignal = fetchImpl.mock.calls[1]?.[1]?.signal;
+    expect(tokenSignal).toBeInstanceOf(AbortSignal);
+    expect(provisioningSignal).toBe(tokenSignal);
+  });
+
   it('provisions against the Mainserver endpoint even when the municipality id is not configured explicitly', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
       enabled: true,

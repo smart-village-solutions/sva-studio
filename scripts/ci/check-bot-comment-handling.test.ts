@@ -1,5 +1,4 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
+import { expect, it } from 'vitest';
 
 import {
   evaluateIssueComments,
@@ -9,19 +8,19 @@ import {
   type ReviewThreadRecord,
 } from './check-bot-comment-handling.ts';
 
-test('parseBotCommentMarker extracts status, optional comment id, and explanation', () => {
+it('parseBotCommentMarker extracts status, optional comment id, and explanation', () => {
   const marker = parseBotCommentMarker(
     '<!-- bot-comment-status: rejected; bot-comment-id: 123 -->\nNicht umgesetzt, weil der Hinweis den Host-Vertrag verletzen würde.'
   );
 
-  assert.deepEqual(marker, {
+  expect(marker).toEqual({
     status: 'rejected',
     botCommentId: 123,
     explanation: 'Nicht umgesetzt, weil der Hinweis den Host-Vertrag verletzen würde.',
   });
 });
 
-test('evaluateIssueComments marks bot conversation comments without a qualifying reply as open', () => {
+it('evaluateIssueComments marks bot conversation comments without a qualifying reply as open', () => {
   const comments: IssueCommentRecord[] = [
     {
       id: 10,
@@ -35,12 +34,12 @@ test('evaluateIssueComments marks bot conversation comments without a qualifying
 
   const result = evaluateIssueComments(comments);
 
-  assert.equal(result.handled.length, 0);
-  assert.equal(result.open.length, 1);
-  assert.match(result.open[0]?.reason ?? '', /qualifizierte Antwort/);
+  expect(result.handled).toHaveLength(0);
+  expect(result.open).toHaveLength(1);
+  expect(result.open[0]?.reason ?? '').toMatch(/qualifizierte Antwort/);
 });
 
-test('evaluateIssueComments accepts a maintainer reply with marker and matching bot comment id', () => {
+it('evaluateIssueComments accepts a maintainer reply with marker and matching bot comment id', () => {
   const comments: IssueCommentRecord[] = [
     {
       id: 10,
@@ -62,12 +61,12 @@ test('evaluateIssueComments accepts a maintainer reply with marker and matching 
 
   const result = evaluateIssueComments(comments);
 
-  assert.equal(result.open.length, 0);
-  assert.equal(result.handled.length, 1);
-  assert.equal(result.handled[0]?.status, 'accepted');
+  expect(result.open).toHaveLength(0);
+  expect(result.handled).toHaveLength(1);
+  expect(result.handled[0]?.status).toBe('accepted');
 });
 
-test('evaluateReviewThreads requires both a maintainer marker reply and a resolved thread', () => {
+it('evaluateReviewThreads requires both a maintainer marker reply and a resolved thread', () => {
   const threads: ReviewThreadRecord[] = [
     {
       id: 'thread-1',
@@ -98,12 +97,12 @@ test('evaluateReviewThreads requires both a maintainer marker reply and a resolv
 
   const result = evaluateReviewThreads(threads);
 
-  assert.equal(result.handled.length, 0);
-  assert.equal(result.open.length, 1);
-  assert.match(result.open[0]?.reason ?? '', /resolved/);
+  expect(result.handled).toHaveLength(0);
+  expect(result.open).toHaveLength(1);
+  expect(result.open[0]?.reason ?? '').toMatch(/resolved/);
 });
 
-test('evaluateReviewThreads accepts resolved bot threads with maintainer marker reply', () => {
+it('evaluateReviewThreads accepts resolved bot threads with maintainer marker reply', () => {
   const threads: ReviewThreadRecord[] = [
     {
       id: 'thread-1',
@@ -134,7 +133,7 @@ test('evaluateReviewThreads accepts resolved bot threads with maintainer marker 
 
   const result = evaluateReviewThreads(threads);
 
-  assert.equal(result.open.length, 0);
-  assert.equal(result.handled.length, 1);
-  assert.equal(result.handled[0]?.status, 'resolved');
+  expect(result.open).toHaveLength(0);
+  expect(result.handled).toHaveLength(1);
+  expect(result.handled[0]?.status).toBe('resolved');
 });

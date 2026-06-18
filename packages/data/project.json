@@ -28,7 +28,8 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node packages/data/scripts/run-node-tests.mjs"
+        "cwd": "packages/data",
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.config.ts"
       }
     },
     "test:types": {

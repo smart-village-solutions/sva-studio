@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { expect, it } from 'vitest';
 
 import {
   buildAcceptanceReport,
@@ -8,7 +7,7 @@ import {
   summarizeAcceptanceSteps,
 } from './iam-acceptance.ts';
 
-test('parseAcceptanceConfig applies defaults and reads required env', () => {
+it('parseAcceptanceConfig applies defaults and reads required env', () => {
   const config = parseAcceptanceConfig(
     {
       IAM_ACCEPTANCE_ADMIN_PASSWORD: 'fixture-admin-value',
@@ -24,23 +23,22 @@ test('parseAcceptanceConfig applies defaults and reads required env', () => {
     '/workspace'
   );
 
-  assert.equal(config.baseUrl, 'http://127.0.0.1:3000');
-  assert.equal(config.instanceId, 'de-musterhausen');
-  assert.deepEqual(config.admin.expectedRoles, ['system_admin']);
-  assert.equal(config.reportDirectory, '/workspace/docs/reports');
+  expect(config.baseUrl).toBe('http://127.0.0.1:3000');
+  expect(config.instanceId).toBe('de-musterhausen');
+  expect(config.admin.expectedRoles).toEqual(['system_admin']);
+  expect(config.reportDirectory).toBe('/workspace/docs/reports');
 });
 
-test('parseAcceptanceConfig rejects incomplete configuration', () => {
-  assert.throws(
+it('parseAcceptanceConfig rejects incomplete configuration', () => {
+  expect(
     () =>
       parseAcceptanceConfig({
         IAM_ACCEPTANCE_ADMIN_USERNAME: 'fixture-admin-user',
       }),
-    /Missing required acceptance env/
-  );
+  ).toThrow(/Missing required acceptance env/);
 });
 
-test('parseAcceptanceConfig accepts evidence credentials as fallback aliases', () => {
+it('parseAcceptanceConfig accepts evidence credentials as fallback aliases', () => {
   const config = parseAcceptanceConfig(
     {
       IAM_DATABASE_URL: 'postgres://localhost/sva',
@@ -56,11 +54,11 @@ test('parseAcceptanceConfig accepts evidence credentials as fallback aliases', (
     '/workspace'
   );
 
-  assert.equal(config.admin.username, 'fixture-admin-user');
-  assert.equal(config.member.username, 'fixture-member-user');
+  expect(config.admin.username).toBe('fixture-admin-user');
+  expect(config.member.username).toBe('fixture-member-user');
 });
 
-test('report helpers summarize and render acceptance steps', () => {
+it('report helpers summarize and render acceptance steps', () => {
   const report = buildAcceptanceReport({
     baseUrl: 'https://studio.example.com',
     generatedAt: '2026-03-17T09:00:00.000Z',
@@ -72,7 +70,7 @@ test('report helpers summarize and render acceptance steps', () => {
     ],
   });
 
-  assert.deepEqual(summarizeAcceptanceSteps(report.steps), {
+  expect(summarizeAcceptanceSteps(report.steps)).toEqual({
     failed: 1,
     passed: 1,
     skipped: 1,
@@ -80,7 +78,7 @@ test('report helpers summarize and render acceptance steps', () => {
   });
 
   const markdown = renderAcceptanceMarkdownReport(report);
-  assert.match(markdown, /Verifikationsbericht: IAM Foundation Acceptance/);
-  assert.match(markdown, /Fehlercode: acceptance_login_failed/);
-  assert.match(markdown, /Ergebnis: fehlgeschlagen/);
+  expect(markdown).toMatch(/Verifikationsbericht: IAM Foundation Acceptance/);
+  expect(markdown).toMatch(/Fehlercode: acceptance_login_failed/);
+  expect(markdown).toMatch(/Ergebnis: fehlgeschlagen/);
 });

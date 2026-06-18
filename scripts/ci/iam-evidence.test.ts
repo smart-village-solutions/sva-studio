@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { expect, it } from 'vitest';
 
 import { parseAcceptanceConfig } from './iam-acceptance.ts';
 import {
@@ -26,7 +25,7 @@ const acceptance = parseAcceptanceConfig(
   '/workspace'
 );
 
-test('parseEvidenceConfig applies defaults and optional overrides', () => {
+it('parseEvidenceConfig applies defaults and optional overrides', () => {
   const config = parseEvidenceConfig(
     {
       IAM_EVIDENCE_NEGATIVE_PASSWORD: 'negative.secret',
@@ -43,16 +42,16 @@ test('parseEvidenceConfig applies defaults and optional overrides', () => {
     '/workspace'
   );
 
-  assert.deepEqual(config.packages, ['WP-003', 'WP-006']);
-  assert.equal(config.reportBasename, 'tenant-evidence');
-  assert.equal(config.rootActor.username, 'demo.admin');
-  assert.equal(config.instanceActor.username, 'tenant.user');
-  assert.equal(config.negativeActor?.username, 'negative.user');
-  assert.equal(config.screenshotRootDirectory, '/workspace/docs/reports/artifacts/iam-evidence');
-  assert.equal(config.wp005.userId, 'user-7');
+  expect(config.packages).toEqual(['WP-003', 'WP-006']);
+  expect(config.reportBasename).toBe('tenant-evidence');
+  expect(config.rootActor.username).toBe('demo.admin');
+  expect(config.instanceActor.username).toBe('tenant.user');
+  expect(config.negativeActor?.username).toBe('negative.user');
+  expect(config.screenshotRootDirectory).toBe('/workspace/docs/reports/artifacts/iam-evidence');
+  expect(config.wp005.userId).toBe('user-7');
 });
 
-test('parseEvidenceConfig leaves negative actor unset when credentials are incomplete', () => {
+it('parseEvidenceConfig leaves negative actor unset when credentials are incomplete', () => {
   const config = parseEvidenceConfig(
     {
       IAM_EVIDENCE_NEGATIVE_USERNAME: 'negative.user',
@@ -61,10 +60,10 @@ test('parseEvidenceConfig leaves negative actor unset when credentials are incom
     '/workspace'
   );
 
-  assert.equal(config.negativeActor, null);
+  expect(config.negativeActor).toBeNull();
 });
 
-test('evidence helpers summarize and render package sections', () => {
+it('evidence helpers summarize and render package sections', () => {
   const report = buildEvidenceReport({
     baseUrl: 'https://studio.example.com',
     generatedAt: '2026-05-25T08:00:00.000Z',
@@ -90,7 +89,7 @@ test('evidence helpers summarize and render package sections', () => {
     ],
   });
 
-  assert.deepEqual(summarizeEvidenceCases(report.cases), {
+  expect(summarizeEvidenceCases(report.cases)).toEqual({
     failed: 1,
     manualReview: 1,
     passed: 1,
@@ -99,13 +98,13 @@ test('evidence helpers summarize and render package sections', () => {
   });
 
   const markdown = renderEvidenceMarkdownReport(report);
-  assert.match(markdown, /Verifikationsbericht: IAM Evidence/);
-  assert.match(markdown, /## WP-005/);
-  assert.match(markdown, /Status: manual_review/);
-  assert.match(markdown, /HTTP 500 statt 403/);
+  expect(markdown).toMatch(/Verifikationsbericht: IAM Evidence/);
+  expect(markdown).toMatch(/## WP-005/);
+  expect(markdown).toMatch(/Status: manual_review/);
+  expect(markdown).toMatch(/HTTP 500 statt 403/);
 });
 
-test('evidence run paths create deterministic report and artifact locations', () => {
+it('evidence run paths create deterministic report and artifact locations', () => {
   const runPaths = createEvidenceRunPaths(
     {
       reportBasename: 'iam-evidence',
@@ -114,19 +113,17 @@ test('evidence run paths create deterministic report and artifact locations', ()
     new Date('2026-05-25T08:00:00.000Z')
   );
 
-  assert.equal(runPaths.reportFileBase, 'iam-evidence-2026-05-25T08-00-00Z');
-  assert.equal(
+  expect(runPaths.reportFileBase).toBe('iam-evidence-2026-05-25T08-00-00Z');
+  expect(
     runPaths.artifactDirectory,
-    '/workspace/docs/reports/artifacts/iam-evidence/iam-evidence-2026-05-25T08-00-00Z'
-  );
+  ).toBe('/workspace/docs/reports/artifacts/iam-evidence/iam-evidence-2026-05-25T08-00-00Z');
 
   const artifactPath = createEvidenceArtifactPath({
     artifactDirectory: runPaths.artifactDirectory,
     filename: 'wp-006-export.json',
     reportDirectory: '/workspace/docs/reports',
   });
-  assert.equal(
+  expect(
     artifactPath.relativePath,
-    'artifacts/iam-evidence/iam-evidence-2026-05-25T08-00-00Z/wp-006-export.json'
-  );
+  ).toBe('artifacts/iam-evidence/iam-evidence-2026-05-25T08-00-00Z/wp-006-export.json');
 });

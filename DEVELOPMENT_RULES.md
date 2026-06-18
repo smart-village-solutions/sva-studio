@@ -523,6 +523,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 ### ✅ REQUIRED
 - Neue modulnahe Unit-Tests in Workspace-Packages liegen standardmäßig kolokiert unter `packages/<projekt>/src/**/*.test.ts` oder `*.test.tsx`.
 - Neue modulnahe App-Tests liegen standardmäßig kolokiert unter `apps/<app>/src/**/*.test.ts` oder `*.test.tsx`.
+- Repository-interne Testdateien unter `apps/`, `packages/` und `scripts/` verwenden Vitest als einheitlichen Test-Runner.
 - `packages/<projekt>/tests/` ist ausschließlich für paketweite Integrations-, Contract-, Composition- oder Public-API-Tests zu verwenden, die bewusst mehrere Module eines Projekts gemeinsam prüfen.
 - `apps/<app>/tests/integration/` ist für appweite Integrations-Tests zu verwenden, zum Beispiel Router-, Provider-, Auth- oder zusammengesetzte Screen-Flows ohne echten Browser.
 - `apps/<app>/e2e/` ist ausschließlich für echte Browser-, End-to-End- und Systemtests zu verwenden.
@@ -534,6 +535,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Fachliche Paket- oder App-Tests in einen globalen Root-Ordner `tests/` zu verschieben.
 - Unit-, Integrations- und E2E-Tests innerhalb desselben Ordners semantisch zu vermischen.
 - Neue verstreute Top-Level-Testordner pro Fachthema einzuführen, wenn die Tests einem bestehenden Nx-Projekt zugeordnet werden können.
+- Neue `node:test`-Imports, `node:assert`-basierte Standard-Testfragmente oder `node --test`-Aufrufe als regulären Workspace-Testpfad einzuführen.
 
 ### Process
 1. Prüfe zuerst die Testart: modulnaher Unit-Test, paketweite Integration, appweite Integration oder E2E.

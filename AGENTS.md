@@ -24,6 +24,7 @@
 
 - **Kritisch:** Während der Entwicklung immer Unit- und Type-Tests ausführen – bei Fehlschlägen nicht weitermachen
 - **Testarten:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`
+- **Test-Runner-Standard:** Repository-interne Testdateien unter `apps/`, `packages/` und `scripts/` laufen einheitlich über Vitest; neue `node:test`-Fragmente oder `node --test`-Scriptpfade sind nicht zulässig
 - **Server-Runtime-Gate:** Für serverseitige Packages zusätzlich `pnpm check:server-runtime` beachten; der Check steckt auch in `pnpm test:types`, soll aber bei Änderungen an `packages/{core,data,monitoring-client,sdk,auth,routing,sva-mainserver}` gezielt früh ausgeführt werden
 - **PR-Standard-Gate (bevorzugt):** Vor PR-Erstellung und vor Push nach Möglichkeit `pnpm test:pr` ausführen; dieser Workflow deckt affected Coverage, Coverage-Gate, Complexity-Gate, Integrationstests und den Frontend-Build ab
 - **Coverage-PR-Gate:** Wenn gezielt Coverage für einen PR geprüft werden soll, `pnpm test:coverage:pr` verwenden

@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { expect, it } from 'vitest';
 
 import {
   buildWasteCalendarDocument,
@@ -7,77 +6,72 @@ import {
   type WasteCalendarMonth,
 } from './waste-calendar-example-pdf.ts';
 
-test('buildWasteCalendarDocument returns exactly two half-year pages', () => {
+it('buildWasteCalendarDocument returns exactly two half-year pages', () => {
   const document = buildWasteCalendarDocument();
 
-  assert.equal(document.pages.length, 2);
-  assert.deepEqual(
+  expect(document.pages).toHaveLength(2);
+  expect(
     document.pages.map((page) => page.months.map((month) => month.month)),
-    [
+  ).toEqual([
       [1, 2, 3, 4, 5, 6],
       [7, 8, 9, 10, 11, 12],
-    ]
-  );
+    ]);
 });
 
-test('each page contains the expected legend and placeholder branding data', () => {
+it('each page contains the expected legend and placeholder branding data', () => {
   const document = buildWasteCalendarDocument();
 
   for (const page of document.pages) {
-    assert.equal(page.title, 'Abfallkalender 2026');
-    assert.match(page.locationLabel, /Musterstadt/);
-    assert.equal(page.brandingPlaceholderLabel, 'Logo / Bild');
-    assert.deepEqual(
+    expect(page.title).toBe('Abfallkalender 2026');
+    expect(page.locationLabel).toMatch(/Musterstadt/);
+    expect(page.brandingPlaceholderLabel).toBe('Logo / Bild');
+    expect(
       page.legend.map((entry) => `${entry.code}:${entry.label}`),
-      [
+    ).toEqual([
         'AG:Fälligkeit Abfallgebühr',
         'Bio:Biotonne',
         'HM:Hausmüll',
         'PPK:Papier, Pappe, Karton',
         'LVP:Leichtverpackungen (gelber Sack)',
         'SM:Schadstoffmobil',
-      ]
-    );
-    assert.ok(page.notes[0]?.includes('Schadstoffmobil'));
-    assert.ok(page.footerLine.includes('Musterstadt'));
+      ]);
+    expect(page.notes[0]?.includes('Schadstoffmobil')).toBe(true);
+    expect(page.footerLine.includes('Musterstadt')).toBe(true);
   }
 });
 
-test('months contain realistic placeholder waste entries and named holidays', () => {
+it('months contain realistic placeholder waste entries and named holidays', () => {
   const document = buildWasteCalendarDocument();
   const january = document.pages[0]?.months[0];
   const april = document.pages[0]?.months[3];
 
-  assert.ok(january);
-  assert.ok(april);
+  expect(january).toBeDefined();
+  expect(april).toBeDefined();
 
-  assert.equal(findDay(january, 1)?.holidayLabel, 'Neujahr');
-  assert.deepEqual(
+  expect(findDay(january, 1)?.holidayLabel).toBe('Neujahr');
+  expect(
     findDay(january, 14)?.entries.map((entry) => entry.code),
-    ['HM']
-  );
-  assert.deepEqual(
+  ).toEqual(['HM']);
+  expect(
     findDay(january, 15)?.entries.map((entry) => entry.code),
-    ['LVP', 'Bio']
-  );
-  assert.equal(findDay(april, 3)?.holidayLabel, 'Karfreitag');
-  assert.deepEqual(
+  ).toEqual(['LVP', 'Bio']);
+  expect(findDay(april, 3)?.holidayLabel).toBe('Karfreitag');
+  expect(
     findDay(april, 16)?.entries.map((entry) => entry.code),
-    ['SM']
-  );
+  ).toEqual(['SM']);
 });
 
-test('renderWasteCalendarPdf returns a valid two-page PDF buffer', () => {
+it('renderWasteCalendarPdf returns a valid two-page PDF buffer', () => {
   const pdfBuffer = renderWasteCalendarPdf(buildWasteCalendarDocument());
   const pdfText = pdfBuffer.toString('latin1');
 
-  assert.match(pdfBuffer.toString('latin1', 0, 8), /^%PDF-1\./);
-  assert.equal((pdfText.match(/\/Type \/Page\b/g) ?? []).length, 2);
-  assert.match(pdfText, /Abfallkalender 2026/);
-  assert.match(pdfText, /Januar/);
-  assert.match(pdfText, /Juli/);
-  assert.match(pdfText, /März/);
-  assert.match(pdfText, /Schadstoffmobil/);
+  expect(pdfBuffer.toString('latin1', 0, 8)).toMatch(/^%PDF-1\./);
+  expect(pdfText.match(/\/Type \/Page\b/g) ?? []).toHaveLength(2);
+  expect(pdfText).toMatch(/Abfallkalender 2026/);
+  expect(pdfText).toMatch(/Januar/);
+  expect(pdfText).toMatch(/Juli/);
+  expect(pdfText).toMatch(/März/);
+  expect(pdfText).toMatch(/Schadstoffmobil/);
 });
 
 function findDay(

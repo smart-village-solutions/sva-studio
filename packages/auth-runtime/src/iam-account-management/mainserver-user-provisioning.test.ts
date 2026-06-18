@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const dnsLookupMock = vi.hoisted(() => vi.fn());
+
 const state = vi.hoisted(() => ({
   loadDefaultExternalInterfaceRecord: vi.fn(),
   readEffectiveSvaMainserverCredentialsWithStatus: vi.fn(),
@@ -7,6 +9,10 @@ const state = vi.hoisted(() => ({
     info: vi.fn(),
     warn: vi.fn(),
   },
+}));
+
+vi.mock('node:dns/promises', () => ({
+  lookup: dnsLookupMock,
 }));
 
 vi.mock('@sva/data-repositories/server', () => ({
@@ -39,6 +45,8 @@ const createPayload = () => ({
 describe('provisionMainserverUserCredentials', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    dnsLookupMock.mockReset();
+    dnsLookupMock.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
       enabled: true,
       publicConfig: {
@@ -52,6 +60,31 @@ describe('provisionMainserverUserCredentials', () => {
         apiKey: 'admin-app',
         apiSecret: 'admin-secret',
       },
+    });
+  });
+
+  it('rejects invalid upstream urls from the stored integration config', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      enabled: true,
+      publicConfig: {
+        graphqlBaseUrl: 'https://localhost/graphql',
+        oauthTokenUrl: 'https://bb-demo.server.smart-village.app/oauth/token',
+      },
+    });
+
+    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl: vi.fn(),
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'invalid_config',
+      statusCode: 409,
     });
   });
 
@@ -206,6 +239,53 @@ describe('provisionMainserverUserCredentials', () => {
       message: 'conflict',
       retryable: false,
       statusCode: 409,
+    });
+  });
+
+  it('fails with a retryable timeout when the token request hangs', async () => {
+    const timeoutError = new Error('timeout');
+    timeoutError.name = 'TimeoutError';
+    const fetchImpl = vi.fn().mockRejectedValueOnce(timeoutError);
+
+    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl,
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'upstream_timeout',
+      retryable: true,
+      statusCode: 504,
+    });
+  });
+
+  it('fails with a retryable timeout when the provisioning request hangs', async () => {
+    const timeoutError = new Error('timeout');
+    timeoutError.name = 'AbortError';
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 }))
+      .mockRejectedValueOnce(timeoutError);
+
+    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl,
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'upstream_timeout',
+      retryable: true,
+      statusCode: 504,
     });
   });
 });

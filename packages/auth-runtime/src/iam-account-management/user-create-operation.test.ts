@@ -111,6 +111,9 @@ describe('executeCreateUser', () => {
     const identityProvider = {
       provider: {
         createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        getUserAttributes: vi.fn(async () => ({
+          locale: ['de'],
+        })),
         updateUser: vi.fn(async () => undefined),
         syncRoles: vi.fn(async () => undefined),
       },
@@ -159,12 +162,22 @@ describe('executeCreateUser', () => {
         sendPasswordSetupEmail: false,
       },
     });
-    expect(identityProvider.provider.updateUser).not.toHaveBeenCalled();
+    expect(identityProvider.provider.getUserAttributes).toHaveBeenCalledWith('kc-user-1');
+    expect(identityProvider.provider.updateUser).toHaveBeenCalledWith('kc-user-1', {
+      attributes: {
+        locale: ['de'],
+        mainserverUserApplicationId: ['mainserver-app-1'],
+        mainserverUserApplicationSecret: ['mainserver-secret-1'],
+      },
+    });
     expect(state.persistCreatedUser.mock.invocationCallOrder[0]).toBeLessThan(
       identityProvider.provider.syncRoles.mock.invocationCallOrder[0] ?? 0
     );
     expect(identityProvider.provider.syncRoles.mock.invocationCallOrder[0]).toBeLessThan(
       state.provisionMainserverUserCredentials.mock.invocationCallOrder[0] ?? 0
+    );
+    expect(state.provisionMainserverUserCredentials.mock.invocationCallOrder[0]).toBeLessThan(
+      identityProvider.provider.updateUser.mock.invocationCallOrder[0] ?? 0
     );
   });
 
@@ -217,6 +230,60 @@ describe('executeCreateUser', () => {
     expect(result.invitation.status).toBe('not_requested');
     expect(state.resolveIdentityProviderForInstance).not.toHaveBeenCalled();
     expect(deactivateUser).not.toHaveBeenCalled();
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'IAM user mainserver provisioning failed',
+      expect.objectContaining({
+        workspace_id: 'instance-1',
+      })
+    );
+  });
+
+  it('keeps the local user active when persisting provisioned Mainserver attributes back to Keycloak fails', async () => {
+    state.provisionMainserverUserCredentials.mockResolvedValue({
+      mainserverUserApplicationId: 'mainserver-app-1',
+      mainserverUserApplicationSecret: 'mainserver-secret-1',
+    });
+    const identityProvider = {
+      provider: {
+        createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        getUserAttributes: vi.fn(async () => ({
+          locale: ['de'],
+        })),
+        updateUser: vi.fn(async () => {
+          throw new Error('update failed');
+        }),
+        syncRoles: vi.fn(async () => undefined),
+      },
+      realm: 'tenant-realm',
+      source: 'instance' as const,
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin' as const,
+    };
+
+    const { executeCreateUser } = await import('./user-create-operation.js');
+    const result = await executeCreateUser({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
+      actorSubject: 'kc-actor-1',
+      identityProvider,
+      payload: {
+        email: 'alice@example.com',
+        firstName: 'Alice',
+        roleIds: [],
+        sendPasswordSetupEmail: false,
+      },
+    });
+
+    expect(result.user).toMatchObject({
+      id: 'account-1',
+      keycloakSubject: 'kc-user-1',
+      mainserverUserApplicationSecretSet: false,
+    });
     expect(state.logger.error).toHaveBeenCalledWith(
       'IAM user mainserver provisioning failed',
       expect.objectContaining({

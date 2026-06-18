@@ -4,11 +4,13 @@ import { createSdkLogger } from '@sva/server-runtime';
 
 import { readEffectiveSvaMainserverCredentialsWithStatus } from '../mainserver-effective-credentials.js';
 
+import { normalizeProvisioningUpstreamUrl } from './mainserver-upstream-url-validation.js';
 import type { CreateUserActorInfo } from './user-create-invitation.js';
 import type { CreateUserPayload } from './user-create-persistence.js';
 
 const SVA_MAINSERVER_TYPE_KEY = 'sva_mainserver';
 const USER_PROVISIONINGS_PATH = '/api/v2/user_provisionings';
+const MAINSERVER_REQUEST_TIMEOUT_MS = 10_000;
 const logger = createSdkLogger({ component: 'iam-mainserver-user-provisioning', level: 'info' });
 
 const tokenResponseSchema = z.object({
@@ -61,6 +63,36 @@ export class MainserverUserProvisioningError extends Error {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
+
+const isAbortError = (error: unknown): boolean =>
+  error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
+
+const fetchWithTimeout = async (input: {
+  readonly fetchImpl: typeof fetch;
+  readonly url: string;
+  readonly init: RequestInit;
+  readonly timeoutMessage: string;
+}): Promise<Response> => {
+  try {
+    return await input.fetchImpl(input.url, {
+      ...input.init,
+      signal: input.init.signal
+        ? AbortSignal.any([input.init.signal, AbortSignal.timeout(MAINSERVER_REQUEST_TIMEOUT_MS)])
+        : AbortSignal.timeout(MAINSERVER_REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new MainserverUserProvisioningError({
+        code: 'upstream_timeout',
+        message: input.timeoutMessage,
+        statusCode: 504,
+        retryable: true,
+      });
+    }
+
+    throw error;
+  }
+};
 
 const parseJsonBody = async (response: Response): Promise<unknown> => {
   try {
@@ -118,8 +150,10 @@ const loadProvisioningConfig = async (instanceId: string): Promise<MainserverPro
   }
 
   return {
-    oauthTokenUrl,
-    provisioningUrl: resolveProvisioningUrl(graphqlBaseUrl),
+    oauthTokenUrl: await normalizeProvisioningUpstreamUrl(oauthTokenUrl, 'oauth_token_url'),
+    provisioningUrl: resolveProvisioningUrl(
+      await normalizeProvisioningUpstreamUrl(graphqlBaseUrl, 'graphql_base_url')
+    ),
   };
 };
 
@@ -141,17 +175,22 @@ const loadProvisioningBearerToken = async (input: {
     });
   }
 
-  const response = await input.fetchImpl(input.oauthTokenUrl, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/x-www-form-urlencoded',
+  const response = await fetchWithTimeout({
+    fetchImpl: input.fetchImpl,
+    url: input.oauthTokenUrl,
+    init: {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: credentialResult.credentials.apiKey,
+        client_secret: credentialResult.credentials.apiSecret,
+      }),
     },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: credentialResult.credentials.apiKey,
-      client_secret: credentialResult.credentials.apiSecret,
-    }),
+    timeoutMessage: 'Zeitüberschreitung beim Laden des Mainserver-Provisioning-Tokens.',
   });
 
   if (!response.ok) {
@@ -195,19 +234,24 @@ export const provisionMainserverUserCredentials = async (input: {
     fetchImpl,
   });
 
-  const response = await fetchImpl(config.provisioningUrl, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
+  const response = await fetchWithTimeout({
+    fetchImpl,
+    url: config.provisioningUrl,
+    init: {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: input.payload.email,
+        keycloak_id: input.keycloakSubject,
+        first_name: input.payload.firstName,
+        last_name: input.payload.lastName,
+      }),
     },
-    body: JSON.stringify({
-      email: input.payload.email,
-      keycloak_id: input.keycloakSubject,
-      first_name: input.payload.firstName,
-      last_name: input.payload.lastName,
-    }),
+    timeoutMessage: 'Zeitüberschreitung beim Provisionieren des Mainserver-Benutzers.',
   });
 
   if (!response.ok) {

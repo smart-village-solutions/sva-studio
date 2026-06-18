@@ -49,21 +49,17 @@ import type {
   UpdateIamContentInput,
 } from '@sva/core';
 import {
-  asIamError,
   createMutationHeaders,
   createJsonMutationRequestInit,
   DEFAULT_IAM_REQUEST_TIMEOUT_MS,
-  fetchWithRequestTimeout,
   HEALTH_REQUEST_TIMEOUT_MS,
   HEAVY_IAM_REQUEST_TIMEOUT_MS,
   IAM_HEADERS,
   IamHttpError,
   type IamRequestOptions,
-  LEGAL_ACCEPTANCE_REQUIRED_EVENT,
   patchJson,
   postJson,
   putJson,
-  readIamErrorResponse,
   requestJson,
   requestJsonOrText,
 } from './iam-http-client';

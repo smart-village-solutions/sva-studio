@@ -9,8 +9,11 @@ import {
   buildBootstrapLocalInstanceDbAuditDetails,
   buildDeleteLocalInstanceDbAuditDetails,
   buildLocalRuntimeAuditDetails,
+  createLocalRuntimeAuditLogger,
   createRebuildAuditLogger,
   getRebuildAuditLogFile,
+  resolveLocalRuntimeAuditReason,
+  shouldAuditLocalRuntimeCommand,
 } from './rebuild-audit.ts';
 
 describe('createRebuildAuditLogger', () => {
@@ -198,6 +201,54 @@ describe('audit detail builders', () => {
       driftCheckEnabled: true,
       jsonOutput: false,
       workerEnabled: true,
+    });
+  });
+});
+
+describe('local runtime audit helpers', () => {
+  it('detects which runtime commands should be audited', () => {
+    expect(shouldAuditLocalRuntimeCommand('up')).toBe(true);
+    expect(shouldAuditLocalRuntimeCommand('repair')).toBe(true);
+    expect(shouldAuditLocalRuntimeCommand('status')).toBe(false);
+  });
+
+  it('creates a local runtime audit logger with the derived reason and details', async () => {
+    const events: unknown[] = [];
+    const logger = createLocalRuntimeAuditLogger(
+      {
+        authoritative: true,
+        composeMode: 'base',
+        driftCheckEnabled: false,
+        gitSha: 'abc123',
+        jsonOutput: true,
+        logFile: '/tmp/rebuild-events.jsonl',
+        runtimeCommand: 'repair',
+        runtimeProfile: 'local-keycloak',
+        workerEnabled: true,
+      },
+      (_logFile, event) => {
+        events.push(event);
+      },
+    );
+
+    await expect(logger.run('command', () => 'ok')).resolves.toBe('ok');
+
+    expect(resolveLocalRuntimeAuditReason('repair')).toBe(
+      'Lokaler Repair heilt Migration, Registry-Drift und Tenant-Secrets ohne kompletten Rebootstrap.',
+    );
+    expect(events[0]).toMatchObject({
+      command: 'tsx scripts/ops/runtime-env.ts repair local-keycloak',
+      details: {
+        authoritative: true,
+        composeMode: 'base',
+        driftCheckEnabled: false,
+        jsonOutput: true,
+        workerEnabled: true,
+      },
+      gitSha: 'abc123',
+      reason: 'Lokaler Repair heilt Migration, Registry-Drift und Tenant-Secrets ohne kompletten Rebootstrap.',
+      scope: 'local-runtime',
+      status: 'started',
     });
   });
 });

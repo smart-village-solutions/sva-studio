@@ -100,9 +100,9 @@ import {
   selectLatestMigrationTask,
 } from './runtime/migration-job.ts';
 import {
-  buildLocalRuntimeAuditDetails,
-  createRebuildAuditLogger,
+  createLocalRuntimeAuditLogger,
   getRebuildAuditLogFile,
+  shouldAuditLocalRuntimeCommand,
 } from './runtime/rebuild-audit.ts';
 import { inspectRemoteServiceContract } from './runtime/remote-service-spec.ts';
 import { formatRemoteStackSnapshot, inspectRemoteStack, type RemoteStackSnapshot } from './runtime/remote-stack-state.ts';
@@ -1505,52 +1505,6 @@ const buildLocalProvisioningWorkerCheck = (
 
 const getComposeArgs = (env: NodeJS.ProcessEnv) =>
   env.SVA_ENABLE_MONITORING === 'false' ? composeBaseArgs : composeWithMonitoringArgs;
-
-const shouldAuditLocalCommand = (runtimeCommand: RuntimeCommand) =>
-  runtimeCommand === 'down' ||
-  runtimeCommand === 'migrate' ||
-  runtimeCommand === 'reconcile' ||
-  runtimeCommand === 'repair' ||
-  runtimeCommand === 'up' ||
-  runtimeCommand === 'update';
-
-const resolveLocalRuntimeAuditReason = (runtimeCommand: Extract<RuntimeCommand, 'down' | 'migrate' | 'reconcile' | 'repair' | 'up' | 'update'>) => {
-  switch (runtimeCommand) {
-    case 'up':
-      return 'Lokaler Start initialisiert Infra, Migrationen und Dev-Server.';
-    case 'down':
-      return 'Lokaler Stopp beendet Dev-Server, Worker und Compose-Stack.';
-    case 'update':
-      return 'Lokale Aktualisierung zieht Compose-Images neu und startet App sowie Worker kontrolliert neu.';
-    case 'migrate':
-      return 'Lokale Migration mutiert das Datenbankschema und bootstrappt den App-User neu.';
-    case 'repair':
-      return 'Lokaler Repair heilt Migration, Registry-Drift und Tenant-Secrets ohne kompletten Rebootstrap.';
-    case 'reconcile':
-      return 'Explizite lokale Registry-Reconcile passt die Instanz-Identitaet an das Sollbild an.';
-  }
-};
-
-const createLocalRuntimeAuditLogger = (
-  runtimeProfile: RuntimeProfile,
-  runtimeCommand: Extract<RuntimeCommand, 'down' | 'migrate' | 'reconcile' | 'repair' | 'up' | 'update'>,
-  env: NodeJS.ProcessEnv,
-) =>
-  createRebuildAuditLogger({
-    command: `tsx scripts/ops/runtime-env.ts ${runtimeCommand} ${runtimeProfile}`,
-    defaultDetails: buildLocalRuntimeAuditDetails({
-      authoritative: Boolean(cliOptions.authoritative),
-      composeMode: env.SVA_ENABLE_MONITORING === 'false' ? 'base' : 'with-monitoring',
-      driftCheckEnabled: runtimeCommand === 'up' || runtimeCommand === 'update',
-      jsonOutput,
-      workerEnabled: shouldRunLocalProvisioningWorker(runtimeProfile),
-    }),
-    gitSha: getGitCommitSha(),
-    logFile: rebuildAuditLogFile,
-    profile: runtimeProfile,
-    reason: resolveLocalRuntimeAuditReason(runtimeCommand),
-    scope: 'local-runtime',
-  });
 
 const checkLocalInstanceRegistryDrift = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const input = buildLocalInstanceRegistryReconciliationInput(env);
@@ -3921,8 +3875,18 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
     processEnv: process.env,
     rootDir,
   });
-  const rebuildAuditLogger = shouldAuditLocalCommand(runtimeCommand)
-    ? createLocalRuntimeAuditLogger(runtimeProfile, runtimeCommand, env)
+  const rebuildAuditLogger = shouldAuditLocalRuntimeCommand(runtimeCommand)
+    ? createLocalRuntimeAuditLogger({
+        authoritative: Boolean(cliOptions.authoritative),
+        composeMode: env.SVA_ENABLE_MONITORING === 'false' ? 'base' : 'with-monitoring',
+        driftCheckEnabled: runtimeCommand === 'up' || runtimeCommand === 'update',
+        gitSha: getGitCommitSha(),
+        jsonOutput,
+        logFile: rebuildAuditLogFile,
+        runtimeCommand,
+        runtimeProfile,
+        workerEnabled: shouldRunLocalProvisioningWorker(runtimeProfile),
+      })
     : null;
   const runWithCommandAudit = async <T>(operation: () => Promise<T> | T): Promise<T> =>
     rebuildAuditLogger ? rebuildAuditLogger.run('command', operation) : await operation();

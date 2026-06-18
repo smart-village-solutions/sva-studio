@@ -1,6 +1,7 @@
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
+import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
 import type { CliOptions as BootstrapLocalInstanceDbCliOptions } from '../bootstrap-local-instance-db/parse-options.js';
 import type { DeleteLocalInstanceCliOptions } from '../delete-local-instance-db.js';
 
@@ -26,6 +27,7 @@ export type RebuildAuditEvent = Readonly<{
 }>;
 
 type AuditDetails = Readonly<Record<string, AuditValue>>;
+export type LocalRuntimeAuditCommand = 'down' | 'migrate' | 'reconcile' | 'repair' | 'up' | 'update';
 
 type RebuildAuditLoggerConfig = Readonly<{
   command: string;
@@ -212,3 +214,55 @@ export const buildLocalRuntimeAuditDetails = (input: {
   jsonOutput: input.jsonOutput,
   workerEnabled: input.workerEnabled,
 });
+
+export const shouldAuditLocalRuntimeCommand = (runtimeCommand: string): runtimeCommand is LocalRuntimeAuditCommand =>
+  runtimeCommand === 'down'
+  || runtimeCommand === 'migrate'
+  || runtimeCommand === 'reconcile'
+  || runtimeCommand === 'repair'
+  || runtimeCommand === 'up'
+  || runtimeCommand === 'update';
+
+export const resolveLocalRuntimeAuditReason = (runtimeCommand: LocalRuntimeAuditCommand): string => {
+  switch (runtimeCommand) {
+    case 'up':
+      return 'Lokaler Start initialisiert Infra, Migrationen und Dev-Server.';
+    case 'down':
+      return 'Lokaler Stopp beendet Dev-Server, Worker und Compose-Stack.';
+    case 'update':
+      return 'Lokale Aktualisierung zieht Compose-Images neu und startet App sowie Worker kontrolliert neu.';
+    case 'migrate':
+      return 'Lokale Migration mutiert das Datenbankschema und bootstrappt den App-User neu.';
+    case 'repair':
+      return 'Lokaler Repair heilt Migration, Registry-Drift und Tenant-Secrets ohne kompletten Rebootstrap.';
+    case 'reconcile':
+      return 'Explizite lokale Registry-Reconcile passt die Instanz-Identitaet an das Sollbild an.';
+  }
+};
+
+export const createLocalRuntimeAuditLogger = (input: {
+  authoritative: boolean;
+  composeMode: 'base' | 'with-monitoring';
+  driftCheckEnabled: boolean;
+  gitSha?: string;
+  jsonOutput: boolean;
+  logFile: string;
+  runtimeCommand: LocalRuntimeAuditCommand;
+  runtimeProfile: RuntimeProfile;
+  workerEnabled: boolean;
+}, appendEvent: AppendRebuildAuditEvent = appendRebuildAuditEvent) =>
+  createRebuildAuditLogger({
+    command: `tsx scripts/ops/runtime-env.ts ${input.runtimeCommand} ${input.runtimeProfile}`,
+    defaultDetails: buildLocalRuntimeAuditDetails({
+      authoritative: input.authoritative,
+      composeMode: input.composeMode,
+      driftCheckEnabled: input.driftCheckEnabled,
+      jsonOutput: input.jsonOutput,
+      workerEnabled: input.workerEnabled,
+    }),
+    gitSha: input.gitSha,
+    logFile: input.logFile,
+    profile: input.runtimeProfile,
+    reason: resolveLocalRuntimeAuditReason(input.runtimeCommand),
+    scope: 'local-runtime',
+  }, appendEvent);

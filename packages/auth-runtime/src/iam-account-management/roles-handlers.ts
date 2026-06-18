@@ -92,7 +92,3 @@ const roleReadHandlers = createRoleReadHandlers({
 });
 
 export const { listPermissionsInternal, listRolesInternal } = roleReadHandlers;
-
-export { createRoleInternal } from './roles-handlers.create.js';
-export { deleteRoleInternal } from './roles-handlers.delete.js';
-export { updateRoleInternal } from './roles-handlers.update.js';

@@ -25,6 +25,12 @@ import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { userErrorMessage } from './-user-error-message';
+import { useUserListController } from './use-user-list-controller';
+import {
+  getStatusActionDialogTranslationKeys,
+  type SyncStatusState,
+  type UsersApiState,
+} from './user-list-model';
 
 const statusClassByValue: Record<'active' | 'inactive' | 'pending', string> = {
   active: 'border-primary/40 bg-primary/15 text-primary',
@@ -72,82 +78,7 @@ const renderDiagnosticCodes = (diagnostics: readonly IamKeycloakObjectDiagnostic
     </span>
   ) : null;
 
-type StatusActionDialogState =
-  | {
-      action: 'activate';
-      mode: 'single';
-      userId: string;
-    }
-  | {
-      action: 'deactivate';
-      mode: 'single';
-      userId: string;
-    }
-  | {
-      action: 'deactivate';
-      mode: 'bulk';
-      userIds: string[];
-    };
-
-type UsersApiState = ReturnType<typeof useUsers>;
 type UserListUser = UsersApiState['users'][number];
-type SyncStatusState = 'idle' | 'pending' | 'success' | 'empty' | 'error';
-
-const executeStatusAction = async (
-  usersApi: UsersApiState,
-  action: StatusActionDialogState | null,
-): Promise<void> => {
-  if (!action) {
-    return;
-  }
-
-  if (action.action === 'activate') {
-    await usersApi.updateUser(action.userId, { status: 'active' });
-    return;
-  }
-
-  if (action.mode === 'single') {
-    await usersApi.deactivateUser(action.userId);
-    return;
-  }
-
-  await usersApi.bulkDeactivate(action.userIds);
-};
-
-const resolveSyncStatus = (report: IamUserImportSyncReport): Extract<SyncStatusState, 'success' | 'empty'> =>
-  report.importedCount === 0
-  && report.updatedCount === 0
-  && report.manualReviewCount === 0
-    ? 'empty'
-    : 'success';
-
-const useUserSyncState = (usersApi: UsersApiState) => {
-  const [syncStatus, setSyncStatus] = React.useState<SyncStatusState>('idle');
-  const [syncResult, setSyncResult] = React.useState<IamUserImportSyncReport | null>(null);
-  const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
-
-  const onSyncUsers = React.useCallback(async () => {
-    setSyncStatus('pending');
-    setSyncResult(null);
-    setSyncError(null);
-    const result = await usersApi.syncUsersFromKeycloak();
-    if (!result.ok) {
-      setSyncStatus('error');
-      setSyncError(result.error);
-      return;
-    }
-
-    setSyncResult(result.report);
-    setSyncStatus(resolveSyncStatus(result.report));
-  }, [usersApi]);
-
-  return {
-    syncStatus,
-    syncResult,
-    syncError,
-    onSyncUsers,
-  };
-};
 
 const UserStatusCell = ({
   user,
@@ -158,7 +89,7 @@ const UserStatusCell = ({
   user: UserListUser;
   isAuthLoading: boolean;
   isPlatformScope: boolean;
-  onStatusAction: React.Dispatch<React.SetStateAction<StatusActionDialogState | null>>;
+  onStatusAction: (action: 'activate' | 'deactivate', userId: string) => void;
 }) =>
   isPlatformScope || isAuthLoading ? (
     <Badge className={`rounded-full ${statusClassByValue[user.status]}`} variant="outline">
@@ -172,13 +103,7 @@ const UserStatusCell = ({
         aria-label={t('admin.users.messages.statusSwitchLabel', {
           name: user.displayName,
         })}
-        onCheckedChange={(checked) =>
-          onStatusAction({
-            action: checked ? 'activate' : 'deactivate',
-            mode: 'single',
-            userId: user.id,
-          })
-        }
+        onCheckedChange={(checked) => onStatusAction(checked ? 'activate' : 'deactivate', user.id)}
       />
       {user.status === 'pending' ? (
         <Badge className={`rounded-full ${statusClassByValue[user.status]}`} variant="outline">
@@ -209,7 +134,7 @@ const UserKeycloakCell = ({ user }: { user: UserListUser }) => {
 const buildUserColumns = (
   isAuthLoading: boolean,
   isPlatformScope: boolean,
-  onStatusAction: React.Dispatch<React.SetStateAction<StatusActionDialogState | null>>,
+  onStatusAction: (action: 'activate' | 'deactivate', userId: string) => void,
 ): readonly StudioColumnDef<UserListUser>[] => [
   {
     id: 'displayName',
@@ -500,47 +425,29 @@ const UserListRowActions = ({ user }: { user: UserListUser }) =>
     </Button>
   );
 
-const getStatusActionDialogCopy = (statusActionDialog: StatusActionDialogState | null) => ({
-  title: t(
-    statusActionDialog?.action === 'activate'
-      ? 'admin.users.confirm.activateTitle'
-      : statusActionDialog?.mode === 'bulk'
-        ? 'admin.users.confirm.bulkTitle'
-        : 'admin.users.confirm.singleTitle'
-  ),
-  description: t(
-    statusActionDialog?.action === 'activate'
-      ? 'admin.users.confirm.activateDescription'
-      : statusActionDialog?.mode === 'bulk'
-        ? 'admin.users.confirm.bulkDescription'
-        : 'admin.users.confirm.singleDescription'
-  ),
-  confirmLabel: t(
-    statusActionDialog?.action === 'activate' ? 'admin.users.actions.activate' : 'admin.users.actions.deactivate'
-  ),
-});
-
 export const UserListPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const usersApi = useUsers();
-
-  const [statusActionDialog, setStatusActionDialog] = React.useState<StatusActionDialogState | null>(null);
-  const { syncStatus, syncResult, syncError, onSyncUsers } = useUserSyncState(usersApi);
+  const {
+    closeStatusActionDialog,
+    onConfirmStatusAction,
+    onSyncUsers,
+    openBulkDeactivate,
+    openSingleStatusAction,
+    statusActionDialog,
+    syncError,
+    syncResult,
+    syncStatus,
+  } = useUserListController({ usersApi });
   const { user } = useAuth();
   const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
   const isAuthLoading = user === null;
-  const statusActionDialogCopy = getStatusActionDialogCopy(statusActionDialog);
-
-  const onConfirmStatusAction = React.useCallback(async () => {
-    const action = statusActionDialog;
-    setStatusActionDialog(null);
-    await executeStatusAction(usersApi, action);
-  }, [statusActionDialog, usersApi]);
+  const statusActionDialogKeys = getStatusActionDialogTranslationKeys(statusActionDialog);
 
   const pageCount = Math.max(1, Math.ceil(usersApi.total / usersApi.pageSize));
   const userColumns = React.useMemo(
-    () => buildUserColumns(isAuthLoading, isPlatformScope, setStatusActionDialog),
-    [isAuthLoading, isPlatformScope]
+    () => buildUserColumns(isAuthLoading, isPlatformScope, openSingleStatusAction),
+    [isAuthLoading, isPlatformScope, openSingleStatusAction]
   );
 
   return (
@@ -582,12 +489,7 @@ export const UserListPage = () => {
                     id: 'bulk-deactivate',
                     label: t('admin.users.actions.bulkDeactivate'),
                     variant: 'destructive',
-                    onClick: ({ selectedRows }) =>
-                      setStatusActionDialog({
-                        action: 'deactivate',
-                        mode: 'bulk',
-                        userIds: selectedRows.map((user) => user.id),
-                      }),
+                    onClick: ({ selectedRows }) => openBulkDeactivate(selectedRows.map((user) => user.id)),
                   },
                 ]
               : []
@@ -611,11 +513,11 @@ export const UserListPage = () => {
 
       <ConfirmDialog
         open={Boolean(statusActionDialog)}
-        title={statusActionDialogCopy.title}
-        description={statusActionDialogCopy.description}
-        confirmLabel={statusActionDialogCopy.confirmLabel}
+        title={t(statusActionDialogKeys.title)}
+        description={t(statusActionDialogKeys.description)}
+        confirmLabel={t(statusActionDialogKeys.confirmLabel)}
         cancelLabel={t('account.actions.cancel')}
-        onCancel={() => setStatusActionDialog(null)}
+        onCancel={closeStatusActionDialog}
         onConfirm={() => void onConfirmStatusAction()}
       />
     </section>

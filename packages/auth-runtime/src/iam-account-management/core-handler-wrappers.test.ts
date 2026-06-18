@@ -81,7 +81,7 @@ describe('IAM core handler wrappers', () => {
 
   it('forwards every user handler through withAuthenticatedIamHandler', async () => {
     const request = new Request('https://example.test/api/v1/iam/users');
-    const module = await import('./core-user-handlers.js');
+    const module = await import('./core.js');
 
     await module.listUsersHandler(request);
     await module.getUserHandler(request);
@@ -112,7 +112,7 @@ describe('IAM core handler wrappers', () => {
 
   it('forwards every role handler through withAuthenticatedIamHandler', async () => {
     const request = new Request('https://example.test/api/v1/iam/roles');
-    const module = await import('./core-role-handlers.js');
+    const module = await import('./core.js');
 
     await module.listRolesHandler(request);
     await module.listPermissionsHandler(request);

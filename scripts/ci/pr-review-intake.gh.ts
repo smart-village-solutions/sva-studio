@@ -7,6 +7,7 @@ export const createGhExecutor = (): GhExecutor => {
     const result = spawnSync('gh', args, {
       cwd: process.cwd(),
       input: options?.input,
+      maxBuffer: 16 * 1024 * 1024,
     });
 
     return {

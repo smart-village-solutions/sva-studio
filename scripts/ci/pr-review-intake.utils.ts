@@ -166,7 +166,7 @@ export const extractFailureSnippet = (logText: string, maxLines: number, context
   }
 
   const start = Math.max(0, markerIndex - context);
-  const end = Math.min(lines.length, markerIndex + context);
+  const end = Math.min(lines.length, markerIndex + context + 1);
   return lines.slice(start, end).slice(-maxLines).join('\n');
 };
 

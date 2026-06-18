@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -10,8 +11,8 @@ import { fetchReviewThreads } from './pr-review-intake.threads.ts';
 import { buildSnapshotSummary, extractFailureSnippet, extractJobId, extractRunId, parseAvailableFields, parseCliOptions } from './pr-review-intake.utils.ts';
 import type { GhExecutor } from './pr-review-intake.types.ts';
 
-const fixturePath = (...parts: string[]): string =>
-  path.join(process.cwd(), 'scripts/ci/fixtures/pr-review-intake', ...parts);
+const testDir = path.dirname(fileURLToPath(import.meta.url));
+const fixturePath = (...parts: string[]): string => path.join(testDir, 'fixtures/pr-review-intake', ...parts);
 
 const readJsonFixture = <T>(filename: string): T =>
   JSON.parse(readFileSync(fixturePath(filename), 'utf8')) as T;
@@ -151,6 +152,29 @@ describe('pr-review-intake', () => {
     });
   });
 
+  it('behandelt PRs ohne gemeldete Checks als leeren Check-Zustand', () => {
+    const executor = createExecutor([
+      {
+        match: (args) =>
+          args.join(' ') ===
+          'pr checks 602 --repo smart-village-solutions/sva-studio --json name,state,conclusion,detailsUrl,startedAt,completedAt',
+        exitCode: 1,
+        stderr: 'no checks reported on the \'codex/repo-local-pr-review-intake\' branch',
+      },
+    ]);
+
+    const checks = fetchChecks(
+      { owner: 'smart-village-solutions', repo: 'sva-studio', number: 602, source: 'explicit' },
+      executor,
+      parseCliOptions(['checks', '--repo', 'smart-village-solutions/sva-studio', '--pr', '602'])
+    );
+
+    expect(checks).toEqual({
+      failing: [],
+      pending: [],
+    });
+  });
+
   it('klassifiziert failing, pending und externe Checks robust', () => {
     expect(
       normalizeCheckRecord({
@@ -168,6 +192,14 @@ describe('pr-review-intake', () => {
         detailsUrl: 'https://github.com/org/repo/actions/runs/1/job/2',
       }).health
     ).toBe('pending');
+
+    expect(
+      normalizeCheckRecord({
+        name: 'Skipped',
+        bucket: 'skipping',
+        link: 'https://github.com/org/repo/actions/runs/1/job/2',
+      }).health
+    ).toBe('passing');
 
     expect(
       normalizeCheckRecord({
@@ -197,6 +229,11 @@ describe('pr-review-intake', () => {
     const snippet = extractFailureSnippet(readTextFixture('run-log-201.txt'), 5, 2);
     expect(snippet).toContain('Error: Type mismatch in route loader');
     expect(snippet.split('\n').length).toBeLessThanOrEqual(5);
+  });
+
+  it('liefert symmetrischen Kontext um die Marker-Zeile', () => {
+    const snippet = extractFailureSnippet(['before-2', 'before-1', 'Error: boom', 'after-1', 'after-2'].join('\n'), 10, 2);
+    expect(snippet).toBe(['before-2', 'before-1', 'Error: boom', 'after-1', 'after-2'].join('\n'));
   });
 
   it('normalisiert offene und resolved Review-Threads aus GraphQL-Fixtures', () => {

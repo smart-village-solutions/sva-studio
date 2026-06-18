@@ -58,17 +58,17 @@ Lies diese Dateien zu Beginn, um alle Non-Negotiable-Regeln zu kennen.
 
 1. **PR-Intake als führende Quelle verwenden**: Offene Threads aus `pr-review-intake.ts snapshot|threads --json` lesen; der Snapshot ist die kanonische lokale Wahrheit fuer PR-Metadaten, Threads und failing Checks
 2. **Unresolved Threads identifizieren**: `reviewThreads.open` aus dem Snapshot auswerten statt ad hoc aus flachen Connector-Kommentaren
-2. **Threads nach Datei gruppieren** und priorisieren:
+3. **Threads nach Datei gruppieren** und priorisieren:
    - 🔴 Blocker / Security-Findings zuerst
    - 🟡 Funktionale Korrekturen
    - 🟢 Style / Verbesserungen zuletzt
-3. **Pro Thread**:
+4. **Pro Thread**:
    a. Betroffene Datei lesen und Kontext verstehen
    b. Änderung implementieren (minimal, korrekt, im Scope des Kommentars)
    c. Falls der Kommentar unklar oder unbegründet ist: Rückfrage als Reply formulieren statt blind umzusetzen
    d. Betroffene Tests lokal ausfuehren, aber mit real existierendem Nx-Target fuer das Projekt
-4. **Resolve nur mit Nachweis**: Jeder Thread braucht eine inhaltliche Antwort, eine nachweisbare Code-Aenderung oder eine sauber begruendete Nicht-Aenderung
-5. **Tool-Luecken explizit behandeln**: Wenn direkte Reply-/Resolve-APIs nicht verfuegbar sind, fuer jeden offenen Thread eine konkrete Antwortvorlage und den verbleibenden manuellen Schritt im Abschlussbericht festhalten; externe GitHub-Skills oder Connectoren sind dafuer nur Fallback, nicht Primärpfad
+5. **Resolve nur mit Nachweis**: Jeder Thread braucht eine inhaltliche Antwort, eine nachweisbare Code-Aenderung oder eine sauber begruendete Nicht-Aenderung
+6. **Tool-Luecken explizit behandeln**: Wenn direkte Reply-/Resolve-APIs nicht verfuegbar sind, fuer jeden offenen Thread eine konkrete Antwortvorlage und den verbleibenden manuellen Schritt im Abschlussbericht festhalten; externe GitHub-Skills oder Connectoren sind dafuer nur Fallback, nicht Primärpfad
 
 ### Phase 2: Tests reparieren
 

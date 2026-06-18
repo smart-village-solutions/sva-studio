@@ -15,7 +15,7 @@ const FAILURE_CONCLUSIONS = new Set(['failure', 'cancelled', 'timed_out', 'actio
 const FAILURE_STATES = new Set(['failure', 'error', 'cancelled', 'timed_out', 'action_required']);
 const FAILURE_BUCKETS = new Set(['fail']);
 const PENDING_STATES = new Set(['pending', 'in_progress', 'queued', 'requested', 'waiting']);
-const PENDING_BUCKETS = new Set(['pending', 'skipping']);
+const PENDING_BUCKETS = new Set(['pending']);
 const PENDING_LOG_MARKERS = ['still in progress', 'log will be available when it is complete'] as const;
 
 type RawCheckRecord = Record<string, unknown>;
@@ -23,6 +23,7 @@ type RawCheckRecord = Record<string, unknown>;
 const normalizeField = (value: unknown): string => (value == null ? '' : String(value).trim().toLowerCase());
 const isPendingLogMessage = (message: string): boolean =>
   PENDING_LOG_MARKERS.some((marker) => message.toLowerCase().includes(marker));
+const isNoChecksReportedMessage = (message: string): boolean => message.toLowerCase().includes('no checks reported');
 
 const isFailingCheck = (check: Pick<CheckSummary, 'state' | 'conclusion' | 'bucket'>): boolean => {
   return (
@@ -71,7 +72,12 @@ const fetchChecksRaw = (ref: PullRequestRef, executor: GhExecutor): RawCheckReco
   let stdout = primary.stdout;
 
   if (primary.exitCode !== 0) {
-    const availableFields = parseAvailableFields(`${primary.stderr}\n${primary.stdout}`.trim());
+    const primaryMessage = `${primary.stderr}\n${primary.stdout}`.trim();
+    if (isNoChecksReportedMessage(primaryMessage)) {
+      return [];
+    }
+
+    const availableFields = parseAvailableFields(primaryMessage);
     const selected = ['name', 'state', 'bucket', 'link', 'startedAt', 'completedAt', 'workflow'].filter((field) =>
       availableFields.includes(field)
     );
@@ -81,6 +87,10 @@ const fetchChecksRaw = (ref: PullRequestRef, executor: GhExecutor): RawCheckReco
 
     const fallback = runGh(executor, ['pr', 'checks', String(ref.number), '--repo', repoSlug, '--json', selected.join(',')]);
     if (fallback.exitCode !== 0) {
+      const fallbackMessage = `${fallback.stderr}\n${fallback.stdout}`.trim();
+      if (isNoChecksReportedMessage(fallbackMessage)) {
+        return [];
+      }
       throw new Error((fallback.stderr || fallback.stdout || 'gh pr checks fehlgeschlagen').trim());
     }
     stdout = fallback.stdout;

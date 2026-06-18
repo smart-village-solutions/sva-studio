@@ -1,9 +1,11 @@
-import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, it } from 'vitest';
 
-const readSeed = (name: string) => readFileSync(resolve('packages/data/seeds', name), 'utf8');
+const seedDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'seeds');
+const readSeed = (name: string) => readFileSync(resolve(seedDir, name), 'utf8');
 
 describe('iam seed sql contracts', () => {
   it('keeps protected instance identity fields in 0001 additive for existing environments', () => {

@@ -3,28 +3,35 @@ import { expect, it } from 'vitest';
 import {
   buildIssueSearchParams,
   buildListSearchParams,
+  type BulkReviewOptions,
   filterIssues,
   formatIssueCsv,
   formatIssueTable,
   filterHotspots,
   formatListCsv,
   formatListTable,
+  type IssueListOptions,
+  type ListOptions,
   parseCommand,
 } from './sonar-hotspots.ts';
 
 it('parseCommand ignores a leading double dash from pnpm forwarding', () => {
-  const command = parseCommand(['--', 'bulk-review', '--hotspot', 'AX1', '--resolution', 'SAFE', '--comment', 'ok'], {
-    SONAR_TOKEN: 'token',
-  });
+  const command = expectBulkReviewCommand(
+    parseCommand(['--', 'bulk-review', '--hotspot', 'AX1', '--resolution', 'SAFE', '--comment', 'ok'], {
+      SONAR_TOKEN: 'token',
+    })
+  );
 
   expect(command.command).toBe('bulk-review');
   expect(command.hotspotKeys).toEqual(['AX1']);
 });
 
 it('parseCommand parses list options with filters', () => {
-  const command = parseCommand(
-    ['list', '--project', 'foo', '--branch', 'main', '--status', 'TO_REVIEW', '--file-path-includes', 'apps/foo', '--json'],
-    { SONAR_TOKEN: 'token' }
+  const command = expectListCommand(
+    parseCommand(
+      ['list', '--project', 'foo', '--branch', 'main', '--status', 'TO_REVIEW', '--file-path-includes', 'apps/foo', '--json'],
+      { SONAR_TOKEN: 'token' }
+    )
   );
 
   expect(command.command).toBe('list');
@@ -36,9 +43,11 @@ it('parseCommand parses list options with filters', () => {
 });
 
 it('buildListSearchParams includes supported filters', () => {
-  const command = parseCommand(
-    ['list', '--project', 'foo', '--pull-request', '123', '--rule', 'typescript:S5148'],
-    { SONAR_TOKEN: 'token' }
+  const command = expectListCommand(
+    parseCommand(
+      ['list', '--project', 'foo', '--pull-request', '123', '--rule', 'typescript:S5148'],
+      { SONAR_TOKEN: 'token' }
+    )
   );
 
   expect(command.command).toBe('list');
@@ -98,9 +107,11 @@ it('formatListCsv escapes fields for spreadsheet export', () => {
 });
 
 it('parseCommand parses bulk-review options', () => {
-  const command = parseCommand(
-    ['bulk-review', '--hotspot', 'AX1', '--hotspot', 'AX2', '--resolution', 'SAFE', '--comment', 'Begründung'],
-    { SONAR_TOKEN: 'token' }
+  const command = expectBulkReviewCommand(
+    parseCommand(
+      ['bulk-review', '--hotspot', 'AX1', '--hotspot', 'AX2', '--resolution', 'SAFE', '--comment', 'Begründung'],
+      { SONAR_TOKEN: 'token' }
+    )
   );
 
   expect(command.command).toBe('bulk-review');
@@ -110,9 +121,11 @@ it('parseCommand parses bulk-review options', () => {
 });
 
 it('parseCommand parses issues:list options', () => {
-  const command = parseCommand(
-    ['issues:list', '--statuses', 'OPEN,CONFIRMED', '--types', 'BUG,VULNERABILITY', '--file-path-includes', 'packages/server-runtime', '--csv'],
-    { SONAR_TOKEN: 'token' }
+  const command = expectIssueListCommand(
+    parseCommand(
+      ['issues:list', '--statuses', 'OPEN,CONFIRMED', '--types', 'BUG,VULNERABILITY', '--file-path-includes', 'packages/server-runtime', '--csv'],
+      { SONAR_TOKEN: 'token' }
+    )
   );
 
   expect(command.command).toBe('issues:list');
@@ -123,9 +136,11 @@ it('parseCommand parses issues:list options', () => {
 });
 
 it('buildIssueSearchParams includes supported filters', () => {
-  const command = parseCommand(
-    ['issues:list', '--project', 'foo', '--statuses', 'OPEN', '--types', 'BUG', '--rules', 'typescript:S112'],
-    { SONAR_TOKEN: 'token' }
+  const command = expectIssueListCommand(
+    parseCommand(
+      ['issues:list', '--project', 'foo', '--statuses', 'OPEN', '--types', 'BUG', '--rules', 'typescript:S112'],
+      { SONAR_TOKEN: 'token' }
+    )
   );
 
   expect(command.command).toBe('issues:list');
@@ -185,3 +200,18 @@ it('formatIssueCsv escapes fields for export', () => {
   expect(output).toMatch(/key,status,severity,type,rule,component,line,message/);
   expect(output).toMatch(/issue-1,OPEN,MAJOR,CODE_SMELL,typescript:S112,smart-village-app_sva-studio:packages\/server-runtime\/src\/logger\/index\.server\.ts,44,"Avoid ""any"""/);
 });
+
+function expectListCommand(command: ReturnType<typeof parseCommand>): ListOptions {
+  expect(command.command).toBe('list');
+  return command as ListOptions;
+}
+
+function expectBulkReviewCommand(command: ReturnType<typeof parseCommand>): BulkReviewOptions {
+  expect(command.command).toBe('bulk-review');
+  return command as BulkReviewOptions;
+}
+
+function expectIssueListCommand(command: ReturnType<typeof parseCommand>): IssueListOptions {
+  expect(command.command).toBe('issues:list');
+  return command as IssueListOptions;
+}

@@ -1,7 +1,7 @@
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 
-import { MainserverUserProvisioningError } from './mainserver-user-provisioning.js';
+import { MainserverUserProvisioningError } from './mainserver-user-provisioning-error.js';
 
 const localhostHosts = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 

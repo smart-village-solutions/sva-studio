@@ -4,6 +4,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 
 import { readEffectiveSvaMainserverCredentialsWithStatus } from '../mainserver-effective-credentials.js';
 
+import { MainserverUserProvisioningError } from './mainserver-user-provisioning-error.js';
 import { normalizeProvisioningUpstreamUrl } from './mainserver-upstream-url-validation.js';
 import type { CreateUserActorInfo } from './user-create-invitation.js';
 import type { CreateUserPayload } from './user-create-persistence.js';
@@ -41,25 +42,6 @@ type ErrorPayload = {
   readonly message?: string;
   readonly retryable?: boolean;
 };
-
-export class MainserverUserProvisioningError extends Error {
-  readonly statusCode: number;
-  readonly code: string;
-  readonly retryable: boolean;
-
-  constructor(input: {
-    readonly code: string;
-    readonly message: string;
-    readonly statusCode: number;
-    readonly retryable?: boolean;
-  }) {
-    super(input.message);
-    this.name = 'MainserverUserProvisioningError';
-    this.code = input.code;
-    this.statusCode = input.statusCode;
-    this.retryable = input.retryable ?? false;
-  }
-}
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;

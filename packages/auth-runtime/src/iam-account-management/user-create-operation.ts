@@ -80,7 +80,19 @@ const logMainserverProvisioningFailure = (input: {
       actor_account_id: input.actor.actorAccountId,
       keycloak_subject: input.keycloakSubject,
       email_masked: maskEmail(input.email),
+      error_type: input.error instanceof Error ? input.error.constructor.name : typeof input.error,
       error: input.error instanceof Error ? input.error.message : String(input.error),
+      ...(input.error instanceof Error &&
+      input.error.name === 'MainserverUserProvisioningError' &&
+      'code' in input.error &&
+      'statusCode' in input.error &&
+      'retryable' in input.error
+        ? {
+            mainserver_error_code: (input.error as Error & { code: string }).code,
+            mainserver_status_code: (input.error as Error & { statusCode: number }).statusCode,
+            mainserver_retryable: (input.error as Error & { retryable: boolean }).retryable,
+          }
+        : {}),
     },
   });
 };

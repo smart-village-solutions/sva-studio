@@ -31,6 +31,21 @@ describe('mainserver-upstream-http', () => {
     });
   });
 
+  it('rethrows non-abort upstream failures unchanged', async () => {
+    const upstreamError = new Error('boom');
+    const fetchImpl = vi.fn().mockRejectedValueOnce(upstreamError);
+
+    await expect(
+      fetchMainserverUpstream({
+        fetchImpl,
+        url: 'https://example.com/token',
+        init: { method: 'POST' },
+        signal: AbortSignal.timeout(100),
+        timeoutMessage: 'Zeitüberschreitung beim Laden des Mainserver-Provisioning-Tokens.',
+      })
+    ).rejects.toBe(upstreamError);
+  });
+
   it('throws invalid_response when a json body cannot be parsed', async () => {
     const response = new Response('not-json', { status: 200 });
 
@@ -54,6 +69,25 @@ describe('mainserver-upstream-http', () => {
     await expect(
       readMainserverErrorPayload(scalarJsonResponse, 'Ungültige Antwort des SVA-Mainserver-Provisionings.')
     ).resolves.toEqual({});
+  });
+
+  it('keeps only typed error payload fields', async () => {
+    const response = new Response(
+      JSON.stringify({
+        code: 'local_user_conflict',
+        message: ['wrong'],
+        retryable: 'false',
+      }),
+      { status: 409 }
+    );
+
+    await expect(
+      readMainserverErrorPayload(response, 'Ungültige Antwort des SVA-Mainserver-Provisionings.')
+    ).resolves.toEqual({
+      code: 'local_user_conflict',
+      message: undefined,
+      retryable: undefined,
+    });
   });
 
   it('maps provisioning error responses from payload fields with fallback defaults', async () => {

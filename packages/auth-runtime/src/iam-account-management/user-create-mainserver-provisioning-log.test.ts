@@ -76,4 +76,23 @@ describe('logMainserverProvisioningFailure', () => {
       })
     );
   });
+
+  it('logs non-Error inputs defensively without mainserver metadata', () => {
+    logMainserverProvisioningFailure({
+      actor,
+      email: 'alice@example.com',
+      keycloakSubject: 'kc-user-1',
+      error: { message: 'structured-but-not-an-error' },
+    });
+
+    expect(loggerState.error).toHaveBeenCalledWith(
+      'IAM user mainserver provisioning failed',
+      expect.objectContaining({
+        context: expect.objectContaining({
+          error_type: 'object',
+          error: '[object Object]',
+        }),
+      })
+    );
+  });
 });

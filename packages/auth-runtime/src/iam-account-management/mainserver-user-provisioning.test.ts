@@ -88,6 +88,74 @@ describe('provisionMainserverUserCredentials', () => {
     });
   });
 
+  it('returns null and logs an info event when the integration record is missing or disabled', async () => {
+    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValueOnce(null);
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl: vi.fn(),
+      })
+    ).resolves.toBeNull();
+
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValueOnce({
+      enabled: false,
+      publicConfig: {},
+    });
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl: vi.fn(),
+      })
+    ).resolves.toBeNull();
+
+    expect(state.logger.info).toHaveBeenNthCalledWith(
+      1,
+      'SVA Mainserver user provisioning skipped because integration is not configured',
+      expect.objectContaining({
+        context: expect.objectContaining({ reason_code: 'config_not_found' }),
+      })
+    );
+    expect(state.logger.info).toHaveBeenNthCalledWith(
+      2,
+      'SVA Mainserver user provisioning skipped because integration is not configured',
+      expect.objectContaining({
+        context: expect.objectContaining({ reason_code: 'integration_disabled' }),
+      })
+    );
+  });
+
+  it('rejects incomplete provisioning configs before fetching', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      enabled: true,
+      publicConfig: {
+        graphqlBaseUrl: 'https://bb-demo.server.smart-village.app/graphql',
+      },
+    });
+
+    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl: vi.fn(),
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'mainserver_user_provisioning_config_incomplete',
+      statusCode: 409,
+    });
+  });
+
   it('loads an admin bearer token, provisions the user, and returns Keycloak Mainserver attributes', async () => {
     const fetchImpl = vi
       .fn()
@@ -190,6 +258,96 @@ describe('provisionMainserverUserCredentials', () => {
       instanceId: 'bb-demo',
       keycloakSubject: 'kc-admin-1',
       activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
+  });
+
+  it('maps missing actor credentials to a typed provisioning error', async () => {
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'missing_credentials',
+    });
+
+    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl: vi.fn(),
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'missing_credentials',
+      statusCode: 409,
+    });
+  });
+
+  it('maps non-200 token responses to unauthorized and retryable token failures', async () => {
+    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl: vi.fn().mockResolvedValueOnce(new Response('unauthorized', { status: 401 })),
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'unauthorized',
+      retryable: false,
+      statusCode: 401,
+    });
+
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl: vi.fn().mockResolvedValueOnce(new Response('server error', { status: 503 })),
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'token_request_failed',
+      retryable: true,
+      statusCode: 503,
+    });
+  });
+
+  it('rejects invalid token and provisioning response bodies', async () => {
+    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl: vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ token: 'missing-access-token' }), { status: 200 })),
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'invalid_response',
+      statusCode: 502,
+    });
+
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl: vi
+          .fn()
+          .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 }))
+          .mockResolvedValueOnce(new Response(JSON.stringify({ keycloak: { attributes: {} } }), { status: 200 })),
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'invalid_response',
+      statusCode: 502,
     });
   });
 

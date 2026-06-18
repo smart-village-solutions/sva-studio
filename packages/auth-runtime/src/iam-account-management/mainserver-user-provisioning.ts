@@ -109,7 +109,7 @@ const resolveProvisioningUrl = (graphqlBaseUrl: string): string => {
 const loadProvisioningConfig = async (instanceId: string): Promise<MainserverProvisioningConfig | null> => {
   const record = await loadDefaultExternalInterfaceRecord(instanceId, SVA_MAINSERVER_TYPE_KEY);
   if (!record || !record.enabled) {
-    logger.warn('SVA Mainserver user provisioning skipped because integration is not configured', {
+    logger.info('SVA Mainserver user provisioning skipped because integration is not configured', {
       workspace_id: instanceId,
       context: {
         operation: 'mainserver_user_provisioning',

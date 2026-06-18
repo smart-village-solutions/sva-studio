@@ -1,0 +1,17 @@
+{
+  "number": 602,
+  "title": "Refine PR intake",
+  "url": "https://github.com/smart-village-solutions/sva-studio/pull/602",
+  "state": "OPEN",
+  "isDraft": false,
+  "headRefName": "fix/pr-intake",
+  "baseRefName": "main",
+  "author": {
+    "login": "wilimzig"
+  },
+  "reviewDecision": "CHANGES_REQUESTED",
+  "mergeable": "MERGEABLE",
+  "changedFiles": 5,
+  "additions": 140,
+  "deletions": 12
+}

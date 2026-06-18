@@ -1,0 +1,8 @@
+vite v6.0.0 building for test...
+transforming modules...
+src/routes/example.ts(12,5): note TS diagnostics follow
+Error: Type mismatch in route loader
+Expected Promise<RouteData>
+Received Promise<unknown>
+at packages/data/src/query.ts:42:7
+Build failed with 1 error

@@ -1,0 +1,29 @@
+[
+  {
+    "name": "Quality Gates / Types",
+    "state": "COMPLETED",
+    "bucket": "fail",
+    "link": "https://github.com/smart-village-solutions/sva-studio/actions/runs/201/job/301",
+    "startedAt": "2026-06-18T10:00:00Z",
+    "completedAt": "2026-06-18T10:05:00Z",
+    "workflow": "Quality Gates"
+  },
+  {
+    "name": "Quality Gates / Unit",
+    "state": "IN_PROGRESS",
+    "bucket": "pending",
+    "link": "https://github.com/smart-village-solutions/sva-studio/actions/runs/202/job/302",
+    "startedAt": "2026-06-18T10:06:00Z",
+    "completedAt": null,
+    "workflow": "Quality Gates"
+  },
+  {
+    "name": "Lint",
+    "state": "COMPLETED",
+    "bucket": "pass",
+    "link": "https://github.com/smart-village-solutions/sva-studio/actions/runs/203/job/303",
+    "startedAt": "2026-06-18T10:00:00Z",
+    "completedAt": "2026-06-18T10:01:00Z",
+    "workflow": "Quality Gates"
+  }
+]

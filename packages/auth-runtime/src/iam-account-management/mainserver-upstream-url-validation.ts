@@ -147,15 +147,16 @@ export const normalizeProvisioningUpstreamUrl = async (
   fieldName: 'graphql_base_url' | 'oauth_token_url'
 ): Promise<string> => {
   const parsed = parseUpstreamUrl(value);
-  const isPublicHttpsUrl =
-    parsed &&
-    !parsed.username &&
-    !parsed.password &&
-    !parsed.hash &&
-    parsed.protocol === 'https:' &&
-    !isPrivateOrLocalHost(parsed.hostname);
 
-  if (!isPublicHttpsUrl || (await resolvesToPrivateOrLocalHost(parsed.hostname))) {
+  if (
+    !parsed ||
+    parsed.username ||
+    parsed.password ||
+    parsed.hash ||
+    parsed.protocol !== 'https:' ||
+    isPrivateOrLocalHost(parsed.hostname) ||
+    (await resolvesToPrivateOrLocalHost(parsed.hostname))
+  ) {
     throw new MainserverUserProvisioningError({
       code: 'invalid_config',
       message: `Die konfigurierte Upstream-URL ${fieldName} ist ungültig.`,

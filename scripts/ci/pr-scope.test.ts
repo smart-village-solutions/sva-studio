@@ -234,13 +234,13 @@ describe('pr-scope', () => {
     expect(decision.escalationReasons).toEqual([]);
   });
 
-  it('keeps ci-script changes on affected quality gates', () => {
+  it('keeps ci-script changes on affected quality gates and affected coverage', () => {
     const decision = classifyPrScope(['scripts/ci/run-pr-gate.ts']);
 
     expectDecision(decision, {
       codeRelevant: true,
       qualityGateMode: 'affected',
-      coverageMode: 'full',
+      coverageMode: 'affected',
       integrationMode: 'full',
       e2eMode: 'full',
       appBuildMode: 'full',

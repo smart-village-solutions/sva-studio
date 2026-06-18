@@ -124,6 +124,7 @@ describe('provisionMainserverUserCredentials', () => {
     expect(state.readEffectiveSvaMainserverCredentialsWithStatus).toHaveBeenCalledWith({
       instanceId: 'bb-demo',
       keycloakSubject: 'kc-admin-1',
+      activeOrganizationId: undefined,
     });
     expect(fetchImpl).toHaveBeenNthCalledWith(
       1,
@@ -153,6 +154,43 @@ describe('provisionMainserverUserCredentials', () => {
         }),
       })
     );
+  });
+
+  it('passes the active organization id to the Mainserver credential lookup', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            keycloak: {
+              attributes: {
+                mainserverUserApplicationId: 'user-app',
+                mainserverUserApplicationSecret: 'user-secret',
+              },
+            },
+          }),
+          { status: 200 }
+        )
+      );
+
+    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    await provisionMainserverUserCredentials({
+      actor: {
+        ...createActor(),
+        activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+      },
+      actorSubject: 'kc-admin-1',
+      keycloakSubject: 'kc-user-1',
+      payload: createPayload(),
+      fetchImpl,
+    });
+
+    expect(state.readEffectiveSvaMainserverCredentialsWithStatus).toHaveBeenCalledWith({
+      instanceId: 'bb-demo',
+      keycloakSubject: 'kc-admin-1',
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
   });
 
   it('uses one abort signal for token and provisioning requests so the full provisioning flow is bounded', async () => {

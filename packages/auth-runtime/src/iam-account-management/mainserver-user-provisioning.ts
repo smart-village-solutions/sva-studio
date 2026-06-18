@@ -149,6 +149,7 @@ const loadProvisioningBearerToken = async (input: {
   const credentialResult = await readEffectiveSvaMainserverCredentialsWithStatus({
     instanceId: input.actor.instanceId,
     keycloakSubject: input.actorSubject,
+    activeOrganizationId: input.actor.activeOrganizationId,
   });
   if (credentialResult.status !== 'ok') {
     throw new MainserverUserProvisioningError({

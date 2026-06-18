@@ -32,6 +32,7 @@ type CreateUserActorContext = {
   actor: {
     instanceId: string;
     actorAccountId: string;
+    activeOrganizationId?: string;
     requestId?: string;
     traceId?: string;
   };
@@ -57,6 +58,7 @@ export const resolveCreateUserActorContext = async (
     actor: {
       instanceId: actorResolution.actor.instanceId,
       actorAccountId: actorResolution.actor.actorAccountId,
+      activeOrganizationId: ctx.activeOrganizationId,
       requestId: actorResolution.actor.requestId,
       traceId: actorResolution.actor.traceId,
     },

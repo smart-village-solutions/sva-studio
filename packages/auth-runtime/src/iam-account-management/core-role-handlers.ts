@@ -1,10 +1,10 @@
 import {
-  createRoleInternal,
   listPermissionsInternal,
-  deleteRoleInternal,
   listRolesInternal,
-  updateRoleInternal,
 } from './roles-handlers.js';
+import { createRoleInternal } from './roles-handlers.create.js';
+import { deleteRoleInternal } from './roles-handlers.delete.js';
+import { updateRoleInternal } from './roles-handlers.update.js';
 import { reconcilePlaceholderInternal } from './reconcile-handler.js';
 import { withAuthenticatedIamHandler } from './core-shared.js';
 

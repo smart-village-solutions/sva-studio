@@ -10,7 +10,6 @@ const state = vi.hoisted(() => ({
     getUserInternal: vi.fn(),
     getUserTimelineInternal: vi.fn(),
     listUsersInternal: vi.fn(),
-    runKeycloakUserImportSync: vi.fn(),
     sendPasswordSetupEmailInternal: vi.fn(),
     syncUsersFromKeycloakInternal: vi.fn(),
     updateMyProfileInternal: vi.fn(),
@@ -30,8 +29,46 @@ vi.mock('./core-shared.js', () => ({
   withAuthenticatedIamHandler: state.withAuthenticatedIamHandler,
 }));
 
-vi.mock('./users-handlers.js', () => state.userHandlers);
-vi.mock('./roles-handlers.js', () => state.roleHandlers);
+vi.mock('./user-bulk-deactivate-handler.js', () => ({
+  bulkDeactivateInternal: state.userHandlers.bulkDeactivateInternal,
+}));
+vi.mock('./user-create-handler.js', () => ({
+  createUserInternal: state.userHandlers.createUserInternal,
+}));
+vi.mock('./user-deactivate-handler.js', () => ({
+  deactivateUserInternal: state.userHandlers.deactivateUserInternal,
+}));
+vi.mock('./user-import-sync-handler.js', () => ({
+  syncUsersFromKeycloakInternal: state.userHandlers.syncUsersFromKeycloakInternal,
+}));
+vi.mock('./user-password-setup-email-handler.js', () => ({
+  sendPasswordSetupEmailInternal: state.userHandlers.sendPasswordSetupEmailInternal,
+}));
+vi.mock('./profile-handlers.js', () => ({
+  getMyProfileInternal: state.userHandlers.getMyProfileInternal,
+  updateMyProfileInternal: state.userHandlers.updateMyProfileInternal,
+}));
+vi.mock('./user-read-handlers.js', () => ({
+  getUserInternal: state.userHandlers.getUserInternal,
+  getUserTimelineInternal: state.userHandlers.getUserTimelineInternal,
+  listUsersInternal: state.userHandlers.listUsersInternal,
+}));
+vi.mock('./user-update-handler.js', () => ({
+  updateUserInternal: state.userHandlers.updateUserInternal,
+}));
+vi.mock('./roles-handlers.js', () => ({
+  listPermissionsInternal: state.roleHandlers.listPermissionsInternal,
+  listRolesInternal: state.roleHandlers.listRolesInternal,
+}));
+vi.mock('./roles-handlers.create.js', () => ({
+  createRoleInternal: state.roleHandlers.createRoleInternal,
+}));
+vi.mock('./roles-handlers.delete.js', () => ({
+  deleteRoleInternal: state.roleHandlers.deleteRoleInternal,
+}));
+vi.mock('./roles-handlers.update.js', () => ({
+  updateRoleInternal: state.roleHandlers.updateRoleInternal,
+}));
 vi.mock('./reconcile-handler.js', () => ({
   reconcilePlaceholderInternal: state.reconcilePlaceholderInternal,
 }));
@@ -42,7 +79,7 @@ describe('IAM core handler wrappers', () => {
     state.withAuthenticatedIamHandler.mockResolvedValue(new Response('wrapped'));
   });
 
-  it('forwards every user handler through withAuthenticatedIamHandler and re-exports the sync helper', async () => {
+  it('forwards every user handler through withAuthenticatedIamHandler', async () => {
     const request = new Request('https://example.test/api/v1/iam/users');
     const module = await import('./core-user-handlers.js');
 
@@ -71,7 +108,6 @@ describe('IAM core handler wrappers', () => {
       [request, state.userHandlers.updateMyProfileInternal],
       [request, state.userHandlers.getMyProfileInternal],
     ]);
-    expect(module.runKeycloakUserImportSync).toBe(state.userHandlers.runKeycloakUserImportSync);
   });
 
   it('forwards every role handler through withAuthenticatedIamHandler', async () => {

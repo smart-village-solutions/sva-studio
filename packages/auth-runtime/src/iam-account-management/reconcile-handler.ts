@@ -33,7 +33,7 @@ export const reconcilePlaceholderInternal = createReconcileHandlerInternal({
 let roleCatalogSchedulerStarted = false;
 const roleCatalogSchedulerInFlight = new Set<string>();
 
-export const readScheduledReconcileInstanceIds = (): readonly string[] =>
+const readScheduledReconcileInstanceIds = (): readonly string[] =>
   (process.env.IAM_ROLE_RECONCILE_INSTANCE_IDS ?? '')
     .split(',')
     .map((entry) => entry.trim())

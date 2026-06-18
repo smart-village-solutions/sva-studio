@@ -73,12 +73,16 @@ function NewsPushNotificationCard({
           <dd className="text-muted-foreground">{formatMetadataDate(loadedItem.pushNotificationsSentAt)}</dd>
         </dl>
       ) : (
-        <label className="flex items-start gap-3 rounded-xl border border-border/60 p-4 text-sm">
+        <label
+          htmlFor="news-push-notification-enabled"
+          className="flex items-start gap-3 rounded-xl border border-border/60 p-4 text-sm"
+        >
           <Controller
             control={control}
             name="pushNotificationEnabled"
             render={({ field }) => (
               <Checkbox
+                id="news-push-notification-enabled"
                 checked={field.value}
                 onChange={(event) => field.onChange(event.target.checked)}
               />

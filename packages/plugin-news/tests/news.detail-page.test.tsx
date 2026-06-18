@@ -240,4 +240,11 @@ describe('NewsDetailPage', () => {
     expect(source).toContain('<span className="space-y-1">');
     expect(source).not.toContain('<div key={option} className="flex gap-3 rounded-xl border border-border/60 p-4 text-sm">');
   });
+
+  it('renders the push notification checkbox through an explicit label binding', () => {
+    const source = fs.readFileSync(newsDetailSettingsSourcePath, 'utf8');
+
+    expect(source).toContain('htmlFor="news-push-notification-enabled"');
+    expect(source).toContain('id="news-push-notification-enabled"');
+  });
 });

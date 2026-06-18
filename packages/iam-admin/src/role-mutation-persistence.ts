@@ -1,4 +1,4 @@
-import type { IamRolePermissionAssignmentScope } from '@sva/core';
+import type { IamRoleListItem, IamRolePermissionAssignmentScope } from '@sva/core';
 import type { ManagedRoleRow } from './types.js';
 
 import { getManagedPermissionMetadata, isRootOnlyPermissionKey } from './managed-permissions.js';
@@ -166,7 +166,78 @@ export type RoleMutationPersistenceDeps = {
   ) => Promise<T>;
 };
 
-export const createRoleMutationPersistence = (deps: RoleMutationPersistenceDeps) => {
+export type RoleMutationPersistence = {
+  readonly deleteRoleFromDatabase: (input: {
+    readonly actor: RoleMutationPersistenceActor;
+    readonly roleId: string;
+    readonly roleKey: string;
+    readonly externalRoleName: string;
+  }) => Promise<void>;
+  readonly listDirectRoleAssignmentSubjects: (input: {
+    readonly instanceId: string;
+    readonly roleId: string;
+  }) => Promise<readonly string[]>;
+  readonly markDeleteRoleSyncState: (input: {
+    readonly actor: RoleMutationPersistenceActor;
+    readonly roleId: string;
+    readonly roleKey: string;
+    readonly externalRoleName: string;
+    readonly result: 'success' | 'failure';
+    readonly eventType: 'role.sync_started' | 'role.sync_failed' | 'role.sync_succeeded';
+    readonly errorCode?: string;
+    readonly syncState?: 'pending' | 'failed';
+  }) => Promise<void>;
+  readonly markRoleSyncState: (input: {
+    readonly actor: RoleMutationPersistenceActor;
+    readonly roleId: string;
+    readonly operation: 'update' | 'retry';
+    readonly result: 'success' | 'failure';
+    readonly roleKey: string;
+    readonly externalRoleName: string;
+    readonly errorCode?: string;
+    readonly syncState: 'pending' | 'failed' | 'synced';
+    readonly syncedAt?: boolean;
+  }) => Promise<void>;
+  readonly persistCreatedRole: (input: {
+    readonly actor: RoleMutationPersistenceActor;
+    readonly roleKey: string;
+    readonly displayName: string;
+    readonly externalRoleName: string;
+    readonly description?: string;
+    readonly roleLevel: number;
+    readonly permissionIds: readonly string[];
+    readonly permissionAssignments?: readonly RolePermissionAssignmentInput[];
+  }) => Promise<IamRoleListItem>;
+  readonly persistUpdatedRole: (input: {
+    readonly actor: RoleMutationPersistenceActor;
+    readonly roleId: string;
+    readonly existing: MutableRole;
+    readonly displayName: string;
+    readonly description?: string;
+    readonly roleLevel: number;
+    readonly externalRoleName: string;
+    readonly permissionIds?: readonly string[];
+    readonly permissionAssignments?: readonly RolePermissionAssignmentInput[];
+    readonly operation: 'update' | 'retry';
+  }) => Promise<IamRoleListItem>;
+  readonly resolveDeletableRole: (
+    actor: RoleMutationPersistenceActor,
+    roleId: string
+  ) => Promise<MutableRole | Response>;
+  readonly resolveMutableRole: (
+    actor: RoleMutationPersistenceActor,
+    roleId: string
+  ) => Promise<MutableRole | Response>;
+  readonly validateRequestedPermissions: (input: {
+    readonly actor: RoleMutationPersistenceActor;
+    readonly permissionIds?: readonly string[];
+    readonly permissionAssignments?: readonly RolePermissionAssignmentInput[];
+  }) => Promise<Response | null>;
+};
+
+export const createRoleMutationPersistence = (
+  deps: RoleMutationPersistenceDeps
+): RoleMutationPersistence => {
   const emitDeleteSuccessEvents = async (
     client: QueryClient,
     input: {

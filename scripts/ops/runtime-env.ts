@@ -1,7 +1,7 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, dirname, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -41,17 +41,31 @@ import {
   type RemoteRuntimeProfile,
 } from './runtime-env.shared.ts';
 import {
-  commandExists as commandExistsForRoot,
   filterRemoteOutputLines,
-  run as runForRoot,
-  runCapture as runCaptureForRoot,
-  runCaptureDetailed as runCaptureDetailedForRoot,
-  runQuantumExec as runQuantumExecForRoot,
-  spawnBackground as spawnBackgroundForRoot,
   summarizeProcessOutput,
   wait,
   withoutDebugEnv,
 } from './runtime/process.ts';
+import {
+  bootstrapLocalAppUser,
+  buildLocalHealthUrl,
+  downLocalInfra,
+  isProcessAlive,
+  migrateLocalDatabase,
+  pullLocalInfra,
+  readLocalState,
+  readLocalWorkerState,
+  shouldCheckLocalInstanceRegistryDriftBeforeCommand,
+  shouldRunLocalProvisioningWorker,
+  startLocalApp,
+  startLocalProvisioningWorker,
+  stopLocalApp,
+  stopLocalProvisioningWorker,
+  type LocalState,
+  upLocalInfra,
+} from './runtime/local-runtime.ts';
+import { assertRuntimeEnv, buildProfileEnv } from './runtime/profile-env.ts';
+import { createRuntimeEnvContext } from './runtime/context.ts';
 import {
   assertRequiredImagePlatform,
   formatImagePlatforms,
@@ -192,15 +206,6 @@ type GithubVerifyEvidenceOptions = Readonly<{
   runCaptureImpl?: typeof runCapture;
 }>;
 
-type LocalState = {
-  command?: string;
-  launcher?: 'local-dev-server-runner' | 'local-provisioning-worker-runner';
-  logFile: string;
-  pid: number;
-  profile: RuntimeProfile;
-  startedAt: string;
-};
-
 type LocalTenantSecretState = Readonly<{
   authClientSecretConfigured: boolean;
   authClientSecretReadable: boolean;
@@ -233,31 +238,24 @@ const profile = rawProfile as RuntimeProfile | undefined;
 const cliOptions = parseRuntimeCliOptions(rawOptions);
 const jsonOutput = cliOptions.jsonOutput;
 
-const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const runtimeArtifactsDir = resolve(rootDir, 'artifacts/runtime');
-const rebuildAuditLogFile = getRebuildAuditLogFile(rootDir);
-const localStateFile = resolve(runtimeArtifactsDir, 'local-app-state.json');
-const localWorkerStateFile = resolve(runtimeArtifactsDir, 'local-worker-state.json');
-const appLogDir = resolve(runtimeArtifactsDir, 'logs');
-const deployReportDir = resolve(runtimeArtifactsDir, 'deployments');
-const gooseConfigPath = resolve(rootDir, 'packages/data/goose.config.json');
-const gooseMigrationsDir = resolve(rootDir, 'packages/data/migrations');
-const gooseConfig = JSON.parse(readFileSync(gooseConfigPath, 'utf8')) as { repo: string; version: string };
-const run = (commandName: string, args: readonly string[], env: NodeJS.ProcessEnv = process.env) =>
-  runForRoot(rootDir, commandName, args, env);
-const runCapture = (commandName: string, args: readonly string[], env: NodeJS.ProcessEnv = process.env) =>
-  runCaptureForRoot(rootDir, commandName, args, env);
-const runCaptureDetailed = (commandName: string, args: readonly string[], env: NodeJS.ProcessEnv = process.env) =>
-  runCaptureDetailedForRoot(rootDir, commandName, args, env);
-const commandExists = (commandName: string) => commandExistsForRoot(rootDir, commandName);
-const runQuantumExec = (
-  args: readonly string[],
-  env: NodeJS.ProcessEnv,
-  options?: {
-    marker?: string;
-    failureMessage: string;
-  }
-) => runQuantumExecForRoot(rootDir, args, env, options);
+const runtimeContext = createRuntimeEnvContext();
+const {
+  appLogDir,
+  commandExists,
+  deployReportDir,
+  gooseConfig,
+  gooseMigrationsDir,
+  localStateFile,
+  localWorkerStateFile,
+  rebuildAuditLogFile,
+  rootCommands,
+  rootDir,
+  run,
+  runCapture,
+  runCaptureDetailed,
+  runQuantumExec,
+  runtimeArtifactsDir,
+} = runtimeContext;
 
 const composeBaseArgs = ['compose', '-f', 'docker-compose.yml'];
 const composeWithMonitoringArgs = ['compose', '-f', 'docker-compose.yml', '-f', 'docker-compose.monitoring.yml'];
@@ -396,87 +394,6 @@ const listGooseMigrationFiles = () => listGooseMigrationFilesFromDir(gooseMigrat
 
 const getGooseConfiguredVersion = () => getGooseConfiguredVersionFromConfig(gooseConfig);
 
-const parseVarsFile = (filePath: string): Record<string, string> => {
-  const parsed: Record<string, string> = {};
-  const content = readFileSync(filePath, 'utf8');
-
-  for (const rawLine of content.split(/\r?\n/u)) {
-    const line = rawLine.trim();
-    if (line.length === 0 || line.startsWith('#')) {
-      continue;
-    }
-
-    const separatorIndex = line.indexOf('=');
-    if (separatorIndex < 1) {
-      continue;
-    }
-
-    const key = line.slice(0, separatorIndex).trim();
-    const rawValue = line.slice(separatorIndex + 1).trim();
-    const value =
-      (rawValue.startsWith('"') && rawValue.endsWith('"')) || (rawValue.startsWith("'") && rawValue.endsWith("'"))
-        ? rawValue.slice(1, -1)
-        : rawValue;
-
-    parsed[key] = value;
-  }
-
-  return parsed;
-};
-
-const buildProfileEnv = (runtimeProfile: RuntimeProfile): NodeJS.ProcessEnv => {
-  const baseEnvPath = resolve(rootDir, 'config/runtime/base.vars');
-  const profileEnvPath = resolve(rootDir, `config/runtime/${runtimeProfile}.vars`);
-  const localOverridePath = cliOptions.localOverrideFile
-    ? resolve(rootDir, cliOptions.localOverrideFile)
-    : resolve(rootDir, `config/runtime/${runtimeProfile}.local.vars`);
-  const baseEnv = parseVarsFile(baseEnvPath);
-  const profileEnv = parseVarsFile(profileEnvPath);
-  const localOverrideEnv = existsSync(localOverridePath) ? parseVarsFile(localOverridePath) : {};
-  const userQuantumEnvPath = process.env.HOME ? resolve(process.env.HOME, '.config/quantum/env') : '';
-  const userQuantumEnv = userQuantumEnvPath && existsSync(userQuantumEnvPath) ? parseVarsFile(userQuantumEnvPath) : {};
-  const env = {
-    ...baseEnv,
-    ...profileEnv,
-    ...localOverrideEnv,
-    ...userQuantumEnv,
-    ...process.env,
-  };
-
-  if (!getRuntimeProfileDefinition(runtimeProfile).isLocal) {
-    const remoteOnlyKeys = [
-      'SVA_STACK_NAME',
-      'OTEL_EXPORTER_OTLP_ENDPOINT',
-      'REDIS_URL',
-      'POSTGRES_PASSWORD',
-      'IAM_DATABASE_URL',
-      'IAM_PII_KEYRING_JSON',
-    ] as const;
-
-    for (const key of remoteOnlyKeys) {
-      if (!(key in profileEnv) && !(key in localOverrideEnv) && !(key in process.env)) {
-        delete env[key];
-      }
-    }
-  }
-
-  env.SVA_RUNTIME_PROFILE = runtimeProfile;
-  env.VITE_SVA_RUNTIME_PROFILE = runtimeProfile;
-
-  if (runtimeProfile === 'local-builder') {
-    env.SVA_MOCK_AUTH = 'true';
-    env.VITE_MOCK_AUTH = 'true';
-    env.BUILDER_DEV_AUTH = 'true';
-  }
-
-  env.SVA_MAINSERVER_DEV_GRAPHQL_URL = env.SVA_MAINSERVER_GRAPHQL_URL;
-  env.SVA_MAINSERVER_DEV_OAUTH_TOKEN_URL = env.SVA_MAINSERVER_OAUTH_TOKEN_URL;
-  env.SVA_MAINSERVER_DEV_API_KEY = env.SVA_MAINSERVER_CLIENT_ID;
-  env.SVA_MAINSERVER_DEV_API_SECRET = env.SVA_MAINSERVER_CLIENT_SECRET;
-
-  return env;
-};
-
 const withTemporaryProcessEnv = async <T>(env: NodeJS.ProcessEnv, work: () => Promise<T>): Promise<T> => {
   const previousEnv = { ...process.env };
   Object.assign(process.env, env);
@@ -491,24 +408,6 @@ const withTemporaryProcessEnv = async <T>(env: NodeJS.ProcessEnv, work: () => Pr
     }
     Object.assign(process.env, previousEnv);
   }
-};
-
-const assertRuntimeEnv = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
-  const validation = validateRuntimeProfileEnv(runtimeProfile, env);
-  if (validation.missing.length === 0 && validation.placeholders.length === 0 && validation.invalid.length === 0) {
-    return;
-  }
-
-  const lines = [
-    `Runtime-Profil ${runtimeProfile} ist nicht vollstaendig konfiguriert.`,
-    validation.invalid.length > 0 ? `Ungueltig: ${validation.invalid.join(', ')}` : null,
-    validation.missing.length > 0 ? `Fehlend: ${validation.missing.join(', ')}` : null,
-    validation.placeholders.length > 0 ? `Platzhalter: ${validation.placeholders.join(', ')}` : null,
-    `Erwartete Variablen: ${getRuntimeProfileRequiredEnvKeys(runtimeProfile).join(', ')}`,
-    `Optionaler Override: config/runtime/${runtimeProfile}.local.vars`,
-  ].filter((entry): entry is string => entry !== null);
-
-  throw new Error(lines.join('\n'));
 };
 
 const getConfiguredStackName = (env: NodeJS.ProcessEnv) => {
@@ -1551,253 +1450,6 @@ const ensureDirs = () => {
   mkdirSync(deployReportDir, { recursive: true });
 };
 
-const isProcessAlive = (pid: number) => {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const readLocalState = (): LocalState | null => {
-  if (!existsSync(localStateFile)) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(readFileSync(localStateFile, 'utf8')) as LocalState;
-    return typeof parsed.pid === 'number' ? parsed : null;
-  } catch {
-    return null;
-  }
-};
-
-const readLocalWorkerState = (): LocalState | null => {
-  if (!existsSync(localWorkerStateFile)) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(readFileSync(localWorkerStateFile, 'utf8')) as LocalState;
-    return typeof parsed.pid === 'number' ? parsed : null;
-  } catch {
-    return null;
-  }
-};
-
-const clearLocalState = () => {
-  if (existsSync(localStateFile)) {
-    unlinkSync(localStateFile);
-  }
-};
-
-const clearLocalWorkerState = () => {
-  if (existsSync(localWorkerStateFile)) {
-    unlinkSync(localWorkerStateFile);
-  }
-};
-
-const stopKnownLocalDevServers = () => {
-  const patterns = [
-    'scripts/ops/runtime/local-dev-server-runner.ts',
-    'sva-studio-react:serve',
-    'vite.js dev --port 3000',
-  ] as const;
-
-  for (const pattern of patterns) {
-    spawnSync('pkill', ['-f', pattern], {
-      cwd: rootDir,
-      stdio: 'ignore',
-    });
-  }
-};
-
-const stopKnownLocalProvisioningWorkers = () => {
-  const patterns = [
-    'scripts/ops/runtime/local-provisioning-worker-runner.ts',
-    'packages/auth-runtime/src/iam-instance-registry/worker.ts',
-  ] as const;
-
-  for (const pattern of patterns) {
-    spawnSync('pkill', ['-f', pattern], {
-      cwd: rootDir,
-      stdio: 'ignore',
-    });
-  }
-};
-
-const stopLocalApp = () => {
-  const state = readLocalState();
-  if (!state) {
-    stopKnownLocalDevServers();
-    return;
-  }
-
-  if (!isProcessAlive(state.pid)) {
-    clearLocalState();
-    return;
-  }
-
-  try {
-    process.kill(-state.pid, 'SIGTERM');
-  } catch {
-    try {
-      process.kill(state.pid, 'SIGTERM');
-    } catch {
-      // Ignore stale process state.
-    }
-  }
-
-  clearLocalState();
-  stopKnownLocalDevServers();
-};
-
-const stopLocalProvisioningWorker = () => {
-  const state = readLocalWorkerState();
-  if (!state) {
-    stopKnownLocalProvisioningWorkers();
-    return;
-  }
-
-  if (!isProcessAlive(state.pid)) {
-    clearLocalWorkerState();
-    return;
-  }
-
-  try {
-    process.kill(-state.pid, 'SIGTERM');
-  } catch {
-    try {
-      process.kill(state.pid, 'SIGTERM');
-    } catch {
-      // Ignore stale process state.
-    }
-  }
-
-  clearLocalWorkerState();
-  stopKnownLocalProvisioningWorkers();
-};
-
-const startLocalApp = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
-  ensureDirs();
-
-  const existing = readLocalState();
-  if (existing && isProcessAlive(existing.pid) && existing.profile !== runtimeProfile) {
-    throw new Error(
-      `Lokale App laeuft bereits mit Profil ${existing.profile}. Erst env:down:${existing.profile} ausfuehren.`,
-    );
-  }
-
-  if (existing && isProcessAlive(existing.pid) && existing.profile === runtimeProfile) {
-    console.log(`Lokale App fuer ${runtimeProfile} laeuft bereits (PID ${existing.pid}).`);
-    return;
-  }
-
-  const logFile = resolve(appLogDir, `${runtimeProfile}.log`);
-  writeFileSync(logFile, '', 'utf8');
-  const child = spawn(
-    process.execPath,
-    [
-      '--import',
-      'tsx',
-      'scripts/ops/runtime/local-dev-server-runner.ts',
-      `--profile=${runtimeProfile}`,
-      `--log-file=${logFile}`,
-      `--state-file=${localStateFile}`,
-    ],
-    {
-    cwd: rootDir,
-    env,
-    detached: true,
-      stdio: 'ignore',
-    }
-  );
-
-  if (child.pid === undefined) {
-    throw new Error(`Dev-Server fuer ${runtimeProfile} konnte nicht gestartet werden.`);
-  }
-
-  child.unref();
-
-  writeFileSync(
-    localStateFile,
-    `${JSON.stringify(
-      {
-        command: 'pnpm nx run sva-studio-react:serve',
-        launcher: 'local-dev-server-runner',
-        pid: child.pid,
-        profile: runtimeProfile,
-        startedAt: new Date().toISOString(),
-        logFile,
-      } satisfies LocalState,
-      null,
-      2,
-    )}\n`,
-    'utf8',
-  );
-
-  await waitForHttpOk(new URL('/health/live', env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000').toString(), 60_000);
-};
-
-const startLocalProvisioningWorker = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
-  ensureDirs();
-
-  const existing = readLocalWorkerState();
-  if (existing && isProcessAlive(existing.pid) && existing.profile !== runtimeProfile) {
-    throw new Error(
-      `Lokaler Provisioning-Worker laeuft bereits mit Profil ${existing.profile}. Erst env:down:${existing.profile} ausfuehren.`,
-    );
-  }
-
-  if (existing && isProcessAlive(existing.pid) && existing.profile === runtimeProfile) {
-    return;
-  }
-
-  const logFile = resolve(appLogDir, `${runtimeProfile}.worker.log`);
-  writeFileSync(logFile, '', 'utf8');
-  const child = spawn(
-    process.execPath,
-    [
-      '--import',
-      'tsx',
-      'scripts/ops/runtime/local-provisioning-worker-runner.ts',
-      `--profile=${runtimeProfile}`,
-      `--log-file=${logFile}`,
-      `--state-file=${localWorkerStateFile}`,
-    ],
-    {
-      cwd: rootDir,
-      env,
-      detached: true,
-      stdio: 'ignore',
-    },
-  );
-
-  if (child.pid === undefined) {
-    throw new Error(`Provisioning-Worker fuer ${runtimeProfile} konnte nicht gestartet werden.`);
-  }
-
-  child.unref();
-
-  writeFileSync(
-    localWorkerStateFile,
-    `${JSON.stringify(
-      {
-        command: 'tsx packages/auth-runtime/src/iam-instance-registry/worker.ts',
-        launcher: 'local-provisioning-worker-runner',
-        pid: child.pid,
-        profile: runtimeProfile,
-        startedAt: new Date().toISOString(),
-        logFile,
-      } satisfies LocalState,
-      null,
-      2,
-    )}\n`,
-    'utf8',
-  );
-};
-
 const buildLocalProvisioningWorkerCheck = (
   runtimeProfile: RuntimeProfile,
   workerState: LocalState | null,
@@ -1851,28 +1503,6 @@ const buildLocalProvisioningWorkerCheck = (
   );
 };
 
-const shouldRunLocalProvisioningWorker = (runtimeProfile: RuntimeProfile) =>
-  getRuntimeProfileDefinition(runtimeProfile).isLocal && !isMockAuthRuntimeProfile(runtimeProfile);
-
-const waitForHttpOk = async (url: string, timeoutMs: number) => {
-  const startedAt = Date.now();
-
-  while (Date.now() - startedAt < timeoutMs) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) {
-        return;
-      }
-    } catch {
-      // Keep polling.
-    }
-
-    await wait(1_000);
-  }
-
-  throw new Error(`Timeout waiting for ${url}`);
-};
-
 const getComposeArgs = (env: NodeJS.ProcessEnv) =>
   env.SVA_ENABLE_MONITORING === 'false' ? composeBaseArgs : composeWithMonitoringArgs;
 
@@ -1922,18 +1552,6 @@ const createLocalRuntimeAuditLogger = (
     scope: 'local-runtime',
   });
 
-const upLocalInfra = (env: NodeJS.ProcessEnv) => {
-  run('docker', [...getComposeArgs(env), 'up', '-d'], env);
-};
-
-const bootstrapLocalAppUser = (env: NodeJS.ProcessEnv) => {
-  run('pnpm', ['nx', 'run', 'data:db:bootstrap-app-user'], env);
-};
-
-const migrateLocalDatabase = (env: NodeJS.ProcessEnv) => {
-  run('pnpm', ['nx', 'run', 'data:db:migrate'], env);
-};
-
 const checkLocalInstanceRegistryDrift = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const input = buildLocalInstanceRegistryReconciliationInput(env);
   if (!input) {
@@ -1955,10 +1573,6 @@ const checkLocalInstanceRegistryDrift = (runtimeProfile: RuntimeProfile, env: No
     process.stderr.write(`${message}\n`);
   }
 };
-
-const shouldCheckLocalInstanceRegistryDriftBeforeCommand = (
-  runtimeCommand: Extract<RuntimeCommand, 'up' | 'update' | 'reconcile' | 'migrate'>
-) => runtimeCommand === 'up' || runtimeCommand === 'update';
 
 const requireLocalInstanceRegistryReconciliationInput = (env: NodeJS.ProcessEnv) => {
   const input = buildLocalInstanceRegistryReconciliationInput(env);
@@ -1985,14 +1599,6 @@ const reconcileLocalInstanceRegistry = (
   const input = requireLocalInstanceRegistryReconciliationInput(effectiveEnv);
   const sql = buildLocalInstanceRegistryReconciliationSql(input);
   createDbSqlRunner(runtimeProfile, effectiveEnv)(sql);
-};
-
-const downLocalInfra = (env: NodeJS.ProcessEnv) => {
-  run('docker', [...composeWithMonitoringArgs, 'down'], env);
-};
-
-const pullLocalInfra = (env: NodeJS.ProcessEnv) => {
-  run('docker', [...getComposeArgs(env), 'pull'], env);
 };
 
 const checkHttpHealth = async (url: string) => {
@@ -3180,7 +2786,7 @@ const buildAcceptancePostgresCheck = (env: NodeJS.ProcessEnv) => {
 };
 
 const runLocalGooseStatus = (env: NodeJS.ProcessEnv) =>
-  runLocalGooseStatusWithDeps({ rootDir, runCapture: runCaptureForRoot }, gooseConfig, env);
+  runLocalGooseStatusWithDeps({ rootDir, runCapture: rootCommands.runCapture }, gooseConfig, env);
 
 const resolveRemoteInternalNetworkName = async (env: NodeJS.ProcessEnv) => {
   const stackName = getConfiguredStackName(env);
@@ -3215,12 +2821,12 @@ const runMigrationJobAgainstAcceptance = async (
 ) =>
   runMigrationJobAgainstAcceptanceWithDeps(
     {
-      commandExists: commandExistsForRoot,
+      commandExists: rootCommands.commandExists,
       rootDir,
-      run: runForRoot,
-      runCapture: runCaptureForRoot,
-      runCaptureDetailed: runCaptureDetailedForRoot,
-      spawnBackground: spawnBackgroundForRoot,
+      run: rootCommands.run,
+      runCapture: rootCommands.runCapture,
+      runCaptureDetailed: rootCommands.runCaptureDetailed,
+      spawnBackground: rootCommands.spawnBackground,
       wait,
     },
     env,
@@ -3241,12 +2847,12 @@ const runBootstrapJobAgainstAcceptance = async (
 ) =>
   runBootstrapJobAgainstAcceptanceWithDeps(
     {
-      commandExists: commandExistsForRoot,
+      commandExists: rootCommands.commandExists,
       rootDir,
-      run: runForRoot,
-      runCapture: runCaptureForRoot,
-      runCaptureDetailed: runCaptureDetailedForRoot,
-      spawnBackground: spawnBackgroundForRoot,
+      run: rootCommands.run,
+      runCapture: rootCommands.runCapture,
+      runCaptureDetailed: rootCommands.runCaptureDetailed,
+      spawnBackground: rootCommands.spawnBackground,
       wait,
     },
     env,
@@ -3635,7 +3241,7 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
     );
   }
 
-  checks.push(buildLocalProvisioningWorkerCheck(runtimeProfile, readLocalWorkerState()));
+  checks.push(buildLocalProvisioningWorkerCheck(runtimeProfile, readLocalWorkerState(localWorkerStateFile)));
 
   const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
 
@@ -4310,7 +3916,11 @@ const resolveRemoteDangerousApprovalRequirement = (
 };
 
 const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: RuntimeCommand) => {
-  const env = buildProfileEnv(runtimeProfile);
+  const env = buildProfileEnv(runtimeProfile, {
+    localOverrideFile: cliOptions.localOverrideFile,
+    processEnv: process.env,
+    rootDir,
+  });
   const rebuildAuditLogger = shouldAuditLocalCommand(runtimeCommand)
     ? createLocalRuntimeAuditLogger(runtimeProfile, runtimeCommand, env)
     : null;
@@ -4321,49 +3931,57 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
     case 'up':
       await runWithCommandAudit(async () => {
         assertRuntimeEnv(runtimeProfile, env);
-        await rebuildAuditLogger?.run('infra-up', () => upLocalInfra(env));
-        await rebuildAuditLogger?.run('db-migrate', () => migrateLocalDatabase(env));
-        await rebuildAuditLogger?.run('bootstrap-app-user', () => bootstrapLocalAppUser(env));
+        await rebuildAuditLogger?.run('infra-up', () => upLocalInfra({ composeArgs: getComposeArgs(env), env, run }));
+        await rebuildAuditLogger?.run('db-migrate', () => migrateLocalDatabase(run, env));
+        await rebuildAuditLogger?.run('bootstrap-app-user', () => bootstrapLocalAppUser(run, env));
         if (shouldCheckLocalInstanceRegistryDriftBeforeCommand(runtimeCommand)) {
           await rebuildAuditLogger?.run('instance-registry-drift-check', () => checkLocalInstanceRegistryDrift(runtimeProfile, env));
         }
-        await rebuildAuditLogger?.run('app-start', () => startLocalApp(runtimeProfile, env));
+        await rebuildAuditLogger?.run('app-start', () =>
+          startLocalApp({ appLogDir, env, healthUrl: buildLocalHealthUrl(env), localStateFile, rootDir, runtimeProfile }),
+        );
         if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
-          await rebuildAuditLogger?.run('worker-start', () => startLocalProvisioningWorker(runtimeProfile, env));
+          await rebuildAuditLogger?.run('worker-start', () =>
+            startLocalProvisioningWorker({ appLogDir, env, localWorkerStateFile, rootDir, runtimeProfile }),
+          );
         }
         console.log(`Profil ${runtimeProfile} gestartet.`);
       });
       return;
     case 'down':
       await runWithCommandAudit(async () => {
-        await rebuildAuditLogger?.run('worker-stop', () => stopLocalProvisioningWorker());
-        await rebuildAuditLogger?.run('app-stop', () => stopLocalApp());
-        await rebuildAuditLogger?.run('infra-down', () => downLocalInfra(env));
+        await rebuildAuditLogger?.run('worker-stop', () => stopLocalProvisioningWorker({ localWorkerStateFile, rootDir }));
+        await rebuildAuditLogger?.run('app-stop', () => stopLocalApp({ localStateFile, rootDir }));
+        await rebuildAuditLogger?.run('infra-down', () => downLocalInfra({ composeArgs: composeWithMonitoringArgs, env, run }));
         console.log(`Profil ${runtimeProfile} gestoppt.`);
       });
       return;
     case 'update':
       await runWithCommandAudit(async () => {
         assertRuntimeEnv(runtimeProfile, env);
-        await rebuildAuditLogger?.run('infra-pull', () => pullLocalInfra(env));
-        await rebuildAuditLogger?.run('infra-up', () => upLocalInfra(env));
-        await rebuildAuditLogger?.run('db-migrate', () => migrateLocalDatabase(env));
-        await rebuildAuditLogger?.run('bootstrap-app-user', () => bootstrapLocalAppUser(env));
+        await rebuildAuditLogger?.run('infra-pull', () => pullLocalInfra({ composeArgs: getComposeArgs(env), env, run }));
+        await rebuildAuditLogger?.run('infra-up', () => upLocalInfra({ composeArgs: getComposeArgs(env), env, run }));
+        await rebuildAuditLogger?.run('db-migrate', () => migrateLocalDatabase(run, env));
+        await rebuildAuditLogger?.run('bootstrap-app-user', () => bootstrapLocalAppUser(run, env));
         if (shouldCheckLocalInstanceRegistryDriftBeforeCommand(runtimeCommand)) {
           await rebuildAuditLogger?.run('instance-registry-drift-check', () => checkLocalInstanceRegistryDrift(runtimeProfile, env));
         }
-        await rebuildAuditLogger?.run('worker-stop', () => stopLocalProvisioningWorker());
-        await rebuildAuditLogger?.run('app-stop', () => stopLocalApp());
-        await rebuildAuditLogger?.run('app-start', () => startLocalApp(runtimeProfile, env));
+        await rebuildAuditLogger?.run('worker-stop', () => stopLocalProvisioningWorker({ localWorkerStateFile, rootDir }));
+        await rebuildAuditLogger?.run('app-stop', () => stopLocalApp({ localStateFile, rootDir }));
+        await rebuildAuditLogger?.run('app-start', () =>
+          startLocalApp({ appLogDir, env, healthUrl: buildLocalHealthUrl(env), localStateFile, rootDir, runtimeProfile }),
+        );
         if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
-          await rebuildAuditLogger?.run('worker-start', () => startLocalProvisioningWorker(runtimeProfile, env));
+          await rebuildAuditLogger?.run('worker-start', () =>
+            startLocalProvisioningWorker({ appLogDir, env, localWorkerStateFile, rootDir, runtimeProfile }),
+          );
         }
         console.log(`Profil ${runtimeProfile} aktualisiert.`);
       });
       return;
     case 'status': {
-      const state = readLocalState();
-      const worker = readLocalWorkerState();
+      const state = readLocalState(localStateFile);
+      const worker = readLocalWorkerState(localWorkerStateFile);
       console.log(JSON.stringify({ app: state, profile: runtimeProfile, worker }, null, 2));
       run('docker', [...getComposeArgs(env), 'ps'], env);
       return;
@@ -4375,8 +3993,8 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
     case 'migrate':
       await runWithCommandAudit(async () => {
         assertRuntimeEnv(runtimeProfile, env);
-        await rebuildAuditLogger?.run('db-migrate', () => run('pnpm', ['nx', 'run', 'data:db:migrate'], env));
-        await rebuildAuditLogger?.run('bootstrap-app-user', () => bootstrapLocalAppUser(env));
+        await rebuildAuditLogger?.run('db-migrate', () => migrateLocalDatabase(run, env));
+        await rebuildAuditLogger?.run('bootstrap-app-user', () => bootstrapLocalAppUser(run, env));
         await rebuildAuditLogger?.run('schema-guard', () => {
           const schemaGuard = runSchemaGuard(runtimeProfile, env);
           if (!schemaGuard.ok) {
@@ -4407,8 +4025,8 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
             postflightDoctor: () => rebuildAuditLogger!.run('postflight-doctor', () => doctorRuntime(runtimeProfile, env)),
             runMigrate: async () =>
               rebuildAuditLogger!.run('db-migrate-and-app-user-bootstrap', async () => {
-                migrateLocalDatabase(env);
-                bootstrapLocalAppUser(env);
+                migrateLocalDatabase(run, env);
+                bootstrapLocalAppUser(run, env);
               }),
             reconcileInstanceRegistry: async () =>
               rebuildAuditLogger!.run('instance-registry-reconcile', () =>
@@ -6415,7 +6033,13 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
 };
 
 const runAcceptanceCommand = async (runtimeProfile: RemoteRuntimeProfile, runtimeCommand: RuntimeCommand) => {
-  const env = applyCliOptionEnvOverrides(buildProfileEnv(runtimeProfile));
+  const env = applyCliOptionEnvOverrides(
+    buildProfileEnv(runtimeProfile, {
+      localOverrideFile: cliOptions.localOverrideFile,
+      processEnv: process.env,
+      rootDir,
+    }),
+  );
   const stackName = getConfiguredStackName(env);
 
   switch (runtimeCommand) {

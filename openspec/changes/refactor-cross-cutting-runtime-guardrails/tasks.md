@@ -5,6 +5,8 @@
 - [x] 0.3 Report-only Checks für Plugin-Vertrag, Architekturdrift, Runtime-Boot, Auth-Session und Cache-Vertrag verdrahten
 - [x] 0.4 Erste Befunde aus dem report-only Lauf dokumentieren und als Grundlage für spätere Enforcement-Slices festhalten
 
+> Standabgleich 18.06.2026: Der inhaltliche Review des Alt-PRs `#441` bestaetigt, dass keine Reanimation des Branches noetig ist. Die noch relevanten Restpunkte sind bereits durch die offenen Tasks dieses Changes abgedeckt, insbesondere `1.1` bis `1.4`, `2.1` bis `2.3`, `3.1` bis `3.2` und `4.3`.
+
 ## 1. Auth- und Runtime-Härtung
 
 - [ ] 1.1 Session-Characterization-Tests für parallele Refreshes gegen Redis-Session-Store ergänzen

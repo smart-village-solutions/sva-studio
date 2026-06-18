@@ -19,7 +19,7 @@ import {
   resolveRoleMutationActor,
 } from './roles-handlers.shared.js';
 
-export const deleteRoleInternal = createDeleteRoleHandlerInternal({
+const deleteRoleHandlerDeps = {
   asApiItem,
   buildRoleAttributes,
   createApiError,
@@ -37,4 +37,8 @@ export const deleteRoleInternal = createDeleteRoleHandlerInternal({
   resolveRoleMutationActor,
   sanitizeRoleErrorMessage,
   trackKeycloakCall,
-});
+} as Parameters<typeof createDeleteRoleHandlerInternal>[0] & {
+  readonly listDirectRoleAssignmentSubjects: typeof listDirectRoleAssignmentSubjects;
+};
+
+export const deleteRoleInternal = createDeleteRoleHandlerInternal(deleteRoleHandlerDeps);

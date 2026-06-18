@@ -196,7 +196,7 @@ const listAllKeycloakUsers = async (
   }
 };
 
-export const resolveSyncActor = async (
+const resolveSyncActor = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<{ actor: ActorInfo } | { error: Response }> => {

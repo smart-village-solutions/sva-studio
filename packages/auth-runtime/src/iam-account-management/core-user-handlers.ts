@@ -1,17 +1,11 @@
-import {
-  bulkDeactivateInternal,
-  createUserInternal,
-  getMyProfileInternal,
-  getUserInternal,
-  getUserTimelineInternal,
-  listUsersInternal,
-  sendPasswordSetupEmailInternal,
-  runKeycloakUserImportSync,
-  syncUsersFromKeycloakInternal,
-  updateMyProfileInternal,
-  updateUserInternal,
-  deactivateUserInternal,
-} from './users-handlers.js';
+import { bulkDeactivateInternal } from './user-bulk-deactivate-handler.js';
+import { createUserInternal } from './user-create-handler.js';
+import { deactivateUserInternal } from './user-deactivate-handler.js';
+import { syncUsersFromKeycloakInternal } from './user-import-sync-handler.js';
+import { sendPasswordSetupEmailInternal } from './user-password-setup-email-handler.js';
+import { getMyProfileInternal, updateMyProfileInternal } from './profile-handlers.js';
+import { getUserInternal, getUserTimelineInternal, listUsersInternal } from './user-read-handlers.js';
+import { updateUserInternal } from './user-update-handler.js';
 import { withAuthenticatedIamHandler } from './core-shared.js';
 
 export const listUsersHandler = async (request: Request): Promise<Response> =>
@@ -46,5 +40,3 @@ export const updateMyProfileHandler = async (request: Request): Promise<Response
 
 export const getMyProfileHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, getMyProfileInternal);
-
-export { runKeycloakUserImportSync };

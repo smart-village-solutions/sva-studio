@@ -1,7 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { UserEditPage, buildGroupMembershipById, hasUserFormChanges } from './-user-edit-page';
+import { UserEditPage } from './-user-edit-page';
+import {
+  buildGroupMembershipById,
+  hasUserFormChanges,
+  splitPermissionTrace,
+  toUserUpdatePayload,
+} from './user-edit-model';
 import { userErrorMessage } from './-user-error-message';
 
 const useUserMock = vi.fn();
@@ -232,6 +238,81 @@ describe('UserEditPage', () => {
     expect(membershipById.get('group-1')).toMatchObject({ displayName: 'Admins' });
     expect(membershipById.get('group-2')).toMatchObject({ origin: 'sync' });
     expect(membershipById.get('group-3')).toBeUndefined();
+  });
+
+  it('builds the update payload with trimmed write-only secret data', () => {
+    expect(
+      toUserUpdatePayload({
+        firstName: 'Alice',
+        lastName: 'Admin',
+        displayName: 'Alice Admin',
+        email: 'alice@example.com',
+        phone: '',
+        position: '',
+        department: '',
+        status: 'active',
+        preferredLanguage: 'de',
+        timezone: 'Europe/Berlin',
+        notes: 'note',
+        roleIds: ['role-1'],
+        groupIds: ['group-1'],
+        mainserverUserApplicationId: '  app-id-1  ',
+        mainserverUserApplicationSecret: '  secret  ',
+        mainserverUserApplicationSecretSet: true,
+      })
+    ).toEqual({
+      firstName: 'Alice',
+      lastName: 'Admin',
+      displayName: 'Alice Admin',
+      email: 'alice@example.com',
+      phone: undefined,
+      position: undefined,
+      department: undefined,
+      status: 'active',
+      preferredLanguage: 'de',
+      timezone: 'Europe/Berlin',
+      notes: 'note',
+      roleIds: ['role-1'],
+      groupIds: ['group-1'],
+      mainserverUserApplicationId: 'app-id-1',
+      mainserverUserApplicationSecret: 'secret',
+    });
+  });
+
+  it('splits permission trace entries into effective and inactive lists', () => {
+    expect(
+      splitPermissionTrace([
+        {
+          permissionKey: 'content.read',
+          action: 'content.read',
+          resourceType: 'content',
+          effect: 'allow',
+          isEffective: true,
+          status: 'effective',
+          sourceKind: 'direct_permission',
+        },
+        {
+          permissionKey: 'content.archive',
+          action: 'content.archive',
+          resourceType: 'content',
+          effect: 'deny',
+          isEffective: false,
+          status: 'expired',
+          sourceKind: 'direct_role',
+        },
+      ])
+    ).toEqual({
+      effective: [
+        expect.objectContaining({
+          permissionKey: 'content.read',
+        }),
+      ],
+      inactive: [
+        expect.objectContaining({
+          permissionKey: 'content.archive',
+        }),
+      ],
+    });
   });
 
   it('renders localized initial load errors when user is missing', () => {

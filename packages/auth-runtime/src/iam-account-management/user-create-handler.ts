@@ -39,7 +39,7 @@ type CreateUserActorContext = {
   actorSubject: string;
 };
 
-export const resolveCreateUserActorContext = async (
+const resolveCreateUserActorContext = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<CreateUserActorContext | Response> => {

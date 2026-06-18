@@ -619,11 +619,11 @@ export const listInstanceInterfacesServerFn = createServerFn().handler(
                 lastCheckedAt: overview.status.checkedAt,
                 createdAt: overview.status.checkedAt ?? new Date().toISOString(),
                 updatedAt: overview.status.checkedAt ?? new Date().toISOString(),
-                    config: {
-                      graphqlBaseUrl: overview.config.graphqlBaseUrl,
-                      oauthTokenUrl: overview.config.oauthTokenUrl,
-                    },
-                  } satisfies InstanceInterface)
+                config: {
+                  graphqlBaseUrl: overview.config.graphqlBaseUrl,
+                  oauthTokenUrl: overview.config.oauthTokenUrl,
+                },
+              } satisfies InstanceInterface)
             : null;
 
         return {

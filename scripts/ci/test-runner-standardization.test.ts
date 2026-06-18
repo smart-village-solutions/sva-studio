@@ -27,9 +27,24 @@ describe('test runner standardization', () => {
   });
 
   it('does not use node --test in workspace scripts', () => {
-    const packageJson = readFileSync(join(REPO_ROOT, 'package.json'), 'utf8');
+    const packageJson = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')) as {
+      scripts?: Record<string, string>;
+    };
+    const offenders = Object.entries(packageJson.scripts ?? {})
+      .filter(([, command]) => usesNodeTestRunner(command))
+      .map(([name, command]) => `${name}: ${command}`);
 
-    expect(packageJson).not.toContain('node --test');
+    expect(offenders).toEqual([]);
+  });
+
+  it('detects node test runners even when node flags come before --test', () => {
+    expect(usesNodeTestRunner('node --test scripts/ci/example.test.ts')).toBe(true);
+    expect(usesNodeTestRunner('node --import tsx --test scripts/ci/example.test.ts')).toBe(true);
+    expect(usesNodeTestRunner('pnpm exec node --import tsx --test scripts/ci/example.test.ts')).toBe(true);
+    expect(usesNodeTestRunner('NODE_OPTIONS=--trace-warnings node --import tsx --test scripts/ci/example.test.ts')).toBe(
+      true
+    );
+    expect(usesNodeTestRunner('pnpm exec vitest run scripts/ci/example.test.ts')).toBe(false);
   });
 });
 
@@ -66,4 +81,39 @@ function walkDirectory(directory: string): string[] {
   }
 
   return files;
+}
+
+function usesNodeTestRunner(command: string): boolean {
+  return splitCommandSegments(command).some((segment) => {
+    const tokens = segment.trim().split(/\s+/u).filter(Boolean);
+
+    if (tokens.length === 0) {
+      return false;
+    }
+
+    let tokenIndex = 0;
+
+    while (tokens[tokenIndex]?.includes('=') && !tokens[tokenIndex]?.startsWith('--')) {
+      tokenIndex += 1;
+    }
+
+    if (
+      (tokens[tokenIndex] === 'pnpm' || tokens[tokenIndex] === 'npm' || tokens[tokenIndex] === 'yarn') &&
+      tokens[tokenIndex + 1] === 'exec'
+    ) {
+      tokenIndex += 2;
+    } else if (tokens[tokenIndex] === 'npx') {
+      tokenIndex += 1;
+    }
+
+    if (tokens[tokenIndex] !== 'node') {
+      return false;
+    }
+
+    return tokens.slice(tokenIndex + 1).includes('--test');
+  });
+}
+
+function splitCommandSegments(command: string): string[] {
+  return command.split(/&&|\|\||;|\n/u);
 }

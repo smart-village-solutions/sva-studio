@@ -41,6 +41,13 @@ type LocalInfraOptions = Readonly<{
   run: (command: string, args: readonly string[], env: NodeJS.ProcessEnv) => void;
 }>;
 
+type ExistingProcessHandlingOptions = Readonly<{
+  launcherLabel: string;
+  runtimeProfile: RuntimeProfile;
+  existing: LocalState | null;
+  onReuse?: (existing: LocalState) => void;
+}>;
+
 const readStateFile = (stateFile: string): LocalState | null => {
   if (!existsSync(stateFile)) {
     return null;
@@ -69,6 +76,18 @@ const stopKnownProcesses = (rootDir: string, patterns: readonly string[]) => {
   }
 };
 
+const terminateLocalProcess = (pid: number) => {
+  try {
+    process.kill(-pid, 'SIGTERM');
+  } catch {
+    try {
+      process.kill(pid, 'SIGTERM');
+    } catch {
+      // Ignore stale process state.
+    }
+  }
+};
+
 const stopLocalProcess = (
   state: LocalState | null,
   options: Readonly<{
@@ -87,16 +106,7 @@ const stopLocalProcess = (
     return;
   }
 
-  try {
-    process.kill(-state.pid, 'SIGTERM');
-  } catch {
-    try {
-      process.kill(state.pid, 'SIGTERM');
-    } catch {
-      // Ignore stale process state.
-    }
-  }
-
+  terminateLocalProcess(state.pid);
   clearStateFile(options.stateFile);
   stopKnownProcesses(options.rootDir, options.fallbackPatterns);
 };
@@ -151,6 +161,25 @@ export const readLocalState = readLocalStateFile;
 
 export const readLocalWorkerState = (localWorkerStateFile: string) => readStateFile(localWorkerStateFile);
 
+const readActiveProcess = (state: LocalState | null) => (state && isProcessAlive(state.pid) ? state : null);
+
+const handleExistingLocalProcess = (options: ExistingProcessHandlingOptions): boolean => {
+  const { launcherLabel, onReuse, runtimeProfile } = options;
+  const activeProcess = readActiveProcess(options.existing);
+  if (!activeProcess) {
+    return false;
+  }
+
+  if (activeProcess.profile !== runtimeProfile) {
+    throw new Error(
+      `${launcherLabel} laeuft bereits mit Profil ${activeProcess.profile}. Erst env:down:${activeProcess.profile} ausfuehren.`,
+    );
+  }
+
+  onReuse?.(activeProcess);
+  return true;
+};
+
 export const stopLocalApp = ({
   localStateFile,
   rootDir,
@@ -189,14 +218,16 @@ export const startLocalApp = async (options: Readonly<{
   runtimeProfile: RuntimeProfile;
 }>) => {
   const existing = readLocalStateFile(options.localStateFile);
-  if (existing && isProcessAlive(existing.pid) && existing.profile !== options.runtimeProfile) {
-    throw new Error(
-      `Lokale App laeuft bereits mit Profil ${existing.profile}. Erst env:down:${existing.profile} ausfuehren.`,
-    );
-  }
-
-  if (existing && isProcessAlive(existing.pid) && existing.profile === options.runtimeProfile) {
-    console.log(`Lokale App fuer ${options.runtimeProfile} laeuft bereits (PID ${existing.pid}).`);
+  if (
+    handleExistingLocalProcess({
+      existing,
+      launcherLabel: 'Lokale App',
+      onReuse: (activeProcess) => {
+        console.log(`Lokale App fuer ${options.runtimeProfile} laeuft bereits (PID ${activeProcess.pid}).`);
+      },
+      runtimeProfile: options.runtimeProfile,
+    })
+  ) {
     return;
   }
 
@@ -230,13 +261,13 @@ export const startLocalProvisioningWorker = (options: Readonly<{
   runtimeProfile: RuntimeProfile;
 }>) => {
   const existing = readLocalWorkerState(options.localWorkerStateFile);
-  if (existing && isProcessAlive(existing.pid) && existing.profile !== options.runtimeProfile) {
-    throw new Error(
-      `Lokaler Provisioning-Worker laeuft bereits mit Profil ${existing.profile}. Erst env:down:${existing.profile} ausfuehren.`,
-    );
-  }
-
-  if (existing && isProcessAlive(existing.pid) && existing.profile === options.runtimeProfile) {
+  if (
+    handleExistingLocalProcess({
+      existing,
+      launcherLabel: 'Lokaler Provisioning-Worker',
+      runtimeProfile: options.runtimeProfile,
+    })
+  ) {
     return;
   }
 
@@ -266,7 +297,7 @@ export const shouldRunLocalProvisioningWorker = (runtimeProfile: RuntimeProfile)
 export const buildLocalHealthUrl = (env: NodeJS.ProcessEnv) =>
   new URL('/health/live', env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000').toString();
 
-export const waitForHttpOk = async (url: string, timeoutMs: number) => {
+const waitForHttpOk = async (url: string, timeoutMs: number) => {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < timeoutMs) {

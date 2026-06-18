@@ -1,6 +1,7 @@
 import type { IamUserDetail, IamUserPermissionTraceItem } from '@sva/core';
 
 import { t } from '../../../i18n';
+import { pickInitials } from '../../../lib/display-name';
 import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import type { UpdateUserPayload } from '../../../lib/iam-api';
 
@@ -88,24 +89,47 @@ const permissionTraceRuntimeScopeTranslationKeyByValue = {
 
 type UserGroupMembership = NonNullable<NonNullable<IamUserDetail['groups']>[number]>;
 
-export const toUserFormValues = (user: IamUserDetail | null | undefined): UserFormValues => ({
-  firstName: user?.firstName ?? '',
-  lastName: user?.lastName ?? '',
-  displayName: user?.displayName ?? '',
-  email: user?.email ?? '',
-  phone: user?.phone ?? '',
-  position: user?.position ?? '',
-  department: user?.department ?? '',
-  status: user?.status ?? 'pending',
-  preferredLanguage: user?.preferredLanguage ?? 'de',
-  timezone: user?.timezone ?? 'Europe/Berlin',
-  notes: user?.notes ?? '',
-  roleIds: user?.roles.map((entry) => entry.roleId) ?? [],
-  groupIds: user?.groups?.map((entry) => entry.groupId) ?? [],
-  mainserverUserApplicationId: user?.mainserverUserApplicationId ?? '',
-  mainserverUserApplicationSecret: '',
-  mainserverUserApplicationSecretSet: user?.mainserverUserApplicationSecretSet ?? false,
-});
+const readRoleIds = (user: IamUserDetail | null | undefined) => user?.roles.map((entry) => entry.roleId) ?? [];
+
+const readGroupIds = (user: IamUserDetail | null | undefined) =>
+  user?.groups?.map((entry) => entry.groupId) ?? [];
+
+export const toUserFormValues = (user: IamUserDetail | null | undefined): UserFormValues => {
+  const {
+    firstName = '',
+    lastName = '',
+    displayName = '',
+    email = '',
+    phone = '',
+    position = '',
+    department = '',
+    status = 'pending',
+    preferredLanguage = 'de',
+    timezone = 'Europe/Berlin',
+    notes = '',
+    mainserverUserApplicationId = '',
+    mainserverUserApplicationSecretSet = false,
+  } = user ?? {};
+
+  return {
+    firstName,
+    lastName,
+    displayName,
+    email,
+    phone,
+    position,
+    department,
+    status,
+    preferredLanguage,
+    timezone,
+    notes,
+    roleIds: readRoleIds(user),
+    groupIds: readGroupIds(user),
+    mainserverUserApplicationId,
+    mainserverUserApplicationSecret: '',
+    mainserverUserApplicationSecretSet,
+  };
+};
 
 export const toUserUpdatePayload = (formValues: UserFormValues): UpdateUserPayload => ({
   firstName: formValues.firstName || undefined,
@@ -125,20 +149,6 @@ export const toUserUpdatePayload = (formValues: UserFormValues): UpdateUserPaylo
   mainserverUserApplicationSecret: formValues.mainserverUserApplicationSecret.trim() || undefined,
 });
 
-export const pickInitials = (displayName: string) => {
-  const parts = displayName
-    .split(' ')
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .slice(0, 2);
-
-  if (parts.length === 0) {
-    return 'NA';
-  }
-
-  return parts.map((entry) => entry.charAt(0).toUpperCase()).join('');
-};
-
 export const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
@@ -146,6 +156,8 @@ export const formatDateTime = (value?: string) => {
 
   return formatEditorDateTime(value) ?? value;
 };
+
+export { pickInitials };
 
 export const formatRoleValidity = (input: { validFrom?: string; validTo?: string }) => {
   if (input.validFrom && input.validTo) {

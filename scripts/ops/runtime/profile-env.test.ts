@@ -6,6 +6,13 @@ import { describe, expect, it } from 'vitest';
 
 import { assertRuntimeEnv, buildProfileEnv, parseVarsFile } from './profile-env.ts';
 
+const createRuntimeProfileTempDir = () => {
+  const tempDir = mkdtempSync(resolve(tmpdir(), 'runtime-profile-env-'));
+  const runtimeDir = resolve(tempDir, 'config/runtime');
+  mkdirSync(runtimeDir, { recursive: true });
+  return { runtimeDir, tempDir };
+};
+
 describe('parseVarsFile', () => {
   it('parses key-value pairs with quotes and ignores comments', () => {
     const tempDir = mkdtempSync(resolve(tmpdir(), 'runtime-profile-env-'));
@@ -80,10 +87,7 @@ describe('buildProfileEnv', () => {
   });
 
   it('enables mock auth flags for mock-auth profiles', () => {
-    const tempDir = mkdtempSync(resolve(tmpdir(), 'runtime-profile-env-'));
-    const runtimeDir = resolve(tempDir, 'config/runtime');
-
-    mkdirSync(runtimeDir, { recursive: true });
+    const { tempDir, runtimeDir } = createRuntimeProfileTempDir();
     writeFileSync(resolve(runtimeDir, 'base.vars'), '', 'utf8');
     writeFileSync(resolve(runtimeDir, 'local-builder.vars'), '', 'utf8');
 
@@ -94,6 +98,23 @@ describe('buildProfileEnv', () => {
         SVA_RUNTIME_PROFILE: 'local-builder',
         VITE_MOCK_AUTH: 'true',
       });
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true });
+    }
+  });
+
+  it('does not materialize derived alias keys with undefined values', () => {
+    const { tempDir, runtimeDir } = createRuntimeProfileTempDir();
+    writeFileSync(resolve(runtimeDir, 'base.vars'), '', 'utf8');
+    writeFileSync(resolve(runtimeDir, 'studio.vars'), 'SVA_PUBLIC_BASE_URL=https://studio.example.org\n', 'utf8');
+
+    try {
+      const env = buildProfileEnv('studio', { rootDir: tempDir });
+
+      expect(env).not.toHaveProperty('SVA_MAINSERVER_DEV_GRAPHQL_URL');
+      expect(env).not.toHaveProperty('SVA_MAINSERVER_DEV_OAUTH_TOKEN_URL');
+      expect(env).not.toHaveProperty('SVA_MAINSERVER_DEV_API_KEY');
+      expect(env).not.toHaveProperty('SVA_MAINSERVER_DEV_API_SECRET');
     } finally {
       rmSync(tempDir, { force: true, recursive: true });
     }

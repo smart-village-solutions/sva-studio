@@ -7,7 +7,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   readLocalStateFile,
   shouldCheckLocalInstanceRegistryDriftBeforeCommand,
-  shouldRunLocalProvisioningWorker,
 } from './local-runtime.ts';
 
 let tempDir: string | null = null;
@@ -57,12 +56,6 @@ describe('readLocalStateFile', () => {
 });
 
 describe('local runtime helpers', () => {
-  it('runs local provisioning workers only for real local auth profiles', () => {
-    expect(shouldRunLocalProvisioningWorker('local-keycloak')).toBe(true);
-    expect(shouldRunLocalProvisioningWorker('local-builder')).toBe(false);
-    expect(shouldRunLocalProvisioningWorker('studio')).toBe(false);
-  });
-
   it('checks registry drift only before up/update commands', () => {
     expect(shouldCheckLocalInstanceRegistryDriftBeforeCommand('up')).toBe(true);
     expect(shouldCheckLocalInstanceRegistryDriftBeforeCommand('update')).toBe(true);

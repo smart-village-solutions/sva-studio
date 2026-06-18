@@ -262,7 +262,7 @@ const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | un
   return undefined;
 };
 
-export const runKeycloakUserImportSync = async (input: {
+const runKeycloakUserImportSync = async (input: {
   instanceId: string;
   actorAccountId?: string;
   requestId?: string;

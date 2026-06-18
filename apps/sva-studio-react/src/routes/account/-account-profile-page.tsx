@@ -12,6 +12,7 @@ import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { t } from '../../i18n';
 import { createLoginHref, resolveCurrentReturnTo } from '../../lib/auth-navigation';
+import { pickInitials } from '../../lib/display-name';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { hasPlatformInstanceAdminAccess } from '../../lib/iam-admin-access';
 import { notifyIamUsersUpdated } from '../../lib/iam-user-events';
@@ -54,20 +55,6 @@ const toFormValues = (profile: IamUserDetail): ProfileFormValues => ({
 
 const deriveDisplayName = (firstName: string, lastName: string): string =>
   [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
-
-const pickInitials = (displayName: string) => {
-  const parts = displayName
-    .split(' ')
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .slice(0, 2);
-
-  if (parts.length === 0) {
-    return 'NA';
-  }
-
-  return parts.map((entry) => entry.charAt(0).toUpperCase()).join('');
-};
 
 const formatDateTime = (value?: string) => {
   if (!value) {

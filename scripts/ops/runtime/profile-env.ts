@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import {
@@ -8,6 +8,8 @@ import {
   type RuntimeProfile,
   validateRuntimeProfileEnv,
 } from '../../../packages/core/src/runtime-profile.ts';
+import { parseVarsFile } from './vars-file.ts';
+export { parseVarsFile } from './vars-file.ts';
 
 type BuildProfileEnvOptions = Readonly<{
   localOverrideFile?: string;
@@ -24,33 +26,83 @@ const REMOTE_ONLY_ENV_KEYS = [
   'IAM_PII_KEYRING_JSON',
 ] as const;
 
-export const parseVarsFile = (filePath: string): Record<string, string> => {
-  const parsed: Record<string, string> = {};
-  const content = readFileSync(filePath, 'utf8');
+const readOptionalVarsFile = (filePath: string): Record<string, string> =>
+  existsSync(filePath) ? parseVarsFile(filePath) : {};
 
-  for (const rawLine of content.split(/\r?\n/u)) {
-    const line = rawLine.trim();
-    if (line.length === 0 || line.startsWith('#')) {
+const hasExplicitEnvValue = (
+  key: string,
+  profileEnv: Record<string, string>,
+  localOverrideEnv: Record<string, string>,
+  processEnv: NodeJS.ProcessEnv,
+) => key in profileEnv || key in localOverrideEnv || key in processEnv;
+
+const deleteRemoteOnlyBaseKeys = (
+  env: NodeJS.ProcessEnv,
+  profileEnv: Record<string, string>,
+  localOverrideEnv: Record<string, string>,
+  processEnv: NodeJS.ProcessEnv,
+) => {
+  for (const key of REMOTE_ONLY_ENV_KEYS) {
+    if (hasExplicitEnvValue(key, profileEnv, localOverrideEnv, processEnv)) {
       continue;
     }
 
-    const separatorIndex = line.indexOf('=');
-    if (separatorIndex < 1) {
-      continue;
-    }
+    delete env[key];
+  }
+};
 
-    const key = line.slice(0, separatorIndex).trim();
-    const rawValue = line.slice(separatorIndex + 1).trim();
-    const value =
-      (rawValue.startsWith('"') && rawValue.endsWith('"')) || (rawValue.startsWith("'") && rawValue.endsWith("'"))
-        ? rawValue.slice(1, -1)
-        : rawValue;
-
-    parsed[key] = value;
+const setDerivedAlias = (env: NodeJS.ProcessEnv, targetKey: string, sourceKey: string) => {
+  const sourceValue = env[sourceKey];
+  if (typeof sourceValue === 'string') {
+    env[targetKey] = sourceValue;
+    return;
   }
 
-  return parsed;
+  delete env[targetKey];
 };
+
+const setMockAuthFlags = (env: NodeJS.ProcessEnv) => {
+  env.SVA_MOCK_AUTH = 'true';
+  env.VITE_MOCK_AUTH = 'true';
+  env.BUILDER_DEV_AUTH = 'true';
+};
+
+const buildRuntimeAliases = (env: NodeJS.ProcessEnv) => {
+  setDerivedAlias(env, 'SVA_MAINSERVER_DEV_GRAPHQL_URL', 'SVA_MAINSERVER_GRAPHQL_URL');
+  setDerivedAlias(env, 'SVA_MAINSERVER_DEV_OAUTH_TOKEN_URL', 'SVA_MAINSERVER_OAUTH_TOKEN_URL');
+  setDerivedAlias(env, 'SVA_MAINSERVER_DEV_API_KEY', 'SVA_MAINSERVER_CLIENT_ID');
+  setDerivedAlias(env, 'SVA_MAINSERVER_DEV_API_SECRET', 'SVA_MAINSERVER_CLIENT_SECRET');
+};
+
+const buildValidationLine = (label: string, values: readonly string[]) =>
+  values.length > 0 ? `${label}: ${values.join(', ')}` : null;
+
+const resolveLocalOverridePath = (rootDir: string, runtimeProfile: RuntimeProfile, localOverrideFile?: string) =>
+  localOverrideFile
+    ? resolve(rootDir, localOverrideFile)
+    : resolve(rootDir, `config/runtime/${runtimeProfile}.local.vars`);
+
+const readUserQuantumEnv = (processEnv: NodeJS.ProcessEnv) => {
+  if (!processEnv.HOME) {
+    return {};
+  }
+
+  return readOptionalVarsFile(resolve(processEnv.HOME, '.config/quantum/env'));
+};
+
+const mergeEnvLayers = (
+  baseEnv: Record<string, string>,
+  profileEnv: Record<string, string>,
+  localOverrideEnv: Record<string, string>,
+  userQuantumEnv: Record<string, string>,
+  processEnv: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv => ({
+  ...baseEnv,
+  ...profileEnv,
+  ...localOverrideEnv,
+  ...userQuantumEnv,
+  ...processEnv,
+});
 
 export const buildProfileEnv = (
   runtimeProfile: RuntimeProfile,
@@ -59,43 +111,29 @@ export const buildProfileEnv = (
   const processEnv = options.processEnv ?? process.env;
   const baseEnvPath = resolve(options.rootDir, 'config/runtime/base.vars');
   const profileEnvPath = resolve(options.rootDir, `config/runtime/${runtimeProfile}.vars`);
-  const localOverridePath = options.localOverrideFile
-    ? resolve(options.rootDir, options.localOverrideFile)
-    : resolve(options.rootDir, `config/runtime/${runtimeProfile}.local.vars`);
+  const localOverridePath = resolveLocalOverridePath(
+    options.rootDir,
+    runtimeProfile,
+    options.localOverrideFile,
+  );
   const baseEnv = parseVarsFile(baseEnvPath);
   const profileEnv = parseVarsFile(profileEnvPath);
-  const localOverrideEnv = existsSync(localOverridePath) ? parseVarsFile(localOverridePath) : {};
-  const userQuantumEnvPath = processEnv.HOME ? resolve(processEnv.HOME, '.config/quantum/env') : '';
-  const userQuantumEnv = userQuantumEnvPath && existsSync(userQuantumEnvPath) ? parseVarsFile(userQuantumEnvPath) : {};
-  const env = {
-    ...baseEnv,
-    ...profileEnv,
-    ...localOverrideEnv,
-    ...userQuantumEnv,
-    ...processEnv,
-  };
+  const localOverrideEnv = readOptionalVarsFile(localOverridePath);
+  const userQuantumEnv = readUserQuantumEnv(processEnv);
+  const env = mergeEnvLayers(baseEnv, profileEnv, localOverrideEnv, userQuantumEnv, processEnv);
 
   if (!getRuntimeProfileDefinition(runtimeProfile).isLocal) {
-    for (const key of REMOTE_ONLY_ENV_KEYS) {
-      if (!(key in profileEnv) && !(key in localOverrideEnv) && !(key in processEnv)) {
-        delete env[key];
-      }
-    }
+    deleteRemoteOnlyBaseKeys(env, profileEnv, localOverrideEnv, processEnv);
   }
 
   env.SVA_RUNTIME_PROFILE = runtimeProfile;
   env.VITE_SVA_RUNTIME_PROFILE = runtimeProfile;
 
   if (isMockAuthRuntimeProfile(runtimeProfile)) {
-    env.SVA_MOCK_AUTH = 'true';
-    env.VITE_MOCK_AUTH = 'true';
-    env.BUILDER_DEV_AUTH = 'true';
+    setMockAuthFlags(env);
   }
 
-  env.SVA_MAINSERVER_DEV_GRAPHQL_URL = env.SVA_MAINSERVER_GRAPHQL_URL;
-  env.SVA_MAINSERVER_DEV_OAUTH_TOKEN_URL = env.SVA_MAINSERVER_OAUTH_TOKEN_URL;
-  env.SVA_MAINSERVER_DEV_API_KEY = env.SVA_MAINSERVER_CLIENT_ID;
-  env.SVA_MAINSERVER_DEV_API_SECRET = env.SVA_MAINSERVER_CLIENT_SECRET;
+  buildRuntimeAliases(env);
 
   return env;
 };
@@ -108,9 +146,9 @@ export const assertRuntimeEnv = (runtimeProfile: RuntimeProfile, env: NodeJS.Pro
 
   const lines = [
     `Runtime-Profil ${runtimeProfile} ist nicht vollstaendig konfiguriert.`,
-    validation.invalid.length > 0 ? `Ungueltig: ${validation.invalid.join(', ')}` : null,
-    validation.missing.length > 0 ? `Fehlend: ${validation.missing.join(', ')}` : null,
-    validation.placeholders.length > 0 ? `Platzhalter: ${validation.placeholders.join(', ')}` : null,
+    buildValidationLine('Ungueltig', validation.invalid),
+    buildValidationLine('Fehlend', validation.missing),
+    buildValidationLine('Platzhalter', validation.placeholders),
     `Erwartete Variablen: ${getRuntimeProfileRequiredEnvKeys(runtimeProfile).join(', ')}`,
     `Optionaler Override: config/runtime/${runtimeProfile}.local.vars`,
   ].filter((entry): entry is string => entry !== null);

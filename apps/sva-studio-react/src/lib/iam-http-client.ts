@@ -6,6 +6,7 @@ import {
   type IamRuntimeSafeDetails,
 } from '@sva/core';
 import { createBrowserLogger } from '@sva/monitoring-client/logging';
+import { isDevelopmentBrowserEnv } from './browser-env';
 import {
   readErrorCodeFromPayload,
   readErrorMessageFromPayload,
@@ -60,27 +61,13 @@ export class IamHttpError extends Error {
   }
 }
 
-const isDevelopmentEnvironment = () => {
-  if (typeof process !== 'undefined' && typeof process.env?.NODE_ENV === 'string') {
-    return process.env.NODE_ENV !== 'production';
-  }
-  const meta = import.meta as ImportMeta & { env?: { DEV?: boolean; PROD?: boolean } };
-  if (typeof meta.env?.DEV === 'boolean') {
-    return meta.env.DEV;
-  }
-  if (typeof meta.env?.PROD === 'boolean') {
-    return !meta.env.PROD;
-  }
-  return true;
-};
-
 const logDevelopmentApiError = (input: {
   requestId?: string;
   status: number;
   code: string;
   details?: IamRuntimeSafeDetails;
 }) => {
-  if (!isDevelopmentEnvironment()) {
+  if (!isDevelopmentBrowserEnv()) {
     return;
   }
 
@@ -259,6 +246,29 @@ const createNonJsonResponseError = (input: {
   });
 };
 
+const readNonJsonRequestError = (response: Response, contentType: string): IamHttpError => {
+  const requestId = response.headers.get('X-Request-Id') ?? undefined;
+  logDevelopmentApiError({
+    requestId,
+    status: response.status,
+    code: 'non_json_response',
+  });
+  return createNonJsonResponseError({
+    response,
+    contentType,
+    requestId,
+    mode: 'error_json',
+  });
+};
+
+const throwJsonRequestError = async (response: Response, contentType: string): Promise<never> => {
+  if (!contentType.includes('application/json')) {
+    throw readNonJsonRequestError(response, contentType);
+  }
+
+  throw await readIamErrorResponse(response);
+};
+
 export const requestJson = async <T>(
   input: string,
   init?: RequestInit,
@@ -276,21 +286,7 @@ export const requestJson = async <T>(
 
   const contentType = response.headers.get('content-type') ?? '';
   if (!response.ok) {
-    if (!contentType.includes('application/json')) {
-      const requestId = response.headers.get('X-Request-Id') ?? undefined;
-      logDevelopmentApiError({
-        requestId,
-        status: response.status,
-        code: 'non_json_response',
-      });
-      throw createNonJsonResponseError({
-        response,
-        contentType,
-        requestId,
-        mode: 'error_json',
-      });
-    }
-    throw await readIamErrorResponse(response);
+    await throwJsonRequestError(response, contentType);
   }
 
   if (!contentType.includes('application/json')) {
@@ -324,21 +320,7 @@ export const requestJsonOrText = async <T>(
 
   const contentType = response.headers.get('content-type') ?? '';
   if (!response.ok) {
-    if (!contentType.includes('application/json')) {
-      const requestId = response.headers.get('X-Request-Id') ?? undefined;
-      logDevelopmentApiError({
-        requestId,
-        status: response.status,
-        code: 'non_json_response',
-      });
-      throw createNonJsonResponseError({
-        response,
-        contentType,
-        requestId,
-        mode: 'error_json',
-      });
-    }
-    throw await readIamErrorResponse(response);
+    await throwJsonRequestError(response, contentType);
   }
 
   if (contentType.includes('application/json')) {

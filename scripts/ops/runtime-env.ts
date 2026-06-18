@@ -3890,32 +3890,51 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
     : null;
   const runWithCommandAudit = async <T>(operation: () => Promise<T> | T): Promise<T> =>
     rebuildAuditLogger ? rebuildAuditLogger.run('command', operation) : await operation();
+  const runLocalInfraRebuild = async (phase: 'infra-up' | 'infra-pull') => {
+    if (phase === 'infra-pull') {
+      await rebuildAuditLogger?.run('infra-pull', () => pullLocalInfra({ composeArgs: getComposeArgs(env), env, run }));
+      return;
+    }
+
+    await rebuildAuditLogger?.run('infra-up', () => upLocalInfra({ composeArgs: getComposeArgs(env), env, run }));
+  };
+  const runLocalPostInfraBootstrap = async () => {
+    await rebuildAuditLogger?.run('db-migrate', () => migrateLocalDatabase(run, env));
+    await rebuildAuditLogger?.run('bootstrap-app-user', () => bootstrapLocalAppUser(run, env));
+    if (runtimeCommand === 'up' || runtimeCommand === 'update') {
+      await rebuildAuditLogger?.run('instance-registry-drift-check', () =>
+        checkLocalInstanceRegistryDrift(runtimeProfile, env),
+      );
+    }
+  };
+  const startLocalRuntimeProcesses = async () => {
+    await rebuildAuditLogger?.run('app-start', () =>
+      startLocalApp({ appLogDir, env, healthUrl: buildLocalHealthUrl(env), localStateFile, rootDir, runtimeProfile }),
+    );
+    if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
+      await rebuildAuditLogger?.run('worker-start', () =>
+        startLocalProvisioningWorker({ appLogDir, env, localWorkerStateFile, rootDir, runtimeProfile }),
+      );
+    }
+  };
+  const stopLocalRuntimeProcesses = async () => {
+    await rebuildAuditLogger?.run('worker-stop', () => stopLocalProvisioningWorker({ localWorkerStateFile, rootDir }));
+    await rebuildAuditLogger?.run('app-stop', () => stopLocalApp({ localStateFile, rootDir }));
+  };
 
   switch (runtimeCommand) {
     case 'up':
       await runWithCommandAudit(async () => {
         assertRuntimeEnv(runtimeProfile, env);
-        await rebuildAuditLogger?.run('infra-up', () => upLocalInfra({ composeArgs: getComposeArgs(env), env, run }));
-        await rebuildAuditLogger?.run('db-migrate', () => migrateLocalDatabase(run, env));
-        await rebuildAuditLogger?.run('bootstrap-app-user', () => bootstrapLocalAppUser(run, env));
-        if (shouldCheckLocalInstanceRegistryDriftBeforeCommand(runtimeCommand)) {
-          await rebuildAuditLogger?.run('instance-registry-drift-check', () => checkLocalInstanceRegistryDrift(runtimeProfile, env));
-        }
-        await rebuildAuditLogger?.run('app-start', () =>
-          startLocalApp({ appLogDir, env, healthUrl: buildLocalHealthUrl(env), localStateFile, rootDir, runtimeProfile }),
-        );
-        if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
-          await rebuildAuditLogger?.run('worker-start', () =>
-            startLocalProvisioningWorker({ appLogDir, env, localWorkerStateFile, rootDir, runtimeProfile }),
-          );
-        }
+        await runLocalInfraRebuild('infra-up');
+        await runLocalPostInfraBootstrap();
+        await startLocalRuntimeProcesses();
         console.log(`Profil ${runtimeProfile} gestartet.`);
       });
       return;
     case 'down':
       await runWithCommandAudit(async () => {
-        await rebuildAuditLogger?.run('worker-stop', () => stopLocalProvisioningWorker({ localWorkerStateFile, rootDir }));
-        await rebuildAuditLogger?.run('app-stop', () => stopLocalApp({ localStateFile, rootDir }));
+        await stopLocalRuntimeProcesses();
         await rebuildAuditLogger?.run('infra-down', () => downLocalInfra({ composeArgs: composeWithMonitoringArgs, env, run }));
         console.log(`Profil ${runtimeProfile} gestoppt.`);
       });
@@ -3923,23 +3942,11 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
     case 'update':
       await runWithCommandAudit(async () => {
         assertRuntimeEnv(runtimeProfile, env);
-        await rebuildAuditLogger?.run('infra-pull', () => pullLocalInfra({ composeArgs: getComposeArgs(env), env, run }));
-        await rebuildAuditLogger?.run('infra-up', () => upLocalInfra({ composeArgs: getComposeArgs(env), env, run }));
-        await rebuildAuditLogger?.run('db-migrate', () => migrateLocalDatabase(run, env));
-        await rebuildAuditLogger?.run('bootstrap-app-user', () => bootstrapLocalAppUser(run, env));
-        if (shouldCheckLocalInstanceRegistryDriftBeforeCommand(runtimeCommand)) {
-          await rebuildAuditLogger?.run('instance-registry-drift-check', () => checkLocalInstanceRegistryDrift(runtimeProfile, env));
-        }
-        await rebuildAuditLogger?.run('worker-stop', () => stopLocalProvisioningWorker({ localWorkerStateFile, rootDir }));
-        await rebuildAuditLogger?.run('app-stop', () => stopLocalApp({ localStateFile, rootDir }));
-        await rebuildAuditLogger?.run('app-start', () =>
-          startLocalApp({ appLogDir, env, healthUrl: buildLocalHealthUrl(env), localStateFile, rootDir, runtimeProfile }),
-        );
-        if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
-          await rebuildAuditLogger?.run('worker-start', () =>
-            startLocalProvisioningWorker({ appLogDir, env, localWorkerStateFile, rootDir, runtimeProfile }),
-          );
-        }
+        await runLocalInfraRebuild('infra-pull');
+        await runLocalInfraRebuild('infra-up');
+        await runLocalPostInfraBootstrap();
+        await stopLocalRuntimeProcesses();
+        await startLocalRuntimeProcesses();
         console.log(`Profil ${runtimeProfile} aktualisiert.`);
       });
       return;

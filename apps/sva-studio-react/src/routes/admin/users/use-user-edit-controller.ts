@@ -4,7 +4,6 @@ import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUser } from '../../../hooks/use-user';
 import { getUserTimeline } from '../../../lib/iam-api';
-import { isTenantRoleVisible } from '../../../lib/iam-role-governance';
 import {
   USER_EDIT_TABS,
   buildGroupMembershipById,
@@ -15,6 +14,7 @@ import {
   type UserEditTabKey,
   type UserFormValues,
 } from './user-edit-model';
+import { selectAssignableGroups, selectAssignableRoles } from './user-assignment-options';
 
 type UserEditControllerOptions = {
   readonly userId: string;
@@ -249,14 +249,8 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
   const rolesApi = useRoles();
   const groupsApi = useGroups();
 
-  const selectableRoles = React.useMemo(
-    () => rolesApi.roles.filter((role) => isTenantRoleVisible(role)),
-    [rolesApi.roles]
-  );
-  const selectableGroups = React.useMemo(
-    () => groupsApi.groups.filter((group) => group.isActive !== false),
-    [groupsApi.groups]
-  );
+  const selectableRoles = React.useMemo(() => selectAssignableRoles(rolesApi.roles), [rolesApi.roles]);
+  const selectableGroups = React.useMemo(() => selectAssignableGroups(groupsApi.groups), [groupsApi.groups]);
 
   const { formValues, hasUnsavedChanges, setFormValues } = useUserEditFormState(userApi.user);
   const {

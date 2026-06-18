@@ -28,6 +28,15 @@ export type RebuildAuditEvent = Readonly<{
 
 type AuditDetails = Readonly<Record<string, AuditValue>>;
 export type LocalRuntimeAuditCommand = 'down' | 'migrate' | 'reconcile' | 'repair' | 'up' | 'update';
+const LOCAL_RUNTIME_AUDIT_COMMANDS = ['down', 'migrate', 'reconcile', 'repair', 'up', 'update'] as const;
+const LOCAL_RUNTIME_AUDIT_REASONS: Readonly<Record<LocalRuntimeAuditCommand, string>> = {
+  down: 'Lokaler Stopp beendet Dev-Server, Worker und Compose-Stack.',
+  migrate: 'Lokale Migration mutiert das Datenbankschema und bootstrappt den App-User neu.',
+  reconcile: 'Explizite lokale Registry-Reconcile passt die Instanz-Identitaet an das Sollbild an.',
+  repair: 'Lokaler Repair heilt Migration, Registry-Drift und Tenant-Secrets ohne kompletten Rebootstrap.',
+  up: 'Lokaler Start initialisiert Infra, Migrationen und Dev-Server.',
+  update: 'Lokale Aktualisierung zieht Compose-Images neu und startet App sowie Worker kontrolliert neu.',
+};
 
 type RebuildAuditLoggerConfig = Readonly<{
   command: string;
@@ -216,29 +225,10 @@ export const buildLocalRuntimeAuditDetails = (input: {
 });
 
 export const shouldAuditLocalRuntimeCommand = (runtimeCommand: string): runtimeCommand is LocalRuntimeAuditCommand =>
-  runtimeCommand === 'down'
-  || runtimeCommand === 'migrate'
-  || runtimeCommand === 'reconcile'
-  || runtimeCommand === 'repair'
-  || runtimeCommand === 'up'
-  || runtimeCommand === 'update';
+  LOCAL_RUNTIME_AUDIT_COMMANDS.includes(runtimeCommand as LocalRuntimeAuditCommand);
 
-export const resolveLocalRuntimeAuditReason = (runtimeCommand: LocalRuntimeAuditCommand): string => {
-  switch (runtimeCommand) {
-    case 'up':
-      return 'Lokaler Start initialisiert Infra, Migrationen und Dev-Server.';
-    case 'down':
-      return 'Lokaler Stopp beendet Dev-Server, Worker und Compose-Stack.';
-    case 'update':
-      return 'Lokale Aktualisierung zieht Compose-Images neu und startet App sowie Worker kontrolliert neu.';
-    case 'migrate':
-      return 'Lokale Migration mutiert das Datenbankschema und bootstrappt den App-User neu.';
-    case 'repair':
-      return 'Lokaler Repair heilt Migration, Registry-Drift und Tenant-Secrets ohne kompletten Rebootstrap.';
-    case 'reconcile':
-      return 'Explizite lokale Registry-Reconcile passt die Instanz-Identitaet an das Sollbild an.';
-  }
-};
+export const resolveLocalRuntimeAuditReason = (runtimeCommand: LocalRuntimeAuditCommand): string =>
+  LOCAL_RUNTIME_AUDIT_REASONS[runtimeCommand];
 
 export const createLocalRuntimeAuditLogger = (input: {
   authoritative: boolean;

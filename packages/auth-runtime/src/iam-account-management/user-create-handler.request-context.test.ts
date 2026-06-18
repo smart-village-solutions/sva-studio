@@ -55,7 +55,7 @@ describe('user-create-handler request context', () => {
     state.asApiItem.mockImplementation((data, requestId) => ({ data, requestId }));
     state.completeIdempotency.mockResolvedValue(undefined);
     state.createApiError.mockImplementation((status, code, message, requestId) =>
-      new Response(JSON.stringify({ error: { code, message }, ...(requestId ? { requestId } : {}) }), {
+      new Response(JSON.stringify({ code, message, requestId }), {
         status,
         headers: { 'content-type': 'application/json' },
       })

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createApiErrorResponse } from './test-api-response.js';
 
 const state = vi.hoisted(() => ({
   resolveMutationActorWithAccount: vi.fn(),
@@ -42,12 +43,7 @@ vi.mock('../log-context.js', () => ({
 
 vi.mock('./api-helpers.js', () => ({
   asApiItem: vi.fn((data: unknown, requestId?: string) => ({ data, ...(requestId ? { requestId } : {}) })),
-  createApiError: vi.fn((status: number, code: string, message: string, requestId?: string, details?: unknown) =>
-    new Response(JSON.stringify({ error: { code, message, ...(details ? { details } : {}) }, requestId }), {
-      status,
-      headers: { 'content-type': 'application/json' },
-    })
-  ),
+  createApiError: vi.fn(createApiErrorResponse),
 }));
 
 vi.mock('./csrf.js', () => ({

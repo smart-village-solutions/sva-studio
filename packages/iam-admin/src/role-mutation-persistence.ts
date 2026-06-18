@@ -129,6 +129,11 @@ type RoleActivityLogInput = {
   readonly traceId?: string;
 };
 
+type DeletedRoleAssignmentCounts = Readonly<{
+  removedAccountRoleAssignments: number;
+  removedGroupRoleAssignments: number;
+}>;
+
 export type RoleMutationPersistenceDeps = {
   readonly createApiError: (
     status: number,
@@ -162,6 +167,103 @@ export type RoleMutationPersistenceDeps = {
 };
 
 export const createRoleMutationPersistence = (deps: RoleMutationPersistenceDeps) => {
+  const emitDeleteSuccessEvents = async (
+    client: QueryClient,
+    input: {
+      readonly actor: RoleMutationPersistenceActor;
+      readonly roleId: string;
+      readonly roleKey: string;
+      readonly externalRoleName: string;
+      readonly deletedAssignments: DeletedRoleAssignmentCounts;
+    }
+  ) => {
+    await deps.emitActivityLog(client, {
+      instanceId: input.actor.instanceId,
+      accountId: input.actor.actorAccountId,
+      eventType: 'role.deleted',
+      result: 'success',
+      payload: {
+        role_id: input.roleId,
+        role_key: input.roleKey,
+        removed_account_role_assignments: input.deletedAssignments.removedAccountRoleAssignments,
+        removed_group_role_assignments: input.deletedAssignments.removedGroupRoleAssignments,
+      },
+      requestId: input.actor.requestId,
+      traceId: input.actor.traceId,
+    });
+    await deps.emitRoleAuditEvent(client, {
+      instanceId: input.actor.instanceId,
+      accountId: input.actor.actorAccountId,
+      roleId: input.roleId,
+      eventType: 'role.sync_succeeded',
+      operation: 'delete',
+      result: 'success',
+      roleKey: input.roleKey,
+      externalRoleName: input.externalRoleName,
+      requestId: input.actor.requestId,
+      traceId: input.actor.traceId,
+    });
+  };
+
+  const deleteRoleAssignments = async (
+    client: QueryClient,
+    input: {
+      readonly instanceId: string;
+      readonly roleId: string;
+    }
+  ): Promise<DeletedRoleAssignmentCounts> => {
+    const deletedAccountRoles = await client.query(
+      'DELETE FROM iam.account_roles WHERE instance_id = $1 AND role_id = $2::uuid;',
+      [input.instanceId, input.roleId]
+    );
+    const deletedGroupRoles = await client.query(
+      'DELETE FROM iam.group_roles WHERE instance_id = $1 AND role_id = $2::uuid;',
+      [input.instanceId, input.roleId]
+    );
+
+    return {
+      removedAccountRoleAssignments: deletedAccountRoles.rowCount,
+      removedGroupRoleAssignments: deletedGroupRoles.rowCount,
+    };
+  };
+
+  const listDirectRoleAssignmentSubjects = async (
+    client: QueryClient,
+    input: {
+      readonly instanceId: string;
+      readonly roleId: string;
+    }
+  ): Promise<readonly string[]> => {
+    const result = await client.query<{ keycloak_subject: string }>(
+      `
+SELECT DISTINCT a.keycloak_subject
+FROM iam.account_roles ar
+JOIN iam.accounts a
+  ON a.instance_id = ar.instance_id
+ AND a.id = ar.account_id
+WHERE ar.instance_id = $1
+  AND ar.role_id = $2::uuid
+ORDER BY a.keycloak_subject ASC
+`,
+      [input.instanceId, input.roleId]
+    );
+    return result.rows.map((row) => row.keycloak_subject);
+  };
+
+  const deleteRoleRecords = async (
+    client: QueryClient,
+    input: {
+      readonly instanceId: string;
+      readonly roleId: string;
+    }
+  ) => {
+    await client.query('DELETE FROM iam.role_permissions WHERE instance_id = $1 AND role_id = $2::uuid;', [
+      input.instanceId,
+      input.roleId,
+    ]);
+    await client.query('DELETE FROM iam.roles WHERE instance_id = $1 AND id = $2::uuid;', [input.instanceId, input.roleId]);
+  };
+
   const validateRequestedPermissions = async (input: {
     readonly actor: RoleMutationPersistenceActor;
     readonly permissionIds?: readonly string[];
@@ -521,22 +623,6 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
       );
     }
 
-    const dependency = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
-      const result = await client.query<{ readonly used: number }>(
-        `
-SELECT COUNT(*)::int AS used
-FROM iam.account_roles
-WHERE instance_id = $1
-  AND role_id = $2::uuid;
-`,
-        [actor.instanceId, roleId]
-      );
-      return result.rows[0]?.used ?? 0;
-    });
-    if (dependency > 0) {
-      return deps.createApiError(409, 'conflict', 'Rolle wird noch von Nutzern verwendet.', actor.requestId);
-    }
-
     return existing;
   };
 
@@ -582,38 +668,20 @@ WHERE instance_id = $1
     readonly externalRoleName: string;
   }) => {
     await deps.withInstanceScopedDb(input.actor.instanceId, async (client) => {
-      await client.query('DELETE FROM iam.role_permissions WHERE instance_id = $1 AND role_id = $2::uuid;', [
-        input.actor.instanceId,
-        input.roleId,
-      ]);
-      await client.query('DELETE FROM iam.roles WHERE instance_id = $1 AND id = $2::uuid;', [
-        input.actor.instanceId,
-        input.roleId,
-      ]);
-
-      await deps.emitActivityLog(client, {
+      const deletedAssignments = await deleteRoleAssignments(client, {
         instanceId: input.actor.instanceId,
-        accountId: input.actor.actorAccountId,
-        eventType: 'role.deleted',
-        result: 'success',
-        payload: {
-          role_id: input.roleId,
-          role_key: input.roleKey,
-        },
-        requestId: input.actor.requestId,
-        traceId: input.actor.traceId,
-      });
-      await deps.emitRoleAuditEvent(client, {
-        instanceId: input.actor.instanceId,
-        accountId: input.actor.actorAccountId,
         roleId: input.roleId,
-        eventType: 'role.sync_succeeded',
-        operation: 'delete',
-        result: 'success',
+      });
+      await deleteRoleRecords(client, {
+        instanceId: input.actor.instanceId,
+        roleId: input.roleId,
+      });
+      await emitDeleteSuccessEvents(client, {
+        actor: input.actor,
+        roleId: input.roleId,
         roleKey: input.roleKey,
         externalRoleName: input.externalRoleName,
-        requestId: input.actor.requestId,
-        traceId: input.actor.traceId,
+        deletedAssignments,
       });
       await deps.notifyPermissionInvalidation(client, {
         instanceId: input.actor.instanceId,
@@ -624,6 +692,8 @@ WHERE instance_id = $1
 
   return {
     deleteRoleFromDatabase,
+    listDirectRoleAssignmentSubjects: async (input: { readonly instanceId: string; readonly roleId: string }) =>
+      deps.withInstanceScopedDb(input.instanceId, (client) => listDirectRoleAssignmentSubjects(client, input)),
     markDeleteRoleSyncState,
     markRoleSyncState,
     persistCreatedRole,

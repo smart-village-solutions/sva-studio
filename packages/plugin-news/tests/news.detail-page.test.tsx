@@ -1,4 +1,7 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import React from 'react';
+import { fileURLToPath } from 'node:url';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -11,6 +14,10 @@ import { listNewsCategories } from '../src/news.api.js';
 import { NewsDetailPage } from '../src/news.detail-page.js';
 
 const navigateMock = vi.fn();
+const newsDetailSettingsSourcePath = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../src/news.detail-settings-tab.tsx'
+);
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
@@ -224,5 +231,13 @@ describe('NewsDetailPage', () => {
     await waitFor(() => {
       expect(screen.queryByLabelText('Zeitpunkt der Veröffentlichung')).toBeNull();
     });
+  });
+
+  it('renders publication mode radio labels through explicit htmlFor bindings', () => {
+    const source = fs.readFileSync(newsDetailSettingsSourcePath, 'utf8');
+
+    expect(source).toContain('htmlFor={`publication-mode-${option}`}');
+    expect(source).toContain('<span className="space-y-1">');
+    expect(source).not.toContain('<div key={option} className="flex gap-3 rounded-xl border border-border/60 p-4 text-sm">');
   });
 });

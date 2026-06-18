@@ -33,15 +33,19 @@ const roleListRow = {
   permission_rows: [{ id: 'permission-1', permission_key: 'content.updatePayload', description: 'Update content' }],
 };
 
-const createClient = (queuedRows: readonly (readonly Record<string, unknown>[])[] = []) => {
-  const queue = [...queuedRows];
+type QueuedQueryResult = readonly Record<string, unknown>[] | { readonly rows: readonly Record<string, unknown>[]; readonly rowCount?: number };
+
+const createClient = (queuedResults: readonly QueuedQueryResult[] = []) => {
+  const queue = [...queuedResults];
   const queries: { text: string; values: readonly unknown[] }[] = [];
   const client: QueryClient = {
     async query<Row = unknown>(text: string, values: readonly unknown[] = []) {
       queries.push({ text, values });
-      const rows = queue.shift() ?? [];
+      const next = queue.shift() ?? [];
+      const rows = Array.isArray(next) ? next : next.rows;
+      const rowCount = Array.isArray(next) ? next.length : (next.rowCount ?? next.rows.length);
       return {
-        rowCount: rows.length,
+        rowCount,
         rows: rows as Row[],
       };
     },
@@ -272,11 +276,6 @@ describe('role mutation persistence', () => {
   });
 
   it('protects delete resolution and deletes editable roles', async () => {
-    const dependency = createDeps(createClient([[mutableRole], [{ used: 2 }]]).client);
-    await expect(
-      createRoleMutationPersistence(dependency).resolveDeletableRole(actor, roleId)
-    ).resolves.toMatchObject({ status: 409 });
-
     const deletableLegacyBootstrapRole = {
       ...mutableRole,
       role_key: 'editor',
@@ -284,12 +283,18 @@ describe('role mutation persistence', () => {
       external_role_name: 'editor',
       is_system_role: true,
     };
-    const legacyDeletable = createDeps(createClient([[deletableLegacyBootstrapRole], [{ used: 0 }]]).client);
+    const legacyDeletable = createDeps(createClient([[deletableLegacyBootstrapRole]]).client);
     await expect(
       createRoleMutationPersistence(legacyDeletable).resolveDeletableRole(actor, roleId)
     ).resolves.toEqual(deletableLegacyBootstrapRole);
 
-    const { client, queries } = createClient([[mutableRole], [{ used: 0 }], [], []]);
+    const { client, queries } = createClient([
+      [mutableRole],
+      { rows: [], rowCount: 2 },
+      { rows: [], rowCount: 3 },
+      [],
+      [],
+    ]);
     const deps = createDeps(client);
     await expect(createRoleMutationPersistence(deps).resolveDeletableRole(actor, roleId)).resolves.toEqual(mutableRole);
 
@@ -300,9 +305,20 @@ describe('role mutation persistence', () => {
       externalRoleName: 'Editor',
     });
 
+    expect(queries.at(-4)?.text).toContain('DELETE FROM iam.account_roles');
+    expect(queries.at(-3)?.text).toContain('DELETE FROM iam.group_roles');
     expect(queries.at(-2)?.text).toContain('DELETE FROM iam.role_permissions');
     expect(queries.at(-1)?.text).toContain('DELETE FROM iam.roles');
-    expect(deps.emitActivityLog).toHaveBeenCalledWith(client, expect.objectContaining({ eventType: 'role.deleted' }));
+    expect(deps.emitActivityLog).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        eventType: 'role.deleted',
+        payload: expect.objectContaining({
+          removed_account_role_assignments: 2,
+          removed_group_role_assignments: 3,
+        }),
+      })
+    );
     expect(deps.notifyPermissionInvalidation).toHaveBeenCalledWith(
       client,
       expect.objectContaining({ trigger: 'role_deleted' })

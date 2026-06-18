@@ -104,5 +104,6 @@ describe('keycloak account action support', () => {
     const source = fs.readFileSync(new URL('./keycloak-account-action-support.ts', import.meta.url), 'utf8');
 
     expect(source).not.toContain('replace(/\\/+$/u, \'\')');
+    expect(source).not.toContain('.charCodeAt(');
   });
 });

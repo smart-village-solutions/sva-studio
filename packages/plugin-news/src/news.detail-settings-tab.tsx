@@ -110,8 +110,13 @@ function NewsPublicationModeFieldset({
           <legend className="text-sm font-medium text-foreground">{pt('fields.publicationMode')}</legend>
 
           {(['draft', 'immediate', 'scheduled'] as const).map((option) => (
-            <label key={option} className="flex gap-3 rounded-xl border border-border/60 p-4 text-sm">
+            <label
+              key={option}
+              htmlFor={`publication-mode-${option}`}
+              className="flex gap-3 rounded-xl border border-border/60 p-4 text-sm"
+            >
               <input
+                id={`publication-mode-${option}`}
                 type="radio"
                 name={field.name}
                 value={option}

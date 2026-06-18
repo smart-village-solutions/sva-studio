@@ -31,6 +31,7 @@ const existingRole = {
 
 const identityProvider = {
   provider: {
+    assignRealmRoles: vi.fn(async () => undefined),
     createRole: vi.fn(async () => undefined),
     deleteRole: vi.fn(async () => undefined),
   },
@@ -59,6 +60,7 @@ const createDeps = (
     },
     isIdentityRoleNotFoundError: vi.fn(() => false),
     jsonResponse: vi.fn(createJsonResponse),
+    listDirectRoleAssignmentSubjects: vi.fn(async () => []),
     logger: {
       error: vi.fn(),
     },
@@ -76,6 +78,7 @@ const createDeps = (
 describe('createDeleteRoleHandlerInternal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    identityProvider.provider.assignRealmRoles.mockClear();
     identityProvider.provider.createRole.mockClear();
     identityProvider.provider.deleteRole.mockClear();
   });
@@ -172,5 +175,23 @@ describe('createDeleteRoleHandlerInternal', () => {
         displayName: 'Editor',
       },
     });
+  });
+
+  it('replays direct user role mappings when compensation recreates a deleted role', async () => {
+    const deps = createDeps({
+      deleteRoleFromDatabase: vi.fn(async () => {
+        throw new Error('db write failed');
+      }),
+      listDirectRoleAssignmentSubjects: vi.fn(async () => ['kc-user-1', 'kc-user-2']),
+    });
+    const handler = createDeleteRoleHandlerInternal(deps);
+
+    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'DELETE' }), ctx);
+
+    expect(response.status).toBe(500);
+    expect(identityProvider.provider.createRole).toHaveBeenCalledOnce();
+    expect(identityProvider.provider.assignRealmRoles).toHaveBeenCalledTimes(2);
+    expect(identityProvider.provider.assignRealmRoles).toHaveBeenNthCalledWith(1, 'kc-user-1', ['editor']);
+    expect(identityProvider.provider.assignRealmRoles).toHaveBeenNthCalledWith(2, 'kc-user-2', ['editor']);
   });
 });

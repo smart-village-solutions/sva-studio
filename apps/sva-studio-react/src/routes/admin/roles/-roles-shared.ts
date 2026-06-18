@@ -58,6 +58,16 @@ export const roleTypeLabel = (role: RoleSummary): string => {
   return t('admin.roles.labels.customRole');
 };
 
+export const getRoleDeleteConfirmationContent = (): Readonly<{
+  title: string;
+  description: string;
+  confirmLabel: string;
+}> => ({
+  title: t('admin.roles.confirm.deleteTitle'),
+  description: t('admin.roles.confirm.deleteDescription'),
+  confirmLabel: t('admin.roles.actions.delete'),
+});
+
 export const roleErrorMessage = (
   error: IamHttpError | null,
   fallbackKey: TranslationKey,

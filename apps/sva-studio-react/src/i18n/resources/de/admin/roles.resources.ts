@@ -110,7 +110,8 @@ export const rolesAdminDEResources = {
   },
   confirm: {
     deleteTitle: 'Rolle löschen',
-    deleteDescription: 'Die Rolle wird dauerhaft gelöscht, sofern keine Abhängigkeiten bestehen.',
+    deleteDescription:
+      'Beim Löschen werden bestehende Benutzer- und Gruppenzuordnungen dieser Rolle entfernt und anschließend die Rolle dauerhaft gelöscht.',
   },
   sync: {
     synced: 'Synchronisiert',

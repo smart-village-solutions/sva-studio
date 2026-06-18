@@ -336,4 +336,33 @@ describe('WasteToursCustomDatesField', () => {
     fireEvent.click(screen.getByRole('button', { name: 'cancel' }));
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it('exposes the location picker as a labeled group and marks the empty option as selected when no location is chosen', () => {
+    render(
+      <WasteToursCustomDatesField
+        customDates={[{ date: '2027-01-01' }]}
+        dateLocationAssignments={[
+          {
+            id: 'assignment-1',
+            pickupDate: '2027-01-01',
+            locationId: '',
+            note: '',
+          },
+        ]}
+        locations={[{ id: 'location-1', label: 'Musterhausen / Markt' }]}
+        firstDate="2027-01-01"
+        endDate=""
+        onChange={vi.fn()}
+        onAssignmentsChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.editAssignments' }));
+    fireEvent.focus(screen.getByLabelText('tours.customDates.fields.location'));
+
+    expect(screen.getByRole('group', { name: 'tours.customDates.fields.location' })).toBeTruthy();
+    expect(
+      screen.getByRole('option', { name: 'tours.customDates.fields.locationPlaceholder' }).getAttribute('aria-selected')
+    ).toBe('true');
+  });
 });

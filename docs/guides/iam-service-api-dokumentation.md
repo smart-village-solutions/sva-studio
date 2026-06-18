@@ -95,6 +95,9 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
   - akzeptiert dieselbe additive `permissionAssignments[]`-Struktur wie `POST`
   - nicht scope-fähige Permissions bleiben binäre Zuweisungen; ein mitgesendeter `accessScope` wird serverseitig auf `all` normalisiert
 - `DELETE /api/v1/iam/roles/{roleId}`
+  - entfernt bestehende direkte Benutzer- und Gruppenzuordnungen der Rolle implizit mit, bevor die Rolle selbst gelöscht wird
+  - der Response bleibt das normale Rollen-Mutationsmodell; die Löschwirkung wird über Audit-Events und Aktivitätslogs nachvollziehbar gemacht
+  - die Admin-UI kündigt diesen Kaskadeneffekt vor dem Bestätigen allgemein an, ohne zusätzliche Sonderfälle oder Vorbedingungen einzuführen
 
 ### Groups
 

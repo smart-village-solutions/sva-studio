@@ -1,4 +1,7 @@
-import { createDeleteRoleHandlerInternal } from '@sva/iam-admin';
+import {
+  createDeleteRoleHandlerInternal,
+  type DeleteRoleHandlerDeps,
+} from '@sva/iam-admin';
 
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
 import { jsonResponse } from '../db.js';
@@ -19,6 +22,19 @@ import {
   resolveRoleMutationActor,
 } from './roles-handlers.shared.js';
 
+type DeleteRoleIdentityProvider = Exclude<
+  Awaited<ReturnType<typeof requireRoleIdentityProvider>>,
+  Response
+>;
+
+type DeleteRoleDeps = DeleteRoleHandlerDeps<
+  ReturnType<typeof buildRoleAttributes>,
+  DeleteRoleIdentityProvider
+> & {
+  readonly listDirectRoleAssignmentSubjects: typeof listDirectRoleAssignmentSubjects;
+  readonly requireRoleIdentityProvider: typeof requireRoleIdentityProvider;
+};
+
 const deleteRoleHandlerDeps = {
   asApiItem,
   buildRoleAttributes,
@@ -37,8 +53,6 @@ const deleteRoleHandlerDeps = {
   resolveRoleMutationActor,
   sanitizeRoleErrorMessage,
   trackKeycloakCall,
-} as Parameters<typeof createDeleteRoleHandlerInternal>[0] & {
-  readonly listDirectRoleAssignmentSubjects: typeof listDirectRoleAssignmentSubjects;
-};
+} satisfies DeleteRoleDeps;
 
 export const deleteRoleInternal = createDeleteRoleHandlerInternal(deleteRoleHandlerDeps);

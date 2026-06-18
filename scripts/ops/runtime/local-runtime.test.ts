@@ -1,5 +1,6 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -9,14 +10,23 @@ import {
   shouldRunLocalProvisioningWorker,
 } from './local-runtime.ts';
 
-const tempDir = resolve(process.cwd(), 'tmp', 'runtime-local-runtime-test');
+let tempDir: string | null = null;
+
+const createTempDir = () => {
+  tempDir = mkdtempSync(join(tmpdir(), 'runtime-local-runtime-test-'));
+  return tempDir;
+};
 
 afterEach(() => {
-  rmSync(tempDir, { force: true, recursive: true });
+  if (tempDir) {
+    rmSync(tempDir, { force: true, recursive: true });
+    tempDir = null;
+  }
 });
 
 describe('readLocalStateFile', () => {
   it('returns null for invalid state payloads', () => {
+    const tempDir = createTempDir();
     mkdirSync(tempDir, { recursive: true });
     const stateFile = resolve(tempDir, 'invalid.json');
     writeFileSync(stateFile, '{"profile":"local-keycloak"}\n', 'utf8');
@@ -25,6 +35,7 @@ describe('readLocalStateFile', () => {
   });
 
   it('parses valid local state payloads', () => {
+    const tempDir = createTempDir();
     mkdirSync(tempDir, { recursive: true });
     const stateFile = resolve(tempDir, 'valid.json');
     writeFileSync(

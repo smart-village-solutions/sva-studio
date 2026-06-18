@@ -22,13 +22,9 @@ import {
   formatRoleValidity,
   formatScope,
   formatTraceValidity,
-  permissionTraceStatusTranslationKeyByValue,
   pickInitials,
   USER_EDIT_TABS,
-  userEditTabTranslationKeyByValue,
-  userHistoryCategoryTranslationKeyByValue,
-  userHistoryPerspectiveTranslationKeyByValue,
-  userStatusTranslationKeyByValue,
+  userEditTranslationKeys,
 } from './user-edit-model';
 
 type UserEditPageProps = {
@@ -114,7 +110,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               {t('account.fields.username')}: {userApi.user.username ?? '-'}
             </p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
-              <Badge variant="outline">{t(userStatusTranslationKeyByValue[userApi.user.status])}</Badge>
+              <Badge variant="outline">{t(userEditTranslationKeys.status[userApi.user.status])}</Badge>
               {userApi.user.roles.map((role) => {
                 const validityLabel = formatRoleValidity(role);
                 return (
@@ -174,7 +170,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
               onKeyDown={(event) => onTabKeyDown(event, index)}
               variant={selected ? 'default' : 'ghost'}
             >
-              {t(userEditTabTranslationKeyByValue[tab.labelKey])}
+              {t(userEditTranslationKeys.tab[tab.labelKey])}
             </Button>
           );
         })}
@@ -428,7 +424,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="outline">{entry.effect}</Badge>
-                          <Badge variant="outline">{t(permissionTraceStatusTranslationKeyByValue[entry.status])}</Badge>
+                          <Badge variant="outline">{t(userEditTranslationKeys.permissionTraceStatus[entry.status])}</Badge>
                           {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
                         </div>
                       </div>
@@ -471,7 +467,7 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                           <p className="mt-1 text-sm text-muted-foreground">{describePermissionTraceSource(entry)}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline">{t(permissionTraceStatusTranslationKeyByValue[entry.status])}</Badge>
+                          <Badge variant="outline">{t(userEditTranslationKeys.permissionTraceStatus[entry.status])}</Badge>
                           {runtimeScopeText ? <Badge variant="outline">{runtimeScopeText}</Badge> : null}
                         </div>
                       </div>
@@ -560,10 +556,10 @@ export const UserEditPage = ({ userId, invitationStatus, invitationErrorMessage 
                       </div>
                       <div className="flex flex-wrap gap-2 text-xs">
                         <Badge className="rounded-full" variant="outline">
-                          {t(userHistoryCategoryTranslationKeyByValue[entry.category])}
+                          {t(userEditTranslationKeys.historyCategory[entry.category])}
                         </Badge>
                         <Badge className="rounded-full" variant="outline">
-                          {t(userHistoryPerspectiveTranslationKeyByValue[entry.perspective])}
+                          {t(userEditTranslationKeys.historyPerspective[entry.perspective])}
                         </Badge>
                       </div>
                     </div>

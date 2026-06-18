@@ -35,39 +35,37 @@ export const USER_EDIT_TABS: ReadonlyArray<{
   { key: 'history', labelKey: 'history' },
 ];
 
-export const userEditTabTranslationKeyByValue = {
-  personal: 'admin.users.edit.tab.personal',
-  management: 'admin.users.edit.tab.management',
-  permissions: 'admin.users.edit.tab.permissions',
-  history: 'admin.users.edit.tab.history',
+export const userEditTranslationKeys = {
+  tab: {
+    personal: 'admin.users.edit.tab.personal',
+    management: 'admin.users.edit.tab.management',
+    permissions: 'admin.users.edit.tab.permissions',
+    history: 'admin.users.edit.tab.history',
+  },
+  status: {
+    active: 'account.status.active',
+    inactive: 'account.status.inactive',
+    pending: 'account.status.pending',
+  },
+  historyCategory: {
+    iam: 'admin.users.edit.historyCategory.iam',
+    governance: 'admin.users.edit.historyCategory.governance',
+    dsr: 'admin.users.edit.historyCategory.dsr',
+  },
+  historyPerspective: {
+    actor: 'admin.users.edit.historyPerspective.actor',
+    target: 'admin.users.edit.historyPerspective.target',
+    actor_and_target: 'admin.users.edit.historyPerspective.actor_and_target',
+  },
+  permissionTraceStatus: {
+    effective: 'admin.users.edit.permissionTrace.status.effective',
+    inactive: 'admin.users.edit.permissionTrace.status.inactive',
+    expired: 'admin.users.edit.permissionTrace.status.expired',
+    disabled: 'admin.users.edit.permissionTrace.status.disabled',
+  },
 } as const;
 
-export const userStatusTranslationKeyByValue = {
-  active: 'account.status.active',
-  inactive: 'account.status.inactive',
-  pending: 'account.status.pending',
-} as const;
-
-export const userHistoryCategoryTranslationKeyByValue = {
-  iam: 'admin.users.edit.historyCategory.iam',
-  governance: 'admin.users.edit.historyCategory.governance',
-  dsr: 'admin.users.edit.historyCategory.dsr',
-} as const;
-
-export const userHistoryPerspectiveTranslationKeyByValue = {
-  actor: 'admin.users.edit.historyPerspective.actor',
-  target: 'admin.users.edit.historyPerspective.target',
-  actor_and_target: 'admin.users.edit.historyPerspective.actor_and_target',
-} as const;
-
-export const permissionTraceStatusTranslationKeyByValue = {
-  effective: 'admin.users.edit.permissionTrace.status.effective',
-  inactive: 'admin.users.edit.permissionTrace.status.inactive',
-  expired: 'admin.users.edit.permissionTrace.status.expired',
-  disabled: 'admin.users.edit.permissionTrace.status.disabled',
-} as const;
-
-export const permissionTraceInactiveReasonTranslationKeyByValue = {
+const permissionTraceInactiveReasonTranslationKeyByValue = {
   assignment_not_started: 'admin.users.edit.permissionTrace.inactiveReason.assignmentNotStarted',
   assignment_expired: 'admin.users.edit.permissionTrace.inactiveReason.assignmentExpired',
   membership_not_started: 'admin.users.edit.permissionTrace.inactiveReason.membershipNotStarted',
@@ -76,13 +74,13 @@ export const permissionTraceInactiveReasonTranslationKeyByValue = {
   hierarchy_restricted: 'admin.users.edit.permissionTrace.inactiveReason.hierarchyRestricted',
 } as const;
 
-export const permissionTraceSourceTranslationKeyByValue = {
+const permissionTraceSourceTranslationKeyByValue = {
   direct_permission: 'admin.users.edit.permissionTrace.source.directPermission',
   direct_role: 'admin.users.edit.permissionTrace.source.directRole',
   group_role: 'admin.users.edit.permissionTrace.source.groupRole',
 } as const;
 
-export const permissionTraceRuntimeScopeTranslationKeyByValue = {
+const permissionTraceRuntimeScopeTranslationKeyByValue = {
   instance: 'admin.users.edit.permissionTrace.runtimeScope.instance',
   record: 'admin.users.edit.permissionTrace.runtimeScope.record',
   organization_context: 'admin.users.edit.permissionTrace.runtimeScope.organizationContext',

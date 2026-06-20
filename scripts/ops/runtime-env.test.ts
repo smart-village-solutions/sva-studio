@@ -316,6 +316,22 @@ describe('assertLoginFlow', () => {
 });
 
 describe('buildLocalProvisioningWorkerCheck', () => {
+  it('keeps the exported facade compatible with the historic two-argument call', () => {
+    expect(
+      buildLocalProvisioningWorkerCheck('local-keycloak', {
+        command: 'tsx packages/auth-runtime/src/iam-instance-registry/worker.ts',
+        launcher: 'local-provisioning-worker-runner',
+        logFile: '/tmp/local-keycloak.worker.log',
+        pid: 999999,
+        profile: 'local-keycloak',
+        startedAt: '2026-05-06T10:15:20.000Z',
+      }),
+    ).toMatchObject({
+      code: 'local_keycloak_provisioning_worker_stale',
+      status: 'warn',
+    });
+  });
+
   it('skips the provisioning worker check for mock-auth profiles', () => {
     expect(buildLocalProvisioningWorkerCheck('local-builder', null, () => false)).toMatchObject({
       code: 'local_provisioning_worker_not_applicable',

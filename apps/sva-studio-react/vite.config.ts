@@ -26,7 +26,7 @@ const configuredDevHost = process.env.HOST?.trim();
 const allowedHosts = [
   'localhost',
   '127.0.0.1',
-  '.lvh.me',
+  '.localhost',
   ...(configuredParentDomain ? [configuredParentDomain, `.${configuredParentDomain}`] : []),
 ];
 
@@ -284,6 +284,10 @@ const config = defineConfig({
     ...(tanstackDevtoolsEnabled ? [devtools()] : []),
     tailwindcss(),
     tanstackStart({
+      router: {
+        routeFileIgnorePattern:
+          '^(?:use-user-(?:edit|list)-controller|user-(?:assignment-options|edit-model|list-model)(?:\\.test)?)\\.tsx?$',
+      },
       server: {
         entry: tanstackServerEntry,
       },

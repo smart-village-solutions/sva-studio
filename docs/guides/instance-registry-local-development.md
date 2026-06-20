@@ -6,18 +6,18 @@ Diese Anleitung beschreibt den lokalen Standardpfad und den registry-nahen Multi
 
 ## Unterstützte Hosts
 
-- Root-Host: `studio.lvh.me`
-- Tenant-Hosts: `<instanceId>.studio.lvh.me`
+- Root-Host: `studio.localhost`
+- Tenant-Hosts: `<instanceId>.studio.localhost`
 
-`lvh.me` zeigt lokal auf `127.0.0.1` und erlaubt damit reproduzierbare Host-Tests ohne eigene `/etc/hosts`-Einträge.
+`.localhost` ist als lokaler Loopback-Namensraum reserviert und erlaubt reproduzierbare Host-Tests ohne eigene `/etc/hosts`-Einträge.
 
 ## Voraussetzungen
 
 - `IAM_DATABASE_URL` zeigt auf die lokale IAM-Postgres-Datenbank
 - Migration `0025_iam_instance_registry_provisioning.sql` ist ausgerollt
 - lokale Seeds enthalten mindestens zwei aktive Instanzen und einen negativen Fall
-- für Browser- oder Playwright-Tests ist `SVA_PARENT_DOMAIN=studio.lvh.me` gesetzt
-- die Dev- oder Playwright-Instanz erlaubt `studio.lvh.me` und `*.studio.lvh.me` als lokale Hosts
+- für Browser- oder Playwright-Tests ist `SVA_PARENT_DOMAIN=studio.localhost` gesetzt
+- die Dev- oder Playwright-Instanz erlaubt `studio.localhost` und `*.studio.localhost` als lokale Hosts
 - im Standardprofil `local-keycloak` ist `svs-intern-studio-staging` der globale Keycloak-Realm und `de-musterhausen` die fachliche Test-Instanz
 
 ## Schneller Standardpfad
@@ -25,27 +25,27 @@ Diese Anleitung beschreibt den lokalen Standardpfad und den registry-nahen Multi
 1. IAM-Migrationen ausführen.
 2. lokale Seeds laden
 3. App auf dem Root-Host starten
-4. `http://studio.lvh.me:3000` öffnen
-5. Tenant-Kontexte über `http://<instanceId>.studio.lvh.me:3000` prüfen
+4. `http://studio.localhost:3000` öffnen
+5. Tenant-Kontexte über `http://<instanceId>.studio.localhost:3000` prüfen
 
 Empfohlene Seed-Instanzen:
 
 - `de-musterhausen`
 - `demo2`
 - `demo`
-- negativer Fall über unbekannten Host, zum Beispiel `blocked.studio.lvh.me`
+- negativer Fall über unbekannten Host, zum Beispiel `blocked.studio.localhost`
 
 Verifikation:
 
 ```bash
-curl -i http://studio.lvh.me:3000/
-curl -i http://demo2.studio.lvh.me:3000/
-curl -i http://blocked.studio.lvh.me:3000/auth/me
+curl -i http://studio.localhost:3000/
+curl -i http://demo2.studio.localhost:3000/
+curl -i http://blocked.studio.localhost:3000/auth/me
 ```
 
 ## Registry-naher Multi-Tenant-Pfad
 
-1. Root-Host unter `studio.lvh.me` verwenden
+1. Root-Host unter `studio.localhost` verwenden
 2. Instanzen über `/admin/instances` oder die Ops-CLI anlegen
 3. nach erfolgreicher Anlage Tenant-Host direkt öffnen
 4. unbekannte oder suspendierte Hosts auf identisches fail-closed-Verhalten prüfen
@@ -62,21 +62,21 @@ Verifikation:
 pnpm exec tsx scripts/ops/instance-registry.ts create \
   --instance-id demo2 \
   --display-name "Demo 2" \
-  --parent-domain studio.lvh.me \
+  --parent-domain studio.localhost \
   --auth-realm demo2 \
   --auth-client-id sva-studio \
   --actor-id local-admin
 pnpm exec tsx scripts/ops/instance-registry.ts activate \
   --instance-id demo2 \
   --actor-id local-admin
-curl -i http://demo2.studio.lvh.me:3000/
+curl -i http://demo2.studio.localhost:3000/
 ```
 
 Für Playwright ist der offizielle Multi-Tenant-Pfad:
 
 ```bash
-PLAYWRIGHT_BASE_URL=http://studio.lvh.me:4173 \
-PLAYWRIGHT_TENANT_LOGIN_URL=http://demo2.studio.lvh.me:4173/auth/login?returnTo=%2Fadmin%2Finstances \
+PLAYWRIGHT_BASE_URL=http://studio.localhost:4173 \
+PLAYWRIGHT_TENANT_LOGIN_URL=http://demo2.studio.localhost:4173/auth/login?returnTo=%2Fadmin%2Finstances \
 pnpm nx run sva-studio-react:test:e2e -- --grep "tenant-host login"
 ```
 
@@ -93,7 +93,7 @@ pnpm exec tsx scripts/ops/instance-registry.ts list --json
 pnpm exec tsx scripts/ops/instance-registry.ts create \
   --instance-id demo \
   --display-name "Demo" \
-  --parent-domain studio.lvh.me \
+  --parent-domain studio.localhost \
   --auth-realm demo \
   --auth-client-id sva-studio \
   --actor-id local-admin

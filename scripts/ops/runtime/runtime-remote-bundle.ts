@@ -225,6 +225,7 @@ const createAcceptanceDeployRunnerDeps = (
   ...createAcceptanceDeployCoreDeps(deps),
   ...createAcceptanceDeployRuntimeDeps(deps),
   buildInstanceHostnameMappingCheck: runtimeDoctorDbCheckOps.buildInstanceHostnameMappingCheck,
+  getGitCommitSha: deps.getGitCommitSha,
   precheckAcceptance: runtimeDoctorFacade.precheckAcceptance,
   printJsonIfRequested: deps.printJsonIfRequested,
   run: deps.run,

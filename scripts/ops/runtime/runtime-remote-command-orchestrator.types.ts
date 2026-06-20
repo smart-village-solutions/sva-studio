@@ -31,6 +31,7 @@ export type RuntimeRemoteCommandOrchestratorDeps = RuntimeCommandRunnerDeps & Ru
   doctorRuntime: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorReport>;
   ensureDirs: ReturnType<typeof import('./runtime-doctor-report.ts').createRuntimeDoctorReportOps>['ensureDirs'];
   finalizeDoctorReport: ReturnType<typeof import('./runtime-doctor-report.ts').createRuntimeDoctorReportOps>['finalizeDoctorReport'];
+  getGitCommitSha: ReturnType<typeof import('./runtime-config.ts').createRuntimeConfigOps>['getGitCommitSha'];
   getConfiguredQuantumEndpoint: ReturnType<typeof import('./runtime-config.ts').createRuntimeConfigOps>['getConfiguredQuantumEndpoint'];
   getConfiguredStackName: ReturnType<typeof import('./runtime-config.ts').createRuntimeConfigOps>['getConfiguredStackName'];
   localWorkerStateFile: string;

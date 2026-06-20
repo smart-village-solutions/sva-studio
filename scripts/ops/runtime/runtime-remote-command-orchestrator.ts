@@ -85,6 +85,7 @@ const createAcceptanceRuntimeCoreOps = (
     createBaseAcceptanceDeployReport: () => {
       throw new Error('createBaseAcceptanceDeployReport ist erst nach Maintenance-Wiring verfuegbar.');
     },
+    getGitCommitSha: deps.getGitCommitSha,
     precheckAcceptance: async () => {
       throw new Error('precheckAcceptance ist noch nicht initialisiert.');
     },
@@ -130,6 +131,7 @@ const remoteBundleRuntimeDeps = (deps: RuntimeRemoteCommandOrchestratorDeps) => 
   buildProdParityProbePlan: deps.buildProdParityProbePlan,
   collectLocalInstanceIdentityDrift: deps.collectLocalInstanceIdentityDrift,
   finalizeDoctorReport: deps.finalizeDoctorReport,
+  getGitCommitSha: deps.getGitCommitSha,
   getConfiguredQuantumEndpoint: deps.getConfiguredQuantumEndpoint,
   getConfiguredStackName: deps.getConfiguredStackName,
   getGooseConfiguredVersion: deps.getGooseConfiguredVersion,

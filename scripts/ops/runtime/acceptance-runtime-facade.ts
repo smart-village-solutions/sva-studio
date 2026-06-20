@@ -29,6 +29,7 @@ type AcceptanceDeployFacadeInput = Pick<
     env: NodeJS.ProcessEnv,
     options: AcceptanceDeployOptions,
     migrationFiles: readonly string[],
+    gitCommitSha?: string,
   ) => AcceptanceDeployReport;
   deployAcceptanceStack: (env: NodeJS.ProcessEnv) => void;
   runAcceptanceDeployExternalSmoke: AcceptanceRuntimeFacadeDeps['runExternalSmokeWithWarmup'];
@@ -154,7 +155,8 @@ export const createAcceptanceDeployFacade = (
       assertDeterministicRemoteMutationContext: deps.assertDeterministicRemoteMutationContext,
       buildInstanceHostnameMappingCheck: deps.buildInstanceHostnameMappingCheck,
       captureAcceptanceStackStatus: input.captureAcceptanceStackStatus,
-      createBaseAcceptanceDeployReport: input.createBaseAcceptanceDeployReport,
+      createBaseAcceptanceDeployReport: (runtimeProfile, env, options, migrationFiles) =>
+        input.createBaseAcceptanceDeployReport(runtimeProfile, env, options, migrationFiles, deps.getGitCommitSha()),
       createStepResult: deps.createStepResult,
       deployAcceptanceStack: input.deployAcceptanceStack,
       getGooseConfiguredVersion: () => deps.getGooseConfiguredVersion() ?? '',

@@ -28,6 +28,7 @@ export type AcceptanceRuntimeFacadeDeps = RemoteRuntimeConfigDeps & RuntimeComma
   createStudioImageVerifyEvidenceCheck?: never;
   deployReportDir: string;
   ensureDirs: () => void;
+  getGitCommitSha: () => string | undefined;
   hasLocalEmergencyRemoteMutationOverride: (env: NodeJS.ProcessEnv) => boolean;
   inspectRemoteServiceContract: (env: NodeJS.ProcessEnv, input: { quantumEndpoint: string; serviceName: string; stackName: string }) => Promise<unknown>;
   isExpectedOidcRedirect: (location: string, env: NodeJS.ProcessEnv) => boolean;

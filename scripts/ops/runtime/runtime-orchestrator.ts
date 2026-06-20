@@ -77,6 +77,7 @@ const remoteCommandDoctorDeps = (deps: RuntimeOrchestratorDeps) => ({
   createDbSqlRunner: deps.createDbSqlRunner,
   decorateDoctorCheck: deps.decorateDoctorCheck,
   finalizeDoctorReport: deps.finalizeDoctorReport,
+  getGitCommitSha: deps.getGitCommitSha,
   getRuntimeContractSummary: deps.getRuntimeContractSummary,
   getRuntimeProfileDefinition: deps.getRuntimeProfileDefinition,
   getRuntimeProfileDerivedEnvKeys: deps.getRuntimeProfileDerivedEnvKeys,

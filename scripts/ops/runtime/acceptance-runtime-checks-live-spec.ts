@@ -50,8 +50,9 @@ export const buildAcceptanceLiveSpecCheck = async (
   options: AcceptanceDeployOptions,
 ): Promise<DoctorCheck> => {
   const renderedCompose = deps.renderRemoteComposeDocument(env);
-  const expectedAppContract = deps.assertComposeServiceNetworks(renderedCompose, 'app', ['internal', 'public']);
-  deps.assertComposeServiceIngressLabels(renderedCompose, 'app');
+  const appServiceName = deps.getRemoteAppServiceName(env);
+  const expectedAppContract = deps.assertComposeServiceNetworks(renderedCompose, appServiceName, ['internal', 'public']);
+  deps.assertComposeServiceIngressLabels(renderedCompose, appServiceName);
   const expectedIngressLabels = Object.fromEntries(
     Object.entries(expectedAppContract.labels).filter(([key]) => key.startsWith('traefik.')),
   );
@@ -68,7 +69,7 @@ export const buildAcceptanceLiveSpecCheck = async (
     const stackName = deps.getConfiguredStackName(env);
     const liveContract = await deps.inspectRemoteServiceContract(env, {
       quantumEndpoint: deps.getConfiguredQuantumEndpoint(env),
-      serviceName: 'app',
+      serviceName: appServiceName,
       stackName,
     });
     const liveImage = liveContract?.image ?? (await deps.resolveLiveImageFallback(env, { stackName }));

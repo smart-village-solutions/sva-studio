@@ -48,6 +48,7 @@ export type RuntimeRemoteBundleDeps = RuntimeCommandRunnerDeps & RemoteRuntimeCo
   doctorRuntime: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorReport>;
   ensureDirs: () => void;
   finalizeDoctorReport: (runtimeProfile: RuntimeProfile, checks: readonly DoctorCheck[]) => DoctorReport;
+  getGitCommitSha: () => string | undefined;
   getRuntimeProfileDefinition: (runtimeProfile: RuntimeProfile) => { isLocal: boolean };
   hasLocalEmergencyRemoteMutationOverride: (env: NodeJS.ProcessEnv) => boolean;
   inspectRemoteServiceContract: (env: NodeJS.ProcessEnv, input: { quantumEndpoint: string; serviceName: string; stackName: string }) => Promise<unknown>;

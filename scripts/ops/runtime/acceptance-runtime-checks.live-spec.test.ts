@@ -5,36 +5,48 @@ import { acceptanceOptions, createDeps } from './acceptance-runtime-checks.test-
 
 describe('acceptance runtime checks live spec and readiness', () => {
   it('reports live spec drift details when image or env diverge', async () => {
+    const getRemoteAppServiceName = vi.fn(() => 'studio-app');
+    const assertComposeServiceNetworks = vi.fn(() => ({
+      labels: {
+        'traefik.http.routers.app.rule': 'Host(`studio.smart-village.app`)',
+      },
+      networks: ['internal', 'public'],
+    }));
+    const assertComposeServiceIngressLabels = vi.fn();
+    const inspectRemoteServiceContract = vi.fn(async () => ({
+      env: {
+        APP_DB_USER: 'other-user',
+        IAM_ADMIN_ENABLED: 'true',
+        IAM_BULK_ENABLED: 'true',
+        IAM_PII_KEYRING_JSON: '',
+        IAM_UI_ENABLED: 'true',
+        KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example.test',
+        KEYCLOAK_ADMIN_CLIENT_ID: 'admin-cli',
+        KEYCLOAK_ADMIN_CLIENT_SECRET: '',
+        KEYCLOAK_ADMIN_REALM: 'master',
+        POSTGRES_DB: 'sva_studio',
+        POSTGRES_PASSWORD: '',
+        REDIS_PASSWORD: '',
+        SVA_ALLOWED_INSTANCE_IDS: 'bb-guben,de-musterhausen',
+        SVA_AUTH_CLIENT_SECRET: '',
+        SVA_AUTH_STATE_SECRET: '',
+        SVA_PARENT_DOMAIN: 'smart-village.app',
+        SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
+        SVA_RUNTIME_PROFILE: 'studio',
+        VITE_IAM_ADMIN_ENABLED: 'true',
+        VITE_IAM_BULK_ENABLED: 'true',
+        VITE_IAM_UI_ENABLED: 'true',
+      },
+      image: 'ghcr.io/smart-village/studio:old',
+      labels: {},
+      networkNames: ['internal'],
+      serviceName: 'studio_app',
+    }));
     const deps = createDeps({
-      inspectRemoteServiceContract: vi.fn(async () => ({
-        env: {
-          APP_DB_USER: 'other-user',
-          IAM_ADMIN_ENABLED: 'true',
-          IAM_BULK_ENABLED: 'true',
-          IAM_PII_KEYRING_JSON: '',
-          IAM_UI_ENABLED: 'true',
-          KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example.test',
-          KEYCLOAK_ADMIN_CLIENT_ID: 'admin-cli',
-          KEYCLOAK_ADMIN_CLIENT_SECRET: '',
-          KEYCLOAK_ADMIN_REALM: 'master',
-          POSTGRES_DB: 'sva_studio',
-          POSTGRES_PASSWORD: '',
-          REDIS_PASSWORD: '',
-          SVA_ALLOWED_INSTANCE_IDS: 'bb-guben,de-musterhausen',
-          SVA_AUTH_CLIENT_SECRET: '',
-          SVA_AUTH_STATE_SECRET: '',
-          SVA_PARENT_DOMAIN: 'smart-village.app',
-          SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
-          SVA_RUNTIME_PROFILE: 'studio',
-          VITE_IAM_ADMIN_ENABLED: 'true',
-          VITE_IAM_BULK_ENABLED: 'true',
-          VITE_IAM_UI_ENABLED: 'true',
-        },
-        image: 'ghcr.io/smart-village/studio:old',
-        labels: {},
-        networkNames: ['internal'],
-        serviceName: 'studio_app',
-      })),
+      assertComposeServiceIngressLabels,
+      assertComposeServiceNetworks,
+      getRemoteAppServiceName,
+      inspectRemoteServiceContract,
     });
 
     const check = await buildAcceptanceLiveSpecCheck(
@@ -62,6 +74,12 @@ describe('acceptance runtime checks live spec and readiness', () => {
 
     expect(check.status).toBe('warn');
     expect(check.code).toBe('live_spec_differs');
+    expect(assertComposeServiceNetworks).toHaveBeenCalledWith({ services: { app: {} } }, 'studio-app', ['internal', 'public']);
+    expect(assertComposeServiceIngressLabels).toHaveBeenCalledWith({ services: { app: {} } }, 'studio-app');
+    expect(inspectRemoteServiceContract).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ serviceName: 'studio-app' }),
+    );
     expect(check.details).toMatchObject({
       configDrift: ['APP_DB_USER'],
       liveImage: 'ghcr.io/smart-village/studio:old',

@@ -71,7 +71,7 @@ const syncOneTenantSecretToRegistry = async (
   await syncProvisionedClientSecretToRegistry(workerDeps, {
     actorId: 'runtime-env-repair',
     loaded,
-    requestId: `runtime-env-repair-${Date.now()}`,
+    requestId: `runtime-env-repair-${instanceId}-${Date.now()}`,
   });
   return undefined;
 };

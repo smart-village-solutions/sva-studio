@@ -63,6 +63,11 @@ describe('acceptance runtime checks', () => {
       }),
     ).toBe(true);
     expect(
+      isExpectedOidcRedirect('https://issuer.example.test/protocol/openid-connect/auth', {
+        SVA_AUTH_ISSUER: 'https://issuer.example.test/',
+      }),
+    ).toBe(true);
+    expect(
       isExpectedOidcRedirect('https://keycloak.example.test/realms/studio/protocol/openid-connect/auth', {
         KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example.test/',
       }),

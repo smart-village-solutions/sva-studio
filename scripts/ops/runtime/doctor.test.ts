@@ -35,6 +35,7 @@ describe('createRuntimeDoctorOps', () => {
       buildAcceptancePostgresCheck: vi.fn(() => createCheck('acceptance-postgres')),
       buildAcceptanceServiceCheck: vi.fn(async () => createCheck('acceptance-service')),
       buildAppPrincipalReadinessCheck: vi.fn(async () => createCheck('app-db-principal')),
+      buildActorDoctorCheck: vi.fn(() => createCheck('actor-diagnosis')),
       buildFeatureFlagCheck: vi.fn(() => createCheck('feature-flags')),
       buildImagePlatformDoctorCheck: vi.fn(() => createCheck('image-platform')),
       buildInstanceAuthConfigCheck: vi.fn(() => createCheck('instance-auth-config')),
@@ -80,7 +81,10 @@ describe('createRuntimeDoctorOps', () => {
     const remoteReport = await ops.doctorRuntime('studio', {
       SVA_PUBLIC_BASE_URL: 'https://studio.example.org',
     });
-    const localReport = await ops.doctorRuntime('local-builder', {
+    const localBuilderReport = await ops.doctorRuntime('local-builder', {
+      SVA_PUBLIC_BASE_URL: 'http://localhost:3000',
+    });
+    const localKeycloakReport = await ops.doctorRuntime('local-keycloak', {
       SVA_PUBLIC_BASE_URL: 'http://localhost:3000',
     });
     const precheckReport = await ops.precheckAcceptance('studio', {} as NodeJS.ProcessEnv, {
@@ -96,8 +100,9 @@ describe('createRuntimeDoctorOps', () => {
 
     expect(remoteReport.checks.map((check) => check.name)).toContain('acceptance-service');
     expect(remoteReport.checks.map((check) => check.name)).not.toContain('otel');
-    expect(localReport.checks.map((check) => check.name)).toContain('otel');
+    expect(localBuilderReport.checks.map((check) => check.name)).toContain('otel');
+    expect(localKeycloakReport.checks.map((check) => check.name)).toContain('actor-diagnosis');
     expect(precheckReport.checks.map((check) => check.name)).toContain('acceptance-live-spec');
-    expect(finalizeDoctorReport).toHaveBeenCalledTimes(3);
+    expect(finalizeDoctorReport).toHaveBeenCalledTimes(4);
   });
 });

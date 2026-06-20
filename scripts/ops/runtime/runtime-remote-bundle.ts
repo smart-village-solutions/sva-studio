@@ -136,6 +136,7 @@ const createDoctorFacadeOps = (
     buildAcceptancePostgresCheck: deps.acceptanceRuntimeCore.buildAcceptancePostgresCheck,
     buildAcceptanceServiceCheck: deps.acceptanceRuntimeCore.buildAcceptanceServiceCheck,
     buildAppPrincipalReadinessCheck: deps.acceptanceRuntimeCore.buildAppPrincipalReadinessCheck,
+    buildActorDoctorCheck: runtimeDoctorDbCheckOps.buildActorDoctorCheck,
     buildFeatureFlagCheck: runtimeDoctorDbCheckOps.buildFeatureFlagCheck,
     buildGuardrailDoctorChecks: deps.buildGuardrailDoctorChecks,
     buildImagePlatformDoctorCheck: deps.buildImagePlatformDoctorCheck,

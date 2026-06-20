@@ -28,6 +28,7 @@ export const createRuntimeDoctorFacade = (deps: RuntimeDoctorFacadeDeps) => {
     buildAcceptancePostgresCheck: deps.buildAcceptancePostgresCheck,
     buildAcceptanceServiceCheck: deps.buildAcceptanceServiceCheck,
     buildAppPrincipalReadinessCheck: deps.buildAppPrincipalReadinessCheck,
+    buildActorDoctorCheck: deps.buildActorDoctorCheck,
     buildFeatureFlagCheck: deps.buildFeatureFlagCheck,
     buildGuardrailDoctorChecks: deps.buildGuardrailDoctorChecks,
     buildImagePlatformDoctorCheck: deps.buildImagePlatformDoctorCheck,

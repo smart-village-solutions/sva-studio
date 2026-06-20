@@ -3,10 +3,11 @@ import { resolveAcceptanceContainerServices } from './runtime-health-helpers.ts'
 import type { RuntimeHealthDeps } from './runtime-health.types.ts';
 
 const baseUrl = (env: NodeJS.ProcessEnv) => env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
+const httpTimeoutSignal = (timeoutMs: number) => AbortSignal.timeout(timeoutMs);
 
 const assertLoginFlow = async (deps: RuntimeHealthDeps, runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const loginUrl = new URL('/auth/login', baseUrl(env)).toString();
-  const response = await fetch(loginUrl, { redirect: 'manual' });
+  const response = await fetch(loginUrl, { redirect: 'manual', signal: httpTimeoutSignal(10_000) });
   const location = response.headers.get('location') ?? '';
 
   if (runtimeProfile === 'local-builder') {
@@ -21,7 +22,7 @@ const assertLoginFlow = async (deps: RuntimeHealthDeps, runtimeProfile: RuntimeP
 
 const assertMeEndpoint = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const meUrl = new URL('/auth/me', baseUrl(env)).toString();
-  const response = await fetch(meUrl, { redirect: 'manual' });
+  const response = await fetch(meUrl, { redirect: 'manual', signal: httpTimeoutSignal(10_000) });
 
   if (runtimeProfile === 'local-builder') {
     if (!response.ok) throw new Error(`/auth/me fuer ${runtimeProfile} antwortet mit ${response.status}`);

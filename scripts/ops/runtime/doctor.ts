@@ -121,6 +121,7 @@ const addInstanceChecks = async (
   env: NodeJS.ProcessEnv,
 ) => {
   if (runtimeProfile === 'local-builder') return;
+  if (runtimeProfile === 'local-keycloak') checks.push(deps.buildActorDoctorCheck(runtimeProfile, env));
   checks.push(deps.buildInstanceAuthConfigCheck(runtimeProfile, env));
   checks.push(deps.buildTenantAdminClientContractCheck(runtimeProfile, env));
   checks.push(await deps.buildInstanceHostnameMappingCheck(runtimeProfile, env));

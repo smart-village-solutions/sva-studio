@@ -62,7 +62,7 @@ export const isExpectedOidcRedirect = (location: string, env: NodeJS.ProcessEnv)
     return false;
   }
 
-  const authIssuer = env.SVA_AUTH_ISSUER?.trim();
+  const authIssuer = env.SVA_AUTH_ISSUER?.trim().replace(/\/+$/u, '');
   if (authIssuer && location.startsWith(authIssuer)) {
     return true;
   }

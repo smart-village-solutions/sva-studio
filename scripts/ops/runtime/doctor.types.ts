@@ -22,6 +22,7 @@ export type RuntimeDoctorDeps = {
   buildAcceptancePostgresCheck: (env: NodeJS.ProcessEnv) => DoctorCheck;
   buildAcceptanceServiceCheck: (env: NodeJS.ProcessEnv) => Promise<DoctorCheck>;
   buildAppPrincipalReadinessCheck: (env: NodeJS.ProcessEnv) => Promise<DoctorCheck>;
+  buildActorDoctorCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => DoctorCheck;
   buildFeatureFlagCheck: (env: NodeJS.ProcessEnv) => DoctorCheck;
   buildGuardrailDoctorChecks: (runtimeProfile: RuntimeProfile, options: { readonly env: NodeJS.ProcessEnv }) => Promise<readonly DoctorCheck[]>;
   buildImagePlatformDoctorCheck: (env: NodeJS.ProcessEnv, options?: AcceptanceDeployOptions) => DoctorCheck;

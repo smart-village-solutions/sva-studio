@@ -1,10 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildOidcClientSecretProbes,
+  createRuntimeHealthOps,
   evaluateOidcClientSecretProbeResponse,
   resolveAcceptanceContainerServices,
 } from './runtime-health.ts';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('runtime-health helpers', () => {
   it('builds all configured oidc client-secret probes', () => {
@@ -89,5 +94,51 @@ describe('runtime-health helpers', () => {
   it('resolves remote container services based on otel mode', () => {
     expect(resolveAcceptanceContainerServices({})).toEqual(['app', 'redis', 'postgres', 'otel-collector']);
     expect(resolveAcceptanceContainerServices({ ENABLE_OTEL: 'false' })).toEqual(['app', 'redis', 'postgres']);
+  });
+
+  it('uses timeouts for login and me smoke requests', async () => {
+    const fetchCalls: RequestInit[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+        fetchCalls.push(init ?? {});
+        return fetchCalls.length === 1
+          ? new Response(null, {
+              headers: { location: 'https://issuer.example.test/protocol/openid-connect/auth' },
+              status: 302,
+            })
+          : new Response(null, { status: 401 });
+      }),
+    );
+
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(),
+      getRemoteAppServiceName: vi.fn(),
+      getRuntimeProfileDefinition: vi.fn(() => ({ isLocal: true })),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(() => true),
+      isMainserverCheckRequired: vi.fn(() => false),
+      isMockAuthRuntimeProfile: vi.fn(() => false),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn(),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    await ops.assertLoginFlow('studio', { SVA_AUTH_ISSUER: 'https://issuer.example.test' });
+    await ops.assertMeEndpoint('studio', {});
+
+    expect(fetchCalls).toHaveLength(2);
+    expect(fetchCalls[0]?.signal).toBeInstanceOf(AbortSignal);
+    expect(fetchCalls[1]?.signal).toBeInstanceOf(AbortSignal);
   });
 });

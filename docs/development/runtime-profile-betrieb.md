@@ -165,7 +165,7 @@ pnpm env:up:local-keycloak
 
 Für zusätzliche lokale Instanzen oder weitere lokale Datenbanken ist `../guides/lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
 
-Für lokale Multi-Tenant-Hosttests ist `../guides/instance-registry-local-development.md` der kanonische Pfad. Offiziell unterstützt sind `studio.lvh.me` und `<instanceId>.studio.lvh.me`.
+Für lokale Multi-Tenant-Hosttests ist `../guides/instance-registry-local-development.md` der kanonische Pfad. Offiziell unterstützt sind `studio.localhost` und `<instanceId>.studio.localhost`.
 
 ### Lokal mit Builder.io
 
@@ -313,7 +313,7 @@ Ausnahme für `studio` in der frühen Testphase:
 Zusatzprüfungen:
 
 - lokal: OTEL Collector `http://127.0.0.1:13133/healthz`
-- lokal im Multi-Tenant-Pfad: Root-Host `studio.lvh.me`, Tenant-Host `demo2.studio.lvh.me` und fail-closed-Fall `blocked.studio.lvh.me`
+- lokal im Multi-Tenant-Pfad: Root-Host `studio.localhost`, Tenant-Host `demo2.studio.localhost` und fail-closed-Fall `blocked.studio.localhost`
 - Remote: Service-/Task-Status für `app`, `redis`, `postgres` bevorzugt über Portainer-API
 - Remote: `otel-collector` nur dann zusätzlich, wenn `ENABLE_OTEL` im Zielprofil aktiviert ist
 - Remote: öffentliche Smoke-Probes gegen Root-Host `/`, `/health/live`, `/health/ready`, `/auth/login`, `/api/v1/iam/me/context`

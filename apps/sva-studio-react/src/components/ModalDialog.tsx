@@ -76,6 +76,12 @@ export const ModalDialog = ({
     [onClose]
   );
 
+  const contentAccessibilityProps = description
+    ? {}
+    : ({
+        'aria-describedby': undefined,
+      } satisfies Pick<React.ComponentProps<typeof DialogPrimitive.Content>, 'aria-describedby'>);
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Portal>
@@ -85,6 +91,7 @@ export const ModalDialog = ({
           onClick={requestClose}
         />
         <DialogPrimitive.Content
+          {...contentAccessibilityProps}
           role={role}
           className={cn(
             'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-2xl focus-visible:outline-none animate-modal-content',

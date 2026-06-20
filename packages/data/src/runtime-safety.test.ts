@@ -441,6 +441,8 @@ test('sva-studio-react vite SSR config resolves mail-runtime from workspace sour
 
   assert.match(viteConfig, /'@sva\/mail-runtime': resolveAppPath\('\.\.\/\.\.\/packages\/mail-runtime\/src\/index\.ts'\)/);
   assert.match(viteConfig, /'@sva\/mail-runtime',/);
+  assert.match(viteConfig, /'\.localhost'/);
+  assert.doesNotMatch(viteConfig, /lvh\.me/);
 });
 
 test('sva-studio-react vitest shared config resolves mail-runtime from workspace source', () => {

@@ -11,6 +11,21 @@
   - reine `import type`-Pfade dürfen typbezogen bleiben, Runtime-Pfade nicht
   - Runtime-Imports auf andere Workspace-Packages müssen im lokalen `package.json` unter `dependencies` stehen
 
+## Komplexitäts- und Ownership-Disziplin
+
+- Ziel ist nicht minimale LOC, sondern minimale langfristige Ownership bei voller Qualität.
+- Vor neuer Eigenlogik prüfen:
+  - Gibt es bereits eine robuste Lösung im Projekt oder Workspace?
+  - Deckt TypeScript/Stdlib, Browser-/Node-Plattform oder Datenbank die Anforderung korrekt ab?
+  - Reduziert ein etabliertes externes Package die Ownership gegenüber einer Eigenentwicklung?
+  - Erst danach minimale Eigenimplementierung schreiben.
+- Neue Dependencies sind zulässig, wenn sie komplexe oder riskante Domänen besser abdecken als lokale Eigenlogik, z. B. Auth, Crypto, Parser, Datums-/Zeitzonenlogik, Accessibility-Primitives, Virtualisierung, i18n, Validierung oder Security-Middleware.
+- Keine neue Dependency für triviale Hilfslogik, wenn vorhandene Plattform-, Workspace- oder Design-System-Mittel die Edge Cases ausreichend abdecken.
+- Keine Abstraktion ohne belegten Bedarf: keine Interfaces mit einer Implementierung, Factories mit einem Produkt, Provider/Services/Hooks ohne klaren Mehrwert oder Config für Werte, die nicht variieren.
+- Vereinfachungen dürfen niemals Testabdeckung, Typklarheit, Security, Accessibility, i18n, Fehlerbehandlung, Datenintegrität, Server-Runtime-Regeln oder bestehende Architekturgrenzen unterlaufen.
+- UI-Implementierungen folgen der Reihenfolge: native Browser-/HTML-Funktion, vorhandene shadcn/ui- oder Design-System-Komponente, vorhandene Workspace-Komponente, dann minimale neue Komponente.
+- Bei Review und Refactoring gezielt nach entfernbarer Komplexität suchen: handgerollte Standardfunktionen, tote Flexibilität, ungenutzte Layer, vermeidbare Dependencies und spekulative Erweiterbarkeit. Solche Funde sind Ergänzungen zu normalen Correctness-, Security-, Test- und UX-Reviews, kein Ersatz.
+
 ## Tipps zur Entwicklungsumgebung
 
 - Dies ist ein pnpm-Workspace-Monorepo; Packages sind nach Funktionalität organisiert

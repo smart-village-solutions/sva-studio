@@ -64,34 +64,43 @@ export const SheetContent = ({
   description,
   side = 'left',
   'aria-label': ariaLabel,
-}: SheetContentProps) => (
-  <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-foreground/40 lg:hidden" />
-    <DialogPrimitive.Close
-      aria-label={closeLabel}
-      className="fixed inset-0 z-50 cursor-default lg:hidden"
-      data-slot="sheet-close-overlay"
-      tabIndex={-1}
-      type="button"
-    />
-    <DialogPrimitive.Content
-      aria-label={ariaLabel}
-      className={cn(
-        'fixed top-0 z-50 h-full w-[18rem] border-border bg-sidebar shadow-shell focus-visible:outline-none lg:hidden',
-        getSheetPositionClasses(side),
-        className
-      )}
-    >
-      <DialogPrimitive.Title className="sr-only">{ariaLabel}</DialogPrimitive.Title>
-      {description ? <DialogPrimitive.Description className="sr-only">{description}</DialogPrimitive.Description> : null}
+}: SheetContentProps) => {
+  const contentAccessibilityProps = description
+    ? {}
+    : ({
+        'aria-describedby': undefined,
+      } satisfies Pick<React.ComponentProps<typeof DialogPrimitive.Content>, 'aria-describedby'>);
+
+  return (
+    <DialogPrimitive.Portal>
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-foreground/40 lg:hidden" />
       <DialogPrimitive.Close
         aria-label={closeLabel}
-        className="absolute right-3 top-3 z-10 rounded-md border border-border bg-sidebar px-3 py-1 text-sm font-medium text-sidebar-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="fixed inset-0 z-50 cursor-default lg:hidden"
+        data-slot="sheet-close-overlay"
+        tabIndex={-1}
         type="button"
+      />
+      <DialogPrimitive.Content
+        {...contentAccessibilityProps}
+        aria-label={ariaLabel}
+        className={cn(
+          'fixed top-0 z-50 h-full w-[18rem] border-border bg-sidebar shadow-shell focus-visible:outline-none lg:hidden',
+          getSheetPositionClasses(side),
+          className
+        )}
       >
-        {closeLabel}
-      </DialogPrimitive.Close>
-      <div className="h-full">{children}</div>
-    </DialogPrimitive.Content>
-  </DialogPrimitive.Portal>
-);
+        <DialogPrimitive.Title className="sr-only">{ariaLabel}</DialogPrimitive.Title>
+        {description ? <DialogPrimitive.Description className="sr-only">{description}</DialogPrimitive.Description> : null}
+        <DialogPrimitive.Close
+          aria-label={closeLabel}
+          className="absolute right-3 top-3 z-10 rounded-md border border-border bg-sidebar px-3 py-1 text-sm font-medium text-sidebar-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          type="button"
+        >
+          {closeLabel}
+        </DialogPrimitive.Close>
+        <div className="h-full">{children}</div>
+      </DialogPrimitive.Content>
+    </DialogPrimitive.Portal>
+  );
+};

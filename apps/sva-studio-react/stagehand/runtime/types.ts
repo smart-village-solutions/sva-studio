@@ -30,9 +30,14 @@ export interface StagehandTenantConfig {
   } | null;
 }
 
+export interface StagehandLocalBrowserConfig {
+  headless: boolean;
+}
+
 export interface StagehandAdminConfig {
   admin: StagehandAdminCredentials;
   baseUrl: string;
+  localBrowser: StagehandLocalBrowserConfig;
   mission: StagehandMissionName;
   openAiApiKey: string;
   runMode: StagehandRunMode;

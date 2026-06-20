@@ -8,7 +8,20 @@ Dieses Dokument beschreibt den reproduzierbaren Smoke-Test für die laufende App
 
 1. Docker Engine läuft lokal.
 2. Node.js und pnpm sind installiert.
-3. Playwright Browser wurde installiert:
+3. Für den wiederverwendeten Login-State sind Zugangsdaten in `apps/sva-studio-react/.env.local` oder als CI-Secrets verfügbar:
+
+```env
+PLAYWRIGHT_ROOT_BASE_URL=http://studio.localhost:4173
+PLAYWRIGHT_ROOT_USERNAME=root-admin@example.org
+PLAYWRIGHT_ROOT_PASSWORD=super-secret-root-password
+
+PLAYWRIGHT_DE_MUSTERHAUSEN_BASE_URL=http://de-musterhausen.studio.localhost:4173
+PLAYWRIGHT_DE_MUSTERHAUSEN_USERNAME=tenant-admin@example.org
+PLAYWRIGHT_DE_MUSTERHAUSEN_PASSWORD=super-secret-tenant-password
+```
+
+`playwright/.auth/root-user.json` und `playwright/.auth/de-musterhausen-user.json` enthalten Cookies und Tokens und dürfen nicht committed werden.
+4. Playwright Browser wurde installiert:
 
 ```bash
 pnpm exec playwright install --with-deps chromium
@@ -68,5 +81,6 @@ Wenn ein Service fehlt, bricht der Test früh mit klarer Fehlermeldung ab.
 - Workflow: `.github/workflows/app-e2e.yml` (`App E2E`)
 - Startet dieselben Services via Docker Compose
 - startet die App über das Nx-Target `sva-studio-react:serve`
+- injiziert `PLAYWRIGHT_ROOT_*` und `PLAYWRIGHT_DE_MUSTERHAUSEN_*` als Secrets/Variablen
 - führt `pnpm nx run sva-studio-react:test:e2e` aus
 - lädt den Playwright-Report als Artifact hoch

@@ -61,6 +61,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
+    "@browserbasehq/stagehand": "3.6.0",
     "@codecov/rollup-plugin": "^2.0.1",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "4.2.4",
@@ -73,6 +74,7 @@
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^4.1.5",
     "axe-core": "^4.11.4",
+    "dotenv": "^16.4.7",
     "jsdom": "^29.1.0",
     "tooling-testing": "workspace:*",
     "typescript": "^6.0.3",

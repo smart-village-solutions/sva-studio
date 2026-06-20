@@ -44,12 +44,57 @@ export const gotoHomeAsAuthenticatedUser = async (page: Page, expectedUserName =
   await expect(page.getByRole('button', { name: expectedTriggerPattern })).toBeVisible();
 };
 
-export const createEmptyPaginatedDataResponse = () =>
+export const navigateClientSide = async (page: Page, targetPath: string) => {
+  await page.waitForFunction(() =>
+    Boolean(
+      (window as typeof window & {
+        __SVA_PLAYWRIGHT_ROUTER__?: { navigate: (options: { to: string }) => Promise<void> | void };
+      }).__SVA_PLAYWRIGHT_ROUTER__,
+    ),
+  );
+  await page.evaluate(async (path) => {
+    const router = (
+      window as typeof window & {
+        __SVA_PLAYWRIGHT_ROUTER__?: { navigate: (options: { to: string }) => Promise<void> | void };
+      }
+    ).__SVA_PLAYWRIGHT_ROUTER__;
+    if (!router) {
+      throw new Error('Playwright router hook fehlt.');
+    }
+    await router.navigate({ to: path });
+  }, targetPath);
+};
+
+export const createEmptyPaginatedDataResponse = (pageSize = 0) =>
   JSON.stringify({
     data: [],
     pagination: {
       page: 1,
-      pageSize: 0,
+      pageSize,
       total: 0,
     },
   });
+
+export const registerSharedIamRoutes = async (page: Page, options: { pendingLegalTextsPageSize?: number } = {}) => {
+  await page.route('**/iam/authorize', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ allowed: true, reason: 'mocked_authorize' }),
+    });
+  });
+  await page.route('**/iam/me/legal-texts/pending', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: createEmptyPaginatedDataResponse(options.pendingLegalTextsPageSize),
+    });
+  });
+  await page.route('**/api/v1/iam/me/context', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { activeOrganizationId: null, organizations: [] } }),
+    });
+  });
+};

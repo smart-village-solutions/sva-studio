@@ -8,7 +8,9 @@ import type { StagehandMissionReport } from './reporting/report.js';
 import { detectStagehandAuthIssue } from './runtime/auth.js';
 import { parseStagehandAdminConfig } from './runtime/config.js';
 import { assertStagehandReadiness, type StagehandFetch, type StagehandReadinessResult } from './runtime/readiness.js';
+import { createLocalStagehand } from './runtime/sdk.js';
 import { runStagehandStoryLoop, type RunStagehandStoryLoopOptions, type StagehandStoryLoopSummary } from './runtime/story-loop.js';
+import type { StagehandAdminConfig } from './runtime/types.js';
 import { getStagehandMissionStories, type StagehandStoryReference } from './stories/catalog.js';
 
 type StagehandCliEnv = Record<string, string | undefined>;
@@ -49,6 +51,7 @@ interface StagehandCliResult {
 }
 
 interface RunStagehandAdminCliOptions {
+  readonly createStagehand?: (config: StagehandAdminConfig) => StagehandSessionLike;
   readonly executeCluster?: RunStagehandStoryLoopOptions['executeCluster'];
   readonly fetchImpl?: StagehandFetch;
   readonly generatedAt?: string;
@@ -66,6 +69,20 @@ interface StagehandMissionRunResult {
   readonly artifacts: StagehandMissionArtifacts;
   readonly report: StagehandMissionReport;
   readonly startUrl: string;
+}
+
+interface StagehandPageLike {
+  evaluate(pageFunctionOrExpression: string | ((arg: unknown) => unknown | Promise<unknown>), arg?: unknown): Promise<unknown>;
+  goto(url: string): Promise<unknown>;
+  url(): string;
+}
+
+interface StagehandSessionLike {
+  close(): Promise<void>;
+  context: {
+    pages(): StagehandPageLike[];
+  };
+  init(): Promise<void>;
 }
 
 const DEFAULT_REPORTS_ROOT = resolve(
@@ -157,22 +174,40 @@ function createMissionReport(
 }
 
 async function executeAdminUsersOverviewMission(
-  baseUrl: string,
+  config: StagehandAdminConfig,
   generatedAt: string,
   reportsRoot: string,
-  fetchImpl: StagehandFetch
+  fetchImpl: StagehandFetch,
+  createStagehandSession: (config: StagehandAdminConfig) => StagehandSessionLike
 ): Promise<StagehandMissionRunResult> {
   const mission = getStagehandMission('admin-users-overview');
   const stories = getStagehandMissionStories(mission.name);
   const artifacts = createArtifacts(reportsRoot, mission.name);
-  const readiness = await assertStagehandReadiness(baseUrl, fetchImpl);
-  const startUrl = createStartUrl(baseUrl, mission.startPath);
+  const readiness = await assertStagehandReadiness(config.baseUrl, fetchImpl);
+  const startUrl = createStartUrl(config.baseUrl, mission.startPath);
   const prompt = createMissionPrompt({ startUrl, stories });
 
   createMissionPromptInvariant(prompt);
 
   const response = await fetchImpl(startUrl, HTML_REQUEST_INIT);
-  const bodyText = await response.text();
+  const stagehand = createStagehandSession(config);
+  const bodyText = await (async () => {
+    try {
+      await stagehand.init();
+      const page = stagehand.context.pages()[0];
+
+      if (page === undefined) {
+        throw new Error('Stagehand did not expose an initial browser page for the admin mission.');
+      }
+
+      await page.goto(startUrl);
+      const evaluatedHtml = await page.evaluate(() => document.documentElement.outerHTML);
+      return typeof evaluatedHtml === 'string' ? evaluatedHtml : String(evaluatedHtml);
+    } finally {
+      await stagehand.close();
+    }
+  })();
+
   const findings = createBaseFindings(readiness, startUrl);
   findings.push(createStoryBasisFinding(stories));
   const authIssue = detectStagehandAuthIssue({
@@ -256,16 +291,17 @@ async function executeAdminUsersOverviewMission(
 
 async function runPilotMission(
   missionName: string,
-  baseUrl: string,
+  config: StagehandAdminConfig,
   generatedAt: string,
   reportsRoot: string,
-  fetchImpl: StagehandFetch
+  fetchImpl: StagehandFetch,
+  createStagehandSession: (config: StagehandAdminConfig) => StagehandSessionLike
 ): Promise<StagehandMissionRunResult> {
   if (missionName !== 'admin-users-overview') {
     throw createUnsupportedMissionError(missionName);
   }
 
-  return executeAdminUsersOverviewMission(baseUrl, generatedAt, reportsRoot, fetchImpl);
+  return executeAdminUsersOverviewMission(config, generatedAt, reportsRoot, fetchImpl, createStagehandSession);
 }
 
 export async function runStagehandAdminCli(
@@ -274,6 +310,7 @@ export async function runStagehandAdminCli(
 ): Promise<StagehandCliResult> {
   try {
     const config = parseStagehandAdminConfig(env);
+    const createStagehandSession = options.createStagehand ?? createLocalStagehand;
     const generatedAt = options.generatedAt ?? new Date().toISOString();
     const reportsRoot = options.reportsRoot ?? DEFAULT_REPORTS_ROOT;
 
@@ -305,10 +342,11 @@ export async function runStagehandAdminCli(
     const mission = getStagehandMission(config.mission);
     const missionRun = await runPilotMission(
       mission.name,
-      config.baseUrl,
+      config,
       generatedAt,
       reportsRoot,
-      options.fetchImpl ?? fetch
+      options.fetchImpl ?? fetch,
+      createStagehandSession
     );
 
     writeStagehandMissionArtifacts(missionRun.artifacts, missionRun.report);

@@ -10,7 +10,9 @@ const useAuthMock = vi.fn();
 const useLocaleMock = vi.fn();
 const useThemeMock = vi.fn();
 const useOrganizationContextMock = vi.fn();
-const organizationContextSwitcherMock = vi.fn(() => <div data-testid="organization-context-switcher">Organization Context</div>);
+const organizationContextSwitcherMock = vi.fn(
+  (_props?: { variant?: 'inline' | 'menu' }) => <div data-testid="organization-context-switcher">Organization Context</div>
+);
 const localStorageState = new Map<string, string>();
 const sessionStorageState = new Map<string, string>();
 const localStorageMock = {

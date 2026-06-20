@@ -24,6 +24,14 @@ export const resolveAuthSessionFile = (cwd: string, relativeFile: string): strin
 
 const resolveLocalDefaultBaseUrl = (env: EnvSource): string => `http://127.0.0.1:${env.PLAYWRIGHT_PORT ?? DEFAULT_PLAYWRIGHT_PORT}`;
 
+const hasScopedAuthSetupCredentials = (
+  env: EnvSource,
+  input: {
+    readonly passwordKey: string;
+    readonly usernameKey: string;
+  }
+): boolean => Boolean(env[input.usernameKey] && env[input.passwordKey]);
+
 const getScopedAuthSetupEnv = (
   env: EnvSource,
   input: {
@@ -57,6 +65,21 @@ export const getRootPlaywrightBaseUrl = (env: EnvSource): string =>
 
 export const getDeMusterhausenPlaywrightBaseUrl = (env: EnvSource): string =>
   env.PLAYWRIGHT_DE_MUSTERHAUSEN_BASE_URL ?? env.PLAYWRIGHT_BASE_URL ?? resolveLocalDefaultBaseUrl(env);
+
+export const hasRootAuthSetupCredentials = (env: EnvSource): boolean =>
+  hasScopedAuthSetupCredentials(env, {
+    passwordKey: 'PLAYWRIGHT_ROOT_PASSWORD',
+    usernameKey: 'PLAYWRIGHT_ROOT_USERNAME',
+  });
+
+export const hasDeMusterhausenAuthSetupCredentials = (env: EnvSource): boolean =>
+  hasScopedAuthSetupCredentials(env, {
+    passwordKey: 'PLAYWRIGHT_DE_MUSTERHAUSEN_PASSWORD',
+    usernameKey: 'PLAYWRIGHT_DE_MUSTERHAUSEN_USERNAME',
+  });
+
+export const hasRealAuthSetupCredentials = (env: EnvSource): boolean =>
+  hasRootAuthSetupCredentials(env) && hasDeMusterhausenAuthSetupCredentials(env);
 
 export const getRootAuthSetupEnv = (env: EnvSource) =>
   getScopedAuthSetupEnv(env, {

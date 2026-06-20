@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, test as setup } from '@playwright/test';
 import type { Page } from '@playwright/test';
@@ -8,8 +8,11 @@ import {
   ROOT_AUTH_SESSION_FILE,
   getDeMusterhausenAuthSetupEnv,
   getRootAuthSetupEnv,
+  hasDeMusterhausenAuthSetupCredentials,
+  hasRootAuthSetupCredentials,
   loadPlaywrightEnv,
   resolveAuthSessionFile,
+  unauthenticatedStorageState,
 } from '../src/lib/playwright-auth-session-config';
 
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -131,30 +134,46 @@ const authenticateAndPersistBrowserState = async (
   await page.context().storageState({ path: input.authFile });
 };
 
+const persistUnauthenticatedStorageState = async (authFile: string) => {
+  await writeFile(authFile, `${JSON.stringify(unauthenticatedStorageState, null, 2)}\n`, 'utf8');
+};
+
 setup('authenticate root and de-musterhausen sessions once and persist browser state', async ({ browser }) => {
   setup.setTimeout(120_000);
+  await mkdir(new URL('../playwright/.auth/', import.meta.url), { recursive: true });
 
-  const rootContext = await browser.newContext();
-  const rootPage = await rootContext.newPage();
+  const rootAuthFile = resolveAuthSessionFile(appRoot, ROOT_AUTH_SESSION_FILE);
+  const tenantAuthFile = resolveAuthSessionFile(appRoot, DE_MUSTERHAUSEN_AUTH_SESSION_FILE);
 
-  try {
-    await authenticateAndPersistBrowserState(rootPage, {
-      ...getRootAuthSetupEnv(process.env),
-      authFile: resolveAuthSessionFile(appRoot, ROOT_AUTH_SESSION_FILE),
-    });
-  } finally {
-    await rootContext.close();
+  if (hasRootAuthSetupCredentials(process.env)) {
+    const rootContext = await browser.newContext();
+    const rootPage = await rootContext.newPage();
+
+    try {
+      await authenticateAndPersistBrowserState(rootPage, {
+        ...getRootAuthSetupEnv(process.env),
+        authFile: rootAuthFile,
+      });
+    } finally {
+      await rootContext.close();
+    }
+  } else {
+    await persistUnauthenticatedStorageState(rootAuthFile);
   }
 
-  const tenantContext = await browser.newContext();
-  const tenantPage = await tenantContext.newPage();
+  if (hasDeMusterhausenAuthSetupCredentials(process.env)) {
+    const tenantContext = await browser.newContext();
+    const tenantPage = await tenantContext.newPage();
 
-  try {
-    await authenticateAndPersistBrowserState(tenantPage, {
-      ...getDeMusterhausenAuthSetupEnv(process.env),
-      authFile: resolveAuthSessionFile(appRoot, DE_MUSTERHAUSEN_AUTH_SESSION_FILE),
-    });
-  } finally {
-    await tenantContext.close();
+    try {
+      await authenticateAndPersistBrowserState(tenantPage, {
+        ...getDeMusterhausenAuthSetupEnv(process.env),
+        authFile: tenantAuthFile,
+      });
+    } finally {
+      await tenantContext.close();
+    }
+  } else {
+    await persistUnauthenticatedStorageState(tenantAuthFile);
   }
 });

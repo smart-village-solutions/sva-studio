@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import {
   ROOT_AUTH_SESSION_FILE,
   adminAuthPayload,
+  appRoot,
   getRootPlaywrightBaseUrl,
   gotoHomeAsAuthenticatedUser,
   loadPlaywrightEnv,
@@ -12,11 +13,11 @@ import {
   unauthenticatedStorageState,
 } from './account-admin-ui.helpers';
 
-loadPlaywrightEnv(process.cwd());
+loadPlaywrightEnv(appRoot);
 
 test.use({
   baseURL: getRootPlaywrightBaseUrl(process.env),
-  storageState: resolveAuthSessionFile(process.cwd(), ROOT_AUTH_SESSION_FILE),
+  storageState: resolveAuthSessionFile(appRoot, ROOT_AUTH_SESSION_FILE),
 });
 
 test.beforeEach(async ({ page }) => {

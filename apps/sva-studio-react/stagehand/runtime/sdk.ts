@@ -14,10 +14,10 @@ export interface StagehandLocalOptionsOverrides {
 
 function createDefaultSystemPrompt(config: StagehandAdminConfig): string {
   return [
-    'Du steuerst eine lokale Stagehand-Sitzung fuer das SVA Studio.',
+    'Du steuerst eine lokale Stagehand-Sitzung für das SVA Studio.',
     `Mission: ${config.mission}.`,
     `Zielsystem: ${config.baseUrl}.`,
-    'Handle vorsichtig, dokumentiere Beobachtungen praezise und veraendere nur explizit benoetigte Testdaten.',
+    'Handle vorsichtig, dokumentiere Beobachtungen präzise und verändere nur explizit benötigte Testdaten.',
   ].join(' ');
 }
 

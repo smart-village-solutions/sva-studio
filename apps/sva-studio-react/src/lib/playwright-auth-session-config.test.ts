@@ -7,6 +7,7 @@ import {
   getDeMusterhausenPlaywrightBaseUrl,
   getRootAuthSetupEnv,
   getRootPlaywrightBaseUrl,
+  hasRealAuthSetupCredentials,
   unauthenticatedStorageState,
 } from './playwright-auth-session-config';
 
@@ -53,6 +54,17 @@ describe('playwright auth session config', () => {
     expect(() => getRootAuthSetupEnv({ PLAYWRIGHT_ROOT_USERNAME: 'root@example.test' })).toThrowError(
       'Missing Playwright root auth environment variables: PLAYWRIGHT_ROOT_PASSWORD'
     );
+  });
+
+  it('treats generic app auth env without dedicated Playwright users as insufficient for real auth setup', () => {
+    expect(
+      hasRealAuthSetupCredentials({
+        PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:4173',
+        SVA_AUTH_CLIENT_ID: 'gha-e2e-client',
+        SVA_AUTH_CLIENT_SECRET: 'gha-e2e-secret',
+        SVA_AUTH_ISSUER: 'https://accounts.google.com',
+      })
+    ).toBe(false);
   });
 
   it('resolves the scoped Playwright base urls from the configured port when no explicit host is set', () => {

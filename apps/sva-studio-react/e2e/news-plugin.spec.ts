@@ -9,7 +9,6 @@ import {
   expectNewsEditorReady,
   expectPluginPageHeading,
   gotoHomeAsAuthenticatedUser,
-  gotoShellRoot,
   mockSharedShellRequests,
   navigateClientSide,
   permissionPayload,
@@ -73,23 +72,31 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/news/news-1');
     await expectNewsEditorReady(page, 'edit');
     await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News aktualisiert');
-    await page.getByRole('radio', { name: /Sichtbar|news\.publicationModes\.published/ }).click();
+    await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
+    await page.getByRole('radio', { name: /Sofort veröffentlichen|news\.publicationModes\.immediate/ }).click();
     await page.getByRole('button', { name: /Speichern|news\.actions\.save/ }).click();
     await expect.poll(() => newsItems[0]?.title).toBe('Erste News aktualisiert');
+    page.once('dialog', async (dialog) => {
+      await dialog.accept();
+    });
     await page.getByRole('button', { name: /Löschen|news\.actions\.delete/ }).click();
-    await page.getByRole('button', { name: /Eintrag löschen|common\.confirm/ }).click();
     await expect.poll(() => newsItems).toHaveLength(0);
   });
 
-  test('shows the news entry in the shell and supports keyboard navigation', async ({ page }) => {
+  test('opens the news editor and supports keyboard navigation across detail tabs', async ({ page }) => {
     const newsItems: NewsRecord[] = [{ id: 'news-1', title: 'Erste News', contentType: 'news.article', status: 'published', author: 'Editor One', createdAt: '2026-04-13T12:10:00.000Z', updatedAt: '2026-04-13T12:10:00.000Z', publishedAt: '2026-04-13T12:10:00.000Z', visible: true, payload: { teaser: 'Kurztext', body: '<p>Inhalt</p>' } }];
     await page.route('**/auth/me', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) }));
+    await page.route('**/iam/me/permissions?**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(permissionPayload) }));
     await page.route('**/api/v1/mainserver/news', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: newsItems, pagination: createPagination(1) }) }));
     await page.route('**/api/v1/mainserver/news/**', async (route) => fulfillContentRoute(route, newsItems));
-    await gotoShellRoot(page);
-    await expect(page.getByRole('link', { name: /Erste News/ })).toBeVisible();
-    await page.keyboard.press('Tab');
-    await expect(page.getByRole('link', { name: /Erste News/ })).toBeFocused();
+    await gotoHomeAsAuthenticatedUser(page);
+    await navigateClientSide(page, '/admin/news/news-1');
+    await expectNewsEditorReady(page, 'edit');
+    const contentTab = page.getByRole('tab', { name: /Inhalte|news\.tabs\.content/ });
+    await contentTab.focus();
+    await expect(contentTab).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('tab', { selected: true, name: /Einstellungen|news\.tabs\.settings/ })).toBeVisible();
   });
 
   test.describe('unauthenticated access', () => {

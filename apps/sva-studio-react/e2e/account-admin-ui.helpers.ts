@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 import type { Page } from '@playwright/test';
 
 import {
@@ -17,6 +19,8 @@ export {
   unauthenticatedStorageState,
   navigateClientSide,
 };
+
+export const appRoot = fileURLToPath(new URL('../', import.meta.url));
 
 export const adminAuthPayload = {
   user: {
@@ -124,10 +128,10 @@ export const configureRootAccountAdminTest = (
   testApi: Pick<typeof import('@playwright/test').test, 'beforeEach' | 'use'>,
   options: { mockAdminAuth?: boolean } = {},
 ) => {
-  loadPlaywrightEnv(process.cwd());
+  loadPlaywrightEnv(appRoot);
   testApi.use({
     baseURL: getRootPlaywrightBaseUrl(process.env),
-    storageState: resolveAuthSessionFile(process.cwd(), ROOT_AUTH_SESSION_FILE),
+    storageState: resolveAuthSessionFile(appRoot, ROOT_AUTH_SESSION_FILE),
   });
   testApi.beforeEach(async ({ page }) => {
     await registerSharedAccountAdminRoutes(page);

@@ -191,22 +191,22 @@ async function executeAdminUsersOverviewMission(
 
   const response = await fetchImpl(startUrl, HTML_REQUEST_INIT);
   const stagehand = createStagehandSession(config);
-  let bodyText = '';
+  const bodyText = await (async () => {
+    try {
+      await stagehand.init();
+      const page = stagehand.context.pages()[0];
 
-  try {
-    await stagehand.init();
-    const page = stagehand.context.pages()[0];
+      if (page === undefined) {
+        throw new Error('Stagehand did not expose an initial browser page for the admin mission.');
+      }
 
-    if (page === undefined) {
-      throw new Error('Stagehand did not expose an initial browser page for the admin mission.');
+      await page.goto(startUrl);
+      const evaluatedHtml = await page.evaluate(() => document.documentElement.outerHTML);
+      return typeof evaluatedHtml === 'string' ? evaluatedHtml : String(evaluatedHtml);
+    } finally {
+      await stagehand.close();
     }
-
-    await page.goto(startUrl);
-    const evaluatedHtml = await page.evaluate(() => document.documentElement.outerHTML);
-    bodyText = typeof evaluatedHtml === 'string' ? evaluatedHtml : String(evaluatedHtml);
-  } finally {
-    await stagehand.close();
-  }
+  })();
 
   const findings = createBaseFindings(readiness, startUrl);
   findings.push(createStoryBasisFinding(stories));

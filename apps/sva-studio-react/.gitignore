@@ -13,3 +13,4 @@ count.txt
 todos.json
 playwright-report
 test-results
+playwright/.auth/*.json

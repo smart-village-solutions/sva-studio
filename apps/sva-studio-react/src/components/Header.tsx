@@ -14,6 +14,7 @@ import { Input } from './ui/input';
 import { t } from '../i18n';
 import { createAccountActionHref, createLoginHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
 import { clearClientLogoutState } from '../lib/auth-session-state';
+import { useOrganizationContext } from '../hooks/use-organization-context';
 import { hasExperimentalAccess } from '../lib/iam-admin-access';
 import { cn } from '../lib/utils';
 import { useAuth } from '../providers/auth-provider';
@@ -80,6 +81,7 @@ const HeaderDropdownMenu = ({
   menuLabel,
   className,
   menuClassName,
+  popupRole,
 }: {
   readonly trigger: (props: { readonly open: boolean; readonly toggle: () => void; readonly menuId: string }) => React.ReactNode;
   readonly items: readonly HeaderDropdownItem[];
@@ -87,10 +89,12 @@ const HeaderDropdownMenu = ({
   readonly menuLabel: string;
   readonly className?: string;
   readonly menuClassName?: string;
+  readonly popupRole?: 'dialog' | 'menu';
 }) => {
   const [open, setOpen] = React.useState(false);
   const wrapperRef = React.useRef<HTMLDivElement | null>(null);
   const menuId = React.useId();
+  const resolvedPopupRole = popupRole ?? 'menu';
 
   React.useEffect(() => {
     if (!open) {
@@ -124,9 +128,9 @@ const HeaderDropdownMenu = ({
       {open ? (
         <div
           id={menuId}
-          role="menu"
+          role={resolvedPopupRole}
           aria-label={menuLabel}
-          aria-orientation="vertical"
+          aria-orientation={resolvedPopupRole === 'menu' ? 'vertical' : undefined}
           className={cn(
             'absolute top-full z-50 mt-2 min-w-56 overflow-hidden rounded-lg border border-border bg-popover p-1.5 shadow-md',
             align === 'right' ? 'right-0' : 'left-0',
@@ -365,10 +369,11 @@ const HeaderAuthAction = ({
       menuLabel={t('shell.header.accountMenu')}
       items={accountMenuItems}
       menuClassName="min-w-72"
+      popupRole="dialog"
       trigger={({ open, toggle, menuId }) => (
         <button
           type="button"
-          aria-haspopup="menu"
+          aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={menuId}
           className="flex items-center gap-3 rounded-full px-1 py-1 text-left hover:bg-accent/60"
@@ -399,6 +404,7 @@ export default function Header({
   onOpenMobileNavigation,
 }: HeaderProps) {
   const { user, isAuthenticated, isLoading: isAuthLoading, isDevAuthAvailable, loginWithDevAuth, logout } = useAuth();
+  const organizationContext = useOrganizationContext();
   const { locale, setLocale } = useLocale();
   const { mode, toggleMode } = useTheme();
   const currentPathname = useRouterState({
@@ -407,7 +413,16 @@ export default function Header({
   const [isHydrated, setIsHydrated] = React.useState(false);
   const resolvedMode = isHydrated ? mode : 'light';
   const loginHref = isHydrated ? createLoginHref(resolveCurrentReturnTo()) : '/auth/login';
-  const showOrganizationContext = isHydrated && isAuthenticated && !isLoading && !isAuthLoading && Boolean(user);
+  const hasMultipleActiveOrganizations =
+    (organizationContext.context?.organizations.filter((organization) => organization.isActive).length ?? 0) > 1;
+  const showOrganizationContext =
+    isHydrated &&
+    isAuthenticated &&
+    !isLoading &&
+    !isAuthLoading &&
+    Boolean(user) &&
+    !organizationContext.isLoading &&
+    hasMultipleActiveOrganizations;
   const showAuthenticatedHeaderTools = isHydrated && isAuthenticated && !isLoading && !isAuthLoading;
   const showExperimentalHeaderTools = showAuthenticatedHeaderTools && hasExperimentalAccess(user);
   const hideAnonymousLoginAction = !isAuthenticated && currentPathname === '/';

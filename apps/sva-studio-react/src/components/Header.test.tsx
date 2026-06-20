@@ -9,6 +9,8 @@ import Header from './Header';
 const useAuthMock = vi.fn();
 const useLocaleMock = vi.fn();
 const useThemeMock = vi.fn();
+const useOrganizationContextMock = vi.fn();
+const organizationContextSwitcherMock = vi.fn(() => <div data-testid="organization-context-switcher">Organization Context</div>);
 const localStorageState = new Map<string, string>();
 const sessionStorageState = new Map<string, string>();
 const localStorageMock = {
@@ -48,6 +50,10 @@ vi.mock('../providers/locale-provider', () => ({
   useLocale: () => useLocaleMock(),
 }));
 
+vi.mock('../hooks/use-organization-context', () => ({
+  useOrganizationContext: () => useOrganizationContextMock(),
+}));
+
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
     to,
@@ -68,7 +74,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('./OrganizationContextSwitcher', () => ({
-  OrganizationContextSwitcher: () => <div data-testid="organization-context-switcher">Organization Context</div>,
+  OrganizationContextSwitcher: (props: { variant?: 'inline' | 'menu' }) => organizationContextSwitcherMock(props),
 }));
 
 /**
@@ -83,6 +89,11 @@ describe('Header auth actions', () => {
     useAuthMock.mockReset();
     useThemeMock.mockReset();
     useLocaleMock.mockReset();
+    useOrganizationContextMock.mockReset();
+    organizationContextSwitcherMock.mockReset();
+    organizationContextSwitcherMock.mockImplementation(() => (
+      <div data-testid="organization-context-switcher">Organization Context</div>
+    ));
     localStorageState.clear();
     sessionStorageState.clear();
     clearAuthDiagnosticTrail();
@@ -99,6 +110,34 @@ describe('Header auth actions', () => {
     Object.defineProperty(window, 'sessionStorage', {
       configurable: true,
       value: sessionStorageMock,
+    });
+    useOrganizationContextMock.mockReturnValue({
+      context: {
+        activeOrganizationId: 'org-1',
+        organizations: [
+          {
+            organizationId: 'org-1',
+            organizationKey: 'alpha',
+            displayName: 'Alpha',
+            organizationType: 'county',
+            isActive: true,
+            isDefaultContext: true,
+          },
+          {
+            organizationId: 'org-2',
+            organizationKey: 'beta',
+            displayName: 'Beta',
+            organizationType: 'municipality',
+            isActive: true,
+            isDefaultContext: false,
+          },
+        ],
+      },
+      isLoading: false,
+      isUpdating: false,
+      error: null,
+      refetch: vi.fn(),
+      switchOrganization: vi.fn(),
     });
   });
 
@@ -240,7 +279,7 @@ describe('Header auth actions', () => {
     expect(screen.queryByText('Organisationskontext')).toBeNull();
     expect(screen.queryByText('Sicherheit')).toBeNull();
     expect(screen.getAllByText('Test User')).toHaveLength(1);
-    expect(screen.getByRole('menu').className).toContain('rounded-lg');
+    expect(screen.getByRole('dialog', { name: 'Kontomenü' }).className).toContain('rounded-lg');
     expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
     expect(
       screen.getByTestId('organization-context-switcher').compareDocumentPosition(screen.getByRole('menuitem', { name: 'Mein Konto' }))
@@ -506,6 +545,70 @@ describe('Header auth actions', () => {
     await waitFor(() => {
       expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
     });
+  });
+
+  it('rendert keinen fuehrenden Separator, wenn der Organisationswechsler im Kontomenue ausfaellt', async () => {
+    useOrganizationContextMock.mockReturnValue({
+      context: {
+        activeOrganizationId: 'org-1',
+        organizations: [
+          {
+            organizationId: 'org-1',
+            organizationKey: 'alpha',
+            displayName: 'Alpha',
+            organizationType: 'county',
+            isActive: true,
+            isDefaultContext: true,
+          },
+        ],
+      },
+      isLoading: false,
+      isUpdating: false,
+      error: null,
+      refetch: vi.fn(),
+      switchOrganization: vi.fn(),
+    });
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        roles: ['editor'],
+        permissionActions: ['experimental.read'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
+
+    render(<Header />);
+
+    const accountTrigger = await screen.findByRole('button', { name: /Test User/ });
+    accountTrigger.click();
+
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: 'Mein Konto' })).toBeTruthy();
+    });
+
+    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
+    expect(screen.getAllByRole('separator')).toHaveLength(2);
+    expect(screen.getByRole('menuitem', { name: 'Mein Konto' }).previousElementSibling?.getAttribute('role')).not.toBe(
+      'separator'
+    );
   });
 
   it('delegates theme toggle to the theme provider', async () => {

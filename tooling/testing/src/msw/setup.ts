@@ -1,6 +1,10 @@
 import { afterAll, afterEach, beforeAll } from 'vitest';
 
 const installTestLocalStorage = (): void => {
+  if ('localStorage' in globalThis) {
+    return;
+  }
+
   const storage = new Map<string, string>();
 
   Object.defineProperty(globalThis, 'localStorage', {

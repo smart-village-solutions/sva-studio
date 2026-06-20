@@ -74,8 +74,8 @@ describe('acceptance runtime checks live spec and readiness', () => {
 
     expect(check.status).toBe('warn');
     expect(check.code).toBe('live_spec_differs');
-    expect(assertComposeServiceNetworks).toHaveBeenCalledWith({ services: { app: {} } }, 'studio-app', ['internal', 'public']);
-    expect(assertComposeServiceIngressLabels).toHaveBeenCalledWith({ services: { app: {} } }, 'studio-app');
+    expect(assertComposeServiceNetworks).toHaveBeenCalledWith({ services: { app: {} } }, 'app', ['internal', 'public']);
+    expect(assertComposeServiceIngressLabels).toHaveBeenCalledWith({ services: { app: {} } }, 'app');
     expect(inspectRemoteServiceContract).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ serviceName: 'studio-app' }),
@@ -96,6 +96,40 @@ describe('acceptance runtime checks live spec and readiness', () => {
         'REDIS_PASSWORD',
       ],
     });
+  });
+
+  it('keeps compose assertions pinned to the rendered app service while inspecting the live override service', async () => {
+    const assertComposeServiceNetworks = vi.fn(() => ({
+      labels: {
+        'traefik.http.routers.app.rule': 'Host(`studio.smart-village.app`)',
+      },
+      networks: ['internal', 'public'],
+    }));
+    const assertComposeServiceIngressLabels = vi.fn();
+    const inspectRemoteServiceContract = vi.fn(async () => null);
+    const deps = createDeps({
+      assertComposeServiceIngressLabels,
+      assertComposeServiceNetworks,
+      getRemoteAppServiceName: vi.fn(() => 'studio-app'),
+      inspectRemoteServiceContract,
+    });
+
+    await buildAcceptanceLiveSpecCheck(
+      deps,
+      'studio',
+      {
+        SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
+        SVA_RUNTIME_PROFILE: 'studio',
+      },
+      acceptanceOptions,
+    );
+
+    expect(assertComposeServiceNetworks).toHaveBeenCalledWith({ services: { app: {} } }, 'app', ['internal', 'public']);
+    expect(assertComposeServiceIngressLabels).toHaveBeenCalledWith({ services: { app: {} } }, 'app');
+    expect(inspectRemoteServiceContract).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ serviceName: 'studio-app' }),
+    );
   });
 
   it('builds an ok app principal readiness check when all readiness dependencies are green', async () => {

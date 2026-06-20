@@ -29,12 +29,14 @@ type TenantSecretRegistryDeps = {
 };
 
 type RegistryWorkerDeps = Parameters<Parameters<typeof withRegistryProvisioningWorkerDeps>[0]>[0];
+type LoadLocalTenantSecretStateOptions = Readonly<{ skipEnvWrapping?: boolean }>;
 
 const loadActiveLocalTenantSecretStates = async (
   deps: TenantSecretRegistryDeps,
   env: NodeJS.ProcessEnv,
-): Promise<readonly LocalTenantSecretState[]> =>
-  deps.withTemporaryProcessEnv(env, async () =>
+  options?: LoadLocalTenantSecretStateOptions,
+): Promise<readonly LocalTenantSecretState[]> => {
+  const loadStates = async () =>
     withRegistryProvisioningWorkerDeps(async (workerDeps) => {
       const instances = await workerDeps.repository.listInstances({ status: 'active' });
       const states: LocalTenantSecretState[] = [];
@@ -53,8 +55,10 @@ const loadActiveLocalTenantSecretStates = async (
       }
 
       return states;
-    }),
-  );
+    });
+
+  return options?.skipEnvWrapping ? await loadStates() : await deps.withTemporaryProcessEnv(env, loadStates);
+};
 
 const tenantNeedsSecretRepair = (state: LocalTenantSecretState) =>
   !state.authClientSecretReadable ||
@@ -94,7 +98,7 @@ const syncLocalTenantSecretsToRegistry = async (
 ): Promise<LocalTenantSecretSyncSummary> =>
   deps.withTemporaryProcessEnv(env, async () =>
     withRegistryProvisioningWorkerDeps(async (workerDeps) => {
-      const before = await loadActiveLocalTenantSecretStates(deps, env);
+      const before = await loadActiveLocalTenantSecretStates(deps, env, { skipEnvWrapping: true });
       const targetInstanceIds = before.filter(tenantNeedsSecretRepair).map((state) => state.instanceId);
       const healedInstanceIds = new Set<string>();
       const errors: string[] = [];
@@ -108,7 +112,7 @@ const syncLocalTenantSecretsToRegistry = async (
         }
       }
 
-      const after = await loadActiveLocalTenantSecretStates(deps, env);
+      const after = await loadActiveLocalTenantSecretStates(deps, env, { skipEnvWrapping: true });
       return {
         attemptedInstanceIds: targetInstanceIds,
         errors,

@@ -63,6 +63,16 @@ const markdownRuntimeContractSection = (report: AcceptanceDeployReport) => [
   `- Ableitbare Schluessel: \`${report.runtimeContract.derivedKeys.join(', ') || 'keine'}\``,
 ];
 
+const markdownReleaseManifestSection = (report: AcceptanceDeployReport) => [
+  '## Release Manifest',
+  '',
+  `- Commit-SHA: \`${report.releaseManifest.commitSha ?? 'n/a'}\``,
+  `- Repository: \`${report.releaseManifest.imageRepository}\``,
+  `- Image-Ref: \`${report.releaseManifest.imageRef}\``,
+  `- Image-Digest: \`${report.releaseManifest.imageDigest}\``,
+  `- Monitoring-Config-Tag: \`${report.releaseManifest.monitoringConfigImageTag ?? 'n/a'}\``,
+];
+
 const markdownObservabilitySection = (report: AcceptanceDeployReport) => [
   '## Observability',
   '',
@@ -87,6 +97,7 @@ export const formatAcceptanceDeployReportMarkdown = (report: AcceptanceDeployRep
     markdownProbeSection('## Interne Probes', report.internalProbes),
     markdownProbeSection('## Externe Probes', report.externalProbes),
     markdownRuntimeContractSection(report),
+    markdownReleaseManifestSection(report),
     markdownObservabilitySection(report),
     markdownStackStatusSection(report),
   ];

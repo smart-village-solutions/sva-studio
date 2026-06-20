@@ -119,6 +119,41 @@ describe('OrganizationContextSwitcher', () => {
     expect(screen.getByRole('status').textContent).toContain('Aktiver Organisationskontext: Beta');
   });
 
+  it('does not render organization metadata below the selector', () => {
+    useOrganizationContextMock.mockReturnValue({
+      context: {
+        activeOrganizationId: 'org-2',
+        organizations: [
+          {
+            organizationId: 'org-1',
+            organizationKey: 'alpha',
+            displayName: 'Alpha',
+            organizationType: 'county',
+            isActive: true,
+            isDefaultContext: false,
+          },
+          {
+            organizationId: 'org-2',
+            organizationKey: 'beta',
+            displayName: 'Beta',
+            organizationType: 'municipality',
+            isActive: true,
+            isDefaultContext: true,
+          },
+        ],
+      },
+      isLoading: false,
+      isUpdating: false,
+      error: null,
+      refetch: vi.fn(),
+      switchOrganization: vi.fn(),
+    });
+
+    render(<OrganizationContextSwitcher variant="menu" />);
+
+    expect(screen.queryByText('beta · municipality · Default-Kontext')).toBeNull();
+  });
+
   it('renders a visible error message when switching the context fails', () => {
     useOrganizationContextMock.mockReturnValue({
       context: {
@@ -240,5 +275,43 @@ describe('OrganizationContextSwitcher', () => {
     });
 
     expect(switchOrganization).not.toHaveBeenCalled();
+  });
+
+  it('renders a compact menu layout variant for dropdown usage', () => {
+    useOrganizationContextMock.mockReturnValue({
+      context: {
+        activeOrganizationId: 'org-2',
+        organizations: [
+          {
+            organizationId: 'org-1',
+            organizationKey: 'alpha',
+            displayName: 'Alpha',
+            organizationType: 'county',
+            isActive: true,
+            isDefaultContext: false,
+          },
+          {
+            organizationId: 'org-2',
+            organizationKey: 'beta',
+            displayName: 'Beta',
+            organizationType: 'municipality',
+            isActive: true,
+            isDefaultContext: true,
+          },
+        ],
+      },
+      isLoading: false,
+      isUpdating: false,
+      error: null,
+      refetch: vi.fn(),
+      switchOrganization: vi.fn(),
+    });
+
+    render(<OrganizationContextSwitcher variant="menu" />);
+
+    const select = screen.getByLabelText('Aktive Organisation');
+    expect(select.className).toContain('w-full');
+    expect(select.className).toContain('rounded-lg');
+    expect(screen.queryByText('beta · municipality · Default-Kontext')).toBeNull();
   });
 });

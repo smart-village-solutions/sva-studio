@@ -210,6 +210,8 @@ describe('Header auth actions', () => {
 
     render(<Header />);
 
+    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
+
     const accountTrigger = await screen.findByRole('button', { name: /Test User/ });
     accountTrigger.click();
 
@@ -227,15 +229,22 @@ describe('Header auth actions', () => {
     );
     expect(screen.getByRole('menuitem', { name: 'Passwort ändern' }).getAttribute('data-router-link')).toBeNull();
     expect(screen.queryByRole('menuitem', { name: 'E-Mail ändern' })).toBeNull();
-    expect(screen.getAllByRole('separator')).toHaveLength(2);
+    expect(screen.getAllByRole('separator')).toHaveLength(3);
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
-    expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
     expect(
       screen
         .getAllByRole('textbox')
         .some((element) => element.className.includes('bg-[rgb(var(--waste-panel-surface))]'))
     ).toBe(true);
+    expect(screen.queryByText('Bereich')).toBeNull();
+    expect(screen.queryByText('Organisationskontext')).toBeNull();
+    expect(screen.queryByText('Sicherheit')).toBeNull();
+    expect(screen.getAllByText('Test User')).toHaveLength(1);
     expect(screen.getByRole('menu').className).toContain('rounded-lg');
+    expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
+    expect(
+      screen.getByTestId('organization-context-switcher').compareDocumentPosition(screen.getByRole('menuitem', { name: 'Mein Konto' }))
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 
     const logoutForm = document.querySelector('form[action="/auth/logout"]');
     const logoutIntent = logoutForm?.querySelector('input[name="logoutIntent"]');
@@ -457,6 +466,46 @@ describe('Header auth actions', () => {
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Logout' })).toBeNull();
     expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
+  });
+
+  it('platziert den Organisationswechsler nur im Kontomenue', async () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        roles: ['editor'],
+        permissionActions: ['experimental.read'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
+
+    render(<Header />);
+
+    expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
+
+    const accountTrigger = await screen.findByRole('button', { name: /Test User/ });
+    accountTrigger.click();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
+    });
   });
 
   it('delegates theme toggle to the theme provider', async () => {

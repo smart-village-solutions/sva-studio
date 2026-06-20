@@ -189,10 +189,6 @@ describe('ContentListPage', () => {
 
     const view = render(<ContentListPage />);
 
-    expect(screen.getByRole('heading', { name: 'Inhaltsliste', level: 2 })).toBeTruthy();
-    expect(
-      screen.getByText('Durchsuchen Sie die gemeinsamen redaktionellen Inhalte und öffnen Sie bei Bedarf die typspezifische Detailansicht.')
-    ).toBeTruthy();
     expect(useContentsMock).toHaveBeenCalledWith({
       page: 1,
       pageSize: 25,
@@ -212,6 +208,8 @@ describe('ContentListPage', () => {
       'events.delete',
     ]);
     expect(screen.getByRole('heading', { name: 'Inhalte' })).toBeTruthy();
+    expect(screen.queryByText(/Aktueller Zugriffsstatus:/)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Inhaltsliste', level: 2 })).toBeNull();
     expect(screen.getByRole('link', { name: 'Neuer Inhalt' }).getAttribute('href')).toBe('/admin/content/new');
     expect(screen.getByText('1–2 von 2 Inhalten')).toBeTruthy();
     expect(screen.getByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' })).toBeTruthy();
@@ -220,8 +218,8 @@ describe('ContentListPage', () => {
     expect(screen.getAllByRole('link', { name: 'Nur lesen' })[0]?.getAttribute('href')).toBe('/admin/poi/content-2');
     expect(screen.getAllByRole('button', { name: 'Löschen' }).length).toBeGreaterThanOrEqual(2);
 
-    fireEvent.change(screen.getByLabelText('Suche'), {
-      target: { value: 'archiv' },
+    fireEvent.change(screen.getByLabelText('Status'), {
+      target: { value: 'archived' },
     });
 
     const searchUpdater = navigateMock.mock.calls.at(-1)?.[0]?.search as ((current: Record<string, unknown>) => Record<string, unknown>) | undefined;
@@ -257,7 +255,7 @@ describe('ContentListPage', () => {
     expect(useContentsMock).toHaveBeenLastCalledWith({
       page: 1,
       pageSize: 25,
-      q: 'archiv',
+      status: 'archived',
       sortBy: 'updatedAt',
       sortDirection: 'desc',
       visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],
@@ -273,7 +271,6 @@ describe('ContentListPage', () => {
       'events.create',
       'events.delete',
     ]);
-    expect(screen.queryAllByText('Startseite')).toHaveLength(0);
     expect(screen.getAllByText('Archiv').length).toBeGreaterThan(0);
   });
 
@@ -462,14 +459,13 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
 
     expect(screen.getByText('Unzureichende Berechtigungen für diese Inhaltsaktion.')).toBeTruthy();
-    expect(screen.getByText('Aktueller Zugriffsstatus: Serverseitig verweigert. Kein zusätzlicher Kontext')).toBeTruthy();
+    expect(screen.queryByText(/Aktueller Zugriffsstatus:/)).toBeNull();
     expect((screen.getByRole('button', { name: 'Neuer Inhalt' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getAllByRole('button', { name: 'Gesperrt' }).every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
   });
 
   it('hydrates host list controls from route search state and updates canonical params', () => {
     searchState = {
-      search: 'archiv',
       filters: { status: 'archived' },
       page: 2,
       pageSize: 1,
@@ -504,10 +500,9 @@ describe('ContentListPage', () => {
 
     render(<ContentListPage />);
 
-    expect((screen.getByLabelText('Suche') as HTMLInputElement).value).toBe('archiv');
     expect((screen.getByLabelText('Status') as HTMLSelectElement).value).toBe('archived');
-    fireEvent.change(screen.getByLabelText('Suche'), {
-      target: { value: 'neu' },
+    fireEvent.change(screen.getByLabelText('Status'), {
+      target: { value: 'published' },
     });
 
     expect(navigateMock).toHaveBeenCalled();
@@ -517,10 +512,9 @@ describe('ContentListPage', () => {
     expect(searchUpdater?.(searchState)).toEqual({
       page: 1,
       pageSize: 1,
-      q: 'neu',
+      status: 'published',
       sortBy: 'updatedAt',
       sortDirection: 'desc',
-      status: 'archived',
     });
   });
 
@@ -543,7 +537,6 @@ describe('ContentListPage', () => {
 
   it('normalizes legacy query aliases from route search state into canonical list controls', () => {
     searchState = {
-      q: 'live',
       status: 'published',
       page: '2',
       pageSize: '1',
@@ -578,12 +571,10 @@ describe('ContentListPage', () => {
 
     render(<ContentListPage />);
 
-    expect((screen.getByLabelText('Suche') as HTMLInputElement).value).toBe('live');
     expect((screen.getByLabelText('Status') as HTMLSelectElement).value).toBe('published');
     expect(useContentsMock).toHaveBeenCalledWith({
       page: 2,
       pageSize: 1,
-      q: 'live',
       status: 'published',
       sortBy: 'updatedAt',
       sortDirection: 'desc',
@@ -604,7 +595,6 @@ describe('ContentListPage', () => {
 
   it('hides generic bulk actions for mainserver-backed content items', async () => {
     searchState = {
-      search: '',
       filters: { status: 'all' },
       page: 1,
       pageSize: 2,
@@ -647,7 +637,6 @@ describe('ContentListPage', () => {
 
   it('normalizes legacy string sort params from route state before querying the unified list', () => {
     searchState = {
-      q: 'archiv',
       sort: '-title',
     };
 
@@ -658,7 +647,6 @@ describe('ContentListPage', () => {
     expect(useContentsMock).toHaveBeenCalledWith({
       page: 1,
       pageSize: 25,
-      q: 'archiv',
       sortBy: 'title',
       sortDirection: 'desc',
       visibleTypes: ['news.article', 'events.event-record', 'poi.point-of-interest'],

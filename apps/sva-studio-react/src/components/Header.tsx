@@ -47,6 +47,7 @@ type HeaderAuthActionProps = Readonly<{
   isLoading: boolean;
   isAuthLoading: boolean;
   isAuthenticated: boolean;
+  showOrganizationContext: boolean;
   isDevAuthAvailable?: boolean;
   hideAnonymousLoginAction: boolean;
   loginHref: string;
@@ -78,12 +79,14 @@ const HeaderDropdownMenu = ({
   align = 'right',
   menuLabel,
   className,
+  menuClassName,
 }: {
   readonly trigger: (props: { readonly open: boolean; readonly toggle: () => void; readonly menuId: string }) => React.ReactNode;
   readonly items: readonly HeaderDropdownItem[];
   readonly align?: 'left' | 'right';
   readonly menuLabel: string;
   readonly className?: string;
+  readonly menuClassName?: string;
 }) => {
   const [open, setOpen] = React.useState(false);
   const wrapperRef = React.useRef<HTMLDivElement | null>(null);
@@ -126,7 +129,8 @@ const HeaderDropdownMenu = ({
           aria-orientation="vertical"
           className={cn(
             'absolute top-full z-50 mt-2 min-w-56 overflow-hidden rounded-lg border border-border bg-popover p-1.5 shadow-md',
-            align === 'right' ? 'right-0' : 'left-0'
+            align === 'right' ? 'right-0' : 'left-0',
+            menuClassName
           )}
         >
           {items.map((item) => {
@@ -242,6 +246,7 @@ const HeaderAuthAction = ({
   isLoading,
   isAuthLoading,
   isAuthenticated,
+  showOrganizationContext,
   isDevAuthAvailable = false,
   hideAnonymousLoginAction,
   loginHref,
@@ -314,6 +319,18 @@ const HeaderAuthAction = ({
       };
 
   const accountMenuItems: readonly HeaderDropdownItem[] = [
+    ...(showOrganizationContext
+      ? ([
+          {
+            id: 'organization-context',
+            render: <OrganizationContextSwitcher variant="menu" />,
+          },
+          {
+            id: 'divider-organization-context',
+            render: <HeaderSectionDivider />,
+          },
+        ] satisfies readonly HeaderDropdownItem[])
+      : []),
     { id: 'account', label: t('account.profile.title'), href: '/account' },
     {
       id: 'password',
@@ -325,8 +342,16 @@ const HeaderAuthAction = ({
       id: 'divider-privacy',
       render: <HeaderSectionDivider />,
     },
-    { id: 'privacy', label: t('account.privacy.navLabel'), href: '/account/privacy' },
-    { id: 'rules', label: t('account.rules.navLabel'), href: '/account/rules' },
+    {
+      id: 'privacy',
+      label: t('account.privacy.navLabel'),
+      href: '/account/privacy',
+    },
+    {
+      id: 'rules',
+      label: t('account.rules.navLabel'),
+      href: '/account/rules',
+    },
     {
       id: 'divider-session',
       render: <HeaderSectionDivider />,
@@ -339,6 +364,7 @@ const HeaderAuthAction = ({
       align="right"
       menuLabel={t('shell.header.accountMenu')}
       items={accountMenuItems}
+      menuClassName="min-w-72"
       trigger={({ open, toggle, menuId }) => (
         <button
           type="button"
@@ -441,11 +467,6 @@ export default function Header({
           ) : null}
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          {showOrganizationContext ? (
-            <div className="min-w-0 shrink-0">
-              <OrganizationContextSwitcher />
-            </div>
-          ) : null}
           {showExperimentalHeaderTools ? (
             <div className="hidden min-w-0 flex-1 items-center gap-3 xl:flex">
               <HeaderPromptField icon={<Search className="h-4 w-4" />} label={searchPromptLabel} />
@@ -511,6 +532,7 @@ export default function Header({
             isLoading={isLoading}
             isAuthLoading={isAuthLoading}
             isAuthenticated={isAuthenticated}
+            showOrganizationContext={showOrganizationContext}
             isDevAuthAvailable={isDevAuthAvailable}
             hideAnonymousLoginAction={hideAnonymousLoginAction}
             loginHref={loginHref}

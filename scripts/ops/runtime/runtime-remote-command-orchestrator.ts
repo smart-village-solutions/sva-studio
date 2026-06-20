@@ -204,7 +204,12 @@ const createRemoteBundle = (
 const createRuntimeEnvRemoteVerification = (deps: RuntimeRemoteCommandOrchestratorDeps, remoteBundle: RemoteBundle) => ({
   assertLoginFlow: remoteBundle.runtimeHealthOps.assertLoginFlow,
   buildKeycloakClientSecretCheck: remoteBundle.runtimeHealthOps.buildKeycloakClientSecretCheck,
-  buildLocalProvisioningWorkerCheck: deps.buildLocalProvisioningWorkerCheckBase,
+  buildLocalProvisioningWorkerCheck: (
+    runtimeProfile: RuntimeProfile,
+    workerState: Parameters<RuntimeRemoteCommandOrchestratorDeps['buildLocalProvisioningWorkerCheckBase']>[1],
+    isAlive: (pid: number) => boolean = deps.isProcessAlive,
+  ) =>
+    deps.buildLocalProvisioningWorkerCheckBase(runtimeProfile, workerState, isAlive),
   buildStudioImageVerifyEvidenceCheck: deps.buildStudioImageVerifyEvidenceCheck,
   decorateDoctorCheck: deps.decorateDoctorCheck,
   mergeExplicitTenantTargetsWithRegistry,

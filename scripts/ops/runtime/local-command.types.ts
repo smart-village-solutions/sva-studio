@@ -1,10 +1,12 @@
+import type { SchemaGuardReport } from '../../../packages/auth-runtime/src/iam-account-management/schema-guard.ts';
 import type { AcceptanceReleaseMode, DoctorReport, RuntimeCommand, RuntimeProfile } from '../runtime-env.shared.ts';
+import type { LocalRuntimeAuditCommand } from './rebuild-audit.ts';
 
 export type LocalDangerousApprovalRequirement = { reason: string; token: string } | null;
 export type LocalStateLike = { pid?: number } | null;
 export type SchemaSnapshotVerificationReport = Readonly<{ contentDrift: boolean; ignoredSchemas: readonly string[]; missingObjects: readonly string[]; status: 'drift' | 'ok'; unexpectedObjects: readonly string[] }>;
 export type LocalTenantSecretSyncSummary = Readonly<{ attemptedInstanceIds: readonly string[]; errors: readonly string[]; healedInstanceIds: readonly string[]; remainingAuthSecretInstanceIds: readonly string[]; remainingTenantAdminSecretInstanceIds: readonly string[] }>;
-export type LocalSchemaGuardResult = { ok: boolean; [key: string]: unknown };
+export type LocalSchemaGuardResult = SchemaGuardReport;
 export type LocalCommandCliOptions = { approvalToken?: string; authoritative?: boolean; jsonOutput: boolean; localOverrideFile?: string; releaseMode?: AcceptanceReleaseMode };
 
 export type LocalRuntimeCommandDeps = {
@@ -17,7 +19,7 @@ export type LocalRuntimeCommandDeps = {
   checkLocalInstanceRegistryDrift: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => void;
   cliOptions: LocalCommandCliOptions;
   composeWithMonitoringArgs: readonly string[];
-  createLocalRuntimeAuditLogger: (input: { authoritative: boolean; composeMode: 'base' | 'with-monitoring'; driftCheckEnabled: boolean; gitSha?: string; jsonOutput: boolean; logFile: string; runtimeCommand: string; runtimeProfile: RuntimeProfile; workerEnabled: boolean }) => { run: <T>(phase: string, operation: () => Promise<T> | T) => Promise<T> } | null;
+  createLocalRuntimeAuditLogger: (input: { authoritative: boolean; composeMode: 'base' | 'with-monitoring'; driftCheckEnabled: boolean; gitSha?: string; jsonOutput: boolean; logFile: string; runtimeCommand: LocalRuntimeAuditCommand; runtimeProfile: RuntimeProfile; workerEnabled: boolean }) => { run: <T>(phase: string, operation: () => Promise<T> | T) => Promise<T> } | null;
   createRepairDeps: (input: { authoritative: boolean; doctorRuntime: () => Promise<DoctorReport>; env: NodeJS.ProcessEnv; rebuildAuditLogger: { run: <T>(phase: string, operation: () => Promise<T> | T) => Promise<T> }; runtimeProfile: RuntimeProfile }) => { postflightDoctor: () => Promise<DoctorReport>; preflightDoctor: () => Promise<DoctorReport>; reconcileInstanceRegistry: () => Promise<void>; runActorBindingRepair?: () => Promise<void>; runMigrate: () => Promise<void>; syncTenantSecrets: () => Promise<LocalTenantSecretSyncSummary> };
   doctorRuntime: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorReport>;
   downLocalInfra: (input: { composeArgs: readonly string[]; env: NodeJS.ProcessEnv; run: LocalRuntimeCommandDeps['run'] }) => Promise<void> | void;
@@ -39,14 +41,14 @@ export type LocalRuntimeCommandDeps = {
   rootDir: string;
   run: (command: string, args: readonly string[], env?: NodeJS.ProcessEnv) => void;
   runSchemaGuard: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => LocalSchemaGuardResult;
-  shouldAuditLocalRuntimeCommand: (runtimeCommand: RuntimeCommand) => boolean;
+  shouldAuditLocalRuntimeCommand: (runtimeCommand: RuntimeCommand) => runtimeCommand is LocalRuntimeAuditCommand;
   shouldRunLocalProvisioningWorker: (runtimeProfile: RuntimeProfile) => boolean;
   smokeRuntime: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<void>;
   startLocalApp: (input: { appLogDir: string; env: NodeJS.ProcessEnv; healthUrl: string; localStateFile: string; rootDir: string; runtimeProfile: RuntimeProfile }) => Promise<void> | void;
   startLocalProvisioningWorker: (input: { appLogDir: string; env: NodeJS.ProcessEnv; localWorkerStateFile: string; rootDir: string; runtimeProfile: RuntimeProfile }) => Promise<void> | void;
   stopLocalApp: (input: { localStateFile: string; rootDir: string }) => Promise<void> | void;
   stopLocalProvisioningWorker: (input: { localWorkerStateFile: string; rootDir: string }) => Promise<void> | void;
-  summarizeSchemaGuardFailures: (result: unknown) => string | undefined;
+  summarizeSchemaGuardFailures: (result: SchemaGuardReport) => string | undefined;
   syncLocalTenantSecretsToRegistry: (env: NodeJS.ProcessEnv) => Promise<LocalTenantSecretSyncSummary>;
   upLocalInfra: (input: { composeArgs: readonly string[]; env: NodeJS.ProcessEnv; run: LocalRuntimeCommandDeps['run'] }) => Promise<void> | void;
   verifyLocalDbSchemaSnapshot: (env: NodeJS.ProcessEnv) => SchemaSnapshotVerificationReport;

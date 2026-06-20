@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { DoctorReport, RuntimeCommand, RuntimeProfile } from '../runtime-env.shared.ts';
 import { createLocalRuntimeCommandRunner } from './local-command.ts';
+import type { LocalRuntimeAuditCommand } from './rebuild-audit.ts';
 
 describe('createLocalRuntimeCommandRunner', () => {
   it('runs the local up flow in the expected order', async () => {
     const calls: string[] = [];
+    const shouldAuditLocalRuntimeCommand = (runtimeCommand: RuntimeCommand): runtimeCommand is LocalRuntimeAuditCommand => true;
     const runLocalCommand = createLocalRuntimeCommandRunner({
       appLogDir: '/tmp/logs',
       assertDangerousOperationApproved: vi.fn(),
@@ -57,7 +59,7 @@ describe('createLocalRuntimeCommandRunner', () => {
       rootDir: '/repo',
       run: vi.fn(),
       runSchemaGuard: vi.fn(),
-      shouldAuditLocalRuntimeCommand: vi.fn(() => true),
+      shouldAuditLocalRuntimeCommand,
       shouldRunLocalProvisioningWorker: vi.fn(() => true),
       smokeRuntime: vi.fn(),
       startLocalApp: vi.fn(() => {
@@ -96,6 +98,7 @@ describe('createLocalRuntimeCommandRunner', () => {
   it('prints state and compose ps output for status', async () => {
     const log = vi.fn();
     const run = vi.fn();
+    const shouldAuditLocalRuntimeCommand = (runtimeCommand: RuntimeCommand): runtimeCommand is LocalRuntimeAuditCommand => false;
     const runLocalCommand = createLocalRuntimeCommandRunner({
       appLogDir: '/tmp/logs',
       assertDangerousOperationApproved: vi.fn(),
@@ -132,7 +135,7 @@ describe('createLocalRuntimeCommandRunner', () => {
       rootDir: '/repo',
       run,
       runSchemaGuard: vi.fn(),
-      shouldAuditLocalRuntimeCommand: vi.fn(() => false),
+      shouldAuditLocalRuntimeCommand,
       shouldRunLocalProvisioningWorker: vi.fn(() => false),
       smokeRuntime: vi.fn(),
       startLocalApp: vi.fn(),

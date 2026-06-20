@@ -2,6 +2,7 @@ import React from 'react';
 
 import type { IamHttpError } from '../lib/iam-api';
 import { t } from '../i18n';
+import { cn } from '../lib/utils';
 import { useOrganizationContext } from '../hooks/use-organization-context';
 import { Alert, AlertDescription } from './ui/alert';
 import { Label } from './ui/label';
@@ -22,7 +23,11 @@ const organizationContextErrorMessage = (error: IamHttpError | null) => {
   }
 };
 
-export const OrganizationContextSwitcher = () => {
+type OrganizationContextSwitcherProps = Readonly<{
+  variant?: 'inline' | 'menu';
+}>;
+
+export const OrganizationContextSwitcher = ({ variant = 'inline' }: OrganizationContextSwitcherProps) => {
   const organizationContext = useOrganizationContext();
   const options = organizationContext.context?.organizations.filter((organization) => organization.isActive) ?? [];
   const activeOrganization = options.find(
@@ -37,10 +42,22 @@ export const OrganizationContextSwitcher = () => {
     return null;
   }
 
+  const isMenuVariant = variant === 'menu';
+
   return (
-    <div className="flex max-w-full flex-col items-start gap-1 text-xs text-muted-foreground">
-      <div className="field-group flex items-center gap-2">
-        <Label htmlFor="organization-context-switcher">{t('shell.header.organizationContext')}</Label>
+    <div
+      className={cn(
+        'flex max-w-full flex-col items-start text-xs text-muted-foreground',
+        isMenuVariant ? 'w-full gap-1.5 px-3 py-2' : 'gap-1'
+      )}
+    >
+      <div className={cn('field-group', isMenuVariant ? 'flex w-full flex-col gap-2' : 'flex items-center gap-2')}>
+        <Label
+          htmlFor="organization-context-switcher"
+          className={cn(isMenuVariant ? 'text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground' : undefined)}
+        >
+          {t('shell.header.organizationContext')}
+        </Label>
         <Select
           id="organization-context-switcher"
           aria-label={t('shell.header.organizationContext')}
@@ -52,7 +69,12 @@ export const OrganizationContextSwitcher = () => {
             }
             void organizationContext.switchOrganization(event.target.value);
           }}
-          className="h-8 w-auto min-w-40 max-w-full px-2 py-1 text-sm"
+          className={cn(
+            'text-sm',
+            isMenuVariant
+              ? 'h-10 w-full rounded-lg border-border bg-background px-3 py-2 shadow-none'
+              : 'h-8 w-auto min-w-40 max-w-full px-2 py-1'
+          )}
           disabled={organizationContext.isUpdating}
         >
           {options.map((organization) => (
@@ -62,17 +84,6 @@ export const OrganizationContextSwitcher = () => {
           ))}
         </Select>
       </div>
-      {activeOrganization ? (
-        <p className="max-w-sm text-[11px] leading-4 text-muted-foreground">
-          {[
-            activeOrganization.organizationKey,
-            activeOrganization.organizationType,
-            activeOrganization.isDefaultContext ? t('shell.header.organizationContextDefault') : null,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </p>
-      ) : null}
       <span id={statusId} role="status" aria-live="polite" className="sr-only">
         {organizationContext.isUpdating
           ? t('shell.header.organizationContextUpdating')
@@ -81,7 +92,13 @@ export const OrganizationContextSwitcher = () => {
             : ''}
       </span>
       {errorMessage ? (
-        <Alert id={errorId} className="border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        <Alert
+          id={errorId}
+          className={cn(
+            'border-destructive/40 bg-destructive/10 text-xs text-destructive',
+            isMenuVariant ? 'w-full px-3 py-2' : 'px-3 py-2'
+          )}
+        >
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
       ) : null}

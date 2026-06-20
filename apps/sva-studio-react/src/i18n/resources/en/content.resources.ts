@@ -4,8 +4,6 @@ export const contentENResources = {
     subtitle: 'Manage generic content with core metadata, JSON payloads, and auditable history.',
   },
   filters: {
-    searchLabel: 'Search',
-    searchPlaceholder: 'Search by title, type, author, or payload',
     typeLabel: 'Type',
     typeAll: 'All types',
     statusLabel: 'Status',
@@ -56,9 +54,6 @@ export const contentENResources = {
   table: {
     caption: 'Table of managed content items',
     ariaLabel: 'Content',
-    sectionTitle: 'Content list',
-    sectionDescription:
-      'Browse shared editorial content and open the type-specific detail view when needed.',
     headerTitle: 'Title',
     headerType: 'Type',
     headerPublished: 'Published at',
@@ -159,7 +154,6 @@ export const contentENResources = {
     actionsDisabled:
       'Actions stay disabled until the required permissions are available in the current context.',
     readOnly: 'This content is read-only in the current context. Fields and save stay disabled.',
-    accessSummary: 'Current access state: {{state}}. {{context}}',
     accessLoadError:
       'The global content context could not be loaded completely. Per-item states remain available.',
   },

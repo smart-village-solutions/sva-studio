@@ -180,6 +180,10 @@ export const createAcceptanceCommandRunner = (deps: AcceptanceCommandDeps) => {
         deps.assertRuntimeEnv(runtimeProfile, env);
         assertApprovedRemoteMutation(deps, env, runtimeProfile, 'reset');
         await deps.resetAcceptance(runtimeProfile, env, async () => {
+          const hostnameCheck = await deps.runtimeDoctorDbCheckOps.buildInstanceHostnameMappingCheck(runtimeProfile, env);
+          if (hostnameCheck.status !== 'ok') {
+            throw new Error(hostnameCheck.message);
+          }
           const schemaGuard = deps.runSchemaGuard(runtimeProfile, env);
           if (!schemaGuard.ok) {
             throw new Error(

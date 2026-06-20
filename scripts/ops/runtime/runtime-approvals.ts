@@ -7,6 +7,7 @@ import type {
   RuntimeCommand,
 } from '../runtime-env.shared.ts';
 import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
+import { createLocalRuntimeRepairOps } from './local-repair.ts';
 
 export type DangerousApprovalRequirement = Readonly<{
   readonly reason: string;
@@ -105,55 +106,24 @@ export type LocalRuntimeRepairDeps<SecretSyncSummary> = Readonly<{
   syncTenantSecrets: () => Promise<SecretSyncSummary>;
 }>;
 
-export const repairLocalRuntimeWithDeps = async <SecretSyncSummary>(
+export const repairLocalRuntimeWithDeps = createLocalRuntimeRepairOps<
+  DoctorCheck,
+  DoctorReport,
+  unknown
+>({
+  getCheckCode: (check) => check.code,
+  getCheckMessage: (check) => check.message,
+  getCheckReasonCode: (check) => check.reasonCode,
+  getChecks: (report) => report.checks,
+  hasBlockingReasonCode: (report, reasonCode) => hasBlockingReasonCode(report, reasonCode as DoctorReasonCode),
+  isBlockingRepairFailure,
+}).repairLocalRuntimeWithDeps as <SecretSyncSummary>(
   deps: LocalRuntimeRepairDeps<SecretSyncSummary>,
   options: {
     authoritative: boolean;
   },
-): Promise<{
+) => Promise<{
   postflightReport: DoctorReport;
   preflightReport: DoctorReport;
   tenantSecretSync: SecretSyncSummary;
-}> => {
-  const preflightReport = await deps.preflightDoctor();
-
-  if (
-    hasBlockingReasonCode(preflightReport, 'schema_migration_drift')
-    || hasBlockingReasonCode(preflightReport, 'schema_manual_drift')
-  ) {
-    await deps.runMigrate();
-  }
-
-  await deps.reconcileInstanceRegistry();
-  const tenantSecretSync = await deps.syncTenantSecrets();
-
-  if (deps.runActorBindingRepair && hasBlockingReasonCode(preflightReport, 'actor_binding_drift')) {
-    await deps.runActorBindingRepair();
-  }
-
-  const postflightReport = await deps.postflightDoctor();
-
-  if (hasBlockingReasonCode(postflightReport, 'schema_manual_drift')) {
-    throw new Error('Lokaler Repair kann die erkannte Schema-Drift nicht automatisch heilen. Bitte Umgebung oder Snapshot manuell untersuchen.');
-  }
-
-  if (!options.authoritative && hasBlockingReasonCode(postflightReport, 'instance_identity_drift')) {
-    throw new Error(
-      'Lokale Instanz-Identitaetsdrift bleibt im Preserve-Modus bestehen. Fuer eine autoritative Korrektur env:repair:local-keycloak --authoritative erneut ausfuehren.',
-    );
-  }
-
-  const blockingChecks = postflightReport.checks.filter(isBlockingRepairFailure);
-  if (blockingChecks.length > 0) {
-    const summary = blockingChecks
-      .map((check) => `${check.reasonCode ?? check.code}: ${check.message}`)
-      .join(' | ');
-    throw new Error(`Lokaler Runtime-Repair bleibt nach dem Reparaturlauf blockiert: ${summary}`);
-  }
-
-  return {
-    postflightReport,
-    preflightReport,
-    tenantSecretSync,
-  };
-};
+}>;

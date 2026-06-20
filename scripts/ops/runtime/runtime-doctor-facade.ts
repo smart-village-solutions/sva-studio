@@ -35,6 +35,7 @@ export const createRuntimeDoctorFacade = (deps: RuntimeDoctorFacadeDeps) => {
     buildInstanceAuthConfigCheck: deps.buildInstanceAuthConfigCheck,
     buildInstanceHostnameMappingCheck: deps.buildInstanceHostnameMappingCheck,
     buildKeycloakClientSecretCheck: deps.buildKeycloakClientSecretCheck,
+    buildLiveRuntimeEnvCheck: deps.buildLiveRuntimeEnvCheck,
     buildLocalInstanceIdentityDoctorCheck: deps.buildLocalInstanceIdentityDoctorCheck,
     buildLocalProvisioningWorkerCheck: (runtimeProfile, workerState) =>
       deps.buildLocalProvisioningWorkerCheckBase(runtimeProfile, workerState, deps.isProcessAlive),

@@ -155,6 +155,7 @@ const precheckAcceptance = async (
   addRuntimeEnvCheck(deps, checks, runtimeProfile, env, 'Remote-Profil ist nicht vollstaendig konfiguriert.');
   checks.push(deps.buildImagePlatformDoctorCheck(env, options));
   checks.push(deps.buildStudioImageVerifyEvidenceCheck(runtimeProfile, env, options));
+  checks.push(await deps.buildLiveRuntimeEnvCheck(runtimeProfile, env));
   checks.push(await deps.buildAcceptanceServiceCheck(env));
   checks.push(await deps.buildAcceptanceIngressConsistencyCheck(env));
   checks.push(await deps.buildAppPrincipalReadinessCheck(env));

@@ -41,6 +41,7 @@ describe('createRuntimeDoctorOps', () => {
       buildInstanceAuthConfigCheck: vi.fn(() => createCheck('instance-auth-config')),
       buildInstanceHostnameMappingCheck: vi.fn(async () => createCheck('instance-hostname-mapping')),
       buildKeycloakClientSecretCheck: vi.fn(async () => createCheck('keycloak-client-secret')),
+      buildLiveRuntimeEnvCheck: vi.fn(async () => createCheck('runtime-env-live')),
       buildLocalInstanceIdentityDoctorCheck: vi.fn(() => createCheck('instance-identity')),
       buildLocalProvisioningWorkerCheck: vi.fn(() => createCheck('local-worker')),
       buildMigrationStatusCheck: vi.fn(() => createCheck('migration-status')),
@@ -103,6 +104,7 @@ describe('createRuntimeDoctorOps', () => {
     expect(localBuilderReport.checks.map((check) => check.name)).toContain('otel');
     expect(localKeycloakReport.checks.map((check) => check.name)).toContain('actor-diagnosis');
     expect(precheckReport.checks.map((check) => check.name)).toContain('acceptance-live-spec');
+    expect(precheckReport.checks.map((check) => check.name)).toContain('runtime-env-live');
     expect(finalizeDoctorReport).toHaveBeenCalledTimes(4);
   });
 });

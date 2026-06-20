@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import type { AcceptanceDeployOptions, AcceptanceProbeResult } from '../runtime-env.shared.ts';
 import type { ImageSmokeContainer, RuntimeImageSmokeDeps } from './image-smoke.types.ts';
 
+const CONTAINER_HTTP_PROBE_TIMEOUT_MS = 10_000;
+
 export const buildImageSmokeContainer = async (
   deps: RuntimeImageSmokeDeps,
   env: NodeJS.ProcessEnv,
@@ -77,10 +79,17 @@ export const waitForContainerHttpOk = async (
   env: NodeJS.ProcessEnv,
 ) => {
   const startedAt = Date.now();
+  const url = `http://127.0.0.1:3000${path}`;
+  const probeScript = [
+    `const signal = AbortSignal.timeout(${CONTAINER_HTTP_PROBE_TIMEOUT_MS});`,
+    `fetch(${JSON.stringify(url)}, { signal })`,
+    '  .then((response) => process.exit(response.ok ? 0 : 1))',
+    '  .catch(() => process.exit(1));',
+  ].join('');
   while (Date.now() - startedAt < timeoutMs) {
     const result = deps.runCaptureDetailed(
       'docker',
-      ['exec', containerName, 'node', '-e', `fetch('http://127.0.0.1:3000${path}').then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))`],
+      ['exec', containerName, 'node', '-e', probeScript],
       env,
     );
     if (result.status === 0) {
@@ -109,7 +118,8 @@ export const runContainerHttpProbe = async (
   try {
     const script = [
       'const url = process.argv[1];',
-      'fetch(url)',
+      `const signal = AbortSignal.timeout(${CONTAINER_HTTP_PROBE_TIMEOUT_MS});`,
+      'fetch(url, { signal })',
       '  .then(async (response) => {',
       '    const text = await response.text();',
       '    process.stdout.write(JSON.stringify({ ok: response.ok, status: response.status, text }));',

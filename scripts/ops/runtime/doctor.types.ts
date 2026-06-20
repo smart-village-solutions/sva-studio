@@ -29,6 +29,7 @@ export type RuntimeDoctorDeps = {
   buildInstanceAuthConfigCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => DoctorCheck;
   buildInstanceHostnameMappingCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorCheck>;
   buildKeycloakClientSecretCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorCheck>;
+  buildLiveRuntimeEnvCheck: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorCheck>;
   buildLocalInstanceIdentityDoctorCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => DoctorCheck;
   buildLocalProvisioningWorkerCheck: (runtimeProfile: RuntimeProfile, workerState: unknown) => DoctorCheck;
   buildMigrationStatusCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => DoctorCheck;

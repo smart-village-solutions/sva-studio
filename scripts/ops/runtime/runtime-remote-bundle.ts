@@ -143,6 +143,7 @@ const createDoctorFacadeOps = (
     buildInstanceAuthConfigCheck: runtimeDoctorDbCheckOps.buildInstanceAuthConfigCheck,
     buildInstanceHostnameMappingCheck: runtimeDoctorDbCheckOps.buildInstanceHostnameMappingCheck,
     buildKeycloakClientSecretCheck: runtimeHealthOps.buildKeycloakClientSecretCheck,
+    buildLiveRuntimeEnvCheck: runtimeHealthOps.buildLiveRuntimeEnvCheck,
     buildLocalInstanceIdentityDoctorCheck: runtimeDoctorDbCheckOps.buildLocalInstanceIdentityDoctorCheck,
     buildLocalProvisioningWorkerCheckBase: deps.buildLocalProvisioningWorkerCheckBase,
     buildMigrationStatusCheck: runtimeDoctorDbCheckOps.buildMigrationStatusCheck,

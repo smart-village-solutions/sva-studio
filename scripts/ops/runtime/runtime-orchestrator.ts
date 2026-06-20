@@ -35,115 +35,124 @@ type RuntimeOrchestratorDeps = Omit<
   upLocalInfra: typeof import('./local-runtime.ts').upLocalInfra;
 };
 
-export const createRuntimeOrchestrator = (deps: RuntimeOrchestratorDeps) => {
-  let runtimeDoctorFacade: ReturnType<typeof createRuntimeDoctorFacade> | null = null;
+type RuntimeDoctorFacadeRef = {
+  current: ReturnType<typeof createRuntimeDoctorFacade> | null;
+};
 
-  const precheckAcceptance = (
-    runtimeProfile: RemoteRuntimeProfile,
-    env: NodeJS.ProcessEnv,
-    options?: AcceptanceDeployOptions,
-  ) => {
-    if (!runtimeDoctorFacade) {
-      throw new Error('Runtime-Doctor-Fassade ist noch nicht initialisiert.');
-    }
+const requireRuntimeDoctorFacade = (runtimeDoctorFacade: RuntimeDoctorFacadeRef) => {
+  if (!runtimeDoctorFacade.current) {
+    throw new Error('Runtime-Doctor-Fassade ist noch nicht initialisiert.');
+  }
+  return runtimeDoctorFacade.current;
+};
 
-    return runtimeDoctorFacade.precheckAcceptance(runtimeProfile, env, options);
-  };
+const remoteCommandCoreDeps = (deps: RuntimeOrchestratorDeps) => ({
+  acceptanceRemoteStateOps: deps.acceptanceRemoteStateOps,
+  applyCliOptionEnvOverrides: deps.applyCliOptionEnvOverrides,
+  assertComposeServiceIngressLabels: deps.assertComposeServiceIngressLabels,
+  assertComposeServiceNetworks: deps.assertComposeServiceNetworks,
+  assertDangerousOperationApproved: deps.assertDangerousOperationApproved,
+  assertDeterministicRemoteMutationContext: deps.assertDeterministicRemoteMutationContext,
+  assertRuntimeEnv: deps.assertRuntimeEnv,
+  buildAcceptanceReportPaths: deps.buildAcceptanceReportPaths,
+  buildProfileEnv: deps.buildProfileEnv,
+  buildQuantumDeployComposeDocument: deps.buildQuantumDeployComposeDocument,
+  buildTrustedForwardedHeaders: deps.buildTrustedForwardedHeaders,
+  checkHttpHealth: deps.checkHttpHealth,
+  cliOptions: deps.cliOptions,
+  commandExists: deps.commandExists,
+  createStepResult: deps.createStepResult,
+  deployReportDir: deps.deployReportDir,
+  ensureDirs: deps.ensureDirs,
+  jsonOutput: deps.jsonOutput,
+  rootDir: deps.rootDir,
+});
 
-  const doctorRuntime = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
-    if (!runtimeDoctorFacade) {
-      throw new Error('Runtime-Doctor-Fassade ist noch nicht initialisiert.');
-    }
+const remoteCommandDoctorDeps = (deps: RuntimeOrchestratorDeps) => ({
+  buildGuardrailDoctorChecks: deps.buildGuardrailDoctorChecks,
+  buildImagePlatformDoctorCheck: deps.buildImagePlatformDoctorCheck,
+  buildLocalProvisioningWorkerCheckBase: deps.buildLocalProvisioningWorkerCheckBase,
+  buildStudioImageVerifyEvidenceCheck: deps.buildStudioImageVerifyEvidenceCheck,
+  collectLocalInstanceIdentityDrift: deps.collectLocalInstanceIdentityDrift,
+  createDbSqlRunner: deps.createDbSqlRunner,
+  decorateDoctorCheck: deps.decorateDoctorCheck,
+  finalizeDoctorReport: deps.finalizeDoctorReport,
+  getRuntimeContractSummary: deps.getRuntimeContractSummary,
+  getRuntimeProfileDefinition: deps.getRuntimeProfileDefinition,
+  getRuntimeProfileDerivedEnvKeys: deps.getRuntimeProfileDerivedEnvKeys,
+  getRuntimeProfileRequiredEnvKeys: deps.getRuntimeProfileRequiredEnvKeys,
+  isMainserverCheckRequired: deps.isMainserverCheckRequired,
+  isMigrationStatusCheckRequired: deps.isMigrationStatusCheckRequired,
+  isMockAuthRuntimeProfile: deps.isMockAuthRuntimeProfile,
+  isProcessAlive: deps.isProcessAlive,
+  listGooseMigrationFiles: deps.listGooseMigrationFiles,
+  loadActiveLocalTenantSecretStates: deps.loadActiveLocalTenantSecretStates,
+  localWorkerStateFile: deps.localWorkerStateFile,
+  readLocalWorkerState: deps.readLocalWorkerState,
+  runLocalGooseStatus: deps.runLocalGooseStatus,
+  summarizeSchemaGuardFailures: deps.summarizeSchemaGuardFailures,
+  toDoctorCheck: deps.toDoctorCheck,
+  validateRuntimeProfileEnv: deps.validateRuntimeProfileEnv,
+  verifyDbSchemaSnapshot: deps.verifyDbSchemaSnapshot,
+  verifyLocalDbSchemaSnapshot: deps.verifyLocalDbSchemaSnapshot,
+});
 
-    return runtimeDoctorFacade.doctorRuntime(runtimeProfile, env);
-  };
+const remoteCommandRuntimeDeps = (deps: RuntimeOrchestratorDeps) => ({
+  buildProdParityProbePlan: deps.buildProdParityProbePlan,
+  getConfiguredQuantumEndpoint: deps.getConfiguredQuantumEndpoint,
+  getConfiguredStackName: deps.getConfiguredStackName,
+  getGooseConfiguredVersion: deps.getGooseConfiguredVersion,
+  getRemoteAppServiceName: deps.getRemoteAppServiceName,
+  getRemoteComposeFile: deps.getRemoteComposeFile,
+  getRuntimeStatusExecutionMode: deps.getRuntimeStatusExecutionMode,
+  hasLocalEmergencyRemoteMutationOverride: deps.hasLocalEmergencyRemoteMutationOverride,
+  inspectRemoteServiceContract: deps.inspectRemoteServiceContract,
+  isExpectedOidcRedirect: deps.isExpectedOidcRedirect,
+  isRemoteRuntimeProfile: deps.isRemoteRuntimeProfile,
+  localInstanceOps: deps.localInstanceOps,
+  parseInstanceIdList: deps.parseInstanceIdList,
+  parseJsonFromCommandOutput: deps.parseJsonFromCommandOutput,
+  parseRuntimeProfile: deps.parseRuntimeProfile,
+  printDoctorReport: deps.printDoctorReport,
+  printJsonIfRequested: deps.printJsonIfRequested,
+  resolveAcceptanceDeployOptions: deps.resolveAcceptanceDeployOptions,
+  resolveRemoteDangerousApprovalRequirement: deps.resolveRemoteDangerousApprovalRequirement,
+  run: deps.run,
+  runCapture: deps.runCapture,
+  runCaptureDetailed: deps.runCaptureDetailed,
+  runHttpProbe: deps.runHttpProbe,
+  runQuantumExec: deps.runQuantumExec,
+  runtimeArtifactsDir: deps.runtimeArtifactsDir,
+  shouldCheckLocalInstanceRegistryDriftBeforeCommand: deps.shouldCheckLocalInstanceRegistryDriftBeforeCommand,
+  shouldRunLocalProvisioningWorker: deps.shouldRunLocalProvisioningWorker,
+  shouldSkipQuantumPrePull: deps.shouldSkipQuantumPrePull,
+  sqlIdentifier: deps.sqlIdentifier,
+  sqlLiteral: deps.sqlLiteral,
+  summarizeProcessOutput: deps.summarizeProcessOutput,
+  tenantSecretRegistryOps: deps.tenantSecretRegistryOps,
+  wait: deps.wait,
+  withoutDebugEnv: deps.withoutDebugEnv,
+});
 
-  const remoteCommandOrchestrator = createRuntimeRemoteCommandOrchestrator({
-    acceptanceRemoteStateOps: deps.acceptanceRemoteStateOps,
-    applyCliOptionEnvOverrides: deps.applyCliOptionEnvOverrides,
-    assertComposeServiceIngressLabels: deps.assertComposeServiceIngressLabels,
-    assertComposeServiceNetworks: deps.assertComposeServiceNetworks,
-    assertDangerousOperationApproved: deps.assertDangerousOperationApproved,
-    assertDeterministicRemoteMutationContext: deps.assertDeterministicRemoteMutationContext,
-    assertRuntimeEnv: deps.assertRuntimeEnv,
-    buildAcceptanceReportPaths: deps.buildAcceptanceReportPaths,
-    buildGuardrailDoctorChecks: deps.buildGuardrailDoctorChecks,
-    buildImagePlatformDoctorCheck: deps.buildImagePlatformDoctorCheck,
-    buildLocalProvisioningWorkerCheckBase: deps.buildLocalProvisioningWorkerCheckBase,
-    buildProfileEnv: deps.buildProfileEnv,
-    buildProdParityProbePlan: deps.buildProdParityProbePlan,
-    buildQuantumDeployComposeDocument: deps.buildQuantumDeployComposeDocument,
-    buildStudioImageVerifyEvidenceCheck: deps.buildStudioImageVerifyEvidenceCheck,
-    buildTrustedForwardedHeaders: deps.buildTrustedForwardedHeaders,
-    checkHttpHealth: deps.checkHttpHealth,
-    cliOptions: deps.cliOptions,
-    collectLocalInstanceIdentityDrift: deps.collectLocalInstanceIdentityDrift,
-    commandExists: deps.commandExists,
-    createDbSqlRunner: deps.createDbSqlRunner,
-    createStepResult: deps.createStepResult,
-    decorateDoctorCheck: deps.decorateDoctorCheck,
-    deployReportDir: deps.deployReportDir,
+const createRemoteCommandRuntime = (
+  deps: RuntimeOrchestratorDeps,
+  doctorRuntime: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<Awaited<ReturnType<ReturnType<typeof createRuntimeDoctorFacade>['doctorRuntime']>>>,
+  precheckAcceptance: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv, options?: AcceptanceDeployOptions) => ReturnType<ReturnType<typeof createRuntimeDoctorFacade>['precheckAcceptance']>,
+) =>
+  createRuntimeRemoteCommandOrchestrator({
+    ...remoteCommandCoreDeps(deps),
+    ...remoteCommandDoctorDeps(deps),
+    ...remoteCommandRuntimeDeps(deps),
     doctorRuntime,
-    ensureDirs: deps.ensureDirs,
-    finalizeDoctorReport: deps.finalizeDoctorReport,
-    getConfiguredQuantumEndpoint: deps.getConfiguredQuantumEndpoint,
-    getConfiguredStackName: deps.getConfiguredStackName,
-    getGooseConfiguredVersion: deps.getGooseConfiguredVersion,
-    getRemoteAppServiceName: deps.getRemoteAppServiceName,
-    getRemoteComposeFile: deps.getRemoteComposeFile,
-    getRuntimeContractSummary: deps.getRuntimeContractSummary,
-    getRuntimeProfileDefinition: deps.getRuntimeProfileDefinition,
-    getRuntimeProfileDerivedEnvKeys: deps.getRuntimeProfileDerivedEnvKeys,
-    getRuntimeProfileRequiredEnvKeys: deps.getRuntimeProfileRequiredEnvKeys,
-    getRuntimeStatusExecutionMode: deps.getRuntimeStatusExecutionMode,
-    hasLocalEmergencyRemoteMutationOverride: deps.hasLocalEmergencyRemoteMutationOverride,
-    inspectRemoteServiceContract: deps.inspectRemoteServiceContract,
-    isExpectedOidcRedirect: deps.isExpectedOidcRedirect,
-    isMainserverCheckRequired: deps.isMainserverCheckRequired,
-    isMigrationStatusCheckRequired: deps.isMigrationStatusCheckRequired,
-    isMockAuthRuntimeProfile: deps.isMockAuthRuntimeProfile,
-    isProcessAlive: deps.isProcessAlive,
-    isRemoteRuntimeProfile: deps.isRemoteRuntimeProfile,
-    jsonOutput: deps.jsonOutput,
-    listGooseMigrationFiles: deps.listGooseMigrationFiles,
-    loadActiveLocalTenantSecretStates: deps.loadActiveLocalTenantSecretStates,
-    localInstanceOps: deps.localInstanceOps,
-    localWorkerStateFile: deps.localWorkerStateFile,
-    parseInstanceIdList: deps.parseInstanceIdList,
-    parseJsonFromCommandOutput: deps.parseJsonFromCommandOutput,
-    parseRuntimeProfile: deps.parseRuntimeProfile,
     precheckAcceptance,
-    printDoctorReport: deps.printDoctorReport,
-    printJsonIfRequested: deps.printJsonIfRequested,
-    readLocalWorkerState: deps.readLocalWorkerState,
-    resolveAcceptanceDeployOptions: deps.resolveAcceptanceDeployOptions,
-    resolveRemoteDangerousApprovalRequirement: deps.resolveRemoteDangerousApprovalRequirement,
-    rootDir: deps.rootDir,
-    run: deps.run,
-    runCapture: deps.runCapture,
-    runCaptureDetailed: deps.runCaptureDetailed,
-    runHttpProbe: deps.runHttpProbe,
-    runLocalGooseStatus: deps.runLocalGooseStatus,
-    runQuantumExec: deps.runQuantumExec,
-    runtimeArtifactsDir: deps.runtimeArtifactsDir,
-    shouldCheckLocalInstanceRegistryDriftBeforeCommand: deps.shouldCheckLocalInstanceRegistryDriftBeforeCommand,
-    shouldRunLocalProvisioningWorker: deps.shouldRunLocalProvisioningWorker,
-    shouldSkipQuantumPrePull: deps.shouldSkipQuantumPrePull,
-    sqlIdentifier: deps.sqlIdentifier,
-    sqlLiteral: deps.sqlLiteral,
-    summarizeProcessOutput: deps.summarizeProcessOutput,
-    summarizeSchemaGuardFailures: deps.summarizeSchemaGuardFailures,
-    tenantSecretRegistryOps: deps.tenantSecretRegistryOps,
-    toDoctorCheck: deps.toDoctorCheck,
-    validateRuntimeProfileEnv: deps.validateRuntimeProfileEnv,
-    verifyDbSchemaSnapshot: deps.verifyDbSchemaSnapshot,
-    verifyLocalDbSchemaSnapshot: deps.verifyLocalDbSchemaSnapshot,
-    wait: deps.wait,
-    withoutDebugEnv: deps.withoutDebugEnv,
   });
-  runtimeDoctorFacade = remoteCommandOrchestrator.runtimeDoctorFacade;
 
-  const localCommandOrchestrator = createRuntimeLocalCommandOrchestrator({
+const createLocalCommandRuntime = (
+  deps: RuntimeOrchestratorDeps,
+  remoteCommandOrchestrator: ReturnType<typeof createRuntimeRemoteCommandOrchestrator>,
+  doctorRuntime: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<Awaited<ReturnType<ReturnType<typeof createRuntimeDoctorFacade>['doctorRuntime']>>>,
+) =>
+  createRuntimeLocalCommandOrchestrator({
     appLogDir: deps.appLogDir,
     assertDangerousOperationApproved: deps.assertDangerousOperationApproved,
     assertRuntimeEnv: deps.assertRuntimeEnv,
@@ -184,6 +193,15 @@ export const createRuntimeOrchestrator = (deps: RuntimeOrchestratorDeps) => {
     verifyLocalDbSchemaSnapshot: deps.verifyLocalDbSchemaSnapshot,
   });
 
+export const createRuntimeOrchestrator = (deps: RuntimeOrchestratorDeps) => {
+  const runtimeDoctorFacade: RuntimeDoctorFacadeRef = { current: null };
+  const precheckAcceptance = (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv, options?: AcceptanceDeployOptions) =>
+    requireRuntimeDoctorFacade(runtimeDoctorFacade).precheckAcceptance(runtimeProfile, env, options);
+  const doctorRuntime = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
+    requireRuntimeDoctorFacade(runtimeDoctorFacade).doctorRuntime(runtimeProfile, env);
+  const remoteCommandOrchestrator = createRemoteCommandRuntime(deps, doctorRuntime, precheckAcceptance);
+  runtimeDoctorFacade.current = remoteCommandOrchestrator.runtimeDoctorFacade;
+  const localCommandOrchestrator = createLocalCommandRuntime(deps, remoteCommandOrchestrator, doctorRuntime);
   return {
     doctorRuntime,
     runAcceptanceCommand: remoteCommandOrchestrator.runAcceptanceCommand,

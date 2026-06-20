@@ -4,7 +4,6 @@ import type { RuntimeProfile } from '../../packages/core/src/runtime-profile.ts'
 import { getRuntimeProfileDefinition } from '../../packages/core/src/runtime-profile.ts';
 import type {
   AcceptanceDeployOptions,
-  AcceptanceDeployReport,
   AcceptanceReleaseMode,
   GithubVerifyArtifactEvidence,
   GithubVerifyEvidenceOptions,
@@ -105,6 +104,27 @@ const takeOptionValue = (raw: string, all: readonly string[], index: number) => 
   return { nextIndex: index + 1, value: nextValue };
 };
 
+const applyRuntimeCliOption = (parsed: RuntimeCliOptions, optionName: string, value: string) => {
+  switch (optionName) {
+    case '--approve-dangerous': parsed.approvalToken = value; break;
+    case '--release-mode':
+      if (value !== 'app-only' && value !== 'schema-and-app') throw new Error(`Ungueltiger Release-Modus: ${value}`);
+      parsed.releaseMode = value;
+      break;
+    case '--maintenance-window': parsed.maintenanceWindow = value; break;
+    case '--actor': parsed.actor = value; break;
+    case '--workflow': parsed.workflow = value; break;
+    case '--image-tag': parsed.imageTag = value; break;
+    case '--image-digest': parsed.imageDigest = value; break;
+    case '--rollback-hint': parsed.rollbackHint = value; break;
+    case '--report-slug': parsed.reportSlug = value; break;
+    case '--grafana-url': parsed.grafanaUrl = value; break;
+    case '--loki-url': parsed.lokiUrl = value; break;
+    case '--local-override-file': parsed.localOverrideFile = value; break;
+    default: throw new Error(`Unbekannte Option: ${optionName}`);
+  }
+};
+
 export const parseRuntimeCliOptions = (rawOptions: readonly string[]): RuntimeCliOptions => {
   const parsed: RuntimeCliOptions = { jsonOutput: false };
 
@@ -126,25 +146,7 @@ export const parseRuntimeCliOptions = (rawOptions: readonly string[]): RuntimeCl
     const optionName = rawOption.includes('=') ? rawOption.slice(0, rawOption.indexOf('=')) : rawOption;
     const { nextIndex, value } = takeOptionValue(rawOption, rawOptions, index);
     index = nextIndex;
-
-    switch (optionName) {
-      case '--approve-dangerous': parsed.approvalToken = value; break;
-      case '--release-mode':
-        if (value !== 'app-only' && value !== 'schema-and-app') throw new Error(`Ungueltiger Release-Modus: ${value}`);
-        parsed.releaseMode = value;
-        break;
-      case '--maintenance-window': parsed.maintenanceWindow = value; break;
-      case '--actor': parsed.actor = value; break;
-      case '--workflow': parsed.workflow = value; break;
-      case '--image-tag': parsed.imageTag = value; break;
-      case '--image-digest': parsed.imageDigest = value; break;
-      case '--rollback-hint': parsed.rollbackHint = value; break;
-      case '--report-slug': parsed.reportSlug = value; break;
-      case '--grafana-url': parsed.grafanaUrl = value; break;
-      case '--loki-url': parsed.lokiUrl = value; break;
-      case '--local-override-file': parsed.localOverrideFile = value; break;
-      default: throw new Error(`Unbekannte Option: ${optionName}`);
-    }
+    applyRuntimeCliOption(parsed, optionName, value);
   }
 
   return parsed;
@@ -153,46 +155,82 @@ export const parseRuntimeCliOptions = (rawOptions: readonly string[]): RuntimeCl
 const sanitizeSlug = (value: string) =>
   value.trim().toLowerCase().replace(/[^a-z0-9-]+/gu, '-').replace(/-{2,}/gu, '-').replace(/^-|-$/gu, '');
 
+const optionalTrimmed = (value: string | undefined) => {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+};
+
+const firstTrimmed = (...values: readonly (string | undefined)[]) =>
+  values.map(optionalTrimmed).find((value): value is string => value !== undefined);
+
+const resolveReleaseMode = (
+  env: NodeJS.ProcessEnv,
+  cliOptions: RuntimeCliOptions,
+  runtimeProfile: RemoteRuntimeProfile,
+): AcceptanceReleaseMode => {
+  const releaseMode = cliOptions.releaseMode ?? (env.SVA_ACCEPTANCE_RELEASE_MODE as AcceptanceReleaseMode | undefined) ?? 'app-only';
+  if (releaseMode !== 'app-only' && releaseMode !== 'schema-and-app') {
+    throw new Error(`Ungueltiger Release-Modus fuer ${runtimeProfile}: ${releaseMode}`);
+  }
+  return releaseMode;
+};
+
+const resolveMaintenanceWindow = (
+  env: NodeJS.ProcessEnv,
+  cliOptions: RuntimeCliOptions,
+  releaseMode: AcceptanceReleaseMode,
+) => {
+  const maintenanceWindow = cliOptions.maintenanceWindow ?? optionalTrimmed(env.SVA_ACCEPTANCE_MAINTENANCE_WINDOW);
+  if (releaseMode === 'schema-and-app' && !maintenanceWindow) {
+    throw new Error('Release-Modus schema-and-app erfordert ein Wartungsfenster (--maintenance-window oder SVA_ACCEPTANCE_MAINTENANCE_WINDOW).');
+  }
+  return maintenanceWindow;
+};
+
+const resolveImageDigest = (
+  env: NodeJS.ProcessEnv,
+  cliOptions: RuntimeCliOptions,
+  runtimeProfile: RemoteRuntimeProfile,
+) => {
+  const imageDigest = firstTrimmed(cliOptions.imageDigest, env.SVA_IMAGE_DIGEST);
+  if (!imageDigest) {
+    throw new Error(`Produktionsnahe Releases fuer ${runtimeProfile} erfordern einen Image-Digest (--image-digest oder SVA_IMAGE_DIGEST).`);
+  }
+  return imageDigest;
+};
+
+const resolveImageRef = (env: NodeJS.ProcessEnv, imageDigest: string) => {
+  const imageRepository = optionalTrimmed(env.SVA_IMAGE_REPOSITORY) ?? 'sva-studio';
+  const imageRegistry = optionalTrimmed(env.SVA_REGISTRY) ?? 'ghcr.io/smart-village-solutions';
+  return {
+    imageRef: optionalTrimmed(env.SVA_IMAGE_REF) ?? `${imageRegistry}/${imageRepository}@${imageDigest}`,
+    imageRepository,
+  };
+};
+
 export const resolveAcceptanceDeployOptions = (
   env: NodeJS.ProcessEnv,
   cliOptions: RuntimeCliOptions,
   runtimeProfile: RemoteRuntimeProfile = 'studio',
 ): AcceptanceDeployOptions => {
-  const releaseMode = cliOptions.releaseMode ?? (env.SVA_ACCEPTANCE_RELEASE_MODE as AcceptanceReleaseMode | undefined) ?? 'app-only';
-  if (releaseMode !== 'app-only' && releaseMode !== 'schema-and-app') {
-    throw new Error(`Ungueltiger Release-Modus fuer ${runtimeProfile}: ${releaseMode}`);
-  }
-
-  const maintenanceWindow = cliOptions.maintenanceWindow ?? env.SVA_ACCEPTANCE_MAINTENANCE_WINDOW?.trim() ?? undefined;
-  const rollbackHint =
-    cliOptions.rollbackHint?.trim() ||
-    env.SVA_ACCEPTANCE_ROLLBACK_HINT?.trim() ||
-    'Vorherigen unveraenderlichen Image-Tag oder Digest erneut deployen.';
-  if (releaseMode === 'schema-and-app' && !maintenanceWindow) {
-    throw new Error('Release-Modus schema-and-app erfordert ein Wartungsfenster (--maintenance-window oder SVA_ACCEPTANCE_MAINTENANCE_WINDOW).');
-  }
-
-  const imageDigest = cliOptions.imageDigest?.trim() || env.SVA_IMAGE_DIGEST?.trim() || undefined;
-  if (!imageDigest) {
-    throw new Error(`Produktionsnahe Releases fuer ${runtimeProfile} erfordern einen Image-Digest (--image-digest oder SVA_IMAGE_DIGEST).`);
-  }
-
-  const imageRepository = env.SVA_IMAGE_REPOSITORY?.trim() || 'sva-studio';
-  const imageRegistry = env.SVA_REGISTRY?.trim() || 'ghcr.io/smart-village-solutions';
+  const releaseMode = resolveReleaseMode(env, cliOptions, runtimeProfile);
+  const maintenanceWindow = resolveMaintenanceWindow(env, cliOptions, releaseMode);
+  const imageDigest = resolveImageDigest(env, cliOptions, runtimeProfile);
+  const { imageRef, imageRepository } = resolveImageRef(env, imageDigest);
   return {
-    actor: cliOptions.actor?.trim() || env.SVA_REMOTE_DEPLOY_ACTOR?.trim() || env.SVA_ACCEPTANCE_DEPLOY_ACTOR?.trim() || env.GITHUB_ACTOR?.trim() || 'local-operator',
-    workflow: cliOptions.workflow?.trim() || env.SVA_REMOTE_DEPLOY_WORKFLOW?.trim() || env.SVA_ACCEPTANCE_DEPLOY_WORKFLOW?.trim() || env.GITHUB_WORKFLOW?.trim() || 'manual',
-    imageTag: cliOptions.imageTag?.trim() || env.SVA_IMAGE_TAG?.trim() || undefined,
+    actor: firstTrimmed(cliOptions.actor, env.SVA_REMOTE_DEPLOY_ACTOR, env.SVA_ACCEPTANCE_DEPLOY_ACTOR, env.GITHUB_ACTOR) ?? 'local-operator',
+    workflow: firstTrimmed(cliOptions.workflow, env.SVA_REMOTE_DEPLOY_WORKFLOW, env.SVA_ACCEPTANCE_DEPLOY_WORKFLOW, env.GITHUB_WORKFLOW) ?? 'manual',
+    imageTag: firstTrimmed(cliOptions.imageTag, env.SVA_IMAGE_TAG),
     imageDigest,
-    imageRef: env.SVA_IMAGE_REF?.trim() || `${imageRegistry}/${imageRepository}@${imageDigest}`,
+    imageRef,
     imageRepository,
-    grafanaUrl: cliOptions.grafanaUrl?.trim() || env.SVA_GRAFANA_URL?.trim() || undefined,
-    lokiUrl: cliOptions.lokiUrl?.trim() || env.SVA_LOKI_URL?.trim() || undefined,
+    grafanaUrl: firstTrimmed(cliOptions.grafanaUrl, env.SVA_GRAFANA_URL),
+    lokiUrl: firstTrimmed(cliOptions.lokiUrl, env.SVA_LOKI_URL),
     maintenanceWindow,
-    monitoringConfigImageTag: env.SVA_MONITORING_CONFIG_INIT_IMAGE_TAG?.trim() || undefined,
+    monitoringConfigImageTag: optionalTrimmed(env.SVA_MONITORING_CONFIG_INIT_IMAGE_TAG),
     releaseMode,
     reportSlug: sanitizeSlug(cliOptions.reportSlug || env.SVA_REMOTE_REPORT_SLUG || env.SVA_ACCEPTANCE_REPORT_SLUG || `${runtimeProfile}-deploy`),
-    rollbackHint,
+    rollbackHint: firstTrimmed(cliOptions.rollbackHint, env.SVA_ACCEPTANCE_ROLLBACK_HINT) ?? 'Vorherigen unveraenderlichen Image-Tag oder Digest erneut deployen.',
   };
 };
 
@@ -245,43 +283,6 @@ export const buildAcceptanceReportPaths = (artifactsDir: string, reportSlug: str
     internalVerifyPath: resolve(artifactsDir, `${reportId}.internal-probes.json`),
     externalSmokePath: resolve(artifactsDir, `${reportId}.external-probes.json`),
   };
-};
-
-export const formatAcceptanceDeployReportMarkdown = (report: AcceptanceDeployReport) => {
-  const renderProbe = (probe: { durationMs: number; httpStatus?: number; message: string; name: string; status: string; target: string }) =>
-    `- \`${probe.name}\` -> \`${probe.status}\` (${probe.durationMs} ms, target=${probe.target}, http=${probe.httpStatus ?? 'n/a'}): ${probe.message}`;
-  const lines = [
-    `# Deploy-Report ${report.reportId}`,
-    '',
-    `- Profil: \`${report.profile}\``,
-    `- Status: \`${report.status}\``,
-    `- Release-Modus: \`${report.releaseMode}\``,
-    `- Zeitpunkt: \`${report.generatedAt}\``,
-    `- Actor: \`${report.actor}\``,
-    `- Workflow: \`${report.workflow}\``,
-    `- Stack: \`${report.stackName}\``,
-    `- Image-Ref: \`${report.imageRef}\``,
-    `- Image-Tag: \`${report.imageTag ?? 'n/a'}\``,
-    `- Image-Digest: \`${report.imageDigest}\``,
-    `- Wartungsfenster: \`${report.maintenanceWindow ?? 'nicht erforderlich'}\``,
-    `- Rollback-Hinweis: ${report.rollbackHint}`,
-    report.failureCategory ? `- Fehlerkategorie: \`${report.failureCategory}\`` : null,
-    `- Technical Gate: \`${report.releaseDecision.technicalGatePassed ? 'passed' : 'failed'}\``,
-    `- Freigabeentscheidung: ${report.releaseDecision.summary}`,
-    '',
-    '## Schritte',
-    '',
-    ...report.steps.map((step) => `- \`${step.name}\` -> \`${step.status}\` (${step.durationMs} ms): ${step.summary}`),
-    '',
-    '## Interne Probes',
-    '',
-    ...(report.internalProbes.length > 0 ? report.internalProbes.map(renderProbe) : ['- keine']),
-    '',
-    '## Externe Probes',
-    '',
-    ...(report.externalProbes.length > 0 ? report.externalProbes.map(renderProbe) : ['- keine']),
-  ];
-  return lines.filter((line): line is string => line !== null).join('\n');
 };
 
 export type { GithubVerifyArtifactEvidence, GithubVerifyEvidenceOptions };

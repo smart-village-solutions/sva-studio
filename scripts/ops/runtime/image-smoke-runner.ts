@@ -52,6 +52,129 @@ const runLocalEmergencyHybridImageSmoke = async (
     },
   );
 
+const expectedRootAuthRedirect = (deps: RuntimeImageSmokeDeps, env: NodeJS.ProcessEnv, response: Response) => {
+  const location = response.headers.get('location') ?? '';
+  const configuredRedirectUri = env.SVA_AUTH_REDIRECT_URI?.trim();
+  if (response.status !== 302) return `Erwartet Redirect fuer Root-Auth, erhalten ${response.status}.`;
+  if (!deps.isExpectedOidcRedirect(location, env)) return `OIDC-Redirect stimmt nicht: ${location}`;
+  return configuredRedirectUri && !location.includes(`redirect_uri=${encodeURIComponent(configuredRedirectUri)}`)
+    ? `Root-Redirect-URI stimmt nicht: ${location}`
+    : null;
+};
+
+const expectedTenantAuthRedirect = (
+  env: NodeJS.ProcessEnv,
+  host: string,
+  instanceId: string,
+  response: Response,
+) => {
+  const location = response.headers.get('location') ?? '';
+  const expectedRedirectUri = `${new URL(env.SVA_PUBLIC_BASE_URL ?? 'https://studio.smart-village.app').protocol}//${host}/auth/callback`;
+  if (response.status !== 302) return `Erwartet Redirect fuer Tenant ${instanceId}, erhalten ${response.status}.`;
+  if (!location.includes(`/realms/${instanceId}/`)) return `Tenant-Realm stimmt nicht fuer ${instanceId}: ${location}`;
+  return !location.includes(`redirect_uri=${encodeURIComponent(expectedRedirectUri)}`)
+    ? `Tenant-Redirect-URI stimmt nicht fuer ${instanceId}: ${location}`
+    : null;
+};
+
+const runContainerHealthProbes = (
+  deps: RuntimeImageSmokeDeps,
+  env: NodeJS.ProcessEnv,
+  containerName: string,
+) => [
+  runContainerHttpProbe(deps, containerName, '/health/live', env, {
+    expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`),
+    name: 'image-live',
+    scope: 'image-smoke',
+    target: `docker://${containerName}/health/live`,
+  }),
+  runContainerHttpProbe(deps, containerName, '/health/ready', env, {
+    expect: (response, payload) => (response.status === 200 ? null : `Prod-naher Kandidat ist nicht ready (${response.status}): ${typeof payload === 'string' ? payload : JSON.stringify(payload)}`),
+    name: 'image-ready',
+    scope: 'image-smoke',
+    target: `docker://${containerName}/health/ready`,
+  }),
+];
+
+const runRootParityProbes = (
+  deps: RuntimeImageSmokeDeps,
+  env: NodeJS.ProcessEnv,
+  baseUrl: string,
+  rootHeaders: HeadersInit,
+) => [
+  deps.runHttpProbe({
+    expect: (response) => expectedRootAuthRedirect(deps, env, response),
+    headers: rootHeaders,
+    name: 'image-root-auth-login',
+    scope: 'image-smoke',
+    target: `${baseUrl}/auth/login`,
+  }),
+  deps.runHttpProbe({
+    expect: (response, payload) =>
+      [200, 401, 403].includes(response.status) && !(typeof payload === 'string' && payload.toLowerCase().includes('<html'))
+        ? null
+        : `Unerwarteter IAM-Kontext-Status ${response.status}.`,
+    headers: rootHeaders,
+    name: 'image-root-iam-context',
+    scope: 'image-smoke',
+    target: `${baseUrl}/api/v1/iam/me/context`,
+  }),
+];
+
+const runTenantParityProbes = (
+  deps: RuntimeImageSmokeDeps,
+  env: NodeJS.ProcessEnv,
+  baseUrl: string,
+  tenantHosts: readonly { host: string; instanceId: string }[],
+) =>
+  tenantHosts.map(({ host, instanceId }) =>
+    deps.runHttpProbe({
+      expect: (response) => expectedTenantAuthRedirect(env, host, instanceId, response),
+      headers: deps.buildTrustedForwardedHeaders(host),
+      name: `image-tenant-auth-login-${instanceId}`,
+      scope: 'image-smoke',
+      target: `${baseUrl}/auth/login`,
+    }),
+  );
+
+const runImageSmokeProbes = async (
+  deps: RuntimeImageSmokeDeps,
+  env: NodeJS.ProcessEnv,
+  containerName: string,
+  smokePort: number,
+) => {
+  const parityPlan = deps.buildProdParityProbePlan(env);
+  const rootHeaders = deps.buildTrustedForwardedHeaders(parityPlan.rootHost);
+  const baseUrl = `http://127.0.0.1:${smokePort}`;
+  return Promise.all([
+    ...runContainerHealthProbes(deps, env, containerName),
+    ...runRootParityProbes(deps, env, baseUrl, rootHeaders),
+    ...runTenantParityProbes(deps, env, baseUrl, parityPlan.tenantHosts),
+  ]);
+};
+
+const runNormalImageSmokeContainer = (
+  deps: RuntimeImageSmokeDeps,
+  env: NodeJS.ProcessEnv,
+  options: AcceptanceDeployOptions,
+  reportId: string,
+) =>
+  withStartedImageSmokeContainer(
+    deps,
+    env,
+    options,
+    reportId,
+    (runtimeEnv) => buildImageSmokeRuntimeEnvEntries(deps, runtimeEnv),
+    async ({ containerName, smokePort }) => {
+      const probes = await runImageSmokeProbes(deps, env, containerName, smokePort);
+      const failingProbe = probes.find((probe) => probe.status === 'error');
+      if (failingProbe) {
+        throw new Error(buildContainerFailure(deps, containerName, env, `${failingProbe.name} fehlgeschlagen. ${failingProbe.message}`));
+      }
+      return probes;
+    },
+  );
+
 export const runImageSmoke = async (
   deps: RuntimeImageSmokeDeps,
   env: NodeJS.ProcessEnv,
@@ -76,85 +199,7 @@ export const runImageSmoke = async (
     return runLocalEmergencyHybridImageSmoke(deps, parsedRuntimeProfile, env, options, reportId);
   }
 
-  return withStartedImageSmokeContainer(
-    deps,
-    env,
-    options,
-    reportId,
-    (runtimeEnv) => buildImageSmokeRuntimeEnvEntries(deps, runtimeEnv),
-    async ({ containerName, smokePort }) => {
-      const parityPlan = deps.buildProdParityProbePlan(env);
-      const rootHeaders = deps.buildTrustedForwardedHeaders(parityPlan.rootHost);
-      const baseUrl = `http://127.0.0.1:${smokePort}`;
-      const probes = await Promise.all([
-        runContainerHttpProbe(deps, containerName, '/health/live', env, {
-          expect: (response) => (response.status === 200 ? null : `Erwartet HTTP 200, erhalten ${response.status}.`),
-          name: 'image-live',
-          scope: 'image-smoke',
-          target: `docker://${containerName}/health/live`,
-        }),
-        runContainerHttpProbe(deps, containerName, '/health/ready', env, {
-          expect: (response, payload) => (response.status === 200 ? null : `Prod-naher Kandidat ist nicht ready (${response.status}): ${typeof payload === 'string' ? payload : JSON.stringify(payload)}`),
-          name: 'image-ready',
-          scope: 'image-smoke',
-          target: `docker://${containerName}/health/ready`,
-        }),
-        deps.runHttpProbe({
-          expect: (response) => {
-            const location = response.headers.get('location') ?? '';
-            const configuredRedirectUri = env.SVA_AUTH_REDIRECT_URI?.trim();
-            if (response.status !== 302) {
-              return `Erwartet Redirect fuer Root-Auth, erhalten ${response.status}.`;
-            }
-            if (!deps.isExpectedOidcRedirect(location, env)) {
-              return `OIDC-Redirect stimmt nicht: ${location}`;
-            }
-            return configuredRedirectUri && !location.includes(`redirect_uri=${encodeURIComponent(configuredRedirectUri)}`) ? `Root-Redirect-URI stimmt nicht: ${location}` : null;
-          },
-          headers: rootHeaders,
-          name: 'image-root-auth-login',
-          scope: 'image-smoke',
-          target: `${baseUrl}/auth/login`,
-        }),
-        deps.runHttpProbe({
-          expect: (response, payload) =>
-            [200, 401, 403].includes(response.status) && !(typeof payload === 'string' && payload.toLowerCase().includes('<html'))
-              ? null
-              : `Unerwarteter IAM-Kontext-Status ${response.status}.`,
-          headers: rootHeaders,
-          name: 'image-root-iam-context',
-          scope: 'image-smoke',
-          target: `${baseUrl}/api/v1/iam/me/context`,
-        }),
-        ...parityPlan.tenantHosts.map(({ host, instanceId }) =>
-          deps.runHttpProbe({
-            expect: (response) => {
-              const location = response.headers.get('location') ?? '';
-              const expectedRedirectUri = `${new URL(env.SVA_PUBLIC_BASE_URL ?? 'https://studio.smart-village.app').protocol}//${host}/auth/callback`;
-              if (response.status !== 302) {
-                return `Erwartet Redirect fuer Tenant ${instanceId}, erhalten ${response.status}.`;
-              }
-              if (!location.includes(`/realms/${instanceId}/`)) {
-                return `Tenant-Realm stimmt nicht fuer ${instanceId}: ${location}`;
-              }
-              return !location.includes(`redirect_uri=${encodeURIComponent(expectedRedirectUri)}`) ? `Tenant-Redirect-URI stimmt nicht fuer ${instanceId}: ${location}` : null;
-            },
-            headers: deps.buildTrustedForwardedHeaders(host),
-            name: `image-tenant-auth-login-${instanceId}`,
-            scope: 'image-smoke',
-            target: `${baseUrl}/auth/login`,
-          }),
-        ),
-      ]);
-
-      const failingProbe = probes.find((probe) => probe.status === 'error');
-      if (failingProbe) {
-        throw new Error(buildContainerFailure(deps, containerName, env, `${failingProbe.name} fehlgeschlagen. ${failingProbe.message}`));
-      }
-
-      return probes;
-    },
-  ).catch((error) => {
+  return runNormalImageSmokeContainer(deps, env, options, reportId).catch((error) => {
     const containerName = `${reportId}-image-smoke`.replace(/[^a-z0-9-]/giu, '-').toLowerCase();
     throw new Error(buildContainerFailure(deps, containerName, env, error instanceof Error ? error.message : String(error)), {
       cause: error,

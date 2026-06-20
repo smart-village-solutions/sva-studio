@@ -28,112 +28,106 @@ type TenantSecretRegistryDeps = {
   withTemporaryProcessEnv: <T>(env: NodeJS.ProcessEnv, operation: () => Promise<T>) => Promise<T>;
 };
 
-export const createTenantSecretRegistryOps = (deps: TenantSecretRegistryDeps) => {
-  const loadActiveLocalTenantSecretStates = async (
-    env: NodeJS.ProcessEnv,
-  ): Promise<readonly LocalTenantSecretState[]> =>
-    deps.withTemporaryProcessEnv(env, async () =>
-      withRegistryProvisioningWorkerDeps(async (workerDeps) => {
-        const instances = await workerDeps.repository.listInstances({ status: 'active' });
-        const states: LocalTenantSecretState[] = [];
+type RegistryWorkerDeps = Parameters<Parameters<typeof withRegistryProvisioningWorkerDeps>[0]>[0];
 
-        for (const instance of instances) {
-          const loaded = await loadInstanceWithSecret(workerDeps, instance.instanceId);
-          if (!loaded) {
-            continue;
-          }
+const loadActiveLocalTenantSecretStates = async (
+  deps: TenantSecretRegistryDeps,
+  env: NodeJS.ProcessEnv,
+): Promise<readonly LocalTenantSecretState[]> =>
+  deps.withTemporaryProcessEnv(env, async () =>
+    withRegistryProvisioningWorkerDeps(async (workerDeps) => {
+      const instances = await workerDeps.repository.listInstances({ status: 'active' });
+      const states: LocalTenantSecretState[] = [];
 
-          states.push({
-            instanceId: loaded.instance.instanceId,
-            authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
-            authClientSecretReadable: Boolean(loaded.authClientSecret),
-            tenantAdminClientConfigured: Boolean(loaded.instance.tenantAdminClient?.clientId),
-            tenantAdminClientSecretConfigured: Boolean(loaded.instance.tenantAdminClient?.secretConfigured),
-            tenantAdminClientSecretReadable: Boolean(loaded.tenantAdminClientSecret),
-          });
+      for (const instance of instances) {
+        const loaded = await loadInstanceWithSecret(workerDeps, instance.instanceId);
+        if (!loaded) continue;
+        states.push({
+          authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
+          authClientSecretReadable: Boolean(loaded.authClientSecret),
+          instanceId: loaded.instance.instanceId,
+          tenantAdminClientConfigured: Boolean(loaded.instance.tenantAdminClient?.clientId),
+          tenantAdminClientSecretConfigured: Boolean(loaded.instance.tenantAdminClient?.secretConfigured),
+          tenantAdminClientSecretReadable: Boolean(loaded.tenantAdminClientSecret),
+        });
+      }
+
+      return states;
+    }),
+  );
+
+const tenantNeedsSecretRepair = (state: LocalTenantSecretState) =>
+  !state.authClientSecretReadable ||
+  !state.authClientSecretConfigured ||
+  (state.tenantAdminClientConfigured &&
+    (!state.tenantAdminClientSecretConfigured || !state.tenantAdminClientSecretReadable));
+
+const syncOneTenantSecretToRegistry = async (
+  workerDeps: RegistryWorkerDeps,
+  instanceId: string,
+) => {
+  const loaded = await loadInstanceWithSecret(workerDeps, instanceId);
+  if (!loaded) return 'instance_not_found';
+  await syncProvisionedClientSecretToRegistry(workerDeps, {
+    actorId: 'runtime-env-repair',
+    loaded,
+    requestId: `runtime-env-repair-${Date.now()}`,
+  });
+  return undefined;
+};
+
+const remainingAuthSecretInstanceIds = (states: readonly LocalTenantSecretState[]) =>
+  states
+    .filter((state) => !state.authClientSecretConfigured || !state.authClientSecretReadable)
+    .map((state) => state.instanceId);
+
+const remainingTenantAdminSecretInstanceIds = (states: readonly LocalTenantSecretState[]) =>
+  states
+    .filter((state) =>
+      state.tenantAdminClientConfigured &&
+      (!state.tenantAdminClientSecretConfigured || !state.tenantAdminClientSecretReadable))
+    .map((state) => state.instanceId);
+
+const syncLocalTenantSecretsToRegistry = async (
+  deps: TenantSecretRegistryDeps,
+  env: NodeJS.ProcessEnv,
+): Promise<LocalTenantSecretSyncSummary> =>
+  deps.withTemporaryProcessEnv(env, async () =>
+    withRegistryProvisioningWorkerDeps(async (workerDeps) => {
+      const before = await loadActiveLocalTenantSecretStates(deps, env);
+      const targetInstanceIds = before.filter(tenantNeedsSecretRepair).map((state) => state.instanceId);
+      const healedInstanceIds = new Set<string>();
+      const errors: string[] = [];
+
+      for (const instanceId of targetInstanceIds) {
+        try {
+          const failure = await syncOneTenantSecretToRegistry(workerDeps, instanceId);
+          failure ? errors.push(`${instanceId}: ${failure}`) : healedInstanceIds.add(instanceId);
+        } catch (error) {
+          errors.push(`${instanceId}: ${error instanceof Error ? error.message : String(error)}`);
         }
+      }
 
-        return states;
-      }),
-    );
+      const after = await loadActiveLocalTenantSecretStates(deps, env);
+      return {
+        attemptedInstanceIds: targetInstanceIds,
+        errors,
+        healedInstanceIds: [...healedInstanceIds].sort((left, right) => left.localeCompare(right, 'de')),
+        remainingAuthSecretInstanceIds: remainingAuthSecretInstanceIds(after),
+        remainingTenantAdminSecretInstanceIds: remainingTenantAdminSecretInstanceIds(after),
+      };
+    }),
+  );
 
-  const syncLocalTenantSecretsToRegistry = async (
-    env: NodeJS.ProcessEnv,
-  ): Promise<LocalTenantSecretSyncSummary> =>
-    deps.withTemporaryProcessEnv(env, async () =>
-      withRegistryProvisioningWorkerDeps(async (workerDeps) => {
-        const before = await loadActiveLocalTenantSecretStates(env);
-        const targetInstanceIds = before
-          .filter(
-            (state) =>
-              !state.authClientSecretReadable ||
-              !state.authClientSecretConfigured ||
-              (state.tenantAdminClientConfigured &&
-                (!state.tenantAdminClientSecretConfigured || !state.tenantAdminClientSecretReadable)),
-          )
-          .map((state) => state.instanceId);
+const remoteRegistryLimitClause = (options?: { readonly limit?: number }) => {
+  const limit =
+    typeof options?.limit === 'number' && Number.isFinite(options.limit)
+      ? Math.max(1, Math.floor(options.limit))
+      : undefined;
+  return limit ? `LIMIT ${limit}` : '';
+};
 
-        const healedInstanceIds = new Set<string>();
-        const errors: string[] = [];
-
-        for (const instanceId of targetInstanceIds) {
-          try {
-            const loaded = await loadInstanceWithSecret(workerDeps, instanceId);
-            if (!loaded) {
-              errors.push(`${instanceId}: instance_not_found`);
-              continue;
-            }
-
-            await syncProvisionedClientSecretToRegistry(workerDeps, {
-              actorId: 'runtime-env-repair',
-              loaded,
-              requestId: `runtime-env-repair-${Date.now()}`,
-            });
-            healedInstanceIds.add(instanceId);
-          } catch (error) {
-            errors.push(`${instanceId}: ${error instanceof Error ? error.message : String(error)}`);
-          }
-        }
-
-        const after = await loadActiveLocalTenantSecretStates(env);
-        const remainingAuthSecretInstanceIds = after
-          .filter((state) => !state.authClientSecretConfigured || !state.authClientSecretReadable)
-          .map((state) => state.instanceId);
-        const remainingTenantAdminSecretInstanceIds = after
-          .filter(
-            (state) =>
-              state.tenantAdminClientConfigured &&
-              (!state.tenantAdminClientSecretConfigured || !state.tenantAdminClientSecretReadable),
-          )
-          .map((state) => state.instanceId);
-
-        return {
-          attemptedInstanceIds: targetInstanceIds,
-          errors,
-          healedInstanceIds: [...healedInstanceIds].sort((left, right) => left.localeCompare(right, 'de')),
-          remainingAuthSecretInstanceIds,
-          remainingTenantAdminSecretInstanceIds,
-        };
-      }),
-    );
-
-  const loadRegistryTenantTargets = (
-    runtimeProfile: RuntimeProfile,
-    env: NodeJS.ProcessEnv,
-    options?: {
-      readonly limit?: number;
-    },
-  ): readonly TenantRuntimeTarget[] => {
-    if (!deps.isRemoteRuntimeProfile(runtimeProfile)) {
-      return [];
-    }
-
-    const limit =
-      typeof options?.limit === 'number' && Number.isFinite(options.limit)
-        ? Math.max(1, Math.floor(options.limit))
-        : undefined;
-    const limitClause = limit ? `LIMIT ${limit}` : '';
-    const sql = `
+const buildRegistryTenantTargetsSql = (limitClause: string) => `
 SELECT COALESCE(
   json_agg(
     json_build_object(
@@ -158,26 +152,35 @@ FROM (
 ) scoped;
 `;
 
-    const payload = deps.parseJsonFromCommandOutput<readonly TenantRuntimeTarget[]>(
-      deps.createDbSqlRunner(runtimeProfile, env)(sql),
-    );
-    if (!Array.isArray(payload)) {
-      return [];
-    }
+const isTenantRuntimeTarget = (entry: unknown): entry is TenantRuntimeTarget =>
+  !!entry &&
+  typeof entry === 'object' &&
+  typeof (entry as TenantRuntimeTarget).instanceId === 'string' &&
+  typeof (entry as TenantRuntimeTarget).host === 'string' &&
+  typeof (entry as TenantRuntimeTarget).authRealm === 'string';
 
-    return payload.filter(
-      (entry): entry is TenantRuntimeTarget =>
-        !!entry &&
-        typeof entry === 'object' &&
-        typeof entry.instanceId === 'string' &&
-        typeof entry.host === 'string' &&
-        typeof entry.authRealm === 'string',
-    );
-  };
-
-  return {
-    loadActiveLocalTenantSecretStates,
-    loadRegistryTenantTargets,
-    syncLocalTenantSecretsToRegistry,
-  };
+const loadRegistryTenantTargets = (
+  deps: TenantSecretRegistryDeps,
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv,
+  options?: { readonly limit?: number },
+): readonly TenantRuntimeTarget[] => {
+  if (!deps.isRemoteRuntimeProfile(runtimeProfile)) return [];
+  const sql = buildRegistryTenantTargetsSql(remoteRegistryLimitClause(options));
+  const payload = deps.parseJsonFromCommandOutput<readonly TenantRuntimeTarget[]>(
+    deps.createDbSqlRunner(runtimeProfile, env)(sql),
+  );
+  return Array.isArray(payload) ? payload.filter(isTenantRuntimeTarget) : [];
 };
+
+export const createTenantSecretRegistryOps = (deps: TenantSecretRegistryDeps) => ({
+  loadActiveLocalTenantSecretStates: (env: NodeJS.ProcessEnv) =>
+    loadActiveLocalTenantSecretStates(deps, env),
+  loadRegistryTenantTargets: (
+    runtimeProfile: RuntimeProfile,
+    env: NodeJS.ProcessEnv,
+    options?: { readonly limit?: number },
+  ) => loadRegistryTenantTargets(deps, runtimeProfile, env, options),
+  syncLocalTenantSecretsToRegistry: (env: NodeJS.ProcessEnv) =>
+    syncLocalTenantSecretsToRegistry(deps, env),
+});

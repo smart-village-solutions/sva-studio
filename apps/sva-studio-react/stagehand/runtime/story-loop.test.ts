@@ -92,6 +92,9 @@ function createConfig(): StagehandAdminConfig {
       password: 'super-secret',
     },
     baseUrl: 'https://studio.example.test',
+    localBrowser: {
+      headless: true,
+    },
     mission: 'admin-users-overview',
     openAiApiKey: 'test-openai-key',
     runMode: 'story-loop',
